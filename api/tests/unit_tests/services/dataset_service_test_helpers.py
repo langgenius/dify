@@ -6,6 +6,7 @@ document, and segment service test modules that exercise
 """
 
 import json
+from datetime import datetime
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, Mock, create_autospec, patch
@@ -18,7 +19,7 @@ from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from models import Account, TenantAccountRole
 from models.dataset import (
@@ -169,24 +170,23 @@ class DatasetServiceUnitDataFactory:
         enable_api: bool = False,
         summary_index_setting: dict[str, Any] | None = None,
         **kwargs,
-    ) -> Mock:
-        dataset = Mock(spec=Dataset)
-        dataset.id = dataset_id
-        dataset.tenant_id = tenant_id
-        dataset.permission = permission
-        dataset.created_by = created_by
-        dataset.indexing_technique = indexing_technique
-        dataset.embedding_model_provider = embedding_model_provider
-        dataset.embedding_model = embedding_model
-        dataset.built_in_field_enabled = built_in_field_enabled
-        dataset.doc_form = doc_form
-        dataset.enable_api = enable_api
-        dataset.updated_by = None
-        dataset.updated_at = None
-        dataset.summary_index_setting = summary_index_setting
-        for key, value in kwargs.items():
-            setattr(dataset, key, value)
-        return dataset
+    ) -> Dataset:
+        return Dataset(
+            id=dataset_id,
+            tenant_id=tenant_id,
+            permission=permission,
+            created_by=created_by,
+            indexing_technique=indexing_technique,
+            embedding_model_provider=embedding_model_provider,
+            embedding_model=embedding_model,
+            built_in_field_enabled=built_in_field_enabled,
+            chunk_structure=doc_form,
+            enable_api=enable_api,
+            updated_by=None,
+            updated_at=None,
+            summary_index_setting=summary_index_setting,
+            **kwargs,
+        )
 
     @staticmethod
     def create_user_mock(
@@ -195,14 +195,12 @@ class DatasetServiceUnitDataFactory:
         role: str = TenantAccountRole.OWNER,
         **kwargs,
     ) -> SimpleNamespace:
-        user = SimpleNamespace(
+        return SimpleNamespace(
             id=user_id,
             current_tenant_id=tenant_id,
             current_role=role,
+            **kwargs,
         )
-        for key, value in kwargs.items():
-            setattr(user, key, value)
-        return user
 
     @staticmethod
     def create_document_mock(
@@ -223,34 +221,45 @@ class DatasetServiceUnitDataFactory:
         doc_metadata: dict[str, Any] | None = None,
         name: str = "Document",
         **kwargs,
-    ) -> Mock:
-        document = Mock(spec=Document)
-        document.id = document_id
-        document.dataset_id = dataset_id
-        document.tenant_id = tenant_id
-        document.indexing_status = indexing_status
-        document.is_paused = is_paused
-        document.paused_by = None
-        document.paused_at = None
-        document.archived = archived
-        document.enabled = enabled
-        document.data_source_type = data_source_type
-        document.data_source_info_dict = data_source_info_dict or {}
-        document.data_source_info = data_source_info
-        document.doc_form = doc_form
-        document.need_summary = need_summary
-        document.position = position
-        document.doc_metadata = doc_metadata
-        document.name = name
-        for key, value in kwargs.items():
-            setattr(document, key, value)
-        return document
+    ) -> Document:
+        return Document(
+            id=document_id,
+            dataset_id=dataset_id,
+            tenant_id=tenant_id,
+            indexing_status=indexing_status,
+            is_paused=is_paused,
+            paused_by=None,
+            paused_at=None,
+            archived=archived,
+            enabled=enabled,
+            data_source_type=data_source_type,
+            data_source_info=data_source_info
+            if data_source_info is not None
+            else json.dumps(data_source_info_dict or {}),
+            doc_form=doc_form,
+            need_summary=need_summary,
+            position=position,
+            doc_metadata=doc_metadata,
+            name=name,
+            **kwargs,
+        )
 
     @staticmethod
-    def create_upload_file_mock(file_id: str = "file-123", name: str = "upload.txt") -> Mock:
-        upload_file = Mock(spec=UploadFile)
+    def create_upload_file_mock(file_id: str = "file-123", name: str = "upload.txt") -> UploadFile:
+        upload_file = UploadFile(
+            tenant_id="tenant-id",
+            storage_type="opendal",
+            key="test-key",
+            name=name,
+            size=0,
+            extension="txt",
+            mime_type="text/plain",
+            created_by_role="account",
+            created_by="account-id",
+            created_at=datetime.now(),
+            used=False,
+        )
         upload_file.id = file_id
-        upload_file.name = name
         return upload_file
 
 
@@ -280,20 +289,20 @@ def _make_dataset(
     tenant_id: str = "tenant-1",
     data_source_type: str | None = None,
     indexing_technique: str | None = "economy",
-    latest_process_rule=None,
-) -> Mock:
-    dataset = Mock(spec=Dataset)
-    dataset.id = dataset_id
-    dataset.tenant_id = tenant_id
-    dataset.data_source_type = data_source_type
-    dataset.indexing_technique = indexing_technique
-    dataset.latest_process_rule = latest_process_rule
-    dataset.embedding_model_provider = "provider"
-    dataset.embedding_model = "embedding-model"
-    dataset.summary_index_setting = None
-    dataset.retrieval_model = None
-    dataset.collection_binding_id = None
-    return dataset
+    doc_form: str = IndexStructureType.PARAGRAPH_INDEX,
+) -> Dataset:
+    return Dataset(
+        id=dataset_id,
+        tenant_id=tenant_id,
+        data_source_type=data_source_type,
+        indexing_technique=indexing_technique,
+        chunk_structure=doc_form,
+        embedding_model_provider="provider",
+        embedding_model="embedding-model",
+        summary_index_setting=None,
+        retrieval_model=None,
+        collection_binding_id=None,
+    )
 
 
 def _make_document(
@@ -308,31 +317,29 @@ def _make_document(
     enabled: bool = True,
     archived: bool = False,
     indexing_status: str = "completed",
-    display_status: str = "available",
-) -> Mock:
-    document = Mock(spec=Document)
-    document.id = document_id
-    document.dataset_id = dataset_id
-    document.tenant_id = tenant_id
-    document.batch = batch
-    document.doc_form = doc_form
-    document.word_count = word_count
-    document.name = name
-    document.enabled = enabled
-    document.archived = archived
-    document.indexing_status = indexing_status
-    document.display_status = display_status
-    document.data_source_type = "upload_file"
-    document.data_source_info = "{}"
-    document.completed_at = SimpleNamespace()
-    document.processing_started_at = "started"
-    document.parsing_completed_at = "parsed"
-    document.cleaning_completed_at = "cleaned"
-    document.splitting_completed_at = "split"
-    document.updated_at = None
-    document.created_from = None
-    document.dataset_process_rule_id = "process-rule-1"
-    return document
+) -> Document:
+    return Document(
+        id=document_id,
+        dataset_id=dataset_id,
+        tenant_id=tenant_id,
+        batch=batch,
+        doc_form=doc_form,
+        word_count=word_count,
+        name=name,
+        enabled=enabled,
+        archived=archived,
+        indexing_status=indexing_status,
+        data_source_type="upload_file",
+        data_source_info="{}",
+        completed_at=SimpleNamespace(),
+        processing_started_at="started",
+        parsing_completed_at="parsed",
+        cleaning_completed_at="cleaned",
+        splitting_completed_at="split",
+        updated_at=None,
+        created_from=None,
+        dataset_process_rule_id="process-rule-1",
+    )
 
 
 def _make_segment(
@@ -345,21 +352,26 @@ def _make_segment(
     index_node_id: str = "node-1",
     dataset_id: str = "dataset-1",
     document_id: str = "doc-1",
-) -> Mock:
-    segment = Mock(spec=DocumentSegment)
+) -> DocumentSegment:
+    segment = DocumentSegment(
+        tenant_id="tenant-id",
+        dataset_id=dataset_id,
+        document_id=document_id,
+        position=1,
+        content=content,
+        word_count=word_count,
+        tokens=0,
+        created_by="account-id",
+        enabled=enabled,
+        keywords=keywords or [],
+        answer=None,
+        index_node_id=index_node_id,
+        disabled_at=None,
+        disabled_by=None,
+        status="completed",
+        error=None,
+    )
     segment.id = segment_id
-    segment.dataset_id = dataset_id
-    segment.document_id = document_id
-    segment.content = content
-    segment.word_count = word_count
-    segment.enabled = enabled
-    segment.keywords = keywords or []
-    segment.answer = None
-    segment.index_node_id = index_node_id
-    segment.disabled_at = None
-    segment.disabled_by = None
-    segment.status = "completed"
-    segment.error = None
     return segment
 
 

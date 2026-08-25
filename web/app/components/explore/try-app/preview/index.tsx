@@ -10,15 +10,16 @@ type Props = {
   readonly appDetail: TryAppInfo
 }
 
-const Preview: FC<Props> = ({
-  appId,
-  appDetail,
-}) => {
+const Preview: FC<Props> = ({ appId, appDetail }) => {
   const isBasicApp = ['agent-chat', 'chat', 'completion'].includes(appDetail.mode)
 
   return (
     <div className="size-full">
-      {isBasicApp ? <BasicAppPreview appId={appId} /> : <FlowAppPreview appId={appId} className="h-full" />}
+      {isBasicApp ? (
+        <BasicAppPreview appId={appId} />
+      ) : (
+        <FlowAppPreview appId={appId} className="h-full" />
+      )}
     </div>
   )
 }

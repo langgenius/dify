@@ -47,7 +47,12 @@ from graphon.model_runtime.entities.model_entities import (
     ParameterType,
 )
 from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from graphon.node_events import ModelInvokeCompletedEvent, RunRetrieverResourceEvent, StreamChunkEvent
+from graphon.node_events import (
+    ModelInvokeCompletedEvent,
+    RunRetrieverResourceEvent,
+    StreamChunkEvent,
+    StreamReasoningEvent,
+)
 from graphon.nodes.base.entities import VariableSelector
 from graphon.nodes.llm import llm_utils
 from graphon.nodes.llm.entities import (
@@ -344,6 +349,33 @@ def test_fetch_model_config_hydrates_model_instance_runtime_settings(model_confi
     mock_credentials_provider.fetch.assert_called_once_with("openai", "gpt-3.5-turbo")
     mock_model_factory.init_model_instance.assert_called_once_with("openai", "gpt-3.5-turbo")
     provider_model.raise_for_status.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    ("provider", "model_name"),
+    [
+        ("", "gpt-3.5-turbo"),
+        ("openai", ""),
+    ],
+)
+def test_fetch_model_config_rejects_unconfigured_model(provider: str, model_name: str):
+    credentials_provider = mock.MagicMock(spec=CredentialsProvider)
+    model_factory = mock.MagicMock(spec=DifyModelFactory)
+
+    with pytest.raises(ValueError, match="LLM provider and model are required"):
+        fetch_model_config(
+            node_data_model=ModelConfig(
+                provider=provider,
+                name=model_name,
+                mode="chat",
+                completion_params={},
+            ),
+            credentials_provider=credentials_provider,
+            model_factory=model_factory,
+        )
+
+    credentials_provider.fetch.assert_not_called()
+    model_factory.init_model_instance.assert_not_called()
 
 
 def test_fetch_model_config_reuses_validated_provider_model_from_dify_credentials_provider(
@@ -1576,9 +1608,13 @@ def test_handle_invoke_result_streaming_collects_text_metrics_and_structured_out
 
     assert events[0] == first_chunk
 
-    assert events[1] == StreamChunkEvent(selector=["node-1", "text"], chunk="answer", is_final=False)
+    assert events[1] == StreamReasoningEvent(selector=["node-1", "reasoning_content"], chunk="plan", is_final=False)
 
-    completed = events[2]
+    assert events[2] == StreamChunkEvent(selector=["node-1", "text"], chunk="answer", is_final=False)
+
+    assert events[3] == StreamReasoningEvent(selector=["node-1", "reasoning_content"], chunk="", is_final=True)
+
+    completed = events[4]
     assert isinstance(completed, ModelInvokeCompletedEvent)
     assert completed.text == "answer"
     assert completed.reasoning_content == "plan"

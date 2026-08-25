@@ -1,4 +1,4 @@
-import type { LexicalNode, SerializedLexicalNode } from 'lexical'
+import type { SerializedLexicalNode } from 'lexical'
 import { DecoratorNode } from 'lexical'
 import RequestURLBlockComponent from './component'
 
@@ -50,10 +50,4 @@ export class RequestURLBlockNode extends DecoratorNode<React.JSX.Element> {
 }
 export function $createRequestURLBlockNode(): RequestURLBlockNode {
   return new RequestURLBlockNode()
-}
-
-export function $isRequestURLBlockNode(
-  node: RequestURLBlockNode | LexicalNode | null | undefined,
-): node is RequestURLBlockNode {
-  return node instanceof RequestURLBlockNode
 }

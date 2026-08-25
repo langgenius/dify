@@ -59,10 +59,12 @@ describe('Answer Component', () => {
       render(
         <Answer
           {...defaultProps}
-          item={{
-            ...defaultProps.item,
-            workflowProcess: { status: 'running', tracing: [], steps: [] },
-          } as unknown as ChatItem}
+          item={
+            {
+              ...defaultProps.item,
+              workflowProcess: { status: 'running', tracing: [], steps: [] },
+            } as unknown as ChatItem
+          }
         />,
       )
       expect(screen.getByTestId('chat-answer-container')).toBeInTheDocument()
@@ -72,24 +74,47 @@ describe('Answer Component', () => {
       const { container } = render(
         <Answer
           {...defaultProps}
-          item={{
-            ...defaultProps.item,
-            agent_thoughts: [{ id: '1', thought: 'Thinking...' }],
-          } as unknown as ChatItem}
+          item={
+            {
+              ...defaultProps.item,
+              agent_thoughts: [{ id: '1', thought: 'Thinking...' }],
+            } as unknown as ChatItem
+          }
         />,
       )
       expect(container.querySelector('.group')).toBeInTheDocument()
+    })
+
+    it('should render custom agent content when only agent response parts exist', () => {
+      render(
+        <Answer
+          {...defaultProps}
+          item={
+            {
+              id: 'msg-with-parts',
+              content: '',
+              isAnswer: true,
+              agent_response_parts: [{ type: 'message', content: 'streamed answer' }],
+            } as ChatItem
+          }
+          renderAgentContent={() => <div data-testid="custom-agent-content">streamed answer</div>}
+        />,
+      )
+
+      expect(screen.getByTestId('custom-agent-content')).toHaveTextContent('streamed answer')
     })
 
     it('should render file lists', () => {
       render(
         <Answer
           {...defaultProps}
-          item={{
-            ...defaultProps.item,
-            allFiles: [{ id: 'f1', type: 'image', name: 'test.png' }],
-            message_files: [{ id: 'f2', type: 'document', name: 'doc.pdf' }],
-          } as unknown as ChatItem}
+          item={
+            {
+              ...defaultProps.item,
+              allFiles: [{ id: 'f1', type: 'image', name: 'test.png' }],
+              message_files: [{ id: 'f2', type: 'document', name: 'doc.pdf' }],
+            } as unknown as ChatItem
+          }
         />,
       )
       expect(screen.getAllByTestId('file-list')).toHaveLength(2)
@@ -99,10 +124,12 @@ describe('Answer Component', () => {
       render(
         <Answer
           {...defaultProps}
-          item={{
-            ...defaultProps.item,
-            annotation: { id: 'a1', authorName: 'John Doe' },
-          } as unknown as ChatItem}
+          item={
+            {
+              ...defaultProps.item,
+              annotation: { id: 'a1', authorName: 'John Doe' },
+            } as unknown as ChatItem
+          }
         />,
       )
       expect(await screen.findByText(/John Doe/i)).toBeInTheDocument()
@@ -112,10 +139,12 @@ describe('Answer Component', () => {
       render(
         <Answer
           {...defaultProps}
-          item={{
-            ...defaultProps.item,
-            citation: [{ id: 'c1', title: 'Source 1' }],
-          } as unknown as ChatItem}
+          item={
+            {
+              ...defaultProps.item,
+              citation: [{ id: 'c1', title: 'Source 1' }],
+            } as unknown as ChatItem
+          }
         />,
       )
       expect(screen.getByTestId('citation-title')).toBeInTheDocument()
@@ -127,10 +156,12 @@ describe('Answer Component', () => {
       render(
         <Answer
           {...defaultProps}
-          item={{
-            ...defaultProps.item,
-            humanInputFormDataList: [{ id: 'form1' }],
-          } as unknown as ChatItem}
+          item={
+            {
+              ...defaultProps.item,
+              humanInputFormDataList: [{ id: 'form1' }],
+            } as unknown as ChatItem
+          }
         />,
       )
       expect(screen.getByTestId('chat-answer-container')).toBeInTheDocument()
@@ -140,13 +171,111 @@ describe('Answer Component', () => {
       render(
         <Answer
           {...defaultProps}
-          item={{
-            ...defaultProps.item,
-            humanInputFilledFormDataList: [{ id: 'form1_filled' }],
-          } as unknown as ChatItem}
+          item={
+            {
+              ...defaultProps.item,
+              humanInputFilledFormDataList: [{ id: 'form1_filled' }],
+            } as unknown as ChatItem
+          }
         />,
       )
       expect(screen.getByTestId('chat-answer-container')).toBeInTheDocument()
+    })
+  })
+
+  // Reasoning panel slot (separated-mode chain-of-thought) in both layouts.
+  // The panel body renders through the async dynamic Markdown, so assertions
+  // target the synchronously-rendered "Thinking…/Thought" summary label.
+  describe('Reasoning Panel', () => {
+    it('should render the reasoning panel in the normal layout while thinking', () => {
+      render(
+        <Answer
+          {...defaultProps}
+          responding={true}
+          item={
+            {
+              ...defaultProps.item,
+              // Thinking ⇒ the answer has not started yet, so content must be empty.
+              content: '',
+              reasoningContent: { llm: 'deep thought' },
+            } as unknown as ChatItem
+          }
+        />,
+      )
+      expect(screen.getByText(/chat\.thinking/)).toBeInTheDocument()
+    })
+
+    it('should render the reasoning panel in the thought state once finished', () => {
+      render(
+        <Answer
+          {...defaultProps}
+          item={
+            {
+              ...defaultProps.item,
+              reasoningContent: { llm: 'recalled reasoning' },
+              reasoningFinished: true,
+            } as unknown as ChatItem
+          }
+        />,
+      )
+      expect(screen.getByText(/chat\.thought/)).toBeInTheDocument()
+    })
+
+    it('should render the reasoning panel within the human-input layout', () => {
+      render(
+        <Answer
+          {...defaultProps}
+          item={
+            {
+              ...defaultProps.item,
+              reasoningContent: { llm: 'human-input reasoning' },
+              humanInputFormDataList: [{ id: 'form1' }],
+            } as unknown as ChatItem
+          }
+        />,
+      )
+      // hasHumanInputs is true, so this can only come from the human-input slot
+      expect(screen.getByText(/chat\.(thinking|thought)/)).toBeInTheDocument()
+    })
+
+    it('should render the reasoning panel in the human-input layout when the answer is empty (history reload)', () => {
+      // Regression: the human-input slot outer guard must include hasReasoning, otherwise a
+      // rehydrated message with forms + reasoning but an empty answer drops the panel entirely.
+      render(
+        <Answer
+          {...defaultProps}
+          item={
+            {
+              ...defaultProps.item,
+              content: '',
+              reasoningContent: { llm: 'reload reasoning' },
+              reasoningFinished: true,
+              humanInputFilledFormDataList: [{ id: 'form1' }],
+            } as unknown as ChatItem
+          }
+        />,
+      )
+      expect(screen.getByText(/chat\.thought/)).toBeInTheDocument()
+    })
+
+    it('should not render the reasoning panel when reasoningContent is absent', () => {
+      render(<Answer {...defaultProps} />)
+      expect(screen.queryByText(/chat\.(thinking|thought)/)).not.toBeInTheDocument()
+    })
+
+    it('should not render the reasoning panel for an empty reasoningContent map (rehydrated, no reasoning)', () => {
+      render(
+        <Answer
+          {...defaultProps}
+          item={
+            {
+              ...defaultProps.item,
+              reasoningContent: {},
+            } as unknown as ChatItem
+          }
+        />,
+      )
+      expect(screen.queryByText(/chat\.(thinking|thought)/)).not.toBeInTheDocument()
     })
   })
 
@@ -156,13 +285,15 @@ describe('Answer Component', () => {
       render(
         <Answer
           {...defaultProps}
-          item={{
-            ...defaultProps.item,
-            siblingCount: 3,
-            siblingIndex: 1,
-            prevSibling: 'msg-0',
-            nextSibling: 'msg-2',
-          } as unknown as ChatItem}
+          item={
+            {
+              ...defaultProps.item,
+              siblingCount: 3,
+              siblingIndex: 1,
+              prevSibling: 'msg-0',
+              nextSibling: 'msg-2',
+            } as unknown as ChatItem
+          }
           switchSibling={mockSwitchSibling}
         />,
       )
@@ -200,10 +331,12 @@ describe('Answer Component', () => {
           {...defaultProps}
           hideProcessDetail={true}
           appData={{ site: { show_workflow_steps: false } } as unknown as AppData}
-          item={{
-            ...defaultProps.item,
-            workflowProcess: { status: 'running', tracing: [], steps: [] },
-          } as unknown as ChatItem}
+          item={
+            {
+              ...defaultProps.item,
+              workflowProcess: { status: 'running', tracing: [], steps: [] },
+            } as unknown as ChatItem
+          }
         />,
       )
       expect(screen.getByTestId('chat-answer-container')).toBeInTheDocument()
@@ -213,10 +346,12 @@ describe('Answer Component', () => {
       render(
         <Answer
           {...defaultProps}
-          item={{
-            ...defaultProps.item,
-            more: { messages: [{ text: 'more content' }] },
-          } as unknown as ChatItem}
+          item={
+            {
+              ...defaultProps.item,
+              more: { messages: [{ text: 'more content' }] },
+            } as unknown as ChatItem
+          }
         />,
       )
       expect(screen.getByTestId('more-container')).toBeInTheDocument()
@@ -226,11 +361,13 @@ describe('Answer Component', () => {
       render(
         <Answer
           {...defaultProps}
-          item={{
-            ...defaultProps.item,
-            content: '',
-            humanInputFormDataList: [{ id: 'form1' }],
-          } as unknown as ChatItem}
+          item={
+            {
+              ...defaultProps.item,
+              content: '',
+              humanInputFormDataList: [{ id: 'form1' }],
+            } as unknown as ChatItem
+          }
         />,
       )
       expect(screen.getByTestId('chat-answer-container-humaninput')).toBeInTheDocument()
@@ -240,14 +377,16 @@ describe('Answer Component', () => {
       render(
         <Answer
           {...defaultProps}
-          item={{
-            ...defaultProps.item,
-            content: '',
-            siblingCount: 2,
-            siblingIndex: 1,
-            prevSibling: 'msg-0',
-            humanInputFormDataList: [{ id: 'form1' }],
-          } as unknown as ChatItem}
+          item={
+            {
+              ...defaultProps.item,
+              content: '',
+              siblingCount: 2,
+              siblingIndex: 1,
+              prevSibling: 'msg-0',
+              humanInputFormDataList: [{ id: 'form1' }],
+            } as unknown as ChatItem
+          }
         />,
       )
       expect(screen.getByTestId('chat-answer-container-humaninput')).toBeInTheDocument()
@@ -258,11 +397,13 @@ describe('Answer Component', () => {
         <Answer
           {...defaultProps}
           responding={true}
-          item={{
-            ...defaultProps.item,
-            content: '',
-            humanInputFormDataList: [{ id: 'form1' }],
-          } as unknown as ChatItem}
+          item={
+            {
+              ...defaultProps.item,
+              content: '',
+              humanInputFormDataList: [{ id: 'form1' }],
+            } as unknown as ChatItem
+          }
         />,
       )
       expect(container).toBeInTheDocument()
@@ -270,15 +411,15 @@ describe('Answer Component', () => {
 
     it('should handle ResizeObserver callback', () => {
       const originalResizeObserver = globalThis.ResizeObserver
-      let triggerResize = () => { }
+      let triggerResize = () => {}
       globalThis.ResizeObserver = class ResizeObserver {
         constructor(callback: unknown) {
           triggerResize = callback as () => void
         }
 
-        observe() { }
-        unobserve() { }
-        disconnect() { }
+        observe() {}
+        unobserve() {}
+        disconnect() {}
       } as unknown as typeof ResizeObserver
 
       render(<Answer {...defaultProps} />)
@@ -297,21 +438,36 @@ describe('Answer Component', () => {
       const { container } = render(
         <Answer
           {...defaultProps}
-          item={{
-            ...defaultProps.item,
-            humanInputFilledFormDataList: [{ id: 'form1' } as unknown as Record<string, unknown>],
-            humanInputFormDataList: [], // hits length > 0 false branch
-            agent_thoughts: [{ id: 'thought1', thought: 'thinking' }],
-            allFiles: [{ _id: 'file1', name: 'file1.txt', type: 'document' } as unknown as Record<string, unknown>],
-            message_files: [{ id: 'file2', url: 'http://test.com', type: 'image/png' } as unknown as Record<string, unknown>],
-            annotation: { id: 'anno1', authorName: 'Author' } as unknown as Record<string, unknown>,
-            citation: [{ item: { title: 'cite 1' } }] as unknown as Record<string, unknown>[],
-            siblingCount: 2,
-            siblingIndex: 1,
-            prevSibling: 'msg-0',
-            nextSibling: 'msg-2',
-            more: { messages: [{ text: 'more content' }] },
-          } as unknown as ChatItem}
+          item={
+            {
+              ...defaultProps.item,
+              humanInputFilledFormDataList: [{ id: 'form1' } as unknown as Record<string, unknown>],
+              humanInputFormDataList: [], // hits length > 0 false branch
+              agent_thoughts: [{ id: 'thought1', thought: 'thinking' }],
+              allFiles: [
+                { _id: 'file1', name: 'file1.txt', type: 'document' } as unknown as Record<
+                  string,
+                  unknown
+                >,
+              ],
+              message_files: [
+                { id: 'file2', url: 'http://test.com', type: 'image/png' } as unknown as Record<
+                  string,
+                  unknown
+                >,
+              ],
+              annotation: { id: 'anno1', authorName: 'Author' } as unknown as Record<
+                string,
+                unknown
+              >,
+              citation: [{ item: { title: 'cite 1' } }] as unknown as Record<string, unknown>[],
+              siblingCount: 2,
+              siblingIndex: 1,
+              prevSibling: 'msg-0',
+              nextSibling: 'msg-2',
+              more: { messages: [{ text: 'more content' }] },
+            } as unknown as ChatItem
+          }
         />,
       )
       expect(container).toBeInTheDocument()
@@ -323,10 +479,12 @@ describe('Answer Component', () => {
           {...defaultProps}
           hideProcessDetail={true}
           appData={undefined}
-          item={{
-            ...defaultProps.item,
-            workflowProcess: { status: 'running', tracing: [], steps: [] },
-          } as unknown as ChatItem}
+          item={
+            {
+              ...defaultProps.item,
+              workflowProcess: { status: 'running', tracing: [], steps: [] },
+            } as unknown as ChatItem
+          }
         />,
       )
       expect(screen.getByTestId('chat-answer-container')).toBeInTheDocument()
@@ -339,11 +497,13 @@ describe('Answer Component', () => {
           {...defaultProps}
           hideProcessDetail={true}
           appData={undefined}
-          item={{
-            ...defaultProps.item,
-            workflowProcess: { status: 'running', tracing: [], steps: [] },
-            humanInputFormDataList: [{ id: 'form1' } as unknown as Record<string, unknown>],
-          } as unknown as ChatItem}
+          item={
+            {
+              ...defaultProps.item,
+              workflowProcess: { status: 'running', tracing: [], steps: [] },
+              humanInputFormDataList: [{ id: 'form1' } as unknown as Record<string, unknown>],
+            } as unknown as ChatItem
+          }
         />,
       )
 
@@ -353,11 +513,13 @@ describe('Answer Component', () => {
           {...defaultProps}
           hideProcessDetail={true}
           appData={{ site: { show_workflow_steps: false } } as unknown as AppData}
-          item={{
-            ...defaultProps.item,
-            workflowProcess: { status: 'running', tracing: [], steps: [] },
-            humanInputFormDataList: [{ id: 'form1' } as unknown as Record<string, unknown>],
-          } as unknown as ChatItem}
+          item={
+            {
+              ...defaultProps.item,
+              workflowProcess: { status: 'running', tracing: [], steps: [] },
+              humanInputFormDataList: [{ id: 'form1' } as unknown as Record<string, unknown>],
+            } as unknown as ChatItem
+          }
         />,
       )
 
@@ -367,11 +529,13 @@ describe('Answer Component', () => {
           {...defaultProps}
           hideProcessDetail={false}
           appData={{ site: { show_workflow_steps: true } } as unknown as AppData}
-          item={{
-            ...defaultProps.item,
-            workflowProcess: { status: 'running', tracing: [], steps: [] },
-            humanInputFormDataList: [{ id: 'form1' } as unknown as Record<string, unknown>],
-          } as unknown as ChatItem}
+          item={
+            {
+              ...defaultProps.item,
+              workflowProcess: { status: 'running', tracing: [], steps: [] },
+              humanInputFormDataList: [{ id: 'form1' } as unknown as Record<string, unknown>],
+            } as unknown as ChatItem
+          }
         />,
       )
 

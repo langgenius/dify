@@ -1,4 +1,4 @@
-import type { AppDescribeInfo, TagItem } from '@dify/contracts/api/openapi/types.gen'
+import type { AppDescribeInfo } from '@dify/contracts/api/openapi/types.gen'
 import type { AppMeta } from '@/types/app-meta'
 
 export const APP_DESCRIBE_MODE_KEY = 'app-describe'
@@ -28,22 +28,19 @@ export class AppDescribeOutput {
         ['Name', info.name],
         ['ID', info.id],
         ['Mode', info.mode],
-        ['Author', info.author ?? ''],
         ['Updated', info.updated_at ?? ''],
         ['Service API', info.service_api_enabled ? 'true' : 'false'],
-        ['Tags', joinTags(info.tags ?? [])],
       ]
       if (info.description !== '' && info.description !== undefined)
         rows.push(['Description', info.description ?? ''])
-      if (info.is_agent)
-        rows.push(['Agent', 'true'])
+      if (info.is_agent) rows.push(['Agent', 'true'])
       lines.push(...alignedRows(rows))
     }
     if (this.payload.parameters !== null && this.payload.parameters !== undefined) {
       lines.push('Parameters:')
       const indented = JSON.stringify(this.payload.parameters, null, 2)
         .split('\n')
-        .map(l => `  ${l}`)
+        .map((l) => `  ${l}`)
         .join('\n')
       lines.push(indented)
     }
@@ -53,12 +50,6 @@ export class AppDescribeOutput {
   json(): AppDescribePayload {
     return this.payload
   }
-}
-
-function joinTags(tags: readonly TagItem[]): string {
-  if (tags.length === 0)
-    return '<none>'
-  return tags.map(t => t.name).join(',')
 }
 
 function alignedRows(rows: readonly [string, string][]): string[] {

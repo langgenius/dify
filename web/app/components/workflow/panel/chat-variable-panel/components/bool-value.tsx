@@ -9,16 +9,16 @@ type Props = Readonly<{
   onChange: (value: boolean) => void
 }>
 
-const BoolValue: FC<Props> = ({
-  value,
-  onChange,
-}) => {
+const BoolValue: FC<Props> = ({ value, onChange }) => {
   const booleanValue = value
-  const handleChange = useCallback((newValue: boolean) => {
-    return () => {
-      onChange(newValue)
-    }
-  }, [onChange])
+  const handleChange = useCallback(
+    (newValue: boolean) => {
+      return () => {
+        onChange(newValue)
+      }
+    },
+    [onChange],
+  )
 
   return (
     <div className="flex w-full space-x-1">

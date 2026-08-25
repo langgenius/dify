@@ -20,7 +20,10 @@ describe('useWorkflowTextChunk', () => {
   it('inserts a line break when text chunks switch to a different output selector', () => {
     const { result, store } = renderWorkflowHook(() => useWorkflowTextChunk(), {
       initialStoreState: {
-        workflowRunningData: baseRunningData({ resultText: 'Hello', resultTextSelectorKey: 'end.answer' }),
+        workflowRunningData: baseRunningData({
+          resultText: 'Hello',
+          resultTextSelectorKey: 'end.answer',
+        }),
       },
     })
 
@@ -36,7 +39,10 @@ describe('useWorkflowTextChunk', () => {
   it('does not add an extra line break when the incoming chunk already starts with one', () => {
     const { result, store } = renderWorkflowHook(() => useWorkflowTextChunk(), {
       initialStoreState: {
-        workflowRunningData: baseRunningData({ resultText: 'Hello', resultTextSelectorKey: 'end.answer' }),
+        workflowRunningData: baseRunningData({
+          resultText: 'Hello',
+          resultTextSelectorKey: 'end.answer',
+        }),
       },
     })
 
@@ -52,7 +58,10 @@ describe('useWorkflowTextChunk', () => {
   it('does not insert a line break when text chunks stay on the same output selector', () => {
     const { result, store } = renderWorkflowHook(() => useWorkflowTextChunk(), {
       initialStoreState: {
-        workflowRunningData: baseRunningData({ resultText: 'Hello', resultTextSelectorKey: 'end.answer' }),
+        workflowRunningData: baseRunningData({
+          resultText: 'Hello',
+          resultTextSelectorKey: 'end.answer',
+        }),
       },
     })
 

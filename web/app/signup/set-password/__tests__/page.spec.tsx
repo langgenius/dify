@@ -1,16 +1,23 @@
 import type { ReactElement } from 'react'
-import type { MockedFunction } from 'vitest'
+import type { MockedFunction } from 'vite-plus/test'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import Cookies from 'js-cookie'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useMailRegister } from '@/service/use-common'
+import { seedSystemFeatures } from '@/test/console/query-data'
 import { getBrowserTimezone } from '@/utils/timezone'
 import ChangePasswordForm from '../page'
 
-const { mockRememberRegistrationSuccess, mockSendGAEvent } = vi.hoisted(() => ({
+const {
+  mockRememberCreateAppExternalAttribution,
+  mockRememberRegistrationSuccess,
+  mockSendGAEvent,
+} = vi.hoisted(() => ({
+  mockRememberCreateAppExternalAttribution: vi.fn(),
   mockRememberRegistrationSuccess: vi.fn(),
   mockSendGAEvent: vi.fn(),
 }))
@@ -41,7 +48,8 @@ vi.mock('@/app/components/base/amplitude/registration-tracking', () => ({
 }))
 
 vi.mock('@/utils/create-app-tracking', () => ({
-  rememberCreateAppExternalAttribution: vi.fn(),
+  rememberCreateAppExternalAttribution: (...args: unknown[]) =>
+    mockRememberCreateAppExternalAttribution(...args),
 }))
 
 const mockRegister = vi.fn()
@@ -51,7 +59,9 @@ const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
 const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
 const mockUseRouter = useRouter as unknown as MockedFunction<typeof useRouter>
 const mockUseMailRegister = useMailRegister as unknown as MockedFunction<typeof useMailRegister>
-const mockGetBrowserTimezone = getBrowserTimezone as unknown as MockedFunction<typeof getBrowserTimezone>
+const mockGetBrowserTimezone = getBrowserTimezone as unknown as MockedFunction<
+  typeof getBrowserTimezone
+>
 
 const renderWithQueryClient = (ui: ReactElement) => {
   const queryClient = new QueryClient({
@@ -60,11 +70,8 @@ const renderWithQueryClient = (ui: ReactElement) => {
       mutations: { retry: false },
     },
   })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-    </QueryClientProvider>,
-  )
+  seedSystemFeatures(queryClient)
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 }
 
 describe('Signup Set Password Page', () => {
@@ -72,8 +79,12 @@ describe('Signup Set Password Page', () => {
     vi.clearAllMocks()
     Cookies.remove('utm_info')
     mockUseLocale.mockReturnValue('zh-Hans')
-    mockUseSearchParams.mockReturnValue(new URLSearchParams('token=register-token') as unknown as ReturnType<typeof useSearchParams>)
-    mockUseRouter.mockReturnValue({ replace: mockReplace } as unknown as ReturnType<typeof useRouter>)
+    mockUseSearchParams.mockReturnValue(
+      new URLSearchParams('token=register-token') as unknown as ReturnType<typeof useSearchParams>,
+    )
+    mockUseRouter.mockReturnValue({ replace: mockReplace } as unknown as ReturnType<
+      typeof useRouter
+    >)
     mockUseMailRegister.mockReturnValue({
       mutateAsync: mockRegister,
       isPending: false,
@@ -82,17 +93,25 @@ describe('Signup Set Password Page', () => {
     mockRegister.mockResolvedValue({ result: 'fail', data: {} })
   })
 
+  it('exposes the page title as the main heading', () => {
+    renderWithQueryClient(<ChangePasswordForm />)
+
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
+  })
+
   describe('Registration payload', () => {
     it('should submit locale and browser timezone when setting password', async () => {
+      const user = userEvent.setup()
       renderWithQueryClient(<ChangePasswordForm />)
 
-      fireEvent.change(screen.getByLabelText('common.account.newPassword'), {
-        target: { value: 'ValidPass123!' },
-      })
-      fireEvent.change(screen.getByLabelText('common.account.confirmPassword'), {
-        target: { value: 'ValidPass123!' },
-      })
-      fireEvent.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))
+      const passwordInput = screen.getByLabelText('common.account.newPassword')
+      const confirmPasswordInput = screen.getByLabelText('common.account.confirmPassword')
+
+      expect(passwordInput).toHaveAttribute('autocomplete', 'new-password')
+      expect(confirmPasswordInput).toHaveAttribute('autocomplete', 'new-password')
+
+      await user.type(passwordInput, 'ValidPass123!')
+      await user.type(confirmPasswordInput, 'ValidPass123!{Enter}')
 
       await waitFor(() => {
         expect(mockRegister).toHaveBeenCalledWith({
@@ -137,8 +156,24 @@ describe('Signup Set Password Page', () => {
       expect(mockReplace).toHaveBeenCalledWith('/')
     })
 
-    it('should remember the utm event and clear the utm cookie when a utm_info cookie is present', async () => {
-      Cookies.set('utm_info', JSON.stringify({ utm_source: 'twitter' }))
+    it('should return to the requested console page when registration succeeds', async () => {
+      mockUseSearchParams.mockReturnValue(
+        new URLSearchParams(
+          'token=register-token&redirect_url=%2Fapps%3Ftag%3Dworkflow',
+        ) as unknown as ReturnType<typeof useSearchParams>,
+      )
+      mockRegister.mockResolvedValue({ result: 'success', data: {} })
+
+      renderWithQueryClient(<ChangePasswordForm />)
+      fillAndSubmit()
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/apps?tag=workflow')
+      })
+    })
+
+    it('should remember the utm event with slug and clear the utm cookie when a utm_info cookie is present', async () => {
+      Cookies.set('utm_info', JSON.stringify({ utm_source: 'community', slug: 'partner-launch' }))
       mockRegister.mockResolvedValue({ result: 'success', data: {} })
 
       renderWithQueryClient(<ChangePasswordForm />)
@@ -147,12 +182,16 @@ describe('Signup Set Password Page', () => {
       await waitFor(() => {
         expect(mockRememberRegistrationSuccess).toHaveBeenCalledWith({
           method: 'email',
-          utmInfo: { utm_source: 'twitter' },
+          utmInfo: { utm_source: 'community', slug: 'partner-launch' },
         })
+      })
+      expect(mockRememberCreateAppExternalAttribution).toHaveBeenCalledWith({
+        utmInfo: { utm_source: 'community', slug: 'partner-launch' },
       })
       expect(mockSendGAEvent).toHaveBeenCalledWith('user_registration_success_with_utm', {
         method: 'email',
-        utm_source: 'twitter',
+        utm_source: 'community',
+        slug: 'partner-launch',
       })
       expect(Cookies.get('utm_info')).toBeUndefined()
     })

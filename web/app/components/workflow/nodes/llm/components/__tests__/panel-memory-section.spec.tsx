@@ -25,9 +25,17 @@ vi.mock('@/app/components/workflow/nodes/_base/components/prompt/editor', () => 
 
 vi.mock('@/app/components/workflow/nodes/_base/components/memory-config', () => ({
   __esModule: true,
-  default: (props: { canSetRoleName: boolean, config: { data?: LLMNodeType['memory'] }, defaultMemory?: Memory }) => {
+  default: (props: {
+    canSetRoleName: boolean
+    config: { data?: LLMNodeType['memory'] }
+    defaultMemory?: Memory
+  }) => {
     mockMemoryConfig(props)
-    return <div data-testid="memory-config">{props.canSetRoleName ? 'can-set-role' : 'cannot-set-role'}</div>
+    return (
+      <div data-testid="memory-config">
+        {props.canSetRoleName ? 'can-set-role' : 'cannot-set-role'}
+      </div>
+    )
   },
 }))
 
@@ -87,11 +95,13 @@ describe('llm/panel-memory-section', () => {
     expect(screen.getByText('workflow.nodes.common.memories.title')).toBeInTheDocument()
     expect(screen.getByTestId('editor')).toHaveTextContent('{{#sys.query#}}')
     expect(screen.getByTestId('memory-config')).toHaveTextContent('cannot-set-role')
-    expect(mockEditor).toHaveBeenCalledWith(expect.objectContaining({
-      isChatApp: true,
-      isChatModel: true,
-      isShowContext: false,
-    }))
+    expect(mockEditor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isChatApp: true,
+        isChatModel: true,
+        isShowContext: false,
+      }),
+    )
   })
 
   it('shows the sys query warning when the memory prompt omits the required placeholder', () => {
@@ -136,22 +146,21 @@ describe('llm/panel-memory-section', () => {
   })
 
   it('does not default snippet memory prompts to system variables', () => {
-    render(
-      <PanelMemorySection
-        {...baseProps}
-        flowType={FlowType.snippet}
-      />,
-    )
+    render(<PanelMemorySection {...baseProps} flowType={FlowType.snippet} />)
 
     expect(screen.getByTestId('editor')).toHaveTextContent('')
-    expect(mockEditor).toHaveBeenCalledWith(expect.objectContaining({
-      value: '',
-    }))
-    expect(mockMemoryConfig).toHaveBeenCalledWith(expect.objectContaining({
-      defaultMemory: expect.objectContaining({
-        query_prompt_template: '',
+    expect(mockEditor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        value: '',
       }),
-    }))
+    )
+    expect(mockMemoryConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        defaultMemory: expect.objectContaining({
+          query_prompt_template: '',
+        }),
+      }),
+    )
   })
 
   it('renders nothing outside chat mode', () => {

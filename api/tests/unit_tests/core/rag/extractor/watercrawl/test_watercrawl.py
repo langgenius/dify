@@ -4,6 +4,7 @@ import json
 from typing import Any
 from unittest.mock import MagicMock
 
+import httpx
 import pytest
 
 import core.rag.extractor.watercrawl.client as client_module
@@ -77,6 +78,15 @@ class TestBaseAPIClient:
         assert captured["timeout"].connect is not None
         assert captured["timeout"].read is not None
 
+    def test_init_session_uses_bounded_default_timeout(self):
+        # Regression: the session was built with timeout=None, which disables
+        # httpx's timeouts entirely, so a stalled WaterCrawl endpoint would hang
+        # the calling worker forever. Regular requests must keep a bounded timeout.
+        session = BaseAPIClient(api_key="k", base_url="https://watercrawl.dev").session
+
+        assert session._timeout.connect is not None
+        assert session._timeout.read is not None
+
     def test_request_stream_and_non_stream_paths(self, monkeypatch: pytest.MonkeyPatch):
         class FakeSession:
             def __init__(self):
@@ -88,8 +98,8 @@ class TestBaseAPIClient:
                 self.request_calls.append((method, url, params, json, kwargs))
                 return "non-stream-response"
 
-            def build_request(self, method, url, params=None, json=None):
-                req = (method, url, params, json)
+            def build_request(self, method, url, params=None, json=None, timeout=None):
+                req = (method, url, params, json, timeout)
                 self.build_calls.append(req)
                 return req
 
@@ -108,6 +118,11 @@ class TestBaseAPIClient:
         assert client._request("GET", "/v1/items", stream=True) == "stream-response"
         assert fake_session.build_calls
         assert fake_session.send_calls[0][1] is True
+        # the streaming request keeps an unbounded read (the SSE status stream can
+        # stay open for the whole crawl) while still capping the connection
+        stream_timeout = fake_session.build_calls[0][4]
+        assert stream_timeout.read is None
+        assert stream_timeout.connect is not None
 
     def test_http_method_helpers_delegate_to_request(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(BaseAPIClient, "init_session", lambda self: MagicMock())
@@ -162,6 +177,22 @@ class TestWaterCrawlAPIClient:
         with pytest.raises(expected_exception):
             client.process_response(_response(status, {"message": "bad", "errors": {"url": ["x"]}}))
 
+    @pytest.mark.parametrize(
+        ("status", "expected_exception"),
+        [
+            (401, WaterCrawlAuthenticationError),
+            (403, WaterCrawlPermissionError),
+            (422, WaterCrawlBadRequestError),
+        ],
+    )
+    def test_process_response_error_statuses_with_non_json_body(self, status: int, expected_exception: type[Exception]):
+        client = WaterCrawlAPIClient(api_key="k")
+        response = _response(status, text="<html>upstream error</html>")
+        response.json.side_effect = json.JSONDecodeError("Expecting value", response.text, 0)
+
+        with pytest.raises(expected_exception):
+            client.process_response(response)
+
     def test_process_response_204_returns_none(self):
         client = WaterCrawlAPIClient(api_key="k")
         assert client.process_response(_response(204, None)) is None
@@ -170,6 +201,14 @@ class TestWaterCrawlAPIClient:
         client = WaterCrawlAPIClient(api_key="k")
         assert client.process_response(_response(200, {"ok": True})) == {"ok": True}
         assert client.process_response(_response(200, None)) == {}
+
+    def test_process_response_json_payload_with_invalid_body_raises_clear_error(self):
+        client = WaterCrawlAPIClient(api_key="k")
+        response = _response(200, text="<html>upstream error</html>")
+        response.json.side_effect = json.JSONDecodeError("Expecting value", response.text, 0)
+
+        with pytest.raises(ValueError, match="Invalid JSON response from WaterCrawl"):
+            client.process_response(response)
 
     def test_process_response_accepts_json_content_type_parameters(self):
         client = WaterCrawlAPIClient(api_key="k")
@@ -263,7 +302,10 @@ class TestWaterCrawlAPIClient:
         result = client.download_result({"result": "https://example.com/result.json"})
 
         assert result["result"] == {"markdown": "body"}
-        assert captured["timeout"] is not None
+        timeout = captured["timeout"]
+        assert isinstance(timeout, httpx.Timeout)
+        assert timeout.connect == 5.0
+        assert timeout.read == 30.0
         response.close.assert_called_once()
 
 

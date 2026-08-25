@@ -51,8 +51,8 @@ export type PostInstructionGenerateResponses = {
   200: GeneratorResponse
 }
 
-export type PostInstructionGenerateResponse
-  = PostInstructionGenerateResponses[keyof PostInstructionGenerateResponses]
+export type PostInstructionGenerateResponse =
+  PostInstructionGenerateResponses[keyof PostInstructionGenerateResponses]
 
 export type PostInstructionGenerateTemplateData = {
   body: InstructionTemplatePayload
@@ -69,5 +69,5 @@ export type PostInstructionGenerateTemplateResponses = {
   200: SimpleDataResponse
 }
 
-export type PostInstructionGenerateTemplateResponse
-  = PostInstructionGenerateTemplateResponses[keyof PostInstructionGenerateTemplateResponses]
+export type PostInstructionGenerateTemplateResponse =
+  PostInstructionGenerateTemplateResponses[keyof PostInstructionGenerateTemplateResponses]

@@ -14,6 +14,12 @@ from core.rag.extractor.watercrawl.exceptions import (
 
 WATERCRAWL_REQUEST_TIMEOUT: httpx.Timeout = httpx.Timeout(30.0, connect=5.0)
 
+# The crawl-status stream is a long-lived SSE connection that can stay open for
+# the whole duration of a crawl, so it keeps an unbounded read while still
+# capping the initial connection. Regular requests use WATERCRAWL_REQUEST_TIMEOUT
+# so a stalled endpoint can't hang a worker forever.
+_STREAM_TIMEOUT = httpx.Timeout(None, connect=10.0)
+
 
 class SpiderOptions(TypedDict):
     max_depth: int
@@ -50,6 +56,8 @@ class BaseAPIClient:
             "User-Agent": "WaterCrawl-Plugin",
             "Accept-Language": "en-US",
         }
+        # Regular requests use WATERCRAWL_REQUEST_TIMEOUT; the long-lived
+        # crawl-status stream overrides it with _STREAM_TIMEOUT in _request.
         return httpx.Client(headers=headers, timeout=WATERCRAWL_REQUEST_TIMEOUT)
 
     def _request(
@@ -63,7 +71,7 @@ class BaseAPIClient:
         stream = kwargs.pop("stream", False)
         url = urljoin(self.base_url, endpoint)
         if stream:
-            request = self.session.build_request(method, url, params=query_params, json=data)
+            request = self.session.build_request(method, url, params=query_params, json=data, timeout=_STREAM_TIMEOUT)
             return self.session.send(request, stream=True, **kwargs)
 
         return self.session.request(method, url, params=query_params, json=data, **kwargs)
@@ -123,7 +131,10 @@ class WaterCrawlAPIClient(BaseAPIClient):
         content_type = response.headers.get("Content-Type", "")
         media_type = content_type.split(";", 1)[0].strip().lower()
         if media_type == "application/json":
-            return response.json() or {}
+            try:
+                return response.json() or {}
+            except ValueError as exc:
+                raise ValueError("Invalid JSON response from WaterCrawl") from exc
 
         if media_type == "application/octet-stream":
             return response.content
@@ -221,7 +232,7 @@ class WaterCrawlAPIClient(BaseAPIClient):
                 return event_data["data"]
 
     def download_result(self, result_object: dict[str, Any]):
-        response = httpx.get(result_object["result"], timeout=30)
+        response = httpx.get(result_object["result"], timeout=WATERCRAWL_REQUEST_TIMEOUT)
         try:
             response.raise_for_status()
             result_object["result"] = response.json()

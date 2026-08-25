@@ -1,7 +1,7 @@
-"""Client-safe DTOs and endpoint parsing for the Agent Stub protocol.
+"""Client-safe DTOs and endpoint parsing for the Agent Stub HTTP protocol.
 
-The Agent Stub contract is shared by the HTTP router, optional gRPC transport,
-the sandbox-visible CLI, and tests. Control-plane requests always validate into
+The Agent Stub contract is shared by the HTTP router, the sandbox-visible CLI,
+and tests. Control-plane requests always validate into
 these Pydantic DTOs before business logic runs, while token issuance and JWE
 validation stay under ``dify_agent.agent_stub.server.tokens.agent_stub`` so the
 default package remains free of server-only crypto dependencies.
@@ -11,18 +11,18 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 from dataclasses import dataclass
 from typing import ClassVar, Final, Literal
 from urllib.parse import urlsplit, urlunsplit
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
-
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 AGENT_STUB_PROTOCOL_VERSION: Final[int] = 1
-AGENT_STUB_URL_ENV_VAR: Final[str] = "DIFY_AGENT_STUB_URL"
+AGENT_STUB_API_BASE_URL_ENV_VAR: Final[str] = "DIFY_AGENT_STUB_API_BASE_URL"
 AGENT_STUB_AUTH_JWE_ENV_VAR: Final[str] = "DIFY_AGENT_STUB_AUTH_JWE"
 
-type AgentStubURLScheme = Literal["http", "https", "grpc"]
+type AgentStubURLScheme = Literal["http", "https"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,30 +35,15 @@ class AgentStubEndpoint:
     port: int | None
     path: str
 
-    @property
-    def is_http(self) -> bool:
-        return self.scheme in {"http", "https"}
-
-    @property
-    def is_grpc(self) -> bool:
-        return self.scheme == "grpc"
-
 
 def parse_agent_stub_endpoint(url: str) -> AgentStubEndpoint:
-    """Parse one Agent Stub endpoint URL for HTTP or gRPC transport selection.
-
-    HTTP(S) endpoints are normalized by trimming whitespace and removing a final
-    trailing slash from the path while preserving the configured base path.
-    gRPC endpoints must be plain ``grpc://host:port`` targets with no path,
-    query string, or fragment because transport routing happens on the gRPC
-    service name instead of an HTTP URL path.
-    """
+    """Parse an HTTP(S) Agent Stub endpoint and normalize its API root."""
     stripped = url.strip()
     if not stripped:
         raise ValueError("Agent Stub URL must not be empty")
     parsed = urlsplit(stripped)
-    if parsed.scheme not in {"http", "https", "grpc"}:
-        raise ValueError("Agent Stub URL must use http, https, or grpc")
+    if parsed.scheme not in {"http", "https"}:
+        raise ValueError("Agent Stub URL must use http or https")
     if not parsed.netloc:
         raise ValueError("Agent Stub URL must include a host")
     if parsed.username is not None or parsed.password is not None:
@@ -69,22 +54,11 @@ def parse_agent_stub_endpoint(url: str) -> AgentStubEndpoint:
         raise ValueError("Agent Stub URL must include a host")
 
     scheme = parsed.scheme
-    if scheme == "grpc":
-        if parsed.path not in {"", "/"}:
-            raise ValueError("gRPC Agent Stub URL must not include a path")
-        if parsed.port is None:
-            raise ValueError("gRPC Agent Stub URL must include an explicit port")
-        host = parsed.hostname
-        normalized_url = f"grpc://{_format_url_host(host)}:{parsed.port}"
-        return AgentStubEndpoint(
-            url=normalized_url,
-            scheme="grpc",
-            host=host,
-            port=parsed.port,
-            path="",
-        )
-
     normalized_path = parsed.path.rstrip("/")
+    if normalized_path in {"", "/"}:
+        normalized_path = "/agent-stub"
+    elif normalized_path != "/agent-stub":
+        raise ValueError("HTTP Agent Stub API base URL path must be empty or /agent-stub")
     normalized_url = urlunsplit((scheme, parsed.netloc, normalized_path, "", ""))
     return AgentStubEndpoint(
         url=normalized_url,
@@ -95,8 +69,8 @@ def parse_agent_stub_endpoint(url: str) -> AgentStubEndpoint:
     )
 
 
-def normalize_agent_stub_url(url: str) -> str:
-    """Return the normalized Agent Stub URL used across settings and CLI env."""
+def normalize_agent_stub_api_base_url(url: str) -> str:
+    """Return the normalized Agent Stub API base URL used across settings and CLI env."""
     return parse_agent_stub_endpoint(url).url
 
 
@@ -115,14 +89,25 @@ def agent_stub_file_download_request_url(base_url: str) -> str:
     return f"{_require_http_base_url(base_url)}/files/download-request"
 
 
-def agent_stub_drive_manifest_url(base_url: str) -> str:
-    """Return the stable HTTP drive-manifest endpoint URL for one base URL."""
-    return f"{_require_http_base_url(base_url)}/drive/manifest"
+def agent_stub_config_manifest_url(base_url: str) -> str:
+    """Return the stable HTTP config-manifest endpoint URL for one base URL."""
+    return f"{_require_http_base_url(base_url)}/config/manifest"
 
 
-def agent_stub_drive_commit_url(base_url: str) -> str:
-    """Return the stable HTTP drive-commit endpoint URL for one base URL."""
-    return f"{_require_http_base_url(base_url)}/drive/commit"
+def agent_stub_config_skill_inspect_url(base_url: str, name: str) -> str:
+    return f"{_require_http_base_url(base_url)}/config/skills/{name}/inspect"
+
+
+def agent_stub_config_push_url(base_url: str) -> str:
+    return f"{_require_http_base_url(base_url)}/config/push"
+
+
+def agent_stub_config_env_url(base_url: str) -> str:
+    return f"{_require_http_base_url(base_url)}/config/env"
+
+
+def agent_stub_config_note_url(base_url: str) -> str:
+    return f"{_require_http_base_url(base_url)}/config/note"
 
 
 def is_canonical_dify_file_reference(reference: str) -> bool:
@@ -172,8 +157,6 @@ class AgentStubFileUploadResponse(BaseModel):
 
     upload_url: str
 
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
 
 class AgentStubFileMapping(BaseModel):
     """Public file mapping used by download-request control-plane calls."""
@@ -201,12 +184,57 @@ class AgentStubFileMapping(BaseModel):
         return self
 
 
-class AgentStubFileDownloadRequest(BaseModel):
-    """Request body for one signed download URL allocation."""
+class AgentStubConfigDownloadSource(BaseModel):
+    """Config asset selected by name within the authenticated Config target."""
 
-    file: AgentStubFileMapping
+    kind: Literal["file", "skill"]
+    name: str
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def validate_name(self) -> "AgentStubConfigDownloadSource":
+        normalized = self.name.strip()
+        if (
+            not normalized
+            or normalized in {".", ".."}
+            or "/" in normalized
+            or "\\" in normalized
+            or "\x00" in normalized
+            or any(ord(char) < 0x20 for char in normalized)
+        ):
+            raise ValueError("config asset name must be a safe path segment")
+        if self.kind == "skill" and re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,63}", normalized) is None:
+            raise ValueError("config skill name is invalid")
+        self.name = normalized
+        return self
+
+
+class AgentStubFileDownloadRequest(BaseModel):
+    """Request one file URL for a specific consumer audience.
+
+    ``for_frontend=True`` allocates a frontend-display URL that the CLI only
+    returns to its caller. ``False`` allocates a Sandbox byte-transfer URL that
+    the CLI immediately fetches. The deprecated HTTP input name
+    ``for_external`` remains accepted for one compatibility cycle.
+    """
+
+    file: AgentStubFileMapping | None = None
+    config: AgentStubConfigDownloadSource | None = None
+    for_frontend: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("for_frontend", "for_external"),
+    )
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def validate_source(self) -> "AgentStubFileDownloadRequest":
+        if (self.file is None) == (self.config is None):
+            raise ValueError("exactly one of file or config is required")
+        if self.config is not None and self.for_frontend:
+            raise ValueError("config downloads are available only to the Sandbox data plane")
+        return self
 
 
 class AgentStubFileDownloadResponse(BaseModel):
@@ -217,104 +245,131 @@ class AgentStubFileDownloadResponse(BaseModel):
     size: int
     download_url: str
 
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+class AgentStubConfigVersionInfo(BaseModel):
+    id: str
+    kind: Literal["snapshot", "draft", "build_draft"]
+    writable: bool
 
 
-class AgentStubDriveFileRef(BaseModel):
-    """Trusted file reference used by Agent Stub drive commit requests."""
+class AgentStubConfigSkillItem(BaseModel):
+    name: str
+    description: str
+    size: int | None = None
+    hash: str | None = None
+    mime_type: str | None = None
 
+
+class AgentStubConfigSkillItemsResponse(BaseModel):
+    items: list[AgentStubConfigSkillItem] = Field(default_factory=list)
+
+
+class AgentStubConfigFileItem(BaseModel):
+    name: str
+    size: int | None = None
+    hash: str | None = None
+    mime_type: str | None = None
+
+
+class AgentStubConfigFileItemsResponse(BaseModel):
+    items: list[AgentStubConfigFileItem] = Field(default_factory=list)
+
+
+class AgentStubConfigManifestResponse(BaseModel):
+    agent_id: str
+    config_version: AgentStubConfigVersionInfo
+    skills: AgentStubConfigSkillItemsResponse = Field(default_factory=AgentStubConfigSkillItemsResponse)
+    files: AgentStubConfigFileItemsResponse = Field(default_factory=AgentStubConfigFileItemsResponse)
+    env_keys: list[str] = Field(default_factory=list)
+    note: str = ""
+
+
+class AgentStubConfigFileRef(BaseModel):
     kind: Literal["upload_file", "tool_file"]
     id: str
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
-class AgentStubDriveCommitItem(BaseModel):
-    """One drive key to file binding committed through the Agent Stub."""
-
-    key: str
-    file_ref: AgentStubDriveFileRef
-    value_owned_by_drive: bool = True
+class AgentStubConfigPushFileItem(BaseModel):
+    name: str
+    file_ref: AgentStubConfigFileRef | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
-class AgentStubDriveCommitRequest(BaseModel):
-    """Request body for one Agent Stub drive commit batch."""
-
-    items: list[AgentStubDriveCommitItem]
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-
-class AgentStubDriveItem(BaseModel):
-    """One manifest or commit item returned by the Agent Stub drive API."""
-
-    key: str
-    size: int | None = None
-    hash: str | None = None
-    mime_type: str | None = None
-    file_kind: Literal["upload_file", "tool_file"]
-    file_id: str
-    created_at: int | None = None
-    download_url: str | None = None
-    value_owned_by_drive: bool | None = None
+class AgentStubConfigPushSkillItem(BaseModel):
+    name: str
+    file_ref: AgentStubConfigFileRef | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
-class AgentStubDriveManifestResponse(BaseModel):
-    """Response body for one Agent Stub drive manifest request."""
-
-    items: list[AgentStubDriveItem]
+class AgentStubConfigPushRequest(BaseModel):
+    files: list[AgentStubConfigPushFileItem] = Field(default_factory=list)
+    skills: list[AgentStubConfigPushSkillItem] = Field(default_factory=list)
+    env_text: str | None = None
+    note: str | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
-class AgentStubDriveCommitResponse(BaseModel):
-    """Response body for one Agent Stub drive commit request."""
+class AgentStubConfigPushResponse(AgentStubConfigManifestResponse):
+    """Updated config manifest returned after one config push."""
 
-    items: list[AgentStubDriveItem]
+
+class AgentStubConfigEnvUpdateRequest(BaseModel):
+    env_text: str
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class AgentStubConfigNoteUpdateRequest(BaseModel):
+    note: str
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
 def _require_http_base_url(base_url: str) -> str:
-    endpoint = parse_agent_stub_endpoint(base_url)
-    if not endpoint.is_http:
-        raise ValueError("HTTP Agent Stub URLs must use http or https")
-    return endpoint.url
-
-
-def _format_url_host(host: str) -> str:
-    return f"[{host}]" if ":" in host and not host.startswith("[") else host
+    return parse_agent_stub_endpoint(base_url).url
 
 
 __all__ = [
     "AGENT_STUB_AUTH_JWE_ENV_VAR",
     "AGENT_STUB_PROTOCOL_VERSION",
-    "AGENT_STUB_URL_ENV_VAR",
+    "AGENT_STUB_API_BASE_URL_ENV_VAR",
     "AgentStubConnectRequest",
     "AgentStubConnectResponse",
     "AgentStubEndpoint",
-    "AgentStubDriveCommitItem",
-    "AgentStubDriveCommitRequest",
-    "AgentStubDriveCommitResponse",
-    "AgentStubDriveFileRef",
-    "AgentStubDriveItem",
-    "AgentStubDriveManifestResponse",
+    "AgentStubConfigEnvUpdateRequest",
+    "AgentStubConfigDownloadSource",
+    "AgentStubConfigFileItem",
+    "AgentStubConfigFileItemsResponse",
+    "AgentStubConfigFileRef",
+    "AgentStubConfigManifestResponse",
+    "AgentStubConfigNoteUpdateRequest",
+    "AgentStubConfigPushFileItem",
+    "AgentStubConfigPushRequest",
+    "AgentStubConfigPushResponse",
+    "AgentStubConfigPushSkillItem",
+    "AgentStubConfigSkillItem",
+    "AgentStubConfigSkillItemsResponse",
+    "AgentStubConfigVersionInfo",
     "AgentStubFileDownloadRequest",
     "AgentStubFileDownloadResponse",
     "AgentStubFileMapping",
     "AgentStubFileUploadRequest",
     "AgentStubFileUploadResponse",
     "AgentStubURLScheme",
+    "agent_stub_config_env_url",
+    "agent_stub_config_manifest_url",
+    "agent_stub_config_note_url",
+    "agent_stub_config_push_url",
+    "agent_stub_config_skill_inspect_url",
     "agent_stub_connections_url",
-    "agent_stub_drive_commit_url",
-    "agent_stub_drive_manifest_url",
     "agent_stub_file_download_request_url",
     "agent_stub_file_upload_request_url",
     "is_canonical_dify_file_reference",
-    "normalize_agent_stub_url",
+    "normalize_agent_stub_api_base_url",
     "parse_agent_stub_endpoint",
 ]

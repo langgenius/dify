@@ -28,6 +28,19 @@ class TestPluginModelClient:
         )
         assert request_mock.call_args.kwargs["params"] == {"page": 1, "page_size": 256}
 
+    def test_fetch_model_provider_bindings(self, mocker: MockerFixture):
+        client = PluginModelClient()
+        request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", return_value=["binding-a"])
+
+        result = client.fetch_model_provider_bindings("tenant-1")
+
+        assert result == ["binding-a"]
+        assert request_mock.call_args.args[:2] == (
+            "GET",
+            "plugin/tenant-1/management/models/bindings",
+        )
+        assert "params" not in request_mock.call_args.kwargs
+
     def test_get_model_schema(self, mocker: MockerFixture):
         client = PluginModelClient()
         schema = SimpleNamespace(name="schema")
@@ -156,14 +169,34 @@ class TestPluginModelClient:
                 tools=[],
                 stop=["STOP"],
                 stream=False,
+                app_id="app-1",
             )
         )
 
         assert result == ["chunk-1"]
         call_kwargs = stream_mock.call_args.kwargs
         assert call_kwargs["path"] == "plugin/tenant-1/dispatch/llm/invoke"
+        assert call_kwargs["data"]["app_id"] == "app-1"
         assert call_kwargs["data"]["data"]["stream"] is False
         assert call_kwargs["data"]["data"]["model_parameters"] == {"temperature": 0.1}
+
+    def test_invoke_llm_omits_app_id_when_missing(self, mocker: MockerFixture):
+        client = PluginModelClient()
+        stream_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
+
+        list(
+            client.invoke_llm(
+                tenant_id="tenant-1",
+                user_id="user-1",
+                plugin_id="org/plugin:1",
+                provider="provider-a",
+                model="gpt-test",
+                credentials={},
+                prompt_messages=[],
+            )
+        )
+
+        assert "app_id" not in stream_mock.call_args.kwargs["data"]
 
     def test_invoke_llm_wraps_plugin_daemon_inner_error(self, mocker: MockerFixture):
         client = PluginModelClient()
@@ -478,7 +511,12 @@ class TestPluginModelClient:
         mocker.patch.object(
             client,
             "_request_with_plugin_daemon_response_stream",
-            return_value=iter([SimpleNamespace(result="68656c6c6f"), SimpleNamespace(result="21")]),
+            return_value=iter(
+                [
+                    SimpleNamespace(result="68656c6c6f", mime_type="audio/wav"),
+                    SimpleNamespace(result="21", mime_type="audio/wav"),
+                ]
+            ),
         )
 
         result = list(
@@ -495,6 +533,7 @@ class TestPluginModelClient:
         )
 
         assert result == [b"hello", b"!"]
+        assert [chunk.mime_type for chunk in result] == ["audio/wav", "audio/wav"]
 
     def test_invoke_tts_wraps_plugin_daemon_inner_error(self, mocker: MockerFixture):
         client = PluginModelClient()

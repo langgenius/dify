@@ -19,11 +19,9 @@ type SnippetWorkflowPanelProps = {
   fields: SnippetInputField[]
 }
 
-const SnippetPanelOnRight = ({
-  fields,
-}: Pick<SnippetWorkflowPanelProps, 'fields'>) => {
-  const historyWorkflowData = useStore(s => s.historyWorkflowData)
-  const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
+const SnippetPanelOnRight = ({ fields }: Pick<SnippetWorkflowPanelProps, 'fields'>) => {
+  const historyWorkflowData = useStore((s) => s.historyWorkflowData)
+  const showDebugAndPreviewPanel = useStore((s) => s.showDebugAndPreviewPanel)
 
   return (
     <>
@@ -33,15 +31,13 @@ const SnippetPanelOnRight = ({
   )
 }
 
-const SnippetWorkflowPanel = ({
-  snippetId,
-  fields,
-}: SnippetWorkflowPanelProps) => {
+const SnippetWorkflowPanel = ({ snippetId, fields }: SnippetWorkflowPanelProps) => {
   const versionHistoryPanelProps = useMemo(() => {
     return {
       getVersionListUrl: `/snippets/${snippetId}/workflows`,
       deleteVersionUrl: (versionId: string) => `/snippets/${snippetId}/workflows/${versionId}`,
-      restoreVersionUrl: (versionId: string) => `/snippets/${snippetId}/workflows/${versionId}/restore`,
+      restoreVersionUrl: (versionId: string) =>
+        `/snippets/${snippetId}/workflows/${versionId}/restore`,
       updateVersionUrl: (versionId: string) => `/snippets/${snippetId}/workflows/${versionId}`,
       latestVersionId: '',
     }

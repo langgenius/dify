@@ -1,8 +1,8 @@
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationInfo, field_validator
 
 from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
@@ -220,11 +220,25 @@ class AgentAppGenerateEntity(ChatAppGenerateEntity):
     accepted-entity union. The answer is produced by the dify-agent backend
     rather than an in-process LLM call; ``model_conf`` is synthesized from the
     bound Agent Soul model so the chat task pipeline can persist usage.
+
+    ``agent_config_version_kind`` selects which Agent config surface the
+    backend should read from: immutable snapshot, shared draft, or per-user
+    build draft.
+
+    ``agent_session_scope_config_version_id`` identifies the draft or immutable
+    config version whose Workspace Binding should be reused for this session.
+
+    ``prompt_file_mappings`` preserves the raw request ``files`` array for the
+    Agent backend prompt. These references are appended to the backend prompt
+    text while the stored chat message keeps the user's original query.
     """
 
     agent_id: str
     agent_config_snapshot_id: str
-    agent_runtime_session_snapshot_id: str | None = None
+    agent_config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot"
+    agent_session_scope_config_version_id: str | None = None
+    prompt_file_mappings: Sequence[JsonValue] = Field(default_factory=list)
+    agent_llm_gateway_enabled: bool = False
 
 
 class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):

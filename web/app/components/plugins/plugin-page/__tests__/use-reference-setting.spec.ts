@@ -1,22 +1,64 @@
+import type { LangGeniusVersionInfo } from '@/context/app-context-types'
 // Import mocks for assertions
+import type { ConsoleStateFixture as BaseConsoleStateFixture } from '@/test/console/state-fixture'
 import { toast } from '@langgenius/dify-ui/toast'
 import { waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderHookWithSystemFeatures as renderHook } from '@/__tests__/utils/mock-system-features'
-import { useAppContext } from '@/context/app-context'
-
-import { useInvalidateReferenceSettings, useMutationPluginPermissionSettings, useMutationReferenceSettings, usePluginAutoUpgradeSettings, usePluginPermissionSettings } from '@/service/use-plugins'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import {
+  useInvalidateReferenceSettings,
+  useMutationPluginPermissionSettings,
+  useMutationReferenceSettings,
+  usePluginAutoUpgradeSettings,
+  usePluginPermissionSettings,
+} from '@/service/use-plugins'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { PermissionType, PluginCategoryEnum } from '../../types'
 import useReferenceSetting, { useCanInstallPluginFromMarketplace } from '../use-reference-setting'
 
-vi.mock('@/context/app-context', async () => {
-  const actual = await vi.importActual('@/context/app-context')
-  return {
-    ...actual,
-    useAppContext: vi.fn(),
-  }
-})
+const defaultLangGeniusVersionInfo: LangGeniusVersionInfo = {
+  current_env: '',
+  current_version: '1.0.0',
+  latest_version: '',
+  release_notes: '',
+  version: '',
+}
 
+type ConsoleStateFixture = Omit<BaseConsoleStateFixture, 'langGeniusVersionInfo'> & {
+  langGeniusVersionInfo?: Partial<LangGeniusVersionInfo>
+}
+
+let mockConsoleState: ConsoleStateFixture = {}
+
+const setConsoleState = (state: ConsoleStateFixture) => {
+  mockConsoleState = {
+    ...state,
+    langGeniusVersionInfo: {
+      ...defaultLangGeniusVersionInfo,
+      ...state.langGeniusVersionInfo,
+    },
+  }
+}
+
+function renderHook<Result, Props = void>(
+  callback: (props: Props) => Result,
+  options: Parameters<typeof renderHookWithConsoleQuery<Result, Props>>[1] = {},
+) {
+  return renderHookWithConsoleQuery(callback, {
+    ...options,
+    accountProfileMeta: {
+      currentVersion: mockConsoleState.langGeniusVersionInfo?.current_version ?? null,
+    },
+  })
+}
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
+})
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState)
+})
 vi.mock('@/service/use-plugins', () => ({
   usePluginAutoUpgradeSettings: vi.fn(),
   usePluginPermissionSettings: vi.fn(),
@@ -33,12 +75,12 @@ describe('useReferenceSetting Hook', () => {
     toastSuccessSpy.mockClear()
 
     // Default mocks
-    vi.mocked(useAppContext).mockReturnValue({
+    setConsoleState({
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
       langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
       workspacePermissionKeys: [] as string[],
-    } as ReturnType<typeof useAppContext>)
+    })
 
     vi.mocked(usePluginAutoUpgradeSettings).mockReturnValue({
       data: {
@@ -74,6 +116,12 @@ describe('useReferenceSetting Hook', () => {
   })
 
   describe('permission key access', () => {
+    it('should not expose installed plugin list viewing as a permission capability', () => {
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
+
+      expect('canViewInstalledPlugins' in result.current).toBe(false)
+    })
+
     it('should return false without plugin permission keys', () => {
       vi.mocked(usePluginPermissionSettings).mockReturnValue({
         data: {
@@ -103,12 +151,12 @@ describe('useReferenceSetting Hook', () => {
     })
 
     it('should allow install and debug when plugin permission keys are present', () => {
-      vi.mocked(useAppContext).mockReturnValue({
+      setConsoleState({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: false,
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
         workspacePermissionKeys: ['plugin.install', 'plugin.debug'],
-      } as ReturnType<typeof useAppContext>)
+      })
       vi.mocked(usePluginPermissionSettings).mockReturnValue({
         data: {
           install_permission: PermissionType.everyone,
@@ -122,13 +170,13 @@ describe('useReferenceSetting Hook', () => {
       expect(result.current.canDebugger).toBe(true)
     })
 
-    it('should ignore legacy admin permission for managers without plugin keys', () => {
-      vi.mocked(useAppContext).mockReturnValue({
+    it('should allow debug for managers with legacy admin permission when RBAC is disabled', () => {
+      setConsoleState({
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: false,
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
         workspacePermissionKeys: [] as string[],
-      } as ReturnType<typeof useAppContext>)
+      })
 
       vi.mocked(usePluginPermissionSettings).mockReturnValue({
         data: {
@@ -140,16 +188,16 @@ describe('useReferenceSetting Hook', () => {
       const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
 
       expect(result.current.canManagement).toBe(false)
-      expect(result.current.canDebugger).toBe(false)
+      expect(result.current.canDebugger).toBe(true)
     })
 
-    it('should ignore legacy admin permission for owners without plugin keys', () => {
-      vi.mocked(useAppContext).mockReturnValue({
+    it('should allow debug for owners with legacy admin permission when RBAC is disabled', () => {
+      setConsoleState({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: true,
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
         workspacePermissionKeys: [] as string[],
-      } as ReturnType<typeof useAppContext>)
+      })
 
       vi.mocked(usePluginPermissionSettings).mockReturnValue({
         data: {
@@ -161,16 +209,39 @@ describe('useReferenceSetting Hook', () => {
       const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
 
       expect(result.current.canManagement).toBe(false)
-      expect(result.current.canDebugger).toBe(false)
+      expect(result.current.canDebugger).toBe(true)
     })
 
-    it('should use plugin keys even when legacy admin permission is configured', () => {
-      vi.mocked(useAppContext).mockReturnValue({
+    it('should allow debug for normal users when legacy debug permission is everyone and RBAC is disabled', () => {
+      setConsoleState({
+        isCurrentWorkspaceManager: false,
+        isCurrentWorkspaceOwner: false,
+        langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
+        workspacePermissionKeys: ['plugin.install'],
+      })
+
+      vi.mocked(usePluginPermissionSettings).mockReturnValue({
+        data: {
+          install_permission: PermissionType.everyone,
+          debug_permission: PermissionType.everyone,
+        },
+      } as ReturnType<typeof usePluginPermissionSettings>)
+
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool), {
+        systemFeatures: { rbac_enabled: false },
+      })
+
+      expect(result.current.canDebugPlugin).toBe(true)
+      expect(result.current.canDebugger).toBe(true)
+    })
+
+    it('should use plugin keys even when legacy admin permission is configured and RBAC is enabled', () => {
+      setConsoleState({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: false,
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
         workspacePermissionKeys: ['plugin.install', 'plugin.debug'],
-      } as ReturnType<typeof useAppContext>)
+      })
 
       vi.mocked(usePluginPermissionSettings).mockReturnValue({
         data: {
@@ -179,21 +250,49 @@ describe('useReferenceSetting Hook', () => {
         },
       } as ReturnType<typeof usePluginPermissionSettings>)
 
-      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool), {
+        systemFeatures: { rbac_enabled: true },
+      })
 
       expect(result.current.canManagement).toBe(true)
       expect(result.current.canDebugger).toBe(true)
+    })
+
+    it('should apply legacy noOne plugin permissions when RBAC is disabled', () => {
+      setConsoleState({
+        isCurrentWorkspaceManager: true,
+        isCurrentWorkspaceOwner: false,
+        langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
+        workspacePermissionKeys: ['plugin.install', 'plugin.delete', 'plugin.debug'],
+      })
+      vi.mocked(usePluginPermissionSettings).mockReturnValue({
+        data: {
+          install_permission: PermissionType.noOne,
+          debug_permission: PermissionType.noOne,
+        },
+      } as ReturnType<typeof usePluginPermissionSettings>)
+
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool), {
+        systemFeatures: { rbac_enabled: false },
+      })
+
+      expect(result.current.canInstallPlugin).toBe(false)
+      expect(result.current.canManagement).toBe(false)
+      expect(result.current.canUpdatePlugin).toBe(false)
+      expect(result.current.canDeletePlugin).toBe(false)
+      expect(result.current.canDebugPlugin).toBe(false)
+      expect(result.current.canDebugger).toBe(false)
     })
   })
 
   describe('canSetPermissions', () => {
     it('should be true with plugin preferences permission when RBAC is disabled', () => {
-      vi.mocked(useAppContext).mockReturnValue({
+      setConsoleState({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: false,
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
         workspacePermissionKeys: ['plugin.plugin_preferences'],
-      } as ReturnType<typeof useAppContext>)
+      })
 
       const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
 
@@ -201,12 +300,12 @@ describe('useReferenceSetting Hook', () => {
     })
 
     it('should be false when RBAC is enabled even with plugin preferences permission', () => {
-      vi.mocked(useAppContext).mockReturnValue({
+      setConsoleState({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: true,
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
         workspacePermissionKeys: ['plugin.plugin_preferences'],
-      } as ReturnType<typeof useAppContext>)
+      })
 
       const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool), {
         systemFeatures: { rbac_enabled: true },
@@ -217,12 +316,12 @@ describe('useReferenceSetting Hook', () => {
     })
 
     it('should be false without plugin preferences permission', () => {
-      vi.mocked(useAppContext).mockReturnValue({
+      setConsoleState({
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: false,
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
         workspacePermissionKeys: [] as string[],
-      } as ReturnType<typeof useAppContext>)
+      })
 
       const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
 
@@ -247,8 +346,7 @@ describe('useReferenceSetting Hook', () => {
       renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
 
       // Trigger the onSuccess callback
-      if (onSuccessCallback)
-        onSuccessCallback()
+      if (onSuccessCallback) onSuccessCallback()
 
       await waitFor(() => {
         expect(mockInvalidate).toHaveBeenCalled()
@@ -296,12 +394,12 @@ describe('useReferenceSetting Hook', () => {
     })
 
     it('should keep permission key access available when reference setting data is still loading', () => {
-      vi.mocked(useAppContext).mockReturnValue({
+      setConsoleState({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: false,
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
         workspacePermissionKeys: ['plugin.install', 'plugin.debug'],
-      } as ReturnType<typeof useAppContext>)
+      })
       vi.mocked(usePluginAutoUpgradeSettings).mockReturnValue({
         data: undefined,
       } as unknown as ReturnType<typeof usePluginAutoUpgradeSettings>)
@@ -312,21 +410,50 @@ describe('useReferenceSetting Hook', () => {
       expect(result.current.canManagement).toBe(true)
       expect(result.current.canDebugger).toBe(true)
     })
+
+    it('should keep permission state loading while workspace permission keys are loading', () => {
+      setConsoleState({
+        isCurrentWorkspaceManager: false,
+        isCurrentWorkspaceOwner: false,
+        isLoadingWorkspacePermissionKeys: true,
+        langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
+        workspacePermissionKeys: [] as string[],
+      })
+
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
+
+      expect(result.current.isPermissionLoading).toBe(true)
+      expect(result.current.canInstallPlugin).toBe(false)
+    })
+
+    it('should keep permission state loading while current workspace is loading', () => {
+      setConsoleState({
+        isCurrentWorkspaceManager: false,
+        isCurrentWorkspaceOwner: false,
+        isLoadingCurrentWorkspace: true,
+        langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
+        workspacePermissionKeys: ['plugin.install'],
+      })
+
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
+
+      expect(result.current.isPermissionLoading).toBe(true)
+    })
   })
 
   describe('RBAC permissions', () => {
     it('should use workspace permission keys when RBAC is enabled', () => {
-      vi.mocked(useAppContext).mockReturnValue({
+      setConsoleState({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: false,
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
         workspacePermissionKeys: [
           'plugin.install',
-          'plugin.manage',
+          'plugin.delete',
           'plugin.debug',
           'plugin.plugin_preferences',
         ],
-      } as ReturnType<typeof useAppContext>)
+      })
       vi.mocked(usePluginPermissionSettings).mockReturnValue({
         data: {
           install_permission: PermissionType.noOne,
@@ -341,8 +468,7 @@ describe('useReferenceSetting Hook', () => {
       expect(result.current.canInstallPlugin).toBe(true)
       expect(result.current.canManagement).toBe(true)
       expect(result.current.canUpdatePlugin).toBe(true)
-      expect(result.current.canViewInstalledPlugins).toBe(true)
-      expect(result.current.canManagePlugin).toBe(true)
+      expect(result.current.canDeletePlugin).toBe(true)
       expect(result.current.canDebugPlugin).toBe(true)
       expect(result.current.canDebugger).toBe(true)
       expect(result.current.canSetPermissions).toBe(false)
@@ -350,12 +476,12 @@ describe('useReferenceSetting Hook', () => {
     })
 
     it('should ignore legacy plugin permission settings when RBAC is enabled', () => {
-      vi.mocked(useAppContext).mockReturnValue({
+      setConsoleState({
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: false,
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
         workspacePermissionKeys: [] as string[],
-      } as ReturnType<typeof useAppContext>)
+      })
 
       const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool), {
         systemFeatures: { rbac_enabled: true },
@@ -364,8 +490,7 @@ describe('useReferenceSetting Hook', () => {
       expect(result.current.canInstallPlugin).toBe(false)
       expect(result.current.canManagement).toBe(false)
       expect(result.current.canUpdatePlugin).toBe(false)
-      expect(result.current.canViewInstalledPlugins).toBe(false)
-      expect(result.current.canManagePlugin).toBe(false)
+      expect(result.current.canDeletePlugin).toBe(false)
       expect(result.current.canDebugPlugin).toBe(false)
       expect(result.current.canDebugger).toBe(false)
       expect(result.current.canSetPermissions).toBe(false)
@@ -378,12 +503,12 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    vi.mocked(useAppContext).mockReturnValue({
+    setConsoleState({
       isCurrentWorkspaceManager: true,
       isCurrentWorkspaceOwner: false,
       langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
       workspacePermissionKeys: ['plugin.install'],
-    } as ReturnType<typeof useAppContext>)
+    })
 
     vi.mocked(usePluginPermissionSettings).mockReturnValue({
       data: {
@@ -417,12 +542,12 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
   })
 
   it('should return false without plugin.install', () => {
-    vi.mocked(useAppContext).mockReturnValue({
+    setConsoleState({
       isCurrentWorkspaceManager: true,
       isCurrentWorkspaceOwner: false,
       langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
       workspacePermissionKeys: [] as string[],
-    } as ReturnType<typeof useAppContext>)
+    })
 
     const { result } = renderHook(() => useCanInstallPluginFromMarketplace(), {
       systemFeatures: { enable_marketplace: true },
@@ -432,12 +557,12 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
   })
 
   it('should return false when both marketplace is disabled and plugin.install is missing', () => {
-    vi.mocked(useAppContext).mockReturnValue({
+    setConsoleState({
       isCurrentWorkspaceManager: true,
       isCurrentWorkspaceOwner: false,
       langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
       workspacePermissionKeys: [] as string[],
-    } as ReturnType<typeof useAppContext>)
+    })
 
     const { result } = renderHook(() => useCanInstallPluginFromMarketplace(), {
       systemFeatures: { enable_marketplace: false },
@@ -446,22 +571,40 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
     expect(result.current.canInstallPluginFromMarketplace).toBe(false)
   })
 
-  it('should not fetch legacy plugin permissions or category auto-upgrade settings', () => {
+  it('should fetch legacy plugin permissions but not category auto-upgrade settings', () => {
     renderHook(() => useCanInstallPluginFromMarketplace(), {
       systemFeatures: { enable_marketplace: true },
     })
 
-    expect(usePluginPermissionSettings).not.toHaveBeenCalled()
+    expect(usePluginPermissionSettings).toHaveBeenCalled()
     expect(usePluginAutoUpgradeSettings).not.toHaveBeenCalled()
   })
 
+  it('should return false when legacy install permission is noOne and RBAC is disabled', () => {
+    vi.mocked(usePluginPermissionSettings).mockReturnValue({
+      data: {
+        install_permission: PermissionType.noOne,
+        debug_permission: PermissionType.everyone,
+      },
+    } as ReturnType<typeof usePluginPermissionSettings>)
+
+    const { result } = renderHook(() => useCanInstallPluginFromMarketplace(), {
+      systemFeatures: {
+        enable_marketplace: true,
+        rbac_enabled: false,
+      },
+    })
+
+    expect(result.current.canInstallPluginFromMarketplace).toBe(false)
+  })
+
   it('should use plugin.install when marketplace and RBAC are enabled', () => {
-    vi.mocked(useAppContext).mockReturnValue({
+    setConsoleState({
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
       langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
       workspacePermissionKeys: ['plugin.install'],
-    } as ReturnType<typeof useAppContext>)
+    })
     vi.mocked(usePluginPermissionSettings).mockReturnValue({
       data: {
         install_permission: PermissionType.noOne,

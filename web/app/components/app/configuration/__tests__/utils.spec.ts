@@ -1,6 +1,10 @@
 import type { ModelConfig } from '@/models/debug'
 import { AppModeEnum, ModelModeType, Resolution, TransferMethod } from '@/types/app'
-import { buildConfigurationFeaturesData, getConfigurationPublishingState, withCollectionIconBasePath } from '../utils'
+import {
+  buildConfigurationFeaturesData,
+  getConfigurationPublishingState,
+  withCollectionIconBasePath,
+} from '../utils'
 
 const createModelConfig = (overrides: Partial<ModelConfig> = {}): ModelConfig => ({
   provider: 'openai',
@@ -55,10 +59,13 @@ describe('configuration utils', () => {
     })
 
     it('should prefix relative collection icons with the base path', () => {
-      const result = withCollectionIconBasePath([
-        { id: 'tool-1', icon: '/icons/tool.svg' },
-        { id: 'tool-2', icon: '/console/icons/prefixed.svg' },
-      ] as never, '/console')
+      const result = withCollectionIconBasePath(
+        [
+          { id: 'tool-1', icon: '/icons/tool.svg' },
+          { id: 'tool-2', icon: '/console/icons/prefixed.svg' },
+        ] as never,
+        '/console',
+      )
 
       expect(result[0]!.icon).toBe('/console/icons/tool.svg')
       expect(result[1]!.icon).toBe('/console/icons/prefixed.svg')
@@ -71,23 +78,26 @@ describe('configuration utils', () => {
     })
 
     it('should derive feature toggles and upload fallbacks from model config', () => {
-      const result = buildConfigurationFeaturesData(createModelConfig({
-        opening_statement: 'Welcome',
-        suggested_questions: ['How are you?'],
-        file_upload: {
-          enabled: true,
-          image: {
+      const result = buildConfigurationFeaturesData(
+        createModelConfig({
+          opening_statement: 'Welcome',
+          suggested_questions: ['How are you?'],
+          file_upload: {
             enabled: true,
-            detail: Resolution.low,
+            image: {
+              enabled: true,
+              detail: Resolution.low,
+              number_limits: 2,
+              transfer_methods: [TransferMethod.local_file],
+            },
+            allowed_file_types: ['image'],
+            allowed_file_extensions: ['.png'],
+            allowed_file_upload_methods: [TransferMethod.local_file],
             number_limits: 2,
-            transfer_methods: [TransferMethod.local_file],
           },
-          allowed_file_types: ['image'],
-          allowed_file_extensions: ['.png'],
-          allowed_file_upload_methods: [TransferMethod.local_file],
-          number_limits: 2,
-        },
-      }), undefined)
+        }),
+        undefined,
+      )
 
       expect(result.opening).toEqual({
         enabled: true,

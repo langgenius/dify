@@ -1,65 +1,81 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { AgentOrchestrateAddActionsProvider } from '../add-actions'
-import { useAgentOrchestrateAddActions, useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
+import {
+  useAgentOrchestrateAddActions,
+  useRegisterAgentOrchestrateAddAction,
+} from '../add-actions-context'
+import { AgentOrchestrateViewingVersionContext } from '../read-only-context'
 
-function InlineActionRegisterer({
-  label,
-  onAction,
-}: {
-  label: string
-  onAction: (label: string) => void
-}) {
-  useRegisterAgentOrchestrateAddAction('knowledge', () => {
-    onAction(label)
-  })
-
-  return null
+function RegisteredActionProbe({ onRegister }: { onRegister: () => void }) {
+  useRegisterAgentOrchestrateAddAction('skills', onRegister)
+  return <ActionsProbe />
 }
 
-function RegisteredActionTrigger() {
+function ActionsProbe() {
   const actions = useAgentOrchestrateAddActions()
 
+  return <div>{actions.skills ? 'registered' : 'empty'}</div>
+}
+
+function ToggleRegisteredActionProbe({ onRegister }: { onRegister: () => void }) {
+  const [visible, setVisible] = useState(true)
+
   return (
-    <button type="button" disabled={!actions.knowledge} onClick={() => actions.knowledge?.()}>
-      Run action
-    </button>
+    <>
+      <button type="button" onClick={() => setVisible(false)}>
+        remove action
+      </button>
+      {visible && <RegisteredActionProbe onRegister={onRegister} />}
+      {!visible && <ActionsProbe />}
+    </>
   )
 }
 
 describe('AgentOrchestrateAddActionsProvider', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+  it('registers add actions for editable drafts', () => {
+    const action = vi.fn()
+
+    render(
+      <AgentOrchestrateAddActionsProvider>
+        <RegisteredActionProbe onRegister={action} />
+      </AgentOrchestrateAddActionsProvider>,
+    )
+
+    expect(screen.getByText('registered')).toBeInTheDocument()
   })
 
-  describe('Registration', () => {
-    it('should keep the registered action stable while calling the latest callback when the action prop changes every render', async () => {
-      const handleAction = vi.fn()
+  it('does not expose add actions while viewing a version', () => {
+    const action = vi.fn()
 
-      const { rerender } = render(
+    render(
+      <AgentOrchestrateViewingVersionContext value>
         <AgentOrchestrateAddActionsProvider>
-          <InlineActionRegisterer label="first" onAction={handleAction} />
-          <RegisteredActionTrigger />
-        </AgentOrchestrateAddActionsProvider>,
-      )
+          <RegisteredActionProbe onRegister={action} />
+        </AgentOrchestrateAddActionsProvider>
+      </AgentOrchestrateViewingVersionContext>,
+    )
 
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Run action' })).toBeEnabled()
-      })
+    expect(screen.getByText('empty')).toBeInTheDocument()
+  })
 
-      fireEvent.click(screen.getByRole('button', { name: 'Run action' }))
+  it('unregisters add actions when the owning section unmounts', async () => {
+    const user = userEvent.setup()
+    const action = vi.fn()
 
-      rerender(
-        <AgentOrchestrateAddActionsProvider>
-          <InlineActionRegisterer label="second" onAction={handleAction} />
-          <RegisteredActionTrigger />
-        </AgentOrchestrateAddActionsProvider>,
-      )
+    render(
+      <AgentOrchestrateAddActionsProvider>
+        <ToggleRegisteredActionProbe onRegister={action} />
+      </AgentOrchestrateAddActionsProvider>,
+    )
 
-      fireEvent.click(screen.getByRole('button', { name: 'Run action' }))
+    expect(screen.getByText('registered')).toBeInTheDocument()
 
-      expect(handleAction).toHaveBeenNthCalledWith(1, 'first')
-      expect(handleAction).toHaveBeenNthCalledWith(2, 'second')
+    await user.click(screen.getByRole('button', { name: 'remove action' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('empty')).toBeInTheDocument()
     })
   })
 })

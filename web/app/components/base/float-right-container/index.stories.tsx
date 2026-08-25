@@ -10,7 +10,8 @@ const meta = {
     layout: 'fullscreen',
     docs: {
       description: {
-        component: 'Wrapper that renders content in a drawer on mobile and inline on desktop. Useful for responsive settings panels.',
+        component:
+          'Wrapper that renders content in a drawer on mobile and inline on desktop. Useful for responsive settings panels.',
       },
     },
   },
@@ -25,7 +26,7 @@ const ContainerDemo = () => {
   const [isMobile, setIsMobile] = useState(false)
 
   return (
-    <div className="flex h-[360px] flex-col gap-4 bg-background-default-subtle p-6">
+    <div className="flex h-90 flex-col gap-4 bg-background-default-subtle p-6">
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -38,7 +39,7 @@ const ContainerDemo = () => {
           <input
             type="checkbox"
             checked={isMobile}
-            onChange={e => setIsMobile(e.target.checked)}
+            onChange={(e) => setIsMobile(e.target.checked)}
           />
           Simulate mobile
         </label>
@@ -54,7 +55,8 @@ const ContainerDemo = () => {
         <div className="rounded-xl border border-divider-subtle bg-components-panel-bg p-4 text-xs text-text-secondary">
           <p className="mb-2 text-sm text-text-primary">Panel Content</p>
           <p>
-            On desktop, this block renders inline when `isOpen` is true. On mobile it appears inside the drawer wrapper.
+            On desktop, this block renders inline when `isOpen` is true. On mobile it appears inside
+            the drawer wrapper.
           </p>
         </div>
       </FloatRightContainer>

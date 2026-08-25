@@ -1,6 +1,7 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { ListFilterNodeType } from './types'
-import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import { BlockClassification } from '@/app/components/workflow/block-selector/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { BlockEnum, VarType } from '../../types'
 import { comparisonOperatorNotRequireValue } from '../if-else/utils'
@@ -9,7 +10,7 @@ import { OrderBy } from './types'
 const i18nPrefix = 'errorMsg'
 
 const metaData = genNodeMetaData({
-  classification: BlockClassificationEnum.Utilities,
+  classification: BlockClassification.Utilities,
   sort: 2,
   type: BlockEnum.ListFilter,
 })
@@ -35,23 +36,43 @@ const nodeDefault: NodeDefault<ListFilterNodeType> = {
       size: 10,
     },
   },
-  checkValid(payload: ListFilterNodeType, t: any) {
+  checkValid(payload: ListFilterNodeType, t: TFunction<'workflow'>) {
     let errorMessages = ''
     const { variable, var_type, filter_by, item_var_type } = payload
 
     if (!errorMessages && !variable?.length)
-      errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t('nodes.listFilter.inputVar', { ns: 'workflow' }) })
+      errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
+        ns: 'workflow',
+        field: t(($) => $['nodes.listFilter.inputVar'], { ns: 'workflow' }),
+      })
 
     // Check filter condition
     if (!errorMessages && filter_by?.enabled) {
       if (var_type === VarType.arrayFile && !filter_by.conditions[0]?.key)
-        errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t('nodes.listFilter.filterConditionKey', { ns: 'workflow' }) })
+        errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
+          ns: 'workflow',
+          field: t(($) => $['nodes.listFilter.filterConditionKey'], { ns: 'workflow' }),
+        })
 
       if (!errorMessages && !filter_by.conditions[0]?.comparison_operator)
-        errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t('nodes.listFilter.filterConditionComparisonOperator', { ns: 'workflow' }) })
+        errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
+          ns: 'workflow',
+          field: t(($) => $['nodes.listFilter.filterConditionComparisonOperator'], {
+            ns: 'workflow',
+          }),
+        })
 
-      if (!errorMessages && !comparisonOperatorNotRequireValue(filter_by.conditions[0]?.comparison_operator) && (item_var_type === VarType.boolean ? filter_by.conditions[0]?.value === undefined : !filter_by.conditions[0]?.value))
-        errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t('nodes.listFilter.filterConditionComparisonValue', { ns: 'workflow' }) })
+      if (
+        !errorMessages &&
+        !comparisonOperatorNotRequireValue(filter_by.conditions[0]?.comparison_operator) &&
+        (item_var_type === VarType.boolean
+          ? filter_by.conditions[0]?.value === undefined
+          : !filter_by.conditions[0]?.value)
+      )
+        errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
+          ns: 'workflow',
+          field: t(($) => $['nodes.listFilter.filterConditionComparisonValue'], { ns: 'workflow' }),
+        })
     }
 
     return {

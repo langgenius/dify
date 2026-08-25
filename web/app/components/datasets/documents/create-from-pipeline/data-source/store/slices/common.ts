@@ -8,12 +8,12 @@ export type CommonShape = {
 }
 
 export const createCommonSlice: StateCreator<CommonShape> = (set) => {
-  return ({
+  return {
     currentNodeIdRef: { current: '' },
     currentCredentialId: '',
     setCurrentCredentialId: (credentialId: string) => {
       set({ currentCredentialId: credentialId })
     },
     currentCredentialIdRef: { current: '' },
-  })
+  }
 }

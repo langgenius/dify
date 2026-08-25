@@ -55,12 +55,42 @@ def _snapshot() -> AgentConfigSnapshot:
     )
 
 
+def _snapshot_with_knowledge_dataset(dataset_id: str) -> AgentConfigSnapshot:
+    return AgentConfigSnapshot(
+        id="snapshot-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=1,
+        config_snapshot=AgentSoulConfig(
+            model=AgentSoulModelConfig(
+                plugin_id="langgenius/openai",
+                model_provider="openai",
+                model="gpt-test",
+            ),
+            knowledge={
+                "sets": [
+                    {
+                        "id": "support",
+                        "name": "Support KB",
+                        "datasets": [{"id": dataset_id}],
+                        "query": {"mode": "generated_query"},
+                        "retrieval": {"mode": "multiple", "top_k": 4},
+                    }
+                ]
+            },
+        ),
+    )
+
+
 def _graph(edges: list[dict]) -> dict:
     return {
         "nodes": [
             {"id": "start", "data": {"type": "start"}},
             {"id": "previous-node", "data": {"type": "llm"}},
-            {"id": "agent-node", "data": {"type": "agent", "version": "2"}},
+            {
+                "id": "agent-node",
+                "data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent"},
+            },
             {"id": "later-node", "data": {"type": "llm"}},
         ],
         "edges": edges,
@@ -89,6 +119,18 @@ def _tool_graph(tool_data: dict) -> dict:
         ],
         "edges": [{"source": "start", "target": "tool-node"}],
     }
+
+
+def test_historical_agent_version_two_is_not_validated_as_dify_agent() -> None:
+    graph = {
+        "nodes": [{"id": "legacy-agent", "data": {"type": "agent", "version": "2"}}],
+        "edges": [],
+    }
+    session = Mock()
+
+    WorkflowAgentNodeValidator.validate_published_workflow(session=session, workflow=_workflow(graph))
+
+    session.scalar.assert_not_called()
 
 
 def test_publish_validation_accepts_upstream_previous_output_ref():
@@ -129,6 +171,19 @@ def test_publish_validation_uses_active_snapshot_for_roster_agent():
     )
 
 
+def test_publish_validation_rejects_unpublished_roster_agent():
+    binding = _binding(WorkflowNodeJobConfig())
+    binding.binding_type = WorkflowAgentBindingType.ROSTER_AGENT
+    session = Mock()
+    session.scalar.side_effect = [binding, None]
+
+    with pytest.raises(WorkflowAgentNodeValidationError, match="unpublished roster agent"):
+        WorkflowAgentNodeValidator.validate_published_workflow(
+            session=session,
+            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        )
+
+
 def test_publish_validation_rejects_non_upstream_previous_output_ref():
     node_job = WorkflowNodeJobConfig.model_validate(
         {"previous_node_output_refs": [{"node_id": "later-node", "output": "text"}]}
@@ -158,6 +213,69 @@ def test_draft_validation_allows_unbound_agent_node():
         session=session,
         workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
     )
+
+
+def test_draft_validation_allows_missing_previous_node():
+    node_job = WorkflowNodeJobConfig.model_validate(
+        {"previous_node_output_refs": [{"node_id": "missing-node", "output": "text"}]}
+    )
+    session = Mock()
+    session.scalar.side_effect = [_binding(node_job), _agent(), _snapshot()]
+
+    WorkflowAgentNodeValidator.validate_draft_workflow(
+        session=session,
+        workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+    )
+
+
+def test_draft_validation_allows_non_upstream_previous_output_ref():
+    node_job = WorkflowNodeJobConfig.model_validate(
+        {"previous_node_output_refs": [{"node_id": "later-node", "output": "text"}]}
+    )
+    session = Mock()
+    session.scalar.side_effect = [_binding(node_job), _agent(), _snapshot()]
+
+    WorkflowAgentNodeValidator.validate_draft_workflow(
+        session=session,
+        workflow=_workflow(
+            _graph(
+                [
+                    {"source": "start", "target": "agent-node"},
+                    {"source": "agent-node", "target": "later-node"},
+                ]
+            )
+        ),
+    )
+
+
+def test_draft_validation_allows_missing_agent_soul_model():
+    node_job = WorkflowNodeJobConfig.model_validate({})
+    snapshot = AgentConfigSnapshot(
+        id="snapshot-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=1,
+        config_snapshot=AgentSoulConfig(),
+    )
+    session = Mock()
+    session.scalar.side_effect = [_binding(node_job), _agent(), snapshot]
+
+    WorkflowAgentNodeValidator.validate_draft_workflow(
+        session=session,
+        workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+    )
+
+
+def test_draft_validation_rejects_incomplete_previous_output_ref():
+    node_job = WorkflowNodeJobConfig.model_validate({"previous_node_output_refs": [{"selector": ["previous-node"]}]})
+    session = Mock()
+    session.scalar.side_effect = [_binding(node_job), _agent(), _snapshot()]
+
+    with pytest.raises(WorkflowAgentNodeValidationError, match="incomplete previous node output ref"):
+        WorkflowAgentNodeValidator.validate_draft_workflow(
+            session=session,
+            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        )
 
 
 def test_publish_validation_requires_binding():
@@ -223,8 +341,16 @@ def test_publish_validation_dedupes_provider_level_tool_entries():
         ),
         tools={
             "dify_tools": [
-                {"provider_id": "langgenius/duckduckgo/duckduckgo", "credential_type": "unauthorized"},
-                {"provider_id": "langgenius/duckduckgo/duckduckgo", "credential_type": "unauthorized"},
+                {
+                    "provider_id": "langgenius/duckduckgo/duckduckgo",
+                    "provider_type": "plugin",
+                    "credential_type": "unauthorized",
+                },
+                {
+                    "provider_id": "langgenius/duckduckgo/duckduckgo",
+                    "provider_type": "plugin",
+                    "credential_type": "unauthorized",
+                },
             ]
         },
     )
@@ -249,9 +375,14 @@ def test_publish_validation_accepts_provider_level_plus_explicit_tool_entry():
         ),
         tools={
             "dify_tools": [
-                {"provider_id": "langgenius/duckduckgo/duckduckgo", "credential_type": "unauthorized"},
                 {
                     "provider_id": "langgenius/duckduckgo/duckduckgo",
+                    "provider_type": "plugin",
+                    "credential_type": "unauthorized",
+                },
+                {
+                    "provider_id": "langgenius/duckduckgo/duckduckgo",
+                    "provider_type": "plugin",
                     "tool_name": "ddg_search",
                     "credential_type": "unauthorized",
                 },
@@ -513,6 +644,35 @@ def test_publish_validation_rejects_missing_file_ref():
             session=session,
             workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
         )
+
+
+def test_publish_validation_rejects_missing_or_out_of_scope_knowledge_datasets(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    dataset_id = "550e8400-e29b-41d4-a716-446655440000"
+    node_job = WorkflowNodeJobConfig.model_validate({})
+    snapshot = _snapshot_with_knowledge_dataset(dataset_id)
+    session = Mock()
+    session.scalar.side_effect = [_binding(node_job), _agent(), snapshot]
+
+    captured = {}
+
+    def fake_get_datasets_by_ids(ids, tenant_id, *, session):
+        captured["ids"] = ids
+        captured["tenant_id"] = tenant_id
+        return [], 0
+
+    import services.dataset_service as dataset_service_module
+
+    monkeypatch.setattr(dataset_service_module.DatasetService, "get_datasets_by_ids", fake_get_datasets_by_ids)
+
+    with pytest.raises(WorkflowAgentNodeValidationError, match=dataset_id):
+        WorkflowAgentNodeValidator.validate_published_workflow(
+            session=session,
+            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        )
+
+    assert captured == {"ids": [dataset_id], "tenant_id": "tenant-1"}
 
 
 def test_publish_validation_accepts_tool_node_agentic_manual_mode():

@@ -1,21 +1,28 @@
 'use client'
 
-import type { Plan, UsagePlanInfo, UsageResetInfo } from '@/app/components/billing/type'
-import type { Model, ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type {
+  ModelProviderPluginSummaryResponse,
+  ModelProviderSummaryResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+import type { UsagePlanInfo, UsageResetInfo } from '@/app/components/billing/type'
+import type { Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { noop } from 'es-toolkit/function'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import { defaultPlan } from '@/app/components/billing/config'
 
 export type ProviderContextState = {
-  modelProviders: ModelProvider[]
+  modelProviders: ModelProviderSummaryResponse[]
+  modelProviderPlugins: Record<string, ModelProviderPluginSummaryResponse>
   isLoadingModelProviders: boolean
-  refreshModelProviders: () => void
+  isSuccessModelProviders: boolean
+  refreshModelProviders: () => Promise<void>
   textGenerationModelList: Model[]
   supportRetrievalMethods: RETRIEVE_METHOD[]
   isAPIKeySet: boolean
   plan: {
-    type: Plan
+    type: CloudPlan
     usage: UsagePlanInfo
     total: UsagePlanInfo
     reset: UsageResetInfo
@@ -26,22 +33,8 @@ export type ProviderContextState = {
   onPlanInfoChanged: () => void
   enableReplaceWebAppLogo: boolean
   modelLoadBalancingEnabled: boolean
-  datasetOperatorEnabled: boolean
   enableEducationPlan: boolean
-  isEducationWorkspace: boolean
-  isEducationAccount: boolean
-  allowRefreshEducationVerify: boolean
-  educationAccountExpireAt: number | null
-  isLoadingEducationAccountInfo: boolean
-  isFetchingEducationAccountInfo: boolean
   webappCopyrightEnabled: boolean
-  licenseLimit: {
-    workspace_members: {
-      size: number
-      limit: number
-    }
-  }
-  refreshLicenseLimit: () => void
   isAllowTransferWorkspace: boolean
   isAllowPublishAsCustomKnowledgePipelineTemplate: boolean
   humanInputEmailDeliveryEnabled: boolean
@@ -49,8 +42,10 @@ export type ProviderContextState = {
 
 export const baseProviderContextValue: ProviderContextState = {
   modelProviders: [],
+  modelProviderPlugins: {},
   isLoadingModelProviders: false,
-  refreshModelProviders: noop,
+  isSuccessModelProviders: false,
+  refreshModelProviders: async () => {},
   textGenerationModelList: [],
   supportRetrievalMethods: [],
   isAPIKeySet: true,
@@ -61,22 +56,8 @@ export const baseProviderContextValue: ProviderContextState = {
   onPlanInfoChanged: noop,
   enableReplaceWebAppLogo: false,
   modelLoadBalancingEnabled: false,
-  datasetOperatorEnabled: false,
   enableEducationPlan: false,
-  isEducationWorkspace: false,
-  isEducationAccount: false,
-  allowRefreshEducationVerify: false,
-  educationAccountExpireAt: null,
-  isLoadingEducationAccountInfo: false,
-  isFetchingEducationAccountInfo: false,
   webappCopyrightEnabled: false,
-  licenseLimit: {
-    workspace_members: {
-      size: 0,
-      limit: 0,
-    },
-  },
-  refreshLicenseLimit: noop,
   isAllowTransferWorkspace: false,
   isAllowPublishAsCustomKnowledgePipelineTemplate: false,
   humanInputEmailDeliveryEnabled: false,

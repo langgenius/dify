@@ -6,7 +6,7 @@ import { META_PROBE_TIMEOUT_MS, MetaClient } from '@/api/meta'
 import { Registry } from '@/auth/hosts'
 import { createHttpClient } from '@/http/client'
 import { arch, platform } from '@/sys/index'
-import { hostWithScheme, openAPIBase } from '@/util/host'
+import { activeHostInfo, openAPIBase } from '@/util/host'
 import { difyCompat, evaluateCompat } from './compat.js'
 import { versionInfo } from './info.js'
 
@@ -51,9 +51,16 @@ const defaultLoadActive = async (): Promise<ActiveContext | undefined> => {
   return (await Registry.load()).resolveActive()
 }
 
-const defaultProbe: MetaProbe = async (endpoint) => {
-  const http = createHttpClient({ baseURL: openAPIBase(endpoint), timeoutMs: META_PROBE_TIMEOUT_MS, retryAttempts: 0 })
-  return new MetaClient(http).serverVersion()
+function buildDefaultProbe(insecure: boolean): MetaProbe {
+  return async (endpoint) => {
+    const http = createHttpClient({
+      baseURL: openAPIBase(endpoint),
+      timeoutMs: META_PROBE_TIMEOUT_MS,
+      retryAttempts: 0,
+      insecure,
+    })
+    return new MetaClient(http).serverVersion()
+  }
 }
 
 function buildClientBlock(): ClientBlock {
@@ -92,14 +99,12 @@ export async function runVersionProbe(opts: RunVersionProbeOptions): Promise<Ver
   }
 
   const loadActive = opts.loadActive ?? defaultLoadActive
-  const probe = opts.probe ?? defaultProbe
 
   let active: ActiveContext | undefined
   let loadFailed = false
   try {
     active = await loadActive()
-  }
-  catch {
+  } catch {
     loadFailed = true
   }
 
@@ -112,18 +117,22 @@ export async function runVersionProbe(opts: RunVersionProbeOptions): Promise<Ver
     }
   }
 
-  const endpoint = hostWithScheme(active.host, active.scheme)
+  const { host: endpoint, insecure } = activeHostInfo(active)
+  const probe = opts.probe ?? buildDefaultProbe(insecure)
 
   let serverInfo: ServerVersionResponse | undefined
   try {
     serverInfo = await probe(endpoint)
-  }
-  catch {
+  } catch {
     serverInfo = undefined
   }
 
   if (serverInfo === undefined)
-    return { client, server: unreachableServer(endpoint), compat: compatBlock({ status: 'unknown', detail: 'server unreachable' }) }
+    return {
+      client,
+      server: unreachableServer(endpoint),
+      compat: compatBlock({ status: 'unknown', detail: 'server unreachable' }),
+    }
 
   return {
     client,

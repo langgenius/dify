@@ -1,6 +1,8 @@
 import type { DefaultModelResponse } from '../../declarations'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { vi } from 'vitest'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { vi } from 'vite-plus/test'
+import { renderWithNuqs as render } from '@/test/nuqs-testing'
 import { ModelTypeEnum } from '../../declarations'
 import SystemModel from '../index'
 
@@ -22,6 +24,7 @@ vi.mock('react-i18next', async () => {
     'modelProvider.ttsModel.tip': 'TTS model tip',
     'operation.cancel': 'Cancel',
     'operation.save': 'Save',
+    loading: 'Loading',
     'actionMsg.modifiedSuccessfully': 'Modified successfully',
   })
 })
@@ -30,15 +33,24 @@ const mockToastSuccess = vi.hoisted(() => vi.fn())
 const mockUpdateModelList = vi.hoisted(() => vi.fn())
 const mockInvalidateDefaultModel = vi.hoisted(() => vi.fn())
 const mockUpdateDefaultModel = vi.hoisted(() => vi.fn(() => Promise.resolve({ result: 'success' })))
-const mockModelSelectorProps = vi.hoisted(() => [] as Array<{ hideProviderSettingsFooter?: boolean, onConfigureEmptyState?: () => void, showModelMeta?: boolean }>)
+const mockUseModelList = vi.hoisted(() => vi.fn())
+const mockModelSelectorProps = vi.hoisted(
+  () =>
+    [] as Array<{
+      hideProviderSettingsFooter?: boolean
+      onConfigureEmptyState?: () => void
+      showModelMeta?: boolean
+    }>,
+)
 
-let mockWorkspacePermissionKeys = ['plugin.manage']
+let mockWorkspacePermissionKeys = ['plugin.model_config']
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-}))
+  }))
+})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
@@ -58,11 +70,12 @@ vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
 })
 
 vi.mock('../../hooks', () => ({
-  useModelList: () => ({
-    data: [],
-  }),
+  useModelList: mockUseModelList,
   useSystemDefaultModelAndModelList: (defaultModel: DefaultModelResponse | undefined) => [
-    defaultModel || { model: '', provider: { provider: '', icon_small: { en_US: '', zh_Hans: '' } } },
+    defaultModel || {
+      model: '',
+      provider: { provider: '', icon_small: { en_US: '', zh_Hans: '' } },
+    },
     vi.fn(),
   ],
   useUpdateModelList: () => mockUpdateModelList,
@@ -74,12 +87,21 @@ vi.mock('@/service/common', () => ({
 }))
 
 vi.mock('../../model-selector', () => ({
-  default: (props: { hideProviderSettingsFooter?: boolean, onConfigureEmptyState?: () => void, showModelMeta?: boolean, onSelect: (model: { model: string, provider: string }) => void }) => {
+  ModelSelector: (props: {
+    hideProviderSettingsFooter?: boolean
+    onConfigureEmptyState?: () => void
+    showModelMeta?: boolean
+    onValueChange: (model: { model: string; provider: string }) => void
+  }) => {
     mockModelSelectorProps.push(props)
     return (
       <div>
-        <button onClick={() => props.onSelect({ model: 'test', provider: 'test' })}>Mock Model Selector</button>
-        {props.onConfigureEmptyState && <button onClick={props.onConfigureEmptyState}>Mock Configure Empty State</button>}
+        <button onClick={() => props.onValueChange({ model: 'test', provider: 'test' })}>
+          Mock Model Selector
+        </button>
+        {props.onConfigureEmptyState && (
+          <button onClick={props.onConfigureEmptyState}>Mock Configure Empty State</button>
+        )}
       </div>
     )
   },
@@ -107,8 +129,9 @@ const defaultProps = {
 describe('SystemModel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseModelList.mockReturnValue({ data: [], isLoading: false })
     mockModelSelectorProps.length = 0
-    mockWorkspacePermissionKeys = ['plugin.manage']
+    mockWorkspacePermissionKeys = ['plugin.model_config']
   })
 
   it('should render settings button', () => {
@@ -123,6 +146,61 @@ describe('SystemModel', () => {
     await waitFor(() => {
       expect(screen.getByText(/system reasoning model/i)).toBeInTheDocument()
     })
+  })
+
+  it('opens the dialog from URL state', async () => {
+    render(<SystemModel {...defaultProps} />, { searchParams: '?dialog=system-models' })
+
+    expect(await screen.findByRole('button', { name: /save/i })).toBeInTheDocument()
+    expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.textEmbedding, { enabled: true })
+  })
+
+  it('clears only the dialog URL state when closed', async () => {
+    const user = userEvent.setup()
+    const { onUrlUpdate } = render(<SystemModel {...defaultProps} />, {
+      searchParams: '?dialog=system-models&source=goto-anything',
+    })
+
+    await user.click(await screen.findByRole('button', { name: /cancel/i }))
+
+    expect(onUrlUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ queryString: '?source=goto-anything' }),
+    )
+  })
+
+  it('loads non-text model lists only after the dialog opens', async () => {
+    const user = userEvent.setup()
+    render(<SystemModel {...defaultProps} />)
+
+    expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.textEmbedding, { enabled: false })
+    expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.rerank, { enabled: false })
+    expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.speech2text, { enabled: false })
+    expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.tts, { enabled: false })
+
+    await user.click(screen.getByRole('button', { name: /system model settings/i }))
+
+    await waitFor(() => {
+      expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.textEmbedding, { enabled: true })
+      expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.rerank, { enabled: true })
+      expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.speech2text, { enabled: true })
+      expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.tts, { enabled: true })
+    })
+  })
+
+  it('shows loading instead of empty model selectors while model lists load', async () => {
+    const user = userEvent.setup()
+    mockUseModelList.mockReturnValue({ data: [], isLoading: true })
+    render(<SystemModel {...defaultProps} />)
+
+    await user.click(screen.getByRole('button', { name: /system model settings/i }))
+
+    expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Mock Model Selector' })).not.toBeInTheDocument()
+    const saveButton = screen.getByRole('button', { name: /save/i })
+    expect(saveButton).toBeDisabled()
+
+    await user.click(saveButton)
+    expect(mockUpdateDefaultModel).not.toHaveBeenCalled()
   })
 
   it('should disable button when loading', () => {
@@ -151,7 +229,7 @@ describe('SystemModel', () => {
     })
 
     const selectorButtons = screen.getAllByRole('button', { name: 'Mock Model Selector' })
-    selectorButtons.forEach(button => fireEvent.click(button))
+    selectorButtons.forEach((button) => fireEvent.click(button))
 
     fireEvent.click(screen.getByRole('button', { name: /save/i }))
 
@@ -184,7 +262,7 @@ describe('SystemModel', () => {
     expect(mockUpdateModelList).not.toHaveBeenCalled()
   })
 
-  it('should disable save without plugin manage permission', async () => {
+  it('should disable save without model config permission', async () => {
     mockWorkspacePermissionKeys = []
     render(<SystemModel {...defaultProps} />)
 
@@ -202,7 +280,7 @@ describe('SystemModel', () => {
       expect(mockModelSelectorProps).toHaveLength(5)
     })
 
-    expect(mockModelSelectorProps.every(props => props.hideProviderSettingsFooter)).toBe(true)
+    expect(mockModelSelectorProps.every((props) => props.hideProviderSettingsFooter)).toBe(true)
   })
 
   it('should hide model metadata in default model selectors', async () => {
@@ -213,21 +291,24 @@ describe('SystemModel', () => {
       expect(mockModelSelectorProps).toHaveLength(5)
     })
 
-    expect(mockModelSelectorProps.every(props => props.showModelMeta === false)).toBe(true)
+    expect(mockModelSelectorProps.every((props) => props.showModelMeta === false)).toBe(true)
   })
 
-  it('should close the dialog from the empty selector configure action', async () => {
+  it('should close the dialog from every empty selector configure action', async () => {
+    const user = userEvent.setup()
     render(<SystemModel {...defaultProps} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
-    })
+    for (let index = 0; index < 5; index++) {
+      await user.click(screen.getByRole('button', { name: /system model settings/i }))
+      const configureActions = await screen.findAllByRole('button', {
+        name: 'Mock Configure Empty State',
+      })
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Mock Configure Empty State' })[0]!)
+      await user.click(configureActions[index]!)
 
-    await waitFor(() => {
-      expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument()
-    })
+      await waitFor(() => {
+        expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument()
+      })
+    }
   })
 })

@@ -153,35 +153,12 @@ def _create_segment(db_session: Session, *, document: DatasetDocument | None = N
 
 
 class TestHitTestingService:
-    # ── Utility methods (pure logic, no DB) ────────────────────────────
-
-    def test_escape_query_for_search_should_escape_double_quotes(self) -> None:
-        query = 'test "query" with quotes'
-        result = HitTestingService.escape_query_for_search(query)
-        assert result == 'test \\"query\\" with quotes'
-
-    def test_hit_testing_args_check_should_pass_with_valid_query(self) -> None:
-        HitTestingService.hit_testing_args_check({"query": "valid query"})
-
-    def test_hit_testing_args_check_should_pass_with_valid_attachments(self) -> None:
-        HitTestingService.hit_testing_args_check({"attachment_ids": ["id1", "id2"]})
-
-    def test_hit_testing_args_check_should_raise_error_when_no_query_or_attachments(self) -> None:
-        with pytest.raises(ValueError, match="Query or attachment_ids is required"):
-            HitTestingService.hit_testing_args_check({})
-
-    def test_hit_testing_args_check_should_raise_error_when_query_too_long(self) -> None:
-        with pytest.raises(ValueError, match="Query cannot exceed 250 characters"):
-            HitTestingService.hit_testing_args_check({"query": "a" * 251})
-
-    def test_hit_testing_args_check_should_raise_error_when_attachments_not_list(self) -> None:
-        with pytest.raises(ValueError, match="Attachment_ids must be a list"):
-            HitTestingService.hit_testing_args_check({"attachment_ids": "not a list"})
-
     # ── Response formatting ────────────────────────────────────────────
 
     @patch("core.rag.datasource.retrieval_service.RetrievalService.format_retrieval_documents")
-    def test_compact_retrieve_response_should_format_correctly(self, mock_format: MagicMock) -> None:
+    def test_compact_retrieve_response_should_format_correctly(
+        self, mock_format: MagicMock, db_session_with_containers: Session
+    ) -> None:
         query = "test query"
         mock_doc = MagicMock(spec=Document)
 
@@ -189,12 +166,16 @@ class TestHitTestingService:
         mock_record.model_dump.return_value = {"content": "formatted content"}
         mock_format.return_value = [mock_record]
 
-        response = _RetrieveResponse.model_validate(HitTestingService.compact_retrieve_response(query, [mock_doc]))
+        response = _RetrieveResponse.model_validate(
+            HitTestingService.compact_retrieve_response(query, [mock_doc], session=db_session_with_containers)
+        )
 
         assert response.query.content == query
         assert len(response.records) == 1
         assert response.records[0].content == "formatted content"
-        mock_format.assert_called_once_with([mock_doc])
+        mock_format.assert_called_once()
+        assert mock_format.call_args.args[0] is not db_session_with_containers
+        assert mock_format.call_args.args[1] == [mock_doc]
 
     def test_compact_external_retrieve_response_should_return_records_for_external_provider(
         self, db_session_with_containers: Session
@@ -247,12 +228,14 @@ class TestHitTestingService:
                 account=account,
                 external_retrieval_model={"model": "test"},
                 metadata_filtering_conditions={"key": "val"},
+                session=db_session_with_containers,
             )
         )
 
         assert response.query.content == 'test "query"'
         assert response.records[0].content == "ext content"
         mock_ext_retrieve.assert_called_once_with(
+            session=db_session_with_containers,
             dataset_id=dataset.id,
             query='test \\"query\\"',
             external_retrieval_model={"model": "test"},
@@ -269,7 +252,9 @@ class TestHitTestingService:
         dataset = _create_dataset(db_session_with_containers, provider="vendor")
         account = MagicMock()
 
-        response = _RetrieveResponse.model_validate(HitTestingService.external_retrieve(dataset, "test query", account))
+        response = _RetrieveResponse.model_validate(
+            HitTestingService.external_retrieve(dataset, "test query", account, session=db_session_with_containers)
+        )
 
         assert response.query.content == "test query"
         assert response.records == []
@@ -297,6 +282,7 @@ class TestHitTestingService:
                 account=account,
                 retrieval_model=None,
                 external_retrieval_model=external_retrieval_model,
+                session=db_session_with_containers,
             )
         )
 
@@ -320,7 +306,11 @@ class TestHitTestingService:
 
         retrieval_model = {
             "search_method": "semantic_search",
-            "metadata_filtering_conditions": {"some": "condition"},
+            "metadata_filtering_conditions": {
+                "conditions": [
+                    {"name": "category", "comparison_operator": "is", "value": "test"},
+                ],
+            },
             "top_k": 5,
             "reranking_enable": False,
             "score_threshold_enabled": False,
@@ -335,6 +325,7 @@ class TestHitTestingService:
             account=account,
             retrieval_model=retrieval_model,
             external_retrieval_model=external_retrieval_model,
+            session=db_session_with_containers,
         )
 
         mock_get_meta.assert_called_once()
@@ -352,7 +343,11 @@ class TestHitTestingService:
 
         retrieval_model = {
             "search_method": "semantic_search",
-            "metadata_filtering_conditions": {"some": "condition"},
+            "metadata_filtering_conditions": {
+                "conditions": [
+                    {"name": "category", "comparison_operator": "is", "value": "test"},
+                ],
+            },
             "top_k": 5,
             "reranking_enable": False,
             "score_threshold_enabled": False,
@@ -367,6 +362,7 @@ class TestHitTestingService:
                 account=account,
                 retrieval_model=retrieval_model,
                 external_retrieval_model=external_retrieval_model,
+                session=db_session_with_containers,
             )
         )
 
@@ -399,6 +395,7 @@ class TestHitTestingService:
             retrieval_model=retrieval_model,
             external_retrieval_model=external_retrieval_model,
             attachment_ids=attachment_ids,
+            session=db_session_with_containers,
         )
 
         mock_retrieve.assert_called_once_with(
@@ -457,6 +454,7 @@ class TestHitTestingService:
             account=account,
             retrieval_model=retrieval_model,
             external_retrieval_model=external_retrieval_model,
+            session=db_session_with_containers,
         )
 
         mock_retrieve.assert_called_once()
@@ -477,11 +475,15 @@ class TestHitTestingService:
             "doc_metadata": {"source": "manual"},
         }
 
-    def test_dump_retrieval_records_returns_dumped_records_without_document_ids(self) -> None:
+    def test_dump_retrieval_records_returns_dumped_records_without_document_ids(
+        self, db_session_with_containers: Session
+    ) -> None:
         segment = _build_segment(document_id="")
         record = RetrievalSegments.model_validate({"segment": segment, "score": 0.95})
 
-        records = _DUMPED_RETRIEVAL_RECORDS.validate_python(HitTestingService._dump_retrieval_records([record]))
+        records = _DUMPED_RETRIEVAL_RECORDS.validate_python(
+            HitTestingService._dump_retrieval_records(db_session_with_containers, [record])
+        )
 
         assert len(records) == 1
         assert records[0].segment.id == segment.id
@@ -493,7 +495,9 @@ class TestHitTestingService:
         segment = _create_segment(db_session_with_containers, document=document)
         record = RetrievalSegments.model_validate({"segment": segment, "score": 0.9})
 
-        records = _DUMPED_RETRIEVAL_RECORDS.validate_python(HitTestingService._dump_retrieval_records([record]))
+        records = _DUMPED_RETRIEVAL_RECORDS.validate_python(
+            HitTestingService._dump_retrieval_records(db_session_with_containers, [record])
+        )
 
         assert len(records) == 1
         dumped_segment = records[0].segment
@@ -515,7 +519,7 @@ class TestHitTestingService:
         segment = _create_segment(db_session_with_containers)
         record = RetrievalSegments.model_validate({"segment": segment, "score": 0.95})
 
-        result = HitTestingService._dump_retrieval_records([record])
+        result = HitTestingService._dump_retrieval_records(db_session_with_containers, [record])
 
         assert result == []
         assert "Skipping hit-testing records with missing documents" in caplog.text

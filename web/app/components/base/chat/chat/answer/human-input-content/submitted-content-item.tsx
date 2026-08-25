@@ -2,11 +2,15 @@ import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/
 import type { HumanInputFormValue } from '@/types/workflow'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { FileList } from '@/app/components/base/file-uploader'
@@ -34,28 +38,21 @@ const extractFieldName = (content: string) => {
   return match ? match[1]! : ''
 }
 
-const SubmittedContentItem = ({
-  content,
-  formInputFields,
-  values,
-}: SubmittedContentItemProps) => {
+const SubmittedContentItem = ({ content, formInputFields, values }: SubmittedContentItemProps) => {
   if (!isOutputField(content)) {
-    return (
-      <Markdown content={content} />
-    )
+    return <Markdown content={content} />
   }
 
   const fieldName = extractFieldName(content)
-  const field = formInputFields.find(field => field.output_variable_name === fieldName)
+  const field = formInputFields.find((field) => field.output_variable_name === fieldName)
   const value = values[fieldName]
 
-  if (!field || value == null)
-    return null
+  if (!field || value == null) return null
 
   if (isParagraphFormInput(field)) {
     return (
       <span
-        className="body-md-regular break-words text-text-primary"
+        className="body-md-regular wrap-break-word text-text-primary"
         data-testid={`submitted-field-${fieldName}`}
       >
         {typeof value === 'string' ? value : ''}
@@ -69,25 +66,35 @@ const SubmittedContentItem = ({
     return (
       <div className="py-3" data-testid={`submitted-field-${fieldName}`}>
         <Select value={selectedValue} disabled>
-          <SelectTrigger size="large" className="w-full" aria-label={field.output_variable_name} disabled>
-            {selectedValue}
+          <SelectTrigger
+            size="large"
+            className="w-full"
+            aria-label={field.output_variable_name}
+            disabled
+          >
+            <SelectValue />
           </SelectTrigger>
-          <SelectContent listClassName="max-h-[140px] overflow-y-auto">
-            {field.option_source.value.map(option => (
-              <SelectItem key={option} value={option}>
-                <SelectItemText>{option}</SelectItemText>
-                <SelectItemIndicator />
-              </SelectItem>
-            ))}
-          </SelectContent>
+          <SelectPortal>
+            <SelectPositioner>
+              <SelectPopup>
+                <SelectList className="max-h-[140px] overflow-y-auto">
+                  {field.option_source.value.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      <SelectItemText>{option}</SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                  ))}
+                </SelectList>
+              </SelectPopup>
+            </SelectPositioner>
+          </SelectPortal>
         </Select>
       </div>
     )
   }
 
   if (isFileFormInput(field)) {
-    if (typeof value === 'string' || Array.isArray(value))
-      return null
+    if (typeof value === 'string' || Array.isArray(value)) return null
 
     return (
       <div className="py-3" data-testid={`submitted-field-${fieldName}`}>
@@ -101,8 +108,7 @@ const SubmittedContentItem = ({
   }
 
   if (isFileListFormInput(field)) {
-    if (typeof value === 'string' || !Array.isArray(value))
-      return null
+    if (typeof value === 'string' || !Array.isArray(value)) return null
 
     return (
       <div className="py-3" data-testid={`submitted-field-${fieldName}`}>

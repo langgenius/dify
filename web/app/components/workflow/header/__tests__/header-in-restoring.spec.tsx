@@ -1,6 +1,6 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { VersionHistory } from '@/types/workflow'
 import { fireEvent, screen } from '@testing-library/react'
-import { Plan } from '@/app/components/billing/type'
 import { FlowType } from '@/types/common'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { WorkflowVersion } from '../../types'
@@ -11,7 +11,7 @@ const mockInvalidAllLastRun = vi.fn()
 const mockResetWorkflowVersionHistory = vi.fn()
 const mockHandleLoadBackupDraft = vi.fn()
 const mockHandleRefreshWorkflowDraft = vi.fn()
-let mockPlanType = Plan.professional
+let mockPlanType: CloudPlan = 'professional'
 let mockEnableBilling = true
 
 vi.mock('@/context/provider-context', () => ({
@@ -47,10 +47,13 @@ vi.mock('@/service/use-workflow', () => ({
   }),
 }))
 
-vi.mock('../../hooks', () => ({
+vi.mock('../../hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({
     handleLoadBackupDraft: mockHandleLoadBackupDraft,
   }),
+}))
+
+vi.mock('../../hooks/use-workflow-refresh-draft', () => ({
   useWorkflowRefreshDraft: () => ({
     handleRefreshWorkflowDraft: mockHandleRefreshWorkflowDraft,
   }),
@@ -85,7 +88,7 @@ const createVersion = (overrides: Partial<VersionHistory> = {}): VersionHistory 
 describe('HeaderInRestoring', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPlanType = Plan.professional
+    mockPlanType = 'professional'
     mockEnableBilling = true
   })
 
@@ -139,7 +142,7 @@ describe('HeaderInRestoring', () => {
   })
 
   it('should show plan upgrade modal instead of restoring when sandbox users click restore', () => {
-    mockPlanType = Plan.sandbox
+    mockPlanType = 'sandbox'
     renderWorkflowComponent(<HeaderInRestoring />, {
       initialStoreState: {
         currentVersion: createVersion(),

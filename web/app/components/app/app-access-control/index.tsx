@@ -1,132 +1,112 @@
 'use client'
-import type { Subject as EnterpriseSubject } from '@dify/contracts/enterprise/types.gen'
-import type { App } from '@/types/app'
-import { SubjectType as EnterpriseSubjectType } from '@dify/contracts/enterprise/types.gen'
+
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  AccessControlSubjects,
+  AccessControlSubjectsStatus,
+} from './specific-groups-or-members'
+import type { Subject } from '@/models/access-control'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { AccessMode } from '@/models/access-control'
-import { useAppWhiteListSubjects } from '@/service/access-control/use-app-access-control'
+import { AccessMode, isAccessMode, SubjectType } from '@/models/access-control'
+import { useAppWhiteListSubjects } from '@/service/access-control'
 import { consoleQuery } from '@/service/client'
-import { AccessControlDialog } from './access-control-dialog'
-import { AccessControlDialogContent } from './access-control-dialog-content'
-import { useAccessControlStore } from './store'
-import { AccessControlDraftProvider } from './store-provider'
+import { AccessControlForm } from './access-control-form'
+
+const EMPTY_SUBJECTS: AccessControlSubjects = {
+  groups: [],
+  members: [],
+}
 
 type AccessControlProps = {
-  app: App
+  app: Pick<AppPartial, 'id' | 'access_mode'>
   onClose: () => void
   onConfirm?: () => void
 }
 
-export function AccessControl(props: AccessControlProps) {
-  const { app, onClose, onConfirm } = props
+export default function AccessControl(props: AccessControlProps) {
+  return <AppAccessControlContainer key={props.app.id} {...props} />
+}
+
+function AppAccessControlContainer({ app, onClose, onConfirm }: AccessControlProps) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const hideExternalTip = systemFeatures.webapp_auth.enabled
-    && (systemFeatures.webapp_auth.allow_sso
-      || systemFeatures.webapp_auth.allow_email_password_login
-      || systemFeatures.webapp_auth.allow_email_code_login)
-  const initialAccessMode = app.access_mode ?? AccessMode.SPECIFIC_GROUPS_MEMBERS
-  const whiteListSubjectsQuery = useAppWhiteListSubjects(
-    app.id,
-    initialAccessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS,
+  const [accessMode, setAccessMode] = useState(
+    () =>
+      (isAccessMode(app.access_mode) ? app.access_mode : undefined) ??
+      AccessMode.SPECIFIC_GROUPS_MEMBERS,
   )
-  const initialSpecificGroups = whiteListSubjectsQuery.data?.groups ?? []
-  const initialSpecificMembers = whiteListSubjectsQuery.data?.members ?? []
-  const draftKey = [
+  const [subjectsDraft, setSubjectsDraft] = useState<AccessControlSubjects>()
+  const subjectsQuery = useAppWhiteListSubjects(
     app.id,
-    initialAccessMode,
-    initialSpecificGroups.map(group => group.id).join(','),
-    initialSpecificMembers.map(member => member.id).join(','),
-  ].join(':')
-
-  return (
-    <AccessControlDraftProvider
-      draftKey={draftKey}
-      initialDraft={{
-        appId: app.id,
-        currentMenu: initialAccessMode,
-        specificGroups: initialSpecificGroups,
-        specificMembers: initialSpecificMembers,
-        selectedGroupsForBreadcrumb: [],
-      }}
-    >
-      <AccessControlForm
-        app={app}
-        hideExternalTip={hideExternalTip}
-        subjectsLoading={initialAccessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS && whiteListSubjectsQuery.isPending}
-        onClose={onClose}
-        onConfirm={onConfirm}
-        successMessage={t('accessControlDialog.updateSuccess', { ns: 'app' })}
-      />
-    </AccessControlDraftProvider>
+    accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS,
   )
-}
+  const subjects = subjectsDraft ?? subjectsQuery.data ?? EMPTY_SUBJECTS
+  const subjectsStatus: AccessControlSubjectsStatus =
+    subjectsDraft || subjectsQuery.data
+      ? 'success'
+      : subjectsQuery.isFetching || subjectsQuery.isPending
+        ? 'loading'
+        : subjectsQuery.isError
+          ? 'error'
+          : 'loading'
+  const updateAccessModeMutation = useMutation(
+    consoleQuery.enterprise.webAppAuth.updateWebAppWhitelistSubjects.mutationOptions(),
+  )
+  const externalMembersTipHidden =
+    systemFeatures.webapp_auth.enabled &&
+    (systemFeatures.webapp_auth.allow_sso ||
+      systemFeatures.webapp_auth.allow_email_password_login ||
+      systemFeatures.webapp_auth.allow_email_code_login)
+  const publicAccessDisabled = !systemFeatures.webapp_auth.allow_public_access
 
-function AccessControlForm({
-  app,
-  hideExternalTip,
-  subjectsLoading,
-  successMessage,
-  onClose,
-  onConfirm,
-}: {
-  app: App
-  hideExternalTip: boolean
-  subjectsLoading: boolean
-  successMessage: string
-  onClose: () => void
-  onConfirm?: () => void
-}) {
-  const specificGroups = useAccessControlStore(s => s.specificGroups)
-  const specificMembers = useAccessControlStore(s => s.specificMembers)
-  const currentMenu = useAccessControlStore(s => s.currentMenu)
-  const { isPending, mutate: updateAccessMode } = useMutation(consoleQuery.explore.updateAppAccessMode.mutationOptions())
+  const handleConfirm = async () => {
+    if (
+      updateAccessModeMutation.isPending ||
+      (accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS && subjectsStatus !== 'success') ||
+      (accessMode === AccessMode.PUBLIC && publicAccessDisabled)
+    )
+      return
 
-  function handleConfirm() {
     const submitData: {
-      appId: string
       accessMode: AccessMode
-      subjects?: Pick<EnterpriseSubject, 'subjectId' | 'subjectType'>[]
-    } = { appId: app.id, accessMode: currentMenu }
-    if (currentMenu === AccessMode.SPECIFIC_GROUPS_MEMBERS) {
-      const subjects: Pick<EnterpriseSubject, 'subjectId' | 'subjectType'>[] = []
-      specificGroups.forEach((group) => {
-        subjects.push({ subjectId: group.id, subjectType: EnterpriseSubjectType.SUBJECT_TYPE_GROUP })
-      })
-      specificMembers.forEach((member) => {
-        subjects.push({
+      subjects?: Pick<Subject, 'subjectId' | 'subjectType'>[]
+    } = { accessMode }
+
+    if (accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS) {
+      submitData.subjects = [
+        ...subjects.groups.map((group) => ({
+          subjectId: group.id,
+          subjectType: SubjectType.GROUP,
+        })),
+        ...subjects.members.map((member) => ({
           subjectId: member.id,
-          subjectType: EnterpriseSubjectType.SUBJECT_TYPE_ACCOUNT,
-        })
-      })
-      submitData.subjects = subjects
+          subjectType: SubjectType.ACCOUNT,
+        })),
+      ]
     }
-    updateAccessMode({
-      body: submitData,
-    }, {
-      onSuccess: () => {
-        toast.success(successMessage)
-        onConfirm?.()
-      },
-    })
+
+    await updateAccessModeMutation.mutateAsync({ body: { appId: app.id, ...submitData } })
+    toast.success(t(($) => $['accessControlDialog.updateSuccess'], { ns: 'app' }))
+    onConfirm?.()
   }
 
   return (
-    <AccessControlDialog show onClose={onClose}>
-      <AccessControlDialogContent
-        hideExternalTip={hideExternalTip}
-        saving={isPending}
-        controlsDisabled={subjectsLoading || isPending}
-        confirmDisabled={subjectsLoading}
-        specificGroupsOrMembersProps={{
-          loading: subjectsLoading,
-        }}
-        onClose={onClose}
-        onConfirm={handleConfirm}
-      />
-    </AccessControlDialog>
+    <AccessControlForm
+      accessMode={accessMode}
+      subjects={subjects}
+      subjectsStatus={subjectsStatus}
+      updatePending={updateAccessModeMutation.isPending}
+      publicAccessDisabled={publicAccessDisabled}
+      externalMembersTipHidden={externalMembersTipHidden}
+      onAccessModeChange={setAccessMode}
+      onSubjectsChange={setSubjectsDraft}
+      onRetrySubjects={() => void subjectsQuery.refetch()}
+      onClose={onClose}
+      onConfirm={() => void handleConfirm()}
+    />
   )
 }

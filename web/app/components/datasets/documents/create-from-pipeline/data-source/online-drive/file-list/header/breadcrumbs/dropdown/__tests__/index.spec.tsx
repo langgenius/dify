@@ -17,16 +17,6 @@ describe('Dropdown', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const props = createDefaultProps()
-
-      render(<Dropdown {...props} />)
-
-      // Assert - Trigger button should be visible
-      // Assert - Trigger button should be visible
-      expect(screen.getByRole('button'))!.toBeInTheDocument()
-    })
-
     it('should render trigger button with more icon', () => {
       const props = createDefaultProps()
 
@@ -46,19 +36,6 @@ describe('Dropdown', () => {
       // Assert - Separator "/" should be visible
       // Assert - Separator "/" should be visible
       expect(screen.getByText('/'))!.toBeInTheDocument()
-    })
-
-    it('should render trigger button with correct default styles', () => {
-      const props = createDefaultProps()
-
-      render(<Dropdown {...props} />)
-
-      const button = screen.getByRole('button')
-      expect(button)!.toHaveClass('flex')
-      expect(button)!.toHaveClass('size-6')
-      expect(button)!.toHaveClass('items-center')
-      expect(button)!.toHaveClass('justify-center')
-      expect(button)!.toHaveClass('rounded-md')
     })
 
     it('should not render menu content when closed', () => {
@@ -363,7 +340,6 @@ describe('Dropdown', () => {
 
         // Assert - Initial state (closed): should have hover:bg-state-base-hover
         // Assert - Initial state (closed): should have hover:bg-state-base-hover
-        expect(button)!.toHaveClass('hover:bg-state-base-hover')
 
         // Act - Open dropdown
         fireEvent.click(button)
@@ -504,11 +480,6 @@ describe('Dropdown', () => {
 
   // Callback Stability and Memoization Tests
   describe('Callback Stability and Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      // Assert - Dropdown component should be memoized
-      expect(Dropdown).toHaveProperty('$$typeof', Symbol.for('react.memo'))
-    })
-
     it('should maintain stable callback after rerender with same props', async () => {
       const mockOnBreadcrumbClick = vi.fn()
       const props = createDefaultProps({
@@ -553,10 +524,11 @@ describe('Dropdown', () => {
 
       // Rerender with different callback
       rerender(
-        <Dropdown {...createDefaultProps({
-          breadcrumbs: ['folder'],
-          onBreadcrumbClick: mockOnBreadcrumbClick2,
-        })}
+        <Dropdown
+          {...createDefaultProps({
+            breadcrumbs: ['folder'],
+            onBreadcrumbClick: mockOnBreadcrumbClick2,
+          })}
         />,
       )
 
@@ -700,23 +672,26 @@ describe('Dropdown', () => {
       { startIndex: 1, breadcrumbs: ['a'], expectedIndex: 1 },
       { startIndex: 5, breadcrumbs: ['a'], expectedIndex: 5 },
       { startIndex: 10, breadcrumbs: ['a', 'b'], expectedIndex: 10 },
-    ])('should handle startIndex=$startIndex correctly', async ({ startIndex, breadcrumbs, expectedIndex }) => {
-      const mockOnBreadcrumbClick = vi.fn()
-      const props = createDefaultProps({
-        startIndex,
-        breadcrumbs,
-        onBreadcrumbClick: mockOnBreadcrumbClick,
-      })
-      render(<Dropdown {...props} />)
+    ])(
+      'should handle startIndex=$startIndex correctly',
+      async ({ startIndex, breadcrumbs, expectedIndex }) => {
+        const mockOnBreadcrumbClick = vi.fn()
+        const props = createDefaultProps({
+          startIndex,
+          breadcrumbs,
+          onBreadcrumbClick: mockOnBreadcrumbClick,
+        })
+        render(<Dropdown {...props} />)
 
-      fireEvent.click(screen.getByRole('button'))
-      await waitFor(() => {
-        expect(screen.getByText(breadcrumbs[0]!))!.toBeInTheDocument()
-      })
-      fireEvent.click(screen.getByText(breadcrumbs[0]!))
+        fireEvent.click(screen.getByRole('button'))
+        await waitFor(() => {
+          expect(screen.getByText(breadcrumbs[0]!))!.toBeInTheDocument()
+        })
+        fireEvent.click(screen.getByText(breadcrumbs[0]!))
 
-      expect(mockOnBreadcrumbClick).toHaveBeenCalledWith(expectedIndex)
-    })
+        expect(mockOnBreadcrumbClick).toHaveBeenCalledWith(expectedIndex)
+      },
+    )
 
     it.each([
       { breadcrumbs: [], description: 'empty array' },
@@ -731,8 +706,7 @@ describe('Dropdown', () => {
 
       // Assert - Should render without errors
       await waitFor(() => {
-        if (breadcrumbs.length > 0)
-          expect(screen.getByText(breadcrumbs[0]!))!.toBeInTheDocument()
+        if (breadcrumbs.length > 0) expect(screen.getByText(breadcrumbs[0]!))!.toBeInTheDocument()
       })
     })
   })

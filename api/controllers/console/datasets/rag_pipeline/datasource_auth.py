@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
-from controllers.common.fields import RedirectResponse, SimpleResultResponse
+from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
@@ -14,18 +14,23 @@ from controllers.console.wraps import (
     RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
 )
+from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import PluginOAuthAuthorizationUrlResponse
 from core.plugin.impl.oauth import OAuthHandler
+from core.tools.entities.common_entities import I18nObject
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
-from graphon.model_runtime.utils.encoders import jsonable_encoder
+from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
+from models.enums import PermissionEnum
 from models.provider_ids import DatasourceProviderID
 from services.datasource_provider_service import DatasourceProviderService
 from services.plugin.oauth_service import OAuthProxyService
@@ -33,7 +38,9 @@ from services.plugin.oauth_service import OAuthProxyService
 
 class DatasourceCredentialPayload(BaseModel):
     name: str | None = Field(default=None, max_length=100)
-    credentials: dict[str, Any]
+    credentials: dict[str, Any] = Field(
+        description="Plugin-defined credential parameters. The schema is declared by the datasource provider."
+    )
 
 
 class DatasourceCredentialDeletePayload(BaseModel):
@@ -43,11 +50,17 @@ class DatasourceCredentialDeletePayload(BaseModel):
 class DatasourceCredentialUpdatePayload(BaseModel):
     credential_id: str
     name: str | None = Field(default=None, max_length=100)
-    credentials: dict[str, Any] | None = Field(default=None)
+    credentials: dict[str, Any] | None = Field(
+        default=None,
+        description="Plugin-defined credential parameters. The schema is declared by the datasource provider.",
+    )
 
 
 class DatasourceCustomClientPayload(BaseModel):
-    client_params: dict[str, Any] | None = Field(default=None)
+    client_params: dict[str, Any] | None = Field(
+        default=None,
+        description="Plugin-defined OAuth client parameters. The schema is declared by the datasource provider.",
+    )
     enable_oauth_custom_client: bool | None = None
 
 
@@ -62,6 +75,13 @@ class DatasourceUpdateNamePayload(BaseModel):
 
 class DatasourceOAuthAuthorizationQuery(BaseModel):
     credential_id: str | None = Field(default=None, description="Credential ID to reauthorize")
+    visibility: str | None = Field(
+        default=None,
+        description=(
+            "Visibility for the credential to be created. Accepts 'only_me' or 'all_team_members'; "
+            "any other value falls back to 'only_me'. Ignored on reauthorization (credential_id set)."
+        ),
+    )
 
 
 class DatasourceOAuthCallbackQuery(BaseModel):
@@ -71,8 +91,48 @@ class DatasourceOAuthCallbackQuery(BaseModel):
     context_id: str | None = Field(default=None, description="OAuth proxy context ID")
 
 
-class DatasourceCredentialsResponse(ResponseModel):
-    result: Any
+class DatasourceCredentialResponse(ResponseModel):
+    credential: dict[str, Any] = Field(
+        description="Obfuscated plugin-defined credential parameters from the datasource provider."
+    )
+    type: str
+    name: str
+    avatar_url: str | None
+    id: str
+    is_default: bool
+
+
+class DatasourceCredentialListResponse(ResponseModel):
+    result: list[DatasourceCredentialResponse]
+
+
+class DatasourceOAuthSchemaResponse(ResponseModel):
+    client_schema: list[ProviderConfig]
+    credentials_schema: list[ProviderConfig]
+    oauth_custom_client_params: dict[str, Any] | None = Field(
+        description="Masked plugin-defined OAuth client parameters, when configured for the tenant."
+    )
+    is_oauth_custom_client_enabled: bool
+    is_system_oauth_params_exists: bool
+    redirect_uri: str
+
+
+class DatasourceProviderAuthResponse(ResponseModel):
+    author: str
+    provider: str
+    plugin_id: str
+    plugin_unique_identifier: str
+    icon: str
+    name: str
+    label: I18nObject
+    description: I18nObject
+    credential_schema: list[ProviderConfig]
+    oauth_schema: DatasourceOAuthSchemaResponse | None
+    credentials_list: list[DatasourceCredentialResponse]
+
+
+class DatasourceProviderAuthListResponse(ResponseModel):
+    result: list[DatasourceProviderAuthResponse]
 
 
 register_schema_models(
@@ -88,9 +148,9 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
-    DatasourceCredentialsResponse,
+    DatasourceCredentialListResponse,
+    DatasourceProviderAuthListResponse,
     PluginOAuthAuthorizationUrlResponse,
-    RedirectResponse,
     SimpleResultResponse,
 )
 
@@ -100,7 +160,7 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
     @console_ns.doc(params=query_params_from_model(DatasourceOAuthAuthorizationQuery))
     @console_ns.response(
         200,
-        "Authorization URL retrieved successfully",
+        "Datasource OAuth authorization URL generated successfully",
         console_ns.models[PluginOAuthAuthorizationUrlResponse.__name__],
     )
     @setup_required
@@ -123,12 +183,27 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
         if not oauth_config:
             raise ValueError(f"No OAuth Client Config for {provider_id}")
 
+        # Visibility is chosen by the user in the frontend before the redirect,
+        # then read back in the callback below when the credential is created.
+        # Only ONLY_ME / ALL_TEAM are accepted; anything else falls back to
+        # ONLY_ME (OAuth tokens are personal by nature).
+        # For reauthorization (credential_id set), visibility is ignored — we
+        # keep whatever the credential was created with.
+        raw_visibility = request.args.get("visibility")
+        try:
+            requested_visibility = PermissionEnum(raw_visibility) if raw_visibility else PermissionEnum.ONLY_ME
+        except ValueError:
+            requested_visibility = PermissionEnum.ONLY_ME
+        if requested_visibility not in (PermissionEnum.ONLY_ME, PermissionEnum.ALL_TEAM):
+            requested_visibility = PermissionEnum.ONLY_ME
+
         context_id = OAuthProxyService.create_proxy_context(
             user_id=current_user.id,
             tenant_id=tenant_id,
             plugin_id=plugin_id,
             provider=provider_name,
             credential_id=credential_id,
+            extra_data={"visibility": requested_visibility.value},
         )
         oauth_handler = OAuthHandler()
         redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/datasource/callback"
@@ -140,7 +215,8 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
             redirect_uri=redirect_uri,
             system_credentials=oauth_config,
         )
-        response = make_response(jsonable_encoder(authorization_url_response))
+        # response-contract:ignore cookie-bearing Flask response
+        response = make_response(dump_response(PluginOAuthAuthorizationUrlResponse, authorization_url_response))
         response.set_cookie(
             "context_id",
             context_id,
@@ -154,11 +230,8 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
 @console_ns.route("/oauth/plugin/<path:provider_id>/datasource/callback")
 class DatasourceOAuthCallback(Resource):
     @console_ns.doc(params=query_params_from_model(DatasourceOAuthCallbackQuery))
-    @console_ns.response(
-        302,
-        "Redirect to console OAuth callback page",
-        console_ns.models[RedirectResponse.__name__],
-    )
+    # response-contract:ignore redirect response
+    @console_ns.response(302, "Redirect to OAuth callback page")
     @setup_required
     def get(self, provider_id: str):
         context_id = request.cookies.get("context_id") or request.args.get("context_id")
@@ -203,6 +276,17 @@ class DatasourceOAuthCallback(Resource):
                 credential_id=credential_id,
             )
         else:
+            # Visibility was chosen by the user before the redirect and stashed
+            # in the proxy context. Fall back to ONLY_ME for older cookies (or
+            # anything that somehow wrote an unexpected value) — OAuth tokens
+            # are personal by default.
+            stored_visibility = context.get("visibility")
+            try:
+                visibility = PermissionEnum(stored_visibility) if stored_visibility else PermissionEnum.ONLY_ME
+            except ValueError:
+                visibility = PermissionEnum.ONLY_ME
+            if visibility not in (PermissionEnum.ONLY_ME, PermissionEnum.ALL_TEAM):
+                visibility = PermissionEnum.ONLY_ME
             datasource_provider_service.add_datasource_oauth_provider(
                 tenant_id=tenant_id,
                 provider_id=datasource_provider_id,
@@ -210,6 +294,8 @@ class DatasourceOAuthCallback(Resource):
                 name=oauth_response.metadata.get("name") or None,
                 expire_at=oauth_response.expires_at,
                 credentials=dict(oauth_response.credentials),
+                user_id=user_id,
+                visibility=visibility,
             )
         return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
 
@@ -217,15 +303,17 @@ class DatasourceOAuthCallback(Resource):
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>")
 class DatasourceAuth(Resource):
     @console_ns.expect(console_ns.models[DatasourceCredentialPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(
+        200, "Datasource credential created successfully", console_ns.models[SimpleResultResponse.__name__]
+    )
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.CREDENTIAL_CREATE, resource_required=False)
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, provider_id: str):
-        payload = DatasourceCredentialPayload.model_validate(console_ns.payload or {})
+    @model_validate(DatasourceCredentialPayload)
+    def post(self, req_data: DatasourceCredentialPayload, current_tenant_id: str, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
 
@@ -233,17 +321,23 @@ class DatasourceAuth(Resource):
             datasource_provider_service.add_datasource_api_key_provider(
                 tenant_id=current_tenant_id,
                 provider_id=datasource_provider_id,
-                credentials=payload.credentials,
-                name=payload.name,
+                credentials=req_data.credentials,
+                name=req_data.name,
             )
         except CredentialsValidateFailedError as ex:
             raise ValueError(str(ex))
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
+    @console_ns.response(
+        200,
+        "Datasource credentials retrieved successfully",
+        console_ns.models[DatasourceCredentialListResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[DatasourceCredentialsResponse.__name__])
+    @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @with_current_user
     @with_current_tenant_id
     def get(self, current_tenant_id: str, user: Account, provider_id: str):
@@ -255,8 +349,9 @@ class DatasourceAuth(Resource):
             provider=datasource_provider_id.provider_name,
             plugin_id=datasource_provider_id.plugin_id,
             user=user,
+            session=db.session(),
         )
-        return {"result": datasources}, 200
+        return dump_response(DatasourceCredentialListResponse, {"result": datasources}), 200
 
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/delete")
@@ -269,99 +364,120 @@ class DatasourceAuthDeleteApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, provider_id: str):
+    @model_validate(DatasourceCredentialDeletePayload)
+    def post(self, req_data: DatasourceCredentialDeletePayload, current_tenant_id: str, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
         plugin_id = datasource_provider_id.plugin_id
         provider_name = datasource_provider_id.provider_name
 
-        payload = DatasourceCredentialDeletePayload.model_validate(console_ns.payload or {})
         datasource_provider_service = DatasourceProviderService()
         datasource_provider_service.remove_datasource_credentials(
             tenant_id=current_tenant_id,
-            auth_id=payload.credential_id,
+            auth_id=req_data.credential_id,
             provider=provider_name,
             plugin_id=plugin_id,
+            session=db.session(),
         )
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/update")
 class DatasourceAuthUpdateApi(Resource):
     @console_ns.expect(console_ns.models[DatasourceCredentialUpdatePayload.__name__])
-    @console_ns.response(201, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(
+        201, "Datasource credential updated successfully", console_ns.models[SimpleResultResponse.__name__]
+    )
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, provider_id: str):
+    @model_validate(DatasourceCredentialUpdatePayload)
+    def post(self, req_data: DatasourceCredentialUpdatePayload, current_tenant_id: str, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
-        payload = DatasourceCredentialUpdatePayload.model_validate(console_ns.payload or {})
 
         datasource_provider_service = DatasourceProviderService()
         datasource_provider_service.update_datasource_credentials(
             tenant_id=current_tenant_id,
-            auth_id=payload.credential_id,
+            auth_id=req_data.credential_id,
             provider=datasource_provider_id.provider_name,
             plugin_id=datasource_provider_id.plugin_id,
-            credentials=payload.credentials or {},
-            name=payload.name,
+            credentials=req_data.credentials or {},
+            name=req_data.name,
         )
-        return {"result": "success"}, 201
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 201
 
 
 @console_ns.route("/auth/plugin/datasource/list")
 class DatasourceAuthListApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[DatasourceCredentialsResponse.__name__])
+    @console_ns.response(
+        200,
+        "Datasource credentials retrieved successfully",
+        console_ns.models[DatasourceProviderAuthListResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @with_current_tenant_id
-    def get(self, current_tenant_id: str):
+    def get(self, current_tenant_id: str, user: Account):
         datasource_provider_service = DatasourceProviderService()
-        datasources = datasource_provider_service.get_all_datasource_credentials(tenant_id=current_tenant_id)
-        return {"result": jsonable_encoder(datasources)}, 200
+        datasources = datasource_provider_service.get_all_datasource_credentials(
+            tenant_id=current_tenant_id, session=db.session(), user=user
+        )
+        return dump_response(DatasourceProviderAuthListResponse, {"result": datasources}), 200
 
 
 @console_ns.route("/auth/plugin/datasource/default-list")
 class DatasourceHardCodeAuthListApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[DatasourceCredentialsResponse.__name__])
+    @console_ns.response(
+        200,
+        "Default datasource credentials retrieved successfully",
+        console_ns.models[DatasourceProviderAuthListResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @with_current_tenant_id
-    def get(self, current_tenant_id: str):
+    def get(self, current_tenant_id: str, user: Account):
         datasource_provider_service = DatasourceProviderService()
-        datasources = datasource_provider_service.get_hard_code_datasource_credentials(tenant_id=current_tenant_id)
-        return {"result": jsonable_encoder(datasources)}, 200
+        datasources = datasource_provider_service.get_hard_code_datasource_credentials(
+            tenant_id=current_tenant_id, session=db.session(), user=user
+        )
+        return dump_response(DatasourceProviderAuthListResponse, {"result": datasources}), 200
 
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/custom-client")
 class DatasourceAuthOauthCustomClient(Resource):
     @console_ns.expect(console_ns.models[DatasourceCustomClientPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(
+        200, "Datasource OAuth custom client saved successfully", console_ns.models[SimpleResultResponse.__name__]
+    )
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, provider_id: str):
-        payload = DatasourceCustomClientPayload.model_validate(console_ns.payload or {})
+    @model_validate(DatasourceCustomClientPayload)
+    def post(self, req_data: DatasourceCustomClientPayload, current_tenant_id: str, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
         datasource_provider_service.setup_oauth_custom_client_params(
             tenant_id=current_tenant_id,
             datasource_provider_id=datasource_provider_id,
-            client_params=payload.client_params or {},
-            enabled=payload.enable_oauth_custom_client or False,
+            client_params=req_data.client_params or {},
+            enabled=req_data.enable_oauth_custom_client or False,
         )
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @with_current_tenant_id
     def delete(self, current_tenant_id: str, provider_id: str):
@@ -371,7 +487,7 @@ class DatasourceAuthOauthCustomClient(Resource):
             tenant_id=current_tenant_id,
             datasource_provider_id=datasource_provider_id,
         )
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/default")
@@ -384,16 +500,16 @@ class DatasourceAuthDefaultApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, provider_id: str):
-        payload = DatasourceDefaultPayload.model_validate(console_ns.payload or {})
+    @model_validate(DatasourceDefaultPayload)
+    def post(self, req_data: DatasourceDefaultPayload, current_tenant_id: str, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
         datasource_provider_service.set_default_datasource_provider(
             tenant_id=current_tenant_id,
             datasource_provider_id=datasource_provider_id,
-            credential_id=payload.id,
+            credential_id=req_data.id,
         )
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/update-name")
@@ -406,14 +522,14 @@ class DatasourceUpdateProviderNameApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, provider_id: str):
-        payload = DatasourceUpdateNamePayload.model_validate(console_ns.payload or {})
+    @model_validate(DatasourceUpdateNamePayload)
+    def post(self, req_data: DatasourceUpdateNamePayload, current_tenant_id: str, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
         datasource_provider_service.update_datasource_provider_name(
             tenant_id=current_tenant_id,
             datasource_provider_id=datasource_provider_id,
-            name=payload.name,
-            credential_id=payload.credential_id,
+            name=req_data.name,
+            credential_id=req_data.credential_id,
         )
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200

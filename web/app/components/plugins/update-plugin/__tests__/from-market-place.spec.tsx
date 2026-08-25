@@ -1,7 +1,8 @@
 import type { UpdateFromMarketPlacePayload } from '@/app/components/plugins/types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum, TaskStatus } from '@/app/components/plugins/types'
+import { render } from '@/test/console/render'
 import UpdateFromMarketplace from '../from-market-place'
 
 const {
@@ -20,12 +21,12 @@ const {
   mockToastError: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogCloseButton: () => <button>close dialog</button>,
-}))
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
 
 vi.mock('@/app/components/base/badge/index', () => ({
   __esModule: true,
@@ -35,18 +36,6 @@ vi.mock('@/app/components/base/badge/index', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({
-    children,
-    onClick,
-    disabled,
-  }: {
-    children: React.ReactNode
-    onClick?: () => void
-    disabled?: boolean
-  }) => <button disabled={disabled} onClick={onClick}>{children}</button>,
-}))
-
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: mockToastError,
@@ -54,7 +43,13 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 vi.mock('@/app/components/plugins/card', () => ({
-  default: ({ titleLeft, payload }: { titleLeft: React.ReactNode, payload: { label: Record<string, string> } }) => (
+  default: ({
+    titleLeft,
+    payload,
+  }: {
+    titleLeft: React.ReactNode
+    payload: { label: Record<string, string> }
+  }) => (
     <div data-testid="plugin-card">
       <div>{payload.label.en_US}</div>
       <div>{titleLeft}</div>
@@ -110,7 +105,9 @@ vi.mock('../downgrade-warning', () => ({
   ),
 }))
 
-const createPayload = (overrides: Partial<UpdateFromMarketPlacePayload> = {}): UpdateFromMarketPlacePayload => ({
+const createPayload = (
+  overrides: Partial<UpdateFromMarketPlacePayload> = {},
+): UpdateFromMarketPlacePayload => ({
   category: PluginCategoryEnum.tool,
   originalPackageInfo: {
     id: 'plugin@1.0.0',
@@ -138,13 +135,7 @@ describe('UpdateFromMarketplace', () => {
   })
 
   it('renders the upgrade modal content and current version transition', async () => {
-    render(
-      <UpdateFromMarketplace
-        payload={createPayload()}
-        onSave={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-    )
+    render(<UpdateFromMarketplace payload={createPayload()} onSave={vi.fn()} onCancel={vi.fn()} />)
 
     expect(screen.getByText('plugin.upgrade.title')).toBeInTheDocument()
     expect(screen.getByText('plugin.upgrade.description')).toBeInTheDocument()
@@ -156,13 +147,7 @@ describe('UpdateFromMarketplace', () => {
 
   it('submits the marketplace upgrade and calls onSave when installation is immediate', async () => {
     const onSave = vi.fn()
-    render(
-      <UpdateFromMarketplace
-        payload={createPayload()}
-        onSave={onSave}
-        onCancel={vi.fn()}
-      />,
-    )
+    render(<UpdateFromMarketplace payload={createPayload()} onSave={onSave} onCancel={vi.fn()} />)
 
     fireEvent.click(screen.getByText('plugin.upgrade.upgrade'))
 
@@ -179,20 +164,16 @@ describe('UpdateFromMarketplace', () => {
     mockUpdateFromMarketPlace.mockResolvedValue({
       task: {
         status: TaskStatus.failed,
-        plugins: [{
-          plugin_unique_identifier: 'plugin@2.0.0',
-          message: 'upgrade failed',
-        }],
+        plugins: [
+          {
+            plugin_unique_identifier: 'plugin@2.0.0',
+            message: 'upgrade failed',
+          },
+        ],
       },
     })
 
-    render(
-      <UpdateFromMarketplace
-        payload={createPayload()}
-        onSave={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-    )
+    render(<UpdateFromMarketplace payload={createPayload()} onSave={vi.fn()} onCancel={vi.fn()} />)
 
     fireEvent.click(screen.getByText('plugin.upgrade.upgrade'))
 
@@ -215,7 +196,10 @@ describe('UpdateFromMarketplace', () => {
     fireEvent.click(screen.getByText('exclude and downgrade'))
 
     await waitFor(() => {
-      expect(mockRemoveAutoUpgrade).toHaveBeenCalledWith({ plugin_id: 'plugin-1', category: PluginCategoryEnum.tool })
+      expect(mockRemoveAutoUpgrade).toHaveBeenCalledWith({
+        plugin_id: 'plugin-1',
+        category: PluginCategoryEnum.tool,
+      })
       expect(mockUpdateFromMarketPlace).toHaveBeenCalled()
     })
   })

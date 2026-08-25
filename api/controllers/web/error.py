@@ -7,6 +7,12 @@ class AppUnavailableError(BaseHTTPException):
     code = 400
 
 
+class AgentNotPublishedError(BaseHTTPException):
+    error_code = "agent_not_published"
+    description = "Agent has not been published. Please publish the Agent before using the web app."
+    code = 400
+
+
 class NotCompletionAppError(BaseHTTPException):
     error_code = "not_completion_app"
     description = "Please check if your Completion app mode matches the right API route."
@@ -97,6 +103,12 @@ class ProviderNotSupportSpeechToTextError(BaseHTTPException):
     code = 400
 
 
+class SpeechToTextDisabledError(BaseHTTPException):
+    error_code = "speech_to_text_disabled"
+    description = "Speech to text is disabled."
+    code = 400
+
+
 class WebAppAuthRequiredError(BaseHTTPException):
     error_code = "web_sso_auth_required"
     description = "Web app authentication required."
@@ -107,6 +119,18 @@ class WebAppAuthAccessDeniedError(BaseHTTPException):
     error_code = "web_app_access_denied"
     description = "You do not have permission to access this web app."
     code = 401
+
+
+class WebAppNotFoundError(BaseHTTPException):
+    error_code = "app_not_found"
+    description = "App not found."
+    code = 404
+
+
+class WebAppAccessServiceUnavailableError(BaseHTTPException):
+    error_code = "web_app_access_unavailable"
+    description = "Web app access service is unavailable."
+    code = 503
 
 
 class InvokeRateLimitError(BaseHTTPException):

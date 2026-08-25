@@ -18,18 +18,23 @@ from controllers.service_api.app.error import (
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
     ProviderQuotaExceededError,
+    SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
 )
 from controllers.service_api.schema import binary_response, expect_with_user, multipart_file_params
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
+from libs.helper import dump_response
 from models.model import App, EndUser
+from services.app_ref_service import AppRefService
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
+    SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
 
@@ -44,13 +49,14 @@ class AudioApi(Resource):
         summary="Convert Audio to Text",
         description=(
             "Convert audio file to text. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, "
-            "`audio/wav`, and `audio/amr`. File size limit is `30 MB`."
+            "`audio/x-m4a`, `audio/wav`, and `audio/amr`. File size limit is `30 MB`."
         ),
         tags=["TTS"],
         responses={
             200: "Successfully converted audio to text.",
             400: (
                 "- `app_unavailable` : App unavailable or misconfigured.\n"
+                "- `speech_to_text_disabled` : Speech-to-text is disabled for this app.\n"
                 "- `provider_not_support_speech_to_text` : Model provider does not support speech-to-text.\n"
                 "- `provider_not_initialize` : No valid model provider credentials found.\n"
                 "- `provider_quota_exceeded` : Model provider quota exhausted.\n"
@@ -70,7 +76,7 @@ class AudioApi(Resource):
             include_user=True,
             file_description=(
                 "Audio file to transcribe. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, "
-                "`audio/wav`, and `audio/amr`. File size limit is `30 MB`."
+                "`audio/x-m4a`, `audio/wav`, and `audio/amr`. File size limit is `30 MB`."
             ),
         ),
     )
@@ -95,12 +101,17 @@ class AudioApi(Resource):
 
         Accepts an audio file upload and returns the transcribed text.
         """
-        file = request.files["file"]
+        file = request.files.get("file")
 
         try:
-            response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=end_user.id)
+            response = AudioService.transcript_asr(
+                app_model=app_model,
+                file=file,
+                session=db.session(),
+                end_user=end_user.id,
+            )
 
-            return response
+            return dump_response(AudioTranscriptResponse, response)
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
@@ -112,6 +123,8 @@ class AudioApi(Resource):
             raise UnsupportedAudioTypeError()
         except ProviderNotSupportSpeechToTextServiceError:
             raise ProviderNotSupportSpeechToTextError()
+        except SpeechToTextDisabledServiceError:
+            raise SpeechToTextDisabledError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -138,8 +151,9 @@ class TextApi(Resource):
         tags=["TTS"],
         responses={
             200: (
-                "Returns the generated audio. Generator responses are streamed by the service as `audio/mpeg`; "
-                "otherwise the provider output is returned directly."
+                "Returns the generated audio. The `Content-Type` header reflects the provider audio container, "
+                "verified from the response bytes when recognizable. The binary response can be AAC, FLAC, MP4, "
+                "MP3, Ogg, WAV, or WebM."
             ),
             400: (
                 "- `app_unavailable` : App unavailable or misconfigured.\n"
@@ -152,7 +166,8 @@ class TextApi(Resource):
         },
     )
     @expect_with_user(service_api_ns, TextToAudioPayload)
-    @binary_response(service_api_ns, "audio/mpeg")
+    # OpenAPI 2 cannot express a runtime-selected response MIME type, so document the body as generic binary.
+    @binary_response(service_api_ns, "application/octet-stream")
     @service_api_ns.doc("text_to_audio")
     @service_api_ns.doc(description="Convert text to audio using text-to-speech")
     @service_api_ns.doc(
@@ -163,6 +178,7 @@ class TextApi(Resource):
             500: "Internal server error",
         }
     )
+    # TTS returns provider audio bytes, so the success response is intentionally schema-less.
     @service_api_ns.response(200, "Text successfully converted to audio")
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
     def post(self, app_model: App, end_user: EndUser):
@@ -176,11 +192,22 @@ class TextApi(Resource):
             message_id = payload.message_id
             text = payload.text
             voice = payload.voice
-            response = AudioService.transcript_tts(
-                app_model=app_model, text=text, voice=voice, end_user=end_user.external_user_id, message_id=message_id
+            message_ref = None
+            if message_id:
+                app_ref = AppRefService.create_app_ref(app_model)
+                message_ref = AppRefService.create_message_ref(
+                    app_ref,
+                    message_id,
+                    end_user_id=end_user.id,
+                )
+            return AudioService.transcript_tts(
+                app_model=app_model,
+                session=db.session(),
+                text=text,
+                voice=voice,
+                end_user=end_user.external_user_id,
+                message_ref=message_ref,
             )
-
-            return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()

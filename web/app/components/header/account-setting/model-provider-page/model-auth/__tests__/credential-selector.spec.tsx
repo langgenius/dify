@@ -3,7 +3,13 @@ import userEvent from '@testing-library/user-event'
 import CredentialSelector from '../credential-selector'
 
 vi.mock('../authorized/credential-item', () => ({
-  default: ({ credential, onItemClick }: { credential: { credential_name: string }, onItemClick?: (c: unknown) => void }) => (
+  default: ({
+    credential,
+    onItemClick,
+  }: {
+    credential: { credential_name: string }
+    onItemClick?: (c: unknown) => void
+  }) => (
     <button type="button" onClick={() => onItemClick?.(credential)}>
       {credential.credential_name}
     </button>
@@ -44,24 +50,14 @@ describe('CredentialSelector', () => {
   })
 
   it('should render placeholder when selectedCredential is missing', () => {
-    render(
-      <CredentialSelector
-        credentials={mockCredentials}
-        onSelect={mockOnSelect}
-      />,
-    )
+    render(<CredentialSelector credentials={mockCredentials} onSelect={mockOnSelect} />)
 
     expect(screen.getByText(/modelProvider.auth.selectModelCredential/)).toBeInTheDocument()
   })
 
   it('should call onSelect when a credential item is clicked', async () => {
     const user = userEvent.setup()
-    render(
-      <CredentialSelector
-        credentials={mockCredentials}
-        onSelect={mockOnSelect}
-      />,
-    )
+    render(<CredentialSelector credentials={mockCredentials} onSelect={mockOnSelect} />)
 
     await user.click(screen.getByText(/modelProvider.auth.selectModelCredential/))
     await user.click(screen.getByRole('button', { name: 'Key 2' }))
@@ -71,31 +67,22 @@ describe('CredentialSelector', () => {
 
   it('should call onSelect with add-new payload when add action is clicked', async () => {
     const user = userEvent.setup()
-    render(
-      <CredentialSelector
-        credentials={mockCredentials}
-        onSelect={mockOnSelect}
-      />,
-    )
+    render(<CredentialSelector credentials={mockCredentials} onSelect={mockOnSelect} />)
 
     await user.click(screen.getByText(/modelProvider.auth.selectModelCredential/))
     await user.click(screen.getByText(/modelProvider.auth.addNewModelCredential/))
 
-    expect(mockOnSelect).toHaveBeenCalledWith(expect.objectContaining({
-      credential_id: '__add_new_credential',
-      addNewCredential: true,
-    }))
+    expect(mockOnSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        credential_id: '__add_new_credential',
+        addNewCredential: true,
+      }),
+    )
   })
 
   it('should not open options when disabled is true', async () => {
     const user = userEvent.setup()
-    render(
-      <CredentialSelector
-        disabled
-        credentials={mockCredentials}
-        onSelect={mockOnSelect}
-      />,
-    )
+    render(<CredentialSelector disabled credentials={mockCredentials} onSelect={mockOnSelect} />)
 
     await user.click(screen.getByText(/modelProvider.auth.selectModelCredential/))
     expect(screen.queryByRole('button', { name: 'Key 1' })).not.toBeInTheDocument()

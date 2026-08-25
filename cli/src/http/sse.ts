@@ -43,10 +43,8 @@ export async function* parseSSE(
     reader.cancel().catch(() => {})
   }
   if (signal !== undefined) {
-    if (signal.aborted)
-      onAbort()
-    else
-      signal.addEventListener('abort', onAbort, { once: true })
+    if (signal.aborted) onAbort()
+    else signal.addEventListener('abort', onAbort, { once: true })
   }
 
   const pump = (async () => {
@@ -58,18 +56,15 @@ export async function* parseSSE(
           throw e
         }
         const { value, done: rDone } = await reader.read()
-        if (rDone)
-          break
+        if (rDone) break
         parser.feed(dec.decode(value, { stream: true }))
       }
-    }
-    finally {
+    } finally {
       done = true
       wake()
       try {
         reader.releaseLock()
-      }
-      catch {}
+      } catch {}
     }
   })()
 
@@ -77,8 +72,7 @@ export async function* parseSSE(
     while (true) {
       while (queue.length > 0) {
         const ev = queue.shift()
-        if (ev !== undefined)
-          yield ev
+        if (ev !== undefined) yield ev
       }
       if (done) {
         await pump
@@ -93,15 +87,12 @@ export async function* parseSSE(
       })
       pendingWake = false
     }
-  }
-  finally {
-    if (signal !== undefined)
-      signal.removeEventListener('abort', onAbort)
+  } finally {
+    if (signal !== undefined) signal.removeEventListener('abort', onAbort)
     if (!done) {
       try {
         await reader.cancel()
-      }
-      catch {}
+      } catch {}
     }
   }
 }

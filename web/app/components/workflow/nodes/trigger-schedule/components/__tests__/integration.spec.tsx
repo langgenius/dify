@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { ScheduleTriggerNodeType } from '../../types'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -35,12 +35,7 @@ describe('trigger-schedule components', () => {
     it('should select a new frequency from the dropdown options', async () => {
       const user = userEvent.setup()
       const onChange = vi.fn()
-      render(
-        <FrequencySelector
-          frequency="daily"
-          onChange={onChange}
-        />,
-      )
+      render(<FrequencySelector frequency="daily" onChange={onChange} />)
 
       const trigger = screen.getByRole('combobox')
       await user.click(trigger)
@@ -77,7 +72,9 @@ describe('trigger-schedule components', () => {
       const onChange = vi.fn()
       render(<OnMinuteSelector value={15} onChange={onChange} />)
 
-      const slider = screen.getByLabelText('workflow.nodes.triggerSchedule.onMinute')
+      const slider = screen.getByRole('slider', {
+        name: 'workflow.nodes.triggerSchedule.onMinute',
+      })
       slider.focus()
       await user.keyboard('{ArrowRight}')
 
@@ -119,16 +116,24 @@ describe('trigger-schedule components', () => {
     it('should render the upcoming execution times when the schedule is valid', () => {
       render(<NextExecutionTimes data={createData()} />)
 
-      expect(screen.getByText('workflow.nodes.triggerSchedule.nextExecutionTimes')).toBeInTheDocument()
+      expect(
+        screen.getByText('workflow.nodes.triggerSchedule.nextExecutionTimes'),
+      ).toBeInTheDocument()
       expect(screen.getAllByText(/^\d{2}$/).length).toBeGreaterThan(0)
     })
 
     it('should hide upcoming execution times when frequency is missing or cron is invalid', () => {
-      const { rerender, container } = render(<NextExecutionTimes data={createData({ frequency: undefined }) as any} />)
+      const { rerender, container } = render(
+        <NextExecutionTimes data={createData({ frequency: undefined }) as any} />,
+      )
 
       expect(container).toBeEmptyDOMElement()
 
-      rerender(<NextExecutionTimes data={createData({ mode: 'cron', cron_expression: 'bad cron' }) as any} />)
+      rerender(
+        <NextExecutionTimes
+          data={createData({ mode: 'cron', cron_expression: 'bad cron' }) as any}
+        />,
+      )
       expect(container).toBeEmptyDOMElement()
     })
   })

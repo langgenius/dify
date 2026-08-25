@@ -1,11 +1,20 @@
+import type { ReactElement } from 'react'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { ChunkingMode, DatasetPermission, DataSourceType, RerankingModeEnum } from '@/models/datasets'
+import {
+  ChunkingMode,
+  DatasetPermission,
+  DataSourceType,
+  RerankingModeEnum,
+} from '@/models/datasets'
+import { consoleQuery } from '@/service/client'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { RetrievalChangeTip, RetrievalSection } from '../retrieval-section'
 
@@ -25,12 +34,6 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     modelProviders: [],
     textGenerationModelList: [],
-    supportRetrievalMethods: [
-      RETRIEVE_METHOD.semantic,
-      RETRIEVE_METHOD.fullText,
-      RETRIEVE_METHOD.hybrid,
-      RETRIEVE_METHOD.keywordSearch,
-    ],
   }),
 }))
 
@@ -43,9 +46,9 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({ defaultModel }: { defaultModel?: { provider: string, model: string } }) => (
+  ModelSelector: ({ value }: { value?: { provider: string; model: string } }) => (
     <div data-testid="model-selector">
-      {defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'no-model'}
+      {value ? `${value.provider}/${value.model}` : 'no-model'}
     </div>
   ),
 }))
@@ -56,6 +59,14 @@ vi.mock('@/app/components/datasets/create/step-two', () => ({
     ECONOMICAL: 'economy',
   },
 }))
+
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.datasets.retrievalSetting.get.queryOptions().queryKey, {
+    retrieval_method: [RETRIEVE_METHOD.semantic, RETRIEVE_METHOD.fullText, RETRIEVE_METHOD.hybrid],
+  })
+  return renderWithConsoleQuery(ui, { queryClient })
+}
 
 const createRetrievalConfig = (overrides: Partial<RetrievalConfig> = {}): RetrievalConfig => ({
   search_method: RETRIEVE_METHOD.semantic,
@@ -71,7 +82,10 @@ const createRetrievalConfig = (overrides: Partial<RetrievalConfig> = {}): Retrie
   ...overrides,
 })
 
-const createDataset = (overrides: Partial<DataSet> = {}, retrievalOverrides: Partial<RetrievalConfig> = {}): DataSet => {
+const createDataset = (
+  overrides: Partial<DataSet> = {},
+  retrievalOverrides: Partial<RetrievalConfig> = {},
+): DataSet => {
   const retrievalConfig = createRetrievalConfig(retrievalOverrides)
   return {
     id: 'dataset-id',
@@ -198,10 +212,10 @@ describe('RetrievalChangeTip', () => {
 })
 
 describe('RetrievalSection', () => {
-  const t = (key: string, options?: { ns?: string }) => {
+  const t = withSelectorKey((key: string, options?: { ns?: string }) => {
     const prefix = options?.ns ? `${options.ns}.` : ''
     return `${prefix}${key}`
-  }
+  }, 'datasetSettings')
   const rowClass = 'row'
   const labelClass = 'label'
 
@@ -213,7 +227,10 @@ describe('RetrievalSection', () => {
       return { data: [] }
     })
     mockUseModelListAndDefaultModel.mockReturnValue({ modelList: [], defaultModel: null })
-    mockUseModelListAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({ defaultModel: null, currentModel: null })
+    mockUseModelListAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({
+      defaultModel: null,
+      currentModel: null,
+    })
     mockUseCurrentProviderAndModel.mockReturnValue({ currentProvider: null, currentModel: null })
   })
 
@@ -278,9 +295,16 @@ describe('RetrievalSection', () => {
     // Assert
     // Assert
     expect(screen.getByText('dataset.retrieval.semantic_search.title'))!.toBeInTheDocument()
-    const learnMoreLink = screen.getByRole('link', { name: 'datasetSettings.form.retrievalSetting.learnMore' })
-    expect(learnMoreLink)!.toHaveAttribute('href', 'https://docs.example/use-dify/knowledge/create-knowledge/setting-indexing-methods')
-    expect(docLink).toHaveBeenCalledWith('/use-dify/knowledge/create-knowledge/setting-indexing-methods')
+    const learnMoreLink = screen.getByRole('link', {
+      name: 'datasetSettings.form.retrievalSetting.learnMore',
+    })
+    expect(learnMoreLink)!.toHaveAttribute(
+      'href',
+      'https://docs.example/use-dify/knowledge/create-knowledge/setting-indexing-methods',
+    )
+    expect(docLink).toHaveBeenCalledWith(
+      '/use-dify/knowledge/create-knowledge/setting-indexing-methods',
+    )
   })
 
   it('propagates retrieval config changes for economical indexing', async () => {
@@ -298,7 +322,7 @@ describe('RetrievalSection', () => {
         retrievalConfig={createRetrievalConfig()}
         showMultiModalTip={false}
         onRetrievalConfigChange={handleRetrievalChange}
-        docLink={path => path || ''}
+        docLink={(path) => path || ''}
       />,
     )
     const [topKIncrement] = screen.getAllByRole('button', { name: /increment/i })
@@ -307,8 +331,10 @@ describe('RetrievalSection', () => {
     // Assert
     // Assert
     expect(screen.getByText('dataset.retrieval.keyword_search.title'))!.toBeInTheDocument()
-    expect(handleRetrievalChange).toHaveBeenCalledWith(expect.objectContaining({
-      top_k: 3,
-    }))
+    expect(handleRetrievalChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        top_k: 3,
+      }),
+    )
   })
 })

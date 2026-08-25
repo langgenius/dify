@@ -4,7 +4,12 @@ import type { PermissionType } from '@/app/components/plugins/types'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 
 const isPluginCategorySection = (section: IntegrationSection) => {
-  return section === 'builtin' || section === 'trigger' || section === 'agent-strategy' || section === 'extension'
+  return (
+    section === 'builtin' ||
+    section === 'trigger' ||
+    section === 'agent-strategy' ||
+    section === 'extension'
+  )
 }
 
 export function useIntegrationPermissions(section: IntegrationSection) {
@@ -12,11 +17,10 @@ export function useIntegrationPermissions(section: IntegrationSection) {
     permission,
     canDebugger,
     canInstallPlugin,
-    canManagePlugin,
+    canDeletePlugin,
     canSetPluginPreferences,
     canSetPermissions,
     canUpdatePlugin,
-    canViewInstalledPlugins,
     isPermissionLoading,
     permissionError,
     setPluginPermissionSettings,
@@ -26,8 +30,7 @@ export function useIntegrationPermissions(section: IntegrationSection) {
   const showPermissionQuickPanel = canSetPermissions && !!permission
 
   const handlePermissionChange = (key: PermissionSettingKey, value: PermissionType) => {
-    if (!permission)
-      return
+    if (!permission) return
 
     setPluginPermissionSettings({
       ...permission,
@@ -38,10 +41,9 @@ export function useIntegrationPermissions(section: IntegrationSection) {
   return {
     canDebugger,
     canInstallPlugin,
-    canManagePlugin,
+    canDeletePlugin,
     canSetPluginPreferences,
     canUpdatePlugin,
-    canViewInstalledPlugins,
     canManagement: canInstallPlugin,
     handlePermissionChange,
     isPluginCategory,

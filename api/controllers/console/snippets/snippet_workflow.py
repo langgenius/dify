@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
+from controllers.common.controller_schemas import WorkflowUpdatePayload
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -35,6 +36,7 @@ from controllers.console.wraps import (
     RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_user,
@@ -55,7 +57,9 @@ from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models import Account
 from models.snippet import CustomizedSnippet
+from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
+from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from services.snippet_generate_service import SnippetGenerateService
 from services.snippet_service import SnippetService
 
@@ -80,6 +84,13 @@ class SnippetDraftConfigResponse(BaseModel):
     parallel_depth_limit: int
 
 
+class SnippetWorkflowPaginationResponse(BaseModel):
+    items: list[SnippetWorkflowResponse]
+    page: int
+    limit: int
+    has_more: bool
+
+
 register_schema_models(
     console_ns,
     SnippetDraftSyncPayload,
@@ -89,6 +100,7 @@ register_schema_models(
     SnippetLoopNodeRunPayload,
     SnippetWorkflowListQuery,
     WorkflowRunQuery,
+    WorkflowUpdatePayload,
     PublishWorkflowPayload,
 )
 register_response_schema_models(
@@ -98,6 +110,7 @@ register_response_schema_models(
     SimpleResultResponse,
     SnippetDraftConfigResponse,
     SnippetWorkflowResponse,
+    SnippetWorkflowPaginationResponse,
     WorkflowPublishResponse,
     WorkflowPaginationResponse,
     WorkflowRestoreResponse,
@@ -157,7 +170,6 @@ class SnippetDraftWorkflowApi(Resource):
     @account_initialization_required
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False)
     def get(self, snippet: CustomizedSnippet):
         """Get draft workflow for snippet."""
         snippet_service = _snippet_service()
@@ -168,6 +180,10 @@ class SnippetDraftWorkflowApi(Resource):
 
         workflow.conversation_variables = []
         response = SnippetWorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
+        response["graph"] = WorkflowAgentPublishService.project_draft_bindings_to_graph(
+            session=db.session(),
+            draft_workflow=workflow,
+        )
         response["input_fields"] = snippet.input_fields_list
         return response
 
@@ -188,18 +204,18 @@ class SnippetDraftWorkflowApi(Resource):
     @rbac_permission_required(
         RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
     )
-    def post(self, current_user: Account, snippet: CustomizedSnippet):
+    @model_validate(SnippetDraftSyncPayload)
+    def post(self, req_data: SnippetDraftSyncPayload, current_user: Account, snippet: CustomizedSnippet):
         """Sync draft workflow for snippet."""
-        payload = SnippetDraftSyncPayload.model_validate(console_ns.payload or {})
 
         try:
             snippet_service = _snippet_service()
             workflow = snippet_service.sync_draft_workflow(
                 snippet=snippet,
-                graph=payload.graph,
-                unique_hash=payload.hash,
+                graph=req_data.graph,
+                unique_hash=req_data.hash,
                 account=current_user,
-                input_fields=payload.input_fields,
+                input_fields=req_data.input_fields,
             )
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
@@ -226,7 +242,6 @@ class SnippetDraftConfigApi(Resource):
     @account_initialization_required
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False)
     def get(self, snippet: CustomizedSnippet):
         """Get snippet draft workflow configuration limits."""
         return {
@@ -248,7 +263,6 @@ class SnippetPublishedWorkflowApi(Resource):
     @account_initialization_required
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False)
     def get(self, snippet: CustomizedSnippet):
         """Get published workflow for snippet."""
         if not snippet.is_published:
@@ -313,7 +327,6 @@ class SnippetDefaultBlockConfigsApi(Resource):
     @account_initialization_required
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False)
     def get(self, snippet: CustomizedSnippet):
         """Get default block configurations for snippet workflow."""
         snippet_service = _snippet_service()
@@ -329,36 +342,41 @@ class SnippetPublishedAllWorkflowApi(Resource):
     @console_ns.response(
         200,
         "Published workflows retrieved successfully",
-        console_ns.models[WorkflowPaginationResponse.__name__],
+        console_ns.models[SnippetWorkflowPaginationResponse.__name__],
     )
     @setup_required
     @login_required
     @account_initialization_required
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False)
-    def get(self, snippet: CustomizedSnippet):
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
+    )
+    @model_validate(SnippetWorkflowListQuery)
+    def get(self, req_data: SnippetWorkflowListQuery, snippet: CustomizedSnippet):
         """Get all published workflow versions for snippet."""
-        args = SnippetWorkflowListQuery.model_validate(request.args.to_dict(flat=True))
 
         snippet_service = _snippet_service()
         with Session(db.engine) as session:
             workflows, has_more = snippet_service.get_all_published_workflows(
                 session=session,
                 snippet=snippet,
-                page=args.page,
-                limit=args.limit,
+                page=req_data.page,
+                limit=req_data.limit,
             )
 
-        return WorkflowPaginationResponse.model_validate(
+        response = SnippetWorkflowPaginationResponse.model_validate(
             {
                 "items": workflows,
-                "page": args.page,
-                "limit": args.limit,
+                "page": req_data.page,
+                "limit": req_data.limit,
                 "has_more": has_more,
             },
             from_attributes=True,
         ).model_dump(mode="json")
+        for item in response["items"]:
+            item["input_fields"] = snippet.input_fields_list
+        return response
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/<string:workflow_id>/restore")
@@ -400,6 +418,88 @@ class SnippetDraftWorkflowRestoreApi(Resource):
             "hash": workflow.unique_hash,
             "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
         }
+
+
+@console_ns.route("/snippets/<uuid:snippet_id>/workflows/<string:workflow_id>")
+class SnippetWorkflowByIdApi(Resource):
+    @console_ns.doc("update_snippet_workflow_by_id")
+    @console_ns.doc(description="Update published snippet workflow attributes")
+    @console_ns.doc(params={"snippet_id": "Snippet ID", "workflow_id": "Workflow ID"})
+    @console_ns.expect(console_ns.models[WorkflowUpdatePayload.__name__])
+    @console_ns.response(200, "Workflow updated successfully", console_ns.models[SnippetWorkflowResponse.__name__])
+    @console_ns.response(400, "No valid fields to update")
+    @console_ns.response(404, "Workflow not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @get_snippet
+    @edit_permission_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
+    )
+    @model_validate(WorkflowUpdatePayload)
+    def patch(
+        self,
+        req_data: WorkflowUpdatePayload,
+        current_user: Account,
+        snippet: CustomizedSnippet,
+        workflow_id: str,
+    ):
+        """Update a published snippet workflow version's display metadata."""
+        update_data = req_data.model_dump(exclude_unset=True)
+
+        if not update_data:
+            return {"message": "No valid fields to update"}, 400
+
+        snippet_service = _snippet_service()
+        with _snippet_session_maker().begin() as session:
+            workflow = snippet_service.update_workflow(
+                session=session,
+                snippet=snippet,
+                workflow_id=workflow_id,
+                account=current_user,
+                data=update_data,
+            )
+            if not workflow:
+                raise NotFound("Workflow not found")
+
+        response = SnippetWorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
+        response["input_fields"] = snippet.input_fields_list
+        return response
+
+    @console_ns.doc("delete_snippet_workflow_by_id")
+    @console_ns.doc(description="Delete a published snippet workflow version")
+    @console_ns.doc(params={"snippet_id": "Snippet ID", "workflow_id": "Workflow ID"})
+    @console_ns.response(204, "Workflow deleted successfully")
+    @console_ns.response(400, "Workflow is in use")
+    @console_ns.response(404, "Workflow not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_snippet
+    @edit_permission_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
+    )
+    def delete(self, snippet: CustomizedSnippet, workflow_id: str):
+        """Delete a published snippet workflow version."""
+        snippet_service = _snippet_service()
+        with _snippet_session_maker().begin() as session:
+            try:
+                snippet_service.delete_workflow(
+                    session=session,
+                    snippet=snippet,
+                    workflow_id=workflow_id,
+                )
+            except WorkflowInUseError as e:
+                raise BadRequest(str(e))
+            except DraftWorkflowDeletionError as e:
+                raise BadRequest(str(e))
+            except ValueError as e:
+                raise NotFound(str(e))
+
+        return None, 204
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflow-runs")
@@ -503,19 +603,22 @@ class SnippetDraftNodeRunApi(Resource):
     @with_current_user
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
-    def post(self, current_user: Account, snippet: CustomizedSnippet, node_id: str):
+    @model_validate(SnippetDraftNodeRunPayload)
+    def post(
+        self,
+        req_data: SnippetDraftNodeRunPayload,
+        current_user: Account,
+        snippet: CustomizedSnippet,
+        node_id: str,
+    ):
         """
         Run a single node in snippet draft workflow.
 
         Executes a specific node with provided inputs for single-step debugging.
         Returns the node execution result including status, outputs, and timing.
         """
-        payload = SnippetDraftNodeRunPayload.model_validate(console_ns.payload or {})
 
-        user_inputs = payload.inputs
+        user_inputs = req_data.inputs
 
         # Get draft workflow for file parsing
         snippet_service = _snippet_service()
@@ -523,14 +626,14 @@ class SnippetDraftNodeRunApi(Resource):
         if not draft_workflow:
             raise NotFound("Draft workflow not found")
 
-        files = SnippetGenerateService.parse_files(draft_workflow, payload.files)
+        files = SnippetGenerateService.parse_files(draft_workflow, req_data.files)
 
         workflow_node_execution = SnippetGenerateService.run_draft_node(
             snippet=snippet,
             node_id=node_id,
             user_inputs=user_inputs,
             account=current_user,
-            query=payload.query,
+            query=req_data.query,
             files=files,
             session_maker=_snippet_session_maker(),
         )
@@ -594,17 +697,21 @@ class SnippetDraftRunIterationNodeApi(Resource):
     @with_current_user
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
-    def post(self, current_user: Account, snippet: CustomizedSnippet, node_id: str):
+    @model_validate(SnippetIterationNodeRunPayload)
+    def post(
+        self,
+        req_data: SnippetIterationNodeRunPayload,
+        current_user: Account,
+        snippet: CustomizedSnippet,
+        node_id: str,
+    ):
         """
         Run a draft workflow iteration node for snippet.
 
         Iteration nodes execute their internal sub-graph multiple times over an input list.
         Returns an SSE event stream with iteration progress and results.
         """
-        args = SnippetIterationNodeRunPayload.model_validate(console_ns.payload or {}).model_dump(exclude_none=True)
+        args = req_data.model_dump(exclude_none=True)
 
         try:
             response = SnippetGenerateService.generate_single_iteration(
@@ -642,24 +749,27 @@ class SnippetDraftRunLoopNodeApi(Resource):
     @with_current_user
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
-    def post(self, current_user: Account, snippet: CustomizedSnippet, node_id: str):
+    @model_validate(SnippetLoopNodeRunPayload)
+    def post(
+        self,
+        req_data: SnippetLoopNodeRunPayload,
+        current_user: Account,
+        snippet: CustomizedSnippet,
+        node_id: str,
+    ):
         """
         Run a draft workflow loop node for snippet.
 
         Loop nodes execute their internal sub-graph repeatedly until a condition is met.
         Returns an SSE event stream with loop progress and results.
         """
-        args = SnippetLoopNodeRunPayload.model_validate(console_ns.payload or {})
 
         try:
             response = SnippetGenerateService.generate_single_loop(
                 snippet=snippet,
                 user=current_user,
                 node_id=node_id,
-                args=args,
+                args=req_data,
                 streaming=True,
                 session_maker=_snippet_session_maker(),
             )
@@ -688,18 +798,15 @@ class SnippetDraftWorkflowRunApi(Resource):
     @with_current_user
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
-    def post(self, current_user: Account, snippet: CustomizedSnippet):
+    @model_validate(SnippetDraftRunPayload)
+    def post(self, req_data: SnippetDraftRunPayload, current_user: Account, snippet: CustomizedSnippet):
         """
         Run draft workflow for snippet.
 
         Executes the snippet's draft workflow with the provided inputs
         and returns an SSE event stream with execution progress and results.
         """
-        payload = SnippetDraftRunPayload.model_validate(console_ns.payload or {})
-        args = payload.model_dump(exclude_none=True)
+        args = req_data.model_dump(exclude_none=True)
 
         try:
             response = SnippetGenerateService.generate(
@@ -729,9 +836,6 @@ class SnippetWorkflowTaskStopApi(Resource):
     @account_initialization_required
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
     def post(self, snippet: CustomizedSnippet, task_id: str):
         """
         Stop a running snippet workflow task.

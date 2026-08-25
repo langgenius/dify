@@ -8,7 +8,7 @@ from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 
 class APIBasedExtensionService:
     @staticmethod
-    def get_all_by_tenant_id(session: Session, tenant_id: str) -> list[APIBasedExtension]:
+    def get_all_by_tenant_id(tenant_id: str, *, session: Session) -> list[APIBasedExtension]:
         extension_list = list(
             session.scalars(
                 select(APIBasedExtension)
@@ -23,7 +23,7 @@ class APIBasedExtensionService:
         return extension_list
 
     @classmethod
-    def save(cls, session: Session, extension_data: APIBasedExtension) -> APIBasedExtension:
+    def save(cls, extension_data: APIBasedExtension, *, session: Session) -> APIBasedExtension:
         cls._validation(session, extension_data)
 
         extension_data.api_key = encrypt_token(extension_data.tenant_id, extension_data.api_key)
@@ -33,12 +33,12 @@ class APIBasedExtensionService:
         return extension_data
 
     @staticmethod
-    def delete(session: Session, extension_data: APIBasedExtension):
+    def delete(extension_data: APIBasedExtension, *, session: Session):
         session.delete(extension_data)
         session.commit()
 
     @staticmethod
-    def get_with_tenant_id(session: Session, tenant_id: str, api_based_extension_id: str) -> APIBasedExtension:
+    def get_with_tenant_id(tenant_id: str, api_based_extension_id: str, *, session: Session) -> APIBasedExtension:
         extension = session.scalar(
             select(APIBasedExtension)
             .where(APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id)

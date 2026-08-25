@@ -1,14 +1,47 @@
 'use client'
 import { useCountDown } from 'ahooks'
-import { useEffect, useState } from 'react'
+import { useIsClient } from 'foxact/use-is-client'
+import { Suspense, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { COUNT_DOWN_TIME_MS, useCountdownLeftTimeValue, useSetCountdownLeftTime } from './storage'
 
 type CountdownProps = {
   onResend?: () => void
+  resendDisabled?: boolean
+  restartOnResend?: boolean
 }
 
-export default function Countdown({ onResend }: CountdownProps) {
+export default function Countdown({
+  onResend,
+  resendDisabled,
+  restartOnResend = true,
+}: CountdownProps) {
+  const isClient = useIsClient()
+
+  if (!isClient) return <CountdownFallback />
+
+  return (
+    <Suspense fallback={<CountdownFallback />}>
+      <CountdownContent
+        onResend={onResend}
+        resendDisabled={resendDisabled}
+        restartOnResend={restartOnResend}
+      />
+    </Suspense>
+  )
+}
+
+function CountdownFallback() {
+  const { t } = useTranslation()
+
+  return (
+    <p className="system-xs-regular text-text-tertiary">
+      <span>{t(($) => $['checkCode.didNotReceiveCode'], { ns: 'login' })}</span>
+    </p>
+  )
+}
+
+function CountdownContent({ onResend, resendDisabled, restartOnResend }: CountdownProps) {
   const { t } = useTranslation()
   const storedLeftTime = useCountdownLeftTimeValue()
   const setStoredLeftTime = useSetCountdownLeftTime()
@@ -21,9 +54,11 @@ export default function Countdown({ onResend }: CountdownProps) {
     },
   })
 
-  const resend = async function () {
-    setLeftTime(COUNT_DOWN_TIME_MS)
-    setStoredLeftTime(`${COUNT_DOWN_TIME_MS}`)
+  const resend = function () {
+    if (restartOnResend) {
+      setLeftTime(COUNT_DOWN_TIME_MS)
+      setStoredLeftTime(`${COUNT_DOWN_TIME_MS}`)
+    }
     onResend?.()
   }
 
@@ -33,24 +68,18 @@ export default function Countdown({ onResend }: CountdownProps) {
 
   return (
     <p className="system-xs-regular text-text-tertiary">
-      <span>{t('checkCode.didNotReceiveCode', { ns: 'login' })}</span>
-      {time > 0 && (
-        <span>
-          {Math.round(time / 1000)}
-          s
-        </span>
+      <span>{t(($) => $['checkCode.didNotReceiveCode'], { ns: 'login' })}</span>
+      {time > 0 && <span>{Math.round(time / 1000)}s</span>}
+      {time <= 0 && (
+        <button
+          type="button"
+          className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-medium text-text-accent-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden disabled:cursor-not-allowed disabled:text-text-disabled"
+          disabled={resendDisabled}
+          onClick={resend}
+        >
+          {t(($) => $['checkCode.resend'], { ns: 'login' })}
+        </button>
       )}
-      {
-        time <= 0 && (
-          <button
-            type="button"
-            className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-medium text-text-accent-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-            onClick={resend}
-          >
-            {t('checkCode.resend', { ns: 'login' })}
-          </button>
-        )
-      }
     </p>
   )
 }

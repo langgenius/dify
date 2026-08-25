@@ -2,20 +2,9 @@
 
 import type { ReactNode } from 'react'
 import type { AgentSoulConfigFormState } from './form-state'
-import { createStore, Provider as JotaiProvider } from 'jotai'
-import { useRef } from 'react'
-import { agentComposerDraftAtom, agentComposerOriginalDraftAtom } from './store'
-
-function createAgentComposerStore(initialDraft?: AgentSoulConfigFormState) {
-  const store = createStore()
-
-  if (initialDraft)
-    store.set(agentComposerDraftAtom, initialDraft)
-  if (initialDraft)
-    store.set(agentComposerOriginalDraftAtom, initialDraft)
-
-  return store
-}
+import { ScopeProvider } from 'jotai-scope'
+import { defaultAgentSoulConfigFormState } from './form-state'
+import { agentComposerDraftAtom, agentComposerSavedDraftAtom } from './store'
 
 export function AgentComposerProvider({
   children,
@@ -24,14 +13,17 @@ export function AgentComposerProvider({
   children: ReactNode
   initialDraft?: AgentSoulConfigFormState
 }) {
-  const storeRef = useRef<ReturnType<typeof createAgentComposerStore> | null>(null)
-  if (!storeRef.current)
-    storeRef.current = createAgentComposerStore(initialDraft)
-  const store = storeRef.current
+  const draft = initialDraft ?? defaultAgentSoulConfigFormState
 
   return (
-    <JotaiProvider store={store}>
+    <ScopeProvider
+      atoms={[
+        [agentComposerDraftAtom, draft],
+        [agentComposerSavedDraftAtom, draft],
+      ]}
+      name="AgentComposer"
+    >
       {children}
-    </JotaiProvider>
+    </ScopeProvider>
   )
 }

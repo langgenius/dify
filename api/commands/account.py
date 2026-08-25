@@ -20,12 +20,12 @@ def reset_password(email, new_password, password_confirm):
     Reset password of owner account
     Only available in SELF_HOSTED mode
     """
-    if str(new_password).strip() != str(password_confirm).strip():
+    if new_password.strip() != password_confirm.strip():
         click.echo(click.style("Passwords do not match.", fg="red"))
         return
     normalized_email = email.strip().lower()
 
-    account = AccountService.get_account_by_email_with_case_fallback(email.strip())
+    account = AccountService.get_account_by_email_with_case_fallback(email.strip(), session=db.session())
 
     if not account:
         click.echo(click.style(f"Account not found for email: {email}", fg="red"))
@@ -33,7 +33,7 @@ def reset_password(email, new_password, password_confirm):
 
     try:
         valid_password(new_password)
-    except:
+    except ValueError:
         click.echo(click.style(f"Invalid password. Must match {password_pattern}", fg="red"))
         return
 
@@ -62,12 +62,12 @@ def reset_email(email, new_email, email_confirm):
     Replace account email
     :return:
     """
-    if str(new_email).strip() != str(email_confirm).strip():
+    if new_email.strip() != email_confirm.strip():
         click.echo(click.style("New emails do not match.", fg="red"))
         return
     normalized_new_email = new_email.strip().lower()
 
-    account = AccountService.get_account_by_email_with_case_fallback(email.strip())
+    account = AccountService.get_account_by_email_with_case_fallback(email.strip(), session=db.session())
 
     if not account:
         click.echo(click.style(f"Account not found for email: {email}", fg="red"))
@@ -75,7 +75,7 @@ def reset_email(email, new_email, email_confirm):
 
     try:
         email_validate(normalized_new_email)
-    except:
+    except ValueError:
         click.echo(click.style(f"Invalid email: {new_email}", fg="red"))
         return
 
@@ -133,8 +133,9 @@ def create_tenant(email: str, language: str | None = None, name: str | None = No
         password=new_password,
         language=language,
         create_workspace_required=False,
+        session=db.session(),
     )
-    TenantService.create_owner_tenant_if_not_exist(account, name)
+    TenantService.create_owner_tenant_if_not_exist(account, name, session=db.session())
 
     click.echo(
         click.style(

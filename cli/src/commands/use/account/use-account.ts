@@ -15,22 +15,20 @@ export type UseAccountOptions = {
   readonly store?: TokenStore
 }
 
-type AccountChoice = { email: string, name: string, sso: boolean, active: boolean }
+type AccountChoice = { email: string; name: string; sso: boolean; active: boolean }
 
-const USE_HOST_HINT = 'run \'difyctl use host\' or \'difyctl auth login\''
+const USE_HOST_HINT = "run 'difyctl use host' or 'difyctl auth login'"
 
 export async function runUseAccount(opts: UseAccountOptions): Promise<void> {
   const cs = colorScheme(colorEnabled(opts.io.isErrTTY))
   const reg = await Registry.load()
-  if (reg.current_host === undefined)
-    throw notLoggedInError(USE_HOST_HINT)
+  if (reg.current_host === undefined) throw notLoggedInError(USE_HOST_HINT)
   const host = reg.current_host
   const entry = reg.hosts[host]
-  if (entry === undefined)
-    throw notLoggedInError(USE_HOST_HINT)
+  if (entry === undefined) throw notLoggedInError(USE_HOST_HINT)
 
   const emails = Object.keys(entry.accounts)
-  const target = opts.email ?? await pickAccount(opts, entry, host)
+  const target = opts.email ?? (await pickAccount(opts, entry, host))
   if (!emails.includes(target)) {
     throw new BaseError({
       code: ErrorCode.UsageInvalidFlag,
@@ -39,7 +37,7 @@ export async function runUseAccount(opts: UseAccountOptions): Promise<void> {
   }
 
   const store = opts.store ?? getTokenStore(reg.token_storage)
-  if (await store.read(host, target) === '') {
+  if ((await store.read(host, target)) === '') {
     throw new BaseError({
       code: ErrorCode.NotLoggedIn,
       message: `no credential stored for ${target} on ${host}`,
@@ -52,7 +50,11 @@ export async function runUseAccount(opts: UseAccountOptions): Promise<void> {
   opts.io.out.write(`${cs.successIcon()} Active account on ${host} is now ${target}\n`)
 }
 
-async function pickAccount(opts: UseAccountOptions, entry: HostEntry, host: string): Promise<string> {
+async function pickAccount(
+  opts: UseAccountOptions,
+  entry: HostEntry,
+  host: string,
+): Promise<string> {
   const emails = Object.keys(entry.accounts)
   if (!opts.io.isErrTTY) {
     throw new BaseError({
@@ -70,7 +72,8 @@ async function pickAccount(opts: UseAccountOptions, entry: HostEntry, host: stri
     io: opts.io,
     items: choices,
     header: `Select an account on ${host}`,
-    render: c => `${c.active ? '* ' : '  '}${c.email}  ${c.sso ? '(SSO)' : c.name !== '' ? `(${c.name})` : ''}`.trimEnd(),
+    render: (c) =>
+      `${c.active ? '* ' : '  '}${c.email}  ${c.sso ? '(SSO)' : c.name !== '' ? `(${c.name})` : ''}`.trimEnd(),
   })
   return picked.email
 }

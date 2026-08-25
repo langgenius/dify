@@ -9,10 +9,10 @@ export const zAccessMode = z.enum([
   'ACCESS_MODE_PRIVATE_ALL',
 ])
 
-export const zSubjectType = z.enum([
-  'SUBJECT_TYPE_UNSPECIFIED',
-  'SUBJECT_TYPE_ACCOUNT',
-  'SUBJECT_TYPE_GROUP',
+export const zAccessSubjectType = z.enum([
+  'ACCESS_SUBJECT_TYPE_UNSPECIFIED',
+  'ACCESS_SUBJECT_TYPE_ACCOUNT',
+  'ACCESS_SUBJECT_TYPE_GROUP',
 ])
 
 export const zAppRunnerLogStatus = z.enum([
@@ -203,7 +203,7 @@ export const zLimitStatus = z.enum([
 ])
 
 export const zAccessSubject = z.object({
-  subjectType: zSubjectType,
+  subjectType: zAccessSubjectType,
   subjectId: z.string(),
 })
 
@@ -254,10 +254,6 @@ export const zAppInstance = z.object({
   updatedAt: z.iso.datetime(),
 })
 
-/**
- * BootstrapAssignment is one runtime_instance assignment in a runner's startup
- * baseline.
- */
 export const zBootstrapAssignment = z.object({
   appId: z.string().optional(),
   environmentId: z.string().optional(),
@@ -322,10 +318,6 @@ export const zCreateReleaseRequest = z.object({
   sourceAppId: z.string().optional(),
 })
 
-/**
- * CredentialCandidate is one tenant-visible credential a frontend may
- * pick for a credential slot. It carries no secret.
- */
 export const zCredentialCandidate = z.object({
   credentialId: z.string(),
   providerId: z.string(),
@@ -334,20 +326,12 @@ export const zCredentialCandidate = z.object({
   fromEnterprise: z.boolean(),
 })
 
-/**
- * CredentialSelectionInput is one deploy-time plugin-credential
- * selection: a shared credential id chosen for a required DSL slot.
- */
 export const zCredentialSelectionInput = z.object({
   providerId: z.string(),
   category: zPluginCategory.optional(),
   credentialId: z.string(),
 })
 
-/**
- * CredentialSlot is one model/tool plugin-credential requirement a
- * Release's DSL declares, paired with the candidates selectable for it.
- */
 export const zCredentialSlot = z.object({
   providerId: z.string(),
   category: zPluginCategory,
@@ -406,10 +390,6 @@ export const zEnvironmentDeploymentRecord = z.object({
   finalizedAt: z.iso.datetime().optional(),
 })
 
-/**
- * Error is the package-wide failure shape, carried wherever an operation or
- * resource reports an error.
- */
 export const zError = z.object({
   code: z.string().optional(),
   message: z.string().optional(),
@@ -445,7 +425,6 @@ export const zEnvironment = z.object({
   status: zEnvironmentStatus,
   statusMessage: z.string(),
   lastError: zError.optional(),
-  apiServer: z.string().optional(),
   namespace: z.string().optional(),
   managedBy: z.string().optional(),
   runtimeEndpoint: z.string().optional(),
@@ -523,9 +502,6 @@ export const zGetEnvironmentResponse = z.object({
 
 export const zK8sEnvironmentConfig = z.object({
   namespace: z.string().optional(),
-  apiServer: z.string().optional(),
-  caBundle: z.string().optional(),
-  bearerToken: z.string().optional(),
 })
 
 export const zCreateEnvironmentRequest = z.object({
@@ -571,9 +547,6 @@ export const zDeployRequest = z.object({
   expectedDslDigest: z.string().optional(),
 })
 
-/**
- * Operator is who triggered the run (the "END USER OR ACCOUNT" column).
- */
 export const zOperator = z.object({
   type: zOperatorType,
   id: z.string(),
@@ -620,10 +593,6 @@ export const zPromoteRequest = z.object({
   idempotencyKey: z.string(),
 })
 
-/**
- * ReleaseContentMatch identifies an existing release whose DSL content is
- * identical to the checked content.
- */
 export const zReleaseContentMatch = z.object({
   releaseId: z.string(),
   displayName: z.string(),
@@ -638,11 +607,6 @@ export const zReleaseEnvironmentAction = z.object({
   currentReleaseId: z.string(),
 })
 
-/**
- * ReleaseEnvironmentDeployment is an environment where the release is the
- * active deployment, paired with that environment's runtime status so the
- * version history can show running vs failed vs deploying.
- */
 export const zReleaseEnvironmentDeployment = z.object({
   environment: zEnvironment,
   status: zRuntimeInstanceStatus,
@@ -663,10 +627,6 @@ export const zReportRuntimeAssignmentStatusResponse = z.object({
   stale: z.boolean().optional(),
 })
 
-/**
- * RequiredSlot is an input requirement extracted from a Release's
- * DSL.
- */
 export const zRequiredSlot = z.object({
   type: zSlotType,
   providerId: z.string(),
@@ -715,10 +675,6 @@ export const zDeployResponse = z.object({
   deployment: zDeployment,
 })
 
-/**
- * EnvironmentAppInstance is one app instance as seen from a single environment:
- * its current release, runtime status, and derived last error in THIS env.
- */
 export const zEnvironmentAppInstance = z.object({
   appInstance: zAppInstance.optional(),
   currentRelease: zRelease.optional(),
@@ -759,10 +715,6 @@ export const zComputeReleaseDeploymentViewResponse = z.object({
   options: zDeploymentOptions.optional(),
 })
 
-/**
- * EnvironmentDeploymentHistoryItem is one deployment row in an environment's
- * history, with a thin reference to the owning app instance.
- */
 export const zEnvironmentDeploymentHistoryItem = z.object({
   deployment: zDeployment.optional(),
   appInstanceId: z.string().optional(),
@@ -904,13 +856,17 @@ export const zUndeployResponse = z.object({
   deployment: zDeployment,
 })
 
-/**
- * UnsupportedDslNode identifies a workflow node whose type the app runner
- * cannot execute.
- */
 export const zUnsupportedDslNode = z.object({
   id: z.string(),
   type: z.string(),
+})
+
+export const zUnsupportedToolProvider = z.object({
+  nodeId: z.string(),
+  providerType: z.string(),
+  providerId: z.string().optional(),
+  providerName: z.string().optional(),
+  toolName: z.string().optional(),
 })
 
 export const zPrecheckReleaseResponse = z.object({
@@ -918,6 +874,7 @@ export const zPrecheckReleaseResponse = z.object({
   canCreate: z.boolean(),
   matchedRelease: zReleaseContentMatch.optional(),
   unsupportedNodes: z.array(zUnsupportedDslNode),
+  unsupportedToolProviders: z.array(zUnsupportedToolProvider),
 })
 
 export const zUpdateAccessChannelsRequest = z.object({
@@ -955,6 +912,7 @@ export const zUpdateEnvironmentRequest = z.object({
   environmentId: z.string().optional(),
   displayName: z.string(),
   description: z.string().optional(),
+  cpuCount: z.number().optional(),
 })
 
 export const zUpdateEnvironmentResponse = z.object({
@@ -1302,6 +1260,19 @@ export const zIsUserAllowedToAccessWebAppRes = z.object({
   result: z.boolean().optional(),
 })
 
+export const zIssueMcpTokenReply = z.object({
+  token: z.string().optional(),
+  expiresAt: z.string().optional(),
+  tokenType: z.string().optional(),
+})
+
+export const zIssueMcpTokenReq = z.object({
+  userId: z.string().optional(),
+  tenantId: z.string().optional(),
+  appId: z.string().optional(),
+  audience: z.string().optional(),
+})
+
 export const zJoinWorkspaceReply = z.object({
   message: z.string().optional(),
 })
@@ -1313,6 +1284,7 @@ export const zJoinWorkspaceReq = z.object({
   id: z.string().optional(),
   email: z.string().optional(),
   role: z.string().optional(),
+  rbacRole: z.string().optional(),
 })
 
 export const zLimitConfig = z.object({
@@ -1494,12 +1466,9 @@ export const zPluginInstallationSettingsReply = z.object({
 
 export const zRbacRole = z.object({
   id: z.string().optional(),
-  type: z.string().optional(),
   name: z.string().optional(),
   description: z.string().optional(),
-  isBuiltin: z.boolean().optional(),
-  category: z.string().optional(),
-  permissionKeys: z.array(z.string()).optional(),
+  permissions: z.array(z.string()).optional(),
 })
 
 export const zGetMemberRbacRolesReply = z.object({
@@ -1778,7 +1747,7 @@ export const zGetWebAppWhitelistSubjectsRes = z.object({
  */
 export const zSubject = z.object({
   subjectId: z.string().optional(),
-  subjectType: zSubjectType.optional(),
+  subjectType: z.string().optional(),
   accountData: zSubjectAccountData.optional(),
   groupData: zSubjectGroupData.optional(),
 })
@@ -2276,11 +2245,6 @@ export const zListRollbackTargetsResponse = z.object({
   pagination: zPagination,
 })
 
-export const zListAccessSubjectsReply = z.object({
-  subjects: z.array(zSubject).optional(),
-  pagination: zPagination.optional(),
-})
-
 export const zListMembersReply = z.object({
   data: z.array(zAccountDetail).optional(),
   pagination: zPagination.optional(),
@@ -2300,26 +2264,6 @@ export const zListWorkspacesReply = z.object({
   data: z.array(zWorkspace).optional(),
   pagination: zPagination.optional(),
 })
-
-export const zAccessSubjectServiceListAccessSubjectsQuery = z.object({
-  keyword: z.string().optional(),
-  groupId: z.string().optional(),
-  pageNumber: z
-    .int()
-    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
-    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
-    .optional(),
-  resultsPerPage: z
-    .int()
-    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
-    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
-    .optional(),
-})
-
-/**
- * OK
- */
-export const zAccessSubjectServiceListAccessSubjectsResponse = zListAccessSubjectsReply
 
 export const zAppInstanceServiceListAppInstanceSummariesQuery = z.object({
   pageNumber: z
@@ -2465,8 +2409,8 @@ export const zDeploymentServiceListEnvironmentDeploymentsPath = z.object({
 /**
  * OK
  */
-export const zDeploymentServiceListEnvironmentDeploymentsResponse
-  = zListEnvironmentDeploymentsResponse
+export const zDeploymentServiceListEnvironmentDeploymentsResponse =
+  zListEnvironmentDeploymentsResponse
 
 export const zAccessServiceGetAccessPolicyPath = z.object({
   appInstanceId: z.string(),
@@ -2656,8 +2600,8 @@ export const zReleaseServiceComputeReleaseDeploymentViewQuery = z.object({
 /**
  * OK
  */
-export const zReleaseServiceComputeReleaseDeploymentViewResponse
-  = zComputeReleaseDeploymentViewResponse
+export const zReleaseServiceComputeReleaseDeploymentViewResponse =
+  zComputeReleaseDeploymentViewResponse
 
 export const zAppInstanceServiceGetAppInstanceOverviewPath = z.object({
   appInstanceId: z.string(),
@@ -2747,8 +2691,8 @@ export const zReleaseServiceListReleaseCredentialCandidatesPath = z.object({
 /**
  * OK
  */
-export const zReleaseServiceListReleaseCredentialCandidatesResponse
-  = zListReleaseCredentialCandidatesResponse
+export const zReleaseServiceListReleaseCredentialCandidatesResponse =
+  zListReleaseCredentialCandidatesResponse
 
 export const zReleaseServiceComputeDeploymentOptionsBody = zComputeDeploymentOptionsRequest
 

@@ -6,6 +6,4 @@ const [
   _useSetInlineLabelHintDismissed,
 ] = createLocalStorageState<boolean>('question-classifier-inline-label-hint-dismissed')
 
-export {
-  useInlineLabelHintDismissed,
-}
+export { useInlineLabelHintDismissed }

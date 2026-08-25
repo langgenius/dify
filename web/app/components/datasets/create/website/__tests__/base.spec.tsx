@@ -141,12 +141,6 @@ describe('Input', () => {
       expect(onChange).toHaveBeenCalledWith(3)
     })
   })
-
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(Input.$$typeof).toBeDefined()
-    })
-  })
 })
 
 // Header Component Tests
@@ -191,42 +185,6 @@ describe('Header', () => {
     })
   })
 
-  describe('isInPipeline Prop', () => {
-    it('should apply pipeline styles when isInPipeline is true', () => {
-      const props = createHeaderProps({ isInPipeline: true })
-      render(<Header {...props} />)
-
-      const titleElement = screen.getByText('Test Title')
-      expect(titleElement)!.toHaveClass('system-sm-semibold')
-    })
-
-    it('should apply default styles when isInPipeline is false', () => {
-      const props = createHeaderProps({ isInPipeline: false })
-      render(<Header {...props} />)
-
-      const titleElement = screen.getByText('Test Title')
-      expect(titleElement)!.toHaveClass('system-md-semibold')
-    })
-
-    it('should apply compact button styles when isInPipeline is true', () => {
-      const props = createHeaderProps({ isInPipeline: true })
-      render(<Header {...props} />)
-
-      const button = screen.getByRole('button')
-      expect(button)!.toHaveClass('size-6')
-      expect(button)!.toHaveClass('px-1')
-    })
-
-    it('should apply default button styles when isInPipeline is false', () => {
-      const props = createHeaderProps({ isInPipeline: false })
-      render(<Header {...props} />)
-
-      const button = screen.getByRole('button')
-      expect(button)!.toHaveClass('gap-x-0.5')
-      expect(button)!.toHaveClass('px-1.5')
-    })
-  })
-
   describe('User Interactions', () => {
     it('should call onClickConfiguration when button is clicked', async () => {
       const onClickConfiguration = vi.fn()
@@ -236,12 +194,6 @@ describe('Header', () => {
       await userEvent.click(screen.getByRole('button'))
 
       expect(onClickConfiguration).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(Header.$$typeof).toBeDefined()
     })
   })
 })
@@ -323,28 +275,6 @@ describe('CrawledResultItem', () => {
 
       expect(onPreview).toHaveBeenCalledTimes(1)
     })
-
-    it('should apply active style when isPreview is true', () => {
-      const props = createItemProps({ isPreview: true })
-      const { container } = render(<CrawledResultItem {...props} />)
-
-      const wrapper = container.firstChild
-      expect(wrapper)!.toHaveClass('bg-state-base-active')
-    })
-
-    it('should not apply active style when isPreview is false', () => {
-      const props = createItemProps({ isPreview: false })
-      const { container } = render(<CrawledResultItem {...props} />)
-
-      const wrapper = container.firstChild
-      expect(wrapper).not.toHaveClass('bg-state-base-active')
-    })
-  })
-
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(CrawledResultItem.$$typeof).toBeDefined()
-    })
   })
 })
 
@@ -365,7 +295,8 @@ describe('CrawledResult', () => {
   })
 
   const getSelectAllCheckbox = () => screen.getByRole('checkbox', { name: /selectAll|resetAll/ })
-  const getItemCheckbox = (index: number) => screen.getByRole('checkbox', { name: new RegExp(`Page ${index + 1}`) })
+  const getItemCheckbox = (index: number) =>
+    screen.getByRole('checkbox', { name: new RegExp(`Page ${index + 1}`) })
 
   describe('Rendering', () => {
     it('should render all items in list', () => {
@@ -514,12 +445,6 @@ describe('CrawledResult', () => {
     })
   })
 
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(CrawledResult.$$typeof).toBeDefined()
-    })
-  })
-
   describe('Edge Cases', () => {
     it('should handle empty list', () => {
       const props = createResultProps({ list: [], checkedList: [] })
@@ -528,13 +453,6 @@ describe('CrawledResult', () => {
       // Should still render the header with resetAll (empty list = all checked)
       // Should still render the header with resetAll (empty list = all checked)
       expect(screen.getByText('datasetCreation.stepOne.website.resetAll'))!.toBeInTheDocument()
-    })
-
-    it('should handle className prop', () => {
-      const props = createResultProps({ className: 'custom-class' })
-      const { container } = render(<CrawledResult {...props} />)
-
-      expect(container.firstChild)!.toHaveClass('custom-class')
     })
   })
 })

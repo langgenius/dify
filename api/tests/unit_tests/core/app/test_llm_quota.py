@@ -1,7 +1,8 @@
 from collections.abc import Generator
 from contextlib import contextmanager
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
+from uuid import UUID
 
 import pytest
 from sqlalchemy import create_engine, select
@@ -10,10 +11,13 @@ from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from core.app.llm.quota import (
+    LLMQuotaReservationState,
     deduct_llm_quota,
     deduct_llm_quota_for_model,
     ensure_llm_quota_available,
     ensure_llm_quota_available_for_model,
+    reserve_llm_quota_for_model,
+    reserve_model_quota_for_model,
 )
 from core.entities.model_entities import ModelStatus
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
@@ -28,8 +32,19 @@ from models.provider import Provider, ProviderType
 @contextmanager
 def _patched_credit_pool_session_factory(engine: Engine) -> Generator[None, None, None]:
     session_maker = sessionmaker(bind=engine, expire_on_commit=False)
-    with patch("services.credit_pool_service.session_factory.get_session_maker", return_value=session_maker):
-        yield
+    sessions = []
+
+    def _session():
+        session = session_maker()
+        sessions.append(session)
+        return session
+
+    with patch("core.app.llm.quota.db", SimpleNamespace(session=_session)):
+        try:
+            yield
+        finally:
+            for session in sessions:
+                session.close()
 
 
 def test_ensure_llm_quota_available_for_model_raises_when_system_model_is_exhausted() -> None:
@@ -89,6 +104,223 @@ def test_ensure_llm_quota_available_for_model_ignores_custom_provider_configurat
     provider_configuration.get_provider_model.assert_not_called()
 
 
+def test_reserve_llm_quota_uses_exact_credit_pool_reservation() -> None:
+    credit_reservation = MagicMock()
+    provider_configuration = SimpleNamespace(
+        using_provider_type=ProviderType.SYSTEM,
+        get_provider_model=MagicMock(return_value=SimpleNamespace(status=ModelStatus.ACTIVE)),
+        system_configuration=SimpleNamespace(
+            current_quota_type=ProviderQuotaType.TRIAL,
+            quota_configurations=[
+                SimpleNamespace(
+                    quota_type=ProviderQuotaType.TRIAL,
+                    quota_unit=QuotaUnit.CREDITS,
+                    quota_limit=100,
+                )
+            ],
+        ),
+    )
+    provider_manager = MagicMock()
+    provider_manager.get_configurations.return_value.get.return_value = provider_configuration
+
+    with (
+        patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
+        patch.object(type(dify_config), "get_model_credits", return_value=9),
+        patch("core.app.llm.quota.CreditPoolService.reserve_credits", return_value=credit_reservation) as reserve,
+    ):
+        reservation = reserve_llm_quota_for_model(
+            tenant_id="tenant-id",
+            provider="openai",
+            model="gpt-4o",
+            request_id="11111111-1111-5111-8111-111111111111",
+        )
+        reservation.commit(LLMUsage.empty_usage())
+        reservation.release()
+
+    assert reservation.state == LLMQuotaReservationState.COMMITTED
+    assert reservation.commit_before_delivery is True
+    reserve.assert_called_once_with(
+        tenant_id="tenant-id",
+        credits_required=9,
+        pool_type="trial",
+        request_id="11111111-1111-5111-8111-111111111111",
+        session_factory=ANY,
+        meta={"source": "llm.invoke", "provider": "openai", "model": "gpt-4o"},
+    )
+    credit_reservation.commit.assert_called_once_with()
+    credit_reservation.release.assert_not_called()
+
+
+def test_reserve_llm_quota_generates_request_id_when_not_supplied() -> None:
+    credit_reservation = MagicMock()
+    provider_configuration = SimpleNamespace(
+        using_provider_type=ProviderType.SYSTEM,
+        get_provider_model=MagicMock(return_value=SimpleNamespace(status=ModelStatus.ACTIVE)),
+        system_configuration=SimpleNamespace(
+            current_quota_type=ProviderQuotaType.TRIAL,
+            quota_configurations=[
+                SimpleNamespace(
+                    quota_type=ProviderQuotaType.TRIAL,
+                    quota_unit=QuotaUnit.TIMES,
+                    quota_limit=100,
+                )
+            ],
+        ),
+    )
+    provider_manager = MagicMock()
+    provider_manager.get_configurations.return_value.get.return_value = provider_configuration
+
+    with (
+        patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
+        patch("core.app.llm.quota.CreditPoolService.reserve_credits", return_value=credit_reservation) as reserve,
+    ):
+        reserve_llm_quota_for_model(tenant_id="tenant-id", provider="openai", model="gpt-4o")
+
+    generated_request_id = reserve.call_args.kwargs["request_id"]
+    assert str(UUID(generated_request_id)) == generated_request_id
+
+
+def test_reserve_non_llm_quota_uses_model_type_and_credit_pool_reservation() -> None:
+    credit_reservation = MagicMock()
+    provider_configuration = SimpleNamespace(
+        using_provider_type=ProviderType.SYSTEM,
+        get_provider_model=MagicMock(return_value=SimpleNamespace(status=ModelStatus.ACTIVE)),
+        system_configuration=SimpleNamespace(
+            current_quota_type=ProviderQuotaType.TRIAL,
+            quota_configurations=[
+                SimpleNamespace(
+                    quota_type=ProviderQuotaType.TRIAL,
+                    quota_unit=QuotaUnit.CREDITS,
+                    quota_limit=100,
+                )
+            ],
+        ),
+    )
+    provider_manager = MagicMock()
+    provider_manager.get_configurations.return_value.get.return_value = provider_configuration
+
+    with (
+        patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
+        patch.object(type(dify_config), "get_model_credits", return_value=3),
+        patch("core.app.llm.quota.CreditPoolService.reserve_credits", return_value=credit_reservation) as reserve,
+    ):
+        reservation = reserve_model_quota_for_model(
+            tenant_id="tenant-id",
+            provider="openai",
+            model_type=ModelType.TEXT_EMBEDDING,
+            model="text-embedding-3-small",
+        )
+        reservation.commit()
+
+    provider_configuration.get_provider_model.assert_called_once_with(
+        model_type=ModelType.TEXT_EMBEDDING,
+        model="text-embedding-3-small",
+    )
+    reserve.assert_called_once_with(
+        tenant_id="tenant-id",
+        credits_required=3,
+        pool_type="trial",
+        request_id=ANY,
+        session_factory=ANY,
+        meta={
+            "source": "model.invoke",
+            "provider": "openai",
+            "model_type": "text-embedding",
+            "model": "text-embedding-3-small",
+        },
+    )
+    credit_reservation.commit.assert_called_once_with()
+
+
+def test_reserve_non_llm_quota_rejects_free_token_settlement() -> None:
+    provider_configuration = SimpleNamespace(
+        using_provider_type=ProviderType.SYSTEM,
+        get_provider_model=MagicMock(return_value=SimpleNamespace(status=ModelStatus.ACTIVE)),
+        system_configuration=SimpleNamespace(
+            current_quota_type=ProviderQuotaType.FREE,
+            quota_configurations=[
+                SimpleNamespace(
+                    quota_type=ProviderQuotaType.FREE,
+                    quota_unit=QuotaUnit.TOKENS,
+                    quota_limit=100,
+                )
+            ],
+        ),
+    )
+    provider_manager = MagicMock()
+    provider_manager.get_configurations.return_value.get.return_value = provider_configuration
+
+    with (
+        patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
+        pytest.raises(ValueError, match="only supports LLM invocations"),
+    ):
+        reserve_model_quota_for_model(
+            tenant_id="tenant-id",
+            provider="openai",
+            model_type=ModelType.TEXT_EMBEDDING,
+            model="text-embedding-3-small",
+        )
+
+
+def test_reserve_llm_quota_requires_accurate_usage_for_free_tokens() -> None:
+    provider_configuration = SimpleNamespace(
+        using_provider_type=ProviderType.SYSTEM,
+        get_provider_model=MagicMock(return_value=SimpleNamespace(status=ModelStatus.ACTIVE)),
+        system_configuration=SimpleNamespace(
+            current_quota_type=ProviderQuotaType.FREE,
+            quota_configurations=[
+                SimpleNamespace(
+                    quota_type=ProviderQuotaType.FREE,
+                    quota_unit=QuotaUnit.TOKENS,
+                    quota_limit=100,
+                )
+            ],
+        ),
+    )
+    provider_manager = MagicMock()
+    provider_manager.get_configurations.return_value.get.return_value = provider_configuration
+
+    with patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager):
+        reservation = reserve_llm_quota_for_model(
+            tenant_id="tenant-id",
+            provider="openai",
+            model="gpt-4o",
+        )
+
+    assert reservation.commit_before_delivery is False
+    with pytest.raises(ValueError, match="Accurate terminal usage"):
+        reservation.commit()
+
+
+def test_reserve_llm_quota_rejects_token_based_credit_pool() -> None:
+    provider_configuration = SimpleNamespace(
+        using_provider_type=ProviderType.SYSTEM,
+        get_provider_model=MagicMock(return_value=SimpleNamespace(status=ModelStatus.ACTIVE)),
+        system_configuration=SimpleNamespace(
+            current_quota_type=ProviderQuotaType.TRIAL,
+            quota_configurations=[
+                SimpleNamespace(
+                    quota_type=ProviderQuotaType.TRIAL,
+                    quota_unit=QuotaUnit.TOKENS,
+                    quota_limit=100,
+                )
+            ],
+        ),
+    )
+    provider_manager = MagicMock()
+    provider_manager.get_configurations.return_value.get.return_value = provider_configuration
+
+    with (
+        patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
+        pytest.raises(ValueError, match="do not support pre-invocation reservation"),
+    ):
+        reserve_llm_quota_for_model(
+            tenant_id="tenant-id",
+            provider="openai",
+            model="gpt-4o",
+        )
+
+
 def test_deduct_llm_quota_for_model_uses_identity_based_trial_billing() -> None:
     usage = LLMUsage.empty_usage()
     usage.total_tokens = 42
@@ -122,6 +354,7 @@ def test_deduct_llm_quota_for_model_uses_identity_based_trial_billing() -> None:
     mock_deduct_credits.assert_called_once_with(
         tenant_id="tenant-id",
         credits_required=42,
+        session=ANY,
     )
 
 
@@ -241,6 +474,7 @@ def test_deduct_llm_quota_for_model_uses_credit_configuration() -> None:
     mock_deduct_credits.assert_called_once_with(
         tenant_id="tenant-id",
         credits_required=9,
+        session=ANY,
     )
 
 
@@ -276,6 +510,7 @@ def test_deduct_llm_quota_for_model_uses_single_charge_for_times_quota() -> None
     mock_deduct_credits.assert_called_once_with(
         tenant_id="tenant-id",
         credits_required=1,
+        session=ANY,
     )
 
 
@@ -313,6 +548,7 @@ def test_deduct_llm_quota_for_model_uses_paid_billing_pool() -> None:
         tenant_id="tenant-id",
         credits_required=5,
         pool_type="paid",
+        session=ANY,
     )
 
 
@@ -502,7 +738,6 @@ def test_deduct_llm_quota_for_model_ignores_unknown_quota_type() -> None:
     with (
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
         patch("services.credit_pool_service.CreditPoolService.deduct_credits_capped") as mock_deduct_credits,
-        patch("core.app.llm.quota.sessionmaker") as mock_sessionmaker,
     ):
         deduct_llm_quota_for_model(
             tenant_id="tenant-id",
@@ -512,7 +747,6 @@ def test_deduct_llm_quota_for_model_ignores_unknown_quota_type() -> None:
         )
 
     mock_deduct_credits.assert_not_called()
-    mock_sessionmaker.assert_not_called()
 
 
 def test_deduct_llm_quota_for_model_ignores_custom_provider_configuration() -> None:
@@ -531,7 +765,6 @@ def test_deduct_llm_quota_for_model_ignores_custom_provider_configuration() -> N
     with (
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
         patch("services.credit_pool_service.CreditPoolService.deduct_credits_capped") as mock_deduct_credits,
-        patch("core.app.llm.quota.sessionmaker") as mock_sessionmaker,
     ):
         deduct_llm_quota_for_model(
             tenant_id="tenant-id",
@@ -541,7 +774,6 @@ def test_deduct_llm_quota_for_model_ignores_custom_provider_configuration() -> N
         )
 
     mock_deduct_credits.assert_not_called()
-    mock_sessionmaker.assert_not_called()
 
 
 def test_ensure_llm_quota_available_wrapper_warns_and_delegates() -> None:

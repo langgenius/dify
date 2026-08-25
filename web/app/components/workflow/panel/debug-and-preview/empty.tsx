@@ -10,7 +10,7 @@ const Empty = () => {
         <ChatBotSlim className="size-12 text-gray-300" />
       </div>
       <div className="w-[256px] text-center text-[13px] text-gray-400">
-        {t('common.previewPlaceholder', { ns: 'workflow' })}
+        {t(($) => $['common.previewPlaceholder'], { ns: 'workflow' })}
       </div>
     </div>
   )

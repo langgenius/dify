@@ -1,6 +1,6 @@
 import type { TryAppInfo } from '@/service/try-app'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import TryApp from '../chat'
 
 const mockRemoveConversationIdInfo = vi.fn()
@@ -19,12 +19,6 @@ vi.mock('@/hooks/use-breakpoints', () => ({
   },
 }))
 
-vi.mock('../../../../base/chat/embedded-chatbot/theme/theme-context', () => ({
-  useThemeContext: () => ({
-    primaryColor: '#1890ff',
-  }),
-}))
-
 vi.mock('@/app/components/base/chat/embedded-chatbot/chat-wrapper', () => ({
   default: () => <div data-testid="chat-wrapper">ChatWrapper</div>,
 }))
@@ -33,36 +27,37 @@ vi.mock('@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropd
   default: () => <div data-testid="view-form-dropdown">ViewFormDropdown</div>,
 }))
 
-const createMockAppDetail = (overrides: Partial<TryAppInfo> = {}): TryAppInfo => ({
-  id: 'test-app-id',
-  name: 'Test Chat App',
-  description: 'Test Description',
-  mode: 'chat',
-  site: {
-    title: 'Test Site Title',
-    icon: '💬',
-    icon_type: 'emoji',
-    icon_background: '#4F46E5',
-    icon_url: '',
-  },
-  model_config: {
-    model: {
-      provider: 'langgenius/openai/openai',
-      name: 'gpt-4',
-      mode: 'chat',
+const createMockAppDetail = (overrides: Partial<TryAppInfo> = {}): TryAppInfo =>
+  ({
+    id: 'test-app-id',
+    name: 'Test Chat App',
+    description: 'Test Description',
+    mode: 'chat',
+    site: {
+      title: 'Test Site Title',
+      icon: '💬',
+      icon_type: 'emoji',
+      icon_background: '#4F46E5',
+      icon_url: '',
     },
-    dataset_configs: {
-      datasets: {
-        datasets: [],
+    model_config: {
+      model: {
+        provider: 'langgenius/openai/openai',
+        name: 'gpt-4',
+        mode: 'chat',
       },
+      dataset_configs: {
+        datasets: {
+          datasets: [],
+        },
+      },
+      agent_mode: {
+        tools: [],
+      },
+      user_input_form: [],
     },
-    agent_mode: {
-      tools: [],
-    },
-    user_input_form: [],
-  },
-  ...overrides,
-} as unknown as TryAppInfo)
+    ...overrides,
+  }) as unknown as TryAppInfo
 
 describe('TryApp (chat.tsx)', () => {
   beforeEach(() => {
@@ -83,13 +78,7 @@ describe('TryApp (chat.tsx)', () => {
     it('renders app name', () => {
       const appDetail = createMockAppDetail()
 
-      render(
-        <TryApp
-          appId="test-app-id"
-          appDetail={appDetail}
-          className="test-class"
-        />,
-      )
+      render(<TryApp appId="test-app-id" appDetail={appDetail} className="test-class" />)
 
       expect(screen.getByText('Test Chat App')).toBeInTheDocument()
     })
@@ -97,13 +86,7 @@ describe('TryApp (chat.tsx)', () => {
     it('renders app name with title attribute', () => {
       const appDetail = createMockAppDetail({ name: 'Long App Name' } as Partial<TryAppInfo>)
 
-      render(
-        <TryApp
-          appId="test-app-id"
-          appDetail={appDetail}
-          className="test-class"
-        />,
-      )
+      render(<TryApp appId="test-app-id" appDetail={appDetail} className="test-class" />)
 
       const nameElement = screen.getByText('Long App Name')
       expect(nameElement).toHaveAttribute('title', 'Long App Name')
@@ -112,13 +95,7 @@ describe('TryApp (chat.tsx)', () => {
     it('renders ChatWrapper', () => {
       const appDetail = createMockAppDetail()
 
-      render(
-        <TryApp
-          appId="test-app-id"
-          appDetail={appDetail}
-          className="test-class"
-        />,
-      )
+      render(<TryApp appId="test-app-id" appDetail={appDetail} className="test-class" />)
 
       expect(screen.getByTestId('chat-wrapper')).toBeInTheDocument()
     })
@@ -126,30 +103,9 @@ describe('TryApp (chat.tsx)', () => {
     it('renders alert with try info', () => {
       const appDetail = createMockAppDetail()
 
-      render(
-        <TryApp
-          appId="test-app-id"
-          appDetail={appDetail}
-          className="test-class"
-        />,
-      )
+      render(<TryApp appId="test-app-id" appDetail={appDetail} className="test-class" />)
 
       expect(screen.getByText('explore.tryApp.tryInfo')).toBeInTheDocument()
-    })
-
-    it('applies className prop', () => {
-      const appDetail = createMockAppDetail()
-
-      const { container } = render(
-        <TryApp
-          appId="test-app-id"
-          appDetail={appDetail}
-          className="custom-class"
-        />,
-      )
-
-      const innerDiv = container.querySelector('.custom-class')
-      expect(innerDiv).toBeInTheDocument()
     })
   })
 
@@ -164,13 +120,7 @@ describe('TryApp (chat.tsx)', () => {
 
       const appDetail = createMockAppDetail()
 
-      render(
-        <TryApp
-          appId="test-app-id"
-          appDetail={appDetail}
-          className="test-class"
-        />,
-      )
+      render(<TryApp appId="test-app-id" appDetail={appDetail} className="test-class" />)
 
       expect(screen.queryByRole('button', { name: 'share.chat.resetChat' })).not.toBeInTheDocument()
     })
@@ -185,13 +135,7 @@ describe('TryApp (chat.tsx)', () => {
 
       const appDetail = createMockAppDetail()
 
-      render(
-        <TryApp
-          appId="test-app-id"
-          appDetail={appDetail}
-          className="test-class"
-        />,
-      )
+      render(<TryApp appId="test-app-id" appDetail={appDetail} className="test-class" />)
 
       expect(screen.getByRole('button', { name: 'share.chat.resetChat' })).toBeInTheDocument()
     })
@@ -206,13 +150,7 @@ describe('TryApp (chat.tsx)', () => {
 
       const appDetail = createMockAppDetail()
 
-      render(
-        <TryApp
-          appId="test-app-id"
-          appDetail={appDetail}
-          className="test-class"
-        />,
-      )
+      render(<TryApp appId="test-app-id" appDetail={appDetail} className="test-class" />)
 
       fireEvent.click(screen.getByRole('button', { name: 'share.chat.resetChat' }))
 
@@ -232,13 +170,7 @@ describe('TryApp (chat.tsx)', () => {
 
       const appDetail = createMockAppDetail()
 
-      render(
-        <TryApp
-          appId="test-app-id"
-          appDetail={appDetail}
-          className="test-class"
-        />,
-      )
+      render(<TryApp appId="test-app-id" appDetail={appDetail} className="test-class" />)
 
       expect(screen.queryByTestId('view-form-dropdown')).not.toBeInTheDocument()
     })
@@ -253,13 +185,7 @@ describe('TryApp (chat.tsx)', () => {
 
       const appDetail = createMockAppDetail()
 
-      render(
-        <TryApp
-          appId="test-app-id"
-          appDetail={appDetail}
-          className="test-class"
-        />,
-      )
+      render(<TryApp appId="test-app-id" appDetail={appDetail} className="test-class" />)
 
       expect(screen.queryByTestId('view-form-dropdown')).not.toBeInTheDocument()
     })
@@ -274,13 +200,7 @@ describe('TryApp (chat.tsx)', () => {
 
       const appDetail = createMockAppDetail()
 
-      render(
-        <TryApp
-          appId="test-app-id"
-          appDetail={appDetail}
-          className="test-class"
-        />,
-      )
+      render(<TryApp appId="test-app-id" appDetail={appDetail} className="test-class" />)
 
       expect(screen.getByTestId('view-form-dropdown')).toBeInTheDocument()
     })
@@ -290,15 +210,11 @@ describe('TryApp (chat.tsx)', () => {
     it('hides alert when onHide is called', () => {
       const appDetail = createMockAppDetail()
 
-      render(
-        <TryApp
-          appId="test-app-id"
-          appDetail={appDetail}
-          className="test-class"
-        />,
-      )
+      render(<TryApp appId="test-app-id" appDetail={appDetail} className="test-class" />)
 
-      const alertElement = screen.getByText('explore.tryApp.tryInfo').closest('[class*="alert"]')?.parentElement
+      const alertElement = screen
+        .getByText('explore.tryApp.tryInfo')
+        .closest('[class*="alert"]')?.parentElement
       const hideButton = alertElement?.querySelector('button, [role="button"], svg')
 
       if (hideButton) {
@@ -312,13 +228,7 @@ describe('TryApp (chat.tsx)', () => {
     it('calls useEmbeddedChatbot with correct parameters', () => {
       const appDetail = createMockAppDetail()
 
-      render(
-        <TryApp
-          appId="my-app-id"
-          appDetail={appDetail}
-          className="test-class"
-        />,
-      )
+      render(<TryApp appId="my-app-id" appDetail={appDetail} className="test-class" />)
 
       expect(mockUseEmbeddedChatbot).toHaveBeenCalledWith('tryApp', 'my-app-id')
     })
@@ -326,13 +236,7 @@ describe('TryApp (chat.tsx)', () => {
     it('calls removeConversationIdInfo on mount', () => {
       const appDetail = createMockAppDetail()
 
-      render(
-        <TryApp
-          appId="my-app-id"
-          appDetail={appDetail}
-          className="test-class"
-        />,
-      )
+      render(<TryApp appId="my-app-id" appDetail={appDetail} className="test-class" />)
 
       expect(mockRemoveConversationIdInfo).toHaveBeenCalledWith('my-app-id')
     })

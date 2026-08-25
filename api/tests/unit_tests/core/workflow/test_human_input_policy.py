@@ -6,44 +6,34 @@ from core.workflow.human_input_policy import (
     is_recipient_type_allowed_for_surface,
     resolve_variable_select_input_options,
 )
-from graphon.nodes.human_input.entities import SelectInputConfig, StringListSource
-from graphon.nodes.human_input.enums import ValueSourceType
+from core.workflow.nodes.human_input.entities import SelectInputConfig, StringListSource
+from core.workflow.nodes.human_input.enums import ValueSourceType
 from graphon.runtime import VariablePool
 from models.human_input import RecipientType
 
 
-def test_service_api_only_allows_public_webapp_forms() -> None:
-    assert is_recipient_type_allowed_for_surface(
-        RecipientType.STANDALONE_WEB_APP,
-        HumanInputSurface.SERVICE_API,
-    )
-    assert not is_recipient_type_allowed_for_surface(
-        RecipientType.CONSOLE,
-        HumanInputSurface.SERVICE_API,
-    )
-    assert not is_recipient_type_allowed_for_surface(
-        RecipientType.BACKSTAGE,
-        HumanInputSurface.SERVICE_API,
-    )
-    assert not is_recipient_type_allowed_for_surface(
-        RecipientType.EMAIL_MEMBER,
-        HumanInputSurface.SERVICE_API,
-    )
-
-
-def test_console_only_allows_internal_console_surfaces() -> None:
-    assert is_recipient_type_allowed_for_surface(
-        RecipientType.CONSOLE,
-        HumanInputSurface.CONSOLE,
-    )
-    assert is_recipient_type_allowed_for_surface(
-        RecipientType.BACKSTAGE,
-        HumanInputSurface.CONSOLE,
-    )
-    assert not is_recipient_type_allowed_for_surface(
-        RecipientType.STANDALONE_WEB_APP,
-        HumanInputSurface.CONSOLE,
-    )
+# Token surfaces (SERVICE_API, OPENAPI) may act only on public web-app forms;
+# CONSOLE may act on internal console/backstage forms. OPENAPI mirrors SERVICE_API
+# today but is pinned independently because the two are expected to diverge.
+@pytest.mark.parametrize(
+    ("recipient_type", "surface", "allowed"),
+    [
+        (RecipientType.STANDALONE_WEB_APP, HumanInputSurface.SERVICE_API, True),
+        (RecipientType.CONSOLE, HumanInputSurface.SERVICE_API, False),
+        (RecipientType.BACKSTAGE, HumanInputSurface.SERVICE_API, False),
+        (RecipientType.EMAIL_MEMBER, HumanInputSurface.SERVICE_API, False),
+        (RecipientType.STANDALONE_WEB_APP, HumanInputSurface.OPENAPI, True),
+        (RecipientType.CONSOLE, HumanInputSurface.OPENAPI, False),
+        (RecipientType.BACKSTAGE, HumanInputSurface.OPENAPI, False),
+        (RecipientType.CONSOLE, HumanInputSurface.CONSOLE, True),
+        (RecipientType.BACKSTAGE, HumanInputSurface.CONSOLE, True),
+        (RecipientType.STANDALONE_WEB_APP, HumanInputSurface.CONSOLE, False),
+    ],
+)
+def test_recipient_type_allowed_per_surface(
+    recipient_type: RecipientType, surface: HumanInputSurface, allowed: bool
+) -> None:
+    assert is_recipient_type_allowed_for_surface(recipient_type, surface) is allowed
 
 
 def test_preferred_form_token_uses_shared_priority_order() -> None:
@@ -54,6 +44,17 @@ def test_preferred_form_token_uses_shared_priority_order() -> None:
     ]
 
     assert get_preferred_form_token(recipients) == "backstage-token"
+
+
+def test_preferred_form_token_skips_prioritized_type_with_empty_token() -> None:
+    # An empty token is not actionable: the highest-priority recipient that
+    # actually carries a token wins, not the highest-priority type.
+    recipients = [
+        (RecipientType.BACKSTAGE, ""),
+        (RecipientType.CONSOLE, "console-token"),
+    ]
+
+    assert get_preferred_form_token(recipients) == "console-token"
 
 
 def test_resolve_variable_select_input_options_uses_runtime_values() -> None:

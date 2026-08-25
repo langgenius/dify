@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { AppACLPermission } from '@/utils/permission'
 import OverviewView from '../view'
 
@@ -14,17 +15,18 @@ const testState = vi.hoisted(() => ({
   workspacePermissionKeys: [] as string[],
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: <T,>(selector: (state: { appDetail: typeof testState.appDetail }) => T): T => selector({
-    appDetail: testState.appDetail,
-  }),
-}))
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn((selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
-    userProfile: { id: testState.currentUserId },
-    workspacePermissionKeys: testState.workspacePermissionKeys,
-  })),
+vi.mock('@/app/components/app/store', () => ({
+  useStore: <T,>(selector: (state: { appDetail: typeof testState.appDetail }) => T): T =>
+    selector({
+      appDetail: testState.appDetail,
+    }),
 }))
 
 vi.mock('@/app/components/app/overview/apikey-info-panel', () => ({
@@ -32,11 +34,9 @@ vi.mock('@/app/components/app/overview/apikey-info-panel', () => ({
 }))
 
 vi.mock('../chart-view', () => ({
-  default: ({ appId, headerRight }: { appId: string, headerRight: ReactNode }) => (
+  default: ({ appId, headerRight }: { appId: string; headerRight: ReactNode }) => (
     <div>
-      chart view
-      {' '}
-      {appId}
+      chart view {appId}
       {headerRight}
     </div>
   ),
@@ -45,6 +45,14 @@ vi.mock('../chart-view', () => ({
 vi.mock('../tracing/panel', () => ({
   default: () => <button type="button">tracing</button>,
 }))
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
 
 describe('OverviewView monitor permission', () => {
   beforeEach(() => {
@@ -69,14 +77,37 @@ describe('OverviewView monitor permission', () => {
       expect(screen.queryByRole('button', { name: 'tracing' })).not.toBeInTheDocument()
     })
 
-    it('should render overview page content when app monitor permission is granted', () => {
+    it('should render overview page content without tracing entry when only app monitor permission is granted', () => {
       testState.appDetail.permission_keys = [AppACLPermission.Monitor]
 
       render(<OverviewView appId="app-1" />)
 
       expect(screen.getByText('api key info panel')).toBeInTheDocument()
       expect(screen.getByText(/chart view app-1/)).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'tracing' })).not.toBeInTheDocument()
+    })
+
+    it('should render tracing entry when app tracing config permission is granted with monitor access', () => {
+      testState.appDetail.permission_keys = [
+        AppACLPermission.Monitor,
+        AppACLPermission.TracingConfig,
+      ]
+
+      render(<OverviewView appId="app-1" />)
+
+      expect(screen.getByText('api key info panel')).toBeInTheDocument()
+      expect(screen.getByText(/chart view app-1/)).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'tracing' })).toBeInTheDocument()
+    })
+
+    it('should not render overview page content when only app tracing config permission is granted', () => {
+      testState.appDetail.permission_keys = [AppACLPermission.TracingConfig]
+
+      render(<OverviewView appId="app-1" />)
+
+      expect(screen.queryByText('api key info panel')).not.toBeInTheDocument()
+      expect(screen.queryByText(/chart view app-1/)).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'tracing' })).not.toBeInTheDocument()
     })
   })
 })

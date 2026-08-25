@@ -45,21 +45,18 @@ export async function runGetMember(
   const limit = resolveLimit(opts.limitRaw, env)
   const page = opts.page === undefined || opts.page <= 0 ? 1 : opts.page
 
-  const envelope = await runWithSpinner(
-    { io, label: 'Fetching members' },
-    () => factory(deps.http).list(wsId, { page, limit }),
+  const envelope = await runWithSpinner({ io, label: 'Fetching members' }, () =>
+    factory(deps.http).list(wsId, { page, limit }),
   )
 
   const callerId = deps.active.ctx.account?.id ?? ''
-  const rows = envelope.data.map(m => new MemberRow(m, callerId !== '' && m.id === callerId))
+  const rows = envelope.data.map((m) => new MemberRow(m, callerId !== '' && m.id === callerId))
   return { data: new MemberListOutput(rows, envelope), workspaceId: wsId }
 }
 
 function resolveLimit(raw: string | undefined, env: (k: string) => string | undefined): number {
-  if (raw !== undefined && raw !== '')
-    return parseLimit(raw, '--limit')
+  if (raw !== undefined && raw !== '') return parseLimit(raw, '--limit')
   const envValue = env('DIFY_LIMIT')
-  if (envValue !== undefined && envValue !== '')
-    return parseLimit(envValue, 'DIFY_LIMIT')
+  if (envValue !== undefined && envValue !== '') return parseLimit(envValue, 'DIFY_LIMIT')
   return LIMIT_DEFAULT
 }

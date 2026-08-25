@@ -78,11 +78,10 @@ describe('human input form upload services', () => {
   it('should fetch upload token before remote file upload', async () => {
     const { uploadHumanInputFormRemoteFileInfo } = await import('../share')
 
-    mockPostPublic
-      .mockResolvedValueOnce({
-        upload_token: 'hitl-remote-token',
-        expires_at: Math.floor(Date.now() / 1000) + 60,
-      })
+    mockPostPublic.mockResolvedValueOnce({
+      upload_token: 'hitl-remote-token',
+      expires_at: Math.floor(Date.now() / 1000) + 60,
+    })
     mockUpload.mockResolvedValueOnce({
       id: 'remote-file-1',
       name: 'remote.txt',
@@ -94,10 +93,16 @@ describe('human input form upload services', () => {
       url: 'https://example.com/remote.txt',
     })
 
-    const response = await uploadHumanInputFormRemoteFileInfo('remote-form-token', 'https://example.com/file.txt')
+    const response = await uploadHumanInputFormRemoteFileInfo(
+      'remote-form-token',
+      'https://example.com/file.txt',
+    )
 
     expect(mockPostPublic).toHaveBeenCalledTimes(1)
-    expect(mockPostPublic).toHaveBeenNthCalledWith(1, '/form/human_input/remote-form-token/upload-token')
+    expect(mockPostPublic).toHaveBeenNthCalledWith(
+      1,
+      '/form/human_input/remote-form-token/upload-token',
+    )
     expect(mockUpload).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.any(FormData),

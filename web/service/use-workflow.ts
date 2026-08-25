@@ -3,7 +3,6 @@ import type { FlowType } from '@/types/common'
 import type {
   FetchWorkflowDraftPageParams,
   FetchWorkflowDraftPageResponse,
-  FetchWorkflowDraftResponse,
   NodeTracing,
   PublishWorkflowParams,
   UpdateWorkflowParams,
@@ -13,17 +12,14 @@ import type {
 } from '@/types/workflow'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { del, get, patch, post, put } from './base'
-import { useInvalid, useReset } from './use-base'
+import { useInvalid } from './use-base'
 import { getFlowPrefix } from './utils'
+import { appWorkflowQueryOptions, appWorkflowVersionsInfiniteQueryKey } from './workflow-queries'
 
 const NAME_SPACE = 'workflow'
 
 export const useAppWorkflow = (appID: string) => {
-  return useQuery<FetchWorkflowDraftResponse | null>({
-    enabled: !!appID,
-    queryKey: [NAME_SPACE, 'publish', appID],
-    queryFn: () => get<FetchWorkflowDraftResponse | null>(`/apps/${appID}/workflows/publish`),
-  })
+  return useQuery(appWorkflowQueryOptions(appID))
 }
 
 const WorkflowRunHistoryKey = [NAME_SPACE, 'runHistory']
@@ -49,15 +45,16 @@ export const useInvalidateWorkflowRunHistory = () => {
 export const useInvalidateAppWorkflow = () => {
   const queryClient = useQueryClient()
   return (appID: string) => {
-    queryClient.invalidateQueries(
-      {
-        queryKey: [NAME_SPACE, 'publish', appID],
-      },
-    )
+    return queryClient.invalidateQueries({
+      queryKey: appWorkflowQueryOptions(appID).queryKey,
+    })
   }
 }
 
-export const useWorkflowConfig = <T = WorkflowConfigResponse>(url: string, onSuccess: (v: T) => void) => {
+export const useWorkflowConfig = <T = WorkflowConfigResponse>(
+  url: string,
+  onSuccess: (v: T) => void,
+) => {
   return useQuery({
     enabled: !!url,
     queryKey: [NAME_SPACE, 'config', url],
@@ -77,32 +74,46 @@ export const useWorkflowVersionHistory = (params: FetchWorkflowDraftPageParams) 
   return useInfiniteQuery({
     enabled: !!url,
     queryKey: [...WorkflowVersionHistoryKey, url, initialPage, limit, userId, namedOnly],
-    queryFn: ({ pageParam = 1 }) => get<FetchWorkflowDraftPageResponse>(url, {
-      params: {
-        page: pageParam,
-        limit,
-        user_id: userId || '',
-        named_only: !!namedOnly,
-      },
-    }),
-    getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : null,
+    queryFn: ({ pageParam = 1 }) =>
+      get<FetchWorkflowDraftPageResponse>(url, {
+        params: {
+          page: pageParam,
+          limit,
+          user_id: userId || '',
+          named_only: !!namedOnly,
+        },
+      }),
+    getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : null),
     initialPageParam: initialPage,
   })
 }
 
 export const useResetWorkflowVersionHistory = () => {
-  return useReset([...WorkflowVersionHistoryKey])
+  const queryClient = useQueryClient()
+
+  return () =>
+    Promise.all([
+      queryClient.resetQueries({ queryKey: [...WorkflowVersionHistoryKey] }),
+      queryClient.resetQueries({ queryKey: appWorkflowVersionsInfiniteQueryKey() }),
+    ])
 }
 
 export const useUpdateWorkflow = () => {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationKey: [NAME_SPACE, 'update'],
-    mutationFn: (params: UpdateWorkflowParams) => patch(params.url, {
-      body: {
-        marked_name: params.title,
-        marked_comment: params.releaseNotes,
-      },
-    }),
+    mutationFn: (params: UpdateWorkflowParams) =>
+      patch(params.url, {
+        body: {
+          marked_name: params.title,
+          marked_comment: params.releaseNotes,
+        },
+      }),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: [...WorkflowVersionHistoryKey] }),
+        queryClient.invalidateQueries({ queryKey: appWorkflowVersionsInfiniteQueryKey() }),
+      ]),
   })
 }
 
@@ -116,31 +127,42 @@ export const useDeleteWorkflow = () => {
 export const useRestoreWorkflow = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'restore'],
-    mutationFn: (url: string) => post<CommonResponse & { updated_at: number, hash: string }>(url, {}, { silent: true }),
+    mutationFn: (url: string) =>
+      post<CommonResponse & { updated_at: number; hash: string }>(url, {}, { silent: true }),
   })
 }
 
 export const usePublishWorkflow = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'publish'],
-    mutationFn: (params: PublishWorkflowParams) => post<CommonResponse & { created_at: number }>(params.url, {
-      body: {
-        marked_name: params.title,
-        marked_comment: params.releaseNotes,
-      },
-    }),
+    mutationFn: (params: PublishWorkflowParams) =>
+      post<CommonResponse & { created_at: number }>(params.url, {
+        body: {
+          marked_name: params.title,
+          marked_comment: params.releaseNotes,
+        },
+      }),
   })
 }
 
 const useLastRunKey = [NAME_SPACE, 'last-run']
-export const useLastRun = (flowType: FlowType, flowId: string, nodeId: string, enabled: boolean) => {
+export const useLastRun = (
+  flowType: FlowType,
+  flowId: string,
+  nodeId: string,
+  enabled: boolean,
+) => {
   return useQuery<NodeTracing>({
     enabled,
     queryKey: [...useLastRunKey, flowType, flowId, nodeId],
     queryFn: async () => {
-      return get(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nodes/${nodeId}/last-run`, {}, {
-        silent: true,
-      })
+      return get(
+        `${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nodes/${nodeId}/last-run`,
+        {},
+        {
+          silent: true,
+        },
+      )
     },
     retry: 0,
   })
@@ -160,7 +182,9 @@ export const useConversationVarValues = (flowType?: FlowType, flowId?: string) =
     enabled: !!flowId,
     queryKey: [NAME_SPACE, flowType, 'conversation var values', flowId],
     queryFn: async () => {
-      const { items } = (await get(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/conversation-variables`)) as { items: VarInInspect[] }
+      const { items } = (await get(
+        `${getFlowPrefix(flowType)}/${flowId}/workflows/draft/conversation-variables`,
+      )) as { items: VarInInspect[] }
       return items
     },
   })
@@ -193,7 +217,9 @@ export const useSysVarValues = (flowType?: FlowType, flowId?: string) => {
     enabled: !!flowId,
     queryKey: [NAME_SPACE, flowType, 'sys var values', flowId],
     queryFn: async () => {
-      const { items } = (await get(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/system-variables`)) as { items: VarInInspect[] }
+      const { items } = (await get(
+        `${getFlowPrefix(flowType)}/${flowId}/workflows/draft/system-variables`,
+      )) as { items: VarInInspect[] }
       return items
     },
   })
@@ -234,11 +260,7 @@ export const useDeleteInspectVar = (flowType: FlowType, flowId: string) => {
 export const useEditInspectorVar = (flowType: FlowType, flowId: string) => {
   return useMutation({
     mutationKey: [NAME_SPACE, flowType, 'edit inspector var', flowId],
-    mutationFn: async ({ varId, ...rest }: {
-      varId: string
-      name?: string
-      value?: any
-    }) => {
+    mutationFn: async ({ varId, ...rest }: { varId: string; name?: string; value?: any }) => {
       return patch(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/variables/${varId}`, {
         body: rest,
       })
@@ -249,14 +271,22 @@ export const useEditInspectorVar = (flowType: FlowType, flowId: string) => {
 export const useTestEmailSender = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'test email sender'],
-    mutationFn: async (data: { appID: string, nodeID: string, deliveryID: string, inputs: Record<string, any> }) => {
+    mutationFn: async (data: {
+      appID: string
+      nodeID: string
+      deliveryID: string
+      inputs: Record<string, any>
+    }) => {
       const { appID, nodeID, deliveryID, inputs } = data
-      return post<CommonResponse>(`/apps/${appID}/workflows/draft/human-input/nodes/${nodeID}/delivery-test`, {
-        body: {
-          delivery_method_id: deliveryID,
-          inputs,
+      return post<CommonResponse>(
+        `/apps/${appID}/workflows/draft/human-input/nodes/${nodeID}/delivery-test`,
+        {
+          body: {
+            delivery_method_id: deliveryID,
+            inputs,
+          },
         },
-      })
+      )
     },
   })
 }

@@ -1,3 +1,4 @@
+import logging
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock
@@ -13,6 +14,7 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookParameter,
 )
 from graphon.variables.types import SegmentType
+from models.trigger import WorkflowWebhookTrigger
 from services.trigger import webhook_service as service_module
 from services.trigger.webhook_service import WebhookService
 
@@ -22,8 +24,16 @@ def flask_app() -> Flask:
     return Flask(__name__)
 
 
-def _workflow_trigger(**kwargs: Any) -> Any:
-    return SimpleNamespace(**kwargs)
+def _workflow_trigger(**kwargs: Any) -> WorkflowWebhookTrigger:
+    values = {
+        "webhook_id": "webhook-123",
+        "tenant_id": "tenant-1",
+        "app_id": "app-1",
+        "node_id": "node-1",
+        "created_by": "user-1",
+    }
+    values.update(kwargs)
+    return WorkflowWebhookTrigger(**values)
 
 
 class TestWebhookServiceExtractionFallbacks:
@@ -31,21 +41,21 @@ class TestWebhookServiceExtractionFallbacks:
         self,
         flask_app: Flask,
         monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
-        warning_mock = MagicMock()
-        monkeypatch.setattr(service_module.logger, "warning", warning_mock)
-        webhook_trigger = MagicMock()
+        webhook_trigger = _workflow_trigger()
 
-        with flask_app.test_request_context(
-            "/webhook",
-            method="POST",
-            headers={"Content-Type": "application/vnd.custom"},
-            data="plain content",
-        ):
-            result = WebhookService.extract_webhook_data(webhook_trigger)
+        with caplog.at_level(logging.WARNING, logger="services.trigger.webhook_service"):
+            with flask_app.test_request_context(
+                "/webhook",
+                method="POST",
+                headers={"Content-Type": "application/vnd.custom"},
+                data="plain content",
+            ):
+                result = WebhookService.extract_webhook_data(webhook_trigger)
 
-        assert result["body"] == {"raw": "plain content"}
-        warning_mock.assert_called_once()
+            assert result["body"] == {"raw": "plain content"}
+            assert any(r.levelno >= logging.WARNING for r in caplog.records)
 
     def test_extract_webhook_data_should_raise_for_request_too_large(
         self,
@@ -56,10 +66,10 @@ class TestWebhookServiceExtractionFallbacks:
 
         with flask_app.test_request_context("/webhook", method="POST", data="ab"):
             with pytest.raises(RequestEntityTooLarge):
-                WebhookService.extract_webhook_data(MagicMock())
+                WebhookService.extract_webhook_data(_workflow_trigger())
 
     def test_extract_octet_stream_body_should_return_none_when_empty_payload(self, flask_app: Flask) -> None:
-        webhook_trigger = MagicMock()
+        webhook_trigger = _workflow_trigger()
 
         with flask_app.test_request_context("/webhook", method="POST", data=b""):
             body, files = WebhookService._extract_octet_stream_body(webhook_trigger)
@@ -72,7 +82,7 @@ class TestWebhookServiceExtractionFallbacks:
         flask_app: Flask,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        webhook_trigger = MagicMock()
+        webhook_trigger = _workflow_trigger()
         monkeypatch.setattr(
             WebhookService, "_detect_binary_mimetype", MagicMock(return_value="application/octet-stream")
         )
@@ -171,14 +181,13 @@ class TestWebhookServiceValidationAndConversion:
     def test_validate_json_value_should_return_original_for_unmapped_supported_segment_type(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
-        warning_mock = MagicMock()
-        monkeypatch.setattr(service_module.logger, "warning", warning_mock)
+        with caplog.at_level(logging.WARNING, logger="services.trigger.webhook_service"):
+            result = WebhookService._validate_json_value("param", {"x": 1}, "unsupported-type")
 
-        result = WebhookService._validate_json_value("param", {"x": 1}, "unsupported-type")
-
-        assert result == {"x": 1}
-        warning_mock.assert_called_once()
+            assert result == {"x": 1}
+            assert any(r.levelno >= logging.WARNING for r in caplog.records)
 
     def test_validate_and_convert_value_should_wrap_conversion_errors(self) -> None:
         with pytest.raises(ValueError, match="validation failed"):

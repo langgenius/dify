@@ -5,8 +5,12 @@ import type { IntegrationSection } from './routes'
 import { ApiBasedExtensionPage } from '@/app/components/header/account-setting/api-based-extension-page'
 import DataSourcePage from '@/app/components/header/account-setting/data-source-page-new'
 import ModelProviderPage from '@/app/components/header/account-setting/model-provider-page'
+import InstallFromMarketplaceQuery from '@/app/components/plugins/install-plugin/install-from-marketplace-query'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { toolsContentFrameClassNames, toolsContentInsetClassNames } from '@/app/components/tools/content-inset'
+import {
+  toolsContentFrameClassNames,
+  toolsContentInsetClassNames,
+} from '@/app/components/tools/content-inset'
 import { IntegrationPageHeader } from './page-header'
 import PluginCategoryPage from './plugin-category-page'
 import { IntegrationSectionLayout } from './section-layout'
@@ -14,9 +18,9 @@ import ToolProviderList from './tool-provider-list'
 
 type IntegrationSectionRendererProps = {
   canInstallPlugin?: boolean
-  canManagePlugin?: boolean
+  canDeletePlugin?: boolean
+  isInstallPermissionLoading?: boolean
   canUpdatePlugin?: boolean
-  canViewInstalledPlugins?: boolean
   description?: ReactNode
   onProviderSearchTextChange: (value: string) => void
   onSwitchToMarketplace?: () => void
@@ -29,9 +33,9 @@ type IntegrationSectionRendererProps = {
 
 const IntegrationSectionRenderer = ({
   canInstallPlugin = true,
-  canManagePlugin = true,
+  canDeletePlugin = true,
+  isInstallPermissionLoading = false,
   canUpdatePlugin = true,
-  canViewInstalledPlugins = true,
   description,
   onProviderSearchTextChange,
   onSwitchToMarketplace,
@@ -60,13 +64,13 @@ const IntegrationSectionRenderer = ({
       {body}
     </IntegrationSectionLayout>
   )
-  const renderScrollableLayout = ({ body, toolbar }: { body: ReactNode, toolbar: ReactNode }) => (
+  const renderScrollableLayout = ({ body, toolbar }: { body: ReactNode; toolbar: ReactNode }) => (
     <>
       {renderHeader(toolbar)}
       {renderScrollBody(body)}
     </>
   )
-  const renderDirectLayout = ({ body, toolbar }: { body: ReactNode, toolbar: ReactNode }) => (
+  const renderDirectLayout = ({ body, toolbar }: { body: ReactNode; toolbar: ReactNode }) => (
     <>
       {renderHeader(toolbar)}
       {body}
@@ -75,26 +79,37 @@ const IntegrationSectionRenderer = ({
   const renderPluginCategoryPage = (category: PluginCategoryEnum) => (
     <PluginCategoryPage
       canInstall={canInstallPlugin}
-      canManagePlugin={canManagePlugin}
+      canDeletePlugin={canDeletePlugin}
+      isInstallPermissionLoading={isInstallPermissionLoading}
       canUpdatePlugin={canUpdatePlugin}
-      canViewInstalledPlugins={canViewInstalledPlugins}
       category={category}
       layout={renderDirectLayout}
       onSwitchToMarketplace={onSwitchToMarketplace}
       toolbarAction={pluginCategoryToolbarAction}
     />
   )
+  const renderMarketplaceInstallQuery = (category: PluginCategoryEnum) => (
+    <InstallFromMarketplaceQuery
+      canInstallPlugin={canInstallPlugin}
+      isPermissionLoading={isInstallPermissionLoading}
+      installContextCategory={category}
+    />
+  )
 
   switch (section) {
     case 'provider':
       return (
-        <ModelProviderPage
-          hideSystemModelSelectorProviderSettingsFooter
-          layout={renderScrollableLayout}
-          searchText={providerSearchText}
-          stickyToolbar
-          onSearchTextChange={onProviderSearchTextChange}
-        />
+        <>
+          <ModelProviderPage
+            hideSystemModelSelectorProviderSettingsFooter
+            layout={renderScrollableLayout}
+            onOpenMarketplace={onSwitchToMarketplace}
+            searchText={providerSearchText}
+            stickyToolbar
+            onSearchTextChange={onProviderSearchTextChange}
+          />
+          {renderMarketplaceInstallQuery(PluginCategoryEnum.model)}
+        </>
       )
     case 'builtin':
       return renderPluginCategoryPage(PluginCategoryEnum.tool)
@@ -103,10 +118,19 @@ const IntegrationSectionRenderer = ({
     case 'custom-tool':
       return <ToolProviderList category="api" contentInset="compact" layout={renderDirectLayout} />
     case 'workflow-tool':
-      return <ToolProviderList category="workflow" contentInset="compact" layout={renderDirectLayout} />
+      return (
+        <ToolProviderList category="workflow" contentInset="compact" layout={renderDirectLayout} />
+      )
     case 'data-source':
       return (
-        <DataSourcePage stickyToolbar layout={renderScrollableLayout} />
+        <>
+          <DataSourcePage
+            stickyToolbar
+            layout={renderScrollableLayout}
+            onOpenMarketplace={onSwitchToMarketplace}
+          />
+          {renderMarketplaceInstallQuery(PluginCategoryEnum.datasource)}
+        </>
       )
     case 'custom-endpoint':
       return <ApiBasedExtensionPage layout={renderScrollableLayout} />

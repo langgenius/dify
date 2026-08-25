@@ -58,9 +58,11 @@ describe('useSnippetPublish', () => {
 
   describe('Publish action', () => {
     it('should publish the snippet and show success feedback', async () => {
-      const { result } = renderHook(() => useSnippetPublish({
-        snippetId: 'snippet-1',
-      }))
+      const { result } = renderHook(() =>
+        useSnippetPublish({
+          snippetId: 'snippet-1',
+        }),
+      )
 
       await act(async () => {
         await result.current.handlePublish()
@@ -73,19 +75,23 @@ describe('useSnippetPublish', () => {
       expect(mockSetQueryData).toHaveBeenCalledTimes(1)
       const setQueryDataCall = mockSetQueryData.mock.calls[0]
       expect(setQueryDataCall).toBeDefined()
-      const updateSnippetDetail = setQueryDataCall![1] as (old: { is_published: boolean }) => { is_published: boolean }
+      const updateSnippetDetail = setQueryDataCall![1] as (old: { is_published: boolean }) => {
+        is_published: boolean
+      }
       expect(updateSnippetDetail({ is_published: false })).toEqual({ is_published: true })
       expect(mockSetPublishedAt).toHaveBeenCalledWith(1_712_345_678)
       expect(mockResetWorkflowVersionHistory).toHaveBeenCalledTimes(1)
-      expect(toast.success).toHaveBeenCalledWith('snippet.saveSuccess')
+      expect(toast.success).toHaveBeenCalledWith('snippet.publishSuccess')
     })
 
     it('should not publish the snippet when checklist validation fails', async () => {
       mockHandleCheckBeforePublish.mockResolvedValue(false)
 
-      const { result } = renderHook(() => useSnippetPublish({
-        snippetId: 'snippet-1',
-      }))
+      const { result } = renderHook(() =>
+        useSnippetPublish({
+          snippetId: 'snippet-1',
+        }),
+      )
 
       await act(async () => {
         await result.current.handlePublish()
@@ -102,9 +108,11 @@ describe('useSnippetPublish', () => {
     it('should surface publish errors through toast feedback', async () => {
       mockMutateAsync.mockRejectedValue(new Error('publish failed'))
 
-      const { result } = renderHook(() => useSnippetPublish({
-        snippetId: 'snippet-1',
-      }))
+      const { result } = renderHook(() =>
+        useSnippetPublish({
+          snippetId: 'snippet-1',
+        }),
+      )
 
       await act(async () => {
         await result.current.handlePublish()
@@ -117,9 +125,11 @@ describe('useSnippetPublish', () => {
   it('should expose publishing pending state', () => {
     isPending = true
 
-    const { result } = renderHook(() => useSnippetPublish({
-      snippetId: 'snippet-1',
-    }))
+    const { result } = renderHook(() =>
+      useSnippetPublish({
+        snippetId: 'snippet-1',
+      }),
+    )
 
     expect(result.current.isPublishing).toBe(true)
   })

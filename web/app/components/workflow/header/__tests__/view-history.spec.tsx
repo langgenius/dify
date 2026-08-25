@@ -11,27 +11,37 @@ const mockCloseAllInputFieldPanels = vi.fn()
 const mockHandleNodesCancelSelected = vi.fn()
 const mockHandleCancelDebugAndPreviewPanel = vi.fn()
 const mockHandleBackupDraft = vi.fn()
-const mockFormatWorkflowRunIdentifier = vi.fn((finishedAt?: number, status?: string) => ` (${status || finishedAt || 'unknown'})`)
+const mockFormatWorkflowRunIdentifier = vi.fn(
+  (finishedAt?: number, status?: string) => ` (${status || finishedAt || 'unknown'})`,
+)
 
 let mockIsChatMode = false
 
-vi.mock('../../hooks', () => {
-  return {
-    useIsChatMode: () => mockIsChatMode,
-    useNodesInteractions: () => ({
-      handleNodesCancelSelected: mockHandleNodesCancelSelected,
-    }),
-    useWorkflowInteractions: () => ({
-      handleCancelDebugAndPreviewPanel: mockHandleCancelDebugAndPreviewPanel,
-    }),
-    useWorkflowRun: () => ({
-      handleBackupDraft: mockHandleBackupDraft,
-    }),
-  }
-})
+vi.mock('../../hooks/use-workflow', () => ({
+  useIsChatMode: () => mockIsChatMode,
+}))
+
+vi.mock('../../hooks/use-nodes-interactions', () => ({
+  useNodesInteractions: () => ({
+    handleNodesCancelSelected: mockHandleNodesCancelSelected,
+  }),
+}))
+
+vi.mock('../../hooks/use-workflow-panel-interactions', () => ({
+  useWorkflowInteractions: () => ({
+    handleCancelDebugAndPreviewPanel: mockHandleCancelDebugAndPreviewPanel,
+  }),
+}))
+
+vi.mock('../../hooks/use-workflow-run', () => ({
+  useWorkflowRun: () => ({
+    handleBackupDraft: mockHandleBackupDraft,
+  }),
+}))
 
 vi.mock('@/service/use-workflow', () => ({
-  useWorkflowRunHistory: (url?: string, enabled?: boolean) => mockUseWorkflowRunHistory(url, enabled),
+  useWorkflowRunHistory: (url?: string, enabled?: boolean) =>
+    mockUseWorkflowRunHistory(url, enabled),
 }))
 
 vi.mock('@/hooks/use-format-time-from-now', () => ({
@@ -40,7 +50,7 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
-vi.mock('@/app/components/rag-pipeline/hooks', () => ({
+vi.mock('@/app/components/rag-pipeline/hooks/use-input-field-panel', () => ({
   useInputFieldPanel: () => ({
     closeAllInputFieldPanels: mockCloseAllInputFieldPanels,
   }),
@@ -59,43 +69,12 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({
-    children,
-    ...props
-  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button {...props}>
-      {children}
-    </button>
-  ),
-}))
-
-vi.mock('@langgenius/dify-ui/tooltip', () => ({
-  Tooltip: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
-  TooltipTrigger: ({
-    children,
-    render,
-  }: {
-    children?: React.ReactNode
-    render?: React.ReactElement
-  }) => {
-    if (render && React.isValidElement(render)) {
-      const renderElement = render as React.ReactElement<{ children?: React.ReactNode }>
-      return React.cloneElement(renderElement, renderElement.props, children)
-    }
-
-    return <>{children}</>
-  },
-  TooltipContent: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
-}))
-
-vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
-
 vi.mock('../../utils', async () => {
   const actual = await vi.importActual<typeof import('../../utils')>('../../utils')
   return {
     ...actual,
-    formatWorkflowRunIdentifier: (finishedAt?: number, status?: string) => mockFormatWorkflowRunIdentifier(finishedAt, status),
+    formatWorkflowRunIdentifier: (finishedAt?: number, status?: string) =>
+      mockFormatWorkflowRunIdentifier(finishedAt, status),
   }
 })
 
@@ -157,10 +136,7 @@ describe('ViewHistory', () => {
     })
 
     renderWorkflowComponent(
-      <ViewHistory
-        historyUrl="/history"
-        onClearLogAndMessageModal={onClearLogAndMessageModal}
-      />,
+      <ViewHistory historyUrl="/history" onClearLogAndMessageModal={onClearLogAndMessageModal} />,
       {
         hooksStoreProps: {
           handleBackupDraft: vi.fn(),

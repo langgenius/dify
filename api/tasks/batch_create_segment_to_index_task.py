@@ -174,10 +174,12 @@ def batch_create_segment_to_index_task(
             dataset_document.word_count += word_count_change
             session.add(dataset_document)
 
-    with session_factory.create_session() as session:
+    with session_factory.create_session() as session, session.begin():
         dataset = session.get(Dataset, dataset_id)
         if dataset:
-            VectorService.create_segments_vector(None, document_segments, dataset, document_config["doc_form"])
+            VectorService.create_segments_vector(
+                None, document_segments, dataset, document_config["doc_form"], session=session
+            )
 
     redis_client.setex(indexing_cache_key, 600, "completed")
     end_at = time.perf_counter()

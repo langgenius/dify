@@ -1,6 +1,8 @@
 from collections.abc import Generator
 from typing import Any, override
 
+from sqlalchemy.orm import Session
+
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
@@ -26,6 +28,7 @@ class DatasetRetrieverTool(Tool):
 
     @staticmethod
     def get_dataset_tools(
+        session: Session,
         tenant_id: str,
         dataset_ids: list[str],
         retrieve_config: DatasetRetrieveConfigEntity | None,
@@ -51,6 +54,7 @@ class DatasetRetrieverTool(Tool):
         original_retriever_mode = retrieve_config.retrieve_strategy
         retrieve_config.retrieve_strategy = DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE
         retrieval_tools = feature.to_dataset_retriever_tool(
+            session=session,
             tenant_id=tenant_id,
             dataset_ids=dataset_ids,
             retrieve_config=retrieve_config,
@@ -113,6 +117,7 @@ class DatasetRetrieverTool(Tool):
     @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
@@ -127,7 +132,7 @@ class DatasetRetrieverTool(Tool):
             yield self.create_text_message(text="please input query")
         else:
             # invoke dataset retriever tool
-            result = self.retrieval_tool.run(query=query)
+            result = self.retrieval_tool.run(session=session, query=query)
             yield self.create_text_message(text=result)
 
     def validate_credentials(

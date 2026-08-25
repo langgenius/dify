@@ -16,7 +16,7 @@ from zoneinfo import available_timezones
 
 from flask import Request, Response, stream_with_context
 from flask_restx import fields
-from pydantic import BaseModel, ConfigDict, TypeAdapter, with_config
+from pydantic import BaseModel, ConfigDict, TypeAdapter, WithJsonSchema, with_config
 from pydantic.functional_validators import AfterValidator
 from typing_extensions import TypedDict
 
@@ -221,8 +221,11 @@ def current_timestamp() -> int:
 def email(email):
     # Define a regex pattern for email addresses
     pattern = r"^[\w\.!#$%&'*+\-/=?^_`{|}~]+@([\w-]+\.)+[\w-]{2,}$"
-    # Check if the email matches the pattern
-    if re.match(pattern, email) is not None:
+    # Use re.fullmatch instead of re.match to reject trailing newlines.
+    # In Python, '$' matches at end-of-string OR just before a trailing newline,
+    # so re.match accepts "user@example.com\n". re.fullmatch requires the entire
+    # string to match, closing the mail header-injection vector. (#39234)
+    if re.fullmatch(pattern, email) is not None:
         return email
 
     error = f"{email} is not a valid email."
@@ -281,12 +284,20 @@ def _strict_uuid(value: str | UUID) -> str:
         raise ValueError("must be a valid UUID") from exc
 
 
-UUIDStr = Annotated[str, AfterValidator(_strict_uuid)]
+UUIDStr = Annotated[
+    str,
+    AfterValidator(_strict_uuid),
+    WithJsonSchema({"format": "uuid", "type": "string"}),
+]
 
 
 def alphanumeric(value: str):
     # check if the value is alphanumeric and underlined
-    if re.match(r"^[a-zA-Z0-9_]+$", value):
+    # Use re.fullmatch instead of re.match to reject trailing newlines.
+    # In Python, '$' matches at end-of-string OR just before a trailing newline,
+    # so re.match accepts "tool_name\n". re.fullmatch requires the entire
+    # string to match. Regression for #39666 (sibling of #39234 / #39548).
+    if re.fullmatch(r"^[a-zA-Z0-9_]+$", value):
         return value
 
     raise ValueError(f"{value} is not a valid alphanumeric value")
@@ -388,7 +399,7 @@ def extract_remote_ip(request: Request) -> str:
     if request.headers.get("CF-Connecting-IP"):
         return cast(str, request.headers.get("CF-Connecting-IP"))
     elif request.headers.getlist("X-Forwarded-For"):
-        return cast(str, request.headers.getlist("X-Forwarded-For")[0])
+        return request.headers.getlist("X-Forwarded-For")[0]
     else:
         return cast(str, request.remote_addr)
 
@@ -489,15 +500,12 @@ class TokenManager:
     def generate_token(
         cls,
         token_type: str,
-        account: "Account | None" = None,
+        account_id: str | None = None,
         email: str | None = None,
         additional_data: dict[str, Any] | None = None,
     ) -> str:
-        if account is None and email is None:
+        if account_id is None and email is None:
             raise ValueError("Account or email must be provided")
-
-        account_id = account.id if account else None
-        account_email = email if email is not None else account.email if account else None
 
         if account_id:
             old_token = cls._get_current_token_for_account(account_id, token_type)
@@ -507,7 +515,7 @@ class TokenManager:
                 cls.revoke_token(old_token, token_type)
 
         token = str(uuid.uuid4())
-        token_data = {"account_id": account_id, "email": account_email, "token_type": token_type}
+        token_data = {"account_id": account_id, "email": email, "token_type": token_type}
         if additional_data:
             token_data.update(additional_data)
 

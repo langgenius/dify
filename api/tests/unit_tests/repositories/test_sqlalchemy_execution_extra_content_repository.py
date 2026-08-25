@@ -6,8 +6,12 @@ from typing import cast
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from graphon.nodes.human_input.entities import FormDefinition, UserActionConfig
-from graphon.nodes.human_input.enums import HumanInputFormStatus
+from core.workflow.nodes.human_input.entities import (
+    FormDefinition,
+    ParagraphInputConfig,
+    UserActionConfig,
+)
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.execution_extra_content import HumanInputContent as HumanInputContentModel
 from models.human_input import HumanInputForm
@@ -17,11 +21,15 @@ from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchem
 def test_map_human_input_content_populates_submission_data_from_stored_form_submission() -> None:
     expiration_time = naive_utc_now() + timedelta(days=1)
     stored_submission_data = {"decision": "approve", "comment": "Looks good"}
+    rendered_content_template = "Decision: {{#$output.decision#}}, Comment: {{#$output.comment#}}"
     form_definition = FormDefinition(
-        form_content="content",
-        inputs=[],
+        form_content=rendered_content_template,
+        inputs=[
+            ParagraphInputConfig(output_variable_name="decision"),
+            ParagraphInputConfig(output_variable_name="comment"),
+        ],
         user_actions=[UserActionConfig(id="approve", title="Approve")],
-        rendered_content="Rendered Approve",
+        rendered_content=rendered_content_template,
         expiration_time=expiration_time,
         node_title="Approval",
         display_in_ui=True,
@@ -32,7 +40,7 @@ def test_map_human_input_content_populates_submission_data_from_stored_form_subm
         workflow_run_id="workflow-run-1",
         node_id="node-1",
         form_definition=form_definition.model_dump_json(),
-        rendered_content="Rendered Approve",
+        rendered_content=rendered_content_template,
         expiration_time=expiration_time,
         selected_action_id="approve",
         submitted_data=json.dumps(stored_submission_data),
@@ -54,6 +62,7 @@ def test_map_human_input_content_populates_submission_data_from_stored_form_subm
     assert content is not None
     assert content.form_submission_data is not None
     assert content.form_submission_data.submitted_data == stored_submission_data
+    assert content.form_submission_data.rendered_content == "Decision: approve, Comment: Looks good"
 
 
 def test_map_human_input_content_keeps_waiting_form_without_selected_action() -> None:

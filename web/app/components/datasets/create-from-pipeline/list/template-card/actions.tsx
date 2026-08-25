@@ -2,7 +2,9 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
-  DropdownMenuContent,
+  DropdownMenuPopup,
+  DropdownMenuPortal,
+  DropdownMenuPositioner,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
@@ -36,50 +38,40 @@ const Actions = ({
         isMoreOperationsOpen ? 'flex' : 'hidden group-hover:flex',
       )}
     >
-      <Button
-        variant="primary"
-        onClick={onApplyTemplate}
-        className="grow gap-x-0.5"
-      >
+      <Button variant="primary" onClick={onApplyTemplate} className="grow">
         <span aria-hidden className="i-ri-add-line size-4" />
-        <span className="px-0.5">{t('operations.choose', { ns: 'datasetPipeline' })}</span>
+        <span>{t(($) => $['operations.choose'], { ns: 'datasetPipeline' })}</span>
       </Button>
-      <Button
-        variant="secondary"
-        onClick={handleShowTemplateDetails}
-        className="grow gap-x-0.5"
-      >
+      <Button variant="secondary" onClick={handleShowTemplateDetails} className="grow">
         <span aria-hidden className="i-ri-arrow-right-up-line size-4" />
-        <span className="px-0.5">{t('operations.details', { ns: 'datasetPipeline' })}</span>
+        <span>{t(($) => $['operations.details'], { ns: 'datasetPipeline' })}</span>
       </Button>
-      {
-        showMoreOperations && (
-          <DropdownMenu open={isMoreOperationsOpen} onOpenChange={setIsMoreOperationsOpen}>
-            <DropdownMenuTrigger
-              aria-label={t('operation.more', { ns: 'common' })}
-              className={cn(
-                'flex size-8 cursor-pointer items-center justify-center rounded-lg p-0 shadow-xs shadow-shadow-shadow-3',
-                'data-popup-open:bg-state-base-hover',
-              )}
-              onClick={e => e.stopPropagation()}
-            >
-              <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              placement="bottom-end"
-              sideOffset={4}
-              popupClassName="min-w-[160px] border-0 bg-transparent py-0 shadow-none backdrop-blur-none"
-            >
-              <Operations
-                openEditModal={openEditModal}
-                onExport={handleExportDSL}
-                onDelete={handleDelete}
-                onClose={() => setIsMoreOperationsOpen(false)}
-              />
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )
-      }
+      {showMoreOperations && (
+        <DropdownMenu open={isMoreOperationsOpen} onOpenChange={setIsMoreOperationsOpen}>
+          <DropdownMenuTrigger
+            aria-label={t(($) => $['operation.more'], { ns: 'common' })}
+            className={cn(
+              'flex size-8 cursor-pointer items-center justify-center rounded-lg p-0 shadow-xs shadow-shadow-shadow-3',
+              'data-popup-open:bg-state-base-hover',
+            )}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
+          </DropdownMenuTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuPositioner placement="bottom-end" sideOffset={4}>
+              <DropdownMenuPopup className="min-w-[160px]">
+                <Operations
+                  openEditModal={openEditModal}
+                  onExport={handleExportDSL}
+                  onDelete={handleDelete}
+                  onClose={() => setIsMoreOperationsOpen(false)}
+                />
+              </DropdownMenuPopup>
+            </DropdownMenuPositioner>
+          </DropdownMenuPortal>
+        </DropdownMenu>
+      )}
     </div>
   )
 }

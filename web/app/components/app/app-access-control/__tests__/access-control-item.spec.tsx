@@ -1,43 +1,71 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { AccessMode } from '@/models/access-control'
-import { AccessControlItem } from '../access-control-item'
-import { AccessControlRadioGroupHarness } from './access-control-radio-group-harness'
-import { createAccessControlDraftHarness } from './access-control-test-utils'
+import AccessControlItem from '../access-control-item'
 
 describe('AccessControlItem', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+  function AccessOptions({ initialValue = AccessMode.PUBLIC }: { initialValue?: AccessMode }) {
+    const [value, setValue] = useState<AccessMode>(initialValue)
+
+    return (
+      <RadioGroup<AccessMode> aria-label="Access" value={value} onValueChange={setValue}>
+        <AccessControlItem type={AccessMode.ORGANIZATION}>Organization Only</AccessControlItem>
+        <AccessControlItem type={AccessMode.PUBLIC}>Anyone</AccessControlItem>
+      </RadioGroup>
+    )
+  }
+
+  it('should expose a single-select radio group and update the checked option', async () => {
+    const user = userEvent.setup()
+    render(<AccessOptions />)
+
+    const organization = screen.getByRole('radio', { name: 'Organization Only' })
+    const anyone = screen.getByRole('radio', { name: 'Anyone' })
+
+    expect(screen.getByRole('radiogroup', { name: 'Access' })).toBeInTheDocument()
+    expect(organization).not.toBeChecked()
+    expect(anyone).toBeChecked()
+
+    await user.click(organization)
+
+    expect(organization).toBeChecked()
+    expect(anyone).not.toBeChecked()
   })
 
-  it('should update current menu when selecting a different access type', () => {
-    const harness = createAccessControlDraftHarness(
-      <AccessControlRadioGroupHarness>
-        <AccessControlItem type={AccessMode.ORGANIZATION}>
-          <span>Organization Only</span>
-        </AccessControlItem>
-      </AccessControlRadioGroupHarness>,
-      { currentMenu: AccessMode.PUBLIC },
-    )
-    render(harness.element)
+  it('should support arrow-key selection between options', async () => {
+    const user = userEvent.setup()
+    render(<AccessOptions initialValue={AccessMode.ORGANIZATION} />)
 
-    const option = screen.getByRole('radio', { name: 'Organization Only' })
-    fireEvent.click(option)
+    const organization = screen.getByRole('radio', { name: 'Organization Only' })
+    const anyone = screen.getByRole('radio', { name: 'Anyone' })
+    expect(organization).toBeChecked()
+    organization.focus()
 
-    expect(harness.getSnapshot().currentMenu).toBe(AccessMode.ORGANIZATION)
+    await user.keyboard('{ArrowRight}')
+
+    expect(anyone).toBeChecked()
   })
 
-  it('should keep the selected state for the active access type', () => {
-    const harness = createAccessControlDraftHarness(
-      <AccessControlRadioGroupHarness>
-        <AccessControlItem type={AccessMode.ORGANIZATION}>
-          <span>Organization Only</span>
+  it('should not select a disabled option', async () => {
+    const user = userEvent.setup()
+    render(
+      <RadioGroup<AccessMode> aria-label="Access" defaultValue={AccessMode.PUBLIC}>
+        <AccessControlItem type={AccessMode.ORGANIZATION} disabled>
+          Organization Only
         </AccessControlItem>
-      </AccessControlRadioGroupHarness>,
-      { currentMenu: AccessMode.ORGANIZATION },
+        <AccessControlItem type={AccessMode.PUBLIC}>Anyone</AccessControlItem>
+      </RadioGroup>,
     )
-    render(harness.element)
 
-    const option = screen.getByRole('radio', { name: 'Organization Only' })
-    expect(option).toHaveAttribute('data-checked')
+    const organization = screen.getByRole('radio', { name: 'Organization Only' })
+    expect(organization).toHaveAttribute('aria-disabled', 'true')
+    expect(organization).toHaveAttribute('data-disabled')
+
+    await user.click(organization)
+
+    expect(organization).not.toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Anyone' })).toBeChecked()
   })
 })

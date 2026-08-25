@@ -6,7 +6,6 @@ from typing import Union
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.common.graph_runtime_state_support import GraphRuntimeStateSupport
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
@@ -31,6 +30,7 @@ from core.app.entities.queue_entities import (
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
     QueuePingEvent,
+    QueueReasoningChunkEvent,
     QueueStopEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
@@ -47,6 +47,7 @@ from core.app.entities.task_entities import (
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
     PingStreamResponse,
+    ReasoningChunkStreamResponse,
     StreamResponse,
     TextChunkStreamResponse,
     WorkflowAppBlockingResponse,
@@ -57,7 +58,7 @@ from core.app.entities.task_entities import (
     WorkflowStartStreamResponse,
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
-from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
+from core.base.tts import AppGeneratorTTSPublisher
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
@@ -244,9 +245,13 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if not publisher:
             return None
         audio_msg = publisher.check_and_get_audio()
-        if audio_msg and isinstance(audio_msg, AudioTrunk) and audio_msg.status != "finish":
-            return MessageAudioStreamResponse(audio=audio_msg.audio, task_id=task_id)
-        return None
+        if audio_msg is None:
+            return None
+        if audio_msg.status == "responding":
+            return MessageAudioStreamResponse(audio=audio_msg.audio, audio_type=audio_msg.audio_type, task_id=task_id)
+        if audio_msg.status in {"finish", "error"}:
+            return None
+        raise RuntimeError(f"TTS publisher returned an unknown status: {audio_msg.status}")
 
     def _wrapper_process_stream_response(
         self, trace_manager: TraceQueueManager | None = None
@@ -257,7 +262,8 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         features_dict = self._workflow_features_dict
 
         if (
-            features_dict.get("text_to_speech")
+            self._base_task_pipeline.stream
+            and features_dict.get("text_to_speech")
             and features_dict["text_to_speech"].get("enabled")
             and features_dict["text_to_speech"].get("autoPlay") == "enabled"
         ):
@@ -265,35 +271,41 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 tenant_id, features_dict["text_to_speech"].get("voice"), features_dict["text_to_speech"].get("language")
             )
 
-        for response in self._process_stream_response(tts_publisher=tts_publisher, trace_manager=trace_manager):
-            while True:
-                audio_response = self._listen_audio_msg(publisher=tts_publisher, task_id=task_id)
-                if audio_response:
+        try:
+            for response in self._process_stream_response(tts_publisher=tts_publisher, trace_manager=trace_manager):
+                while audio_response := self._listen_audio_msg(publisher=tts_publisher, task_id=task_id):
                     yield audio_response
-                else:
-                    break
-            yield response
+                if tts_publisher and isinstance(response, ErrorStreamResponse):
+                    tts_publisher.cancel()
+                    yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
+                    yield response
+                    return
+                yield response
 
-        start_listener_time = time.time()
-        while (time.time() - start_listener_time) < TTS_AUTO_PLAY_TIMEOUT:
-            try:
-                if not tts_publisher:
-                    break
-                audio_trunk = tts_publisher.check_and_get_audio()
-                if audio_trunk is None:
-                    # release cpu
-                    # sleep 20 ms ( 40ms => 1280 byte audio file,20ms => 640 byte audio file)
-                    time.sleep(TTS_AUTO_PLAY_YIELD_CPU_TIME)
+            if tts_publisher is None:
+                return
+
+            tts_publisher.publish(None)
+            while True:
+                audio_trunk = tts_publisher.check_and_get_audio(block=True)
+                assert audio_trunk is not None
+                if audio_trunk.status == "responding":
+                    yield MessageAudioStreamResponse(
+                        audio=audio_trunk.audio, audio_type=audio_trunk.audio_type, task_id=task_id
+                    )
                     continue
-                if audio_trunk.status == "finish":
-                    break
-                else:
-                    yield MessageAudioStreamResponse(audio=audio_trunk.audio, task_id=task_id)
-            except Exception:
-                logger.exception("Fails to get audio trunk, task_id: %s", task_id)
-                break
-        if tts_publisher:
-            yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
+                if audio_trunk.status not in {"finish", "error"}:
+                    raise RuntimeError(f"TTS publisher returned an unknown status: {audio_trunk.status}")
+
+                yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
+                if audio_trunk.status == "error":
+                    if audio_trunk.error is None:
+                        raise RuntimeError("TTS publisher returned an error terminal without an exception")
+                    yield ErrorStreamResponse(err=audio_trunk.error, task_id=task_id)
+                return
+        finally:
+            if tts_publisher:
+                tts_publisher.cancel()
 
     @contextmanager
     def _database_session(self):
@@ -571,6 +583,22 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
         yield self._text_chunk_to_stream_response(delta_text, from_variable_selector=event.from_variable_selector)
 
+    def _handle_reasoning_chunk_event(
+        self, event: QueueReasoningChunkEvent, **kwargs
+    ) -> Generator[StreamResponse, None, None]:
+        """Handle reasoning chunk events."""
+        # is_final with empty reasoning is still forwarded as the "thinking finished" signal
+        if not event.reasoning and not event.is_final:
+            return
+        yield ReasoningChunkStreamResponse(
+            task_id=self._application_generate_entity.task_id,
+            data=ReasoningChunkStreamResponse.Data(
+                reasoning=event.reasoning,
+                node_id=event.from_node_id,
+                is_final=event.is_final,
+            ),
+        )
+
     def _handle_agent_log_event(self, event: QueueAgentLogEvent, **kwargs) -> Generator[StreamResponse, None, None]:
         """Handle agent log events."""
         yield self._workflow_response_converter.handle_agent_log(
@@ -600,6 +628,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             QueuePingEvent: self._handle_ping_event,
             QueueErrorEvent: self._handle_error_event,
             QueueTextChunkEvent: self._handle_text_chunk_event,
+            QueueReasoningChunkEvent: self._handle_reasoning_chunk_event,
             # Workflow events
             QueueWorkflowStartedEvent: self._handle_workflow_started_event,
             QueueWorkflowSucceededEvent: self._handle_workflow_succeeded_event,
@@ -722,9 +751,6 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                         )
                     ):
                         yield from responses
-
-        if tts_publisher:
-            tts_publisher.publish(None)
 
     def _save_workflow_app_log(self, *, session: Session, workflow_run_id: str | None):
         invoke_from = self._application_generate_entity.invoke_from

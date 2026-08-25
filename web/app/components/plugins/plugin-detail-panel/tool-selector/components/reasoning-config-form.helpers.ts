@@ -1,7 +1,6 @@
-import type { Node } from 'reactflow'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
-import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { produce } from 'immer'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
@@ -21,33 +20,34 @@ type ReasoningConfigInput = {
 export type ReasoningConfigValue = Record<string, ReasoningConfigInput>
 
 export const getVarKindType = (type: string) => {
-  if (type === FormTypeEnum.file || type === FormTypeEnum.files)
-    return VarKindType.variable
+  if (type === FormTypeEnum.file || type === FormTypeEnum.files) return VarKindType.variable
 
-  if ([FormTypeEnum.select, FormTypeEnum.checkbox, FormTypeEnum.textNumber, FormTypeEnum.array, FormTypeEnum.object].includes(type as FormTypeEnum))
+  if (
+    [
+      FormTypeEnum.select,
+      FormTypeEnum.checkbox,
+      FormTypeEnum.textNumber,
+      FormTypeEnum.array,
+      FormTypeEnum.object,
+      FormTypeEnum.date,
+      FormTypeEnum.dateRange,
+    ].includes(type as FormTypeEnum)
+  )
     return VarKindType.constant
 
-  if (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput)
-    return VarKindType.mixed
+  if (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput) return VarKindType.mixed
 
   return undefined
 }
 
 export const resolveTargetVarType = (type: string) => {
-  if (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput)
-    return VarType.string
-  if (type === FormTypeEnum.textNumber)
-    return VarType.number
-  if (type === FormTypeEnum.files)
-    return VarType.arrayFile
-  if (type === FormTypeEnum.file)
-    return VarType.file
-  if (type === FormTypeEnum.checkbox)
-    return VarType.boolean
-  if (type === FormTypeEnum.object)
-    return VarType.object
-  if (type === FormTypeEnum.array)
-    return VarType.arrayObject
+  if (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput) return VarType.string
+  if (type === FormTypeEnum.textNumber) return VarType.number
+  if (type === FormTypeEnum.files) return VarType.arrayFile
+  if (type === FormTypeEnum.file) return VarType.file
+  if (type === FormTypeEnum.checkbox) return VarType.boolean
+  if (type === FormTypeEnum.object) return VarType.object
+  if (type === FormTypeEnum.array) return VarType.arrayObject
 
   return VarType.string
 }
@@ -56,8 +56,13 @@ export const createFilterVar = (type: string) => {
   if (type === FormTypeEnum.textNumber)
     return (varPayload: Var) => varPayload.type === VarType.number
 
-  if (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput)
-    return (varPayload: Var) => [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+  if (
+    type === FormTypeEnum.textInput ||
+    type === FormTypeEnum.secretInput ||
+    type === FormTypeEnum.date
+  )
+    return (varPayload: Var) =>
+      [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
 
   if (type === FormTypeEnum.file || type === FormTypeEnum.files)
     return (varPayload: Var) => [VarType.file, VarType.arrayFile].includes(varPayload.type)
@@ -65,11 +70,13 @@ export const createFilterVar = (type: string) => {
   if (type === FormTypeEnum.checkbox)
     return (varPayload: Var) => varPayload.type === VarType.boolean
 
-  if (type === FormTypeEnum.object)
-    return (varPayload: Var) => varPayload.type === VarType.object
+  if (type === FormTypeEnum.object) return (varPayload: Var) => varPayload.type === VarType.object
 
   if (type === FormTypeEnum.array)
-    return (varPayload: Var) => [VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject].includes(varPayload.type)
+    return (varPayload: Var) =>
+      [VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject].includes(
+        varPayload.type,
+      )
 
   return undefined
 }
@@ -79,15 +86,19 @@ export const getVisibleSelectOptions = (
   value: ReasoningConfigValue,
   language: string,
 ) => {
-  return options.filter((option) => {
-    if (option.show_on.length)
-      return option.show_on.every(showOnItem => value[showOnItem.variable]?.value?.value === showOnItem.value)
+  return options
+    .filter((option) => {
+      if (option.show_on.length)
+        return option.show_on.every(
+          (showOnItem) => value[showOnItem.variable]?.value?.value === showOnItem.value,
+        )
 
-    return true
-  }).map(option => ({
-    value: option.value,
-    name: option.label[language] || option.label.en_US,
-  }))
+      return true
+    })
+    .map((option) => ({
+      value: option.value,
+      name: option.label[language] || option.label.en_US,
+    }))
 }
 
 export const updateInputAutoState = (
@@ -100,7 +111,7 @@ export const updateInputAutoState = (
     ...value,
     [variable]: {
       value: enabled ? null : { type: getVarKindType(type), value: null },
-      auto: enabled ? 1 as const : 0 as const,
+      auto: enabled ? (1 as const) : (0 as const),
     },
   }
 }
@@ -161,6 +172,8 @@ export const updateVariableSelectorValue = (
 }
 
 export const getFieldFlags = (type: string, varInput?: ReasoningConfigInputValue) => {
+  const isDateRange = type === FormTypeEnum.dateRange
+  const isDate = type === FormTypeEnum.date
   const isString = type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput
   const isNumber = type === FormTypeEnum.textNumber
   const isObject = type === FormTypeEnum.object
@@ -183,7 +196,9 @@ export const getFieldFlags = (type: string, varInput?: ReasoningConfigInputValue
     isSelect,
     isAppSelector,
     isModelSelector,
-    showTypeSwitch: isNumber || isObject || isArray,
+    isDate,
+    isDateRange,
+    showTypeSwitch: isNumber || isObject || isArray || isDate,
     isConstant,
     showVariableSelector: isFile || varInput?.type === VarKindType.variable,
   }
@@ -211,23 +226,3 @@ export const createPickerProps = ({
 export const getFieldTitle = (labels: { [key: string]: string }, language: string) => {
   return labels[language] || labels.en_US
 }
-
-export const createEmptyAppValue = () => ({
-  app_id: '',
-  inputs: {},
-  files: [],
-})
-
-export const createReasoningFormContext = ({
-  availableNodes,
-  nodeId,
-  nodeOutputVars,
-}: {
-  availableNodes: Node[]
-  nodeId: string
-  nodeOutputVars: NodeOutPutVar[]
-}) => ({
-  availableNodes,
-  nodeId,
-  nodeOutputVars,
-})

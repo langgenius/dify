@@ -2,8 +2,6 @@
 
 import type { ReactNode } from 'react'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
-import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MARKETPLACE_URL_PREFIX } from '@/config'
@@ -22,11 +21,7 @@ type DropdownItemProps = {
   text: string
 }
 
-function DropdownItem({
-  href,
-  icon,
-  text,
-}: DropdownItemProps) {
+function DropdownItem({ href, icon, text }: DropdownItemProps) {
   return (
     <DropdownMenuLinkItem
       href={href}
@@ -41,7 +36,11 @@ function DropdownItem({
   )
 }
 
-type OptionLabelKey = 'requestAPlugin' | 'pluginDevelopmentGuide' | 'pluginPublishGuide' | 'templatePublishingGuide'
+type OptionLabelKey =
+  | 'requestAPlugin'
+  | 'pluginDevelopmentGuide'
+  | 'pluginPublishGuide'
+  | 'templatePublishingGuide'
 
 function getOptions(docLink: (path: DocPathWithoutLang) => string): {
   href: string
@@ -76,9 +75,7 @@ type SubmitRequestDropdownProps = {
   dividerAfterFirst?: boolean
 }
 
-export function SubmitRequestDropdown({
-  dividerAfterFirst,
-}: SubmitRequestDropdownProps) {
+export function SubmitRequestDropdown({ dividerAfterFirst }: SubmitRequestDropdownProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const docLink = useDocLink()
@@ -87,33 +84,27 @@ export function SubmitRequestDropdown({
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
-        render={(
-          <Button
-            aria-label={t('requestSubmit', { ns: 'plugin', defaultValue: t('requestAPlugin', { ns: 'plugin' }) })}
-            variant="ghost"
-            className={cn(
-              'size-8 p-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-              'data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary',
-            )}
+        render={
+          <IconButton
+            aria-label={t(($) => $.requestSubmit, {
+              ns: 'plugin',
+              defaultValue: t(($) => $.requestAPlugin, { ns: 'plugin' }),
+            })}
+            size="lg"
+            className="data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
           >
-            <span className="i-ri-book-open-line size-4 shrink-0" />
-          </Button>
-        )}
+            <span aria-hidden className="i-ri-book-open-line size-4 shrink-0" />
+          </IconButton>
+        }
       />
-      <DropdownMenuContent
-        placement="bottom-end"
-        sideOffset={4}
-        popupClassName="min-w-[200px] p-1"
-      >
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-[200px] p-1">
         {options.map((option, index) => (
           <Fragment key={option.href}>
-            {dividerAfterFirst && index === 1 && (
-              <DropdownMenuSeparator className="my-1" />
-            )}
+            {dividerAfterFirst && index === 1 && <DropdownMenuSeparator className="my-1" />}
             <DropdownItem
               href={option.href}
               icon={option.icon}
-              text={t(option.labelKey, { ns: 'plugin' })}
+              text={t(($) => $[option.labelKey], { ns: 'plugin' })}
             />
           </Fragment>
         ))}

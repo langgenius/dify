@@ -8,17 +8,14 @@ import pytest
 from pydantic import ValidationError
 
 from dify_agent.agent_stub.protocol.agent_stub import (
-    AgentStubDriveCommitItem,
-    AgentStubDriveCommitRequest,
-    AgentStubDriveFileRef,
+    AgentStubConfigDownloadSource,
+    AgentStubFileDownloadRequest,
     AgentStubFileMapping,
+    AgentStubFileUploadRequest,
     agent_stub_connections_url,
-    agent_stub_drive_commit_url,
-    agent_stub_drive_manifest_url,
     agent_stub_file_download_request_url,
     agent_stub_file_upload_request_url,
-    normalize_agent_stub_url,
-    parse_agent_stub_endpoint,
+    normalize_agent_stub_api_base_url,
 )
 
 
@@ -36,6 +33,12 @@ def test_agent_stub_connections_url_handles_trailing_slash_and_no_trailing_slash
     )
 
 
+def test_agent_stub_connections_url_normalizes_service_root_to_agent_stub_base() -> None:
+    assert agent_stub_connections_url("https://agent.example.com") == (
+        "https://agent.example.com/agent-stub/connections"
+    )
+
+
 def test_agent_stub_file_request_urls_handle_trailing_slash() -> None:
     assert agent_stub_file_upload_request_url("https://agent.example.com/agent-stub/") == (
         "https://agent.example.com/agent-stub/files/upload-request"
@@ -45,47 +48,40 @@ def test_agent_stub_file_request_urls_handle_trailing_slash() -> None:
     )
 
 
-def test_agent_stub_drive_request_urls_handle_trailing_slash() -> None:
-    assert agent_stub_drive_manifest_url("https://agent.example.com/agent-stub/") == (
-        "https://agent.example.com/agent-stub/drive/manifest"
-    )
-    assert agent_stub_drive_commit_url("https://agent.example.com/agent-stub") == (
-        "https://agent.example.com/agent-stub/drive/commit"
-    )
+def test_agent_stub_file_upload_request_rejects_client_max_size() -> None:
+    with pytest.raises(ValidationError, match="extra_forbidden"):
+        AgentStubFileUploadRequest.model_validate(
+            {"filename": "report.pdf", "mimetype": "application/pdf", "max_size": 1024}
+        )
 
 
-def test_normalize_agent_stub_url_rejects_query_and_fragment() -> None:
+def test_normalize_agent_stub_api_base_url_rejects_query_and_fragment() -> None:
     with pytest.raises(ValueError, match="query string or fragment"):
-        _ = normalize_agent_stub_url("https://agent.example.com/agent-stub?x=1")
+        _ = normalize_agent_stub_api_base_url("https://agent.example.com/agent-stub?x=1")
 
     with pytest.raises(ValueError, match="query string or fragment"):
-        _ = normalize_agent_stub_url("https://agent.example.com/agent-stub#fragment")
+        _ = normalize_agent_stub_api_base_url("https://agent.example.com/agent-stub#fragment")
+
+
+def test_normalize_agent_stub_api_base_url_accepts_service_root_or_agent_stub_root_only() -> None:
+    assert normalize_agent_stub_api_base_url("https://agent.example.com") == "https://agent.example.com/agent-stub"
+    assert normalize_agent_stub_api_base_url("https://agent.example.com/agent-stub/") == (
+        "https://agent.example.com/agent-stub"
+    )
+
+    with pytest.raises(ValueError, match="empty or /agent-stub"):
+        _ = normalize_agent_stub_api_base_url("https://agent.example.com/foo")
 
 
 def test_parse_agent_stub_endpoint_rejects_invalid_schemes_and_missing_host() -> None:
-    with pytest.raises(ValueError, match="http, https, or grpc"):
-        _ = normalize_agent_stub_url("not-a-url")
+    with pytest.raises(ValueError, match="http or https"):
+        _ = normalize_agent_stub_api_base_url("not-a-url")
 
-    with pytest.raises(ValueError, match="http, https, or grpc"):
-        _ = normalize_agent_stub_url("ftp://agent.example.com/agent-stub")
+    with pytest.raises(ValueError, match="http or https"):
+        _ = normalize_agent_stub_api_base_url("ftp://agent.example.com/agent-stub")
 
     with pytest.raises(ValueError, match="include a host"):
-        _ = normalize_agent_stub_url("https:///agent-stub")
-
-
-def test_parse_agent_stub_endpoint_accepts_grpc_host_and_port() -> None:
-    endpoint = parse_agent_stub_endpoint("grpc://agent.example.com:9091")
-
-    assert endpoint.url == "grpc://agent.example.com:9091"
-    assert endpoint.is_grpc is True
-    assert endpoint.host == "agent.example.com"
-    assert endpoint.port == 9091
-
-
-@pytest.mark.parametrize("invalid_url", ["grpc://agent.example.com", "grpc://agent.example.com:9091/path"])
-def test_parse_agent_stub_endpoint_rejects_invalid_grpc_urls(invalid_url: str) -> None:
-    with pytest.raises(ValueError):
-        _ = parse_agent_stub_endpoint(invalid_url)
+        _ = normalize_agent_stub_api_base_url("https:///agent-stub")
 
 
 def test_agent_stub_file_mapping_validates_reference_and_url_by_transfer_method() -> None:
@@ -113,23 +109,58 @@ def test_agent_stub_file_mapping_rejects_remote_url_with_reference() -> None:
         )
 
 
-def test_agent_stub_drive_commit_request_validates_file_refs() -> None:
-    request = AgentStubDriveCommitRequest(
-        items=[
-            AgentStubDriveCommitItem(
-                key="skills/example/SKILL.md",
-                file_ref=AgentStubDriveFileRef(kind="tool_file", id="tool-file-1"),
-            )
-        ]
+def test_agent_stub_file_download_request_accepts_legacy_http_audience_alias() -> None:
+    mapping = {"transfer_method": "tool_file", "reference": _reference("tool-file-1")}
+
+    request = AgentStubFileDownloadRequest.model_validate({"file": mapping, "for_external": False})
+
+    assert request.for_frontend is False
+    assert request.model_dump() == {
+        "file": {"transfer_method": "tool_file", "reference": _reference("tool-file-1"), "url": None},
+        "config": None,
+        "for_frontend": False,
+    }
+
+    with pytest.raises(ValidationError):
+        _ = AgentStubFileDownloadRequest.model_validate({"file": mapping, "for_frontend": True, "for_external": False})
+
+
+def test_agent_stub_file_download_request_accepts_exactly_one_sandbox_config_source() -> None:
+    request = AgentStubFileDownloadRequest(
+        config=AgentStubConfigDownloadSource(kind="skill", name="alpha"),
+        for_frontend=False,
     )
 
-    assert request.items[0].file_ref.kind == "tool_file"
+    assert request.config == AgentStubConfigDownloadSource(kind="skill", name="alpha")
+    with pytest.raises(ValidationError, match="exactly one"):
+        _ = AgentStubFileDownloadRequest(for_frontend=False)
+    with pytest.raises(ValidationError, match="exactly one"):
+        _ = AgentStubFileDownloadRequest(
+            file=AgentStubFileMapping(transfer_method="tool_file", reference=_reference("tool-file-1")),
+            config=AgentStubConfigDownloadSource(kind="file", name="guide.txt"),
+            for_frontend=False,
+        )
+    with pytest.raises(ValidationError, match="Sandbox data plane"):
+        _ = AgentStubFileDownloadRequest(
+            config=AgentStubConfigDownloadSource(kind="file", name="guide.txt"),
+            for_frontend=True,
+        )
 
-    with pytest.raises(ValidationError, match="tool_file"):
-        _ = AgentStubDriveFileRef(kind="bad_kind", id="tool-file-1")  # pyright: ignore[reportArgumentType]
 
-    with pytest.raises(ValidationError, match="file_ref"):
-        _ = AgentStubDriveCommitItem.model_validate({"key": "skills/example/SKILL.md"})
+@pytest.mark.parametrize(
+    ("source", "message"),
+    [
+        ({"kind": "file", "name": "../guide.txt"}, "safe path segment"),
+        ({"kind": "skill", "name": "Alpha"}, "skill name is invalid"),
+        ({"kind": "file", "name": "guide.txt", "tenant_id": "tenant-1"}, "extra_forbidden"),
+    ],
+)
+def test_agent_stub_config_download_source_rejects_invalid_names_and_identity_fields(
+    source: dict[str, object],
+    message: str,
+) -> None:
+    with pytest.raises(ValidationError, match=message):
+        _ = AgentStubConfigDownloadSource.model_validate(source)
 
 
 @pytest.mark.parametrize("transfer_method", ["tool_file", "local_file", "datasource_file"])

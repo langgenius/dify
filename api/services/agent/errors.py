@@ -1,5 +1,7 @@
 from werkzeug.exceptions import BadRequest, Conflict, NotFound
 
+from libs.exception import BaseHTTPException
+
 
 class AgentNotFoundError(NotFound):
     description = "Agent not found."
@@ -15,6 +17,40 @@ class AgentNameConflictError(Conflict):
 
 class AgentArchivedError(Conflict):
     description = "Archived agent cannot be modified."
+
+
+class AgentVersionConflictError(Conflict):
+    description = "Agent config version changed. Please reload and try again."
+
+
+class AgentModelNotConfiguredError(BaseHTTPException):
+    error_code = "agent_model_not_configured"
+    description = "Agent App requires the Agent Soul model to be configured."
+    code = 400
+
+
+class AgentAccessNotReadyError(BaseHTTPException):
+    error_code = "agent_not_published"
+    description = "Publish the Agent before enabling Web App or API access."
+    code = 409
+
+
+class AgentBuildSandboxNotFoundError(BaseHTTPException):
+    error_code = "agent_build_sandbox_not_found"
+    description = "The retained Build Sandbox is no longer available."
+    code = 404
+
+
+class AgentHomeSnapshotCreateFailedError(BaseHTTPException):
+    error_code = "agent_home_snapshot_create_failed"
+    description = "Failed to capture the Agent Home Snapshot."
+    code = 502
+
+
+class AgentHomeSnapshotTooLargeError(BaseHTTPException):
+    error_code = "agent_home_snapshot_too_large"
+    description = "The Agent Home Snapshot exceeds the configured size limit."
+    code = 413
 
 
 class AgentSoulLockedError(BadRequest):

@@ -1,5 +1,16 @@
 import { render, screen } from '@testing-library/react'
+import { vi } from 'vitest'
 import { Img } from '..'
+
+vi.mock('@/app/components/base/image-gallery', () => ({
+  default: ({ srcs }: { srcs: string[] }) => (
+    <div data-testid="image-gallery">
+      {srcs.map((src) => (
+        <span key={src} data-testid="gallery-image" data-src={src} />
+      ))}
+    </div>
+  ),
+}))
 
 describe('Img', () => {
   describe('Rendering', () => {
@@ -16,9 +27,9 @@ describe('Img', () => {
       const gallery = screen.getByTestId('image-gallery')
       expect(gallery).toBeInTheDocument()
 
-      const images = gallery.querySelectorAll('img')
+      const images = gallery.querySelectorAll('[data-testid="gallery-image"]')
       expect(images).toHaveLength(1)
-      expect(images[0]).toHaveAttribute('src', 'https://example.com/image.png')
+      expect(images[0]).toHaveAttribute('data-src', 'https://example.com/image.png')
     })
 
     it('should pass src as single element array to ImageGallery', () => {
@@ -26,17 +37,23 @@ describe('Img', () => {
       render(<Img src={testSrc} />)
 
       const gallery = screen.getByTestId('image-gallery')
-      const images = gallery.querySelectorAll('img')
+      const images = gallery.querySelectorAll('[data-testid="gallery-image"]')
 
-      expect(images[0]).toHaveAttribute('src', testSrc)
+      expect(images[0]).toHaveAttribute('data-src', testSrc)
     })
 
     it('should render with different src values', () => {
       const { rerender } = render(<Img src="https://example.com/first.png" />)
-      expect(screen.getByTestId('gallery-image')).toHaveAttribute('src', 'https://example.com/first.png')
+      expect(screen.getByTestId('gallery-image')).toHaveAttribute(
+        'data-src',
+        'https://example.com/first.png',
+      )
 
       rerender(<Img src="https://example.com/second.jpg" />)
-      expect(screen.getByTestId('gallery-image')).toHaveAttribute('src', 'https://example.com/second.jpg')
+      expect(screen.getByTestId('gallery-image')).toHaveAttribute(
+        'data-src',
+        'https://example.com/second.jpg',
+      )
     })
   })
 
@@ -51,7 +68,9 @@ describe('Img', () => {
       expect(container2.querySelector('.markdown-img-wrapper')).toBeInTheDocument()
 
       // Test with data URL
-      const { container: container3 } = render(<Img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" />)
+      const { container: container3 } = render(
+        <Img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" />,
+      )
       expect(container3.querySelector('.markdown-img-wrapper')).toBeInTheDocument()
 
       // Test with relative URL

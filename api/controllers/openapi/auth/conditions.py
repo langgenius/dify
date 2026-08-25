@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from controllers.openapi.auth.data import AuthData, Edition, RequestContext, current_edition
-from libs.oauth_bearer import TokenType
+from configs import dify_config
+from controllers.openapi.auth.data import AuthData, RequestContext
+from enums import DeploymentEdition
+from libs.oauth_bearer import Scope, TokenType
 from services.enterprise.enterprise_service import WebAppAccessMode
 from services.feature_service import FeatureService
 
@@ -44,14 +46,17 @@ TOKEN_IS_OAUTH_EXTERNAL_SSO = request_cond(lambda ctx: ctx.token_type == TokenTy
 
 PATH_HAS_APP_ID = request_cond(lambda ctx: "app_id" in ctx.path_params)
 
-EDITION_CE = config_cond(lambda: current_edition() == Edition.CE)
-EDITION_EE = config_cond(lambda: current_edition() == Edition.EE)
-EDITION_SAAS = config_cond(lambda: current_edition() == Edition.SAAS)
+EDITION_COMMUNITY = config_cond(lambda: dify_config.DEPLOYMENT_EDITION == DeploymentEdition.COMMUNITY)
+EDITION_ENTERPRISE = config_cond(lambda: dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE)
+EDITION_CLOUD = config_cond(lambda: dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD)
 
 WEBAPP_AUTH_ENABLED = config_cond(lambda: FeatureService.get_system_features().webapp_auth.enabled)
 
+WEBAPP_RUN_SCOPED = request_cond(lambda ctx: ctx.scope == Scope.APPS_RUN)
+
 WORKSPACE_MEMBERSHIP_REQUIRED = request_cond(lambda ctx: ctx.workspace_membership)
 HAS_ALLOWED_ROLES = request_cond(lambda ctx: ctx.allowed_roles is not None)
+HAS_RBAC = request_cond(lambda ctx: ctx.rbac is not None)
 
 # Caller must belong to the resolved tenant: either an app-scoped path (tenant
 # from the app) or an explicit workspace-membership path (tenant from request).

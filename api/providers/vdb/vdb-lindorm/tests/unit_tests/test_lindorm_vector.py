@@ -127,7 +127,7 @@ def test_create_refresh_and_add_texts_success(lindorm_module, monkeypatch: pytes
     vector.add_texts(docs, embeddings, batch_size=2, timeout=9)
 
     assert vector._client.bulk.call_count == 2
-    actions = vector._client.bulk.call_args_list[0].args[0]
+    actions = vector._client.bulk.call_args_list[0].kwargs["body"]
     assert actions[0]["index"]["routing"] == "route"
     assert actions[1][lindorm_module.ROUTING_FIELD] == "route"
     vector.refresh()
