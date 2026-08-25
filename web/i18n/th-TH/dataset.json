@@ -260,7 +260,7 @@
   "newKnowledge.documentUploadExclusion.quota": "เกินโควตาพื้นที่ทำงาน",
   "newKnowledge.documentUploadExclusion.target": "เป้าหมายเอกสารไม่ถูกต้องอีกต่อไป",
   "newKnowledge.documentUploadFailed": "เราไม่สามารถอัปโหลดเอกสารเหล่านี้ได้ ลองอีกครั้ง",
-  "newKnowledge.documentUploadFormats": "รองรับข้อความ, Markdown, HTML, PDF, Office, EPUB, อีเมล และข้อมูลที่มีโครงสร้าง (CSV, JSON/JSONL, XML) · รูปแบบที่ซับซ้อนต้องใช้ตัวแยกวิเคราะห์เอกสาร · สูงสุดไฟล์ละ 15 MB",
+  "newKnowledge.documentUploadFormats": "รองรับข้อความ, Markdown, HTML, PDF, Office, EPUB, อีเมล และข้อมูลที่มีโครงสร้าง (CSV, JSON/JSONL, XML) · สูงสุดไฟล์ละ 15 MB",
   "newKnowledge.documentUploadPartial": "เริ่มประมวลผลเอกสาร {{accepted}} รายการแล้ว; เพิ่มไม่ได้ {{excluded}} รายการ: {{details}}",
   "newKnowledge.documentUploadRejected": "ไม่มีเอกสารที่ได้รับการยอมรับ: {{details}}",
   "newKnowledge.documentUploadStarted": "การประมวลผลเอกสารเริ่มต้นขึ้น",

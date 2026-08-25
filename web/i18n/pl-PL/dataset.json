@@ -260,7 +260,7 @@
   "newKnowledge.documentUploadExclusion.quota": "przekroczono limit obszaru roboczego",
   "newKnowledge.documentUploadExclusion.target": "miejsce docelowe dokumentu jest już nieprawidłowe",
   "newKnowledge.documentUploadFailed": "Nie mogliśmy przesłać tych dokumentów. Spróbuj ponownie.",
-  "newKnowledge.documentUploadFormats": "Obsługuje tekst, Markdown, HTML, PDF, Office, EPUB, e-mail i dane strukturalne (CSV, JSON/JSONL, XML) · złożone formaty wymagają parsera dokumentów · do 15 MB na plik",
+  "newKnowledge.documentUploadFormats": "Obsługuje tekst, Markdown, HTML, PDF, Office, EPUB, e-mail i dane strukturalne (CSV, JSON/JSONL, XML) · do 15 MB na plik",
   "newKnowledge.documentUploadPartial": "Rozpoczęto przetwarzanie {{accepted}} dokumentów; nie udało się dodać {{excluded}}: {{details}}",
   "newKnowledge.documentUploadRejected": "Nie zaakceptowano żadnych dokumentów: {{details}}",
   "newKnowledge.documentUploadStarted": "Rozpoczęto przetwarzanie dokumentu.",

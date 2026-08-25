@@ -260,7 +260,7 @@
   "newKnowledge.documentUploadExclusion.quota": "cota do espaço de trabalho excedida",
   "newKnowledge.documentUploadExclusion.target": "o destino do documento não é mais válido",
   "newKnowledge.documentUploadFailed": "Não foi possível fazer upload desses documentos. Tente novamente.",
-  "newKnowledge.documentUploadFormats": "Compatível com texto, Markdown, HTML, PDF, Office, EPUB, e-mail e dados estruturados (CSV, JSON/JSONL, XML) · formatos complexos exigem um analisador de documentos · até 15 MB por arquivo",
+  "newKnowledge.documentUploadFormats": "Compatível com texto, Markdown, HTML, PDF, Office, EPUB, e-mail e dados estruturados (CSV, JSON/JSONL, XML) · até 15 MB por arquivo",
   "newKnowledge.documentUploadPartial": "O processamento de {{accepted}} documentos foi iniciado; não foi possível adicionar {{excluded}}: {{details}}",
   "newKnowledge.documentUploadRejected": "Nenhum documento foi aceito: {{details}}",
   "newKnowledge.documentUploadStarted": "O processamento do documento foi iniciado.",

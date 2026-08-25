@@ -260,7 +260,7 @@
   "newKnowledge.documentUploadExclusion.quota": "Arbeitsbereichskontingent überschritten",
   "newKnowledge.documentUploadExclusion.target": "Dokumentziel ist nicht mehr gültig",
   "newKnowledge.documentUploadFailed": "Wir konnten diese Dokumente nicht hochladen. Versuchen Sie es erneut.",
-  "newKnowledge.documentUploadFormats": "Unterstützt Text, Markdown, HTML, PDF, Office, EPUB, E-Mail und strukturierte Daten (CSV, JSON/JSONL, XML) · komplexe Formate erfordern einen Dokumentparser · bis zu 15 MB pro Datei",
+  "newKnowledge.documentUploadFormats": "Unterstützt Text, Markdown, HTML, PDF, Office, EPUB, E-Mail und strukturierte Daten (CSV, JSON/JSONL, XML) · bis zu 15 MB pro Datei",
   "newKnowledge.documentUploadPartial": "{{accepted}} Dokumente wurden gestartet; {{excluded}} konnten nicht hinzugefügt werden: {{details}}",
   "newKnowledge.documentUploadRejected": "Keine Dokumente wurden akzeptiert: {{details}}",
   "newKnowledge.documentUploadStarted": "Die Dokumentenverarbeitung wurde gestartet.",

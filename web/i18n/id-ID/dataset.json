@@ -260,7 +260,7 @@
   "newKnowledge.documentUploadExclusion.quota": "kuota ruang kerja terlampaui",
   "newKnowledge.documentUploadExclusion.target": "target dokumen tidak lagi valid",
   "newKnowledge.documentUploadFailed": "Kami tidak dapat mengunggah dokumen-dokumen ini. Coba lagi.",
-  "newKnowledge.documentUploadFormats": "Mendukung teks, Markdown, HTML, PDF, Office, EPUB, email, dan data terstruktur (CSV, JSON/JSONL, XML) · format kompleks memerlukan pengurai dokumen · hingga 15 MB per file",
+  "newKnowledge.documentUploadFormats": "Mendukung teks, Markdown, HTML, PDF, Office, EPUB, email, dan data terstruktur (CSV, JSON/JSONL, XML) · hingga 15 MB per file",
   "newKnowledge.documentUploadPartial": "Pemrosesan {{accepted}} dokumen dimulai; {{excluded}} tidak dapat ditambahkan: {{details}}",
   "newKnowledge.documentUploadRejected": "Tidak ada dokumen yang diterima: {{details}}",
   "newKnowledge.documentUploadStarted": "Pemrosesan dokumen dimulai.",

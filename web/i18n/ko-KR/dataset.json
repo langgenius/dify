@@ -260,7 +260,7 @@
   "newKnowledge.documentUploadExclusion.quota": "워크스페이스 할당량을 초과했습니다",
   "newKnowledge.documentUploadExclusion.target": "문서 대상이 더 이상 유효하지 않습니다",
   "newKnowledge.documentUploadFailed": "이 문서를 업로드할 수 없습니다. 다시 시도해 보세요.",
-  "newKnowledge.documentUploadFormats": "텍스트, Markdown, HTML, PDF, Office, EPUB, 이메일 및 구조화 데이터(CSV, JSON/JSONL, XML) 지원 · 복잡한 형식에는 문서 파서 필요 · 파일당 최대 15 MB",
+  "newKnowledge.documentUploadFormats": "텍스트, Markdown, HTML, PDF, Office, EPUB, 이메일 및 구조화 데이터(CSV, JSON/JSONL, XML) 지원 · 파일당 최대 15 MB",
   "newKnowledge.documentUploadPartial": "문서 {{accepted}}개의 처리를 시작했습니다. {{excluded}}개는 추가하지 못했습니다: {{details}}",
   "newKnowledge.documentUploadRejected": "수락된 문서가 없습니다: {{details}}",
   "newKnowledge.documentUploadStarted": "문서 처리가 시작되었습니다.",

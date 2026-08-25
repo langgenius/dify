@@ -260,7 +260,7 @@
   "newKnowledge.documentUploadExclusion.quota": "превышена квота рабочей области",
   "newKnowledge.documentUploadExclusion.target": "назначение документа больше недействительно",
   "newKnowledge.documentUploadFailed": "Нам не удалось загрузить эти документы. Попробуйте еще раз.",
-  "newKnowledge.documentUploadFormats": "Поддерживаются текст, Markdown, HTML, PDF, Office, EPUB, электронная почта и структурированные данные (CSV, JSON/JSONL, XML) · для сложных форматов требуется анализатор документов · до 15 МБ на файл",
+  "newKnowledge.documentUploadFormats": "Поддерживаются текст, Markdown, HTML, PDF, Office, EPUB, электронная почта и структурированные данные (CSV, JSON/JSONL, XML) · до 15 МБ на файл",
   "newKnowledge.documentUploadPartial": "Начата обработка {{accepted}} документов; не удалось добавить {{excluded}}: {{details}}",
   "newKnowledge.documentUploadRejected": "Ни один документ не принят: {{details}}",
   "newKnowledge.documentUploadStarted": "Началась обработка документов.",

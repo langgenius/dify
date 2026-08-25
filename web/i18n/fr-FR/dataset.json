@@ -260,7 +260,7 @@
   "newKnowledge.documentUploadExclusion.quota": "quota de l’espace de travail dépassé",
   "newKnowledge.documentUploadExclusion.target": "la cible du document n’est plus valide",
   "newKnowledge.documentUploadFailed": "Nous n'avons pas pu télécharger ces documents. Essayer à nouveau.",
-  "newKnowledge.documentUploadFormats": "Formats pris en charge : texte, Markdown, HTML, PDF, Office, EPUB, e-mail et données structurées (CSV, JSON/JSONL, XML) · les formats complexes nécessitent un analyseur de documents · 15 Mo max par fichier",
+  "newKnowledge.documentUploadFormats": "Formats pris en charge : texte, Markdown, HTML, PDF, Office, EPUB, e-mail et données structurées (CSV, JSON/JSONL, XML) · 15 Mo max par fichier",
   "newKnowledge.documentUploadPartial": "Le traitement de {{accepted}} documents a démarré ; {{excluded}} n’ont pas pu être ajoutés : {{details}}",
   "newKnowledge.documentUploadRejected": "Aucun document n’a été accepté : {{details}}",
   "newKnowledge.documentUploadStarted": "Le traitement du document a commencé.",

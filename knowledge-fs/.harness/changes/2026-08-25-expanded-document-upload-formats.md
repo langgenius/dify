@@ -21,8 +21,8 @@
 - Preserved visible text inside MDX JSX blocks instead of silently dropping Marked's block HTML
   tokens. MDX now carries its own `native-mdx@1` parser version so the behavior does not invalidate
   existing plain-Markdown artifact hashes.
-- Updated upload guidance in every supported locale to describe the supported format groups and
-  disclose the complex-document parser dependency.
+- Updated upload guidance in every supported locale to describe the supported format groups without
+  exposing deployment-specific parser details to end users.
 - Added behavior tests for declared MIME types, octet-stream inference, native lightweight-text
   routing, and the browser file-picker contract. The new tests were observed failing before the
   implementation and passing afterward.
@@ -64,9 +64,8 @@ parser restores compatibility without adding a new parser, storage path, or netw
 ## Risks and follow-up
 
 - ODT, EML, and MSG parsing still requires a configured and capable Unstructured service, matching
-  other complex document types such as DOC and PPT. The upload guidance now calls out this
-  dependency; upload admission remains independent, while downstream parser failures continue to
-  use the existing failed-document lifecycle.
+  other complex document types such as DOC and PPT. Upload admission remains independent, while
+  downstream parser failures continue to use the existing failed-document lifecycle.
 - The added allowlist entries are fixed-size `Set` members. Admission remains constant-time and does
   not change upload byte limits, buffering, database access, or object-storage behavior.
 - MDX JSX tags and attributes remain syntax rather than searchable text; visible child text is
