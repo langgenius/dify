@@ -35,7 +35,6 @@ def test_domain_packages_have_no_transport_or_persistence_imports() -> None:
     violations: list[str] = []
     domain_files = sorted((_DOMAIN_ROOT / "contact_directory").glob("*.py"))
     domain_files.extend(sorted((_DOMAIN_ROOT / "im_integration").glob("*.py")))
-    domain_files.extend(sorted((_DOMAIN_ROOT / "im_provider").glob("*.py")))
     domain_files.extend(sorted((_DOMAIN_ROOT / "im_message_inbox").glob("*.py")))
     approval_files = sorted((_DOMAIN_ROOT / "approval").glob("*.py"))
     domain_files.extend(approval_files)

@@ -20,9 +20,9 @@ from core.human_input_v2.im_integration.adapters import (
     MSTeamsCredentials,
     SlackCredentials,
     WeComCredentials,
-    build_im_provider_adapter,
 )
 from core.human_input_v2.im_integration.adapters.credentials import IMProviderCredentials
+from core.human_input_v2.im_integration.adapters.factory import build_im_provider_adapter
 from core.human_input_v2.im_integration.management import IMProviderConfigurationFailureKind
 from core.human_input_v2.shared import DeploymentScope, TenantId, WorkspaceScope
 from libs.key_providers.base import BaseKeyProvider

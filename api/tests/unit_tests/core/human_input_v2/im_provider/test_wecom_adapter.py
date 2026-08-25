@@ -86,7 +86,6 @@ def test_root_construction_capabilities_and_close_perform_no_provider_io(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     wecom_module = importlib.import_module("core.human_input_v2.im_integration.adapters.wecom")
-    adapters_package = importlib.import_module("core.human_input_v2.im_integration.adapters")
     adapter_type = wecom_module.WeComIMProviderAdapter
 
     monkeypatch.setattr(
@@ -101,7 +100,6 @@ def test_root_construction_capabilities_and_close_perform_no_provider_io(
     consumer = _Consumer()
     consumer_reference = weakref.ref(consumer)
 
-    assert adapters_package.WeComIMProviderAdapter is adapter_type
     assert adapter.provider is IMProvider.WE_COM
     assert adapter.directory is directory
     assert adapter.messaging is messaging

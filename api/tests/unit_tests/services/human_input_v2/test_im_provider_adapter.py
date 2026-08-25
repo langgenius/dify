@@ -15,10 +15,10 @@ from core.human_input_v2.im_integration.adapters import (
     MSTeamsCredentials,
     SlackCredentials,
     WeComCredentials,
-    build_im_provider_adapter,
 )
 from core.human_input_v2.im_integration.adapters.credentials import IMProviderCredentials
 from core.human_input_v2.im_integration.adapters.dingtalk import DingTalkIMProviderAdapter
+from core.human_input_v2.im_integration.adapters.factory import build_im_provider_adapter
 from core.human_input_v2.im_integration.adapters.feishu_lark import (
     FeishuIMProviderAdapter,
     LarkIMProviderAdapter,
@@ -114,6 +114,16 @@ def test_builder_accepts_only_already_resolved_credentials() -> None:
     assert signature.parameters["credentials"].default is inspect.Parameter.empty
 
 
-def test_builder_is_exported_by_the_adapter_boundary() -> None:
-    assert adapters.build_im_provider_adapter is build_im_provider_adapter
-    assert "build_im_provider_adapter" in adapters.__all__
+def test_adapter_package_does_not_reexport_sdk_bound_implementations() -> None:
+    hidden_names = {
+        "DingTalkIMProviderAdapter",
+        "MSTeamsIMProviderAdapter",
+        "RedisCacheAccessTokenProvider",
+        "SlackIMProviderAdapter",
+        "WeComIMProviderAdapter",
+        "build_im_provider_adapter",
+    }
+
+    assert "__getattr__" not in adapters.__dict__
+    assert hidden_names.isdisjoint(adapters.__dict__)
+    assert hidden_names.isdisjoint(adapters.__all__)

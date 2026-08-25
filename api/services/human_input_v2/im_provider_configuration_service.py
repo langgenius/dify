@@ -10,7 +10,7 @@ from core.human_input_v2.im_integration import (
     IMProviderConfigurationFailureKind,
     IMProviderTestResult,
 )
-from core.human_input_v2.im_integration.adapters import IMProviderAdapter, build_im_provider_adapter
+from core.human_input_v2.im_integration.adapters import IMProviderAdapter
 from core.human_input_v2.im_integration.adapters.credentials import (
     DingTalkCredentials,
     FeishuCredentials,
@@ -25,6 +25,7 @@ from core.human_input_v2.im_integration.adapters.entities import (
     CredentialTestFailureKind,
     CredentialTestSuccess,
 )
+from core.human_input_v2.im_integration.adapters.factory import build_im_provider_adapter
 from core.human_input_v2.shared import DeploymentScope, DirectoryScope, WorkspaceScope
 from libs.key_providers.base import BaseKeyProvider
 from services.human_input_v2.errors import IMProviderConfigurationError
