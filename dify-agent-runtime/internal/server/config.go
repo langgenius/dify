@@ -24,7 +24,7 @@ const (
 	DefaultGCIntervalSeconds             = 60.0
 	DefaultGCFinishedJobRetentionSeconds = 300.0
 	DefaultPollInterval                  = 5 * time.Millisecond
-	DefaultMaxPollInterval               = 200 * time.Millisecond
+	DefaultMaxPollInterval               = 50 * time.Millisecond
 	DefaultPipeMonitorInterval           = 1 * time.Second
 	DefaultPipeReadyTimeout              = 10 * time.Second
 	DefaultSQLiteBusyTimeoutMs           = 5000
