@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from werkzeug.exceptions import Forbidden
 
 import services
+from configs import dify_config
 from controllers.common.schema import JsonResponseWithStatus, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
@@ -22,8 +23,10 @@ from libs.login import login_required
 from models import Account
 from models.dataset import DatasetPermissionEnum
 from services.dataset_service import DatasetPermissionService, DatasetService
+from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
+from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 
 class RagPipelineDatasetImportPayload(BaseModel):
@@ -86,6 +89,16 @@ class CreateRagPipelineDatasetApi(Resource):
             db.session.commit()
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
+
+        if dify_config.RBAC_ENABLED:
+            enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
+                current_tenant_id,
+                current_user.id,
+                import_info["dataset_id"],
+                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+            )
+            initialize_created_app_rbac_access_task.delay(
+                current_tenant_id, current_user.id, dataset_id=import_info["dataset_id"])
 
         return dump_response(RagPipelineImportResponse, import_info), 201
 

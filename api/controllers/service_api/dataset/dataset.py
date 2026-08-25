@@ -44,6 +44,7 @@ from models.dataset import DatasetPermissionEnum
 from models.enums import TagType
 from models.provider_ids import ModelProviderID
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
+from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.knowledge_entities.knowledge_entities import (
     ExternalRetrievalModel,
     KnowledgeProvider,
@@ -59,6 +60,7 @@ from services.tag_service import (
 from services.tag_service import (
     UpdateTagPayload as UpdateTagServicePayload,
 )
+from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 register_enum_models(service_api_ns, DatasetPermissionEnum)
 
@@ -528,6 +530,16 @@ class DatasetListApi(DatasetApiResource):
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
+
+        if dify_config.RBAC_ENABLED:
+            enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
+                tenant_id,
+                current_user.id,
+                dataset.id,
+                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+            )
+            initialize_created_app_rbac_access_task.delay(
+                tenant_id, current_user.id, dataset_id=dataset.id)
 
         return _dump_service_dataset_detail(dataset, session=session), 200
 

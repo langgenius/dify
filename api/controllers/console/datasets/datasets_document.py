@@ -59,10 +59,12 @@ from models.dataset import DatasetPermissionEnum, DocumentPipelineExecutionLog
 from models.enums import IndexingStatus, ProcessRuleMode, SegmentStatus
 from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetService, DocumentService
+from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
 from services.file_service import FileService
 from services.vector_space_admission_service import get_vector_space_admission_error_fields
 from tasks.generate_summary_index_task import generate_summary_index_task
+from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 from ..app.error import (
     ProviderModelCurrentlyNotSupportError,
@@ -684,6 +686,16 @@ class DatasetInitApi(Resource):
         else:
             dataset.permission = DatasetPermissionEnum.ONLY_ME
         session.flush()
+
+        if dify_config.RBAC_ENABLED:
+            enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
+                current_tenant_id,
+                current_user.id,
+                dataset.id,
+                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+            )
+            initialize_created_app_rbac_access_task.delay(
+                current_tenant_id, current_user.id, dataset_id=dataset.id)
 
         return dump_response(
             DatasetAndDocumentResponse,

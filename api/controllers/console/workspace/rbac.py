@@ -649,7 +649,7 @@ class RBACAppWhitelistApi(Resource):
             svc.ReplaceMemberBindings(automatic_include_workspace_members=request.automatic_include_workspace_members),
         )
         if request.automatic_include_workspace_members:
-            initialize_created_app_rbac_access_task.delay(tenant_id, account_id, str(app_id))
+            initialize_created_app_rbac_access_task.delay(tenant_id, account_id, app_id=app_id)
         return _dump(result)
 
 

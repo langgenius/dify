@@ -77,6 +77,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
 )
 from services.errors.account import NoPermissionError
 from services.feature_service import FeatureService
+from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
 
@@ -720,6 +721,17 @@ class AppListApi(Resource):
             from_attributes=True,
             context={"session": session},
         ).model_copy(update={"permission_keys": permission_keys_map.get(str(app.id), [])})
+
+        if dify_config.RBAC_ENABLED:
+            enterprise_rbac_service.RBACService.AppAccess.replace_whitelist(
+                current_tenant_id,
+                current_user.id,
+                str(app.id),
+                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+            )
+
+            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, app_id=app.id)
+
         return app_detail.model_dump(mode="json"), 201
 
 
