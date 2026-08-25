@@ -183,7 +183,7 @@ describe("Research evidence retrieval V3", () => {
         }),
         plan: async () => ({
           evidenceDimensions: ["renewal"],
-          intent: "lookup" as const,
+          intent: "direct" as const,
           modelCalled: true,
           subqueries: [],
           useGraph: false,
