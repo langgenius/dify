@@ -6,6 +6,7 @@ import type { ConfigParams, SettingsAppInfo } from '@/app/components/app/overvie
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -70,7 +71,7 @@ export function WebAppAccessCard({
   })
   const toggleSiteMutation = useMutation(
     consoleQuery.apps.byAppId.siteEnable.post.mutationOptions({
-      onSuccess: (_updatedApp, variables) => {
+      onSuccess: async (_updatedApp, variables) => {
         queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
           agentDetailQueryKey,
           (agentDetail) =>
@@ -81,6 +82,7 @@ export function WebAppAccessCard({
                 }
               : agentDetail,
         )
+        await queryClient.invalidateQueries({ queryKey: agentDetailQueryKey })
         toast.success(tCommon(($) => $['actionMsg.modifiedSuccessfully']))
       },
       onError: () => {
@@ -118,6 +120,20 @@ export function WebAppAccessCard({
     toggleSiteMutation.isPending ||
     resetAccessTokenMutation.isPending ||
     updateSiteMutation.isPending
+  const publishRequiredMessage = t(($) => $['agentDetail.access.publishRequired'])
+  const showPublishRequiredMessage = !isLoading && !accessReady
+  const disabledLaunchButton = (
+    <Button
+      variant="secondary"
+      size="medium"
+      className="px-3"
+      disabled
+      focusableWhenDisabled={showPublishRequiredMessage}
+    >
+      <span aria-hidden className="i-ri-external-link-line size-4" />
+      {t(($) => $['agentDetail.access.webApp.actions.launch'])}
+    </Button>
+  )
 
   function handleEnabledChange(enabled: boolean) {
     if (!appId) return
@@ -219,6 +235,7 @@ export function WebAppAccessCard({
         ) : undefined
       }
       disabled={isLoading || !canManageWebApp}
+      disabledReason={showPublishRequiredMessage ? publishRequiredMessage : undefined}
       busy={isBusy}
     >
       {webAppUrl && isEnabled ? (
@@ -232,11 +249,13 @@ export function WebAppAccessCard({
           <span aria-hidden className="i-ri-external-link-line size-4" />
           {t(($) => $['agentDetail.access.webApp.actions.launch'])}
         </a>
+      ) : showPublishRequiredMessage ? (
+        <Tooltip>
+          <TooltipTrigger render={disabledLaunchButton} />
+          <TooltipContent role="tooltip">{publishRequiredMessage}</TooltipContent>
+        </Tooltip>
       ) : (
-        <Button variant="secondary" size="medium" className="px-3" disabled>
-          <span aria-hidden className="i-ri-external-link-line size-4" />
-          {t(($) => $['agentDetail.access.webApp.actions.launch'])}
-        </Button>
+        disabledLaunchButton
       )}
       <Button
         variant="secondary"

@@ -10,6 +10,7 @@ This module tests the core authentication endpoints including:
 
 import base64
 import logging
+from collections.abc import Callable
 from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
@@ -45,6 +46,11 @@ from services.errors.account import (
 )
 
 TEST_TOKEN = "00000000-0000-4000-8000-000000000001"
+
+
+@pytest.fixture(autouse=True)
+def _login_config(config_overrides: Callable[..., None]) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 
 
 def encode_password(password: str) -> str:
@@ -98,7 +104,6 @@ class TestLoginApi:
         return token_pair
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.login.AccountService.authenticate")
@@ -149,7 +154,6 @@ class TestLoginApi:
         assert response.json["result"] == "success"
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.login.AccountService.authenticate")
@@ -202,7 +206,6 @@ class TestLoginApi:
         assert response.json["result"] == "success"
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     def test_login_fails_when_rate_limited(
@@ -235,10 +238,14 @@ class TestLoginApi:
         assert warn_records[0].args[1] == LoginFailureReason.LOGIN_RATE_LIMITED
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     @patch("controllers.console.auth.login.BillingService.get_email_freeze_type")
     def test_login_fails_when_account_frozen(
-        self, mock_is_frozen, mock_db, app: Flask, caplog: pytest.LogCaptureFixture
+        self,
+        mock_get_freeze_type,
+        mock_db,
+        app: Flask,
+        caplog: pytest.LogCaptureFixture,
+        config_overrides: Callable[..., None],
     ):
         """
         Test login rejection for frozen accounts.
@@ -248,7 +255,8 @@ class TestLoginApi:
         - AccountInFreezeError is raised for frozen accounts
         """
         # Arrange
-        mock_is_frozen.return_value = "freeze"
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        mock_get_freeze_type.return_value = "freeze"
 
         # Act & Assert
         with app.test_request_context(
@@ -266,9 +274,15 @@ class TestLoginApi:
         assert warn_records[0].args[1] == LoginFailureReason.ACCOUNT_IN_FREEZE
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     @patch("controllers.console.auth.login.BillingService.get_email_freeze_type")
-    def test_login_fails_when_email_domain_is_suspended(self, mock_get_freeze_type, mock_db, app: Flask):
+    def test_login_fails_when_email_domain_is_suspended(
+        self,
+        mock_get_freeze_type,
+        mock_db,
+        app: Flask,
+        config_overrides: Callable[..., None],
+    ):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         mock_get_freeze_type.return_value = "email_domain_suspended"
 
         with app.test_request_context(
@@ -376,7 +390,6 @@ class TestLoginApi:
                 ResetPasswordSendEmailApi().post()
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.login.AccountService.authenticate")
@@ -423,7 +436,6 @@ class TestLoginApi:
         assert warn_records[0].args[1] == LoginFailureReason.INVALID_CREDENTIALS
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.login.AccountService.authenticate")
@@ -460,7 +472,6 @@ class TestLoginApi:
         assert warn_records[0].args[1] == LoginFailureReason.ACCOUNT_BANNED
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.login.AccountService.authenticate")
@@ -504,7 +515,6 @@ class TestLoginApi:
                 login_api.post()
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     def test_login_invitation_email_mismatch(self, mock_get_invitation, mock_is_rate_limit, mock_db, app: Flask):
@@ -534,7 +544,6 @@ class TestLoginApi:
                 login_api.post()
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.login.AccountService.authenticate")

@@ -40,6 +40,7 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.model import App, AppMode, AppModelConfig, IconType, Site, load_annotation_reply_config
+from models.skill import AgentSkillBinding
 from models.workflow import Workflow
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
@@ -1038,6 +1039,16 @@ class AppService:
                 delete(WorkflowAgentNodeBinding).where(
                     WorkflowAgentNodeBinding.tenant_id == app.tenant_id,
                     WorkflowAgentNodeBinding.app_id == app.id,
+                )
+            )
+        agent_ids_to_unbind = set(workflow_agent_ids)
+        if backing_agent is not None:
+            agent_ids_to_unbind.add(backing_agent.id)
+        if agent_ids_to_unbind:
+            session.execute(
+                delete(AgentSkillBinding).where(
+                    AgentSkillBinding.tenant_id == app.tenant_id,
+                    AgentSkillBinding.agent_id.in_(agent_ids_to_unbind),
                 )
             )
         account_id = current_user.id if current_user else None

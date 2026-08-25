@@ -3,8 +3,10 @@
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { getAgentDetailPath } from '@/features/agent-v2/agent-detail/routes'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 
 const layoutClassName = 'min-w-0 flex-1 px-3'
@@ -17,7 +19,17 @@ export function EditInConsoleLink({
   canManageAgents: boolean
 }) {
   const { t } = useTranslation()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const label = t(($) => $['nodes.agent.roster.editInConsole'], { ns: 'workflow' })
+  const disabledMessage = t(
+    ($) =>
+      $[
+        systemFeatures.rbac_enabled
+          ? 'nodes.agent.roster.editInConsoleDisabledRbac'
+          : 'nodes.agent.roster.editInConsoleDisabled'
+      ],
+    { ns: 'workflow' },
+  )
 
   const content = (
     <>
@@ -48,9 +60,7 @@ export function EditInConsoleLink({
           </Button>
         }
       />
-      <TooltipContent>
-        {t(($) => $['nodes.agent.roster.editInConsoleDisabled'], { ns: 'workflow' })}
-      </TooltipContent>
+      <TooltipContent role="tooltip">{disabledMessage}</TooltipContent>
     </Tooltip>
   )
 }

@@ -233,9 +233,6 @@ services:
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
       AGENT_BACKEND_BASE_URL: ${AGENT_BACKEND_BASE_URL:-http://agent_backend:5050}
       AGENT_BACKEND_API_TOKEN: ${DIFY_AGENT_API_TOKEN:-dify-agent-run-token-for-dev-only}
-      AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS: ${AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS:-30}
-      AGENT_BACKEND_STREAM_MAX_RECONNECTS: ${AGENT_BACKEND_STREAM_MAX_RECONNECTS:-3}
-      AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS: ${AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS:-45}
     depends_on:
       init_permissions:
         condition: service_completed_successfully
@@ -312,9 +309,6 @@ services:
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
       AGENT_BACKEND_BASE_URL: ${AGENT_BACKEND_BASE_URL:-http://agent_backend:5050}
       AGENT_BACKEND_API_TOKEN: ${DIFY_AGENT_API_TOKEN:-dify-agent-run-token-for-dev-only}
-      AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS: ${AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS:-30}
-      AGENT_BACKEND_STREAM_MAX_RECONNECTS: ${AGENT_BACKEND_STREAM_MAX_RECONNECTS:-3}
-      AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS: ${AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS:-45}
     depends_on:
       init_permissions:
         condition: service_completed_successfully
@@ -556,6 +550,9 @@ services:
       - HTTP_PROXY=http://agent_ssrf_proxy:3128
       - HTTPS_PROXY=http://agent_ssrf_proxy:3128
       - NO_PROXY=localhost,127.0.0.1
+    volumes:
+      - dify_agent_local_sandbox_home:/home/dify
+      - dify_agent_local_sandbox_workspace:/workspace
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5004/healthz"]
       interval: 30s
@@ -667,7 +664,6 @@ services:
       - ./.env
     environment:
       DIFY_AGENT_REDIS_URL: ${DIFY_AGENT_REDIS_URL:-redis://:${REDIS_PASSWORD:-difyai123456}@redis:6379/2}
-      DIFY_AGENT_REDIS_PREFIX: ${DIFY_AGENT_REDIS_PREFIX:-dify-agent}
       DIFY_AGENT_PLUGIN_DAEMON_URL: ${DIFY_AGENT_PLUGIN_DAEMON_URL:-${PLUGIN_DAEMON_URL:-http://plugin_daemon:5002}}
       DIFY_AGENT_PLUGIN_DAEMON_API_KEY: ${DIFY_AGENT_PLUGIN_DAEMON_API_KEY:-${PLUGIN_DAEMON_KEY:-lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi}}
       DIFY_AGENT_INNER_API_URL: ${DIFY_AGENT_INNER_API_URL:-${PLUGIN_DIFY_INNER_API_URL:-http://api:5001}}
@@ -675,11 +671,6 @@ services:
       DIFY_AGENT_RUNTIME_BACKEND: ${DIFY_AGENT_RUNTIME_BACKEND:-local}
       DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT: ${DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT:-${DIFY_AGENT_SHELLCTL_ENTRYPOINT:-http://local_sandbox:5004}}
       DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN: ${DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN:-${DIFY_AGENT_SHELLCTL_AUTH_TOKEN:-}}
-      DIFY_AGENT_E2B_API_KEY: ${DIFY_AGENT_E2B_API_KEY:-${E2B_API_KEY:-${E2B_API_TOKEN:-}}}
-      DIFY_AGENT_E2B_TEMPLATE: ${DIFY_AGENT_E2B_TEMPLATE:-difys-default-team/dify-agent-local-sandbox}
-      # RuntimeLease active limit; its default matches the independently configurable Agent run deadline.
-      DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS: ${DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS:-3600}
-      DIFY_AGENT_E2B_SHELLCTL_PORT: ${DIFY_AGENT_E2B_SHELLCTL_PORT:-5004}
       DIFY_AGENT_STUB_API_BASE_URL: ${DIFY_AGENT_STUB_API_BASE_URL:-http://agent_backend:5050/agent-stub}
       DIFY_AGENT_SANDBOX_FILES_BASE_URL: ${DIFY_AGENT_SANDBOX_FILES_BASE_URL:-http://api:5001}
       # This is security-sensitive: it derives the JWE encryption key for Agent Stub bearer tokens.
@@ -687,10 +678,6 @@ services:
       # Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(32))'
       DIFY_AGENT_SERVER_SECRET_KEY: ${DIFY_AGENT_SERVER_SECRET_KEY:-MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY}
       DIFY_AGENT_API_TOKEN: ${DIFY_AGENT_API_TOKEN:-dify-agent-run-token-for-dev-only}
-      DIFY_AGENT_SHUTDOWN_GRACE_SECONDS: ${DIFY_AGENT_SHUTDOWN_GRACE_SECONDS:-30}
-      DIFY_AGENT_RUN_RETENTION_SECONDS: ${DIFY_AGENT_RUN_RETENTION_SECONDS:-259200}
-      # Pydantic AI run deadline; its default matches the independently configurable E2B active timeout.
-      DIFY_AGENT_RUN_TIMEOUT_SECONDS: ${DIFY_AGENT_RUN_TIMEOUT_SECONDS:-3600}
     depends_on:
       redis:
         condition: service_started
@@ -1329,3 +1316,5 @@ networks:
 volumes:
   oradata:
   dify_es01_data:
+  dify_agent_local_sandbox_home:
+  dify_agent_local_sandbox_workspace:

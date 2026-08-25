@@ -6,6 +6,7 @@ import type { ComponentProps } from 'react'
 import type { Mock } from 'vite-plus/test'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import {
@@ -419,6 +420,18 @@ describe('AgentConfigurePublishBar', () => {
       screen.getByText(/agentV2\.agentDetail\.configure\.publishBar\.savedAt/),
     ).toBeInTheDocument()
     expect(mockFormatTimeFromNow).toHaveBeenCalledWith(1710000100000)
+  })
+
+  it('should show the complete saved time in a tooltip on hover', async () => {
+    const user = userEvent.setup()
+    renderPublishBar({ draftSavedAt: 1710000100000 })
+
+    const savedTime = screen.getByText(/agentV2\.agentDetail\.configure\.publishBar\.savedAt/)
+    await user.hover(savedTime)
+
+    await waitFor(() => {
+      expect(screen.getAllByText(savedTime.textContent ?? '')).toHaveLength(2)
+    })
   })
 
   it('should render published state from the active snapshot and disable publish logic', () => {
