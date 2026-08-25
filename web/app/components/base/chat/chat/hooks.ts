@@ -524,17 +524,22 @@ export const useChat = (
 
   useEffect(() => resetWorkflowEventsSubscription, [resetWorkflowEventsSubscription])
 
-  const handleStop = useCallback(() => {
+  const handleDetach = useCallback(() => {
     hasStopRespondedRef.current = true
+    taskIdRef.current = ''
     handleResponding(false)
-    if (stopChat && taskIdRef.current && !pausedStateRef.current) stopChat(taskIdRef.current)
     if (conversationMessagesAbortControllerRef.current)
       conversationMessagesAbortControllerRef.current.abort()
     if (suggestedQuestionsAbortControllerRef.current)
       suggestedQuestionsAbortControllerRef.current.abort()
     if (workflowEventsAbortControllerRef.current) workflowEventsAbortControllerRef.current.abort()
     resetWorkflowEventsSubscription()
-  }, [stopChat, handleResponding, resetWorkflowEventsSubscription])
+  }, [handleResponding, resetWorkflowEventsSubscription])
+
+  const handleStop = useCallback(() => {
+    if (stopChat && taskIdRef.current && !pausedStateRef.current) stopChat(taskIdRef.current)
+    handleDetach()
+  }, [stopChat, handleDetach])
 
   const handleRestart = useCallback(
     (cb?: any) => {
@@ -1944,6 +1949,7 @@ export const useChat = (
     suggestedQuestions,
     handleRestart,
     handleStop,
+    handleDetach,
     handleAnnotationEdited,
     handleAnnotationAdded,
     handleAnnotationRemoved,

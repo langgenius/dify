@@ -77,3 +77,8 @@ export type Feedback = {
 }
 
 export type OnFeedback = (messageId: string, feedback: Feedback) => Promise<void>
+
+export type ChatInstance = {
+  handleStop: () => void
+  handleDetach: () => void
+}

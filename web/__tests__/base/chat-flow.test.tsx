@@ -105,7 +105,7 @@ const defaultHookReturn: HookReturn = {
   newConversationId: '',
   chatShouldReloadKey: 'test-reload-key',
   handleFeedback: vi.fn(),
-  currentChatInstanceRef: { current: { handleStop: vi.fn() } },
+  currentChatInstanceRef: { current: { handleStop: vi.fn(), handleDetach: vi.fn() } },
   sidebarCollapseState: false,
   handleSidebarCollapse: vi.fn(),
   clearChatList: false,

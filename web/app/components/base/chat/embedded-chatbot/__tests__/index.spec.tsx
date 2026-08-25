@@ -109,7 +109,7 @@ const createHookReturn = (
     chatShouldReloadKey: 'reload-key',
     allowResetChat: true,
     handleFeedback: vi.fn(),
-    currentChatInstanceRef: { current: { handleStop: vi.fn() } },
+    currentChatInstanceRef: { current: { handleStop: vi.fn(), handleDetach: vi.fn() } },
     clearChatList: false,
     setClearChatList: vi.fn(),
     isResponding: false,

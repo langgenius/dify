@@ -85,6 +85,7 @@ const ChatWrapper = () => {
     chatList,
     handleSend,
     handleStop,
+    handleDetach,
     handleSwitchSibling,
     prepareHumanInputSubmission,
     isResponding: respondingState,
@@ -151,8 +152,10 @@ const ChatWrapper = () => {
   }, [allInputsHidden, inputsForms, chatList, inputsFormValue])
 
   useEffect(() => {
-    if (currentChatInstanceRef.current) currentChatInstanceRef.current.handleStop = handleStop
-  }, [])
+    if (!currentChatInstanceRef.current) return
+    currentChatInstanceRef.current.handleStop = handleStop
+    currentChatInstanceRef.current.handleDetach = handleDetach
+  }, [currentChatInstanceRef, handleStop, handleDetach])
 
   useEffect(() => {
     setIsResponding(respondingState)

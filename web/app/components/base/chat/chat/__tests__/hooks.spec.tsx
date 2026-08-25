@@ -2222,6 +2222,36 @@ describe('useChat', () => {
       expect(result.current.isResponding).toBe(false)
     })
 
+    it('should abort the local stream without calling stopChat when detaching', () => {
+      const stopChat = vi.fn()
+      const workflowAbort = createAbortControllerMock()
+      const { result } = renderHook(() => useChat(undefined, undefined, undefined, stopChat))
+
+      act(() => {
+        result.current.handleSend('url', { query: 'test' }, {})
+      })
+
+      const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
+      act(() => {
+        callbacks.onWorkflowStarted({ task_id: 'task-123' })
+        callbacks.getAbortController(workflowAbort)
+      })
+
+      act(() => {
+        result.current.handleDetach()
+      })
+
+      expect(stopChat).not.toHaveBeenCalled()
+      expect(workflowAbort.abort).toHaveBeenCalledTimes(1)
+      expect(result.current.isResponding).toBe(false)
+
+      act(() => {
+        result.current.handleStop()
+      })
+
+      expect(stopChat).not.toHaveBeenCalled()
+    })
+
     it('should clear chat tree and controllers on restart', () => {
       const cb = vi.fn()
       const { result } = renderHook(() => useChat())
