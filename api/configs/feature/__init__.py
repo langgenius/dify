@@ -84,7 +84,7 @@ class AppExecutionConfig(BaseSettings):
 
     APP_MAX_EXECUTION_TIME: PositiveInt = Field(
         description="Maximum allowed execution time for the application in seconds",
-        default=1200,
+        default=3600,
     )
     APP_DEFAULT_ACTIVE_REQUESTS: NonNegativeInt = Field(
         description="Default number of concurrent active requests per app (0 for unlimited)",
@@ -890,7 +890,7 @@ class WorkflowConfig(BaseSettings):
 
     WORKFLOW_MAX_EXECUTION_TIME: PositiveInt = Field(
         description="Maximum execution time in seconds for a single workflow",
-        default=1200,
+        default=3600,
     )
 
     WORKFLOW_CALL_MAX_DEPTH: PositiveInt = Field(
@@ -1346,7 +1346,7 @@ class OpsTraceConfig(BaseSettings):
     # Recommended: max_retries >= ceil((WORKFLOW_MAX_EXECUTION_TIME + grace_seconds) / delay_seconds).
     OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES: PositiveInt = Field(
         description="Maximum retry attempts for transient ops trace provider dispatch failures.",
-        default=300,
+        default=780,
     )
 
     OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS: PositiveInt = Field(
@@ -1356,7 +1356,7 @@ class OpsTraceConfig(BaseSettings):
 
     OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS: PositiveInt = Field(
         description="Retention in seconds for unified tracing parent contexts.",
-        default=1800,
+        default=3900,
     )
 
     @model_validator(mode="after")
