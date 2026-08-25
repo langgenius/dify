@@ -247,6 +247,8 @@
   "common.publishToMarketplaceDescription": "與社群分享此應用",
   "common.publishToMarketplaceFailed": "發佈到 Marketplace 失敗",
   "common.publishUpdate": "發布更新",
+  "common.publishUnsafeVariableReference": "{{count}} 個變數引用可能讀取被跳過的分支輸出。請使用變數聚合器或預設值 — {{pairs}}。",
+  "common.publishUnsafeVariableReferenceMore": "+{{count}} 個",
   "common.published": "已發佈",
   "common.publishedAt": "發佈於",
   "common.publishedBy": "{{author}} 發佈於 {{time}}",

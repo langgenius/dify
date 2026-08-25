@@ -247,6 +247,8 @@
   "common.publishToMarketplaceDescription": "将此应用作为模板上架",
   "common.publishToMarketplaceFailed": "发布到 Marketplace 失败",
   "common.publishUpdate": "发布更新",
+  "common.publishUnsafeVariableReference": "{{count}} 个变量引用可能读取被跳过的分支输出。请使用变量聚合器或默认值 — {{pairs}}。",
+  "common.publishUnsafeVariableReferenceMore": "+{{count}} 个",
   "common.published": "已发布",
   "common.publishedAt": "发布于",
   "common.publishedBy": "{{author}} 发布于 {{time}}",

@@ -395,9 +395,20 @@ class WorkflowOnlineUsersResponse(ResponseModel):
     data: list[WorkflowOnlineUsersByApp]
 
 
+class WorkflowVariableReferenceWarningResponse(ResponseModel):
+    node_id: str = Field(description="Node that reads the variable")
+    node_title: str = Field(description="Title of the reading node")
+    referenced_node_id: str = Field(description="Node that produces the variable")
+    referenced_node_title: str = Field(description="Title of the producing node")
+
+
 class WorkflowPublishResponse(ResponseModel):
     result: str
     created_at: int
+    variable_reference_warnings: list[WorkflowVariableReferenceWarningResponse] | None = Field(
+        default=None,
+        description="Unsafe cross-branch variable references. Null when none are found.",
+    )
 
 
 class SyncDraftWorkflowResponse(ResponseModel):
@@ -487,6 +498,7 @@ register_response_schema_models(
     WorkflowOnlineUser,
     WorkflowOnlineUsersByApp,
     WorkflowOnlineUsersResponse,
+    WorkflowVariableReferenceWarningResponse,
     WorkflowPublishResponse,
     SyncDraftWorkflowResponse,
     WorkflowRestoreResponse,
@@ -1321,14 +1333,26 @@ class PublishedWorkflowApi(Resource):
                 app_model_in_session.updated_at = naive_utc_now()
 
             workflow_created_at = TimestampField().format(workflow.created_at)
+            graph_dict = workflow.graph_dict
 
-            warning = workflow_service.get_variable_reference_warning(workflow.graph_dict)
-
-        return {
-            "result": "success",
-            "created_at": workflow_created_at,
-            "warning": warning,
-        }
+        issues = workflow_service.get_variable_reference_issues(graph_dict)
+        return dump_response(
+            WorkflowPublishResponse,
+            {
+                "result": "success",
+                "created_at": workflow_created_at,
+                "variable_reference_warnings": [
+                    {
+                        "node_id": issue.node_id,
+                        "node_title": issue.node_title,
+                        "referenced_node_id": issue.referenced_node_id,
+                        "referenced_node_title": issue.referenced_node_title,
+                    }
+                    for issue in issues
+                ]
+                or None,
+            },
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs")

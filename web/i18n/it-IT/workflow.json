@@ -247,6 +247,8 @@
   "common.publishToMarketplaceDescription": "Condividi questa app con la community",
   "common.publishToMarketplaceFailed": "Pubblicazione sul Marketplace non riuscita",
   "common.publishUpdate": "Pubblica aggiornamento",
+  "common.publishUnsafeVariableReference": "{{count}} variable reference(s) may read a skipped branch output. Use a Variable Aggregator or a default value — {{pairs}}.",
+  "common.publishUnsafeVariableReferenceMore": "+{{count}} more",
   "common.published": "Pubblicato",
   "common.publishedAt": "Pubblicato",
   "common.publishedBy": "Pubblicato {{time}} da {{author}}",

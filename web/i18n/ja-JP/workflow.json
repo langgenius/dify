@@ -247,6 +247,8 @@
   "common.publishToMarketplaceDescription": "アプリをテンプレートとして公開",
   "common.publishToMarketplaceFailed": "マーケットプレイスへの公開に失敗しました",
   "common.publishUpdate": "更新を公開",
+  "common.publishUnsafeVariableReference": "{{count}} 件の変数参照は、スキップされた分岐の出力を読み取る可能性があります。変数アグリゲーターまたはデフォルト値を使用してください — {{pairs}}。",
+  "common.publishUnsafeVariableReferenceMore": "+{{count}} 件",
   "common.published": "公開済み",
   "common.publishedAt": "公開日時",
   "common.publishedBy": "{{time}}に{{author}}が公開",

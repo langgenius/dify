@@ -1825,15 +1825,11 @@ class WorkflowService:
             if node_type == BuiltinNodeTypes.HUMAN_INPUT:
                 self._validate_human_input_node_data(node_data)
 
-    def get_variable_reference_warning(self, graph: Mapping[str, Any]) -> str | None:
-        """Return an advisory warning for unsafe cross-branch variable references, or None."""
-        from services.workflow_variable_reference_validator import (
-            format_variable_reference_errors,
-            validate_variable_references,
-        )
+    def get_variable_reference_issues(self, graph: Mapping[str, Any]) -> list[Any]:
+        """Return unsafe cross-branch variable references for advisory publish warnings."""
+        from services.workflow_variable_reference_validator import validate_variable_references
 
-        issues = validate_variable_references(graph)
-        return format_variable_reference_errors(issues) if issues else None
+        return validate_variable_references(graph)
 
     def validate_features_structure(self, app_model: App, features: dict[str, Any]):
         match app_model.mode:

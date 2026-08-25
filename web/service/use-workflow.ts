@@ -132,11 +132,23 @@ export const useRestoreWorkflow = () => {
   })
 }
 
+export type WorkflowVariableReferenceWarning = {
+  node_id: string
+  node_title: string
+  referenced_node_id: string
+  referenced_node_title: string
+}
+
 export const usePublishWorkflow = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'publish'],
     mutationFn: (params: PublishWorkflowParams) =>
-      post<CommonResponse & { created_at: number; warning?: string | null }>(params.url, {
+      post<
+        CommonResponse & {
+          created_at: number
+          variable_reference_warnings?: WorkflowVariableReferenceWarning[] | null
+        }
+      >(params.url, {
         body: {
           marked_name: params.title,
           marked_comment: params.releaseNotes,
