@@ -59,7 +59,7 @@ export const zOAuthClientPayload = z.object({
  * OAuthProviderAccountResponse
  */
 export const zOAuthProviderAccountResponse = z.object({
-  avatar: z.string().nullish().default(null),
+  avatar: z.string().nullish(),
   email: z.string(),
   id: z.string(),
   interface_language: z.string(),
@@ -79,11 +79,11 @@ export const zOAuthProviderAuthorizeResponse = z.object({
  */
 export const zOAuthTokenRequest = z.object({
   client_id: z.string(),
-  client_secret: z.string().nullish().default(null),
-  code: z.string().nullish().default(null),
+  client_secret: z.string().nullish(),
+  code: z.string().nullish(),
   grant_type: z.string(),
-  redirect_uri: z.string().nullish().default(null),
-  refresh_token: z.string().nullish().default(null),
+  redirect_uri: z.string().nullish(),
+  refresh_token: z.string().nullish(),
 })
 
 /**

@@ -15,7 +15,7 @@ describe('generated account profile schema', () => {
     ).toBe(false)
   })
 
-  it('preserves null defaults when the server schema accepts null', () => {
+  it('does not synthesize server-side null defaults in request payloads', () => {
     expect(
       zAccountPasswordPayload.parse({
         new_password: 'new-password',
@@ -23,7 +23,6 @@ describe('generated account profile schema', () => {
       }),
     ).toEqual({
       new_password: 'new-password',
-      password: null,
       repeat_new_password: 'new-password',
     })
   })

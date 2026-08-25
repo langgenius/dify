@@ -6,10 +6,10 @@ import * as z from 'zod'
  * WorkspaceListItemResponse
  */
 export const zWorkspaceListItemResponse = z.object({
-  created_at: z.int().nullish().default(null),
+  created_at: z.int().nullish(),
   id: z.string(),
-  name: z.string().nullish().default(null),
-  status: z.string().nullish().default(null),
+  name: z.string().nullish(),
+  status: z.string().nullish(),
 })
 
 /**

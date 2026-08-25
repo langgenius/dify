@@ -6,10 +6,10 @@ import * as z from 'zod'
  * TagResponse
  */
 export const zTagResponse = z.object({
-  binding_count: z.string().nullish().default(null),
+  binding_count: z.string().nullish(),
   id: z.string(),
   name: z.string(),
-  type: z.string().nullish().default(null),
+  type: z.string().nullish(),
 })
 
 /**

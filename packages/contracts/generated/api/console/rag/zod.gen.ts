@@ -30,7 +30,7 @@ export const zRagPipelineDatasetImportPayload = z.object({
  */
 export const zPipelineTemplateDetailResponse = z.object({
   chunk_structure: z.string(),
-  created_by: z.string().nullish().default(null),
+  created_by: z.string().nullish(),
   description: z.string(),
   export_data: z.string(),
   graph: z.record(z.string(), z.unknown()),
@@ -48,15 +48,15 @@ export const zRagPipelineOpaqueResponse = z.unknown()
  * RagPipelineImportPayload
  */
 export const zRagPipelineImportPayload = z.object({
-  description: z.string().nullish().default(null),
-  icon: z.string().nullish().default(null),
-  icon_background: z.string().nullish().default(null),
-  icon_type: z.string().nullish().default(null),
+  description: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
   mode: z.string(),
-  name: z.string().nullish().default(null),
-  pipeline_id: z.string().nullish().default(null),
-  yaml_content: z.string().nullish().default(null),
-  yaml_url: z.string().nullish().default(null),
+  name: z.string().nullish(),
+  pipeline_id: z.string().nullish(),
+  yaml_content: z.string().nullish(),
+  yaml_url: z.string().nullish(),
 })
 
 /**
@@ -80,12 +80,12 @@ export const zDefaultBlockConfigResponse = z.record(z.string(), z.unknown())
  * DraftWorkflowSyncPayload
  */
 export const zDraftWorkflowSyncPayload = z.object({
-  conversation_variables: z.array(z.record(z.string(), z.unknown())).nullish().default(null),
-  environment_variables: z.array(z.record(z.string(), z.unknown())).nullish().default(null),
-  features: z.record(z.string(), z.unknown()).nullish().default(null),
+  conversation_variables: z.array(z.record(z.string(), z.unknown())).nullish(),
+  environment_variables: z.array(z.record(z.string(), z.unknown())).nullish(),
+  features: z.record(z.string(), z.unknown()).nullish(),
   graph: z.record(z.string(), z.unknown()),
-  hash: z.string().nullish().default(null),
-  rag_pipeline_variables: z.array(z.record(z.string(), z.unknown())).nullish().default(null),
+  hash: z.string().nullish(),
+  rag_pipeline_variables: z.array(z.record(z.string(), z.unknown())).nullish(),
 })
 
 /**
@@ -101,7 +101,7 @@ export const zRagPipelineWorkflowSyncResponse = z.object({
  * DatasourceNodeRunPayload
  */
 export const zDatasourceNodeRunPayload = z.object({
-  credential_id: z.string().nullish().default(null),
+  credential_id: z.string().nullish(),
   datasource_type: z.string(),
   inputs: z.record(z.string(), z.unknown()),
 })
@@ -120,7 +120,7 @@ export const zDatasourceVariablesPayload = z.object({
  * NodeRunPayload
  */
 export const zNodeRunPayload = z.object({
-  inputs: z.record(z.string(), z.unknown()).nullish().default(null),
+  inputs: z.record(z.string(), z.unknown()).nullish(),
 })
 
 /**
@@ -178,8 +178,8 @@ export const zWorkflowDraftVariableList = z.object({
  * WorkflowDraftVariablePatchPayload
  */
 export const zWorkflowDraftVariablePatchPayload = z.object({
-  name: z.string().nullish().default(null),
-  value: z.unknown().nullish().default(null),
+  name: z.string().nullish(),
+  value: z.unknown().nullish(),
 })
 
 /**
@@ -194,7 +194,7 @@ export const zRagPipelineWorkflowPublishResponse = z.object({
  * Parser
  */
 export const zParser = z.object({
-  credential_id: z.string().nullish().default(null),
+  credential_id: z.string().nullish(),
   datasource_type: z.string(),
   inputs: z.record(z.string(), z.unknown()),
 })
@@ -207,7 +207,7 @@ export const zPublishedWorkflowRunPayload = z.object({
   datasource_type: z.string(),
   inputs: z.record(z.string(), z.unknown()),
   is_preview: z.boolean().optional().default(false),
-  original_document_id: z.string().nullish().default(null),
+  original_document_id: z.string().nullish(),
   response_mode: z.enum(['blocking', 'streaming']).optional().default('streaming'),
   start_node_id: z.string(),
 })
@@ -216,8 +216,8 @@ export const zPublishedWorkflowRunPayload = z.object({
  * WorkflowUpdatePayload
  */
 export const zWorkflowUpdatePayload = z.object({
-  marked_comment: z.string().max(100).nullish().default(null),
-  marked_name: z.string().max(20).nullish().default(null),
+  marked_comment: z.string().max(100).nullish(),
+  marked_name: z.string().max(20).nullish(),
 })
 
 /**
@@ -230,11 +230,11 @@ export const zImportStatus = z.enum(['completed', 'completed-with-warnings', 'fa
  */
 export const zRagPipelineImportResponse = z.object({
   current_dsl_version: z.string(),
-  dataset_id: z.string().nullish().default(null),
+  dataset_id: z.string().nullish(),
   error: z.string().optional().default(''),
   id: z.string(),
   imported_dsl_version: z.string(),
-  pipeline_id: z.string().nullish().default(null),
+  pipeline_id: z.string().nullish(),
   status: zImportStatus,
 })
 
@@ -251,18 +251,18 @@ export const zDatasetDocMetadataResponse = z.object({
  * DatasetExternalKnowledgeInfoResponse
  */
 export const zDatasetExternalKnowledgeInfoResponse = z.object({
-  external_knowledge_api_endpoint: z.string().nullish().default(null),
-  external_knowledge_api_id: z.string().nullish().default(null),
-  external_knowledge_api_name: z.string().nullish().default(null),
-  external_knowledge_id: z.string().nullish().default(null),
+  external_knowledge_api_endpoint: z.string().nullish(),
+  external_knowledge_api_id: z.string().nullish(),
+  external_knowledge_api_name: z.string().nullish(),
+  external_knowledge_id: z.string().nullish(),
 })
 
 /**
  * DatasetExternalRetrievalModelResponse
  */
 export const zDatasetExternalRetrievalModelResponse = z.object({
-  score_threshold: z.number().nullish().default(null),
-  score_threshold_enabled: z.boolean().nullish().default(null),
+  score_threshold: z.number().nullish(),
+  score_threshold_enabled: z.boolean().nullish(),
   top_k: z.int(),
 })
 
@@ -270,20 +270,20 @@ export const zDatasetExternalRetrievalModelResponse = z.object({
  * DatasetIconInfoResponse
  */
 export const zDatasetIconInfoResponse = z.object({
-  icon: z.string().nullish().default(null),
-  icon_background: z.string().nullish().default(null),
-  icon_type: z.string().nullish().default(null),
-  icon_url: z.string().nullish().default(null),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  icon_url: z.string().nullish(),
 })
 
 /**
  * DatasetSummaryIndexSettingResponse
  */
 export const zDatasetSummaryIndexSettingResponse = z.object({
-  enable: z.boolean().nullish().default(null),
-  model_name: z.string().nullish().default(null),
-  model_provider_name: z.string().nullish().default(null),
-  summary_prompt: z.string().nullish().default(null),
+  enable: z.boolean().nullish(),
+  model_name: z.string().nullish(),
+  model_provider_name: z.string().nullish(),
+  summary_prompt: z.string().nullish(),
 })
 
 /**
@@ -300,13 +300,13 @@ export const zDatasetTagResponse = z.object({
  */
 export const zPipelineTemplateItemResponse = z.object({
   chunk_structure: z.string(),
-  copyright: z.string().nullish().default(null),
+  copyright: z.string().nullish(),
   description: z.string(),
   icon: z.record(z.string(), z.unknown()),
   id: z.string(),
   name: z.string(),
   position: z.int(),
-  privacy_policy: z.string().nullish().default(null),
+  privacy_policy: z.string().nullish(),
 })
 
 /**
@@ -329,17 +329,17 @@ export const zSimpleAccountResponse = z.object({
  * WorkflowRunForListResponse
  */
 export const zWorkflowRunForListResponse = z.object({
-  created_at: z.int().nullish().default(null),
-  created_by_account: zSimpleAccountResponse.nullish().default(null),
-  elapsed_time: z.number().nullish().default(null),
-  exceptions_count: z.int().nullish().default(null),
-  finished_at: z.int().nullish().default(null),
+  created_at: z.int().nullish(),
+  created_by_account: zSimpleAccountResponse.nullish(),
+  elapsed_time: z.number().nullish(),
+  exceptions_count: z.int().nullish(),
+  finished_at: z.int().nullish(),
   id: z.string(),
-  retry_index: z.int().nullish().default(null),
-  status: z.string().nullish().default(null),
-  total_steps: z.int().nullish().default(null),
-  total_tokens: z.int().nullish().default(null),
-  version: z.string().nullish().default(null),
+  retry_index: z.int().nullish(),
+  status: z.string().nullish(),
+  total_steps: z.int().nullish(),
+  total_tokens: z.int().nullish(),
+  version: z.string().nullish(),
 })
 
 /**
@@ -357,7 +357,7 @@ export const zWorkflowRunPaginationResponse = z.object({
 export const zSimpleEndUser = z.object({
   id: z.string(),
   is_anonymous: z.boolean(),
-  session_id: z.string().nullish().default(null),
+  session_id: z.string().nullish(),
   type: z.string(),
 })
 
@@ -365,51 +365,51 @@ export const zSimpleEndUser = z.object({
  * WorkflowRunDetailResponse
  */
 export const zWorkflowRunDetailResponse = z.object({
-  created_at: z.int().nullish().default(null),
-  created_by_account: zSimpleAccountResponse.nullish().default(null),
-  created_by_end_user: zSimpleEndUser.nullish().default(null),
-  created_by_role: z.string().nullish().default(null),
-  elapsed_time: z.number().nullish().default(null),
-  error: z.string().nullish().default(null),
-  exceptions_count: z.int().nullish().default(null),
-  finished_at: z.int().nullish().default(null),
+  created_at: z.int().nullish(),
+  created_by_account: zSimpleAccountResponse.nullish(),
+  created_by_end_user: zSimpleEndUser.nullish(),
+  created_by_role: z.string().nullish(),
+  elapsed_time: z.number().nullish(),
+  error: z.string().nullish(),
+  exceptions_count: z.int().nullish(),
+  finished_at: z.int().nullish(),
   graph: z.unknown(),
   id: z.string(),
   inputs: z.unknown(),
   outputs: z.unknown(),
-  status: z.string().nullish().default(null),
-  total_steps: z.int().nullish().default(null),
-  total_tokens: z.int().nullish().default(null),
-  version: z.string().nullish().default(null),
+  status: z.string().nullish(),
+  total_steps: z.int().nullish(),
+  total_tokens: z.int().nullish(),
+  version: z.string().nullish(),
 })
 
 /**
  * WorkflowRunNodeExecutionResponse
  */
 export const zWorkflowRunNodeExecutionResponse = z.object({
-  created_at: z.int().nullish().default(null),
-  created_by_account: zSimpleAccountResponse.nullish().default(null),
-  created_by_end_user: zSimpleEndUser.nullish().default(null),
-  created_by_role: z.string().nullish().default(null),
-  elapsed_time: z.number().nullish().default(null),
-  error: z.string().nullish().default(null),
-  execution_metadata: z.unknown().optional().default(null),
-  extras: z.unknown().optional().default(null),
-  finished_at: z.int().nullish().default(null),
+  created_at: z.int().nullish(),
+  created_by_account: zSimpleAccountResponse.nullish(),
+  created_by_end_user: zSimpleEndUser.nullish(),
+  created_by_role: z.string().nullish(),
+  elapsed_time: z.number().nullish(),
+  error: z.string().nullish(),
+  execution_metadata: z.unknown().optional(),
+  extras: z.unknown().optional(),
+  finished_at: z.int().nullish(),
   id: z.string(),
-  index: z.int().nullish().default(null),
-  inputs: z.unknown().optional().default(null),
-  inputs_truncated: z.boolean().nullish().default(null),
-  node_id: z.string().nullish().default(null),
-  node_type: z.string().nullish().default(null),
-  outputs: z.unknown().optional().default(null),
-  outputs_truncated: z.boolean().nullish().default(null),
-  predecessor_node_id: z.string().nullish().default(null),
-  process_data: z.unknown().optional().default(null),
-  process_data_truncated: z.boolean().nullish().default(null),
-  retry_index: z.int().nullish().default(null),
-  status: z.string().nullish().default(null),
-  title: z.string().nullish().default(null),
+  index: z.int().nullish(),
+  inputs: z.unknown().optional(),
+  inputs_truncated: z.boolean().nullish(),
+  node_id: z.string().nullish(),
+  node_type: z.string().nullish(),
+  outputs: z.unknown().optional(),
+  outputs_truncated: z.boolean().nullish(),
+  predecessor_node_id: z.string().nullish(),
+  process_data: z.unknown().optional(),
+  process_data_truncated: z.boolean().nullish(),
+  retry_index: z.int().nullish(),
+  status: z.string().nullish(),
+  title: z.string().nullish(),
 })
 
 /**
@@ -445,19 +445,19 @@ export const zWorkflowEnvironmentVariableResponse = z.object({
  * PipelineVariableResponse
  */
 export const zPipelineVariableResponse = z.object({
-  allowed_file_extensions: z.array(z.string()).nullish().default(null),
-  allowed_file_types: z.array(z.string()).nullish().default(null),
-  allowed_file_upload_methods: z.array(z.string()).nullish().default(null),
+  allowed_file_extensions: z.array(z.string()).nullish(),
+  allowed_file_types: z.array(z.string()).nullish(),
+  allowed_file_upload_methods: z.array(z.string()).nullish(),
   belong_to_node_id: z.string(),
-  default_value: z.unknown().optional().default(null),
+  default_value: z.unknown().optional(),
   label: z.string(),
-  max_length: z.int().nullish().default(null),
-  options: z.array(z.string()).nullish().default(null),
-  placeholder: z.string().nullish().default(null),
+  max_length: z.int().nullish(),
+  options: z.array(z.string()).nullish(),
+  placeholder: z.string().nullish(),
   required: z.boolean(),
-  tooltips: z.string().nullish().default(null),
+  tooltips: z.string().nullish(),
   type: z.string(),
-  unit: z.string().nullish().default(null),
+  unit: z.string().nullish(),
   variable: z.string(),
 })
 
@@ -467,7 +467,7 @@ export const zPipelineVariableResponse = z.object({
 export const zWorkflowResponse = z.object({
   conversation_variables: z.array(zWorkflowConversationVariableResponse),
   created_at: z.int(),
-  created_by: zSimpleAccountResponse.nullish().default(null),
+  created_by: zSimpleAccountResponse.nullish(),
   environment_variables: z.array(zWorkflowEnvironmentVariableResponse),
   features: z.record(z.string(), z.unknown()),
   graph: z.record(z.string(), z.unknown()),
@@ -478,9 +478,9 @@ export const zWorkflowResponse = z.object({
   rag_pipeline_variables: z.array(zPipelineVariableResponse),
   tool_published: z.boolean(),
   updated_at: z.int(),
-  updated_by: zSimpleAccountResponse.nullish().default(null),
+  updated_by: zSimpleAccountResponse.nullish(),
   version: z.string(),
-  version_number: z.int().nullish().default(null),
+  version_number: z.int().nullish(),
 })
 
 /**
@@ -497,7 +497,7 @@ export const zWorkflowPaginationResponse = z.object({
  * EnvironmentVariableItemResponse
  */
 export const zEnvironmentVariableItemResponse = z.object({
-  description: z.string().nullish().default(null),
+  description: z.string().nullish(),
   editable: z.boolean(),
   edited: z.boolean(),
   id: z.string(),
@@ -537,8 +537,8 @@ export const zWorkflowDraftVariableListWithoutValue = z.object({
  * DatasetRerankingModelResponse
  */
 export const zDatasetRerankingModelResponse = z.object({
-  reranking_model_name: z.string().nullish().default(null),
-  reranking_provider_name: z.string().nullish().default(null),
+  reranking_model_name: z.string().nullish(),
+  reranking_provider_name: z.string().nullish(),
 })
 
 /**
@@ -561,7 +561,7 @@ export const zGithub = z.object({
  */
 export const zMarketplace = z.object({
   marketplace_plugin_unique_identifier: z.string(),
-  version: z.string().nullish().default(null),
+  version: z.string().nullish(),
 })
 
 /**
@@ -569,14 +569,14 @@ export const zMarketplace = z.object({
  */
 export const zPackage = z.object({
   plugin_unique_identifier: z.string(),
-  version: z.string().nullish().default(null),
+  version: z.string().nullish(),
 })
 
 /**
  * PluginDependency
  */
 export const zPluginDependency = z.object({
-  current_identifier: z.string().nullish().default(null),
+  current_identifier: z.string().nullish(),
   type: zPluginDependencyType,
   value: z.union([zGithub, zMarketplace, zPackage]),
 })
@@ -592,16 +592,16 @@ export const zRagPipelineImportCheckDependenciesResponse = z.object({
  * DatasetKeywordSettingResponse
  */
 export const zDatasetKeywordSettingResponse = z.object({
-  keyword_weight: z.number().nullish().default(null),
+  keyword_weight: z.number().nullish(),
 })
 
 /**
  * DatasetVectorSettingResponse
  */
 export const zDatasetVectorSettingResponse = z.object({
-  embedding_model_name: z.string().nullish().default(null),
-  embedding_provider_name: z.string().nullish().default(null),
-  vector_weight: z.number().nullish().default(null),
+  embedding_model_name: z.string().nullish(),
+  embedding_provider_name: z.string().nullish(),
+  vector_weight: z.number().nullish(),
 })
 
 /**
@@ -610,7 +610,7 @@ export const zDatasetVectorSettingResponse = z.object({
 export const zDatasetWeightedScoreResponse = z.object({
   keyword_setting: zDatasetKeywordSettingResponse.optional(),
   vector_setting: zDatasetVectorSettingResponse.optional(),
-  weight_type: z.string().nullish().default(null),
+  weight_type: z.string().nullish(),
 })
 
 /**
@@ -618,13 +618,13 @@ export const zDatasetWeightedScoreResponse = z.object({
  */
 export const zDatasetRetrievalModelResponse = z.object({
   reranking_enable: z.boolean(),
-  reranking_mode: z.string().nullish().default(null),
+  reranking_mode: z.string().nullish(),
   reranking_model: zDatasetRerankingModelResponse.optional(),
-  score_threshold: z.number().nullish().default(null),
+  score_threshold: z.number().nullish(),
   score_threshold_enabled: z.boolean(),
   search_method: z.string(),
   top_k: z.int(),
-  weights: zDatasetWeightedScoreResponse.nullish().default(null),
+  weights: zDatasetWeightedScoreResponse.nullish(),
 })
 
 /**
@@ -642,7 +642,7 @@ export const zDatasetDetailResponse = z.object({
   doc_form: z.string().nullable(),
   doc_metadata: z.array(zDatasetDocMetadataResponse),
   document_count: z.int(),
-  embedding_available: z.boolean().nullish().default(null),
+  embedding_available: z.boolean().nullish(),
   embedding_model: z.string().nullable(),
   embedding_model_provider: z.string().nullable(),
   enable_api: z.boolean(),
@@ -653,7 +653,7 @@ export const zDatasetDetailResponse = z.object({
   indexing_technique: z.string().nullable(),
   is_multimodal: z.boolean(),
   is_published: z.boolean(),
-  maintainer: z.string().nullish().default(null),
+  maintainer: z.string().nullish(),
   name: z.string(),
   permission: z.string(),
   permission_keys: z.array(z.string()).optional(),

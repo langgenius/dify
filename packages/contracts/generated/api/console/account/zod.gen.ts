@@ -20,18 +20,18 @@ export const zAccountAvatarPayload = z.object({
  * AccountResponse
  */
 export const zAccountResponse = z.object({
-  avatar: z.string().nullish().default(null),
+  avatar: z.string().nullish(),
   avatar_url: z.string().nullable(),
-  created_at: z.int().nullish().default(null),
+  created_at: z.int().nullish(),
   email: z.string(),
   id: z.string(),
-  interface_language: z.string().nullish().default(null),
-  interface_theme: z.string().nullish().default(null),
+  interface_language: z.string().nullish(),
+  interface_theme: z.string().nullish(),
   is_password_set: z.boolean(),
-  last_login_at: z.int().nullish().default(null),
-  last_login_ip: z.string().nullish().default(null),
+  last_login_at: z.int().nullish(),
+  last_login_ip: z.string().nullish(),
   name: z.string(),
-  timezone: z.string().nullish().default(null),
+  timezone: z.string().nullish(),
 })
 
 /**
@@ -39,9 +39,9 @@ export const zAccountResponse = z.object({
  */
 export const zChangeEmailSendPayload = z.object({
   email: z.string(),
-  language: z.string().nullish().default(null),
-  phase: z.string().nullish().default(null),
-  token: z.string().nullish().default(null),
+  language: z.string().nullish(),
+  phase: z.string().nullish(),
+  token: z.string().nullish(),
 })
 
 /**
@@ -112,10 +112,10 @@ export const zAccountDeletionFeedbackPayload = z.object({
  * EducationStatusResponse
  */
 export const zEducationStatusResponse = z.object({
-  allow_refresh: z.boolean().nullish().default(null),
-  expire_at: z.int().nullish().default(null),
-  is_student: z.boolean().nullish().default(null),
-  result: z.boolean().nullish().default(null),
+  allow_refresh: z.boolean().nullish(),
+  expire_at: z.int().nullish(),
+  is_student: z.boolean().nullish(),
+  result: z.boolean().nullish(),
 })
 
 /**
@@ -138,16 +138,16 @@ export const zEducationActivateResponse = z.object({
  * EducationAutocompleteResponse
  */
 export const zEducationAutocompleteResponse = z.object({
-  curr_page: z.int().nullish().default(null),
+  curr_page: z.int().nullish(),
   data: z.array(z.string()).optional(),
-  has_next: z.boolean().nullish().default(null),
+  has_next: z.boolean().nullish(),
 })
 
 /**
  * EducationVerifyResponse
  */
 export const zEducationVerifyResponse = z.object({
-  token: z.string().nullish().default(null),
+  token: z.string().nullish(),
 })
 
 /**
@@ -155,7 +155,7 @@ export const zEducationVerifyResponse = z.object({
  */
 export const zAccountInitPayload = z.object({
   interface_language: z.string(),
-  invitation_code: z.string().nullish().default(null),
+  invitation_code: z.string().nullish(),
   timezone: z.string(),
 })
 
@@ -185,7 +185,7 @@ export const zAccountNamePayload = z.object({
  */
 export const zAccountPasswordPayload = z.object({
   new_password: z.string(),
-  password: z.string().nullish().default(null),
+  password: z.string().nullish(),
   repeat_new_password: z.string(),
 })
 
@@ -213,9 +213,9 @@ export const zAccountTimezonePayload = z.object({
  * AccountIntegrateResponse
  */
 export const zAccountIntegrateResponse = z.object({
-  created_at: z.int().nullish().default(null),
+  created_at: z.int().nullish(),
   is_bound: z.boolean(),
-  link: z.string().nullish().default(null),
+  link: z.string().nullish(),
   provider: z.string(),
 })
 
@@ -230,17 +230,17 @@ export const zAccountIntegrateListResponse = z.object({
  * AccountResponse
  */
 export const zAccountResponseWritable = z.object({
-  avatar: z.string().nullish().default(null),
-  created_at: z.int().nullish().default(null),
+  avatar: z.string().nullish(),
+  created_at: z.int().nullish(),
   email: z.string(),
   id: z.string(),
-  interface_language: z.string().nullish().default(null),
-  interface_theme: z.string().nullish().default(null),
+  interface_language: z.string().nullish(),
+  interface_theme: z.string().nullish(),
   is_password_set: z.boolean(),
-  last_login_at: z.int().nullish().default(null),
-  last_login_ip: z.string().nullish().default(null),
+  last_login_at: z.int().nullish(),
+  last_login_ip: z.string().nullish(),
   name: z.string(),
-  timezone: z.string().nullish().default(null),
+  timezone: z.string().nullish(),
 })
 
 export const zGetAccountAvatarQuery = z.object({

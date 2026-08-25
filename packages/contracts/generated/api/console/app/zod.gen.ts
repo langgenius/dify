@@ -6,8 +6,8 @@ import * as z from 'zod'
  * AdvancedPromptTemplateResponse
  */
 export const zAdvancedPromptTemplateResponse = z.object({
-  chat_prompt_config: z.record(z.string(), z.unknown()).nullish().default(null),
-  completion_prompt_config: z.record(z.string(), z.unknown()).nullish().default(null),
+  chat_prompt_config: z.record(z.string(), z.unknown()).nullish(),
+  completion_prompt_config: z.record(z.string(), z.unknown()).nullish(),
 })
 
 export const zGetAppPromptTemplatesQuery = z.object({

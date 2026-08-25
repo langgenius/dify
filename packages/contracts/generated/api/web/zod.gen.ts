@@ -28,8 +28,8 @@ export const zAccessTokenResultResponse = z.object({
  * AppAccessModeQuery
  */
 export const zAppAccessModeQuery = z.object({
-  appCode: z.string().nullish().default(null),
-  appId: z.string().nullish().default(null),
+  appCode: z.string().nullish(),
+  appId: z.string().nullish(),
 })
 
 /**
@@ -96,12 +96,12 @@ export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
  * ChatMessagePayload
  */
 export const zChatMessagePayload = z.object({
-  conversation_id: z.string().nullish().default(null),
-  files: z.array(z.record(z.string(), z.unknown())).nullish().default(null),
+  conversation_id: z.string().nullish(),
+  files: z.array(z.record(z.string(), z.unknown())).nullish(),
   inputs: z.record(z.string(), z.unknown()),
-  parent_message_id: z.string().nullish().default(null),
+  parent_message_id: z.string().nullish(),
   query: z.string(),
-  response_mode: z.enum(['blocking', 'streaming']).nullish().default(null),
+  response_mode: z.enum(['blocking', 'streaming']).nullish(),
   retriever_from: z.string().optional().default('web_app'),
 })
 
@@ -109,10 +109,10 @@ export const zChatMessagePayload = z.object({
  * CompletionMessagePayload
  */
 export const zCompletionMessagePayload = z.object({
-  files: z.array(z.record(z.string(), z.unknown())).nullish().default(null),
+  files: z.array(z.record(z.string(), z.unknown())).nullish(),
   inputs: z.record(z.string(), z.unknown()),
   query: z.string().optional().default(''),
-  response_mode: z.enum(['blocking', 'streaming']).nullish().default(null),
+  response_mode: z.enum(['blocking', 'streaming']).nullish(),
   retriever_from: z.string().optional().default('web_app'),
 })
 
@@ -120,9 +120,9 @@ export const zCompletionMessagePayload = z.object({
  * ConversationListQuery
  */
 export const zConversationListQuery = z.object({
-  last_id: z.string().nullish().default(null),
+  last_id: z.string().nullish(),
   limit: z.int().gte(1).lte(100).optional().default(20),
-  pinned: z.boolean().nullish().default(null),
+  pinned: z.boolean().nullish(),
   sort_by: z
     .enum(['-created_at', '-updated_at', 'created_at', 'updated_at'])
     .optional()
@@ -133,7 +133,7 @@ export const zConversationRenamePayload = z.intersection(
   z.union([
     z.object({
       auto_generate: z.literal(true),
-      name: z.string().nullish().default(null),
+      name: z.string().nullish(),
     }),
     z.object({
       auto_generate: z.literal(false).optional().default(false),
@@ -142,7 +142,7 @@ export const zConversationRenamePayload = z.intersection(
   ]),
   z.object({
     auto_generate: z.boolean().optional().default(false),
-    name: z.string().nullish().default(null),
+    name: z.string().nullish(),
   }),
 )
 
@@ -158,7 +158,7 @@ export const zDeploymentEdition = z.enum(['CLOUD', 'COMMUNITY', 'ENTERPRISE'])
  */
 export const zEmailCodeLoginSendPayload = z.object({
   email: z.string(),
-  language: z.string().nullish().default(null),
+  language: z.string().nullish(),
 })
 
 /**
@@ -184,7 +184,7 @@ export const zExecutionContentType = z.enum(['human_input'])
  * FileResponse
  */
 export const zFileResponse = z.object({
-  conversation_id: z.uuid().nullish().default(null),
+  conversation_id: z.uuid().nullish(),
   created_at: z.coerce
     .bigint()
     .min(BigInt('-9223372036854775808'), {
@@ -193,21 +193,20 @@ export const zFileResponse = z.object({
     .max(BigInt('9223372036854775807'), {
       error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
     })
-    .nullish()
-    .default(null),
-  created_by: z.uuid().nullish().default(null),
-  extension: z.string().nullish().default(null),
-  file_key: z.string().nullish().default(null),
+    .nullish(),
+  created_by: z.uuid().nullish(),
+  extension: z.string().nullish(),
+  file_key: z.string().nullish(),
   id: z.uuid(),
-  mime_type: z.string().nullish().default(null),
+  mime_type: z.string().nullish(),
   name: z.string(),
-  original_url: z.string().nullish().default(null),
-  preview_url: z.string().nullish().default(null),
-  reference: z.string().nullish().default(null),
+  original_url: z.string().nullish(),
+  preview_url: z.string().nullish(),
+  reference: z.string().nullish(),
   size: z.int(),
-  source_url: z.string().nullish().default(null),
-  tenant_id: z.uuid().nullish().default(null),
-  user_id: z.uuid().nullish().default(null),
+  source_url: z.string().nullish(),
+  tenant_id: z.uuid().nullish(),
+  user_id: z.uuid().nullish(),
 })
 
 /**
@@ -252,14 +251,14 @@ export const zFileListInputConfig = z.object({
  * FileWithSignedUrl
  */
 export const zFileWithSignedUrl = z.object({
-  created_at: z.int().nullable().default(null),
-  created_by: z.string().nullable().default(null),
-  extension: z.string().nullable().default(null),
+  created_at: z.int().nullable(),
+  created_by: z.string().nullable(),
+  extension: z.string().nullable(),
   id: z.string(),
-  mime_type: z.string().nullable().default(null),
+  mime_type: z.string().nullable(),
   name: z.string(),
   size: z.int(),
-  url: z.string().nullable().default(null),
+  url: z.string().nullable(),
 })
 
 /**
@@ -285,7 +284,7 @@ export const zForgotPasswordResetPayload = z.object({
  */
 export const zForgotPasswordSendPayload = z.object({
   email: z.string(),
-  language: z.string().nullish().default(null),
+  language: z.string().nullish(),
 })
 
 /**
@@ -294,7 +293,7 @@ export const zForgotPasswordSendPayload = z.object({
  * Parsed multipart form fields for HITL uploads.
  */
 export const zHumanInputFileUploadFormPayload = z.object({
-  url: z.url().min(1).max(2083).nullish().default(null),
+  url: z.url().min(1).max(2083).nullish(),
 })
 
 /**
@@ -325,17 +324,17 @@ export const zJsonValue = z
  * AgentThought
  */
 export const zAgentThought = z.object({
-  answer: z.string().nullish().default(null),
-  chain_id: z.string().nullish().default(null),
-  created_at: z.int().nullish().default(null),
+  answer: z.string().nullish(),
+  chain_id: z.string().nullish(),
+  created_at: z.int().nullish(),
   files: z.array(z.string()),
   id: z.string(),
   message_id: z.string(),
-  observation: z.string().nullish().default(null),
+  observation: z.string().nullish(),
   position: z.int(),
-  thought: z.string().nullish().default(null),
-  tool: z.string().nullish().default(null),
-  tool_input: z.string().nullish().default(null),
+  thought: z.string().nullish(),
+  tool: z.string().nullish(),
+  tool_input: z.string().nullish(),
   tool_labels: zJsonValue,
 })
 
@@ -357,7 +356,7 @@ export const zHumanInputFormSubmissionData = z.object({
   node_id: z.string(),
   node_title: z.string(),
   rendered_content: z.string(),
-  submitted_data: z.record(z.string(), zJsonValue2).nullish().default(null),
+  submitted_data: z.record(z.string(), zJsonValue2).nullish(),
 })
 
 /**
@@ -392,8 +391,8 @@ export const zLoginPayload = z.object({
  * LoginStatusQuery
  */
 export const zLoginStatusQuery = z.object({
-  app_code: z.string().nullish().default(null),
-  user_id: z.string().nullish().default(null),
+  app_code: z.string().nullish(),
+  user_id: z.string().nullish(),
 })
 
 /**
@@ -408,23 +407,23 @@ export const zLoginStatusResponse = z.object({
  * MessageFeedbackPayload
  */
 export const zMessageFeedbackPayload = z.object({
-  content: z.string().nullish().default(null),
-  rating: z.enum(['dislike', 'like']).nullish().default(null),
+  content: z.string().nullish(),
+  rating: z.enum(['dislike', 'like']).nullish(),
 })
 
 /**
  * MessageFile
  */
 export const zMessageFile = z.object({
-  belongs_to: z.string().nullish().default(null),
+  belongs_to: z.string().nullish(),
   filename: z.string(),
   id: z.uuid(),
-  mime_type: z.string().nullish().default(null),
-  size: z.int().nullish().default(null),
+  mime_type: z.string().nullish(),
+  size: z.int().nullish(),
   transfer_method: z.string(),
   type: z.string(),
-  upload_file_id: z.uuid().nullish().default(null),
-  url: z.string().nullish().default(null),
+  upload_file_id: z.uuid().nullish(),
+  url: z.string().nullish(),
 })
 
 /**
@@ -432,7 +431,7 @@ export const zMessageFile = z.object({
  */
 export const zMessageListQuery = z.object({
   conversation_id: z.string(),
-  first_id: z.string().nullish().default(null),
+  first_id: z.string().nullish(),
   limit: z.int().gte(1).lte(100).optional().default(20),
 })
 
@@ -454,7 +453,7 @@ export const zPassportAccessTokenResponse = z.object({
  * PassportQuery
  */
 export const zPassportQuery = z.object({
-  user_id: z.string().nullish().default(null),
+  user_id: z.string().nullish(),
 })
 
 /**
@@ -501,7 +500,7 @@ export const zResultResponse = z.object({
  * RetrieverResource
  */
 export const zRetrieverResource = z.object({
-  content: z.string().nullish().default(null),
+  content: z.string().nullish(),
   created_at: z.coerce
     .bigint()
     .min(BigInt('-9223372036854775808'), {
@@ -510,23 +509,22 @@ export const zRetrieverResource = z.object({
     .max(BigInt('9223372036854775807'), {
       error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
     })
-    .nullish()
-    .default(null),
-  data_source_type: z.string().nullish().default(null),
-  dataset_id: z.uuid().nullish().default(null),
-  dataset_name: z.string().nullish().default(null),
-  document_id: z.uuid().nullish().default(null),
-  document_name: z.string().nullish().default(null),
-  hit_count: z.int().nullish().default(null),
+    .nullish(),
+  data_source_type: z.string().nullish(),
+  dataset_id: z.uuid().nullish(),
+  dataset_name: z.string().nullish(),
+  document_id: z.uuid().nullish(),
+  document_name: z.string().nullish(),
+  hit_count: z.int().nullish(),
   id: z.uuid().optional(),
-  index_node_hash: z.string().nullish().default(null),
+  index_node_hash: z.string().nullish(),
   message_id: z.uuid().optional(),
   position: z.int(),
-  score: z.number().nullish().default(null),
-  segment_id: z.uuid().nullish().default(null),
-  segment_position: z.int().nullish().default(null),
-  summary: z.string().nullish().default(null),
-  word_count: z.int().nullish().default(null),
+  score: z.number().nullish(),
+  segment_id: z.uuid().nullish(),
+  segment_position: z.int().nullish(),
+  summary: z.string().nullish(),
+  word_count: z.int().nullish(),
 })
 
 /**
@@ -545,7 +543,7 @@ export const zSavedMessageCreatePayload = z.object({
  * SavedMessageListQuery
  */
 export const zSavedMessageListQuery = z.object({
-  last_id: z.string().nullish().default(null),
+  last_id: z.string().nullish(),
   limit: z.int().gte(1).lte(100).optional().default(20),
 })
 
@@ -561,11 +559,10 @@ export const zSimpleConversation = z.object({
     .max(BigInt('9223372036854775807'), {
       error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
     })
-    .nullish()
-    .default(null),
+    .nullish(),
   id: z.uuid(),
   inputs: z.record(z.string(), zJsonValue),
-  introduction: z.string().nullish().default(null),
+  introduction: z.string().nullish(),
   name: z.string(),
   status: z.string(),
   updated_at: z.coerce
@@ -576,8 +573,7 @@ export const zSimpleConversation = z.object({
     .max(BigInt('9223372036854775807'), {
       error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
     })
-    .nullish()
-    .default(null),
+    .nullish(),
 })
 
 /**
@@ -593,7 +589,7 @@ export const zConversationInfiniteScrollPagination = z.object({
  * SimpleFeedback
  */
 export const zSimpleFeedback = z.object({
-  rating: z.string().nullish().default(null),
+  rating: z.string().nullish(),
 })
 
 /**
@@ -601,8 +597,8 @@ export const zSimpleFeedback = z.object({
  */
 export const zSavedMessageItem = z.object({
   answer: z.string(),
-  created_at: z.int().nullish().default(null),
-  feedback: zSimpleFeedback.nullish().default(null),
+  created_at: z.int().nullish(),
+  feedback: zSimpleFeedback.nullish(),
   id: z.string(),
   inputs: z.record(z.string(), zJsonValueType),
   message_files: z.array(zMessageFile),
@@ -678,7 +674,7 @@ export const zParameters = z.object({
   more_like_this: z.object({
     enabled: z.boolean().optional(),
   }),
-  opening_statement: z.string().nullish().default(null),
+  opening_statement: z.string().nullish(),
   retriever_resource: z.object({
     enabled: z.boolean().optional(),
   }),
@@ -706,10 +702,10 @@ export const zParameters = z.object({
  * TextToAudioPayload
  */
 export const zTextToAudioPayload = z.object({
-  message_id: z.uuid().nullish().default(null),
-  streaming: z.boolean().nullish().default(null),
-  text: z.string().nullish().default(null),
-  voice: z.string().nullish().default(null),
+  message_id: z.uuid().nullish(),
+  streaming: z.boolean().nullish(),
+  text: z.string().nullish(),
+  voice: z.string().nullish(),
 })
 
 /**
@@ -769,7 +765,7 @@ export const zStringSource = z.object({
  * Form input definition.
  */
 export const zParagraphInputConfig = z.object({
-  default: zStringSource.nullish().default(null),
+  default: zStringSource.nullish(),
   output_variable_name: z.string(),
   type: z.literal('paragraph').optional().default('paragraph'),
 })
@@ -790,7 +786,7 @@ export const zHumanInputFormDefinition = z.object({
   expiration_time: z.int(),
   form_content: z.string(),
   form_id: z.string(),
-  form_token: z.string().nullish().default(null),
+  form_token: z.string().nullish(),
   inputs: z.array(zFormInputConfig).optional(),
   node_id: z.string(),
   node_title: z.string(),
@@ -801,8 +797,8 @@ export const zHumanInputFormDefinition = z.object({
  * HumanInputContent
  */
 export const zHumanInputContent = z.object({
-  form_definition: zHumanInputFormDefinition.nullish().default(null),
-  form_submission_data: zHumanInputFormSubmissionData.nullish().default(null),
+  form_definition: zHumanInputFormDefinition.nullish(),
+  form_submission_data: zHumanInputFormSubmissionData.nullish(),
   submitted: z.boolean(),
   type: zExecutionContentType.optional().default('human_input'),
   workflow_run_id: z.string(),
@@ -821,7 +817,7 @@ export const zVerificationTokenResponse = z.object({
  * WebAppAuthSSOModel
  */
 export const zWebAppAuthSsoModel = z.object({
-  protocol: zSsoProtocol.nullable().default(null),
+  protocol: zSsoProtocol.nullable(),
 })
 
 /**
@@ -871,7 +867,7 @@ export const zSystemFeatureModel = z.object({
   }),
   rbac_enabled: z.boolean().default(false),
   sso_enforced_for_signin: z.boolean().default(false),
-  sso_enforced_for_signin_protocol: zSsoProtocol.nullable().default(null),
+  sso_enforced_for_signin_protocol: zSsoProtocol.nullable(),
   webapp_auth: zWebAppAuthModel,
 })
 
@@ -880,7 +876,7 @@ export const zSystemFeatureModel = z.object({
  */
 export const zWebAppCustomConfigResponse = z.object({
   remove_webapp_brand: z.boolean(),
-  replace_webapp_logo: z.string().nullish().default(null),
+  replace_webapp_logo: z.string().nullish(),
 })
 
 /**
@@ -899,18 +895,17 @@ export const zWebMessageListItem = z.object({
     .max(BigInt('9223372036854775807'), {
       error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
     })
-    .nullish()
-    .default(null),
-  currency: z.string().nullish().default(null),
-  error: z.string().nullish().default(null),
+    .nullish(),
+  currency: z.string().nullish(),
+  error: z.string().nullish(),
   extra_contents: z.array(zHumanInputContent),
-  feedback: zSimpleFeedback.nullish().default(null),
+  feedback: zSimpleFeedback.nullish(),
   id: z.uuid(),
   inputs: z.record(z.string(), zJsonValueType),
   message_files: z.array(zMessageFile),
   message_tokens: z.int().optional().default(0),
-  metadata: zJsonValueType.nullish().default(null),
-  parent_message_id: z.uuid().nullish().default(null),
+  metadata: zJsonValueType.nullish(),
+  parent_message_id: z.uuid().nullish(),
   provider_response_latency: z.number().optional().default(0),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
@@ -918,8 +913,7 @@ export const zWebMessageListItem = z.object({
   total_price: z
     .string()
     .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
-    .nullish()
-    .default(null),
+    .nullish(),
   total_tokens: z.int().readonly(),
 })
 
@@ -936,35 +930,35 @@ export const zWebMessageInfiniteScrollPagination = z.object({
  * WebModelConfigResponse
  */
 export const zWebModelConfigResponse = z.object({
-  model: z.unknown().optional().default(null),
-  more_like_this: z.unknown().optional().default(null),
-  opening_statement: z.string().nullish().default(null),
-  pre_prompt: z.string().nullish().default(null),
-  suggested_questions: z.unknown().optional().default(null),
-  suggested_questions_after_answer: z.unknown().optional().default(null),
-  user_input_form: z.unknown().optional().default(null),
+  model: z.unknown().optional(),
+  more_like_this: z.unknown().optional(),
+  opening_statement: z.string().nullish(),
+  pre_prompt: z.string().nullish(),
+  suggested_questions: z.unknown().optional(),
+  suggested_questions_after_answer: z.unknown().optional(),
+  user_input_form: z.unknown().optional(),
 })
 
 /**
  * WebSiteResponse
  */
 export const zWebSiteResponse = z.object({
-  chat_color_theme: z.string().nullish().default(null),
+  chat_color_theme: z.string().nullish(),
   chat_color_theme_inverted: z.boolean(),
-  copyright: z.string().nullish().default(null),
-  custom_disclaimer: z.string().nullish().default(null),
-  default_language: z.string().nullish().default(null),
-  description: z.string().nullish().default(null),
-  icon: z.string().nullish().default(null),
-  icon_background: z.string().nullish().default(null),
-  icon_type: z.string().nullish().default(null),
-  icon_url: z.string().nullish().default(null),
-  input_placeholder: z.string().nullish().default(null),
-  privacy_policy: z.string().nullish().default(null),
-  prompt_public: z.boolean().nullish().default(null),
-  show_workflow_steps: z.boolean().nullish().default(null),
+  copyright: z.string().nullish(),
+  custom_disclaimer: z.string().nullish(),
+  default_language: z.string().nullish(),
+  description: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  icon_url: z.string().nullish(),
+  input_placeholder: z.string().nullish(),
+  privacy_policy: z.string().nullish(),
+  prompt_public: z.boolean().nullish(),
+  show_workflow_steps: z.boolean().nullish(),
   title: z.string(),
-  use_icon_as_answer_icon: z.boolean().nullish().default(null),
+  use_icon_as_answer_icon: z.boolean().nullish(),
 })
 
 /**
@@ -973,11 +967,11 @@ export const zWebSiteResponse = z.object({
 export const zWebAppSiteResponse = z.object({
   app_id: z.string(),
   can_replace_logo: z.boolean(),
-  custom_config: zWebAppCustomConfigResponse.nullish().default(null),
+  custom_config: zWebAppCustomConfigResponse.nullish(),
   enable_site: z.boolean(),
-  end_user_id: z.string().nullish().default(null),
+  end_user_id: z.string().nullish(),
   mode: zAppMode,
-  model_config: zWebModelConfigResponse.nullish().default(null),
+  model_config: zWebModelConfigResponse.nullish(),
   plan: z.string(),
   site: zWebSiteResponse,
 })
@@ -990,7 +984,7 @@ export const zHumanInputFormDefinitionResponse = z.object({
   form_content: z.string(),
   inputs: z.array(zFormInputConfig),
   resolved_default_values: z.record(z.string(), z.string()),
-  site: zWebAppSiteResponse.nullish().default(null),
+  site: zWebAppSiteResponse.nullish(),
   user_actions: z.array(zUserActionConfig),
 })
 
@@ -1024,8 +1018,7 @@ export const zWorkflowRunPayload = z.object({
         }),
       ),
     )
-    .nullish()
-    .default(null),
+    .nullish(),
   inputs: z.record(z.string(), z.unknown()),
 })
 
@@ -1055,18 +1048,17 @@ export const zWebMessageListItemWritable = z.object({
     .max(BigInt('9223372036854775807'), {
       error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
     })
-    .nullish()
-    .default(null),
-  currency: z.string().nullish().default(null),
-  error: z.string().nullish().default(null),
+    .nullish(),
+  currency: z.string().nullish(),
+  error: z.string().nullish(),
   extra_contents: z.array(zHumanInputContent),
-  feedback: zSimpleFeedback.nullish().default(null),
+  feedback: zSimpleFeedback.nullish(),
   id: z.uuid(),
   inputs: z.record(z.string(), zJsonValueType),
   message_files: z.array(zMessageFile),
   message_tokens: z.int().optional().default(0),
-  metadata: zJsonValueType.nullish().default(null),
-  parent_message_id: z.uuid().nullish().default(null),
+  metadata: zJsonValueType.nullish(),
+  parent_message_id: z.uuid().nullish(),
   provider_response_latency: z.number().optional().default(0),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
@@ -1074,8 +1066,7 @@ export const zWebMessageListItemWritable = z.object({
   total_price: z
     .string()
     .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
-    .nullish()
-    .default(null),
+    .nullish(),
 })
 
 /**

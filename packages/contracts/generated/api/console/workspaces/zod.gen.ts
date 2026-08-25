@@ -25,12 +25,12 @@ export const zAgentSkillBindingsPayload = z.object({
  * Payload for importing snippet from DSL.
  */
 export const zSnippetImportPayload = z.object({
-  description: z.string().nullish().default(null),
+  description: z.string().nullish(),
   mode: z.string(),
-  name: z.string().nullish().default(null),
-  snippet_id: z.string().nullish().default(null),
-  yaml_content: z.string().nullish().default(null),
-  yaml_url: z.string().nullish().default(null),
+  name: z.string().nullish(),
+  snippet_id: z.string().nullish(),
+  yaml_content: z.string().nullish(),
+  yaml_url: z.string().nullish(),
 })
 
 /**
@@ -98,7 +98,7 @@ export const zEndpointUpdatePayload = z.object({
  */
 export const zMemberInvitePayload = z.object({
   emails: z.array(z.string()).min(1),
-  language: z.string().nullish().default(null),
+  language: z.string().nullish(),
   role: z.string(),
 })
 
@@ -132,7 +132,7 @@ export const zVerificationTokenResponse = z.object({
  * OwnerTransferEmailPayload
  */
 export const zOwnerTransferEmailPayload = z.object({
-  language: z.string().nullish().default(null),
+  language: z.string().nullish(),
 })
 
 /**
@@ -197,7 +197,7 @@ export const zParserCredentialDelete = z.object({
  * ProviderCredentialsResponse
  */
 export const zProviderCredentialsResponse = z.object({
-  credentials: z.record(z.string(), z.unknown()).nullish().default(null),
+  credentials: z.record(z.string(), z.unknown()).nullish(),
 })
 
 /**
@@ -205,7 +205,7 @@ export const zProviderCredentialsResponse = z.object({
  */
 export const zParserCredentialCreate = z.object({
   credentials: z.record(z.string(), z.unknown()),
-  name: z.string().max(30).nullish().default(null),
+  name: z.string().max(30).nullish(),
 })
 
 /**
@@ -214,7 +214,7 @@ export const zParserCredentialCreate = z.object({
 export const zParserCredentialUpdate = z.object({
   credential_id: z.string(),
   credentials: z.record(z.string(), z.unknown()),
-  name: z.string().max(30).nullish().default(null),
+  name: z.string().max(30).nullish(),
 })
 
 /**
@@ -235,7 +235,7 @@ export const zParserCredentialValidate = z.object({
  * ValidationResultResponse
  */
 export const zValidationResultResponse = z.object({
-  error: z.string().nullish().default(null),
+  error: z.string().nullish(),
   result: z.enum(['error', 'success']),
 })
 
@@ -243,7 +243,7 @@ export const zValidationResultResponse = z.object({
  * LoadBalancingCredentialValidateResponse
  */
 export const zLoadBalancingCredentialValidateResponse = z.object({
-  error: z.string().nullish().default(null),
+  error: z.string().nullish(),
   result: z.string(),
 })
 
@@ -274,7 +274,7 @@ export const zBinaryFileResponse = z.custom<Blob | File>(
  * PluginAutoUpgradeChangeResponse
  */
 export const zPluginAutoUpgradeChangeResponse = z.object({
-  message: z.string().nullish().default(null),
+  message: z.string().nullish(),
   success: z.boolean(),
 })
 
@@ -445,7 +445,7 @@ export const zRbacRole = z.object({
   name: z.string(),
   permission_keys: z.array(z.string()).optional(),
   role_tag: z.string().optional().default(''),
-  tenant_id: z.string().nullish().default(null),
+  tenant_id: z.string().nullish(),
   type: z.string(),
 })
 
@@ -470,9 +470,9 @@ export const zReplaceBindingsRequest = z.object({
  */
 export const zSkillCreatePayload = z.object({
   description: z.string().optional().default(''),
-  display_name: z.string().nullish().default(null),
+  display_name: z.string().nullish(),
   icon: z.string().optional().default('📄'),
-  name: z.string().nullish().default(null),
+  name: z.string().nullish(),
   tags: z.array(z.string()).optional(),
 })
 
@@ -491,7 +491,7 @@ export const zSkillFileUploadResponse = z.object({
  * SkillDeletePayload
  */
 export const zSkillDeletePayload = z.object({
-  confirmation_name: z.string().nullish().default(null),
+  confirmation_name: z.string().nullish(),
 })
 
 /**
@@ -506,10 +506,10 @@ export const zSkillDeleteResponse = z.object({
  * SkillMetadataPayload
  */
 export const zSkillMetadataPayload = z.object({
-  display_name: z.string().nullish().default(null),
-  expected_updated_at: z.int().nullish().default(null),
-  icon: z.string().nullish().default(null),
-  tags: z.array(z.string()).nullish().default(null),
+  display_name: z.string().nullish(),
+  expected_updated_at: z.int().nullish(),
+  icon: z.string().nullish(),
+  tags: z.array(z.string()).nullish(),
 })
 
 /**
@@ -517,22 +517,22 @@ export const zSkillMetadataPayload = z.object({
  */
 export const zSkillResponse = z.object({
   created_at: z.int(),
-  created_by: z.string().nullish().default(null),
-  created_by_name: z.string().nullish().default(null),
+  created_by: z.string().nullish(),
+  created_by_name: z.string().nullish(),
   description: z.string(),
   display_name: z.string(),
   icon: z.string(),
   id: z.string(),
-  latest_published_at: z.int().nullish().default(null),
-  latest_published_version_id: z.string().nullish().default(null),
-  latest_published_version_number: z.int().nullish().default(null),
+  latest_published_at: z.int().nullish(),
+  latest_published_version_id: z.string().nullish(),
+  latest_published_version_number: z.int().nullish(),
   name: z.string(),
   name_manually_edited: z.boolean().optional().default(false),
   reference_count: z.int().optional().default(0),
   tags: z.array(z.string()).optional(),
   updated_at: z.int(),
-  updated_by: z.string().nullish().default(null),
-  updated_by_name: z.string().nullish().default(null),
+  updated_by: z.string().nullish(),
+  updated_by_name: z.string().nullish(),
   visibility: z.string(),
 })
 
@@ -563,7 +563,7 @@ export const zSkillFilePreviewResponse = z.object({
  */
 export const zSkillPublishPayload = z.object({
   publish_note: z.string().max(1024).optional().default(''),
-  version_name: z.string().max(128).nullish().default(null),
+  version_name: z.string().max(128).nullish(),
 })
 
 /**
@@ -576,8 +576,8 @@ export const zSkillVersionResponse = z.object({
   id: z.string(),
   is_latest: z.boolean().optional().default(false),
   publish_note: z.string(),
-  published_by: z.string().nullish().default(null),
-  published_by_name: z.string().nullish().default(null),
+  published_by: z.string().nullish(),
+  published_by_name: z.string().nullish(),
   skill_id: z.string(),
   version_name: z.string(),
   version_number: z.int(),
@@ -589,7 +589,7 @@ export const zSkillVersionResponse = z.object({
 export const zSkillRestorePayload = z.object({
   publish_note: z.string().max(1024).optional().default(''),
   version_id: z.string(),
-  version_name: z.string().max(128).nullish().default(null),
+  version_name: z.string().max(128).nullish(),
 })
 
 /**
@@ -605,7 +605,7 @@ export const zSkillVersionListResponse = z.object({
 export const zSkillVersionDeleteResponse = z.object({
   deleted: z.boolean(),
   id: z.string(),
-  latest_published_version_id: z.string().nullish().default(null),
+  latest_published_version_id: z.string().nullish(),
 })
 
 /**
@@ -613,7 +613,7 @@ export const zSkillVersionDeleteResponse = z.object({
  */
 export const zSkillVersionUpdatePayload = z.object({
   publish_note: z.string().max(1024).optional().default(''),
-  version_name: z.string().max(128).nullish().default(null),
+  version_name: z.string().max(128).nullish(),
 })
 
 /**
@@ -655,7 +655,7 @@ export const zBuiltinToolCredentialDeletePayload = z.object({
  * ToolOAuthCustomClientPayload
  */
 export const zToolOAuthCustomClientPayload = z.object({
-  client_params: z.record(z.string(), z.unknown()).nullish().default(null),
+  client_params: z.record(z.string(), z.unknown()).nullish(),
   enable_oauth_custom_client: z.boolean().nullish().default(true),
 })
 
@@ -664,8 +664,8 @@ export const zToolOAuthCustomClientPayload = z.object({
  */
 export const zBuiltinToolUpdatePayload = z.object({
   credential_id: z.string(),
-  credentials: z.record(z.string(), z.unknown()).nullish().default(null),
-  name: z.string().max(30).nullish().default(null),
+  credentials: z.record(z.string(), z.unknown()).nullish(),
+  name: z.string().max(30).nullish(),
 })
 
 /**
@@ -679,7 +679,7 @@ export const zMcpProviderDeletePayload = z.object({
  * MCPAuthPayload
  */
 export const zMcpAuthPayload = z.object({
-  authorization_code: z.string().nullish().default(null),
+  authorization_code: z.string().nullish(),
   provider_id: z.string(),
 })
 
@@ -687,8 +687,8 @@ export const zMcpAuthPayload = z.object({
  * MCPAuthResponse
  */
 export const zMcpAuthResponse = z.object({
-  authorization_url: z.string().nullish().default(null),
-  result: z.literal('success').nullish().default(null),
+  authorization_url: z.string().nullish(),
+  result: z.literal('success').nullish(),
 })
 
 /**
@@ -702,18 +702,18 @@ export const zWorkflowToolDeletePayload = z.object({
  * TriggerOAuthClientPayload
  */
 export const zTriggerOAuthClientPayload = z.object({
-  client_params: z.record(z.string(), z.unknown()).nullish().default(null),
-  enabled: z.boolean().nullish().default(null),
+  client_params: z.record(z.string(), z.unknown()).nullish(),
+  enabled: z.boolean().nullish(),
 })
 
 /**
  * TriggerSubscriptionBuilderUpdatePayload
  */
 export const zTriggerSubscriptionBuilderUpdatePayload = z.object({
-  credentials: z.record(z.string(), z.unknown()).nullish().default(null),
-  name: z.string().nullish().default(null),
-  parameters: z.record(z.string(), z.unknown()).nullish().default(null),
-  properties: z.record(z.string(), z.unknown()).nullish().default(null),
+  credentials: z.record(z.string(), z.unknown()).nullish(),
+  name: z.string().nullish(),
+  parameters: z.record(z.string(), z.unknown()).nullish(),
+  properties: z.record(z.string(), z.unknown()).nullish(),
 })
 
 /**
@@ -727,7 +727,7 @@ export const zTriggerSubscriptionBuilderCreatePayload = z.object({
  * TriggerSubscriptionBuilderVerifyPayload
  */
 export const zTriggerSubscriptionBuilderVerifyPayload = z.object({
-  credentials: z.record(z.string(), z.unknown()).nullish().default(null),
+  credentials: z.record(z.string(), z.unknown()).nullish(),
 })
 
 /**
@@ -755,16 +755,16 @@ export const zTriggerSubscriptionVerifyPayload = z.object({
  * WorkspaceCustomConfigResponse
  */
 export const zWorkspaceCustomConfigResponse = z.object({
-  remove_webapp_brand: z.boolean().nullish().default(null),
-  replace_webapp_logo: z.string().nullish().default(null),
+  remove_webapp_brand: z.boolean().nullish(),
+  replace_webapp_logo: z.string().nullish(),
 })
 
 /**
  * WorkspaceCustomConfigPayload
  */
 export const zWorkspaceCustomConfigPayload = z.object({
-  remove_webapp_brand: z.boolean().nullish().default(null),
-  replace_webapp_logo: z.string().nullish().default(null),
+  remove_webapp_brand: z.boolean().nullish(),
+  replace_webapp_logo: z.string().nullish(),
 })
 
 /**
@@ -797,8 +797,8 @@ export const zAgentSkillBindingItemResponse = z.object({
   file_count: z.int(),
   icon: z.string(),
   id: z.string(),
-  latest_published_at: z.int().nullish().default(null),
-  latest_published_version_id: z.string().nullish().default(null),
+  latest_published_at: z.int().nullish(),
+  latest_published_version_id: z.string().nullish(),
   name: z.string(),
   priority: z.int(),
   status: z.string(),
@@ -821,10 +821,10 @@ export const zAgentSkillBindingsResponse = z.object({
  * Icon information model.
  */
 export const zIconInfo = z.object({
-  icon: z.string().nullish().default(null),
-  icon_background: z.string().nullish().default(null),
-  icon_type: z.enum(['emoji', 'image']).nullish().default(null),
-  icon_url: z.string().nullish().default(null),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.enum(['emoji', 'image']).nullish(),
+  icon_url: z.string().nullish(),
 })
 
 /**
@@ -833,9 +833,9 @@ export const zIconInfo = z.object({
  * Payload for updating a snippet.
  */
 export const zUpdateSnippetPayload = z.object({
-  description: z.string().max(2000).nullish().default(null),
-  icon_info: zIconInfo.nullish().default(null),
-  name: z.string().min(1).max(255).nullish().default(null),
+  description: z.string().max(2000).nullish(),
+  icon_info: zIconInfo.nullish(),
+  name: z.string().min(1).max(255).nullish(),
 })
 
 /**
@@ -844,14 +844,14 @@ export const zUpdateSnippetPayload = z.object({
  * Input field definition for snippet parameters.
  */
 export const zInputFieldDefinition = z.object({
-  default: z.string().nullish().default(null),
-  hint: z.boolean().nullish().default(null),
-  label: z.string().nullish().default(null),
-  max_length: z.int().nullish().default(null),
-  options: z.array(z.string()).nullish().default(null),
-  placeholder: z.string().nullish().default(null),
-  required: z.boolean().nullish().default(null),
-  type: z.string().nullish().default(null),
+  default: z.string().nullish(),
+  hint: z.boolean().nullish(),
+  label: z.string().nullish(),
+  max_length: z.int().nullish(),
+  options: z.array(z.string()).nullish(),
+  placeholder: z.string().nullish(),
+  required: z.boolean().nullish(),
+  type: z.string().nullish(),
 })
 
 /**
@@ -860,9 +860,9 @@ export const zInputFieldDefinition = z.object({
  * Payload for creating a new snippet.
  */
 export const zCreateSnippetPayload = z.object({
-  description: z.string().max(2000).nullish().default(null),
-  graph: z.record(z.string(), z.unknown()).nullish().default(null),
-  icon_info: zIconInfo.nullish().default(null),
+  description: z.string().max(2000).nullish(),
+  graph: z.record(z.string(), z.unknown()).nullish(),
+  icon_info: zIconInfo.nullish(),
   input_fields: z.array(zInputFieldDefinition).nullish(),
   name: z.string().min(1).max(255),
   type: z.enum(['group', 'node']).optional().default('node'),
@@ -979,13 +979,13 @@ export const zSnippetImportResponse = z.object({
  * AccountWithRoleResponse
  */
 export const zAccountWithRoleResponse = z.object({
-  avatar: z.string().nullish().default(null),
+  avatar: z.string().nullish(),
   avatar_url: z.string().nullable(),
-  created_at: z.int().nullish().default(null),
+  created_at: z.int().nullish(),
   email: z.string(),
   id: z.string(),
-  last_active_at: z.int().nullish().default(null),
-  last_login_at: z.int().nullish().default(null),
+  last_active_at: z.int().nullish(),
+  last_login_at: z.int().nullish(),
   name: z.string(),
   role: z.string(),
   roles: z.array(z.record(z.string(), z.string())).optional(),
@@ -1091,7 +1091,7 @@ export const zParserCreateCredential = z.object({
   credentials: z.record(z.string(), z.unknown()),
   model: z.string(),
   model_type: zModelType,
-  name: z.string().max(30).nullish().default(null),
+  name: z.string().max(30).nullish(),
 })
 
 /**
@@ -1102,7 +1102,7 @@ export const zParserUpdateCredential = z.object({
   credentials: z.record(z.string(), z.unknown()),
   model: z.string(),
   model_type: zModelType,
-  name: z.string().max(30).nullish().default(null),
+  name: z.string().max(30).nullish(),
 })
 
 /**
@@ -1136,9 +1136,9 @@ export const zLoadBalancingCredentialPayload = z.object({
  * Inner
  */
 export const zInner = z.object({
-  model: z.string().nullish().default(null),
+  model: z.string().nullish(),
   model_type: zModelType,
-  provider: z.string().nullish().default(null),
+  provider: z.string().nullish(),
 })
 
 /**
@@ -1152,17 +1152,17 @@ export const zParserPostDefault = z.object({
  * LoadBalancingPayload
  */
 export const zLoadBalancingPayload = z.object({
-  configs: z.array(z.record(z.string(), z.unknown())).nullish().default(null),
-  enabled: z.boolean().nullish().default(null),
+  configs: z.array(z.record(z.string(), z.unknown())).nullish(),
+  enabled: z.boolean().nullish(),
 })
 
 /**
  * ParserPostModels
  */
 export const zParserPostModels = z.object({
-  config_from: z.string().nullish().default(null),
-  credential_id: z.string().nullish().default(null),
-  load_balancing: zLoadBalancingPayload.nullish().default(null),
+  config_from: z.string().nullish(),
+  credential_id: z.string().nullish(),
+  load_balancing: zLoadBalancingPayload.nullish(),
   model: z.string(),
   model_type: zModelType,
 })
@@ -1257,7 +1257,7 @@ export const zPagination = z.object({
  */
 export const zAccessPolicyList = z.object({
   data: z.array(zAccessPolicy).optional(),
-  pagination: zPagination.nullish().default(null),
+  pagination: zPagination.nullish(),
 })
 
 /**
@@ -1265,7 +1265,7 @@ export const zAccessPolicyList = z.object({
  */
 export const zRbacRoleList = z.object({
   data: z.array(zRbacRole).optional(),
-  pagination: zPagination.nullish().default(null),
+  pagination: zPagination.nullish(),
 })
 
 /**
@@ -1344,7 +1344,7 @@ export const zMembersInRole = z.object({
  */
 export const zMembersInRoleList = z.object({
   data: z.array(zMembersInRole).optional(),
-  pagination: zPagination.nullish().default(null),
+  pagination: zPagination.nullish(),
 })
 
 /**
@@ -1375,7 +1375,7 @@ export const zAccessPolicyRole = z.object({
  */
 export const zAccessMatrixItem = z.object({
   accounts: z.array(zAccessPolicyAccount).optional(),
-  policy: zAccessPolicy.nullish().default(null),
+  policy: zAccessPolicy.nullish(),
   roles: z.array(zAccessPolicyRole).optional(),
 })
 
@@ -1400,22 +1400,22 @@ export const zDatasetAccessMatrix = z.object({
  */
 export const zWorkspaceAccessMatrix = z.object({
   items: z.array(zAccessMatrixItem).optional(),
-  pagination: zPagination.nullish().default(null),
+  pagination: zPagination.nullish(),
 })
 
 /**
  * SkillFileResponse
  */
 export const zSkillFileResponse = z.object({
-  content: z.string().nullish().default(null),
-  hash: z.string().nullish().default(null),
-  id: z.string().nullish().default(null),
+  content: z.string().nullish(),
+  hash: z.string().nullish(),
+  id: z.string().nullish(),
   kind: z.string(),
-  mime_type: z.string().nullish().default(null),
+  mime_type: z.string().nullish(),
   path: z.string(),
-  size: z.int().nullish().default(null),
-  storage: z.string().nullish().default(null),
-  tool_file_id: z.string().nullish().default(null),
+  size: z.int().nullish(),
+  storage: z.string().nullish(),
+  tool_file_id: z.string().nullish(),
 })
 
 /**
@@ -1423,23 +1423,23 @@ export const zSkillFileResponse = z.object({
  */
 export const zSkillDetailResponse = z.object({
   created_at: z.int(),
-  created_by: z.string().nullish().default(null),
-  created_by_name: z.string().nullish().default(null),
+  created_by: z.string().nullish(),
+  created_by_name: z.string().nullish(),
   description: z.string(),
   display_name: z.string(),
   files: z.array(zSkillFileResponse).optional(),
   icon: z.string(),
   id: z.string(),
-  latest_published_at: z.int().nullish().default(null),
-  latest_published_version_id: z.string().nullish().default(null),
-  latest_published_version_number: z.int().nullish().default(null),
+  latest_published_at: z.int().nullish(),
+  latest_published_version_id: z.string().nullish(),
+  latest_published_version_number: z.int().nullish(),
   name: z.string(),
   name_manually_edited: z.boolean().optional().default(false),
   reference_count: z.int().optional().default(0),
   tags: z.array(z.string()).optional(),
   updated_at: z.int(),
-  updated_by: z.string().nullish().default(null),
-  updated_by_name: z.string().nullish().default(null),
+  updated_by: z.string().nullish(),
+  updated_by_name: z.string().nullish(),
   visibility: z.string(),
 })
 
@@ -1454,8 +1454,8 @@ export const zSkillVersionDetailResponse = z.object({
   id: z.string(),
   is_latest: z.boolean().optional().default(false),
   publish_note: z.string(),
-  published_by: z.string().nullish().default(null),
-  published_by_name: z.string().nullish().default(null),
+  published_by: z.string().nullish(),
+  published_by_name: z.string().nullish(),
   skill_id: z.string(),
   version_name: z.string(),
   version_number: z.int(),
@@ -1480,9 +1480,9 @@ export const zSkillTagListResponse = z.object({
  * SkillAssistAttachmentPayload
  */
 export const zSkillAssistAttachmentPayload = z.object({
-  mime_type: z.string().min(1).max(255).nullish().default(null),
+  mime_type: z.string().min(1).max(255).nullish(),
   name: z.string().min(1).max(255),
-  size: z.int().gte(0).nullish().default(null),
+  size: z.int().gte(0).nullish(),
   tool_file_id: z.string().min(1),
 })
 
@@ -1492,8 +1492,8 @@ export const zSkillAssistAttachmentPayload = z.object({
 export const zSkillAssistHistoryMessagePayload = z.object({
   content: z.string().min(1).max(8000),
   role: z.enum(['assistant', 'user']),
-  suggested_display_name: z.string().max(128).nullish().default(null),
-  suggested_name: z.string().max(128).nullish().default(null),
+  suggested_display_name: z.string().max(128).nullish(),
+  suggested_name: z.string().max(128).nullish(),
 })
 
 /**
@@ -1501,8 +1501,8 @@ export const zSkillAssistHistoryMessagePayload = z.object({
  */
 export const zSkillAssistModelPayload = z.object({
   model: z.string().min(1).max(255),
-  model_settings: z.record(z.string(), z.unknown()).nullish().default(null),
-  plugin_id: z.string().min(1).max(255).nullish().default(null),
+  model_settings: z.record(z.string(), z.unknown()).nullish(),
+  plugin_id: z.string().min(1).max(255).nullish(),
   provider: z.string().min(1).max(255),
 })
 
@@ -1515,8 +1515,8 @@ export const zSkillAssistMessagePayload = z.object({
   attachments: z.array(zSkillAssistAttachmentPayload).max(10).optional(),
   history: z.array(zSkillAssistHistoryMessagePayload).max(20).optional(),
   message: z.string().min(1).max(8000),
-  model: zSkillAssistModelPayload.nullish().default(null),
-  target_path: z.string().nullish().default(null),
+  model: zSkillAssistModelPayload.nullish(),
+  target_path: z.string().nullish(),
 })
 
 /**
@@ -1534,15 +1534,15 @@ export const zSkillDraftFileOperation = z.enum([
  * SkillDraftFileOperationPayload
  */
 export const zSkillDraftFileOperationPayload = z.object({
-  content: z.string().nullish().default(null),
-  expected_updated_at: z.int().nullish().default(null),
-  hash: z.string().nullish().default(null),
-  mime_type: z.string().nullish().default(null),
+  content: z.string().nullish(),
+  expected_updated_at: z.int().nullish(),
+  hash: z.string().nullish(),
+  mime_type: z.string().nullish(),
   operation: zSkillDraftFileOperation,
   path: z.string(),
-  size: z.int().gte(0).nullish().default(null),
-  target_path: z.string().nullish().default(null),
-  tool_file_id: z.string().nullish().default(null),
+  size: z.int().gte(0).nullish(),
+  target_path: z.string().nullish(),
+  tool_file_id: z.string().nullish(),
 })
 
 /**
@@ -1550,8 +1550,8 @@ export const zSkillDraftFileOperationPayload = z.object({
  */
 export const zSkillDraftFileCheckItemPayload = z.object({
   filename: z.string().min(1).max(255),
-  mime_type: z.string().max(255).nullish().default(null),
-  path: z.string().nullish().default(null),
+  mime_type: z.string().max(255).nullish(),
+  path: z.string().nullish(),
   size: z.int().gte(0),
 })
 
@@ -1566,22 +1566,22 @@ export const zSkillDraftFileCheckPayload = z.object({
  * SkillReferenceResponse
  */
 export const zSkillReferenceResponse = z.object({
-  agent_icon: z.string().nullish().default(null),
-  agent_icon_background: z.string().nullish().default(null),
-  agent_icon_type: z.string().nullish().default(null),
+  agent_icon: z.string().nullish(),
+  agent_icon_background: z.string().nullish(),
+  agent_icon_type: z.string().nullish(),
   agent_id: z.string(),
-  app_id: z.string().nullish().default(null),
+  app_id: z.string().nullish(),
   display_name: z.string(),
   name: z.string(),
-  node_id: z.string().nullish().default(null),
-  node_name: z.string().nullish().default(null),
+  node_id: z.string().nullish(),
+  node_name: z.string().nullish(),
   type: z.string(),
-  workflow_icon: z.string().nullish().default(null),
-  workflow_icon_background: z.string().nullish().default(null),
-  workflow_icon_type: z.string().nullish().default(null),
-  workflow_id: z.string().nullish().default(null),
-  workflow_name: z.string().nullish().default(null),
-  workflow_version: z.string().nullish().default(null),
+  workflow_icon: z.string().nullish(),
+  workflow_icon_background: z.string().nullish(),
+  workflow_icon_type: z.string().nullish(),
+  workflow_id: z.string().nullish(),
+  workflow_name: z.string().nullish(),
+  workflow_version: z.string().nullish(),
 })
 
 /**
@@ -1606,13 +1606,13 @@ export const zCloudPlan = z.enum(['professional', 'sandbox', 'team'])
  * TenantListItemResponse
  */
 export const zTenantListItemResponse = z.object({
-  created_at: z.int().nullish().default(null),
+  created_at: z.int().nullish(),
   current: z.boolean(),
   id: z.string(),
-  last_opened_at: z.int().nullish().default(null),
-  name: z.string().nullish().default(null),
-  plan: zCloudPlan.nullish().default(null),
-  status: z.string().nullish().default(null),
+  last_opened_at: z.int().nullish(),
+  name: z.string().nullish(),
+  plan: zCloudPlan.nullish(),
+  status: z.string().nullish(),
 })
 
 /**
@@ -1665,8 +1665,8 @@ export const zApiToolProviderAddPayload = z.object({
   credentials: z.record(z.string(), z.unknown()),
   custom_disclaimer: z.string().optional().default(''),
   icon: zToolEmojiIcon,
-  labels: z.array(z.string()).nullish().default(null),
-  privacy_policy: z.string().nullish().default(null),
+  labels: z.array(z.string()).nullish(),
+  privacy_policy: z.string().nullish(),
   provider: z.string(),
   schema: z.string(),
   schema_type: zApiProviderSchemaType,
@@ -1678,7 +1678,7 @@ export const zApiToolProviderAddPayload = z.object({
 export const zApiToolTestPayload = z.object({
   credentials: z.record(z.string(), z.unknown()),
   parameters: z.record(z.string(), z.unknown()),
-  provider_name: z.string().nullish().default(null),
+  provider_name: z.string().nullish(),
   schema: z.string(),
   schema_type: zApiProviderSchemaType,
   tool_name: z.string(),
@@ -1691,9 +1691,9 @@ export const zApiToolProviderUpdatePayload = z.object({
   credentials: z.record(z.string(), z.unknown()),
   custom_disclaimer: z.string().optional().default(''),
   icon: zToolEmojiIcon,
-  labels: z.array(z.string()).nullish().default(null),
+  labels: z.array(z.string()).nullish(),
   original_provider: z.string(),
-  privacy_policy: z.string().nullish().default(null),
+  privacy_policy: z.string().nullish(),
   provider: z.string(),
   schema: z.string(),
   schema_type: zApiProviderSchemaType,
@@ -1722,9 +1722,9 @@ export const zCredentialType = z.enum(['api-key', 'oauth2', 'unauthorized'])
  */
 export const zBuiltinToolAddPayload = z.object({
   credentials: z.record(z.string(), z.unknown()),
-  name: z.string().max(30).nullish().default(null),
+  name: z.string().max(30).nullish(),
   type: zCredentialType,
-  visibility: z.string().nullish().default(null),
+  visibility: z.string().nullish(),
 })
 
 /**
@@ -1792,7 +1792,7 @@ export const zToolProviderCredentialListResponse = z.array(zToolProviderCredenti
  */
 export const zMcpAuthentication = z.object({
   client_id: z.string(),
-  client_secret: z.string().nullish().default(null),
+  client_secret: z.string().nullish(),
 })
 
 /**
@@ -1810,16 +1810,16 @@ export const zMcpConfiguration = z.object({
  */
 export const zI18nObject = z.object({
   en_US: z.string(),
-  ja_JP: z.string().nullish().default(null),
-  pt_BR: z.string().nullish().default(null),
-  zh_Hans: z.string().nullish().default(null),
+  ja_JP: z.string().nullish(),
+  pt_BR: z.string().nullish(),
+  zh_Hans: z.string().nullish(),
 })
 
 /**
  * PluginParameterOption
  */
 export const zPluginParameterOption = z.object({
-  icon: z.string().nullish().default(null),
+  icon: z.string().nullish(),
   label: zI18nObject,
   value: z.string(),
 })
@@ -1873,13 +1873,13 @@ export const zIdentityMode = z.enum(['idp_token', 'off'])
  * MCPProviderCreatePayload
  */
 export const zMcpProviderCreatePayload = z.object({
-  authentication: zMcpAuthentication.nullish().default(null),
-  configuration: zMcpConfiguration.nullish().default(null),
-  headers: z.record(z.string(), z.string()).nullish().default(null),
+  authentication: zMcpAuthentication.nullish(),
+  configuration: zMcpConfiguration.nullish(),
+  headers: z.record(z.string(), z.string()).nullish(),
   icon: z.string(),
   icon_background: z.string().optional().default(''),
   icon_type: z.string(),
-  identity_mode: zIdentityMode.nullish().default(null),
+  identity_mode: zIdentityMode.nullish(),
   name: z.string(),
   server_identifier: z.string(),
   server_url: z.string(),
@@ -1889,13 +1889,13 @@ export const zMcpProviderCreatePayload = z.object({
  * MCPProviderUpdatePayload
  */
 export const zMcpProviderUpdatePayload = z.object({
-  authentication: zMcpAuthentication.nullish().default(null),
-  configuration: zMcpConfiguration.nullish().default(null),
-  headers: z.record(z.string(), z.string()).nullish().default(null),
+  authentication: zMcpAuthentication.nullish(),
+  configuration: zMcpConfiguration.nullish(),
+  headers: z.record(z.string(), z.string()).nullish(),
   icon: z.string(),
   icon_background: z.string().optional().default(''),
   icon_type: z.string(),
-  identity_mode: zIdentityMode.nullish().default(null),
+  identity_mode: zIdentityMode.nullish(),
   name: z.string(),
   provider_id: z.string(),
   server_identifier: z.string(),
@@ -1951,19 +1951,19 @@ export const zTriggerProviderSubscriptionListResponse = z.array(
  * TenantInfoResponse
  */
 export const zTenantInfoResponse = z.object({
-  created_at: z.int().nullish().default(null),
-  custom_config: zWorkspaceCustomConfigResponse.nullish().default(null),
+  created_at: z.int().nullish(),
+  custom_config: zWorkspaceCustomConfigResponse.nullish(),
   id: z.string(),
-  in_trial: z.boolean().nullish().default(null),
-  name: z.string().nullish().default(null),
-  next_credit_reset_date: z.int().nullish().default(null),
-  plan: zCloudPlan.nullish().default(null),
-  role: z.string().nullish().default(null),
-  status: z.string().nullish().default(null),
-  trial_credits: z.int().nullish().default(null),
-  trial_credits_exhausted_at: z.int().nullish().default(null),
-  trial_credits_used: z.int().nullish().default(null),
-  trial_end_reason: z.string().nullish().default(null),
+  in_trial: z.boolean().nullish(),
+  name: z.string().nullish(),
+  next_credit_reset_date: z.int().nullish(),
+  plan: zCloudPlan.nullish(),
+  role: z.string().nullish(),
+  status: z.string().nullish(),
+  trial_credits: z.int().nullish(),
+  trial_credits_exhausted_at: z.int().nullish(),
+  trial_credits_used: z.int().nullish(),
+  trial_end_reason: z.string().nullish(),
 })
 
 /**
@@ -2002,7 +2002,7 @@ export const zGithub = z.object({
  */
 export const zMarketplace = z.object({
   marketplace_plugin_unique_identifier: z.string(),
-  version: z.string().nullish().default(null),
+  version: z.string().nullish(),
 })
 
 /**
@@ -2010,14 +2010,14 @@ export const zMarketplace = z.object({
  */
 export const zPackage = z.object({
   plugin_unique_identifier: z.string(),
-  version: z.string().nullish().default(null),
+  version: z.string().nullish(),
 })
 
 /**
  * PluginDependency
  */
 export const zPluginDependency = z.object({
-  current_identifier: z.string().nullish().default(null),
+  current_identifier: z.string().nullish(),
   type: zPluginDependencyType,
   value: z.union([zGithub, zMarketplace, zPackage]),
 })
@@ -2127,7 +2127,7 @@ export const zModelStatus = z.enum([
  * ModelLoadBalancingConfigResponse
  */
 export const zModelLoadBalancingConfigResponse = z.object({
-  credential_id: z.string().nullish().default(null),
+  credential_id: z.string().nullish(),
   credentials: z.record(z.string(), z.unknown()),
   enabled: z.boolean(),
   id: z.string(),
@@ -2150,8 +2150,8 @@ export const zModelLoadBalancingResponse = z.object({
 export const zModelCredentialResponse = z.object({
   available_credentials: z.array(zCredentialConfiguration),
   credentials: z.record(z.string(), z.unknown()),
-  current_credential_id: z.string().nullish().default(null),
-  current_credential_name: z.string().nullish().default(null),
+  current_credential_id: z.string().nullish(),
+  current_credential_name: z.string().nullish(),
   load_balancing: zModelLoadBalancingResponse,
 })
 
@@ -2162,7 +2162,7 @@ export const zModelCredentialResponse = z.object({
  */
 export const zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject = z.object({
   en_US: z.string(),
-  zh_Hans: z.string().nullish().default(null),
+  zh_Hans: z.string().nullish(),
 })
 
 /**
@@ -2188,17 +2188,17 @@ export const zParameterType = z.enum(['boolean', 'float', 'int', 'string', 'text
  * Model class for parameter rule.
  */
 export const zParameterRule = z.object({
-  default: z.unknown().nullish().default(null),
-  help: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish().default(null),
+  default: z.unknown().nullish(),
+  help: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish(),
   label: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject,
-  max: z.number().nullish().default(null),
-  min: z.number().nullish().default(null),
+  max: z.number().nullish(),
+  min: z.number().nullish(),
   name: z.string(),
   options: z.array(z.string()).optional().default([]),
-  precision: z.int().nullish().default(null),
+  precision: z.int().nullish(),
   required: z.boolean().optional().default(false),
   type: zParameterType,
-  use_template: z.string().nullish().default(null),
+  use_template: z.string().nullish(),
 })
 
 /**
@@ -2215,7 +2215,7 @@ export const zModelParameterRuleListResponse = z.object({
  */
 export const zProviderModelWithStatusEntity = z.object({
   deprecated: z.boolean().optional().default(false),
-  features: z.array(zModelFeature).nullish().default(null),
+  features: z.array(zModelFeature).nullish(),
   fetch_from: zFetchFrom,
   has_invalid_load_balancing_configs: z.boolean().optional().default(false),
   label: zI18nObject,
@@ -2239,8 +2239,8 @@ export const zCustomConfigurationStatus = z.enum(['active', 'no-configure'])
  * Model class for provider with models response.
  */
 export const zProviderWithModelsResponse = z.object({
-  icon_small: zI18nObject.nullish().default(null),
-  icon_small_dark: zI18nObject.nullish().default(null),
+  icon_small: zI18nObject.nullish(),
+  icon_small_dark: zI18nObject.nullish(),
   label: zI18nObject,
   models: z.array(zProviderModelWithStatusEntity),
   provider: z.string(),
@@ -2260,8 +2260,8 @@ export const zAvailableModelListResponse = z.object({
  */
 export const zModelProviderCustomConfigurationSummaryResponse = z.object({
   available_credentials: z.array(zCredentialConfiguration),
-  current_credential_id: z.string().nullish().default(null),
-  current_credential_name: z.string().nullish().default(null),
+  current_credential_id: z.string().nullish(),
+  current_credential_name: z.string().nullish(),
   current_credential_usable: z.boolean(),
   has_custom_models: z.boolean(),
   status: zCustomConfigurationStatus,
@@ -2275,9 +2275,9 @@ export const zModelProviderCustomConfigurationSummaryResponse = z.object({
 export const zModelProviderSummaryResponse = z.object({
   configurate_methods: z.array(zConfigurateMethod),
   custom_configuration: zModelProviderCustomConfigurationSummaryResponse,
-  description: zI18nObject.nullish().default(null),
-  icon_small: zI18nObject.nullish().default(null),
-  icon_small_dark: zI18nObject.nullish().default(null),
+  description: zI18nObject.nullish(),
+  icon_small: zI18nObject.nullish(),
+  icon_small_dark: zI18nObject.nullish(),
   is_configured: z.boolean(),
   label: zI18nObject,
   plugin_id: z.string(),
@@ -2362,17 +2362,17 @@ export const zPluginCategory = z.enum([
  */
 export const zCoreToolsEntitiesCommonEntitiesI18nObject = z.object({
   en_US: z.string(),
-  ja_JP: z.string().nullish().default(null),
-  pt_BR: z.string().nullish().default(null),
-  zh_Hans: z.string().nullish().default(null),
+  ja_JP: z.string().nullish(),
+  pt_BR: z.string().nullish(),
+  zh_Hans: z.string().nullish(),
 })
 
 /**
  * Meta
  */
 export const zMeta = z.object({
-  minimum_dify_version: z.string().nullish().default(null),
-  version: z.string().nullish().default(null),
+  minimum_dify_version: z.string().nullish(),
+  version: z.string().nullish(),
 })
 
 /**
@@ -2400,7 +2400,7 @@ export const zPluginInstallTaskPluginStatus = z.object({
   message: z.string(),
   plugin_id: z.string(),
   plugin_unique_identifier: z.string(),
-  source: z.string().nullish().default(null),
+  source: z.string().nullish(),
   status: zPluginInstallTaskStatus,
 })
 
@@ -2422,7 +2422,7 @@ export const zPluginInstallTask = z.object({
  */
 export const zPluginInstallTaskStartResponse = z.object({
   all_installed: z.boolean(),
-  task: zPluginInstallTask.nullish().default(null),
+  task: zPluginInstallTask.nullish(),
   task_id: z.string(),
 })
 
@@ -2482,7 +2482,7 @@ export const zPluginCategoryBuiltinToolResponse = z.object({
   labels: z.array(z.string()),
   name: z.string(),
   output_schema: z.record(z.string(), z.unknown()),
-  parameters: z.array(z.record(z.string(), z.unknown())).nullish().default(null),
+  parameters: z.array(z.record(z.string(), z.unknown())).nullish(),
 })
 
 /**
@@ -2602,21 +2602,21 @@ export const zSkillFileStorage = z.enum(['text', 'tool_file'])
  * SkillDraftTreeItemPayload
  */
 export const zSkillDraftTreeItemPayload = z.object({
-  content: z.string().nullish().default(null),
-  hash: z.string().nullish().default(null),
+  content: z.string().nullish(),
+  hash: z.string().nullish(),
   kind: zSkillFileKind.optional().default('file'),
-  mime_type: z.string().nullish().default(null),
+  mime_type: z.string().nullish(),
   path: z.string(),
-  size: z.int().gte(0).nullish().default(null),
-  storage: zSkillFileStorage.nullish().default(null),
-  tool_file_id: z.string().nullish().default(null),
+  size: z.int().gte(0).nullish(),
+  storage: zSkillFileStorage.nullish(),
+  tool_file_id: z.string().nullish(),
 })
 
 /**
  * SkillDraftTreePayload
  */
 export const zSkillDraftTreePayload = z.object({
-  expected_updated_at: z.int().nullish().default(null),
+  expected_updated_at: z.int().nullish(),
   files: z.array(zSkillDraftTreeItemPayload).optional(),
 })
 
@@ -2697,20 +2697,17 @@ export const zProviderConfigType = z.enum([
  * Model class for common provider settings like credentials
  */
 export const zProviderConfig = z.object({
-  default: z.union([z.int(), z.string(), z.number(), z.boolean()]).nullish().default(null),
-  help: zI18nObject.nullish().default(null),
-  label: zI18nObject.nullish().default(null),
+  default: z.union([z.int(), z.string(), z.number(), z.boolean()]).nullish(),
+  help: zI18nObject.nullish(),
+  label: zI18nObject.nullish(),
   multiple: z.boolean().optional().default(false),
   name: z.string(),
-  options: z.array(zOption).nullish().default(null),
-  placeholder: zI18nObject.nullish().default(null),
+  options: z.array(zOption).nullish(),
+  placeholder: zI18nObject.nullish(),
   required: z.boolean().optional().default(false),
-  scope: z
-    .union([zAppSelectorScope, zModelSelectorScope, zToolSelectorScope])
-    .nullish()
-    .default(null),
+  scope: z.union([zAppSelectorScope, zModelSelectorScope, zToolSelectorScope]).nullish(),
   type: zProviderConfigType,
-  url: z.string().nullish().default(null),
+  url: z.string().nullish(),
 })
 
 /**
@@ -2722,7 +2719,7 @@ export const zProviderConfigListResponse = z.array(zProviderConfig)
  * BuiltinProviderOAuthClientSchemaResponse
  */
 export const zBuiltinProviderOAuthClientSchemaResponse = z.object({
-  client_params: z.record(z.string(), z.unknown()).nullish().default(null),
+  client_params: z.record(z.string(), z.unknown()).nullish(),
   is_oauth_custom_client_enabled: z.boolean(),
   is_system_oauth_params_exists: z.boolean(),
   redirect_uri: z.string(),
@@ -2765,7 +2762,7 @@ export const zWorkflowToolCreatePayload = z.object({
   description: z.string(),
   icon: zToolEmojiIcon,
   label: z.string(),
-  labels: z.array(z.string()).nullish().default(null),
+  labels: z.array(z.string()).nullish(),
   name: z.string(),
   parameters: z.array(zWorkflowToolParameterConfiguration).optional(),
   privacy_policy: z.string().nullish().default(''),
@@ -2779,7 +2776,7 @@ export const zWorkflowToolUpdatePayload = z.object({
   description: z.string(),
   icon: zToolEmojiIcon,
   label: z.string(),
-  labels: z.array(z.string()).nullish().default(null),
+  labels: z.array(z.string()).nullish(),
   name: z.string(),
   parameters: z.array(zWorkflowToolParameterConfiguration).optional(),
   privacy_policy: z.string().nullish().default(''),
@@ -2795,7 +2792,7 @@ export const zEventIdentity = z.object({
   author: z.string(),
   label: zI18nObject,
   name: z.string(),
-  provider: z.string().nullish().default(null),
+  provider: z.string().nullish(),
 })
 
 /**
@@ -2835,8 +2832,8 @@ export const zUnaddedModelConfiguration = z.object({
 export const zCustomModelConfiguration = z.object({
   available_model_credentials: z.array(zCredentialConfiguration).optional().default([]),
   credentials: z.record(z.string(), z.unknown()).nullable(),
-  current_credential_id: z.string().nullish().default(null),
-  current_credential_name: z.string().nullish().default(null),
+  current_credential_id: z.string().nullish(),
+  current_credential_name: z.string().nullish(),
   model: z.string(),
   model_type: zModelType,
   unadded_to_model_list: z.boolean().optional().default(false),
@@ -2848,11 +2845,11 @@ export const zCustomModelConfiguration = z.object({
  * Model class for provider custom configuration response.
  */
 export const zCustomConfigurationResponse = z.object({
-  available_credentials: z.array(zCredentialConfiguration).nullish().default(null),
-  can_added_models: z.array(zUnaddedModelConfiguration).nullish().default(null),
-  current_credential_id: z.string().nullish().default(null),
-  current_credential_name: z.string().nullish().default(null),
-  custom_models: z.array(zCustomModelConfiguration).nullish().default(null),
+  available_credentials: z.array(zCredentialConfiguration).nullish(),
+  can_added_models: z.array(zUnaddedModelConfiguration).nullish(),
+  current_credential_id: z.string().nullish(),
+  current_credential_name: z.string().nullish(),
+  custom_models: z.array(zCustomModelConfiguration).nullish(),
   status: zCustomConfigurationStatus,
 })
 
@@ -2861,7 +2858,7 @@ export const zCustomConfigurationResponse = z.object({
  */
 export const zFieldModelSchema = z.object({
   label: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject,
-  placeholder: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish().default(null),
+  placeholder: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish(),
 })
 
 /**
@@ -2910,8 +2907,8 @@ export const zEndpointProviderDeclaration = z.object({
 export const zTriggerProviderIdentity = z.object({
   author: z.string(),
   description: zCoreToolsEntitiesCommonEntitiesI18nObject,
-  icon: z.string().nullish().default(null),
-  icon_dark: z.string().nullish().default(null),
+  icon: z.string().nullish(),
+  icon_dark: z.string().nullish(),
   label: zCoreToolsEntitiesCommonEntitiesI18nObject,
   name: z.string(),
   tags: z.array(z.string()).optional(),
@@ -2980,8 +2977,7 @@ export const zPriceConfigResponse = z.object({
   output: z
     .string()
     .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
-    .nullish()
-    .default(null),
+    .nullish(),
   unit: z.string().regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/),
 })
 
@@ -2990,14 +2986,14 @@ export const zPriceConfigResponse = z.object({
  */
 export const zAiModelEntityResponse = z.object({
   deprecated: z.boolean().optional().default(false),
-  features: z.array(zModelFeature).nullish().default(null),
+  features: z.array(zModelFeature).nullish(),
   fetch_from: zFetchFrom,
   label: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject,
   model: z.string(),
   model_properties: z.record(z.string(), z.unknown()),
   model_type: zModelType,
   parameter_rules: z.array(zParameterRule).optional().default([]),
-  pricing: zPriceConfigResponse.nullish().default(null),
+  pricing: zPriceConfigResponse.nullish(),
 })
 
 /**
@@ -3006,8 +3002,8 @@ export const zAiModelEntityResponse = z.object({
  * Simple provider entity response.
  */
 export const zSimpleProviderEntityResponse = z.object({
-  icon_small: zI18nObject.nullish().default(null),
-  icon_small_dark: zI18nObject.nullish().default(null),
+  icon_small: zI18nObject.nullish(),
+  icon_small_dark: zI18nObject.nullish(),
   label: zI18nObject,
   models: z.array(zAiModelEntityResponse).optional().default([]),
   provider: z.string(),
@@ -3031,7 +3027,7 @@ export const zDefaultModelResponse = z.object({
  * DefaultModelDataResponse
  */
 export const zDefaultModelDataResponse = z.object({
-  data: zDefaultModelResponse.nullish().default(null),
+  data: zDefaultModelResponse.nullish(),
 })
 
 /**
@@ -3041,7 +3037,7 @@ export const zDefaultModelDataResponse = z.object({
  */
 export const zModelWithProviderEntityResponse = z.object({
   deprecated: z.boolean().optional().default(false),
-  features: z.array(zModelFeature).nullish().default(null),
+  features: z.array(zModelFeature).nullish(),
   fetch_from: zFetchFrom,
   has_invalid_load_balancing_configs: z.boolean().optional().default(false),
   label: zI18nObject,
@@ -3065,9 +3061,9 @@ export const zProviderModelListResponse = z.object({
  */
 export const zEndpointProviderConfigI18nResponse = z.object({
   en_US: z.string(),
-  ja_JP: z.string().nullish().default(null),
-  pt_BR: z.string().nullish().default(null),
-  zh_Hans: z.string().nullish().default(null),
+  ja_JP: z.string().nullish(),
+  pt_BR: z.string().nullish(),
+  zh_Hans: z.string().nullish(),
 })
 
 /**
@@ -3101,17 +3097,17 @@ export const zEndpointProviderConfigScope = z.enum([
  * EndpointProviderConfigResponse
  */
 export const zEndpointProviderConfigResponse = z.object({
-  default: z.union([z.int(), z.string(), z.number(), z.boolean()]).nullish().default(null),
-  help: zEndpointProviderConfigI18nResponse.nullish().default(null),
-  label: zEndpointProviderConfigI18nResponse.nullish().default(null),
+  default: z.union([z.int(), z.string(), z.number(), z.boolean()]).nullish(),
+  help: zEndpointProviderConfigI18nResponse.nullish(),
+  label: zEndpointProviderConfigI18nResponse.nullish(),
   multiple: z.boolean().optional().default(false),
   name: z.string(),
-  options: z.array(zEndpointProviderConfigOptionResponse).nullish().default(null),
-  placeholder: zEndpointProviderConfigI18nResponse.nullish().default(null),
+  options: z.array(zEndpointProviderConfigOptionResponse).nullish(),
+  placeholder: zEndpointProviderConfigI18nResponse.nullish(),
   required: z.boolean().optional().default(false),
-  scope: zEndpointProviderConfigScope.nullish().default(null),
+  scope: zEndpointProviderConfigScope.nullish(),
   type: zProviderConfigType,
-  url: z.string().nullish().default(null),
+  url: z.string().nullish(),
 })
 
 /**
@@ -3181,11 +3177,11 @@ export const zFormType = z.enum(['radio', 'secret-input', 'select', 'switch', 't
  * Model class for credential form schema.
  */
 export const zCredentialFormSchema = z.object({
-  default: z.string().nullish().default(null),
+  default: z.string().nullish(),
   label: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject,
   max_length: z.int().optional().default(0),
-  options: z.array(zFormOption).nullish().default(null),
-  placeholder: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish().default(null),
+  options: z.array(zFormOption).nullish(),
+  placeholder: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish(),
   required: z.boolean().optional().default(true),
   show_on: z.array(zFormShowOnObject).optional().default([]),
   type: zFormType,
@@ -3217,18 +3213,18 @@ export const zProviderCredentialSchema = z.object({
  * Runtime provider response with codegen-safe model pricing schemas.
  */
 export const zProviderEntityResponse = z.object({
-  background: z.string().nullish().default(null),
+  background: z.string().nullish(),
   configurate_methods: z.array(zConfigurateMethod),
-  description: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish().default(null),
-  help: zProviderHelpEntity.nullish().default(null),
-  icon_small: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish().default(null),
-  icon_small_dark: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish().default(null),
+  description: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish(),
+  help: zProviderHelpEntity.nullish(),
+  icon_small: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish(),
+  icon_small_dark: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish(),
   label: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject,
-  model_credential_schema: zModelCredentialSchema.nullish().default(null),
+  model_credential_schema: zModelCredentialSchema.nullish(),
   models: z.array(zAiModelEntityResponse).optional().default([]),
   position: z.record(z.string(), z.array(z.string())).nullish().default({}),
   provider: z.string(),
-  provider_credential_schema: zProviderCredentialSchema.nullish().default(null),
+  provider_credential_schema: zProviderCredentialSchema.nullish(),
   provider_name: z.string().optional().default(''),
   supported_model_types: z.array(zModelType),
 })
@@ -3237,25 +3233,25 @@ export const zProviderEntityResponse = z.object({
  * PluginDeclarationResponse
  */
 export const zPluginDeclarationResponse = z.object({
-  agent_strategy: z.record(z.string(), z.unknown()).nullish().default(null),
+  agent_strategy: z.record(z.string(), z.unknown()).nullish(),
   author: z.string().nullable(),
   category: zPluginCategory,
   created_at: z.iso.datetime(),
-  datasource: z.record(z.string(), z.unknown()).nullish().default(null),
+  datasource: z.record(z.string(), z.unknown()).nullish(),
   description: zCoreToolsEntitiesCommonEntitiesI18nObject,
-  endpoint: z.record(z.string(), z.unknown()).nullish().default(null),
+  endpoint: z.record(z.string(), z.unknown()).nullish(),
   icon: z.string(),
-  icon_dark: z.string().nullish().default(null),
+  icon_dark: z.string().nullish(),
   label: zCoreToolsEntitiesCommonEntitiesI18nObject,
   meta: z.record(z.string(), z.unknown()),
-  model: zProviderEntityResponse.nullish().default(null),
+  model: zProviderEntityResponse.nullish(),
   name: z.string(),
   plugins: z.record(z.string(), z.array(z.string()).nullable()),
-  repo: z.string().nullish().default(null),
+  repo: z.string().nullish(),
   resource: z.record(z.string(), z.unknown()),
   tags: z.array(z.string()).optional(),
-  tool: z.record(z.string(), z.unknown()).nullish().default(null),
-  trigger: z.record(z.string(), z.unknown()).nullish().default(null),
+  tool: z.record(z.string(), z.unknown()).nullish(),
+  trigger: z.record(z.string(), z.unknown()).nullish(),
   verified: z.boolean().optional().default(false),
   version: z.string(),
 })
@@ -3327,7 +3323,7 @@ export const zQuotaUnit = z.enum(['credits', 'times', 'tokens'])
  * RestrictModel
  */
 export const zRestrictModel = z.object({
-  base_model_name: z.string().nullish().default(null),
+  base_model_name: z.string().nullish(),
   model: z.string(),
   model_type: zModelType,
 })
@@ -3352,7 +3348,7 @@ export const zQuotaConfiguration = z.object({
  * Model class for provider system configuration response.
  */
 export const zSystemConfigurationResponse = z.object({
-  current_quota_type: zProviderQuotaType.nullish().default(null),
+  current_quota_type: zProviderQuotaType.nullish(),
   enabled: z.boolean(),
   quota_configurations: z.array(zQuotaConfiguration).optional().default([]),
 })
@@ -3363,18 +3359,18 @@ export const zSystemConfigurationResponse = z.object({
  * Model class for provider response.
  */
 export const zProviderResponse = z.object({
-  background: z.string().nullish().default(null),
+  background: z.string().nullish(),
   configurate_methods: z.array(zConfigurateMethod),
   custom_configuration: zCustomConfigurationResponse,
-  description: zI18nObject.nullish().default(null),
-  help: zProviderHelpEntity.nullish().default(null),
-  icon_small: zI18nObject.nullish().default(null),
-  icon_small_dark: zI18nObject.nullish().default(null),
+  description: zI18nObject.nullish(),
+  help: zProviderHelpEntity.nullish(),
+  icon_small: zI18nObject.nullish(),
+  icon_small_dark: zI18nObject.nullish(),
   label: zI18nObject,
-  model_credential_schema: zModelCredentialSchema.nullish().default(null),
+  model_credential_schema: zModelCredentialSchema.nullish(),
   preferred_provider_type: zProviderType,
   provider: z.string(),
-  provider_credential_schema: zProviderCredentialSchema.nullish().default(null),
+  provider_credential_schema: zProviderCredentialSchema.nullish(),
   supported_model_types: z.array(zModelType),
   system_configuration: zSystemConfigurationResponse,
   tenant_id: z.string(),
@@ -3419,7 +3415,7 @@ export const zAgentStrategyProviderIdentity = z.object({
   author: z.string(),
   description: zCoreToolsEntitiesCommonEntitiesI18nObject,
   icon: z.string(),
-  icon_dark: z.string().nullish().default(null),
+  icon_dark: z.string().nullish(),
   label: zCoreToolsEntitiesCommonEntitiesI18nObject,
   name: z.string(),
   tags: z.array(zToolLabelEnum).nullish().default([]),
@@ -3430,7 +3426,7 @@ export const zAgentStrategyProviderIdentity = z.object({
  */
 export const zAgentStrategyProviderEntity = z.object({
   identity: zAgentStrategyProviderIdentity,
-  plugin_id: z.string().nullish().default(null),
+  plugin_id: z.string().nullish(),
 })
 
 /**
@@ -3453,7 +3449,7 @@ export const zDatasourceProviderIdentity = z.object({
 export const zDatasourceProviderEntity = z.object({
   credentials_schema: z.array(zProviderConfig).optional(),
   identity: zDatasourceProviderIdentity,
-  oauth_schema: zOAuthSchema.nullish().default(null),
+  oauth_schema: zOAuthSchema.nullish(),
   provider_type: zDatasourceProviderType,
 })
 
@@ -3464,7 +3460,7 @@ export const zToolProviderIdentity = z.object({
   author: z.string(),
   description: zCoreToolsEntitiesCommonEntitiesI18nObject,
   icon: z.string(),
-  icon_dark: z.string().nullish().default(null),
+  icon_dark: z.string().nullish(),
   label: zCoreToolsEntitiesCommonEntitiesI18nObject,
   name: z.string(),
   tags: z.array(zToolLabelEnum).nullish().default([]),
@@ -3476,8 +3472,8 @@ export const zToolProviderIdentity = z.object({
 export const zToolProviderEntity = z.object({
   credentials_schema: z.array(zProviderConfig).optional(),
   identity: zToolProviderIdentity,
-  oauth_schema: zOAuthSchema.nullish().default(null),
-  plugin_id: z.string().nullish().default(null),
+  oauth_schema: zOAuthSchema.nullish(),
+  plugin_id: z.string().nullish(),
 })
 
 /**
@@ -3491,8 +3487,7 @@ export const zPriceConfig = z.object({
   output: z
     .string()
     .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
-    .nullish()
-    .default(null),
+    .nullish(),
   unit: z.string().regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/),
 })
 
@@ -3503,14 +3498,14 @@ export const zPriceConfig = z.object({
  */
 export const zAiModelEntity = z.object({
   deprecated: z.boolean().optional().default(false),
-  features: z.array(zModelFeature).nullish().default(null),
+  features: z.array(zModelFeature).nullish(),
   fetch_from: zFetchFrom,
   label: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject,
   model: z.string(),
   model_properties: z.record(z.string(), z.unknown()),
   model_type: zModelType,
   parameter_rules: z.array(zParameterRule).optional().default([]),
-  pricing: zPriceConfig.nullish().default(null),
+  pricing: zPriceConfig.nullish(),
 })
 
 /**
@@ -3523,18 +3518,18 @@ export const zAiModelEntity = z.object({
  * is empty when no alias exists.
  */
 export const zProviderEntity = z.object({
-  background: z.string().nullish().default(null),
+  background: z.string().nullish(),
   configurate_methods: z.array(zConfigurateMethod),
-  description: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish().default(null),
-  help: zProviderHelpEntity.nullish().default(null),
-  icon_small: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish().default(null),
-  icon_small_dark: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish().default(null),
+  description: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish(),
+  help: zProviderHelpEntity.nullish(),
+  icon_small: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish(),
+  icon_small_dark: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish(),
   label: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject,
-  model_credential_schema: zModelCredentialSchema.nullish().default(null),
+  model_credential_schema: zModelCredentialSchema.nullish(),
   models: z.array(zAiModelEntity).optional(),
   position: z.record(z.string(), z.array(z.string())).nullish().default({}),
   provider: z.string(),
-  provider_credential_schema: zProviderCredentialSchema.nullish().default(null),
+  provider_credential_schema: zProviderCredentialSchema.nullish(),
   provider_name: z.string().optional().default(''),
   supported_model_types: z.array(zModelType),
 })
@@ -3585,11 +3580,11 @@ export const zTool = z.object({
  * Permission
  */
 export const zPermission = z.object({
-  endpoint: zEndpoint.nullish().default(null),
-  model: zModel.nullish().default(null),
-  node: zNode.nullish().default(null),
-  storage: zStorage.nullish().default(null),
-  tool: zTool.nullish().default(null),
+  endpoint: zEndpoint.nullish(),
+  model: zModel.nullish(),
+  node: zNode.nullish(),
+  storage: zStorage.nullish(),
+  tool: zTool.nullish(),
 })
 
 /**
@@ -3597,7 +3592,7 @@ export const zPermission = z.object({
  */
 export const zPluginResourceRequirements = z.object({
   memory: z.int(),
-  permission: zPermission.nullish().default(null),
+  permission: zPermission.nullish(),
 })
 
 /**
@@ -3618,7 +3613,7 @@ export const zPluginParameterAutoGenerate = z.object({
  * Tool-specific parameter declaration and invocation-value normalization.
  */
 export const zToolParameter = z.object({
-  auto_generate: zPluginParameterAutoGenerate.nullish().default(null),
+  auto_generate: zPluginParameterAutoGenerate.nullish(),
   default: z
     .union([
       z.number(),
@@ -3628,23 +3623,22 @@ export const zToolParameter = z.object({
       z.array(z.unknown()),
       z.record(z.string(), z.unknown()),
     ])
-    .nullish()
-    .default(null),
+    .nullish(),
   form: zToolParameterForm,
-  human_description: zI18nObject.nullish().default(null),
-  input_schema: z.record(z.string(), z.unknown()).nullish().default(null),
+  human_description: zI18nObject.nullish(),
+  input_schema: z.record(z.string(), z.unknown()).nullish(),
   label: zI18nObject,
-  llm_description: z.string().nullish().default(null),
-  max: z.union([z.number(), z.int()]).nullish().default(null),
-  min: z.union([z.number(), z.int()]).nullish().default(null),
+  llm_description: z.string().nullish(),
+  max: z.union([z.number(), z.int()]).nullish(),
+  min: z.union([z.number(), z.int()]).nullish(),
   multiple: z.boolean().optional().default(false),
   name: z.string(),
   options: z.array(zPluginParameterOption).optional(),
-  placeholder: zI18nObject.nullish().default(null),
-  precision: z.int().nullish().default(null),
+  placeholder: zI18nObject.nullish(),
+  precision: z.int().nullish(),
   required: z.boolean().optional().default(false),
-  scope: z.string().nullish().default(null),
-  template: zPluginParameterTemplate.nullish().default(null),
+  scope: z.string().nullish(),
+  template: zPluginParameterTemplate.nullish(),
   type: zToolParameterType,
 })
 
@@ -3656,14 +3650,14 @@ export const zToolParameter = z.object({
  */
 export const zApiToolBundle = z.object({
   author: z.string(),
-  icon: z.string().nullish().default(null),
+  icon: z.string().nullish(),
   method: z.string(),
   openapi: z.record(z.string(), z.unknown()),
-  operation_id: z.string().nullish().default(null),
+  operation_id: z.string().nullish(),
   output_schema: z.record(z.string(), z.unknown()).optional(),
-  parameters: z.array(zToolParameter).nullish().default(null),
+  parameters: z.array(zToolParameter).nullish(),
   server_url: z.string(),
-  summary: z.string().nullish().default(null),
+  summary: z.string().nullish(),
 })
 
 /**
@@ -3671,11 +3665,11 @@ export const zApiToolBundle = z.object({
  */
 export const zApiProviderDetailResponse = z.object({
   credentials: z.record(z.string(), z.unknown()).optional(),
-  custom_disclaimer: z.string().nullish().default(null),
-  description: z.string().nullish().default(null),
+  custom_disclaimer: z.string().nullish(),
+  description: z.string().nullish(),
   icon: zToolEmojiIcon,
   labels: z.array(z.string()).optional(),
-  privacy_policy: z.string().nullish().default(null),
+  privacy_policy: z.string().nullish(),
   schema: z.string(),
   schema_type: zApiProviderSchemaType,
   tools: z.array(zApiToolBundle),
@@ -3701,7 +3695,7 @@ export const zToolApiEntity = z.object({
   labels: z.array(z.string()).optional(),
   name: z.string(),
   output_schema: z.record(z.string(), z.unknown()).optional(),
-  parameters: z.array(zToolParameter).nullish().default(null),
+  parameters: z.array(zToolParameter).nullish(),
 })
 
 /**
@@ -3714,9 +3708,9 @@ export const zToolApiListResponse = z.array(zToolApiEntity)
  */
 export const zToolProviderApiEntityResponse = z.object({
   allow_delete: z.boolean().optional().default(true),
-  authentication: zMcpAuthentication.nullish().default(null),
+  authentication: zMcpAuthentication.nullish(),
   author: z.string(),
-  configuration: zMcpConfiguration.nullish().default(null),
+  configuration: zMcpConfiguration.nullish(),
   description: zI18nObject,
   icon: z.union([z.string(), z.record(z.string(), z.string())]),
   icon_dark: z
@@ -3729,9 +3723,9 @@ export const zToolProviderApiEntityResponse = z.object({
   is_team_authorization: z.boolean().optional().default(false),
   label: zI18nObject,
   labels: z.array(z.string()).optional(),
-  masked_headers: z.record(z.string(), z.string()).nullish().default(null),
+  masked_headers: z.record(z.string(), z.string()).nullish(),
   name: z.string(),
-  original_headers: z.record(z.string(), z.string()).nullish().default(null),
+  original_headers: z.record(z.string(), z.string()).nullish(),
   plugin_id: z.string().nullish().default(''),
   plugin_unique_identifier: z.string().nullish().default(''),
   server_identifier: z.string().nullish().default(''),
@@ -3740,7 +3734,7 @@ export const zToolProviderApiEntityResponse = z.object({
   tools: z.array(zToolApiEntity).optional(),
   type: zToolProviderType,
   updated_at: z.int().optional(),
-  workflow_app_id: z.string().nullish().default(null),
+  workflow_app_id: z.string().nullish(),
 })
 
 /**
@@ -3753,7 +3747,7 @@ export const zWorkflowToolDetailResponse = z.object({
   name: z.string(),
   output_schema: z.record(z.string(), z.unknown()).optional(),
   parameters: z.array(zWorkflowToolParameterConfiguration),
-  privacy_policy: z.string().nullish().default(null),
+  privacy_policy: z.string().nullish(),
   synced: z.boolean(),
   tool: zToolApiEntity,
   workflow_app_id: z.string(),
@@ -3771,22 +3765,19 @@ export const zToolProviderListResponse = z.array(zToolProviderApiEntityResponse)
  * The parameter of the event
  */
 export const zEventParameter = z.object({
-  auto_generate: zPluginParameterAutoGenerate.nullish().default(null),
-  default: z
-    .union([z.int(), z.number(), z.string(), z.array(z.unknown())])
-    .nullish()
-    .default(null),
-  description: zI18nObject.nullish().default(null),
+  auto_generate: zPluginParameterAutoGenerate.nullish(),
+  default: z.union([z.int(), z.number(), z.string(), z.array(z.unknown())]).nullish(),
+  description: zI18nObject.nullish(),
   label: zI18nObject,
-  max: z.union([z.number(), z.int()]).nullish().default(null),
-  min: z.union([z.number(), z.int()]).nullish().default(null),
+  max: z.union([z.number(), z.int()]).nullish(),
+  min: z.union([z.number(), z.int()]).nullish(),
   multiple: z.boolean().optional().default(false),
   name: z.string(),
-  options: z.array(zPluginParameterOption).nullish().default(null),
-  precision: z.int().nullish().default(null),
+  options: z.array(zPluginParameterOption).nullish(),
+  precision: z.int().nullish(),
   required: z.boolean().optional().default(false),
-  scope: z.string().nullish().default(null),
-  template: zPluginParameterTemplate.nullish().default(null),
+  scope: z.string().nullish(),
+  template: zPluginParameterTemplate.nullish(),
   type: zEventParameterType,
 })
 
@@ -3808,7 +3799,7 @@ export const zEventApiEntity = z.object({
  */
 export const zSubscriptionConstructor = z.object({
   credentials_schema: z.array(zProviderConfig).optional(),
-  oauth_schema: zOAuthSchema.nullish().default(null),
+  oauth_schema: zOAuthSchema.nullish(),
   parameters: z.array(zEventParameter).optional(),
 })
 
@@ -3819,13 +3810,13 @@ export const zTriggerProviderApiEntity = z.object({
   author: z.string(),
   description: zI18nObject,
   events: z.array(zEventApiEntity),
-  icon: z.string().nullish().default(null),
-  icon_dark: z.string().nullish().default(null),
+  icon: z.string().nullish(),
+  icon_dark: z.string().nullish(),
   label: zI18nObject,
   name: z.string(),
   plugin_id: z.string().nullish().default(''),
   plugin_unique_identifier: z.string().nullish().default(''),
-  subscription_constructor: zSubscriptionConstructor.nullish().default(null),
+  subscription_constructor: zSubscriptionConstructor.nullish(),
   subscription_schema: z.array(zProviderConfig).optional(),
   supported_creation_methods: z.array(zTriggerCreationMethod).optional(),
   tags: z.array(z.string()).optional(),
@@ -3844,7 +3835,7 @@ export const zTriggerProviderListResponse = z.array(zTriggerProviderApiEntity)
 export const zEventEntity = z.object({
   description: zCoreToolsEntitiesCommonEntitiesI18nObject,
   identity: zEventIdentity,
-  output_schema: z.record(z.string(), z.unknown()).nullish().default(null),
+  output_schema: z.record(z.string(), z.unknown()).nullish(),
   parameters: z.array(zEventParameter).optional(),
 })
 
@@ -3856,7 +3847,7 @@ export const zEventEntity = z.object({
 export const zTriggerProviderEntity = z.object({
   events: z.array(zEventEntity).optional(),
   identity: zTriggerProviderIdentity,
-  subscription_constructor: zSubscriptionConstructor.nullish().default(null),
+  subscription_constructor: zSubscriptionConstructor.nullish(),
   subscription_schema: z.array(zProviderConfig).optional(),
 })
 
@@ -3864,28 +3855,28 @@ export const zTriggerProviderEntity = z.object({
  * PluginDeclaration
  */
 export const zPluginDeclaration = z.object({
-  agent_strategy: zAgentStrategyProviderEntity.nullish().default(null),
+  agent_strategy: zAgentStrategyProviderEntity.nullish(),
   author: z
     .string()
     .regex(/^[a-zA-Z0-9_-]{1,64}$/)
     .nullable(),
   category: zPluginCategory,
   created_at: z.iso.datetime(),
-  datasource: zDatasourceProviderEntity.nullish().default(null),
+  datasource: zDatasourceProviderEntity.nullish(),
   description: zCoreToolsEntitiesCommonEntitiesI18nObject,
-  endpoint: zEndpointProviderDeclaration.nullish().default(null),
+  endpoint: zEndpointProviderDeclaration.nullish(),
   icon: z.string(),
-  icon_dark: z.string().nullish().default(null),
+  icon_dark: z.string().nullish(),
   label: zCoreToolsEntitiesCommonEntitiesI18nObject,
   meta: zMeta,
-  model: zProviderEntity.nullish().default(null),
+  model: zProviderEntity.nullish(),
   name: z.string().regex(/^[a-z0-9_-]{1,128}$/),
   plugins: zPlugins,
-  repo: z.string().nullish().default(null),
+  repo: z.string().nullish(),
   resource: zPluginResourceRequirements,
   tags: z.array(z.string()).optional(),
-  tool: zToolProviderEntity.nullish().default(null),
-  trigger: zTriggerProviderEntity.nullish().default(null),
+  tool: zToolProviderEntity.nullish(),
+  trigger: zTriggerProviderEntity.nullish(),
   verified: z.boolean().optional().default(false),
   version: z.string(),
 })
@@ -3903,7 +3894,7 @@ export const zPluginManifestResponse = z.object({
 export const zPluginDecodeResponse = z.object({
   manifest: zPluginDeclaration,
   unique_identifier: z.string(),
-  verification: zPluginVerification.nullish().default(null),
+  verification: zPluginVerification.nullish(),
 })
 
 /**
@@ -3940,12 +3931,12 @@ export const zPluginListResponse = z.object({
  * AccountWithRoleResponse
  */
 export const zAccountWithRoleResponseWritable = z.object({
-  avatar: z.string().nullish().default(null),
-  created_at: z.int().nullish().default(null),
+  avatar: z.string().nullish(),
+  created_at: z.int().nullish(),
   email: z.string(),
   id: z.string(),
-  last_active_at: z.int().nullish().default(null),
-  last_login_at: z.int().nullish().default(null),
+  last_active_at: z.int().nullish(),
+  last_login_at: z.int().nullish(),
   name: z.string(),
   role: z.string(),
   roles: z.array(z.record(z.string(), z.string())).optional(),

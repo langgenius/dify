@@ -31,7 +31,7 @@ export const zUploadConfig = z.object({
  * FileResponse
  */
 export const zFileResponse = z.object({
-  conversation_id: z.uuid().nullish().default(null),
+  conversation_id: z.uuid().nullish(),
   created_at: z.coerce
     .bigint()
     .min(BigInt('-9223372036854775808'), {
@@ -40,21 +40,20 @@ export const zFileResponse = z.object({
     .max(BigInt('9223372036854775807'), {
       error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
     })
-    .nullish()
-    .default(null),
-  created_by: z.uuid().nullish().default(null),
-  extension: z.string().nullish().default(null),
-  file_key: z.string().nullish().default(null),
+    .nullish(),
+  created_by: z.uuid().nullish(),
+  extension: z.string().nullish(),
+  file_key: z.string().nullish(),
   id: z.uuid(),
-  mime_type: z.string().nullish().default(null),
+  mime_type: z.string().nullish(),
   name: z.string(),
-  original_url: z.string().nullish().default(null),
-  preview_url: z.string().nullish().default(null),
-  reference: z.string().nullish().default(null),
+  original_url: z.string().nullish(),
+  preview_url: z.string().nullish(),
+  reference: z.string().nullish(),
   size: z.int(),
-  source_url: z.string().nullish().default(null),
-  tenant_id: z.uuid().nullish().default(null),
-  user_id: z.uuid().nullish().default(null),
+  source_url: z.string().nullish(),
+  tenant_id: z.uuid().nullish(),
+  user_id: z.uuid().nullish(),
 })
 
 /**

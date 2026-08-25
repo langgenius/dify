@@ -7,8 +7,8 @@ import * as z from 'zod'
  */
 export const zEmailCodeSendPayload = z.object({
   email: z.string(),
-  language: z.string().nullish().default(null),
-  turnstile_token: z.string().max(2048).nullish().default(null),
+  language: z.string().nullish(),
+  turnstile_token: z.string().max(2048).nullish(),
 })
 
 /**
@@ -25,10 +25,10 @@ export const zSimpleResultDataResponse = z.object({
 export const zEmailCodeLoginPayload = z.object({
   code: z.string(),
   email: z.string(),
-  language: z.string().nullish().default(null),
-  timezone: z.string().nullish().default(null),
+  language: z.string().nullish(),
+  timezone: z.string().nullish(),
   token: z.uuid(),
-  turnstile_token: z.string().max(2048).nullish().default(null),
+  turnstile_token: z.string().max(2048).nullish(),
 })
 
 /**

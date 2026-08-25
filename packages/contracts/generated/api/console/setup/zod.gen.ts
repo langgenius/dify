@@ -6,7 +6,7 @@ import * as z from 'zod'
  * SetupStatusResponse
  */
 export const zSetupStatusResponse = z.object({
-  setup_at: z.string().nullish().default(null),
+  setup_at: z.string().nullish(),
   step: z.enum(['finished', 'not_started']),
 })
 
@@ -15,7 +15,7 @@ export const zSetupStatusResponse = z.object({
  */
 export const zSetupRequestPayload = z.object({
   email: z.string(),
-  language: z.string().nullish().default(null),
+  language: z.string().nullish(),
   name: z.string().max(30),
   password: z.string(),
 })

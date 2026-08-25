@@ -256,6 +256,8 @@ const normalizeUserInputForm = (
   items: TryAppParameters['user_input_form'],
 ): ChatConfig['user_input_form'] => {
   return items.reduce<ChatConfig['user_input_form']>((result, item) => {
+    if (!isRecord(item)) return result
+
     const normalized = normalizeUserInputFormItem(item)
     if (normalized) result.push(normalized)
     return result

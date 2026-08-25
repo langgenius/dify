@@ -14,7 +14,7 @@ from typing import TypeGuard, cast
 from flask import current_app
 from flask_restx import fields
 from flask_restx import swagger as restx_swagger
-from flask_restx.model import Model, OrderedModel, instance
+from flask_restx.model import Model, ModelBase, OrderedModel, instance
 from flask_restx.swagger import Swagger
 from flask_restx.utils import not_none
 
@@ -160,9 +160,8 @@ def _merge_registered_schemas(payload: dict[str, object], registered_models: Map
         raise RuntimeError("unexpected OpenAPI component schemas payload")
 
     for name, model in registered_models.items():
-        schema = getattr(model, "__schema__", None)
-        if isinstance(schema, dict):
-            schemas.setdefault(name, _replace_legacy_refs(schema))
+        if isinstance(model, ModelBase):
+            schemas.setdefault(name, _replace_legacy_refs(model.__schema__))
 
     payload.pop("definitions", None)
     replaced_payload = _replace_legacy_refs(payload)
@@ -355,8 +354,8 @@ def install_swagger_compatibility() -> None:
 
     def responses_for_with_status_specific_media(self: Swagger, doc: dict[str, object], method: str):
         responses = original_responses_for(self, doc, method)
-        blueprint = getattr(self.api, "blueprint", None)
-        if getattr(blueprint, "name", None) != "service_api":
+        blueprint = self.api.blueprint
+        if blueprint is None or blueprint.name != "service_api":
             return responses
         method_doc = doc.get(method)
         if not isinstance(method_doc, dict):

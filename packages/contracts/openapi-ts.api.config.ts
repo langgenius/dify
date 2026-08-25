@@ -262,80 +262,82 @@ const filterContractOperations = (document: SwaggerDocument) => {
   }
 }
 
-const schemaAcceptsNull = (
-  schema: SwaggerSchema,
-  schemas: Record<string, SwaggerSchema>,
-  visitedRefs = new Set<string>(),
-): boolean => {
-  let acceptsNull = true
+const stripNullSchemaDefaults = (document: SwaggerDocument) => {
+  const visitedSchemas = new WeakSet<object>()
 
-  if ('const' in schema) acceptsNull &&= schema.const === null
-  if (Array.isArray(schema.enum)) acceptsNull &&= schema.enum.includes(null)
+  const visitSchema = (value: unknown) => {
+    if (!isObject(value) || visitedSchemas.has(value)) return
 
-  const schemaType = schema.type
-  if (typeof schemaType === 'string') acceptsNull &&= schemaType === 'null'
-  else if (Array.isArray(schemaType)) acceptsNull &&= schemaType.includes('null')
+    visitedSchemas.add(value)
+    if (value.default === null) delete value.default
 
-  const ref = schema.$ref
-  if (typeof ref === 'string') {
-    const refName = schemaNameFromRef(ref)
-    if (refName && !visitedRefs.has(refName)) {
-      const referencedSchema = schemas[refName]
-      if (referencedSchema) {
-        const nextVisitedRefs = new Set(visitedRefs)
-        nextVisitedRefs.add(refName)
-        acceptsNull &&= schemaAcceptsNull(referencedSchema, schemas, nextVisitedRefs)
-      }
+    for (const key of [
+      'additionalProperties',
+      'contains',
+      'else',
+      'if',
+      'items',
+      'not',
+      'propertyNames',
+      'then',
+      'unevaluatedItems',
+      'unevaluatedProperties',
+    ]) {
+      visitSchema(value[key])
+    }
+
+    for (const key of ['allOf', 'anyOf', 'oneOf', 'prefixItems']) {
+      const schemas = value[key]
+      if (Array.isArray(schemas)) schemas.forEach(visitSchema)
+    }
+
+    for (const key of [
+      '$defs',
+      'definitions',
+      'dependentSchemas',
+      'patternProperties',
+      'properties',
+    ]) {
+      const schemas = value[key]
+      if (isObject(schemas)) Object.values(schemas).forEach(visitSchema)
     }
   }
 
-  if (Array.isArray(schema.allOf)) {
-    acceptsNull &&= schema.allOf.every(
-      (variant) => isObject(variant) && schemaAcceptsNull(variant, schemas, visitedRefs),
-    )
-  }
-  if (Array.isArray(schema.anyOf)) {
-    acceptsNull &&= schema.anyOf.some(
-      (variant) => isObject(variant) && schemaAcceptsNull(variant, schemas, visitedRefs),
-    )
-  }
-  if (Array.isArray(schema.oneOf)) {
-    acceptsNull &&=
-      schema.oneOf.filter(
-        (variant) => isObject(variant) && schemaAcceptsNull(variant, schemas, visitedRefs),
-      ).length === 1
-  }
-  if (isObject(schema.not)) acceptsNull &&= !schemaAcceptsNull(schema.not, schemas, visitedRefs)
+  const visitedDocumentObjects = new WeakSet<object>()
+  const findSchemas = (value: unknown, parentKey?: string) => {
+    if (!value || typeof value !== 'object' || visitedDocumentObjects.has(value)) return
 
-  return acceptsNull
-}
+    visitedDocumentObjects.add(value)
+    if (parentKey === 'schema') {
+      visitSchema(value)
+      return
+    }
+    if (parentKey === 'schemas' && isObject(value)) {
+      Object.values(value).forEach(visitSchema)
+      return
+    }
+    if (parentKey === 'example' || parentKey === 'examples') return
 
-const stripIncompatibleNullDefaults = (document: SwaggerDocument) => {
-  const schemas = getDocumentSchemas(document)
-  const visited = new WeakSet<object>()
-
-  const visit = (value: unknown) => {
-    if (!value || typeof value !== 'object' || visited.has(value)) return
-
-    visited.add(value)
     if (Array.isArray(value)) {
-      value.forEach(visit)
+      value.forEach((item) => findSchemas(item))
       return
     }
 
-    const schema = value as SwaggerSchema
-    if (schema.default === null && !schemaAcceptsNull(schema, schemas)) delete schema.default
-    Object.values(schema).forEach(visit)
+    Object.entries(value).forEach(([key, item]) => findSchemas(item, key))
   }
 
-  visit(document)
+  findSchemas(document)
 }
 
 const normalizeApiSwagger = (document: SwaggerDocument) => {
   normalizeOpaqueContractResponses(document)
   filterContractOperations(document)
   addOperationIds(document)
-  stripIncompatibleNullDefaults(document)
+  // OpenAPI defaults describe server behavior. Keep them in the exported specs,
+  // but do not let Zod synthesize omitted transport fields during client-side
+  // request or response validation. Non-null defaults remain useful for query
+  // parameter ergonomics and preserve the existing generated contract behavior.
+  stripNullSchemaDefaults(document)
 
   return document
 }

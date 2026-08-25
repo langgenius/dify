@@ -20,7 +20,7 @@ export const zSimpleMessageResponse = z.object({
  * InstalledAppUpdatePayload
  */
 export const zInstalledAppUpdatePayload = z.object({
-  is_pinned: z.boolean().nullish().default(null),
+  is_pinned: z.boolean().nullish(),
 })
 
 /**
@@ -42,12 +42,12 @@ export const zAudioTranscriptResponse = z.object({
  * ChatMessagePayload
  */
 export const zChatMessagePayload = z.object({
-  conversation_id: z.string().nullish().default(null),
+  conversation_id: z.string().nullish(),
   draft_type: z.enum(['debug_build', 'draft']).optional().default('draft'),
-  files: z.array(z.unknown()).nullish().default(null),
+  files: z.array(z.unknown()).nullish(),
   inputs: z.record(z.string(), z.unknown()),
   model_config: z.record(z.string(), z.unknown()).optional(),
-  parent_message_id: z.string().nullish().default(null),
+  parent_message_id: z.string().nullish(),
   query: z.string(),
   response_mode: z.enum(['blocking', 'streaming']).optional().default('blocking'),
   retriever_from: z.string().optional().default('dev'),
@@ -64,10 +64,10 @@ export const zSimpleResultResponse = z.object({
  * CompletionMessageExplorePayload
  */
 export const zCompletionMessageExplorePayload = z.object({
-  files: z.array(z.record(z.string(), z.unknown())).nullish().default(null),
+  files: z.array(z.record(z.string(), z.unknown())).nullish(),
   inputs: z.record(z.string(), z.unknown()),
   query: z.string().optional().default(''),
-  response_mode: z.enum(['blocking', 'streaming']).nullish().default(null),
+  response_mode: z.enum(['blocking', 'streaming']).nullish(),
   retriever_from: z.string().optional().default('explore_app'),
 })
 
@@ -75,7 +75,7 @@ export const zConversationRenamePayload = z.intersection(
   z.union([
     z.object({
       auto_generate: z.literal(true),
-      name: z.string().nullish().default(null),
+      name: z.string().nullish(),
     }),
     z.object({
       auto_generate: z.literal(false).optional().default(false),
@@ -84,7 +84,7 @@ export const zConversationRenamePayload = z.intersection(
   ]),
   z.object({
     auto_generate: z.boolean().optional().default(false),
-    name: z.string().nullish().default(null),
+    name: z.string().nullish(),
   }),
 )
 
@@ -99,9 +99,9 @@ export const zResultResponse = z.object({
  * MessageFeedbackPayload
  */
 export const zMessageFeedbackPayload = z.object({
-  content: z.string().nullish().default(null),
+  content: z.string().nullish(),
   message_id: z.string(),
-  rating: z.enum(['dislike', 'like']).nullish().default(null),
+  rating: z.enum(['dislike', 'like']).nullish(),
 })
 
 /**
@@ -135,10 +135,10 @@ export const zSavedMessageCreatePayload = z.object({
  * TextToAudioPayload
  */
 export const zTextToAudioPayload = z.object({
-  message_id: z.uuid().nullish().default(null),
-  streaming: z.boolean().nullish().default(null),
-  text: z.string().nullish().default(null),
-  voice: z.string().nullish().default(null),
+  message_id: z.uuid().nullish(),
+  streaming: z.boolean().nullish(),
+  text: z.string().nullish(),
+  voice: z.string().nullish(),
 })
 
 /**
@@ -178,8 +178,7 @@ export const zWorkflowRunPayload = z.object({
         }),
       ),
     )
-    .nullish()
-    .default(null),
+    .nullish(),
   inputs: z.record(z.string(), z.unknown()),
 })
 
@@ -206,11 +205,10 @@ export const zSimpleConversation = z.object({
     .max(BigInt('9223372036854775807'), {
       error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
     })
-    .nullish()
-    .default(null),
+    .nullish(),
   id: z.uuid(),
   inputs: z.record(z.string(), zJsonValue),
-  introduction: z.string().nullish().default(null),
+  introduction: z.string().nullish(),
   name: z.string(),
   status: z.string(),
   updated_at: z.coerce
@@ -221,8 +219,7 @@ export const zSimpleConversation = z.object({
     .max(BigInt('9223372036854775807'), {
       error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
     })
-    .nullish()
-    .default(null),
+    .nullish(),
 })
 
 /**
@@ -272,7 +269,7 @@ export const zParameters = z.object({
   more_like_this: z.object({
     enabled: z.boolean().optional(),
   }),
-  opening_statement: z.string().nullish().default(null),
+  opening_statement: z.string().nullish(),
   retriever_resource: z.object({
     enabled: z.boolean().optional(),
   }),
@@ -356,17 +353,17 @@ export const zInstalledAppListResponse = z.object({
  * AgentThought
  */
 export const zAgentThought = z.object({
-  answer: z.string().nullish().default(null),
-  chain_id: z.string().nullish().default(null),
-  created_at: z.int().nullish().default(null),
+  answer: z.string().nullish(),
+  chain_id: z.string().nullish(),
+  created_at: z.int().nullish(),
   files: z.array(z.string()),
   id: z.string(),
   message_id: z.string(),
-  observation: z.string().nullish().default(null),
+  observation: z.string().nullish(),
   position: z.int(),
-  thought: z.string().nullish().default(null),
-  tool: z.string().nullish().default(null),
-  tool_input: z.string().nullish().default(null),
+  thought: z.string().nullish(),
+  tool: z.string().nullish(),
+  tool_input: z.string().nullish(),
   tool_labels: zJsonValue,
 })
 
@@ -374,7 +371,7 @@ export const zAgentThought = z.object({
  * SimpleFeedback
  */
 export const zSimpleFeedback = z.object({
-  rating: z.string().nullish().default(null),
+  rating: z.string().nullish(),
 })
 
 export const zJsonValueType = z.unknown()
@@ -383,15 +380,15 @@ export const zJsonValueType = z.unknown()
  * MessageFile
  */
 export const zMessageFile = z.object({
-  belongs_to: z.string().nullish().default(null),
+  belongs_to: z.string().nullish(),
   filename: z.string(),
   id: z.uuid(),
-  mime_type: z.string().nullish().default(null),
-  size: z.int().nullish().default(null),
+  mime_type: z.string().nullish(),
+  size: z.int().nullish(),
   transfer_method: z.string(),
   type: z.string(),
-  upload_file_id: z.uuid().nullish().default(null),
-  url: z.string().nullish().default(null),
+  upload_file_id: z.uuid().nullish(),
+  url: z.string().nullish(),
 })
 
 /**
@@ -399,8 +396,8 @@ export const zMessageFile = z.object({
  */
 export const zSavedMessageItem = z.object({
   answer: z.string(),
-  created_at: z.int().nullish().default(null),
-  feedback: zSimpleFeedback.nullish().default(null),
+  created_at: z.int().nullish(),
+  feedback: zSimpleFeedback.nullish(),
   id: z.string(),
   inputs: z.record(z.string(), zJsonValueType),
   message_files: z.array(zMessageFile),
@@ -420,7 +417,7 @@ export const zSavedMessageInfiniteScrollPagination = z.object({
  * RetrieverResource
  */
 export const zRetrieverResource = z.object({
-  content: z.string().nullish().default(null),
+  content: z.string().nullish(),
   created_at: z.coerce
     .bigint()
     .min(BigInt('-9223372036854775808'), {
@@ -429,23 +426,22 @@ export const zRetrieverResource = z.object({
     .max(BigInt('9223372036854775807'), {
       error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
     })
-    .nullish()
-    .default(null),
-  data_source_type: z.string().nullish().default(null),
-  dataset_id: z.uuid().nullish().default(null),
-  dataset_name: z.string().nullish().default(null),
-  document_id: z.uuid().nullish().default(null),
-  document_name: z.string().nullish().default(null),
-  hit_count: z.int().nullish().default(null),
+    .nullish(),
+  data_source_type: z.string().nullish(),
+  dataset_id: z.uuid().nullish(),
+  dataset_name: z.string().nullish(),
+  document_id: z.uuid().nullish(),
+  document_name: z.string().nullish(),
+  hit_count: z.int().nullish(),
   id: z.uuid().optional(),
-  index_node_hash: z.string().nullish().default(null),
+  index_node_hash: z.string().nullish(),
   message_id: z.uuid().optional(),
   position: z.int(),
-  score: z.number().nullish().default(null),
-  segment_id: z.uuid().nullish().default(null),
-  segment_position: z.int().nullish().default(null),
-  summary: z.string().nullish().default(null),
-  word_count: z.int().nullish().default(null),
+  score: z.number().nullish(),
+  segment_id: z.uuid().nullish(),
+  segment_position: z.int().nullish(),
+  summary: z.string().nullish(),
+  word_count: z.int().nullish(),
 })
 
 /**
@@ -464,7 +460,7 @@ export const zHumanInputFormSubmissionData = z.object({
   node_id: z.string(),
   node_title: z.string(),
   rendered_content: z.string(),
-  submitted_data: z.record(z.string(), zJsonValue2).nullish().default(null),
+  submitted_data: z.record(z.string(), zJsonValue2).nullish(),
 })
 
 /**
@@ -551,7 +547,7 @@ export const zStringSource = z.object({
  * Form input definition.
  */
 export const zParagraphInputConfig = z.object({
-  default: zStringSource.nullish().default(null),
+  default: zStringSource.nullish(),
   output_variable_name: z.string(),
   type: z.literal('paragraph').optional().default('paragraph'),
 })
@@ -590,7 +586,7 @@ export const zHumanInputFormDefinition = z.object({
   expiration_time: z.int(),
   form_content: z.string(),
   form_id: z.string(),
-  form_token: z.string().nullish().default(null),
+  form_token: z.string().nullish(),
   inputs: z.array(zFormInputConfig).optional(),
   node_id: z.string(),
   node_title: z.string(),
@@ -601,8 +597,8 @@ export const zHumanInputFormDefinition = z.object({
  * HumanInputContent
  */
 export const zHumanInputContent = z.object({
-  form_definition: zHumanInputFormDefinition.nullish().default(null),
-  form_submission_data: zHumanInputFormSubmissionData.nullish().default(null),
+  form_definition: zHumanInputFormDefinition.nullish(),
+  form_submission_data: zHumanInputFormSubmissionData.nullish(),
   submitted: z.boolean(),
   type: zExecutionContentType.optional().default('human_input'),
   workflow_run_id: z.string(),
@@ -624,18 +620,17 @@ export const zExploreMessageListItem = z.object({
     .max(BigInt('9223372036854775807'), {
       error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
     })
-    .nullish()
-    .default(null),
-  currency: z.string().nullish().default(null),
-  error: z.string().nullish().default(null),
+    .nullish(),
+  currency: z.string().nullish(),
+  error: z.string().nullish(),
   extra_contents: z.array(zHumanInputContent),
-  feedback: zSimpleFeedback.nullish().default(null),
+  feedback: zSimpleFeedback.nullish(),
   id: z.uuid(),
   inputs: z.record(z.string(), zJsonValueType),
   message_files: z.array(zMessageFile),
   message_tokens: z.int().optional().default(0),
-  metadata: zJsonValueType.nullish().default(null),
-  parent_message_id: z.uuid().nullish().default(null),
+  metadata: zJsonValueType.nullish(),
+  parent_message_id: z.uuid().nullish(),
   provider_response_latency: z.number().optional().default(0),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
@@ -643,8 +638,7 @@ export const zExploreMessageListItem = z.object({
   total_price: z
     .string()
     .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
-    .nullish()
-    .default(null),
+    .nullish(),
   total_tokens: z.int().readonly(),
 })
 
@@ -709,18 +703,17 @@ export const zExploreMessageListItemWritable = z.object({
     .max(BigInt('9223372036854775807'), {
       error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
     })
-    .nullish()
-    .default(null),
-  currency: z.string().nullish().default(null),
-  error: z.string().nullish().default(null),
+    .nullish(),
+  currency: z.string().nullish(),
+  error: z.string().nullish(),
   extra_contents: z.array(zHumanInputContent),
-  feedback: zSimpleFeedback.nullish().default(null),
+  feedback: zSimpleFeedback.nullish(),
   id: z.uuid(),
   inputs: z.record(z.string(), zJsonValueType),
   message_files: z.array(zMessageFile),
   message_tokens: z.int().optional().default(0),
-  metadata: zJsonValueType.nullish().default(null),
-  parent_message_id: z.uuid().nullish().default(null),
+  metadata: zJsonValueType.nullish(),
+  parent_message_id: z.uuid().nullish(),
   provider_response_latency: z.number().optional().default(0),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
@@ -728,8 +721,7 @@ export const zExploreMessageListItemWritable = z.object({
   total_price: z
     .string()
     .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
-    .nullish()
-    .default(null),
+    .nullish(),
 })
 
 /**

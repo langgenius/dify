@@ -13,9 +13,9 @@ export const zSimpleResultResponse = z.object({
  * DataSourceIntegrateIconResponse
  */
 export const zDataSourceIntegrateIconResponse = z.object({
-  emoji: z.string().nullish().default(null),
-  type: z.string().nullish().default(null),
-  url: z.string().nullish().default(null),
+  emoji: z.string().nullish(),
+  type: z.string().nullish(),
+  url: z.string().nullish(),
 })
 
 /**

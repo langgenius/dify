@@ -6,10 +6,10 @@ import * as z from 'zod'
  * EmailRegisterResetPayload
  */
 export const zEmailRegisterResetPayload = z.object({
-  language: z.string().nullish().default(null),
+  language: z.string().nullish(),
   new_password: z.string(),
   password_confirm: z.string(),
-  timezone: z.string().nullish().default(null),
+  timezone: z.string().nullish(),
   token: z.string(),
 })
 
@@ -18,7 +18,7 @@ export const zEmailRegisterResetPayload = z.object({
  */
 export const zEmailRegisterSendPayload = z.object({
   email: z.string(),
-  language: z.string().nullish().default(null),
+  language: z.string().nullish(),
 })
 
 /**

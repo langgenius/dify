@@ -6,12 +6,12 @@ import * as z from 'zod'
  * ActivatePayload
  */
 export const zActivatePayload = z.object({
-  email: z.string().nullish().default(null),
-  interface_language: z.string().nullish().default(null),
-  name: z.string().max(30).nullish().default(null),
-  timezone: z.string().nullish().default(null),
+  email: z.string().nullish(),
+  interface_language: z.string().nullish(),
+  name: z.string().max(30).nullish(),
+  timezone: z.string().nullish(),
   token: z.string(),
-  workspace_id: z.string().nullish().default(null),
+  workspace_id: z.string().nullish(),
 })
 
 /**
@@ -25,9 +25,9 @@ export const zActivationResponse = z.object({
  * ActivationCheckData
  */
 export const zActivationCheckData = z.object({
-  account_status: z.string().nullish().default(null),
+  account_status: z.string().nullish(),
   email: z.string().nullable(),
-  requires_setup: z.boolean().nullish().default(null),
+  requires_setup: z.boolean().nullish(),
   workspace_id: z.string().nullable(),
   workspace_name: z.string().nullable(),
 })
@@ -36,7 +36,7 @@ export const zActivationCheckData = z.object({
  * ActivationCheckResponse
  */
 export const zActivationCheckResponse = z.object({
-  data: zActivationCheckData.nullish().default(null),
+  data: zActivationCheckData.nullish(),
   is_valid: z.boolean(),
 })
 
