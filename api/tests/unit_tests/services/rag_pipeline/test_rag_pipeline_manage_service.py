@@ -9,7 +9,7 @@ def _datasource(
     provider: str,
     plugin_id: str,
     *,
-    credentials_schema: list | None = None,
+    credentials_schema: list[object] | None = None,
     oauth_schema: object | None = None,
 ) -> SimpleNamespace:
     return SimpleNamespace(
