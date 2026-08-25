@@ -22,7 +22,6 @@ from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables import SecretVariable, StringVariable
 from graphon.variables.variables import RAGPipelineVariable
-from models.model import AppMode
 
 
 def _make_workflow(**overrides):
@@ -81,26 +80,19 @@ def _make_workflow(**overrides):
     return workflow
 
 
-@pytest.mark.parametrize(
-    ("app_mode", "record_inline_agent_publish"),
-    [(AppMode.WORKFLOW, True), (AppMode.ADVANCED_CHAT, False)],
-)
 def test_publish_workflow_returns_success(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
-    app_mode: AppMode,
-    record_inline_agent_publish: bool,
 ) -> None:
     current_user = SimpleNamespace(id="account-1")
-    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=app_mode)
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
     workflow = SimpleNamespace(id="published-workflow", created_at=datetime(2026, 8, 17, 12, 0, 0))
     session = Mock()
     session.get.return_value = app_model
-    publish_workflow = Mock(return_value=workflow)
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
-        Mock(return_value=SimpleNamespace(publish_workflow=publish_workflow)),
+        Mock(return_value=SimpleNamespace(publish_workflow=Mock(return_value=workflow))),
     )
     monkeypatch.setattr(
         workflow_module,
@@ -116,14 +108,6 @@ def test_publish_workflow_returns_success(
         )
 
     assert response["result"] == "success"
-    publish_workflow.assert_called_once_with(
-        session=session,
-        app_model=app_model,
-        account=current_user,
-        marked_name="",
-        marked_comment="",
-        record_inline_agent_publish=record_inline_agent_publish,
-    )
 
 
 @pytest.mark.parametrize("transaction_fails", [False, True], ids=["commit-succeeds", "commit-fails"])

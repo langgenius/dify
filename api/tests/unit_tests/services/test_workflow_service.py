@@ -1292,7 +1292,7 @@ class TestWorkflowService:
         assert result.marked_comment == "Initial release"
         register_workflow_publish.assert_not_called()
 
-    def test_manual_workflow_publish_registers_inline_agent_after_commit(
+    def test_publish_workflow_registers_inline_agent_after_commit(
         self, workflow_service: WorkflowService, sqlite_session: Session
     ) -> None:
         app = TestWorkflowAssociatedDataFactory.create_app()
@@ -1319,7 +1319,6 @@ class TestWorkflowService:
                 session=sqlite_session,
                 app_model=app,
                 account=account,
-                record_inline_agent_publish=True,
             )
 
         register_workflow_publish.assert_called_once_with(

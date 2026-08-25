@@ -684,7 +684,6 @@ class WorkflowService:
         account: Account,
         marked_name: str = "",
         marked_comment: str = "",
-        record_inline_agent_publish: bool = False,
     ) -> Workflow:
         draft_workflow_stmt = select(Workflow).where(
             Workflow.tenant_id == app_model.tenant_id,
@@ -755,7 +754,7 @@ class WorkflowService:
             draft_workflow=draft_workflow,
             published_workflow=workflow,
         )
-        if record_inline_agent_publish and has_inline_agent:
+        if has_inline_agent:
             register_new_agent_beta_workflow_publish_after_commit(
                 session=session,
                 published_workflow_id=workflow.id,

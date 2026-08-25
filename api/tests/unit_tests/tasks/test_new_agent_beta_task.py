@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Protocol, cast
 from unittest.mock import MagicMock
@@ -167,30 +168,34 @@ def test_publish_activity_window_is_inclusive_start_exclusive_end(
 
 
 def test_broker_failure_does_not_propagate(monkeypatch: pytest.MonkeyPatch) -> None:
+    delay = MagicMock(side_effect=RuntimeError("broker unavailable"))
     monkeypatch.setattr(
         ensure_new_agent_beta_participation_task,
         "delay",
-        MagicMock(side_effect=RuntimeError("broker unavailable")),
+        delay,
     )
 
     schedule_new_agent_beta_ensure("revision-1")
+    delay.assert_called_once_with("revision-1", "revision")
 
 
 def test_workflow_broker_failure_does_not_propagate(monkeypatch: pytest.MonkeyPatch) -> None:
+    delay = MagicMock(side_effect=RuntimeError("broker unavailable"))
     monkeypatch.setattr(
         ensure_new_agent_beta_participation_task,
         "delay",
-        MagicMock(side_effect=RuntimeError("broker unavailable")),
+        delay,
     )
 
     schedule_new_agent_beta_workflow_ensure("workflow-1")
+    delay.assert_called_once_with("workflow-1", "workflow")
 
 
 def test_task_calls_billing_with_revision_id(monkeypatch: pytest.MonkeyPatch) -> None:
     ensure = MagicMock()
     monkeypatch.setattr(BillingService, "ensure_new_agent_beta_revision", ensure)
 
-    ensure_new_agent_beta_participation_task.run("revision-1")
+    ensure_new_agent_beta_participation_task.run("revision-1", "revision")
 
     ensure.assert_called_once_with("revision-1")
 
@@ -220,7 +225,7 @@ def test_task_retries_billing_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(ensure_new_agent_beta_participation_task, "retry", retry)
 
     with pytest.raises(RuntimeError, match="retry scheduled"):
-        ensure_new_agent_beta_participation_task.run("revision-1")
+        ensure_new_agent_beta_participation_task.run("revision-1", "revision")
 
     retry.assert_called_once_with(exc=error, countdown=30)
 
@@ -242,6 +247,12 @@ def test_task_rejects_unknown_source_type() -> None:
         ensure_new_agent_beta_participation_task.run("source-1", "unknown")
 
 
+def test_task_requires_source_type() -> None:
+    run_without_source_type = cast(Callable[[str], None], ensure_new_agent_beta_participation_task.run)
+    with pytest.raises(TypeError, match="source_type"):
+        run_without_source_type("source-1")
+
+
 def test_task_caps_exponential_retry_delay(monkeypatch: pytest.MonkeyPatch) -> None:
     error = RuntimeError("billing unavailable")
     monkeypatch.setattr(BillingService, "ensure_new_agent_beta_revision", MagicMock(side_effect=error))
@@ -250,7 +261,7 @@ def test_task_caps_exponential_retry_delay(monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.setattr(ensure_new_agent_beta_participation_task, "retry", retry)
 
     with pytest.raises(RuntimeError, match="retry scheduled"):
-        ensure_new_agent_beta_participation_task.run("revision-1")
+        ensure_new_agent_beta_participation_task.run("revision-1", "revision")
 
     retry.assert_called_once_with(exc=error, countdown=900)
 

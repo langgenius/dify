@@ -117,7 +117,7 @@ def register_new_agent_beta_workflow_publish_after_commit(
     acks_late=True,
     reject_on_worker_lost=True,
 )
-def ensure_new_agent_beta_participation_task(self, source_id: str, source_type: str = "revision") -> None:
+def ensure_new_agent_beta_participation_task(self, source_id: str, source_type: str) -> None:
     if source_type not in {"revision", "workflow"}:
         raise ValueError(f"Unsupported New Agent Beta source type: {source_type}")
 
@@ -149,7 +149,7 @@ def ensure_new_agent_beta_participation_task(self, source_id: str, source_type: 
 
 def schedule_new_agent_beta_ensure(revision_id: str) -> None:
     try:
-        ensure_new_agent_beta_participation_task.delay(revision_id)
+        ensure_new_agent_beta_participation_task.delay(revision_id, "revision")
     except Exception:
         logger.exception("Failed to dispatch New Agent Beta eligibility task, revision_id=%s", revision_id)
 
