@@ -98,7 +98,8 @@ class CreateRagPipelineDatasetApi(Resource):
                 enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
             )
             initialize_created_app_rbac_access_task.delay(
-                current_tenant_id, current_user.id, dataset_id=import_info["dataset_id"])
+                current_tenant_id, current_user.id, dataset_id=import_info["dataset_id"]
+            )
 
         return dump_response(RagPipelineImportResponse, import_info), 201
 
