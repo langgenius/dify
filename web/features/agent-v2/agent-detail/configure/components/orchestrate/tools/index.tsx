@@ -41,7 +41,7 @@ import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
 import { AgentConfigureTipContent } from '../common/tip-content'
-import { useAgentOrchestrateReadOnly } from '../read-only-context'
+import { useAgentOrchestrateViewingVersion } from '../read-only-context'
 import { CliToolDialog } from './cli-tool/dialog'
 import { AgentCliToolItem } from './cli-tool/item'
 import {
@@ -337,7 +337,7 @@ function AddToolMenu({
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        placement="top-end"
         sideOffset={4}
         className={
           view === 'menu'
@@ -380,7 +380,7 @@ function AddToolMenu({
 
 export function AgentTools() {
   const { t } = useTranslation('agentV2')
-  const readOnly = useAgentOrchestrateReadOnly()
+  const isViewingVersion = useAgentOrchestrateViewingVersion()
   const setProviderToolCredential = useSetAtom(setProviderToolCredentialAtom)
   const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
@@ -530,7 +530,7 @@ export function AgentTools() {
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="flex flex-col gap-1 pb-4"
         actions={
-          !readOnly ? (
+          !isViewingVersion ? (
             <AddToolMenu
               onAddCliTool={openCliToolDialog}
               onAddTools={addTools}

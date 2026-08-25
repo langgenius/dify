@@ -370,7 +370,7 @@ def test_service_openapi_documents_non_json_response_media_types():
         "text/event-stream",
     }
     assert _response_content_types(paths["/workflow/{task_id}/events"]["get"]) == {"text/event-stream"}
-    assert _response_content_types(paths["/text-to-audio"]["post"]) == {"audio/mpeg"}
+    assert _response_content_types(paths["/text-to-audio"]["post"]) == {"application/octet-stream"}
     assert _response_content_types(paths["/files/{file_id}/preview"]["get"]) == {
         "application/octet-stream",
         "application/pdf",

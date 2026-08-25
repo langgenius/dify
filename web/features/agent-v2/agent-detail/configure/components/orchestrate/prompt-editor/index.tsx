@@ -12,6 +12,7 @@ import type { RosterReferenceToken } from '@/app/components/base/prompt-editor/p
 import type {
   AgentFileNode,
   AgentProviderTool,
+  AgentSkill,
   AgentTool,
 } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -49,7 +50,11 @@ import {
 } from '@/features/agent-v2/agent-detail/configure/feature-flags'
 import { useAgentOrchestrateAddActions } from '../add-actions-context'
 import { AgentConfigureTipContent } from '../common/tip-content'
-import { useAgentConfigFiles, useAgentConfigSkills } from '../config-context'
+import {
+  useAgentConfigFiles,
+  useAgentConfigSkills,
+  useAgentWorkspaceSkillBindings,
+} from '../config-context'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { useAgentPromptToolIconResolver } from './hooks'
 import { insertTokenAtTextRange, replaceTrailingSlashWithToken } from './options'
@@ -417,7 +422,21 @@ export function AgentPromptEditor() {
   const { t } = useTranslation('agentV2')
   const readOnly = useAgentOrchestrateReadOnly()
   const [value, setValue] = useAtom(agentComposerPromptAtom)
-  const { skills } = useAgentConfigSkills()
+  const { skills: embeddedSkills } = useAgentConfigSkills()
+  const workspaceSkillBindingsQuery = useAgentWorkspaceSkillBindings()
+  const skills = useMemo<AgentSkill[]>(() => {
+    const workspaceSkills = workspaceSkillBindingsQuery.data?.data ?? []
+    const workspaceSkillNames = new Set(workspaceSkills.map((skill) => skill.name))
+
+    return [
+      ...workspaceSkills.map((skill) => ({
+        id: skill.name,
+        name: skill.display_name || skill.name,
+        description: skill.description,
+      })),
+      ...embeddedSkills.filter((skill) => !workspaceSkillNames.has(skill.name)),
+    ]
+  }, [embeddedSkills, workspaceSkillBindingsQuery.data?.data])
   const { files } = useAgentConfigFiles()
   const tools = useAtomValue(agentComposerToolsAtom)
   const addProviderTools = useSetAtom(addProviderToolsAtom)

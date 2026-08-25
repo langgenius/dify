@@ -102,6 +102,22 @@ class TestTagListApi:
         assert status == 200
         assert result == [{"id": "tag-1", "name": "Tag", "type": "knowledge", "binding_count": "2"}]
 
+    def test_get_skill_tags_uses_same_query_boundary(
+        self, app: Flask, request_context: RequestContext, tags_service: MagicMock
+    ) -> None:
+        tags_service.list_tags.return_value = (TagSummary("tag-1", "Skill", "skill", 1),)
+
+        with app.test_request_context("/?type=skill"):
+            result, status = unwrap(TagListApi().get)(
+                TagListApi(),
+                TagListQueryParam(type="skill"),
+                request_context,
+            )
+
+        tags_service.list_tags.assert_called_once_with(request_context, "skill", None)
+        assert status == 200
+        assert result[0]["type"] == "skill"
+
     def test_get_snippet_tags_uses_same_query_boundary(
         self, app: Flask, request_context: RequestContext, tags_service: MagicMock
     ) -> None:
@@ -375,6 +391,25 @@ class TestTagBindings:
         tags_service.create_bindings.assert_called_once_with(
             request_context,
             TagBindingInput(("tag-1", "tag-2"), "snippet-1", "snippet"),
+        )
+        assert (result, status) == ({"result": "success"}, 200)
+
+    def test_create_passes_skill_binding_input(
+        self, app: Flask, request_context: RequestContext, tags_service: MagicMock
+    ) -> None:
+        owner = _account(TenantAccountRole.OWNER)
+        payload = TagBindingPayload(tag_ids=["tag-1"], target_id="skill-1", type=TagType.SKILL)
+
+        with (
+            app.test_request_context("/"),
+            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
+        ):
+            result, status = unwrap(TagBindingCollectionApi().post)(TagBindingCollectionApi(), payload, request_context)
+
+        tags_service.create_bindings.assert_called_once_with(
+            request_context,
+            TagBindingInput(("tag-1",), "skill-1", "skill"),
         )
         assert (result, status) == ({"result": "success"}, 200)
 
