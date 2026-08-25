@@ -906,16 +906,19 @@ export function registerKnowledgeSpaceHandlers({
     try {
       const mutationTimestamp = now();
       const authenticatedApiKey = context.get("authenticatedApiKey");
-      const permissionSnapshot = await issueKnowledgeSpaceDurablePermission({
-        access,
-        ...(authenticatedApiKey ? { apiKey: authenticatedApiKey } : {}),
-        authorization,
-        callerKind: context.get("callerKind") ?? "interactive",
-        expiresAt: new Date(Date.parse(mutationTimestamp) + 10 * 60_000).toISOString(),
-        knowledgeSpaceId,
-        requiredAccess: "admin",
-        subject,
-      });
+      const capabilityGrantId = context.get("capabilityV2Grant")?.grantId;
+      const permission = capabilityGrantId
+        ? { capabilityGrantId, knowledgeSpaceId, tenantId: subject.tenantId }
+        : await issueKnowledgeSpaceDurablePermission({
+            access,
+            ...(authenticatedApiKey ? { apiKey: authenticatedApiKey } : {}),
+            authorization,
+            callerKind: context.get("callerKind") ?? "interactive",
+            expiresAt: new Date(Date.parse(mutationTimestamp) + 10 * 60_000).toISOString(),
+            knowledgeSpaceId,
+            requiredAccess: "admin",
+            subject,
+          });
       await unpublishedProfileActivations.activate({
         capabilitySnapshot,
         createdBySubjectId: subject.subjectId,
@@ -924,14 +927,17 @@ export function registerKnowledgeSpaceHandlers({
         kind: "embedding",
         knowledgeSpaceId,
         now: mutationTimestamp,
-        permission: {
-          accessChannel: permissionSnapshot.accessChannel,
-          knowledgeSpaceId,
-          permissionSnapshotId: permissionSnapshot.id,
-          permissionSnapshotRevision: permissionSnapshot.revision,
-          requestedBySubjectId: subject.subjectId,
-          tenantId: subject.tenantId,
-        },
+        permission:
+          "capabilityGrantId" in permission
+            ? permission
+            : {
+                accessChannel: permission.accessChannel,
+                knowledgeSpaceId,
+                permissionSnapshotId: permission.id,
+                permissionSnapshotRevision: permission.revision,
+                requestedBySubjectId: subject.subjectId,
+                tenantId: subject.tenantId,
+              },
         snapshot: previewProfile,
         tenantId: subject.tenantId,
       });
@@ -1318,16 +1324,19 @@ export function registerKnowledgeSpaceHandlers({
     try {
       const mutationTimestamp = now();
       const authenticatedApiKey = context.get("authenticatedApiKey");
-      const permissionSnapshot = await issueKnowledgeSpaceDurablePermission({
-        access,
-        ...(authenticatedApiKey ? { apiKey: authenticatedApiKey } : {}),
-        authorization,
-        callerKind: context.get("callerKind") ?? "interactive",
-        expiresAt: new Date(Date.parse(mutationTimestamp) + 10 * 60_000).toISOString(),
-        knowledgeSpaceId,
-        requiredAccess: "admin",
-        subject,
-      });
+      const capabilityGrantId = context.get("capabilityV2Grant")?.grantId;
+      const permission = capabilityGrantId
+        ? { capabilityGrantId, knowledgeSpaceId, tenantId: subject.tenantId }
+        : await issueKnowledgeSpaceDurablePermission({
+            access,
+            ...(authenticatedApiKey ? { apiKey: authenticatedApiKey } : {}),
+            authorization,
+            callerKind: context.get("callerKind") ?? "interactive",
+            expiresAt: new Date(Date.parse(mutationTimestamp) + 10 * 60_000).toISOString(),
+            knowledgeSpaceId,
+            requiredAccess: "admin",
+            subject,
+          });
       await unpublishedProfileActivations.activate({
         capabilitySnapshot: {
           reasoning: capabilitySnapshots.reasoning ?? null,
@@ -1340,14 +1349,17 @@ export function registerKnowledgeSpaceHandlers({
         kind: "retrieval",
         knowledgeSpaceId,
         now: mutationTimestamp,
-        permission: {
-          accessChannel: permissionSnapshot.accessChannel,
-          knowledgeSpaceId,
-          permissionSnapshotId: permissionSnapshot.id,
-          permissionSnapshotRevision: permissionSnapshot.revision,
-          requestedBySubjectId: subject.subjectId,
-          tenantId: subject.tenantId,
-        },
+        permission:
+          "capabilityGrantId" in permission
+            ? permission
+            : {
+                accessChannel: permission.accessChannel,
+                knowledgeSpaceId,
+                permissionSnapshotId: permission.id,
+                permissionSnapshotRevision: permission.revision,
+                requestedBySubjectId: subject.subjectId,
+                tenantId: subject.tenantId,
+              },
         snapshot: profile,
         tenantId: subject.tenantId,
       });

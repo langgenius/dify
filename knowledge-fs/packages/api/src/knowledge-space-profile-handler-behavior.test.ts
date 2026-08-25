@@ -720,6 +720,87 @@ describe("knowledge-space profile handler behavior", () => {
     );
   });
 
+  it("uses the integrated settings Capability grant for unpublished profile updates", async () => {
+    const manifests = createInMemoryKnowledgeSpaceManifestRepository({
+      maxListLimit: 10,
+      maxManifests: 10,
+    });
+    const spaces = createInMemoryKnowledgeSpaceRepository({
+      generateId: () => SPACE_ID,
+      maxListLimit: 10,
+      maxSpaces: 10,
+    });
+    const activate = vi.fn(async () => ({}) as never);
+    const capability = settingsCapabilityAuth();
+    const { preflight } = modelPreflight();
+    const setupApp = createKnowledgeGateway({
+      adapter: createNodePlatformAdapter({ env: {} }),
+      auth: auth(),
+      knowledgeSpaceManifests: manifests,
+      knowledgeSpaces: spaces,
+      now: () => NOW,
+    });
+    await createSpace(setupApp);
+    await seedActiveManifest(manifests);
+
+    const app = createKnowledgeGateway({
+      adapter: createNodePlatformAdapter({ env: {} }),
+      difyCapabilityV2Auth: capability.auth,
+      knowledgeSpaceManifests: manifests,
+      knowledgeSpaceUnpublishedProfileActivations: {
+        activate,
+        activateInitialTuple: async () => ({}) as never,
+      },
+      knowledgeSpaces: spaces,
+      modelCapabilityPreflight: preflight,
+      now: () => NOW,
+    });
+
+    const embedding = await app.request(`/knowledge-spaces/${SPACE_ID}/embedding-profile`, {
+      body: JSON.stringify(EMBEDDING_V2),
+      headers: {
+        authorization: "Bearer capability",
+        "content-type": "application/json",
+      },
+      method: "PUT",
+    });
+    const retrieval = await app.request(`/knowledge-spaces/${SPACE_ID}/retrieval-profile`, {
+      body: JSON.stringify(retrievalUpdateBody()),
+      headers: {
+        authorization: "Bearer capability",
+        "content-type": "application/json",
+      },
+      method: "PUT",
+    });
+
+    expect(embedding.status, await embedding.clone().text()).toBe(200);
+    expect(retrieval.status, await retrieval.clone().text()).toBe(200);
+    expect(activate).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        kind: "embedding",
+        knowledgeSpaceId: SPACE_ID,
+        permission: {
+          capabilityGrantId: capability.grant.grantId,
+          knowledgeSpaceId: SPACE_ID,
+          tenantId: "tenant-1",
+        },
+      }),
+    );
+    expect(activate).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        kind: "retrieval",
+        knowledgeSpaceId: SPACE_ID,
+        permission: {
+          capabilityGrantId: capability.grant.grantId,
+          knowledgeSpaceId: SPACE_ID,
+          tenantId: "tenant-1",
+        },
+      }),
+    );
+  });
+
   it("stages immutable candidates and replays published profile migration requests", async () => {
     const manifests = createInMemoryKnowledgeSpaceManifestRepository({
       maxListLimit: 10,
