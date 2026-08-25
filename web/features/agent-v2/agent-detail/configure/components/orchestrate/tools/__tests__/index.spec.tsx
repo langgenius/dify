@@ -587,14 +587,14 @@ describe('AgentTools', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should keep add action available for build drafts', () => {
+    it('should hide the add action while a build draft is read-only', () => {
       renderReadonlyAgentTools()
 
       expect(
-        screen.getByRole('button', {
+        screen.queryByRole('button', {
           name: 'agentV2.agentDetail.configure.tools.add',
         }),
-      ).toBeInTheDocument()
+      ).not.toBeInTheDocument()
     })
 
     it('should hide CLI tool rows while CLI tools are disabled', () => {

@@ -1516,7 +1516,7 @@ describe('AgentSkills', () => {
     })
   })
 
-  it('should keep delete available for an embedded skill while a build draft is read-only', async () => {
+  it('should expose only download for an embedded skill while a build draft is read-only', async () => {
     const user = userEvent.setup()
     renderAgentSkills({
       apiContext: { agentId: 'agent-1', draftType: 'debug_build' },
@@ -1530,20 +1530,8 @@ describe('AgentSkills', () => {
     )
 
     expect(screen.getByText('common.operation.download')).toBeInTheDocument()
-    await user.click(screen.getByText('common.operation.delete'))
-
-    await waitFor(() => {
-      expect(mocks.deleteSkillMutationFn.mock.calls[0]?.[0]).toEqual({
-        params: {
-          agent_id: 'agent-1',
-          name: 'Tender Analyzer',
-        },
-        query: {
-          draft_type: 'debug_build',
-          version_id: undefined,
-        },
-      })
-    })
+    expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
+    expect(mocks.deleteSkillMutationFn).not.toHaveBeenCalled()
   })
 
   it('should expose only download from an embedded skill row when viewing a version', async () => {
@@ -1853,8 +1841,7 @@ describe('AgentSkills', () => {
     expect(mocks.replaceAgentSkillBindingsMutationFn).not.toHaveBeenCalled()
   })
 
-  it('should keep the add menu available for build draft skills', async () => {
-    const user = userEvent.setup()
+  it('should hide the add action while a build draft is read-only', () => {
     renderAgentSkills({
       apiContext: {
         agentId: 'agent-1',
@@ -1867,21 +1854,10 @@ describe('AgentSkills', () => {
       readOnly: true,
     })
 
-    await user.click(
-      await screen.findByRole('button', {
+    expect(
+      screen.queryByRole('button', {
         name: /agentV2\.agentDetail\.configure\.skills\.add/i,
       }),
-    )
-
-    expect(
-      await screen.findByRole('button', {
-        name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
-      }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', {
-        name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.upload\.label/i,
-      }),
-    ).toBeInTheDocument()
+    ).not.toBeInTheDocument()
   })
 })
