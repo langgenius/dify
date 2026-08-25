@@ -51,7 +51,7 @@ from controllers.console.remote_files import RemoteFileUploadPayload, upload_rem
 from controllers.console.wraps import cloud_edition_billing_resource_check, model_validate, with_current_user
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
-from core.app.apps.workflow.command_channels import send_abort_command
+from core.app.apps.execution_coordinator import send_abort_command
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,

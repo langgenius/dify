@@ -16,7 +16,7 @@ from core.workflow.llm_node import DifyLLMNode
 from core.workflow.node_runtime import DifyPreparedLLM
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from graphon.entities.base_node_data import BaseNodeData
-from graphon.enums import BuiltinNodeTypes, NodeType
+from graphon.enums import BuiltinNodeTypes, NodeExecutionType, NodeType
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelFeature, ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
@@ -344,6 +344,23 @@ class TestDifyNodeFactoryInit:
             containerize_workflow_tools=True,
         )
 
+    def test_with_graph_config_copies_factory_and_init_params(self):
+        factory = object.__new__(node_factory.DifyNodeFactory)
+        factory.graph_init_params = MagicMock()
+        factory.graph_init_params.model_copy.return_value = sentinel.scoped_init_params
+        factory._human_input_run_context = sentinel.human_input_run_context
+        factory._containerize_workflow_tools = True
+        graph_config = {"nodes": [], "edges": []}
+
+        scoped_factory = factory.with_graph_config(graph_config)
+
+        assert scoped_factory is not factory
+        assert scoped_factory.graph_init_params is sentinel.scoped_init_params
+        assert factory.graph_init_params is not sentinel.scoped_init_params
+        assert scoped_factory._human_input_run_context is sentinel.human_input_run_context
+        assert scoped_factory._containerize_workflow_tools is True
+        factory.graph_init_params.model_copy.assert_called_once_with(update={"graph_config": graph_config})
+
     def test_init_builds_default_dependencies(self):
         graph_init_params = SimpleNamespace(run_context={"context": "value"})
         graph_runtime_state = sentinel.graph_runtime_state
@@ -515,6 +532,47 @@ class TestDifyNodeFactoryCreateNode:
     def test_rejects_unknown_node_type(self, factory):
         with pytest.raises(ValueError, match="No class mapping found for node type: missing"):
             factory.create_node({"id": "node-id", "data": {"type": "missing"}})
+
+    def test_validate_node_resolves_schema_without_constructing_node(self, monkeypatch: pytest.MonkeyPatch, factory):
+        constructor = _node_constructor(return_value=sentinel.node)
+        constructor.execution_type = NodeExecutionType.BRANCH
+        monkeypatch.setattr(factory, "_resolve_node_class", MagicMock(return_value=constructor))
+
+        execution_type = factory.validate_node({"id": "node-id", "data": {"type": BuiltinNodeTypes.START}})
+
+        assert execution_type == NodeExecutionType.BRANCH
+        constructor.validate_node_data.assert_called_once()
+        constructor.assert_not_called()
+
+    def test_validate_node_rejects_invalid_human_input_delivery_config(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        factory,
+    ):
+        constructor = _node_constructor(return_value=sentinel.node)
+        monkeypatch.setattr(factory, "_resolve_node_class", MagicMock(return_value=constructor))
+
+        with pytest.raises(ValueError):
+            factory.validate_node(
+                {
+                    "id": "human-input",
+                    "data": {
+                        "type": BuiltinNodeTypes.HUMAN_INPUT,
+                        "delivery_methods": [
+                            {
+                                "type": "email",
+                                "config": {
+                                    "recipients": {"items": []},
+                                    "subject": 123,
+                                    "body": [],
+                                },
+                            }
+                        ],
+                    },
+                }
+            )
+
+        constructor.assert_not_called()
 
     def test_rejects_missing_class_mapping(self, monkeypatch: pytest.MonkeyPatch, factory):
         monkeypatch.setattr(
