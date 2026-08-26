@@ -1360,7 +1360,6 @@ export function KnowledgeSettingsForm({
                 <div className="flex items-center gap-3">
                   <NumberField
                     id="knowledge-top-k"
-                    name="knowledge-top-k"
                     min={TOP_K_MIN}
                     max={TOP_K_MAX}
                     step={1}
@@ -1425,7 +1424,6 @@ export function KnowledgeSettingsForm({
                 <div className="flex items-center gap-3">
                   <NumberField
                     id="knowledge-score-threshold"
-                    name="knowledge-score-threshold"
                     min={SCORE_THRESHOLD_MIN}
                     max={SCORE_THRESHOLD_MAX}
                     step={0.01}
