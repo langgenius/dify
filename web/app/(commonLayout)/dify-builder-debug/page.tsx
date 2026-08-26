@@ -103,7 +103,6 @@ export default function DifyBuilderDebugPage() {
   const [baseUrl, setBaseUrl] = useState(API_PREFIX)
   const [appId, setAppId] = useState('')
   const [failedRunId, setFailedRunId] = useState('')
-  const [workspaceId, setWorkspaceId] = useState('')
   const [messageText, setMessageText] = useState('')
   const [checklistJson, setChecklistJson] = useState(
     '[{"node_id":"code-1","node_type":"code","title":"Code","messages":["Code node config error"],"unconnected":false,"plugin_missing":false}]',
@@ -113,8 +112,17 @@ export default function DifyBuilderDebugPage() {
   // instead of posting to the backend.
   const [showFullDiff, setShowFullDiff] = useState(false)
 
-  const { view, lastRaw, lastError, progressLog, startFix, startChecklistFix, refresh, runAction, sendMessage } =
-    useDifyBuilderSession({ baseUrl, workspaceId })
+  const {
+    view,
+    lastRaw,
+    lastError,
+    progressLog,
+    startFix,
+    startChecklistFix,
+    refresh,
+    runAction,
+    sendMessage,
+  } = useDifyBuilderSession({ baseUrl })
 
   const handleStartFix = async () => {
     await startFix(appId, failedRunId)
@@ -189,14 +197,6 @@ export default function DifyBuilderDebugPage() {
             <input
               value={failedRunId}
               onChange={(e) => setFailedRunId(e.target.value)}
-              style={{ width: '100%' }}
-            />
-          </label>
-          <label>
-            Workspace ID
-            <input
-              value={workspaceId}
-              onChange={(e) => setWorkspaceId(e.target.value)}
               style={{ width: '100%' }}
             />
           </label>

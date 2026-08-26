@@ -13,7 +13,6 @@ type CreateSessionTarget = { failedRunId: string } | { checklistErrors: Checklis
 
 export type UseDifyBuilderSessionParams = {
   baseUrl: string
-  workspaceId: string
 }
 
 export type UseDifyBuilderSessionResult = {
@@ -33,7 +32,7 @@ export type UseDifyBuilderSessionResult = {
   sendMessage: (text: string) => Promise<boolean>
 }
 
-function useDifyBuilderApi(baseUrl: string, workspaceId: string) {
+function useDifyBuilderApi(baseUrl: string) {
   // Memoized so the returned methods stay referentially stable across renders
   // unless the connection inputs actually change (also what earns the `use` prefix).
   return useMemo(() => {
@@ -45,7 +44,6 @@ function useDifyBuilderApi(baseUrl: string, workspaceId: string) {
       const h: Record<string, string> = {}
       if (json) h['Content-Type'] = 'application/json'
       if (csrf) h[CSRF_HEADER_NAME] = Cookies.get(CSRF_COOKIE_NAME()) || ''
-      if (workspaceId) h['X-Workspace-Id'] = workspaceId
       return h
     }
 
@@ -96,11 +94,11 @@ function useDifyBuilderApi(baseUrl: string, workspaceId: string) {
       })
 
     const streamURL = (id: string) => `${root}/sessions/${id}/stream`
-    // Headers for the SSE GET: X-CSRF-Token (+ X-Workspace-Id), no Content-Type.
+    // Headers for the SSE GET: X-CSRF-Token, no Content-Type.
     const streamHeaders = () => headers(false, true)
 
     return { create, get, action, message, streamURL, streamHeaders }
-  }, [baseUrl, workspaceId])
+  }, [baseUrl])
 }
 
 /**
@@ -111,7 +109,6 @@ function useDifyBuilderApi(baseUrl: string, workspaceId: string) {
  */
 export function useDifyBuilderSession({
   baseUrl,
-  workspaceId,
 }: UseDifyBuilderSessionParams): UseDifyBuilderSessionResult {
   const [view, setView] = useState<SessionView | null>(null)
   const [lastRaw, setLastRaw] = useState<unknown>(null)
@@ -121,7 +118,7 @@ export function useDifyBuilderSession({
   const abortRef = useRef<AbortController | null>(null)
   const progressIdRef = useRef(0)
 
-  const api = useDifyBuilderApi(baseUrl, workspaceId)
+  const api = useDifyBuilderApi(baseUrl)
 
   // Cancel the in-flight stream when the owning component unmounts.
   useEffect(() => {
