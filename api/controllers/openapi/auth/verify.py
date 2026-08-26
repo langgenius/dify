@@ -8,7 +8,7 @@ from controllers.common.wraps import enforce_rbac_access
 from controllers.openapi.auth.data import AuthData, CallerKind
 from extensions.ext_database import db
 from libs.oauth_bearer import Scope, TokenType
-from services.account_service import AccountService, TenantService
+from services.account_service import AccountService
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode
 
 
@@ -77,13 +77,6 @@ def check_app_api_enabled(data: AuthData) -> None:
         return
     if not data.app.enable_api:
         raise Forbidden("service_api_disabled")
-
-
-def check_app_access(data: AuthData) -> None:
-    if data.tenant is None:
-        return
-    if not TenantService.account_belongs_to_tenant(data.account_id, data.tenant.id, session=db.session()):
-        raise Forbidden("subject_no_app_access")
 
 
 _ALLOWED_MODES_BY_TOKEN_TYPE: dict[TokenType, frozenset[WebAppAccessMode]] = {
