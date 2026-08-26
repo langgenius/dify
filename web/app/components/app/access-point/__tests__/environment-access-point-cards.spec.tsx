@@ -339,7 +339,7 @@ describe('environment access point cards', () => {
       }),
     )
     expect(screen.getByRole('button', { name: 'environment-api-keys' })).toBeInTheDocument()
-    const apiReferenceLink = screen.getByRole('button', { name: /apiInfo\.doc/ })
+    const apiReferenceLink = screen.getByRole('link', { name: /apiInfo\.doc/ })
     expect(apiReferenceLink).toHaveAttribute(
       'href',
       'https://docs.example.test/en/api-reference/guides/workflow',
@@ -369,8 +369,7 @@ describe('environment access point cards', () => {
 
     await screen.findByText(api.base_url)
     expect(await screen.findByRole('button', { name: 'environment-api-keys' })).toBeEnabled()
-    const apiReferenceLink = screen.getByRole('button', { name: /apiInfo\.doc/ })
-    expect(apiReferenceLink).not.toHaveAttribute('aria-disabled')
+    const apiReferenceLink = screen.getByRole('link', { name: /apiInfo\.doc/ })
     expect(apiReferenceLink).toHaveAttribute(
       'href',
       'https://docs.example.test/en/api-reference/guides/workflow',
@@ -395,9 +394,6 @@ describe('environment access point cards', () => {
     expect(card).not.toHaveAttribute('aria-busy')
     expect(screen.queryByText('common.loading')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'environment-api-keys' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /apiInfo\.doc/ })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
+    expect(screen.getByRole('button', { name: /apiInfo\.doc/ })).toBeDisabled()
   })
 })
