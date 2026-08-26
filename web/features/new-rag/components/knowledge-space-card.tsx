@@ -69,7 +69,7 @@ export function KnowledgeSpaceCard({
             </div>
           </div>
         </div>
-        <p className="relative z-1 line-clamp-2 min-h-8 w-full px-4 py-0.5 body-xs-regular text-text-tertiary">
+        <p className="relative z-1 line-clamp-2 min-h-8 w-full px-4 py-0.5 body-xs-regular wrap-break-word text-text-tertiary">
           {summary?.description || t(($) => $['newKnowledge.noDescription'])}
         </p>
       </Link>
