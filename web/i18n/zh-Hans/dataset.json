@@ -54,7 +54,7 @@
   "enable": "启用",
   "externalAPIForm.cancel": "取消",
   "externalAPIForm.encrypted.end": "加密并存储。",
-  "externalAPIForm.encrypted.front": "您的 API Token 将使用",
+  "externalAPIForm.encrypted.front": "您的 API 令牌将使用",
   "externalAPIForm.save": "保存",
   "externalAPIPanelDescription": "外部知识库 API 用于连接到 Dify 之外的知识库并从中检索知识。",
   "externalAPIPanelDocumentation": "了解如何创建外部知识库 API",
