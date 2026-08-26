@@ -50,7 +50,6 @@ class AuthData(BaseModel):
     required_scope: Scope | None = None
     token_type: TokenType
     account_id: uuid.UUID | None = None
-    token_hash: str
     token_id: uuid.UUID | None = None
     scopes: frozenset[Scope]
     external_identity: ExternalIdentity | None = None

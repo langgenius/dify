@@ -61,7 +61,6 @@ def _account_ctx(*, account_id: uuid.UUID = ACCOUNT_ID) -> AuthContext:
         token_id=uuid.uuid4(),
         token_type=TokenType.OAUTH_ACCOUNT,
         expires_at=None,
-        token_hash="h1",
     )
 
 
@@ -76,7 +75,6 @@ def _sso_ctx() -> AuthContext:
         token_id=uuid.uuid4(),
         token_type=TokenType.OAUTH_EXTERNAL_SSO,
         expires_at=None,
-        token_hash="h1",
     )
 
 

@@ -31,7 +31,7 @@ def _rbac_config(config_overrides: Callable[..., None]) -> None:
 
 
 def _data(**kwargs) -> AuthData:
-    defaults: dict = {"token_type": TokenType.OAUTH_ACCOUNT, "token_hash": "hash", "scopes": frozenset({Scope.FULL})}
+    defaults: dict = {"token_type": TokenType.OAUTH_ACCOUNT, "scopes": frozenset({Scope.FULL})}
     defaults.update(kwargs)
     return AuthData(**defaults)
 
