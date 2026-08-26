@@ -180,9 +180,13 @@ class FeatureService:
         system_features.enable_learn_app = dify_config.ENABLE_LEARN_APP
         system_features.webapp_auth.allow_public_access = dify_config.WEBAPP_PUBLIC_ACCESS_ENABLED
         system_features.enable_step_by_step_tour = dify_config.ENABLE_STEP_BY_STEP_TOUR
-        system_features.knowledge_fs_enabled = dify_config.KNOWLEDGE_FS_ENABLED
-        system_features.knowledge_fs_upload_enabled = bool(
+        knowledge_fs_enabled = bool(
             dify_config.KNOWLEDGE_FS_ENABLED
+            and dify_config.DEPLOYMENT_EDITION in {DeploymentEdition.CLOUD, DeploymentEdition.ENTERPRISE}
+        )
+        system_features.knowledge_fs_enabled = knowledge_fs_enabled
+        system_features.knowledge_fs_upload_enabled = bool(
+            knowledge_fs_enabled
             and dify_config.KNOWLEDGE_FS_BASE_URL
             and dify_config.KNOWLEDGE_FS_CAPABILITY_V2_ENABLED
             and dify_config.KNOWLEDGE_FS_CAPABILITY_V2_SIGNING_KID

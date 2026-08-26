@@ -31,6 +31,11 @@ def test_get_system_features_reads_knowledge_fs_availability(
     signing_ready: bool,
     upload_enabled: bool,
 ) -> None:
+    monkeypatch.setattr(
+        feature_service_module.dify_config,
+        "DEPLOYMENT_EDITION",
+        DeploymentEdition.CLOUD,
+    )
     monkeypatch.setattr(feature_service_module.dify_config, "KNOWLEDGE_FS_ENABLED", enabled)
     monkeypatch.setattr(feature_service_module.dify_config, "KNOWLEDGE_FS_BASE_URL", base_url)
     monkeypatch.setattr(
@@ -48,10 +53,31 @@ def test_get_system_features_reads_knowledge_fs_availability(
         "KNOWLEDGE_FS_CAPABILITY_V2_PRIVATE_KEY_PEM",
         object() if signing_ready else None,
     )
-
     result = FeatureService.get_system_features()
 
     assert result.knowledge_fs_enabled is enabled
     assert result.knowledge_fs_upload_enabled is upload_enabled
     assert result.model_dump()["knowledge_fs_enabled"] is enabled
     assert result.model_dump()["knowledge_fs_upload_enabled"] is upload_enabled
+
+
+@pytest.mark.parametrize(
+    ("edition", "expected"),
+    [(DeploymentEdition.ENTERPRISE, True), (DeploymentEdition.COMMUNITY, False)],
+)
+def test_get_system_features_controls_knowledge_fs_by_edition(
+    monkeypatch: pytest.MonkeyPatch,
+    edition: DeploymentEdition,
+    expected: bool,
+) -> None:
+    monkeypatch.setattr(
+        feature_service_module.dify_config,
+        "DEPLOYMENT_EDITION",
+        edition,
+    )
+    monkeypatch.setattr(feature_service_module.dify_config, "KNOWLEDGE_FS_ENABLED", True)
+    monkeypatch.setattr(FeatureService, "_fulfill_params_from_enterprise", lambda _: None)
+
+    result = FeatureService.get_system_features()
+
+    assert result.knowledge_fs_enabled is expected

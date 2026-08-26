@@ -4,6 +4,15 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { useAvailableNodesMetaData } from '../use-available-nodes-meta-data'
 
 const mockIsAgentV2Enabled = vi.hoisted(() => vi.fn(() => true))
+const mockKnowledgeFsEnabled = vi.hoisted(() => vi.fn(() => true))
+
+vi.mock('jotai', () => ({
+  useAtomValue: () => mockKnowledgeFsEnabled(),
+}))
+
+vi.mock('@/features/system-features/state', () => ({
+  knowledgeFsEnabledAtom: {},
+}))
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path?: string) => `https://docs.dify.ai${path || ''}`,
@@ -35,6 +44,10 @@ vi.mock('@/app/components/workflow/constants/node', () => ({
       metaData: { type: BlockEnum.AgentV2 },
       defaultValue: { title: 'Agent' },
     },
+    {
+      metaData: { type: BlockEnum.KnowledgeRetrievalV2 },
+      defaultValue: { title: 'Knowledge Retrieval V2' },
+    },
   ],
 }))
 
@@ -63,6 +76,7 @@ describe('useAvailableNodesMetaData', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsAgentV2Enabled.mockReturnValue(true)
+    mockKnowledgeFsEnabled.mockReturnValue(true)
   })
 
   it('should return nodes and nodesMap', () => {
@@ -146,6 +160,7 @@ describe('useAvailableNodesMetaData', () => {
 
     expect(nodeTypes).toContain(BlockEnum.LLM)
     expect(nodeTypes).toContain(BlockEnum.HttpRequest)
+    expect(nodeTypes).toContain(BlockEnum.KnowledgeRetrievalV2)
     expect(nodeTypes).not.toContain(BlockEnum.HumanInput)
   })
 
@@ -169,5 +184,15 @@ describe('useAvailableNodesMetaData', () => {
     expect(nodeTypes).not.toContain(BlockEnum.AgentV2)
     expect(result.current.nodesMap[BlockEnum.Agent]).toBeDefined()
     expect(result.current.nodesMap[BlockEnum.AgentV2]).toBeUndefined()
+  })
+
+  it('should hide Knowledge Retrieval V2 when KnowledgeFS is unavailable', () => {
+    mockKnowledgeFsEnabled.mockReturnValue(false)
+
+    const { result } = renderHook(() => useAvailableNodesMetaData())
+    const nodeTypes = result.current.nodes.map((node) => node.metaData.type)
+
+    expect(nodeTypes).not.toContain(BlockEnum.KnowledgeRetrievalV2)
+    expect(result.current.nodesMap[BlockEnum.KnowledgeRetrievalV2]).toBeUndefined()
   })
 })
