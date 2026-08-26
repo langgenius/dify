@@ -16,7 +16,7 @@ from hashlib import sha256
 from typing import Any, NotRequired, TypedDict
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
-from sqlalchemy import Row, delete, func, or_, select, update
+from sqlalchemy import Row, delete, func, select, update
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
@@ -305,23 +305,9 @@ class AccountService:
 
     @staticmethod
     def has_account_with_normalized_email(email: str, *, session: Session) -> bool:
-        """Check the normalized identity, including legacy rows not yet backfilled."""
+        """Check the normalized identity through its indexed column."""
         normalized_email = normalize_email(email)
-        candidate_emails = [normalized_email]
-        local_part, separator, domain = normalized_email.rpartition("@")
-        if separator and domain == "gmail.com":
-            candidate_emails.append(f"{local_part}@googlemail.com")
-
-        row = session.execute(
-            select(Account.id)
-            .where(
-                or_(
-                    Account.normalized_email == normalized_email,
-                    func.lower(Account.email).in_(candidate_emails),
-                )
-            )
-            .limit(1)
-        ).scalar_one_or_none()
+        row = session.scalar(select(Account.id).where(Account.normalized_email == normalized_email).limit(1))
         return row is not None
 
     @staticmethod
