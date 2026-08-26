@@ -11,6 +11,8 @@ import { chunkTreeLabel, visibleDocumentChunkNodes } from './document-detail-mod
 
 const VIRTUALIZATION_THRESHOLD = 80
 const TREE_ROW_SIZE = 30
+const TREE_ROW_INLINE_PADDING = 8
+const TREE_DEPTH_INDENT = 16
 
 function AutomaticChunkPageLoader({
   fetchNextPage,
@@ -204,7 +206,10 @@ export function DocumentChunkTreePanel({
             'bg-state-base-hover ring-1 ring-state-accent-solid ring-inset',
         )}
         role="treeitem"
-        style={style}
+        style={{
+          ...style,
+          paddingInlineStart: TREE_ROW_INLINE_PADDING + depth * TREE_DEPTH_INDENT,
+        }}
         tabIndex={-1}
         onClick={() => {
           setFocusedNodeId(node.id)

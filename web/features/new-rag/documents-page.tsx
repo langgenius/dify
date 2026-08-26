@@ -2568,8 +2568,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       <section
         ref={documentsSectionRef}
         className={cn(
-          'relative flex min-h-full w-full flex-col gap-4 p-4 @min-[768px]/knowledge-content:p-6 @min-[1280px]/knowledge-content:p-8',
-          bulkActionsVisible && 'pb-[calc(7rem+env(safe-area-inset-bottom,0px))]',
+          'relative flex min-h-full w-full flex-col gap-4 px-6 pt-3',
+          bulkActionsVisible ? 'pb-[calc(7rem+env(safe-area-inset-bottom,0px))]' : 'pb-6',
         )}
         onDragEnter={(event) => {
           const types = Array.from(event.dataTransfer.types ?? [])
