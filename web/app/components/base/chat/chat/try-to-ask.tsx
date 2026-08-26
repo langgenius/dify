@@ -9,33 +9,30 @@ type TryToAskProps = {
   suggestedQuestions: string[]
   onSend: OnSend
 }
-const TryToAsk: FC<TryToAskProps> = ({
-  suggestedQuestions,
-  onSend,
-}) => {
+const TryToAsk: FC<TryToAskProps> = ({ suggestedQuestions, onSend }) => {
   const { t } = useTranslation()
 
   return (
     <div className="mb-2 py-2">
       <div className="mb-2.5 flex items-center justify-between gap-2">
         <Divider bgStyle="gradient" className="h-px w-auto! grow rotate-180" />
-        <div className="shrink-0 system-xs-medium-uppercase text-text-tertiary">{t('feature.suggestedQuestionsAfterAnswer.tryToAsk', { ns: 'appDebug' })}</div>
+        <div className="shrink-0 system-xs-medium-uppercase text-text-tertiary">
+          {t(($) => $['feature.suggestedQuestionsAfterAnswer.tryToAsk'], { ns: 'appDebug' })}
+        </div>
         <Divider bgStyle="gradient" className="h-px w-auto! grow" />
       </div>
       <div className="flex flex-wrap justify-center">
-        {
-          suggestedQuestions.map((suggestQuestion, index) => (
-            <Button
-              size="small"
-              key={index}
-              variant="secondary-accent"
-              className="pointer-events-auto mr-1 mb-1 last:mr-0"
-              onClick={() => onSend(suggestQuestion)}
-            >
-              {suggestQuestion}
-            </Button>
-          ))
-        }
+        {suggestedQuestions.map((suggestQuestion, index) => (
+          <Button
+            size="small"
+            key={index}
+            variant="secondary-accent"
+            className="pointer-events-auto mr-1 mb-1 last:mr-0"
+            onClick={() => onSend(suggestQuestion)}
+          >
+            {suggestQuestion}
+          </Button>
+        ))}
       </div>
     </div>
   )

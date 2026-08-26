@@ -1,6 +1,7 @@
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import SnippetList from '..'
 
@@ -34,7 +35,8 @@ vi.mock('@/service/use-snippets', () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
-  useInfiniteSnippetList: (params: unknown, options: unknown) => mockUseInfiniteSnippetList(params, options),
+  useInfiniteSnippetList: (params: unknown, options: unknown) =>
+    mockUseInfiniteSnippetList(params, options),
   useUpdateSnippetMutation: () => ({
     mutate: vi.fn(),
     isPending: false,
@@ -55,6 +57,13 @@ vi.mock('@/service/client', () => ({
     systemFeatures: vi.fn(),
   },
   consoleQuery: {
+    account: {
+      profile: {
+        get: {
+          queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+        },
+      },
+    },
     tags: {
       list: {
         queryOptions: (options: unknown) => options,
@@ -72,21 +81,23 @@ const mockIsCurrentWorkspaceEditor = vi.fn(() => true)
 const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
 const mockWorkspacePermissionKeys = vi.fn(() => ['snippets.create_and_modify'])
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
     userProfile: { id: 'creator-1' },
     currentWorkspace: { id: 'workspace-1' },
     isLoadingCurrentWorkspace: false,
     workspacePermissionKeys: mockWorkspacePermissionKeys(),
   }))
 })
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    userProfile: { id: 'creator-1' },
+    currentWorkspace: { id: 'workspace-1' },
+    isLoadingCurrentWorkspace: false,
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }))
 })
 
 vi.mock('@/service/use-common', () => ({
@@ -118,19 +129,23 @@ vi.mock('@/next/dynamic', () => ({
           'data-testid': 'tag-management-modal',
           'data-show': String(props.show),
         },
-        React.createElement('button', { type: 'button', onClick: props.onClose }, 'close tag modal'),
-        React.createElement('button', { type: 'button', onClick: props.onTagsChange }, 'refresh tags'),
+        React.createElement(
+          'button',
+          { type: 'button', onClick: props.onClose },
+          'close tag modal',
+        ),
+        React.createElement(
+          'button',
+          { type: 'button', onClick: props.onTagsChange },
+          'refresh tags',
+        ),
       )
     }
   },
 }))
 
 vi.mock('@/features/tag-management/components/tag-filter', () => ({
-  TagFilter: ({
-    onOpenTagManagement,
-  }: {
-    onOpenTagManagement: () => void
-  }) => (
+  TagFilter: ({ onOpenTagManagement }: { onOpenTagManagement: () => void }) => (
     <button type="button" onClick={onOpenTagManagement}>
       common.tag.placeholder
     </button>
@@ -138,7 +153,7 @@ vi.mock('@/features/tag-management/components/tag-filter', () => ({
 }))
 
 vi.mock('@/app/components/snippets/create-snippet-dialog', () => ({
-  default: () => null,
+  CreateSnippetDialog: () => null,
 }))
 
 vi.mock('@/features/tag-management/components/tag-selector', () => ({
@@ -150,8 +165,12 @@ vi.mock('@/features/tag-management/components/tag-selector', () => ({
     onTagsChange: () => void
   }) => (
     <div data-testid="snippet-card-tags">
-      <button type="button" onClick={onOpenTagManagement}>open card tags</button>
-      <button type="button" onClick={onTagsChange}>refresh card tags</button>
+      <button type="button" onClick={onOpenTagManagement}>
+        open card tags
+      </button>
+      <button type="button" onClick={onTagsChange}>
+        refresh card tags
+      </button>
     </div>
   ),
 }))
@@ -185,27 +204,29 @@ const mockFetchNextPage = vi.fn()
 
 const mockSnippetListState = {
   data: {
-    pages: [{
-      data: [
-        {
-          id: 'snippet-1',
-          name: 'Sales Snippet',
-          description: 'Builds a sales follow-up.',
-          type: 'node',
-          is_published: true,
-          use_count: 12,
-          tags: [],
-          created_at: 1704067200,
-          created_by: 'creator-1',
-          updated_at: 1704153600,
-          updated_by: 'creator-2',
-        },
-      ],
-      page: 1,
-      limit: 30,
-      total: 1,
-      has_more: false,
-    }],
+    pages: [
+      {
+        data: [
+          {
+            id: 'snippet-1',
+            name: 'Sales Snippet',
+            description: 'Builds a sales follow-up.',
+            type: 'node',
+            is_published: true,
+            use_count: 12,
+            tags: [],
+            created_at: 1704067200,
+            created_by: 'creator-1',
+            updated_at: 1704153600,
+            updated_by: 'creator-2',
+          },
+        ],
+        page: 1,
+        limit: 30,
+        total: 1,
+        has_more: false,
+      },
+    ],
   },
   isLoading: false,
   isFetching: false,
@@ -219,14 +240,15 @@ const renderList = ({
 }: {
   brandingEnabled?: boolean
 } = {}) => {
-  const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
+  const { wrapper: ConsoleQueryWrapper } = createConsoleQueryWrapper({
+    accountProfile: { id: 'creator-1' },
     systemFeatures: { branding: { enabled: brandingEnabled } },
   })
 
   return renderWithNuqs(
-    <SystemFeaturesWrapper>
+    <ConsoleQueryWrapper>
       <SnippetList />
-    </SystemFeaturesWrapper>,
+    </ConsoleQueryWrapper>,
   )
 }
 
@@ -253,11 +275,16 @@ describe('SnippetList', () => {
     expect(screen.getByRole('link', { name: 'common.menus.apps' })).toHaveAttribute('href', '/apps')
     expect(screen.getByRole('heading', { name: 'workflow.tabs.snippets' })).toBeInTheDocument()
     expect(screen.getByText('app.studio.filters.creators')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /workflow\.common\.published \/ snippet\.draft/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /workflow\.common\.published \/ snippet\.draft/i }),
+    ).toBeInTheDocument()
     expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('workflow.tabs.searchSnippets')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'snippet.create' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Sales Snippet/ })).toHaveAttribute('href', '/snippets/snippet-1/orchestrate')
+    expect(screen.getByRole('link', { name: /Sales Snippet/ })).toHaveAttribute(
+      'href',
+      '/snippets/snippet-1/orchestrate',
+    )
     expect(screen.getByTestId('tag-management-modal')).toBeInTheDocument()
   })
 
@@ -267,10 +294,7 @@ describe('SnippetList', () => {
     const card = screen.getByRole('link', { name: /Sales Snippet/ }).closest('article')
     const grid = card?.parentElement
 
-    expect(grid).toHaveClass(
-      'grid',
-      'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
-    )
+    expect(grid).toHaveClass('grid', 'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]')
   })
 
   it('passes creator, tag, and search filters to the snippets list query', () => {
@@ -280,69 +304,88 @@ describe('SnippetList', () => {
 
     renderList()
 
-    expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith({
-      page: 1,
-      limit: 30,
-      keyword: 'sales',
-      tag_ids: ['tag-1', 'tag-2'],
-      creator_ids: ['creator-1', 'creator-2'],
-    }, {
-      enabled: true,
-    })
+    expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(
+      {
+        page: 1,
+        limit: 30,
+        keyword: 'sales',
+        tag_ids: ['tag-1', 'tag-2'],
+        creator_ids: ['creator-1', 'creator-2'],
+      },
+      {
+        enabled: true,
+      },
+    )
   })
 
   it('does not pass published state to the snippets list query by default', () => {
     renderList()
 
-    expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(expect.not.objectContaining({
-      is_published: expect.any(Boolean),
-    }), {
-      enabled: true,
-    })
+    expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        is_published: expect.any(Boolean),
+      }),
+      {
+        enabled: true,
+      },
+    )
   })
 
   it('passes published state when selecting the published filter', () => {
     renderList()
 
-    fireEvent.click(screen.getByRole('button', { name: /workflow\.common\.published \/ snippet\.draft/i }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /workflow\.common\.published \/ snippet\.draft/i }),
+    )
     fireEvent.click(screen.getByRole('menuitemradio', { name: /workflow\.common\.published/i }))
 
-    expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(expect.objectContaining({
-      is_published: true,
-    }), {
-      enabled: true,
-    })
+    expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        is_published: true,
+      }),
+      {
+        enabled: true,
+      },
+    )
   })
 
   it('passes draft state when selecting the draft filter', () => {
     renderList()
 
-    fireEvent.click(screen.getByRole('button', { name: /workflow\.common\.published \/ snippet\.draft/i }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /workflow\.common\.published \/ snippet\.draft/i }),
+    )
     fireEvent.click(screen.getByRole('menuitemradio', { name: /snippet\.draft/i }))
 
-    expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(expect.objectContaining({
-      is_published: false,
-    }), {
-      enabled: true,
-    })
+    expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        is_published: false,
+      }),
+      {
+        enabled: true,
+      },
+    )
   })
 
   it('updates the search query state from the search input', () => {
     renderList()
 
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'summary' } })
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'summary' } })
 
     expect(mockSetKeywords).toHaveBeenCalledWith('summary')
   })
 
-  it('clears the search query state', () => {
+  it('clears the search query state and returns focus to the search input', async () => {
+    const user = userEvent.setup()
     mockQueryState.keywords = 'summary'
 
     renderList()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+    const searchInput = screen.getByRole('searchbox', { name: 'workflow.tabs.searchSnippets' })
+    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
     expect(mockSetKeywords).toHaveBeenCalledWith('')
+    expect(searchInput).toHaveFocus()
   })
 
   it('updates the creator query state as a multi creator filter', () => {
@@ -399,13 +442,15 @@ describe('SnippetList', () => {
     mockUseInfiniteSnippetList.mockReturnValue({
       ...mockSnippetListState,
       data: {
-        pages: [{
-          data: [],
-          page: 1,
-          limit: 30,
-          total: 0,
-          has_more: false,
-        }],
+        pages: [
+          {
+            data: [],
+            page: 1,
+            limit: 30,
+            total: 0,
+            has_more: false,
+          },
+        ],
       },
       refetch: mockRefetch,
       fetchNextPage: mockFetchNextPage,
@@ -441,9 +486,10 @@ describe('SnippetList', () => {
 
     renderList()
 
-    intersectionCallback?.([
-      { isIntersecting: true } as IntersectionObserverEntry,
-    ], {} as IntersectionObserver)
+    intersectionCallback?.(
+      [{ isIntersecting: true } as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    )
 
     expect(mockFetchNextPage).toHaveBeenCalledTimes(1)
   })
@@ -463,9 +509,10 @@ describe('SnippetList', () => {
 
     renderList()
 
-    intersectionCallback?.([
-      { isIntersecting: true } as IntersectionObserverEntry,
-    ], {} as IntersectionObserver)
+    intersectionCallback?.(
+      [{ isIntersecting: true } as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    )
     expect(mockFetchNextPage).not.toHaveBeenCalled()
   })
 

@@ -103,6 +103,12 @@ class ProviderNotSupportSpeechToTextError(BaseHTTPException):
     code = 400
 
 
+class SpeechToTextDisabledError(BaseHTTPException):
+    error_code = "speech_to_text_disabled"
+    description = "Speech to text is disabled."
+    code = 400
+
+
 class WebAppAuthRequiredError(BaseHTTPException):
     error_code = "web_sso_auth_required"
     description = "Web app authentication required."
@@ -113,6 +119,18 @@ class WebAppAuthAccessDeniedError(BaseHTTPException):
     error_code = "web_app_access_denied"
     description = "You do not have permission to access this web app."
     code = 401
+
+
+class WebAppNotFoundError(BaseHTTPException):
+    error_code = "app_not_found"
+    description = "App not found."
+    code = 404
+
+
+class WebAppAccessServiceUnavailableError(BaseHTTPException):
+    error_code = "web_app_access_unavailable"
+    description = "Web app access service is unavailable."
+    code = 503
 
 
 class InvokeRateLimitError(BaseHTTPException):

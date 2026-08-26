@@ -1,7 +1,7 @@
 import type { AccountContext } from './hosts'
 import { useTempConfigDir } from '@test/fixtures/config-dir'
 import { MemStore } from '@test/fixtures/mem-store'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { AccountContextSchema, notLoggedInError, Registry, RegistrySchema } from './hosts'
 
 describe('RegistrySchema', () => {
@@ -71,13 +71,15 @@ describe('notLoggedInError', () => {
     expect(notLoggedInError().toString()).toMatch(/auth login/)
   })
   it('accepts a custom hint', () => {
-    expect(notLoggedInError('run \'difyctl use host\'').toString()).toMatch(/use host/)
+    expect(notLoggedInError("run 'difyctl use host'").toString()).toMatch(/use host/)
   })
 })
 
 describe('Registry (pure)', () => {
   const baseReg = (): Registry => Registry.empty('file')
-  const ctx = (email: string): AccountContext => ({ account: { id: `id-${email}`, email, name: email } })
+  const ctx = (email: string): AccountContext => ({
+    account: { id: `id-${email}`, email, name: email },
+  })
 
   it('upsert creates host + account; remove drops them', () => {
     const reg = baseReg()

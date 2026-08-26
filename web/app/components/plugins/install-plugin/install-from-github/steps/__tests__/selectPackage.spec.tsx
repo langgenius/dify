@@ -1,6 +1,7 @@
 import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../../../types'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum } from '../../../../types'
 import SelectPackage from '../selectPackage'
 
@@ -18,54 +19,6 @@ vi.mock('../../../hooks', async (importOriginal) => {
   return {
     ...actual,
     handleUpload: mockHandleUpload,
-  }
-})
-
-vi.mock('@langgenius/dify-ui/select', async () => {
-  const React = await import('react')
-  const SelectContext = React.createContext<{
-    readOnly?: boolean
-    onValueChange?: (value: string) => void
-  }>({})
-
-  return {
-    Select: ({ children, readOnly, onValueChange }: {
-      children: React.ReactNode
-      readOnly?: boolean
-      onValueChange?: (value: string) => void
-    }) => (
-      <SelectContext.Provider value={{ readOnly, onValueChange }}>
-        <div>{children}</div>
-      </SelectContext.Provider>
-    ),
-    SelectLabel: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    SelectTrigger: ({ children }: { children: React.ReactNode }) => {
-      const context = React.useContext(SelectContext)
-      return (
-        <div>
-          <div data-testid="select-trigger" className={context.readOnly ? 'cursor-not-allowed' : 'cursor-pointer'}>
-            {children}
-          </div>
-          <button data-testid="select-empty" type="button" onClick={() => context.onValueChange?.('')}>
-            empty select value
-          </button>
-          <button data-testid="select-invalid" type="button" onClick={() => context.onValueChange?.('__missing__')}>
-            invalid select value
-          </button>
-        </div>
-      )
-    },
-    SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    SelectItem: ({ children, value }: { children: React.ReactNode, value: string }) => {
-      const context = React.useContext(SelectContext)
-      return (
-        <button type="button" onClick={() => context.onValueChange?.(value)}>
-          {children}
-        </button>
-      )
-    },
-    SelectItemText: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-    SelectItemIndicator: () => null,
   }
 })
 
@@ -121,7 +74,7 @@ type TestProps = {
   selectedPackage?: string
   packages?: SelectOption[]
   onSelectPackage?: (item: SelectOption) => void
-  onUploaded?: (result: { uniqueIdentifier: string, manifest: PluginDeclaration }) => void
+  onUploaded?: (result: { uniqueIdentifier: string; manifest: PluginDeclaration }) => void
   onFailed?: (errorMsg: string) => void
   onBack?: () => void
 }
@@ -136,7 +89,10 @@ describe('SelectPackage', () => {
     selectedPackage: '',
     packages: createPackages(),
     onSelectPackage: vi.fn() as (item: SelectOption) => void,
-    onUploaded: vi.fn() as (result: { uniqueIdentifier: string, manifest: PluginDeclaration }) => void,
+    onUploaded: vi.fn() as (result: {
+      uniqueIdentifier: string
+      manifest: PluginDeclaration
+    }) => void,
     onFailed: vi.fn() as (errorMsg: string) => void,
     onBack: vi.fn() as () => void,
   })
@@ -152,8 +108,7 @@ describe('SelectPackage', () => {
     const labelElement = screen.getByText(label)
     const labelContainer = labelElement.closest('label') ?? labelElement.parentElement
     const section = labelContainer?.parentElement
-    if (!(section instanceof HTMLElement))
-      throw new Error(`Missing section for ${label}`)
+    if (!(section instanceof HTMLElement)) throw new Error(`Missing section for ${label}`)
     return section
   }
 
@@ -187,7 +142,9 @@ describe('SelectPackage', () => {
     it('should not render back button when in edit mode', () => {
       renderSelectPackage({ updatePayload: createUpdatePayload() })
 
-      expect(screen.queryByRole('button', { name: 'plugin.installModal.back' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.installModal.back' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should render next button', () => {
@@ -293,28 +250,20 @@ describe('SelectPackage', () => {
       expect(mockHandleUpload).not.toHaveBeenCalled()
     })
 
-    it('should ignore empty and unknown version selections', () => {
+    it('should select a valid version option', async () => {
+      const user = userEvent.setup()
       const onSelectVersion = vi.fn()
       renderSelectPackage({ onSelectVersion })
 
       const section = getSection('plugin.installFromGitHub.selectVersion')
-      fireEvent.click(within(section).getByTestId('select-empty'))
-      fireEvent.click(within(section).getByTestId('select-invalid'))
-
-      expect(onSelectVersion).not.toHaveBeenCalled()
-    })
-
-    it('should select a valid version option', () => {
-      const onSelectVersion = vi.fn()
-      renderSelectPackage({ onSelectVersion })
-
-      const section = getSection('plugin.installFromGitHub.selectVersion')
-      fireEvent.click(within(section).getByRole('button', { name: 'v0.9.0' }))
+      await user.click(within(section).getByRole('combobox'))
+      await user.click(await screen.findByRole('option', { name: 'v0.9.0' }))
 
       expect(onSelectVersion).toHaveBeenCalledWith({ value: 'v0.9.0', name: 'v0.9.0' })
     })
 
-    it('should ignore empty and unknown package selections', () => {
+    it('should select a valid package option', async () => {
+      const user = userEvent.setup()
       const onSelectPackage = vi.fn()
       renderSelectPackage({
         selectedVersion: 'v1.0.0',
@@ -322,23 +271,13 @@ describe('SelectPackage', () => {
       })
 
       const section = getSection('plugin.installFromGitHub.selectPackage')
-      fireEvent.click(within(section).getByTestId('select-empty'))
-      fireEvent.click(within(section).getByTestId('select-invalid'))
+      await user.click(within(section).getByRole('combobox'))
+      await user.click(await screen.findByRole('option', { name: 'plugin.tar.gz' }))
 
-      expect(onSelectPackage).not.toHaveBeenCalled()
-    })
-
-    it('should select a valid package option', () => {
-      const onSelectPackage = vi.fn()
-      renderSelectPackage({
-        selectedVersion: 'v1.0.0',
-        onSelectPackage,
+      expect(onSelectPackage).toHaveBeenCalledWith({
+        value: 'plugin.tar.gz',
+        name: 'plugin.tar.gz',
       })
-
-      const section = getSection('plugin.installFromGitHub.selectPackage')
-      fireEvent.click(within(section).getByRole('button', { name: 'plugin.tar.gz' }))
-
-      expect(onSelectPackage).toHaveBeenCalledWith({ value: 'plugin.tar.gz', name: 'plugin.tar.gz' })
     })
   })
 
@@ -405,9 +344,12 @@ describe('SelectPackage', () => {
 
     it('should not call upload twice when already uploading', async () => {
       let resolveUpload: (value?: unknown) => void
-      mockHandleUpload.mockImplementation(() => new Promise((resolve) => {
-        resolveUpload = resolve
-      }))
+      mockHandleUpload.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveUpload = resolve
+          }),
+      )
 
       renderSelectPackage({
         selectedVersion: 'v1.0.0',
@@ -431,9 +373,12 @@ describe('SelectPackage', () => {
 
     it('should disable back button while uploading', async () => {
       let resolveUpload: (value?: unknown) => void
-      mockHandleUpload.mockImplementation(() => new Promise((resolve) => {
-        resolveUpload = resolve
-      }))
+      mockHandleUpload.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveUpload = resolve
+          }),
+      )
 
       renderSelectPackage({
         selectedVersion: 'v1.0.0',
@@ -491,7 +436,9 @@ describe('SelectPackage', () => {
       renderSelectPackage({ updatePayload: createUpdatePayload() })
 
       // Should not show back button in edit mode
-      expect(screen.queryByRole('button', { name: 'plugin.installModal.back' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.installModal.back' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should re-enable buttons after upload completes', async () => {
@@ -533,16 +480,16 @@ describe('SelectPackage', () => {
       renderSelectPackage({ selectedVersion: '' })
 
       // When no version is selected, package select should be readonly
-      const trigger = screen.getAllByTestId('select-trigger')[1]
-      expect(trigger).toHaveClass('cursor-not-allowed')
+      const trigger = screen.getAllByRole('combobox')[1]
+      expect(trigger).toHaveAttribute('aria-readonly', 'true')
     })
 
     it('should make package select active when version is selected', () => {
       renderSelectPackage({ selectedVersion: 'v1.0.0' })
 
       // When version is selected, package select should be active
-      const trigger = screen.getAllByTestId('select-trigger')[1]
-      expect(trigger).toHaveClass('cursor-pointer')
+      const trigger = screen.getAllByRole('combobox')[1]
+      expect(trigger).not.toHaveAttribute('aria-readonly', 'true')
     })
   })
 
@@ -609,9 +556,12 @@ describe('SelectPackage', () => {
 
     it('should disable next button when uploading even with valid selections', async () => {
       let resolveUpload: (value?: unknown) => void
-      mockHandleUpload.mockImplementation(() => new Promise((resolve) => {
-        resolveUpload = resolve
-      }))
+      mockHandleUpload.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveUpload = resolve
+          }),
+      )
 
       renderSelectPackage({
         selectedVersion: 'v1.0.0',
@@ -705,7 +655,9 @@ describe('SelectPackage', () => {
       renderSelectPackage({ updatePayload })
 
       // Back button should not be rendered in edit mode
-      expect(screen.queryByRole('button', { name: 'plugin.installModal.back' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.installModal.back' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should set isEdit to false when updatePayload is undefined', () => {
@@ -854,9 +806,12 @@ describe('SelectPackage', () => {
   describe('Upload State Management', () => {
     it('should set isUploading to true when upload starts', async () => {
       let resolveUpload: (value?: unknown) => void
-      mockHandleUpload.mockImplementation(() => new Promise((resolve) => {
-        resolveUpload = resolve
-      }))
+      mockHandleUpload.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveUpload = resolve
+          }),
+      )
 
       renderSelectPackage({
         selectedVersion: 'v1.0.0',
@@ -910,9 +865,12 @@ describe('SelectPackage', () => {
 
     it('should not allow back button click while uploading', async () => {
       let resolveUpload: (value?: unknown) => void
-      mockHandleUpload.mockImplementation(() => new Promise((resolve) => {
-        resolveUpload = resolve
-      }))
+      mockHandleUpload.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveUpload = resolve
+          }),
+      )
 
       const onBack = vi.fn()
       renderSelectPackage({

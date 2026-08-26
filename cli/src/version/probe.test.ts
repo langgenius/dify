@@ -4,7 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { platform, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { startMock } from '@test/fixtures/dify-mock/server'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { Registry } from '@/auth/hosts'
 import { ENV_CONFIG_DIR } from '@/store/dir'
 import { arch } from '@/sys/index'
@@ -75,7 +75,9 @@ describe('runVersionProbe', () => {
   it('distinguishes loadActive disk failure from no-host configured in the detail', async () => {
     const errReport = await runVersionProbe({
       skipServer: false,
-      loadActive: async () => { throw new Error('disk-explode') },
+      loadActive: async () => {
+        throw new Error('disk-explode')
+      },
       probe: async () => ({ version: '1.6.4', edition: 'CLOUD' }),
     })
     expect(errReport.server.reachable).toBe(false)
@@ -109,7 +111,7 @@ describe('runVersionProbe', () => {
     const report = await runVersionProbe({
       skipServer: false,
       loadActive: async () => active(),
-      probe: async () => ({ version: '99.0.0', edition: 'SELF_HOSTED' }),
+      probe: async () => ({ version: '99.0.0', edition: 'COMMUNITY' }),
     })
 
     expect(report.server.reachable).toBe(true)
@@ -120,7 +122,7 @@ describe('runVersionProbe', () => {
     const report = await runVersionProbe({
       skipServer: false,
       loadActive: async () => active(),
-      probe: async (): Promise<ServerVersionResponse> => ({ version: '', edition: 'SELF_HOSTED' }),
+      probe: async (): Promise<ServerVersionResponse> => ({ version: '', edition: 'COMMUNITY' }),
     })
 
     expect(report.server.reachable).toBe(true)
@@ -131,7 +133,9 @@ describe('runVersionProbe', () => {
     const report = await runVersionProbe({
       skipServer: false,
       loadActive: async () => active(),
-      probe: async () => { throw new Error('timeout') },
+      probe: async () => {
+        throw new Error('timeout')
+      },
     })
 
     expect(report.server.reachable).toBe(false)
@@ -145,7 +149,7 @@ describe('runVersionProbe', () => {
     const report = await runVersionProbe({
       skipServer: false,
       loadActive: async () => active({ host: 'localhost:5001', scheme: 'http' }),
-      probe: async () => ({ version: '1.6.4', edition: 'SELF_HOSTED' }),
+      probe: async () => ({ version: '1.6.4', edition: 'COMMUNITY' }),
     })
 
     expect(report.server.endpoint).toBe('http://localhost:5001')
@@ -162,7 +166,9 @@ describe('runVersionProbe', () => {
     try {
       process.env[ENV_CONFIG_DIR] = configDir
       const reg = Registry.empty('file')
-      reg.upsert(url.host, 'test@dify.ai', { account: { id: 'acct-1', email: 'test@dify.ai', name: 'Test' } })
+      reg.upsert(url.host, 'test@dify.ai', {
+        account: { id: 'acct-1', email: 'test@dify.ai', name: 'Test' },
+      })
       reg.setHost(url.host)
       reg.setAccount('test@dify.ai')
       reg.setScheme(url.host, url.protocol.replace(':', ''))
@@ -176,12 +182,9 @@ describe('runVersionProbe', () => {
       expect(report.server.version).toBe('1.6.4')
       expect(report.server.edition).toBe('CLOUD')
       expect(report.compat.status).toBe('compatible')
-    }
-    finally {
-      if (prevConfig === undefined)
-        delete process.env[ENV_CONFIG_DIR]
-      else
-        process.env[ENV_CONFIG_DIR] = prevConfig
+    } finally {
+      if (prevConfig === undefined) delete process.env[ENV_CONFIG_DIR]
+      else process.env[ENV_CONFIG_DIR] = prevConfig
       await mock.stop()
       await rm(configDir, { recursive: true, force: true })
     }

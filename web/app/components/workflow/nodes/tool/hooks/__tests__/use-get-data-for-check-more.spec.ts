@@ -37,10 +37,12 @@ describe('useGetDataForCheckMore', () => {
       getMoreDataForCheckValid,
     })
 
-    const { result } = renderHook(() => useGetDataForCheckMore({
-      id: 'tool-node-1',
-      payload,
-    }))
+    const { result } = renderHook(() =>
+      useGetDataForCheckMore({
+        id: 'tool-node-1',
+        payload,
+      }),
+    )
 
     expect(mockUseConfig).toHaveBeenCalledWith('tool-node-1', payload)
     expect(result.current.getData).toBe(getMoreDataForCheckValid)

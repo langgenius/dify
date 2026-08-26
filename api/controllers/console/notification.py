@@ -1,7 +1,6 @@
 from collections.abc import Mapping
 from typing import TypedDict
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
@@ -10,6 +9,7 @@ from controllers.common.schema import register_response_schema_models, register_
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
+    model_validate,
     only_edition_cloud,
     setup_required,
     with_current_user,
@@ -141,8 +141,8 @@ class NotificationDismissApi(Resource):
     @only_edition_cloud
     @console_ns.expect(console_ns.models[DismissNotificationPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    def post(self, current_user: Account):
-        payload = DismissNotificationPayload.model_validate(request.get_json())
+    @model_validate(DismissNotificationPayload)
+    def post(self, payload: DismissNotificationPayload, current_user: Account):
         BillingService.dismiss_notification(
             notification_id=payload.notification_id,
             account_id=str(current_user.id),

@@ -14,7 +14,9 @@ describe('ProgressCircle', () => {
   })
 
   it('supports custom min and max', async () => {
-    const screen = await render(<ProgressCircle value={3} min={1} max={5} aria-label="Installing" />)
+    const screen = await render(
+      <ProgressCircle value={3} min={1} max={5} aria-label="Installing" />,
+    )
 
     const progress = screen.getByLabelText('Installing')
 

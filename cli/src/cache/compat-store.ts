@@ -29,8 +29,7 @@ export async function loadCompatStore(opts: CompatStoreOptions = {}): Promise<Co
   return {
     isFreshCompatible: (host, now) => {
       const last = memory.get(host)
-      if (last === undefined)
-        return false
+      if (last === undefined) return false
       const elapsed = Math.max(0, (now ?? clock()).getTime() - last)
       return elapsed < ttlMs
     },
@@ -51,21 +50,18 @@ async function readCompatible(store: Store): Promise<Map<string, number>> {
   let raw: Record<string, string>
   try {
     raw = await store.get(COMPATIBLE_KEY)
-  }
-  catch {
+  } catch {
     return out
   }
   for (const [host, iso] of Object.entries(raw)) {
     const t = Date.parse(iso)
-    if (!Number.isNaN(t))
-      out.set(host, t)
+    if (!Number.isNaN(t)) out.set(host, t)
   }
   return out
 }
 
 async function writeCompatible(store: Store, state: Map<string, number>): Promise<void> {
   const compatible: Record<string, string> = {}
-  for (const [host, t] of state)
-    compatible[host] = new Date(t).toISOString()
+  for (const [host, t] of state) compatible[host] = new Date(t).toISOString()
   await store.set(COMPATIBLE_KEY, compatible)
 }

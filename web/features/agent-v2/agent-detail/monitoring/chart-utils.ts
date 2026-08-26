@@ -14,7 +14,7 @@ type AgentMonitoringChartConfig = {
   colorType: ColorType
 }
 
-const colorTypeMap: Record<ColorType, { lineColor: string, bgColor: [string, string] }> = {
+const colorTypeMap: Record<ColorType, { lineColor: string; bgColor: [string, string] }> = {
   green: {
     lineColor: 'rgba(6, 148, 162, 1)',
     bgColor: ['rgba(6, 148, 162, 0.2)', 'rgba(67, 174, 185, 0.08)'],
@@ -49,7 +49,8 @@ const commonColorMap = {
 
 const axisDateFormat = 'MMM'
 
-const getChartColors = (chartType: AgentMonitoringChartType) => colorTypeMap[chartTypeConfig[chartType].colorType]
+const getChartColors = (chartType: AgentMonitoringChartType) =>
+  colorTypeMap[chartTypeConfig[chartType].colorType]
 
 const getMarkLineSeedData = (statisticsLength: number) => {
   const markLineLength = statisticsLength >= 2 ? statisticsLength - 2 : statisticsLength
@@ -60,7 +61,7 @@ const getMarkLineSeedData = (statisticsLength: number) => {
 const getTooltipContent = (
   chartType: AgentMonitoringChartType,
   yField: string,
-  params: { name: string, data?: AgentMonitoringChartRow },
+  params: { name: string; data?: AgentMonitoringChartRow },
 ) => {
   const row = params.data ?? { date: params.name }
   const value = row[yField] ?? 0
@@ -78,18 +79,17 @@ const getTooltipContent = (
     </div>`
 }
 
-export const getChartValueField = (
-  rows: AgentMonitoringChartRow[],
-  valueKey?: string,
-) => {
-  if (valueKey)
-    return valueKey
+export const getChartValueField = (rows: AgentMonitoringChartRow[], valueKey?: string) => {
+  if (valueKey) return valueKey
 
-  return Object.keys(rows[0] ?? {}).find(name => name.includes('count')) ?? 'count'
+  return Object.keys(rows[0] ?? {}).find((name) => name.includes('count')) ?? 'count'
 }
 
 export const getTokenSummary = (rows: AgentMonitoringChartRow[]) => {
-  const totalPrice = rows.reduce((sum, row) => sum + Number.parseFloat(String(row.total_price ?? '0')), 0)
+  const totalPrice = rows.reduce(
+    (sum, row) => sum + Number.parseFloat(String(row.total_price ?? '0')),
+    0,
+  )
 
   return totalPrice.toLocaleString('en-US', {
     style: 'currency',
@@ -124,47 +124,50 @@ export const buildChartOptions = ({
       position: 'top',
       borderWidth: 0,
     },
-    xAxis: [{
-      type: 'category',
-      boundaryGap: false,
-      axisLabel: {
-        color: commonColorMap.label,
-        hideOverlap: true,
-        overflow: 'break',
-        formatter(value) {
-          return dayjs(value).format(axisDateFormat)
+    xAxis: [
+      {
+        type: 'category',
+        boundaryGap: false,
+        axisLabel: {
+          color: commonColorMap.label,
+          hideOverlap: true,
+          overflow: 'break',
+          formatter(value) {
+            return dayjs(value).format(axisDateFormat)
+          },
+        },
+        axisLine: { show: false },
+        axisTick: { show: false },
+        splitLine: {
+          show: true,
+          lineStyle: {
+            color: commonColorMap.splitLineLight,
+            width: 1,
+            type: [10, 10],
+          },
+          interval(index) {
+            return index === 0 || index === xData.length - 1
+          },
         },
       },
-      axisLine: { show: false },
-      axisTick: { show: false },
-      splitLine: {
-        show: true,
-        lineStyle: {
-          color: commonColorMap.splitLineLight,
-          width: 1,
-          type: [10, 10],
-        },
-        interval(index) {
-          return index === 0 || index === xData.length - 1
-        },
-      },
-    }, {
-      position: 'bottom',
-      boundaryGap: false,
-      data: markLineSeedData,
-      axisLabel: { show: false },
-      axisLine: { show: false },
-      axisTick: { show: false },
-      splitLine: {
-        show: true,
-        lineStyle: {
-          color: commonColorMap.splitLineDark,
-        },
-        interval(_index, value) {
-          return !!value
+      {
+        position: 'bottom',
+        boundaryGap: false,
+        data: markLineSeedData,
+        axisLabel: { show: false },
+        axisLine: { show: false },
+        axisTick: { show: false },
+        splitLine: {
+          show: true,
+          lineStyle: {
+            color: commonColorMap.splitLineDark,
+          },
+          interval(_index, value) {
+            return !!value
+          },
         },
       },
-    }],
+    ],
     yAxis: {
       max: yMax ?? 'dataMax',
       type: 'value',
@@ -194,20 +197,27 @@ export const buildChartOptions = ({
             y: 0,
             x2: 0,
             y2: 1,
-            colorStops: [{
-              offset: 0,
-              color: chartColors.bgColor[0],
-            }, {
-              offset: 1,
-              color: chartColors.bgColor[1],
-            }],
+            colorStops: [
+              {
+                offset: 0,
+                color: chartColors.bgColor[0],
+              },
+              {
+                offset: 1,
+                color: chartColors.bgColor[1],
+              },
+            ],
             global: false,
           },
         },
         tooltip: {
           padding: [8, 12, 8, 12],
           formatter(params) {
-            return getTooltipContent(chartType, valueKey, params as { name: string, data?: AgentMonitoringChartRow })
+            return getTooltipContent(
+              chartType,
+              valueKey,
+              params as { name: string; data?: AgentMonitoringChartRow },
+            )
           },
         },
       },

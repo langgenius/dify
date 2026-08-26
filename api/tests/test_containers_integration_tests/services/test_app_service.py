@@ -42,7 +42,6 @@ class TestAppService:
             mock_model_instance = mock_model_manager.return_value
             mock_model_instance.get_default_model_instance.return_value = None
             mock_model_instance.get_default_provider_model_name.return_value = ("openai", "gpt-3.5-turbo")
-
             yield {
                 "feature_service": mock_feature_service,
                 "enterprise_service": mock_enterprise_service,
@@ -191,7 +190,7 @@ class TestAppService:
         mock_current_user.current_tenant_id = account.current_tenant_id
 
         with patch("services.app_service.current_user", mock_current_user):
-            retrieved_app = app_service.get_app(created_app)
+            retrieved_app = app_service.get_app(created_app, session=db_session_with_containers)
 
         # Verify retrieved app matches created app
         assert retrieved_app.id == created_app.id
@@ -1277,45 +1276,6 @@ class TestAppService:
         deleted_app = db_session_with_containers.query(App).filter_by(id=app_id).first()
         assert deleted_app is None
 
-    def test_get_app_meta_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
-        """
-        Test successful app metadata retrieval.
-        """
-        fake = Faker()
-
-        # Create account and tenant first
-        account = AccountService.create_account(
-            email=fake.email(),
-            name=fake.name(),
-            interface_language="en-US",
-            password=generate_valid_password(fake),
-            session=db_session_with_containers,
-        )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
-        tenant = account.current_tenant
-
-        # Create app first
-        # Import here to avoid circular dependency
-        from services.app_service import AppService, CreateAppParams
-
-        app_args = CreateAppParams(
-            name=fake.company(),
-            description=fake.text(max_nb_chars=100),
-            mode="chat",
-            icon_type="emoji",
-            icon="📊",
-            icon_background="#6C5CE7",
-        )
-        app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
-
-        # Get app metadata
-        app_meta = app_service.get_app_meta(app, session=db_session_with_containers)
-
-        # Verify metadata contains expected fields
-        assert "tool_icons" in app_meta
-        # Note: get_app_meta currently only returns tool_icons
-
     def test_get_app_code_by_id_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful app code retrieval by app ID.
@@ -1591,31 +1551,3 @@ class TestAppService:
 
         with pytest.raises(ValueError, match="not found"):
             AppService.get_app_id_by_code("nonexistent-code", session=db_session_with_containers)
-
-    def test_get_app_meta_returns_empty_when_workflow_missing(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """Test get_app_meta returns empty tool_icons when workflow is None."""
-        from types import SimpleNamespace
-
-        from services.app_service import AppService
-
-        app_service = AppService()
-        workflow_app = SimpleNamespace(mode="workflow", workflow=None)
-
-        meta = app_service.get_app_meta(workflow_app, session=db_session_with_containers)
-        assert meta == {"tool_icons": {}}
-
-    def test_get_app_meta_returns_empty_when_model_config_missing(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """Test get_app_meta returns empty tool_icons when app_model_config is None."""
-        from types import SimpleNamespace
-
-        from services.app_service import AppService
-
-        app_service = AppService()
-        chat_app = SimpleNamespace(mode="chat", app_model_config=None)
-
-        meta = app_service.get_app_meta(chat_app, session=db_session_with_containers)
-        assert meta == {"tool_icons": {}}

@@ -1,21 +1,13 @@
 import type { MultipleRetrievalConfig } from './types'
-import type {
-  DataSet,
-  SelectedDatasetsMode,
-} from '@/models/datasets'
+import type { DataSet, SelectedDatasetsMode } from '@/models/datasets'
 import { uniq } from 'es-toolkit/array'
 import { xorBy } from 'es-toolkit/compat'
 import { DATASET_DEFAULT } from '@/config'
-import {
-  DEFAULT_WEIGHTED_SCORE,
-  RerankingModeEnum,
-  WeightedScoreEnum,
-} from '@/models/datasets'
+import { DEFAULT_WEIGHTED_SCORE, RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 
 export const getSelectedDatasetsMode = (datasets: DataSet[] = []) => {
-  if (datasets === null)
-    datasets = []
+  if (datasets === null) datasets = []
   let allHighQuality = true
   let allHighQualityVectorSearch = true
   let allHighQualityFullTextSearch = true
@@ -52,8 +44,7 @@ export const getSelectedDatasetsMode = (datasets: DataSet[] = []) => {
     }
     if (dataset.provider !== 'external') {
       allExternal = false
-    }
-    else {
+    } else {
       allInternal = false
       allHighQuality = false
       allHighQualityVectorSearch = false
@@ -62,14 +53,12 @@ export const getSelectedDatasetsMode = (datasets: DataSet[] = []) => {
     }
   })
 
-  if (allExternal || allInternal)
-    mixtureInternalAndExternal = false
+  if (allExternal || allInternal) mixtureInternalAndExternal = false
 
-  if (allHighQuality || allEconomic)
-    mixtureHighQualityAndEconomic = false
+  if (allHighQuality || allEconomic) mixtureHighQualityAndEconomic = false
 
   if (allHighQuality)
-    inconsistentEmbeddingModel = uniq(datasets.map(item => item.embedding_model)).length > 1
+    inconsistentEmbeddingModel = uniq(datasets.map((item) => item.embedding_model)).length > 1
 
   return {
     allHighQuality,
@@ -88,7 +77,7 @@ export const getMultipleRetrievalConfig = (
   multipleRetrievalConfig: MultipleRetrievalConfig,
   selectedDatasets: DataSet[],
   originalDatasets: DataSet[],
-  fallbackRerankModel?: { provider?: string, model?: string }, // fallback rerank model
+  fallbackRerankModel?: { provider?: string; model?: string }, // fallback rerank model
 ) => {
   // Check if the selected datasets are different from the original datasets
   const isDatasetsChanged = xorBy(selectedDatasets, originalDatasets, 'id').length > 0
@@ -131,7 +120,6 @@ export const getMultipleRetrievalConfig = (
       vector_setting: {
         vector_weight: allHighQualityVectorSearch
           ? DEFAULT_WEIGHTED_SCORE.allHighQualityVectorSearch.semantic
-
           : allHighQualityFullTextSearch
             ? DEFAULT_WEIGHTED_SCORE.allHighQualityFullTextSearch.semantic
             : DEFAULT_WEIGHTED_SCORE.other.semantic,
@@ -141,7 +129,6 @@ export const getMultipleRetrievalConfig = (
       keyword_setting: {
         keyword_weight: allHighQualityVectorSearch
           ? DEFAULT_WEIGHTED_SCORE.allHighQualityVectorSearch.keyword
-
           : allHighQualityFullTextSearch
             ? DEFAULT_WEIGHTED_SCORE.allHighQualityFullTextSearch.keyword
             : DEFAULT_WEIGHTED_SCORE.other.keyword,
@@ -157,7 +144,10 @@ export const getMultipleRetrievalConfig = (
   if ((allEconomic && allInternal) || allExternal) {
     result.reranking_mode = RerankingModeEnum.RerankingModel
     // Need to check if the reranking model should be set to default when first time initialized
-    if ((!result.reranking_model?.provider || !result.reranking_model?.model) && isFallbackRerankModelValid) {
+    if (
+      (!result.reranking_model?.provider || !result.reranking_model?.model) &&
+      isFallbackRerankModelValid
+    ) {
       result.reranking_model = {
         provider: fallbackRerankModel.provider || '',
         model: fallbackRerankModel.model || '',
@@ -173,7 +163,10 @@ export const getMultipleRetrievalConfig = (
   if (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel || mixtureInternalAndExternal) {
     result.reranking_mode = RerankingModeEnum.RerankingModel
     // Need to check if the reranking model should be set to default when first time initialized
-    if ((!result.reranking_model?.provider || !result.reranking_model?.model) && isFallbackRerankModelValid) {
+    if (
+      (!result.reranking_model?.provider || !result.reranking_model?.model) &&
+      isFallbackRerankModelValid
+    ) {
       result.reranking_model = {
         provider: fallbackRerankModel.provider || '',
         model: fallbackRerankModel.model || '',
@@ -198,8 +191,7 @@ export const getMultipleRetrievalConfig = (
           provider: fallbackRerankModel.provider || '',
           model: fallbackRerankModel.model || '',
         }
-      }
-      else {
+      } else {
         result.reranking_mode = RerankingModeEnum.WeightedScore
         result.reranking_enable = false
         setDefaultWeights()
@@ -209,11 +201,13 @@ export const getMultipleRetrievalConfig = (
     // After initialization, if datasets has no change, make sure the config has correct value
     if (reranking_mode === RerankingModeEnum.WeightedScore) {
       result.reranking_enable = false
-      if (!weights)
-        setDefaultWeights()
+      if (!weights) setDefaultWeights()
     }
     if (reranking_mode === RerankingModeEnum.RerankingModel) {
-      if ((!result.reranking_model?.provider || !result.reranking_model?.model) && isFallbackRerankModelValid) {
+      if (
+        (!result.reranking_model?.provider || !result.reranking_model?.model) &&
+        isFallbackRerankModelValid
+      ) {
         result.reranking_model = {
           provider: fallbackRerankModel.provider || '',
           model: fallbackRerankModel.model || '',
@@ -224,27 +218,32 @@ export const getMultipleRetrievalConfig = (
 
     // Need to check if reranking_mode should be set to reranking_model when datasets changed
     if (reranking_mode === RerankingModeEnum.WeightedScore && weights && isDatasetsChanged) {
-      if ((result.reranking_model?.provider && result.reranking_model?.model) || isFallbackRerankModelValid) {
+      if (
+        (result.reranking_model?.provider && result.reranking_model?.model) ||
+        isFallbackRerankModelValid
+      ) {
         result.reranking_mode = RerankingModeEnum.RerankingModel
         result.reranking_enable = true
 
-        if ((!result.reranking_model?.provider || !result.reranking_model?.model) && isFallbackRerankModelValid) {
+        if (
+          (!result.reranking_model?.provider || !result.reranking_model?.model) &&
+          isFallbackRerankModelValid
+        ) {
           result.reranking_model = {
             provider: fallbackRerankModel.provider || '',
             model: fallbackRerankModel.model || '',
           }
         }
-      }
-      else {
+      } else {
         setDefaultWeights()
       }
     }
     // Need to switch to weighted score when reranking model is not valid and datasets changed
     if (
-      reranking_mode === RerankingModeEnum.RerankingModel
-      && (!result.reranking_model?.provider || !result.reranking_model?.model)
-      && !isFallbackRerankModelValid
-      && isDatasetsChanged
+      reranking_mode === RerankingModeEnum.RerankingModel &&
+      (!result.reranking_model?.provider || !result.reranking_model?.model) &&
+      !isFallbackRerankModelValid &&
+      isDatasetsChanged
     ) {
       result.reranking_mode = RerankingModeEnum.WeightedScore
       result.reranking_enable = false
@@ -259,22 +258,16 @@ export const checkoutRerankModelConfiguredInRetrievalSettings = (
   datasets: DataSet[],
   multipleRetrievalConfig?: MultipleRetrievalConfig,
 ) => {
-  if (!multipleRetrievalConfig)
-    return true
+  if (!multipleRetrievalConfig) return true
 
-  const {
-    allEconomic,
-    allExternal,
-    allInternal,
-  } = getSelectedDatasetsMode(datasets)
+  const { allEconomic, allExternal, allInternal } = getSelectedDatasetsMode(datasets)
 
-  const {
-    reranking_enable,
-    reranking_mode,
-    reranking_model,
-  } = multipleRetrievalConfig
+  const { reranking_enable, reranking_mode, reranking_model } = multipleRetrievalConfig
 
-  if (reranking_mode === RerankingModeEnum.RerankingModel && (!reranking_model?.provider || !reranking_model?.model))
+  if (
+    reranking_mode === RerankingModeEnum.RerankingModel &&
+    (!reranking_model?.provider || !reranking_model?.model)
+  )
     return ((allEconomic && allInternal) || allExternal) && !reranking_enable
 
   return true

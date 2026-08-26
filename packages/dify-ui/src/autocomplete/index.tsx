@@ -1,55 +1,66 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Autocomplete as BaseAutocomplete } from '@base-ui/react/autocomplete'
 import { cva } from 'class-variance-authority'
+import * as React from 'react'
 import { cn } from '../cn'
-import { textControlCompoundFocusClassName } from '../form-control-shared'
+import { textControlCompoundInputFocusClassName } from '../form-control-shared'
 import {
-  overlayIndicatorClassName,
-  overlayLabelClassName,
-  overlayPopupAnimationClassName,
-  overlaySeparatorClassName,
+  floatingGroupLabelClassName,
+  floatingItemIndicatorClassName,
+  floatingPopupAnimationClassName,
+  floatingSeparatorClassName,
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
-export type { Placement }
-
-export type AutocompleteRootProps<ItemValue> = BaseAutocomplete.Root.Props<ItemValue>
-export type AutocompleteRootGroupedProps<
-  Items extends readonly { items: readonly unknown[] }[],
-> = Omit<AutocompleteRootProps<Items[number]['items'][number]>, 'items'> & {
+type AutocompleteProps<ItemValue> = BaseAutocomplete.Root.Props<ItemValue>
+type AutocompleteChangeEventDetails = BaseAutocomplete.Root.ChangeEventDetails
+type AutocompleteGroupedProps<Items extends readonly { items: readonly unknown[] }[]> = Omit<
+  AutocompleteProps<Items[number]['items'][number]>,
+  'items'
+> & {
   items: Items
 }
-export type AutocompleteRootFlatProps<ItemValue>
-  = Omit<AutocompleteRootProps<ItemValue>, 'items'>
-    & {
-      items?: readonly ItemValue[]
-    }
+type AutocompleteFlatProps<ItemValue> = Omit<AutocompleteProps<ItemValue>, 'items'> & {
+  items?: readonly ItemValue[]
+}
 
-export function Autocomplete<Items extends readonly { items: readonly unknown[] }[]>(
-  props: AutocompleteRootGroupedProps<Items>,
+function Autocomplete<Items extends readonly { items: readonly unknown[] }[]>(
+  props: AutocompleteGroupedProps<Items>,
 ): React.JSX.Element
-export function Autocomplete<ItemValue>(
-  props: AutocompleteRootFlatProps<ItemValue>,
-): React.JSX.Element
-export function Autocomplete(
-  props: AutocompleteRootProps<unknown>,
-): React.JSX.Element {
+function Autocomplete<ItemValue>(props: AutocompleteFlatProps<ItemValue>): React.JSX.Element
+function Autocomplete(props: AutocompleteProps<unknown>): React.JSX.Element {
   return <BaseAutocomplete.Root {...props} />
 }
 
-export const AutocompleteValue = BaseAutocomplete.Value
-export const AutocompleteGroup = BaseAutocomplete.Group
-export const AutocompleteCollection = BaseAutocomplete.Collection
-export const AutocompleteRow = BaseAutocomplete.Row
-export const useAutocompleteFilter = BaseAutocomplete.useFilter
-export const useAutocompleteFilteredItems = BaseAutocomplete.useFilteredItems
+const AutocompleteValue = BaseAutocomplete.Value
+const AutocompleteRow = BaseAutocomplete.Row
+const useAutocompleteFilter = BaseAutocomplete.useFilter
+const useAutocompleteFilteredItems = BaseAutocomplete.useFilteredItems
 
-export type AutocompleteRootChangeEventDetails = BaseAutocomplete.Root.ChangeEventDetails
-export type AutocompleteRootHighlightEventDetails = BaseAutocomplete.Root.HighlightEventDetails
+type AutocompleteValueProps = BaseAutocomplete.Value.Props
+type AutocompleteRowProps = BaseAutocomplete.Row.Props
+
+type AutocompleteGroupProps<Value = unknown> = Omit<BaseAutocomplete.Group.Props, 'items'> & {
+  items?: readonly Value[]
+}
+
+function AutocompleteGroup<Value = unknown>(props: AutocompleteGroupProps<Value>) {
+  return <BaseAutocomplete.Group {...props} />
+}
+
+type AutocompleteCollectionProps<Value = unknown> = Omit<
+  BaseAutocomplete.Collection.Props,
+  'children'
+> & {
+  children: (item: Value, index: number) => React.ReactNode
+}
+
+function AutocompleteCollection<Value = unknown>(props: AutocompleteCollectionProps<Value>) {
+  return <BaseAutocomplete.Collection {...props} />
+}
 
 const autocompletePopupClassName = [
   'w-(--anchor-width) max-w-[min(28rem,var(--available-width))] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
@@ -61,18 +72,17 @@ const autocompleteListClassName = [
 ]
 
 const autocompleteItemClassName = [
-  'mx-1 flex min-h-8 cursor-pointer select-none items-center gap-2 rounded-lg px-2 py-1.5 text-text-secondary outline-hidden transition-colors',
+  'mx-1 flex min-h-8 cursor-pointer select-none items-center gap-2 rounded-lg px-2 py-1.5 text-text-secondary outline-hidden',
   'hover:bg-state-base-hover-alt hover:text-text-primary',
   'data-highlighted:bg-state-base-hover data-highlighted:text-text-primary',
   'data-disabled:cursor-not-allowed data-disabled:opacity-30 data-disabled:hover:bg-transparent data-disabled:hover:text-text-secondary',
-  'motion-reduce:transition-none',
 ]
 
 const autocompleteInputGroupVariants = cva(
   [
     'group/autocomplete flex w-full min-w-0 items-center border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color,box-shadow]',
     'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-    textControlCompoundFocusClassName,
+    textControlCompoundInputFocusClassName,
     'data-focused:border-components-input-border-active data-focused:bg-components-input-bg-active data-focused:shadow-xs',
     'data-disabled:cursor-not-allowed data-disabled:border-transparent data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled',
     'data-disabled:hover:border-transparent data-disabled:hover:bg-components-input-bg-disabled',
@@ -93,13 +103,10 @@ const autocompleteInputGroupVariants = cva(
   },
 )
 
-export type AutocompleteSize = NonNullable<VariantProps<typeof autocompleteInputGroupVariants>['size']>
+type AutocompleteInputGroupProps = Omit<BaseAutocomplete.InputGroup.Props, 'className'> &
+  VariantProps<typeof autocompleteInputGroupVariants> & { className?: string }
 
-export type AutocompleteInputGroupProps
-  = BaseAutocomplete.InputGroup.Props
-    & VariantProps<typeof autocompleteInputGroupVariants>
-
-export function AutocompleteInputGroup({
+function AutocompleteInputGroup({
   className,
   size = 'medium',
   ...props
@@ -123,7 +130,7 @@ const autocompleteInputVariants = cva(
     variants: {
       size: {
         small: 'px-2 py-1 system-xs-regular',
-        medium: 'px-3 py-[7px] system-sm-regular',
+        medium: 'px-3 py-1.75 system-sm-regular',
         large: 'px-4 py-2 system-md-regular',
       },
     },
@@ -133,20 +140,17 @@ const autocompleteInputVariants = cva(
   },
 )
 
-export type AutocompleteInputProps
-  = Omit<BaseAutocomplete.Input.Props, 'size'>
-    & VariantProps<typeof autocompleteInputVariants>
+type AutocompleteInputProps = Omit<BaseAutocomplete.Input.Props, 'className' | 'size'> &
+  VariantProps<typeof autocompleteInputVariants> & { className?: string }
 
-export function AutocompleteInput({
+function AutocompleteInput({
   className,
   size = 'medium',
-  type = 'text',
   autoComplete = 'off',
   ...props
 }: AutocompleteInputProps) {
   return (
     <BaseAutocomplete.Input
-      type={type}
       autoComplete={autoComplete}
       className={cn(autocompleteInputVariants({ size }), className)}
       {...props}
@@ -178,22 +182,23 @@ const autocompleteControlVariants = cva(
   },
 )
 
-export type AutocompleteControlProps
-  = Omit<BaseAutocomplete.Trigger.Props, 'className'>
-    & VariantProps<typeof autocompleteControlVariants>
-    & { className?: string }
+type AutocompleteTriggerProps = Omit<BaseAutocomplete.Trigger.Props, 'className'> &
+  VariantProps<typeof autocompleteControlVariants> & { className?: string }
 
-export function AutocompleteTrigger({
+function AutocompleteTrigger({
   className,
   children,
   size = 'medium',
   type = 'button',
   ...props
-}: AutocompleteControlProps) {
+}: AutocompleteTriggerProps) {
   return (
     <BaseAutocomplete.Trigger
       type={type}
-      aria-label={props['aria-label'] ?? (props['aria-labelledby'] ? undefined : 'Open autocomplete suggestions')}
+      aria-label={
+        props['aria-label'] ??
+        (props['aria-labelledby'] ? undefined : 'Open autocomplete suggestions')
+      }
       className={cn(autocompleteControlVariants({ size }), className)}
       {...props}
     >
@@ -202,12 +207,10 @@ export function AutocompleteTrigger({
   )
 }
 
-export type AutocompleteClearProps
-  = Omit<BaseAutocomplete.Clear.Props, 'className'>
-    & VariantProps<typeof autocompleteControlVariants>
-    & { className?: string }
+type AutocompleteClearProps = Omit<BaseAutocomplete.Clear.Props, 'className'> &
+  VariantProps<typeof autocompleteControlVariants> & { className?: string }
 
-export function AutocompleteClear({
+function AutocompleteClear({
   className,
   children,
   size = 'medium',
@@ -217,7 +220,9 @@ export function AutocompleteClear({
   return (
     <BaseAutocomplete.Clear
       type={type}
-      aria-label={props['aria-label'] ?? (props['aria-labelledby'] ? undefined : 'Clear autocomplete')}
+      aria-label={
+        props['aria-label'] ?? (props['aria-labelledby'] ? undefined : 'Clear autocomplete')
+      }
       className={cn(
         autocompleteControlVariants({ size }),
         'data-ending-style:opacity-0 data-starting-style:opacity-0',
@@ -230,11 +235,11 @@ export function AutocompleteClear({
   )
 }
 
-export function AutocompleteIcon({
-  className,
-  children,
-  ...props
-}: BaseAutocomplete.Icon.Props) {
+type AutocompleteIconProps = Omit<BaseAutocomplete.Icon.Props, 'className'> & {
+  className?: string
+}
+
+function AutocompleteIcon({ className, children, ...props }: AutocompleteIconProps) {
   return (
     <BaseAutocomplete.Icon
       className={cn('flex shrink-0 items-center text-text-tertiary', className)}
@@ -245,140 +250,125 @@ export function AutocompleteIcon({
   )
 }
 
-type AutocompleteContentProps = {
-  children: React.ReactNode
-  placement?: Placement
-  sideOffset?: number
-  alignOffset?: number
+const AutocompletePortal = BaseAutocomplete.Portal
+type AutocompletePortalProps = BaseAutocomplete.Portal.Props
+
+type AutocompletePositionerProps = Omit<
+  BaseAutocomplete.Positioner.Props,
+  'className' | 'side' | 'align'
+> & {
   className?: string
-  popupClassName?: string
-  portalProps?: Omit<BaseAutocomplete.Portal.Props, 'children'>
-  positionerProps?: Omit<
-    BaseAutocomplete.Positioner.Props,
-    'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
-  >
-  popupProps?: Omit<
-    BaseAutocomplete.Popup.Props,
-    'children' | 'className'
-  >
+  placement?: Placement
 }
 
-export function AutocompleteContent({
-  children,
+function AutocompletePositioner({
+  className,
   placement = 'bottom-start',
   sideOffset = 4,
-  alignOffset = 0,
-  className,
-  popupClassName,
-  portalProps,
-  positionerProps,
-  popupProps,
-}: AutocompleteContentProps) {
+  ...props
+}: AutocompletePositionerProps) {
   const { side, align } = parsePlacement(placement)
 
   return (
-    <BaseAutocomplete.Portal {...portalProps}>
-      <BaseAutocomplete.Positioner
-        side={side}
-        align={align}
-        sideOffset={sideOffset}
-        alignOffset={alignOffset}
-        className={cn('z-50 outline-hidden', className)}
-        {...positionerProps}
-      >
-        <BaseAutocomplete.Popup
-          className={cn(
-            autocompletePopupClassName,
-            overlayPopupAnimationClassName,
-            popupClassName,
-          )}
-          {...popupProps}
-        >
-          {children}
-        </BaseAutocomplete.Popup>
-      </BaseAutocomplete.Positioner>
-    </BaseAutocomplete.Portal>
-  )
-}
-
-export function AutocompleteList({
-  className,
-  ...props
-}: BaseAutocomplete.List.Props) {
-  return (
-    <BaseAutocomplete.List
-      className={cn(autocompleteListClassName, className)}
+    <BaseAutocomplete.Positioner
+      side={side}
+      align={align}
+      sideOffset={sideOffset}
+      className={cn('z-50 outline-hidden', className)}
       {...props}
     />
   )
 }
 
-export function AutocompleteItem({
-  className,
-  ...props
-}: BaseAutocomplete.Item.Props) {
+type AutocompletePopupProps = Omit<BaseAutocomplete.Popup.Props, 'className'> & {
+  className?: string
+}
+
+function AutocompletePopup({ className, ...props }: AutocompletePopupProps) {
   return (
-    <BaseAutocomplete.Item
-      className={cn(autocompleteItemClassName, className)}
+    <BaseAutocomplete.Popup
+      className={cn(autocompletePopupClassName, floatingPopupAnimationClassName, className)}
       {...props}
     />
   )
 }
 
-export type AutocompleteItemTextProps = React.ComponentProps<'span'>
+type AutocompleteListProps<Value = unknown> = Omit<
+  BaseAutocomplete.List.Props,
+  'children' | 'className'
+> & {
+  children?: React.ReactNode | ((item: Value, index: number) => React.ReactNode)
+  className?: string
+}
 
-export function AutocompleteItemText({
-  className,
-  ...props
-}: AutocompleteItemTextProps) {
+function AutocompleteList<Value = unknown>({ className, ...props }: AutocompleteListProps<Value>) {
+  return <BaseAutocomplete.List className={cn(autocompleteListClassName, className)} {...props} />
+}
+
+type AutocompleteItemProps<Value = unknown> = Omit<
+  BaseAutocomplete.Item.Props,
+  'className' | 'value'
+> & {
+  className?: string
+  value?: Value
+}
+
+function AutocompleteItem<Value = unknown>({ className, ...props }: AutocompleteItemProps<Value>) {
+  return <BaseAutocomplete.Item className={cn(autocompleteItemClassName, className)} {...props} />
+}
+
+type AutocompleteItemTextProps = React.ComponentProps<'span'>
+
+function AutocompleteItemText({ className, ...props }: AutocompleteItemTextProps) {
   return (
-    <span
-      className={cn('min-w-0 grow truncate px-1 system-sm-medium', className)}
-      {...props}
-    />
+    <span className={cn('min-w-0 grow truncate px-1 system-sm-medium', className)} {...props} />
   )
 }
 
-export function AutocompleteGroupLabel({
-  className,
-  ...props
-}: BaseAutocomplete.GroupLabel.Props) {
+type AutocompleteGroupLabelProps = Omit<BaseAutocomplete.GroupLabel.Props, 'className'> & {
+  className?: string
+}
+
+function AutocompleteGroupLabel({ className, ...props }: AutocompleteGroupLabelProps) {
   return (
     <BaseAutocomplete.GroupLabel
-      className={cn(overlayLabelClassName, className)}
+      className={cn(floatingGroupLabelClassName, className)}
       {...props}
     />
   )
 }
 
-export function AutocompleteSeparator({
-  className,
-  ...props
-}: BaseAutocomplete.Separator.Props) {
+type AutocompleteSeparatorProps = Omit<BaseAutocomplete.Separator.Props, 'className'> & {
+  className?: string
+}
+
+function AutocompleteSeparator({ className, ...props }: AutocompleteSeparatorProps) {
   return (
-    <BaseAutocomplete.Separator
-      className={cn(overlaySeparatorClassName, className)}
-      {...props}
-    />
+    <BaseAutocomplete.Separator className={cn(floatingSeparatorClassName, className)} {...props} />
   )
 }
 
-export function AutocompleteEmpty({
-  className,
-  ...props
-}: BaseAutocomplete.Empty.Props) {
+type AutocompleteEmptyProps = Omit<BaseAutocomplete.Empty.Props, 'className'> & {
+  className?: string
+}
+
+function AutocompleteEmpty({ className, ...props }: AutocompleteEmptyProps) {
   return (
     <BaseAutocomplete.Empty
-      className={cn('px-3 py-2 system-sm-regular text-text-tertiary empty:h-0 empty:p-0', className)}
+      className={cn(
+        'px-3 py-2 system-sm-regular text-text-tertiary empty:h-0 empty:p-0',
+        className,
+      )}
       {...props}
     />
   )
 }
 
-export function AutocompleteStatus({
-  className,
-  ...props
-}: BaseAutocomplete.Status.Props) {
+type AutocompleteStatusProps = Omit<BaseAutocomplete.Status.Props, 'className'> & {
+  className?: string
+}
+
+function AutocompleteStatus({ className, ...props }: AutocompleteStatusProps) {
   return (
     <BaseAutocomplete.Status
       className={cn('px-3 py-2 system-sm-regular text-text-tertiary', className)}
@@ -387,17 +377,69 @@ export function AutocompleteStatus({
   )
 }
 
-export function AutocompleteItemIndicator({
+function AutocompleteItemIndicator({
   className,
   children,
   ...props
-}: React.ComponentProps<'span'>) {
+}: AutocompleteItemIndicatorProps) {
   return (
-    <span
-      className={cn(overlayIndicatorClassName, className)}
-      {...props}
-    >
+    <span className={cn(floatingItemIndicatorClassName, className)} {...props}>
       {children ?? <span className="i-ri-arrow-right-line size-4" aria-hidden="true" />}
     </span>
   )
+}
+
+type AutocompleteItemIndicatorProps = React.ComponentProps<'span'>
+
+export {
+  Autocomplete,
+  AutocompleteClear,
+  AutocompleteCollection,
+  AutocompleteEmpty,
+  AutocompleteGroup,
+  AutocompleteGroupLabel,
+  AutocompleteIcon,
+  AutocompleteInput,
+  AutocompleteInputGroup,
+  AutocompleteItem,
+  AutocompleteItemIndicator,
+  AutocompleteItemText,
+  AutocompleteList,
+  AutocompletePopup,
+  AutocompletePortal,
+  AutocompletePositioner,
+  AutocompleteRow,
+  AutocompleteSeparator,
+  AutocompleteStatus,
+  AutocompleteTrigger,
+  AutocompleteValue,
+  useAutocompleteFilter,
+  useAutocompleteFilteredItems,
+}
+
+export type {
+  AutocompleteChangeEventDetails,
+  AutocompleteClearProps,
+  AutocompleteCollectionProps,
+  AutocompleteEmptyProps,
+  AutocompleteFlatProps,
+  AutocompleteGroupedProps,
+  AutocompleteGroupLabelProps,
+  AutocompleteGroupProps,
+  AutocompleteIconProps,
+  AutocompleteInputGroupProps,
+  AutocompleteInputProps,
+  AutocompleteItemIndicatorProps,
+  AutocompleteItemProps,
+  AutocompleteItemTextProps,
+  AutocompleteListProps,
+  AutocompletePopupProps,
+  AutocompletePortalProps,
+  AutocompletePositionerProps,
+  AutocompleteProps,
+  AutocompleteRowProps,
+  AutocompleteSeparatorProps,
+  AutocompleteStatusProps,
+  AutocompleteTriggerProps,
+  AutocompleteValueProps,
 }

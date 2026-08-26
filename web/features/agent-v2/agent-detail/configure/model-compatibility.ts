@@ -1,4 +1,7 @@
-import type { Model, ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  ModelSelectorModel,
+  ModelSelectorProvider,
+} from '@/app/components/header/account-setting/model-provider-page/model-selector/types'
 
 const agentIncompatibleModelPatterns: RegExp[] = [
   // openai
@@ -61,6 +64,7 @@ const agentSuggestedModelPatterns: RegExp[] = [
   // openai
   /^gpt[ .-]5\.5$/i,
   /^gpt[ .-]5\.5[ .-]pro$/i,
+  /^gpt[ .-]5\.6(?:[ .-](?:sol|terra|luna))?$/i,
 
   // anthropic
   /^(?:claude[ .-])?opus[ .-]4\.8$/i,
@@ -75,6 +79,7 @@ const agentSuggestedModelPatterns: RegExp[] = [
 
   // deepseek
   /^deepseek[ .-]v4[ .-]pro$/i,
+  /^deepseek[ .-]v4[ .-]flash$/i,
 
   // qwen
   /^qwen[ .-]?3\.7[ .-]max$/i,
@@ -90,10 +95,16 @@ const agentSuggestedModelPatterns: RegExp[] = [
   /^glm[ .-]5\.1$/i,
 ]
 
-export function isAgentCompatibleModel(_provider: Model, modelItem: ModelItem) {
-  return !agentIncompatibleModelPatterns.some(pattern => pattern.test(modelItem.label.en_US))
+export function isAgentCompatibleModel(
+  _provider: ModelSelectorProvider,
+  modelItem: ModelSelectorModel,
+) {
+  return !agentIncompatibleModelPatterns.some((pattern) => pattern.test(modelItem.label.en_US))
 }
 
-export function isAgentSuggestedModel(_provider: Model, modelItem: ModelItem) {
-  return agentSuggestedModelPatterns.some(pattern => pattern.test(modelItem.label.en_US))
+export function isAgentSuggestedModel(
+  _provider: ModelSelectorProvider,
+  modelItem: ModelSelectorModel,
+) {
+  return agentSuggestedModelPatterns.some((pattern) => pattern.test(modelItem.label.en_US))
 }

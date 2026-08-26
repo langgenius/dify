@@ -14,10 +14,9 @@ import {
 } from '@/features/agent-v2/agent-composer/store-modules/tools'
 
 const toSelectedToolValue = (tool: AgentTool): ToolValue[] => {
-  if (tool.kind !== 'provider')
-    return []
+  if (tool.kind !== 'provider') return []
 
-  return tool.actions.map(action => ({
+  return tool.actions.map((action) => ({
     provider_name: tool.id,
     tool_name: action.toolName,
     tool_label: action.name,
@@ -38,24 +37,28 @@ export function useProviderToolSettingsSurface() {
 
   const closeSettingTargetIfRemoved = useCallback((toolId: string, actionId?: string) => {
     setSettingTarget((target) => {
-      if (!target || target.toolId !== toolId)
-        return target
-      if (actionId && target.actionId !== actionId)
-        return target
+      if (!target || target.toolId !== toolId) return target
+      if (actionId && target.actionId !== actionId) return target
 
       return null
     })
   }, [])
 
-  const deleteProviderTool = useCallback((toolId: string) => {
-    closeSettingTargetIfRemoved(toolId)
-    removeProviderTool(toolId)
-  }, [closeSettingTargetIfRemoved, removeProviderTool])
+  const deleteProviderTool = useCallback(
+    (toolId: string) => {
+      closeSettingTargetIfRemoved(toolId)
+      removeProviderTool(toolId)
+    },
+    [closeSettingTargetIfRemoved, removeProviderTool],
+  )
 
-  const deleteProviderToolAction = useCallback((toolId: string, actionId: string) => {
-    closeSettingTargetIfRemoved(toolId, actionId)
-    removeProviderToolAction({ toolId, actionId })
-  }, [closeSettingTargetIfRemoved, removeProviderToolAction])
+  const deleteProviderToolAction = useCallback(
+    (toolId: string, actionId: string) => {
+      closeSettingTargetIfRemoved(toolId, actionId)
+      removeProviderToolAction({ toolId, actionId })
+    },
+    [closeSettingTargetIfRemoved, removeProviderToolAction],
+  )
 
   const closeProviderSettingsDialog = useCallback(() => {
     setSettingTarget(null)
@@ -86,14 +89,16 @@ export function useCliToolDialogSurface() {
     setIsCliToolDialogOpen(true)
   }, [])
 
-  const handleCliDialogSave = useCallback((tool: AgentCliTool) => {
-    saveCliTool(tool)
-    setEditingCliTool(null)
-  }, [saveCliTool])
+  const handleCliDialogSave = useCallback(
+    (tool: AgentCliTool) => {
+      saveCliTool(tool)
+      setEditingCliTool(null)
+    },
+    [saveCliTool],
+  )
 
   const handleCliDialogOpenChange = useCallback((open: boolean) => {
-    if (!open)
-      setEditingCliTool(null)
+    if (!open) setEditingCliTool(null)
 
     setIsCliToolDialogOpen(open)
   }, [])

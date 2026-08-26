@@ -3,61 +3,75 @@ import type { MeterTone } from '@langgenius/dify-ui/meter'
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { MeterIndicator, MeterRoot, MeterTrack } from '@langgenius/dify-ui/meter'
-import { useAtomValue } from 'jotai'
+import { Meter, MeterIndicator, MeterTrack } from '@langgenius/dify-ui/meter'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plan } from '@/app/components/billing/type'
 import { mailToSupport } from '@/app/components/header/utils/util'
-import { langGeniusCurrentVersionAtom, userProfileEmailAtom } from '@/context/app-context-state'
 import { useProviderContext } from '@/context/provider-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import UpgradeBtn from '../upgrade-btn'
 import s from './style.module.css'
 
-const AppsFull: FC<{ loc: string, className?: string }> = ({
-  loc,
-  className,
-}) => {
+const AppsFull: FC<{ loc: string; className?: string }> = ({ loc, className }) => {
   const { t } = useTranslation()
   const { plan } = useProviderContext()
-  const userProfileEmail = useAtomValue(userProfileEmailAtom)
-  const currentVersion = useAtomValue(langGeniusCurrentVersionAtom)
-  const isTeam = plan.type === Plan.team
+  const { data: accountProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => ({
+      email: data.profile.email,
+      currentVersion: data.meta.currentVersion,
+    }),
+  })
+  const isTeam = plan.type === 'team'
   const usage = plan.usage.buildApps
   const total = plan.total.buildApps
   const percent = total > 0 ? (usage / total) * 100 : 0
   const tone: MeterTone = percent >= 80 ? 'error' : percent >= 50 ? 'warning' : 'neutral'
-  const buildAppsLabel = t('usagePage.buildApps', { ns: 'billing' })
+  const buildAppsLabel = t(($) => $['usagePage.buildApps'], { ns: 'billing' })
   return (
-    <div className={cn(
-      'flex flex-col gap-3 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-4 shadow-xs backdrop-blur-xs',
-      className,
-    )}
+    <div
+      className={cn(
+        'flex flex-col gap-3 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-4 shadow-xs backdrop-blur-xs',
+        className,
+      )}
     >
       <div className="flex justify-between">
         {!isTeam && (
           <div>
             <div className={cn('mb-1 title-xl-semi-bold', s.textGradient)}>
-              {t('apps.fullTip1', { ns: 'billing' })}
+              {t(($) => $['apps.fullTip1'], { ns: 'billing' })}
             </div>
-            <div className="system-xs-regular text-text-tertiary">{t('apps.fullTip1des', { ns: 'billing' })}</div>
+            <div className="system-xs-regular text-text-tertiary">
+              {t(($) => $['apps.fullTip1des'], { ns: 'billing' })}
+            </div>
           </div>
         )}
         {isTeam && (
           <div>
             <div className={cn('mb-1 title-xl-semi-bold', s.textGradient)}>
-              {t('apps.fullTip2', { ns: 'billing' })}
+              {t(($) => $['apps.fullTip2'], { ns: 'billing' })}
             </div>
-            <div className="system-xs-regular text-text-tertiary">{t('apps.fullTip2des', { ns: 'billing' })}</div>
+            <div className="system-xs-regular text-text-tertiary">
+              {t(($) => $['apps.fullTip2des'], { ns: 'billing' })}
+            </div>
           </div>
         )}
-        {(plan.type === Plan.sandbox || plan.type === Plan.professional) && (
+        {(plan.type === 'sandbox' || plan.type === 'professional') && (
           <UpgradeBtn isShort loc={loc} />
         )}
-        {plan.type !== Plan.sandbox && plan.type !== Plan.professional && (
+        {plan.type !== 'sandbox' && plan.type !== 'professional' && (
           <Button variant="secondary-accent">
-            <a target="_blank" rel="noopener noreferrer" href={mailToSupport(userProfileEmail, plan.type, currentVersion)}>
-              {t('apps.contactUs', { ns: 'billing' })}
+            <a
+              target="_blank"
+              rel="noopener noreferrer"
+              href={mailToSupport(
+                accountProfile.email,
+                plan.type,
+                accountProfile.currentVersion ?? '',
+              )}
+            >
+              {t(($) => $['apps.contactUs'], { ns: 'billing' })}
             </a>
           </Button>
         )}
@@ -66,16 +80,14 @@ const AppsFull: FC<{ loc: string, className?: string }> = ({
         <div className="flex items-center justify-between system-xs-medium text-text-secondary">
           <div>{buildAppsLabel}</div>
           <div>
-            {usage}
-            /
-            {total}
+            {usage}/{total}
           </div>
         </div>
-        <MeterRoot value={Math.min(percent, 100)} max={100} aria-label={buildAppsLabel}>
+        <Meter value={Math.min(percent, 100)} max={100} aria-label={buildAppsLabel}>
           <MeterTrack>
             <MeterIndicator tone={tone} />
           </MeterTrack>
-        </MeterRoot>
+        </Meter>
       </div>
     </div>
   )

@@ -4,6 +4,7 @@ from typing import cast
 
 from flask_restx import Resource
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import Forbidden
 
 from controllers.common.wraps import RBACPermission, RBACResourceScope
 from controllers.openapi import openapi_ns
@@ -17,6 +18,7 @@ from models import Account, App
 from models.account import TenantAccountRole
 from services.app_dsl_service import AppDslService, Import
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
+from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
 
 
@@ -53,18 +55,21 @@ class AppDslImportApi(Resource):
 
         with Session(db.engine, expire_on_commit=False) as session:
             service = AppDslService(session)
-            result = service.import_app(
-                account=account,
-                import_mode=body.mode,
-                yaml_content=body.yaml_content,
-                yaml_url=body.yaml_url,
-                name=body.name,
-                description=body.description,
-                icon_type=body.icon_type,
-                icon=body.icon,
-                icon_background=body.icon_background,
-                app_id=body.app_id,
-            )
+            try:
+                result = service.import_app(
+                    account=account,
+                    import_mode=body.mode,
+                    yaml_content=body.yaml_content,
+                    yaml_url=body.yaml_url,
+                    name=body.name,
+                    description=body.description,
+                    icon_type=body.icon_type,
+                    icon=body.icon,
+                    icon_background=body.icon_background,
+                    app_id=body.app_id,
+                )
+            except NoPermissionError as exc:
+                raise Forbidden(str(exc)) from exc
             if result.status == ImportStatus.FAILED:
                 session.rollback()
             else:
@@ -108,7 +113,10 @@ class AppDslImportConfirmApi(Resource):
 
         with Session(db.engine, expire_on_commit=False) as session:
             service = AppDslService(session)
-            result = service.confirm_import(import_id=import_id, account=account)
+            try:
+                result = service.confirm_import(import_id=import_id, account=account)
+            except NoPermissionError as exc:
+                raise Forbidden(str(exc)) from exc
             if result.status == ImportStatus.FAILED:
                 session.rollback()
             else:

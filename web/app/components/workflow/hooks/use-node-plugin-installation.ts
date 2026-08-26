@@ -13,10 +13,7 @@ import {
   useAllWorkflowTools,
   useInvalidToolsByType,
 } from '@/service/use-tools'
-import {
-  useAllTriggerPlugins,
-  useInvalidateAllTriggerPlugins,
-} from '@/service/use-triggers'
+import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
 import { useStore } from '../store'
 import { BlockEnum } from '../types'
 import {
@@ -43,7 +40,11 @@ const NOOP_INSTALLATION: InstallationState = {
   shouldDim: false,
 }
 
-const useToolInstallation = (data: ToolNodeType, enabled: boolean, canInstallPlugin: boolean): InstallationState => {
+const useToolInstallation = (
+  data: ToolNodeType,
+  enabled: boolean,
+  canInstallPlugin: boolean,
+): InstallationState => {
   const isBuiltIn = enabled && data.provider_type === CollectionType.builtIn
   const isCustom = enabled && data.provider_type === CollectionType.custom
   const isWorkflow = enabled && data.provider_type === CollectionType.workflow
@@ -56,8 +57,7 @@ const useToolInstallation = (data: ToolNodeType, enabled: boolean, canInstallPlu
   const invalidateTools = useInvalidToolsByType(enabled ? data.provider_type : undefined)
 
   const collectionInfo = useMemo(() => {
-    if (!enabled)
-      return undefined
+    if (!enabled) return undefined
 
     switch (data.provider_type) {
       case CollectionType.builtIn:
@@ -102,8 +102,7 @@ const useToolInstallation = (data: ToolNodeType, enabled: boolean, canInstallPlu
 
   const { plugin_id, provider_id, provider_name } = data
   const matchedCollection = useMemo(() => {
-    if (!collection || !collection.length)
-      return undefined
+    if (!collection || !collection.length) return undefined
 
     return matchToolInCollection(collection, { plugin_id, provider_id, provider_name })
   }, [collection, plugin_id, provider_id, provider_name])
@@ -112,8 +111,7 @@ const useToolInstallation = (data: ToolNodeType, enabled: boolean, canInstallPlu
   const canInstall = Boolean(data.plugin_unique_identifier) && canInstallPlugin
 
   const onInstallSuccess = useCallback(() => {
-    if (invalidateTools)
-      invalidateTools()
+    if (invalidateTools) invalidateTools()
   }, [invalidateTools])
 
   const shouldDim = (!!collectionInfo && !isResolved) || (isResolved && !matchedCollection)
@@ -128,7 +126,11 @@ const useToolInstallation = (data: ToolNodeType, enabled: boolean, canInstallPlu
   }
 }
 
-const useTriggerInstallation = (data: PluginTriggerNodeType, enabled: boolean, canInstallPlugin: boolean): InstallationState => {
+const useTriggerInstallation = (
+  data: PluginTriggerNodeType,
+  enabled: boolean,
+  canInstallPlugin: boolean,
+): InstallationState => {
   const triggerPluginsQuery = useAllTriggerPlugins(enabled)
   const invalidateTriggers = useInvalidateAllTriggerPlugins()
 
@@ -137,8 +139,7 @@ const useTriggerInstallation = (data: PluginTriggerNodeType, enabled: boolean, c
 
   const { plugin_id, provider_id, provider_name } = data
   const matchedProvider = useMemo(() => {
-    if (!triggerProviders || !triggerProviders.length)
-      return undefined
+    if (!triggerProviders || !triggerProviders.length) return undefined
 
     return matchTriggerProvider(triggerProviders, { plugin_id, provider_id, provider_name })
   }, [plugin_id, provider_id, provider_name, triggerProviders])
@@ -162,14 +163,17 @@ const useTriggerInstallation = (data: PluginTriggerNodeType, enabled: boolean, c
   }
 }
 
-const useDataSourceInstallation = (data: DataSourceNodeType, _enabled: boolean, canInstallPlugin: boolean): InstallationState => {
-  const dataSourceList = useStore(s => s.dataSourceList)
+const useDataSourceInstallation = (
+  data: DataSourceNodeType,
+  _enabled: boolean,
+  canInstallPlugin: boolean,
+): InstallationState => {
+  const dataSourceList = useStore((s) => s.dataSourceList)
   const invalidateDataSourceList = useInvalidDataSourceList()
 
   const { plugin_unique_identifier, plugin_id, provider_name } = data
   const matchedPlugin = useMemo(() => {
-    if (!dataSourceList || !dataSourceList.length)
-      return undefined
+    if (!dataSourceList || !dataSourceList.length) return undefined
 
     return matchDataSource(dataSourceList, { plugin_unique_identifier, plugin_id, provider_name })
   }, [dataSourceList, plugin_id, plugin_unique_identifier, provider_name])
@@ -202,15 +206,20 @@ export const useNodePluginInstallation = (data: CommonNodeType): InstallationSta
   const { canInstallPlugin } = useWorkspacePluginInstallPermission()
 
   const toolInstallation = useToolInstallation(data as ToolNodeType, isTool, canInstallPlugin)
-  const triggerInstallation = useTriggerInstallation(data as PluginTriggerNodeType, isTrigger, canInstallPlugin)
-  const dataSourceInstallation = useDataSourceInstallation(data as DataSourceNodeType, isDataSource, canInstallPlugin)
+  const triggerInstallation = useTriggerInstallation(
+    data as PluginTriggerNodeType,
+    isTrigger,
+    canInstallPlugin,
+  )
+  const dataSourceInstallation = useDataSourceInstallation(
+    data as DataSourceNodeType,
+    isDataSource,
+    canInstallPlugin,
+  )
 
-  if (isTool)
-    return toolInstallation
-  if (isTrigger)
-    return triggerInstallation
-  if (isDataSource)
-    return dataSourceInstallation
+  if (isTool) return toolInstallation
+  if (isTrigger) return triggerInstallation
+  if (isDataSource) return dataSourceInstallation
 
   return NOOP_INSTALLATION
 }

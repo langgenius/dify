@@ -2,12 +2,8 @@ import type { DataSet } from '@/models/datasets'
 import { createEvent, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
-import {
-  ChunkingMode,
-  DatasetPermission,
-  DataSourceType,
-} from '@/models/datasets'
+import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
 import DatasetInfo from '..'
@@ -25,18 +21,19 @@ const mockCheckIsUsedInApp = vi.fn()
 const mockDeleteDataset = vi.fn()
 const TestEditIcon = () => <span aria-hidden className="i-ri-edit-line" />
 let mockIsRbacEnabled = true
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   current: {
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: [] as string[],
   },
 }))
 
-const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) => renderWithSystemFeatures(ui, {
-  systemFeatures: {
-    rbac_enabled: mockIsRbacEnabled,
-  },
-})
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
+  renderWithConsoleQuery(ui, {
+    systemFeatures: {
+      rbac_enabled: mockIsRbacEnabled,
+    },
+  })
 
 const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   id: 'dataset-1',
@@ -118,17 +115,13 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset?: DataSet }) => unknown) => selector({ dataset: mockDataset }),
+  useDatasetDetailContextWithSelector: (selector: (state: { dataset?: DataSet }) => unknown) =>
+    selector({ dataset: mockDataset }),
 }))
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState.current)
 })
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
@@ -167,12 +160,15 @@ vi.mock('@/app/components/datasets/rename-modal', () => ({
     onClose: () => void
     onSuccess?: () => void
   }) => {
-    if (!show)
-      return null
+    if (!show) return null
     return (
       <div data-testid="rename-modal">
-        <button type="button" onClick={onSuccess}>Success</button>
-        <button type="button" onClick={onClose}>Close</button>
+        <button type="button" onClick={onSuccess}>
+          Success
+        </button>
+        <button type="button" onClick={onClose}>
+          Close
+        </button>
       </div>
     )
   },
@@ -240,33 +236,47 @@ describe('MenuItem', () => {
       render(<MenuItem name="Edit" Icon={TestEditIcon} handleClick={handleClick} />)
 
       // Act
-      await user.click(screen.getByText('Edit'))
+      await user.click(screen.getByRole('button', { name: 'Edit' }))
 
       // Assert
       expect(handleClick).toHaveBeenCalledTimes(1)
     })
 
-    it('should stop propagation before invoking the handler', () => {
-      const parentClick = vi.fn()
+    it.each([
+      ['Enter', '{Enter}'],
+      ['Space', ' '],
+    ])('should be reachable and activate with %s', async (_, key) => {
+      const user = userEvent.setup()
       const handleClick = vi.fn()
+      render(<MenuItem name="Edit" Icon={TestEditIcon} handleClick={handleClick} />)
 
-      render(
-        <div role="button" tabIndex={0} onClick={parentClick} onKeyDown={parentClick}>
-          <MenuItem name="Edit" Icon={TestEditIcon} handleClick={handleClick} />
-        </div>,
-      )
+      await user.tab()
+      expect(screen.getByRole('button', { name: 'Edit' })).toHaveFocus()
 
-      fireEvent.click(screen.getByText('Edit'))
-
+      await user.keyboard(key)
       expect(handleClick).toHaveBeenCalledTimes(1)
-      expect(parentClick).not.toHaveBeenCalled()
     })
 
-    it('should not crash when no click handler is provided', () => {
+    it('should stop propagation before invoking the handler', () => {
+      const handleClick = vi.fn()
+      render(<MenuItem name="Edit" Icon={TestEditIcon} handleClick={handleClick} />)
+
+      const menuItem = screen.getByRole('button', { name: 'Edit' })
+      const event = createEvent.click(menuItem)
+      const stopPropagation = vi.spyOn(event, 'stopPropagation')
+
+      fireEvent(menuItem, event)
+
+      expect(handleClick).toHaveBeenCalledTimes(1)
+      expect(stopPropagation).toHaveBeenCalledTimes(1)
+    })
+
+    it('should prevent the default action when no click handler is provided', () => {
       render(<MenuItem name="Edit" Icon={TestEditIcon} />)
 
-      const event = createEvent.click(screen.getByText('Edit'))
-      fireEvent(screen.getByText('Edit'), event)
+      const menuItem = screen.getByRole('button', { name: 'Edit' })
+      const event = createEvent.click(menuItem)
+      fireEvent(menuItem, event)
 
       expect(event.defaultPrevented).toBe(true)
     })
@@ -328,7 +338,9 @@ describe('Menu', () => {
 
       // Assert
       expect(screen.getByText('common.operation.edit')).toBeInTheDocument()
-      expect(screen.queryByText('datasetPipeline.operations.exportPipeline')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('datasetPipeline.operations.exportPipeline'),
+      ).not.toBeInTheDocument()
       expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
     })
   })
@@ -425,10 +437,7 @@ describe('Dropdown', () => {
       mockDataset = createDataset({
         pipeline_id: 'pipeline-1',
         runtime_mode: 'rag_pipeline',
-        permission_keys: [
-          DatasetACLPermission.Edit,
-          DatasetACLPermission.ImportExportDSL,
-        ],
+        permission_keys: [DatasetACLPermission.Edit, DatasetACLPermission.ImportExportDSL],
       })
       render(<Dropdown expand />)
 

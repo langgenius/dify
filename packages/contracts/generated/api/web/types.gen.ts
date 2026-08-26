@@ -43,55 +43,21 @@ export type AppMetaResponse = {
   }
 }
 
+export type AppMode =
+  | 'advanced-chat'
+  | 'agent'
+  | 'agent-chat'
+  | 'channel'
+  | 'chat'
+  | 'completion'
+  | 'rag-pipeline'
+  | 'workflow'
+
 export type AppPermissionQuery = {
   appId: string
 }
 
-export type AppSiteInfoResponse = {
-  app_id: string
-  can_replace_logo: boolean
-  custom_config?: {
-    [key: string]: unknown
-  } | null
-  enable_site: boolean
-  end_user_id?: string | null
-  model_config?: AppSiteModelConfigResponse | null
-  plan?: string | null
-  site: AppSiteResponse
-}
-
-export type AppSiteModelConfigResponse = {
-  model: unknown
-  more_like_this: unknown
-  opening_statement?: string | null
-  pre_prompt?: string | null
-  suggested_questions: unknown
-  suggested_questions_after_answer: unknown
-  user_input_form: unknown
-}
-
-export type AppSiteResponse = {
-  chat_color_theme?: string | null
-  chat_color_theme_inverted?: boolean | null
-  copyright?: string | null
-  custom_disclaimer?: string | null
-  default_language?: string | null
-  description?: string | null
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: string | null
-  icon_url?: string | null
-  input_placeholder?: string | null
-  privacy_policy?: string | null
-  prompt_public?: boolean | null
-  show_workflow_steps?: boolean | null
-  title?: string | null
-  use_icon_as_answer_icon?: boolean | null
-}
-
-export type AudioBinaryResponse = Blob | File
-
-export type AudioTranscriptResponse = {
+export type AudioToTextResponse = {
   text: string
 }
 
@@ -150,17 +116,19 @@ export type ConversationListQuery = {
 
 export type ConversationRenamePayload = (
   | {
-    auto_generate: true
-    name?: string | null
-  }
+      auto_generate: true
+      name?: string | null
+    }
   | {
-    auto_generate?: false
-    name: string
-  }
+      auto_generate?: false
+      name: string
+    }
 ) & {
   auto_generate?: boolean
   name?: string | null
 }
+
+export type DeploymentEdition = 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
 
 export type EmailCodeLoginSendPayload = {
   email: string
@@ -244,19 +212,19 @@ export type ForgotPasswordSendPayload = {
   language?: string | null
 }
 
-export type FormInputConfig
-  = | ({
-    type: 'paragraph'
-  } & ParagraphInputConfig)
+export type FormInputConfig =
   | ({
-    type: 'select'
-  } & SelectInputConfig)
+      type: 'paragraph'
+    } & ParagraphInputConfig)
   | ({
-    type: 'file'
-  } & FileInputConfig)
+      type: 'select'
+    } & SelectInputConfig)
   | ({
-    type: 'file-list'
-  } & FileListInputConfig)
+      type: 'file'
+    } & FileInputConfig)
+  | ({
+      type: 'file-list'
+    } & FileListInputConfig)
 
 export type GeneratedAppResponse = JsonValue
 
@@ -289,15 +257,13 @@ export type HumanInputFormDefinition = {
 
 export type HumanInputFormDefinitionResponse = {
   expiration_time: number
-  form_content: unknown
-  inputs: unknown
+  form_content: string
+  inputs: Array<FormInputConfig>
   resolved_default_values: {
     [key: string]: string
   }
-  site?: {
-    [key: string]: unknown
-  } | null
-  user_actions: unknown
+  site?: WebAppSiteResponse | null
+  user_actions: Array<UserActionConfig>
 }
 
 export type HumanInputFormSubmissionData = {
@@ -319,7 +285,7 @@ export type HumanInputFormSubmitPayload = {
 }
 
 export type HumanInputFormSubmitResponse = {
-  [key: string]: never
+  [key: string]: unknown
 }
 
 export type HumanInputUploadTokenResponse = {
@@ -327,38 +293,26 @@ export type HumanInputUploadTokenResponse = {
   upload_token: string
 }
 
-export type JsonObject = {
-  [key: string]: unknown
-}
-
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
+export type JsonValue =
+  | string
+  | number
+  | number
+  | boolean
+  | {
       [key: string]: unknown
     }
-    | Array<unknown>
-    | null
+  | Array<unknown>
+  | null
 
 export type JsonValueType = unknown
 
 export type JsonValue2 = unknown
 
-export type LicenseLimitationModel = {
-  enabled: boolean
-  limit: number
-  size: number
-}
-
-export type LicenseModel = {
-  expired_at: string
-  status: LicenseStatus
-  workspaces: LicenseLimitationModel
-}
-
 export type LicenseStatus = 'active' | 'expired' | 'expiring' | 'inactive' | 'lost' | 'none'
+
+export type LicenseStatusModel = {
+  status: LicenseStatus
+}
 
 export type LoginPayload = {
   email: string
@@ -409,18 +363,327 @@ export type ParagraphInputConfig = {
 }
 
 export type Parameters = {
-  annotation_reply: JsonObject
-  file_upload: JsonObject
-  more_like_this: JsonObject
+  annotation_reply: {
+    enabled?: boolean
+  }
+  file_upload: {
+    allowed_file_extensions?: Array<string>
+    allowed_file_types?: Array<'audio' | 'custom' | 'document' | 'image' | 'video'>
+    allowed_file_upload_methods?: Array<'local_file' | 'remote_url'>
+    enabled?: boolean
+    image?: {
+      detail?: string
+      enabled?: boolean
+      number_limits?: number
+      transfer_methods?: Array<string>
+    }
+    number_limits?: number
+  }
+  more_like_this: {
+    enabled?: boolean
+  }
   opening_statement?: string | null
-  retriever_resource: JsonObject
-  sensitive_word_avoidance: JsonObject
-  speech_to_text: JsonObject
+  retriever_resource: {
+    enabled?: boolean
+  }
+  sensitive_word_avoidance: {
+    enabled?: boolean
+  }
+  speech_to_text: {
+    enabled?: boolean
+  }
   suggested_questions: Array<string>
-  suggested_questions_after_answer: JsonObject
+  suggested_questions_after_answer: {
+    enabled?: boolean
+  }
   system_parameters: SystemParameters
-  text_to_speech: JsonObject
-  user_input_form: Array<JsonObject>
+  text_to_speech: {
+    autoPlay?: string
+    enabled?: boolean
+    language?: string
+    voice?: string
+  }
+  user_input_form: Array<
+    | {
+        'text-input': {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        select: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        paragraph: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        number: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        external_data_tool: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        file: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        'file-list': {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        checkbox: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        json_object: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+  >
 }
 
 export type PassportAccessTokenResponse = {
@@ -436,15 +699,11 @@ export type PluginInstallationPermissionModel = {
   restrict_to_marketplace_only: boolean
 }
 
-export type PluginInstallationScope
-  = | 'all'
-    | 'none'
-    | 'official_and_specific_partners'
-    | 'official_only'
-
-export type PluginManagerModel = {
-  enabled: boolean
-}
+export type PluginInstallationScope =
+  | 'all'
+  | 'none'
+  | 'official_and_specific_partners'
+  | 'official_only'
 
 export type RemoteFileInfo = {
   file_length: number
@@ -478,6 +737,8 @@ export type RetrieverResource = {
   summary?: string | null
   word_count?: number | null
 }
+
+export type SsoProtocol = 'oauth2' | 'oidc' | 'saml'
 
 export type SavedMessageCreatePayload = {
   message_id: string
@@ -555,6 +816,7 @@ export type SuggestedQuestionsResponse = {
 
 export type SystemFeatureModel = {
   branding: BrandingModel
+  deployment_edition: DeploymentEdition
   enable_app_deploy: boolean
   enable_change_email: boolean
   enable_collaboration_mode: boolean
@@ -565,17 +827,15 @@ export type SystemFeatureModel = {
   enable_learn_app: boolean
   enable_marketplace: boolean
   enable_social_oauth_login: boolean
-  enable_trial_app: boolean
-  is_allow_create_workspace: boolean
+  enable_step_by_step_tour: boolean
   is_allow_register: boolean
   is_email_setup: boolean
-  license: LicenseModel
-  max_plugin_package_size: number
+  knowledge_fs_enabled: boolean
+  license: LicenseStatusModel
   plugin_installation_permission: PluginInstallationPermissionModel
-  plugin_manager: PluginManagerModel
   rbac_enabled: boolean
   sso_enforced_for_signin: boolean
-  sso_enforced_for_signin_protocol: string
+  sso_enforced_for_signin_protocol: SsoProtocol | null
   webapp_auth: WebAppAuthModel
 }
 
@@ -611,13 +871,31 @@ export type VerificationTokenResponse = {
 export type WebAppAuthModel = {
   allow_email_code_login: boolean
   allow_email_password_login: boolean
+  allow_public_access: boolean
   allow_sso: boolean
   enabled: boolean
   sso_config: WebAppAuthSsoModel
 }
 
 export type WebAppAuthSsoModel = {
-  protocol: string
+  protocol: SsoProtocol | null
+}
+
+export type WebAppCustomConfigResponse = {
+  remove_webapp_brand: boolean
+  replace_webapp_logo?: string | null
+}
+
+export type WebAppSiteResponse = {
+  app_id: string
+  can_replace_logo: boolean
+  custom_config?: WebAppCustomConfigResponse | null
+  enable_site: boolean
+  end_user_id?: string | null
+  mode: AppMode
+  model_config?: WebModelConfigResponse | null
+  plan: string
+  site: WebSiteResponse
 }
 
 export type WebMessageInfiniteScrollPagination = {
@@ -629,8 +907,10 @@ export type WebMessageInfiniteScrollPagination = {
 export type WebMessageListItem = {
   agent_thoughts: Array<AgentThought>
   answer: string
+  answer_tokens?: number
   conversation_id: string
   created_at?: number | null
+  currency?: string | null
   error?: string | null
   extra_contents: Array<HumanInputContent>
   feedback?: SimpleFeedback | null
@@ -639,23 +919,117 @@ export type WebMessageListItem = {
     [key: string]: JsonValueType
   }
   message_files: Array<MessageFile>
+  message_tokens?: number
   metadata?: JsonValueType | null
   parent_message_id?: string | null
+  provider_response_latency?: number
   query: string
   retriever_resources: Array<RetrieverResource>
   status: string
+  total_price?: string | null
+  readonly total_tokens: number
+}
+
+export type WebModelConfigResponse = {
+  model?: unknown
+  more_like_this?: unknown
+  opening_statement?: string | null
+  pre_prompt?: string | null
+  suggested_questions?: unknown
+  suggested_questions_after_answer?: unknown
+  user_input_form?: unknown
+}
+
+export type WebSiteResponse = {
+  chat_color_theme?: string | null
+  chat_color_theme_inverted: boolean
+  copyright?: string | null
+  custom_disclaimer?: string | null
+  default_language?: string | null
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  icon_url?: string | null
+  input_placeholder?: string | null
+  privacy_policy?: string | null
+  prompt_public?: boolean | null
+  show_workflow_steps?: boolean | null
+  title: string
+  use_icon_as_answer_icon?: boolean | null
 }
 
 export type WorkflowRunPayload = {
-  files?: Array<{
-    transfer_method: 'local_file' | 'remote_url'
-    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
-    upload_file_id?: string
-    url?: string
-  }> | null
+  files?: Array<
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url: string
+      }
+    | {
+        remote_url: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'local_file'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+  > | null
   inputs: {
     [key: string]: unknown
   }
+}
+
+export type GeneratedAppResponseWritable = JsonValue
+
+export type HumanInputFormSubmitResponseWritable = {
+  [key: string]: unknown
+}
+
+export type WebMessageInfiniteScrollPaginationWritable = {
+  data: Array<WebMessageListItemWritable>
+  has_more: boolean
+  limit: number
+}
+
+export type WebMessageListItemWritable = {
+  agent_thoughts: Array<AgentThought>
+  answer: string
+  answer_tokens?: number
+  conversation_id: string
+  created_at?: number | null
+  currency?: string | null
+  error?: string | null
+  extra_contents: Array<HumanInputContent>
+  feedback?: SimpleFeedback | null
+  id: string
+  inputs: {
+    [key: string]: JsonValueType
+  }
+  message_files: Array<MessageFile>
+  message_tokens?: number
+  metadata?: JsonValueType | null
+  parent_message_id?: string | null
+  provider_response_latency?: number
+  query: string
+  retriever_resources: Array<RetrieverResource>
+  status: string
+  total_price?: string | null
 }
 
 export type PostAudioToTextData = {
@@ -675,7 +1049,7 @@ export type PostAudioToTextErrors = {
 }
 
 export type PostAudioToTextResponses = {
-  200: AudioTranscriptResponse
+  200: AudioToTextResponse
 }
 
 export type PostAudioToTextResponse = PostAudioToTextResponses[keyof PostAudioToTextResponses]
@@ -722,8 +1096,8 @@ export type PostChatMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
 
-export type PostChatMessagesByTaskIdStopResponse
-  = PostChatMessagesByTaskIdStopResponses[keyof PostChatMessagesByTaskIdStopResponses]
+export type PostChatMessagesByTaskIdStopResponse =
+  PostChatMessagesByTaskIdStopResponses[keyof PostChatMessagesByTaskIdStopResponses]
 
 export type PostCompletionMessagesData = {
   body: CompletionMessagePayload
@@ -744,8 +1118,8 @@ export type PostCompletionMessagesResponses = {
   200: GeneratedAppResponse
 }
 
-export type PostCompletionMessagesResponse
-  = PostCompletionMessagesResponses[keyof PostCompletionMessagesResponses]
+export type PostCompletionMessagesResponse =
+  PostCompletionMessagesResponses[keyof PostCompletionMessagesResponses]
 
 export type PostCompletionMessagesByTaskIdStopData = {
   body?: never
@@ -768,8 +1142,8 @@ export type PostCompletionMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
 
-export type PostCompletionMessagesByTaskIdStopResponse
-  = PostCompletionMessagesByTaskIdStopResponses[keyof PostCompletionMessagesByTaskIdStopResponses]
+export type PostCompletionMessagesByTaskIdStopResponse =
+  PostCompletionMessagesByTaskIdStopResponses[keyof PostCompletionMessagesByTaskIdStopResponses]
 
 export type GetConversationsData = {
   body?: never
@@ -818,8 +1192,8 @@ export type DeleteConversationsByCIdResponses = {
   204: void
 }
 
-export type DeleteConversationsByCIdResponse
-  = DeleteConversationsByCIdResponses[keyof DeleteConversationsByCIdResponses]
+export type DeleteConversationsByCIdResponse =
+  DeleteConversationsByCIdResponses[keyof DeleteConversationsByCIdResponses]
 
 export type PostConversationsByCIdNameData = {
   body: ConversationRenamePayload
@@ -845,8 +1219,8 @@ export type PostConversationsByCIdNameResponses = {
   200: SimpleConversation
 }
 
-export type PostConversationsByCIdNameResponse
-  = PostConversationsByCIdNameResponses[keyof PostConversationsByCIdNameResponses]
+export type PostConversationsByCIdNameResponse =
+  PostConversationsByCIdNameResponses[keyof PostConversationsByCIdNameResponses]
 
 export type PatchConversationsByCIdPinData = {
   body?: never
@@ -869,8 +1243,8 @@ export type PatchConversationsByCIdPinResponses = {
   200: ResultResponse
 }
 
-export type PatchConversationsByCIdPinResponse
-  = PatchConversationsByCIdPinResponses[keyof PatchConversationsByCIdPinResponses]
+export type PatchConversationsByCIdPinResponse =
+  PatchConversationsByCIdPinResponses[keyof PatchConversationsByCIdPinResponses]
 
 export type PatchConversationsByCIdUnpinData = {
   body?: never
@@ -893,8 +1267,8 @@ export type PatchConversationsByCIdUnpinResponses = {
   200: ResultResponse
 }
 
-export type PatchConversationsByCIdUnpinResponse
-  = PatchConversationsByCIdUnpinResponses[keyof PatchConversationsByCIdUnpinResponses]
+export type PatchConversationsByCIdUnpinResponse =
+  PatchConversationsByCIdUnpinResponses[keyof PatchConversationsByCIdUnpinResponses]
 
 export type PostEmailCodeLoginData = {
   body: EmailCodeLoginSendPayload
@@ -912,8 +1286,8 @@ export type PostEmailCodeLoginResponses = {
   200: SimpleResultDataResponse
 }
 
-export type PostEmailCodeLoginResponse
-  = PostEmailCodeLoginResponses[keyof PostEmailCodeLoginResponses]
+export type PostEmailCodeLoginResponse =
+  PostEmailCodeLoginResponses[keyof PostEmailCodeLoginResponses]
 
 export type PostEmailCodeLoginValidityData = {
   body: EmailCodeLoginVerifyPayload
@@ -932,8 +1306,8 @@ export type PostEmailCodeLoginValidityResponses = {
   200: AccessTokenResultResponse
 }
 
-export type PostEmailCodeLoginValidityResponse
-  = PostEmailCodeLoginValidityResponses[keyof PostEmailCodeLoginValidityResponses]
+export type PostEmailCodeLoginValidityResponse =
+  PostEmailCodeLoginValidityResponses[keyof PostEmailCodeLoginValidityResponses]
 
 export type PostFilesUploadData = {
   body?: never
@@ -971,8 +1345,8 @@ export type PostForgotPasswordResponses = {
   200: SimpleResultDataResponse
 }
 
-export type PostForgotPasswordResponse
-  = PostForgotPasswordResponses[keyof PostForgotPasswordResponses]
+export type PostForgotPasswordResponse =
+  PostForgotPasswordResponses[keyof PostForgotPasswordResponses]
 
 export type PostForgotPasswordResetsData = {
   body: ForgotPasswordResetPayload
@@ -991,8 +1365,8 @@ export type PostForgotPasswordResetsResponses = {
   200: SimpleResultResponse
 }
 
-export type PostForgotPasswordResetsResponse
-  = PostForgotPasswordResetsResponses[keyof PostForgotPasswordResetsResponses]
+export type PostForgotPasswordResetsResponse =
+  PostForgotPasswordResetsResponses[keyof PostForgotPasswordResetsResponses]
 
 export type PostForgotPasswordValidityData = {
   body: ForgotPasswordCheckPayload
@@ -1010,8 +1384,8 @@ export type PostForgotPasswordValidityResponses = {
   200: VerificationTokenResponse
 }
 
-export type PostForgotPasswordValidityResponse
-  = PostForgotPasswordValidityResponses[keyof PostForgotPasswordValidityResponses]
+export type PostForgotPasswordValidityResponse =
+  PostForgotPasswordValidityResponses[keyof PostForgotPasswordValidityResponses]
 
 export type GetFormHumanInputByFormTokenData = {
   body?: never
@@ -1022,12 +1396,19 @@ export type GetFormHumanInputByFormTokenData = {
   url: '/form/human_input/{form_token}'
 }
 
+export type GetFormHumanInputByFormTokenErrors = {
+  403: unknown
+  404: unknown
+  412: unknown
+  429: unknown
+}
+
 export type GetFormHumanInputByFormTokenResponses = {
   200: HumanInputFormDefinitionResponse
 }
 
-export type GetFormHumanInputByFormTokenResponse
-  = GetFormHumanInputByFormTokenResponses[keyof GetFormHumanInputByFormTokenResponses]
+export type GetFormHumanInputByFormTokenResponse =
+  GetFormHumanInputByFormTokenResponses[keyof GetFormHumanInputByFormTokenResponses]
 
 export type PostFormHumanInputByFormTokenData = {
   body: HumanInputFormSubmitPayload
@@ -1038,12 +1419,19 @@ export type PostFormHumanInputByFormTokenData = {
   url: '/form/human_input/{form_token}'
 }
 
+export type PostFormHumanInputByFormTokenErrors = {
+  400: unknown
+  404: unknown
+  412: unknown
+  429: unknown
+}
+
 export type PostFormHumanInputByFormTokenResponses = {
   200: HumanInputFormSubmitResponse
 }
 
-export type PostFormHumanInputByFormTokenResponse
-  = PostFormHumanInputByFormTokenResponses[keyof PostFormHumanInputByFormTokenResponses]
+export type PostFormHumanInputByFormTokenResponse =
+  PostFormHumanInputByFormTokenResponses[keyof PostFormHumanInputByFormTokenResponses]
 
 export type PostFormHumanInputByFormTokenUploadTokenData = {
   body?: never
@@ -1054,12 +1442,18 @@ export type PostFormHumanInputByFormTokenUploadTokenData = {
   url: '/form/human_input/{form_token}/upload-token'
 }
 
+export type PostFormHumanInputByFormTokenUploadTokenErrors = {
+  404: unknown
+  412: unknown
+  429: unknown
+}
+
 export type PostFormHumanInputByFormTokenUploadTokenResponses = {
   200: HumanInputUploadTokenResponse
 }
 
-export type PostFormHumanInputByFormTokenUploadTokenResponse
-  = PostFormHumanInputByFormTokenUploadTokenResponses[keyof PostFormHumanInputByFormTokenUploadTokenResponses]
+export type PostFormHumanInputByFormTokenUploadTokenResponse =
+  PostFormHumanInputByFormTokenUploadTokenResponses[keyof PostFormHumanInputByFormTokenUploadTokenResponses]
 
 export type PostHumanInputFormsFilesData = {
   body?: never
@@ -1072,8 +1466,8 @@ export type PostHumanInputFormsFilesResponses = {
   201: FileResponse
 }
 
-export type PostHumanInputFormsFilesResponse
-  = PostHumanInputFormsFilesResponses[keyof PostHumanInputFormsFilesResponses]
+export type PostHumanInputFormsFilesResponse =
+  PostHumanInputFormsFilesResponses[keyof PostHumanInputFormsFilesResponses]
 
 export type PostLoginData = {
   body: LoginPayload
@@ -1177,8 +1571,8 @@ export type PostMessagesByMessageIdFeedbacksResponses = {
   200: ResultResponse
 }
 
-export type PostMessagesByMessageIdFeedbacksResponse
-  = PostMessagesByMessageIdFeedbacksResponses[keyof PostMessagesByMessageIdFeedbacksResponses]
+export type PostMessagesByMessageIdFeedbacksResponse =
+  PostMessagesByMessageIdFeedbacksResponses[keyof PostMessagesByMessageIdFeedbacksResponses]
 
 export type GetMessagesByMessageIdMoreLikeThisData = {
   body?: never
@@ -1203,8 +1597,8 @@ export type GetMessagesByMessageIdMoreLikeThisResponses = {
   200: GeneratedAppResponse
 }
 
-export type GetMessagesByMessageIdMoreLikeThisResponse
-  = GetMessagesByMessageIdMoreLikeThisResponses[keyof GetMessagesByMessageIdMoreLikeThisResponses]
+export type GetMessagesByMessageIdMoreLikeThisResponse =
+  GetMessagesByMessageIdMoreLikeThisResponses[keyof GetMessagesByMessageIdMoreLikeThisResponses]
 
 export type GetMessagesByMessageIdSuggestedQuestionsData = {
   body?: never
@@ -1227,8 +1621,8 @@ export type GetMessagesByMessageIdSuggestedQuestionsResponses = {
   200: SuggestedQuestionsResponse
 }
 
-export type GetMessagesByMessageIdSuggestedQuestionsResponse
-  = GetMessagesByMessageIdSuggestedQuestionsResponses[keyof GetMessagesByMessageIdSuggestedQuestionsResponses]
+export type GetMessagesByMessageIdSuggestedQuestionsResponse =
+  GetMessagesByMessageIdSuggestedQuestionsResponses[keyof GetMessagesByMessageIdSuggestedQuestionsResponses]
 
 export type GetMetaData = {
   body?: never
@@ -1310,8 +1704,8 @@ export type PostRemoteFilesUploadResponses = {
   201: FileWithSignedUrl
 }
 
-export type PostRemoteFilesUploadResponse
-  = PostRemoteFilesUploadResponses[keyof PostRemoteFilesUploadResponses]
+export type PostRemoteFilesUploadResponse =
+  PostRemoteFilesUploadResponses[keyof PostRemoteFilesUploadResponses]
 
 export type GetRemoteFilesByUrlData = {
   body?: never
@@ -1332,8 +1726,8 @@ export type GetRemoteFilesByUrlResponses = {
   200: RemoteFileInfo
 }
 
-export type GetRemoteFilesByUrlResponse
-  = GetRemoteFilesByUrlResponses[keyof GetRemoteFilesByUrlResponses]
+export type GetRemoteFilesByUrlResponse =
+  GetRemoteFilesByUrlResponses[keyof GetRemoteFilesByUrlResponses]
 
 export type GetSavedMessagesData = {
   body?: never
@@ -1403,8 +1797,8 @@ export type DeleteSavedMessagesByMessageIdResponses = {
   204: void
 }
 
-export type DeleteSavedMessagesByMessageIdResponse
-  = DeleteSavedMessagesByMessageIdResponses[keyof DeleteSavedMessagesByMessageIdResponses]
+export type DeleteSavedMessagesByMessageIdResponse =
+  DeleteSavedMessagesByMessageIdResponses[keyof DeleteSavedMessagesByMessageIdResponses]
 
 export type GetSiteData = {
   body?: never
@@ -1422,7 +1816,7 @@ export type GetSiteErrors = {
 }
 
 export type GetSiteResponses = {
-  200: AppSiteInfoResponse
+  200: WebAppSiteResponse
 }
 
 export type GetSiteResponse = GetSiteResponses[keyof GetSiteResponses]
@@ -1459,7 +1853,9 @@ export type PostTextToAudioErrors = {
 }
 
 export type PostTextToAudioResponses = {
-  200: AudioBinaryResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostTextToAudioResponse = PostTextToAudioResponses[keyof PostTextToAudioResponses]
@@ -1476,15 +1872,17 @@ export type GetWebappAccessModeData = {
 
 export type GetWebappAccessModeErrors = {
   400: unknown
+  404: unknown
   500: unknown
+  503: unknown
 }
 
 export type GetWebappAccessModeResponses = {
   200: AccessModeResponse
 }
 
-export type GetWebappAccessModeResponse
-  = GetWebappAccessModeResponses[keyof GetWebappAccessModeResponses]
+export type GetWebappAccessModeResponse =
+  GetWebappAccessModeResponses[keyof GetWebappAccessModeResponses]
 
 export type GetWebappPermissionData = {
   body?: never
@@ -1499,14 +1897,15 @@ export type GetWebappPermissionErrors = {
   400: unknown
   401: unknown
   500: unknown
+  503: unknown
 }
 
 export type GetWebappPermissionResponses = {
   200: BooleanResultResponse
 }
 
-export type GetWebappPermissionResponse
-  = GetWebappPermissionResponses[keyof GetWebappPermissionResponses]
+export type GetWebappPermissionResponse =
+  GetWebappPermissionResponses[keyof GetWebappPermissionResponses]
 
 export type GetWorkflowByTaskIdEventsData = {
   body?: never
@@ -1521,8 +1920,8 @@ export type GetWorkflowByTaskIdEventsResponses = {
   200: EventStreamResponse
 }
 
-export type GetWorkflowByTaskIdEventsResponse
-  = GetWorkflowByTaskIdEventsResponses[keyof GetWorkflowByTaskIdEventsResponses]
+export type GetWorkflowByTaskIdEventsResponse =
+  GetWorkflowByTaskIdEventsResponses[keyof GetWorkflowByTaskIdEventsResponses]
 
 export type PostWorkflowsRunData = {
   body: WorkflowRunPayload
@@ -1566,5 +1965,5 @@ export type PostWorkflowsTasksByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
 
-export type PostWorkflowsTasksByTaskIdStopResponse
-  = PostWorkflowsTasksByTaskIdStopResponses[keyof PostWorkflowsTasksByTaskIdStopResponses]
+export type PostWorkflowsTasksByTaskIdStopResponse =
+  PostWorkflowsTasksByTaskIdStopResponses[keyof PostWorkflowsTasksByTaskIdStopResponses]

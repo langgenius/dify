@@ -1,9 +1,13 @@
 import type { DataSet } from '@/models/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { DatasetACLPermission } from '@/utils/permission'
 import DatasetCardFooter from '../components/dataset-card-footer'
 import Description from '../components/description'
@@ -24,15 +28,26 @@ const mockOpenAccessConfig = vi.fn()
 const mockCloseAccessConfig = vi.fn()
 const toastMocks = vi.hoisted(() => {
   const record = vi.fn()
-  const api = Object.assign(vi.fn((message: unknown, options?: Record<string, unknown>) => record({ message, ...options })), {
-    success: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'success', message, ...options })),
-    error: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'error', message, ...options })),
-    warning: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'warning', message, ...options })),
-    info: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'info', message, ...options })),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  })
+  const api = Object.assign(
+    vi.fn((message: unknown, options?: Record<string, unknown>) => record({ message, ...options })),
+    {
+      success: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'success', message, ...options }),
+      ),
+      error: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'error', message, ...options }),
+      ),
+      warning: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'warning', message, ...options }),
+      ),
+      info: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'info', message, ...options }),
+      ),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    },
+  )
   return { record, api }
 })
 
@@ -44,16 +59,35 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }))
 
-let mockAppContextState = {
+let mockConsoleState = {
   isCurrentWorkspaceDatasetOperator: false,
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: [] as string[],
 }
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+const render = (ui: Parameters<typeof renderWithConsoleState>[0]) => {
+  const queryClient = createAccountProfileQueryClient(mockConsoleState.userProfile)
+  return renderWithConsoleState(ui, {
+    wrapper: ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
+  })
+}
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
+})
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => mockConsoleState)
+})
+vi.mock('@/features/system-features/state', async () => {
+  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createSystemFeaturesStateModuleMock(() => mockConsoleState)
 })
 
 vi.mock('../hooks/use-dataset-card-state', () => ({
@@ -75,77 +109,115 @@ vi.mock('../hooks/use-dataset-card-state', () => ({
   }),
 }))
 
-vi.mock('jotai', async (importOriginal) => {
-  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessJotaiMock(importOriginal)
-})
-
 vi.mock('../components/corner-labels', () => ({
   default: () => <div data-testid="corner-labels" />,
 }))
 vi.mock('../components/dataset-card-header', () => ({
-  default: ({ dataset }: { dataset: DataSet }) => <div data-testid="card-header">{dataset.name}</div>,
+  default: ({ dataset }: { dataset: DataSet }) => (
+    <div data-testid="card-header">{dataset.name}</div>
+  ),
 }))
 vi.mock('../components/dataset-card-modals', () => ({
   default: ({ onCloseAccessConfig }: { onCloseAccessConfig?: () => void }) => (
-    <div data-testid="card-modals" data-has-close-access-config={typeof onCloseAccessConfig === 'function'} />
+    <div
+      data-testid="card-modals"
+      data-has-close-access-config={typeof onCloseAccessConfig === 'function'}
+    />
   ),
 }))
 vi.mock('@/features/tag-management/components/dataset-card-tags', () => ({
-  DatasetCardTags: ({
-    onClick,
-    canBindOrUnbindTags,
-  }: {
-    onClick: (e: React.MouseEvent) => void
-    canBindOrUnbindTags?: boolean
-  }) => (
-    <div
+  DatasetCardTags: ({ canBindOrUnbindTags }: { canBindOrUnbindTags?: boolean }) => (
+    <button
+      type="button"
       data-testid="tag-area"
       data-can-bind-or-unbind-tags={String(Boolean(canBindOrUnbindTags))}
-      onClick={onClick}
     />
   ),
 }))
 vi.mock('../components/operations-dropdown', () => ({
-  default: ({ openAccessConfig }: { openAccessConfig?: () => void }) => (
-    <div data-testid="operations-dropdown" data-has-open-access-config={typeof openAccessConfig === 'function'} />
+  default: ({
+    openAccessConfig,
+    stepByStepTourHighlightPart,
+    stepByStepTourOpen,
+  }: {
+    openAccessConfig?: () => void
+    stepByStepTourHighlightPart?: string
+    stepByStepTourOpen?: boolean
+  }) => (
+    <div
+      data-testid="operations-dropdown"
+      data-has-open-access-config={typeof openAccessConfig === 'function'}
+      data-step-by-step-tour-highlight-part={stepByStepTourHighlightPart}
+      data-step-by-step-tour-open={String(stepByStepTourOpen)}
+    />
   ),
 }))
 
 // Factory function for DataSet mock data
-const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
-  id: 'dataset-1',
-  name: 'Test Dataset',
-  description: 'Test description',
-  provider: 'vendor',
-  permission: DatasetPermission.allTeamMembers,
-  data_source_type: DataSourceType.FILE,
-  indexing_technique: IndexingType.QUALIFIED,
-  embedding_available: true,
-  app_count: 5,
-  document_count: 10,
-  word_count: 1000,
-  created_at: 1609459200,
-  updated_at: 1609545600,
-  tags: [],
-  embedding_model: 'text-embedding-ada-002',
-  embedding_model_provider: 'openai',
-  created_by: 'user-1',
-  doc_form: ChunkingMode.text,
-  total_available_documents: 10,
-  runtime_mode: 'general',
-  ...overrides,
-} as DataSet)
+const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet =>
+  ({
+    id: 'dataset-1',
+    name: 'Test Dataset',
+    description: 'Test description',
+    provider: 'vendor',
+    permission: DatasetPermission.allTeamMembers,
+    data_source_type: DataSourceType.FILE,
+    indexing_technique: IndexingType.QUALIFIED,
+    embedding_available: true,
+    app_count: 5,
+    document_count: 10,
+    word_count: 1000,
+    created_at: 1609459200,
+    updated_at: 1609545600,
+    tags: [],
+    embedding_model: 'text-embedding-ada-002',
+    embedding_model_provider: 'openai',
+    created_by: 'user-1',
+    doc_form: ChunkingMode.text,
+    total_available_documents: 10,
+    runtime_mode: 'general',
+    ...overrides,
+  }) as DataSet
 
 describe('DatasetCard Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAppContextState = {
+    mockConsoleState = {
       isCurrentWorkspaceDatasetOperator: false,
       userProfile: { id: 'user-1' },
       workspacePermissionKeys: [],
     }
+  })
+
+  describe('Step-by-step tour targets', () => {
+    it('should expose card and operations targets for the Knowledge walkthrough', () => {
+      const dataset = createMockDataset()
+
+      const { container } = render(
+        <DatasetCard
+          dataset={dataset}
+          stepByStepTourActionMenuHighlightPart={
+            STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCardActionsMenu
+          }
+          stepByStepTourActionMenuOpen
+          stepByStepTourCardTarget={STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCard}
+        />,
+      )
+
+      expect(
+        container.querySelector(
+          `[data-step-by-step-tour-target="${STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCard}"]`,
+        ),
+      ).toBeInTheDocument()
+      expect(screen.getByTestId('operations-dropdown')).toHaveAttribute(
+        'data-step-by-step-tour-highlight-part',
+        STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCardActionsMenu,
+      )
+      expect(screen.getByTestId('operations-dropdown')).toHaveAttribute(
+        'data-step-by-step-tour-open',
+        'true',
+      )
+    })
   })
 
   // Integration tests for Description component
@@ -290,7 +362,7 @@ describe('DatasetCard Integration', () => {
 describe('DatasetCard Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAppContextState = {
+    mockConsoleState = {
       isCurrentWorkspaceDatasetOperator: false,
       userProfile: { id: 'user-1' },
       workspacePermissionKeys: [],
@@ -309,22 +381,19 @@ describe('DatasetCard Component', () => {
     const dataset = createMockDataset({
       name: 'Preview Only Dataset',
       permission_keys: [DatasetACLPermission.Preview],
-      tags: [{ id: 'tag-preview', name: 'Readonly Tag', type: 'knowledge' as const, binding_count: '' }],
+      tags: [
+        { id: 'tag-preview', name: 'Readonly Tag', type: 'knowledge' as const, binding_count: '' },
+      ],
     })
     render(<DatasetCard dataset={dataset} />)
 
     const card = screen.getByRole('button', { name: 'Preview Only Dataset' })
     expect(card).toHaveClass('opacity-60')
-    expect(card).toHaveAttribute('aria-disabled', 'true')
+    expect(card).not.toHaveAttribute('aria-disabled')
     expect(screen.getByText('Preview Only Dataset')).toBeInTheDocument()
     const tagArea = screen.getByTestId('tag-area')
     expect(tagArea).toHaveAttribute('data-can-bind-or-unbind-tags', 'false')
     expect(screen.queryByTestId('operations-dropdown')).not.toBeInTheDocument()
-
-    fireEvent.click(tagArea)
-
-    expect(mockPush).not.toHaveBeenCalled()
-    expect(toastMocks.record).not.toHaveBeenCalled()
 
     fireEvent.click(card)
 
@@ -364,8 +433,14 @@ describe('DatasetCard Component', () => {
     const dataset = createMockDataset()
     render(<DatasetCard dataset={dataset} />)
 
-    expect(screen.getByTestId('operations-dropdown')).toHaveAttribute('data-has-open-access-config', 'true')
-    expect(screen.getByTestId('card-modals')).toHaveAttribute('data-has-close-access-config', 'true')
+    expect(screen.getByTestId('operations-dropdown')).toHaveAttribute(
+      'data-has-open-access-config',
+      'true',
+    )
+    expect(screen.getByTestId('card-modals')).toHaveAttribute(
+      'data-has-close-access-config',
+      'true',
+    )
   })
 
   it('should navigate to hitTesting for external provider', () => {
@@ -398,16 +473,6 @@ describe('DatasetCard Component', () => {
     expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/pipeline')
   })
 
-  it('should stop propagation when tag area is clicked', () => {
-    const dataset = createMockDataset()
-    render(<DatasetCard dataset={dataset} />)
-
-    const tagArea = screen.getByTestId('tag-area')
-    fireEvent.click(tagArea)
-    // Tag area click should not trigger card navigation
-    expect(mockPush).not.toHaveBeenCalled()
-  })
-
   it('should allow tag binding when dataset has edit ACL', () => {
     const dataset = createMockDataset({ permission_keys: ['dataset.acl.edit'] })
 
@@ -417,7 +482,7 @@ describe('DatasetCard Component', () => {
   })
 
   it('should allow tag binding with workspace dataset tag management permission', () => {
-    mockAppContextState = {
+    mockConsoleState = {
       isCurrentWorkspaceDatasetOperator: false,
       userProfile: { id: 'user-1' },
       workspacePermissionKeys: ['dataset.tag.manage'],

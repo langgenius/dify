@@ -20,11 +20,7 @@ import {
   validateWorkflowRunRequest,
 } from '../use-workflow-run-utils'
 
-const {
-  mockPost,
-  mockHandleStream,
-  mockToastError,
-} = vi.hoisted(() => ({
+const { mockPost, mockHandleStream, mockToastError } = vi.hoisted(() => ({
   mockPost: vi.fn(),
   mockHandleStream: vi.fn(),
   mockToastError: vi.fn(),
@@ -57,25 +53,65 @@ describe('useWorkflowRun utils', () => {
   })
 
   it('should resolve run history urls and run endpoints for workflow modes', () => {
-    expect(buildRunHistoryUrl({ id: 'app-1', mode: AppModeEnum.WORKFLOW })).toBe('/apps/app-1/workflow-runs')
-    expect(buildRunHistoryUrl({ id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT })).toBe('/apps/app-1/advanced-chat/workflow-runs')
+    expect(buildRunHistoryUrl({ id: 'app-1', mode: AppModeEnum.WORKFLOW })).toBe(
+      '/apps/app-1/workflow-runs',
+    )
+    expect(buildRunHistoryUrl({ id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT })).toBe(
+      '/apps/app-1/advanced-chat/workflow-runs',
+    )
 
-    expect(resolveWorkflowRunUrl({ id: 'app-1', mode: AppModeEnum.WORKFLOW }, TriggerType.UserInput, true)).toBe('/apps/app-1/workflows/draft/run')
-    expect(resolveWorkflowRunUrl({ id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT }, TriggerType.UserInput, false)).toBe('/apps/app-1/advanced-chat/workflows/draft/run')
-    expect(resolveWorkflowRunUrl({ id: 'app-1', mode: AppModeEnum.WORKFLOW }, TriggerType.Schedule, true)).toBe('/apps/app-1/workflows/draft/trigger/run')
-    expect(resolveWorkflowRunUrl({ id: 'app-1', mode: AppModeEnum.WORKFLOW }, TriggerType.All, true)).toBe('/apps/app-1/workflows/draft/trigger/run-all')
+    expect(
+      resolveWorkflowRunUrl(
+        { id: 'app-1', mode: AppModeEnum.WORKFLOW },
+        TriggerType.UserInput,
+        true,
+      ),
+    ).toBe('/apps/app-1/workflows/draft/run')
+    expect(
+      resolveWorkflowRunUrl(
+        { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT },
+        TriggerType.UserInput,
+        false,
+      ),
+    ).toBe('/apps/app-1/advanced-chat/workflows/draft/run')
+    expect(
+      resolveWorkflowRunUrl(
+        { id: 'app-1', mode: AppModeEnum.WORKFLOW },
+        TriggerType.Schedule,
+        true,
+      ),
+    ).toBe('/apps/app-1/workflows/draft/trigger/run')
+    expect(
+      resolveWorkflowRunUrl({ id: 'app-1', mode: AppModeEnum.WORKFLOW }, TriggerType.All, true),
+    ).toBe('/apps/app-1/workflows/draft/trigger/run-all')
   })
 
   it('should build request bodies and validation errors for trigger runs', () => {
-    expect(buildWorkflowRunRequestBody(TriggerType.Schedule, {}, { scheduleNodeId: 'schedule-1' })).toEqual({ node_id: 'schedule-1' })
-    expect(buildWorkflowRunRequestBody(TriggerType.Webhook, {}, { webhookNodeId: 'webhook-1' })).toEqual({ node_id: 'webhook-1' })
-    expect(buildWorkflowRunRequestBody(TriggerType.Plugin, {}, { pluginNodeId: 'plugin-1' })).toEqual({ node_id: 'plugin-1' })
-    expect(buildWorkflowRunRequestBody(TriggerType.All, {}, { allNodeIds: ['trigger-1', 'trigger-2'] })).toEqual({ node_ids: ['trigger-1', 'trigger-2'] })
-    expect(buildWorkflowRunRequestBody(TriggerType.UserInput, { inputs: { query: 'hello' } })).toEqual({ inputs: { query: 'hello' } })
+    expect(
+      buildWorkflowRunRequestBody(TriggerType.Schedule, {}, { scheduleNodeId: 'schedule-1' }),
+    ).toEqual({ node_id: 'schedule-1' })
+    expect(
+      buildWorkflowRunRequestBody(TriggerType.Webhook, {}, { webhookNodeId: 'webhook-1' }),
+    ).toEqual({ node_id: 'webhook-1' })
+    expect(
+      buildWorkflowRunRequestBody(TriggerType.Plugin, {}, { pluginNodeId: 'plugin-1' }),
+    ).toEqual({ node_id: 'plugin-1' })
+    expect(
+      buildWorkflowRunRequestBody(TriggerType.All, {}, { allNodeIds: ['trigger-1', 'trigger-2'] }),
+    ).toEqual({ node_ids: ['trigger-1', 'trigger-2'] })
+    expect(
+      buildWorkflowRunRequestBody(TriggerType.UserInput, { inputs: { query: 'hello' } }),
+    ).toEqual({ inputs: { query: 'hello' } })
 
-    expect(validateWorkflowRunRequest(TriggerType.Schedule)).toBe('handleRun: schedule trigger run requires node id')
-    expect(validateWorkflowRunRequest(TriggerType.Webhook)).toBe('handleRun: webhook trigger run requires node id')
-    expect(validateWorkflowRunRequest(TriggerType.Plugin)).toBe('handleRun: plugin trigger run requires node id')
+    expect(validateWorkflowRunRequest(TriggerType.Schedule)).toBe(
+      'handleRun: schedule trigger run requires node id',
+    )
+    expect(validateWorkflowRunRequest(TriggerType.Webhook)).toBe(
+      'handleRun: webhook trigger run requires node id',
+    )
+    expect(validateWorkflowRunRequest(TriggerType.Plugin)).toBe(
+      'handleRun: plugin trigger run requires node id',
+    )
     expect(validateWorkflowRunRequest(TriggerType.All)).toBe('')
     expect(validateWorkflowRunRequest(TriggerType.All, { allNodeIds: [] })).toBe('')
   })
@@ -85,7 +121,13 @@ describe('useWorkflowRun utils', () => {
 
     expect(resolveWorkflowRunUrl(undefined, TriggerType.Plugin, true)).toBe('')
     expect(resolveWorkflowRunUrl(undefined, TriggerType.All, true)).toBe('')
-    expect(resolveWorkflowRunUrl({ id: 'app-1', mode: AppModeEnum.WORKFLOW }, TriggerType.UserInput, false)).toBe('')
+    expect(
+      resolveWorkflowRunUrl(
+        { id: 'app-1', mode: AppModeEnum.WORKFLOW },
+        TriggerType.UserInput,
+        false,
+      ),
+    ).toBe('')
 
     expect(consoleErrorSpy).toHaveBeenCalledWith('handleRun: missing app id for trigger plugin run')
     expect(consoleErrorSpy).toHaveBeenCalledWith('handleRun: missing app id for trigger run all')
@@ -96,12 +138,17 @@ describe('useWorkflowRun utils', () => {
   it('should configure listening state for trigger and non-trigger modes', () => {
     const triggerActions = createListeningActions()
 
-    applyRunningStateForMode(triggerActions, TriggerType.All, { allNodeIds: ['trigger-1', 'trigger-2'] })
+    applyRunningStateForMode(triggerActions, TriggerType.All, {
+      allNodeIds: ['trigger-1', 'trigger-2'],
+    })
 
     expect(triggerActions.setIsListening).toHaveBeenCalledWith(true)
     expect(triggerActions.setShowVariableInspectPanel).toHaveBeenCalledWith(true)
     expect(triggerActions.setListeningTriggerIsAll).toHaveBeenCalledWith(true)
-    expect(triggerActions.setListeningTriggerNodeIds).toHaveBeenCalledWith(['trigger-1', 'trigger-2'])
+    expect(triggerActions.setListeningTriggerNodeIds).toHaveBeenCalledWith([
+      'trigger-1',
+      'trigger-2',
+    ])
     expect(triggerActions.setWorkflowRunningData).toHaveBeenCalledWith(createRunningWorkflowState())
 
     const normalActions = createListeningActions()
@@ -142,10 +189,18 @@ describe('useWorkflowRun utils', () => {
   })
 
   it('should derive listening node ids, tts config, and published workflow mappings', () => {
-    expect(buildListeningTriggerNodeIds(TriggerType.Webhook, { webhookNodeId: 'webhook-1' })).toEqual(['webhook-1'])
-    expect(buildListeningTriggerNodeIds(TriggerType.Schedule, { scheduleNodeId: 'schedule-1' })).toEqual(['schedule-1'])
-    expect(buildListeningTriggerNodeIds(TriggerType.Plugin, { pluginNodeId: 'plugin-1' })).toEqual(['plugin-1'])
-    expect(buildListeningTriggerNodeIds(TriggerType.All, { allNodeIds: ['trigger-1', 'trigger-2'] })).toEqual(['trigger-1', 'trigger-2'])
+    expect(
+      buildListeningTriggerNodeIds(TriggerType.Webhook, { webhookNodeId: 'webhook-1' }),
+    ).toEqual(['webhook-1'])
+    expect(
+      buildListeningTriggerNodeIds(TriggerType.Schedule, { scheduleNodeId: 'schedule-1' }),
+    ).toEqual(['schedule-1'])
+    expect(buildListeningTriggerNodeIds(TriggerType.Plugin, { pluginNodeId: 'plugin-1' })).toEqual([
+      'plugin-1',
+    ])
+    expect(
+      buildListeningTriggerNodeIds(TriggerType.All, { allNodeIds: ['trigger-1', 'trigger-2'] }),
+    ).toEqual(['trigger-1', 'trigger-2'])
 
     expect(buildTTSConfig({ token: 'public-token' }, '/apps/app-1')).toEqual({
       ttsUrl: '/text-to-audio',
@@ -226,9 +281,11 @@ describe('useWorkflowRun utils', () => {
     expect(clearAbortController).toHaveBeenCalledTimes(1)
     expect(clearListeningStateSpy).not.toHaveBeenCalled()
 
-    mockPost.mockResolvedValueOnce(new Response('{invalid-json}', {
-      headers: { 'content-type': 'application/json' },
-    }))
+    mockPost.mockResolvedValueOnce(
+      new Response('{invalid-json}', {
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
 
     await runTriggerDebug({
       debugType: TriggerType.Schedule,
@@ -265,9 +322,11 @@ describe('useWorkflowRun utils', () => {
       onCompleted: vi.fn(),
     }
 
-    mockPost.mockResolvedValueOnce(new Response(JSON.stringify({ message: 'Webhook failed' }), {
-      headers: { 'content-type': 'application/json' },
-    }))
+    mockPost.mockResolvedValueOnce(
+      new Response(JSON.stringify({ message: 'Webhook failed' }), {
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
 
     await runTriggerDebug({
       debugType: TriggerType.Webhook,
@@ -287,9 +346,11 @@ describe('useWorkflowRun utils', () => {
     expect(clearListeningStateSpy).toHaveBeenCalled()
     expect(setWorkflowRunningData).toHaveBeenCalledWith(createFailedWorkflowState('Webhook failed'))
 
-    mockPost.mockResolvedValueOnce(new Response('data: ok', {
-      headers: { 'content-type': 'text/event-stream' },
-    }))
+    mockPost.mockResolvedValueOnce(
+      new Response('data: ok', {
+        headers: { 'content-type': 'text/event-stream' },
+      }),
+    )
 
     await runTriggerDebug({
       debugType: TriggerType.Plugin,
@@ -320,12 +381,16 @@ describe('useWorkflowRun utils', () => {
     }
 
     mockPost
-      .mockResolvedValueOnce(new Response(JSON.stringify({ status: 'waiting', retry_in: 1 }), {
-        headers: { 'content-type': 'application/json' },
-      }))
-      .mockResolvedValueOnce(new Response('data: ok', {
-        headers: { 'content-type': 'text/event-stream' },
-      }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ status: 'waiting', retry_in: 1 }), {
+          headers: { 'content-type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response('data: ok', {
+          headers: { 'content-type': 'text/event-stream' },
+        }),
+      )
 
     const runPromise = runTriggerDebug({
       debugType: TriggerType.All,
@@ -355,9 +420,11 @@ describe('useWorkflowRun utils', () => {
     const setWorkflowRunningData = vi.fn()
     const controllerTarget: Record<string, unknown> = {}
 
-    mockPost.mockResolvedValueOnce(new Response('data: ok', {
-      headers: { 'content-type': 'text/event-stream' },
-    }))
+    mockPost.mockResolvedValueOnce(
+      new Response('data: ok', {
+        headers: { 'content-type': 'text/event-stream' },
+      }),
+    )
 
     await runTriggerDebug({
       debugType: TriggerType.Plugin,
@@ -387,9 +454,11 @@ describe('useWorkflowRun utils', () => {
     const setWorkflowRunningData = vi.fn()
     const controllerTarget: Record<string, unknown> = {}
 
-    mockPost.mockRejectedValueOnce(new Response(JSON.stringify({ error: 'Plugin failed' }), {
-      headers: { 'content-type': 'application/json' },
-    }))
+    mockPost.mockRejectedValueOnce(
+      new Response(JSON.stringify({ error: 'Plugin failed' }), {
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
 
     await runTriggerDebug({
       debugType: TriggerType.Plugin,

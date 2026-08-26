@@ -1,7 +1,8 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { ReactNode } from 'react'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
-import { AccountProfileQueryProvider, createAccountProfileQueryClient } from '@/test/account-profile-query'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 import ConversationList from '../list'
@@ -24,13 +25,6 @@ let mockShowPromptLogModal = false
 let mockShowAgentLogModal = false
 let mockCurrentLogItem: Record<string, unknown> | undefined
 let mockCurrentLogModalActiveTab = 'messages'
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
     formatTime: (timestamp: number) => `formatted-${timestamp}`,
@@ -66,17 +60,18 @@ vi.mock('@/service/annotation', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    currentLogItem: mockCurrentLogItem,
-    setCurrentLogItem: mockSetCurrentLogItem,
-    showMessageLogModal: mockShowMessageLogModal,
-    setShowPromptLogModal: mockSetShowPromptLogModal,
-    setShowAgentLogModal: mockSetShowAgentLogModal,
-    setShowMessageLogModal: mockSetShowMessageLogModal,
-    showPromptLogModal: mockShowPromptLogModal,
-    showAgentLogModal: mockShowAgentLogModal,
-    currentLogModalActiveTab: mockCurrentLogModalActiveTab,
-  }),
+  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({
+      currentLogItem: mockCurrentLogItem,
+      setCurrentLogItem: mockSetCurrentLogItem,
+      showMessageLogModal: mockShowMessageLogModal,
+      setShowPromptLogModal: mockSetShowPromptLogModal,
+      setShowAgentLogModal: mockSetShowAgentLogModal,
+      setShowMessageLogModal: mockSetShowMessageLogModal,
+      showPromptLogModal: mockShowPromptLogModal,
+      showAgentLogModal: mockShowAgentLogModal,
+      currentLogModalActiveTab: mockCurrentLogModalActiveTab,
+    }),
 }))
 
 vi.mock('@/app/components/base/loading', () => ({
@@ -88,8 +83,10 @@ vi.mock('@/app/components/app/log/model-info', () => ({
 }))
 
 vi.mock('@/app/components/app/log/var-panel', () => ({
-  default: ({ varList }: { varList: Array<{ label: string, value: string }> }) => (
-    <div data-testid="var-panel">{varList.map(item => `${item.label}:${item.value}`).join(',')}</div>
+  default: ({ varList }: { varList: Array<{ label: string; value: string }> }) => (
+    <div data-testid="var-panel">
+      {varList.map((item) => `${item.label}:${item.value}`).join(',')}
+    </div>
   ),
 }))
 
@@ -100,14 +97,18 @@ vi.mock('@/app/components/base/copy-icon', () => ({
 vi.mock('@/app/components/app/text-generate/item', () => ({
   default: ({
     content,
+    hideLogAction,
     onFeedback,
   }: {
     content: string
-    onFeedback: (value: { rating: string, content?: string }) => Promise<boolean>
+    hideLogAction?: boolean
+    onFeedback: (value: { rating: string; content?: string }) => Promise<boolean>
   }) => (
-    <div data-testid="text-generation">
+    <div data-testid="text-generation" data-hide-log-action={String(hideLogAction)}>
       <div>{content}</div>
-      <button onClick={() => void onFeedback({ rating: 'like', content: 'great' })}>completion-feedback</button>
+      <button onClick={() => void onFeedback({ rating: 'like', content: 'great' })}>
+        completion-feedback
+      </button>
     </div>
   ),
 }))
@@ -121,20 +122,42 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     onAnnotationRemoved,
     switchSibling,
     hideLogModal,
+    showPromptLog,
   }: {
     chatList: Array<{ id: string }>
-    onFeedback: (mid: string, value: { rating: string, content?: string }) => Promise<boolean>
-    onAnnotationAdded: (annotationId: string, authorName: string, query: string, answer: string, index: number) => void
+    onFeedback: (mid: string, value: { rating: string; content?: string }) => Promise<boolean>
+    onAnnotationAdded: (
+      annotationId: string,
+      authorName: string,
+      query: string,
+      answer: string,
+      index: number,
+    ) => void
     onAnnotationEdited: (query: string, answer: string, index: number) => void
     onAnnotationRemoved: (index: number) => Promise<boolean>
     switchSibling: (siblingMessageId: string) => void
     hideLogModal?: boolean
+    showPromptLog?: boolean
   }) => (
-    <div data-testid="chat-panel" data-hide-log-modal={String(hideLogModal)}>
+    <div
+      data-testid="chat-panel"
+      data-hide-log-modal={String(hideLogModal)}
+      data-show-prompt-log={String(showPromptLog)}
+    >
       <div>{chatList.length}</div>
-      <button onClick={() => void onFeedback('message-1', { rating: 'like', content: 'nice' })}>chat-feedback</button>
-      <button onClick={() => onAnnotationAdded('annotation-2', 'Admin', 'Edited question', 'Edited answer', 1)}>chat-add-annotation</button>
-      <button onClick={() => onAnnotationEdited('Updated question', 'Updated answer', 1)}>chat-edit-annotation</button>
+      <button onClick={() => void onFeedback('message-1', { rating: 'like', content: 'nice' })}>
+        chat-feedback
+      </button>
+      <button
+        onClick={() =>
+          onAnnotationAdded('annotation-2', 'Admin', 'Edited question', 'Edited answer', 1)
+        }
+      >
+        chat-add-annotation
+      </button>
+      <button onClick={() => onAnnotationEdited('Updated question', 'Updated answer', 1)}>
+        chat-edit-annotation
+      </button>
       <button onClick={() => void onAnnotationRemoved(1)}>chat-remove-annotation</button>
       <button onClick={() => switchSibling('message-2')}>chat-switch-sibling</button>
     </div>
@@ -142,7 +165,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
 }))
 
 vi.mock('@/app/components/base/agent-log-modal', () => ({
-  default: ({ floating, onCancel }: { floating?: boolean, onCancel: () => void }) => (
+  default: ({ floating, onCancel }: { floating?: boolean; onCancel: () => void }) => (
     <div data-testid="agent-log-modal" data-floating={String(floating)}>
       <button onClick={onCancel}>close-agent-log-modal</button>
     </div>
@@ -241,13 +264,9 @@ const renderConversationList = ({
 } = {}) => {
   const queryClient = createAccountProfileQueryClient({ timezone: 'Asia/Shanghai' })
   return renderWithNuqs(
-    <AccountProfileQueryProvider queryClient={queryClient}>
-      <ConversationList
-        appDetail={appDetail}
-        logs={logs}
-        onRefresh={mockOnRefresh}
-      />
-    </AccountProfileQueryProvider>,
+    <QueryClientTestProvider queryClient={queryClient}>
+      <ConversationList appDetail={appDetail} logs={logs} onRefresh={mockOnRefresh} />
+    </QueryClientTestProvider>,
     { searchParams },
   )
 }
@@ -308,7 +327,7 @@ describe('ConversationList', () => {
       searchParams: '?page=2&conversation_id=conversation-1',
     })
 
-    fireEvent.click(await screen.findByRole('button', { name: 'operation.close' }))
+    fireEvent.click(await screen.findByRole('button', { name: /(?:^|\.)operation\.close(?=$|:)/ }))
 
     expect(mockOnRefresh).toHaveBeenCalledTimes(1)
     expect(mockSetShowPromptLogModal).toHaveBeenCalledWith(false)
@@ -405,6 +424,41 @@ describe('ConversationList', () => {
     })
   })
 
+  it.each([
+    ['chatbot', AppModeEnum.CHAT, 'false'],
+    ['agent', AppModeEnum.AGENT_CHAT, 'false'],
+    ['chatflow', AppModeEnum.ADVANCED_CHAT, 'true'],
+  ])('should expose run details only for %s conversation answers', async (_, mode, expected) => {
+    mockChatConversationDetail = {
+      id: 'conversation-1',
+      created_at: 1710000000,
+      model_config: {
+        model: 'gpt-4o',
+        configs: {
+          introduction: 'Hello there',
+        },
+        user_input_form: [],
+      },
+      message: {
+        inputs: {},
+      },
+    }
+    mockFetchChatMessages.mockResolvedValue({
+      data: [createChatMessage('message-1')],
+      has_more: false,
+    })
+
+    renderConversationList({
+      appDetail: { id: 'app-1', mode } as any,
+      searchParams: '?conversation_id=conversation-1',
+    })
+
+    expect(await screen.findByTestId('chat-panel')).toHaveAttribute(
+      'data-show-prompt-log',
+      expected,
+    )
+  })
+
   it('should mount agent log modals from the detail panel instead of the nested chat layout', async () => {
     mockChatConversationDetail = {
       id: 'conversation-1',
@@ -498,6 +552,7 @@ describe('ConversationList', () => {
     })
 
     expect(screen.getByTestId('var-panel')).toHaveTextContent('query:Question')
+    expect(screen.getByTestId('text-generation')).toHaveAttribute('data-hide-log-action', 'true')
     expect(screen.getByTestId('prompt-log-modal')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('completion-feedback'))
@@ -633,7 +688,7 @@ describe('ConversationList', () => {
     await waitFor(() => {
       expect(screen.getByTestId('chat-panel')).toBeInTheDocument()
       expect(screen.getByTestId('chat-panel')).toHaveTextContent('8')
-      expect(screen.getByText('detail.loading...')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)detail\.loading\.\.\.(?=$|:)/)).toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByText('chat-add-annotation'))

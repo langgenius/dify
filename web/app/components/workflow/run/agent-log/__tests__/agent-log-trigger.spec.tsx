@@ -4,7 +4,9 @@ import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '../../../types'
 import { AgentLogTrigger } from '../agent-log-trigger'
 
-const createAgentLogItem = (overrides: Partial<AgentLogItemWithChildren> = {}): AgentLogItemWithChildren => ({
+const createAgentLogItem = (
+  overrides: Partial<AgentLogItemWithChildren> = {},
+): AgentLogItemWithChildren => ({
   node_execution_id: 'exec-1',
   message_id: 'message-1',
   node_id: 'node-1',

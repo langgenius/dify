@@ -104,7 +104,8 @@ export type NodeTracing = {
   details?: NodeTracing[][] // iteration or loop detail
   retryDetail?: NodeTracing[] // retry detail
   retry_index?: number
-  parallelDetail?: { // parallel detail. if is in parallel, this field will be set
+  parallelDetail?: {
+    // parallel detail. if is in parallel, this field will be set
     isParallelStartNode?: boolean
     parallelTitle?: string
     branchTitle?: string
@@ -115,6 +116,11 @@ export type NodeTracing = {
   parent_parallel_id?: string
   parent_parallel_start_node_id?: string
   agentLog?: AgentLogItemWithChildren[] // agent log
+}
+
+type VersionEnvironment = {
+  id: string
+  name: string
 }
 
 export type FetchWorkflowDraftResponse = {
@@ -143,8 +149,10 @@ export type FetchWorkflowDraftResponse = {
   conversation_variables?: ConversationVariable[]
   rag_pipeline_variables?: RAGPipelineVariables
   version: string
+  version_number?: number | null
   marked_name: string
   marked_comment: string
+  environments?: VersionEnvironment[]
 }
 
 export type VersionHistory = FetchWorkflowDraftResponse
@@ -342,10 +350,10 @@ export type HumanInputFormData = {
   form_content: string
   inputs: FormInputItem[]
   actions: UserAction[]
-  form_token: string
+  form_token: string | null
   resolved_default_values: Record<string, HumanInputResolvedValue>
   display_in_ui: boolean
-  expiration_time: number
+  expiration_time: number | null
 }
 
 export type HumanInputRequiredResponse = {
@@ -425,7 +433,7 @@ export type NodesDefaultConfigsResponse = {
 }[]
 
 export type ConversationVariableResponse = {
-  data: (ConversationVariable & { updated_at: number, created_at: number })[]
+  data: (ConversationVariable & { updated_at: number; created_at: number })[]
   has_more: boolean
   limit: number
   total: number
@@ -472,7 +480,7 @@ export const VarInInspectType = {
   node: 'node',
   system: 'sys',
 } as const
-export type VarInInspectType = typeof VarInInspectType[keyof typeof VarInInspectType]
+export type VarInInspectType = (typeof VarInInspectType)[keyof typeof VarInInspectType]
 
 type FullContent = {
   size_bytes: number

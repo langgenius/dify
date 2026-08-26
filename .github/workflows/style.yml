@@ -6,10 +6,11 @@ on:
       base-rev:
         required: true
         type: string
-
-concurrency:
-  group: style-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
+      skip-checks:
+        description: Create the required check runs without repeating previously successful work.
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   checks: write
@@ -19,11 +20,12 @@ permissions:
 jobs:
   python-style:
     name: Python Style
+    if: ${{ !inputs.skip-checks }}
     runs-on: depot-ubuntu-24.04
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0
@@ -34,17 +36,21 @@ jobs:
         with:
           files: |
             api/**
+            scripts/ast_grep_guard.py
             scripts/check_no_new_getattr.py
+            scripts/check_no_new_controller_sqlalchemy.py
+            scripts/lint_controller_sqlalchemy.py
             scripts/ast_grep_rules/no_new_getattr.yml
+            scripts/ast_grep_rules/no_new_controller_sqlalchemy.yml
             .github/workflows/style.yml
             .github/workflows/main-ci.yml
 
       - name: Setup UV and Python
         if: steps.changed-files.outputs.any_changed == 'true'
-        uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           enable-cache: false
-          python-version: "3.12"
+          python-version: '3.12'
           cache-dependency-glob: api/uv.lock
 
       - name: Install dependencies
@@ -63,6 +69,10 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv run --project api python scripts/check_no_new_getattr.py --base-rev "${{ inputs.base-rev }}"
 
+      - name: Run No New Controller SQLAlchemy Guard
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: uv run --project api python scripts/check_no_new_controller_sqlalchemy.py --base-rev "${{ inputs.base-rev }}"
+
       - name: Run Type Checks
         if: steps.changed-files.outputs.any_changed == 'true'
         env:
@@ -75,6 +85,7 @@ jobs:
 
   web-style:
     name: Web Style
+    if: ${{ !inputs.skip-checks }}
     runs-on: depot-ubuntu-24.04
     defaults:
       run:
@@ -85,7 +96,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -101,6 +112,8 @@ jobs:
             package.json
             pnpm-lock.yaml
             pnpm-workspace.yaml
+            knip.config.ts
+            scripts/check-web-production-unused-after-knip-fix.mjs
             .nvmrc
             .github/workflows/style.yml
             .github/actions/setup-web/**
@@ -117,26 +130,30 @@ jobs:
 
       - name: Web dead code check
         if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: .
         run: vp run knip
 
       - name: Web dead code check production
         if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: .
         run: vp run knip:production
 
       - name: Web production unused declarations check
         if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: .
         run: vp run knip:production-unused-check
 
   ts-common-style:
     name: TS Common
-    runs-on: depot-ubuntu-24.04
+    if: ${{ !inputs.skip-checks }}
+    runs-on: depot-ubuntu-24.04-4
     permissions:
       checks: write
       pull-requests: read
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -154,46 +171,32 @@ jobs:
             pnpm-lock.yaml
             pnpm-workspace.yaml
             .nvmrc
+            vite.config.ts
+            lint.config.ts
             eslint.config.mjs
-            .github/workflows/style.yml
-            .github/actions/setup-web/**
+            knip.config.ts
+            scripts/check-web-production-unused-after-knip-fix.mjs
+            oxlint-suppressions.json
+            eslint-suppressions.json
+            .vscode/**
+            .github/**
 
       - name: Setup web environment
         if: steps.changed-files.outputs.any_changed == 'true'
         uses: ./.github/actions/setup-web
 
-      - name: Restore ESLint cache
+      - name: Static check
         if: steps.changed-files.outputs.any_changed == 'true'
-        id: eslint-cache-restore
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .eslintcache
-          key: ${{ runner.os }}-eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs', 'web/eslint.config.mjs', 'web/eslint.constants.mjs', 'web/plugins/eslint/**') }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs', 'web/eslint.config.mjs', 'web/eslint.constants.mjs', 'web/plugins/eslint/**') }}-
-
-      - name: Style check
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: vp run lint:ci
-
-      - name: Type check
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: vp run type-check
-
-      - name: Save ESLint cache
-        if: steps.changed-files.outputs.any_changed == 'true' && success() && steps.eslint-cache-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .eslintcache
-          key: ${{ steps.eslint-cache-restore.outputs.cache-primary-key }}
+        run: pnpm -w check
 
   superlinter:
     name: SuperLinter
+    if: ${{ !inputs.skip-checks }}
     runs-on: depot-ubuntu-24.04
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -209,6 +212,7 @@ jobs:
             **Dockerfile
             dev/**
             .editorconfig
+            .vite-hooks/**
 
       - name: Super-linter
         uses: super-linter/super-linter/slim@4ce20838b8ab83717e78138c5b3a1407148e0918 # v8.7.0
@@ -217,10 +221,11 @@ jobs:
           BASH_SEVERITY: warning
           DEFAULT_BRANCH: origin/main
           EDITORCONFIG_FILE_NAME: editorconfig-checker.json
-          FILTER_REGEX_INCLUDE: pnpm-lock.yaml
+          ENABLE_GITHUB_PULL_REQUEST_SUMMARY_COMMENT: false
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IGNORE_GENERATED_FILES: true
           IGNORE_GITIGNORED_FILES: true
+          VALIDATE_ALL_CODEBASE: false
           VALIDATE_BASH: true
           VALIDATE_BASH_EXEC: true
           # FIXME: temporarily disabled until api-docker.yaml's run script is fixed for shellcheck

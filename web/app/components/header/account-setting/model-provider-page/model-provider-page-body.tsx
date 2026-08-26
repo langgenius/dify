@@ -1,19 +1,19 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
-import type { ModelProvider } from './declarations'
-import type { PluginDetail } from '@/app/components/plugins/types'
+import type { ModelProviderPluginSummary } from './index'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { Trans, useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
-import { PluginSource } from '@/app/components/plugins/types'
-import { IS_CLOUD_EDITION } from '@/config'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import InstallFromMarketplace from './install-from-marketplace'
 import ProviderAddedCard from './provider-added-card'
 import QuotaPanel from './provider-added-card/quota-panel'
-import { providerToPluginId } from './utils'
 
 type ModelProviderPageBodyProps = {
-  providers: ModelProvider[]
-  filteredConfiguredProviders: ModelProvider[]
-  filteredNotConfiguredProviders: ModelProvider[]
+  providers: ModelProviderSummaryResponse[]
+  filteredConfiguredProviders: ModelProviderSummaryResponse[]
+  filteredNotConfiguredProviders: ModelProviderSummaryResponse[]
   isLoadingModelProviders: boolean
   showEmptyProvider: boolean
   showConfiguredProviders: boolean
@@ -21,7 +21,7 @@ type ModelProviderPageBodyProps = {
   showMarketplace: boolean
   enableMarketplace: boolean
   searchText: string
-  pluginDetailMap: Map<string, PluginDetail>
+  pluginSummaryMap: Map<string, ModelProviderPluginSummary>
   onOpenMarketplace?: () => void
 }
 
@@ -50,7 +50,7 @@ function ModelProviderListSkeleton() {
   const { t } = useTranslation()
 
   return (
-    <div role="status" aria-label={t('loading', { ns: 'common' })} className="space-y-2">
+    <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })} className="space-y-2">
       {Array.from({ length: 3 }, (_, index) => (
         <ModelProviderCardSkeleton key={index} />
       ))}
@@ -60,78 +60,94 @@ function ModelProviderListSkeleton() {
 
 function EmptyProviderState({
   enableMarketplace,
+  stepByStepTourTarget,
 }: {
   enableMarketplace: boolean
+  stepByStepTourTarget?: string
 }) {
   const { t } = useTranslation()
 
   return (
-    <div className="rounded-[10px] bg-workflow-process-bg p-4">
+    <div
+      className="rounded-[10px] bg-workflow-process-bg p-4"
+      data-step-by-step-tour-target={stepByStepTourTarget}
+    >
       <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-sm">
         <span aria-hidden className="i-ri-brain-2-line size-5 text-text-primary" />
       </div>
-      <div className="mt-2 system-sm-medium text-text-secondary">{t('modelProvider.emptyProviderTitle', { ns: 'common' })}</div>
+      <div className="mt-2 system-sm-medium text-text-secondary">
+        {t(($) => $['modelProvider.emptyProviderTitle'], { ns: 'common' })}
+      </div>
       <p className="mt-1 system-xs-regular text-text-tertiary">
-        {enableMarketplace
-          ? (
-              <Trans
-                i18nKey="modelProvider.emptyProviderTipWithMarketplace"
-                ns="common"
-                components={{
-                  marketplace: (
-                    <a
-                      href="#model-provider-marketplace"
-                      aria-label={t('marketplace.difyMarketplace', { ns: 'plugin' })}
-                      className="system-xs-medium text-text-accent hover:underline"
-                    />
-                  ),
-                }}
-              />
-            )
-          : t('modelProvider.emptyProviderTip', { ns: 'common' })}
+        {enableMarketplace ? (
+          <Trans
+            i18nKey={($) => $['modelProvider.emptyProviderTipWithMarketplace']}
+            ns="common"
+            components={{
+              marketplace: (
+                <a
+                  href="#model-provider-marketplace"
+                  aria-label={t(($) => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
+                  className="system-xs-medium text-text-accent hover:underline"
+                >
+                  {t(($) => $['mainNav.marketplace'], { ns: 'common' })}
+                </a>
+              ),
+            }}
+          />
+        ) : (
+          t(($) => $['modelProvider.emptyProviderTip'], { ns: 'common' })
+        )}
       </p>
     </div>
   )
 }
 
 type ProviderCardListProps = {
-  providers: ModelProvider[]
-  pluginDetailMap: Map<string, PluginDetail>
+  firstCardTarget?: string
+  providers: ModelProviderSummaryResponse[]
+  pluginSummaryMap: Map<string, ModelProviderPluginSummary>
   notConfigured?: boolean
 }
 
-function isDebuggingProvider(provider: ModelProvider, pluginDetailMap: Map<string, PluginDetail>) {
-  return pluginDetailMap.get(providerToPluginId(provider.provider))?.source === PluginSource.debugging
+function isDebuggingProvider(
+  provider: ModelProviderSummaryResponse,
+  pluginSummaryMap: Map<string, ModelProviderPluginSummary>,
+) {
+  return pluginSummaryMap.get(provider.plugin_id)?.source === 'remote'
 }
 
 function ProviderCardList({
+  firstCardTarget,
   providers,
-  pluginDetailMap,
+  pluginSummaryMap,
   notConfigured,
 }: ProviderCardListProps) {
-  const sortedProviders = [...providers]
-    .sort((a, b) => {
-      const aIsDebuggingPlugin = isDebuggingProvider(a, pluginDetailMap)
-      const bIsDebuggingPlugin = isDebuggingProvider(b, pluginDetailMap)
+  const sortedProviders = [...providers].sort((a, b) => {
+    const aIsDebuggingPlugin = isDebuggingProvider(a, pluginSummaryMap)
+    const bIsDebuggingPlugin = isDebuggingProvider(b, pluginSummaryMap)
 
-      if (aIsDebuggingPlugin === bIsDebuggingPlugin)
-        return 0
+    if (aIsDebuggingPlugin === bIsDebuggingPlugin) return 0
 
-      return aIsDebuggingPlugin ? -1 : 1
-    })
+    return aIsDebuggingPlugin ? -1 : 1
+  })
 
   return (
     <div className="relative flex flex-col gap-2">
-      {sortedProviders.map((provider) => {
-        const pluginDetail = pluginDetailMap.get(providerToPluginId(provider.provider))
+      {sortedProviders.map((provider, index) => {
+        const pluginSummary = pluginSummaryMap.get(provider.plugin_id)
 
         return (
-          <ProviderAddedCard
+          <div
             key={provider.provider}
-            notConfigured={notConfigured}
-            provider={provider}
-            pluginDetail={pluginDetail}
-          />
+            data-step-by-step-tour-target={index === 0 ? firstCardTarget : undefined}
+          >
+            <ProviderAddedCard
+              notConfigured={notConfigured}
+              provider={provider}
+              pluginSummary={pluginSummary}
+            />
+          </div>
         )
       })}
     </div>
@@ -149,15 +165,21 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
   showMarketplace,
   enableMarketplace,
   searchText,
-  pluginDetailMap,
+  pluginSummaryMap,
   onOpenMarketplace,
 }) => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
 
   return (
     <div className="flex flex-col gap-2">
-      {IS_CLOUD_EDITION && (
-        <div>
+      {deploymentEdition === 'CLOUD' && (
+        <div
+          data-step-by-step-tour-target={STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderCredits}
+        >
           <QuotaPanel providers={providers} />
         </div>
       )}
@@ -166,29 +188,46 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
           <ModelProviderListSkeleton />
         </div>
       )}
-      {showEmptyProvider && <EmptyProviderState enableMarketplace={enableMarketplace} />}
+      {showEmptyProvider && (
+        <EmptyProviderState
+          enableMarketplace={enableMarketplace}
+          stepByStepTourTarget={
+            !showConfiguredProviders && !showNotConfiguredProviders
+              ? STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderProduction
+              : undefined
+          }
+        />
+      )}
       {showConfiguredProviders && (
         <ProviderCardList
+          firstCardTarget={STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderProduction}
           providers={filteredConfiguredProviders}
-          pluginDetailMap={pluginDetailMap}
+          pluginSummaryMap={pluginSummaryMap}
         />
       )}
       {showNotConfiguredProviders && (
         <div className="flex flex-col gap-2 pt-2">
-          <div className="flex h-5 items-center system-md-semibold text-text-primary">{t('modelProvider.toBeConfigured', { ns: 'common' })}</div>
+          <div className="flex h-5 items-center system-md-semibold text-text-primary">
+            {t(($) => $['modelProvider.toBeConfigured'], { ns: 'common' })}
+          </div>
           <ProviderCardList
+            firstCardTarget={
+              !showConfiguredProviders
+                ? STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderProduction
+                : undefined
+            }
             providers={filteredNotConfiguredProviders}
             notConfigured
-            pluginDetailMap={pluginDetailMap}
+            pluginSummaryMap={pluginSummaryMap}
           />
         </div>
       )}
       {showMarketplace && (
         <div>
           <InstallFromMarketplace
-            providers={providers}
             searchText={searchText}
             onOpenMarketplace={onOpenMarketplace}
+            stepByStepTourTarget={STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderInstall}
           />
         </div>
       )}

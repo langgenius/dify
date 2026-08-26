@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 import json
+from contextlib import contextmanager, nullcontext
 from datetime import datetime
 from types import SimpleNamespace
 from typing import cast
@@ -10,11 +11,14 @@ from unittest.mock import Mock
 import pytest
 from flask import Flask
 from pydantic import ValidationError
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException, NotFound
 
 from controllers.common.errors import InvalidArgumentError
 from controllers.console.app import workflow as workflow_module
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
+from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables import SecretVariable, StringVariable
 from graphon.variables.variables import RAGPipelineVariable
@@ -74,6 +78,99 @@ def _make_workflow(**overrides):
     for key, value in overrides.items():
         setattr(workflow, key, value)
     return workflow
+
+
+def test_publish_workflow_returns_success(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    current_user = SimpleNamespace(id="account-1")
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    workflow = SimpleNamespace(id="published-workflow", created_at=datetime(2026, 8, 17, 12, 0, 0))
+    session = Mock()
+    session.get.return_value = app_model
+    monkeypatch.setattr(
+        workflow_module,
+        "WorkflowService",
+        Mock(return_value=SimpleNamespace(publish_workflow=Mock(return_value=workflow))),
+    )
+    monkeypatch.setattr(
+        workflow_module,
+        "sessionmaker",
+        lambda _engine: SimpleNamespace(begin=lambda: nullcontext(session)),
+    )
+    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
+    with app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}):
+        response = inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
+            workflow_module.PublishedWorkflowApi(),
+            current_user,
+            app_model,
+        )
+
+    assert response["result"] == "success"
+
+
+@pytest.mark.parametrize("transaction_fails", [False, True], ids=["commit-succeeds", "commit-fails"])
+def test_delete_workflow_retires_candidates_only_after_transaction_exit(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    transaction_fails: bool,
+) -> None:
+    current_user = SimpleNamespace(id="account-1")
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    session = Mock()
+    events: list[str] = []
+    error = RuntimeError("commit failed")
+    workflow_service = SimpleNamespace(
+        delete_workflow=Mock(side_effect=lambda **_kwargs: events.append("delete") or ["inline-agent"])
+    )
+
+    @contextmanager
+    def transaction():
+        events.append("transaction-enter")
+        yield session
+        events.append("transaction-exit")
+        if transaction_fails:
+            raise error
+
+    monkeypatch.setattr(workflow_module, "WorkflowService", Mock(return_value=workflow_service))
+    monkeypatch.setattr(
+        workflow_module,
+        "sessionmaker",
+        lambda _engine: SimpleNamespace(begin=transaction),
+    )
+    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
+    retire_unowned = Mock(side_effect=lambda **_kwargs: events.append("retire"))
+    monkeypatch.setattr(workflow_module.WorkflowAgentRetirementService, "retire_unowned", retire_unowned)
+
+    with app.test_request_context("/apps/app-1/workflows/workflow-1", method="DELETE"):
+        if transaction_fails:
+            with pytest.raises(RuntimeError) as exc_info:
+                inspect.unwrap(workflow_module.WorkflowByIdApi.delete)(
+                    workflow_module.WorkflowByIdApi(),
+                    current_user,
+                    app_model,
+                    "workflow-1",
+                )
+            assert exc_info.value is error
+        else:
+            response = inspect.unwrap(workflow_module.WorkflowByIdApi.delete)(
+                workflow_module.WorkflowByIdApi(),
+                current_user,
+                app_model,
+                "workflow-1",
+            )
+            assert response == (None, 204)
+
+    assert events == ["transaction-enter", "delete", "transaction-exit"] + ([] if transaction_fails else ["retire"])
+    if transaction_fails:
+        retire_unowned.assert_not_called()
+    else:
+        retire_unowned.assert_called_once_with(
+            tenant_id=app_model.tenant_id,
+            agent_ids=["inline-agent"],
+            account_id=current_user.id,
+        )
 
 
 def test_parse_file_no_config(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -145,7 +242,8 @@ def test_sync_draft_workflow_success(app: Flask, monkeypatch: pytest.MonkeyPatch
         workflow_module.variable_factory, "build_conversation_variable_from_mapping", lambda *_args: "conv"
     )
 
-    service = SimpleNamespace(sync_draft_workflow=lambda **_kwargs: workflow)
+    sync_draft_workflow = Mock(return_value=workflow)
+    service = SimpleNamespace(sync_draft_workflow=sync_draft_workflow)
     monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
 
     api = workflow_module.DraftWorkflowApi()
@@ -159,6 +257,89 @@ def test_sync_draft_workflow_success(app: Flask, monkeypatch: pytest.MonkeyPatch
         response = handler(api, "t1", app_model=SimpleNamespace(id="app"))
 
     assert response["result"] == "success"
+    assert sync_draft_workflow.call_args.kwargs["environment_variables"] == []
+    assert sync_draft_workflow.call_args.kwargs["preserve_environment_variables"] is True
+
+
+def test_sync_draft_workflow_passes_environment_patch(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow = SimpleNamespace(
+        unique_hash="next-hash",
+        updated_at=None,
+        created_at=datetime(2024, 1, 1),
+    )
+    patched_variable = StringVariable(
+        id="env-model",
+        name="shared_model",
+        value="model",
+        selector=["env", "shared_model"],
+    )
+    build_environment_variable = Mock(return_value=patched_variable)
+    sync_draft_workflow = Mock(return_value=workflow)
+    monkeypatch.setattr(
+        workflow_module.variable_factory,
+        "build_environment_variable_from_mapping",
+        build_environment_variable,
+    )
+    monkeypatch.setattr(
+        workflow_module,
+        "WorkflowService",
+        lambda: SimpleNamespace(sync_draft_workflow=sync_draft_workflow),
+    )
+
+    api = workflow_module.DraftWorkflowApi()
+    handler = inspect.unwrap(api.post)
+    with app.test_request_context(
+        "/apps/app/workflows/draft",
+        method="POST",
+        json={
+            "graph": {},
+            "features": {},
+            "hash": "current-hash",
+            "environment_variable_patch": {
+                "environment_variables": [
+                    {
+                        "id": "env-model",
+                        "name": "shared_model",
+                        "value": "model",
+                        "value_type": "string",
+                    }
+                ],
+                "deleted_environment_variable_ids": ["env-old"],
+            },
+        },
+    ):
+        response = handler(api, "t1", app_model=SimpleNamespace(id="app"))
+
+    assert response["result"] == "success"
+    assert sync_draft_workflow.call_args.kwargs["preserve_environment_variables"] is True
+    assert sync_draft_workflow.call_args.kwargs["environment_variable_upserts"] == [patched_variable]
+    assert sync_draft_workflow.call_args.kwargs["deleted_environment_variable_ids"] == ["env-old"]
+    build_environment_variable.assert_called_once()
+
+
+def test_sync_draft_workflow_rejects_overlapping_environment_patch_ids() -> None:
+    with pytest.raises(ValidationError, match="cannot be upserted and deleted"):
+        workflow_module.SyncDraftWorkflowPayload.model_validate(
+            {
+                "graph": {},
+                "features": {},
+                "environment_variable_patch": {
+                    "environment_variables": [{"id": "env-model"}],
+                    "deleted_environment_variable_ids": ["env-model"],
+                },
+            }
+        )
+
+
+def test_sync_draft_workflow_rejects_legacy_environment_variables() -> None:
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        workflow_module.SyncDraftWorkflowPayload.model_validate(
+            {
+                "graph": {},
+                "features": {},
+                "environment_variables": [],
+            }
+        )
 
 
 def test_sync_draft_workflow_hash_mismatch(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -331,45 +512,34 @@ def test_restore_published_workflow_to_draft_returns_400_for_invalid_structure(
 
 
 def test_get_published_workflows_serializes_items_before_session_closes(
-    app: Flask, monkeypatch: pytest.MonkeyPatch
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
 ) -> None:
     api = workflow_module.PublishedAllWorkflowApi()
     handler = inspect.unwrap(api.get)
 
-    session_state = {"open": False}
-
-    class _SessionContext:
-        def __enter__(self):
-            session_state["open"] = True
-            return object()
-
-        def __exit__(self, exc_type, exc, tb):
-            session_state["open"] = False
-            return False
-
-    class _SessionMaker:
-        def begin(self):
-            return _SessionContext()
-
     base_workflow = _make_workflow()
 
     class _Workflow:
+        def __init__(self, session: Session) -> None:
+            self._session = session
+
         def __getattr__(self, name):
             return getattr(base_workflow, name)
 
         @property
         def id(self):
-            assert session_state["open"] is True
+            assert self._session.in_transaction()
             return "w1"
 
-    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
-    monkeypatch.setattr(workflow_module, "sessionmaker", lambda *_args, **_kwargs: _SessionMaker())
+    def get_all_published_workflow(*, session: Session, **_kwargs):
+        assert isinstance(session, Session)
+        return [_Workflow(session)], False
+
+    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=sqlite_engine))
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
-        lambda: SimpleNamespace(
-            get_all_published_workflow=lambda **_kwargs: ([_Workflow()], False),
-        ),
+        lambda: SimpleNamespace(get_all_published_workflow=get_all_published_workflow),
     )
 
     with app.test_request_context(
@@ -521,6 +691,31 @@ def test_workflow_response_masks_secret_environment_variables() -> None:
     ]
 
 
+def test_workflow_response_preserves_llm_environment_variable_type() -> None:
+    workflow = _make_workflow(
+        environment_variables=[
+            LLMEnvironmentVariable(
+                id="env-llm",
+                name="for_summarize",
+                value={"provider": "provider", "name": "model", "mode": "chat"},
+                selector=["env", "for_summarize"],
+            )
+        ]
+    )
+
+    response = workflow_module.WorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
+
+    assert response["environment_variables"] == [
+        {
+            "id": "env-llm",
+            "name": "for_summarize",
+            "value": {"provider": "provider", "name": "model", "mode": "chat"},
+            "value_type": "llm",
+            "description": "",
+        }
+    ]
+
+
 def test_workflow_response_rejects_invalid_environment_variable_dict() -> None:
     workflow = _make_workflow(environment_variables=[{"value_type": "not-a-segment-type"}])
 
@@ -549,6 +744,7 @@ def test_draft_workflow_get_projects_agent_node_job_to_graph(monkeypatch: pytest
                     "data": {
                         "type": "agent",
                         "version": "2",
+                        "agent_node_kind": "dify_agent",
                     },
                 }
             ],
@@ -562,6 +758,7 @@ def test_draft_workflow_get_projects_agent_node_job_to_graph(monkeypatch: pytest
                 "data": {
                     "type": "agent",
                     "version": "2",
+                    "agent_node_kind": "dify_agent",
                     "agent_task": "Summarize it.",
                     "agent_declared_outputs": [{"name": "summary", "type": "string"}],
                 },
@@ -613,17 +810,55 @@ def test_advanced_chat_run_conversation_not_exists(app: Flask, monkeypatch: pyte
             handler(api, Mock(), "t1", app_model=SimpleNamespace(id="app"))
 
 
+@pytest.mark.parametrize(
+    ("resource", "payload"),
+    [
+        (workflow_module.DraftWorkflowTriggerRunApi, {"node_id": "node-1"}),
+        (workflow_module.DraftWorkflowTriggerRunAllApi, {"node_ids": ["node-1"]}),
+    ],
+)
+def test_trigger_run_loads_draft_with_request_session(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    unbound_session: Session,
+    resource: type,
+    payload: dict[str, object],
+) -> None:
+    get_draft_workflow = Mock(return_value=None)
+    monkeypatch.setattr(
+        workflow_module,
+        "WorkflowService",
+        lambda: SimpleNamespace(get_draft_workflow=get_draft_workflow),
+    )
+    session = unbound_session
+    app_model = SimpleNamespace(id="app-1")
+    handler = inspect.unwrap(resource.post)
+
+    with app.test_request_context("/", method="POST", json=payload):
+        with pytest.raises(ValueError, match="Workflow not found"):
+            handler(resource(), session, SimpleNamespace(id="account-1"), app_model)
+
+    get_draft_workflow.assert_called_once_with(app_model, session=session)
+
+
 def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     app_id_1 = "11111111-1111-1111-1111-111111111111"
     app_id_2 = "22222222-2222-2222-2222-222222222222"
     signed_avatar_url = "https://files.example.com/signed/avatar-1"
     sign_avatar = Mock(return_value=signed_avatar_url)
+    get_tenant_app_maintainers = Mock(return_value={app_id_1: "owner-1", app_id_2: "owner-2"})
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
-        lambda: SimpleNamespace(get_accessible_app_ids=lambda app_ids, tenant_id, session: {app_id_1}),
+        lambda: SimpleNamespace(get_tenant_app_maintainers=get_tenant_app_maintainers),
     )
+    access_filter = SimpleNamespace(is_app_accessible=lambda app_id, _maintainer, _account_id: app_id == app_id_1)
+    resolve_access = Mock(return_value=access_filter)
+    monkeypatch.setattr(workflow_module, "resolve_app_access_filter", resolve_access)
+    monkeypatch.setattr(workflow_module.dify_config, "RBAC_ENABLED", True)
     monkeypatch.setattr(workflow_module.file_helpers, "get_signed_file_url", sign_avatar)
+    short_session = Mock()
+    monkeypatch.setattr(workflow_module.session_factory, "create_session", lambda: nullcontext(short_session))
 
     redis_pipeline = Mock()
     redis_pipeline.execute.return_value = [
@@ -671,7 +906,7 @@ def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeyp
         method="POST",
         json={"app_ids": [app_id_1, app_id_2]},
     ):
-        response = handler(api, "tenant-1")
+        response = handler(api, "tenant-1", SimpleNamespace(id="account-1"))
 
     assert response == {
         "data": [
@@ -696,6 +931,11 @@ def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeyp
     redis_pipeline.hgetall.assert_called_once_with(f"{workflow_module.WORKFLOW_ONLINE_USERS_PREFIX}{app_id_1}")
     redis_pipeline.execute.assert_called_once_with()
     sign_avatar.assert_called_once_with("avatar-file-id")
+    get_tenant_app_maintainers.assert_called_once()
+    resolve_access.assert_called_once()
+    assert get_tenant_app_maintainers.call_args.args == ([app_id_1, app_id_2], "tenant-1")
+    assert resolve_access.call_args.args == ("tenant-1", "account-1")
+    assert get_tenant_app_maintainers.call_args.kwargs["session"] is resolve_access.call_args.kwargs["session"]
 
 
 def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -703,8 +943,10 @@ def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pyte
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
-        lambda: SimpleNamespace(get_accessible_app_ids=lambda app_ids, tenant_id, session: set(app_ids)),
+        lambda: SimpleNamespace(get_tenant_app_maintainers=lambda app_ids, tenant_id, session: dict.fromkeys(app_ids)),
     )
+    monkeypatch.setattr(workflow_module.dify_config, "RBAC_ENABLED", False)
+    monkeypatch.setattr(workflow_module.session_factory, "create_session", lambda: nullcontext(Mock()))
 
     first_pipeline = Mock()
     first_pipeline.execute.return_value = [{} for _ in range(workflow_module.WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE)]
@@ -721,7 +963,7 @@ def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pyte
         method="POST",
         json={"app_ids": app_ids},
     ):
-        response = handler(api, "tenant-1")
+        response = handler(api, "tenant-1", SimpleNamespace(id="account-1"))
 
     assert len(response["data"]) == len(app_ids)
     assert redis_pipeline_factory.call_count == 2
@@ -730,11 +972,11 @@ def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pyte
 
 
 def test_workflow_online_users_rejects_excessive_workflow_ids(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    accessible_app_ids = Mock(return_value=set())
+    get_tenant_app_maintainers = Mock(return_value={})
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
-        lambda: SimpleNamespace(get_accessible_app_ids=accessible_app_ids),
+        lambda: SimpleNamespace(get_tenant_app_maintainers=get_tenant_app_maintainers),
     )
 
     excessive_ids = [f"wf-{index}" for index in range(workflow_module.MAX_WORKFLOW_ONLINE_USERS_REQUEST_IDS + 1)]
@@ -748,9 +990,9 @@ def test_workflow_online_users_rejects_excessive_workflow_ids(app: Flask, monkey
         json={"app_ids": excessive_ids},
     ):
         with pytest.raises(HTTPException) as exc:
-            handler(api, "tenant-1")
+            handler(api, "tenant-1", SimpleNamespace(id="account-1"))
 
     assert exc.value.code == 400
     assert exc.value.description is not None
     assert "Maximum" in exc.value.description
-    accessible_app_ids.assert_not_called()
+    get_tenant_app_maintainers.assert_not_called()

@@ -12,7 +12,7 @@ import { runGetApp } from './run'
 const APP_MODE_VALUES: readonly SupportedAppType[] = zSupportedAppType.options
 
 export default class GetApp extends DifyCommand {
-  static override description = 'List apps or describe one app\'s basic info'
+  static override description = "List apps or describe one app's basic info"
 
   static override examples = [
     '<%= config.bin %> get app',
@@ -26,34 +26,42 @@ export default class GetApp extends DifyCommand {
   }
 
   static override flags = {
-    'workspace': Flags.string({ description: 'workspace id (overrides DIFY_WORKSPACE_ID and stored default)' }),
+    workspace: Flags.string({
+      description: 'workspace id (overrides DIFY_WORKSPACE_ID and stored default)',
+    }),
     'all-workspaces': Flags.boolean({
       char: 'A',
       description: 'list apps across every workspace the bearer can see',
       default: false,
     }),
-    'page': Flags.integer({ description: 'page number', default: 1 }),
-    'limit': Flags.string({ description: 'page size [1..200]' }),
-    'mode': Flags.string({ description: 'filter by app mode', options: APP_MODE_VALUES }),
-    'name': Flags.string({ description: 'filter by app name (server-side substring)' }),
+    page: Flags.integer({ description: 'page number', default: 1 }),
+    limit: Flags.string({ description: 'page size [1..200]' }),
+    mode: Flags.string({ description: 'filter by app mode', options: APP_MODE_VALUES }),
+    name: Flags.string({ description: 'filter by app name (server-side substring)' }),
     'http-retry': httpRetryFlag,
-    'output': Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.NAME, OutputFormat.WIDE], default: '' }),
+    output: Flags.outputFormat({
+      options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.NAME, OutputFormat.WIDE],
+      default: '',
+    }),
   }
 
   async run(argv: string[]) {
     const { args, flags } = this.parse(GetApp, argv)
     const format = flags.output
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format })
-    const result = await runGetApp({
-      appId: args.id,
-      workspace: flags.workspace,
-      allWorkspaces: flags['all-workspaces'],
-      page: flags.page,
-      limitRaw: flags.limit,
-      mode: flags.mode as SupportedAppType | undefined,
-      name: flags.name,
-      format,
-    }, { active: ctx.active, http: ctx.http, io: ctx.io })
+    const result = await runGetApp(
+      {
+        appId: args.id,
+        workspace: flags.workspace,
+        allWorkspaces: flags['all-workspaces'],
+        page: flags.page,
+        limitRaw: flags.limit,
+        mode: flags.mode as SupportedAppType | undefined,
+        name: flags.name,
+        format,
+      },
+      { active: ctx.active, http: ctx.http, io: ctx.io },
+    )
     return table({
       format,
       data: result.data,

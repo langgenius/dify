@@ -1,9 +1,12 @@
 import sys
 import time
+from collections.abc import Mapping
+from decimal import Decimal
 from types import ModuleType, SimpleNamespace
 from typing import Any
 
 from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session
 
 import core.workflow.nodes.human_input.entities  # noqa: F401
 from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
@@ -32,6 +35,10 @@ from graphon.nodes.base.node import Node
 from graphon.nodes.end.entities import EndNodeData
 from graphon.nodes.start.entities import StartNodeData
 from graphon.runtime import GraphRuntimeState, VariablePool
+from models.account import Account
+from models.enums import ConversationFromSource
+from models.model import App, AppMode, Conversation, Message
+from models.workflow import Workflow, WorkflowType
 from tests.workflow_test_utils import build_test_graph_init_params
 
 if "core.ops.ops_trace_manager" not in sys.modules:
@@ -106,10 +113,19 @@ class _StubToolNode(Node[_StubToolNodeData]):
 def _patch_tool_node(mocker: MockerFixture):
     original_resolve_node_class = node_factory_module.resolve_workflow_node_class
 
-    def _patched_resolve_node_class(*, node_type: NodeType, node_version: str) -> type[Node]:
+    def _patched_resolve_node_class(
+        *,
+        node_type: NodeType,
+        node_version: str,
+        node_data: Mapping[str, Any] | BaseNodeData | None = None,
+    ) -> type[Node]:
         if node_type == BuiltinNodeTypes.TOOL:
             return _StubToolNode
-        return original_resolve_node_class(node_type=node_type, node_version=node_version)
+        return original_resolve_node_class(
+            node_type=node_type,
+            node_version=node_version,
+            node_data=node_data,
+        )
 
     mocker.patch.object(node_factory_module, "resolve_workflow_node_class", side_effect=_patched_resolve_node_class)
 
@@ -178,6 +194,63 @@ def _build_runtime_state(run_id: str) -> GraphRuntimeState:
     return GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
 
+def _make_app() -> App:
+    return App(
+        id="app",
+        tenant_id="tenant",
+        name="Pause Resume App",
+        mode=AppMode.WORKFLOW,
+        enable_site=False,
+        enable_api=False,
+    )
+
+
+def _make_workflow() -> Workflow:
+    return Workflow(
+        id="workflow",
+        tenant_id="tenant",
+        app_id="app",
+        type=WorkflowType.CHAT,
+        version=Workflow.VERSION_DRAFT,
+        graph="{}",
+        features="{}",
+        created_by="user",
+    )
+
+
+def _make_account() -> Account:
+    account = Account(name="Pause Resume User", email="pause@example.com")
+    account.id = "user"
+    return account
+
+
+def _make_conversation() -> Conversation:
+    return Conversation(
+        id="conv",
+        app_id="app",
+        mode=AppMode.ADVANCED_CHAT,
+        name="Pause Resume Conversation",
+        inputs={},
+        from_source=ConversationFromSource.API,
+    )
+
+
+def _make_message() -> Message:
+    return Message(
+        id="msg",
+        app_id="app",
+        conversation_id="conv",
+        inputs={},
+        query="query",
+        message={},
+        answer="answer",
+        message_unit_price=Decimal(0),
+        answer_unit_price=Decimal(0),
+        currency="USD",
+        from_source=ConversationFromSource.API,
+    )
+
+
 def _run_with_optional_pause(runtime_state: GraphRuntimeState, *, pause_on: str | None) -> list[GraphEngineEvent]:
     command_channel = InMemoryChannel()
     graph = _build_graph(runtime_state, pause_on=pause_on)
@@ -225,9 +298,9 @@ def test_workflow_app_pause_resume_matches_baseline(mocker: MockerFixture):
     mocker.patch.object(generator, "_generate", side_effect=_fake_generate)
 
     resumed_nodes = generator.resume(
-        app_model=SimpleNamespace(mode="workflow"),
-        workflow=SimpleNamespace(),
-        user=SimpleNamespace(),
+        app_model=_make_app(),
+        workflow=_make_workflow(),
+        user=_make_account(),
         application_generate_entity=SimpleNamespace(
             stream=False,
             invoke_from=InvokeFrom.SERVICE_API,
@@ -242,7 +315,7 @@ def test_workflow_app_pause_resume_matches_baseline(mocker: MockerFixture):
     assert resumed_state.outputs == baseline_outputs
 
 
-def test_advanced_chat_pause_resume_matches_baseline(mocker: MockerFixture):
+def test_advanced_chat_pause_resume_matches_baseline(mocker: MockerFixture, unbound_session: Session):
     _patch_tool_node(mocker)
 
     baseline_state = _build_runtime_state("adv-baseline")
@@ -269,11 +342,12 @@ def test_advanced_chat_pause_resume_matches_baseline(mocker: MockerFixture):
     mocker.patch.object(generator, "_generate", side_effect=_fake_generate)
 
     resumed_nodes = generator.resume(
-        app_model=SimpleNamespace(mode="workflow"),
-        workflow=SimpleNamespace(),
-        user=SimpleNamespace(),
-        conversation=SimpleNamespace(id="conv"),
-        message=SimpleNamespace(id="msg"),
+        app_model=_make_app(),
+        workflow=_make_workflow(),
+        user=_make_account(),
+        conversation=_make_conversation(),
+        message=_make_message(),
+        session=unbound_session,
         application_generate_entity=SimpleNamespace(
             stream=False,
             invoke_from=InvokeFrom.SERVICE_API,

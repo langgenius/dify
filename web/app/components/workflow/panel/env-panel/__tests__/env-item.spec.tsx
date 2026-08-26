@@ -24,14 +24,9 @@ const renderWithProviders = (
 ) => {
   const store = createWorkflowStore({})
 
-  if (options.storeState)
-    store.setState(options.storeState)
+  if (options.storeState) store.setState(options.storeState)
 
-  const result = render(
-    <WorkflowContext value={store}>
-      {ui}
-    </WorkflowContext>,
-  )
+  const result = render(<WorkflowContext value={store}>{ui}</WorkflowContext>)
 
   return {
     ...result,
@@ -104,5 +99,21 @@ describe('EnvItem', () => {
     expect(container.firstElementChild).toHaveClass('border-state-destructive-border')
     fireEvent.mouseOut(deleteWrapper)
     expect(container.firstElementChild).not.toHaveClass('border-state-destructive-border')
+  })
+
+  it('renders an LLM environment variable without exposing its object value', () => {
+    const env = createEnv({
+      id: 'env-llm',
+      name: 'for_summarize',
+      value: { provider: 'openai', name: 'gpt-4o', mode: 'chat' },
+      value_type: 'llm',
+      description: '',
+    })
+
+    renderWithProviders(<EnvItem env={env} onEdit={vi.fn()} onDelete={vi.fn()} />)
+
+    expect(screen.getByText('for_summarize')).toBeInTheDocument()
+    expect(screen.getByText('workflow.blocks.llm')).toBeInTheDocument()
+    expect(screen.getByText('gpt-4o')).toBeInTheDocument()
   })
 })

@@ -1,13 +1,15 @@
-import type { ReactNode } from 'react'
 import type { App } from '@/models/explore'
+import type { TryAppSelection } from '@/types/try-app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { useContextSelector } from 'use-context-selector'
 import AppListContext from '@/context/app-list-context'
 import { fetchAppDetail } from '@/service/explore'
+import { render } from '@/test/console/render'
 import { AppModeEnum } from '@/types/app'
-import Apps from '../index'
+import { Apps } from '../index'
 
 vi.mock('@/next/dynamic', () => ({
   default: (loader: () => Promise<{ default: React.ComponentType }>) => {
@@ -23,7 +25,6 @@ vi.mock('@/next/dynamic', () => ({
 }))
 
 let documentTitleCalls: string[] = []
-let educationInitCalls: number = 0
 const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 const mockTrackCreateApp = vi.fn()
@@ -63,24 +64,15 @@ vi.mock('@/hooks/use-document-title', () => ({
   },
 }))
 
-vi.mock('@/app/education-apply/hooks', () => ({
-  useEducationInit: () => {
-    educationInitCalls++
-  },
+vi.mock('@/app/education/expire-notice', () => ({
+  EducationExpireNotice: () => null,
 }))
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/hooks/use-import-dsl', () => ({
@@ -103,8 +95,14 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('../list', () => {
-  const MockList = () => {
-    const setShowTryAppPanel = useContextSelector(AppListContext, ctx => ctx.setShowTryAppPanel)
+  const MockList = ({
+    onCreateLearnDify,
+    onTryLearnDify,
+  }: {
+    onCreateLearnDify?: (app: App) => void
+    onTryLearnDify?: (params: TryAppSelection) => void
+  }) => {
+    const openTryAppPanel = useContextSelector(AppListContext, (ctx) => ctx.openTryAppPanel)
     return React.createElement(
       'div',
       { 'data-testid': 'apps-list' },
@@ -113,65 +111,110 @@ vi.mock('../list', () => {
         'button',
         {
           'data-testid': 'open-preview',
-          'onClick': () => setShowTryAppPanel(true, {
-            appId: mockTemplateApp.app_id,
-            app: mockTemplateApp,
-          }),
+          onClick: () =>
+            openTryAppPanel({
+              appId: mockTemplateApp.app_id,
+              app: mockTemplateApp,
+            }),
         },
         'Open Preview',
+      ),
+      React.createElement(
+        'button',
+        {
+          type: 'button',
+          onClick: () => onTryLearnDify?.({ appId: mockTemplateApp.app_id, app: mockTemplateApp }),
+        },
+        'Preview Learn Dify template',
+      ),
+      React.createElement(
+        'button',
+        { type: 'button', onClick: () => onCreateLearnDify?.(mockTemplateApp) },
+        'Create Learn Dify template',
       ),
     )
   }
 
-  return { default: MockList }
+  return { List: MockList }
 })
 
 vi.mock('../../explore/try-app', () => ({
-  default: ({ onCreate, onClose }: { onCreate: () => void, onClose: () => void }) => (
+  default: ({ onCreate, onClose }: { onCreate: () => void; onClose: () => void }) => (
     <div data-testid="try-app-panel">
-      <button data-testid="try-app-create" onClick={onCreate}>Create</button>
-      <button data-testid="try-app-close" onClick={onClose}>Close</button>
+      <button data-testid="try-app-create" onClick={onCreate}>
+        Create
+      </button>
+      <button data-testid="try-app-close" onClick={onClose}>
+        Close
+      </button>
     </div>
   ),
 }))
 
 vi.mock('../../explore/create-app-modal', () => ({
-  default: ({ show, onConfirm, onHide }: { show: boolean, onConfirm: (payload: Record<string, string>) => Promise<void>, onHide: () => void }) => show
-    ? (
-        <div data-testid="create-app-modal">
-          <button
-            data-testid="confirm-create"
-            onClick={() => onConfirm({
+  default: ({
+    show,
+    onConfirm,
+    onHide,
+  }: {
+    show: boolean
+    onConfirm: (payload: Record<string, string>) => Promise<void>
+    onHide: () => void
+  }) =>
+    show ? (
+      <div data-testid="create-app-modal">
+        <button
+          data-testid="confirm-create"
+          onClick={() =>
+            onConfirm({
               name: 'Created App',
               icon_type: 'emoji',
               icon: '🤖',
               icon_background: '#fff',
               description: 'created from preview',
-            })}
-          >
-            Confirm
-          </button>
-          <button data-testid="hide-create" onClick={onHide}>Hide</button>
-        </div>
-      )
-    : null,
+            })
+          }
+        >
+          Confirm
+        </button>
+        <button data-testid="hide-create" onClick={onHide}>
+          Hide
+        </button>
+      </div>
+    ) : null,
 }))
 
 vi.mock('../../app/create-from-dsl-modal/dsl-confirm-modal', () => ({
-  default: ({ onConfirm, onCancel }: { onConfirm: () => void, onCancel: () => void }) => (
+  default: ({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) => (
     <div data-testid="dsl-confirm-modal">
-      <button data-testid="confirm-dsl" onClick={onConfirm}>Confirm DSL</button>
-      <button data-testid="cancel-dsl" onClick={onCancel}>Cancel DSL</button>
+      <button data-testid="confirm-dsl" onClick={onConfirm}>
+        Confirm DSL
+      </button>
+      <button data-testid="cancel-dsl" onClick={onCancel}>
+        Cancel DSL
+      </button>
     </div>
   ),
 }))
 
 vi.mock('../import-from-marketplace-template-modal', () => ({
-  default: ({ templateId, onClose, onConfirm }: { templateId: string, onClose: () => void, onConfirm: (dsl: string) => void }) => (
+  default: ({
+    templateId,
+    onClose,
+    onConfirm,
+  }: {
+    templateId: string
+    onClose: () => void
+    onConfirm: (dsl: string) => void
+  }) => (
     <div data-testid="marketplace-template-modal">
       <span data-testid="template-id">{templateId}</span>
-      <button data-testid="close-template" onClick={onClose}>Close Template</button>
-      <button data-testid="confirm-template" onClick={() => onConfirm('yaml-dsl-content')}>Confirm Template</button>
+      <button data-testid="close-template" onClick={onClose}>
+        Close Template
+      </button>
+      <button data-testid="confirm-template" onClick={() => onConfirm('yaml-dsl-content')}>
+        Confirm Template
+      </button>
     </div>
   ),
 }))
@@ -185,17 +228,18 @@ vi.mock('@/utils/create-app-tracking', () => ({
 }))
 
 describe('Apps', () => {
-  const createQueryClient = () => new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
+  const createQueryClient = () =>
+    new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
       },
-    },
-  })
+    })
 
   const renderWithClient = (ui: React.ReactElement) => {
     const queryClient = createQueryClient()
-    const wrapper = ({ children }: { children: ReactNode }) => (
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     )
     return {
@@ -207,7 +251,6 @@ describe('Apps', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     documentTitleCalls = []
-    educationInitCalls = 0
     mockWorkspacePermissionKeys = ['app.create_and_management']
     mockSearchParams = new URLSearchParams()
     mockReplace.mockClear()
@@ -218,69 +261,20 @@ describe('Apps', () => {
       icon_background: '#fff',
       mode: AppModeEnum.CHAT,
       export_data: 'yaml-content',
-    })
-  })
-
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      renderWithClient(<Apps />)
-      expect(screen.getByTestId('apps-list')).toBeInTheDocument()
-    })
-
-    it('should render List component', () => {
-      renderWithClient(<Apps />)
-      expect(screen.getByText('Apps List')).toBeInTheDocument()
-    })
-
-    it('should have correct container structure', () => {
-      const { container } = renderWithClient(<Apps />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('relative', 'flex', 'h-0', 'shrink-0', 'grow', 'flex-col')
-    })
-  })
-
-  describe('Hooks', () => {
-    it('should call useDocumentTitle with correct title', () => {
-      renderWithClient(<Apps />)
-      expect(documentTitleCalls).toContain('common.menus.apps')
-    })
-
-    it('should call useEducationInit', () => {
-      renderWithClient(<Apps />)
-      expect(educationInitCalls).toBeGreaterThan(0)
+      can_trial: true,
     })
   })
 
   describe('Integration', () => {
-    it('should render full component tree', () => {
-      renderWithClient(<Apps />)
-
-      expect(screen.getByTestId('apps-list')).toBeInTheDocument()
-      expect(documentTitleCalls.length).toBeGreaterThanOrEqual(1)
-      expect(educationInitCalls).toBeGreaterThanOrEqual(1)
-    })
-
-    it('should handle multiple renders', () => {
-      const queryClient = createQueryClient()
-      const { rerender } = render(
-        <QueryClientProvider client={queryClient}>
-          <Apps />
-        </QueryClientProvider>,
-      )
-      expect(screen.getByTestId('apps-list')).toBeInTheDocument()
-
-      rerender(
-        <QueryClientProvider client={queryClient}>
-          <Apps />
-        </QueryClientProvider>,
-      )
-      expect(screen.getByTestId('apps-list')).toBeInTheDocument()
-    })
-
     it('should track template preview creation after a successful import', async () => {
-      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
-        options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
-      })
+      mockHandleImportDSL.mockImplementation(
+        async (
+          _payload: unknown,
+          options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void },
+        ) => {
+          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+        },
+      )
 
       renderWithClient(<Apps />)
 
@@ -298,13 +292,45 @@ describe('Apps', () => {
       })
     })
 
+    it('should open the template preview from Learn Dify', async () => {
+      const user = userEvent.setup()
+      renderWithClient(<Apps />)
+
+      await user.click(screen.getByRole('button', { name: 'Preview Learn Dify template' }))
+
+      expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
+    })
+
+    it('should close the template preview', async () => {
+      const user = userEvent.setup()
+      renderWithClient(<Apps />)
+
+      await user.click(screen.getByTestId('open-preview'))
+      await user.click(await screen.findByTestId('try-app-close'))
+
+      expect(screen.queryByTestId('try-app-panel')).not.toBeInTheDocument()
+    })
+
+    it('should open the create modal from Learn Dify', async () => {
+      const user = userEvent.setup()
+      renderWithClient(<Apps />)
+
+      await user.click(screen.getByRole('button', { name: 'Create Learn Dify template' }))
+
+      expect(await screen.findByTestId('create-app-modal')).toBeInTheDocument()
+    })
+
     it('should track template preview creation after confirming a pending import', async () => {
-      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onPending?: () => void }) => {
-        options.onPending?.()
-      })
-      mockHandleImportDSLConfirm.mockImplementation(async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
-        options.onSuccess?.({ app_mode: AppModeEnum.WORKFLOW })
-      })
+      mockHandleImportDSL.mockImplementation(
+        async (_payload: unknown, options: { onPending?: () => void }) => {
+          options.onPending?.()
+        },
+      )
+      mockHandleImportDSLConfirm.mockImplementation(
+        async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
+          options.onSuccess?.({ app_mode: AppModeEnum.WORKFLOW })
+        },
+      )
 
       renderWithClient(<Apps />)
 
@@ -325,9 +351,11 @@ describe('Apps', () => {
     })
 
     it('should close the dsl confirm modal when the pending import is canceled', async () => {
-      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onPending?: () => void }) => {
-        options.onPending?.()
-      })
+      mockHandleImportDSL.mockImplementation(
+        async (_payload: unknown, options: { onPending?: () => void }) => {
+          options.onPending?.()
+        },
+      )
 
       renderWithClient(<Apps />)
 
@@ -393,9 +421,14 @@ describe('Apps', () => {
     })
 
     it('should import DSL from marketplace template on confirm', async () => {
-      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
-        options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
-      })
+      mockHandleImportDSL.mockImplementation(
+        async (
+          _payload: unknown,
+          options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void },
+        ) => {
+          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+        },
+      )
       mockSearchParams = new URLSearchParams('template-id=tpl-42')
       renderWithClient(<Apps />)
 
@@ -426,12 +459,16 @@ describe('Apps', () => {
     })
 
     it('should track marketplace template creation after confirming a pending import', async () => {
-      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onPending?: () => void }) => {
-        options.onPending?.()
-      })
-      mockHandleImportDSLConfirm.mockImplementation(async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
-        options.onSuccess?.({ app_mode: AppModeEnum.WORKFLOW })
-      })
+      mockHandleImportDSL.mockImplementation(
+        async (_payload: unknown, options: { onPending?: () => void }) => {
+          options.onPending?.()
+        },
+      )
+      mockHandleImportDSLConfirm.mockImplementation(
+        async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
+          options.onSuccess?.({ app_mode: AppModeEnum.WORKFLOW })
+        },
+      )
       mockSearchParams = new URLSearchParams('template-id=tpl-42')
       renderWithClient(<Apps />)
 
@@ -451,20 +488,6 @@ describe('Apps', () => {
           templateId: 'tpl-42',
         })
       })
-    })
-  })
-
-  describe('Styling', () => {
-    it('should have overflow-y-auto class', () => {
-      const { container } = renderWithClient(<Apps />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('overflow-y-auto')
-    })
-
-    it('should have background styling', () => {
-      const { container } = renderWithClient(<Apps />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('bg-background-body')
     })
   })
 })

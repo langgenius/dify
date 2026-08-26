@@ -1,23 +1,22 @@
 """Runtime execution for one scheduled Dify Agent run.
 
 The runner is storage-agnostic: it normalizes the public Dify composition into
-Agenton's graph/config split and chooses one of two execution modes after the
-composition is normalized and the ``on_exit`` policy is validated:
+Agenton's graph/config split and executes one model run after the ``on_exit``
+policy is validated:
 
 - model runs: enter a fresh ``CompositorRun`` (or resume one from a snapshot),
-  render the current Dify system prompts into temporary ``message_history``, run
+  pass the current Dify system prompts as run-level instructions, run
   pydantic-ai with either the current ``run.user_prompts`` or deferred external
   tool results, emit raw stream events with agent-message delta annotations, apply
   request-level ``on_exit`` signals, and publish a terminal success or failure event;
-- lifecycle-only runs: enter from a supplied snapshot, apply request-level
-  ``on_exit`` signals, exit without invoking a model, and succeed with explicit
-  ``output = null`` and ``usage = null``.
-
 The Pydantic AI model is resolved from the active Agenton layer named by
 ``DIFY_AGENT_MODEL_LAYER_ID``. An optional history layer contributes stored
-message history only through session state; successful model runs append only
-``result.new_messages()`` back into that layer so current system prompts are not
-persisted. An optional structured output layer named by
+message history only through session state. Once pydantic-ai binds and builds
+messages in the run capture, every terminal outcome replaces that state with the
+captured messages after transient instructions are cleared; a failure or
+cancellation before the capture contains messages preserves the restored state.
+This preserves compaction rewrites and interrupted partial messages without
+saving current system prompts. An optional structured output layer named by
 ``DIFY_AGENT_OUTPUT_LAYER_ID`` is read after entry and resolved into an output
 contract whose type both exposes the output schema to the model and performs
 runtime JSON Schema validation through custom Pydantic hooks. When the ask-human
@@ -31,16 +30,21 @@ both the JSON-safe final output or deferred tool call and the session snapshot;
 there are no separate output or snapshot events to correlate.
 """
 
-from collections.abc import AsyncIterable, Callable
+import asyncio
+from collections.abc import AsyncIterable, Callable, Mapping
 from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol, cast, runtime_checkable
 
 import httpx
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from pydantic import JsonValue, TypeAdapter
+from pydantic_ai import capture_run_messages
+from pydantic_ai.exceptions import ModelHTTPError, UsageLimitExceeded
 from pydantic_ai.messages import AgentStreamEvent, PartDeltaEvent, PartStartEvent, TextPart, TextPartDelta
 from pydantic_ai.output import OutputSpec
 from pydantic_ai.tools import DeferredToolRequests, DeferredToolResults
+from pydantic_ai.usage import UsageLimits
 
 from agenton.compositor import CompositorSessionSnapshot, LayerConfigInput, LayerProviderInput
 from agenton.layers.types import PydanticAITool
@@ -48,17 +52,21 @@ from dify_agent.layers.ask_human.layer import get_ask_human_layer, validate_ask_
 from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
 from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
+from dify_agent.layers.knowledge.client import DifyKnowledgeBaseClientError
 from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
 from dify_agent.protocol.schemas import (
     AgentRunUsage,
     CreateRunRequest,
     DIFY_AGENT_MODEL_LAYER_ID,
     DeferredToolCallPayload,
+    RunFailureType,
     normalize_composition,
 )
 from dify_agent.runtime.agent_factory import create_agent, normalize_user_input
 from dify_agent.runtime.agenton_validation import is_agenton_enter_validation_runtime_error
 from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor, create_default_layer_providers
+from dify_agent.runtime.compaction import build_compaction_capability
+from dify_agent.runtime_backend import BindingLostError
 from dify_agent.runtime.event_sink import (
     RunEventSink,
     emit_pydantic_ai_event,
@@ -67,9 +75,8 @@ from dify_agent.runtime.event_sink import (
     emit_run_succeeded,
 )
 from dify_agent.runtime.history import (
-    append_successful_run_history,
-    build_run_message_history,
     get_history_layer,
+    replace_run_history,
     validate_history_layer_composition,
 )
 from dify_agent.runtime.layer_exit_signals import apply_layer_exit_signals, validate_layer_exit_signals
@@ -78,6 +85,8 @@ from dify_agent.runtime.user_prompt_validation import EMPTY_USER_PROMPTS_ERROR, 
 
 
 _AGENT_OUTPUT_ADAPTER = TypeAdapter(object)
+_MAX_AGENT_STEPS_PER_RUN = 500
+DEFAULT_AGENT_RUN_TIMEOUT_SECONDS = 60 * 60
 
 
 @runtime_checkable
@@ -87,21 +96,58 @@ class _HasUsage(Protocol):
 
 @runtime_checkable
 class _HasInputTokens(Protocol):
-    input_tokens: object
+    input_tokens: int | None
 
 
 @runtime_checkable
 class _HasOutputTokens(Protocol):
-    output_tokens: object
+    output_tokens: int | None
 
 
 @runtime_checkable
 class _HasTotalTokens(Protocol):
-    total_tokens: object
+    total_tokens: int | None
+
+
+@runtime_checkable
+class _HasAccumulatedUsage(Protocol):
+    @property
+    def accumulated_usage(self) -> LLMUsage | None: ...
 
 
 class AgentRunValidationError(ValueError):
     """Raised when a run request is valid JSON but cannot execute."""
+
+
+def _run_failed_error_payload(exc: Exception) -> tuple[str, RunFailureType | None, str | None]:
+    """Return the public failed-run error text, type, and structured reason."""
+    message = str(exc) or type(exc).__name__
+    reason: str | None = None
+
+    if isinstance(exc, UsageLimitExceeded):
+        return message, RunFailureType.AGENT_RUN_LIMIT_EXCEEDED, None
+
+    if isinstance(exc, BindingLostError):
+        return message, None, "binding_lost"
+
+    if isinstance(exc, ModelHTTPError):
+        body = exc.body
+        if isinstance(body, Mapping):
+            body_message = body.get("message")
+            if isinstance(body_message, str) and body_message:
+                message = body_message
+
+            error_type = body.get("error_type")
+            if isinstance(error_type, str) and error_type:
+                reason = error_type
+
+        if reason is None and exc.status_code == 429:
+            reason = "InvokeRateLimitError"
+
+    if isinstance(exc, DifyKnowledgeBaseClientError):
+        reason = exc.error_code or "DifyKnowledgeBaseClientError"
+
+    return message, None, reason
 
 
 def _has_model_layer(request: CreateRunRequest) -> bool:
@@ -139,6 +185,10 @@ class AgentRunRunner:
     layer_providers: tuple[LayerProviderInput, ...]
     plugin_daemon_http_client: httpx.AsyncClient
     dify_api_http_client: httpx.AsyncClient
+    is_cancelled: Callable[[], bool]
+    run_timeout_seconds: float
+    _terminal_session_snapshot: CompositorSessionSnapshot | None
+    _terminal_usage: AgentRunUsage | None
 
     def __init__(
         self,
@@ -149,6 +199,8 @@ class AgentRunRunner:
         plugin_daemon_http_client: httpx.AsyncClient,
         dify_api_http_client: httpx.AsyncClient,
         layer_providers: tuple[LayerProviderInput, ...] | None = None,
+        is_cancelled: Callable[[], bool] | None = None,
+        run_timeout_seconds: float = DEFAULT_AGENT_RUN_TIMEOUT_SECONDS,
     ) -> None:
         self.sink = sink
         self.request = request
@@ -156,20 +208,50 @@ class AgentRunRunner:
         self.plugin_daemon_http_client = plugin_daemon_http_client
         self.dify_api_http_client = dify_api_http_client
         self.layer_providers = layer_providers if layer_providers is not None else create_default_layer_providers()
+        self.is_cancelled = is_cancelled or (lambda: False)
+        self.run_timeout_seconds = run_timeout_seconds
+        self._terminal_session_snapshot = None
+        self._terminal_usage = None
+
+    @property
+    def terminal_session_snapshot(self) -> CompositorSessionSnapshot | None:
+        """Return the snapshot captured after the current compositor context exited."""
+        return self._terminal_session_snapshot
+
+    @property
+    def terminal_usage(self) -> AgentRunUsage | None:
+        """Return usage accumulated before the current run reached any terminal state."""
+        return self._terminal_usage
 
     async def run(self) -> None:
         """Execute the run and emit the documented event sequence."""
-        await self.sink.update_status(self.run_id, "running")
+        self._terminal_session_snapshot = None
+        self._terminal_usage = None
+        if self.is_cancelled():
+            return
         _ = await emit_run_started(self.sink, run_id=self.run_id)
 
         try:
             outcome = await self._run_agent()
         except Exception as exc:
-            message = str(exc) or type(exc).__name__
-            _ = await emit_run_failed(self.sink, run_id=self.run_id, error=message)
-            await self.sink.update_status(self.run_id, "failed", message)
-            raise
+            if self.is_cancelled():
+                return
+            message, error_type, reason = _run_failed_error_payload(exc)
+            finalization = await emit_run_failed(
+                self.sink,
+                run_id=self.run_id,
+                error=message,
+                error_type=error_type,
+                reason=reason,
+                session_snapshot=self._terminal_session_snapshot,
+                usage=self._terminal_usage,
+            )
+            if finalization.applied:
+                raise
+            return
 
+        if self.is_cancelled():
+            return
         _ = await emit_run_succeeded(
             self.sink,
             run_id=self.run_id,
@@ -181,10 +263,9 @@ class AgentRunRunner:
             session_snapshot=outcome.session_snapshot,
             usage=outcome.usage,
         )
-        await self.sink.update_status(self.run_id, "succeeded")
 
     async def _run_agent(self) -> RunSuccessOutcome:
-        """Run the normalized request in model or lifecycle-only mode.
+        """Run the normalized request through the model path.
 
         Known request-shaped Agenton enter-time failures are normalized to
         ``AgentRunValidationError``. That includes the existing small class of
@@ -212,48 +293,8 @@ class AgentRunRunner:
             raise AgentRunValidationError(str(exc)) from exc
 
         if not _has_model_layer(self.request):
-            return await self._run_lifecycle_only(compositor=compositor, layer_configs=layer_configs)
+            raise AgentRunValidationError(f"Missing required '{DIFY_AGENT_MODEL_LAYER_ID}' layer.")
         return await self._run_model(compositor=compositor, layer_configs=layer_configs)
-
-    async def _run_lifecycle_only(
-        self,
-        *,
-        compositor: Any,
-        layer_configs: dict[str, LayerConfigInput],
-    ) -> RunSuccessOutcome:
-        """Replay only layer lifecycle work for a no-LLM composition plus snapshot."""
-        if self.request.session_snapshot is None:
-            raise AgentRunValidationError(
-                f"Missing '{DIFY_AGENT_MODEL_LAYER_ID}' requires a session_snapshot for lifecycle-only runs."
-            )
-        if self.request.deferred_tool_results is not None:
-            raise AgentRunValidationError(
-                f"Deferred tool results require the reserved '{DIFY_AGENT_MODEL_LAYER_ID}' layer."
-            )
-
-        entered_run = False
-        try:
-            async with compositor.enter(configs=layer_configs, session_snapshot=self.request.session_snapshot) as run:
-                entered_run = True
-                apply_layer_exit_signals(run, self.request.on_exit)
-        except RuntimeError as exc:
-            if not entered_run and is_agenton_enter_validation_runtime_error(exc):
-                raise AgentRunValidationError(str(exc)) from exc
-            raise
-        except ValueError as exc:
-            if not entered_run:
-                raise AgentRunValidationError(str(exc)) from exc
-            raise
-
-        if run.session_snapshot is None:
-            raise RuntimeError("Agenton run did not produce a session snapshot after exit.")
-        return RunSuccessOutcome(
-            result_kind="output",
-            output=None,
-            deferred_tool_call=None,
-            session_snapshot=run.session_snapshot,
-            usage=None,
-        )
 
     async def _run_model(
         self,
@@ -267,6 +308,8 @@ class AgentRunRunner:
         deferred_tool_call: DeferredToolCallPayload | None = None
         result_kind: Literal["output", "deferred_tool_call"] | None = None
         usage: AgentRunUsage | None = None
+        model: Any = None
+        run = None
         try:
             async with compositor.enter(configs=layer_configs, session_snapshot=self.request.session_snapshot) as run:
                 entered_run = True
@@ -278,6 +321,8 @@ class AgentRunRunner:
 
                 async def handle_events(_ctx: object, events: AsyncIterable[AgentStreamEvent]) -> None:
                     async for event in events:
+                        if self.is_cancelled():
+                            raise asyncio.CancelledError
                         text_delta = _extract_agent_message_delta(event)
                         _ = await emit_pydantic_ai_event(
                             self.sink,
@@ -289,13 +334,17 @@ class AgentRunRunner:
                 try:
                     output_contract = resolve_run_output_contract(run)
                     history_layer = get_history_layer(run)
-                    message_history = await build_run_message_history(
-                        system_prompts=run.prompts,
-                        stored_history=history_layer.message_history if history_layer is not None else (),
-                    )
+                    message_history = history_layer.message_history if history_layer is not None else None
                     ask_human_layer = get_ask_human_layer(run)
                     llm_layer = run.get_layer(DIFY_AGENT_MODEL_LAYER_ID, DifyPluginLLMLayer)
-                    model = llm_layer.get_model(http_client=self.plugin_daemon_http_client)
+                    compaction = build_compaction_capability(
+                        context_window_tokens=llm_layer.config.context_window_tokens,
+                        model_settings=llm_layer.config.model_settings,
+                    )
+                    model = llm_layer.get_model(
+                        http_client=self.dify_api_http_client,
+                        agent_run_id=self.run_id,
+                    )
                     tools = await _resolve_run_tools(
                         run,
                         plugin_daemon_http_client=self.plugin_daemon_http_client,
@@ -314,14 +363,32 @@ class AgentRunRunner:
                     tools=tools,
                     output_type=_resolve_agent_output_type(output_contract.output_type, ask_human_layer is not None),
                 )
-                result = await agent.run(
-                    None if deferred_tool_results is not None else normalize_user_input(user_prompts),
-                    message_history=message_history,
-                    deferred_tool_results=deferred_tool_results,
-                    event_stream_handler=handle_events,
-                )
-                usage = _serialize_agent_usage(_result_usage(result))
-                append_successful_run_history(history_layer, result.new_messages())
+                run_timeout = asyncio.timeout(self.run_timeout_seconds)
+                try:
+                    with capture_run_messages() as captured_messages:
+                        try:
+                            async with run_timeout:
+                                result = await agent.run(
+                                    None if deferred_tool_results is not None else normalize_user_input(user_prompts),
+                                    message_history=message_history,
+                                    deferred_tool_results=deferred_tool_results,
+                                    event_stream_handler=handle_events,
+                                    instructions=run.prompts or None,
+                                    capabilities=[compaction] if compaction is not None else None,
+                                    usage_limits=UsageLimits(request_limit=_MAX_AGENT_STEPS_PER_RUN),
+                                )
+                        finally:
+                            if captured_messages:
+                                replace_run_history(history_layer, captured_messages)
+                except TimeoutError as exc:
+                    if not run_timeout.expired():
+                        raise
+                    raise UsageLimitExceeded(
+                        f"Agent run exceeded the configured limit of {self.run_timeout_seconds:g} seconds"
+                    ) from exc
+                complete_usage = model.accumulated_usage if isinstance(model, _HasAccumulatedUsage) else None
+                usage = _serialize_agent_usage(complete_usage if complete_usage is not None else _result_usage(result))
+                self._terminal_usage = usage
                 if isinstance(result.output, DeferredToolRequests):
                     if ask_human_layer is None:
                         raise AgentRunValidationError(
@@ -344,8 +411,15 @@ class AgentRunRunner:
             if not entered_run:
                 raise AgentRunValidationError(str(exc)) from exc
             raise
+        finally:
+            if entered_run and run is not None:
+                self._terminal_session_snapshot = run.session_snapshot
+            if isinstance(model, _HasAccumulatedUsage):
+                accumulated_usage = _serialize_agent_usage(model.accumulated_usage)
+                if accumulated_usage is not None:
+                    self._terminal_usage = accumulated_usage
 
-        if run.session_snapshot is None:
+        if run is None or run.session_snapshot is None:
             raise RuntimeError("Agenton run did not produce a session snapshot after exit.")
         if result_kind is None:
             raise RuntimeError("Agent run did not resolve either a final output or a deferred tool call.")
@@ -379,9 +453,11 @@ def _result_usage(result: object) -> object | None:
 
 
 def _serialize_agent_usage(usage: object | None) -> AgentRunUsage | None:
-    """Convert pydantic-ai request usage into the public Agent run usage shape."""
+    """Convert complete daemon or fallback pydantic-ai usage into the public shape."""
     if usage is None:
         return None
+    if isinstance(usage, LLMUsage):
+        return AgentRunUsage.model_validate(usage.model_dump(mode="python"))
     input_tokens = int(usage.input_tokens or 0) if isinstance(usage, _HasInputTokens) else 0
     output_tokens = int(usage.output_tokens or 0) if isinstance(usage, _HasOutputTokens) else 0
     total_tokens = int(usage.total_tokens or 0) if isinstance(usage, _HasTotalTokens) else 0

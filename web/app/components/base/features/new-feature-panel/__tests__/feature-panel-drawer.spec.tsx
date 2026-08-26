@@ -28,50 +28,6 @@ describe('FeaturePanelDrawer', () => {
     })
   })
 
-  describe('Props', () => {
-    it('should apply workflow styles by default', () => {
-      render(
-        <FeaturePanelDrawer show>
-          <div data-testid="content">Content</div>
-        </FeaturePanelDrawer>,
-      )
-
-      const drawer = screen.getByRole('dialog')
-      expect(drawer).toHaveClass('data-[swipe-direction=right]:top-[112px]!')
-      expect(drawer).toHaveClass('data-[swipe-direction=right]:rounded-l-2xl!')
-      expect(drawer).not.toHaveClass('data-[swipe-direction=right]:rounded-2xl!')
-    })
-
-    it('should apply non-workflow styles when inWorkflow is false', () => {
-      render(
-        <FeaturePanelDrawer show inWorkflow={false}>
-          <div data-testid="content">Content</div>
-        </FeaturePanelDrawer>,
-      )
-
-      const drawer = screen.getByRole('dialog')
-      const layoutContainer = screen.getByTestId('feature-panel-drawer-layout')
-
-      expect(layoutContainer).toBeInTheDocument()
-
-      expect(drawer).toHaveClass('data-[swipe-direction=right]:top-[64px]!')
-      expect(drawer).toHaveClass('data-[swipe-direction=right]:right-2!')
-      expect(drawer).toHaveClass('data-[swipe-direction=right]:rounded-2xl!')
-      expect(drawer).toHaveClass('data-[swipe-direction=right]:border-[0.5px]!')
-      expect(drawer).not.toHaveClass('data-[swipe-direction=right]:rounded-l-2xl!')
-    })
-
-    it('should accept custom className', () => {
-      render(
-        <FeaturePanelDrawer show className="custom-class">
-          <div data-testid="content">Content</div>
-        </FeaturePanelDrawer>,
-      )
-
-      expect(screen.getByRole('dialog')).toHaveClass('custom-class')
-    })
-  })
-
   describe('Close behavior', () => {
     it('should call onClose when escape is pressed', async () => {
       const onClose = vi.fn()

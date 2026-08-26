@@ -1,27 +1,28 @@
+import type { ModelProviderCreditsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import type { ICurrentWorkspace } from '@/models/common'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { consoleQuery } from '@/service/client'
 import CreditsExhaustedAlert from './credits-exhausted-alert'
 
-const baseWorkspace: ICurrentWorkspace = {
-  id: 'ws-1',
-  name: 'Test Workspace',
-  plan: 'sandbox',
-  status: 'normal',
-  created_at: Date.now(),
-  role: 'owner',
-  providers: [],
-  trial_credits: 200,
-  trial_credits_used: 200,
+const baseCredits: ModelProviderCreditsResponse = {
+  pool_type: 'trial',
+  quota_limit: 200,
+  quota_used: 200,
+  remaining_credits: 0,
+  is_unlimited: false,
+  is_exhausted: true,
+  exhausted_at: 0,
   next_credit_reset_date: Date.now() + 86400000,
 }
 
-function createSeededQueryClient(overrides?: Partial<ICurrentWorkspace>) {
+function createSeededQueryClient(overrides?: Partial<ModelProviderCreditsResponse>) {
   const qc = new QueryClient({
     defaultOptions: { queries: { refetchOnWindowFocus: false, retry: false } },
   })
-  qc.setQueryData(consoleQuery.workspaces.current.post.queryKey(), { ...baseWorkspace, ...overrides })
+  qc.setQueryData(consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(), {
+    ...baseCredits,
+    ...overrides,
+  })
   return qc
 }
 
@@ -32,7 +33,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Alert shown when trial credits are exhausted, with usage progress bar and upgrade link.',
+        component:
+          'Alert shown when trial credits are exhausted, with usage progress bar and upgrade link.',
       },
     },
   },
@@ -68,7 +70,14 @@ export const PartialUsage: Story = {
   decorators: [
     (Story) => {
       return (
-        <QueryClientProvider client={createSeededQueryClient({ trial_credits: 500, trial_credits_used: 480 })}>
+        <QueryClientProvider
+          client={createSeededQueryClient({
+            quota_limit: 500,
+            quota_used: 480,
+            remaining_credits: 20,
+            is_exhausted: false,
+          })}
+        >
           <div className="w-[320px]">
             <Story />
           </div>

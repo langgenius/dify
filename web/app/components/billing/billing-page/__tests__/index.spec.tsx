@@ -1,50 +1,28 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/client'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render } from '@/test/console/render'
 import Billing from '../index'
 
-let currentBillingUrl: string | null = 'https://billing'
-let fetching = false
+let currentBillingUrl: string | undefined = 'https://billing.example.com'
 let isManager = true
 let enableBilling = true
-let workspacePermissionKeys: string[] = ['billing.subscription.manage']
-let billingUrlEnabled = false
 
-const refetchMock = vi.fn()
-const openAsyncWindowMock = vi.fn()
-
-type BillingUrlCallback = () => Promise<string | null>
-type BillingWindowOptions = {
-  immediateUrl: string | null
-  features: string
-  onError: (err: Error) => void
-}
-type OpenAsyncWindowCall = [BillingUrlCallback, BillingWindowOptions]
-
-vi.mock('@/service/use-billing', () => ({
-  useBillingUrl: (enabled: boolean) => {
-    billingUrlEnabled = enabled
-    return {
-      data: currentBillingUrl,
-      isFetching: fetching,
-      refetch: refetchMock,
-    }
-  },
+const mocks = vi.hoisted(() => ({
+  request: vi.fn(() => new Promise(() => {})),
 }))
 
-vi.mock('@/hooks/use-async-window-open', () => ({
-  useAsyncWindowOpen: () => openAsyncWindowMock,
+vi.mock('@/service/base', () => ({
+  request: mocks.request,
+  sseGeneratorPost: vi.fn(),
 }))
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
     isCurrentWorkspaceManager: isManager,
-    workspacePermissionKeys,
   }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/context/provider-context', () => ({
@@ -57,110 +35,67 @@ vi.mock('../../plan', () => ({
   default: ({ loc }: { loc: string }) => <div data-testid="plan-component" data-loc={loc} />,
 }))
 
+const renderBilling = () => {
+  const queryClient = createConsoleQueryClient()
+  if (currentBillingUrl) {
+    queryClient.setQueryData(consoleQuery.billing.invoices.get.queryOptions().queryKey, {
+      url: currentBillingUrl,
+    })
+  }
+  const { wrapper } = createConsoleQueryWrapper({ queryClient })
+
+  return render(<Billing />, { wrapper })
+}
+
 describe('Billing', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    currentBillingUrl = 'https://billing'
-    fetching = false
+    currentBillingUrl = 'https://billing.example.com'
     isManager = true
     enableBilling = true
-    billingUrlEnabled = false
-    workspacePermissionKeys = ['billing.subscription.manage']
-    refetchMock.mockResolvedValue({ data: 'https://billing' })
   })
 
-  it('hides the billing action when subscription management permission is granted without manager role', () => {
+  it('renders the billing portal as a keyboard-accessible external link for workspace managers', async () => {
+    const user = userEvent.setup()
+    renderBilling()
+
+    const billingLink = screen.getByRole('link', { name: /billing\.viewBillingTitle/ })
+    expect(billingLink).toHaveAttribute('href', currentBillingUrl)
+    expect(billingLink).toHaveAttribute('target', '_blank')
+    expect(billingLink).toHaveAttribute('rel', 'noopener noreferrer')
+
+    await user.tab()
+    expect(billingLink).toHaveFocus()
+  })
+
+  it('hides the billing action from non-manager members', () => {
     isManager = false
 
-    render(<Billing />)
+    renderBilling()
 
-    expect(screen.queryByRole('button', { name: /billing\.viewBillingTitle/ })).not.toBeInTheDocument()
-    expect(billingUrlEnabled).toBe(false)
+    expect(screen.queryByText('billing.viewBillingTitle')).not.toBeInTheDocument()
   })
 
-  it('hides the billing action when subscription management permission is missing or billing is disabled', () => {
-    workspacePermissionKeys = []
-    render(<Billing />)
-    expect(screen.queryByRole('button', { name: /billing\.viewBillingTitle/ })).not.toBeInTheDocument()
-    expect(billingUrlEnabled).toBe(false)
-
-    vi.clearAllMocks()
-    workspacePermissionKeys = ['billing.subscription.manage']
+  it('hides the billing action when billing is disabled', () => {
     enableBilling = false
-    render(<Billing />)
-    expect(screen.queryByRole('button', { name: /billing\.viewBillingTitle/ })).not.toBeInTheDocument()
-    expect(billingUrlEnabled).toBe(false)
+
+    renderBilling()
+
+    expect(screen.queryByText('billing.viewBillingTitle')).not.toBeInTheDocument()
   })
 
-  it('opens the billing window with the immediate url when the button is clicked', async () => {
-    render(<Billing />)
+  it('renders the billing action outside the tab order before the URL is available', async () => {
+    const user = userEvent.setup()
+    currentBillingUrl = undefined
 
-    const actionButton = screen.getByRole('button', { name: /billing\.viewBillingTitle/ })
-    fireEvent.click(actionButton)
+    renderBilling()
 
-    await waitFor(() => expect(openAsyncWindowMock).toHaveBeenCalled())
-    const [, options] = openAsyncWindowMock.mock.calls[0] as OpenAsyncWindowCall
-    expect(options).toMatchObject({
-      immediateUrl: currentBillingUrl,
-      features: 'noopener,noreferrer',
-    })
-  })
+    expect(screen.getByText('billing.viewBillingTitle')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: /billing\.viewBillingTitle/ }),
+    ).not.toBeInTheDocument()
 
-  it('returns the refetched url from the async callback', async () => {
-    const newUrl = 'https://new-billing-url'
-    refetchMock.mockResolvedValue({ data: newUrl })
-    render(<Billing />)
-
-    const actionButton = screen.getByRole('button', { name: /billing\.viewBillingTitle/ })
-    fireEvent.click(actionButton)
-
-    await waitFor(() => expect(openAsyncWindowMock).toHaveBeenCalled())
-    const [asyncCallback] = openAsyncWindowMock.mock.calls[0] as OpenAsyncWindowCall
-
-    // Execute the async callback passed to openAsyncWindow
-    const result = await asyncCallback()
-    expect(result).toBe(newUrl)
-    expect(refetchMock).toHaveBeenCalled()
-  })
-
-  it('returns null when refetch returns no url', async () => {
-    refetchMock.mockResolvedValue({ data: null })
-    render(<Billing />)
-
-    const actionButton = screen.getByRole('button', { name: /billing\.viewBillingTitle/ })
-    fireEvent.click(actionButton)
-
-    await waitFor(() => expect(openAsyncWindowMock).toHaveBeenCalled())
-    const [asyncCallback] = openAsyncWindowMock.mock.calls[0] as OpenAsyncWindowCall
-
-    // Execute the async callback when url is null
-    const result = await asyncCallback()
-    expect(result).toBeNull()
-  })
-
-  it('handles errors in onError callback', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    render(<Billing />)
-
-    const actionButton = screen.getByRole('button', { name: /billing\.viewBillingTitle/ })
-    fireEvent.click(actionButton)
-
-    await waitFor(() => expect(openAsyncWindowMock).toHaveBeenCalled())
-    const [, options] = openAsyncWindowMock.mock.calls[0] as OpenAsyncWindowCall
-
-    // Execute the onError callback
-    const testError = new Error('Test error')
-    options.onError(testError)
-    expect(consoleError).toHaveBeenCalledWith('Failed to fetch billing url', testError)
-
-    consoleError.mockRestore()
-  })
-
-  it('disables the button while billing url is fetching', () => {
-    fetching = true
-    render(<Billing />)
-
-    const actionButton = screen.getByRole('button', { name: /billing\.viewBillingTitle/ })
-    expect(actionButton)!.toBeDisabled()
+    await user.tab()
+    expect(document.body).toHaveFocus()
   })
 })

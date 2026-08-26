@@ -2,15 +2,26 @@ import json
 import logging
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, NotRequired, TypedDict
+from typing import Any, NotRequired, Self, TypedDict
 
 from flask import abort, request
 from flask_restx import Resource, fields
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, RootModel, ValidationError, field_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    RootModel,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
+from configs import dify_config
+from controllers.common.app_access import resolve_app_access_filter
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
 from controllers.common.errors import InvalidArgumentError
 from controllers.common.fields import GeneratedAppResponse, NewAppResponse, SimpleResultResponse
@@ -44,6 +55,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
+from core.db.session_factory import session_factory
 from core.helper import encrypter
 from core.helper.trace_id_helper import get_external_trace_id
 from core.plugin.impl.exc import PluginInvokeError
@@ -54,10 +66,15 @@ from core.trigger.debug.event_selectors import (
     create_event_poller,
     select_trigger_debug_events,
 )
+from core.workflow.llm_environment_variable import (
+    LLM_ENVIRONMENT_VARIABLE_VALUE_TYPE,
+    LLMEnvironmentVariable,
+)
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory, variable_factory
 from fields.base import ResponseModel
+from fields.conversation_variable_fields import WorkflowConversationVariableResponse
 from fields.member_fields import SimpleAccount
 from fields.workflow_run_fields import WorkflowRunNodeExecutionResponse
 from graphon.enums import NodeType
@@ -75,6 +92,7 @@ from models import Account, App
 from models.model import AppMode
 from models.workflow import Workflow
 from repositories.workflow_collaboration_repository import WORKFLOW_ONLINE_USERS_PREFIX
+from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
@@ -100,13 +118,35 @@ class EnvironmentVariableResponseDict(TypedDict):
     description: NotRequired[str | None]
 
 
+class SyncEnvironmentVariablePatchPayload(BaseModel):
+    environment_variables: list[dict[str, Any]] = Field(default_factory=list)
+    deleted_environment_variable_ids: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_patch(self) -> Self:
+        """Require stable, disjoint IDs so the service can merge the patch deterministically."""
+        upsert_ids = [variable.get("id") for variable in self.environment_variables]
+        if any(not isinstance(variable_id, str) or not variable_id for variable_id in upsert_ids):
+            raise ValueError("patched environment variables require an id")
+        if len(set(upsert_ids)) != len(upsert_ids):
+            raise ValueError("patched environment variable ids must be unique")
+        if any(not variable_id for variable_id in self.deleted_environment_variable_ids):
+            raise ValueError("deleted environment variable ids must not be empty")
+        if len(set(self.deleted_environment_variable_ids)) != len(self.deleted_environment_variable_ids):
+            raise ValueError("deleted environment variable ids must be unique")
+        if set(upsert_ids).intersection(self.deleted_environment_variable_ids):
+            raise ValueError("an environment variable cannot be upserted and deleted in the same patch")
+        return self
+
+
 class SyncDraftWorkflowPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     graph: dict[str, Any]
     features: dict[str, Any]
     hash: str | None = None
-    environment_variables: list[dict[str, Any]] = Field(
-        default_factory=list,
-    )
+    is_collaborative: bool = Field(default=False, alias="_is_collaborative")
+    environment_variable_patch: SyncEnvironmentVariablePatchPayload | None = None
     conversation_variables: list[dict[str, Any]] = Field(
         default_factory=list,
     )
@@ -238,21 +278,6 @@ class WorkflowOnlineUsersPayload(BaseModel):
         return list(dict.fromkeys(app_id.strip() for app_id in app_ids if app_id.strip()))
 
 
-class WorkflowConversationVariableResponse(ResponseModel):
-    id: str
-    name: str
-    value_type: str
-    value: Any
-    description: str
-
-    @field_validator("value_type", mode="before")
-    @classmethod
-    def _serialize_value_type(cls, value: Any) -> str:
-        if hasattr(value, "exposed_type"):
-            return str(value.exposed_type())
-        return str(value)
-
-
 class PipelineVariableResponse(ResponseModel):
     label: str
     variable: str
@@ -292,6 +317,9 @@ class WorkflowResponse(ResponseModel):
     )
     hash: str = Field(validation_alias=AliasChoices("unique_hash", "hash"))
     version: str
+    # NULL for drafts and for versions published before numbering was introduced; those
+    # render as "Untitled Version" instead of `#N`. Never 0, so clients must test for null.
+    version_number: int | None = None
     marked_name: str
     marked_comment: str
     created_by: SimpleAccount | None = Field(
@@ -324,6 +352,27 @@ class WorkflowResponse(ResponseModel):
         return [_serialize_environment_variable(item) for item in value]
 
 
+class _WorkflowResponseSource:
+    def __init__(self, workflow: Workflow, *, session: Session) -> None:
+        self._workflow = workflow
+        self._session = session
+
+    def __getattr__(self, name: str) -> object:
+        return getattr(self._workflow, name)  # guard-ignore: no-new-getattr -- delegates model fields
+
+    @property
+    def created_by_account(self) -> Account | None:
+        return self._workflow.get_created_by_account(session=self._session)
+
+    @property
+    def updated_by_account(self) -> Account | None:
+        return self._workflow.get_updated_by_account(session=self._session)
+
+    @property
+    def tool_published(self) -> bool:
+        return self._workflow.get_tool_published(session=self._session)
+
+
 class WorkflowPaginationResponse(ResponseModel):
     items: list[WorkflowResponse]
     page: int
@@ -349,6 +398,12 @@ class WorkflowOnlineUsersResponse(ResponseModel):
 class WorkflowPublishResponse(ResponseModel):
     result: str
     created_at: int
+
+
+class SyncDraftWorkflowResponse(ResponseModel):
+    result: str
+    hash: str
+    updated_at: int
 
 
 class WorkflowRestoreResponse(ResponseModel):
@@ -433,6 +488,7 @@ register_response_schema_models(
     WorkflowOnlineUsersByApp,
     WorkflowOnlineUsersResponse,
     WorkflowPublishResponse,
+    SyncDraftWorkflowResponse,
     WorkflowRestoreResponse,
     DefaultBlockConfigsResponse,
     DefaultBlockConfigResponse,
@@ -466,6 +522,15 @@ def _parse_file(workflow: Workflow, files: list[dict] | None = None) -> Sequence
 
 def _serialize_environment_variable(value: Any) -> EnvironmentVariableResponseDict | Any:
     match value:
+        case LLMEnvironmentVariable():
+            return {
+                "id": value.id,
+                "name": value.name,
+                "value": value.value,
+                "value_type": LLM_ENVIRONMENT_VARIABLE_VALUE_TYPE,
+                "description": value.description,
+            }
+
         case SecretVariable():
             return {
                 "id": value.id,
@@ -490,6 +555,8 @@ def _serialize_environment_variable(value: Any) -> EnvironmentVariableResponseDi
                 raise TypeError(
                     f"unexpected type for value_type field, value={value_type_str}, type={type(value_type_str)}"
                 )
+            if value_type_str == LLM_ENVIRONMENT_VARIABLE_VALUE_TYPE:
+                return value
             value_type = SegmentType(value_type_str).exposed_type()
             if value_type not in ENVIRONMENT_VARIABLE_SUPPORTED_TYPES:
                 raise ValueError(f"Unsupported environment variable value type: {value_type}")
@@ -548,14 +615,7 @@ class DraftWorkflowApi(Resource):
     @console_ns.response(
         200,
         "Draft workflow synced successfully",
-        console_ns.model(
-            "SyncDraftWorkflowResponse",
-            {
-                "result": fields.String,
-                "hash": fields.String,
-                "updated_at": fields.String,
-            },
-        ),
+        console_ns.models[SyncDraftWorkflowResponse.__name__],
     )
     @console_ns.response(400, "Invalid workflow configuration")
     @console_ns.response(403, "Permission denied")
@@ -580,40 +640,52 @@ class DraftWorkflowApi(Resource):
                 return {"message": "Invalid JSON data"}, 400
         else:
             abort(415)
-        args = args_model.model_dump()
         workflow_service = WorkflowService()
 
         try:
-            environment_variables_list = Workflow.normalize_environment_variable_mappings(
-                args.get("environment_variables") or [],
-            )
-            environment_variables = [
-                variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
-            ]
-            conversation_variables_list = args.get("conversation_variables") or []
+            environment_variable_patch = args_model.environment_variable_patch
+            environment_variable_upserts: list[VariableBase] | None = None
+            deleted_environment_variable_ids: list[str] = []
+            if environment_variable_patch is not None:
+                environment_variable_upsert_mappings = Workflow.normalize_environment_variable_mappings(
+                    environment_variable_patch.environment_variables,
+                )
+                environment_variable_upserts = [
+                    variable_factory.build_environment_variable_from_mapping(obj)
+                    for obj in environment_variable_upsert_mappings
+                ]
+                deleted_environment_variable_ids = environment_variable_patch.deleted_environment_variable_ids
             conversation_variables = [
-                variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
+                variable_factory.build_conversation_variable_from_mapping(obj)
+                for obj in args_model.conversation_variables
             ]
             workflow = workflow_service.sync_draft_workflow(
                 app_model=app_model,
-                graph=args["graph"],
-                features=args["features"],
-                unique_hash=args.get("hash"),
+                graph=args_model.graph,
+                features=args_model.features,
+                unique_hash=args_model.hash,
                 account=current_user,
-                environment_variables=environment_variables,
+                environment_variables=[],
                 conversation_variables=conversation_variables,
                 session=db.session(),
+                environment_variable_upserts=environment_variable_upserts,
+                deleted_environment_variable_ids=deleted_environment_variable_ids,
+                preserve_environment_variables=True,
+                graph_only=args_model.is_collaborative,
             )
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
         except VariableError as e:
             raise InvalidArgumentError(description=str(e))
 
-        return {
-            "result": "success",
-            "hash": workflow.unique_hash,
-            "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
-        }
+        return dump_response(
+            SyncDraftWorkflowResponse,
+            {
+                "result": "success",
+                "hash": workflow.unique_hash,
+                "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
+            },
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/run")
@@ -629,10 +701,10 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
     @login_required
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @with_current_user
     @edit_permission_required
     @with_session
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     def post(self, session: Session, current_user: Account, app_model: App):
         """
         Run draft workflow
@@ -1074,10 +1146,10 @@ class DraftWorkflowRunApi(Resource):
     @login_required
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
-    @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
     @with_session
+    @get_app_model(mode=[AppMode.WORKFLOW])
     def post(self, session: Session, current_user: Account, app_model: App):
         """
         Run draft workflow
@@ -1438,7 +1510,7 @@ class PublishedAllWorkflowApi(Resource):
             )
             return WorkflowPaginationResponse.model_validate(
                 {
-                    "items": workflows,
+                    "items": [_WorkflowResponseSource(workflow, session=session) for workflow in workflows],
                     "page": page,
                     "limit": limit,
                     "has_more": has_more,
@@ -1532,16 +1604,19 @@ class WorkflowByIdApi(Resource):
             if not workflow:
                 raise NotFound("Workflow not found")
 
-        return dump_response(WorkflowResponse, workflow)
+            response = dump_response(WorkflowResponse, _WorkflowResponseSource(workflow, session=session))
+
+        return response
 
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @with_current_user
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @console_ns.response(204, "Workflow deleted successfully")
-    def delete(self, app_model: App, workflow_id: str):
+    def delete(self, current_user: Account, app_model: App, workflow_id: str):
         """
         Delete workflow
         """
@@ -1551,7 +1626,7 @@ class WorkflowByIdApi(Resource):
         # Create a session and manage the transaction
         with sessionmaker(db.engine).begin() as session:
             try:
-                workflow_service.delete_workflow(
+                retirement_candidates = workflow_service.delete_workflow(
                     session=session,
                     workflow_ref=workflow_ref,
                 )
@@ -1562,6 +1637,11 @@ class WorkflowByIdApi(Resource):
             except ValueError as e:
                 raise NotFound(str(e))
 
+        WorkflowAgentRetirementService.retire_unowned(
+            tenant_id=app_model.tenant_id,
+            agent_ids=retirement_candidates,
+            account_id=current_user.id,
+        )
         return None, 204
 
 
@@ -1626,10 +1706,10 @@ class DraftWorkflowTriggerRunApi(Resource):
     @login_required
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
-    @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
     @with_session
+    @get_app_model(mode=[AppMode.WORKFLOW])
     def post(self, session: Session, current_user: Account, app_model: App):
         """
         Poll for trigger events and execute full workflow when event arrives
@@ -1637,7 +1717,7 @@ class DraftWorkflowTriggerRunApi(Resource):
         args = DraftWorkflowTriggerRunPayload.model_validate(console_ns.payload or {})
         node_id = args.node_id
         workflow_service = WorkflowService()
-        draft_workflow = workflow_service.get_draft_workflow(app_model, session=db.session())
+        draft_workflow = workflow_service.get_draft_workflow(app_model, session=session)
         if not draft_workflow:
             raise ValueError("Workflow not found")
 
@@ -1777,11 +1857,11 @@ class DraftWorkflowTriggerRunAllApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @with_session
+    @get_app_model(mode=[AppMode.WORKFLOW])
     def post(self, session: Session, current_user: Account, app_model: App):
         """
         Full workflow debug when the start node is a trigger
@@ -1790,7 +1870,7 @@ class DraftWorkflowTriggerRunAllApi(Resource):
         args = DraftWorkflowTriggerRunAllPayload.model_validate(console_ns.payload or {})
         node_ids = args.node_ids
         workflow_service = WorkflowService()
-        draft_workflow = workflow_service.get_draft_workflow(app_model, session=db.session())
+        draft_workflow = workflow_service.get_draft_workflow(app_model, session=session)
         if not draft_workflow:
             raise ValueError("Workflow not found")
 
@@ -1847,8 +1927,9 @@ class WorkflowOnlineUsersApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @with_current_tenant_id
-    def post(self, current_tenant_id: str):
+    def post(self, current_tenant_id: str, current_user: Account):
         args = WorkflowOnlineUsersPayload.model_validate(console_ns.payload or {})
 
         app_ids = args.app_ids
@@ -1858,8 +1939,20 @@ class WorkflowOnlineUsersApi(Resource):
         if not app_ids:
             return {"data": []}
 
+        access_filter = None
         workflow_service = WorkflowService()
-        accessible_app_ids = workflow_service.get_accessible_app_ids(app_ids, current_tenant_id, session=db.session())
+        with session_factory.create_session() as session:
+            if dify_config.RBAC_ENABLED:
+                access_filter = resolve_app_access_filter(current_tenant_id, current_user.id, session=session)
+            app_maintainers = workflow_service.get_tenant_app_maintainers(app_ids, current_tenant_id, session=session)
+
+        accessible_app_ids = set(app_maintainers)
+        if access_filter is not None:
+            accessible_app_ids = {
+                app_id
+                for app_id, maintainer in app_maintainers.items()
+                if access_filter.is_app_accessible(app_id, maintainer, current_user.id)
+            }
         ordered_accessible_app_ids = [app_id for app_id in app_ids if app_id in accessible_app_ids]
 
         users_json_by_app_id: dict[str, Any] = {}

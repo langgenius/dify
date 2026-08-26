@@ -23,7 +23,7 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookData,
     WebhookParameter,
 )
-from enums.quota_type import QuotaType
+from enums import QuotaType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory
@@ -101,6 +101,7 @@ class WebhookService:
                 - Mapping[str, Any]: The node configuration data
 
         Raises:
+            QuotaExceededError: If the app trigger is rate limited
             ValueError: If webhook not found, app trigger not found, trigger disabled, or workflow not found
         """
         with Session(db.engine) as session:
@@ -141,8 +142,10 @@ class WebhookService:
                 # Only check enabled status if not in debug mode
 
                 if app_trigger.status == AppTriggerStatus.RATE_LIMITED:
-                    raise ValueError(
-                        f"Webhook trigger is rate limited for webhook {webhook_id}, please upgrade your plan."
+                    raise QuotaExceededError(
+                        feature=QuotaType.TRIGGER.value,
+                        tenant_id=webhook_trigger.tenant_id,
+                        required=1,
                     )
 
                 if app_trigger.status != AppTriggerStatus.ENABLED:
@@ -799,6 +802,7 @@ class WebhookService:
             workflow: The workflow to execute
 
         Raises:
+            QuotaExceededError: If the tenant has exhausted its trigger or workflow execution quota
             ValueError: If tenant owner is not found
             Exception: If workflow execution fails
         """
@@ -824,11 +828,6 @@ class WebhookService:
                 quota_charge = QuotaService.reserve(QuotaType.TRIGGER, webhook_trigger.tenant_id)
             except QuotaExceededError:
                 AppTriggerService.mark_tenant_triggers_rate_limited(webhook_trigger.tenant_id)
-                logger.info(
-                    "Tenant %s rate limited, skipping webhook trigger %s",
-                    webhook_trigger.tenant_id,
-                    webhook_trigger.webhook_id,
-                )
                 raise
 
             try:
@@ -841,6 +840,14 @@ class WebhookService:
                 quota_charge.refund()
                 raise
 
+        except QuotaExceededError as e:
+            logger.info(
+                "Tenant %s quota exceeded for feature %s, skipping webhook trigger %s",
+                webhook_trigger.tenant_id,
+                e.feature,
+                webhook_trigger.webhook_id,
+            )
+            raise
         except Exception:
             logger.exception("Failed to trigger workflow for webhook %s", webhook_trigger.webhook_id)
             raise
@@ -874,7 +881,7 @@ class WebhookService:
                     response_data = {"message": response_body}
             else:
                 response_data = {"status": "success", "message": "Webhook processed successfully"}
-        except:
+        except Exception:
             response_data = {"message": response_body or "Webhook processed successfully"}
 
         return response_data, status_code

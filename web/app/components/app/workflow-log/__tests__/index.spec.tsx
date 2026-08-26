@@ -14,17 +14,20 @@ import type { UseQueryResult } from '@tanstack/react-query'
  * - detail.spec.tsx
  * - trigger-by-display.spec.tsx
  */
-
-import type { MockedFunction } from 'vitest'
+import type { MockedFunction } from 'vite-plus/test'
+import type { CloudSandboxPlanState } from '../../log/cloud-sandbox-retention'
 import type { ILogsProps } from '../index'
 import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
 import type { App, AppIconType, AppModeEnum } from '@/types/app'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import dayjs from 'dayjs'
 import { APP_PAGE_LIMIT } from '@/config'
 import { WorkflowRunTriggeredFrom } from '@/models/log'
 import * as useLogModule from '@/service/use-log'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render } from '@/test/console/render'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { TIME_PERIOD_MAPPING } from '../filter'
 import Logs from '../index'
 
@@ -32,7 +35,19 @@ import Logs from '../index'
 // Mocks
 // ============================================================================
 
+const mockPlanState = vi.hoisted(() => ({
+  value: 'unrestricted' as CloudSandboxPlanState,
+}))
+
 vi.mock('@/service/use-log')
+
+vi.mock('../../log/cloud-sandbox-retention', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../log/cloud-sandbox-retention')>()
+  return {
+    ...actual,
+    useCloudSandboxPlanStatus: () => mockPlanState.value,
+  }
+})
 
 vi.mock('ahooks', () => ({
   useDebounce: <T,>(value: T) => value,
@@ -54,12 +69,18 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode, href: string }) => <a href={href}>{children}</a>,
+  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
+    <a href={href}>{children}</a>
+  ),
+}))
+
+vi.mock('../../log/retention-upgrade-notice', () => ({
+  RetentionUpgradeNotice: () => <div>retention-upgrade-notice</div>,
 }))
 
 // Mock the Run component to avoid complex dependencies
 vi.mock('@/app/components/workflow/run', () => ({
-  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string, tracingListUrl: string }) => (
+  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string; tracingListUrl: string }) => (
     <div data-testid="workflow-run">
       <span data-testid="run-detail-url">{runDetailUrl}</span>
       <span data-testid="tracing-list-url">{tracingListUrl}</span>
@@ -80,19 +101,27 @@ vi.mock('@/hooks/use-theme', () => ({
 
 // Mock WorkflowContextProvider
 vi.mock('@/app/components/workflow/context', () => ({
-  WorkflowContextProvider: ({ children }: { children: React.ReactNode }) => (
-    <>{children}</>
-  ),
+  WorkflowContextProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
-const mockedUseWorkflowLogs = useLogModule.useWorkflowLogs as MockedFunction<typeof useLogModule.useWorkflowLogs>
+const mockedUseWorkflowLogs = useLogModule.useWorkflowLogs as MockedFunction<
+  typeof useLogModule.useWorkflowLogs
+>
 
 // ============================================================================
 // Test Utilities
 // ============================================================================
 
 const renderWithQueryClient = (ui: React.ReactElement) => {
-  return renderWithSystemFeatures(ui)
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper()
+  const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryWrapper>
+      <NuqsWrapper>{children}</NuqsWrapper>
+    </QueryWrapper>
+  )
+
+  return render(ui, { wrapper })
 }
 
 // ============================================================================
@@ -100,7 +129,7 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
 // ============================================================================
 
 const createMockQueryResult = <T,>(
-  overrides: { data?: T, isLoading?: boolean, error?: Error | null } = {},
+  overrides: { data?: T; isLoading?: boolean; error?: Error | null } = {},
 ): UseQueryResult<T, Error> => {
   const isLoading = overrides.isLoading ?? false
   const error = overrides.error ?? null
@@ -184,7 +213,9 @@ const createMockWorkflowRun = (overrides: Partial<WorkflowRunDetail> = {}): Work
   ...overrides,
 })
 
-const createMockWorkflowLog = (overrides: Partial<WorkflowAppLogDetail> = {}): WorkflowAppLogDetail => ({
+const createMockWorkflowLog = (
+  overrides: Partial<WorkflowAppLogDetail> = {},
+): WorkflowAppLogDetail => ({
   id: 'log-1',
   workflow_run: createMockWorkflowRun(),
   created_from: 'web-app',
@@ -234,27 +265,13 @@ describe('Logs Container', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockPlanState.value = 'unrestricted'
   })
 
   // --------------------------------------------------------------------------
   // Rendering Tests (REQUIRED)
   // --------------------------------------------------------------------------
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      // Arrange
-      mockedUseWorkflowLogs.mockReturnValue(
-        createMockQueryResult<WorkflowLogsResponse>({
-          data: createMockLogsResponse([], 0),
-        }),
-      )
-
-      // Act
-      renderWithQueryClient(<Logs {...defaultProps} />)
-
-      // Assert
-      expect(screen.getByText('appLog.workflowTitle')).toBeInTheDocument()
-    })
-
     it('should render title and subtitle', () => {
       // Arrange
       mockedUseWorkflowLogs.mockReturnValue(
@@ -284,6 +301,7 @@ describe('Logs Container', () => {
 
       // Assert
       expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
+      expect(screen.getByText('retention-upgrade-notice')).toBeInTheDocument()
     })
   })
 
@@ -456,6 +474,29 @@ describe('Logs Container', () => {
       })
     })
 
+    it('should query the last 30 days when a Sandbox user selects the longest period', async () => {
+      const user = userEvent.setup()
+      mockPlanState.value = 'sandbox'
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse([], 0),
+        }),
+      )
+
+      renderWithQueryClient(<Logs {...defaultProps} />)
+
+      await user.click(screen.getByText('appLog.filter.period.last7days'))
+      await user.click(await screen.findByText('appLog.filter.period.last30days'))
+
+      expect(
+        screen.getByRole('combobox', { name: 'appLog.filter.period.last30days' }),
+      ).toBeInTheDocument()
+      const params = getMockCallParams()?.params
+      expect(
+        dayjs(String(params?.created_at__before)).diff(String(params?.created_at__after), 'day'),
+      ).toBe(30)
+    })
+
     it('should update query when typing keyword', async () => {
       // Arrange
       const user = userEvent.setup()
@@ -503,7 +544,8 @@ describe('Logs Container', () => {
     it('should render pagination when total exceeds limit', () => {
       // Arrange
       const logs = Array.from({ length: APP_PAGE_LIMIT }, (_, i) =>
-        createMockWorkflowLog({ id: `log-${i}` }))
+        createMockWorkflowLog({ id: `log-${i}` }),
+      )
 
       mockedUseWorkflowLogs.mockReturnValue(
         createMockQueryResult<WorkflowLogsResponse>({
@@ -542,14 +584,17 @@ describe('Logs Container', () => {
       // Arrange
       mockedUseWorkflowLogs.mockReturnValue(
         createMockQueryResult<WorkflowLogsResponse>({
-          data: createMockLogsResponse([
-            createMockWorkflowLog({
-              workflow_run: createMockWorkflowRun({
-                status: 'succeeded',
-                total_tokens: 500,
+          data: createMockLogsResponse(
+            [
+              createMockWorkflowLog({
+                workflow_run: createMockWorkflowRun({
+                  status: 'succeeded',
+                  total_tokens: 500,
+                }),
               }),
-            }),
-          ], 1),
+            ],
+            1,
+          ),
         }),
       )
 

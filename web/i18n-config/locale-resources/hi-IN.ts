@@ -1,1 +1,2 @@
-export const loadResource = (fileNamespace: string) => import(`../../i18n/hi-IN/${fileNamespace}.json`)
+export const loadResource = (fileNamespace: string) =>
+  import(`../../i18n/hi-IN/${fileNamespace}.json`)

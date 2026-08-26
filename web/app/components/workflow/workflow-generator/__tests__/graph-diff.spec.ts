@@ -5,9 +5,12 @@ type GraphNode = GeneratedGraph['nodes'][number]
 
 // diffGraphs only reads `id` and `data`, so a minimal node shape is enough.
 const node = (id: string, data: Record<string, unknown> = {}): GraphNode =>
-  ({ id, data } as unknown as GraphNode)
-const graph = (nodes: GraphNode[]): GeneratedGraph =>
-  ({ nodes, edges: [], viewport: { x: 0, y: 0, zoom: 1 } })
+  ({ id, data }) as unknown as GraphNode
+const graph = (nodes: GraphNode[]): GeneratedGraph => ({
+  nodes,
+  edges: [],
+  viewport: { x: 0, y: 0, zoom: 1 },
+})
 
 describe('diffGraphs', () => {
   it('reports nodes added in the new graph', () => {
@@ -24,12 +27,18 @@ describe('diffGraphs', () => {
   })
 
   it('reports nodes whose data changed', () => {
-    const result = diffGraphs(graph([node('a', { temperature: 0.2 })]), graph([node('a', { temperature: 0.9 })]))
+    const result = diffGraphs(
+      graph([node('a', { temperature: 0.2 })]),
+      graph([node('a', { temperature: 0.9 })]),
+    )
     expect(result.changed).toEqual(['a'])
   })
 
   it('treats identical data as unchanged', () => {
-    const result = diffGraphs(graph([node('a', { temperature: 0.2 })]), graph([node('a', { temperature: 0.2 })]))
+    const result = diffGraphs(
+      graph([node('a', { temperature: 0.2 })]),
+      graph([node('a', { temperature: 0.2 })]),
+    )
     expect(result.changed).toEqual([])
   })
 

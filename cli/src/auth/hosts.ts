@@ -62,7 +62,7 @@ export type ActiveContext = {
   readonly insecureTls?: boolean
 }
 
-export function notLoggedInError(hint = 'run \'difyctl auth login\''): BaseError {
+export function notLoggedInError(hint = "run 'difyctl auth login'"): BaseError {
   return new BaseError({ code: ErrorCode.NotLoggedIn, message: 'not logged in', hint })
 }
 
@@ -75,8 +75,7 @@ export class Registry {
 
   static async load(): Promise<Registry> {
     const raw = await getHostStore().getTyped<Record<string, unknown>>()
-    if (raw === null)
-      return Registry.empty()
+    if (raw === null) return Registry.empty()
     return new Registry(RegistrySchema.parse(raw))
   }
 
@@ -88,31 +87,34 @@ export class Registry {
     return new Registry(data)
   }
 
-  get hosts(): RegistryData['hosts'] { return this.data.hosts }
-  get current_host(): string | undefined { return this.data.current_host }
-  get token_storage(): StorageMode { return this.data.token_storage }
-  set token_storage(mode: StorageMode) { this.data.token_storage = mode }
+  get hosts(): RegistryData['hosts'] {
+    return this.data.hosts
+  }
+  get current_host(): string | undefined {
+    return this.data.current_host
+  }
+  get token_storage(): StorageMode {
+    return this.data.token_storage
+  }
+  set token_storage(mode: StorageMode) {
+    this.data.token_storage = mode
+  }
 
   resolveActive(): ActiveContext | undefined {
     const host = this.data.current_host
-    if (host === undefined || host === '')
-      return undefined
+    if (host === undefined || host === '') return undefined
     const entry = this.data.hosts[host]
-    if (entry === undefined)
-      return undefined
+    if (entry === undefined) return undefined
     const email = entry?.current_account
-    if (!email)
-      return undefined
+    if (!email) return undefined
     const ctx = entry.accounts[email]
-    if (ctx === undefined)
-      return undefined
+    if (ctx === undefined) return undefined
     return { host, email, ctx, scheme: entry.scheme, insecureTls: entry.insecure_tls }
   }
 
   requireActive(hint?: string): ActiveContext {
     const active = this.resolveActive()
-    if (active === undefined)
-      throw notLoggedInError(hint)
+    if (active === undefined) throw notLoggedInError(hint)
     return active
   }
 
@@ -124,18 +126,14 @@ export class Registry {
 
   remove(host: string, email: string): void {
     const entry = this.data.hosts[host]
-    if (entry === undefined)
-      return
+    if (entry === undefined) return
     const wasActive = entry.current_account === email
     delete entry.accounts[email]
-    if (wasActive)
-      entry.current_account = undefined
+    if (wasActive) entry.current_account = undefined
     if (Object.keys(entry.accounts).length === 0) {
       delete this.data.hosts[host]
-      if (this.data.current_host === host)
-        this.data.current_host = undefined
-    }
-    else if (wasActive && this.data.current_host === host) {
+      if (this.data.current_host === host) this.data.current_host = undefined
+    } else if (wasActive && this.data.current_host === host) {
       this.data.current_host = undefined
     }
   }
@@ -146,23 +144,19 @@ export class Registry {
 
   setAccount(email: string): void {
     const host = this.data.current_host
-    if (host === undefined)
-      return
+    if (host === undefined) return
     const entry = this.data.hosts[host]
-    if (entry !== undefined)
-      entry.current_account = email
+    if (entry !== undefined) entry.current_account = email
   }
 
   setScheme(host: string, scheme: string): void {
     const entry = this.data.hosts[host]
-    if (entry !== undefined)
-      entry.scheme = scheme
+    if (entry !== undefined) entry.scheme = scheme
   }
 
   setInsecureTls(host: string, insecure: boolean): void {
     const entry = this.data.hosts[host]
-    if (entry !== undefined)
-      entry.insecure_tls = insecure
+    if (entry !== undefined) entry.insecure_tls = insecure
   }
 
   activate(host: string, email: string, ctx: AccountContext): void {
@@ -176,8 +170,9 @@ export class Registry {
   async forget(active: ActiveContext, store: TokenStore): Promise<void> {
     try {
       await store.remove(active.host, active.email)
+    } catch {
+      /* best-effort */
     }
-    catch { /* best-effort */ }
     this.remove(active.host, active.email)
     await this.save()
   }

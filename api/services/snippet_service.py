@@ -1,17 +1,27 @@
 import json
 import logging
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.workflow.node_factory import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
+from enums import DeploymentEdition
 from graphon.enums import BuiltinNodeTypes, NodeType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account, TagBinding
+from models.agent import (
+    WORKFLOW_ONLY_AGENT_SOURCES,
+    Agent,
+    AgentScope,
+    AgentStatus,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import UploadFile
 from models.snippet import CustomizedSnippet, SnippetType
@@ -28,8 +38,14 @@ from models.workflow import (
     WorkflowType,
 )
 from repositories.factory import DifyAPIRepositoryFactory
+from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
+from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from services.tag_service import TagService
+from services.workflow_node_execution_trace_service import (
+    WorkflowNodeExecutionTrace,
+    assemble_workflow_node_execution_traces,
+)
 from services.workflow_restore import apply_published_workflow_snapshot_to_draft
 
 logger = logging.getLogger(__name__)
@@ -68,8 +84,8 @@ class SnippetService:
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
     @contextmanager
-    def _session_scope(self) -> Iterator[Session]:
-        current_session = getattr(self, "_session", None)
+    def _session_scope(self) -> Generator[Session, None, None]:
+        current_session = self._session
         if current_session is not None:
             yield current_session
             return
@@ -78,7 +94,7 @@ class SnippetService:
             yield session
 
     def _commit_if_owned(self, session: Session) -> None:
-        if getattr(self, "_session", None) is None:
+        if self._session is None:
             session.commit()
 
     @staticmethod
@@ -137,10 +153,9 @@ class SnippetService:
 
     @staticmethod
     def _delete_archived_workflow_run_files(*, snippet: CustomizedSnippet) -> None:
-        from configs import dify_config
         from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
 
-        if not (dify_config.BILLING_ENABLED and dify_config.ARCHIVE_STORAGE_ENABLED):
+        if not (dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.ARCHIVE_STORAGE_ENABLED):
             return
 
         prefix = f"{snippet.tenant_id}/app_id={snippet.id}/"
@@ -344,15 +359,62 @@ class SnippetService:
         *,
         session: Session,
         snippet: CustomizedSnippet,
+        account_id: str | None = None,
     ) -> bool:
-        """
-        Delete a snippet.
+        """Stage Snippet deletion in the caller's transaction.
+
+        Workflow rows and all of their binding owners are deleted in that
+        transaction. A single ``after_commit`` callback performs Agent
+        retirement, so rollback does not trigger cleanup.
 
         :param session: Database session
         :param snippet: Snippet to delete
         :return: True if deleted successfully
         """
         SnippetService._delete_draft_variable_files(session=session, snippet=snippet)
+        candidate_agent_ids = {
+            agent_id
+            for agent_id in session.scalars(
+                select(WorkflowAgentNodeBinding.agent_id).where(
+                    WorkflowAgentNodeBinding.tenant_id == snippet.tenant_id,
+                    WorkflowAgentNodeBinding.app_id == snippet.id,
+                    WorkflowAgentNodeBinding.binding_type == WorkflowAgentBindingType.INLINE_AGENT,
+                    WorkflowAgentNodeBinding.agent_id.is_not(None),
+                )
+            ).all()
+            if agent_id
+        }
+        candidate_agent_ids.update(
+            session.scalars(
+                select(Agent.id).where(
+                    Agent.tenant_id == snippet.tenant_id,
+                    Agent.app_id == snippet.id,
+                    Agent.scope == AgentScope.WORKFLOW_ONLY,
+                    Agent.source.in_(WORKFLOW_ONLY_AGENT_SOURCES),
+                    Agent.status == AgentStatus.ACTIVE,
+                )
+            ).all()
+        )
+        if candidate_agent_ids:
+            tenant_id = snippet.tenant_id
+
+            def collect_agent_resources(_session: Session) -> None:
+                WorkflowAgentRetirementService.retire_unowned(
+                    tenant_id=tenant_id,
+                    agent_ids=candidate_agent_ids,
+                    account_id=account_id,
+                )
+
+            event.listen(session, "after_commit", collect_agent_resources, once=True)
+
+        session.execute(
+            delete(WorkflowAgentNodeBinding)
+            .where(
+                WorkflowAgentNodeBinding.tenant_id == snippet.tenant_id,
+                WorkflowAgentNodeBinding.app_id == snippet.id,
+            )
+            .execution_options(synchronize_session=False)
+        )
         session.execute(
             delete(WorkflowDraftVariable)
             .where(WorkflowDraftVariable.app_id == snippet.id)
@@ -487,6 +549,7 @@ class SnippetService:
         unique_hash: str | None,
         account: Account,
         input_fields: list[dict] | None = None,
+        sync_agent_bindings: bool = True,
     ) -> Workflow:
         """
         Sync draft workflow for snippet.
@@ -539,10 +602,30 @@ class SnippetService:
             snippet.updated_by = account.id
             snippet.updated_at = datetime.now(UTC).replace(tzinfo=None)
 
+        from services.agent.workflow_publish_service import WorkflowAgentPublishService
+
+        retirement_candidates: set[str] = set()
         with self._session_scope() as session:
             session.add(workflow)
             session.add(snippet)
+            if sync_agent_bindings:
+                session.flush()
+                retirement_candidates = WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+                    session=session,
+                    draft_workflow=workflow,
+                    account_id=account.id,
+                )
+                WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
+                    session=session,
+                    draft_workflow=workflow,
+                )
             self._commit_if_owned(session)
+        if self._session is None:
+            WorkflowAgentRetirementService.retire_unowned(
+                tenant_id=snippet.tenant_id,
+                agent_ids=retirement_candidates,
+                account_id=account.id,
+            )
         return workflow
 
     def restore_published_workflow_to_draft(
@@ -581,7 +664,22 @@ class SnippetService:
 
         with self._session_scope() as session:
             session.add(draft_workflow)
+            session.flush()
+            from services.agent.workflow_publish_service import WorkflowAgentPublishService
+
+            retirement_candidates = WorkflowAgentPublishService.restore_agent_node_bindings_to_draft(
+                session=session,
+                source_workflow=source_workflow,
+                draft_workflow=draft_workflow,
+                account_id=account.id,
+            )
             self._commit_if_owned(session)
+        if self._session is None:
+            WorkflowAgentRetirementService.retire_unowned(
+                tenant_id=snippet.tenant_id,
+                agent_ids=retirement_candidates,
+                account_id=account.id,
+            )
         return draft_workflow
 
     def publish_workflow(
@@ -612,6 +710,20 @@ class SnippetService:
 
         SnippetService.validate_snippet_graph_forbidden_nodes(draft_workflow.graph_dict)
 
+        from core.workflow.llm_environment_variable import validate_llm_environment_model_references
+
+        validate_llm_environment_model_references(
+            graph=draft_workflow.graph_dict,
+            environment_variables=draft_workflow.environment_variables,
+        )
+
+        from services.agent.workflow_publish_service import WorkflowAgentPublishService
+
+        WorkflowAgentPublishService.validate_agent_nodes_for_publish(
+            session=session,
+            draft_workflow=draft_workflow,
+        )
+
         # Create new published workflow
         workflow = Workflow.new(
             tenant_id=snippet.tenant_id,
@@ -625,10 +737,13 @@ class SnippetService:
             conversation_variables=[],
             rag_pipeline_variables=draft_workflow.rag_pipeline_variables,
             kind=WorkflowKind.SNIPPET.value,
-            marked_name="",
-            marked_comment="",
         )
         session.add(workflow)
+        WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
+            session=session,
+            draft_workflow=draft_workflow,
+            published_workflow=workflow,
+        )
 
         # Update snippet version
         snippet.version += 1
@@ -717,6 +832,53 @@ class SnippetService:
         workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
         session.add(workflow)
         return workflow
+
+    def delete_workflow(
+        self,
+        *,
+        session: Session,
+        snippet: CustomizedSnippet,
+        workflow_id: str,
+    ) -> bool:
+        """
+        Delete a published snippet workflow version.
+
+        :param session: Database session
+        :param snippet: CustomizedSnippet instance
+        :param workflow_id: Workflow ID
+        :return: True if successful
+        :raises: ValueError if workflow not found
+        :raises: WorkflowInUseError if workflow is the snippet's active version or published as a tool
+        :raises: DraftWorkflowDeletionError if workflow is a draft version
+        """
+        stmt = select(Workflow).where(
+            Workflow.id == workflow_id,
+            Workflow.tenant_id == snippet.tenant_id,
+            Workflow.app_id == snippet.id,
+            self._snippet_kind_filter(),
+        )
+        workflow = session.scalar(stmt)
+        if not workflow:
+            raise ValueError(f"Workflow with ID {workflow_id} not found")
+
+        if workflow.version == Workflow.VERSION_DRAFT:
+            raise DraftWorkflowDeletionError("Cannot delete draft workflow versions")
+
+        if snippet.workflow_id == workflow.id:
+            raise WorkflowInUseError(f"Cannot delete workflow that is currently in use by snippet '{snippet.id}'")
+
+        tool_provider = session.scalar(
+            select(WorkflowToolProvider).where(
+                WorkflowToolProvider.tenant_id == snippet.tenant_id,
+                WorkflowToolProvider.app_id == snippet.id,
+                WorkflowToolProvider.version == workflow.version,
+            )
+        )
+        if tool_provider:
+            raise WorkflowInUseError("Cannot delete workflow that is published as a tool")
+
+        session.delete(workflow)
+        return True
 
     # --- Default Block Configs ---
 
@@ -809,13 +971,13 @@ class SnippetService:
         *,
         snippet: CustomizedSnippet,
         run_id: str,
-    ) -> Sequence[WorkflowNodeExecutionModel]:
+    ) -> list[WorkflowNodeExecutionTrace]:
         """
         Get workflow run node execution list.
 
         :param snippet: CustomizedSnippet instance
         :param run_id: Workflow run ID
-        :return: List of WorkflowNodeExecutionModel
+        :return: Public terminal and retry trace records
         """
         workflow_run = self.get_snippet_workflow_run(snippet=snippet, run_id=run_id)
         if not workflow_run:
@@ -827,7 +989,7 @@ class SnippetService:
             workflow_run_id=workflow_run.id,
         )
 
-        return node_executions
+        return assemble_workflow_node_execution_traces(node_executions, self._node_execution_service_repo)
 
     # --- Node Execution Operations ---
 

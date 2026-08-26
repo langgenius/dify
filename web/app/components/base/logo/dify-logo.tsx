@@ -1,47 +1,44 @@
-'use client'
-import type { FC } from 'react'
+import type { VariantProps } from 'class-variance-authority'
+import type { ComponentProps } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import useTheme from '@/hooks/use-theme'
+import { cva } from 'class-variance-authority'
 import { basePath } from '@/utils/var'
 
-export type LogoStyle = 'default' | 'monochromeWhite'
+const difyLogoVariants = cva(
+  'block object-contain [html[data-theme=dark]_&]:brightness-0 [html[data-theme=dark]_&]:invert',
+  {
+    variants: {
+      size: {
+        small: 'h-4 w-9',
+        medium: 'h-5.5 w-12',
+        large: 'h-7 w-16',
+      },
+    },
+    defaultVariants: {
+      size: 'medium',
+    },
+  },
+)
 
-export const logoPathMap: Record<LogoStyle, string> = {
-  default: '/logo/logo.svg',
-  monochromeWhite: '/logo/logo-monochrome-white.svg',
-}
+export type DifyLogoProps = Omit<
+  ComponentProps<'img'>,
+  'alt' | 'height' | 'size' | 'src' | 'width'
+> &
+  VariantProps<typeof difyLogoVariants> & {
+    alt: string
+  }
 
-export type LogoSize = 'large' | 'medium' | 'small'
-
-export const logoSizeMap: Record<LogoSize, string> = {
-  large: 'w-16 h-7',
-  medium: 'w-12 h-[22px]',
-  small: 'w-9 h-4',
-}
-
-type DifyLogoProps = {
-  style?: LogoStyle
-  size?: LogoSize
-  className?: string
-  alt?: string
-}
-
-const DifyLogo: FC<DifyLogoProps> = ({
-  style = 'default',
-  size = 'medium',
-  className,
-  alt = 'Dify',
-}) => {
-  const { theme } = useTheme()
-  const themedStyle = (theme === 'dark' && style === 'default') ? 'monochromeWhite' : style
+export function DifyLogo({ alt, className, size, ...props }: DifyLogoProps) {
+  const classes = cn(difyLogoVariants({ size, className }))
 
   return (
     <img
-      src={`${basePath}${logoPathMap[themedStyle]}`}
-      className={cn('block object-contain', logoSizeMap[size], className)}
+      {...props}
+      src={`${basePath}/logo/logo.svg`}
+      width={48}
+      height={22}
+      className={classes}
       alt={alt}
     />
   )
 }
-
-export default DifyLogo

@@ -1,13 +1,17 @@
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { CliToolDialog } from '../dialog'
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: vi.fn(),
   },
+}))
+
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => () => 'https://docs.example.com',
 }))
 
 type CliToolDialogProps = Parameters<typeof CliToolDialog>[0]
@@ -17,12 +21,7 @@ function renderCliToolDialog(props?: Partial<CliToolDialogProps>) {
   const onSaveCliTool = vi.fn()
 
   render(
-    <CliToolDialog
-      open
-      onOpenChange={onOpenChange}
-      onSaveCliTool={onSaveCliTool}
-      {...props}
-    />,
+    <CliToolDialog open onOpenChange={onOpenChange} onSaveCliTool={onSaveCliTool} {...props} />,
   )
 
   return {
@@ -41,14 +40,20 @@ describe('CliToolDialog', () => {
       const user = userEvent.setup()
       const { onOpenChange, onSaveCliTool } = renderCliToolDialog()
 
-      await user.click(screen.getByRole('button', {
-        name: 'common.operation.add',
-      }))
+      await user.click(
+        screen.getByRole('button', {
+          name: 'common.operation.add',
+        }),
+      )
 
       expect(onSaveCliTool).not.toHaveBeenCalled()
       expect(onOpenChange).not.toHaveBeenCalledWith(false)
-      expect(toast.error).toHaveBeenCalledWith('agentV2.agentDetail.configure.tools.cliDialog.installCommand.required')
-      expect(screen.queryByText('agentV2.agentDetail.configure.tools.cliDialog.installCommand.required')).not.toBeInTheDocument()
+      expect(toast.error).toHaveBeenCalledWith(
+        'agentV2.agentDetail.configure.tools.cliDialog.installCommand.required',
+      )
+      expect(
+        screen.queryByText('agentV2.agentDetail.configure.tools.cliDialog.installCommand.required'),
+      ).not.toBeInTheDocument()
     })
 
     it('should show a toast error when CLI tool name is empty', async () => {
@@ -61,14 +66,20 @@ describe('CliToolDialog', () => {
         }),
         'npm install -g @lark/cli',
       )
-      await user.click(screen.getByRole('button', {
-        name: 'common.operation.add',
-      }))
+      await user.click(
+        screen.getByRole('button', {
+          name: 'common.operation.add',
+        }),
+      )
 
       expect(onSaveCliTool).not.toHaveBeenCalled()
       expect(onOpenChange).not.toHaveBeenCalledWith(false)
-      expect(toast.error).toHaveBeenCalledWith('agentV2.agentDetail.configure.tools.cliDialog.name.required')
-      expect(screen.queryByText('agentV2.agentDetail.configure.tools.cliDialog.name.required')).not.toBeInTheDocument()
+      expect(toast.error).toHaveBeenCalledWith(
+        'agentV2.agentDetail.configure.tools.cliDialog.name.required',
+      )
+      expect(
+        screen.queryByText('agentV2.agentDetail.configure.tools.cliDialog.name.required'),
+      ).not.toBeInTheDocument()
     })
 
     it('should save a CLI tool when required fields are filled', async () => {
@@ -87,33 +98,51 @@ describe('CliToolDialog', () => {
         }),
         'Lark CLI',
       )
-      await user.click(screen.getByRole('button', {
-        name: 'common.operation.add',
-      }))
+      await user.click(
+        screen.getByRole('button', {
+          name: 'common.operation.add',
+        }),
+      )
 
-      expect(onSaveCliTool).toHaveBeenCalledWith(expect.objectContaining({
-        kind: 'cli',
-        name: 'Lark CLI',
-        installCommand: 'npm install -g @lark/cli',
-      }))
+      expect(onSaveCliTool).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: 'cli',
+          name: 'Lark CLI',
+          installCommand: 'npm install -g @lark/cli',
+        }),
+      )
       expect(onOpenChange).toHaveBeenCalledWith(false)
     })
 
     it('should reject environment variable keys using the shared env editor rules', () => {
       renderCliToolDialog()
 
-      const keyInput = screen.getByPlaceholderText('agentV2.agentDetail.configure.advancedSettings.envEditor.keyPlaceholder')
+      const keyInput = screen.getByPlaceholderText(
+        'agentV2.agentDetail.configure.advancedSettings.envEditor.keyPlaceholder',
+      )
 
       fireEvent.change(keyInput, {
         target: { value: '1BAD' },
       })
 
       expect(keyInput).toHaveValue('')
-      expect(toast.error).toHaveBeenCalledWith('appDebug.varKeyError.notStartWithNumber:{"key":"agentV2.agentDetail.configure.advancedSettings.envEditor.keyColumn"}')
+      expect(toast.error).toHaveBeenCalledWith(
+        'appDebug.varKeyError.notStartWithNumber:{"key":"agentV2.agentDetail.configure.advancedSettings.envEditor.keyColumn"}',
+      )
     })
   })
 
   describe('Actions', () => {
+    it('should link to documentation through the shared documentation URL', () => {
+      renderCliToolDialog()
+
+      expect(
+        screen.getByRole('link', {
+          name: /agentV2\.agentDetail\.configure\.tools\.cliDialog\.learnMore/,
+        }),
+      ).toHaveAttribute('href', 'https://docs.example.com')
+    })
+
     it('should keep the form open when the backdrop is clicked', async () => {
       const user = userEvent.setup()
       const { onOpenChange } = renderCliToolDialog()
@@ -127,9 +156,11 @@ describe('CliToolDialog', () => {
       expect(onOpenChange).not.toHaveBeenCalledWith(false)
       expect(dialog).toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', {
-        name: 'common.operation.cancel',
-      }))
+      await user.click(
+        screen.getByRole('button', {
+          name: 'common.operation.cancel',
+        }),
+      )
       expect(onOpenChange).toHaveBeenCalledWith(false)
     })
 
@@ -144,12 +175,16 @@ describe('CliToolDialog', () => {
         },
       })
 
-      expect(screen.getByRole('button', {
-        name: 'common.operation.save',
-      })).toBeInTheDocument()
-      expect(screen.queryByRole('button', {
-        name: 'common.operation.add',
-      })).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', {
+          name: 'common.operation.save',
+        }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: 'common.operation.add',
+        }),
+      ).not.toBeInTheDocument()
     })
 
     it('should remove a CLI tool from the edit footer', async () => {
@@ -166,9 +201,11 @@ describe('CliToolDialog', () => {
         },
       })
 
-      await user.click(screen.getByRole('button', {
-        name: 'common.operation.remove',
-      }))
+      await user.click(
+        screen.getByRole('button', {
+          name: 'common.operation.remove',
+        }),
+      )
 
       expect(onDeleteCliTool).toHaveBeenCalledWith('lark-cli')
       expect(onOpenChange).toHaveBeenCalledWith(false)
@@ -180,9 +217,11 @@ describe('CliToolDialog', () => {
         onDeleteCliTool: vi.fn(),
       })
 
-      expect(screen.queryByRole('button', {
-        name: 'common.operation.remove',
-      })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: 'common.operation.remove',
+        }),
+      ).not.toBeInTheDocument()
     })
   })
 })

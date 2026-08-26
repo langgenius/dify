@@ -18,8 +18,7 @@ const ReasoningPanel: FC<ReasoningPanelProps> = ({ content, done }) => {
   const text = Object.values(content).filter(Boolean).join('\n\n')
   const { elapsedTime, isComplete } = useElapsedTimer(done)
 
-  if (!text)
-    return null
+  if (!text) return null
 
   return (
     <ThinkingDetails className="my-2" isComplete={isComplete} elapsedTime={elapsedTime}>

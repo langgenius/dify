@@ -4,9 +4,10 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
-export type EmailPayload = {
+export type EmailCodeSendPayload = {
   email: string
   language?: string | null
+  turnstile_token?: string | null
 }
 
 export type SimpleResultDataResponse = {
@@ -20,6 +21,7 @@ export type EmailCodeLoginPayload = {
   language?: string | null
   timezone?: string | null
   token: string
+  turnstile_token?: string | null
 }
 
 export type SimpleResultResponse = {
@@ -27,7 +29,7 @@ export type SimpleResultResponse = {
 }
 
 export type PostEmailCodeLoginData = {
-  body: EmailPayload
+  body: EmailCodeSendPayload
   path?: never
   query?: never
   url: '/email-code-login'
@@ -37,8 +39,8 @@ export type PostEmailCodeLoginResponses = {
   200: SimpleResultDataResponse
 }
 
-export type PostEmailCodeLoginResponse
-  = PostEmailCodeLoginResponses[keyof PostEmailCodeLoginResponses]
+export type PostEmailCodeLoginResponse =
+  PostEmailCodeLoginResponses[keyof PostEmailCodeLoginResponses]
 
 export type PostEmailCodeLoginValidityData = {
   body: EmailCodeLoginPayload
@@ -51,5 +53,5 @@ export type PostEmailCodeLoginValidityResponses = {
   200: SimpleResultResponse
 }
 
-export type PostEmailCodeLoginValidityResponse
-  = PostEmailCodeLoginValidityResponses[keyof PostEmailCodeLoginValidityResponses]
+export type PostEmailCodeLoginValidityResponse =
+  PostEmailCodeLoginValidityResponses[keyof PostEmailCodeLoginValidityResponses]

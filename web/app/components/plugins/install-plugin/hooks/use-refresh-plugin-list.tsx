@@ -1,17 +1,27 @@
 import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../../types'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useInvalidateDefaultModel, useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import {
+  useInvalidateDefaultModel,
+  useModelList,
+} from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useProviderContext } from '@/context/provider-context'
 import { useInvalidDataSourceListAuth } from '@/service/use-datasource'
 import { useInvalidDataSourceList } from '@/service/use-pipeline'
-import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import {
+  useInvalidateCheckInstalled,
+  useInvalidateInstalledPluginList,
+} from '@/service/use-plugins'
 import { useInvalidateStrategyProviders } from '@/service/use-strategy'
-import { useInvalidateAllBuiltInTools, useInvalidateAllToolProviders, useInvalidateRAGRecommendedPlugins } from '@/service/use-tools'
+import {
+  useInvalidateAllBuiltInTools,
+  useInvalidateAllToolProviders,
+  useInvalidateRAGRecommendedPlugins,
+} from '@/service/use-tools'
 import { useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
 import { PluginCategoryEnum } from '../../types'
 
 type PluginCategoryPayload = {
-  category: PluginCategoryEnum | string
+  category: PluginCategoryEnum
 }
 
 const SYSTEM_MODEL_TYPES = [
@@ -24,6 +34,7 @@ const SYSTEM_MODEL_TYPES = [
 
 const useRefreshPluginList = () => {
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
+  const invalidateCheckInstalled = useInvalidateCheckInstalled()
   const { mutate: refetchLLMModelList } = useModelList(ModelTypeEnum.textGeneration)
   const { mutate: refetchEmbeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
   const { mutate: refetchRerankModelList } = useModelList(ModelTypeEnum.rerank)
@@ -44,9 +55,14 @@ const useRefreshPluginList = () => {
 
   const invalidateRAGRecommendedPlugins = useInvalidateRAGRecommendedPlugins()
   return {
-    refreshPluginList: (manifest?: PluginManifestInMarket | Plugin | PluginDeclaration | PluginCategoryPayload | null, refreshAllType?: boolean) => {
+    refreshPluginList: (
+      manifest?: PluginManifestInMarket | Plugin | PluginDeclaration | PluginCategoryPayload | null,
+      refreshAllType?: boolean,
+    ) => {
       // installed list
-      invalidateInstalledPluginList()
+      if (refreshAllType || !manifest) invalidateInstalledPluginList()
+      else invalidateInstalledPluginList(manifest.category)
+      invalidateCheckInstalled()
 
       // tool page, tool select
       if ((manifest && PluginCategoryEnum.tool.includes(manifest.category)) || refreshAllType) {
@@ -59,7 +75,10 @@ const useRefreshPluginList = () => {
       if ((manifest && PluginCategoryEnum.trigger.includes(manifest.category)) || refreshAllType)
         invalidateAllTriggerPlugins()
 
-      if ((manifest && PluginCategoryEnum.datasource.includes(manifest.category)) || refreshAllType) {
+      if (
+        (manifest && PluginCategoryEnum.datasource.includes(manifest.category)) ||
+        refreshAllType
+      ) {
         invalidateAllDataSources()
         invalidateDataSourceListAuth()
       }
@@ -72,7 +91,7 @@ const useRefreshPluginList = () => {
         refetchRerankModelList()
         refetchSpeech2textModelList()
         refetchTTSModelList()
-        SYSTEM_MODEL_TYPES.forEach(type => invalidateDefaultModel(type))
+        SYSTEM_MODEL_TYPES.forEach((type) => invalidateDefaultModel(type))
       }
 
       // agent select

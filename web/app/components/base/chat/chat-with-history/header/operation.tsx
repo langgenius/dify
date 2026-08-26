@@ -1,5 +1,4 @@
 'use client'
-import type { Placement } from '@langgenius/dify-ui/dropdown-menu'
 import type { FC } from 'react'
 import {
   DropdownMenu,
@@ -18,7 +17,6 @@ type Props = Readonly<{
   isShowDelete: boolean
   togglePin: () => void
   onDelete: () => void
-  placement?: Placement
 }>
 
 const deferAction = (action: () => void) => {
@@ -33,32 +31,29 @@ const Operation: FC<Props> = ({
   onRenameConversation,
   isShowDelete,
   onDelete,
-  placement = 'bottom-start',
 }) => {
   const { t } = useTranslation()
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        className="flex cursor-pointer items-center rounded-lg border-none bg-transparent p-1.5 pl-2 text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
-      >
+      <DropdownMenuTrigger className="flex cursor-pointer items-center rounded-lg border-none bg-transparent p-1.5 pl-2 text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover">
         <span className="system-md-semibold">{title}</span>
         <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        placement={placement}
-        sideOffset={4}
-        popupClassName="min-w-[120px]"
-      >
+      <DropdownMenuContent placement="bottom-start" sideOffset={4} className="min-w-[120px]">
         <DropdownMenuItem className="system-md-regular" onClick={togglePin}>
-          <span className="grow">{isPinned ? t('sidebar.action.unpin', { ns: 'explore' }) : t('sidebar.action.pin', { ns: 'explore' })}</span>
+          <span className="grow">
+            {isPinned
+              ? t(($) => $['sidebar.action.unpin'], { ns: 'explore' })
+              : t(($) => $['sidebar.action.pin'], { ns: 'explore' })}
+          </span>
         </DropdownMenuItem>
         {isShowRenameConversation && (
           <DropdownMenuItem
             className="system-md-regular"
             onClick={() => onRenameConversation && deferAction(onRenameConversation)}
           >
-            <span className="grow">{t('sidebar.action.rename', { ns: 'explore' })}</span>
+            <span className="grow">{t(($) => $['sidebar.action.rename'], { ns: 'explore' })}</span>
           </DropdownMenuItem>
         )}
         {isShowDelete && (
@@ -67,7 +62,7 @@ const Operation: FC<Props> = ({
             className="system-md-regular"
             onClick={() => deferAction(onDelete)}
           >
-            <span className="grow">{t('sidebar.action.delete', { ns: 'explore' })}</span>
+            <span className="grow">{t(($) => $['sidebar.action.delete'], { ns: 'explore' })}</span>
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

@@ -51,7 +51,7 @@ export const zAppDescribeResponse = z.object({
  */
 export const zAppDslExportQuery = z.object({
   include_secret: z.boolean().optional().default(false),
-  workflow_id: z.string().nullish(),
+  workflow_id: z.uuid().nullish(),
 })
 
 /**
@@ -142,6 +142,13 @@ export const zAppRunRequest = z.object({
 })
 
 /**
+ * DeploymentEdition
+ *
+ * Enum representing the deployment edition of the platform.
+ */
+export const zDeploymentEdition = z.enum(['CLOUD', 'COMMUNITY', 'ENTERPRISE'])
+
+/**
  * DeviceCodeRequest
  */
 export const zDeviceCodeRequest = z.object({
@@ -199,6 +206,18 @@ export const zDevicePollRequest = z.object({
 })
 
 /**
+ * DslImportWarning
+ *
+ * Portable DSL reference that could not be restored in the target workspace.
+ */
+export const zDslImportWarning = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  path: z.string(),
+})
+
+/**
  * ErrorDetail
  */
 export const zErrorDetail = z.object({
@@ -234,12 +253,12 @@ export const zEventStreamResponse = z.string()
  * FileResponse
  */
 export const zFileResponse = z.object({
-  conversation_id: z.string().nullish(),
+  conversation_id: z.uuid().nullish(),
   created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
+  created_by: z.uuid().nullish(),
   extension: z.string().nullish(),
   file_key: z.string().nullish(),
-  id: z.string(),
+  id: z.uuid(),
   mime_type: z.string().nullish(),
   name: z.string(),
   original_url: z.string().nullish(),
@@ -247,8 +266,8 @@ export const zFileResponse = z.object({
   reference: z.string().nullish(),
   size: z.int(),
   source_url: z.string().nullish(),
-  tenant_id: z.string().nullish(),
-  user_id: z.string().nullish(),
+  tenant_id: z.uuid().nullish(),
+  user_id: z.uuid().nullish(),
 })
 
 /**
@@ -301,12 +320,13 @@ export const zImportStatus = z.enum(['completed', 'completed-with-warnings', 'fa
 export const zImport = z.object({
   app_id: z.string().nullish(),
   app_mode: z.string().nullish(),
-  current_dsl_version: z.string().optional().default('0.6.0'),
+  current_dsl_version: z.string().optional().default('0.7.0'),
   error: z.string().optional().default(''),
   id: z.string(),
   imported_dsl_version: z.string().optional().default(''),
   permission_keys: z.array(z.string()).optional(),
   status: zImportStatus,
+  warnings: z.array(zDslImportWarning).optional(),
 })
 
 export const zJsonValue = z.unknown()
@@ -486,7 +506,7 @@ export const zRevokeResponse = z.object({
  * Meta endpoint payload for `GET /openapi/v1/_version` — no auth required.
  */
 export const zServerVersionResponse = z.object({
-  edition: z.enum(['CLOUD', 'SELF_HOSTED']),
+  edition: zDeploymentEdition,
   version: z.string(),
 })
 
@@ -564,7 +584,7 @@ export const zAppListQuery = z.object({
   mode: zSupportedAppType.nullish(),
   name: z.string().max(200).nullish(),
   page: z.int().gte(1).optional().default(1),
-  workspace_id: z.string(),
+  workspace_id: z.uuid(),
 })
 
 /**
@@ -733,7 +753,7 @@ export const zGetAppsQuery = z.object({
   mode: z.enum(['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow']).optional(),
   name: z.string().max(200).optional(),
   page: z.int().gte(1).optional().default(1),
-  workspace_id: z.string(),
+  workspace_id: z.uuid(),
 })
 
 /**
@@ -769,7 +789,7 @@ export const zGetAppsByAppIdDslPath = z.object({
 
 export const zGetAppsByAppIdDslQuery = z.object({
   include_secret: z.boolean().optional().default(false),
-  workflow_id: z.string().optional(),
+  workflow_id: z.uuid().optional(),
 })
 
 /**

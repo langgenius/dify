@@ -1,0 +1,33 @@
+@property --banner-progress-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.progress {
+  --banner-progress-angle: 0deg;
+
+  position: absolute;
+  inset: 0;
+  border-radius: 7px;
+  background: conic-gradient(
+    from 0deg,
+    var(--color-text-primary) var(--banner-progress-angle),
+    transparent var(--banner-progress-angle)
+  );
+  animation-name: progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes progress {
+  to {
+    --banner-progress-angle: 360deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress {
+    animation: none;
+  }
+}

@@ -2,7 +2,7 @@ import type { PropsWithChildren } from 'react'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import { fireEvent, screen } from '@testing-library/react'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
+import { BlockEnum, ControlMode, NodeRunningStatus } from '@/app/components/workflow/types'
 import BaseNode from '../node'
 
 const mockHasNodeInspectVars = vi.fn()
@@ -11,42 +11,36 @@ const mockHandleNodeIterationChildSizeChange = vi.fn()
 const mockHandleNodeLoopChildSizeChange = vi.fn()
 const mockUseNodeResizeObserver = vi.fn()
 const mockUseCollaboration = vi.fn()
-const mockAppContextState = vi.hoisted(() => ({
-  userProfile: {
-    id: 'user-1',
-    name: 'User',
-    email: 'user@example.com',
-    avatar: '',
-    avatar_url: '',
-  },
-}))
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+vi.mock('../../../hooks/use-tool-icon', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-tool-icon')>()
+
+  return {
+    ...actual,
+    useToolIcon: () => undefined,
+  }
 })
 
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
-})
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: false }),
-  useToolIcon: () => undefined,
-}))
+  return {
+    ...actual,
+    useNodesReadOnly: () => ({ nodesReadOnly: false }),
+  }
+})
 
 vi.mock('@/app/components/workflow/collaboration/hooks/use-collaboration', () => ({
   useCollaboration: (...args: unknown[]) => mockUseCollaboration(...args),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud', () => ({
+vi.mock('../../../hooks/use-inspect-vars-crud', () => ({
   default: () => ({
     hasNodeInspectVars: mockHasNodeInspectVars,
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-node-plugin-installation', () => ({
+vi.mock('../../../hooks/use-node-plugin-installation', () => ({
   useNodePluginInstallation: (...args: unknown[]) => mockUseNodePluginInstallation(...args),
 }))
 
@@ -63,10 +57,9 @@ vi.mock('@/app/components/workflow/nodes/loop/use-interactions', () => ({
 }))
 
 vi.mock('../use-node-resize-observer', () => ({
-  default: (options: { enabled: boolean, onResize: () => void }) => {
+  default: (options: { enabled: boolean; onResize: () => void }) => {
     mockUseNodeResizeObserver(options)
-    if (options.enabled)
-      options.onResize()
+    if (options.enabled) options.onResize()
   },
 }))
 
@@ -76,7 +69,9 @@ vi.mock('../components/add-variable-popup-with-position', () => ({
 vi.mock('../components/entry-node-container', () => ({
   __esModule: true,
   StartNodeTypeEnum: { Start: 'start', Trigger: 'trigger' },
-  default: ({ children }: PropsWithChildren) => <div data-testid="entry-node-container">{children}</div>,
+  default: ({ children }: PropsWithChildren) => (
+    <div data-testid="entry-node-container">{children}</div>
+  ),
 }))
 vi.mock('../components/error-handle/error-handle-on-node', () => ({
   default: () => <div data-testid="error-handle-node" />,
@@ -165,21 +160,42 @@ describe('BaseNode', () => {
     expect(selectWorkflowNode).toHaveBeenCalledWith('node-1')
   })
 
+  it('should not select the node from the title button while in comment mode', async () => {
+    const { selectWorkflowNode } = await import('@/app/components/workflow/utils/node-navigation')
+
+    renderWorkflowComponent(
+      <BaseNode id="node-1" data={toNodeData(createData())}>
+        <div>Body</div>
+      </BaseNode>,
+      { initialStoreState: { controlMode: ControlMode.Comment } },
+    )
+
+    const node = screen.getByRole('button', { name: 'Node title' })
+
+    fireEvent.click(node)
+
+    expect(selectWorkflowNode).not.toHaveBeenCalled()
+  })
+
   it('should keep header metadata outside the selectable button', () => {
     renderWorkflowComponent(
       <BaseNode
         id="node-1"
-        data={toNodeData(createData({
-          type: BlockEnum.Iteration,
-          is_parallel: true,
-        }))}
+        data={toNodeData(
+          createData({
+            type: BlockEnum.Iteration,
+            is_parallel: true,
+          }),
+        )}
       >
         <div>Iteration body</div>
       </BaseNode>,
     )
 
     const titleButton = screen.getByRole('button', { name: 'Node title' })
-    const parallelButton = screen.getByRole('button', { name: /workflow\.nodes\.iteration\.parallelModeUpper/ })
+    const parallelButton = screen.getByRole('button', {
+      name: /workflow\.nodes\.iteration\.parallelModeUpper/,
+    })
 
     expect(titleButton).not.toContainElement(parallelButton)
     expect(titleButton.querySelector('button')).toBeNull()
@@ -219,13 +235,15 @@ describe('BaseNode', () => {
     renderWorkflowComponent(
       <BaseNode
         id="node-1"
-        data={toNodeData(createData({
-          type: BlockEnum.Loop,
-          _loopIndex: 3,
-          _runningStatus: NodeRunningStatus.Running,
-          width: 320,
-          height: 220,
-        }))}
+        data={toNodeData(
+          createData({
+            type: BlockEnum.Loop,
+            _loopIndex: 3,
+            _runningStatus: NodeRunningStatus.Running,
+            width: 320,
+            height: 220,
+          }),
+        )}
       >
         <div>Loop body</div>
       </BaseNode>,
@@ -247,11 +265,13 @@ describe('BaseNode', () => {
     renderWorkflowComponent(
       <BaseNode
         id="node-1"
-        data={toNodeData(createData({
-          type: BlockEnum.Iteration,
-          selected: true,
-          isInIteration: true,
-        }))}
+        data={toNodeData(
+          createData({
+            type: BlockEnum.Iteration,
+            selected: true,
+            isInIteration: true,
+          }),
+        )}
       >
         <div>Iteration body</div>
       </BaseNode>,
@@ -266,22 +286,27 @@ describe('BaseNode', () => {
     renderWorkflowComponent(
       <BaseNode
         id="node-2"
-        data={toNodeData(createData({
-          type: BlockEnum.Loop,
-          selected: true,
-          isInLoop: true,
-        }))}
+        data={toNodeData(
+          createData({
+            type: BlockEnum.Loop,
+            selected: true,
+            isInLoop: true,
+          }),
+        )}
       >
         <div>Loop body</div>
       </BaseNode>,
     )
 
     expect(mockHandleNodeLoopChildSizeChange).toHaveBeenCalledWith('node-2')
-    expect(mockUseNodeResizeObserver).toHaveBeenCalledTimes(2)
+    expect(mockUseNodeResizeObserver).toHaveBeenCalledWith(
+      expect.objectContaining({ enabled: true }),
+    )
   })
 
   it('should keep viewer avatars outside the truncated title area', () => {
-    const longTitle = 'This is a very long node title that should truncate before it clips the viewer avatars'
+    const longTitle =
+      'This is a very long node title that should truncate before it clips the viewer avatars'
     mockUseCollaboration.mockReturnValue({
       nodePanelPresence: {
         'node-1': {

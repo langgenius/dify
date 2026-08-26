@@ -21,9 +21,7 @@ export const Group: FC<GroupProps> = (props) => {
   return (
     <div className={cn('py-1')}>
       {label}
-      <div className="space-y-0.5">
-        {children}
-      </div>
+      <div className="space-y-0.5">{children}</div>
     </div>
   )
 }

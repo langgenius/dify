@@ -46,13 +46,13 @@ export type PollSuccess = {
   token_id?: string
 }
 
-export type PollResult
-  = | { status: 'pending' }
-    | { status: 'slow_down' }
-    | { status: 'expired' }
-    | { status: 'denied' }
-    | { status: 'retry_5xx' }
-    | { status: 'approved', success: PollSuccess }
+export type PollResult =
+  | { status: 'pending' }
+  | { status: 'slow_down' }
+  | { status: 'expired' }
+  | { status: 'denied' }
+  | { status: 'retry_5xx' }
+  | { status: 'approved'; success: PollSuccess }
 
 const POLL_ERROR_TO_STATUS: Record<string, PollResult['status']> = {
   authorization_pending: 'pending',
@@ -77,8 +77,7 @@ export class DeviceFlowApi {
     }
     const body = { client_id: req.client_id ?? DEFAULT_CLIENT_ID, device_label: req.device_label }
     const res = await this.http.fetch('oauth/device/code', { method: 'POST', json: body })
-    if (res.status === 404)
-      throw versionSkew()
+    if (res.status === 404) throw versionSkew()
     if (!res.ok) {
       throw new HttpClientError({
         code: ErrorCode.Server4xxOther,
@@ -86,7 +85,7 @@ export class DeviceFlowApi {
         httpStatus: res.status,
       })
     }
-    return await res.json() as CodeResponse
+    return (await res.json()) as CodeResponse
   }
 
   async pollOnce(req: PollRequest): Promise<PollResult> {
@@ -98,16 +97,13 @@ export class DeviceFlowApi {
     }
     const body = { client_id: req.client_id ?? DEFAULT_CLIENT_ID, device_code: req.device_code }
     const res = await this.http.fetch('oauth/device/token', { method: 'POST', json: body })
-    if (res.status === 404)
-      throw versionSkew()
-    if (res.status >= 500)
-      return { status: 'retry_5xx' }
+    if (res.status === 404) throw versionSkew()
+    if (res.status >= 500) return { status: 'retry_5xx' }
     let payload: { error?: string } & Partial<PollSuccess> = {}
     try {
       const text = await res.text()
-      payload = text === '' ? {} : JSON.parse(text) as typeof payload
-    }
-    catch (err) {
+      payload = text === '' ? {} : (JSON.parse(text) as typeof payload)
+    } catch (err) {
       throw new BaseError({
         code: ErrorCode.Unknown,
         message: `decode poll response: ${(err as Error).message}`,

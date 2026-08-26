@@ -12,31 +12,30 @@ export enum NodeStatusEnum {
   error = 'error',
 }
 
-const nodeStatusVariants = cva(
-  'flex items-center gap-1 rounded-md px-2 py-1 system-xs-medium',
-  {
-    variants: {
-      status: {
-        [NodeStatusEnum.warning]: 'bg-state-warning-hover text-text-warning',
-        [NodeStatusEnum.error]: 'bg-state-destructive-hover text-text-destructive',
-      },
-    },
-    defaultVariants: {
-      status: NodeStatusEnum.warning,
+const nodeStatusVariants = cva('flex items-center gap-1 rounded-md px-2 py-1 system-xs-medium', {
+  variants: {
+    status: {
+      [NodeStatusEnum.warning]: 'bg-state-warning-hover text-text-warning',
+      [NodeStatusEnum.error]: 'bg-state-destructive-hover text-text-destructive',
     },
   },
-)
+  defaultVariants: {
+    status: NodeStatusEnum.warning,
+  },
+})
 
-const StatusIconMap: Record<NodeStatusEnum, { IconComponent: React.ElementType, message: string }> = {
-  [NodeStatusEnum.warning]: { IconComponent: AlertTriangle, message: 'Warning' },
-  [NodeStatusEnum.error]: { IconComponent: RiErrorWarningFill, message: 'Error' },
-}
+const StatusIconMap: Record<NodeStatusEnum, { IconComponent: React.ElementType; message: string }> =
+  {
+    [NodeStatusEnum.warning]: { IconComponent: AlertTriangle, message: 'Warning' },
+    [NodeStatusEnum.error]: { IconComponent: RiErrorWarningFill, message: 'Error' },
+  }
 
 type NodeStatusProps = {
   message?: string
   styleCss?: CSSProperties
   iconClassName?: string
-} & React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof nodeStatusVariants>
+} & React.HTMLAttributes<HTMLDivElement> &
+  VariantProps<typeof nodeStatusVariants>
 
 const NodeStatus = ({
   className,
@@ -51,14 +50,8 @@ const NodeStatus = ({
   const defaultMessage = StatusIconMap[status ?? NodeStatusEnum.warning].message
 
   return (
-    <div
-      className={cn(nodeStatusVariants({ status, className }))}
-      style={styleCss}
-      {...props}
-    >
-      <Icon
-        className={cn('size-3.5 shrink-0', iconClassName)}
-      />
+    <div className={cn(nodeStatusVariants({ status, className }))} style={styleCss} {...props}>
+      <Icon className={cn('size-3.5 shrink-0', iconClassName)} />
       <span>{message ?? defaultMessage}</span>
       {children}
     </div>

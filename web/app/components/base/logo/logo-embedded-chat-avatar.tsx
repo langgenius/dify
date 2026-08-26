@@ -4,9 +4,7 @@ import { basePath } from '@/utils/var'
 type LogoEmbeddedChatAvatarProps = {
   className?: string
 }
-const LogoEmbeddedChatAvatar: FC<LogoEmbeddedChatAvatarProps> = ({
-  className,
-}) => {
+const LogoEmbeddedChatAvatar: FC<LogoEmbeddedChatAvatarProps> = ({ className }) => {
   return (
     <img
       src={`${basePath}/logo/logo-embedded-chat-avatar.png`}

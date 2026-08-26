@@ -1,21 +1,26 @@
 'use client'
 import type { ChangeEvent, FC } from 'react'
 import type { Item as SelectOptionItem } from './type-select'
+import type { SelectorTranslate } from '@/app/components/app/configuration/utils'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar, UploadFileSetting } from '@/app/components/workflow/types'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { Trans } from 'react-i18next'
+import { getStringSelectorTranslate } from '@/app/components/app/configuration/utils'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
@@ -32,7 +37,6 @@ import Field from './field'
 import TypeSelector from './type-select'
 import { CHECKBOX_DEFAULT_FALSE_VALUE, CHECKBOX_DEFAULT_TRUE_VALUE, TEXT_MAX_LENGTH } from './utils'
 
-type Translate = (key: string, options?: Record<string, unknown>) => string
 const EMPTY_SELECT_VALUE = '__empty__' as const
 
 type ConfigModalFormFieldsProps = {
@@ -51,7 +55,7 @@ type ConfigModalFormFieldsProps = {
   selectOptions: SelectOptionItem[]
   showHiddenField?: boolean
   tempPayload: InputVar
-  t: Translate
+  t: SelectorTranslate<'appDebug'>
 }
 
 const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
@@ -70,37 +74,40 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
   selectOptions,
   showHiddenField = true,
   tempPayload,
-  t,
+  t: rawTranslate,
 }) => {
+  const t = getStringSelectorTranslate(rawTranslate)
   const { type, label, variable } = tempPayload
   const isFileInput = [InputVarType.singleFile, InputVarType.multiFiles].includes(type)
   const docLink = useDocLink()
-  const hiddenDescriptionAriaLabel = t('variableConfig.hiddenDescription', { ns: 'appDebug' }).replace(/<[^>]+>/g, '')
+  const hiddenDescriptionAriaLabel = t(($) => $['variableConfig.hiddenDescription'], {
+    ns: 'appDebug',
+  }).replace(/<[^>]+>/g, '')
 
   return (
     <div className="space-y-2">
-      <Field title={t('variableConfig.fieldType', { ns: 'appDebug' })}>
+      <Field title={t(($) => $['variableConfig.fieldType'], { ns: 'appDebug' })}>
         <TypeSelector value={type} items={selectOptions} onSelect={onTypeChange} />
       </Field>
 
-      <Field title={t('variableConfig.varName', { ns: 'appDebug' })}>
+      <Field title={t(($) => $['variableConfig.varName'], { ns: 'appDebug' })}>
         <Input
           value={variable}
           onChange={onVarNameChange}
           onBlur={onVarKeyBlur}
-          placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })}
+          placeholder={t(($) => $['variableConfig.inputPlaceholder'], { ns: 'appDebug' })}
         />
       </Field>
-      <Field title={t('variableConfig.labelName', { ns: 'appDebug' })}>
+      <Field title={t(($) => $['variableConfig.labelName'], { ns: 'appDebug' })}>
         <Input
           value={label as string}
-          onChange={e => onPayloadChange('label')(e.target.value)}
-          placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })}
+          onChange={(e) => onPayloadChange('label')(e.target.value)}
+          placeholder={t(($) => $['variableConfig.inputPlaceholder'], { ns: 'appDebug' })}
         />
       </Field>
 
       {isStringInput && (
-        <Field title={t('variableConfig.maxLength', { ns: 'appDebug' })}>
+        <Field title={t(($) => $['variableConfig.maxLength'], { ns: 'appDebug' })}>
           <ConfigString
             maxLength={type === InputVarType.textInput ? TEXT_MAX_LENGTH : Infinity}
             modelId={modelId}
@@ -111,88 +118,124 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       )}
 
       {type === InputVarType.textInput && (
-        <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
+        <Field title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}>
           <Input
             value={typeof tempPayload.default === 'string' ? tempPayload.default : ''}
-            onChange={e => onPayloadChange('default')(e.target.value || undefined)}
-            placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })}
+            onChange={(e) => onPayloadChange('default')(e.target.value || undefined)}
+            placeholder={t(($) => $['variableConfig.inputPlaceholder'], { ns: 'appDebug' })}
           />
         </Field>
       )}
 
       {type === InputVarType.paragraph && (
-        <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
+        <Field title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}>
           <Textarea
-            aria-label={t('variableConfig.defaultValue', { ns: 'appDebug' })}
+            aria-label={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}
             value={String(tempPayload.default ?? '')}
-            onValueChange={value => onPayloadChange('default')(value || undefined)}
-            placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })}
+            onValueChange={(value) => onPayloadChange('default')(value || undefined)}
+            placeholder={t(($) => $['variableConfig.inputPlaceholder'], { ns: 'appDebug' })}
           />
         </Field>
       )}
 
       {type === InputVarType.number && (
-        <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
+        <Field title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}>
           <Input
             type="number"
-            value={typeof tempPayload.default === 'number' || typeof tempPayload.default === 'string' ? tempPayload.default : ''}
-            onChange={e => onPayloadChange('default')(e.target.value || undefined)}
-            placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })}
+            value={
+              typeof tempPayload.default === 'number' || typeof tempPayload.default === 'string'
+                ? tempPayload.default
+                : ''
+            }
+            onChange={(e) => onPayloadChange('default')(e.target.value || undefined)}
+            placeholder={t(($) => $['variableConfig.inputPlaceholder'], { ns: 'appDebug' })}
           />
         </Field>
       )}
 
       {type === InputVarType.checkbox && (
-        <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
-          <Select value={checkboxDefaultSelectValue} onValueChange={value => onPayloadChange('default')(value === CHECKBOX_DEFAULT_TRUE_VALUE)}>
+        <Field title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}>
+          <Select
+            value={checkboxDefaultSelectValue}
+            onValueChange={(value) =>
+              onPayloadChange('default')(value === CHECKBOX_DEFAULT_TRUE_VALUE)
+            }
+          >
             <SelectTrigger size="large" className="w-full">
-              <SelectValue placeholder={t('variableConfig.selectDefaultValue', { ns: 'appDebug' })} />
+              <SelectValue
+                placeholder={t(($) => $['variableConfig.selectDefaultValue'], { ns: 'appDebug' })}
+              />
             </SelectTrigger>
-            <SelectContent listClassName="max-h-[140px] overflow-y-auto">
-              <SelectItem value={CHECKBOX_DEFAULT_TRUE_VALUE}>
-                <SelectItemText>{t('variableConfig.startChecked', { ns: 'appDebug' })}</SelectItemText>
-                <SelectItemIndicator />
-              </SelectItem>
-              <SelectItem value={CHECKBOX_DEFAULT_FALSE_VALUE}>
-                <SelectItemText>{t('variableConfig.noDefaultSelected', { ns: 'appDebug' })}</SelectItemText>
-                <SelectItemIndicator />
-              </SelectItem>
-            </SelectContent>
+            <SelectPortal>
+              <SelectPositioner>
+                <SelectPopup>
+                  <SelectList className="max-h-[140px] overflow-y-auto">
+                    <SelectItem value={CHECKBOX_DEFAULT_TRUE_VALUE}>
+                      <SelectItemText>
+                        {t(($) => $['variableConfig.startChecked'], { ns: 'appDebug' })}
+                      </SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                    <SelectItem value={CHECKBOX_DEFAULT_FALSE_VALUE}>
+                      <SelectItemText>
+                        {t(($) => $['variableConfig.noDefaultSelected'], { ns: 'appDebug' })}
+                      </SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                  </SelectList>
+                </SelectPopup>
+              </SelectPositioner>
+            </SelectPortal>
           </Select>
         </Field>
       )}
 
       {type === InputVarType.select && (
         <>
-          <Field title={t('variableConfig.options', { ns: 'appDebug' })}>
+          <Field title={t(($) => $['variableConfig.options'], { ns: 'appDebug' })}>
             <ConfigSelect options={options || []} onChange={onPayloadChange('options')} />
           </Field>
           {options && options.length > 0 && (
-            <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
+            <Field title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}>
               <Select<string>
                 key={`default-select-${options.join('-')}`}
-                value={typeof tempPayload.default === 'string' ? tempPayload.default : EMPTY_SELECT_VALUE}
+                value={
+                  typeof tempPayload.default === 'string' ? tempPayload.default : EMPTY_SELECT_VALUE
+                }
                 onValueChange={(value) => {
-                  if (value == null)
-                    return
+                  if (value == null) return
                   onPayloadChange('default')(value === EMPTY_SELECT_VALUE ? undefined : value)
                 }}
               >
                 <SelectTrigger size="large" className="w-full">
-                  <SelectValue placeholder={t('variableConfig.selectDefaultValue', { ns: 'appDebug' })} />
+                  <SelectValue
+                    placeholder={t(($) => $['variableConfig.selectDefaultValue'], {
+                      ns: 'appDebug',
+                    })}
+                  />
                 </SelectTrigger>
-                <SelectContent listClassName="max-h-[140px] overflow-y-auto">
-                  <SelectItem value={EMPTY_SELECT_VALUE}>
-                    <SelectItemText>{t('variableConfig.noDefaultValue', { ns: 'appDebug' })}</SelectItemText>
-                    <SelectItemIndicator />
-                  </SelectItem>
-                  {options.filter(option => option.trim() !== '').map(option => (
-                    <SelectItem key={option} value={option}>
-                      <SelectItemText>{option}</SelectItemText>
-                      <SelectItemIndicator />
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+                <SelectPortal>
+                  <SelectPositioner>
+                    <SelectPopup>
+                      <SelectList className="max-h-[140px] overflow-y-auto">
+                        <SelectItem value={EMPTY_SELECT_VALUE}>
+                          <SelectItemText>
+                            {t(($) => $['variableConfig.noDefaultValue'], { ns: 'appDebug' })}
+                          </SelectItemText>
+                          <SelectItemIndicator />
+                        </SelectItem>
+                        {options
+                          .filter((option) => option.trim() !== '')
+                          .map((option) => (
+                            <SelectItem key={option} value={option}>
+                              <SelectItemText>{option}</SelectItemText>
+                              <SelectItemIndicator />
+                            </SelectItem>
+                          ))}
+                      </SelectList>
+                    </SelectPopup>
+                  </SelectPositioner>
+                </SelectPortal>
               </Select>
             </Field>
           )}
@@ -206,19 +249,28 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
             onChange={onFilePayloadChange}
             isMultiple={type === InputVarType.multiFiles}
           />
-          <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
+          <Field title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}>
             <FileUploaderInAttachmentWrapper
-              value={(type === InputVarType.singleFile ? (tempPayload.default ? [tempPayload.default] : []) : (tempPayload.default || [])) as unknown as FileEntity[]}
+              value={
+                (type === InputVarType.singleFile
+                  ? tempPayload.default
+                    ? [tempPayload.default]
+                    : []
+                  : tempPayload.default || []) as unknown as FileEntity[]
+              }
               onChange={(files) => {
                 if (type === InputVarType.singleFile)
                   onPayloadChange('default')(files?.[0] || undefined)
-                else
-                  onPayloadChange('default')(files || undefined)
+                else onPayloadChange('default')(files || undefined)
               }}
               fileConfig={{
-                allowed_file_types: tempPayload.allowed_file_types || [SupportUploadFileTypes.document],
+                allowed_file_types: tempPayload.allowed_file_types || [
+                  SupportUploadFileTypes.document,
+                ],
                 allowed_file_extensions: tempPayload.allowed_file_extensions || [],
-                allowed_file_upload_methods: tempPayload.allowed_file_upload_methods || [TransferMethod.remote_url],
+                allowed_file_upload_methods: tempPayload.allowed_file_upload_methods || [
+                  TransferMethod.remote_url,
+                ],
                 number_limits: type === InputVarType.singleFile ? 1 : tempPayload.max_length || 5,
               }}
             />
@@ -227,13 +279,13 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       )}
 
       {type === InputVarType.jsonObject && (
-        <Field title={t('variableConfig.jsonSchema', { ns: 'appDebug' })} isOptional>
+        <Field title={t(($) => $['variableConfig.jsonSchema'], { ns: 'appDebug' })} isOptional>
           <CodeEditor
             language={CodeLanguage.json}
             value={jsonSchemaStr}
             onChange={onJSONSchemaChange}
             noWrapper
-            className="h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
+            className="h-20 overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
             placeholder={<div className="whitespace-pre">{jsonConfigPlaceHolder}</div>}
           />
         </Field>
@@ -243,9 +295,11 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
         <Checkbox
           checked={tempPayload.required}
           disabled={!isFileInput && tempPayload.hide}
-          onCheckedChange={checked => onPayloadChange('required')(checked)}
+          onCheckedChange={(checked) => onPayloadChange('required')(checked)}
         />
-        <span className="system-sm-semibold text-text-secondary">{t('variableConfig.required', { ns: 'appDebug' })}</span>
+        <span className="system-sm-semibold text-text-secondary">
+          {t(($) => $['variableConfig.required'], { ns: 'appDebug' })}
+        </span>
       </label>
 
       {showHiddenField && !isFileInput && (
@@ -254,17 +308,16 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
             <Checkbox
               checked={tempPayload.hide}
               disabled={tempPayload.required}
-              onCheckedChange={checked => onPayloadChange('hide')(checked)}
+              onCheckedChange={(checked) => onPayloadChange('hide')(checked)}
             />
-            <span className="system-sm-semibold text-text-secondary">{t('variableConfig.hidden', { ns: 'appDebug' })}</span>
+            <span className="system-sm-semibold text-text-secondary">
+              {t(($) => $['variableConfig.hidden'], { ns: 'appDebug' })}
+            </span>
           </label>
           <div className="flex items-center gap-1">
-            <Infotip
-              aria-label={hiddenDescriptionAriaLabel}
-              popupClassName="max-w-[300px]"
-            >
+            <Infotip aria-label={hiddenDescriptionAriaLabel} popupClassName="max-w-[300px]">
               <Trans
-                i18nKey="variableConfig.hiddenDescription"
+                i18nKey={($) => $['variableConfig.hiddenDescription']}
                 ns="appDebug"
                 components={{
                   docLink: (

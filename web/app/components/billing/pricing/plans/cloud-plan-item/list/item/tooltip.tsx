@@ -6,11 +6,8 @@ type TooltipProps = {
   content: string
 }
 
-const Tooltip = ({
-  content,
-}: TooltipProps) => {
-  if (!content)
-    return null
+const Tooltip = ({ content }: TooltipProps) => {
+  if (!content) return null
   return (
     <Popover>
       <PopoverTrigger
@@ -18,11 +15,14 @@ const Tooltip = ({
         delay={0}
         closeDelay={0}
         aria-label={content}
-        className="group relative z-10 flex size-[18px] items-center justify-center rounded-sm border-0 bg-state-base-hover p-0 transition-[border-radius,background-color] duration-500 ease-in-out hover:rounded-none hover:bg-saas-dify-blue-static"
+        className="group relative z-10 flex size-4.5 items-center justify-center rounded-sm border-0 bg-state-base-hover p-0 transition-[border-radius,background-color] duration-500 ease-in-out hover:rounded-none hover:bg-saas-dify-blue-static"
       >
-        <RiInfoI className="size-3.5 text-text-tertiary group-hover:text-text-primary-on-surface" data-testid="tooltip-icon" />
+        <RiInfoI className="size-3.5 text-text-tertiary group-hover:text-text-primary-on-surface" />
       </PopoverTrigger>
-      <PopoverContent placement="top-end" popupClassName="w-[260px] rounded-none border-0 bg-saas-dify-blue-static px-5 py-[18px] system-xs-regular text-text-primary-on-surface shadow-none">
+      <PopoverContent
+        placement="top-end"
+        className="w-[260px] rounded-none border-0 bg-saas-dify-blue-static px-5 py-[18px] system-xs-regular text-text-primary-on-surface shadow-none"
+      >
         {content}
       </PopoverContent>
     </Popover>

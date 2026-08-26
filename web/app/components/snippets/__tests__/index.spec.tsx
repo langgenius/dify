@@ -3,10 +3,12 @@ import { render, screen } from '@testing-library/react'
 import SnippetPage from '..'
 
 const mockUseSnippetInit = vi.fn()
-let capturedWorkflowDefaultContextProps: {
-  nodes: unknown[]
-  edges: unknown[]
-} | undefined
+let capturedWorkflowDefaultContextProps:
+  | {
+      nodes: unknown[]
+      edges: unknown[]
+    }
+  | undefined
 
 vi.mock('../hooks/use-snippet-init', () => ({
   useSnippetInit: (snippetId: string) => mockUseSnippetInit(snippetId),
@@ -53,16 +55,12 @@ vi.mock('@/app/components/workflow', () => ({
       edges,
     }
 
-    return (
-      <div data-testid="workflow-default-context">{children}</div>
-    )
+    return <div data-testid="workflow-default-context">{children}</div>
   },
 }))
 
 vi.mock('@/app/components/workflow/context', () => ({
-  WorkflowContextProvider: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="workflow-context-provider">{children}</div>
-  ),
+  WorkflowContextProvider: ({ children }: { children: React.ReactNode }) => children,
 }))
 
 vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
@@ -91,8 +89,10 @@ vi.mock('@/app/components/app-sidebar', () => ({
 }))
 
 vi.mock('@/app/components/app-sidebar/nav-link', () => ({
-  default: ({ name, onClick }: { name: string, onClick?: () => void }) => (
-    <button type="button" onClick={onClick}>{name}</button>
+  default: ({ name, onClick }: { name: string; onClick?: () => void }) => (
+    <button type="button" onClick={onClick}>
+      {name}
+    </button>
   ),
 }))
 
@@ -112,16 +112,20 @@ const createSnippetDetailPayload = (nodeId: string, edgeId: string): SnippetDeta
   },
   graph: {
     viewport: { x: 0, y: 0, zoom: 1 },
-    nodes: [{
-      id: nodeId,
-      position: { x: 0, y: 0 },
-      data: { title: nodeId },
-    }] as SnippetDetailPayload['graph']['nodes'],
-    edges: [{
-      id: edgeId,
-      source: nodeId,
-      target: `${nodeId}-target`,
-    }] as SnippetDetailPayload['graph']['edges'],
+    nodes: [
+      {
+        id: nodeId,
+        position: { x: 0, y: 0 },
+        data: { title: nodeId },
+      },
+    ] as SnippetDetailPayload['graph']['nodes'],
+    edges: [
+      {
+        id: edgeId,
+        source: nodeId,
+        target: `${nodeId}-target`,
+      },
+    ] as SnippetDetailPayload['graph']['edges'],
   },
   inputFields: [],
   uiMeta: {
@@ -158,7 +162,6 @@ describe('SnippetPage', () => {
   it('should render the orchestrate route shell without owning the main landmark', () => {
     render(<SnippetPage snippetId="snippet-1" />)
 
-    expect(screen.getByTestId('workflow-context-provider')).toBeInTheDocument()
     expect(screen.getByTestId('workflow-default-context')).toBeInTheDocument()
     expect(screen.getByTestId('snippet-main')).toHaveTextContent('snippet-1')
     expect(screen.queryByRole('main')).not.toBeInTheDocument()
@@ -167,8 +170,12 @@ describe('SnippetPage', () => {
   it('should initialize workflow context with published graph data when the published workflow exists', () => {
     render(<SnippetPage snippetId="snippet-1" />)
 
-    expect(capturedWorkflowDefaultContextProps?.nodes).toEqual(mockPublishedSnippetDetail.graph.nodes)
-    expect(capturedWorkflowDefaultContextProps?.edges).toEqual(mockPublishedSnippetDetail.graph.edges)
+    expect(capturedWorkflowDefaultContextProps?.nodes).toEqual(
+      mockPublishedSnippetDetail.graph.nodes,
+    )
+    expect(capturedWorkflowDefaultContextProps?.edges).toEqual(
+      mockPublishedSnippetDetail.graph.edges,
+    )
     expect(screen.getByTestId('snippet-main')).toHaveTextContent('snippet-1:true')
   })
 

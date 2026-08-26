@@ -2,14 +2,13 @@ import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-so
 import type { OnlineDriveFile } from '@/models/pipeline'
 import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
 import OnlineDrive from '../index'
 
 const mocks = vi.hoisted(() => ({
   pipelineId: 'pipeline-123' as string | undefined,
   docLink: vi.fn((path?: string) => `https://docs.example.com${path || ''}`),
-  openIntegrationsSetting: vi.fn(),
+  setSettingsDestination: vi.fn(),
   ssePost: vi.fn(),
   toastError: vi.fn(),
   useGetDataSourceAuth: vi.fn(),
@@ -49,9 +48,10 @@ vi.mock('@/context/dataset-detail', () => ({
   ) => selector({ dataset: { pipeline_id: mocks.pipelineId } }),
 }))
 
-vi.mock('@/app/components/header/account-setting/use-integrations-setting', () => ({
-  useIntegrationsSetting: () => mocks.openIntegrationsSetting,
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mocks.setSettingsDestination] }
+})
 
 vi.mock('@/service/base', () => ({
   ssePost: (...args: unknown[]) => mocks.ssePost(...args),
@@ -73,7 +73,8 @@ vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
 })
 
 vi.mock('../../store', () => ({
-  useDataSourceStoreWithSelector: (selector: (state: typeof mockStoreState) => unknown) => selector(mockStoreState),
+  useDataSourceStoreWithSelector: (selector: (state: typeof mockStoreState) => unknown) =>
+    selector(mockStoreState),
   useDataSourceStore: () => mockDataSourceStore,
 }))
 
@@ -93,8 +94,12 @@ vi.mock('../../base/header', () => ({
       <span data-testid="header-plugin-name">{props.pluginName}</span>
       <span data-testid="header-credential-id">{props.currentCredentialId}</span>
       <span data-testid="header-credentials-count">{props.credentials?.length || 0}</span>
-      <button type="button" onClick={() => props.onCredentialChange('credential-2')}>Change Credential</button>
-      <button type="button" onClick={props.onClickConfiguration}>Configure</button>
+      <button type="button" onClick={() => props.onCredentialChange('credential-2')}>
+        Change Credential
+      </button>
+      <button type="button" onClick={props.onClickConfiguration}>
+        Configure
+      </button>
     </div>
   ),
 }))
@@ -123,35 +128,69 @@ vi.mock('../file-list', () => ({
       <span data-testid="file-list-loading">{String(props.isLoading)}</span>
       <span data-testid="file-list-in-pipeline">{String(props.isInPipeline)}</span>
       <span data-testid="file-list-support-batch">{String(props.supportBatchUpload)}</span>
-      <button type="button" onClick={() => props.updateKeywords('report')}>Search</button>
-      <button type="button" onClick={props.resetKeywords}>Reset Search</button>
+      <button type="button" onClick={() => props.updateKeywords('report')}>
+        Search
+      </button>
+      <button type="button" onClick={props.resetKeywords}>
+        Reset Search
+      </button>
       <button
         type="button"
-        onClick={() => props.handleSelectFile({ id: 'file-1', name: 'Report.pdf', type: OnlineDriveFileType.file })}
+        onClick={() =>
+          props.handleSelectFile({
+            id: 'file-1',
+            name: 'Report.pdf',
+            type: OnlineDriveFileType.file,
+          })
+        }
       >
         Select File
       </button>
       <button
         type="button"
-        onClick={() => props.handleSelectFile({ id: 'bucket-1', name: 'Bucket', type: OnlineDriveFileType.bucket })}
+        onClick={() =>
+          props.handleSelectFile({
+            id: 'bucket-1',
+            name: 'Bucket',
+            type: OnlineDriveFileType.bucket,
+          })
+        }
       >
         Select Bucket
       </button>
       <button
         type="button"
-        onClick={() => props.handleOpenFolder({ id: 'folder-prefix', name: 'Folder', type: OnlineDriveFileType.folder })}
+        onClick={() =>
+          props.handleOpenFolder({
+            id: 'folder-prefix',
+            name: 'Folder',
+            type: OnlineDriveFileType.folder,
+          })
+        }
       >
         Open Folder
       </button>
       <button
         type="button"
-        onClick={() => props.handleOpenFolder({ id: 'bucket-id', name: 'Bucket', type: OnlineDriveFileType.bucket })}
+        onClick={() =>
+          props.handleOpenFolder({
+            id: 'bucket-id',
+            name: 'Bucket',
+            type: OnlineDriveFileType.bucket,
+          })
+        }
       >
         Open Bucket
       </button>
       <button
         type="button"
-        onClick={() => props.handleOpenFolder({ id: 'file-1', name: 'Report.pdf', type: OnlineDriveFileType.file })}
+        onClick={() =>
+          props.handleOpenFolder({
+            id: 'file-1',
+            name: 'Report.pdf',
+            type: OnlineDriveFileType.file,
+          })
+        }
       >
         Open File
       </button>
@@ -159,17 +198,18 @@ vi.mock('../file-list', () => ({
   ),
 }))
 
-const createNodeData = (overrides: Partial<DataSourceNodeType> = {}): DataSourceNodeType => ({
-  title: 'Online Drive Node',
-  plugin_id: 'plugin-123',
-  provider_type: 'online_drive',
-  provider_name: 'online-drive-provider',
-  datasource_name: 'online-drive-datasource',
-  datasource_label: 'Online Drive',
-  datasource_parameters: {},
-  datasource_configurations: {},
-  ...overrides,
-} as DataSourceNodeType)
+const createNodeData = (overrides: Partial<DataSourceNodeType> = {}): DataSourceNodeType =>
+  ({
+    title: 'Online Drive Node',
+    plugin_id: 'plugin-123',
+    provider_type: 'online_drive',
+    provider_name: 'online-drive-provider',
+    datasource_name: 'online-drive-datasource',
+    datasource_label: 'Online Drive',
+    datasource_parameters: {},
+    datasource_configurations: {},
+    ...overrides,
+  }) as DataSourceNodeType
 
 const createCredential = (id = 'credential-1') => ({
   id,
@@ -305,9 +345,7 @@ describe('OnlineDrive', () => {
       data: [
         {
           bucket: 'bucket-a',
-          files: [
-            { id: 'new-file', name: 'New.pdf', size: 1024, type: 'file' },
-          ],
+          files: [{ id: 'new-file', name: 'New.pdf', size: 1024, type: 'file' }],
           is_truncated: true,
           next_page_parameters: { cursor: 'next-page' },
         },
@@ -394,9 +432,7 @@ describe('OnlineDrive', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Configure' }))
     fireEvent.click(screen.getByRole('button', { name: 'Change Credential' }))
 
-    expect(mocks.openIntegrationsSetting).toHaveBeenCalledWith({
-      payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-    })
+    expect(mocks.setSettingsDestination).toHaveBeenCalledWith('data-source')
     expect(onCredentialChange).toHaveBeenCalledWith('credential-2')
   })
 })

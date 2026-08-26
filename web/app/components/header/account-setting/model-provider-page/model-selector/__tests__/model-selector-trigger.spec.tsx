@@ -1,5 +1,7 @@
+import type { ReactNode } from 'react'
 import type { Model, ModelItem } from '../../declarations'
-import { render, screen } from '@testing-library/react'
+import { Popover } from '@langgenius/dify-ui/popover'
+import { render as renderComponent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
   ConfigurationMethodEnum,
@@ -7,12 +9,15 @@ import {
   ModelStatusEnum,
   ModelTypeEnum,
 } from '../../declarations'
-import ModelSelectorTrigger from '../model-selector-trigger'
+import { ModelSelectorTrigger } from '../model-selector-trigger'
 
-const mockUseProviderContext = vi.hoisted(() => vi.fn())
+const render = (node: ReactNode) => renderComponent(<Popover>{node}</Popover>)
+const getTrigger = () => screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
+
+const mockUseQuery = vi.hoisted(() => vi.fn())
 const mockUseCredentialPanelState = vi.hoisted(() => vi.fn())
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: mockUseProviderContext,
+vi.mock('@tanstack/react-query', () => ({
+  useQuery: mockUseQuery,
 }))
 vi.mock('../../provider-added-card/use-credential-panel-state', () => ({
   useCredentialPanelState: mockUseCredentialPanelState,
@@ -49,9 +54,7 @@ const createModel = (overrides: Partial<Model> = {}): Model => ({
 describe('ModelSelectorTrigger', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseProviderContext.mockReturnValue({
-      modelProviders: [createModel()],
-    })
+    mockUseQuery.mockReturnValue({ data: createModel() })
     mockUseCredentialPanelState.mockReturnValue({
       variant: 'credits-active',
       priority: 'credits',
@@ -66,77 +69,46 @@ describe('ModelSelectorTrigger', () => {
 
   describe('Rendering', () => {
     it('should render empty state when no model is selected', () => {
-      const { container } = render(<ModelSelectorTrigger />)
+      render(<ModelSelectorTrigger />)
 
       expect(screen.getByText('plugin.detailPanel.configureModel')).toBeInTheDocument()
-      expect(container.querySelector('.i-ri-arrow-down-s-line')).toBeInTheDocument()
-      expect(container.firstElementChild).toHaveClass('bg-components-input-bg-normal')
+      expect(getTrigger()).toBeEnabled()
     })
 
     it('should render selected model details when model is active', () => {
       const currentProvider = createModel()
       const currentModel = createModelItem()
-      const { container } = render(
-        <ModelSelectorTrigger
-          currentProvider={currentProvider}
-          currentModel={currentModel}
-        />,
-      )
+      render(<ModelSelectorTrigger currentProvider={currentProvider} currentModel={currentModel} />)
 
       expect(screen.getByText('GPT-4')).toBeInTheDocument()
       expect(screen.getByText('CHAT')).toBeInTheDocument()
-      expect(container.querySelector('.i-ri-arrow-down-s-line')).toBeInTheDocument()
-      expect(container.firstElementChild).toHaveClass('bg-components-input-bg-normal')
+      expect(getTrigger()).toBeEnabled()
     })
 
     it('should render deprecated default model and disabled style when selection is missing', () => {
-      const { container } = render(
-        <ModelSelectorTrigger
-          defaultModel={{ provider: 'openai', model: 'legacy-model' }}
-        />,
-      )
+      render(<ModelSelectorTrigger defaultModel={{ provider: 'openai', model: 'legacy-model' }} />)
 
       expect(screen.getByText('legacy-model')).toBeInTheDocument()
-      expect(screen.getByText('legacy-model')).toHaveClass('line-through')
-      expect(container.firstElementChild).toHaveClass('bg-components-input-bg-disabled')
-      expect(container.querySelector('.i-ri-arrow-down-s-line')).not.toBeInTheDocument()
+      expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
     })
   })
 
   describe('Props', () => {
-    it('should apply custom className to root element', () => {
-      const { container } = render(<ModelSelectorTrigger className="custom-trigger" />)
-
-      expect(container.firstElementChild).toHaveClass('custom-trigger')
-    })
-
-    it('should apply open background style when open is true and model is active', () => {
-      const { container } = render(
+    it('should disable the combobox trigger', () => {
+      render(
         <ModelSelectorTrigger
           currentProvider={createModel()}
           currentModel={createModelItem()}
-          open
+          disabled
         />,
       )
 
-      expect(container.firstElementChild).toHaveClass('bg-components-input-bg-hover')
-    })
-
-    it('should hide the expand arrow when readonly is true', () => {
-      const { container } = render(
-        <ModelSelectorTrigger
-          currentProvider={createModel()}
-          currentModel={createModelItem()}
-          readonly
-        />,
-      )
-
-      expect(container.querySelector('.i-ri-arrow-down-s-line')).not.toBeInTheDocument()
+      expect(getTrigger()).toBeDisabled()
     })
   })
 
   describe('Status Handling', () => {
-    it('should show status badge when selected model is not active and not readonly', () => {
+    it('should show status badge when selected model is not active and enabled', () => {
       render(
         <ModelSelectorTrigger
           currentProvider={createModel()}
@@ -144,10 +116,16 @@ describe('ModelSelectorTrigger', () => {
         />,
       )
 
-      expect(screen.getByText('common.modelProvider.selector.configureRequired')).toBeInTheDocument()
+      expect(
+        screen.getByText('common.modelProvider.selector.configureRequired'),
+      ).toBeInTheDocument()
+      expect(getTrigger()).toHaveAttribute('data-model-status', 'configure-required')
+      expect(getTrigger()).toHaveClass(
+        'data-[model-status=configure-required]:bg-components-input-bg-disabled',
+      )
     })
 
-    it('should apply credits exhausted badge style when model quota is exceeded', () => {
+    it('should show credits exhausted state when model quota is exceeded', () => {
       mockUseCredentialPanelState.mockReturnValue({
         variant: 'credits-exhausted',
         priority: 'credits',
@@ -160,13 +138,10 @@ describe('ModelSelectorTrigger', () => {
       })
 
       render(
-        <ModelSelectorTrigger
-          currentProvider={createModel()}
-          currentModel={createModelItem()}
-        />,
+        <ModelSelectorTrigger currentProvider={createModel()} currentModel={createModelItem()} />,
       )
 
-      expect(screen.getByText('common.modelProvider.selector.creditsExhausted').parentElement).toHaveClass('bg-components-badge-bg-dimm')
+      expect(screen.getByText('common.modelProvider.selector.creditsExhausted')).toBeInTheDocument()
       expect(screen.queryByText('CHAT')).not.toBeInTheDocument()
     })
 
@@ -183,14 +158,16 @@ describe('ModelSelectorTrigger', () => {
       })
 
       render(
-        <ModelSelectorTrigger
-          currentProvider={createModel()}
-          currentModel={createModelItem()}
-        />,
+        <ModelSelectorTrigger currentProvider={createModel()} currentModel={createModelItem()} />,
       )
 
-      expect(screen.getByText('common.modelProvider.selector.apiKeyUnavailable')).toBeInTheDocument()
+      expect(
+        screen.getByText('common.modelProvider.selector.apiKeyUnavailable'),
+      ).toBeInTheDocument()
       expect(screen.queryByText('CHAT')).not.toBeInTheDocument()
+      expect(getTrigger()).toHaveClass(
+        'data-[model-status=api-key-unavailable]:bg-components-input-bg-disabled',
+      )
     })
 
     it('should show disabled badge when selected model is disabled', () => {
@@ -205,27 +182,18 @@ describe('ModelSelectorTrigger', () => {
       expect(screen.queryByText('CHAT')).not.toBeInTheDocument()
     })
 
-    it('should strike through deprecated selected model name', () => {
-      render(
-        <ModelSelectorTrigger
-          currentProvider={createModel()}
-          currentModel={createModelItem({ deprecated: true })}
-        />,
-      )
-
-      expect(screen.getByText('GPT-4')).toHaveClass('line-through')
-    })
-
-    it('should not show status badge when selected model is readonly', () => {
+    it('should not show status badge when selected model is disabled', () => {
       render(
         <ModelSelectorTrigger
           currentProvider={createModel()}
           currentModel={createModelItem({ status: ModelStatusEnum.noConfigure })}
-          readonly
+          disabled
         />,
       )
 
-      expect(screen.queryByText('common.modelProvider.selector.configureRequired')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('common.modelProvider.selector.configureRequired'),
+      ).not.toBeInTheDocument()
     })
 
     it('should show incompatible tooltip when hovering no-permission status badge', async () => {
@@ -238,13 +206,18 @@ describe('ModelSelectorTrigger', () => {
       )
 
       expect(screen.queryByText('CHAT')).not.toBeInTheDocument()
+      expect(getTrigger()).toHaveClass(
+        'data-[model-status=incompatible]:bg-components-input-bg-disabled',
+      )
       await user.hover(screen.getByText('common.modelProvider.selector.incompatible'))
 
-      expect(await screen.findByText('common.modelProvider.selector.incompatibleTip')).toBeInTheDocument()
+      expect(
+        await screen.findByText('common.modelProvider.selector.incompatibleTip'),
+      ).toBeInTheDocument()
     })
 
     it('should show incompatible badge when selected model fails the compatibility predicate', () => {
-      const { container } = render(
+      render(
         <ModelSelectorTrigger
           currentProvider={createModel()}
           currentModel={createModelItem()}
@@ -254,28 +227,25 @@ describe('ModelSelectorTrigger', () => {
 
       expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
       expect(screen.queryByText('CHAT')).not.toBeInTheDocument()
-      expect(container.querySelector('.i-ri-arrow-down-s-line')).toBeInTheDocument()
     })
   })
 
   describe('Edge Cases', () => {
     it('should show incompatible badge for deprecated selection', async () => {
       const user = userEvent.setup()
-      render(
-        <ModelSelectorTrigger
-          defaultModel={{ provider: 'openai', model: 'legacy-model' }}
-        />,
-      )
+      render(<ModelSelectorTrigger defaultModel={{ provider: 'openai', model: 'legacy-model' }} />)
 
       expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
       await user.hover(screen.getByText('common.modelProvider.selector.incompatible'))
 
-      expect(await screen.findByText('common.modelProvider.selector.incompatibleTip')).toBeInTheDocument()
+      expect(
+        await screen.findByText('common.modelProvider.selector.incompatibleTip'),
+      ).toBeInTheDocument()
     })
 
     it('should show credits exhausted badge for deprecated selection when ai credits are exhausted without api key', async () => {
       const user = userEvent.setup()
-      mockUseCredentialPanelState.mockImplementation(provider => ({
+      mockUseCredentialPanelState.mockImplementation((provider) => ({
         variant: provider ? 'no-usage' : 'credits-active',
         priority: provider ? 'apiKey' : 'credits',
         supportsCredits: !!provider,
@@ -286,31 +256,17 @@ describe('ModelSelectorTrigger', () => {
         credits: provider ? 0 : 100,
       }))
 
-      render(
-        <ModelSelectorTrigger
-          defaultModel={{ provider: 'openai', model: 'legacy-model' }}
-        />,
-      )
+      render(<ModelSelectorTrigger defaultModel={{ provider: 'openai', model: 'legacy-model' }} />)
 
-      expect(mockUseCredentialPanelState).toHaveBeenCalledWith(expect.objectContaining({ provider: 'openai' }))
+      expect(mockUseCredentialPanelState).toHaveBeenCalledWith(
+        expect.objectContaining({ provider: 'openai' }),
+      )
       expect(screen.getByText('common.modelProvider.selector.creditsExhausted')).toBeInTheDocument()
       await user.hover(screen.getByText('common.modelProvider.selector.creditsExhausted'))
 
-      expect(await screen.findByText('common.modelProvider.selector.creditsExhaustedTip')).toBeInTheDocument()
-    })
-
-    it('should render fallback icon when deprecated provider is not found', () => {
-      mockUseProviderContext.mockReturnValue({
-        modelProviders: [],
-      })
-      const { container } = render(
-        <ModelSelectorTrigger
-          defaultModel={{ provider: 'unknown-provider', model: 'legacy-model' }}
-        />,
-      )
-
-      expect(container.querySelector('img[alt="model-icon"]')).not.toBeInTheDocument()
-      expect(container.querySelector('.i-custom-vender-other-group')).toBeInTheDocument()
+      expect(
+        await screen.findByText('common.modelProvider.selector.creditsExhaustedTip'),
+      ).toBeInTheDocument()
     })
   })
 })

@@ -7,47 +7,45 @@ import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
 
 const buttonVariants = cva(
-  'inline-flex cursor-pointer items-center justify-center whitespace-nowrap outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid data-[disabled]:cursor-not-allowed',
+  'inline-flex cursor-pointer items-center justify-center overflow-hidden whitespace-nowrap focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-disabled:cursor-not-allowed',
   {
     variants: {
       variant: {
-        'primary': [
-          'border-components-button-primary-border bg-components-button-primary-bg text-components-button-primary-text shadow',
-          'hover:border-components-button-primary-border-hover hover:bg-components-button-primary-bg-hover',
-          'data-[disabled]:border-components-button-primary-border-disabled data-[disabled]:bg-components-button-primary-bg-disabled data-[disabled]:text-components-button-primary-text-disabled data-[disabled]:shadow-none',
+        primary: [
+          'bg-components-button-primary-bg text-components-button-primary-text shadow-primary-button inset-ring-[0.5px] inset-ring-components-button-primary-border',
+          'hover:bg-components-button-primary-bg-hover hover:shadow-xs hover:shadow-shadow-shadow-3 hover:inset-ring-components-button-primary-border-hover',
+          'data-disabled:bg-components-button-primary-bg-disabled data-disabled:text-components-button-primary-text-disabled data-disabled:shadow-none data-disabled:inset-ring-components-button-primary-border-disabled',
         ],
-        'secondary': [
-          'border-[0.5px] shadow-xs backdrop-blur-[5px]',
-          'border-components-button-secondary-border bg-components-button-secondary-bg text-components-button-secondary-text',
-          'hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover',
-          'data-[disabled]:border-components-button-secondary-border-disabled data-[disabled]:bg-components-button-secondary-bg-disabled data-[disabled]:text-components-button-secondary-text-disabled data-[disabled]:backdrop-blur-xs',
+        secondary: [
+          'bg-components-button-secondary-bg text-components-button-secondary-text shadow-xs inset-ring-[0.5px] shadow-shadow-shadow-3 inset-ring-components-button-secondary-border backdrop-blur-[5px]',
+          'hover:bg-components-button-secondary-bg-hover hover:inset-ring-components-button-secondary-border-hover',
+          'data-disabled:bg-components-button-secondary-bg-disabled data-disabled:text-components-button-secondary-text-disabled data-disabled:shadow-none data-disabled:inset-ring-components-button-secondary-border-disabled data-disabled:backdrop-blur-xs',
         ],
         'secondary-accent': [
-          'border-[0.5px] shadow-xs',
-          'border-components-button-secondary-border bg-components-button-secondary-bg text-components-button-secondary-accent-text',
-          'hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover',
-          'data-[disabled]:border-components-button-secondary-border-disabled data-[disabled]:bg-components-button-secondary-bg-disabled data-[disabled]:text-components-button-secondary-accent-text-disabled',
+          'bg-components-button-secondary-bg text-components-button-secondary-accent-text shadow-xs inset-ring-[0.5px] shadow-shadow-shadow-3 inset-ring-components-button-secondary-border backdrop-blur-[5px]',
+          'hover:bg-components-button-secondary-bg-hover hover:inset-ring-components-button-secondary-border-hover',
+          'data-disabled:bg-components-button-secondary-bg-disabled data-disabled:text-components-button-secondary-accent-text-disabled data-disabled:shadow-none data-disabled:inset-ring-components-button-secondary-border-disabled data-disabled:backdrop-blur-xs',
         ],
-        'tertiary': [
+        tertiary: [
           'bg-components-button-tertiary-bg text-components-button-tertiary-text',
           'hover:bg-components-button-tertiary-bg-hover',
-          'data-[disabled]:bg-components-button-tertiary-bg-disabled data-[disabled]:text-components-button-tertiary-text-disabled',
+          'data-disabled:bg-components-button-tertiary-bg-disabled data-disabled:text-components-button-tertiary-text-disabled',
         ],
-        'ghost': [
+        ghost: [
           'text-components-button-ghost-text',
           'hover:bg-components-button-ghost-bg-hover',
-          'data-[disabled]:text-components-button-ghost-text-disabled',
+          'data-disabled:text-components-button-ghost-text-disabled',
         ],
         'ghost-accent': [
           'text-components-button-secondary-accent-text',
           'hover:bg-state-accent-hover',
-          'data-[disabled]:text-components-button-secondary-accent-text-disabled',
+          'data-disabled:text-components-button-secondary-accent-text-disabled',
         ],
       },
       size: {
-        small: 'h-6 rounded-md px-2 text-xs font-medium',
-        medium: 'h-8 rounded-lg px-3.5 text-[13px] leading-4 font-medium',
-        large: 'h-9 rounded-[10px] px-4 text-sm font-semibold',
+        small: 'h-6 gap-1 rounded-md px-[9px] text-xs font-medium',
+        medium: 'h-8 gap-1 rounded-lg px-3.5 text-[13px] leading-4 font-medium',
+        large: 'h-9 gap-1.5 rounded-[10px] px-4 text-sm font-semibold',
       },
       tone: {
         default: '',
@@ -57,20 +55,25 @@ const buttonVariants = cva(
     compoundVariants: [
       {
         variant: 'primary',
+        size: 'small',
+        class: 'gap-[3px] px-2',
+      },
+      {
+        variant: 'primary',
         tone: 'destructive',
         class: [
-          'border-components-button-destructive-primary-border bg-components-button-destructive-primary-bg text-components-button-destructive-primary-text',
-          'hover:border-components-button-destructive-primary-border-hover hover:bg-components-button-destructive-primary-bg-hover',
-          'data-[disabled]:border-components-button-destructive-primary-border-disabled data-[disabled]:bg-components-button-destructive-primary-bg-disabled data-[disabled]:text-components-button-destructive-primary-text-disabled data-[disabled]:shadow-none',
+          'bg-components-button-destructive-primary-bg text-components-button-destructive-primary-text inset-ring-components-button-destructive-primary-border',
+          'hover:bg-components-button-destructive-primary-bg-hover hover:inset-ring-components-button-destructive-primary-border-hover',
+          'data-disabled:bg-components-button-destructive-primary-bg-disabled data-disabled:text-components-button-destructive-primary-text-disabled data-disabled:shadow-none data-disabled:inset-ring-components-button-destructive-primary-bg-disabled',
         ],
       },
       {
         variant: 'secondary',
         tone: 'destructive',
         class: [
-          'border-components-button-destructive-secondary-border bg-components-button-destructive-secondary-bg text-components-button-destructive-secondary-text',
-          'hover:border-components-button-destructive-secondary-border-hover hover:bg-components-button-destructive-secondary-bg-hover',
-          'data-[disabled]:border-components-button-destructive-secondary-border-disabled data-[disabled]:bg-components-button-destructive-secondary-bg-disabled data-[disabled]:text-components-button-destructive-secondary-text-disabled',
+          'bg-components-button-destructive-secondary-bg text-components-button-destructive-secondary-text inset-ring-components-button-destructive-secondary-border',
+          'hover:bg-components-button-destructive-secondary-bg-hover hover:inset-ring-components-button-destructive-secondary-border-hover',
+          'data-disabled:text-components-button-destructive-secondary-text-disabled',
         ],
       },
       {
@@ -79,7 +82,7 @@ const buttonVariants = cva(
         class: [
           'bg-components-button-destructive-tertiary-bg text-components-button-destructive-tertiary-text',
           'hover:bg-components-button-destructive-tertiary-bg-hover',
-          'data-[disabled]:bg-components-button-destructive-tertiary-bg-disabled data-[disabled]:text-components-button-destructive-tertiary-text-disabled',
+          'data-disabled:bg-components-button-destructive-tertiary-bg-disabled data-disabled:text-components-button-destructive-tertiary-text-disabled',
         ],
       },
       {
@@ -88,7 +91,7 @@ const buttonVariants = cva(
         class: [
           'text-components-button-destructive-ghost-text',
           'hover:bg-components-button-destructive-ghost-bg-hover',
-          'data-[disabled]:text-components-button-destructive-ghost-text-disabled',
+          'data-disabled:text-components-button-destructive-ghost-text-disabled',
         ],
       },
     ],
@@ -100,14 +103,13 @@ const buttonVariants = cva(
   },
 )
 
-export type ButtonProps
-  = Omit<BaseButtonNS.Props, 'className'>
-    & VariantProps<typeof buttonVariants> & {
-      loading?: boolean
-      className?: string
-    }
+type ButtonProps = Omit<BaseButtonNS.Props, 'className'> &
+  VariantProps<typeof buttonVariants> & {
+    loading?: boolean
+    className?: string
+  }
 
-export function Button({
+function Button({
   className,
   variant,
   size,
@@ -130,10 +132,14 @@ export function Button({
       {children}
       {loading && (
         <i
-          className="ms-1 i-ri-loader-2-line size-3 animate-spin motion-reduce:animate-none"
+          className="i-ri-loader-2-line size-3 animate-spin motion-reduce:animate-none"
           aria-hidden="true"
         />
       )}
     </BaseButton>
   )
 }
+
+export { Button, buttonVariants }
+
+export type { ButtonProps }

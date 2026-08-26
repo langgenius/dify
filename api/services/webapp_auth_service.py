@@ -74,7 +74,10 @@ class WebAppAuthService:
 
         code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
         token = TokenManager.generate_token(
-            account=account, email=email, token_type="email_code_login", additional_data={"code": code}
+            account_id=account.id if account else None,
+            email=email,
+            token_type="email_code_login",
+            additional_data={"code": code},
         )
         send_email_code_login_mail_task.delay(
             language=language,
@@ -116,7 +119,7 @@ class WebAppAuthService:
 
     @classmethod
     def _get_account_jwt_token(cls, account: Account) -> str:
-        exp_dt = datetime.now(UTC) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES * 24)
+        exp_dt = datetime.now(UTC) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES)
         exp = int(exp_dt.timestamp())
 
         payload = {

@@ -1,46 +1,37 @@
 'use client'
-import { useQuery } from '@tanstack/react-query'
-import { useFavicon, useTitle } from 'ahooks'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useFavicon } from 'ahooks'
 import { useEffect } from 'react'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { defaultSystemFeatures } from '@/features/system-features/config'
+import { formatDocumentTitle, getApplicationTitle } from '@/utils/document-title'
 import { basePath } from '@/utils/var'
 
-export default function useDocumentTitle(title: string) {
-  const { data, isPending } = useQuery(systemFeaturesQueryOptions())
-  const systemFeatures = data ?? defaultSystemFeatures
-  const prefix = title ? `${title} - ` : ''
-  let titleStr = ''
-  let favicon = ''
-  if (isPending === false) {
-    if (systemFeatures.branding.enabled) {
-      titleStr = `${prefix}${systemFeatures.branding.application_title}`
-      favicon = systemFeatures.branding.favicon
-    }
-    else {
-      titleStr = `${prefix}Dify`
-      favicon = `${basePath}/favicon.ico`
-    }
-  }
-  useTitle(titleStr)
+export default function useDocumentTitle(title: string | null) {
+  const { data } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const branding = data.branding
+  const titleStr = title === null ? null : formatDocumentTitle(title, getApplicationTitle(branding))
+  const favicon = branding.enabled ? branding.favicon : `${basePath}/favicon.ico`
+  useEffect(() => {
+    if (titleStr !== null) document.title = titleStr
+  }, [titleStr])
   useEffect(() => {
     let apple: HTMLLinkElement | null = null
-    if (systemFeatures.branding.favicon) {
+    if (branding.favicon) {
       document
         .querySelectorAll(
-          'link[rel=\'icon\'], link[rel=\'shortcut icon\'], link[rel=\'apple-touch-icon\'], link[rel=\'mask-icon\']',
+          "link[rel='icon'], link[rel='shortcut icon'], link[rel='apple-touch-icon'], link[rel='mask-icon']",
         )
-        .forEach(n => n.parentNode?.removeChild(n))
+        .forEach((n) => n.parentNode?.removeChild(n))
 
       apple = document.createElement('link')
       apple.rel = 'apple-touch-icon'
-      apple.href = systemFeatures.branding.favicon
+      apple.href = branding.favicon
       document.head.appendChild(apple)
     }
 
     return () => {
       apple?.remove()
     }
-  }, [systemFeatures.branding.favicon])
+  }, [branding.favicon])
   useFavicon(favicon)
 }

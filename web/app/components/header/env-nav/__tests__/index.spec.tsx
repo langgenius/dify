@@ -1,22 +1,12 @@
-import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
-import { render, screen } from '@testing-library/react'
-import { vi } from 'vitest'
+import { screen } from '@testing-library/react'
+import { vi } from 'vite-plus/test'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import EnvNav from '../index'
 
-const mockAppContextState = vi.hoisted(() => ({
-  current: {} as Partial<AppContextStateMockState>,
-}))
-const mockUseAppContext = vi.hoisted(() => vi.fn())
-
-vi.mock('@/context/app-context-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
-})
+const renderEnvNav = (currentEnv: string) =>
+  renderWithConsoleQuery(<EnvNav />, {
+    accountProfileMeta: { currentEnv },
+  })
 
 describe('EnvNav', () => {
   beforeEach(() => {
@@ -24,43 +14,17 @@ describe('EnvNav', () => {
   })
 
   it('should render null when environment is PRODUCTION', () => {
-    const appContextValue = {
-      langGeniusVersionInfo: {
-        current_env: 'PRODUCTION',
-      },
-    } as unknown as AppContextStateMockState
-    mockAppContextState.current = appContextValue
-    mockUseAppContext.mockReturnValue(appContextValue)
-
-    const { container } = render(<EnvNav />)
+    const { container } = renderEnvNav('PRODUCTION')
     expect(container.firstChild).toBeNull()
   })
 
   it('should render TESTING tag and icon when environment is TESTING', () => {
-    const appContextValue = {
-      langGeniusVersionInfo: {
-        current_env: 'TESTING',
-      },
-    } as unknown as AppContextStateMockState
-    mockAppContextState.current = appContextValue
-    mockUseAppContext.mockReturnValue(appContextValue)
-
-    render(<EnvNav />)
+    renderEnvNav('TESTING')
     expect(screen.getByText('common.environment.testing')).toBeInTheDocument()
   })
 
   it('should render DEVELOPMENT tag and icon when environment is DEVELOPMENT', () => {
-    const appContextValue = {
-      langGeniusVersionInfo: {
-        current_env: 'DEVELOPMENT',
-      },
-    } as unknown as AppContextStateMockState
-    mockAppContextState.current = appContextValue
-    mockUseAppContext.mockReturnValue(appContextValue)
-
-    render(<EnvNav />)
-    expect(
-      screen.getByText('common.environment.development'),
-    ).toBeInTheDocument()
+    renderEnvNav('DEVELOPMENT')
+    expect(screen.getByText('common.environment.development')).toBeInTheDocument()
   })
 })

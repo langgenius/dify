@@ -2,7 +2,17 @@
 import type { FC, ReactNode } from 'react'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import {
+  Select,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
 import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
@@ -11,8 +21,7 @@ import { replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 
 // Tiny utility to judge whether a cell value is effectively present
 const isPresent = (v: unknown): boolean => {
-  if (typeof v === 'string')
-    return v.trim() !== ''
+  if (typeof v === 'string') return v.trim() !== ''
   return !(v === '' || v === null || v === undefined || v === false)
 }
 // Column configuration types for table components
@@ -30,7 +39,12 @@ export type ColumnConfig = {
   width?: string // CSS class for width (e.g., 'w-1/2', 'w-[140px]')
   placeholder?: string
   options?: SelectOption[] // For select type
-  render?: (value: unknown, row: GenericTableRow, index: number, onChange: (value: unknown) => void) => ReactNode
+  render?: (
+    value: unknown,
+    row: GenericTableRow,
+    index: number,
+    onChange: (value: unknown) => void,
+  ) => ReactNode
   required?: boolean
 }
 
@@ -58,7 +72,7 @@ type DisplayRow = {
 }
 
 const isEmptyRow = (row: GenericTableRow) => {
-  return Object.values(row).every(v => v === '' || v === null || v === undefined || v === false)
+  return Object.values(row).every((v) => v === '' || v === null || v === undefined || v === false)
 }
 
 const getDisplayRows = (
@@ -66,15 +80,12 @@ const getDisplayRows = (
   emptyRowData: GenericTableRow,
   readonly: boolean,
 ): DisplayRow[] => {
-  if (readonly)
-    return data.map((row, index) => ({ row, dataIndex: index, isVirtual: false }))
+  if (readonly) return data.map((row, index) => ({ row, dataIndex: index, isVirtual: false }))
 
-  if (!data.length)
-    return [{ row: { ...emptyRowData }, dataIndex: null, isVirtual: true }]
+  if (!data.length) return [{ row: { ...emptyRowData }, dataIndex: null, isVirtual: true }]
 
   const rows = data.reduce<DisplayRow[]>((acc, row, index) => {
-    if (isEmptyRow(row) && index < data.length - 1)
-      return acc
+    if (isEmptyRow(row) && index < data.length - 1) return acc
 
     acc.push({ row, dataIndex: index, isVirtual: false })
     return acc
@@ -88,7 +99,7 @@ const getDisplayRows = (
 }
 
 const getPrimaryKey = (columns: ColumnConfig[]) => {
-  return columns.find(col => col.key === 'key' || col.key === 'name')?.key ?? 'key'
+  return columns.find((col) => col.key === 'key' || col.key === 'name')?.key ?? 'key'
 }
 
 const renderInputCell = (
@@ -130,12 +141,12 @@ const renderSelectCell = (
   handleChange: (value: unknown) => void,
 ) => {
   const options = column.options || []
-  const selectedOption = options.find(option => option.value === value) ?? null
+  const selectedOption = options.find((option) => option.value === value) ?? null
 
   return (
     <Select
       value={selectedOption?.value ?? null}
-      onValueChange={nextValue => nextValue && handleChange(nextValue)}
+      onValueChange={(nextValue) => nextValue && handleChange(nextValue)}
       disabled={readonly}
     >
       <SelectTrigger
@@ -147,14 +158,20 @@ const renderSelectCell = (
       >
         {selectedOption?.name ?? column.placeholder}
       </SelectTrigger>
-      <SelectContent className="-translate-x-3" popupClassName="w-26 min-w-26">
-        {options.map(option => (
-          <SelectItem key={option.value} value={option.value}>
-            <SelectItemText>{option.name}</SelectItemText>
-            <SelectItemIndicator />
-          </SelectItem>
-        ))}
-      </SelectContent>
+      <SelectPortal>
+        <SelectPositioner className="-translate-x-3">
+          <SelectPopup className="w-26 min-w-26">
+            <SelectList>
+              {options.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  <SelectItemText>{option.name}</SelectItemText>
+                  <SelectItemIndicator />
+                </SelectItem>
+              ))}
+            </SelectList>
+          </SelectPopup>
+        </SelectPositioner>
+      </SelectPortal>
     </Select>
   )
 }
@@ -185,7 +202,7 @@ const renderCustomCell = (
   dataIndex: number | null,
   handleChange: (value: unknown) => void,
 ) => {
-  return column.render ? column.render(value, row, (dataIndex ?? -1), handleChange) : null
+  return column.render ? column.render(value, row, dataIndex ?? -1, handleChange) : null
 }
 
 const GenericTable: FC<GenericTableProps> = ({
@@ -203,32 +220,35 @@ const GenericTable: FC<GenericTableProps> = ({
     return getDisplayRows(data, emptyRowData, readonly)
   }, [data, emptyRowData, readonly])
 
-  const removeRow = useCallback((dataIndex: number) => {
-    if (readonly)
-      return
-    if (dataIndex < 0 || dataIndex >= data.length)
-      return // ignore virtual rows
-    const newData = data.filter((_, i) => i !== dataIndex)
-    onChange(newData)
-  }, [data, readonly, onChange])
-
-  const updateRow = useCallback((dataIndex: number | null, key: string, value: unknown) => {
-    if (readonly)
-      return
-
-    if (dataIndex !== null && dataIndex < data.length) {
-      // Editing existing configured row
-      const newData = [...data]
-      newData[dataIndex] = { ...newData[dataIndex], [key]: value }
+  const removeRow = useCallback(
+    (dataIndex: number) => {
+      if (readonly) return
+      if (dataIndex < 0 || dataIndex >= data.length) return // ignore virtual rows
+      const newData = data.filter((_, i) => i !== dataIndex)
       onChange(newData)
-      return
-    }
+    },
+    [data, readonly, onChange],
+  )
 
-    // Editing the trailing UI-only empty row: create a new configured row
-    const newRow = { ...emptyRowData, [key]: value }
-    const next = [...data, newRow]
-    onChange(next)
-  }, [data, emptyRowData, onChange, readonly])
+  const updateRow = useCallback(
+    (dataIndex: number | null, key: string, value: unknown) => {
+      if (readonly) return
+
+      if (dataIndex !== null && dataIndex < data.length) {
+        // Editing existing configured row
+        const newData = [...data]
+        newData[dataIndex] = { ...newData[dataIndex], [key]: value }
+        onChange(newData)
+        return
+      }
+
+      // Editing the trailing UI-only empty row: create a new configured row
+      const newRow = { ...emptyRowData, [key]: value }
+      const next = [...data, newRow]
+      onChange(next)
+    },
+    [data, emptyRowData, onChange, readonly],
+  )
 
   // Determine the primary identifier column just once
   const primaryKey = useMemo(() => getPrimaryKey(columns), [columns])
@@ -314,7 +334,7 @@ const GenericTable: FC<GenericTableProps> = ({
                       className="p-1"
                       aria-label="Delete row"
                     >
-                      {/* eslint-disable-next-line hyoban/prefer-tailwind-icons */}
+                      {/* oxlint-disable-next-line dify/prefer-tailwind-icons */}
                       <RiDeleteBinLine className="size-3.5 text-text-destructive" />
                     </button>
                   </div>
@@ -336,15 +356,13 @@ const GenericTable: FC<GenericTableProps> = ({
         <h4 className="system-sm-semibold-uppercase text-text-secondary">{title}</h4>
       </div>
 
-      {showPlaceholder
-        ? (
-            <div className="flex h-7 items-center justify-center rounded-lg border border-divider-regular bg-components-panel-bg text-xs leading-[18px] font-normal text-text-quaternary">
-              {placeholder}
-            </div>
-          )
-        : (
-            renderTable()
-          )}
+      {showPlaceholder ? (
+        <div className="flex h-7 items-center justify-center rounded-lg border border-divider-regular bg-components-panel-bg text-xs leading-4.5 font-normal text-text-quaternary">
+          {placeholder}
+        </div>
+      ) : (
+        renderTable()
+      )}
     </div>
   )
 }

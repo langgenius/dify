@@ -7,7 +7,10 @@ import DataSourcePage from '@/app/components/header/account-setting/data-source-
 import ModelProviderPage from '@/app/components/header/account-setting/model-provider-page'
 import InstallFromMarketplaceQuery from '@/app/components/plugins/install-plugin/install-from-marketplace-query'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { toolsContentFrameClassNames, toolsContentInsetClassNames } from '@/app/components/tools/content-inset'
+import {
+  toolsContentFrameClassNames,
+  toolsContentInsetClassNames,
+} from '@/app/components/tools/content-inset'
 import { IntegrationPageHeader } from './page-header'
 import PluginCategoryPage from './plugin-category-page'
 import { IntegrationSectionLayout } from './section-layout'
@@ -61,13 +64,13 @@ const IntegrationSectionRenderer = ({
       {body}
     </IntegrationSectionLayout>
   )
-  const renderScrollableLayout = ({ body, toolbar }: { body: ReactNode, toolbar: ReactNode }) => (
+  const renderScrollableLayout = ({ body, toolbar }: { body: ReactNode; toolbar: ReactNode }) => (
     <>
       {renderHeader(toolbar)}
       {renderScrollBody(body)}
     </>
   )
-  const renderDirectLayout = ({ body, toolbar }: { body: ReactNode, toolbar: ReactNode }) => (
+  const renderDirectLayout = ({ body, toolbar }: { body: ReactNode; toolbar: ReactNode }) => (
     <>
       {renderHeader(toolbar)}
       {body}
@@ -115,11 +118,17 @@ const IntegrationSectionRenderer = ({
     case 'custom-tool':
       return <ToolProviderList category="api" contentInset="compact" layout={renderDirectLayout} />
     case 'workflow-tool':
-      return <ToolProviderList category="workflow" contentInset="compact" layout={renderDirectLayout} />
+      return (
+        <ToolProviderList category="workflow" contentInset="compact" layout={renderDirectLayout} />
+      )
     case 'data-source':
       return (
         <>
-          <DataSourcePage stickyToolbar layout={renderScrollableLayout} onOpenMarketplace={onSwitchToMarketplace} />
+          <DataSourcePage
+            stickyToolbar
+            layout={renderScrollableLayout}
+            onOpenMarketplace={onSwitchToMarketplace}
+          />
           {renderMarketplaceInstallQuery(PluginCategoryEnum.datasource)}
         </>
       )

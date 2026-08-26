@@ -1,12 +1,15 @@
 import asyncio
-from collections.abc import Iterable, Mapping
+from collections.abc import AsyncIterator, Generator, Iterable, Mapping
+from contextlib import contextmanager
+from decimal import Decimal
 from typing import Any, ClassVar, cast
 
 import httpx
 import pytest
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from pydantic import JsonValue
 from pydantic_ai import Tool
-from pydantic_ai.exceptions import UnexpectedModelBehavior
+from pydantic_ai.exceptions import ModelHTTPError, UnexpectedModelBehavior, UsageLimitExceeded
 from pydantic_ai.messages import (
     ToolReturnPart,
     ModelMessage,
@@ -18,9 +21,12 @@ from pydantic_ai.messages import (
     UserPromptPart,
 )
 from pydantic_ai.models import ModelRequestParameters
+from pydantic_ai.models.function import FunctionModel
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.tools import DeferredToolRequests, DeferredToolResults
+from pydantic_ai.usage import UsageLimits
 from pydantic_ai.settings import ModelSettings
+from pydantic_ai_harness.compaction import TieredCompaction
 
 from agenton.compositor import CompositorSessionSnapshot, LayerProvider, LayerSessionSnapshot
 from agenton.layers import ExitIntent, LifecycleState
@@ -28,9 +34,8 @@ from agenton_collections.layers.pydantic_ai import PYDANTIC_AI_HISTORY_LAYER_TYP
 from agenton_collections.layers.plain import PromptLayerConfig, ToolsLayer
 from dify_agent.layers.ask_human import DIFY_ASK_HUMAN_LAYER_TYPE_ID, DifyAskHumanLayerConfig
 from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
+from dify_agent.layers.runtime import DIFY_RUNTIME_LAYER_TYPE_ID, DifyRuntimeLayerConfig
 from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
-from dify_agent.adapters.shell.shellctl import ShellctlProvider
-from dify_agent.layers.shell.layer import DifyShellLayer
 from dify_agent.layers.dify_plugin.configs import (
     DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
     DifyPluginLLMLayerConfig,
@@ -48,6 +53,7 @@ from dify_agent.layers.dify_core_tools.configs import (
     DifyCoreToolsLayerConfig,
 )
 from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer
+from dify_agent.layers.knowledge.client import DifyKnowledgeBaseClientError
 from dify_agent.layers.knowledge.configs import DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID, DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
@@ -58,13 +64,30 @@ from dify_agent.protocol.schemas import (
     LayerExitSignals,
     PydanticAIStreamRunEvent,
     RunComposition,
+    RunFailedEvent,
+    RunFailureType,
     RunLayerSpec,
     RunSucceededEvent,
 )
 from dify_agent.runtime.event_sink import InMemoryRunEventSink
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
-from dify_agent.runtime.runner import AgentRunRunner, AgentRunValidationError
-from shell_session_manager.shellctl.shared import DeleteJobResponse, JobResult, JobStatusName, JobStatusView
+from dify_agent.runtime.runner import (
+    AgentRunRunner,
+    AgentRunValidationError,
+    RunSuccessOutcome,
+    _run_failed_error_payload,
+)
+from dify_agent.runtime_backend import (
+    ExecutionBindingAllocation,
+    ExecutionBindingCreateSpec,
+    ExecutionBindingDestroySpec,
+    HomeSnapshotBackend,
+    RuntimeBackendProfile,
+    RuntimeLayout,
+    RuntimeLease,
+)
+from dify_agent.runtime_backend.shellctl import ShellctlRuntimeLease, create_shellctl_lease
+from shellctl.shared import DeleteJobResponse, JobResult, JobStatusName, JobStatusView
 
 
 class StaticToolsTestLayer(ToolsLayer):
@@ -127,6 +150,112 @@ class FakeRunnerShellctlClient:
         return DeleteJobResponse(job_id=job_id)
 
 
+class FakeRunnerExecutionBindingBackend:
+    def __init__(self, client: FakeRunnerShellctlClient) -> None:
+        self.client = client
+
+    async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
+        return ExecutionBindingAllocation(binding_ref=spec.binding_id, workspace_ref=spec.workspace_id)
+
+    async def acquire(self, binding_ref: str) -> RuntimeLease:
+        return create_shellctl_lease(
+            handle=binding_ref,
+            layout=RuntimeLayout(
+                home_dir="/home/agent-1",
+                workspace_dir="/home/agent-1/workspace/abc12ff",
+            ),
+            entrypoint="http://shellctl",
+            token="",
+            client_factory=lambda: self.client,  # pyright: ignore[reportArgumentType]
+        )
+
+    async def release(self, lease: RuntimeLease) -> None:
+        assert isinstance(lease, ShellctlRuntimeLease)
+        await lease.close()
+
+    async def destroy_binding(self, spec: ExecutionBindingDestroySpec) -> None:
+        del spec
+
+
+def test_run_failed_error_payload_preserves_plugin_rate_limit_error() -> None:
+    exc = ModelHTTPError(
+        429,
+        "gpt-4o-mini",
+        {"error_type": "InvokeRateLimitError", "message": "quota exceeded"},
+    )
+
+    message, error_type, reason = _run_failed_error_payload(exc)
+
+    assert message == "quota exceeded"
+    assert error_type is None
+    assert reason == "InvokeRateLimitError"
+
+
+def test_run_failed_error_payload_infers_rate_limit_reason_from_status_code() -> None:
+    exc = ModelHTTPError(429, "gpt-4o-mini", {"message": "too many requests"})
+
+    message, error_type, reason = _run_failed_error_payload(exc)
+
+    assert message == "too many requests"
+    assert error_type is None
+    assert reason == "InvokeRateLimitError"
+
+
+def test_run_failed_error_payload_preserves_knowledge_error_code() -> None:
+    exc = DifyKnowledgeBaseClientError(
+        "Knowledge base search failed with HTTP 400 (dataset_not_found): Dataset not found",
+        status_code=400,
+        error_code="dataset_not_found",
+        retryable=False,
+    )
+
+    message, error_type, reason = _run_failed_error_payload(exc)
+
+    assert message == "Knowledge base search failed with HTTP 400 (dataset_not_found): Dataset not found"
+    assert error_type is None
+    assert reason == "dataset_not_found"
+
+
+def test_run_failed_error_payload_classifies_usage_limit() -> None:
+    exc = UsageLimitExceeded("The next request would exceed the request_limit of 500")
+
+    message, error_type, reason = _run_failed_error_payload(exc)
+
+    assert message.startswith("The next request would exceed the request_limit of 500")
+    assert error_type is RunFailureType.AGENT_RUN_LIMIT_EXCEEDED
+    assert reason is None
+
+
+def test_cancelled_runner_does_not_emit_late_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def scenario() -> None:
+        sink = InMemoryRunEventSink()
+        cancelled = False
+        async with httpx.AsyncClient() as client:
+            runner = AgentRunRunner(
+                sink=sink,
+                request=_request(),
+                run_id="run-cancelled",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                is_cancelled=lambda: cancelled,
+            )
+
+            async def fail_after_cancel() -> RunSuccessOutcome:
+                nonlocal cancelled
+                cancelled = True
+                raise RuntimeError("late model failure")
+
+            monkeypatch.setattr(runner, "_run_agent", fail_after_cancel)
+            await runner.run()
+
+        assert "run-cancelled" not in sink.statuses
+        assert [event.type for event in sink.events["run-cancelled"]] == ["run_started"]
+
+    asyncio.run(scenario())
+
+
 def _request(
     user: str | list[str] = "hello",
     *,
@@ -137,6 +266,8 @@ def _request(
     execution_context_layer_name: str = "execution_context",
     on_exit: LayerExitSignals | None = None,
     output_config: Mapping[str, object] | DifyOutputLayerConfig | None = None,
+    model_settings: ModelSettings | None = None,
+    context_window_tokens: int | None = None,
 ) -> CreateRunRequest:
     layers = [
         RunLayerSpec(
@@ -178,7 +309,8 @@ def _request(
                 plugin_id="langgenius/openai",
                 model_provider="openai",
                 model="demo-model",
-                credentials={"api_key": "secret"},
+                model_settings=model_settings,
+                context_window_tokens=context_window_tokens,
             ),
         ),
     ]
@@ -197,42 +329,22 @@ def _request(
     )
 
 
-def _lifecycle_only_request(
-    *,
-    on_exit: LayerExitSignals | None = None,
-    session_snapshot: CompositorSessionSnapshot | None = None,
-    deferred_tool_results: DeferredToolResultsPayload | None = None,
-) -> CreateRunRequest:
-    snapshot = session_snapshot or CompositorSessionSnapshot(
-        layers=[
-            LayerSessionSnapshot(name="prompt", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
-            LayerSessionSnapshot(name="execution_context", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
-        ]
-    )
-    return CreateRunRequest(
-        composition=RunComposition(
-            layers=[
-                RunLayerSpec(
-                    name="prompt",
-                    type="plain.prompt",
-                    config=PromptLayerConfig(prefix="system", user="hello"),
-                ),
-                RunLayerSpec(
-                    name="execution_context",
-                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
-                    config=DifyExecutionContextLayerConfig(
-                        tenant_id="tenant-1",
-                        user_from="account",
-                        agent_mode="workflow_run",
-                        invoke_from="service-api",
-                    ),
-                ),
-            ]
+def _request_with_shell() -> CreateRunRequest:
+    request = _request()
+    request.composition.layers[-1:-1] = [
+        RunLayerSpec(
+            name="runtime",
+            type=DIFY_RUNTIME_LAYER_TYPE_ID,
+            config=DifyRuntimeLayerConfig(backend_binding_ref="binding-1"),
         ),
-        session_snapshot=snapshot,
-        deferred_tool_results=deferred_tool_results,
-        on_exit=on_exit or LayerExitSignals(default=ExitIntent.DELETE),
-    )
+        RunLayerSpec(
+            name="shell",
+            type=DIFY_SHELL_LAYER_TYPE_ID,
+            deps={"execution_context": "execution_context", "runtime": "runtime"},
+            config=DifyShellLayerConfig(),
+        ),
+    ]
+    return request
 
 
 def _recursive_output_schema() -> dict[str, object]:
@@ -315,11 +427,13 @@ class SequenceOutputTestModel(TestModel):
 
 class RecordingTestModel(TestModel):
     seen_requests: list[list[ModelMessage]]
+    seen_instructions: list[list[str]]
     failure: Exception | None
 
     def __init__(self, *, custom_output_text: str = "done", failure: Exception | None = None) -> None:
         super().__init__(call_tools=[], custom_output_text=custom_output_text)
         self.seen_requests = []
+        self.seen_instructions = []
         self.failure = failure
 
     def _request(
@@ -329,6 +443,7 @@ class RecordingTestModel(TestModel):
         model_request_parameters: ModelRequestParameters,
     ) -> ModelResponse:
         self.seen_requests.append(list(messages))
+        self.seen_instructions.append([part.content for part in model_request_parameters.instruction_parts or []])
         if self.failure is not None:
             raise self.failure
         return super()._request(messages, model_settings, model_request_parameters)
@@ -375,22 +490,51 @@ def _flatten_message_parts(messages: list[ModelMessage]) -> list[object]:
     return [part for message in messages for part in message.parts]
 
 
+def _assert_interrupted_history(
+    snapshot: CompositorSessionSnapshot,
+    stored_history: list[ModelMessage],
+) -> None:
+    saved_history = _history_messages_from_snapshot(snapshot)
+
+    assert saved_history[: len(stored_history)] == stored_history
+    assert len(saved_history) == len(stored_history) + 2
+    current_request = saved_history[-2]
+    assert isinstance(current_request, ModelRequest)
+    assert current_request.instructions is None
+    assert len(current_request.parts) == 1
+    assert isinstance(current_request.parts[0], UserPromptPart)
+    assert current_request.parts[0].content == "current user"
+    partial_response = saved_history[-1]
+    assert isinstance(partial_response, ModelResponse)
+    assert partial_response.state == "interrupted"
+    assert len(partial_response.parts) == 1
+    assert isinstance(partial_response.parts[0], TextPart)
+    assert partial_response.parts[0].content == "partial"
+
+
+def _install_fake_message_capture(monkeypatch: pytest.MonkeyPatch) -> list[ModelMessage]:
+    captured_messages: list[ModelMessage] = []
+
+    @contextmanager
+    def fake_capture_run_messages() -> Generator[list[ModelMessage]]:
+        captured_messages.clear()
+        yield captured_messages
+
+    monkeypatch.setattr("dify_agent.runtime.runner.capture_run_messages", fake_capture_run_messages)
+    return captured_messages
+
+
 class FakeAgentRunResult:
     output: object
-    _new_messages: list[ModelMessage]
 
-    def __init__(self, output: object, new_messages: list[ModelMessage]) -> None:
+    def __init__(self, output: object) -> None:
         self.output = output
-        self._new_messages = new_messages
-
-    def new_messages(self) -> list[ModelMessage]:
-        return list(self._new_messages)
 
 
 def test_runner_emits_terminal_success_and_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
     seen_clients: list[httpx.AsyncClient] = []
 
-    def fake_get_model(self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert self.config.model == "demo-model"
         assert self.config.plugin_id == "langgenius/openai"
         seen_clients.append(http_client)
@@ -440,14 +584,70 @@ def test_runner_emits_terminal_success_and_snapshot(monkeypatch: pytest.MonkeyPa
     assert sink.statuses["run-1"] == "succeeded"
 
 
+def test_runner_emits_complete_plugin_usage_in_terminal_event(monkeypatch: pytest.MonkeyPatch) -> None:
+    complete_usage = LLMUsage(
+        prompt_tokens=10,
+        prompt_unit_price=Decimal("5"),
+        prompt_price_unit=Decimal("0.000001"),
+        prompt_price=Decimal("0.000050"),
+        completion_tokens=2,
+        completion_unit_price=Decimal("30"),
+        completion_price_unit=Decimal("0.000001"),
+        completion_price=Decimal("0.000060"),
+        total_tokens=12,
+        total_price=Decimal("0.000110"),
+        currency="USD",
+        latency=0.4,
+        time_to_first_token=0.1,
+        time_to_generate=0.3,
+    )
+
+    class PricedTestModel(TestModel):
+        @property
+        def accumulated_usage(self) -> LLMUsage:
+            return complete_usage
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
+        assert http_client.is_closed is False
+        return PricedTestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            await AgentRunRunner(
+                sink=sink,
+                request=_request(),
+                run_id="run-priced",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+            ).run()
+
+    asyncio.run(scenario())
+
+    terminal = sink.events["run-priced"][-1]
+    assert isinstance(terminal, RunSucceededEvent)
+    assert terminal.data.usage is not None
+    assert terminal.data.usage.prompt_unit_price == Decimal("5")
+    assert terminal.data.usage.prompt_price == Decimal("0.000050")
+    assert terminal.data.usage.completion_unit_price == Decimal("30")
+    assert terminal.data.usage.completion_price == Decimal("0.000060")
+    assert terminal.data.usage.total_price == Decimal("0.000110")
+    assert terminal.data.usage.currency == "USD"
+    assert terminal.data.usage.latency == 0.4
+    assert terminal.data.usage.time_to_first_token == 0.1
+    assert terminal.data.usage.time_to_generate == 0.3
+
+
 def test_runner_preserves_explicit_json_null_output(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
 
     class FakeAgent:
         async def run(self, *_args: object, **_kwargs: object) -> FakeAgentRunResult:
-            return FakeAgentRunResult(None, [])
+            return FakeAgentRunResult(None)
 
     monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
     monkeypatch.setattr("dify_agent.runtime.runner.create_agent", lambda *_args, **_kwargs: FakeAgent())
@@ -473,9 +673,346 @@ def test_runner_preserves_explicit_json_null_output(monkeypatch: pytest.MonkeyPa
     assert sink.statuses["run-null-output"] == "succeeded"
 
 
+def test_runner_passes_explicit_step_limit_to_agent(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
+
+    class FakeAgent:
+        async def run(self, *_args: object, **kwargs: object) -> FakeAgentRunResult:
+            usage_limits = cast(UsageLimits, kwargs["usage_limits"])
+            assert usage_limits.request_limit == 500
+            return FakeAgentRunResult("done")
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", lambda *_args, **_kwargs: FakeAgent())
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            await AgentRunRunner(
+                sink=sink,
+                request=_request(),
+                run_id="run-explicit-step-limit",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+            ).run()
+
+    asyncio.run(scenario())
+
+    assert sink.statuses["run-explicit-step-limit"] == "succeeded"
+
+
+def test_runner_passes_context_compaction(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
+
+    class FakeAgent:
+        async def run(self, *_args: object, **kwargs: object) -> FakeAgentRunResult:
+            capabilities = cast(list[object], kwargs["capabilities"])
+            assert len(capabilities) == 1
+            capability = capabilities[0]
+            assert isinstance(capability, TieredCompaction)
+            assert capability.target_tokens == 7_000
+            return FakeAgentRunResult("done")
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", lambda *_args, **_kwargs: FakeAgent())
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            await AgentRunRunner(
+                sink=sink,
+                request=_request(
+                    model_settings={"max_tokens": 3_000},
+                    context_window_tokens=10_000,
+                ),
+                run_id="run-compaction",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+            ).run()
+
+    asyncio.run(scenario())
+
+    assert sink.statuses["run-compaction"] == "succeeded"
+
+
+def test_runner_rejects_compaction_budget_before_model_resolution_or_invocation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    model_resolution_called = False
+    agent_creation_called = False
+    model_invocation_called = False
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
+        nonlocal model_resolution_called
+        model_resolution_called = True
+        return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
+
+    class FakeAgent:
+        async def run(self, *_args: object, **_kwargs: object) -> FakeAgentRunResult:
+            nonlocal model_invocation_called
+            model_invocation_called = True
+            return FakeAgentRunResult("unused")
+
+    def fake_create_agent(*_args: object, **_kwargs: object) -> FakeAgent:
+        nonlocal agent_creation_called
+        agent_creation_called = True
+        return FakeAgent()
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", fake_create_agent)
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(
+                AgentRunValidationError,
+                match="Model max_tokens must leave a positive input context budget",
+            ):
+                await AgentRunRunner(
+                    sink=sink,
+                    request=_request(
+                        model_settings={"max_tokens": 1_000},
+                        context_window_tokens=1_000,
+                    ),
+                    run_id="run-invalid-compaction-budget",
+                    plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
+                ).run()
+
+    asyncio.run(scenario())
+
+    assert model_resolution_called is False
+    assert agent_creation_called is False
+    assert model_invocation_called is False
+    assert [event.type for event in sink.events["run-invalid-compaction-budget"]] == ["run_started", "run_failed"]
+    assert sink.statuses["run-invalid-compaction-budget"] == "failed"
+
+
+def test_runner_timeout_excludes_tool_preparation_and_runtime_cleanup(monkeypatch: pytest.MonkeyPatch) -> None:
+    shell_client = FakeRunnerShellctlClient()
+    tools_prepared = False
+
+    class SlowLifecycleBackend(FakeRunnerExecutionBindingBackend):
+        acquired: bool = False
+        released: bool = False
+
+        async def acquire(self, binding_ref: str) -> RuntimeLease:
+            await asyncio.sleep(0.01)
+            lease = await super().acquire(binding_ref)
+            self.acquired = True
+            return lease
+
+        async def release(self, lease: RuntimeLease) -> None:
+            await asyncio.sleep(0.01)
+            await super().release(lease)
+            self.released = True
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
+        assert http_client.is_closed is False
+        assert agent_run_id == "run-lifecycle-outside-timeout"
+        return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
+
+    class ImmediateAgent:
+        async def run(self, *_args: object, **_kwargs: object) -> FakeAgentRunResult:
+            return FakeAgentRunResult("done")
+
+    async def slow_resolve_run_tools(
+        _run: object,
+        *,
+        plugin_daemon_http_client: httpx.AsyncClient,
+        dify_api_http_client: httpx.AsyncClient,
+    ) -> list[Tool[object]]:
+        nonlocal tools_prepared
+        assert plugin_daemon_http_client.is_closed is False
+        assert dify_api_http_client.is_closed is False
+        await asyncio.sleep(0.01)
+        tools_prepared = True
+        return []
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", lambda *_args, **_kwargs: ImmediateAgent())
+    monkeypatch.setattr("dify_agent.runtime.runner._resolve_run_tools", slow_resolve_run_tools)
+    backend = SlowLifecycleBackend(shell_client)
+    runtime_backend_profile = RuntimeBackendProfile(
+        home_snapshots=cast(HomeSnapshotBackend, object()),
+        execution_bindings=backend,
+    )
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            await AgentRunRunner(
+                sink=sink,
+                request=_request_with_shell(),
+                run_id="run-lifecycle-outside-timeout",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                layer_providers=create_default_layer_providers(runtime_backend_profile=runtime_backend_profile),
+                run_timeout_seconds=0.001,
+            ).run()
+
+    asyncio.run(scenario())
+
+    assert sink.statuses["run-lifecycle-outside-timeout"] == "succeeded"
+    assert tools_prepared is True
+    assert backend.acquired is True
+    assert backend.released is True
+    assert shell_client.closed is True
+
+
+def test_runner_timeout_cancels_agent_and_releases_runtime_lease(monkeypatch: pytest.MonkeyPatch) -> None:
+    agent_cancelled = False
+    shell_client = FakeRunnerShellctlClient()
+
+    class FakeUsageModel(TestModel):
+        @property
+        def accumulated_usage(self) -> LLMUsage:
+            return LLMUsage.from_metadata(
+                {
+                    "prompt_tokens": 13,
+                    "completion_tokens": 8,
+                    "total_tokens": 21,
+                    "total_price": "0.000210",
+                    "currency": "USD",
+                }
+            )
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
+        assert http_client.is_closed is False
+        assert agent_run_id == "run-timeout"
+        return FakeUsageModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
+
+    class FakeAgent:
+        async def run(self, *_args: object, **_kwargs: object) -> None:
+            nonlocal agent_cancelled
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                agent_cancelled = True
+                raise
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", lambda *_args, **_kwargs: FakeAgent())
+    runtime_backend_profile = RuntimeBackendProfile(
+        home_snapshots=cast(HomeSnapshotBackend, object()),
+        execution_bindings=FakeRunnerExecutionBindingBackend(shell_client),
+    )
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(UsageLimitExceeded, match="0.01 seconds"):
+                await AgentRunRunner(
+                    sink=sink,
+                    request=_request_with_shell(),
+                    run_id="run-timeout",
+                    plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
+                    layer_providers=create_default_layer_providers(runtime_backend_profile=runtime_backend_profile),
+                    run_timeout_seconds=0.01,
+                ).run()
+
+    asyncio.run(scenario())
+
+    terminal = sink.events["run-timeout"][-1]
+    assert isinstance(terminal, RunFailedEvent)
+    assert terminal.data.error_type is RunFailureType.AGENT_RUN_LIMIT_EXCEEDED
+    assert terminal.data.usage is not None
+    assert terminal.data.usage.prompt_tokens == 13
+    assert terminal.data.usage.completion_tokens == 8
+    assert terminal.data.usage.total_tokens == 21
+    assert terminal.data.usage.total_price == Decimal("0.000210")
+    assert sink.statuses["run-timeout"] == "failed"
+    assert agent_cancelled is True
+    assert shell_client.closed is True
+
+
+def test_runner_does_not_classify_nested_timeout_as_agent_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
+        assert http_client.is_closed is False
+        assert agent_run_id == "run-provider-timeout"
+        return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
+
+    class FakeAgent:
+        async def run(self, *_args: object, **_kwargs: object) -> FakeAgentRunResult:
+            raise TimeoutError("provider timed out")
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", lambda *_args, **_kwargs: FakeAgent())
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(TimeoutError, match="provider timed out"):
+                await AgentRunRunner(
+                    sink=sink,
+                    request=_request(),
+                    run_id="run-provider-timeout",
+                    plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
+                    run_timeout_seconds=1,
+                ).run()
+
+    asyncio.run(scenario())
+
+    terminal = sink.events["run-provider-timeout"][-1]
+    assert isinstance(terminal, RunFailedEvent)
+    assert terminal.data.error == "provider timed out"
+    assert terminal.data.error_type is None
+    assert sink.statuses["run-provider-timeout"] == "failed"
+
+
+def test_runner_captures_interrupted_history_when_task_is_cancelled(monkeypatch: pytest.MonkeyPatch) -> None:
+    partial_streamed = asyncio.Event()
+    stored_history = [
+        ModelRequest(parts=[UserPromptPart(content="old user")]),
+        ModelResponse(parts=[TextPart(content="old assistant")]),
+    ]
+
+    async def stream_response(_messages: list[ModelMessage], _info: object) -> AsyncIterator[str]:
+        yield "partial"
+        _ = partial_streamed.set()
+        await asyncio.Event().wait()
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
+        return FunctionModel(stream_function=stream_response)
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    request = _request("current user", include_history=True)
+    request.session_snapshot = _history_session_snapshot(stored_history)
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> AgentRunRunner:
+        async with httpx.AsyncClient() as client:
+            runner = AgentRunRunner(
+                sink=sink,
+                request=request,
+                run_id="run-cancel-history",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+            )
+            task = asyncio.create_task(runner.run())
+            await asyncio.wait_for(partial_streamed.wait(), timeout=1)
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+            return runner
+
+    runner = asyncio.run(scenario())
+
+    assert runner.terminal_session_snapshot is not None
+    assert all(layer.lifecycle_state is LifecycleState.SUSPENDED for layer in runner.terminal_session_snapshot.layers)
+    _assert_interrupted_history(runner.terminal_session_snapshot, stored_history)
+
+
 def test_runner_emits_deferred_tool_call_and_persists_pending_history(monkeypatch: pytest.MonkeyPatch) -> None:
     captured_output_types: list[object] = []
     captured_user_prompts: list[object] = []
+    captured_messages = _install_fake_message_capture(monkeypatch)
     pending_tool_call = ToolCallPart(
         tool_name="ask_human",
         args={
@@ -485,7 +1022,7 @@ def test_runner_emits_deferred_tool_call_and_persists_pending_history(monkeypatc
         tool_call_id="tool-call-1",
     )
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
 
@@ -493,13 +1030,12 @@ def test_runner_emits_deferred_tool_call_and_persists_pending_history(monkeypatc
         async def run(self, user_prompt: object, **kwargs: object) -> FakeAgentRunResult:
             captured_user_prompts.append(user_prompt)
             assert kwargs["deferred_tool_results"] is None
-            return FakeAgentRunResult(
-                DeferredToolRequests(calls=[pending_tool_call]),
-                [
-                    ModelRequest(parts=[UserPromptPart(content="current user")]),
-                    ModelResponse(parts=[pending_tool_call]),
-                ],
-            )
+            messages: list[ModelMessage] = [
+                ModelRequest(parts=[UserPromptPart(content="current user")]),
+                ModelResponse(parts=[pending_tool_call]),
+            ]
+            captured_messages.extend(messages)
+            return FakeAgentRunResult(DeferredToolRequests(calls=[pending_tool_call]))
 
     def fake_create_agent(model: object, *, tools: list[Tool[object]], output_type: object) -> FakeAgent:
         del model, tools
@@ -556,13 +1092,14 @@ def test_runner_emits_deferred_tool_call_and_persists_pending_history(monkeypatc
 def test_runner_resumes_with_deferred_tool_results_and_no_user_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
     seen_user_prompts: list[object] = []
     seen_deferred_results: list[object] = []
+    captured_messages = _install_fake_message_capture(monkeypatch)
     pending_tool_call = ToolCallPart(
         tool_name="ask_human",
         args={"question": "Need approval"},
         tool_call_id="tool-call-1",
     )
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
 
@@ -571,33 +1108,33 @@ def test_runner_resumes_with_deferred_tool_results_and_no_user_prompt(monkeypatc
             seen_user_prompts.append(user_prompt)
             seen_deferred_results.append(kwargs.get("deferred_tool_results"))
             if kwargs.get("deferred_tool_results") is None:
-                return FakeAgentRunResult(
-                    DeferredToolRequests(calls=[pending_tool_call]),
-                    [
-                        ModelRequest(parts=[UserPromptPart(content="current user")]),
-                        ModelResponse(parts=[pending_tool_call]),
-                    ],
-                )
+                messages: list[ModelMessage] = [
+                    ModelRequest(parts=[UserPromptPart(content="current user")]),
+                    ModelResponse(parts=[pending_tool_call]),
+                ]
+                captured_messages.extend(messages)
+                return FakeAgentRunResult(DeferredToolRequests(calls=[pending_tool_call]))
 
             deferred_tool_results = cast(DeferredToolResults, kwargs["deferred_tool_results"])
             assert deferred_tool_results is not None
             submitted_result = cast(dict[str, object], deferred_tool_results.calls["tool-call-1"])
             assert submitted_result["status"] == "submitted"
-            return FakeAgentRunResult(
-                "done after human",
-                [
-                    ModelRequest(
-                        parts=[
-                            ToolReturnPart(
-                                tool_name="ask_human",
-                                content={"status": "submitted", "values": {"comment": "Ship it"}},
-                                tool_call_id="tool-call-1",
-                            )
-                        ]
-                    ),
-                    ModelResponse(parts=[TextPart(content="done after human")]),
-                ],
-            )
+            message_history = cast(list[ModelMessage], kwargs["message_history"])
+            messages = [
+                *message_history,
+                ModelRequest(
+                    parts=[
+                        ToolReturnPart(
+                            tool_name="ask_human",
+                            content={"status": "submitted", "values": {"comment": "Ship it"}},
+                            tool_call_id="tool-call-1",
+                        )
+                    ]
+                ),
+                ModelResponse(parts=[TextPart(content="done after human")]),
+            ]
+            captured_messages.extend(messages)
+            return FakeAgentRunResult("done after human")
 
     def fake_create_agent(model: object, *, tools: list[Tool[object]], output_type: object) -> FakeAgent:
         del model, tools, output_type
@@ -656,6 +1193,7 @@ def test_runner_resumes_with_deferred_tool_results_and_no_user_prompt(monkeypatc
 
 def test_runner_can_emit_second_deferred_tool_call_after_resume(monkeypatch: pytest.MonkeyPatch) -> None:
     seen_user_prompts: list[object] = []
+    captured_messages = _install_fake_message_capture(monkeypatch)
     first_pending_tool_call = ToolCallPart(
         tool_name="ask_human",
         args={"question": "Need deployment owner"},
@@ -667,7 +1205,7 @@ def test_runner_can_emit_second_deferred_tool_call_after_resume(monkeypatch: pyt
         tool_call_id="tool-call-2",
     )
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
 
@@ -676,29 +1214,29 @@ def test_runner_can_emit_second_deferred_tool_call_after_resume(monkeypatch: pyt
             seen_user_prompts.append(user_prompt)
             deferred_tool_results = kwargs.get("deferred_tool_results")
             if deferred_tool_results is None:
-                return FakeAgentRunResult(
-                    DeferredToolRequests(calls=[first_pending_tool_call]),
-                    [
-                        ModelRequest(parts=[UserPromptPart(content="current user")]),
-                        ModelResponse(parts=[first_pending_tool_call]),
-                    ],
-                )
+                messages: list[ModelMessage] = [
+                    ModelRequest(parts=[UserPromptPart(content="current user")]),
+                    ModelResponse(parts=[first_pending_tool_call]),
+                ]
+                captured_messages.extend(messages)
+                return FakeAgentRunResult(DeferredToolRequests(calls=[first_pending_tool_call]))
 
-            return FakeAgentRunResult(
-                DeferredToolRequests(calls=[second_pending_tool_call]),
-                [
-                    ModelRequest(
-                        parts=[
-                            ToolReturnPart(
-                                tool_name="ask_human",
-                                content={"status": "submitted", "values": {"owner": "ops"}},
-                                tool_call_id="tool-call-1",
-                            )
-                        ]
-                    ),
-                    ModelResponse(parts=[second_pending_tool_call]),
-                ],
-            )
+            message_history = cast(list[ModelMessage], kwargs["message_history"])
+            messages = [
+                *message_history,
+                ModelRequest(
+                    parts=[
+                        ToolReturnPart(
+                            tool_name="ask_human",
+                            content={"status": "submitted", "values": {"owner": "ops"}},
+                            tool_call_id="tool-call-1",
+                        )
+                    ]
+                ),
+                ModelResponse(parts=[second_pending_tool_call]),
+            ]
+            captured_messages.extend(messages)
+            return FakeAgentRunResult(DeferredToolRequests(calls=[second_pending_tool_call]))
 
     def fake_create_agent(model: object, *, tools: list[Tool[object]], output_type: object) -> FakeAgent:
         del model, tools, output_type
@@ -766,7 +1304,7 @@ def test_runner_can_emit_second_deferred_tool_call_after_resume(monkeypatch: pyt
 
 
 def test_runner_rejects_deferred_tool_call_without_history_layer(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
 
@@ -777,8 +1315,7 @@ def test_runner_rejects_deferred_tool_call_without_history_layer(monkeypatch: py
                     calls=[
                         ToolCallPart(tool_name="ask_human", args={"question": "Need owner"}, tool_call_id="tool-call-1")
                     ]
-                ),
-                [],
+                )
             )
 
     monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
@@ -810,7 +1347,7 @@ def test_runner_rejects_resume_with_deferred_tool_results_without_history_layer(
 ) -> None:
     agent_run_called = False
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
 
@@ -818,7 +1355,7 @@ def test_runner_rejects_resume_with_deferred_tool_results_without_history_layer(
         async def run(self, *_args: object, **_kwargs: object) -> FakeAgentRunResult:
             nonlocal agent_run_called
             agent_run_called = True
-            return FakeAgentRunResult("unexpected", [])
+            return FakeAgentRunResult("unexpected")
 
     monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
     monkeypatch.setattr("dify_agent.runtime.runner.create_agent", lambda *args, **kwargs: FakeAgent())
@@ -857,7 +1394,7 @@ def test_runner_rejects_resume_with_deferred_tool_results_without_history_layer(
 
 
 def test_runner_rejects_multiple_deferred_tool_calls(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
 
@@ -869,8 +1406,7 @@ def test_runner_rejects_multiple_deferred_tool_calls(monkeypatch: pytest.MonkeyP
                         ToolCallPart(tool_name="ask_human", args={"question": "One"}, tool_call_id="tool-call-1"),
                         ToolCallPart(tool_name="ask_human", args={"question": "Two"}, tool_call_id="tool-call-2"),
                     ]
-                ),
-                [],
+                )
             )
 
     monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
@@ -895,7 +1431,7 @@ def test_runner_rejects_multiple_deferred_tool_calls(monkeypatch: pytest.MonkeyP
 
 
 def test_runner_rejects_deferred_approval_requests(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
 
@@ -908,8 +1444,7 @@ def test_runner_rejects_deferred_approval_requests(monkeypatch: pytest.MonkeyPat
                             tool_name="ask_human", args={"question": "Need approval"}, tool_call_id="tool-call-1"
                         )
                     ]
-                ),
-                [],
+                )
             )
 
     monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
@@ -939,7 +1474,7 @@ def test_runner_passes_dynamic_dify_plugin_tools_to_agent(monkeypatch: pytest.Mo
     async def plugin_tool() -> str:
         return "tool"
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
 
@@ -956,9 +1491,6 @@ def test_runner_passes_dynamic_dify_plugin_tools_to_agent(monkeypatch: pytest.Mo
 
     class FakeResult:
         output: str = "done"
-
-        def new_messages(self) -> list[ModelMessage]:
-            return []
 
     class FakeAgent:
         async def run(self, *_args: object, **_kwargs: object) -> FakeResult:
@@ -999,7 +1531,6 @@ def test_runner_passes_dynamic_dify_plugin_tools_to_agent(monkeypatch: pytest.Mo
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -1048,7 +1579,7 @@ def test_runner_passes_dynamic_dify_knowledge_tools_to_agent(monkeypatch: pytest
     async def knowledge_tool() -> str:
         return "knowledge"
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
 
@@ -1059,9 +1590,6 @@ def test_runner_passes_dynamic_dify_knowledge_tools_to_agent(monkeypatch: pytest
 
     class FakeResult:
         output: str = "done"
-
-        def new_messages(self) -> list[ModelMessage]:
-            return []
 
     class FakeAgent:
         async def run(self, *_args: object, **_kwargs: object) -> FakeResult:
@@ -1104,7 +1632,6 @@ def test_runner_passes_dynamic_dify_knowledge_tools_to_agent(monkeypatch: pytest
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -1154,7 +1681,7 @@ def test_runner_passes_dynamic_dify_core_tools_to_agent(monkeypatch: pytest.Monk
     async def core_tool() -> str:
         return "core"
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
 
@@ -1166,9 +1693,6 @@ def test_runner_passes_dynamic_dify_core_tools_to_agent(monkeypatch: pytest.Monk
 
     class FakeResult:
         output: str = "done"
-
-        def new_messages(self) -> list[ModelMessage]:
-            return []
 
     class FakeAgent:
         async def run(self, *_args: object, **_kwargs: object) -> FakeResult:
@@ -1211,7 +1735,6 @@ def test_runner_passes_dynamic_dify_core_tools_to_agent(monkeypatch: pytest.Monk
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -1261,7 +1784,7 @@ def test_runner_rejects_duplicate_tool_names_across_dynamic_tool_layers(
     async def duplicate_tool() -> str:
         return "tool"
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
 
@@ -1311,7 +1834,6 @@ def test_runner_rejects_duplicate_tool_names_across_dynamic_tool_layers(
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -1385,7 +1907,7 @@ def test_runner_rejects_duplicate_tool_names_between_static_and_dynamic_tools(
     async def dynamic_duplicate_tool() -> str:
         return "tool"
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
 
@@ -1442,7 +1964,6 @@ def test_runner_rejects_duplicate_tool_names_between_static_and_dynamic_tools(
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -1495,7 +2016,7 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
     create_agent_called = False
     shell_client = FakeRunnerShellctlClient()
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
 
@@ -1523,22 +2044,11 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
     monkeypatch.setattr(DifyPluginToolsLayer, "get_tools", fake_get_tools)
     monkeypatch.setattr("dify_agent.runtime.runner.create_agent", fake_create_agent)
 
-    shell_provider = LayerProvider.from_factory(
-        layer_type=DifyShellLayer,
-        create=lambda config: DifyShellLayer.from_config_with_settings(
-            DifyShellLayerConfig.model_validate(config),
-            shell_provider=ShellctlProvider(
-                entrypoint="http://shellctl",
-                token="",
-                client_factory=lambda: shell_client,
-            ),
-        ),
+    runtime_backend_profile = RuntimeBackendProfile(
+        home_snapshots=cast(HomeSnapshotBackend, object()),
+        execution_bindings=FakeRunnerExecutionBindingBackend(shell_client),
     )
-    layer_providers = tuple(
-        provider
-        for provider in create_default_layer_providers(shellctl_entrypoint="http://unused")
-        if provider.type_id != DIFY_SHELL_LAYER_TYPE_ID
-    ) + (shell_provider,)
+    layer_providers = create_default_layer_providers(runtime_backend_profile=runtime_backend_profile)
 
     request = CreateRunRequest(
         composition=RunComposition(
@@ -1554,15 +2064,21 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
                     config=DifyExecutionContextLayerConfig(
                         tenant_id="tenant-1",
                         agent_id="agent-1",
+                        agent_config_version_id="config-1",
                         user_from="account",
                         agent_mode="workflow_run",
                         invoke_from="service-api",
                     ),
                 ),
                 RunLayerSpec(
+                    name="runtime",
+                    type=DIFY_RUNTIME_LAYER_TYPE_ID,
+                    config=DifyRuntimeLayerConfig(backend_binding_ref="binding-1"),
+                ),
+                RunLayerSpec(
                     name="shell",
                     type=DIFY_SHELL_LAYER_TYPE_ID,
-                    deps={"execution_context": "execution_context"},
+                    deps={"execution_context": "execution_context", "runtime": "runtime"},
                     config=DifyShellLayerConfig(),
                 ),
                 RunLayerSpec(
@@ -1573,7 +2089,6 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -1616,16 +2131,18 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
     asyncio.run(scenario())
 
     assert create_agent_called is False
-    assert shell_client.delete_calls == [("mkdir-job", True, None)]
+    assert shell_client.delete_calls == []
     assert shell_client.closed is True
     assert [event.type for event in sink.events["run-shell-duplicate-tools"]] == ["run_started", "run_failed"]
     assert sink.statuses["run-shell-duplicate-tools"] == "failed"
 
 
-def test_runner_passes_temporary_system_prompt_prefix_without_history_layer(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_runner_passes_system_prompt_as_run_instructions_without_history_layer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     model = RecordingTestModel(custom_output_text="done")
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return model  # pyright: ignore[reportReturnType]
 
@@ -1644,11 +2161,11 @@ def test_runner_passes_temporary_system_prompt_prefix_without_history_layer(monk
 
     asyncio.run(scenario())
 
+    assert model.seen_instructions[0] == ["system"]
     request_parts = _flatten_message_parts(model.seen_requests[0])
-    assert isinstance(request_parts[0], SystemPromptPart)
-    assert request_parts[0].content == "system"
-    assert isinstance(request_parts[1], UserPromptPart)
-    assert request_parts[1].content == "current user"
+    assert len(request_parts) == 1
+    assert isinstance(request_parts[0], UserPromptPart)
+    assert request_parts[0].content == "current user"
     terminal = sink.events["run-no-history"][-1]
     assert isinstance(terminal, RunSucceededEvent)
     assert [layer.name for layer in terminal.data.session_snapshot.layers] == [
@@ -1658,7 +2175,7 @@ def test_runner_passes_temporary_system_prompt_prefix_without_history_layer(monk
     ]
 
 
-def test_runner_prepends_current_system_prompt_to_stored_history_and_appends_only_new_messages(
+def test_runner_passes_stored_history_with_current_instructions_and_replaces_full_history(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     model = RecordingTestModel(custom_output_text="done")
@@ -1667,7 +2184,7 @@ def test_runner_prepends_current_system_prompt_to_stored_history_and_appends_onl
         ModelResponse(parts=[TextPart(content="old assistant")]),
     ]
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return model  # pyright: ignore[reportReturnType]
 
@@ -1688,15 +2205,14 @@ def test_runner_prepends_current_system_prompt_to_stored_history_and_appends_onl
 
     asyncio.run(scenario())
 
+    assert model.seen_instructions[0] == ["system"]
     request_parts = _flatten_message_parts(model.seen_requests[0])
-    assert isinstance(request_parts[0], SystemPromptPart)
-    assert request_parts[0].content == "system"
-    assert isinstance(request_parts[1], UserPromptPart)
-    assert request_parts[1].content == "old user"
-    assert isinstance(request_parts[2], TextPart)
-    assert request_parts[2].content == "old assistant"
-    assert isinstance(request_parts[3], UserPromptPart)
-    assert request_parts[3].content == "current user"
+    assert isinstance(request_parts[0], UserPromptPart)
+    assert request_parts[0].content == "old user"
+    assert isinstance(request_parts[1], TextPart)
+    assert request_parts[1].content == "old assistant"
+    assert isinstance(request_parts[2], UserPromptPart)
+    assert request_parts[2].content == "current user"
 
     terminal = sink.events["run-history"][-1]
     assert isinstance(terminal, RunSucceededEvent)
@@ -1711,14 +2227,15 @@ def test_runner_prepends_current_system_prompt_to_stored_history_and_appends_onl
     assert isinstance(saved_history[3].parts[0], TextPart)
     assert saved_history[3].parts[0].content == "done"
     assert all(not any(isinstance(part, SystemPromptPart) for part in message.parts) for message in saved_history)
+    assert all(not isinstance(message, ModelRequest) or message.instructions is None for message in saved_history)
 
 
-def test_runner_with_empty_history_layer_still_sends_system_prompt_and_saves_only_new_messages(
+def test_runner_with_empty_history_layer_uses_instructions_and_saves_full_history(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     model = RecordingTestModel(custom_output_text="done")
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return model  # pyright: ignore[reportReturnType]
 
@@ -1739,11 +2256,11 @@ def test_runner_with_empty_history_layer_still_sends_system_prompt_and_saves_onl
 
     asyncio.run(scenario())
 
+    assert model.seen_instructions[0] == ["system"]
     request_parts = _flatten_message_parts(model.seen_requests[0])
-    assert isinstance(request_parts[0], SystemPromptPart)
-    assert request_parts[0].content == "system"
-    assert isinstance(request_parts[1], UserPromptPart)
-    assert request_parts[1].content == "current user"
+    assert len(request_parts) == 1
+    assert isinstance(request_parts[0], UserPromptPart)
+    assert request_parts[0].content == "current user"
 
     terminal = sink.events["run-empty-history"][-1]
     assert isinstance(terminal, RunSucceededEvent)
@@ -1757,20 +2274,24 @@ def test_runner_with_empty_history_layer_still_sends_system_prompt_and_saves_onl
     assert isinstance(saved_history[1].parts[0], TextPart)
     assert saved_history[1].parts[0].content == "done"
     assert all(not any(isinstance(part, SystemPromptPart) for part in message.parts) for message in saved_history)
+    assert all(not isinstance(message, ModelRequest) or message.instructions is None for message in saved_history)
 
 
-def test_runner_failure_with_history_layer_emits_failed_terminal_event_without_success_snapshot(
+def test_runner_failure_with_history_layer_captures_interrupted_history(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    model = RecordingTestModel(failure=RuntimeError("boom"))
     stored_history = [
         ModelRequest(parts=[UserPromptPart(content="old user")]),
         ModelResponse(parts=[TextPart(content="old assistant")]),
     ]
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    async def stream_response(_messages: list[ModelMessage], _info: object) -> AsyncIterator[str]:
+        yield "partial"
+        raise RuntimeError("boom")
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
-        return model  # pyright: ignore[reportReturnType]
+        return FunctionModel(stream_function=stream_response)
 
     monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
     request = _request("current user", include_history=True)
@@ -1790,14 +2311,91 @@ def test_runner_failure_with_history_layer_emits_failed_terminal_event_without_s
 
     asyncio.run(scenario())
 
-    assert [event.type for event in sink.events["run-history-failure"]] == ["run_started", "run_failed"]
+    event_types = [event.type for event in sink.events["run-history-failure"]]
+    assert event_types[0] == "run_started"
     assert sink.statuses["run-history-failure"] == "failed"
+    terminal = sink.events["run-history-failure"][-1]
+    assert isinstance(terminal, RunFailedEvent)
+    assert terminal.data.session_snapshot is not None
+    _assert_interrupted_history(terminal.data.session_snapshot, stored_history)
     assert request.session_snapshot is not None
     assert _history_messages_from_snapshot(request.session_snapshot) == stored_history
 
 
+def test_runner_preserves_history_when_agent_fails_before_capture_is_bound(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stored_history = [
+        ModelRequest(parts=[UserPromptPart(content="old user")]),
+        ModelResponse(parts=[TextPart(content="old assistant")]),
+    ]
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
+
+    class FakeAgent:
+        async def run(self, *_args: object, **_kwargs: object) -> None:
+            raise RuntimeError("boom before capture")
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", lambda *_args, **_kwargs: FakeAgent())
+    request = _request("current user", include_history=True)
+    request.session_snapshot = _history_session_snapshot(stored_history)
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(RuntimeError, match="boom before capture"):
+                await AgentRunRunner(
+                    sink=sink,
+                    request=request,
+                    run_id="run-history-empty-capture",
+                    plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
+                ).run()
+
+    asyncio.run(scenario())
+
+    terminal = sink.events["run-history-empty-capture"][-1]
+    assert isinstance(terminal, RunFailedEvent)
+    assert terminal.data.session_snapshot is not None
+    assert _history_messages_from_snapshot(terminal.data.session_snapshot) == stored_history
+
+
+def test_runner_persists_usage_limit_failure_type_in_event_and_status(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            runner = AgentRunRunner(
+                sink=sink,
+                request=_request(),
+                run_id="run-limit",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+            )
+
+            async def exceed_limit() -> RunSuccessOutcome:
+                raise UsageLimitExceeded("The next request would exceed the request_limit of 500")
+
+            monkeypatch.setattr(runner, "_run_agent", exceed_limit)
+            with pytest.raises(UsageLimitExceeded):
+                await runner.run()
+
+    asyncio.run(scenario())
+
+    terminal = sink.events["run-limit"][-1]
+    assert isinstance(terminal, RunFailedEvent)
+    assert terminal.data.error_type is RunFailureType.AGENT_RUN_LIMIT_EXCEEDED
+    assert sink.statuses["run-limit"] == "failed"
+    assert sink.error_types["run-limit"] is RunFailureType.AGENT_RUN_LIMIT_EXCEEDED
+
+
 def test_runner_applies_on_exit_overrides_to_success_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
 
@@ -1831,110 +2429,25 @@ def test_runner_applies_on_exit_overrides_to_success_snapshot(monkeypatch: pytes
     }
 
 
-def test_runner_lifecycle_only_cleanup_succeeds_without_model_and_emits_no_pydantic_ai_events() -> None:
-    request = _lifecycle_only_request()
-    sink = InMemoryRunEventSink()
-
-    async def scenario() -> None:
-        async with httpx.AsyncClient() as client:
-            await AgentRunRunner(
-                sink=sink,
-                request=request,
-                run_id="run-lifecycle-only",
-                plugin_daemon_http_client=client,
-                dify_api_http_client=client,
-            ).run()
-
-    asyncio.run(scenario())
-
-    events = sink.events["run-lifecycle-only"]
-    assert [event.type for event in events] == ["run_started", "run_succeeded"]
-    terminal = events[-1]
-    assert isinstance(terminal, RunSucceededEvent)
-    assert terminal.data.output is None
-    assert terminal.data.usage is None
-    assert {layer.name: layer.lifecycle_state for layer in terminal.data.session_snapshot.layers} == {
-        "prompt": LifecycleState.CLOSED,
-        "execution_context": LifecycleState.CLOSED,
-    }
-
-
-def test_runner_lifecycle_only_requires_session_snapshot() -> None:
+def test_runner_requires_model_layer() -> None:
     request = _request(llm_layer_name="not-llm")
     sink = InMemoryRunEventSink()
 
     async def scenario() -> None:
         async with httpx.AsyncClient() as client:
-            with pytest.raises(AgentRunValidationError, match="session_snapshot"):
+            with pytest.raises(AgentRunValidationError, match="Missing required"):
                 await AgentRunRunner(
                     sink=sink,
                     request=request,
-                    run_id="run-lifecycle-only-missing-snapshot",
+                    run_id="run-missing-model",
                     plugin_daemon_http_client=client,
                     dify_api_http_client=client,
                 ).run()
 
     asyncio.run(scenario())
 
-    assert [event.type for event in sink.events["run-lifecycle-only-missing-snapshot"]] == ["run_started", "run_failed"]
-    assert sink.statuses["run-lifecycle-only-missing-snapshot"] == "failed"
-
-
-def test_runner_lifecycle_only_rejects_deferred_tool_results() -> None:
-    request = _lifecycle_only_request(
-        deferred_tool_results=DeferredToolResultsPayload.model_validate({"calls": {"tool-call-1": {"ok": True}}})
-    )
-    sink = InMemoryRunEventSink()
-
-    async def scenario() -> None:
-        async with httpx.AsyncClient() as client:
-            with pytest.raises(AgentRunValidationError, match="Deferred tool results"):
-                await AgentRunRunner(
-                    sink=sink,
-                    request=request,
-                    run_id="run-lifecycle-only-deferred-results",
-                    plugin_daemon_http_client=client,
-                    dify_api_http_client=client,
-                ).run()
-
-    asyncio.run(scenario())
-
-    assert [event.type for event in sink.events["run-lifecycle-only-deferred-results"]] == [
-        "run_started",
-        "run_failed",
-    ]
-    assert sink.statuses["run-lifecycle-only-deferred-results"] == "failed"
-
-
-def test_runner_lifecycle_only_exit_hook_failure_emits_run_failed_not_validation_error(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    request = _lifecycle_only_request()
-    sink = InMemoryRunEventSink()
-
-    def _explode(_run: object, _signals: LayerExitSignals) -> None:
-        raise RuntimeError("delete hook failed")
-
-    monkeypatch.setattr("dify_agent.runtime.runner.apply_layer_exit_signals", _explode)
-
-    async def scenario() -> None:
-        async with httpx.AsyncClient() as client:
-            with pytest.raises(RuntimeError, match="delete hook failed"):
-                await AgentRunRunner(
-                    sink=sink,
-                    request=request,
-                    run_id="run-lifecycle-only-exit-hook-failure",
-                    plugin_daemon_http_client=client,
-                    dify_api_http_client=client,
-                ).run()
-
-    asyncio.run(scenario())
-
-    assert [event.type for event in sink.events["run-lifecycle-only-exit-hook-failure"]] == [
-        "run_started",
-        "run_failed",
-    ]
-    assert sink.statuses["run-lifecycle-only-exit-hook-failure"] == "failed"
+    assert [event.type for event in sink.events["run-missing-model"]] == ["run_started", "run_failed"]
+    assert sink.statuses["run-missing-model"] == "failed"
 
 
 def test_runner_passes_output_layer_spec_to_agent_and_serializes_structured_result(
@@ -1948,7 +2461,7 @@ def test_runner_passes_output_layer_spec_to_agent_and_serializes_structured_resu
         }
     )
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return model  # pyright: ignore[reportReturnType]
 
@@ -2043,7 +2556,7 @@ def test_runner_retries_invalid_structured_output_and_eventually_succeeds(monkey
         ]
     )
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return model  # pyright: ignore[reportReturnType]
 
@@ -2096,7 +2609,7 @@ def test_runner_fails_when_invalid_structured_output_exhausts_retries(monkeypatc
         }
     )
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return model  # pyright: ignore[reportReturnType]
 
@@ -2141,7 +2654,7 @@ def test_runner_fails_when_invalid_structured_output_exhausts_retries(monkeypatc
 def test_runner_rejects_invalid_output_layer_before_model_resolution(monkeypatch: pytest.MonkeyPatch) -> None:
     model_requested = False
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         del http_client
         nonlocal model_requested
         model_requested = True
@@ -2201,7 +2714,6 @@ def test_runner_rejects_misnamed_output_layer_before_model_resolution(monkeypatc
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -2222,7 +2734,7 @@ def test_runner_rejects_misnamed_output_layer_before_model_resolution(monkeypatc
     )
     sink = InMemoryRunEventSink()
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         del http_client
         nonlocal model_requested
         model_requested = True
@@ -2276,7 +2788,6 @@ def test_runner_rejects_multiple_output_layers_before_model_resolution(monkeypat
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -2309,7 +2820,7 @@ def test_runner_rejects_multiple_output_layers_before_model_resolution(monkeypat
     )
     sink = InMemoryRunEventSink()
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         del http_client
         nonlocal model_requested
         model_requested = True
@@ -2340,7 +2851,7 @@ def test_runner_rejects_reserved_output_name_with_wrong_layer_type_before_model_
 ) -> None:
     model_requested = False
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         del http_client
         nonlocal model_requested
         model_requested = True
@@ -2373,7 +2884,6 @@ def test_runner_rejects_reserved_output_name_with_wrong_layer_type_before_model_
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -2625,9 +3135,13 @@ def test_runner_rejects_closed_session_snapshot_as_validation_error() -> None:
 
     assert [event.type for event in sink.events["run-closed-snapshot"]] == ["run_started", "run_failed"]
     assert sink.statuses["run-closed-snapshot"] == "failed"
+    terminal = sink.events["run-closed-snapshot"][-1]
+    assert isinstance(terminal, RunFailedEvent)
+    assert request.session_snapshot is not None
+    assert terminal.data.session_snapshot is None
 
 
-def test_runner_treats_missing_shell_entrypoint_as_validation_error() -> None:
+def test_runner_treats_missing_runtime_dependency_as_validation_error() -> None:
     request = CreateRunRequest(
         composition=RunComposition(
             layers=[
@@ -2655,7 +3169,6 @@ def test_runner_treats_missing_shell_entrypoint_as_validation_error() -> None:
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
             ]
@@ -2665,7 +3178,7 @@ def test_runner_treats_missing_shell_entrypoint_as_validation_error() -> None:
 
     async def scenario() -> None:
         async with httpx.AsyncClient() as client:
-            with pytest.raises(AgentRunValidationError, match="non-null shell provider"):
+            with pytest.raises(AgentRunValidationError, match="Dependency 'runtime' is required"):
                 await AgentRunRunner(
                     sink=sink,
                     request=request,
@@ -2708,7 +3221,6 @@ def test_runner_treats_invalid_shell_snapshot_offsets_as_validation_error() -> N
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
             ]
@@ -2750,7 +3262,7 @@ def test_runner_treats_invalid_shell_snapshot_offsets_as_validation_error() -> N
                     run_id="run-invalid-shell-offset",
                     plugin_daemon_http_client=client,
                     dify_api_http_client=client,
-                    layer_providers=create_default_layer_providers(shellctl_entrypoint="http://shellctl"),
+                    layer_providers=create_default_layer_providers(),
                 ).run()
 
     asyncio.run(scenario())

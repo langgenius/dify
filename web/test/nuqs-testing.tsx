@@ -1,9 +1,9 @@
 import type { UrlUpdateEvent } from 'nuqs/adapters/testing'
 import type { ComponentProps, ReactElement, ReactNode } from 'react'
-import type { Mock } from 'vitest'
-import { render, renderHook } from '@testing-library/react'
+import type { Mock } from 'vite-plus/test'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
+import { render, renderHook } from '@/test/console/render'
 
 type NuqsSearchParams = ComponentProps<typeof NuqsTestingAdapter>['searchParams']
 type NuqsOnUrlUpdate = (event: UrlUpdateEvent) => void

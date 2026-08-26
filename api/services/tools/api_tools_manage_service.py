@@ -2,12 +2,12 @@ import json
 import logging
 from typing import Any, Literal, TypedDict, cast
 
-from httpx import get
 from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
+from core.helper import ssrf_proxy
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
@@ -231,16 +231,16 @@ class ApiToolManageService:
         }
 
         try:
-            response = get(url, headers=headers, timeout=10)
+            response = ssrf_proxy.get(url, headers=headers, timeout=10)
             if response.status_code != 200:
                 raise ValueError(f"Got status code {response.status_code}")
             schema = response.text
 
             # try to parse schema, avoid SSRF attack
             ApiToolManageService.parser_api_schema(schema)
-        except Exception:
+        except Exception as e:
             logger.exception("parse api schema error")
-            raise ValueError("invalid schema, please check the url you provided")
+            raise ValueError("invalid schema, please check the url you provided") from e
 
         return {"schema": schema}
 
@@ -453,8 +453,8 @@ class ApiToolManageService:
 
         try:
             tool_bundles, _ = ApiBasedToolSchemaParser.auto_parse_to_tool_bundle(schema)
-        except Exception:
-            raise ValueError("invalid schema")
+        except Exception as e:
+            raise ValueError("invalid schema") from e
 
         # get tool bundle
         tool_bundle = next(filter(lambda tb: tb.operation_id == tool_name, tool_bundles), None)

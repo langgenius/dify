@@ -13,11 +13,15 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-SCRIPT_PATH = REPO_ROOT / "scripts" / "check_no_new_getattr.py"
+SCRIPTS_DIR = REPO_ROOT / "scripts"
+SCRIPT_PATH = SCRIPTS_DIR / "check_no_new_getattr.py"
+GUARD_HELPER_PATH = SCRIPTS_DIR / "ast_grep_guard.py"
 
 
 def load_guard_module() -> types.ModuleType:
-    spec = importlib.util.spec_from_file_location("check_no_new_getattr_under_test", SCRIPT_PATH)
+    if str(SCRIPTS_DIR) not in sys.path:
+        sys.path.insert(0, str(SCRIPTS_DIR))
+    spec = importlib.util.spec_from_file_location("ast_grep_guard_under_test", GUARD_HELPER_PATH)
     assert spec is not None
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -79,6 +83,42 @@ def assert_has_actionable_violation(stderr: str, path: str) -> None:
 
 def main_branch_rev(repo: Path) -> str:
     return git(repo, "rev-parse", "main")
+
+
+@pytest.mark.parametrize(
+    ("source_line", "rule_id"),
+    [
+        (
+            "value = getattr(module, name)  # guard-ignore: no-new-getattr -- lazy export proxy",
+            "no-new-getattr",
+        ),
+        (
+            "session.rollback()  # guard-ignore: no-new-controller-sqlalchemy -- decorator owns rollback",
+            "no-new-controller-sqlalchemy",
+        ),
+    ],
+)
+def test_has_reasoned_guard_ignore_accepts_custom_rules(source_line: str, rule_id: str) -> None:
+    module = load_guard_module()
+
+    assert module.has_reasoned_guard_ignore(source_line, rule_id)
+
+
+@pytest.mark.parametrize(
+    ("source_line", "rule_id"),
+    [
+        ("value = getattr(module, name)  # noqa: no-new-getattr legacy marker", "no-new-getattr"),
+        ("value = getattr(module, name)  # guard-ignore: no-new-getattr", "no-new-getattr"),
+        (
+            "value = getattr(module, name)  # guard-ignore: another-rule -- wrong rule",
+            "no-new-getattr",
+        ),
+    ],
+)
+def test_has_reasoned_guard_ignore_rejects_invalid_markers(source_line: str, rule_id: str) -> None:
+    module = load_guard_module()
+
+    assert not module.has_reasoned_guard_ignore(source_line, rule_id)
 
 
 def test_resolve_ast_grep_command_prefers_ast_grep(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -772,7 +812,7 @@ def test_modified_hunk_with_increased_getattr_count_fails(tmp_path: Path) -> Non
     assert "net-new getattr" in result.stderr
 
 
-def test_inline_noqa_suppression_with_explanatory_text_skips_added_getattr(tmp_path: Path) -> None:
+def test_inline_guard_ignore_with_explanatory_text_skips_added_getattr(tmp_path: Path) -> None:
     init_repo(tmp_path)
     write_repo_file(
         tmp_path,
@@ -791,20 +831,20 @@ def test_inline_noqa_suppression_with_explanatory_text_skips_added_getattr(tmp_p
         "pkg/existing.py",
         """
         def read_value(obj):
-            return getattr(obj, "dynamic_name", None)  # noqa: no-new-getattr needed for plugin-defined attributes
+            return getattr(obj, "dynamic_name", None)  # guard-ignore: no-new-getattr -- plugin-defined attributes
         """,
     )
     commit_all(tmp_path, "add suppressed getattr")
 
     result = run_script(tmp_path, "--base-rev", base_rev)
 
-    assert "no-new-getattr needed for plugin-defined attributes" in (tmp_path / "pkg/existing.py").read_text(
+    assert "guard-ignore: no-new-getattr -- plugin-defined attributes" in (tmp_path / "pkg/existing.py").read_text(
         encoding="utf-8"
     )
     assert result.returncode == 0, stderr_lines(result)
 
 
-def test_inline_noqa_without_explanatory_text_is_not_sufficient(tmp_path: Path) -> None:
+def test_inline_guard_ignore_without_explanatory_text_is_not_sufficient(tmp_path: Path) -> None:
     init_repo(tmp_path)
     write_repo_file(
         tmp_path,
@@ -823,10 +863,10 @@ def test_inline_noqa_without_explanatory_text_is_not_sufficient(tmp_path: Path) 
         "pkg/existing.py",
         """
         def read_value(obj):
-            return getattr(obj, "dynamic_name", None)  # noqa: no-new-getattr
+            return getattr(obj, "dynamic_name", None)  # guard-ignore: no-new-getattr
         """,
     )
-    commit_all(tmp_path, "add bare noqa getattr")
+    commit_all(tmp_path, "add bare guard ignore getattr")
 
     result = run_script(tmp_path, "--base-rev", base_rev)
 

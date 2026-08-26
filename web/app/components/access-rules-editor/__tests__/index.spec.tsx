@@ -40,25 +40,29 @@ const createUserAccessSetting = (): ResourceUserAccessSetting => ({
     account_name: 'Evan',
     email: 'evan@example.com',
   },
-  roles: [{
-    id: 'role-1',
-    type: 'app',
-    category: 'global_custom',
-    name: 'Maintainer',
-    is_builtin: false,
-    permission_keys: [],
-  }],
-  access_policies: [{
-    id: 'app-policy-id',
-    tenant_id: 'tenant-id',
-    resource_type: 'app',
-    policy_key: 'app-policy-key',
-    name: 'Manage',
-    description: 'Can manage this app',
-    permission_keys: [],
-    is_builtin: false,
-    category: 'global_custom',
-  }],
+  roles: [
+    {
+      id: 'role-1',
+      type: 'app',
+      category: 'global_custom',
+      name: 'Maintainer',
+      is_builtin: false,
+      permission_keys: [],
+    },
+  ],
+  access_policies: [
+    {
+      id: 'app-policy-id',
+      tenant_id: 'tenant-id',
+      resource_type: 'app',
+      policy_key: 'app-policy-key',
+      name: 'Manage',
+      description: 'Can manage this app',
+      permission_keys: [],
+      is_builtin: false,
+      category: 'global_custom',
+    },
+  ],
 })
 
 const createDefaultUserAccessSetting = (): ResourceUserAccessSetting => ({
@@ -66,17 +70,18 @@ const createDefaultUserAccessSetting = (): ResourceUserAccessSetting => ({
   access_policies: [],
 })
 
-const createMember = (overrides: Partial<Member> = {}): Member => ({
-  id: 'account-2',
-  name: 'Mia',
-  email: 'mia@example.com',
-  avatar: '',
-  avatar_url: '',
-  status: 'active',
-  role: 'normal',
-  roles: [],
-  ...overrides,
-} as Member)
+const createMember = (overrides: Partial<Member> = {}): Member =>
+  ({
+    id: 'account-2',
+    name: 'Mia',
+    email: 'mia@example.com',
+    avatar: '',
+    avatar_url: '',
+    status: 'active',
+    role: 'normal',
+    roles: [],
+    ...overrides,
+  }) as Member
 
 describe('AccessRulesEditor', () => {
   beforeEach(() => {
@@ -131,16 +136,19 @@ describe('AccessRulesEditor', () => {
     )
 
     expect(screen.getByText('permission.accessRule.resourceOpenScope')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'permission.accessRule.resourceOpenScopeDescription' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'permission.accessRule.resourceOpenScopeDescription' }),
+    ).toBeInTheDocument()
 
-    const allMembersButton = screen.getByRole('button', { name: /permission\.accessRule\.allPermittedMembers/ })
-    const onlyMeButton = screen.getByRole('button', { name: /permission\.accessRule\.onlyMe/ })
-    const specificMembersButton = screen.getByRole('button', { name: /permission\.accessRule\.specificMembersOnly/ })
+    const allMembersButton = screen.getByRole('button', {
+      name: /permission\.accessRule\.allPermittedMembers/,
+    })
+    const specificMembersButton = screen.getByRole('button', {
+      name: /permission\.accessRule\.specificMembersOnly/,
+    })
     expect(allMembersButton).toBeDisabled()
-    expect(onlyMeButton).toBeDisabled()
     expect(specificMembersButton).toBeDisabled()
     expect(allMembersButton).toHaveAttribute('aria-pressed', 'false')
-    expect(onlyMeButton).toHaveAttribute('aria-pressed', 'false')
     expect(specificMembersButton).toHaveAttribute('aria-pressed', 'false')
   })
 
@@ -165,14 +173,20 @@ describe('AccessRulesEditor', () => {
     )
 
     expect(screen.getByText('permission.accessRule.resourceOpenScope')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /permission\.accessRule\.specificMembersOnly/ })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByText('permission.accessRule.individualPermissionSettings')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /permission\.accessRule\.specificMembersOnly/ }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    expect(
+      screen.getByText('permission.accessRule.individualPermissionSettings'),
+    ).toBeInTheDocument()
     expect(screen.getByText('Evan')).toBeInTheDocument()
     expect(screen.getByText('evan@example.com')).toBeInTheDocument()
     expect(screen.queryByText('Maintainer')).not.toBeInTheDocument()
     expect(screen.getAllByText('Manage').length).toBeGreaterThan(0)
 
-    fireEvent.click(screen.getByRole('button', { name: /permission\.accessRule\.allPermittedMembers/ }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /permission\.accessRule\.allPermittedMembers/ }),
+    )
     expect(onOpenScopeChange).not.toHaveBeenCalled()
     expect(screen.getByText('permission.accessRule.changeOpenScopeTitle')).toBeInTheDocument()
     expect(screen.getByText('permission.accessRule.changeOpenScopeDescription')).toBeInTheDocument()
@@ -184,7 +198,7 @@ describe('AccessRulesEditor', () => {
     expect(onRemoveAccessPolicyMemberBinding).toHaveBeenCalledWith('account-1', 'app-policy-id')
   })
 
-  it('should render and update the only-me resource access scope', () => {
+  it('should hide the only-me option and allow changing a legacy only-me scope', () => {
     const onOpenScopeChange = vi.fn()
 
     render(
@@ -200,9 +214,13 @@ describe('AccessRulesEditor', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: /permission\.accessRule\.onlyMe/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(
+      screen.queryByRole('button', { name: /permission\.accessRule\.onlyMe/ }),
+    ).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /permission\.accessRule\.specificMembersOnly/ }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /permission\.accessRule\.specificMembersOnly/ }),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.change' }))
 
     expect(onOpenScopeChange).toHaveBeenCalledWith('specific')
@@ -270,7 +288,9 @@ describe('AccessRulesEditor', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /permission\.accessRule\.allPermittedMembers/ }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /permission\.accessRule\.allPermittedMembers/ }),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     expect(onOpenScopeChange).not.toHaveBeenCalled()
@@ -301,16 +321,24 @@ describe('AccessRulesEditor', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+    await user.click(screen.getByRole('button', { name: 'permission.accessRule.addException' }))
 
     const dialog = screen.getByRole('dialog', { name: 'permission.accessRule.addMembersTitle' })
     expect(within(dialog).getByText('Evan')).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'common.operation.added' })).toBeDisabled()
-    expect(within(dialog).queryByRole('button', { name: 'permission.accessRule.addMemberAria:{"name":"Evan"}' })).not.toBeInTheDocument()
+    expect(
+      within(dialog).queryByRole('button', {
+        name: 'permission.accessRule.addMemberAria:{"name":"Evan"}',
+      }),
+    ).not.toBeInTheDocument()
     expect(within(dialog).getByText('Mia')).toBeInTheDocument()
     expect(within(dialog).queryByRole('tablist')).not.toBeInTheDocument()
 
-    await user.click(within(dialog).getByRole('button', { name: 'permission.accessRule.addMemberAria:{"name":"Mia"}' }))
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: 'permission.accessRule.addMemberAria:{"name":"Mia"}',
+      }),
+    )
 
     expect(onAddAccessSubject).toHaveBeenCalledWith('account-2', ['default'])
   })

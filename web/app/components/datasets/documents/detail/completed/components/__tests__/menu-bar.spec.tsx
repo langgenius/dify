@@ -1,11 +1,17 @@
 import type { ComponentProps } from 'react'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import MenuBar from '../menu-bar'
 
 vi.mock('../../display-toggle', () => ({
-  default: ({ isCollapsed, toggleCollapsed }: { isCollapsed: boolean, toggleCollapsed: () => void }) => (
+  default: ({
+    isCollapsed,
+    toggleCollapsed,
+  }: {
+    isCollapsed: boolean
+    toggleCollapsed: () => void
+  }) => (
     <button data-testid="display-toggle" onClick={toggleCollapsed}>
       {isCollapsed ? 'collapsed' : 'expanded'}
     </button>
@@ -56,12 +62,14 @@ describe('MenuBar', () => {
   it('should not render select all checkbox when there are no selectable segments', () => {
     renderMenuBar({ hasSelectableSegments: false })
 
-    expect(screen.queryByRole('checkbox', { name: 'common.operation.selectAll' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('checkbox', { name: 'common.operation.selectAll' }),
+    ).not.toBeInTheDocument()
   })
 
   it('should call onInputChange when input changes', () => {
     renderMenuBar()
-    const input = screen.getByRole('textbox')
+    const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
     fireEvent.change(input, { target: { value: 'test search' } })
     expect(defaultProps.onInputChange).toHaveBeenCalledWith('test search')
   })

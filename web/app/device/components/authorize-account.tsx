@@ -43,11 +43,9 @@ const AuthorizeAccount: FC<Props> = ({
     try {
       await deviceApproveAccount(userCode)
       onApproved()
-    }
-    catch (e) {
+    } catch (e) {
       onError(approveErrorCopy(e, t))
-    }
-    finally {
+    } finally {
       setBusy(false)
     }
   }
@@ -57,11 +55,9 @@ const AuthorizeAccount: FC<Props> = ({
     try {
       await deviceDenyAccount(userCode)
       onDenied()
-    }
-    catch (e) {
+    } catch (e) {
       onError(approveErrorCopy(e, t))
-    }
-    finally {
+    } finally {
       setBusy(false)
     }
   }
@@ -69,9 +65,11 @@ const AuthorizeAccount: FC<Props> = ({
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-2xl font-semibold text-text-primary">{t('authorize.title')}</h2>
+        <h2 className="text-2xl font-semibold text-text-primary">
+          {t(($) => $['authorize.title'])}
+        </h2>
         <p className="mt-2 text-sm text-text-secondary">
-          {t('authorize.accountSubtitle')}
+          {t(($) => $['authorize.accountSubtitle'])}
         </p>
       </div>
       <div className="flex items-center gap-2.5 rounded-lg bg-background-section-burn px-3 py-2.5">
@@ -81,39 +79,22 @@ const AuthorizeAccount: FC<Props> = ({
           name={accountName || accountEmail || ''}
         />
         <div>
-          {accountName && (
-            <p className="text-sm font-semibold text-text-primary">{accountName}</p>
-          )}
-          {accountEmail && (
-            <p className="text-xs text-text-secondary">{accountEmail}</p>
-          )}
+          {accountName && <p className="text-sm font-semibold text-text-primary">{accountName}</p>}
+          {accountEmail && <p className="text-xs text-text-secondary">{accountEmail}</p>}
         </div>
       </div>
       {defaultWorkspace && (
         <div className="rounded-lg bg-background-section-burn px-3 py-2 text-sm text-text-secondary">
-          {t('authorize.workspace')}
-          {' '}
+          {t(($) => $['authorize.workspace'])}{' '}
           <span className="font-semibold text-text-primary">{defaultWorkspace}</span>
         </div>
       )}
       <div className="flex gap-3">
-        <Button
-          variant="primary"
-          size="large"
-          className="flex-1"
-          onClick={approve}
-          disabled={busy}
-        >
-          {t('authorize.approve')}
+        <Button variant="primary" size="large" className="flex-1" onClick={approve} disabled={busy}>
+          {t(($) => $['authorize.approve'])}
         </Button>
-        <Button
-          variant="secondary"
-          size="large"
-          className="flex-1"
-          onClick={deny}
-          disabled={busy}
-        >
-          {t('operation.cancel', { ns: 'common' })}
+        <Button variant="secondary" size="large" className="flex-1" onClick={deny} disabled={busy}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
       </div>
     </div>

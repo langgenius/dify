@@ -1,3 +1,4 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type {
   Model,
   ModelItem,
@@ -15,7 +16,7 @@ type UseEmbeddingModelStatusProps = {
 }
 
 type UseEmbeddingModelStatusResult = {
-  providerMeta: ModelProvider | undefined
+  providerMeta: ModelProviderSummaryResponse | ModelProvider | undefined
   modelProvider: Model | undefined
   currentModel: ModelItem | undefined
   status: ReturnType<typeof deriveModelStatus>
@@ -29,15 +30,15 @@ export const useEmbeddingModelStatus = ({
   const { modelProviders } = useProviderContext()
 
   const providerMeta = useMemo(() => {
-    return modelProviders.find(provider => provider.provider === embeddingModelProvider)
+    return modelProviders.find((provider) => provider.provider === embeddingModelProvider)
   }, [embeddingModelProvider, modelProviders])
 
   const modelProvider = useMemo(() => {
-    return embeddingModelList.find(provider => provider.provider === embeddingModelProvider)
+    return embeddingModelList.find((provider) => provider.provider === embeddingModelProvider)
   }, [embeddingModelList, embeddingModelProvider])
 
   const currentModel = useMemo(() => {
-    return modelProvider?.models.find(model => model.model === embeddingModel)
+    return modelProvider?.models.find((model) => model.model === embeddingModel)
   }, [embeddingModel, modelProvider])
 
   const credentialState = useCredentialPanelState(providerMeta)

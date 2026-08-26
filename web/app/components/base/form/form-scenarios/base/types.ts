@@ -48,6 +48,6 @@ export type BaseConfiguration = {
   showConditions: ShowCondition[] // Show this field only when all conditions are met
   type: BaseFieldType
   tooltip?: string // Tooltip for this field
-} & NumberConfiguration
-& Partial<SelectConfiguration>
-& Partial<FileConfiguration>
+} & NumberConfiguration &
+  Partial<SelectConfiguration> &
+  Partial<FileConfiguration>

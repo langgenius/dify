@@ -2,13 +2,12 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zDeleteAppsAnnotationsByAnnotationIdPath,
   zDeleteAppsAnnotationsByAnnotationIdResponse,
-  zDeleteConversationsByCIdBody,
-  zDeleteConversationsByCIdPath,
-  zDeleteConversationsByCIdResponse,
+  zDeleteConversationsByConversationIdBody,
+  zDeleteConversationsByConversationIdPath,
+  zDeleteConversationsByConversationIdResponse,
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath,
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse,
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath,
@@ -27,9 +26,9 @@ import {
   zGetAppsAnnotationReplyByActionStatusByJobIdResponse,
   zGetAppsAnnotationsQuery,
   zGetAppsAnnotationsResponse,
-  zGetConversationsByCIdVariablesPath,
-  zGetConversationsByCIdVariablesQuery,
-  zGetConversationsByCIdVariablesResponse,
+  zGetConversationsByConversationIdVariablesPath,
+  zGetConversationsByConversationIdVariablesQuery,
+  zGetConversationsByConversationIdVariablesResponse,
   zGetConversationsQuery,
   zGetConversationsResponse,
   zGetDatasetsByDatasetIdDocumentsByBatchIndexingStatusPath,
@@ -81,9 +80,9 @@ import {
   zGetParametersResponse,
   zGetRootResponse,
   zGetSiteResponse,
-  zGetWorkflowByTaskIdEventsPath,
-  zGetWorkflowByTaskIdEventsQuery,
-  zGetWorkflowByTaskIdEventsResponse,
+  zGetWorkflowByWorkflowRunIdEventsPath,
+  zGetWorkflowByWorkflowRunIdEventsQuery,
+  zGetWorkflowByWorkflowRunIdEventsResponse,
   zGetWorkflowsLogsQuery,
   zGetWorkflowsLogsResponse,
   zGetWorkflowsRunByWorkflowRunIdPath,
@@ -124,9 +123,9 @@ import {
   zPostCompletionMessagesByTaskIdStopPath,
   zPostCompletionMessagesByTaskIdStopResponse,
   zPostCompletionMessagesResponse,
-  zPostConversationsByCIdNameBody,
-  zPostConversationsByCIdNamePath,
-  zPostConversationsByCIdNameResponse,
+  zPostConversationsByConversationIdNameBody,
+  zPostConversationsByConversationIdNamePath,
+  zPostConversationsByConversationIdNameResponse,
   zPostDatasetsBody,
   zPostDatasetsByDatasetIdDocumentCreateByFile2Body,
   zPostDatasetsByDatasetIdDocumentCreateByFile2Path,
@@ -214,17 +213,21 @@ import {
   zPutAppsAnnotationsByAnnotationIdBody,
   zPutAppsAnnotationsByAnnotationIdPath,
   zPutAppsAnnotationsByAnnotationIdResponse,
-  zPutConversationsByCIdVariablesByVariableIdBody,
-  zPutConversationsByCIdVariablesByVariableIdPath,
-  zPutConversationsByCIdVariablesByVariableIdResponse,
+  zPutConversationsByConversationIdVariablesByVariableIdBody,
+  zPutConversationsByConversationIdVariablesByVariableIdPath,
+  zPutConversationsByConversationIdVariablesByVariableIdResponse,
 } from './zod.gen'
 
+/**
+ * Return public Service API metadata without requiring an API key
+ */
 export const get = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getRoot',
     path: '/',
+    summary: 'Return public Service API metadata without requiring an API key',
     tags: ['service_api'],
   })
   .output(zGetRootResponse)
@@ -420,12 +423,12 @@ export const apps = {
 /**
  * Convert Audio to Text
  *
- * Convert audio file to text. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, `audio/wav`, and `audio/amr`. File size limit is `30 MB`.
+ * Convert audio file to text. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, `audio/x-m4a`, `audio/wav`, and `audio/amr`. File size limit is `30 MB`.
  */
 export const post3 = oc
   .route({
     description:
-      'Convert audio file to text. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, `audio/wav`, and `audio/amr`. File size limit is `30 MB`.',
+      'Convert audio file to text. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, `audio/x-m4a`, `audio/wav`, and `audio/amr`. File size limit is `30 MB`.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAudioToText',
@@ -559,15 +562,18 @@ export const post8 = oc
       'Rename a conversation or auto-generate a name. The conversation name is used for display on clients that support multiple conversations.',
     inputStructure: 'detailed',
     method: 'POST',
-    operationId: 'postConversationsByCIdName',
-    path: '/conversations/{c_id}/name',
+    operationId: 'postConversationsByConversationIdName',
+    path: '/conversations/{conversation_id}/name',
     summary: 'Rename Conversation',
     tags: ['Conversations'],
   })
   .input(
-    z.object({ body: zPostConversationsByCIdNameBody, params: zPostConversationsByCIdNamePath }),
+    z.object({
+      body: zPostConversationsByConversationIdNameBody,
+      params: zPostConversationsByConversationIdNamePath,
+    }),
   )
-  .output(zPostConversationsByCIdNameResponse)
+  .output(zPostConversationsByConversationIdNameResponse)
 
 export const name = {
   post: post8,
@@ -584,18 +590,18 @@ export const put2 = oc
       'Update the value of a specific conversation variable. The value must match the expected type.',
     inputStructure: 'detailed',
     method: 'PUT',
-    operationId: 'putConversationsByCIdVariablesByVariableId',
-    path: '/conversations/{c_id}/variables/{variable_id}',
+    operationId: 'putConversationsByConversationIdVariablesByVariableId',
+    path: '/conversations/{conversation_id}/variables/{variable_id}',
     summary: 'Update Conversation Variable',
     tags: ['Conversations'],
   })
   .input(
     z.object({
-      body: zPutConversationsByCIdVariablesByVariableIdBody,
-      params: zPutConversationsByCIdVariablesByVariableIdPath,
+      body: zPutConversationsByConversationIdVariablesByVariableIdBody,
+      params: zPutConversationsByConversationIdVariablesByVariableIdPath,
     }),
   )
-  .output(zPutConversationsByCIdVariablesByVariableIdResponse)
+  .output(zPutConversationsByConversationIdVariablesByVariableIdResponse)
 
 export const byVariableId = {
   put: put2,
@@ -611,18 +617,18 @@ export const get5 = oc
     description: 'Retrieve variables from a specific conversation.',
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'getConversationsByCIdVariables',
-    path: '/conversations/{c_id}/variables',
+    operationId: 'getConversationsByConversationIdVariables',
+    path: '/conversations/{conversation_id}/variables',
     summary: 'List Conversation Variables',
     tags: ['Conversations'],
   })
   .input(
     z.object({
-      params: zGetConversationsByCIdVariablesPath,
-      query: zGetConversationsByCIdVariablesQuery.optional(),
+      params: zGetConversationsByConversationIdVariablesPath,
+      query: zGetConversationsByConversationIdVariablesQuery.optional(),
     }),
   )
-  .output(zGetConversationsByCIdVariablesResponse)
+  .output(zGetConversationsByConversationIdVariablesResponse)
 
 export const variables = {
   get: get5,
@@ -639,16 +645,21 @@ export const delete2 = oc
     description: 'Delete a conversation.',
     inputStructure: 'detailed',
     method: 'DELETE',
-    operationId: 'deleteConversationsByCId',
-    path: '/conversations/{c_id}',
+    operationId: 'deleteConversationsByConversationId',
+    path: '/conversations/{conversation_id}',
     successStatus: 204,
     summary: 'Delete Conversation',
     tags: ['Conversations'],
   })
-  .input(z.object({ body: zDeleteConversationsByCIdBody, params: zDeleteConversationsByCIdPath }))
-  .output(zDeleteConversationsByCIdResponse)
+  .input(
+    z.object({
+      body: zDeleteConversationsByConversationIdBody,
+      params: zDeleteConversationsByConversationIdPath,
+    }),
+  )
+  .output(zDeleteConversationsByConversationIdResponse)
 
-export const byCId = {
+export const byConversationId = {
   delete: delete2,
   name,
   variables,
@@ -675,7 +686,7 @@ export const get6 = oc
 
 export const conversations = {
   get: get6,
-  byCId,
+  byConversationId,
 }
 
 /**
@@ -1068,7 +1079,7 @@ export const byBatch = {
  */
 export const get9 = oc
   .route({
-    description: 'Get a signed download URL for a document\'s original uploaded file.',
+    description: "Get a signed download URL for a document's original uploaded file.",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdDownload',
@@ -1243,7 +1254,7 @@ export const get11 = oc
 export const post20 = oc
   .route({
     description:
-      'Update a chunk\'s content, keywords, or answer. Re-triggers indexing for the modified chunk.',
+      "Update a chunk's content, keywords, or answer. Re-triggers indexing for the modified chunk.",
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentId',
@@ -1386,7 +1397,7 @@ export const updateByFile = {
 export const post24 = oc
   .route({
     description:
-      'Update an existing document\'s text content, name, or processing configuration. Re-triggers indexing if content changes — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.',
+      "Update an existing document's text content, name, or processing configuration. Re-triggers indexing if content changes — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.",
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText',
@@ -1474,16 +1485,20 @@ export const get13 = oc
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdResponse)
 
 /**
- * Update an existing document by uploading a file
+ * Update Document by File
+ *
+ * Update an existing document by uploading a new file. Re-triggers indexing — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.
  */
 export const patch4 = oc
   .route({
-    description: 'Update an existing document by uploading a file',
+    description:
+      'Update an existing document by uploading a new file. Re-triggers indexing — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchDatasetsByDatasetIdDocumentsByDocumentId',
     path: '/datasets/{dataset_id}/documents/{document_id}',
-    tags: ['service_api'],
+    summary: 'Update Document by File',
+    tags: ['Documents'],
   })
   .input(
     z.object({
@@ -1540,9 +1555,12 @@ export const documents = {
  * Retrieve Chunks from a Knowledge Base / Test Retrieval
  *
  * Performs a search query against a knowledge base to retrieve the most relevant chunks. This endpoint can be used for both production retrieval and test retrieval.
+ *
+ * @deprecated
  */
 export const post26 = oc
   .route({
+    deprecated: true,
     description:
       'Performs a search query against a knowledge base to retrieve the most relevant chunks. This endpoint can be used for both production retrieval and test retrieval.',
     inputStructure: 'detailed',
@@ -1780,12 +1798,12 @@ export const datasource = {
 /**
  * Run Pipeline
  *
- * Execute the full knowledge pipeline for a knowledge base. Supports both streaming and blocking response modes.
+ * Execute the full knowledge pipeline for a knowledge base. Published runs are queued and return batch metadata as JSON. Draft runs support blocking JSON and streaming Server-Sent Events.
  */
 export const post30 = oc
   .route({
     description:
-      'Execute the full knowledge pipeline for a knowledge base. Supports both streaming and blocking response modes.',
+      'Execute the full knowledge pipeline for a knowledge base. Published runs are queued and return batch metadata as JSON. Draft runs support blocking JSON and streaming Server-Sent Events.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdPipelineRun',
@@ -2074,7 +2092,7 @@ export const files = {
 export const get23 = oc
   .route({
     description:
-      'Retrieve a paused Human Input form\'s contents using the `form_token` from a `human_input_required` event. Requires **WebApp** delivery.',
+      "Retrieve a paused Human Input form's contents using the `form_token` from a `human_input_required` event. Requires **WebApp** delivery.",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getFormHumanInputByFormToken',
@@ -2093,7 +2111,7 @@ export const get23 = oc
 export const post34 = oc
   .route({
     description:
-      'Submit the recipient\'s response to a paused Human Input form. The workflow resumes on acceptance; use [Stream Workflow Events](/api-reference/chatflows/stream-workflow-events) to follow subsequent events. Requires **WebApp** delivery.',
+      "Submit the recipient's response to a paused Human Input form. The workflow resumes on acceptance; use [Stream Workflow Events](/api-reference/chatflows/stream-workflow-events) to follow subsequent events. Requires **WebApp** delivery.",
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postFormHumanInputByFormToken',
@@ -2258,7 +2276,7 @@ export const meta = {
 export const get28 = oc
   .route({
     description:
-      'Retrieve the application\'s input form configuration, including feature switches, input parameter names, types, and default values.',
+      "Retrieve the application's input form configuration, including feature switches, input parameter names, types, and default values.",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getParameters',
@@ -2327,26 +2345,29 @@ export const get30 = oc
       'Resume the Server-Sent Events stream for a workflow run after a pause or a dropped SSE connection. For runs that have already finished, the stream emits a single `workflow_finished` event and closes.',
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'getWorkflowByTaskIdEvents',
-    path: '/workflow/{task_id}/events',
+    operationId: 'getWorkflowByWorkflowRunIdEvents',
+    path: '/workflow/{workflow_run_id}/events',
     summary: 'Stream Workflow Events',
     tags: ['Chatflows', 'Workflows'],
   })
   .input(
-    z.object({ params: zGetWorkflowByTaskIdEventsPath, query: zGetWorkflowByTaskIdEventsQuery }),
+    z.object({
+      params: zGetWorkflowByWorkflowRunIdEventsPath,
+      query: zGetWorkflowByWorkflowRunIdEventsQuery,
+    }),
   )
-  .output(zGetWorkflowByTaskIdEventsResponse)
+  .output(zGetWorkflowByWorkflowRunIdEventsResponse)
 
 export const events = {
   get: get30,
 }
 
-export const byTaskId3 = {
+export const byWorkflowRunId = {
   events,
 }
 
 export const workflow = {
-  byTaskId: byTaskId3,
+  byWorkflowRunId,
 }
 
 /**
@@ -2390,7 +2411,7 @@ export const get32 = oc
   .input(z.object({ params: zGetWorkflowsRunByWorkflowRunIdPath }))
   .output(zGetWorkflowsRunByWorkflowRunIdResponse)
 
-export const byWorkflowRunId = {
+export const byWorkflowRunId2 = {
   get: get32,
 }
 
@@ -2414,7 +2435,7 @@ export const post37 = oc
 
 export const run3 = {
   post: post37,
-  byWorkflowRunId,
+  byWorkflowRunId: byWorkflowRunId2,
 }
 
 /**
@@ -2444,12 +2465,12 @@ export const stop3 = {
   post: post38,
 }
 
-export const byTaskId4 = {
+export const byTaskId3 = {
   stop: stop3,
 }
 
 export const tasks = {
-  byTaskId: byTaskId4,
+  byTaskId: byTaskId3,
 }
 
 /**

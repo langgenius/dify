@@ -1,15 +1,12 @@
 import { render } from 'vitest-browser-react'
-import {
-  FieldsetLegend,
-  FieldsetRoot,
-} from '../index'
+import { Fieldset, FieldsetLegend } from '../index'
 
 describe('Fieldset primitives', () => {
   it('should forward className to the fieldset and legend', async () => {
     const screen = await render(
-      <FieldsetRoot className="custom-root">
+      <Fieldset className="custom-root">
         <FieldsetLegend className="custom-legend">Permissions</FieldsetLegend>
-      </FieldsetRoot>,
+      </Fieldset>,
     )
 
     const legend = screen.getByText('Permissions').element() as HTMLElement

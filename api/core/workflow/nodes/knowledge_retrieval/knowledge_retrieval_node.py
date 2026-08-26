@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.credit_usage import CreditUsageAppType
 from core.db.session_factory import session_factory
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
@@ -25,7 +26,6 @@ from graphon.enums import (
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.node_events import NodeRunResult
-from graphon.nodes.base import LLMUsageTrackingMixin
 from graphon.nodes.base.node import Node
 from graphon.variables import (
     ArrayFileSegment,
@@ -33,6 +33,7 @@ from graphon.variables import (
     StringSegment,
 )
 from graphon.variables.segments import ArrayObjectSegment
+from graphon.variables.template_resolution import convert_template
 
 from .entities import (
     Condition,
@@ -64,7 +65,7 @@ def _normalize_metadata_filter_sequence_item(value: object) -> str:
     return value if isinstance(value, str) else str(value)
 
 
-class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeData]):
+class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
     node_type = BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL
 
     # Instance attributes specific to LLMNode.
@@ -185,6 +186,12 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         self, session: Session, node_data: KnowledgeRetrievalNodeData, variables: dict[str, Any]
     ) -> tuple[list[Source], LLMUsage]:
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
+        self._rag_retrieval.set_request_metadata(
+            {
+                "app_id": dify_ctx.app_id,
+                "app_type": dify_ctx.app_type or CreditUsageAppType.UNKNOWN,
+            }
+        )
         dataset_ids = node_data.dataset_ids
         query = variables.get("query")
         attachments = variables.get("attachments")
@@ -309,7 +316,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
             resolved_value: str | Sequence[str] | int | float | None
             match value:
                 case str():
-                    segment_group = variable_pool.convert_template(value)
+                    segment_group = convert_template(variable_pool, value)
                     if len(segment_group.value) == 1:
                         resolved_value = _normalize_metadata_filter_scalar(segment_group.value[0].to_object())
                     else:
@@ -317,7 +324,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                 case _ if isinstance(value, Sequence) and all(isinstance(v, str) for v in value):
                     resolved_values: list[str] = []
                     for v in value:
-                        segment_group = variable_pool.convert_template(v)
+                        segment_group = convert_template(variable_pool, v)
                         if len(segment_group.value) == 1:
                             resolved_values.append(
                                 _normalize_metadata_filter_sequence_item(segment_group.value[0].to_object())

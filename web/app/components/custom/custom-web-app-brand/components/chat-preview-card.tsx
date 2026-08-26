@@ -16,10 +16,15 @@ const ChatPreviewCard = ({
   imgKey,
 }: ChatPreviewCardProps) => {
   return (
-    <div className="flex h-[320px] grow basis-1/2 overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border-subtle bg-background-default-burn">
-      <div className="flex h-full w-[232px] shrink-0 flex-col p-1 pr-0">
+    <div className="flex h-80 grow basis-1/2 overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border-subtle bg-background-default-burn">
+      <div className="flex h-full w-58 shrink-0 flex-col p-1 pr-0">
         <div className="flex items-center gap-3 p-3 pr-2">
-          <div className={cn('inline-flex size-8 items-center justify-center rounded-lg border border-divider-regular', 'bg-components-icon-bg-blue-light-solid')}>
+          <div
+            className={cn(
+              'inline-flex size-8 items-center justify-center rounded-lg border border-divider-regular',
+              'bg-components-icon-bg-blue-light-solid',
+            )}
+          >
             <span className="i-custom-vender-solid-communication-bubble-text-mod size-4 text-components-avatar-shape-fill-stop-100" />
           </div>
           <div className="grow system-md-semibold text-text-secondary">Chatflow App</div>
@@ -29,9 +34,9 @@ const ChatPreviewCard = ({
         </div>
         <div className="shrink-0 px-4 py-3">
           <Button variant="secondary-accent" className="w-full justify-center">
-            <span className="mr-1 i-ri-edit-box-line size-4" />
+            <span className="i-ri-edit-box-line size-4" />
             <div className="p-1 opacity-20">
-              <div className="h-2 w-[94px] rounded-xs bg-text-accent-light-mode-only"></div>
+              <div className="h-2 w-23.5 rounded-xs bg-text-accent-light-mode-only"></div>
             </div>
           </Button>
         </div>
@@ -40,10 +45,10 @@ const ChatPreviewCard = ({
             <div className="h-2 w-14 rounded-xs bg-text-quaternary opacity-20"></div>
           </div>
           <div className="flex h-8 items-center px-3 py-1">
-            <div className="h-2 w-[168px] rounded-xs bg-text-quaternary opacity-20"></div>
+            <div className="h-2 w-42 rounded-xs bg-text-quaternary opacity-20"></div>
           </div>
           <div className="flex h-8 items-center px-3 py-1">
-            <div className="h-2 w-[128px] rounded-xs bg-text-quaternary opacity-20"></div>
+            <div className="h-2 w-32 rounded-xs bg-text-quaternary opacity-20"></div>
           </div>
         </div>
         <div className="flex shrink-0 items-center justify-between p-3">
@@ -60,15 +65,19 @@ const ChatPreviewCard = ({
           </div>
         </div>
       </div>
-      <div className="flex w-[138px] grow flex-col justify-between p-2 pr-0">
-        <div className="flex grow flex-col justify-between rounded-l-2xl border-[0.5px] border-r-0 border-components-panel-border-subtle bg-chatbot-bg pt-16 pb-4 pl-[22px]">
-          <div className="w-[720px] rounded-2xl border border-divider-subtle bg-chat-bubble-bg px-4 py-3">
-            <div className="mb-1 body-md-regular text-text-primary">Hello! How can I assist you today?</div>
+      <div className="flex w-34.5 grow flex-col justify-between p-2 pr-0">
+        <div className="flex grow flex-col justify-between rounded-l-2xl border-[0.5px] border-r-0 border-components-panel-border-subtle bg-chatbot-bg pt-16 pb-4 pl-5.5">
+          <div className="w-180 rounded-2xl border border-divider-subtle bg-chat-bubble-bg px-4 py-3">
+            <div className="mb-1 body-md-regular text-text-primary">
+              Hello! How can I assist you today?
+            </div>
             <Button size="small">
-              <div className="h-2 w-[144px] rounded-xs bg-text-quaternary opacity-20"></div>
+              <div className="h-2 w-36 rounded-xs bg-text-quaternary opacity-20"></div>
             </Button>
           </div>
-          <div className="flex h-[52px] w-[578px] items-center rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pl-3.5 body-lg-regular text-text-placeholder shadow-md backdrop-blur-xs">Talk to Dify</div>
+          <div className="flex h-13 w-144.5 items-center rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pl-3.5 body-lg-regular text-text-placeholder shadow-md backdrop-blur-xs">
+            Talk to Dify
+          </div>
         </div>
       </div>
     </div>

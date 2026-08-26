@@ -3,12 +3,12 @@ import type { FC } from 'react'
 import type { PluginDeclaration } from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiLoader2Line } from '@remixicon/react'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
-import { langGeniusVersionInfoAtom } from '@/context/app-context-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInstallPackageFromLocal, usePluginTaskList } from '@/service/use-plugins'
 import { isEqualOrLaterThanVersion } from '@/utils/semver'
@@ -49,17 +49,13 @@ const Installed: FC<Props> = ({
   const hasInstalled = !!installedVersion
 
   useEffect(() => {
-    if (hasInstalled && uniqueIdentifier === installedInfoPayload.uniqueIdentifier)
-      onInstalled()
+    if (hasInstalled && uniqueIdentifier === installedInfoPayload.uniqueIdentifier) onInstalled()
   }, [hasInstalled])
 
   const [isInstalling, setIsInstalling] = React.useState(false)
   const { mutateAsync: installPackageFromLocal } = useInstallPackageFromLocal()
 
-  const {
-    check,
-    stop,
-  } = checkTaskStatus()
+  const { check, stop } = checkTaskStatus()
 
   const handleCancel = () => {
     stop()
@@ -68,20 +64,17 @@ const Installed: FC<Props> = ({
 
   const { handleInstallTaskStart } = usePluginTaskList(payload.category)
   const handleInstall = async () => {
-    if (isInstalling)
-      return
+    if (isInstalling) return
     setIsInstalling(true)
     onStartToInstall?.()
 
     try {
-      if (hasInstalled)
-        await uninstallPlugin(installedInfoPayload.installedId)
+      if (hasInstalled) {
+        await uninstallPlugin(installedInfoPayload.installedId, { preserveCredentials: true })
+      }
 
       const response = await installPackageFromLocal(uniqueIdentifier)
-      const {
-        all_installed,
-        task_id,
-      } = response
+      const { all_installed, task_id } = response
       handleInstallTaskStart(response)
       const taskId = task_id
       const isInstalled = all_installed
@@ -99,8 +92,7 @@ const Installed: FC<Props> = ({
         return
       }
       onInstalled(true)
-    }
-    catch (e) {
+    } catch (e) {
       if (typeof e === 'string') {
         onFailed(e)
         return
@@ -109,28 +101,33 @@ const Installed: FC<Props> = ({
     }
   }
 
-  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
+  const { data: currentVersion } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.meta.currentVersion ?? '',
+  })
   const isDifyVersionCompatible = useMemo(() => {
-    if (!langGeniusVersionInfo.current_version)
-      return true
-    return isEqualOrLaterThanVersion(langGeniusVersionInfo.current_version, payload.meta.minimum_dify_version ?? '0.0.0')
-  }, [langGeniusVersionInfo.current_version, payload.meta.minimum_dify_version])
+    if (!currentVersion) return true
+    return isEqualOrLaterThanVersion(currentVersion, payload.meta.minimum_dify_version ?? '0.0.0')
+  }, [currentVersion, payload.meta.minimum_dify_version])
 
   return (
     <>
       <div className="flex flex-col items-start justify-center gap-2 self-stretch px-6 py-3">
         <div className="system-md-regular text-text-secondary">
-          <p>{t(`${i18nPrefix}.readyToInstall`, { ns: 'plugin' })}</p>
+          <p>{t(($) => $[`${i18nPrefix}.readyToInstall`], { ns: 'plugin' })}</p>
           <p>
             <Trans
-              i18nKey={`${i18nPrefix}.fromTrustSource`}
+              i18nKey={($) => $[`${i18nPrefix}.fromTrustSource`]}
               ns="plugin"
               components={{ trustSource: <span className="system-md-semibold" /> }}
             />
           </p>
           {!isDifyVersionCompatible && (
             <p className="flex items-center gap-1 system-md-regular text-text-warning">
-              {t('difyVersionNotCompatible', { ns: 'plugin', minimalDifyVersion: payload.meta.minimum_dify_version })}
+              {t(($) => $.difyVersionNotCompatible, {
+                ns: 'plugin',
+                minimalDifyVersion: payload.meta.minimum_dify_version,
+              })}
             </p>
           )}
         </div>
@@ -138,31 +135,37 @@ const Installed: FC<Props> = ({
           <Card
             className="w-full"
             payload={pluginManifestToCardPluginProps(payload)}
-            titleLeft={!isLoading && (
-              <Version
-                hasInstalled={hasInstalled}
-                installedVersion={installedVersion}
-                toInstallVersion={toInstallVersion}
-              />
-            )}
+            titleLeft={
+              !isLoading && (
+                <Version
+                  hasInstalled={hasInstalled}
+                  installedVersion={installedVersion}
+                  toInstallVersion={toInstallVersion}
+                />
+              )
+            }
           />
         </div>
       </div>
       {/* Action Buttons */}
       <div className="flex items-center justify-end gap-2 self-stretch p-6 pt-5">
         {!isInstalling && (
-          <Button variant="secondary" className="min-w-[72px]" onClick={handleCancel}>
-            {t('operation.cancel', { ns: 'common' })}
+          <Button variant="secondary" className="min-w-18" onClick={handleCancel}>
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
         )}
         <Button
           variant="primary"
-          className="flex min-w-[72px] space-x-0.5"
+          className="flex min-w-18"
           disabled={isInstalling || isLoading}
           onClick={handleInstall}
         >
           {isInstalling && <RiLoader2Line className="size-4 animate-spin-slow" />}
-          <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`, { ns: 'plugin' })}</span>
+          <span>
+            {t(($) => $[`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`], {
+              ns: 'plugin',
+            })}
+          </span>
         </Button>
       </div>
     </>

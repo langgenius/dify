@@ -1,12 +1,9 @@
 import type { RerankingModel } from '../../types'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  memo,
-  useMemo,
-} from 'react'
+import { memo, useMemo } from 'react'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 
 export type RerankingModelSelectorProps = {
   rerankingModel?: RerankingModel
@@ -18,9 +15,7 @@ const RerankingModelSelector = ({
   onRerankingModelChange,
   readonly = false,
 }: RerankingModelSelectorProps) => {
-  const {
-    modelList: rerankModelList,
-  } = useModelListAndDefaultModel(ModelTypeEnum.rerank)
+  const { modelList: rerankModelList } = useModelListAndDefaultModel(ModelTypeEnum.rerank)
   const rerankModel = useMemo(() => {
     if (!rerankingModel?.reranking_provider_name || !rerankingModel?.reranking_model_name)
       return undefined
@@ -40,10 +35,10 @@ const RerankingModelSelector = ({
 
   return (
     <ModelSelector
-      defaultModel={rerankModel}
-      modelList={rerankModelList}
-      onSelect={handleRerankingModelChange}
-      readonly={readonly}
+      value={rerankModel}
+      models={rerankModelList}
+      onValueChange={handleRerankingModelChange}
+      disabled={readonly}
       showDeprecatedWarnIcon
     />
   )

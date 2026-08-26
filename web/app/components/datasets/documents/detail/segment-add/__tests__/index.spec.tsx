@@ -1,13 +1,13 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { SegmentImportStatus } from '@/types/dataset'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { Plan } from '@/app/components/billing/type'
+import { fireEvent, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { segmentImportStatus } from '@/types/dataset'
-
 import { SegmentAdd } from '../index'
 
 // Mock provider context
-let mockPlan = { type: Plan.professional }
+let mockPlan: { type: CloudPlan } = { type: 'professional' }
 let mockEnableBilling = true
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
@@ -19,7 +19,7 @@ vi.mock('@/context/provider-context', () => ({
 describe('SegmentAdd', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPlan = { type: Plan.professional }
+    mockPlan = { type: 'professional' }
     mockEnableBilling = true
   })
 
@@ -32,12 +32,6 @@ describe('SegmentAdd', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<SegmentAdd {...defaultProps} />)
-
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should render add button when no importStatus', () => {
       render(<SegmentAdd {...defaultProps} />)
 
@@ -131,7 +125,9 @@ describe('SegmentAdd', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /list\.action\.batchAdd/i }))
 
-      expect(await screen.findByRole('menuitem', { name: /list\.action\.batchAdd/i })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitem', { name: /list\.action\.batchAdd/i }),
+      ).toBeInTheDocument()
     })
 
     it('should call showBatchModal when batch add is clicked', async () => {
@@ -145,7 +141,7 @@ describe('SegmentAdd', () => {
     })
 
     it('should show plan upgrade modal instead of batch modal for sandbox users', async () => {
-      mockPlan = { type: Plan.sandbox }
+      mockPlan = { type: 'sandbox' }
       const mockShowBatchModal = vi.fn()
       render(<SegmentAdd {...defaultProps} showBatchModal={mockShowBatchModal} />)
 
@@ -171,19 +167,12 @@ describe('SegmentAdd', () => {
 
       expect(screen.getByRole('button', { name: /list\.action\.batchAdd/i })).toBeDisabled()
     })
-
-    it('should apply disabled styling when embedding is true', () => {
-      const { container } = render(<SegmentAdd {...defaultProps} embedding={true} />)
-
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('border-components-button-secondary-border-disabled')
-    })
   })
 
   // Plan upgrade modal
   describe('Plan Upgrade Modal', () => {
     it('should show plan upgrade modal when sandbox user tries to add', () => {
-      mockPlan = { type: Plan.sandbox }
+      mockPlan = { type: 'sandbox' }
       render(<SegmentAdd {...defaultProps} />)
 
       fireEvent.click(screen.getByText(/list\.action\.addButton/i))
@@ -192,7 +181,7 @@ describe('SegmentAdd', () => {
     })
 
     it('should not call showNewSegmentModal for sandbox users', () => {
-      mockPlan = { type: Plan.sandbox }
+      mockPlan = { type: 'sandbox' }
       const mockShowNewSegmentModal = vi.fn()
       render(<SegmentAdd {...defaultProps} showNewSegmentModal={mockShowNewSegmentModal} />)
 
@@ -202,7 +191,7 @@ describe('SegmentAdd', () => {
     })
 
     it('should allow add when billing is disabled regardless of plan', () => {
-      mockPlan = { type: Plan.sandbox }
+      mockPlan = { type: 'sandbox' }
       mockEnableBilling = false
       const mockShowNewSegmentModal = vi.fn()
       render(<SegmentAdd {...defaultProps} showNewSegmentModal={mockShowNewSegmentModal} />)
@@ -213,7 +202,7 @@ describe('SegmentAdd', () => {
     })
 
     it('should close plan upgrade modal when close button is clicked', () => {
-      mockPlan = { type: Plan.sandbox }
+      mockPlan = { type: 'sandbox' }
       render(<SegmentAdd {...defaultProps} />)
 
       // Show modal
@@ -229,14 +218,18 @@ describe('SegmentAdd', () => {
   // Progress bar width tests
   describe('Progress Bar', () => {
     it('should show 3/12 width progress bar for WAITING status', () => {
-      const { container } = render(<SegmentAdd {...defaultProps} importStatus={segmentImportStatus.waiting} />)
+      const { container } = render(
+        <SegmentAdd {...defaultProps} importStatus={segmentImportStatus.waiting} />,
+      )
 
       const progressBar = container.querySelector('.w-3\\/12')
       expect(progressBar).toBeInTheDocument()
     })
 
     it('should show 2/3 width progress bar for PROCESSING status', () => {
-      const { container } = render(<SegmentAdd {...defaultProps} importStatus={segmentImportStatus.processing} />)
+      const { container } = render(
+        <SegmentAdd {...defaultProps} importStatus={segmentImportStatus.processing} />,
+      )
 
       const progressBar = container.querySelector('.w-2\\/3')
       expect(progressBar).toBeInTheDocument()

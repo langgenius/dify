@@ -12,6 +12,7 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
+from core.app.apps.execution_coordinator import clear_app_task_cancellation_signals
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import (
@@ -25,6 +26,7 @@ from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
+from graphon.filters import ResponseStreamFilter
 from graphon.runtime import GraphRuntimeState
 from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import set_login_user
@@ -168,13 +170,14 @@ class _AppRunner:
 
         user = self._resolve_user()
 
-        with self._setup_flask_context(user):
+        with self._setup_flask_context(user), self._session_factory(expire_on_commit=False) as session:
             try:
                 response = self._run_app(
                     app=app,
                     workflow=workflow,
                     user=user,
                     pause_state_config=pause_config,
+                    session=session,
                 )
             except Exception as exc:
                 if exec_params.streaming:
@@ -204,6 +207,7 @@ class _AppRunner:
         workflow: Workflow,
         user: Account | EndUser,
         pause_state_config: PauseStateLayerConfig,
+        session: Session,
     ):
         exec_params = self._exec_params
         if exec_params.app_mode == AppMode.ADVANCED_CHAT:
@@ -216,6 +220,7 @@ class _AppRunner:
                 streaming=exec_params.streaming,
                 workflow_run_id=exec_params.workflow_run_id,
                 pause_state_config=pause_state_config,
+                session=session,
             )
         if exec_params.app_mode == AppMode.WORKFLOW:
             return WorkflowAppGenerator().generate(
@@ -244,7 +249,6 @@ class _AppRunner:
             case _Account():
                 with self._session() as session:
                     user: Account = session.get(Account, user_params.user_id)
-                    user.set_tenant_id(self._exec_params.tenant_id)
                 return user
             case _:
                 raise AssertionError(f"user should only be _Account or _EndUser, got {type(user_params)}")
@@ -253,10 +257,7 @@ class _AppRunner:
 def _resolve_user_for_run(session: Session, workflow_run: WorkflowRun) -> Account | EndUser | None:
     role = CreatorUserRole(workflow_run.created_by_role)
     if role == CreatorUserRole.ACCOUNT:
-        user = session.get(Account, workflow_run.created_by)
-        if user:
-            user.set_tenant_id(workflow_run.tenant_id)
-        return user
+        return session.get(Account, workflow_run.created_by)
 
     return session.get(EndUser, workflow_run.created_by)
 
@@ -311,32 +312,43 @@ def _publish_failed_workflow_terminal_events(exc: Exception, exec_params: AppExe
     topic.publish(json.dumps(finished_payload.model_dump(mode="json"), ensure_ascii=False).encode())
 
 
-def _get_event_name(event: str | Mapping[str, Any] | BaseModel) -> str | None:
+def _get_event_data(event: str | Mapping[str, Any] | BaseModel) -> Mapping[str, Any] | None:
     if isinstance(event, BaseModel):
         # Temporary compatibility for legacy BaseModel stream events; remove after confirming generators always emit
         # str / Mapping responses.
-        event_name = getattr(event, "event", None)
-    elif isinstance(event, Mapping):
-        event_name = event.get("event")
-    else:
+        return event.model_dump()
+    if isinstance(event, Mapping):
+        return event
+    return None
+
+
+def _get_event_name(event: str | Mapping[str, Any] | BaseModel) -> str | None:
+    event_data = _get_event_data(event)
+    if event_data is None:
         return None
 
+    event_name = event_data.get("event")
     if event_name is None:
         return None
     return str(event_name)
 
 
 def _get_task_id(event: str | Mapping[str, Any] | BaseModel) -> str | None:
-    if isinstance(event, BaseModel):
-        # Temporary compatibility for legacy BaseModel stream events; remove after confirming generators always emit
-        # str / Mapping responses.
-        task_id = getattr(event, "task_id", None)
-    elif isinstance(event, Mapping):
-        task_id = event.get("task_id")
-    else:
+    event_data = _get_event_data(event)
+    if event_data is None:
         return None
 
+    task_id = event_data.get("task_id")
     return task_id if isinstance(task_id, str) and task_id else None
+
+
+def _get_error_message(event: str | Mapping[str, Any] | BaseModel) -> str | None:
+    event_data = _get_event_data(event)
+    if event_data is None:
+        return None
+
+    message = event_data.get("message")
+    return message if isinstance(message, str) and message else None
 
 
 def _publish_streaming_response(
@@ -406,6 +418,7 @@ def _publish_streaming_response(
     started_published = False
     terminal_published = False
     last_task_id = normalized_workflow_run_id
+    stream_error_message: str | None = None
 
     try:
         for event in response_stream:
@@ -429,6 +442,8 @@ def _publish_streaming_response(
                 started_published = True
             elif event_name in terminal_events:
                 terminal_published = True
+            elif event_name == "error":
+                stream_error_message = _get_error_message(event) or stream_error_message
     except Exception as exc:
         if not terminal_published:
             logger.exception(
@@ -448,7 +463,7 @@ def _publish_streaming_response(
             normalized_workflow_run_id,
         )
         _publish_failed_terminal_event(
-            error_message=unexpected_stream_end_message,
+            error_message=stream_error_message or unexpected_stream_end_message,
             task_id=last_task_id,
             publish_started=not started_published,
         )
@@ -457,7 +472,7 @@ def _publish_streaming_response(
 @shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE)
 def workflow_based_app_execution_task(
     payload: str,
-) -> Generator[Mapping[str, Any] | str, None, None] | Mapping[str, Any] | None:
+) -> Mapping[str, Any] | None:
     exec_params = AppExecutionParams.model_validate_json(payload)
 
     logger.info("workflow_based_app_execution_task run with params: %s", exec_params)
@@ -486,6 +501,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
     generate_entity = resumption_context.get_generate_entity()
 
     graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+    response_stream_filter = resumption_context.get_response_stream_filter()
 
     conversation = None
     message = None
@@ -543,6 +559,12 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         )
         return
 
+    # The resumed attempt reuses the paused run's task ID, so cancellation
+    # signals armed against that ID before or during the pause would abort it
+    # immediately and report it as stopped by the user. This attempt is starting
+    # deliberately, so drop them before any engine can observe them.
+    clear_app_task_cancellation_signals(generate_entity.task_id)
+
     workflow_run_repo.resume_workflow_pause(workflow_run_id, pause_entity)
 
     pause_config = PauseStateLayerConfig(
@@ -554,19 +576,22 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         case AdvancedChatAppGenerateEntity():
             assert conversation is not None
             assert message is not None
-            _resume_advanced_chat(
-                app_model=app_model,
-                workflow=workflow,
-                user=user,
-                conversation=conversation,
-                message=message,
-                generate_entity=generate_entity,
-                graph_runtime_state=graph_runtime_state,
-                session_factory=session_factory,
-                pause_state_config=pause_config,
-                workflow_run_id=workflow_run_id,
-                workflow_run=workflow_run,
-            )
+            with session_factory() as session:
+                _resume_advanced_chat(
+                    app_model=app_model,
+                    workflow=workflow,
+                    user=user,
+                    conversation=conversation,
+                    message=message,
+                    generate_entity=generate_entity,
+                    graph_runtime_state=graph_runtime_state,
+                    response_stream_filter=response_stream_filter,
+                    session_factory=session_factory,
+                    pause_state_config=pause_config,
+                    workflow_run_id=workflow_run_id,
+                    workflow_run=workflow_run,
+                    session=session,
+                )
         case WorkflowAppGenerateEntity():
             _resume_workflow(
                 app_model=app_model,
@@ -574,6 +599,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
                 user=user,
                 generate_entity=generate_entity,
                 graph_runtime_state=graph_runtime_state,
+                response_stream_filter=response_stream_filter,
                 session_factory=session_factory,
                 pause_state_config=pause_config,
                 workflow_run_id=workflow_run_id,
@@ -592,10 +618,12 @@ def _resume_advanced_chat(
     message: Message,
     generate_entity: AdvancedChatAppGenerateEntity,
     graph_runtime_state: GraphRuntimeState,
+    response_stream_filter: ResponseStreamFilter,
     session_factory: sessionmaker,
     pause_state_config: PauseStateLayerConfig,
     workflow_run_id: str,
     workflow_run: WorkflowRun,
+    session: Session,
 ) -> None:
     resumed_generate_entity = generate_entity.model_copy(update={"stream": True})
 
@@ -606,12 +634,14 @@ def _resume_advanced_chat(
 
     workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=triggered_from,
     )
     workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -631,6 +661,8 @@ def _resume_advanced_chat(
             workflow_node_execution_repository=workflow_node_execution_repository,
             graph_runtime_state=graph_runtime_state,
             pause_state_config=pause_state_config,
+            response_stream_filter=response_stream_filter,
+            session=session,
         )
     except Exception:
         logger.exception("Failed to resume chatflow execution for workflow run %s", workflow_run_id)
@@ -654,6 +686,7 @@ def _resume_workflow(
     user: Account | EndUser,
     generate_entity: WorkflowAppGenerateEntity,
     graph_runtime_state: GraphRuntimeState,
+    response_stream_filter: ResponseStreamFilter,
     session_factory: sessionmaker,
     pause_state_config: PauseStateLayerConfig,
     workflow_run_id: str,
@@ -670,12 +703,14 @@ def _resume_workflow(
 
     workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=triggered_from,
     )
     workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -693,6 +728,7 @@ def _resume_workflow(
             workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
             pause_state_config=pause_state_config,
+            response_stream_filter=response_stream_filter,
         )
     except Exception:
         logger.exception("Failed to resume workflow execution for workflow run %s", workflow_run_id)

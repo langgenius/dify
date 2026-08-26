@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import { render, screen } from '@testing-library/react'
 import ResultTab from '../result-tab'
 
@@ -35,15 +35,17 @@ describe('ResultTab', () => {
       <ResultTab
         currentTab="RESULT"
         content=""
-        data={{
-          resultText: 'Hello world',
-          files: [
-            {
-              varName: 'attachments',
-              list: [{ id: 'file-1' }],
-            },
-          ],
-        } as any}
+        data={
+          {
+            resultText: 'Hello world',
+            files: [
+              {
+                varName: 'attachments',
+                list: [{ id: 'file-1' }],
+              },
+            ],
+          } as any
+        }
       />,
     )
 
@@ -53,12 +55,7 @@ describe('ResultTab', () => {
   })
 
   it('should render the raw detail view on the detail tab', () => {
-    render(
-      <ResultTab
-        currentTab="DETAIL"
-        content='{"answer":"ok"}'
-      />,
-    )
+    render(<ResultTab currentTab="DETAIL" content='{"answer":"ok"}' />)
 
     expect(screen.getByText('code-editor:{"answer":"ok"}')).toBeInTheDocument()
   })

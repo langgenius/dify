@@ -98,8 +98,8 @@ describe('Validators', () => {
       }
       const errors = forbidBooleanProperties(schema)
       expect(errors).toHaveLength(2)
-      expect(errors.some(e => e.includes('user.name'))).toBe(true)
-      expect(errors.some(e => e.includes('user.profile.bio'))).toBe(true)
+      expect(errors.some((e) => e.includes('user.name'))).toBe(true)
+      expect(errors.some((e) => e.includes('user.profile.bio'))).toBe(true)
     })
 
     it('should handle schema without properties', () => {

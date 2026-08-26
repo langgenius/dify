@@ -1,21 +1,16 @@
 import type { Credential } from '../../types'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-
+import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { CredentialTypeEnum } from '../../types'
 import Item from '../item'
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     userProfile: { id: 'test-user' },
     workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
   }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 // ==================== Test Utilities ====================
@@ -84,11 +79,7 @@ describe('Item Component', () => {
       const credential = createCredential({ id: 'selected-id' })
 
       const { container } = render(
-        <Item
-          credential={credential}
-          showSelectedIcon={true}
-          selectedCredentialId="selected-id"
-        />,
+        <Item credential={credential} showSelectedIcon={true} selectedCredentialId="selected-id" />,
       )
 
       expect(container.querySelector('.i-ri-check-line')).toBeInTheDocument()
@@ -110,11 +101,7 @@ describe('Item Component', () => {
       cleanup()
 
       const { container: unselectedContainer } = render(
-        <Item
-          credential={credential}
-          showSelectedIcon={true}
-          selectedCredentialId="other-id"
-        />,
+        <Item credential={credential} showSelectedIcon={true} selectedCredentialId="other-id" />,
       )
       const unselectedIcon = unselectedContainer.querySelector('.i-ri-check-line')
 
@@ -133,7 +120,9 @@ describe('Item Component', () => {
       const onItemClick = vi.fn()
       const credential = createCredential()
 
-      const { container } = render(<Item credential={credential} onItemClick={onItemClick} disabled={true} />)
+      const { container } = render(
+        <Item credential={credential} onItemClick={onItemClick} disabled={true} />,
+      )
 
       fireEvent.click(container.firstElementChild!)
 
@@ -158,9 +147,7 @@ describe('Item Component', () => {
       const onItemClick = vi.fn()
       const credential = createCredential({ id: 'click-test-id' })
 
-      const { container } = render(
-        <Item credential={credential} onItemClick={onItemClick} />,
-      )
+      const { container } = render(<Item credential={credential} onItemClick={onItemClick} />)
 
       fireEvent.click(container.firstElementChild!)
 
@@ -171,9 +158,7 @@ describe('Item Component', () => {
       const onItemClick = vi.fn()
       const credential = createCredential({ id: '__workspace_default__' })
 
-      const { container } = render(
-        <Item credential={credential} onItemClick={onItemClick} />,
-      )
+      const { container } = render(<Item credential={credential} onItemClick={onItemClick} />)
 
       fireEvent.click(container.firstElementChild!)
 
@@ -356,7 +341,9 @@ describe('Item Component', () => {
         />,
       )
 
-      const editButton = container.querySelector('.i-ri-equalizer-2-line')?.closest('button') as HTMLElement
+      const editButton = container
+        .querySelector('.i-ri-equalizer-2-line')
+        ?.closest('button') as HTMLElement
       fireEvent.click(editButton)
       expect(onEdit).toHaveBeenCalledWith('edit-test-id', {
         api_key: 'secret',
@@ -420,7 +407,9 @@ describe('Item Component', () => {
         />,
       )
 
-      const deleteButton = container.querySelector('.i-ri-delete-bin-line')?.closest('button') as HTMLElement
+      const deleteButton = container
+        .querySelector('.i-ri-delete-bin-line')
+        ?.closest('button') as HTMLElement
       fireEvent.click(deleteButton)
       expect(onDelete).toHaveBeenCalledWith('delete-test-id')
     })
@@ -537,7 +526,9 @@ describe('Item Component', () => {
         />,
       )
 
-      const deleteButton = container.querySelector('.i-ri-delete-bin-line')?.closest('button') as HTMLElement
+      const deleteButton = container
+        .querySelector('.i-ri-delete-bin-line')
+        ?.closest('button') as HTMLElement
       fireEvent.click(deleteButton)
       expect(onDelete).toHaveBeenCalled()
     })
@@ -620,15 +611,6 @@ describe('Item Component', () => {
       const nameElement = container.querySelector('[title]')
       expect(nameElement).toBeInTheDocument()
       expect(nameElement?.getAttribute('title')).toBe(longName)
-    })
-  })
-
-  // ==================== Memoization Test ====================
-  describe('Memoization', () => {
-    it('should be memoized', async () => {
-      const ItemModule = await import('../item')
-      // memo returns an object with $$typeof
-      expect(typeof ItemModule.default).toBe('object')
     })
   })
 })

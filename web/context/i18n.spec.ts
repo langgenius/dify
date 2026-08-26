@@ -3,10 +3,10 @@ import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { renderHook } from '@testing-library/react'
 import { useTranslation } from '#i18n'
 import { getDocLanguage } from '@/i18n-config/language'
-import { defaultDocBaseUrl, useDocLink } from './i18n'
+import { defaultDocBaseUrl, enterpriseDocBaseUrl, useDocLink } from './i18n'
 
-const mockConfig = vi.hoisted(() => ({
-  IS_CLOUD_EDITION: true,
+const mockDeploymentEdition = vi.hoisted(() => ({
+  value: 'CLOUD' as 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD',
 }))
 
 // Mock dependencies
@@ -16,10 +16,9 @@ vi.mock('#i18n', () => ({
   })),
 }))
 
-vi.mock('@/config', () => ({
-  get IS_CLOUD_EDITION() {
-    return mockConfig.IS_CLOUD_EDITION
-  },
+vi.mock('jotai', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('jotai')>()),
+  useAtomValue: () => mockDeploymentEdition.value,
 }))
 
 vi.mock('@/i18n-config/language', () => ({
@@ -38,18 +37,11 @@ vi.mock('@/i18n-config/language', () => ({
 describe('useDocLink', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockConfig.IS_CLOUD_EDITION = true
+    mockDeploymentEdition.value = 'CLOUD'
     vi.mocked(useTranslation).mockReturnValue({
       i18n: { language: 'en-US' },
     } as ReturnType<typeof useTranslation>)
     vi.mocked(getDocLanguage).mockReturnValue('en')
-  })
-
-  describe('Rendering', () => {
-    it('should return a function', () => {
-      const { result } = renderHook(() => useDocLink())
-      expect(typeof result.current).toBe('function')
-    })
   })
 
   describe('Base URL handling', () => {
@@ -108,8 +100,10 @@ describe('useDocLink', () => {
 
     it('should keep explicit product docs path without adding another product prefix', () => {
       const { result } = renderHook(() => useDocLink())
-      const url = result.current('/cloud/use-dify/build/mcp' as DocPathWithoutLang)
-      expect(url).toBe(`${defaultDocBaseUrl}/en/cloud/use-dify/build/mcp`)
+      const url = result.current(
+        '/cloud/use-dify/getting-started/introduction' as DocPathWithoutLang,
+      )
+      expect(url).toBe(`${defaultDocBaseUrl}/en/cloud/use-dify/getting-started/introduction`)
     })
   })
 
@@ -122,11 +116,11 @@ describe('useDocLink', () => {
 
       const pathMap: DocPathMap = {
         'zh-Hans': '/use-dify/getting-started/introduction',
-        'en-US': '/use-dify/build/mcp',
+        'en-US': '/use-dify/workspace/tools#mcp',
       }
 
       const { result } = renderHook(() => useDocLink())
-      const url = result.current('/use-dify/build/mcp', pathMap)
+      const url = result.current('/use-dify/workspace/tools#mcp', pathMap)
       expect(url).toBe(`${defaultDocBaseUrl}/zh/cloud/use-dify/getting-started/introduction`)
     })
 
@@ -138,12 +132,12 @@ describe('useDocLink', () => {
 
       const pathMap: DocPathMap = {
         'zh-Hans': '/use-dify/getting-started/introduction',
-        'en-US': '/use-dify/build/mcp',
+        'en-US': '/use-dify/workspace/tools#mcp',
       }
 
       const { result } = renderHook(() => useDocLink())
-      const url = result.current('/use-dify/build/mcp', pathMap)
-      expect(url).toBe(`${defaultDocBaseUrl}/ja/cloud/use-dify/build/mcp`)
+      const url = result.current('/use-dify/workspace/tools#mcp', pathMap)
+      expect(url).toBe(`${defaultDocBaseUrl}/ja/cloud/use-dify/workspace/tools#mcp`)
     })
 
     it('should handle undefined pathMap', () => {
@@ -155,31 +149,33 @@ describe('useDocLink', () => {
 
   describe('Product prefix handling', () => {
     it('should add cloud product prefix for product docs available in both editions', () => {
-      mockConfig.IS_CLOUD_EDITION = true
+      mockDeploymentEdition.value = 'CLOUD'
 
       const { result } = renderHook(() => useDocLink())
-      const url = result.current('/use-dify/build/mcp')
-      expect(url).toBe(`${defaultDocBaseUrl}/en/cloud/use-dify/build/mcp`)
+      const url = result.current('/use-dify/workspace/tools#mcp')
+      expect(url).toBe(`${defaultDocBaseUrl}/en/cloud/use-dify/workspace/tools#mcp`)
     })
 
     it('should add self-host product prefix for product docs available in both editions outside cloud edition', () => {
-      mockConfig.IS_CLOUD_EDITION = false
+      mockDeploymentEdition.value = 'COMMUNITY'
 
       const { result } = renderHook(() => useDocLink())
-      const url = result.current('/use-dify/build/mcp')
-      expect(url).toBe(`${defaultDocBaseUrl}/en/self-host/use-dify/build/mcp`)
+      const url = result.current('/use-dify/workspace/tools#mcp')
+      expect(url).toBe(`${defaultDocBaseUrl}/en/self-host/use-dify/workspace/tools#mcp`)
     })
 
     it('should use the existing cloud docs path for cloud-only product docs outside cloud edition', () => {
-      mockConfig.IS_CLOUD_EDITION = false
+      mockDeploymentEdition.value = 'COMMUNITY'
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/use-dify/workspace/subscription-management#dify-for-education')
-      expect(url).toBe(`${defaultDocBaseUrl}/en/cloud/use-dify/workspace/subscription-management#dify-for-education`)
+      expect(url).toBe(
+        `${defaultDocBaseUrl}/en/cloud/use-dify/workspace/subscription-management#dify-for-education`,
+      )
     })
 
     it('should use the self-host Start node docs path outside cloud edition', () => {
-      mockConfig.IS_CLOUD_EDITION = false
+      mockDeploymentEdition.value = 'COMMUNITY'
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/use-dify/nodes/start')
@@ -187,7 +183,7 @@ describe('useDocLink', () => {
     })
 
     it('should use the existing self-host docs path for self-host-only product docs in cloud edition', () => {
-      mockConfig.IS_CLOUD_EDITION = true
+      mockDeploymentEdition.value = 'CLOUD'
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/deploy/overview')
@@ -195,7 +191,7 @@ describe('useDocLink', () => {
     })
 
     it('should not add a product prefix for unknown productless paths', () => {
-      mockConfig.IS_CLOUD_EDITION = false
+      mockDeploymentEdition.value = 'COMMUNITY'
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/use-dify/unknown-page' as DocPathWithoutLang)
@@ -203,7 +199,7 @@ describe('useDocLink', () => {
     })
 
     it('should open shared docs home when no path is provided outside cloud edition', () => {
-      mockConfig.IS_CLOUD_EDITION = false
+      mockDeploymentEdition.value = 'COMMUNITY'
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current()
@@ -211,11 +207,111 @@ describe('useDocLink', () => {
     })
 
     it('should keep self-host deploy paths without adding use-dify product prefix', () => {
-      mockConfig.IS_CLOUD_EDITION = true
+      mockDeploymentEdition.value = 'CLOUD'
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/self-host/deploy/overview' as DocPathWithoutLang)
       expect(url).toBe(`${defaultDocBaseUrl}/en/self-host/deploy/overview`)
+    })
+  })
+
+  describe('Enterprise documentation', () => {
+    beforeEach(() => {
+      mockDeploymentEdition.value = 'ENTERPRISE'
+    })
+
+    it('should route use documentation to the versioned enterprise documentation', () => {
+      const { result } = renderHook(() => useDocLink())
+
+      expect(result.current('/use-dify/build/workflow-chatflow')).toBe(
+        `${enterpriseDocBaseUrl}/en/use/build/workflow-chatflow`,
+      )
+    })
+
+    it.each([
+      ['/use-dify/getting-started/introduction', '/use/build/workflow-chatflow'],
+      ['/cli/overview', '/develop/cli/introduction'],
+      ['/cli/authenticate', '/develop/cli/account-users/authenticate'],
+      ['/cli/common-tasks', '/develop/cli/account-users/common-tasks'],
+      ['/cli/quick-start', '/develop/cli/account-users/quick-start'],
+    ] as const)('should map the renamed %s page to %s', (communityPath, enterprisePath) => {
+      const { result } = renderHook(() => useDocLink())
+
+      expect(result.current(communityPath)).toBe(`${enterpriseDocBaseUrl}/en${enterprisePath}`)
+    })
+
+    it('should convert API, plugin, and CLI documentation prefixes', () => {
+      const { result } = renderHook(() => useDocLink())
+
+      expect(result.current('/api-reference/guides/knowledge')).toBe(
+        `${enterpriseDocBaseUrl}/en/develop/api/guides/knowledge`,
+      )
+      expect(result.current('/develop-plugin/getting-started/getting-started-dify-plugin')).toBe(
+        `${enterpriseDocBaseUrl}/en/develop/plugins/getting-started/getting-started-dify-plugin`,
+      )
+      expect(result.current('/cli/install')).toBe(`${enterpriseDocBaseUrl}/en/develop/cli/install`)
+    })
+
+    it('should remove public product prefixes and preserve anchors', () => {
+      const { result } = renderHook(() => useDocLink())
+
+      expect(result.current('/self-host/use-dify/workspace/tools#mcp' as DocPathWithoutLang)).toBe(
+        `${enterpriseDocBaseUrl}/en/use/workspace/tools#mcp`,
+      )
+      expect(result.current('/cloud/use-dify/nodes/start' as DocPathWithoutLang)).toBe(
+        `${enterpriseDocBaseUrl}/en/use/nodes/start`,
+      )
+    })
+
+    it.each(['/cloud', '/self-host'] as const)(
+      'should map the bare %s product prefix to the enterprise documentation home',
+      (productPrefix) => {
+        const { result } = renderHook(() => useDocLink())
+
+        expect(result.current(productPrefix as DocPathWithoutLang)).toBe(
+          `${enterpriseDocBaseUrl}/en/`,
+        )
+      },
+    )
+
+    it.each([
+      '/use-dify/knowledge/knowledge-request-rate-limit',
+      '/cloud/use-dify/knowledge/knowledge-storage-limit',
+      '/cloud/use-dify/workspace/subscription-management#dify-for-education',
+    ] as const)('should fall back to the enterprise documentation home for %s', (communityPath) => {
+      const { result } = renderHook(() => useDocLink())
+
+      expect(result.current(communityPath as DocPathWithoutLang)).toBe(
+        `${enterpriseDocBaseUrl}/en/`,
+      )
+    })
+
+    it('should open the enterprise documentation home when no path is provided', () => {
+      const { result } = renderHook(() => useDocLink())
+
+      expect(result.current()).toBe(`${enterpriseDocBaseUrl}/en/`)
+    })
+
+    it('should use Chinese and Japanese enterprise documentation languages', () => {
+      vi.mocked(useTranslation).mockReturnValue({
+        i18n: { language: 'zh-Hans' },
+      } as ReturnType<typeof useTranslation>)
+      vi.mocked(getDocLanguage).mockReturnValue('zh')
+
+      const { result, rerender } = renderHook(() => useDocLink())
+      expect(result.current('/use-dify/nodes/start')).toBe(
+        `${enterpriseDocBaseUrl}/zh/use/nodes/start`,
+      )
+
+      vi.mocked(useTranslation).mockReturnValue({
+        i18n: { language: 'ja-JP' },
+      } as ReturnType<typeof useTranslation>)
+      vi.mocked(getDocLanguage).mockReturnValue('ja')
+      rerender()
+
+      expect(result.current('/use-dify/nodes/start')).toBe(
+        `${enterpriseDocBaseUrl}/ja/use/nodes/start`,
+      )
     })
   })
 
@@ -254,8 +350,8 @@ describe('useDocLink', () => {
     })
   })
 
-  describe('API reference path translations', () => {
-    it('should translate API reference path for Chinese locale', () => {
+  describe('API reference path handling', () => {
+    it('should add language prefix for Chinese API reference paths', () => {
       vi.mocked(useTranslation).mockReturnValue({
         i18n: { language: 'zh-Hans' },
       } as ReturnType<typeof useTranslation>)
@@ -263,10 +359,10 @@ describe('useDocLink', () => {
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/api-reference/annotations/create-annotation')
-      expect(url).toBe(`${defaultDocBaseUrl}/api-reference/标注管理/创建标注`)
+      expect(url).toBe(`${defaultDocBaseUrl}/zh/api-reference/annotations/create-annotation`)
     })
 
-    it('should translate API reference path for Japanese locale when translation exists', () => {
+    it('should add language prefix for Japanese API reference paths', () => {
       vi.mocked(useTranslation).mockReturnValue({
         i18n: { language: 'ja-JP' },
       } as ReturnType<typeof useTranslation>)
@@ -274,7 +370,7 @@ describe('useDocLink', () => {
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/api-reference/applications/get-app-info')
-      expect(url).toBe(`${defaultDocBaseUrl}/api-reference/アプリケーション設定/アプリケーションの基本情報を取得`)
+      expect(url).toBe(`${defaultDocBaseUrl}/ja/api-reference/applications/get-app-info`)
     })
 
     it('should not translate API reference path for English locale', () => {
@@ -285,22 +381,10 @@ describe('useDocLink', () => {
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/api-reference/annotations/create-annotation')
-      expect(url).toBe(`${defaultDocBaseUrl}/api-reference/annotations/create-annotation`)
+      expect(url).toBe(`${defaultDocBaseUrl}/en/api-reference/annotations/create-annotation`)
     })
 
-    it('should keep original path when no translation exists for non-English locale', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'zh-Hans' },
-      } as ReturnType<typeof useTranslation>)
-      vi.mocked(getDocLanguage).mockReturnValue('zh')
-
-      const { result } = renderHook(() => useDocLink())
-      // This path has no Japanese translation
-      const url = result.current('/api-reference/annotations/create-annotation')
-      expect(url).toBe(`${defaultDocBaseUrl}/api-reference/标注管理/创建标注`)
-    })
-
-    it('should remove language prefix when translation is applied', () => {
+    it('should keep the API reference slug unchanged for non-English locale', () => {
       vi.mocked(useTranslation).mockReturnValue({
         i18n: { language: 'zh-Hans' },
       } as ReturnType<typeof useTranslation>)
@@ -308,9 +392,29 @@ describe('useDocLink', () => {
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/api-reference/annotations/create-annotation')
-      // Should NOT have /zh/ prefix when translated
-      expect(url).not.toContain('/zh/')
-      expect(url).toBe(`${defaultDocBaseUrl}/api-reference/标注管理/创建标注`)
+      expect(url).toBe(`${defaultDocBaseUrl}/zh/api-reference/annotations/create-annotation`)
+    })
+
+    it('should keep language prefix for API reference paths', () => {
+      vi.mocked(useTranslation).mockReturnValue({
+        i18n: { language: 'zh-Hans' },
+      } as ReturnType<typeof useTranslation>)
+      vi.mocked(getDocLanguage).mockReturnValue('zh')
+
+      const { result } = renderHook(() => useDocLink())
+      const url = result.current('/api-reference/annotations/create-annotation')
+      expect(url).toBe(`${defaultDocBaseUrl}/zh/api-reference/annotations/create-annotation`)
+    })
+
+    it('should use the current knowledge API guide path directly', () => {
+      vi.mocked(useTranslation).mockReturnValue({
+        i18n: { language: 'zh-Hans' },
+      } as ReturnType<typeof useTranslation>)
+      vi.mocked(getDocLanguage).mockReturnValue('zh')
+
+      const { result } = renderHook(() => useDocLink())
+      const url = result.current('/api-reference/guides/knowledge')
+      expect(url).toBe(`${defaultDocBaseUrl}/zh/api-reference/guides/knowledge`)
     })
 
     it('should not translate non-API-reference paths', () => {
@@ -328,16 +432,20 @@ describe('useDocLink', () => {
   describe('Edge Cases', () => {
     it('should handle path with anchor', () => {
       const { result } = renderHook(() => useDocLink())
-      const url = result.current('/use-dify/getting-started/introduction#overview' as DocPathWithoutLang)
-      expect(url).toBe(`${defaultDocBaseUrl}/en/cloud/use-dify/getting-started/introduction#overview`)
+      const url = result.current(
+        '/use-dify/getting-started/introduction#overview' as DocPathWithoutLang,
+      )
+      expect(url).toBe(
+        `${defaultDocBaseUrl}/en/cloud/use-dify/getting-started/introduction#overview`,
+      )
     })
 
     it('should handle multiple calls with same hook instance', () => {
       const { result } = renderHook(() => useDocLink())
       const url1 = result.current('/use-dify/getting-started/introduction')
-      const url2 = result.current('/use-dify/build/mcp')
+      const url2 = result.current('/use-dify/workspace/tools#mcp')
       expect(url1).toBe(`${defaultDocBaseUrl}/en/cloud/use-dify/getting-started/introduction`)
-      expect(url2).toBe(`${defaultDocBaseUrl}/en/cloud/use-dify/build/mcp`)
+      expect(url2).toBe(`${defaultDocBaseUrl}/en/cloud/use-dify/workspace/tools#mcp`)
     })
   })
 })

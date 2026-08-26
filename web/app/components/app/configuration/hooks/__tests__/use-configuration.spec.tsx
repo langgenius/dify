@@ -1,11 +1,27 @@
-/* eslint-disable ts/no-explicit-any */
-import { act, renderHook, waitFor } from '@testing-library/react'
+/* oxlint-disable typescript/no-explicit-any */
+import { act, waitFor } from '@testing-library/react'
 import { updateAppModelConfig } from '@/service/apps'
+import { consoleQuery } from '@/service/client'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
+import { createTestQueryClient } from '@/test/query-client'
 import { AppModeEnum, ModelModeType } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import { useConfiguration } from '../use-configuration'
 
-const mockSetShowAccountSettingModal = vi.fn()
+const renderHook = (callback: () => ReturnType<typeof useConfiguration>) => {
+  const queryClient = createTestQueryClient()
+  seedAccountProfileQuery(queryClient, { id: 'user-1' })
+  return {
+    ...renderHookWithConsoleState(callback, {
+      wrapper: createQueryClientWrapper(queryClient),
+    }),
+    queryClient,
+  }
+}
+
+const mockSetSettingsDestination = vi.fn()
 const mockSetShowAppConfigureFeaturesModal = vi.fn()
 const mockSetDetailSidebarMode = vi.fn()
 const mockHandleMultipleModelConfigsChange = vi.fn()
@@ -29,13 +45,6 @@ let mockTempStopState: string[] = []
 let mockCurrentModelFeatures = ['vision']
 let mockCurrentModelMode = ModelModeType.chat
 let mockAppPermissionKeys: string[] = [AppACLPermission.Edit, AppACLPermission.ReleaseAndVersion]
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('ahooks', async () => {
   const actual = await vi.importActual<any>('ahooks')
 
@@ -51,10 +60,18 @@ vi.mock('ahooks', async () => {
   }
 })
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+    isLoadingCurrentWorkspace: false,
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: ['app.create_and_management'],
+  }))
+})
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     currentWorkspace: { id: 'workspace-1' },
     isLoadingCurrentWorkspace: false,
     userProfile: { id: 'user-1' },
@@ -62,17 +79,10 @@ vi.mock('@/context/app-context-state', async (importOriginal) => {
   }))
 })
 
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
 })
-
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-}))
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
@@ -81,18 +91,19 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    appDetail: {
-      id: 'app-1',
-      model_config: {
-        updated_at: 1710000000,
+  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({
+      appDetail: {
+        id: 'app-1',
+        model_config: {
+          updated_at: 1710000000,
+        },
+        mode: AppModeEnum.CHAT,
+        permission_keys: mockAppPermissionKeys,
       },
-      mode: AppModeEnum.CHAT,
-      permission_keys: mockAppPermissionKeys,
-    },
-    showAppConfigureFeaturesModal: false,
-    setShowAppConfigureFeaturesModal: mockSetShowAppConfigureFeaturesModal,
-  }),
+      showAppConfigureFeaturesModal: false,
+      setShowAppConfigureFeaturesModal: mockSetShowAppConfigureFeaturesModal,
+    }),
 }))
 
 vi.mock('@/app/components/detail-sidebar/storage', () => ({
@@ -182,7 +193,8 @@ vi.mock('@/service/datasets', () => ({
 }))
 
 vi.mock('@/utils/completion-params', () => ({
-  fetchAndMergeValidCompletionParams: (...args: unknown[]) => mockFetchAndMergeValidCompletionParams(...args),
+  fetchAndMergeValidCompletionParams: (...args: unknown[]) =>
+    mockFetchAndMergeValidCompletionParams(...args),
 }))
 
 describe('useConfiguration', () => {
@@ -263,7 +275,18 @@ describe('useConfiguration', () => {
   })
 
   it('should update model parameters and publish the current configuration', async () => {
-    const { result } = renderHook(() => useConfiguration())
+    const { result, queryClient } = renderHook(() => useConfiguration())
+    const detailQueryKey = consoleQuery.apps.byAppId.get.queryKey({
+      input: { params: { app_id: 'app-1' } },
+    })
+    queryClient.setQueryData(detailQueryKey, {
+      enable_api: false,
+      enable_site: false,
+      icon_url: null,
+      id: 'app-1',
+      mode: 'chat',
+      name: 'Cached app',
+    })
 
     await waitFor(() => {
       expect(result.current.showLoading).toBe(false)
@@ -290,9 +313,181 @@ describe('useConfiguration', () => {
       await result.current.appPublisherProps.onPublish!(undefined, result.current.featuresData)
     })
 
-    expect(updateAppModelConfig).toHaveBeenCalledWith(expect.objectContaining({
-      url: '/apps/app-1/model-config',
-    }))
+    expect(updateAppModelConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: '/apps/app-1/model-config',
+      }),
+    )
+    expect(queryClient.getQueryState(detailQueryKey)?.isInvalidated).toBe(true)
+  })
+
+  it('should publish and restore the complete configuration snapshot', async () => {
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    act(() => {
+      result.current.contextValue.setDatasetConfigs({
+        ...result.current.contextValue.datasetConfigs,
+        top_k: 8,
+      })
+    })
+
+    await act(async () => {
+      await result.current.appPublisherProps.onPublish!(undefined, result.current.featuresData)
+    })
+    expect(result.current.appPublisherProps.publishedConfig.datasetConfigs.top_k).toBe(8)
+
+    act(() => {
+      result.current.contextValue.setDatasetConfigs({
+        ...result.current.contextValue.datasetConfigs,
+        top_k: 10,
+      })
+    })
+
+    mockSetChatPromptConfig.mockClear()
+    mockSetCompletionPromptConfig.mockClear()
+    act(() => {
+      result.current.appPublisherProps.resetAppConfig?.()
+    })
+    expect(result.current.contextValue.datasetConfigs.top_k).toBe(8)
+    expect(mockSetChatPromptConfig).toHaveBeenCalledWith({
+      prompt: [{ role: 'system', text: 'hi' }],
+    })
+    expect(mockSetCompletionPromptConfig).toHaveBeenCalledWith({
+      prompt: { text: 'completion' },
+      conversation_histories_role: {
+        assistant_prefix: 'assistant',
+        user_prefix: 'user',
+      },
+    })
+  })
+
+  it('should enable multiple-model mode', async () => {
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    act(() => {
+      result.current.onEnableMultipleModelDebug()
+    })
+
+    expect(mockHandleMultipleModelConfigsChange).toHaveBeenCalledWith(
+      true,
+      expect.arrayContaining([
+        expect.objectContaining({
+          model: 'gpt-4o',
+          provider: 'langgenius/openai/openai',
+        }),
+      ]),
+    )
+  })
+
+  it('should update multiple-model debug configs', async () => {
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    const modelConfigs = [
+      {
+        id: 'model-1',
+        model: 'gpt-4o',
+        provider: 'langgenius/openai/openai',
+        parameters: { temperature: 0.7 },
+      },
+      {
+        id: 'model-2',
+        model: 'gpt-4.1',
+        provider: 'langgenius/openai/openai',
+        parameters: {},
+      },
+      {
+        id: 'model-3',
+        model: '',
+        provider: '',
+        parameters: {},
+      },
+    ]
+
+    act(() => {
+      result.current.onMultipleModelConfigsChange(true, modelConfigs)
+    })
+
+    expect(mockHandleMultipleModelConfigsChange).toHaveBeenCalledWith(true, modelConfigs)
+  })
+
+  it('should keep multiple-model debug state when restoring published config', async () => {
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    act(() => {
+      result.current.onEnableMultipleModelDebug()
+    })
+
+    act(() => {
+      result.current.contextValue.setDatasetConfigs({
+        ...result.current.contextValue.datasetConfigs,
+        top_k: 8,
+      })
+    })
+
+    mockHandleMultipleModelConfigsChange.mockClear()
+    act(() => {
+      result.current.appPublisherProps.resetAppConfig?.()
+    })
+
+    expect(mockHandleMultipleModelConfigsChange).not.toHaveBeenCalled()
+  })
+
+  it('should sync the selected multiple-model config after publishing', async () => {
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    act(() => {
+      result.current.contextValue.setDatasetConfigs({
+        ...result.current.contextValue.datasetConfigs,
+        top_k: 8,
+      })
+    })
+
+    await act(async () => {
+      await result.current.appPublisherProps.onPublish!(
+        {
+          id: 'model-2',
+          model: 'gpt-4.1',
+          provider: 'langgenius/openai/openai',
+          parameters: { temperature: 0.2 },
+        },
+        result.current.featuresData,
+      )
+    })
+
+    expect(result.current.contextValue.modelConfig.model_id).toBe('gpt-4.1')
+    expect(result.current.contextValue.modelConfig.provider).toBe('langgenius/openai/openai')
+    expect(result.current.contextValue.completionParams).toEqual({ temperature: 0.2 })
+    expect(result.current.appPublisherProps.publishedConfig.modelConfig.model_id).toBe('gpt-4.1')
+  })
+
+  it('should expose the latest published time supplied by the app detail', async () => {
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    expect(result.current.appPublisherProps.publishedAt).toBe(1710000000000)
   })
 
   it('should block publishing when app release permission is missing', async () => {
@@ -376,9 +571,11 @@ describe('useConfiguration', () => {
       await result.current.appPublisherProps.onPublish!(undefined, result.current.featuresData)
     })
 
-    expect(updateAppModelConfig).toHaveBeenCalledWith(expect.objectContaining({
-      url: '/apps/app-1/model-config',
-    }))
+    expect(updateAppModelConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: '/apps/app-1/model-config',
+      }),
+    )
   })
 
   it('should expose derived feature flags and imperative callbacks', async () => {
@@ -459,8 +656,15 @@ describe('useConfiguration', () => {
     act(() => {
       result.current.onFeaturesChange(undefined as never)
       result.current.onFeaturesChange({ moreLikeThis: { enabled: true } } as never)
-      result.current.onAutoAddPromptVariable([{ key: 'city', name: 'City', type: 'string', required: true } as never])
-      result.current.onAgentSettingChange({ enabled: true, max_iteration: 5, strategy: 'react', tools: [] } as never)
+      result.current.onAutoAddPromptVariable([
+        { key: 'city', name: 'City', type: 'string', required: true } as never,
+      ])
+      result.current.onAgentSettingChange({
+        enabled: true,
+        max_iteration: 5,
+        strategy: 'react',
+        tools: [],
+      } as never)
       result.current.onEnableMultipleModelDebug()
       result.current.setShowUseGPT4Confirm(true)
       result.current.onConfirmUseGPT4()
@@ -475,7 +679,7 @@ describe('useConfiguration', () => {
     expect(mockFormattingChangedDispatcher).toHaveBeenCalled()
     expect(mockHandleMultipleModelConfigsChange).toHaveBeenCalled()
     expect(mockSetDetailSidebarMode).toHaveBeenCalledWith('collapse')
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider' })
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
     expect(mockSetConversationHistoriesRole).toHaveBeenCalledWith({
       assistant_prefix: 'bot',
       user_prefix: 'user',

@@ -31,8 +31,7 @@ export const createDatasetsDetailStore = () => {
 
 export const useDatasetsDetailStore = <T>(selector: (state: DatasetsDetailStore) => T): T => {
   const store = use(DatasetsDetailContext)
-  if (!store)
-    throw new Error('Missing DatasetsDetailContext.Provider in the tree')
+  if (!store) throw new Error('Missing DatasetsDetailContext.Provider in the tree')
 
   return useStore(store, selector)
 }

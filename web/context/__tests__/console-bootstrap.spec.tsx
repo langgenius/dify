@@ -1,6 +1,7 @@
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { Provider as JotaiProvider, useAtomValue, useSetAtom } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { useHydrateAtoms } from 'jotai/react/utils'
@@ -8,23 +9,30 @@ import { Suspense } from 'react'
 import { ExternalServiceSync } from '@/app/(commonLayout)/external-service-sync'
 import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 import { flushRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
+import { setAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import { ZENDESK_FIELD_IDS } from '@/config'
-import { initialWorkspaceInfo } from '../app-context-defaults'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
+import { initialWorkspaceSummary } from '../app-context-defaults'
+import {
+  datasetDefaultPermissionKeysAtom,
+  refreshWorkspacePermissionKeysAfterMutationDenialAtom,
+  workspacePermissionKeysAtom,
+  workspacePermissionKeysLoadingAtom,
+} from '../permission-state'
 import {
   currentWorkspaceAtom,
   currentWorkspaceLoadingAtom,
-  langGeniusVersionInfoAtom,
-  refreshCurrentWorkspaceAtom,
-  refreshUserProfileAtom,
-  userProfileAtom,
-  workspacePermissionKeysAtom,
-  workspacePermissionKeysLoadingAtom,
-  workspaceRoleFlagsAtom,
-} from '../app-context-state'
+  isCurrentWorkspaceDatasetOperatorAtom,
+  isCurrentWorkspaceEditorAtom,
+  isCurrentWorkspaceManagerAtom,
+  isCurrentWorkspaceOwnerAtom,
+} from '../workspace-state'
 
 const mockGetRequest = vi.hoisted(() => vi.fn())
+const mockGetPermissionKeys = vi.hoisted(() => vi.fn())
 const mockPermissionKeysState = vi.hoisted(() => ({
+  datasetPermissionKeys: ['dataset.acl.edit'],
   isPending: false,
   permissionKeys: ['app.create_and_management'],
 }))
@@ -32,13 +40,8 @@ const mockCurrentWorkspaceResponse = vi.hoisted(() => ({
   id: 'workspace-1',
   name: 'Workspace',
   plan: 'sandbox',
-  status: 'normal',
-  created_at: 1704067200,
+  credits: 200,
   role: 'editor',
-  trial_credits: 200,
-  trial_credits_used: 0,
-  next_credit_reset_date: 1706745600,
-  custom_config: {},
 }))
 const mockCurrentWorkspaceQueryState = vi.hoisted(() => ({
   data: mockCurrentWorkspaceResponse as typeof mockCurrentWorkspaceResponse | undefined,
@@ -59,7 +62,7 @@ const mockUserProfileResponseState = vi.hoisted(() => ({
       currentEnv: 'cloud',
     },
   } as {
-    profile?: {
+    profile: {
       id: string
       name: string
       email: string
@@ -74,24 +77,18 @@ const mockUserProfileResponseState = vi.hoisted(() => ({
   },
 }))
 const mockSystemFeaturesState = vi.hoisted(() => ({
-  data: {
-    branding: {
-      enabled: false,
-    },
-  },
+  data: null as unknown as GetSystemFeaturesResponse,
 }))
 const mockLangGeniusVersionState = vi.hoisted(() => ({
   data: {
     version: '1.0.1',
-    release_date: '',
     release_notes: '',
-    can_auto_update: false,
-  } as {
-    version: string
-    release_date: string
-    release_notes: string
-    can_auto_update: boolean
-  } | undefined,
+  } as
+    | {
+        version: string
+        release_notes: string
+      }
+    | undefined,
 }))
 
 vi.mock('@/config', async (importOriginal) => {
@@ -107,13 +104,6 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({
-    queryKey: ['system-features'],
-    queryFn: async () => mockSystemFeaturesState.data,
-  }),
-}))
-
 vi.mock('@/features/account-profile/client', () => ({
   userProfileQueryOptions: () => ({
     queryKey: ['user-profile'],
@@ -123,23 +113,58 @@ vi.mock('@/features/account-profile/client', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryOptions: () => ({
+          queryKey: ['system-features'],
+          queryFn: async () => mockSystemFeaturesState.data,
+        }),
+      },
+    },
     workspaces: {
       current: {
-        post: {
-          key: () => ['current-workspace'],
-          queryOptions: (options: {
-            select?: (workspace?: typeof mockCurrentWorkspaceResponse) => unknown
-          }) => ({
-            queryKey: ['current-workspace'],
-            queryFn: async () => {
-              if (mockCurrentWorkspaceQueryState.isPending)
-                return new Promise(() => {})
+        summary: {
+          get: {
+            key: () => ['current-workspace-summary'],
+            queryOptions: (options: {
+              select?: (workspace?: typeof mockCurrentWorkspaceResponse) => unknown
+            }) => ({
+              queryKey: ['current-workspace-summary'],
+              queryFn: async () => {
+                if (mockCurrentWorkspaceQueryState.isPending) return new Promise(() => {})
 
-              return mockCurrentWorkspaceQueryState.data
-            },
-            ...options,
-          }),
+                return mockCurrentWorkspaceQueryState.data
+              },
+              ...options,
+            }),
+          },
         },
+        rbac: {
+          myPermissions: {
+            get: {
+              queryOptions: () => ({
+                queryKey: ['current-permissions'],
+                queryFn: mockGetPermissionKeys,
+              }),
+            },
+          },
+        },
+      },
+    },
+    version: {
+      get: {
+        queryOptions: (options: {
+          enabled?: boolean
+          input?: {
+            query: {
+              current_version: string
+            }
+          }
+        }) => ({
+          queryKey: ['version', options.input?.query.current_version],
+          queryFn: async () => mockLangGeniusVersionState.data,
+          ...options,
+        }),
       },
     },
   },
@@ -155,6 +180,10 @@ vi.mock('@/app/components/base/amplitude', () => ({
   setUserProperties: vi.fn(),
 }))
 
+vi.mock('@/app/components/base/amplitude/use-amplitude-initialized', () => ({
+  useAmplitudeInitialized: () => true,
+}))
+
 vi.mock('@/app/components/base/amplitude/registration-tracking', () => ({
   flushRegistrationSuccess: vi.fn(),
 }))
@@ -168,15 +197,18 @@ vi.mock('@/app/components/header/maintenance-notice', () => ({
 }))
 
 function ConsoleBootstrapProbe() {
-  const userProfile = useAtomValue(userProfileAtom)
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
-  const roleFlags = useAtomValue(workspaceRoleFlagsAtom)
+  const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
+  const isCurrentWorkspaceEditor = useAtomValue(isCurrentWorkspaceEditorAtom)
+  const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const datasetDefaultPermissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
   const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
-  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
-  const refreshUserProfile = useSetAtom(refreshUserProfileAtom)
-  const refreshCurrentWorkspace = useSetAtom(refreshCurrentWorkspaceAtom)
+  const refreshPermissionsAfterMutationDenial = useSetAtom(
+    refreshWorkspacePermissionKeysAfterMutationDenialAtom,
+  )
 
   return (
     <>
@@ -185,16 +217,16 @@ function ConsoleBootstrapProbe() {
         {workspacePermissionKeys.join(',')}
       </span>
       <span>
+        dataset keys:
+        {datasetDefaultPermissionKeys.join(',')}
+      </span>
+      <span>
         permission loading:
         {String(isLoadingWorkspacePermissionKeys)}
       </span>
       <span>
         workspace loading:
         {String(isLoadingCurrentWorkspace)}
-      </span>
-      <span>
-        user:
-        {userProfile.email}
       </span>
       <span>
         workspace:
@@ -206,30 +238,23 @@ function ConsoleBootstrapProbe() {
       </span>
       <span>
         manager:
-        {String(roleFlags.isCurrentWorkspaceManager)}
+        {String(isCurrentWorkspaceManager)}
       </span>
       <span>
         owner:
-        {String(roleFlags.isCurrentWorkspaceOwner)}
+        {String(isCurrentWorkspaceOwner)}
       </span>
       <span>
         editor:
-        {String(roleFlags.isCurrentWorkspaceEditor)}
+        {String(isCurrentWorkspaceEditor)}
       </span>
       <span>
         dataset operator:
-        {String(roleFlags.isCurrentWorkspaceDatasetOperator)}
+        {String(isCurrentWorkspaceDatasetOperator)}
       </span>
-      <span>
-        version:
-        {langGeniusVersionInfo.current_version}
-        /
-        {langGeniusVersionInfo.latest_version}
-        /
-        {langGeniusVersionInfo.current_env}
-      </span>
-      <button type="button" onClick={refreshUserProfile}>refresh user</button>
-      <button type="button" onClick={refreshCurrentWorkspace}>refresh workspace</button>
+      <button type="button" onClick={() => void refreshPermissionsAfterMutationDenial()}>
+        refresh permissions after denial
+      </button>
     </>
   )
 }
@@ -246,7 +271,7 @@ function TestQueryClientHydrator({
   return children
 }
 
-function createTestQueryClient() {
+function createConsoleQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
@@ -258,7 +283,10 @@ function createTestQueryClient() {
 }
 
 function renderConsoleBootstrap() {
-  const queryClient = createTestQueryClient()
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(['user-profile'], mockUserProfileResponseState.data)
+  queryClient.setQueryData(['system-features'], mockSystemFeaturesState.data)
+
   const view = render(
     <JotaiProvider>
       <QueryClientProvider client={queryClient}>
@@ -281,8 +309,27 @@ function renderConsoleBootstrap() {
 describe('Console bootstrap', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    setAnalyticsConsent('granted')
     mockPermissionKeysState.isPending = false
+    mockPermissionKeysState.datasetPermissionKeys = ['dataset.acl.edit']
     mockPermissionKeysState.permissionKeys = ['app.create_and_management']
+    mockGetPermissionKeys.mockImplementation(async () => {
+      if (mockPermissionKeysState.isPending) return new Promise(() => {})
+
+      return {
+        workspace: {
+          permission_keys: mockPermissionKeysState.permissionKeys,
+        },
+        app: {
+          default_permission_keys: [],
+          overrides: [],
+        },
+        dataset: {
+          default_permission_keys: mockPermissionKeysState.datasetPermissionKeys,
+          overrides: [],
+        },
+      }
+    })
     mockCurrentWorkspaceQueryState.data = mockCurrentWorkspaceResponse
     mockCurrentWorkspaceQueryState.isPending = false
     mockUserProfileResponseState.data = {
@@ -299,74 +346,45 @@ describe('Console bootstrap', () => {
         currentEnv: 'cloud',
       },
     }
-    mockSystemFeaturesState.data = {
-      branding: {
-        enabled: false,
-      },
-    }
+    mockSystemFeaturesState.data = createSystemFeaturesFixture({
+      deployment_edition: 'CLOUD',
+    })
     mockLangGeniusVersionState.data = {
       version: '1.0.1',
-      release_date: '',
       release_notes: '',
-      can_auto_update: false,
     }
     mockGetRequest.mockImplementation((url: string) => {
-      if (url === '/workspaces/current/rbac/my-permissions') {
-        if (mockPermissionKeysState.isPending)
-          return new Promise(() => {})
-
-        return Promise.resolve({
-          workspace: {
-            permission_keys: mockPermissionKeysState.permissionKeys,
-          },
-          app: {
-            default_permission_keys: [],
-            overrides: [],
-          },
-          dataset: {
-            default_permission_keys: [],
-            overrides: [],
-          },
-        })
-      }
-
-      if (url === '/version')
-        return Promise.resolve(mockLangGeniusVersionState.data)
+      if (url === '/version') return Promise.resolve(mockLangGeniusVersionState.data)
 
       return Promise.reject(new Error(`Unexpected GET ${url}`))
     })
   })
 
   describe('Bootstrap atoms', () => {
-    it('should provide profile, workspace, permissions, loading state, and version metadata', async () => {
+    it('should provide workspace, permissions, and loading state', async () => {
       renderConsoleBootstrap()
 
-      expect(await screen.findByText('user:user@example.com')).toBeInTheDocument()
       expect(await screen.findByText('workspace:Workspace')).toBeInTheDocument()
       expect(await screen.findByText('keys:app.create_and_management')).toBeInTheDocument()
+      expect(screen.getByText('dataset keys:dataset.acl.edit')).toBeInTheDocument()
       expect(screen.getByText('permission loading:false')).toBeInTheDocument()
       expect(screen.getByText('workspace loading:false')).toBeInTheDocument()
-      expect(await screen.findByText('version:1.0.0/1.0.1/cloud')).toBeInTheDocument()
     })
 
-    it('should fall back to placeholder values when profile, workspace, permission, or version data is missing', async () => {
-      mockUserProfileResponseState.data = {
-        meta: {
-          currentVersion: null,
-          currentEnv: null,
-        },
-      }
+    it('should fall back to placeholder values when workspace or permission data is missing', async () => {
       mockCurrentWorkspaceQueryState.data = undefined
+      mockPermissionKeysState.datasetPermissionKeys = []
       mockPermissionKeysState.permissionKeys = []
       mockLangGeniusVersionState.data = undefined
 
       renderConsoleBootstrap()
 
-      expect(await screen.findByText('user:')).toBeInTheDocument()
-      expect(screen.getByText(`workspace:${initialWorkspaceInfo.name}`)).toBeInTheDocument()
-      expect(screen.getByText(`role:${initialWorkspaceInfo.role}`)).toBeInTheDocument()
+      expect(
+        await screen.findByText(`workspace:${initialWorkspaceSummary.name}`),
+      ).toBeInTheDocument()
+      expect(screen.getByText(`role:${initialWorkspaceSummary.role}`)).toBeInTheDocument()
       expect(screen.getByText('keys:')).toBeInTheDocument()
-      expect(screen.getByText('version://')).toBeInTheDocument()
+      expect(screen.getByText('dataset keys:')).toBeInTheDocument()
     })
 
     it('should normalize invalid workspace roles to the initial workspace role', async () => {
@@ -377,7 +395,7 @@ describe('Console bootstrap', () => {
 
       renderConsoleBootstrap()
 
-      expect(await screen.findByText(`role:${initialWorkspaceInfo.role}`)).toBeInTheDocument()
+      expect(await screen.findByText(`role:${initialWorkspaceSummary.role}`)).toBeInTheDocument()
     })
 
     it('should derive role flags from the current workspace role', async () => {
@@ -406,15 +424,29 @@ describe('Console bootstrap', () => {
   })
 
   describe('Refresh actions', () => {
-    it('should invalidate the source queries when refresh actions are called', async () => {
+    it('starts a fresh permission request without waiting for an older request', async () => {
       const { queryClient } = renderConsoleBootstrap()
-      const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
+      await screen.findByText('dataset keys:dataset.acl.edit')
+      const olderRequest = new Promise(() => {})
+      let permissionRequestCount = 0
+      mockGetPermissionKeys.mockImplementation(() => {
+        permissionRequestCount += 1
+        if (permissionRequestCount === 1) return olderRequest
+        return Promise.resolve({
+          workspace: { permission_keys: [] },
+          app: { default_permission_keys: [], overrides: [] },
+          dataset: { default_permission_keys: ['dataset.acl.readonly'], overrides: [] },
+        })
+      })
 
-      fireEvent.click(await screen.findByRole('button', { name: /refresh user/i }))
-      fireEvent.click(screen.getByRole('button', { name: /refresh workspace/i }))
-
-      expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['user-profile'] })
-      expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['current-workspace'] })
+      const backgroundRefresh = queryClient.refetchQueries({
+        queryKey: ['current-permissions'],
+      })
+      await waitFor(() => expect(permissionRequestCount).toBe(1))
+      fireEvent.click(screen.getByRole('button', { name: /refresh permissions after denial/i }))
+      await waitFor(() => expect(permissionRequestCount).toBe(2))
+      expect(await screen.findByText('dataset keys:dataset.acl.readonly')).toBeInTheDocument()
+      await backgroundRefresh
     })
   })
 
@@ -423,33 +455,112 @@ describe('Console bootstrap', () => {
       renderConsoleBootstrap()
 
       await waitFor(() => {
-        expect(setZendeskConversationFields).toHaveBeenCalledWith([{
-          id: ZENDESK_FIELD_IDS.ENVIRONMENT,
-          value: 'cloud',
-        }])
+        expect(setZendeskConversationFields).toHaveBeenCalledWith(
+          [
+            {
+              id: ZENDESK_FIELD_IDS.ENVIRONMENT,
+              value: 'cloud',
+            },
+          ],
+          'CLOUD',
+        )
       })
-      expect(setZendeskConversationFields).toHaveBeenCalledWith([{
-        id: ZENDESK_FIELD_IDS.VERSION,
-        value: '1.0.1',
-      }])
-      expect(setZendeskConversationFields).toHaveBeenCalledWith([{
-        id: ZENDESK_FIELD_IDS.EMAIL,
-        value: 'user@example.com',
-      }])
+      expect(setZendeskConversationFields).toHaveBeenCalledWith(
+        [
+          {
+            id: ZENDESK_FIELD_IDS.VERSION,
+            value: '1.0.1',
+          },
+        ],
+        'CLOUD',
+      )
+      expect(setZendeskConversationFields).toHaveBeenCalledWith(
+        [
+          {
+            id: ZENDESK_FIELD_IDS.EMAIL,
+            value: 'user@example.com',
+          },
+        ],
+        'CLOUD',
+      )
       await waitFor(() => {
-        expect(setZendeskConversationFields).toHaveBeenCalledWith([{
-          id: ZENDESK_FIELD_IDS.WORKSPACE_ID,
-          value: 'workspace-1',
-        }])
+        expect(setZendeskConversationFields).toHaveBeenCalledWith(
+          [
+            {
+              id: ZENDESK_FIELD_IDS.WORKSPACE_ID,
+              value: 'workspace-1',
+            },
+          ],
+          'CLOUD',
+        )
       })
       await waitFor(() => {
         expect(setUserId).toHaveBeenCalledWith('user@example.com')
-        expect(setUserProperties).toHaveBeenCalledWith(expect.objectContaining({
-          email: 'user@example.com',
-          workspace_id: 'workspace-1',
-          workspace_role: 'editor',
-        }))
+        const properties = vi.mocked(setUserProperties).mock.calls.at(-1)?.[0]
+        expect(properties).toEqual(
+          expect.objectContaining({
+            email: 'user@example.com',
+            workspace_id: 'workspace-1',
+            workspace_plan: 'sandbox',
+            workspace_role: 'editor',
+          }),
+        )
+        expect(properties).not.toHaveProperty('workspace_status')
         expect(flushRegistrationSuccess).toHaveBeenCalled()
+      })
+    })
+
+    it('should not sync Zendesk fields outside cloud deployments', async () => {
+      mockSystemFeaturesState.data = createSystemFeaturesFixture({
+        deployment_edition: 'COMMUNITY',
+      })
+
+      renderConsoleBootstrap()
+
+      await screen.findByText('workspace:Workspace')
+      expect(setZendeskConversationFields).not.toHaveBeenCalled()
+    })
+
+    it('should resync only changed Zendesk fields', async () => {
+      const { queryClient, rerender } = renderConsoleBootstrap()
+
+      await waitFor(() => expect(setZendeskConversationFields).toHaveBeenCalledTimes(4))
+
+      rerender(
+        <JotaiProvider>
+          <QueryClientProvider client={queryClient}>
+            <TestQueryClientHydrator queryClient={queryClient}>
+              <Suspense fallback={<span>loading</span>}>
+                <ExternalServiceSync />
+                <ConsoleBootstrapProbe />
+              </Suspense>
+            </TestQueryClientHydrator>
+          </QueryClientProvider>
+        </JotaiProvider>,
+      )
+      expect(setZendeskConversationFields).toHaveBeenCalledTimes(4)
+
+      act(() => {
+        queryClient.setQueryData(['user-profile'], {
+          ...mockUserProfileResponseState.data,
+          profile: {
+            ...mockUserProfileResponseState.data.profile,
+            email: 'updated@example.com',
+          },
+        })
+      })
+
+      await waitFor(() => {
+        expect(setZendeskConversationFields).toHaveBeenCalledTimes(5)
+        expect(setZendeskConversationFields).toHaveBeenLastCalledWith(
+          [
+            {
+              id: ZENDESK_FIELD_IDS.EMAIL,
+              value: 'updated@example.com',
+            },
+          ],
+          'CLOUD',
+        )
       })
     })
 
@@ -471,10 +582,64 @@ describe('Console bootstrap', () => {
 
       renderConsoleBootstrap()
 
-      await screen.findByText('user:')
+      await screen.findByText('workspace:Workspace')
       expect(setUserId).not.toHaveBeenCalled()
       expect(setUserProperties).not.toHaveBeenCalled()
       expect(flushRegistrationSuccess).not.toHaveBeenCalled()
+    })
+
+    it('should sync an already loaded identity after analytics consent is granted', async () => {
+      setAnalyticsConsent('denied')
+      renderConsoleBootstrap()
+
+      await screen.findByText('workspace:Workspace')
+      expect(setUserId).not.toHaveBeenCalled()
+      expect(setUserProperties).not.toHaveBeenCalled()
+
+      act(() => setAnalyticsConsent('granted'))
+
+      await waitFor(() => {
+        expect(setUserId).toHaveBeenCalledWith('user@example.com')
+        expect(setUserProperties).toHaveBeenCalled()
+        expect(flushRegistrationSuccess).toHaveBeenCalled()
+      })
+    })
+
+    it('should resync Amplitude only when identity properties change', async () => {
+      const { queryClient, rerender } = renderConsoleBootstrap()
+
+      await waitFor(() => expect(setUserProperties).toHaveBeenCalledTimes(1))
+
+      rerender(
+        <JotaiProvider>
+          <QueryClientProvider client={queryClient}>
+            <TestQueryClientHydrator queryClient={queryClient}>
+              <Suspense fallback={<span>loading</span>}>
+                <ExternalServiceSync />
+                <ConsoleBootstrapProbe />
+              </Suspense>
+            </TestQueryClientHydrator>
+          </QueryClientProvider>
+        </JotaiProvider>,
+      )
+      expect(setUserProperties).toHaveBeenCalledTimes(1)
+
+      act(() => {
+        queryClient.setQueryData(['user-profile'], {
+          ...mockUserProfileResponseState.data,
+          profile: {
+            ...mockUserProfileResponseState.data.profile,
+            name: 'Updated User',
+          },
+        })
+      })
+
+      await waitFor(() => {
+        expect(setUserProperties).toHaveBeenCalledTimes(2)
+        expect(setUserProperties).toHaveBeenLastCalledWith(
+          expect.objectContaining({ name: 'Updated User' }),
+        )
+      })
     })
   })
 })

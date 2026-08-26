@@ -1,5 +1,5 @@
 import type { CommandTree } from './registry'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { Command } from './command'
 import { findSuggestions, resolveCommand } from './registry'
 
@@ -225,7 +225,9 @@ describe('findSuggestions — cross-namespace fallback', () => {
 
   it('produces a deterministic, stable result across runs', () => {
     expect(findSuggestions(realish, ['login'])).toEqual(findSuggestions(realish, ['login']))
-    expect(findSuggestions(realish, ['device', 'list'])).toEqual(findSuggestions(realish, ['device', 'list']))
+    expect(findSuggestions(realish, ['device', 'list'])).toEqual(
+      findSuggestions(realish, ['device', 'list']),
+    )
   })
 })
 

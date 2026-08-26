@@ -1,79 +1,32 @@
-import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
-import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
-import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
-import { Plan } from '@/app/components/billing/type'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useModalContext } from '@/context/modal-context'
+import userEvent from '@testing-library/user-event'
+import { renderToString } from 'react-dom/server'
+import { resetUser } from '@/app/components/base/amplitude/utils'
+import AccountSection from '@/app/components/main-nav/components/account-section'
 import { useProviderContext } from '@/context/provider-context'
-import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
-import AppSelector from '../index'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import AccountDropdown from '../index'
 
-type DeepPartial<T> = T extends Array<infer U>
-  ? Array<U>
-  : T extends object
-    ? { [K in keyof T]?: DeepPartial<T[K]> }
-    : T
-
-vi.mock('../../account-setting', () => ({
-  default: () => <div data-testid="account-setting">AccountSetting</div>,
+const { mockPush, mockResetUser, mockSetSettingsDestination, mockUseRouter } = vi.hoisted(() => ({
+  mockPush: vi.fn(),
+  mockResetUser: vi.fn(),
+  mockSetSettingsDestination: vi.fn(),
+  mockUseRouter: vi.fn(),
 }))
 
-vi.mock('../../account-about', () => ({
-  default: ({ onCancel }: { onCancel: () => void }) => (
-    <div data-testid="account-about">
-      Version
-      <button onClick={onCancel}>Close</button>
-    </div>
-  ),
+vi.mock('@/app/components/base/amplitude/utils', () => ({
+  resetUser: mockResetUser,
 }))
-
-vi.mock('@/app/components/header/github-star', () => ({
-  default: () => <div data-testid="github-star">GithubStar</div>,
-}))
-
-vi.mock('@/app/components/base/theme-switcher', () => ({
-  default: () => <button type="button" data-testid="theme-switcher-button">Theme switcher</button>,
-}))
-
-const { mockSetTheme } = vi.hoisted(() => ({
-  mockSetTheme: vi.fn(),
-}))
-const mockAppContextState = vi.hoisted(() => ({
-  current: undefined as AppContextStateMockState | undefined,
-}))
-const mockUseAppContext = vi.hoisted(() => vi.fn())
-
-vi.mock('next-themes', () => ({
-  useTheme: () => ({
-    theme: 'system',
-    setTheme: mockSetTheme,
-  }),
-}))
-
-vi.mock('@/context/app-context-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
-})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
 }))
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: vi.fn(),
-}))
-
-vi.mock('@/service/use-common', async importOriginal => ({
-  ...await importOriginal<typeof import('@/service/use-common')>(),
+vi.mock('@/service/use-common', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-common')>()),
   useLogout: vi.fn(),
 }))
 
@@ -81,356 +34,123 @@ vi.mock('@/next/navigation', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/next/navigation')>()
   return {
     ...actual,
-    useRouter: vi.fn(),
+    useRouter: mockUseRouter,
   }
 })
 
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
-}))
-
-// Mock config and env
-const { mockConfig, mockEnv } = vi.hoisted(() => ({
-  mockConfig: {
-    IS_CLOUD_EDITION: false,
-    AMPLITUDE_API_KEY: '',
-    ZENDESK_WIDGET_KEY: '',
-    SUPPORT_EMAIL_ADDRESS: '',
-  },
-  mockEnv: {
-    env: {
-      NEXT_PUBLIC_SITE_ABOUT: 'show',
-    },
-  },
-}))
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
   return {
     ...actual,
-    get IS_CLOUD_EDITION() { return mockConfig.IS_CLOUD_EDITION },
-    get AMPLITUDE_API_KEY() { return mockConfig.AMPLITUDE_API_KEY },
-    get isAmplitudeEnabled() { return mockConfig.IS_CLOUD_EDITION && !!mockConfig.AMPLITUDE_API_KEY },
-    get ZENDESK_WIDGET_KEY() { return mockConfig.ZENDESK_WIDGET_KEY },
-    get SUPPORT_EMAIL_ADDRESS() { return mockConfig.SUPPORT_EMAIL_ADDRESS },
-    IS_DEV: false,
-    IS_CE_EDITION: false,
+    useQueryState: () => [null, mockSetSettingsDestination],
   }
 })
-vi.mock('@/env', () => mockEnv)
 
-const baseAppContextValue: AppContextStateMockState = {
-  userProfile: {
-    id: '1',
-    name: 'Test User',
-    email: 'test@example.com',
-    avatar: '',
-    avatar_url: 'avatar.png',
-    is_password_set: false,
-  },
-  mutateUserProfile: vi.fn(),
-  currentWorkspace: {
-    id: '1',
-    name: 'Workspace',
-    plan: '',
-    status: '',
-    created_at: 0,
-    role: 'owner',
-    providers: [],
-    trial_credits: 0,
-    trial_credits_used: 0,
-    next_credit_reset_date: 0,
-  },
-  isCurrentWorkspaceManager: true,
-  isCurrentWorkspaceOwner: true,
-  isCurrentWorkspaceEditor: true,
-  isCurrentWorkspaceDatasetOperator: false,
-  mutateCurrentWorkspace: vi.fn(),
-  langGeniusVersionInfo: {
-    current_env: 'testing',
-    current_version: '0.6.0',
-    latest_version: '0.6.0',
-    release_date: '',
-    release_notes: '',
-    version: '0.6.0',
-    can_auto_update: false,
-  },
-  isLoadingCurrentWorkspace: false,
-  workspacePermissionKeys: [],
+vi.mock('next-themes', () => ({
+  useTheme: () => ({ theme: 'system', setTheme: vi.fn() }),
+}))
+
+const userProfile = {
+  id: 'current-user',
+  name: 'Current User',
+  email: 'current@example.com',
+  avatar_url: 'current-avatar.png',
 }
 
-const setAppContextValue = (value: AppContextStateMockState) => {
-  mockAppContextState.current = value
-  mockUseAppContext.mockReturnValue(value)
+const renderAccountDropdown = () => {
+  const queryClient = createAccountProfileQueryClient(userProfile)
+
+  return renderWithConsoleQuery(
+    <AccountDropdown
+      trigger={({ ariaLabel }) => (
+        <button type="button" aria-label={ariaLabel}>
+          Current account
+        </button>
+      )}
+    />,
+    { queryClient },
+  )
 }
 
 describe('AccountDropdown', () => {
-  const mockPush = vi.fn()
   const mockLogout = vi.fn()
-  const mockSetShowAccountSettingModal = vi.fn()
-
-  const renderWithRouter = (
-    ui: React.ReactElement,
-    options: { systemFeatures?: DeepPartial<GetSystemFeaturesResponse> } = {},
-  ) => {
-    return renderWithSystemFeatures(ui, {
-      systemFeatures: options.systemFeatures ?? { branding: { enabled: false } },
-    })
-  }
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.stubGlobal('localStorage', { removeItem: vi.fn() })
-    mockConfig.IS_CLOUD_EDITION = false
-    mockEnv.env.NEXT_PUBLIC_SITE_ABOUT = 'show'
-
-    setAppContextValue(baseAppContextValue)
+    mockUseRouter.mockReturnValue({ push: mockPush })
     vi.mocked(useProviderContext).mockReturnValue({
-      isEducationAccount: false,
-      plan: { type: Plan.sandbox },
-    } as unknown as ProviderContextState)
-    vi.mocked(useModalContext).mockReturnValue({
-      setShowAccountSettingModal: mockSetShowAccountSettingModal,
-    } as unknown as ModalContextState)
+      enableEducationPlan: false,
+    } as ProviderContextState)
     vi.mocked(useLogout).mockReturnValue({
       mutateAsync: mockLogout,
     } as unknown as ReturnType<typeof useLogout>)
-    vi.mocked(useRouter).mockReturnValue({
-      push: mockPush,
-      replace: vi.fn(),
-      prefetch: vi.fn(),
-      back: vi.fn(),
-      forward: vi.fn(),
-      refresh: vi.fn(),
-    })
   })
 
-  afterEach(() => {
-    vi.unstubAllGlobals()
+  it('reads the signed-in account from the account profile query', async () => {
+    const user = userEvent.setup()
+    const queryClient = createAccountProfileQueryClient(userProfile)
+
+    renderWithConsoleQuery(<AccountSection />, { queryClient })
+
+    expect(screen.getByText('Current User')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'common.account.account' }))
+
+    expect(await screen.findByText('current@example.com')).toBeInTheDocument()
   })
 
-  describe('Rendering', () => {
-    it('should render user profile correctly', () => {
-      // Act
-      renderWithRouter(<AppSelector />)
-      fireEvent.click(screen.getByRole('button'))
+  it('keeps the composed trigger disabled in server-rendered markup', () => {
+    const html = renderToString(
+      <AccountDropdown
+        trigger={({ ariaLabel }) => (
+          <button type="button" aria-label={ariaLabel}>
+            Current account
+          </button>
+        )}
+      />,
+    )
+    const container = document.createElement('div')
+    container.innerHTML = html
 
-      // Assert
-      expect(screen.getByText('Test User')).toBeInTheDocument()
-      expect(screen.getByText('test@example.com')).toBeInTheDocument()
-    })
-
-    it('should set an accessible label on avatar trigger when menu trigger is rendered', () => {
-      // Act
-      renderWithRouter(<AppSelector />)
-
-      // Assert
-      expect(screen.getByRole('button', { name: 'common.account.account' })).toBeInTheDocument()
-    })
-
-    it('should show EDU badge for education accounts', () => {
-      // Arrange
-      vi.mocked(useProviderContext).mockReturnValue({
-        isEducationAccount: true,
-        plan: { type: Plan.sandbox },
-      } as unknown as ProviderContextState)
-
-      // Act
-      renderWithRouter(<AppSelector />)
-      fireEvent.click(screen.getByRole('button'))
-
-      // Assert
-      expect(screen.getByText('EDU')).toBeInTheDocument()
-    })
+    expect(container.querySelector('button[aria-label="common.account.account"]')).toBeDisabled()
   })
 
-  describe('Settings and Support', () => {
-    it('should trigger setShowAccountSettingModal when settings is clicked', () => {
-      // Act
-      renderWithRouter(<AppSelector />)
-      fireEvent.click(screen.getByRole('button'))
-      fireEvent.click(screen.getByText('common.userProfile.settings'))
+  it('opens the main navigation account menu through the composed trigger', async () => {
+    const user = userEvent.setup()
+    renderAccountDropdown()
 
-      // Assert
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalled()
-    })
+    const trigger = screen.getByRole('button', { name: 'common.account.account' })
+    expect(trigger).not.toHaveAttribute('data-popup-open')
 
-    it('should open preferences from the account dropdown', () => {
-      // Act
-      renderWithRouter(<AppSelector variant="mainNav" />)
-      fireEvent.click(screen.getByRole('button'))
-      fireEvent.click(screen.getByText('common.settings.preferences'))
+    await user.click(trigger)
 
-      // Assert
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.PREFERENCES })
-    })
-
-    it('should show Appearance after Preferences in the main nav account dropdown', () => {
-      // Act
-      renderWithRouter(<AppSelector variant="mainNav" />)
-      fireEvent.click(screen.getByRole('button'))
-
-      const preferences = screen.getByText('common.settings.preferences')
-      const appearance = screen.getByText('common.account.appearanceLabel')
-
-      // Assert
-      expect(preferences.compareDocumentPosition(appearance)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
-      expect(screen.getByRole('menuitem', { name: 'common.account.appearanceLabel' })).toBeInTheDocument()
-    })
-
-    it('should show Compliance in Cloud Edition for workspace owner', () => {
-      // Arrange
-      mockConfig.IS_CLOUD_EDITION = true
-      setAppContextValue({
-        ...baseAppContextValue,
-        userProfile: { ...baseAppContextValue.userProfile, name: 'User' },
-        isCurrentWorkspaceOwner: true,
-        langGeniusVersionInfo: { ...baseAppContextValue.langGeniusVersionInfo, current_version: '0.6.0', latest_version: '0.6.0' },
-      })
-
-      // Act
-      renderWithRouter(<AppSelector />)
-      fireEvent.click(screen.getByRole('button'))
-
-      // Assert
-      expect(screen.getByText('common.userProfile.compliance')).toBeInTheDocument()
-    })
-
-    // Compound AND middle-false: IS_CLOUD_EDITION=true but isCurrentWorkspaceOwner=false
-    it('should hide Compliance in Cloud Edition when user is not workspace owner', () => {
-      // Arrange
-      mockConfig.IS_CLOUD_EDITION = true
-      setAppContextValue({
-        ...baseAppContextValue,
-        isCurrentWorkspaceOwner: false,
-      })
-
-      // Act
-      renderWithRouter(<AppSelector />)
-      fireEvent.click(screen.getByRole('button'))
-
-      // Assert
-      expect(screen.queryByText('common.userProfile.compliance')).not.toBeInTheDocument()
-    })
+    expect(await screen.findByText('current@example.com')).toBeInTheDocument()
+    expect(trigger).toHaveAttribute('data-popup-open', '')
+    expect(screen.getByText('common.settings.preferences')).toBeInTheDocument()
+    expect(screen.getByText('common.account.appearanceLabel')).toBeInTheDocument()
   })
 
-  describe('Actions', () => {
-    it('should handle logout correctly', async () => {
-      // Arrange
-      mockLogout.mockResolvedValue({})
+  it('opens preferences from the account menu', async () => {
+    const user = userEvent.setup()
+    renderAccountDropdown()
 
-      // Act
-      renderWithRouter(<AppSelector />)
-      fireEvent.click(screen.getByRole('button'))
-      fireEvent.click(screen.getByText('common.userProfile.logout'))
+    await user.click(screen.getByRole('button', { name: 'common.account.account' }))
+    await user.click(await screen.findByText('common.settings.preferences'))
 
-      // Assert
-      await waitFor(() => {
-        expect(mockLogout).toHaveBeenCalled()
-        expect(mockPush).toHaveBeenCalledWith('/signin')
-      })
-    })
-
-    it('should use the shutdown icon for main nav logout', () => {
-      // Act
-      renderWithRouter(<AppSelector variant="mainNav" />)
-      fireEvent.click(screen.getByRole('button'))
-
-      // Assert
-      expect(screen.getByRole('menuitem', { name: 'common.userProfile.logout' }).querySelector('.i-ri-shut-down-line')).toBeInTheDocument()
-    })
-
-    it('should show About section when about button is clicked and can close it', () => {
-      // Act
-      renderWithRouter(<AppSelector />)
-      fireEvent.click(screen.getByRole('button'))
-      fireEvent.click(screen.getByText('common.userProfile.about'))
-
-      // Assert
-      expect(screen.getByTestId('account-about')).toBeInTheDocument()
-
-      // Act
-      fireEvent.click(screen.getByText('Close'))
-
-      // Assert
-      expect(screen.queryByTestId('account-about')).not.toBeInTheDocument()
-    })
-
-    it('should keep account dropdown open when clicking the theme switcher', () => {
-      // Act
-      renderWithRouter(<AppSelector />)
-      fireEvent.click(screen.getByRole('button', { name: 'common.account.account' }))
-      fireEvent.click(screen.getByTestId('theme-switcher-button'))
-
-      // Assert
-      expect(screen.getByText('common.userProfile.logout')).toBeInTheDocument()
-    })
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith('preferences')
   })
 
-  describe('Branding and Environment', () => {
-    it('should hide sections when branding is enabled', () => {
-      // Act
-      renderWithRouter(<AppSelector />, {
-        systemFeatures: { branding: { enabled: true } },
-      })
-      fireEvent.click(screen.getByRole('button'))
+  it('logs out and redirects to sign in', async () => {
+    mockLogout.mockResolvedValue({})
+    renderAccountDropdown()
 
-      // Assert
-      expect(screen.queryByText('common.userProfile.helpCenter')).not.toBeInTheDocument()
-      expect(screen.queryByText('common.userProfile.roadmap')).not.toBeInTheDocument()
-    })
+    fireEvent.click(screen.getByRole('button', { name: 'common.account.account' }))
+    fireEvent.click(await screen.findByText('common.userProfile.logout'))
 
-    it('should hide About section when NEXT_PUBLIC_SITE_ABOUT is hide', () => {
-      // Arrange
-      mockEnv.env.NEXT_PUBLIC_SITE_ABOUT = 'hide'
-
-      // Act
-      renderWithRouter(<AppSelector />)
-      fireEvent.click(screen.getByRole('button'))
-
-      // Assert
-      expect(screen.queryByText('common.userProfile.about')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Version Indicators', () => {
-    it('should show orange indicator when version is not latest', () => {
-      // Arrange
-      setAppContextValue({
-        ...baseAppContextValue,
-        userProfile: { ...baseAppContextValue.userProfile, name: 'User' },
-        langGeniusVersionInfo: {
-          ...baseAppContextValue.langGeniusVersionInfo,
-          current_version: '0.6.0',
-          latest_version: '0.7.0',
-        },
-      })
-
-      // Act
-      renderWithRouter(<AppSelector />)
-      fireEvent.click(screen.getByRole('button'))
-
-      // Assert
-      expect(document.querySelector('.bg-components-badge-status-light-warning-bg')).toBeInTheDocument()
-    })
-
-    it('should show green indicator when version is latest', () => {
-      // Arrange
-      setAppContextValue({
-        ...baseAppContextValue,
-        userProfile: { ...baseAppContextValue.userProfile, name: 'User' },
-        langGeniusVersionInfo: {
-          ...baseAppContextValue.langGeniusVersionInfo,
-          current_version: '0.7.0',
-          latest_version: '0.7.0',
-        },
-      })
-
-      // Act
-      renderWithRouter(<AppSelector />)
-      fireEvent.click(screen.getByRole('button'))
-
-      // Assert
-      expect(document.querySelector('.bg-components-badge-status-light-success-bg')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(mockLogout).toHaveBeenCalledOnce()
+      expect(resetUser).toHaveBeenCalledOnce()
+      expect(mockPush).toHaveBeenCalledWith('/signin')
     })
   })
 })

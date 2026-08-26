@@ -10,7 +10,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Compact confirmation prompt that appears inline, commonly used near delete buttons or destructive controls.',
+        component:
+          'Compact confirmation prompt that appears inline, commonly used near delete buttons or destructive controls.',
       },
     },
   },
@@ -63,11 +64,11 @@ const InlineDeleteConfirmDemo = (args: Story['args']) => {
 }
 
 export const Playground: Story = {
-  render: args => <InlineDeleteConfirmDemo {...args} />,
+  render: (args) => <InlineDeleteConfirmDemo {...args} />,
 }
 
 export const WarningVariant: Story = {
-  render: args => <InlineDeleteConfirmDemo {...args} />,
+  render: (args) => <InlineDeleteConfirmDemo {...args} />,
   args: {
     variant: 'warning',
     title: 'Archive conversation?',
@@ -77,7 +78,7 @@ export const WarningVariant: Story = {
 }
 
 export const InfoVariant: Story = {
-  render: args => <InlineDeleteConfirmDemo {...args} />,
+  render: (args) => <InlineDeleteConfirmDemo {...args} />,
   args: {
     variant: 'info',
     title: 'Remove collaborator?',

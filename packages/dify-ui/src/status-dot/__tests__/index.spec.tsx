@@ -2,22 +2,32 @@ import { render } from 'vitest-browser-react'
 import { StatusDot, StatusDotSkeleton } from '../index'
 
 describe('StatusDot', () => {
-  it('is hidden from assistive tech by default', async () => {
-    const screen = await render(<StatusDot data-testid="dot" />)
+  it('hides the visual indicator and its loading placeholder from assistive technology', async () => {
+    const screen = await render(
+      <>
+        <StatusDot data-testid="dot" />
+        <StatusDotSkeleton data-testid="skeleton" />
+      </>,
+    )
 
     await expect.element(screen.getByTestId('dot')).toHaveAttribute('aria-hidden', 'true')
+    await expect.element(screen.getByTestId('skeleton')).toHaveAttribute('aria-hidden', 'true')
   })
 
-  it('keeps an explicit accessible label visible to assistive tech', async () => {
-    const screen = await render(<StatusDot aria-label="Active" data-testid="dot" />)
+  it('does not allow consumers to override the decorative contract', async () => {
+    const screen = await render(
+      <>
+        {/* @ts-expect-error StatusDot is always decorative */}
+        <StatusDot aria-hidden={false} data-testid="dot" />
+        {/* @ts-expect-error Status semantics belong to the surrounding component */}
+        <StatusDot aria-label="Active" data-testid="labelled-dot" />
+        {/* @ts-expect-error StatusDotSkeleton is always decorative */}
+        <StatusDotSkeleton aria-hidden={false} data-testid="skeleton" />
+      </>,
+    )
 
-    await expect.element(screen.getByTestId('dot')).toHaveAttribute('aria-label', 'Active')
-    await expect.element(screen.getByTestId('dot')).not.toHaveAttribute('aria-hidden')
-  })
-
-  it('renders the skeleton placeholder', async () => {
-    const screen = await render(<StatusDotSkeleton data-testid="dot" />)
-
-    await expect.element(screen.getByTestId('dot')).toBeInTheDocument()
+    await expect.element(screen.getByTestId('dot')).toHaveAttribute('aria-hidden', 'true')
+    await expect.element(screen.getByTestId('labelled-dot')).toHaveAttribute('aria-hidden', 'true')
+    await expect.element(screen.getByTestId('skeleton')).toHaveAttribute('aria-hidden', 'true')
   })
 })

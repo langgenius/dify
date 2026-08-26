@@ -9,12 +9,8 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '../context-menu'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '../tooltip'
+import { IconButton } from '../icon-button'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../tooltip'
 
 const meta = {
   title: 'Base/UI/Kbd',
@@ -24,9 +20,9 @@ const meta = {
     docs: {
       description: {
         component:
-          'Keyboard input primitives aligned with the Dify Key Set design. '
-          + '`Kbd` renders a native `<kbd>` element for a single key or key-like token. '
-          + '`KbdGroup` only groups multiple keycaps; it does not replace the individual `<kbd>` semantics.',
+          'Keyboard input primitives aligned with the Dify Key Set design. ' +
+          '`Kbd` renders a native `<kbd>` element for a single key or key-like token. ' +
+          '`KbdGroup` only groups multiple keycaps; it does not replace the individual `<kbd>` semantics.',
       },
     },
   },
@@ -51,13 +47,12 @@ const displayKeys = (
   hotkey: RegisterableHotkey | (string & {}),
   platform: FormatDisplayOptions['platform'] = 'mac',
 ) => {
-  if (typeof hotkey !== 'string')
-    return [formatForDisplay(hotkey, { platform })]
+  if (typeof hotkey !== 'string') return [formatForDisplay(hotkey, { platform })]
 
   return hotkey
     .split('+')
     .filter(Boolean)
-    .map(key => formatForDisplay(key, { platform }))
+    .map((key) => formatForDisplay(key, { platform }))
 }
 
 const HotkeyKbdGroup = ({
@@ -71,6 +66,7 @@ const HotkeyKbdGroup = ({
 }) => (
   <KbdGroup>
     {displayKeys(hotkey, platform).map((key, index) => (
+      // oxlint-disable-next-line react/no-array-index-key -- Repeated display keys are static, ordered tokens with no component state.
       <Kbd key={`${key}-${index}`} color={color}>
         {key}
       </Kbd>
@@ -86,7 +82,8 @@ export const KeySet: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Figma Key Set variants: gray and white, each with a disabled state. Disabled is visual only because `<kbd>` is not an interactive widget.',
+        story:
+          'Figma Key Set variants: gray and white, each with a disabled state. Disabled is visual only because `<kbd>` is not an interactive widget.',
       },
     },
   },
@@ -111,8 +108,12 @@ export const KeySet: Story = {
       </div>
       <div className="rounded-lg bg-gray-900 p-2">
         <KbdGroup>
-          <Kbd color="white" disabled>⌘</Kbd>
-          <Kbd color="white" disabled>⇧</Kbd>
+          <Kbd color="white" disabled>
+            ⌘
+          </Kbd>
+          <Kbd color="white" disabled>
+            ⇧
+          </Kbd>
         </KbdGroup>
       </div>
     </div>
@@ -123,7 +124,8 @@ export const FormattedShortcuts: Story = {
   parameters: {
     docs: {
       description: {
-        story: '`Kbd` does not parse hotkeys. Compose it with a formatter at the feature layer; this story uses TanStack Hotkeys `formatForDisplay` for platform-aware labels.',
+        story:
+          '`Kbd` does not parse hotkeys. Compose it with a formatter at the feature layer; this story uses TanStack Hotkeys `formatForDisplay` for platform-aware labels.',
       },
     },
   },
@@ -150,7 +152,7 @@ export const FormattedShortcuts: Story = {
 
 export const InTooltip: Story = {
   decorators: [
-    Story => (
+    (Story) => (
       <TooltipProvider delay={0}>
         <Story />
       </TooltipProvider>
@@ -159,22 +161,19 @@ export const InTooltip: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Shortcut keycaps can be composed inside short tooltip content. The trigger keeps its own accessible name; the tooltip is only a visual hint.',
+        story:
+          'Shortcut keycaps can be composed inside short tooltip content. The trigger keeps its own accessible name; the tooltip is only a visual hint.',
       },
     },
   },
   render: () => (
     <Tooltip open>
       <TooltipTrigger
-        render={(
-          <button
-            type="button"
-            aria-label="Collapse sidebar"
-            className="inline-flex size-8 items-center justify-center rounded-lg border border-divider-subtle bg-components-button-secondary-bg text-text-secondary shadow-xs outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          >
+        render={
+          <IconButton aria-label="Collapse sidebar" size="lg" variant="secondary">
             <span aria-hidden className="i-ri-sidebar-fold-line size-4" />
-          </button>
-        )}
+          </IconButton>
+        }
       />
       <TooltipContent className="flex items-center gap-1">
         <span>Collapse sidebar</span>
@@ -194,23 +193,24 @@ export const InContextMenu: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'A compact context-menu composition based on the Dify Design Kit context menu example. The menu is intentionally small here because the story focuses on shortcut keycaps.',
+        story:
+          'A compact context-menu composition based on the Dify Design Kit context menu example. The menu is intentionally small here because the story focuses on shortcut keycaps.',
       },
     },
   },
   render: () => (
     <ContextMenu>
       <ContextMenuTrigger
-        render={(
+        render={
           <button
             type="button"
-            className="flex h-28 w-60 items-center justify-center rounded-xl border border-divider-subtle bg-background-default-subtle px-6 text-center system-sm-regular text-text-tertiary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            className="flex h-28 w-60 items-center justify-center rounded-xl border border-divider-subtle bg-background-default-subtle px-6 text-center system-sm-regular text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           />
-        )}
+        }
       >
         Context menu trigger
       </ContextMenuTrigger>
-      <ContextMenuContent popupClassName="w-60">
+      <ContextMenuContent className="w-60">
         {MENU_ITEMS.map(({ label, icon, hotkey }) => (
           <ContextMenuItem key={label} className="justify-between gap-4">
             <span aria-hidden className={`${icon} size-4 shrink-0 text-text-tertiary`} />

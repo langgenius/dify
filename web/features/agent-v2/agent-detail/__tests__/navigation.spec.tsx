@@ -1,12 +1,22 @@
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentDetailSection, AgentDetailTop } from '../navigation'
 
 const mocks = vi.hoisted(() => ({
-  pathname: '/roster/agent/agent-1/configure',
+  deleteAgent: vi.fn(),
+  exportAppDsl: vi.fn(),
+  pathname: '/agents/agent-1/configure',
   queryData: undefined as AgentAppDetailWithSite | undefined,
+  replace: vi.fn(),
+}))
+
+vi.mock('@/app/components/app/use-export-app-dsl', () => ({
+  useExportAppDsl: () => ({
+    exportAppDsl: mocks.exportAppDsl,
+    isExporting: false,
+  }),
 }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -25,11 +35,12 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => mocks.pathname,
   useRouter: () => ({
     back: vi.fn(),
+    replace: mocks.replace,
   }),
 }))
 
 vi.mock('@/app/components/app-sidebar/nav-link', () => ({
-  default: ({ href, name }: { href: string, name: string }) => <a href={href}>{name}</a>,
+  default: ({ href, name }: { href: string; name: string }) => <a href={href}>{name}</a>,
 }))
 
 vi.mock('@/app/components/base/divider', () => ({
@@ -41,7 +52,10 @@ vi.mock('@/service/client', () => ({
     agent: {
       byAgentId: {
         get: {
-          queryKey: ({ input }: { input: { params: { agent_id: string } } }) => ['agent-detail', input.params.agent_id],
+          queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
+            'agent-detail',
+            input.params.agent_id,
+          ],
           queryOptions: () => ({ queryKey: ['agent-detail'] }),
         },
         copy: {
@@ -53,7 +67,7 @@ vi.mock('@/service/client', () => ({
         },
         delete: {
           mutationOptions: () => ({
-            mutationFn: vi.fn(),
+            mutationFn: mocks.deleteAgent,
           }),
         },
         put: {
@@ -67,6 +81,7 @@ vi.mock('@/service/client', () => ({
 }))
 
 const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppDetailWithSite => ({
+  app_id: 'app-1',
   description: 'Find and summarize market materials.',
   enable_api: true,
   enable_site: true,
@@ -93,7 +108,10 @@ function renderAgentDetailSection(expand = true) {
 
 describe('AgentDetailSection', () => {
   beforeEach(() => {
-    mocks.pathname = '/roster/agent/agent-1/configure'
+    vi.clearAllMocks()
+    mocks.deleteAgent.mockResolvedValue({})
+    mocks.exportAppDsl.mockResolvedValue(undefined)
+    mocks.pathname = '/agents/agent-1/configure'
     mocks.queryData = createAgent()
   })
 
@@ -110,7 +128,12 @@ describe('AgentDetailSection', () => {
     expect(agentAvatar).toHaveClass('h-10', 'w-10', 'rounded-full')
     expect(agentAvatar?.parentElement?.parentElement).toHaveClass('mr-2')
     expect(agentName.parentElement?.parentElement).toHaveClass('h-10')
-    expect(agentName.parentElement?.parentElement?.parentElement).toHaveClass('h-13', 'py-1.5', 'pl-1.5', 'pr-2')
+    expect(agentName.parentElement?.parentElement?.parentElement).toHaveClass(
+      'h-13',
+      'py-1.5',
+      'pl-1.5',
+      'pr-2',
+    )
   })
 
   it('renders compact more actions beside the expanded sidebar agent identity', async () => {
@@ -123,15 +146,75 @@ describe('AgentDetailSection', () => {
 
     await user.click(trigger)
 
-    expect(screen.getByRole('menuitem', { name: 'agentV2.roster.editInfo' })).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: 'common.operation.duplicate' })).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: 'common.operation.delete' })).toBeInTheDocument()
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'agentV2.roster.editInfo',
+      'common.operation.duplicate',
+      'app.export',
+      'common.operation.delete',
+    ])
+  })
+
+  it('exports the Agent App DSL from the detail action menu', async () => {
+    const user = userEvent.setup()
+    renderAgentDetailSection()
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: 'app.export' }))
+
+    expect(mocks.exportAppDsl).toHaveBeenCalledWith({
+      appId: 'app-1',
+      appName: 'Research Agent',
+    })
+  })
+
+  it('returns to the roster after deleting the current agent', async () => {
+    const user = userEvent.setup()
+    renderAgentDetailSection()
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
+
+    const dialog = await screen.findByRole('alertdialog', {
+      name: /agentV2\.roster\.deleteDialog\.title/,
+    })
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
+
+    await waitFor(() => {
+      expect(mocks.replace).toHaveBeenCalledWith('/agents')
+    })
+    expect(mocks.deleteAgent.mock.calls[0]?.[0]).toEqual({
+      params: {
+        agent_id: 'agent-1',
+      },
+    })
+  })
+
+  it('keeps the current agent open when deletion fails', async () => {
+    const user = userEvent.setup()
+    mocks.deleteAgent.mockRejectedValue(new Error('Delete failed'))
+    renderAgentDetailSection()
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
+
+    const dialog = await screen.findByRole('alertdialog', {
+      name: /agentV2\.roster\.deleteDialog\.title/,
+    })
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
+
+    await waitFor(() => {
+      expect(mocks.deleteAgent).toHaveBeenCalled()
+    })
+    expect(mocks.replace).not.toHaveBeenCalled()
+    expect(dialog).toBeInTheDocument()
   })
 
   it('does not render more actions in collapsed sidebar mode', () => {
     renderAgentDetailSection(false)
 
-    expect(screen.queryByRole('button', { name: /agentV2\.roster\.moreActions/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /agentV2\.roster\.moreActions/ }),
+    ).not.toBeInTheDocument()
   })
 })
 
@@ -144,7 +227,7 @@ describe('AgentDetailTop', () => {
     render(<AgentDetailTop />)
 
     expect(screen.getByRole('link', { name: 'common.mainNav.home' })).toHaveAttribute('href', '/')
-    expect(screen.getByRole('link', { name: 'common.menus.roster' })).toHaveAttribute('href', '/roster')
+    expect(screen.getByRole('link', { name: 'Agents' })).toHaveAttribute('href', '/agents')
     expect(screen.queryByRole('button', { name: 'common.operation.back' })).not.toBeInTheDocument()
   })
 })

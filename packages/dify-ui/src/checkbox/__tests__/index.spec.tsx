@@ -1,12 +1,5 @@
 import { render } from 'vitest-browser-react'
-import {
-  Checkbox,
-  CheckboxIndicator,
-  CheckboxRoot,
-  CheckboxSkeleton,
-} from '../index'
-
-const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
+import { Checkbox, CheckboxIndicator, CheckboxRoot, CheckboxSkeleton } from '../index'
 
 describe('Checkbox', () => {
   it('should render an unchecked checkbox with Base UI semantics', async () => {
@@ -41,7 +34,7 @@ describe('Checkbox', () => {
       <Checkbox checked={false} aria-label="Accept terms" onCheckedChange={onCheckedChange} />,
     )
 
-    asHTMLElement(screen.getByRole('checkbox', { name: 'Accept terms' }).element()).click()
+    await screen.getByRole('checkbox', { name: 'Accept terms' }).click()
 
     expect(onCheckedChange).toHaveBeenCalledTimes(1)
     expect(onCheckedChange.mock.calls[0]?.[0]).toBe(true)
@@ -54,26 +47,24 @@ describe('Checkbox', () => {
     )
     const checkbox = screen.getByRole('checkbox', { name: 'Accept terms' })
 
-    asHTMLElement(checkbox.element()).click()
+    await checkbox.click()
     expect(onCheckedChange.mock.calls[0]?.[0]).toBe(true)
     await expect.element(checkbox).toHaveAttribute('aria-checked', 'false')
 
-    await screen.rerender(<Checkbox checked aria-label="Accept terms" onCheckedChange={onCheckedChange} />)
-    await expect.element(screen.getByRole('checkbox', { name: 'Accept terms' })).toHaveAttribute('aria-checked', 'true')
+    await screen.rerender(
+      <Checkbox checked aria-label="Accept terms" onCheckedChange={onCheckedChange} />,
+    )
+    await expect
+      .element(screen.getByRole('checkbox', { name: 'Accept terms' }))
+      .toHaveAttribute('aria-checked', 'true')
   })
 
   it('should ignore interaction when disabled', async () => {
-    const onCheckedChange = vi.fn()
-    const screen = await render(
-      <Checkbox checked={false} disabled aria-label="Accept terms" onCheckedChange={onCheckedChange} />,
-    )
+    const screen = await render(<Checkbox checked={false} disabled aria-label="Accept terms" />)
     const checkbox = screen.getByRole('checkbox', { name: 'Accept terms' })
 
+    await expect.element(checkbox).toBeDisabled()
     await expect.element(checkbox).toHaveAttribute('data-disabled', '')
-
-    asHTMLElement(checkbox.element()).click()
-
-    expect(onCheckedChange).not.toHaveBeenCalled()
   })
 
   it('should submit checked and unchecked form values through the hidden input', async () => {
@@ -109,7 +100,9 @@ describe('Checkbox', () => {
       </CheckboxRoot>,
     )
 
-    await expect.element(screen.getByRole('checkbox', { name: 'Custom checkbox' })).toHaveClass('custom-root')
+    await expect
+      .element(screen.getByRole('checkbox', { name: 'Custom checkbox' }))
+      .toHaveClass('custom-root')
     expect(screen.container.querySelector('.custom-indicator')).toBeInTheDocument()
   })
 })

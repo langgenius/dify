@@ -28,6 +28,19 @@ class TestPluginModelClient:
         )
         assert request_mock.call_args.kwargs["params"] == {"page": 1, "page_size": 256}
 
+    def test_fetch_model_provider_bindings(self, mocker: MockerFixture):
+        client = PluginModelClient()
+        request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", return_value=["binding-a"])
+
+        result = client.fetch_model_provider_bindings("tenant-1")
+
+        assert result == ["binding-a"]
+        assert request_mock.call_args.args[:2] == (
+            "GET",
+            "plugin/tenant-1/management/models/bindings",
+        )
+        assert "params" not in request_mock.call_args.kwargs
+
     def test_get_model_schema(self, mocker: MockerFixture):
         client = PluginModelClient()
         schema = SimpleNamespace(name="schema")
@@ -498,7 +511,12 @@ class TestPluginModelClient:
         mocker.patch.object(
             client,
             "_request_with_plugin_daemon_response_stream",
-            return_value=iter([SimpleNamespace(result="68656c6c6f"), SimpleNamespace(result="21")]),
+            return_value=iter(
+                [
+                    SimpleNamespace(result="68656c6c6f", mime_type="audio/wav"),
+                    SimpleNamespace(result="21", mime_type="audio/wav"),
+                ]
+            ),
         )
 
         result = list(
@@ -515,6 +533,7 @@ class TestPluginModelClient:
         )
 
         assert result == [b"hello", b"!"]
+        assert [chunk.mime_type for chunk in result] == ["audio/wav", "audio/wav"]
 
     def test_invoke_tts_wraps_plugin_daemon_inner_error(self, mocker: MockerFixture):
         client = PluginModelClient()

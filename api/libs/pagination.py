@@ -4,7 +4,7 @@ import math
 from dataclasses import dataclass
 
 from sqlalchemy import Select, func, select
-from sqlalchemy.orm import Session, scoped_session
+from sqlalchemy.orm import Session
 
 
 @dataclass
@@ -23,9 +23,9 @@ class PaginatedResult[T]:
 
     @property
     def pages(self) -> int:
-        if self.per_page == 0:
+        if self.total == 0 or self.per_page == 0:
             return 0
-        return max(1, math.ceil(self.total / self.per_page))
+        return math.ceil(self.total / self.per_page)
 
     @property
     def has_next(self) -> bool:
@@ -38,10 +38,10 @@ class PaginatedResult[T]:
 def paginate_query(
     stmt: Select,
     *,
+    session: Session,
     page: int = 1,
     per_page: int = 20,
     max_per_page: int | None = None,
-    session: Session | scoped_session | None = None,
 ) -> PaginatedResult:
     """Execute *stmt* as a paginated query using plain SQLAlchemy.
 
@@ -56,13 +56,8 @@ def paginate_query(
     max_per_page:
         Hard ceiling for *per_page*; ``None`` means no cap.
     session:
-        The session to use.  Falls back to ``db.session`` when omitted.
+        SQLAlchemy session used to execute the count and page queries.
     """
-    if session is None:
-        from extensions.ext_database import db
-
-        session = db.session
-
     if max_per_page is not None:
         per_page = min(per_page, max_per_page)
 

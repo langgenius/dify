@@ -51,14 +51,12 @@ async function pickInteractive<T>(opts: SelectOptions<T>): Promise<T> {
         lines.push(`${pointer} ${label}`)
       })
       const desc = opts.describe?.(opts.items[active] as T)
-      if (desc !== undefined && desc !== '')
-        lines.push(cs.dim(`  ${desc}`))
+      if (desc !== undefined && desc !== '') lines.push(cs.dim(`  ${desc}`))
       return lines
     }
 
     const render = (): void => {
-      if (rendered > 0)
-        out.write(cursorUp(rendered))
+      if (rendered > 0) out.write(cursorUp(rendered))
       const lines = frame()
       out.write(`${CLEAR_DOWN}${lines.join('\n')}\n`)
       rendered = lines.length
@@ -67,11 +65,9 @@ async function pickInteractive<T>(opts: SelectOptions<T>): Promise<T> {
     const wasRaw = input.isTTY ? input.isRaw : false
     const cleanup = (): void => {
       input.off('keypress', onKey)
-      if (input.isTTY)
-        input.setRawMode(wasRaw)
+      if (input.isTTY) input.setRawMode(wasRaw)
       input.pause()
-      if (rendered > 0)
-        out.write(`${cursorUp(rendered)}${CLEAR_DOWN}`)
+      if (rendered > 0) out.write(`${cursorUp(rendered)}${CLEAR_DOWN}`)
       out.write(SHOW_CURSOR)
     }
 
@@ -97,9 +93,10 @@ async function pickInteractive<T>(opts: SelectOptions<T>): Promise<T> {
           const chosen = opts.items[active]
           cleanup()
           if (chosen === undefined)
-            reject(new BaseError({ code: ErrorCode.UsageInvalidFlag, message: 'invalid selection' }))
-          else
-            resolve(chosen)
+            reject(
+              new BaseError({ code: ErrorCode.UsageInvalidFlag, message: 'invalid selection' }),
+            )
+          else resolve(chosen)
           break
         }
         case 'escape':
@@ -113,14 +110,12 @@ async function pickInteractive<T>(opts: SelectOptions<T>): Promise<T> {
 
     try {
       readline.emitKeypressEvents(input)
-      if (input.isTTY)
-        input.setRawMode(true)
+      if (input.isTTY) input.setRawMode(true)
       out.write(HIDE_CURSOR)
       input.on('keypress', onKey)
       input.resume()
       render()
-    }
-    catch (err) {
+    } catch (err) {
       cleanup()
       reject(err)
     }
@@ -140,14 +135,16 @@ async function pickNumbered<T>(opts: SelectOptions<T>): Promise<T> {
 
   const rl = readline.createInterface({ input: opts.io.in, output: opts.io.err, terminal: false })
   try {
-    const line: string = await new Promise(resolve => rl.once('line', resolve))
+    const line: string = await new Promise((resolve) => rl.once('line', resolve))
     const n = Number(line.trim())
     const chosen = Number.isInteger(n) ? opts.items[n - 1] : undefined
     if (chosen === undefined)
-      throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: `invalid selection: ${line.trim()}` })
+      throw new BaseError({
+        code: ErrorCode.UsageInvalidFlag,
+        message: `invalid selection: ${line.trim()}`,
+      })
     return chosen
-  }
-  finally {
+  } finally {
     rl.close()
   }
 }

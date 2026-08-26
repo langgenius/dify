@@ -1,14 +1,27 @@
 import type { ModelParameterRule } from '../declarations'
-import type {
-  Node,
-  NodeOutPutVar,
-} from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { FieldItem, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
-import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectLabel, SelectTrigger, SelectValue } from '@langgenius/dify-ui/select'
-import { Slider } from '@langgenius/dify-ui/slider'
+import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@langgenius/dify-ui/select'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -46,29 +59,33 @@ function ParameterItem({
   const numberInputRef = useRef<HTMLInputElement>(null)
 
   const workflowNodesMap = useMemo(() => {
-    if (!isInWorkflow || !availableNodes.length)
-      return undefined
+    if (!isInWorkflow || !availableNodes.length) return undefined
 
-    return availableNodes.reduce<Record<string, Pick<Node['data'], 'title' | 'type'>>>((acc, node) => {
-      acc[node.id] = {
-        title: node.data.title,
-        type: node.data.type,
-      }
-      if (node.data.type === BlockEnum.Start) {
-        acc.sys = {
-          title: t('blocks.start', { ns: 'workflow' }),
-          type: BlockEnum.Start,
+    return availableNodes.reduce<Record<string, Pick<Node['data'], 'title' | 'type'>>>(
+      (acc, node) => {
+        acc[node.id] = {
+          title: node.data.title,
+          type: node.data.type,
         }
-      }
-      return acc
-    }, {})
+        if (node.data.type === BlockEnum.Start) {
+          acc.sys = {
+            title: t(($) => $['blocks.start'], { ns: 'workflow' }),
+            type: BlockEnum.Start,
+          }
+        }
+        return acc
+      },
+      {},
+    )
   }, [availableNodes, isInWorkflow, t])
 
   const getDefaultValue = () => {
     let defaultValue: ParameterValue
 
     if (parameterRule.type === 'int' || parameterRule.type === 'float')
-      defaultValue = isNullOrUndefined(parameterRule.default) ? (parameterRule.min || 0) : parameterRule.default
+      defaultValue = isNullOrUndefined(parameterRule.default)
+        ? parameterRule.min || 0
+        : parameterRule.default
     else if (parameterRule.type === 'string' || parameterRule.type === 'text')
       defaultValue = parameterRule.default || ''
     else if (parameterRule.type === 'boolean')
@@ -85,7 +102,10 @@ function ParameterItem({
   const handleInputChange = (newValue: ParameterValue) => {
     setLocalValue(newValue)
 
-    if (onChange && (parameterRule.name === 'stop' || !isNullOrUndefined(value) || parameterRule.required))
+    if (
+      onChange &&
+      (parameterRule.name === 'stop' || !isNullOrUndefined(value) || parameterRule.required)
+    )
       onChange(newValue)
   }
 
@@ -104,8 +124,7 @@ function ParameterItem({
   }
 
   const handleNumberInputBlur = () => {
-    if (numberInputRef.current)
-      numberInputRef.current.value = renderValue as string
+    if (numberInputRef.current) numberInputRef.current.value = renderValue as string
   }
 
   const handleSlideChange = (num: number) => {
@@ -129,7 +148,9 @@ function ParameterItem({
     handleInputChange(v)
   }
 
-  const handleStringInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleStringInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
     handleInputChange(e.target.value)
   }
 
@@ -151,17 +172,16 @@ function ParameterItem({
   }, [value, parameterRule.type, renderValue])
 
   const renderInput = () => {
-    const numberInputWithSlide = (parameterRule.type === 'int' || parameterRule.type === 'float')
-      && !isNullOrUndefined(parameterRule.min)
-      && !isNullOrUndefined(parameterRule.max)
+    const numberInputWithSlide =
+      (parameterRule.type === 'int' || parameterRule.type === 'float') &&
+      !isNullOrUndefined(parameterRule.min) &&
+      !isNullOrUndefined(parameterRule.max)
 
     if (parameterRule.type === 'int') {
       let step = 100
       if (parameterRule.max) {
-        if (parameterRule.max < 100)
-          step = 1
-        else if (parameterRule.max < 1000)
-          step = 10
+        if (parameterRule.max < 100) step = 1
+        else if (parameterRule.max < 1000) step = 10
       }
 
       if (!numberInputWithSlide) {
@@ -181,17 +201,24 @@ function ParameterItem({
       }
 
       return (
-        <FieldsetRoot className="flex items-center">
+        <Fieldset className="flex items-center">
           <FieldsetLegend className="sr-only">{sliderLabel}</FieldsetLegend>
           <Slider
-            className="w-[120px]"
+            className="w-30"
             value={renderValue as number}
             min={parameterRule.min}
             max={parameterRule.max}
             step={step}
             onValueChange={handleSlideChange}
-            aria-label={sliderLabel}
-          />
+          >
+            <SliderLabel className="sr-only">{sliderLabel}</SliderLabel>
+            <SliderControl>
+              <SliderTrack>
+                <SliderIndicator />
+                <SliderThumb />
+              </SliderTrack>
+            </SliderControl>
+          </Slider>
           <input
             aria-label={sliderLabel}
             ref={numberInputRef}
@@ -203,7 +230,7 @@ function ParameterItem({
             onChange={handleNumberInputChange}
             onBlur={handleNumberInputBlur}
           />
-        </FieldsetRoot>
+        </Fieldset>
       )
     }
 
@@ -225,17 +252,24 @@ function ParameterItem({
       }
 
       return (
-        <FieldsetRoot className="flex items-center">
+        <Fieldset className="flex items-center">
           <FieldsetLegend className="sr-only">{sliderLabel}</FieldsetLegend>
           <Slider
-            className="w-[120px]"
+            className="w-30"
             value={renderValue as number}
             min={parameterRule.min}
             max={parameterRule.max}
             step={0.1}
             onValueChange={handleSlideChange}
-            aria-label={sliderLabel}
-          />
+          >
+            <SliderLabel className="sr-only">{sliderLabel}</SliderLabel>
+            <SliderControl>
+              <SliderTrack>
+                <SliderIndicator />
+                <SliderThumb />
+              </SliderTrack>
+            </SliderControl>
+          </Slider>
           <input
             aria-label={sliderLabel}
             ref={numberInputRef}
@@ -247,7 +281,7 @@ function ParameterItem({
             onChange={handleNumberInputChange}
             onBlur={handleNumberInputBlur}
           />
-        </FieldsetRoot>
+        </Fieldset>
       )
     }
 
@@ -256,43 +290,45 @@ function ParameterItem({
       const translatedLabel = parameterRule.label[language] || parameterRule.label.en_US
 
       return (
-        <FieldRoot name={parameterRule.name} className="contents">
-          <FieldsetRoot
-            render={(
+        <Field name={parameterRule.name} className="contents">
+          <Fieldset
+            render={
               <RadioGroup<boolean>
-                className="w-[150px] gap-3"
+                className="w-37.5 gap-3"
                 value={booleanValue}
                 onValueChange={handleRadioChange}
               />
-            )}
+            }
           >
             <FieldsetLegend className="sr-only">{translatedLabel}</FieldsetLegend>
             <FieldItem>
-              <FieldLabel className="flex w-[70px] items-center gap-1.5 system-sm-regular text-text-secondary">
+              <FieldLabel className="flex w-17.5 items-center gap-1.5 system-sm-regular text-text-secondary">
                 <Radio<boolean> value={true} />
                 True
               </FieldLabel>
             </FieldItem>
             <FieldItem>
-              <FieldLabel className="flex w-[70px] items-center gap-1.5 system-sm-regular text-text-secondary">
+              <FieldLabel className="flex w-17.5 items-center gap-1.5 system-sm-regular text-text-secondary">
                 <Radio<boolean> value={false} />
                 False
               </FieldLabel>
             </FieldItem>
-          </FieldsetRoot>
-        </FieldRoot>
+          </Fieldset>
+        </Field>
       )
     }
 
     if (parameterRule.type === 'string' && !parameterRule.options?.length) {
       if (isInWorkflow && nodesOutputVars) {
         return (
-          <div className="ml-4 w-[200px] rounded-lg bg-components-input-bg-normal px-2 py-1">
+          <div className="ml-4 w-50 rounded-lg bg-components-input-bg-normal px-2 py-1">
             <PromptEditor
               compact
-              className="min-h-[22px] text-[13px]"
+              className="min-h-5.5 text-[13px]"
               value={renderValue as string}
-              onChange={(text) => { handleInputChange(text) }}
+              onChange={(text) => {
+                handleInputChange(text)
+              }}
               workflowVariableBlock={{
                 show: true,
                 variables: nodesOutputVars,
@@ -306,7 +342,10 @@ function ParameterItem({
 
       return (
         <input
-          className={cn(isInWorkflow ? 'w-[150px]' : 'w-full', 'ml-4 flex h-8 appearance-none items-center rounded-lg bg-components-input-bg-normal px-3 system-sm-regular text-components-input-text-filled outline-hidden')}
+          className={cn(
+            isInWorkflow ? 'w-37.5' : 'w-full',
+            'ml-4 flex h-8 appearance-none items-center rounded-lg bg-components-input-bg-normal px-3 system-sm-regular text-components-input-text-filled outline-hidden',
+          )}
           value={renderValue as string}
           onChange={handleStringInputChange}
         />
@@ -319,9 +358,11 @@ function ParameterItem({
           <div className="ml-4 w-full rounded-lg bg-components-input-bg-normal px-2 py-1">
             <PromptEditor
               compact
-              className="min-h-[56px] text-[13px]"
+              className="min-h-14 text-[13px]"
               value={renderValue as string}
-              onChange={(text) => { handleInputChange(text) }}
+              onChange={(text) => {
+                handleInputChange(text)
+              }}
               workflowVariableBlock={{
                 show: true,
                 variables: nodesOutputVars,
@@ -346,14 +387,14 @@ function ParameterItem({
       return (
         <Select
           value={renderValue as string}
-          onValueChange={v => handleInputChange(v ?? undefined)}
+          onValueChange={(v) => handleInputChange(v ?? undefined)}
         >
           <SelectLabel className="sr-only">{sliderLabel}</SelectLabel>
           <SelectTrigger className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {parameterRule.options!.map(option => (
+            {parameterRule.options!.map((option) => (
               <SelectItem key={option} value={option}>
                 <SelectItemText>{option}</SelectItemText>
                 <SelectItemIndicator />
@@ -385,42 +426,36 @@ function ParameterItem({
     <div className="mb-2 flex items-center justify-between">
       <div className="shrink-0 basis-1/2">
         <div className={cn('flex w-full shrink-0 items-center')}>
-          {
-            !parameterRule.required && parameterRule.name !== 'stop' && (
-              <div className="mr-2 w-7">
-                <Switch
-                  checked={!isNullOrUndefined(value)}
-                  onCheckedChange={handleSwitch}
-                  size="md"
-                />
-              </div>
-            )
-          }
+          {!parameterRule.required && parameterRule.name !== 'stop' && (
+            <div className="mr-2 w-7">
+              <Switch
+                checked={!isNullOrUndefined(value)}
+                onCheckedChange={handleSwitch}
+                size="md"
+              />
+            </div>
+          )}
           <div
             className="mr-0.5 truncate system-xs-regular text-text-secondary"
             title={sliderLabel}
           >
             {sliderLabel}
           </div>
-          {
-            parameterRule.help && (
-              <Infotip
-                aria-label={parameterRule.help[language] || parameterRule.help.en_US}
-                className="mr-1"
-                popupClassName="w-[150px] whitespace-pre-wrap"
-              >
-                {parameterRule.help[language] || parameterRule.help.en_US}
-              </Infotip>
-            )
-          }
+          {parameterRule.help && (
+            <Infotip
+              aria-label={parameterRule.help[language] || parameterRule.help.en_US}
+              className="mr-1"
+              popupClassName="w-[150px] whitespace-pre-wrap"
+            >
+              {parameterRule.help[language] || parameterRule.help.en_US}
+            </Infotip>
+          )}
         </div>
-        {
-          parameterRule.type === 'tag' && (
-            <div className={cn(!isInWorkflow && 'w-[150px]', 'system-xs-regular text-text-tertiary')}>
-              {parameterRule?.tagPlaceholder?.[language]}
-            </div>
-          )
-        }
+        {parameterRule.type === 'tag' && (
+          <div className={cn(!isInWorkflow && 'w-37.5', 'system-xs-regular text-text-tertiary')}>
+            {parameterRule?.tagPlaceholder?.[language]}
+          </div>
+        )}
       </div>
       {renderInput()}
     </div>

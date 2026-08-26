@@ -1,7 +1,10 @@
+import type { ReactElement } from 'react'
 import type { EmailConfig, FormInputItem } from '../../../types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { DeliveryMethodType } from '../../../types'
 import DeliveryMethodItem from '../method-item'
 
@@ -20,57 +23,56 @@ type TestEmailSenderProps = {
 
 const mockEmailConfigureModal = vi.hoisted(() => vi.fn())
 const mockTestEmailSender = vi.hoisted(() => vi.fn())
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   userProfile: {
     email: 'owner@example.com',
   },
 }))
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
-})
+const render = (ui: ReactElement) =>
+  renderWithConsoleState(ui, {
+    wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
+  })
 
 vi.mock('../email-configure-modal', () => ({
   default: (props: EmailConfigureModalProps) => {
     mockEmailConfigureModal(props)
-    return props.open
-      ? (
-          <div data-testid="email-configure-modal">
-            <button
-              type="button"
-              onClick={() => props.onConfirm({
-                recipients: { whole_workspace: false, items: [] },
-                subject: 'Configured subject',
-                body: '{{#url#}}',
-                debug_mode: false,
-              })}
-            >
-              confirm-email-config
-            </button>
-            <button type="button" onClick={() => props.onOpenChange(false)}>close-email-config</button>
-          </div>
-        )
-      : null
+    return props.open ? (
+      <div data-testid="email-configure-modal">
+        <button
+          type="button"
+          onClick={() =>
+            props.onConfirm({
+              recipients: { whole_workspace: false, items: [] },
+              subject: 'Configured subject',
+              body: '{{#url#}}',
+              debug_mode: false,
+            })
+          }
+        >
+          confirm-email-config
+        </button>
+        <button type="button" onClick={() => props.onOpenChange(false)}>
+          close-email-config
+        </button>
+      </div>
+    ) : null
   },
 }))
 
 vi.mock('../test-email-sender', () => ({
   default: (props: TestEmailSenderProps) => {
     mockTestEmailSender(props)
-    return props.open
-      ? (
-          <div data-testid="test-email-sender">
-            <button type="button" onClick={props.jumpToEmailConfigModal}>jump-to-config</button>
-            <button type="button" onClick={() => props.onOpenChange(false)}>close-test-sender</button>
-          </div>
-        )
-      : null
+    return props.open ? (
+      <div data-testid="test-email-sender">
+        <button type="button" onClick={props.jumpToEmailConfigModal}>
+          jump-to-config
+        </button>
+        <button type="button" onClick={() => props.onOpenChange(false)}>
+          close-test-sender
+        </button>
+      </div>
+    ) : null
   },
 }))
 
@@ -85,29 +87,35 @@ const createEmailConfig = (overrides: Partial<EmailConfig> = {}): EmailConfig =>
   ...overrides,
 })
 
-const formInputs: FormInputItem[] = [{
-  type: InputVarType.paragraph,
-  output_variable_name: 'name',
-  default: {
-    selector: ['start', 'name'],
-    type: 'constant',
-    value: '',
+const formInputs: FormInputItem[] = [
+  {
+    type: InputVarType.paragraph,
+    output_variable_name: 'name',
+    default: {
+      selector: ['start', 'name'],
+      type: 'constant',
+      value: '',
+    },
   },
-}]
+]
 
-const availableNodes = [{
-  id: 'start',
-  data: {
+const availableNodes = [
+  {
+    id: 'start',
+    data: {
+      title: 'Start',
+      type: 'start',
+    },
+  },
+] as unknown as Node[]
+
+const nodesOutputVars = [
+  {
+    nodeId: 'start',
     title: 'Start',
-    type: 'start',
+    vars: [],
   },
-}] as unknown as Node[]
-
-const nodesOutputVars = [{
-  nodeId: 'start',
-  title: 'Start',
-  vars: [],
-}] as NodeOutPutVar[]
+] as NodeOutPutVar[]
 
 const getMethodRow = (label: string) => {
   return screen.getByText(label).closest('div[class*="justify-between"]') as HTMLDivElement
@@ -199,13 +207,15 @@ describe('human-input/delivery-method/method-item', () => {
     expect(screen.getByTestId('email-configure-modal'))!.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'confirm-email-config' }))
-    expect(handleChange).toHaveBeenCalledWith(expect.objectContaining({
-      id: 'email-1',
-      type: DeliveryMethodType.Email,
-      config: expect.objectContaining({
-        subject: 'Configured subject',
+    expect(handleChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'email-1',
+        type: DeliveryMethodType.Email,
+        config: expect.objectContaining({
+          subject: 'Configured subject',
+        }),
       }),
-    }))
+    )
 
     fireEvent.click(actionButtons[2]!)
     expect(handleDelete).toHaveBeenCalledWith(DeliveryMethodType.Email)
@@ -229,7 +239,11 @@ describe('human-input/delivery-method/method-item', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /workflow.nodes.humanInput.deliveryMethod.notConfigured/i }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /workflow.nodes.humanInput.deliveryMethod.notConfigured/i,
+      }),
+    )
     expect(screen.getByTestId('email-configure-modal'))!.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'close-email-config' }))

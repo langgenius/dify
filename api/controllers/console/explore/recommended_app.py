@@ -1,20 +1,19 @@
 from typing import Any
 from uuid import UUID
 
-from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, RootModel, computed_field, field_validator
+from pydantic import BaseModel, Field, computed_field, field_validator
 
-from constants.languages import languages
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, with_current_user
-from extensions.ext_database import db
+from controllers.console.explore.error import RecommendedAppNotFoundError
+from controllers.console.wraps import account_initialization_required, model_validate, with_current_user
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
-from libs.helper import build_icon_url
+from libs.helper import build_icon_url, dump_response
 from libs.login import login_required
 from models import Account
-from services.recommended_app_service import RecommendedAppService
+from services.recommended_app_query_service import RecommendedAppNotFoundError as RecommendedAppQueryNotFoundError
 
 
 class RecommendedAppsQuery(BaseModel):
@@ -58,7 +57,7 @@ class RecommendedAppResponse(ResponseModel):
     categories: list[str] = Field(default_factory=list)
     position: int | None = None
     is_listed: bool | None = None
-    can_trial: bool | None = None
+    can_trial: bool
 
 
 class RecommendedAppListResponse(ResponseModel):
@@ -77,11 +76,7 @@ class RecommendedAppDetailResponse(ResponseModel):
     icon_background: str | None = None
     mode: str
     export_data: str
-    can_trial: bool | None = None
-
-
-class RecommendedAppDetailNullableResponse(RootModel[RecommendedAppDetailResponse | None]):
-    pass
+    can_trial: bool
 
 
 register_schema_models(
@@ -95,16 +90,7 @@ register_response_schema_models(
     RecommendedAppListResponse,
     LearnDifyAppListResponse,
     RecommendedAppDetailResponse,
-    RecommendedAppDetailNullableResponse,
 )
-
-
-def _resolve_language(language: str | None, user: Account) -> str:
-    if language and language in languages:
-        return language
-    if user.interface_language:
-        return user.interface_language
-    return languages[0]
 
 
 @console_ns.route("/explore/apps")
@@ -114,15 +100,15 @@ class RecommendedAppListApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    def get(self, current_user: Account):
-        # language args
-        args = RecommendedAppsQuery.model_validate(request.args.to_dict(flat=True))
-        language_prefix = _resolve_language(args.language, current_user)
-
-        return RecommendedAppListResponse.model_validate(
-            RecommendedAppService.get_recommended_apps_and_categories(language_prefix, session=db.session()),
-            from_attributes=True,
-        ).model_dump(mode="json")
+    @model_validate(RecommendedAppsQuery)
+    def get(self, req_data: RecommendedAppsQuery, current_user: Account):
+        return dump_response(
+            RecommendedAppListResponse,
+            application_services().recommended_app_queries.list_recommended(
+                requested_language=req_data.language,
+                interface_language=current_user.interface_language,
+            ),
+        )
 
 
 @console_ns.route("/explore/apps/learn-dify")
@@ -132,20 +118,26 @@ class LearnDifyAppListApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    def get(self, current_user: Account):
-        args = RecommendedAppsQuery.model_validate(request.args.to_dict(flat=True))
-        language_prefix = _resolve_language(args.language, current_user)
-
-        return LearnDifyAppListResponse.model_validate(
-            RecommendedAppService.get_learn_dify_apps(language_prefix, session=db.session()),
-            from_attributes=True,
-        ).model_dump(mode="json")
+    @model_validate(RecommendedAppsQuery)
+    def get(self, req_data: RecommendedAppsQuery, current_user: Account):
+        return dump_response(
+            LearnDifyAppListResponse,
+            application_services().recommended_app_queries.list_learn_dify(
+                requested_language=req_data.language,
+                interface_language=current_user.interface_language,
+            ),
+        )
 
 
 @console_ns.route("/explore/apps/<uuid:app_id>")
 class RecommendedAppApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[RecommendedAppDetailNullableResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[RecommendedAppDetailResponse.__name__])
+    @console_ns.response(404, "Recommended app not found")
     @login_required
     @account_initialization_required
     def get(self, app_id: UUID):
-        return RecommendedAppService.get_recommend_app_detail(str(app_id), session=db.session())
+        try:
+            result = application_services().recommended_app_queries.get_detail(str(app_id))
+        except RecommendedAppQueryNotFoundError:
+            raise RecommendedAppNotFoundError() from None
+        return dump_response(RecommendedAppDetailResponse, result)

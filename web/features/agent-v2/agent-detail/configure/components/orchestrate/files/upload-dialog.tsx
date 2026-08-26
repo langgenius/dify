@@ -1,20 +1,33 @@
 'use client'
 
-import type { AgentConfigFileItemResponse, AgentConfigFileUploadResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type {
+  AgentConfigFileItemResponse,
+  AgentConfigFileUploadResponse,
+} from '@dify/contracts/api/console/agent/types.gen'
 import type { FileResponse } from '@dify/contracts/api/console/files/types.gen'
 import type { ChangeEvent, DragEvent } from 'react'
 import type { AgentConfigApiContext } from '../config-context'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
+import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
+import { getSupportFileType } from '@/app/components/base/file-uploader/utils'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/client'
+import { useFileUploadConfig } from '@/service/use-common'
 import { formatFileSize } from '@/utils/format'
 import { getFileIconType } from './file-icon'
 
@@ -35,22 +48,50 @@ function hasDraggedFiles(event: DragEvent<HTMLDivElement>) {
   return Array.from(event.dataTransfer.types).includes('Files')
 }
 
-function AgentFileUploader({
-  file,
-  onChange,
-}: {
-  file?: File
-  onChange: (file?: File) => void
-}) {
+function AgentFileUploader({ file, onChange }: { file?: File; onChange: (file?: File) => void }) {
   const { t } = useTranslation('agentV2')
+  const { t: tAppDebug } = useTranslation('appDebug')
+  const { t: tCommon } = useTranslation('common')
+  const { data: fileUploadConfig } = useFileUploadConfig()
+  const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } =
+    useFileSizeLimit(fileUploadConfig)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dragDepthRef = useRef(0)
   const [dragging, setDragging] = useState(false)
 
+  const getSizeLimit = (uploadFile: File) => {
+    const fileType = getSupportFileType(uploadFile.name, uploadFile.type)
+
+    switch (fileType) {
+      case SupportUploadFileTypes.image:
+        return { fileType, sizeLimit: imgSizeLimit }
+      case SupportUploadFileTypes.audio:
+        return { fileType, sizeLimit: audioSizeLimit }
+      case SupportUploadFileTypes.video:
+        return { fileType, sizeLimit: videoSizeLimit }
+      default:
+        return {
+          fileType: SupportUploadFileTypes.document,
+          sizeLimit: docSizeLimit,
+        }
+    }
+  }
+
   const setUploadFiles = (files: File[]) => {
     const [uploadFile] = files
     if (files.length !== 1 || !uploadFile) {
-      toast.error(t('agentDetail.configure.files.upload.invalidFile'))
+      toast.error(t(($) => $['agentDetail.configure.files.upload.invalidFile']))
+      return
+    }
+
+    const { fileType, sizeLimit } = getSizeLimit(uploadFile)
+    if (uploadFile.size > sizeLimit) {
+      toast.error(
+        tCommon(($) => $['fileUploader.uploadFromComputerLimit'], {
+          type: fileType,
+          size: formatFileSize(sizeLimit),
+        }),
+      )
       return
     }
 
@@ -64,8 +105,7 @@ function AgentFileUploader({
   }
 
   const handleDragEnter = (event: DragEvent<HTMLDivElement>) => {
-    if (!hasDraggedFiles(event))
-      return
+    if (!hasDraggedFiles(event)) return
 
     event.preventDefault()
     event.stopPropagation()
@@ -74,27 +114,23 @@ function AgentFileUploader({
   }
 
   const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
-    if (!hasDraggedFiles(event))
-      return
+    if (!hasDraggedFiles(event)) return
 
     event.preventDefault()
     event.dataTransfer.dropEffect = 'copy'
   }
 
   const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
-    if (!hasDraggedFiles(event))
-      return
+    if (!hasDraggedFiles(event)) return
 
     event.preventDefault()
     event.stopPropagation()
     dragDepthRef.current = Math.max(0, dragDepthRef.current - 1)
-    if (dragDepthRef.current === 0)
-      setDragging(false)
+    if (dragDepthRef.current === 0) setDragging(false)
   }
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
-    if (!hasDraggedFiles(event))
-      return
+    if (!hasDraggedFiles(event)) return
 
     event.preventDefault()
     event.stopPropagation()
@@ -108,18 +144,13 @@ function AgentFileUploader({
     <div
       className="mt-6"
       role="group"
-      aria-label={t('agentDetail.configure.files.upload.title')}
+      aria-label={t(($) => $['agentDetail.configure.files.upload.title'])}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      <input
-        ref={fileInputRef}
-        className="hidden"
-        type="file"
-        onChange={handleFileChange}
-      />
+      <input ref={fileInputRef} className="hidden" type="file" onChange={handleFileChange} />
       {!file && (
         <div
           className={cn(
@@ -130,13 +161,13 @@ function AgentFileUploader({
           <div className="flex w-full items-center justify-center space-x-2">
             <span aria-hidden className="i-ri-upload-cloud-2-line size-6 text-text-tertiary" />
             <div className="text-text-tertiary">
-              {t('agentDetail.configure.files.upload.dropzone')}
+              {t(($) => $['agentDetail.configure.files.upload.dropzone'])}
               <button
                 type="button"
                 className="inline cursor-pointer border-none bg-transparent p-0 pl-1 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                 onClick={() => fileInputRef.current?.click()}
               >
-                {t('agentDetail.configure.files.upload.browse')}
+                {t(($) => $['agentDetail.configure.files.upload.browse'])}
               </button>
             </div>
           </div>
@@ -149,20 +180,33 @@ function AgentFileUploader({
             <FileTreeIcon type={getFileIconType(file.name, file.type)} />
           </div>
           <div className="flex min-w-0 grow flex-col items-start gap-0.5 py-1 pr-2">
-            <span className="max-w-full min-w-0 truncate text-[12px] leading-4 font-medium text-text-secondary">{file.name}</span>
-            <div className="flex h-3 items-center gap-1 self-stretch text-[10px] leading-3 font-medium text-text-tertiary uppercase">
-              <span>{t('agentDetail.configure.files.upload.fileType')}</span>
+            <span className="max-w-full min-w-0 truncate text-[12px] leading-4 font-medium text-text-secondary">
+              {file.name}
+            </span>
+            <div className="flex h-3 items-center gap-1 self-stretch text-2xs leading-3 font-medium text-text-tertiary uppercase">
+              <span>{t(($) => $['agentDetail.configure.files.upload.fileType'])}</span>
               <span className="text-text-quaternary">·</span>
               <span>{formatFileSize(file.size)}</span>
             </div>
           </div>
           <div className="hidden items-center pr-3 group-hover:flex">
-            <ActionButton onClick={() => onChange(undefined)}>
+            <IconButton
+              aria-label={tCommon(($) => $['operation.remove'])}
+              onClick={() => onChange(undefined)}
+            >
               <span aria-hidden className="i-ri-delete-bin-line size-4 text-text-tertiary" />
-            </ActionButton>
+            </IconButton>
           </div>
         </div>
       )}
+      <p className="mt-2 system-xs-regular text-text-tertiary">
+        {tAppDebug(($) => $['variableConfig.maxNumberTip'], {
+          docLimit: formatFileSize(docSizeLimit),
+          imgLimit: formatFileSize(imgSizeLimit),
+          audioLimit: formatFileSize(audioSizeLimit),
+          videoLimit: formatFileSize(videoSizeLimit),
+        })}
+      </p>
     </div>
   )
 }
@@ -182,73 +226,89 @@ export function AgentFileUploadDialog({
   const { t: tCommon } = useTranslation('common')
   const [file, setFile] = useState<File>()
   const uploadFileMutation = useMutation(consoleQuery.files.upload.post.mutationOptions())
-  const commitAgentFileMutation = useMutation(consoleQuery.agent.byAgentId.config.files.post.mutationOptions())
-  const commitWorkflowAgentFileMutation = useMutation(consoleQuery.apps.byAppId.agent.config.files.post.mutationOptions())
-  const isUploading = uploadFileMutation.isPending
-    || commitAgentFileMutation.isPending
-    || commitWorkflowAgentFileMutation.isPending
+  const commitAgentFileMutation = useMutation(
+    consoleQuery.agent.byAgentId.config.files.post.mutationOptions(),
+  )
+  const commitWorkflowAgentFileMutation = useMutation(
+    consoleQuery.apps.byAppId.agent.config.files.post.mutationOptions(),
+  )
+  const isUploading =
+    uploadFileMutation.isPending ||
+    commitAgentFileMutation.isPending ||
+    commitWorkflowAgentFileMutation.isPending
 
-  const commitUploadedFile = (uploadedFile: FileResponse, options: {
-    onSuccess: (committedFile: AgentConfigFileUploadResponse) => void
-    onError: () => void
-  }) => {
+  const commitUploadedFile = (
+    uploadedFile: FileResponse,
+    options: {
+      onSuccess: (committedFile: AgentConfigFileUploadResponse) => void
+      onError: () => void
+    },
+  ) => {
     const body = {
       upload_file_id: uploadedFile.id,
     }
 
     if (apiContext.workflow) {
-      commitWorkflowAgentFileMutation.mutate({
+      commitWorkflowAgentFileMutation.mutate(
+        {
+          params: {
+            app_id: apiContext.workflow.appId,
+          },
+          query: {
+            node_id: apiContext.workflow.nodeId,
+            draft_type: apiContext.draftType,
+            version_id: apiContext.versionId,
+          },
+          body,
+        },
+        options,
+      )
+      return
+    }
+
+    commitAgentFileMutation.mutate(
+      {
         params: {
-          app_id: apiContext.workflow.appId,
+          agent_id: apiContext.agentId,
         },
         query: {
-          node_id: apiContext.workflow.nodeId,
           draft_type: apiContext.draftType,
           version_id: apiContext.versionId,
         },
         body,
-      }, options)
-      return
-    }
-
-    commitAgentFileMutation.mutate({
-      params: {
-        agent_id: apiContext.agentId,
       },
-      query: {
-        draft_type: apiContext.draftType,
-        version_id: apiContext.versionId,
-      },
-      body,
-    }, options)
+      options,
+    )
   }
 
   const handleUpload = () => {
-    if (!file || isUploading)
-      return
+    if (!file || isUploading) return
 
-    uploadFileMutation.mutate({
-      body: {
-        file,
+    uploadFileMutation.mutate(
+      {
+        body: {
+          file,
+        },
       },
-    }, {
-      onSuccess: (uploadedFile) => {
-        commitUploadedFile(uploadedFile, {
-          onSuccess: (committedFile) => {
-            toast.success(t('agentDetail.configure.files.upload.success'))
-            onUploaded(toAgentFileNode(committedFile.file))
-            setFile(undefined)
-            onOpenChange(false)
-          },
-          onError: () => {
-            toast.error(t('agentDetail.configure.files.upload.failed'))
-          },
-        })
+      {
+        onSuccess: (uploadedFile) => {
+          commitUploadedFile(uploadedFile, {
+            onSuccess: (committedFile) => {
+              toast.success(t(($) => $['agentDetail.configure.files.upload.success']))
+              onUploaded(toAgentFileNode(committedFile.file))
+              setFile(undefined)
+              onOpenChange(false)
+            },
+            onError: () => {
+              toast.error(t(($) => $['agentDetail.configure.files.upload.failed']))
+            },
+          })
+        },
+        onError: () => {
+          toast.error(t(($) => $['agentDetail.configure.files.upload.failed']))
+        },
       },
-      onError: () => {
-        toast.error(t('agentDetail.configure.files.upload.failed'))
-      },
-    })
+    )
   }
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -263,21 +323,28 @@ export function AgentFileUploadDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
-      <DialogContent backdropProps={{ forceRender: true }} backdropClassName="fixed">
-        <DialogCloseButton />
+      <DialogContent backdropProps={{ forceRender: true, className: 'fixed' }}>
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t('agentDetail.configure.files.upload.title')}
+          {t(($) => $['agentDetail.configure.files.upload.title'])}
         </DialogTitle>
         <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
-          {t('agentDetail.configure.files.upload.description')}
+          {t(($) => $['agentDetail.configure.files.upload.description'])}
         </DialogDescription>
-        <AgentFileUploader
-          file={file}
-          onChange={setFile}
-        />
+        <AgentFileUploader file={file} onChange={setFile} />
         <div className="flex justify-end gap-2 pt-6">
           <Button type="button" onClick={() => handleOpenChange(false)} disabled={isUploading}>
-            {tCommon('operation.cancel')}
+            {tCommon(($) => $['operation.cancel'])}
           </Button>
           <Button
             type="button"
@@ -286,7 +353,7 @@ export function AgentFileUploadDialog({
             loading={isUploading}
             onClick={handleUpload}
           >
-            {t('agentDetail.configure.files.upload.action')}
+            {t(($) => $['agentDetail.configure.files.upload.action'])}
           </Button>
         </div>
       </DialogContent>

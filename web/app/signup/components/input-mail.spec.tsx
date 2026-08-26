@@ -1,16 +1,30 @@
-import type { MockedFunction } from 'vitest'
+import type { MockedFunction } from 'vite-plus/test'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useLocale } from '@/context/i18n'
+import { useSearchParams } from '@/next/navigation'
 import { useSendMail } from '@/service/use-common'
-import Form from './input-mail'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import SignupEmailForm from './input-mail'
 
 const mockSubmitMail = vi.fn()
 const mockOnSuccess = vi.fn()
 
 vi.mock('@/next/link', () => ({
-  default: ({ children, href, className, target, rel }: { children: React.ReactNode, href: string, className?: string, target?: string, rel?: string }) => (
+  default: ({
+    children,
+    href,
+    className,
+    target,
+    rel,
+  }: {
+    children: React.ReactNode
+    href: string
+    className?: string
+    target?: string
+    rel?: string
+  }) => (
     <a href={href} className={className} target={target} rel={rel}>
       {children}
     </a>
@@ -21,6 +35,10 @@ vi.mock('@/context/i18n', () => ({
   useLocale: vi.fn(),
 }))
 
+vi.mock('@/next/navigation', () => ({
+  useSearchParams: vi.fn(),
+}))
+
 vi.mock('@/service/use-common', () => ({
   useSendMail: vi.fn(),
 }))
@@ -28,6 +46,7 @@ vi.mock('@/service/use-common', () => ({
 type UseSendMailResult = ReturnType<typeof useSendMail>
 
 const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
+const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
 const mockUseSendMail = useSendMail as unknown as MockedFunction<typeof useSendMail>
 
 const renderForm = ({
@@ -42,7 +61,7 @@ const renderForm = ({
     mutateAsync: mockSubmitMail,
     isPending,
   } as unknown as UseSendMailResult)
-  return renderWithSystemFeatures(<Form onSuccess={mockOnSuccess} />, {
+  return renderWithConsoleQuery(<SignupEmailForm onSuccess={mockOnSuccess} />, {
     systemFeatures: { branding: { enabled: brandingEnabled } },
   })
 }
@@ -50,6 +69,9 @@ const renderForm = ({
 describe('InputMail Form', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseSearchParams.mockReturnValue(
+      new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>,
+    )
     mockSubmitMail.mockResolvedValue({ result: 'success', data: 'token' })
   })
 
@@ -58,8 +80,16 @@ describe('InputMail Form', () => {
     it('should render email input and submit button', () => {
       renderForm()
 
-      expect(screen.getByLabelText('login.email')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'login.signup.verifyMail' })).toBeInTheDocument()
+      const emailInput = screen.getByRole('textbox', { name: 'login.email' })
+      const submitButton = screen.getByRole('button', { name: 'login.signup.verifyMail' })
+
+      expect(emailInput).toHaveAttribute('name', 'email')
+      expect(emailInput).toHaveAttribute('type', 'email')
+      expect(emailInput).toHaveAttribute('autocomplete', 'email')
+      expect(emailInput).toHaveAttribute('spellcheck', 'false')
+      expect(emailInput).toHaveProperty('tabIndex', 0)
+      expect(submitButton).toHaveAttribute('type', 'submit')
+      expect(submitButton).toHaveProperty('tabIndex', 0)
       expect(screen.getByRole('link', { name: 'login.signup.signIn' })).toBeInTheDocument()
     })
   })
@@ -84,21 +114,39 @@ describe('InputMail Form', () => {
   // Submission flow and mutation integration.
   describe('User Interactions', () => {
     it('should submit email and call onSuccess when mutation succeeds', async () => {
+      const user = userEvent.setup()
       renderForm()
-      const input = screen.getByLabelText('login.email')
-      const button = screen.getByRole('button', { name: 'login.signup.verifyMail' })
+      const input = screen.getByRole('textbox', { name: 'login.email' })
 
-      fireEvent.change(input, { target: { value: 'test@example.com' } })
-      fireEvent.click(button)
+      await user.type(input, 'test@example.com{Enter}')
 
       expect(mockSubmitMail).toHaveBeenCalledWith({
         email: 'test@example.com',
         language: 'en-US',
       })
+      expect(mockSubmitMail).toHaveBeenCalledTimes(1)
 
       await waitFor(() => {
         expect(mockOnSuccess).toHaveBeenCalledWith('test@example.com', 'token')
       })
+    })
+  })
+
+  // Navigation between registration and login keeps the original destination.
+  describe('Registration Navigation', () => {
+    it('should preserve the current query when navigating to sign in', () => {
+      mockUseSearchParams.mockReturnValue(
+        new URLSearchParams(
+          'redirect_url=%2Fapps%3Ftag%3Dworkflow&source=pricing',
+        ) as unknown as ReturnType<typeof useSearchParams>,
+      )
+
+      renderForm()
+
+      expect(screen.getByRole('link', { name: 'login.signup.signIn' })).toHaveAttribute(
+        'href',
+        '/signin?redirect_url=%2Fapps%3Ftag%3Dworkflow&source=pricing',
+      )
     })
   })
 

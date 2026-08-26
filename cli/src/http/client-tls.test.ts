@@ -5,27 +5,31 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import * as https from 'node:https'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test'
 import { createHttpClient } from './client.js'
 
-function generateSelfSignedCert(dir: string): { key: Buffer, cert: Buffer } {
+function generateSelfSignedCert(dir: string): { key: Buffer; cert: Buffer } {
   const keyPath = join(dir, 'key.pem')
   const certPath = join(dir, 'cert.pem')
-  execFileSync('openssl', [
-    'req',
-    '-x509',
-    '-newkey',
-    'rsa:2048',
-    '-nodes',
-    '-keyout',
-    keyPath,
-    '-out',
-    certPath,
-    '-days',
-    '1',
-    '-subj',
-    '/CN=localhost',
-  ], { stdio: ['ignore', 'ignore', 'pipe'] })
+  execFileSync(
+    'openssl',
+    [
+      'req',
+      '-x509',
+      '-newkey',
+      'rsa:2048',
+      '-nodes',
+      '-keyout',
+      keyPath,
+      '-out',
+      certPath,
+      '-days',
+      '1',
+      '-subj',
+      '/CN=localhost',
+    ],
+    { stdio: ['ignore', 'ignore', 'pipe'] },
+  )
   return { key: readFileSync(keyPath), cert: readFileSync(certPath) }
 }
 
@@ -43,13 +47,13 @@ describe('createHttpClient against a real self-signed TLS server', () => {
       res.writeHead(200, { 'content-type': 'application/json' })
       res.end(JSON.stringify({ ok: true }))
     })
-    await new Promise<void>(resolve => server.listen(0, resolve))
+    await new Promise<void>((resolve) => server.listen(0, resolve))
     const port = (server.address() as AddressInfo).port
     baseURL = `https://localhost:${port}/`
   })
 
   afterAll(async () => {
-    await new Promise<void>(resolve => server.close(() => resolve()))
+    await new Promise<void>((resolve) => server.close(() => resolve()))
     rmSync(certDir, { recursive: true, force: true })
   })
 

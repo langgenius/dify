@@ -6,17 +6,14 @@ type MarketplacePageProps = {
   searchParams?: Promise<SearchParams>
 }
 
-const MarketplacePage = ({
-  searchParams,
-}: MarketplacePageProps) => {
+const MarketplacePage = ({ searchParams }: MarketplacePageProps) => {
   return (
-    <div id="marketplace-container" className="flex h-full min-h-0 flex-col overflow-y-auto bg-background-default-subtle pr-1">
+    <div
+      id="marketplace-container"
+      className="flex h-full min-h-0 flex-col overflow-y-auto bg-background-default-subtle pr-1"
+    >
       <MarketplaceInstallPermissionProvider>
-        <Marketplace
-          searchParams={searchParams}
-          isMarketplacePlatform
-          showInstallButton
-        />
+        <Marketplace searchParams={searchParams} isMarketplacePlatform showInstallButton />
       </MarketplaceInstallPermissionProvider>
     </div>
   )

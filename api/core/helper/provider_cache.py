@@ -24,7 +24,7 @@ class ProviderCredentialsCache(ABC):
             try:
                 cached_credentials = cached_credentials.decode("utf-8")
                 return dict(json.loads(cached_credentials))
-            except JSONDecodeError:
+            except (JSONDecodeError, UnicodeDecodeError):
                 return None
         return None
 

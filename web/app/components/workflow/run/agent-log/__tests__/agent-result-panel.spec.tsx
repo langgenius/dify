@@ -1,9 +1,12 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { render } from '@/test/console/render'
 import AgentResultPanel from '../agent-result-panel'
 
-const createLogItem = (overrides: Partial<AgentLogItemWithChildren> = {}): AgentLogItemWithChildren => ({
+const createLogItem = (
+  overrides: Partial<AgentLogItemWithChildren> = {},
+): AgentLogItemWithChildren => ({
   message_id: 'message-1',
   label: 'Planner',
   children: [],
@@ -12,6 +15,13 @@ const createLogItem = (overrides: Partial<AgentLogItemWithChildren> = {}): Agent
   node_id: 'node-1',
   data: {},
   ...overrides,
+})
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
 })
 
 describe('AgentResultPanel', () => {

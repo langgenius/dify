@@ -1,57 +1,31 @@
+import * as React from 'react'
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
-  AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '../index'
 
-const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
-
 describe('AlertDialog wrapper', () => {
-  describe('Rendering', () => {
-    it('should render alert dialog content when dialog is open', async () => {
-      const screen = await render(
-        <AlertDialog open>
-          <AlertDialogContent>
-            <AlertDialogTitle>Confirm Delete</AlertDialogTitle>
-            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
-          </AlertDialogContent>
-        </AlertDialog>,
-      )
-
-      await expect.element(screen.getByRole('alertdialog')).toHaveTextContent('Confirm Delete')
-      await expect.element(screen.getByRole('alertdialog')).toHaveTextContent('This action cannot be undone.')
-    })
-
-    it('should not render content when dialog is closed', async () => {
-      const screen = await render(
-        <AlertDialog open={false}>
-          <AlertDialogContent>
-            <AlertDialogTitle>Hidden Title</AlertDialogTitle>
-          </AlertDialogContent>
-        </AlertDialog>,
-      )
-
-      expect(screen.container.querySelector('[role="alertdialog"]')).not.toBeInTheDocument()
-    })
-  })
-
   describe('Props', () => {
-    it('should apply custom className to popup', async () => {
+    it('should move focus to the requested initial target', async () => {
+      const initialFocusRef = React.createRef<HTMLButtonElement>()
       const screen = await render(
         <AlertDialog open>
-          <AlertDialogContent className="custom-class">
+          <AlertDialogContent initialFocus={initialFocusRef}>
             <AlertDialogTitle>Title</AlertDialogTitle>
+            <button ref={initialFocusRef} type="button">
+              Focus target
+            </button>
           </AlertDialogContent>
         </AlertDialog>,
       )
 
-      await expect.element(screen.getByRole('alertdialog')).toHaveClass('custom-class')
+      await expect.element(screen.getByRole('button', { name: 'Focus target' })).toHaveFocus()
     })
 
     it('should not render a close button by default', async () => {
@@ -65,79 +39,87 @@ describe('AlertDialog wrapper', () => {
 
       expect(() => screen.getByRole('button', { name: 'Close' }).element()).toThrow()
     })
-  })
 
-  describe('User Interactions', () => {
-    it('should open and close dialog when trigger and cancel button are clicked', async () => {
-      const screen = await render(
-        <AlertDialog>
-          <AlertDialogTrigger>Open Dialog</AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogTitle>Action Required</AlertDialogTitle>
-            <AlertDialogDescription>Please confirm the action.</AlertDialogDescription>
-            <AlertDialogActions>
-              <AlertDialogCancelButton>Cancel</AlertDialogCancelButton>
-            </AlertDialogActions>
-          </AlertDialogContent>
-        </AlertDialog>,
-      )
-
-      expect(screen.container.querySelector('[role="alertdialog"]')).not.toBeInTheDocument()
-
-      asHTMLElement(screen.getByRole('button', { name: 'Open Dialog' }).element()).click()
-      await expect.element(screen.getByRole('alertdialog')).toHaveTextContent('Action Required')
-
-      asHTMLElement(screen.getByRole('button', { name: 'Cancel' }).element()).click()
-      await vi.waitFor(() => {
-        expect(screen.container.querySelector('[role="alertdialog"]')).not.toBeInTheDocument()
-      })
-    })
-  })
-
-  describe('Composition Helpers', () => {
-    it('should render actions wrapper and confirm button', async () => {
+    it('should apply backdrop props to a nested alert dialog backdrop', async () => {
       const screen = await render(
         <AlertDialog open>
           <AlertDialogContent>
-            <AlertDialogTitle>Action Required</AlertDialogTitle>
-            <AlertDialogActions data-testid="actions" className="custom-actions">
-              <AlertDialogConfirmButton>Confirm</AlertDialogConfirmButton>
-            </AlertDialogActions>
+            <AlertDialogTitle>Parent confirmation</AlertDialogTitle>
+            <AlertDialog open>
+              <AlertDialogContent
+                backdropProps={{
+                  className: 'bg-transparent',
+                  forceRender: true,
+                  id: 'nested-alert-dialog-backdrop',
+                }}
+              >
+                <AlertDialogTitle>Nested confirmation</AlertDialogTitle>
+              </AlertDialogContent>
+            </AlertDialog>
           </AlertDialogContent>
         </AlertDialog>,
       )
 
-      await expect.element(screen.getByTestId('actions')).toHaveClass('custom-actions')
-      await expect.element(screen.getByRole('button', { name: 'Confirm' })).toBeInTheDocument()
+      const backdrop = document.querySelector('#nested-alert-dialog-backdrop')
+      expect(backdrop).toBeInstanceOf(HTMLElement)
+      expect(getComputedStyle(backdrop as HTMLElement).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+      await expect
+        .element(screen.getByRole('alertdialog', { name: 'Nested confirmation' }))
+        .not.toHaveAttribute('id', 'nested-alert-dialog-backdrop')
+    })
+  })
+
+  describe('Dismissal', () => {
+    it('should remain open when the user clicks outside the alert dialog', async () => {
+      const screen = await render(
+        <AlertDialog defaultOpen>
+          <AlertDialogContent>
+            <AlertDialogTitle>Delete project?</AlertDialogTitle>
+            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+            <AlertDialogCancelButton>Cancel</AlertDialogCancelButton>
+          </AlertDialogContent>
+        </AlertDialog>,
+      )
+
+      await userEvent.click(document.body)
+
+      await expect
+        .element(screen.getByRole('alertdialog', { name: 'Delete project?' }))
+        .toBeInTheDocument()
     })
 
-    it('should keep dialog open after confirm click and close via cancel helper', async () => {
-      const onConfirm = vi.fn()
-
+    it('should close when the user activates the cancel action', async () => {
       const screen = await render(
-        <AlertDialog>
-          <AlertDialogTrigger>Open Dialog</AlertDialogTrigger>
+        <AlertDialog defaultOpen>
           <AlertDialogContent>
-            <AlertDialogTitle>Action Required</AlertDialogTitle>
-            <AlertDialogActions>
-              <AlertDialogCancelButton>Cancel</AlertDialogCancelButton>
-              <AlertDialogConfirmButton onClick={onConfirm}>Confirm</AlertDialogConfirmButton>
-            </AlertDialogActions>
+            <AlertDialogTitle>Delete project?</AlertDialogTitle>
+            <AlertDialogCancelButton>Cancel</AlertDialogCancelButton>
           </AlertDialogContent>
         </AlertDialog>,
       )
 
-      asHTMLElement(screen.getByRole('button', { name: 'Open Dialog' }).element()).click()
-      await expect.element(screen.getByRole('alertdialog')).toBeInTheDocument()
+      await screen.getByRole('button', { name: 'Cancel' }).click()
 
-      asHTMLElement(screen.getByRole('button', { name: 'Confirm' }).element()).click()
-      expect(onConfirm).toHaveBeenCalledTimes(1)
-      await expect.element(screen.getByRole('alertdialog')).toBeInTheDocument()
+      await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
+    })
 
-      asHTMLElement(screen.getByRole('button', { name: 'Cancel' }).element()).click()
-      await vi.waitFor(() => {
-        expect(screen.container.querySelector('[role="alertdialog"]')).not.toBeInTheDocument()
-      })
+    it('should close with Escape and restore focus to the trigger', async () => {
+      const screen = await render(
+        <AlertDialog>
+          <AlertDialogTrigger>Delete project</AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogTitle>Delete project?</AlertDialogTitle>
+            <AlertDialogCancelButton>Cancel</AlertDialogCancelButton>
+          </AlertDialogContent>
+        </AlertDialog>,
+      )
+
+      const trigger = screen.getByRole('button', { name: 'Delete project' })
+      await trigger.click()
+      await userEvent.keyboard('{Escape}')
+
+      await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
+      await expect.element(trigger).toHaveFocus()
     })
   })
 })

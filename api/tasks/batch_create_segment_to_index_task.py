@@ -10,7 +10,9 @@ import pandas as pd
 from celery import shared_task
 from sqlalchemy import func, select
 
+from core.credit_usage import CreditUsageCreatedBy
 from core.db.session_factory import session_factory
+from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelManager
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.ext_redis import redis_client
@@ -27,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
+@with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
 def batch_create_segment_to_index_task(
     job_id: str,
     upload_file_id: str,
@@ -174,10 +177,12 @@ def batch_create_segment_to_index_task(
             dataset_document.word_count += word_count_change
             session.add(dataset_document)
 
-    with session_factory.create_session() as session:
+    with session_factory.create_session() as session, session.begin():
         dataset = session.get(Dataset, dataset_id)
         if dataset:
-            VectorService.create_segments_vector(None, document_segments, dataset, document_config["doc_form"], session)
+            VectorService.create_segments_vector(
+                None, document_segments, dataset, document_config["doc_form"], session=session
+            )
 
     redis_client.setex(indexing_cache_key, 600, "completed")
     end_at = time.perf_counter()

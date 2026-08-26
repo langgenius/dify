@@ -3,8 +3,8 @@
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
 import type { RosterFilterValue } from './components/roster-filter'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -13,6 +13,7 @@ import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
+import { useDocLink } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/client'
 import { AgentRosterList } from './components/agent-roster-list'
@@ -28,25 +29,23 @@ import {
 const ROSTER_PAGE_SIZE = 30
 const isAgentPublished = (agent: AgentAppPartial) => agent.active_config_is_published === true
 
-const getFilteredRosterItems = (
-  agents: AgentAppPartial[],
-  filter: RosterFilterValue,
-) => {
-  if (filter === 'published')
-    return agents.filter(isAgentPublished)
+const getFilteredRosterItems = (agents: AgentAppPartial[], filter: RosterFilterValue) => {
+  if (filter === 'published') return agents.filter(isAgentPublished)
 
-  if (filter === 'drafts')
-    return agents.filter(agent => !isAgentPublished(agent))
+  if (filter === 'drafts') return agents.filter((agent) => !isAgentPublished(agent))
 
   return agents
 }
 
 export default function RosterPage() {
   const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const docLink = useDocLink()
   const [keyword] = useQueryState(rosterQueryParamNames.keyword, rosterKeywordQueryParser)
   const [rosterFilter] = useQueryState(rosterQueryParamNames.filter, rosterFilterQueryParser)
-  const [createdByMe] = useQueryState(rosterQueryParamNames.createdByMe, rosterCreatedByMeQueryParser)
+  const [createdByMe] = useQueryState(
+    rosterQueryParamNames.createdByMe,
+    rosterCreatedByMeQueryParser,
+  )
   const [sortBy] = useQueryState(rosterQueryParamNames.sortBy, rosterSortByQueryParser)
   const debouncedKeyword = useDebounce(keyword.trim(), { wait: 300 })
 
@@ -67,52 +66,49 @@ export default function RosterPage() {
     error,
   } = useInfiniteQuery({
     ...consoleQuery.agent.get.infiniteOptions({
-      input: pageParam => ({
+      input: (pageParam) => ({
         query: {
           ...rosterQueryInput,
           page: Number(pageParam),
         },
       }),
-      getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
+      getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
       initialPageParam: 1,
       placeholderData: keepPreviousData,
     }),
   })
 
-  const rosterItems: AgentAppPartial[] = rosterPages?.pages.flatMap(page => page.data) ?? []
+  const rosterItems: AgentAppPartial[] = rosterPages?.pages.flatMap((page) => page.data) ?? []
   const publishedAgents = rosterItems.filter(isAgentPublished).length
   const draftAgents = Math.max(rosterItems.length - publishedAgents, 0)
   const filteredRosterItems = getFilteredRosterItems(rosterItems, rosterFilter)
-
-  useDocumentTitle(tCommon('menus.roster'))
+  const pageTitle = t(($) => $['roster.title'])
+  useDocumentTitle(pageTitle)
 
   return (
     <div className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body">
       <div className="shrink-0 bg-background-body px-8 pt-4 pb-2">
         <div className="flex h-6 min-w-0 items-center justify-between gap-4">
           <h1 className="min-w-0 flex-1 truncate text-[18px]/[21.6px] font-semibold text-text-primary">
-            {tCommon('menus.roster')}
+            {pageTitle}
           </h1>
           <a
-            href="https://docs.dify.ai/"
+            href={docLink('/use-dify/build/new-agent/overview')}
             target="_blank"
             rel="noreferrer"
             className="hidden shrink-0 items-center gap-0.5 rounded-md system-xs-regular text-text-tertiary hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden sm:inline-flex"
           >
-            {t('roster.learnMore')}
+            {t(($) => $['roster.learnMore'])}
             <span aria-hidden className="i-ri-external-link-line size-3" />
           </a>
         </div>
         <div className="mt-3.5">
-          <RosterToolbar
-            draftAgents={draftAgents}
-            publishedAgents={publishedAgents}
-          />
+          <RosterToolbar draftAgents={draftAgents} publishedAgents={publishedAgents} />
         </div>
       </div>
 
       <div className="min-h-0 flex-1">
-        <ScrollAreaRoot className="relative h-full min-h-0 min-w-0 overflow-hidden">
+        <ScrollArea className="relative h-full min-h-0 min-w-0 overflow-hidden">
           <ScrollAreaViewport tabIndex={-1} className="overscroll-contain">
             <ScrollAreaContent className="min-h-full px-8 pt-2 pb-8">
               <AgentRosterList
@@ -123,7 +119,7 @@ export default function RosterPage() {
                 isFetching={isFetching}
                 isFetchingNextPage={isFetchingNextPage}
                 isPending={isPending}
-                label={t('roster.listLabel')}
+                label={t(($) => $['roster.listLabel'])}
                 onLoadMore={() => fetchNextPage()}
               />
             </ScrollAreaContent>
@@ -131,7 +127,7 @@ export default function RosterPage() {
           <ScrollAreaScrollbar>
             <ScrollAreaThumb />
           </ScrollAreaScrollbar>
-        </ScrollAreaRoot>
+        </ScrollArea>
       </div>
     </div>
   )

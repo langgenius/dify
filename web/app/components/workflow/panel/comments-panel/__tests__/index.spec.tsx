@@ -1,5 +1,8 @@
+import type { ReactElement } from 'react'
 import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import CommentsPanel from '../index'
 
 const mockHandleCommentIconClick = vi.hoisted(() => vi.fn())
@@ -7,9 +10,14 @@ const mockHandleCommentResolve = vi.hoisted(() => vi.fn())
 const mockSetActiveCommentId = vi.hoisted(() => vi.fn())
 const mockSetControlMode = vi.hoisted(() => vi.fn())
 const mockSetShowResolvedComments = vi.hoisted(() => vi.fn())
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
 }))
+
+const render = (ui: ReactElement) =>
+  renderWithConsoleState(ui, {
+    wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
+  })
 
 const commentFixtures: WorkflowCommentList[] = [
   {
@@ -54,13 +62,6 @@ const storeState = {
   activeCommentId: null as string | null,
   showResolvedComments: true,
 }
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ appId: 'app-1' }),
 }))
@@ -71,27 +72,18 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
-})
-
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: WorkflowStoreSelectionState) => unknown) => selector({
-    activeCommentId: storeState.activeCommentId,
-    setActiveCommentId: (...args: unknown[]) => mockSetActiveCommentId(...args),
-    setControlMode: (...args: unknown[]) => mockSetControlMode(...args),
-    showResolvedComments: storeState.showResolvedComments,
-    setShowResolvedComments: (...args: unknown[]) => mockSetShowResolvedComments(...args),
-  }),
+  useStore: (selector: (state: WorkflowStoreSelectionState) => unknown) =>
+    selector({
+      activeCommentId: storeState.activeCommentId,
+      setActiveCommentId: (...args: unknown[]) => mockSetActiveCommentId(...args),
+      setControlMode: (...args: unknown[]) => mockSetControlMode(...args),
+      showResolvedComments: storeState.showResolvedComments,
+      setShowResolvedComments: (...args: unknown[]) => mockSetShowResolvedComments(...args),
+    }),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-workflow-comment', () => ({
+vi.mock('../../../hooks/use-workflow-comment', () => ({
   useWorkflowComment: () => ({
     comments: commentFixtures,
     loading: false,
@@ -102,14 +94,6 @@ vi.mock('@/app/components/workflow/hooks/use-workflow-comment', () => ({
 
 vi.mock('@/app/components/base/user-avatar-list', () => ({
   UserAvatarList: () => <div data-testid="user-avatar-list" />,
-}))
-
-vi.mock('@langgenius/dify-ui/switch', () => ({
-  Switch: ({ checked, onCheckedChange }: { checked: boolean, onCheckedChange: (value: boolean) => void }) => (
-    <button type="button" data-testid="show-resolved-switch" onClick={() => onCheckedChange(!checked)}>
-      toggle
-    </button>
-  ),
 }))
 
 describe('CommentsPanel', () => {
@@ -152,7 +136,7 @@ describe('CommentsPanel', () => {
     render(<CommentsPanel />)
 
     fireEvent.click(screen.getByLabelText('workflow.comments.aria.filterComments'))
-    fireEvent.click(screen.getByTestId('show-resolved-switch'))
+    fireEvent.click(screen.getByRole('switch'))
 
     expect(mockSetShowResolvedComments).toHaveBeenCalledWith(false)
   })

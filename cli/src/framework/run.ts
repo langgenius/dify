@@ -1,24 +1,47 @@
 import type { CommandTree } from './registry'
-import { BaseError, unknownError } from '@/errors/base'
+import { BaseError, newError, unknownError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
 import { formatErrorForCli } from '@/errors/format'
 import { findTopic } from '@/help/topics'
-import { formatCommandList, formatHelp, formatTopic, formatTopLevelHelp } from './help'
+import { hasBooleanFlag } from './flags'
+import {
+  formatCommandList,
+  formatHelp,
+  formatTopic,
+  formatTopLevelHelp,
+  isStructured,
+} from './help'
 import { stringifyOutput } from './output'
 import { collectCommands, findSuggestions, resolveCommand } from './registry'
+
+function exitWithUsageError(message: string, format: string): void {
+  const error = newError(ErrorCode.UsageInvalidFlag, message)
+  process.stderr.write(`${formatErrorForCli(error, { format, isErrTTY: process.stderr.isTTY })}\n`)
+  process.exit(error.exit())
+}
 
 export async function run(tree: CommandTree, argv: string[]): Promise<void> {
   if (argv.length === 0 || argv[0] === 'help' || argv.includes('--help') || argv.includes('-h')) {
     const format = sniffOutputFormat(argv)
+    const compact = hasBooleanFlag(argv, 'compact')
     // The command/topic path is the leading positional run; stop at the first
     // flag so output flags like `-o json` never leak into resolution.
     const helpArgv: string[] = []
 
     for (const a of argv) {
-      if (a === 'help' || a === '--help' || a === '-h')
-        continue
-      if (a.startsWith('-'))
-        break
+      if (a === 'help' || a === '--help' || a === '-h') continue
+      if (a.startsWith('-')) break
       helpArgv.push(a)
+    }
+
+    if (compact && helpArgv.length > 0) {
+      exitWithUsageError('--compact is only valid on top-level help', format)
+      return
+    }
+
+    if (compact && !isStructured(format)) {
+      exitWithUsageError('--compact requires -o json or -o yaml', format)
+      return
     }
 
     if (helpArgv.length > 0) {
@@ -26,7 +49,7 @@ export async function run(tree: CommandTree, argv: string[]): Promise<void> {
 
       if (resolved) {
         const out = formatHelp(resolved.command, resolved.path.join(' '), format)
-        process.stdout.write(isStructuredFormat(format) ? out : `${out}\n`)
+        process.stdout.write(isStructured(format) ? out : `${out}\n`)
 
         return
       }
@@ -48,7 +71,7 @@ export async function run(tree: CommandTree, argv: string[]): Promise<void> {
       // misses them; surface their subtree instead of erroring. A strict-prefix
       // match over the full-depth command walk keeps this purely derived.
       const subtree = collectCommands(tree).filter(
-        c => c.path.length > helpArgv.length && helpArgv.every((token, i) => c.path[i] === token),
+        (c) => c.path.length > helpArgv.length && helpArgv.every((token, i) => c.path[i] === token),
       )
 
       if (subtree.length > 0) {
@@ -63,14 +86,13 @@ export async function run(tree: CommandTree, argv: string[]): Promise<void> {
       if (suggestions.length > 0) {
         process.stderr.write('\nDid you mean:\n')
 
-        for (const s of suggestions.slice(0, 5))
-          process.stderr.write(`  ${s}\n`)
+        for (const s of suggestions.slice(0, 5)) process.stderr.write(`  ${s}\n`)
       }
 
       process.exit(1)
     }
 
-    process.stdout.write(formatTopLevelHelp(tree, format))
+    process.stdout.write(formatTopLevelHelp(tree, format, { compact }))
 
     return
   }
@@ -84,8 +106,7 @@ export async function run(tree: CommandTree, argv: string[]): Promise<void> {
     if (suggestions.length > 0) {
       process.stderr.write('\nDid you mean:\n')
 
-      for (const s of suggestions.slice(0, 5))
-        process.stderr.write(`  ${s}\n`)
+      for (const s of suggestions.slice(0, 5)) process.stderr.write(`  ${s}\n`)
     }
 
     process.exit(1)
@@ -100,15 +121,13 @@ export async function run(tree: CommandTree, argv: string[]): Promise<void> {
     cmd.processGlobalFlags(commandArgv)
 
     const output = await cmd.run(commandArgv)
-    if (output !== undefined)
-      process.stdout.write(stringifyOutput(output))
-  }
-  catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'EPIPE')
-      process.exit(0)
-    const e = err instanceof BaseError
-      ? err
-      : unknownError(err instanceof Error ? err.message : String(err), err)
+    if (output !== undefined) process.stdout.write(stringifyOutput(output))
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'EPIPE') process.exit(0)
+    const e =
+      err instanceof BaseError
+        ? err
+        : unknownError(err instanceof Error ? err.message : String(err), err)
     const format = sniffOutputFormat(argv)
     process.stderr.write(`${formatErrorForCli(e, { format, isErrTTY: process.stderr.isTTY })}\n`)
     process.exit(e.exit())
@@ -118,25 +137,16 @@ export async function run(tree: CommandTree, argv: string[]): Promise<void> {
 export function sniffOutputFormat(argv: readonly string[]): string {
   for (let i = 0; i < argv.length; i++) {
     const t = argv[i]
-    if (t === undefined)
-      continue
-    if (t === '--')
-      return ''
+    if (t === undefined) continue
+    if (t === '--') return ''
 
     if (t === '--output' || t === '-o') {
       const next = argv[i + 1]
-      if (next !== undefined && !next.startsWith('-'))
-        return next
+      if (next !== undefined && !next.startsWith('-')) return next
       continue
     }
-    if (t.startsWith('--output='))
-      return t.slice('--output='.length)
-    if (t.startsWith('-o='))
-      return t.slice('-o='.length)
+    if (t.startsWith('--output=')) return t.slice('--output='.length)
+    if (t.startsWith('-o=')) return t.slice('-o='.length)
   }
   return ''
-}
-
-function isStructuredFormat(format: string): boolean {
-  return format === 'json' || format === 'yaml'
 }

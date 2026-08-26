@@ -239,6 +239,7 @@ class TestCleanNotionDocumentTask:
         # args: (dataset, total_index_node_ids)
         assert isinstance(args[0], Dataset)
         assert args[1] == []
+        assert kwargs["session"] is not None
 
     def test_clean_notion_document_task_with_different_index_types(
         self, db_session_with_containers: Session, mock_index_processor_factory, mock_external_service_dependencies
@@ -898,8 +899,10 @@ class TestCleanNotionDocumentTask:
 
         # Verify all data exists before cleanup
         # Note: There may be documents from previous tests, so we check for at least 3
-        assert db_session_with_containers.scalar(select(func.count()).select_from(Document)) >= 3
-        assert db_session_with_containers.scalar(select(func.count()).select_from(DocumentSegment)) >= 9
+        document_count = db_session_with_containers.scalar(select(func.count()).select_from(Document)) or 0
+        segment_count = db_session_with_containers.scalar(select(func.count()).select_from(DocumentSegment)) or 0
+        assert document_count >= 3
+        assert segment_count >= 9
 
         # Clean up documents from only the first dataset
         target_dataset = datasets[0]
