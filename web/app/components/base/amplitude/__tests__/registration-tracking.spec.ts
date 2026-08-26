@@ -9,7 +9,7 @@ import {
 const mockTrackEvent = vi.hoisted(() => vi.fn())
 const mockAmplitudeInitialized = vi.hoisted(() => ({ value: true }))
 const mockConsent = vi.hoisted(() => ({
-  value: 'granted' as 'unknown' | 'denied' | 'granted',
+  value: 'granted' as 'unknown' | 'denied' | 'granted' | 'disabled',
 }))
 
 vi.mock('../utils', () => ({
@@ -51,7 +51,7 @@ describe('registration tracking', () => {
     it('stores a versioned marker with stable delivery metadata and allowlisted attribution', () => {
       vi.setSystemTime(new Date('2026-08-26T09:00:00.000Z'))
 
-      rememberRegistrationSuccess({
+      const persisted = rememberRegistrationSuccess({
         method: 'email_code',
         utmInfo: {
           utm_source: 'linkedin',
@@ -83,6 +83,7 @@ describe('registration tracking', () => {
         },
       })
       expect(mockTrackEvent).not.toHaveBeenCalled()
+      expect(persisted).toBe(true)
     })
 
     it('keeps one non-oauth intent only in memory while consent is unknown and promotes it on grant', () => {
@@ -125,13 +126,16 @@ describe('registration tracking', () => {
       expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
     })
 
-    it('discards a stored marker when consent changes to denied', () => {
-      rememberRegistrationSuccess({ method: 'email' })
+    it.each(['denied', 'disabled'] as const)(
+      'discards a stored marker when consent changes to %s',
+      (consent) => {
+        rememberRegistrationSuccess({ method: 'email' })
 
-      coordinateRegistrationConsent('denied')
+        coordinateRegistrationConsent(consent)
 
-      expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
-    })
+        expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
+      },
+    )
 
     it('does not put an oauth intent in memory before consent', () => {
       mockConsent.value = 'unknown'
@@ -166,9 +170,37 @@ describe('registration tracking', () => {
         },
       })
 
-      expect(() => rememberRegistrationSuccess({ method: 'email' })).not.toThrow()
+      expect(rememberRegistrationSuccess({ method: 'email' })).toBe(false)
       expect(listener).not.toHaveBeenCalled()
       unsubscribe()
+    })
+
+    it('retains a volatile intent until promotion is persisted successfully', () => {
+      mockConsent.value = 'unknown'
+      rememberRegistrationSuccess({ method: 'email', utmInfo: { utm_source: 'blog' } })
+      mockConsent.value = 'granted'
+      const originalWindow = window
+      vi.stubGlobal('window', {
+        sessionStorage: {
+          getItem: vi.fn(() => null),
+          setItem: () => {
+            throw new Error('quota exceeded')
+          },
+          removeItem: vi.fn(),
+        },
+      })
+
+      coordinateRegistrationConsent('granted')
+
+      expect(originalWindow.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
+
+      vi.stubGlobal('window', originalWindow)
+      coordinateRegistrationConsent('granted')
+
+      expect(getStoredMarker()).toMatchObject({
+        method: 'email',
+        attribution: { utm_source: 'blog' },
+      })
     })
   })
 

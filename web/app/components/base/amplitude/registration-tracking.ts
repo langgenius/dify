@@ -109,7 +109,7 @@ const createRegistrationIntent = (
 
 const storeRegistrationIntent = (intent: RegistrationIntent) => {
   const storage = getSessionStorage()
-  if (!storage) return
+  if (!storage) return false
 
   const pending: PendingRegistrationSuccessEvent = {
     ...intent,
@@ -123,7 +123,10 @@ const storeRegistrationIntent = (intent: RegistrationIntent) => {
   try {
     storage.setItem(REGISTRATION_SUCCESS_STORAGE_KEY, JSON.stringify(pending))
     notifyRegistrationMarkerStored()
-  } catch {}
+    return true
+  } catch {
+    return false
+  }
 }
 
 export const rememberRegistrationSuccess = ({
@@ -134,22 +137,23 @@ export const rememberRegistrationSuccess = ({
   utmInfo?: Record<string, unknown> | null
 }) => {
   const consent = getAnalyticsConsent()
-  if (consent === 'denied') {
+  if (consent === 'denied' || consent === 'disabled') {
     volatileIntent = null
-    return
+    return false
   }
 
   const intent = createRegistrationIntent(method, utmInfo)
   if (consent === 'unknown') {
-    if (method !== 'oauth') volatileIntent = intent
-    return
+    if (method === 'oauth') return false
+    volatileIntent = intent
+    return true
   }
 
-  storeRegistrationIntent(intent)
+  return storeRegistrationIntent(intent)
 }
 
 export const coordinateRegistrationConsent = (consent: AnalyticsConsent) => {
-  if (consent === 'denied') {
+  if (consent === 'denied' || consent === 'disabled') {
     volatileIntent = null
     const storage = getSessionStorage()
     try {
@@ -160,11 +164,13 @@ export const coordinateRegistrationConsent = (consent: AnalyticsConsent) => {
   if (consent !== 'granted' || !volatileIntent) return
 
   const intent = volatileIntent
-  volatileIntent = null
   const age = Date.now() - intent.occurredAt
-  if (age < 0 || age > VOLATILE_INTENT_TTL_MS) return
+  if (age < 0 || age > VOLATILE_INTENT_TTL_MS) {
+    volatileIntent = null
+    return
+  }
 
-  storeRegistrationIntent(intent)
+  if (storeRegistrationIntent(intent)) volatileIntent = null
 }
 
 export const subscribeRegistrationSuccess = (listener: () => void) => {
@@ -220,7 +226,7 @@ const runRegistrationFlush = async () => {
   const storage = getSessionStorage()
   if (!storage) return
 
-  if (consent === 'denied') {
+  if (consent === 'denied' || consent === 'disabled') {
     removeStoredMarker(storage)
     return
   }

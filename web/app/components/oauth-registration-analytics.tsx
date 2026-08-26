@@ -11,6 +11,7 @@ import {
 } from './base/amplitude/registration-tracking'
 
 const OAUTH_NEW_USER_PARAM = 'oauth_new_user'
+const OAUTH_REGISTRATION_GA_SENT_KEY = 'oauth_registration_ga_sent'
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -19,6 +20,34 @@ const removeOAuthNewUserParam = () => {
   const url = new URL(window.location.href)
   url.searchParams.delete(OAUTH_NEW_USER_PARAM)
   window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`)
+}
+
+const getSessionStorage = () => {
+  try {
+    return window.sessionStorage
+  } catch {
+    return null
+  }
+}
+
+const hasSentGARegistration = () => {
+  try {
+    return getSessionStorage()?.getItem(OAUTH_REGISTRATION_GA_SENT_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
+const markGARegistrationSent = () => {
+  try {
+    getSessionStorage()?.setItem(OAUTH_REGISTRATION_GA_SENT_KEY, 'true')
+  } catch {}
+}
+
+const clearGARegistrationSent = () => {
+  try {
+    getSessionStorage()?.removeItem(OAUTH_REGISTRATION_GA_SENT_KEY)
+  } catch {}
 }
 
 export function OAuthRegistrationAnalytics() {
@@ -39,6 +68,7 @@ export function OAuthRegistrationAnalytics() {
     if (!oauthNewUser) {
       if (!cleanedRef.current) {
         cleanedRef.current = true
+        clearGARegistrationSent()
         Cookies.remove('utm_info')
         removeOAuthNewUserParam()
       }
@@ -64,21 +94,26 @@ export function OAuthRegistrationAnalytics() {
 
     if (!gaHandledRef.current) {
       gaHandledRef.current = true
-      sendGAEvent(eventName, {
-        method: 'oauth',
-        ...utmInfo,
-      })
+      if (!hasSentGARegistration()) {
+        sendGAEvent(eventName, {
+          method: 'oauth',
+          ...utmInfo,
+        })
+        markGARegistrationSent()
+      }
     }
 
     if (analyticsConsent === 'unknown') return
 
     if (analyticsConsent === 'granted' && !amplitudeHandledRef.current) {
+      const persisted = rememberRegistrationSuccess({ method: 'oauth', utmInfo })
+      if (!persisted) return
       amplitudeHandledRef.current = true
-      rememberRegistrationSuccess({ method: 'oauth', utmInfo })
     }
 
     if (!cleanedRef.current) {
       cleanedRef.current = true
+      clearGARegistrationSent()
       Cookies.remove('utm_info')
       removeOAuthNewUserParam()
     }

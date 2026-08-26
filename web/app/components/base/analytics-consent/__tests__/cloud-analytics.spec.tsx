@@ -55,9 +55,13 @@ vi.mock('../cloud-analytics-layout-boundary', () => ({
   ),
 }))
 
-async function renderCloudAnalytics() {
+async function getCloudAnalyticsResult() {
   const { CloudAnalytics } = await import('../cloud-analytics')
-  return render(await CloudAnalytics())
+  return CloudAnalytics()
+}
+
+async function renderCloudAnalytics() {
+  return render(await getCloudAnalyticsResult())
 }
 
 describe('CloudAnalytics', () => {
@@ -94,9 +98,13 @@ describe('CloudAnalytics', () => {
       return values[name] ?? null
     })
 
-    const { queryByTestId } = await renderCloudAnalytics()
+    const result = await getCloudAnalyticsResult()
+    const { queryByTestId } = render(result)
 
     expect(queryByTestId('cloud-analytics-layout-boundary')).toBeNull()
+    expect(result).not.toBeNull()
+    const { getAnalyticsConsent } = await import('../consent-store')
+    expect(getAnalyticsConsent()).toBe('disabled')
   })
 
   it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
@@ -115,5 +123,7 @@ describe('CloudAnalytics', () => {
     const { queryByTestId } = await renderCloudAnalytics()
 
     expect(queryByTestId('cloud-analytics-layout-boundary')).toBeNull()
+    const { getAnalyticsConsent } = await import('../consent-store')
+    expect(getAnalyticsConsent()).toBe('disabled')
   })
 })
