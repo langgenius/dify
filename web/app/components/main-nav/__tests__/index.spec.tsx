@@ -1172,8 +1172,7 @@ describe('MainNav', () => {
       'common.mainNav.help.learnDify',
       'common.mainNav.help.stepByStepTour',
       'common.userProfile.compliance',
-      'common.userProfile.forum',
-      'common.userProfile.community',
+      'Discord',
       'common.userProfile.github',
       'common.userProfile.about',
     ]
@@ -1256,7 +1255,7 @@ describe('MainNav', () => {
     fireEvent.click(contactUsItem)
 
     await waitFor(() => {
-      expect(screen.queryByText('common.userProfile.forum')).not.toBeInTheDocument()
+      expect(screen.queryByText('Discord')).not.toBeInTheDocument()
     })
     expect(mockSetShowPricingModal).toHaveBeenCalled()
   })

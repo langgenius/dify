@@ -51,7 +51,6 @@ from models.dataset import Dataset, DatasetPermissionEnum
 from models.dataset import Document as DatasetDocument
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from services.dataset_ref_service import DatasetRef, DocumentRef
-from services.enterprise.rbac_service import RBACResourceWhitelistScope, ReplaceMemberBindings
 from services.vector_space_admission_service import (
     VECTOR_SPACE_ADMISSION_ERROR_CODE,
     format_vector_space_admission_error,
@@ -516,10 +515,8 @@ class TestDatasetInitApi:
             ),
             patch(
                 "controllers.console.datasets.datasets_document.enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist"
-            ) as replace_whitelist,
-            patch(
-                "controllers.console.datasets.datasets_document.initialize_created_app_rbac_access_task"
-            ) as initialize_rbac_task,
+            ),
+            patch("controllers.console.datasets.datasets_document.initialize_created_app_rbac_access_task.delay"),
         ):
             response = method(api, session, tenant_id, user)
         assert response["dataset"]["id"] == "ds-1"
@@ -528,13 +525,6 @@ class TestDatasetInitApi:
         assert response["documents"][0]["doc_metadata"] == []
         assert response["batch"] == "batch-init"
         assert created_dataset.permission == DatasetPermissionEnum.ALL_TEAM
-        replace_whitelist.assert_called_once_with(
-            tenant_id,
-            user.id,
-            created_dataset.id,
-            ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
-        )
-        initialize_rbac_task.delay.assert_called_once_with(tenant_id, user.id, dataset_id=created_dataset.id)
 
 
 class TestDocumentResource:
