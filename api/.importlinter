@@ -124,7 +124,6 @@ ignore_imports =
     services.account_service -> controllers
     services.account_service -> controllers.console.error
     services.app_generate_service -> controllers.console.app.workflow
-    services.billing_service -> controllers.console.error
 
 [importlinter:contract:no-direct-rsa-imports]
 # Note: `libs` itself is deliberately excluded from source_modules -- import-linter's
@@ -237,6 +236,21 @@ type = forbidden
 source_modules =
     services.app_definition_query_service
 forbidden_modules =
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:app-site-service-boundary]
+name = App site application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.app_site_service
+forbidden_modules =
+    configs
     controllers
     extensions
     flask
@@ -402,6 +416,7 @@ name = Billing application services and ports are framework and infrastructure n
 type = forbidden
 source_modules =
     services.billing_portal_service
+    services.compliance_download_service
     services.partner_tenant_binding_service
 forbidden_modules =
     configs

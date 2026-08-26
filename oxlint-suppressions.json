@@ -2234,11 +2234,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/documents/detail/metadata/components/field-info.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/documents/detail/metadata/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
@@ -2269,11 +2264,6 @@
     "eslint-react/set-state-in-effect": {
       "count": 1
     },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/external-knowledge-base/create/KnowledgeBaseInfo.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -2405,11 +2395,6 @@
   },
   "web/app/components/datasets/settings/chunk-structure/types.ts": {
     "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/settings/form/components/basic-info-section.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },

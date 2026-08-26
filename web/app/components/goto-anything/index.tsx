@@ -12,6 +12,7 @@ import {
   AutocompleteInputGroup,
   AutocompleteItem,
   AutocompleteList,
+  AutocompleteRow,
   AutocompleteStatus,
 } from '@langgenius/dify-ui/autocomplete'
 import {
@@ -31,14 +32,15 @@ import {
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
-import { useQuery } from '@tanstack/react-query'
-import { useDebounce } from 'ahooks'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useAtomValue } from 'jotai'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MAIN_NAV_ROUTES } from '@/app/components/main-nav/routes'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
 import { useGetLanguage } from '@/context/i18n'
+import { useProviderContextSelector } from '@/context/provider-context'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { useCanManageAgents } from '@/features/agent-v2/permissions'
@@ -155,12 +157,6 @@ function isEditableShortcutTarget(target: EventTarget | null) {
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
 }
 
-function getSearchModeLabel(searchMode: string) {
-  if (searchMode === 'scopes') return 'SCOPES'
-  if (searchMode === 'commands') return 'COMMANDS'
-  return searchMode.replace('@', '').toUpperCase()
-}
-
 function getSearchMode(
   searchQuery: string,
   isCommandsMode: boolean,
@@ -168,7 +164,7 @@ function getSearchMode(
 ) {
   if (isCommandsMode) return searchQuery.trim().startsWith('/') ? 'commands' : 'scopes'
 
-  const action = matchAction(searchQuery.trim().toLowerCase(), actions)
+  const action = matchAction(searchQuery.trimStart().toLowerCase(), actions)
   if (!action) return 'general'
 
   return action.key === '/' ? '@command' : action.key
@@ -180,8 +176,27 @@ function isCommandSelectionQuery(query: string, actions: Record<string, ActionIt
 
   return (
     (trimmedQuery.startsWith('@') || trimmedQuery.startsWith('/')) &&
-    !matchAction(trimmedQuery, actions)
+    !matchAction(query.trimStart().toLowerCase(), actions)
   )
+}
+
+function getActionIdentity(query: string, action: ActionItem) {
+  if (action.key !== '/') return action.key
+  return query.split(/\s/, 1)[0]
+}
+
+function getActionBaseQuery(query: string, action: ActionItem) {
+  if (action.key === '/') return `${getActionIdentity(query, action)} `
+  return `${query.split(/\s/, 1)[0] ?? action.shortcut} `
+}
+
+function getRemoteSearchIdentity(
+  query: string,
+  isCommandsMode: boolean,
+  action: ActionItem | undefined,
+) {
+  if (!query.trim() || isCommandsMode || action?.source === 'local') return null
+  return action?.key ?? 'general'
 }
 
 function dedupeSearchResults(results: SearchResult[]) {
@@ -204,6 +219,13 @@ function groupSearchResults(results: SearchResult[]) {
   }, {})
 }
 
+function chunkArray<T>(items: readonly T[], size: number): T[][] {
+  const rows: T[][] = []
+  for (let index = 0; index < items.length; index += size)
+    rows.push(items.slice(index, index + size))
+  return rows
+}
+
 function GotoAnythingDialog() {
   const { t } = useTranslation()
   const pathname = usePathname()
@@ -211,8 +233,9 @@ function GotoAnythingDialog() {
   const defaultLocale = useGetLanguage()
   const canManageAgents = useCanManageAgents()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
+  const enableSkill = useProviderContextSelector((state) => state.enableSkill)
   const agentsAvailable = isAgentV2Enabled() && canManageAgents
-  const skillsAvailable = !isCurrentWorkspaceDatasetOperator
+  const skillsAvailable = enableSkill && !isCurrentWorkspaceDatasetOperator
   const isWorkflowPage =
     appWorkflowPathPattern.test(pathname) || sharedWorkflowPathPattern.test(pathname)
   const isRagPipelinePage = ragPipelinePathPattern.test(pathname)
@@ -229,16 +252,18 @@ function GotoAnythingDialog() {
     [agentsAvailable, isWorkflowPage, isRagPipelinePage, skillsAvailable],
   )
   const trimmedSearchQuery = searchQuery.trim()
+  const normalizedSearchQuery = searchQuery.trimStart().toLowerCase()
   const isCommandsMode = isCommandSelectionQuery(searchQuery, actions)
   const searchMode = getSearchMode(searchQuery, isCommandsMode, actions)
-  const debouncedSearchQuery = useDebounce(searchQuery, { wait: 300 })
-  const normalizedDebouncedQuery = debouncedSearchQuery.trim().toLowerCase()
+  const currentAction = matchAction(normalizedSearchQuery, actions)
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 300)
+  const normalizedDebouncedQuery = debouncedSearchQuery.trimStart().toLowerCase()
   const isDebouncedCommandsMode = isCommandSelectionQuery(debouncedSearchQuery, actions)
   const debouncedAction = matchAction(normalizedDebouncedQuery, actions)
   const debouncedSearchTerm = debouncedAction
     ? getActionSearchTerm(normalizedDebouncedQuery, debouncedAction)
-    : normalizedDebouncedQuery
-  const remoteSearchEnabled = Boolean(normalizedDebouncedQuery) && !isDebouncedCommandsMode
+    : normalizedDebouncedQuery.trimEnd()
+  const remoteSearchEnabled = Boolean(normalizedDebouncedQuery.trim()) && !isDebouncedCommandsMode
   const appSearchEnabled =
     remoteSearchEnabled && (!debouncedAction || debouncedAction.key === '@app')
   const knowledgeSearchEnabled =
@@ -254,32 +279,54 @@ function GotoAnythingDialog() {
   const appSearchQuery = useQuery({
     ...appSearchQueryOptions(debouncedSearchTerm, debouncedAction?.key === '@app'),
     enabled: appSearchEnabled,
+    placeholderData: keepPreviousData,
   })
   const knowledgeSearchQuery = useQuery({
     ...knowledgeSearchQueryOptions(debouncedSearchTerm),
     enabled: knowledgeSearchEnabled,
+    placeholderData: keepPreviousData,
   })
   const pluginSearchQuery = useQuery({
     ...pluginSearchQueryOptions(debouncedSearchTerm, defaultLocale),
     enabled: pluginSearchEnabled,
+    placeholderData: keepPreviousData,
   })
   const skillSearchQuery = useQuery({
     ...skillSearchQueryOptions(debouncedSearchTerm),
     enabled: skillSearchEnabled,
+    placeholderData: keepPreviousData,
   })
   const agentSearchQuery = useQuery({
     ...agentSearchQueryOptions(debouncedSearchTerm),
     enabled: agentSearchEnabled,
+    placeholderData: keepPreviousData,
   })
+  const isSameLocalAction =
+    currentAction?.source === 'local' &&
+    debouncedAction?.source === 'local' &&
+    getActionIdentity(normalizedSearchQuery, currentAction) ===
+      getActionIdentity(normalizedDebouncedQuery, debouncedAction)
+  const isLocalSearchDebouncing =
+    currentAction?.source === 'local' && normalizedSearchQuery !== normalizedDebouncedQuery
+  const isSameGeneralSearch =
+    currentAction === undefined &&
+    debouncedAction === undefined &&
+    !isCommandsMode &&
+    !isDebouncedCommandsMode &&
+    Boolean(normalizedSearchQuery.trim()) &&
+    Boolean(normalizedDebouncedQuery.trim())
+  let localSearchQuery = normalizedSearchQuery
+  if (isSameLocalAction || isSameGeneralSearch) localSearchQuery = normalizedDebouncedQuery
+  else if (isLocalSearchDebouncing)
+    localSearchQuery = getActionBaseQuery(normalizedSearchQuery, currentAction)
   const localSearchResults = useMemo(() => {
     if (!trimmedSearchQuery || isCommandsMode) return []
 
-    const normalizedQuery = trimmedSearchQuery.toLowerCase()
-    const action = matchAction(normalizedQuery, actions)
+    const action = matchAction(localSearchQuery, actions)
     if (action?.source === 'local') {
       return action.search(
-        normalizedQuery,
-        getActionSearchTerm(normalizedQuery, action),
+        localSearchQuery,
+        getActionSearchTerm(localSearchQuery, action),
         defaultLocale,
       )
     }
@@ -287,27 +334,43 @@ function GotoAnythingDialog() {
 
     return Object.values(actions).flatMap((candidate) => {
       if (candidate.source !== 'local' || candidate.key === '/') return []
-      return candidate.search(normalizedQuery, normalizedQuery, defaultLocale)
+      const generalSearchTerm = localSearchQuery.trimEnd()
+      return candidate.search(generalSearchTerm, generalSearchTerm, defaultLocale)
     })
-  }, [actions, defaultLocale, isCommandsMode, trimmedSearchQuery])
-  const activeRemoteQueries = [
+  }, [actions, defaultLocale, isCommandsMode, localSearchQuery, trimmedSearchQuery])
+  const debouncedRemoteQueries = [
     appSearchEnabled ? appSearchQuery : undefined,
     knowledgeSearchEnabled ? knowledgeSearchQuery : undefined,
     pluginSearchEnabled ? pluginSearchQuery : undefined,
     skillSearchEnabled ? skillSearchQuery : undefined,
     agentSearchEnabled ? agentSearchQuery : undefined,
   ].filter((query) => query !== undefined)
-  const isDebouncing = remoteSearchEnabled && searchQuery.trim() !== debouncedSearchQuery.trim()
-  const isLoading = isDebouncing || activeRemoteQueries.some((query) => query.isLoading)
-  const failedRemoteQueries = activeRemoteQueries.filter((query) => query.isError)
+  const currentRemoteSearchIdentity = getRemoteSearchIdentity(
+    normalizedSearchQuery,
+    isCommandsMode,
+    currentAction,
+  )
+  const debouncedRemoteSearchIdentity = getRemoteSearchIdentity(
+    normalizedDebouncedQuery,
+    isDebouncedCommandsMode,
+    debouncedAction,
+  )
+  const isSameRemoteSearch =
+    currentRemoteSearchIdentity !== null &&
+    currentRemoteSearchIdentity === debouncedRemoteSearchIdentity
+  const currentRemoteQueries = isSameRemoteSearch ? debouncedRemoteQueries : []
+  const isRemoteSearchDebouncing =
+    currentRemoteSearchIdentity !== null && normalizedSearchQuery !== normalizedDebouncedQuery
+  const isDebouncing = isRemoteSearchDebouncing || isLocalSearchDebouncing
+  const isLoading =
+    isDebouncing || currentRemoteQueries.some((query) => query.isLoading || query.isFetching)
+  const failedRemoteQueries = currentRemoteQueries.filter((query) => query.isError)
   const isError =
-    activeRemoteQueries.length > 0 && failedRemoteQueries.length === activeRemoteQueries.length
+    currentRemoteQueries.length > 0 && failedRemoteQueries.length === currentRemoteQueries.length
   const hasUnavailableServices = failedRemoteQueries.length > 0
   const queryError = failedRemoteQueries[0]?.error
   const error = queryError instanceof Error ? queryError : null
-  const remoteSearchResults = isDebouncing
-    ? []
-    : activeRemoteQueries.flatMap((query) => query.data ?? [])
+  const remoteSearchResults = currentRemoteQueries.flatMap((query) => query.data ?? [])
   const searchResults = [...localSearchResults, ...remoteSearchResults]
   const dedupedResults = dedupeSearchResults(searchResults)
   const groupedResults = groupSearchResults(dedupedResults)
@@ -410,8 +473,9 @@ function GotoAnythingDialog() {
 
   const commandOptions = getCommandOptions(actions, searchQuery)
   const autocompleteOptions: GotoAnythingOption[] = isCommandsMode ? commandOptions : dedupedResults
-  const visibleOptions = isLoading || isError ? [] : autocompleteOptions
+  const visibleOptions = isError ? [] : autocompleteOptions
   const autocompleteResultCount = visibleOptions.length
+  const commandRows = chunkArray(commandOptions, 2)
 
   let autocompleteStatus: string | null = null
   if (isLoading) autocompleteStatus = t(($) => $['gotoAnything.searching'], { ns: 'app' })
@@ -424,10 +488,9 @@ function GotoAnythingDialog() {
       count: autocompleteResultCount,
     })
 
-  let emptyStateVariant: 'loading' | 'error' | 'default' | 'no-results' | null = null
-  if (isLoading) emptyStateVariant = 'loading'
+  let emptyStateVariant: 'loading' | 'error' | 'no-results' | null = null
+  if (isLoading && autocompleteResultCount === 0) emptyStateVariant = 'loading'
   else if (isError) emptyStateVariant = 'error'
-  else if (!trimmedSearchQuery && autocompleteResultCount === 0) emptyStateVariant = 'default'
   else if (autocompleteResultCount === 0 && !isCommandsMode) emptyStateVariant = 'no-results'
 
   return (
@@ -458,6 +521,7 @@ function GotoAnythingDialog() {
               onOpenChange={handleAutocompleteOpenChange}
               itemToStringValue={optionToInputValue}
               filter={null}
+              grid={isCommandsMode}
               open
               inline
               autoHighlight="always"
@@ -477,11 +541,6 @@ function GotoAnythingDialog() {
                     placeholder={t(($) => $['gotoAnything.searchPlaceholder'], { ns: 'app' })}
                     className="px-0"
                   />
-                  {searchMode !== 'general' && (
-                    <div className="flex items-center gap-1 rounded-sm bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                      <span>{getSearchModeLabel(searchMode)}</span>
-                    </div>
-                  )}
                 </div>
                 <KbdGroup>
                   {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
@@ -518,42 +577,6 @@ function GotoAnythingDialog() {
                       </div>
                     )}
 
-                    {!isLoading && !isError && isCommandsMode && autocompleteResultCount > 0 && (
-                      <AutocompleteList className="max-h-none overflow-visible p-0">
-                        <AutocompleteGroup items={commandOptions}>
-                          <AutocompleteGroupLabel className="px-4 pt-4 pb-2 text-left font-mono text-[11px] font-medium tracking-[0.12em] text-text-tertiary uppercase">
-                            {isSlashMode
-                              ? t(($) => $['gotoAnything.groups.commands'], { ns: 'app' })
-                              : t(($) => $['gotoAnything.selectSearchType'], { ns: 'app' })}
-                          </AutocompleteGroupLabel>
-                          <div className="grid grid-cols-1 gap-2 px-4 pb-4 sm:grid-cols-2">
-                            <AutocompleteCollection<CommandOption>>
-                              {(option) => (
-                                <AutocompleteItem
-                                  key={option.shortcut}
-                                  value={option}
-                                  className="group m-0 min-h-18 items-start gap-3 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg/90 p-3 shadow-xs shadow-shadow-shadow-3 backdrop-blur-sm hover:border-divider-regular hover:bg-state-base-hover-alt data-highlighted:border-state-accent-solid data-highlighted:bg-state-base-hover"
-                                  onClick={() => selectOption(option)}
-                                >
-                                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-regular bg-background-default text-text-tertiary group-data-highlighted:text-text-accent">
-                                    <span aria-hidden className={`${option.icon} size-4`} />
-                                  </span>
-                                  <span className="min-w-0 flex-1 text-left">
-                                    <span className="block truncate font-mono text-xs font-semibold tracking-[-0.01em] text-text-primary">
-                                      {option.shortcut}
-                                    </span>
-                                    <span className="mt-1 line-clamp-2 block text-xs leading-4 text-text-tertiary">
-                                      {getCommandOptionDescription(option)}
-                                    </span>
-                                  </span>
-                                </AutocompleteItem>
-                              )}
-                            </AutocompleteCollection>
-                          </div>
-                        </AutocompleteGroup>
-                      </AutocompleteList>
-                    )}
-
                     {!isLoading && !isError && !isCommandsMode && emptyStateVariant && (
                       <EmptyState
                         variant={emptyStateVariant}
@@ -562,46 +585,83 @@ function GotoAnythingDialog() {
                       />
                     )}
 
-                    {!isLoading &&
-                      !isError &&
-                      !isCommandsMode &&
-                      !emptyStateVariant &&
-                      autocompleteResultCount > 0 && (
-                        <AutocompleteList className="max-h-none overflow-visible p-0">
-                          {Object.entries(groupedResults).map(([type, results]) => (
-                            <AutocompleteGroup key={type} items={results}>
-                              <AutocompleteGroupLabel className="px-4 pt-3 pb-2 text-text-secondary capitalize">
-                                {getGroupLabel(type)}
-                              </AutocompleteGroupLabel>
-                              <AutocompleteCollection<SearchResult>>
-                                {(result) => (
+                    <AutocompleteList className="max-h-none overflow-visible p-0">
+                      {!isLoading && !isError && isCommandsMode && autocompleteResultCount > 0 && (
+                        <AutocompleteGroup items={commandOptions} role="rowgroup">
+                          <AutocompleteGroupLabel className="px-4 pt-4 pb-2 text-left font-mono text-[11px] font-medium tracking-[0.12em] text-text-tertiary uppercase">
+                            {isSlashMode
+                              ? t(($) => $['gotoAnything.groups.commands'], { ns: 'app' })
+                              : t(($) => $['gotoAnything.selectSearchType'], { ns: 'app' })}
+                          </AutocompleteGroupLabel>
+                          <div className="px-4 pb-4" role="presentation">
+                            {commandRows.map((row) => (
+                              <AutocompleteRow
+                                key={row.map((option) => option.shortcut).join(':')}
+                                className="grid grid-cols-2 gap-2"
+                              >
+                                {row.map((option) => (
                                   <AutocompleteItem
-                                    key={`${result.type}-${result.id}`}
-                                    value={result}
-                                    className="mx-2 gap-3 p-3"
-                                    onClick={() => selectOption(result)}
+                                    key={option.shortcut}
+                                    value={option}
+                                    className="group m-0 min-h-18 items-start gap-3 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg/90 p-3 shadow-xs shadow-shadow-shadow-3 backdrop-blur-sm hover:border-divider-regular hover:bg-state-base-hover-alt data-highlighted:border-state-accent-solid data-highlighted:bg-state-base-hover"
+                                    onClick={() => selectOption(option)}
                                   >
-                                    {result.icon}
-                                    <div className="min-w-0 flex-1">
-                                      <div className="truncate font-medium text-text-secondary">
-                                        {result.title}
-                                      </div>
-                                      {result.description && (
-                                        <div className="mt-0.5 truncate text-xs text-text-quaternary">
-                                          {result.description}
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className="text-xs text-text-quaternary capitalize">
-                                      {result.type}
-                                    </div>
+                                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-regular bg-background-default text-text-tertiary group-data-highlighted:text-text-accent">
+                                      <span aria-hidden className={`${option.icon} size-4`} />
+                                    </span>
+                                    <span className="min-w-0 flex-1 text-left">
+                                      <span className="block truncate font-mono text-xs font-semibold tracking-[-0.01em] text-text-primary">
+                                        {option.shortcut}
+                                      </span>
+                                      <span className="mt-1 line-clamp-2 block text-xs leading-4 text-text-tertiary">
+                                        {getCommandOptionDescription(option)}
+                                      </span>
+                                    </span>
                                   </AutocompleteItem>
-                                )}
-                              </AutocompleteCollection>
-                            </AutocompleteGroup>
-                          ))}
-                        </AutocompleteList>
+                                ))}
+                              </AutocompleteRow>
+                            ))}
+                          </div>
+                        </AutocompleteGroup>
                       )}
+
+                      {!isError &&
+                        !isCommandsMode &&
+                        !emptyStateVariant &&
+                        autocompleteResultCount > 0 &&
+                        Object.entries(groupedResults).map(([type, results]) => (
+                          <AutocompleteGroup key={type} items={results}>
+                            <AutocompleteGroupLabel className="px-4 pt-3 pb-2 text-text-secondary capitalize">
+                              {getGroupLabel(type)}
+                            </AutocompleteGroupLabel>
+                            <AutocompleteCollection<SearchResult>>
+                              {(result) => (
+                                <AutocompleteItem
+                                  key={`${result.type}-${result.id}`}
+                                  value={result}
+                                  className="mx-2 gap-3 p-3"
+                                  onClick={() => selectOption(result)}
+                                >
+                                  {result.icon}
+                                  <div className="min-w-0 flex-1">
+                                    <div className="truncate font-medium text-text-secondary">
+                                      {result.title}
+                                    </div>
+                                    {result.description && (
+                                      <div className="mt-0.5 truncate text-xs text-text-quaternary">
+                                        {result.description}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-text-quaternary capitalize">
+                                    {result.type}
+                                  </div>
+                                </AutocompleteItem>
+                              )}
+                            </AutocompleteCollection>
+                          </AutocompleteGroup>
+                        ))}
+                    </AutocompleteList>
                   </ScrollAreaContent>
                 </ScrollAreaViewport>
                 <ScrollAreaScrollbar>
@@ -610,12 +670,9 @@ function GotoAnythingDialog() {
               </ScrollArea>
 
               <Footer
-                resultCount={autocompleteResultCount}
-                searchMode={searchMode}
-                isLoading={isLoading}
-                hasUnavailableServices={hasUnavailableServices}
-                isCommandsMode={isCommandsMode}
-                hasQuery={!!searchQuery.trim()}
+                resultCount={trimmedSearchQuery ? autocompleteResultCount : null}
+                canActivate={autocompleteResultCount > 0}
+                hasPartialFailure={hasUnavailableServices && !isError}
               />
             </Autocomplete>
             <DialogClose className="sr-only">

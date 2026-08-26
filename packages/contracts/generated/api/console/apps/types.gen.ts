@@ -272,13 +272,13 @@ export type AnnotationReplyPayload = {
 
 export type AnnotationJobStatusResponse = {
   job_id: string
-  job_status: 'completed' | 'error' | 'processing' | 'waiting' | string
+  job_status: string
 }
 
 export type AnnotationJobStatusDetailResponse = {
   error_msg?: string
   job_id: string
-  job_status: 'completed' | 'error' | 'processing' | 'waiting' | string
+  job_status: string
 }
 
 export type AnnotationSettingResponse = {

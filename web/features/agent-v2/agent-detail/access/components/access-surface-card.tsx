@@ -25,11 +25,7 @@ export type AccessSurfaceCardProps = {
   endpointActions?: ReactNode
   disabled?: boolean
   disabledReason?: string
-  busy?: boolean
 }
-
-export const accessSurfaceActionClassName =
-  'inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 text-[13px] leading-4 font-medium text-components-button-secondary-text shadow-xs outline-hidden backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
 export function AccessSurfaceCard({
   title,
@@ -45,7 +41,6 @@ export function AccessSurfaceCard({
   endpointActions,
   disabled = false,
   disabledReason,
-  busy = false,
 }: AccessSurfaceCardProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
@@ -62,13 +57,13 @@ export function AccessSurfaceCard({
     <Switch
       size="md"
       checked={enabled}
-      disabled={busy || (disabled && !hasDisabledReason)}
+      disabled={disabled && !hasDisabledReason}
       readOnly={hasDisabledReason}
       aria-disabled={hasDisabledReason || undefined}
       data-disabled={hasDisabledReason ? '' : undefined}
       aria-label={t(($) => $['agentDetail.access.toggleSurface'], { name: title })}
       onCheckedChange={(nextEnabled) => {
-        if (!disabled && !busy) onEnabledChange(nextEnabled)
+        if (!disabled) onEnabledChange(nextEnabled)
       }}
     />
   )

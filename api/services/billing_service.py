@@ -13,8 +13,8 @@ from werkzeug.exceptions import InternalServerError
 from core.helper.http_client_pooling import get_pooled_http_client
 from enums import CloudPlan
 from extensions.ext_redis import redis_client
-from libs.helper import RateLimiter
 from services.billing_portal_service import BillingPortalLink
+from services.compliance_download_service import ComplianceDownloadLink
 from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
@@ -69,6 +69,9 @@ class EducationAutocompleteResponseDict(TypedDict):
 
 
 _billing_portal_link_adapter = TypeAdapter(BillingPortalLink)
+
+
+_compliance_download_link_adapter = TypeAdapter(ComplianceDownloadLink)
 
 
 class QuotaReserveResult(TypedDict):
@@ -228,8 +231,6 @@ class BillingService:
     base_url = os.environ.get("BILLING_API_URL", "BILLING_API_URL")
     quota_base_url = os.environ.get("BILLING_QUOTA_API_URL") or base_url
     secret_key = os.environ.get("BILLING_API_SECRET_KEY", "BILLING_API_SECRET_KEY")
-
-    compliance_download_rate_limiter = RateLimiter("compliance_download_rate_limiter", 4, 60)
 
     # Redis key prefix for tenant plan cache
     _PLAN_CACHE_KEY_PREFIX = "tenant_plan:"
@@ -466,7 +467,6 @@ class BillingService:
         base_url: str | None = None,
     ) -> Any:
         headers = {"Content-Type": "application/json", "Billing-Api-Secret-Key": cls.secret_key}
-
         url = f"{base_url or cls.base_url}{endpoint}"
         response = _http_client.request(method, url, json=json, params=params, headers=headers, follow_redirects=True)
         if method == "GET" and response.status_code != httpx.codes.OK:
@@ -482,7 +482,10 @@ class BillingService:
             if response.status_code != httpx.codes.OK:
                 raise ValueError("Invalid arguments.")
         if method == "POST" and response.status_code != httpx.codes.OK:
-            raise ValueError(f"Unable to send request to {url}. Please try again later or contact support.")
+            raise _BillingHTTPStatusError(
+                f"Unable to send request to {url}. Please try again later or contact support.",
+                response.status_code,
+            )
         if method == "DELETE" and response.status_code != httpx.codes.OK:
             logger.error("billing_service: DELETE response: %s %s", response.status_code, response.text)
             raise ValueError(f"Unable to process delete request {url}. Please try again later or contact support.")
@@ -587,23 +590,31 @@ class BillingService:
         tenant_id: str,
         ip: str,
         device_info: str,
-    ):
-        limiter_key = f"{account_id}:{tenant_id}"
-        if cls.compliance_download_rate_limiter.is_rate_limited(limiter_key):
-            from controllers.console.error import ComplianceRateLimitError
-
-            raise ComplianceRateLimitError()
-
-        json = {
+    ) -> ComplianceDownloadLink:
+        payload = {
             "doc_name": doc_name,
             "account_id": account_id,
             "tenant_id": tenant_id,
             "ip_address": ip,
             "device_info": device_info,
         }
-        res = cls._send_request("POST", "/compliance/download", json=json)
-        cls.compliance_download_rate_limiter.increment_rate_limit(limiter_key)
-        return res
+        try:
+            response = cls._send_request("POST", "/compliance/download", json=payload)
+            result = _compliance_download_link_adapter.validate_python(response)
+        except _BillingHTTPStatusError as error:
+            if error.status_code in {httpx.codes.REQUEST_TIMEOUT, httpx.codes.TOO_MANY_REQUESTS} or (
+                error.status_code >= 500
+            ):
+                raise BillingUpstreamUnavailableError from error
+            raise BillingUpstreamInvalidResponseError from error
+        except httpx.RequestError as error:
+            raise BillingUpstreamUnavailableError from error
+        except (json.JSONDecodeError, UnicodeDecodeError, ValidationError) as error:
+            raise BillingUpstreamInvalidResponseError from error
+        except ValueError as error:
+            raise RuntimeError("Unexpected billing service value error") from error
+
+        return result
 
     @classmethod
     def clean_billing_info_cache(cls, tenant_id: str) -> None:

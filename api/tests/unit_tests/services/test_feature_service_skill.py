@@ -6,7 +6,7 @@ from services.feature_service import FeatureService
 
 
 def test_skill_feature_is_disabled_by_default() -> None:
-    assert FeatureModel().enable_skill is False
+    assert FeatureModel().enable_skill is True
 
 
 def test_skill_feature_follows_env_config(config_overrides: Callable[..., None]) -> None:

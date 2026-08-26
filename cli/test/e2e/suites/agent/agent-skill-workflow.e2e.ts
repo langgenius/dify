@@ -3,7 +3,7 @@
  *
  * Scenario: an AI agent has loaded difyctl SKILL.md and drives difyctl to:
  *   1. Bootstrap  - read SKILL.md via `skills install --stdout`
- *   2. Discover   - `help -o json` for full command surface + contract
+ *   2. Discover   - compact sitemap, then per-command help
  *   3. Auth check - no token → exit 4 + JSON error envelope
  *   4. Discover apps    - `get app -o json`
  *   5. Describe app     - `describe app <id> -o json`
@@ -14,7 +14,7 @@
  *  10. Pipeline safety  - no ANSI/spinner, stdout/stderr separation
  *
  * PRD: §3 Agent-Driven, §5 Agent onboarding, Req 1.3/2.1/2.3/3.1-3.3
- * Agent Skills PRD: §4/§5.2 SKILL.md → help -o json discovery pattern
+ * Agent Skills PRD: §4/§5.2 SKILL.md → live command discovery
  *
  * Groups 1-3, 9: no auth required (local mode compatible)
  * Groups 4-8, 10: require DIFY_E2E_TOKEN / staging — wrapped with optionalIt
@@ -45,14 +45,18 @@ const itWithWorkflow = optionalIt(Boolean(E.token) && Boolean(E.workflowAppId))
 const itWithHitl = optionalIt(Boolean(E.token) && Boolean(E.hitlAppId))
 
 // ---------------------------------------------------------------------------
-// 1 + 2. Skill bootstrap → help -o json discovery
+// 1 + 2. Skill bootstrap → compact sitemap → per-command help
 // ---------------------------------------------------------------------------
 
 describe('E2E / agent skill — bootstrap + discovery (no auth)', () => {
-  it('[P0] SKILL.md contains `difyctl help -o json` as the discovery entry point', async () => {
+  it('[P0] SKILL.md directs agents through compact sitemap and per-command help', async () => {
     const r = await run(['skills', 'install', '--stdout'])
     expect(r.exitCode).toBe(0)
-    expect(r.stdout).toContain('difyctl help -o json')
+    expect(r.stdout).toContain('difyctl help -o json --compact')
+    expect(r.stdout).toContain('difyctl help <path> -o json')
+    expect(r.stdout.indexOf('difyctl help -o json --compact')).toBeLessThan(
+      r.stdout.indexOf('difyctl help <path> -o json'),
+    )
   })
 
   it('[P0] SKILL.md enumerates no commands from the tree (zero drift surface)', async () => {
@@ -100,6 +104,25 @@ describe('E2E / agent skill — bootstrap + discovery (no auth)', () => {
     expect(map.topics.map((t: { name: string }) => t.name)).toEqual(
       expect.arrayContaining(['account', 'agent', 'environment', 'external']),
     )
+  })
+
+  it('[P0] `help -o json --compact` emits only command, description, and effect', async () => {
+    const r = await run(['help', '-o', 'json', '--compact'])
+    expect(r.exitCode).toBe(0)
+    assertPipeFriendlyJson(r)
+    const map = JSON.parse(r.stdout) as {
+      commands: Array<Record<string, unknown>>
+      bin?: unknown
+      contract?: unknown
+    }
+    expect(map.bin).toBeUndefined()
+    expect(map.contract).toBeUndefined()
+    expect(map.commands.length).toBeGreaterThan(0)
+    for (const command of map.commands) {
+      expect(Object.keys(command)).toEqual(['command', 'description', 'effect'])
+      expect(typeof command.command).toBe('string')
+      expect(typeof command.effect).toBe('string')
+    }
   })
 
   it('[P0] every command in help -o json has args, flags, examples arrays', async () => {
