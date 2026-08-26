@@ -1394,7 +1394,7 @@ class TestTenantService:
             TenantService.update_member_role(tenant, candidate, "owner", operator, session=sqlite_session)
 
         mock_replace.assert_any_call(
-            tenant_id=str(tenant.id),
+            tenant_id=tenant.id,
             account_id=operator.id,
             member_account_id="real-rbac-owner",
             role_ids=expected_demoted_role_ids,
