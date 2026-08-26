@@ -1143,8 +1143,8 @@ def test_provider_configuration_cache_skips_write_when_version_changes_during_lo
 
     assert version_bumped is True
     assert fake_redis.store[version_key] == "1"
-    assert "provider_configurations:tenant:tenant-id:source:provider_model_credentials:v:0" not in fake_redis.store
-    assert "provider_configurations:tenant:tenant-id:source:provider_model_credentials:v:1" not in fake_redis.store
+    assert "provider_configurations:v2:tenant:tenant-id:source:provider_model_credentials:v:0" not in fake_redis.store
+    assert "provider_configurations:v2:tenant:tenant-id:source:provider_model_credentials:v:1" not in fake_redis.store
     assert result["openai"][0].credential_name == "primary"
 
 
