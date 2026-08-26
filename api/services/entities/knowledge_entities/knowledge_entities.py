@@ -128,8 +128,8 @@ class DataSource(BaseModel):
 class ProcessRule(BaseModel):
     mode: ProcessRuleMode = Field(
         description=(
-            "Processing mode. `automatic` uses built-in rules, `custom` allows manual configuration, and "
-            "`hierarchical` enables parent-child chunk structure for `doc_form: hierarchical_model`."
+            "`automatic` uses built-in rules, `custom` allows manual configuration, `hierarchical` enables "
+            "parent-child chunk structure (use with `doc_form: hierarchical_model`)."
         )
     )
     rules: Rule | None = Field(default=None, description="Custom processing rules.")

@@ -139,7 +139,10 @@ class DatasetCreatePayload(BaseModel):
     external_knowledge_id: str | None = Field(default=None, description="ID of the external knowledge base.")
     retrieval_model: RetrievalModel | None = Field(
         default=None,
-        description="Retrieval model configuration. Controls how chunks are searched and ranked.",
+        description=(
+            "Retrieval model configuration. Controls how chunks are searched and ranked when querying this "
+            "knowledge base."
+        ),
     )
     embedding_model: str | None = Field(
         default=None,
@@ -192,7 +195,10 @@ class DatasetUpdatePayload(BaseModel):
     )
     retrieval_model: RetrievalModel | None = Field(
         default=None,
-        description="Retrieval model configuration. Controls how chunks are searched and ranked.",
+        description=(
+            "Retrieval model configuration. Controls how chunks are searched and ranked when querying this "
+            "knowledge base."
+        ),
     )
     partial_member_list: PartialMemberList = Field(
         default=None,
@@ -234,7 +240,10 @@ class TagDeletePayload(BaseModel):
 
 
 class TagBindingPayload(BaseModel):
-    tag_ids: list[str] = Field(description="Tag IDs to bind.")
+    tag_ids: list[str] = Field(
+        description="Tag IDs to bind.",
+        json_schema_extra={"minItems": 1},
+    )
     target_id: str = Field(description="Knowledge base ID to bind the tags to.")
 
     @field_validator("tag_ids")
@@ -255,8 +264,12 @@ class TagUnbindingPayload(BaseModel):
     @classmethod
     @override
     def __get_pydantic_json_schema__(cls, _core_schema: object, _handler: GetJsonSchemaHandler) -> dict[str, object]:
-        tag_id_property = {
+        tag_id_annotations = {
+            "deprecated": True,
             "description": "Legacy single tag ID accepted by the Service API.",
+        }
+        tag_id_property = {
+            **tag_id_annotations,
             "type": "string",
         }
         tag_ids_property = {
@@ -279,7 +292,10 @@ class TagUnbindingPayload(BaseModel):
                 },
                 {
                     "properties": {
-                        "tag_id": {**tag_id_property, "nullable": True},
+                        "tag_id": {
+                            **tag_id_annotations,
+                            "anyOf": [{"type": "string"}, {"type": "null"}],
+                        },
                         "tag_ids": tag_ids_property,
                         "target_id": target_id_property,
                     },
@@ -640,6 +656,7 @@ class DatasetApi(DatasetApiResource):
     @service_api_ns.doc(
         responses={
             200: "Dataset updated successfully",
+            400: "Bad request - invalid embedding or reranking model configuration",
             401: "Unauthorized - invalid API token",
             403: "Forbidden - insufficient permissions",
             404: "Dataset not found",
@@ -916,6 +933,7 @@ class DatasetTagsApi(DatasetApiResource):
     @service_api_ns.doc(
         responses={
             200: "Tag created successfully",
+            400: "Bad request - tag name already exists",
             401: "Unauthorized - invalid API token",
             403: "Forbidden - insufficient permissions",
         }
@@ -952,8 +970,10 @@ class DatasetTagsApi(DatasetApiResource):
     @service_api_ns.doc(
         responses={
             200: "Tag updated successfully",
+            400: "Bad request - tag name already exists",
             401: "Unauthorized - invalid API token",
             403: "Forbidden - insufficient permissions",
+            404: "Tag not found",
         }
     )
     @service_api_ns.response(
@@ -994,6 +1014,7 @@ class DatasetTagsApi(DatasetApiResource):
             204: "Tag deleted successfully",
             401: "Unauthorized - invalid API token",
             403: "Forbidden - insufficient permissions",
+            404: "Tag not found",
         }
     )
     @edit_permission_required
@@ -1024,6 +1045,7 @@ class DatasetTagBindingApi(DatasetApiResource):
             204: "Tags bound successfully",
             401: "Unauthorized - invalid API token",
             403: "Forbidden - insufficient permissions",
+            404: "Dataset not found",
         }
     )
     @with_session
@@ -1060,6 +1082,7 @@ class DatasetTagUnbindingApi(DatasetApiResource):
             204: "Tags unbound successfully",
             401: "Unauthorized - invalid API token",
             403: "Forbidden - insufficient permissions",
+            404: "Dataset not found",
         }
     )
     @with_session
@@ -1086,6 +1109,7 @@ class DatasetTagsBindingStatusApi(DatasetApiResource):
         tags=["Tags"],
         responses={
             200: "Tags bound to the knowledge base.",
+            404: "`not_found` : Knowledge base not found.",
         },
     )
     @service_api_ns.doc("get_dataset_tags_binding_status")

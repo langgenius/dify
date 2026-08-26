@@ -1,14 +1,14 @@
 'use client'
 
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/client'
-import { accessSurfaceActionClassName, AccessSurfaceCard } from './access-surface-card'
+import { AccessSurfaceCard } from './access-surface-card'
 import { AgentApiKeyModal } from './agent-api-key-modal'
 
 export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
@@ -28,6 +28,9 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
   const apiAccess = apiAccessQuery.data
   const toggleServiceApiMutation = useMutation(
     consoleQuery.agent.byAgentId.apiEnable.post.mutationOptions({
+      scope: {
+        id: `agent-service-api-toggle:${agentId}`,
+      },
       onSuccess: (updatedApiAccess, variables) => {
         queryClient.setQueryData(apiAccessQueryOptions.queryKey, updatedApiAccess)
         queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
@@ -40,7 +43,6 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
                 }
               : agentDetail,
         )
-        toast.success(tCommon(($) => $['actionMsg.modifiedSuccessfully']))
       },
       onError: () => {
         toast.error(tCommon(($) => $['actionMsg.modifiedUnsuccessfully']))
@@ -48,7 +50,11 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
     }),
   )
   const accessReady = Boolean(apiAccess?.access_ready)
-  const isBusy = apiAccessQuery.isPending || toggleServiceApiMutation.isPending
+  const pendingEnabled = toggleServiceApiMutation.variables?.body.enable_api
+  const optimisticEnabled =
+    toggleServiceApiMutation.isPending && pendingEnabled !== undefined
+      ? pendingEnabled
+      : Boolean(apiAccess?.enabled)
   const showPublishRequiredMessage =
     !apiAccessQuery.isPending && !apiAccessQuery.isError && !accessReady
 
@@ -71,20 +77,18 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
         iconClassName="bg-state-accent-solid text-text-primary-on-surface"
         endpointLabel={t(($) => $['agentDetail.access.serviceApi.endpoint'])}
         endpoint={apiAccess?.service_api_base_url ?? ''}
-        enabled={Boolean(apiAccess?.enabled)}
+        enabled={optimisticEnabled}
         onEnabledChange={handleEnabledChange}
         copyLabel={t(($) => $['agentDetail.access.copyServiceEndpoint'])}
         disabled={apiAccessQuery.isPending || apiAccessQuery.isError || !accessReady}
         disabledReason={
           showPublishRequiredMessage ? t(($) => $['agentDetail.access.publishRequired']) : undefined
         }
-        busy={toggleServiceApiMutation.isPending}
       >
         <Button
           variant="secondary"
           size="medium"
-          className="px-3"
-          disabled={isBusy || apiAccessQuery.isError || !accessReady}
+          disabled={apiAccessQuery.isPending || apiAccessQuery.isError || !accessReady}
           onClick={() => setApiKeyModalOpen(true)}
         >
           <span aria-hidden className="i-ri-key-2-line size-4" />
@@ -98,7 +102,7 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
           target="_blank"
           rel="noreferrer"
           aria-label={t(($) => $['agentDetail.access.serviceApi.actions.apiReference'])}
-          className={accessSurfaceActionClassName}
+          className={buttonVariants({ variant: 'secondary', size: 'medium' })}
         >
           <span aria-hidden className="i-ri-book-open-line size-4" />
           {t(($) => $['agentDetail.access.serviceApi.actions.apiReference'])}
@@ -107,7 +111,6 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
           <Button
             variant="secondary"
             size="medium"
-            className="px-3"
             onClick={() => {
               void apiAccessQuery.refetch()
             }}
