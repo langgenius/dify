@@ -27,6 +27,7 @@ from controllers.service_api.app.error import (
     WorkflowVersionExecutionNotAllowedError,
 )
 from controllers.service_api.schema import (
+    SCOPED_TASK_STOP_USER_DESCRIPTION,
     InputFileList,
     expect_user_json,
     expect_with_user,
@@ -288,7 +289,11 @@ class CompletionStopApi(Resource):
             400: "`app_unavailable` : App unavailable or misconfigured.",
         },
     )
-    @expect_user_json(service_api_ns)
+    @expect_user_json(
+        service_api_ns,
+        model_name="ScopedTaskStopPayload",
+        user_description=SCOPED_TASK_STOP_USER_DESCRIPTION,
+    )
     @service_api_ns.doc("stop_completion")
     @service_api_ns.doc(description="Stop a running completion task")
     @service_api_ns.doc(
@@ -298,7 +303,6 @@ class CompletionStopApi(Resource):
         responses={
             200: "Task stopped successfully",
             401: "Unauthorized - invalid API token",
-            404: "Task not found",
         }
     )
     @service_api_ns.response(200, "Task stopped successfully", service_api_ns.models[SimpleResultResponse.__name__])
@@ -471,7 +475,11 @@ class ChatStopApi(Resource):
             400: "`not_chat_app` : App mode does not match the API route.",
         },
     )
-    @expect_user_json(service_api_ns)
+    @expect_user_json(
+        service_api_ns,
+        model_name="ScopedTaskStopPayload",
+        user_description=SCOPED_TASK_STOP_USER_DESCRIPTION,
+    )
     @service_api_ns.doc("stop_chat_message")
     @service_api_ns.doc(description="Stop a running chat message generation")
     @service_api_ns.doc(
@@ -481,7 +489,6 @@ class ChatStopApi(Resource):
         responses={
             200: "Task stopped successfully",
             401: "Unauthorized - invalid API token",
-            404: "Task not found",
         }
     )
     @service_api_ns.response(200, "Task stopped successfully", service_api_ns.models[SimpleResultResponse.__name__])

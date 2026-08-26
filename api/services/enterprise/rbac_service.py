@@ -12,12 +12,24 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.rbac import RBACResourceWhitelistScope
-from models import TenantAccountJoin, TenantAccountRole
+from core.db.session_factory import session_factory
+from models import App, Dataset, TenantAccountJoin, TenantAccountRole
 from services.enterprise.base import EnterpriseRequest
 
 T = TypeVar("T")
 logger = logging.getLogger(__name__)
+
+
+def app_maintainer_id(tenant_id: str, app_id: str) -> str | None:
+    with session_factory.create_session() as session:
+        return session.scalar(select(App.maintainer).where(App.id == app_id, App.tenant_id == tenant_id))
+
+
+def dataset_maintainer_id(tenant_id: str, dataset_id: str) -> str | None:
+    with session_factory.create_session() as session:
+        return session.scalar(
+            select(Dataset.maintainer).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id)
+        )
 
 
 class _RBACModel(BaseModel):
@@ -223,6 +235,10 @@ class ResourceWhitelist(_RBACModel):
         return value
 
 
+class ResourceWhitelistConfig(_RBACModel):
+    automatic_include_workspace_members: bool
+
+
 class ResourceWhitelistResources(_RBACModel):
     unrestricted: bool = False
     resource_ids: list[str] = Field(default_factory=list)
@@ -249,8 +265,8 @@ class ResourceUserAccessPolicies(_RBACModel):
 
 
 class ResourceUserAccessPoliciesResponse(_RBACModel):
-    scope: RBACResourceWhitelistScope
     data: list[ResourceUserAccessPolicies] = Field(default_factory=list)
+    pagination: Pagination | None = None
 
 
 class ReplaceUserAccessPolicies(_RBACModel):
@@ -657,18 +673,7 @@ class ReplaceRoleBindings(_RBACModel):
 
 
 class ReplaceMemberBindings(_RBACModel):
-    scope: RBACResourceWhitelistScope = RBACResourceWhitelistScope.SPECIFIC
-
-    @field_validator("scope")
-    @classmethod
-    def _normalize_scope(cls, value: Any) -> RBACResourceWhitelistScope:
-        scope = str(value or "").strip().lower()
-        if scope == "":
-            return RBACResourceWhitelistScope.SPECIFIC
-        try:
-            return RBACResourceWhitelistScope(scope)
-        except ValueError as exc:
-            raise ValueError(f"invalid scope: {value}") from exc
+    automatic_include_workspace_members: bool = Field(default=False)
 
 
 class DeleteMemberBindings(_RBACModel):
@@ -1118,14 +1123,19 @@ class RBACService:
 
         @staticmethod
         def user_access_policies(
-            tenant_id: str, account_id: str | None, app_id: str
+            tenant_id: str,
+            account_id: str | None,
+            app_id: str,
+            *,
+            options: ListOption | None = None,
         ) -> ResourceUserAccessPoliciesResponse:
+            params = (options or ListOption()).to_params({"app_id": app_id})
             data = _inner_call(
                 "GET",
                 f"{_INNER_PREFIX}/apps/user-access-policies",
                 tenant_id=tenant_id,
                 account_id=account_id,
-                params={"app_id": app_id},
+                params=params,
             )
             return ResourceUserAccessPoliciesResponse.model_validate(data or {})
 
@@ -1158,6 +1168,17 @@ class RBACService:
                 params={"app_id": app_id},
             )
             return ResourceWhitelist.model_validate(data or {})
+
+        @staticmethod
+        def whitelist_config(tenant_id: str, account_id: str | None, app_id: str) -> ResourceWhitelistConfig:
+            data = _inner_call(
+                "GET",
+                f"{_INNER_PREFIX}/apps/whitelist",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params={"app_id": app_id},
+            )
+            return ResourceWhitelistConfig.model_validate(data or {})
 
         @staticmethod
         def replace_whitelist(
@@ -1288,14 +1309,19 @@ class RBACService:
 
         @staticmethod
         def user_access_policies(
-            tenant_id: str, account_id: str | None, dataset_id: str
+            tenant_id: str,
+            account_id: str | None,
+            dataset_id: str,
+            *,
+            options: ListOption | None = None,
         ) -> ResourceUserAccessPoliciesResponse:
+            params = (options or ListOption()).to_params({"dataset_id": dataset_id})
             data = _inner_call(
                 "GET",
                 f"{_INNER_PREFIX}/datasets/user-access-policies",
                 tenant_id=tenant_id,
                 account_id=account_id,
-                params={"dataset_id": dataset_id},
+                params=params,
             )
             return ResourceUserAccessPoliciesResponse.model_validate(data or {})
 
@@ -1327,6 +1353,17 @@ class RBACService:
                 params={"dataset_id": dataset_id},
             )
             return ResourceWhitelist.model_validate(data or {})
+
+        @staticmethod
+        def whitelist_config(tenant_id: str, account_id: str | None, dataset_id: str) -> ResourceWhitelistConfig:
+            data = _inner_call(
+                "GET",
+                f"{_INNER_PREFIX}/datasets/whitelist",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params={"dataset_id": dataset_id},
+            )
+            return ResourceWhitelistConfig.model_validate(data or {})
 
         @staticmethod
         def replace_whitelist(

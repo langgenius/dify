@@ -25,6 +25,7 @@ from services.account_service import AccountService, RegisterService, TenantServ
 from services.enterprise.rbac_service import MembersInRole, Paginated
 from services.errors.account import (
     AccountAlreadyInTenantError,
+    AccountEmailAlreadyInUseError,
     AccountLoginError,
     AccountPasswordError,
     AccountRegisterError,
@@ -135,6 +136,27 @@ class TestAccountService:
 
         assert result is account
 
+    def test_authenticate_keeps_using_the_stored_email(
+        self,
+        sqlite_session: Session,
+        mock_password_dependencies: _MockDependencies,
+    ) -> None:
+        account = Account(
+            name="Gmail User",
+            email="u.ser+tag@gmail.com",
+            normalized_email="user@gmail.com",
+            password="hashed_password",
+            password_salt="salt",
+        )
+        sqlite_session.add(account)
+        sqlite_session.commit()
+
+        mock_password_dependencies["compare_password"].return_value = True
+
+        result = AccountService.authenticate("u.ser+tag@gmail.com", "password", session=sqlite_session)
+
+        assert result is account
+
     def test_authenticate_account_not_found(self, sqlite_session: Session) -> None:
         """Test authentication when account does not exist."""
         with pytest.raises(AccountPasswordError):
@@ -230,6 +252,7 @@ class TestAccountService:
             account_id = result.id
 
             assert result.email == "test@example.com"
+            assert result.normalized_email == "test@example.com"
             assert result.name == "Test User"
             assert result.interface_language == "en-US"
             assert result.interface_theme == "light"
@@ -242,6 +265,7 @@ class TestAccountService:
             persisted_account = assertion_session.get(Account, account_id)
             assert persisted_account is not None
             assert persisted_account.email == "test@example.com"
+            assert persisted_account.normalized_email == "test@example.com"
             assert persisted_account.name == "Test User"
             assert persisted_account.interface_language == "en-US"
             assert persisted_account.interface_theme == "light"
@@ -249,6 +273,40 @@ class TestAccountService:
             assert persisted_account.password_salt is not None
             assert persisted_account.timezone == "America/New_York"
             assert persisted_account.last_login_ip == "203.0.113.10"
+
+    def test_create_account_rejects_normalized_email_only_when_requested(
+        self,
+        sqlite_session: Session,
+        mock_external_service_dependencies: _MockDependencies,
+    ) -> None:
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        sqlite_session.add(
+            Account(
+                name="Existing User",
+                email="u.ser+existing@gmail.com",
+                normalized_email="user@gmail.com",
+            )
+        )
+        sqlite_session.commit()
+
+        with pytest.raises(AccountEmailAlreadyInUseError):
+            AccountService.create_account(
+                email="user@googlemail.com",
+                name="New User",
+                interface_language="en-US",
+                check_normalized_email=True,
+                session=sqlite_session,
+            )
+
+        duplicate = AccountService.create_account(
+            email="user@googlemail.com",
+            name="New User",
+            interface_language="en-US",
+            session=sqlite_session,
+        )
+        assert duplicate.normalized_email == "user@gmail.com"
 
     def test_create_account_uses_explicit_timezone(
         self,
@@ -1547,6 +1605,7 @@ class TestRegisterService:
                 password=None,
                 timezone=None,
                 ip_address="203.0.113.10",
+                check_normalized_email=False,
                 session=sqlite_session,
             )
             mock_create_workspace.assert_called_once_with(account=mock_account, session=sqlite_session)
@@ -1664,9 +1723,34 @@ class TestRegisterService:
                     is_setup=False,
                     timezone=None,
                     ip_address="203.0.113.10",
+                    check_normalized_email=True,
                     session=sqlite_session,
                 )
                 mock_create_owner_tenant.assert_called_once_with(mock_account, session=sqlite_session)
+
+    def test_register_rejects_existing_normalized_email(
+        self,
+        sqlite_session: Session,
+        mock_external_service_dependencies: _MockDependencies,
+    ) -> None:
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        sqlite_session.add(
+            Account(
+                name="Existing User",
+                email="u.ser+existing@gmail.com",
+                normalized_email="user@gmail.com",
+            )
+        )
+        sqlite_session.commit()
+
+        with pytest.raises(AccountEmailAlreadyInUseError):
+            RegisterService.register(
+                email="user@googlemail.com",
+                name="New User",
+                language="en-US",
+                create_workspace_required=False,
+                session=sqlite_session,
+            )
 
     def test_register_calls_default_workspace_join_for_enterprise_edition(
         self,
@@ -2027,6 +2111,7 @@ class TestRegisterService:
                         language="en-US",
                         status=AccountStatus.PENDING,
                         is_setup=True,
+                        check_normalized_email=True,
                         session=sqlite_session,
                     )
                     mock_lookup.assert_called_once_with("newuser@example.com", session=sqlite_session)
@@ -2073,6 +2158,7 @@ class TestRegisterService:
                         language="en-US",
                         status=AccountStatus.PENDING,
                         is_setup=True,
+                        check_normalized_email=True,
                         session=sqlite_session,
                     )
                     mock_lookup.assert_called_once_with(mixed_email, session=sqlite_session)

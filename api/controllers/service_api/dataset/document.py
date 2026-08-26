@@ -113,7 +113,7 @@ class DocumentTextCreatePayload(BaseModel):
     )
     retrieval_model: RetrievalModel | None = Field(
         default=None,
-        description="Retrieval model configuration. Controls how chunks are searched and ranked.",
+        description="Controls how chunks are searched and ranked when querying this knowledge base.",
     )
     embedding_model: str | None = Field(
         default=None,
@@ -152,7 +152,7 @@ class DocumentTextUpdate(BaseModel):
     doc_language: str = Field(default="English", description="Language of the document for processing optimization.")
     retrieval_model: RetrievalModel | None = Field(
         default=None,
-        description="Retrieval model configuration. Controls how chunks are searched and ranked.",
+        description="Controls how chunks are searched and ranked when querying this knowledge base.",
     )
 
     @field_validator("doc_form")
@@ -524,6 +524,7 @@ class DocumentAddByTextApi(DatasetApiResource):
                 "- `invalid_param` : Knowledge base does not exist. / indexing_technique is required. / "
                 "Invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`)."
             ),
+            404: "`not_found` : Knowledge base not found.",
         },
     )
     @service_api_ns.expect(service_api_ns.models[DocumentTextCreatePayload.__name__])
@@ -569,6 +570,7 @@ class DeprecatedDocumentAddByTextApi(DatasetApiResource):
             200: "Document created successfully",
             401: "Unauthorized - invalid API token",
             400: "Bad request - invalid parameters",
+            404: "`not_found` : Knowledge base not found.",
         }
     )
     @service_api_ns.response(
@@ -704,6 +706,7 @@ class DocumentAddByFileApi(DatasetApiResource):
                 "(must be `text_model`, `hierarchical_model`, or `qa_model`)."
             ),
             413: "`file_too_large` : File size exceeded.",
+            404: "`not_found` : Knowledge base not found.",
         },
     )
     @service_api_ns.doc("create_document_by_file")

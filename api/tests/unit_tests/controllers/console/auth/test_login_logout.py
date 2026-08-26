@@ -22,6 +22,7 @@ from controllers.console.auth.error import (
     AuthenticationFailedError,
     EmailPasswordLoginLimitError,
     InvalidEmailError,
+    NormalizedEmailAlreadyInUseError,
 )
 from controllers.console.auth.login import EmailCodeLoginApi, LoginApi, LogoutApi, ResetPasswordSendEmailApi
 from controllers.console.error import (
@@ -37,6 +38,7 @@ from services.email_code_login_challenge import EmailCodeLoginChallengeResult, E
 from services.entities.auth_entities import LoginFailureReason
 from services.errors.account import (
     AccountLoginError,
+    AccountNormalizedEmailAlreadyInUseError,
     AccountPasswordError,
     AccountRegisterError,
     SeatsLimitExceededError,
@@ -329,6 +331,7 @@ class TestLoginApi:
         ("service_error", "expected_error"),
         [
             (EmailDomainSuspendedRegistrationError(), EmailDomainSuspendedError),
+            (AccountNormalizedEmailAlreadyInUseError(), NormalizedEmailAlreadyInUseError),
             (AccountRegisterError("frozen"), AccountInFreezeError),
         ],
     )
