@@ -1846,7 +1846,7 @@ class RBACService:
                         )
                     )
                     if current_owner_join and current_owner_join.account_id != member_account_id:
-                        current_owner_join.role = TenantAccountRole.ADMIN
+                        current_owner_join.role = TenantAccountRole.NORMAL
 
                 target_member_join.role = tenant_role
                 session.commit()
