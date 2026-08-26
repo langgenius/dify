@@ -21,6 +21,14 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(),
 }))
 
+vi.mock('@/next/link', () => ({
+  default: ({ children, replace, ...props }: React.ComponentProps<'a'> & { replace?: boolean }) => (
+    <a {...props} data-replace={replace || undefined}>
+      {children}
+    </a>
+  ),
+}))
+
 vi.mock('@/service/common', () => ({
   changePasswordWithToken: vi.fn(),
 }))
@@ -59,7 +67,7 @@ const completePasswordChange = async () => {
   fireEvent.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))
 
   await waitFor(() => {
-    expect(screen.getByRole('button', { name: /login\.passwordChanged/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /login\.passwordChanged/ })).toBeInTheDocument()
   })
   expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.passwordChangedTip')
   expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('login.passwordChangedTip')
@@ -117,9 +125,9 @@ describe('Reset Password Set Password Page', () => {
       setSearchParams({ token: 'reset-token', redirect_url: redirectUrl })
       await completePasswordChange()
 
-      fireEvent.click(screen.getByRole('button', { name: /login\.passwordChanged/ }))
-
-      expect(mockReplace).toHaveBeenCalledWith(encodedSigninUrl)
+      const link = screen.getByRole('link', { name: /login\.passwordChanged/ })
+      expect(link).toHaveAttribute('href', encodedSigninUrl)
+      expect(link).toHaveAttribute('data-replace', 'true')
     })
 
     it('should preserve redirect_url when the countdown returns to sign in automatically', async () => {
@@ -140,17 +148,19 @@ describe('Reset Password Set Password Page', () => {
       })
       await completePasswordChange()
 
-      fireEvent.click(screen.getByRole('button', { name: /login\.passwordChanged/ }))
-
-      expect(mockReplace).toHaveBeenCalledWith('/activate?token=invite-token')
+      expect(screen.getByRole('link', { name: /login\.passwordChanged/ })).toHaveAttribute(
+        'href',
+        '/activate?token=invite-token',
+      )
     })
 
     it('should return to plain sign in when no redirect target is present', async () => {
       await completePasswordChange()
 
-      fireEvent.click(screen.getByRole('button', { name: /login\.passwordChanged/ }))
-
-      expect(mockReplace).toHaveBeenCalledWith('/signin')
+      expect(screen.getByRole('link', { name: /login\.passwordChanged/ })).toHaveAttribute(
+        'href',
+        '/signin',
+      )
     })
   })
 })
