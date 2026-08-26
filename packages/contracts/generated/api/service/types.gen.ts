@@ -2648,7 +2648,6 @@ export type PostChatMessagesByTaskIdStopErrors = {
   400: unknown
   401: unknown
   403: unknown
-  404: unknown
 }
 
 export type PostChatMessagesByTaskIdStopResponses = {
@@ -2694,7 +2693,6 @@ export type PostCompletionMessagesByTaskIdStopErrors = {
   400: unknown
   401: unknown
   403: unknown
-  404: unknown
 }
 
 export type PostCompletionMessagesByTaskIdStopResponses = {
@@ -4439,7 +4437,6 @@ export type PostWorkflowsTasksByTaskIdStopErrors = {
   400: unknown
   401: unknown
   403: unknown
-  404: unknown
 }
 
 export type PostWorkflowsTasksByTaskIdStopResponses = {

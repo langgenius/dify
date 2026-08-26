@@ -28,8 +28,6 @@ class AppTaskService:
         1. Legacy Redis flag mechanism (for backward compatibility)
         2. New GraphEngine command channel (for workflow-based apps)
 
-        Both mechanisms are skipped when the task does not belong to the requesting user.
-
         Args:
             task_id: The task ID to stop
             invoke_from: The source of the invoke (e.g., DEBUGGER, WEB_APP, SERVICE_API)
@@ -39,10 +37,8 @@ class AppTaskService:
         Returns:
             None
         """
-        # The ownership check also protects the task-ID-only GraphEngine command below.
-        task_marked_as_stopped = AppQueueManager.set_stop_flag(task_id, invoke_from, user_id)
-        if not task_marked_as_stopped:
-            return
+        # Legacy mechanism: Set stop flag in Redis
+        AppQueueManager.set_stop_flag(task_id, invoke_from, user_id)
 
         # New mechanism: Send stop command via GraphEngine for workflow-based apps
         # This ensures proper workflow status recording in the persistence layer

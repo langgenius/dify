@@ -20,8 +20,8 @@ USER_DESCRIPTION = (
     "one `user` value are only visible when queried with the same `user` value."
 )
 SCOPED_TASK_STOP_USER_DESCRIPTION = (
-    "End-user identifier, defined by your app and unique within it. Must match the `user` sent with the original "
-    "generation request; if it differs, the stop silently does nothing and still returns success. See "
+    "End-user identifier, defined by your app and unique within it. Send the same `user` value used for the original "
+    "generation request. See "
     "[End User Identity](/api-reference/guides/end-user-identity)."
 )
 WORKFLOW_TASK_STOP_USER_DESCRIPTION = (

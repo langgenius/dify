@@ -367,7 +367,6 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 | 400 | `not_chat_app` : App mode does not match the API route. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | Task not found |  |
 
 ### [GET] /messages/{message_id}/suggested
 **Get Next Suggested Questions**
@@ -515,7 +514,6 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 | 400 | `not_chat_app` : App mode does not match the API route. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | Task not found |  |
 
 ### [GET] /messages/{message_id}/suggested
 **Get Next Suggested Questions**
@@ -591,7 +589,6 @@ Stops a completion message generation task. Only supported in `streaming` mode.
 | 400 | `app_unavailable` : App unavailable or misconfigured. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | Task not found |  |
 
 ---
 ## default
@@ -2265,7 +2262,6 @@ Stop a running workflow task. Only supported in `streaming` mode.
 | 400 | - `not_workflow_app` : App mode does not match the API route. - `invalid_param` : Required parameter missing or invalid. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | Task not found |  |
 
 ### [POST] /workflows/{workflow_id}/run
 **Run Workflow by ID**
@@ -3982,7 +3978,7 @@ Model class for provider with models response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| user | string | End-user identifier, defined by your app and unique within it. Must match the `user` sent with the original generation request; if it differs, the stop silently does nothing and still returns success. See [End User Identity](/api-reference/guides/end-user-identity). | Yes |
+| user | string | End-user identifier, defined by your app and unique within it. Send the same `user` value used for the original generation request. See [End User Identity](/api-reference/guides/end-user-identity). | Yes |
 
 #### SegmentAttachmentResponse
 

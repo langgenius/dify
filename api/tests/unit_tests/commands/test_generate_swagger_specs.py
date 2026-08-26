@@ -443,13 +443,15 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
     workflow_stop_schema = schemas["WorkflowTaskStopPayload"]
     assert scoped_stop_schema["required"] == ["user"]
     assert workflow_stop_schema["required"] == ["user"]
-    assert "Must match" in scoped_stop_schema["properties"]["user"]["description"]
+    assert "Send the same" in scoped_stop_schema["properties"]["user"]["description"]
     assert "does not need to match" in workflow_stop_schema["properties"]["user"]["description"]
     for path in ("/chat-messages/{task_id}/stop", "/completion-messages/{task_id}/stop"):
         assert _request_schema(payload["paths"][path]["post"])["$ref"] == ("#/components/schemas/ScopedTaskStopPayload")
+        assert "404" not in payload["paths"][path]["post"]["responses"]
     assert _request_schema(payload["paths"]["/workflows/tasks/{task_id}/stop"]["post"])["$ref"] == (
         "#/components/schemas/WorkflowTaskStopPayload"
     )
+    assert "404" not in payload["paths"]["/workflows/tasks/{task_id}/stop"]["post"]["responses"]
 
     vector_space_operations = {
         (method, path)

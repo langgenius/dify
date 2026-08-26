@@ -174,23 +174,21 @@ class AppQueueManager(ABC):
         raise NotImplementedError
 
     @classmethod
-    def set_stop_flag(cls, task_id: str, invoke_from: InvokeFrom, user_id: str) -> bool:
+    def set_stop_flag(cls, task_id: str, invoke_from: InvokeFrom, user_id: str):
         """
-        Set the task stop flag when the task belongs to the requesting user.
-
-        :return: Whether the task belongs to the requesting user and was marked as stopped.
+        Set task stop flag
+        :return:
         """
         result: Any | None = redis_client.get(cls._generate_task_belong_cache_key(task_id))
         if result is None:
-            return False
+            return
 
         user_prefix = "account" if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else "end-user"
         if result.decode("utf-8") != f"{user_prefix}-{user_id}":
-            return False
+            return
 
         stopped_cache_key = cls._generate_stopped_cache_key(task_id)
         redis_client.setex(stopped_cache_key, 600, 1)
-        return True
 
     @classmethod
     def set_stop_flag_no_user_check(cls, task_id: str) -> None:

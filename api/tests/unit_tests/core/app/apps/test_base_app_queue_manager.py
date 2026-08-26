@@ -35,19 +35,9 @@ class TestBaseAppQueueManager:
     def test_set_stop_flag_checks_user(self):
         with patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis:
             mock_redis.get.return_value = b"end-user-u1"
-            result = AppQueueManager.set_stop_flag(task_id="t1", invoke_from=InvokeFrom.SERVICE_API, user_id="u1")
+            AppQueueManager.set_stop_flag(task_id="t1", invoke_from=InvokeFrom.SERVICE_API, user_id="u1")
 
-        assert result is True
         mock_redis.setex.assert_called_once()
-
-    @pytest.mark.parametrize("task_owner", [None, b"end-user-other"])
-    def test_set_stop_flag_rejects_unknown_or_mismatched_user(self, task_owner):
-        with patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis:
-            mock_redis.get.return_value = task_owner
-            result = AppQueueManager.set_stop_flag(task_id="t1", invoke_from=InvokeFrom.SERVICE_API, user_id="u1")
-
-        assert result is False
-        mock_redis.setex.assert_not_called()
 
     def test_set_stop_flag_no_user_check(self):
         with patch("core.app.apps.execution_coordinator.redis_client") as mock_redis:

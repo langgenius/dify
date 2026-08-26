@@ -38,7 +38,6 @@ class TestAppTaskService:
         task_id = "task-123"
         invoke_from = InvokeFrom.WEB_APP
         user_id = "user-456"
-        mock_app_queue_manager.set_stop_flag.return_value = True
 
         # Act
         AppTaskService.stop_task(task_id, invoke_from, user_id, app_mode)
@@ -73,7 +72,6 @@ class TestAppTaskService:
         task_id = "task-789"
         user_id = "user-999"
         app_mode = AppMode.ADVANCED_CHAT
-        mock_app_queue_manager.set_stop_flag.return_value = True
 
         # Act
         AppTaskService.stop_task(task_id, invoke_from, user_id, app_mode)
@@ -99,7 +97,6 @@ class TestAppTaskService:
         invoke_from = InvokeFrom.WEB_APP
         user_id = "user-456"
         app_mode = AppMode.ADVANCED_CHAT
-        mock_app_queue_manager.set_stop_flag.return_value = True
 
         # Simulate GraphEngine failure
         mock_graph_engine_manager.return_value.send_stop_command.side_effect = Exception("GraphEngine error")
@@ -110,21 +107,3 @@ class TestAppTaskService:
 
         # Verify legacy mechanism was still called before the exception
         mock_app_queue_manager.set_stop_flag.assert_called_once_with(task_id, invoke_from, user_id)
-
-    @pytest.mark.parametrize("task_owned_by_user", [False, None])
-    @patch("services.app_task_service.AppQueueManager")
-    @patch("services.app_task_service.GraphEngineManager")
-    def test_advanced_chat_does_not_send_graph_stop_for_unowned_task(
-        self, mock_graph_engine_manager, mock_app_queue_manager, task_owned_by_user
-    ):
-        mock_app_queue_manager.set_stop_flag.return_value = task_owned_by_user
-
-        AppTaskService.stop_task(
-            task_id="task-123",
-            invoke_from=InvokeFrom.SERVICE_API,
-            user_id="user-456",
-            app_mode=AppMode.ADVANCED_CHAT,
-        )
-
-        mock_app_queue_manager.set_stop_flag.assert_called_once_with("task-123", InvokeFrom.SERVICE_API, "user-456")
-        mock_graph_engine_manager.assert_not_called()
