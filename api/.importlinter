@@ -273,6 +273,35 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:web-authentication-service-boundary]
+name = Web authentication application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.web_authentication_service
+    services.entities.authentication_entities
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:web-authentication-adapters-persistence-boundary]
+name = Web authentication adapters do not access persistence directly
+type = forbidden
+source_modules =
+    services.web_authentication_adapters
+allow_indirect_imports = True
+forbidden_modules =
+    configs
+    extensions.ext_database
+    models
+    repositories
+    sqlalchemy
+
 [importlinter:contract:web-app-runtime-query-service-boundary]
 name = Web app runtime query application service does not directly depend on configuration, feature implementation, transport, or ORM modules
 type = forbidden

@@ -1,6 +1,5 @@
 """Application service for resolving web-app access."""
 
-from collections.abc import Callable
 from typing import Protocol
 
 from enums import WebAppAccessMode
@@ -10,6 +9,12 @@ _PERMISSION_CHECK_MODES = frozenset({WebAppAccessMode.PRIVATE, WebAppAccessMode.
 
 class WebAppAccessQuery(Protocol):
     def find_app_id_by_code(self, app_code: str) -> str | None: ...
+
+
+class WebAppAccessPolicyGateway(Protocol):
+    def get_access_mode(self, app_id: str) -> WebAppAccessMode: ...
+
+    def is_user_allowed(self, *, user_id: str, app_id: str) -> bool: ...
 
 
 class WebAppAccessReferenceRequiredError(ValueError):
@@ -29,14 +34,12 @@ class WebAppAccessQueryService:
         self,
         *,
         access: WebAppAccessQuery,
+        policy: WebAppAccessPolicyGateway,
         webapp_auth_enabled: bool,
-        access_mode_for_app: Callable[[str], WebAppAccessMode],
-        is_user_allowed_for_app: Callable[[str, str], bool],
     ) -> None:
         self._access = access
+        self._policy = policy
         self._webapp_auth_enabled = webapp_auth_enabled
-        self._access_mode_for_app = access_mode_for_app
-        self._is_user_allowed_for_app = is_user_allowed_for_app
 
     def get_access_mode(self, *, app_id: str | None, app_code: str | None) -> WebAppAccessMode:
         if not self._webapp_auth_enabled:
@@ -50,13 +53,19 @@ class WebAppAccessQueryService:
         if not app_id:
             raise WebAppAccessReferenceRequiredError("appId or appCode must be provided")
 
-        return self._access_mode_for_app(app_id)
+        return self._policy.get_access_mode(app_id)
+
+    def find_app_id_by_code(self, app_code: str) -> str | None:
+        return self._access.find_app_id_by_code(app_code)
 
     def requires_permission_check(self, app_id: str) -> bool:
-        return self._access_mode_for_app(app_id) in _PERMISSION_CHECK_MODES
+        return self._policy.get_access_mode(app_id) in _PERMISSION_CHECK_MODES
+
+    def requires_authentication(self, app_id: str) -> bool:
+        return self._webapp_auth_enabled and self._policy.get_access_mode(app_id) != WebAppAccessMode.PUBLIC
 
     def is_user_allowed(self, *, user_id: str, app_id: str) -> bool:
         if not self._webapp_auth_enabled:
             return True
 
-        return self._is_user_allowed_for_app(user_id, app_id)
+        return self._policy.is_user_allowed(user_id=user_id, app_id=app_id)

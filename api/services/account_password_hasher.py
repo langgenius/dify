@@ -1,4 +1,4 @@
-"""Legacy password implementation behind the account password port."""
+"""Password-library implementation of the account password port."""
 
 import base64
 import secrets
@@ -10,7 +10,7 @@ from services.account_ports import AccountPasswordHasher
 from services.entities.account_entities import AccountPasswordDigest
 
 
-class LegacyAccountPasswordHasher(AccountPasswordHasher):
+class PasswordLibraryAccountPasswordHasher(AccountPasswordHasher):
     @override
     def verify(self, password: str, *, password_hash: str, password_salt: str) -> bool:
         return compare_password(password, password_hash, password_salt)

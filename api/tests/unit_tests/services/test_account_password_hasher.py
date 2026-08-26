@@ -1,11 +1,11 @@
 import pytest
 
 from services.account_errors import InvalidAccountPasswordError
-from services.account_password_hasher import LegacyAccountPasswordHasher
+from services.account_password_hasher import PasswordLibraryAccountPasswordHasher
 
 
 def test_hash_produces_a_digest_that_can_be_verified() -> None:
-    passwords = LegacyAccountPasswordHasher()
+    passwords = PasswordLibraryAccountPasswordHasher()
 
     digest = passwords.hash("password123")
 
@@ -22,7 +22,7 @@ def test_hash_produces_a_digest_that_can_be_verified() -> None:
 
 
 def test_hash_maps_password_policy_validation() -> None:
-    passwords = LegacyAccountPasswordHasher()
+    passwords = PasswordLibraryAccountPasswordHasher()
 
     with pytest.raises(InvalidAccountPasswordError, match="Password must contain letters and numbers"):
         passwords.hash("letters-only")

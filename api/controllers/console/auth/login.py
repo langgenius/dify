@@ -69,7 +69,8 @@ from services.email_code_login_challenge import (
     EmailCodeLoginChallengeStatus,
     EmailCodeLoginChallengeUnavailableError,
 )
-from services.entities.auth_entities import LoginFailureReason, LoginPayloadBase
+from services.entities.auth_entities import LoginPayloadBase
+from services.entities.authentication_entities import LoginFailureReason
 from services.errors.account import (
     AccountNormalizedEmailAlreadyInUseError,
     AccountRegisterError,

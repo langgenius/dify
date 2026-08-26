@@ -35,7 +35,7 @@ from controllers.console.error import (
 from enums import DeploymentEdition
 from models.account import Account, Tenant
 from services.email_code_login_challenge import EmailCodeLoginChallengeResult, EmailCodeLoginChallengeStatus
-from services.entities.auth_entities import LoginFailureReason
+from services.entities.authentication_entities import LoginFailureReason
 from services.errors.account import (
     AccountLoginError,
     AccountNormalizedEmailAlreadyInUseError,

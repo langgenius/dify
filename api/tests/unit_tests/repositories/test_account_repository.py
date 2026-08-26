@@ -97,6 +97,26 @@ def test_account_repository_updates_password(
     assert persisted.password_salt == "new-salt"
 
 
+def test_account_repository_finds_authentication_snapshot_with_case_fallback(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    account = _persist_account(sqlite_session)
+    account.password = "stored-hash"
+    account.password_salt = "stored-salt"
+    sqlite_session.commit()
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    result = repository.find_for_authentication("Account@Example.com")
+
+    assert result is not None
+    assert result.id == "account-1"
+    assert result.email == "account@example.com"
+    assert result.status == "active"
+    assert result.password_hash == "stored-hash"
+    assert result.password_salt == "stored-salt"
+
+
 def test_account_integration_repository_lists_integrations(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
