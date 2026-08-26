@@ -7459,52 +7459,6 @@ Get instruction generation template
 | ---- | ----------- | ------ |
 | 200 | KnowledgeFS bulk job | **application/json**: [KnowledgeFSBulkJobResponse](#knowledgefsbulkjobresponse)<br> |
 
-### [GET] /knowledge-fs/spaces/{control_space_id}/credentials
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| control_space_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | KnowledgeFS credentials | **application/json**: [KnowledgeFSCredentialListResponse](#knowledgefscredentiallistresponse)<br> |
-
-### [POST] /knowledge-fs/spaces/{control_space_id}/credentials
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| control_space_id | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [KnowledgeFSCredentialCreatePayload](#knowledgefscredentialcreatepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | KnowledgeFS credential created | **application/json**: [KnowledgeFSCredentialCreateResponse](#knowledgefscredentialcreateresponse)<br> |
-
-### [DELETE] /knowledge-fs/spaces/{control_space_id}/credentials/{credential_id}
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| control_space_id | path |  | Yes | string |
-| credential_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 204 | KnowledgeFS credential revoked |
-
 ### [GET] /knowledge-fs/spaces/{control_space_id}/documents
 #### Parameters
 
@@ -20736,45 +20690,6 @@ Input field definition for snippet parameters.
 | description | string |  | No |
 | source_url | string |  | Yes |
 | title | string |  | No |
-
-#### KnowledgeFSCredentialCreatePayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allowed_actions | [ string ] |  | Yes |
-| expires_at | string |  | No |
-
-#### KnowledgeFSCredentialCreateResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allowed_actions | [ string ] |  | Yes |
-| credential | string |  | Yes |
-| credential_last4 | string |  | Yes |
-| credential_prefix | string |  | Yes |
-| expires_at | string |  | Yes |
-| id | string |  | Yes |
-| principal | string |  | Yes |
-
-#### KnowledgeFSCredentialItemResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allowed_actions | [ string ] |  | Yes |
-| credential_last4 | string |  | Yes |
-| credential_prefix | string |  | Yes |
-| expires_at | string |  | Yes |
-| id | string |  | Yes |
-| last_used_at | string |  | Yes |
-| principal | string |  | Yes |
-| revision | integer |  | Yes |
-| status | string |  | Yes |
-
-#### KnowledgeFSCredentialListResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [KnowledgeFSCredentialItemResponse](#knowledgefscredentialitemresponse) ] |  | Yes |
 
 #### KnowledgeFSCursorQuery
 

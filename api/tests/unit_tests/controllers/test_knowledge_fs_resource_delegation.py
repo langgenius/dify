@@ -138,30 +138,6 @@ _CONSOLE_DELEGATION_CASES = (
             "caller_kind": KnowledgeFSAppSpaceJoinType.AGENT,
         },
     ),
-    (
-        "KnowledgeFSSpaceCredentialsApi",
-        "get",
-        ("space-1",),
-        "credentials",
-        "list",
-        {"control_space_id": "space-1"},
-    ),
-    (
-        "KnowledgeFSSpaceCredentialsApi",
-        "post",
-        ("space-1",),
-        "credentials",
-        "create",
-        {"control_space_id": "space-1"},
-    ),
-    (
-        "KnowledgeFSSpaceCredentialApi",
-        "delete",
-        ("space-1", "credential-1"),
-        "credentials",
-        "revoke",
-        {"control_space_id": "space-1", "credential_id": "credential-1"},
-    ),
     ("KnowledgeFSSpaceSettingsApi", "get", ("space-1",), "facade", "get_settings", {"control_space_id": "space-1"}),
     (
         "KnowledgeFSSpaceSettingsApi",
@@ -644,7 +620,6 @@ def test_console_resources_delegate_one_tenant_scoped_product_operation(
         application=MagicMock(),
         control_plane=MagicMock(),
         app_bindings=MagicMock(),
-        credentials=MagicMock(),
         facade=MagicMock(),
     )
     delegate = getattr(runtime, component_name).__getattr__(delegate_name)
@@ -1267,14 +1242,7 @@ def test_service_resource_helpers_validate_feature_bearer_headers_and_boolean_qu
         headers={"Authorization": "bEaReR  credential-value  ", "Idempotency-Key": "request-key"},
     ):
         assert service_resources._payload(KnowledgeFSQueryCreatePayload).query == "question"
-        assert service_resources._raw_bearer_credential() == "credential-value"
         assert service_resources._idempotency_key() == "request-key"
-
-    for authorization in (None, "Basic token", "Bearer", "Bearer   "):
-        headers = {"Authorization": authorization} if authorization is not None else {}
-        with app.test_request_context("/", headers=headers), pytest.raises(Exception) as raised:
-            service_resources._raw_bearer_credential()
-        assert raised.value.__class__.__name__ == "KnowledgeFSInvalidCredentialHTTPError"
 
     monkeypatch.setattr(service_resources.dify_config, "KNOWLEDGE_FS_ENABLED", False)
     with pytest.raises(NotFound):
@@ -1365,7 +1333,6 @@ def test_console_error_adapter_maps_every_domain_boundary_to_the_stable_http_con
 
     from services.knowledge_fs.app_binding_management import KnowledgeFSAppBindingManagementError
     from services.knowledge_fs.control_plane_service import KnowledgeFSControlPlaneInvariantError
-    from services.knowledge_fs.credential_service import KnowledgeFSCredentialPolicyError
     from services.knowledge_fs.product_authorization import KnowledgeFSProductNotFoundError
     from services.knowledge_fs.product_remote import (
         KnowledgeFSProductRemoteError,
@@ -1382,7 +1349,6 @@ def test_console_error_adapter_maps_every_domain_boundary_to_the_stable_http_con
         (KnowledgeFSOperationUnavailableError("manifest mismatch"), KnowledgeFSOperationUnavailableHTTPError),
         (KnowledgeFSProductRemoteError("upstream unavailable"), KnowledgeFSUpstreamUnavailableHTTPError),
         (KnowledgeFSAppBindingManagementError("invalid binding"), KnowledgeFSInvalidRequestHTTPError),
-        (KnowledgeFSCredentialPolicyError("invalid policy"), KnowledgeFSInvalidRequestHTTPError),
         (KnowledgeFSControlPlaneInvariantError("missing revision"), KnowledgeFSInvalidRequestHTTPError),
         (validation_error, KnowledgeFSInvalidRequestHTTPError),
         (PermissionError("forbidden"), KnowledgeFSAccessDeniedHTTPError),
@@ -1401,18 +1367,18 @@ def test_console_error_adapter_maps_every_domain_boundary_to_the_stable_http_con
 def test_service_error_adapter_maps_every_domain_boundary_to_the_stable_http_contract() -> None:
     from pydantic import ValidationError
 
-    from services.knowledge_fs.credential_service import KnowledgeFSCredentialValidationError
     from services.knowledge_fs.product_remote import (
         KnowledgeFSProductRemoteError,
         KnowledgeFSProductRequestRejectedError,
         KnowledgeFSProductResourceNotFoundError,
     )
+    from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiAuthorizationError
 
     with pytest.raises(ValidationError) as raised_validation:
         KnowledgeFSQueryCreatePayload.model_validate({"query": ""})
     validation_error = raised_validation.value
     mappings = (
-        (KnowledgeFSCredentialValidationError("revoked"), KnowledgeFSInvalidCredentialHTTPError),
+        (KnowledgeFSServiceApiAuthorizationError("revoked"), KnowledgeFSInvalidCredentialHTTPError),
         (KnowledgeFSOperationUnavailableError("manifest mismatch"), KnowledgeFSServiceOperationUnavailableHTTPError),
         (
             KnowledgeFSProductResourceNotFoundError("missing child"),
@@ -1498,11 +1464,11 @@ def test_console_app_binding_route_rejects_unknown_caller_kind_before_revoke(
     revoke.assert_not_called()
 
 
-def test_service_profile_hides_unknown_operations_before_credential_validation(
+def test_service_profile_hides_unknown_operations_before_dataset_key_authorization(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    credentials = SimpleNamespace(validate_service_credential=MagicMock())
-    runtime = SimpleNamespace(credentials=credentials)
+    authorization = SimpleNamespace(authorize=MagicMock())
+    runtime = SimpleNamespace(service_api_authorization=authorization)
     monkeypatch.setattr(service_resources, "product_operation_action", MagicMock(side_effect=KeyError("unknown")))
 
     with pytest.raises(KnowledgeFSOperationUnavailableError, match="unknownOperation"):
@@ -1512,7 +1478,7 @@ def test_service_profile_hides_unknown_operations_before_credential_validation(
             control_space_id="space-1",
         )
 
-    credentials.validate_service_credential.assert_not_called()
+    authorization.authorize.assert_not_called()
 
 
 def test_service_operation_helper_forwards_the_complete_validated_request(

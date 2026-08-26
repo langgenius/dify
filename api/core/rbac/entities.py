@@ -63,7 +63,6 @@ class RBACPermission(StrEnum):
     KNOWLEDGE_FS_EDIT = "knowledge_space_edit"
     KNOWLEDGE_FS_DELETE = "knowledge_space_delete"
     KNOWLEDGE_FS_ACCESS_CONFIG = "knowledge_space_access_config"
-    KNOWLEDGE_FS_API_KEY_MANAGE = "knowledge_space_api_key_manage"
     KNOWLEDGE_FS_DOCUMENT_WRITE = "knowledge_space_document_write"
     KNOWLEDGE_FS_QUERY = "knowledge_space_query"
 

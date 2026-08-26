@@ -681,10 +681,10 @@ describe("Dify Capability v2 request guard", () => {
       ],
     });
     const serviceClaims = claims({
-      actor: "dify-kfs-credential:credential-1",
+      actor: "dify-dataset-api-key:credential-1",
       azp: "dify-service-api",
       caller_kind: "service",
-      sub: "dify-kfs-credential:credential-1",
+      sub: "dify-dataset-api-key:credential-1",
     });
 
     await expect(
@@ -891,11 +891,11 @@ describe("Dify Capability v2 request guard", () => {
     const guard = createDifyCapabilityV2RequestGuard();
     const provisionClaims = claims({
       action: "knowledge_spaces.provision",
-      actor: "dify-kfs-credential:credential-1",
+      actor: "dify-dataset-api-key:credential-1",
       azp: "dify-service-api",
       caller_kind: "service",
       resource: { id: "workspace-1", parent_id: null, type: "namespace" },
-      sub: "dify-kfs-credential:credential-1",
+      sub: "dify-dataset-api-key:credential-1",
     });
 
     await expect(
@@ -935,11 +935,11 @@ describe("Dify Capability v2 request guard", () => {
     const guard = createDifyCapabilityV2RequestGuard();
     const serviceClaims = claims({
       action: "capability_grants.revoke",
-      actor: "dify-kfs-credential:credential-1",
+      actor: "dify-dataset-api-key:credential-1",
       azp: "dify-service-api",
       caller_kind: "service",
       resource: { id: "space-1", parent_id: null, type: "knowledge_space" },
-      sub: "dify-kfs-credential:credential-1",
+      sub: "dify-dataset-api-key:credential-1",
     });
 
     await expect(

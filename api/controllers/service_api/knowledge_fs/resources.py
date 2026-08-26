@@ -1,4 +1,4 @@
-"""KnowledgeFS Service API routes; no Dataset token or model is used."""
+"""KnowledgeFS Service API routes authenticated by workspace Dataset API keys."""
 
 from __future__ import annotations
 
@@ -31,12 +31,9 @@ from controllers.service_api.knowledge_fs.error import (
     KnowledgeFSServiceResourceNotFoundHTTPError,
     KnowledgeFSServiceUpstreamUnavailableHTTPError,
 )
+from controllers.service_api.wraps import validate_and_get_api_token
 from core.db.session_factory import session_factory
 from libs.helper import dump_response
-from services.knowledge_fs.credential_service import (
-    KnowledgeFSCredentialValidationError,
-    KnowledgeFSServiceCredentialProfile,
-)
 from services.knowledge_fs.product_dto import (
     KnowledgeFSAdmittedQueryRequest,
     KnowledgeFSAnswerTraceResponse,
@@ -100,6 +97,10 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSRemoteSSEResponse,
 )
 from services.knowledge_fs.runtime import KnowledgeFSRuntime, get_knowledge_fs_runtime
+from services.knowledge_fs.service_api_authorization import (
+    KnowledgeFSServiceApiAuthorizationError,
+    KnowledgeFSServiceApiProfile,
+)
 
 _MAX_STREAM_CAPABILITY_BYTES = 16 * 1024
 _MAX_STREAM_TRACE_ID_BYTES = 255
@@ -175,7 +176,7 @@ def _service_api_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         try:
             return view(*args, **kwargs)
-        except KnowledgeFSCredentialValidationError as exc:
+        except KnowledgeFSServiceApiAuthorizationError as exc:
             raise KnowledgeFSInvalidCredentialHTTPError() from exc
         except KnowledgeFSOperationUnavailableError as exc:
             raise KnowledgeFSServiceOperationUnavailableHTTPError() from exc
@@ -216,13 +217,6 @@ def _query_pairs(model: BaseModel) -> tuple[tuple[str, str], ...]:
     return tuple(
         (name, str(value).lower() if isinstance(value, bool) else str(value)) for name, value in values.items()
     )
-
-
-def _raw_bearer_credential() -> str:
-    scheme, separator, credential = request.headers.get("Authorization", "").partition(" ")
-    if separator != " " or scheme.lower() != "bearer" or not credential.strip():
-        raise KnowledgeFSInvalidCredentialHTTPError()
-    return credential.strip()
 
 
 def _stream_capability() -> tuple[str, str]:
@@ -281,18 +275,19 @@ def _profile(
     *,
     operation_id: str,
     control_space_id: str,
-) -> KnowledgeFSServiceCredentialProfile:
+) -> KnowledgeFSServiceApiProfile:
     try:
-        required_action = product_operation_action(operation_id)
+        product_operation_action(operation_id)
     except KeyError as exc:
         raise KnowledgeFSOperationUnavailableError(f"KnowledgeFS operation is unavailable: {operation_id}") from exc
-    profile = runtime.credentials.validate_service_credential(
-        raw_credential=_raw_bearer_credential(),
-        required_action=required_action,
+    api_token = validate_and_get_api_token("dataset")
+    if api_token.tenant_id is None:
+        raise KnowledgeFSServiceApiAuthorizationError("Dataset API key is not workspace-scoped")
+    return runtime.service_api_authorization.authorize(
+        api_token_id=str(api_token.id),
+        tenant_id=str(api_token.tenant_id),
+        control_space_id=control_space_id,
     )
-    if profile.control_space_id != control_space_id:
-        raise KnowledgeFSCredentialValidationError("Invalid KnowledgeFS service credential")
-    return profile
 
 
 def _execute_service_operation(

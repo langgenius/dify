@@ -431,7 +431,7 @@ def validate_capability_v2_auth_manifest(value: dict[str, Any]) -> None:
         "interactive": {"authorizedParty": "dify-console", "subjectPrefix": "dify-account:"},
         "internal_worker": {"authorizedParty": "dify-worker", "subjectPrefix": "dify-worker:"},
         "mcp": {"authorizedParty": "dify-mcp", "subjectPrefix": "dify-mcp-session:"},
-        "service": {"authorizedParty": "dify-service-api", "subjectPrefix": "dify-kfs-credential:"},
+        "service": {"authorizedParty": "dify-service-api", "subjectPrefix": "dify-dataset-api-key:"},
         "workflow": {"authorizedParty": "dify-workflow", "subjectPrefix": "dify-app:"},
     }:
         raise ValueError("KnowledgeFS Capability v2 caller profiles are invalid")

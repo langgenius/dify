@@ -8,10 +8,9 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
 
+from models.enums import ApiTokenType
 from models.knowledge_fs import (
     AppKnowledgeFSSpaceJoin,
-    KnowledgeFSApiCredential,
-    KnowledgeFSApiCredentialStatus,
     KnowledgeFSAppSpaceJoinStatus,
     KnowledgeFSAppSpaceJoinType,
     KnowledgeFSAuthorizationRevision,
@@ -23,13 +22,14 @@ from models.knowledge_fs import (
     KnowledgeFSExternalAccessPolicy,
     KnowledgeFSLifecycleOutbox,
 )
+from models.model import ApiToken
 from services.knowledge_fs.app_admission_service import KnowledgeFSAppPrincipalProfile
 from services.knowledge_fs.capability_broker import KnowledgeFSCapabilityBroker
-from services.knowledge_fs.credential_service import KnowledgeFSServiceCredentialProfile
 from services.knowledge_fs.product_operations import KnowledgeFSProductPermission
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
 from services.knowledge_fs.product_service import AuthorizedKnowledgeFSControlSpace
 from services.knowledge_fs.revocation_commands import KnowledgeFSRevocationCommandProducer
+from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiProfile
 from services.knowledge_fs_capability import CapabilityIssueRequest
 
 
@@ -174,7 +174,7 @@ class FakeCutoverGate:
 
 def _seed_external_principals(
     sqlite_session: Session,
-) -> tuple[KnowledgeFSControlSpace, KnowledgeFSServiceCredentialProfile, KnowledgeFSAppPrincipalProfile]:
+) -> tuple[KnowledgeFSControlSpace, KnowledgeFSServiceApiProfile, KnowledgeFSAppPrincipalProfile]:
     space = KnowledgeFSControlSpace(
         tenant_id="tenant-1",
         owner_account_id="account-1",
@@ -182,15 +182,7 @@ def _seed_external_principals(
         knowledge_space_id="space-1",
         state=KnowledgeFSControlSpaceState.ACTIVE,
     )
-    credential = KnowledgeFSApiCredential(
-        tenant_id="tenant-1",
-        control_space_id=space.id,
-        credential_hash="sha256:credential",
-        credential_prefix="kfs_cred",
-        credential_last4="cred",
-        principal="credential-principal",
-        allowed_actions=["queries.create"],
-    )
+    api_token = ApiToken(tenant_id="tenant-1", type=ApiTokenType.DATASET, token="dataset-token")
     join = AppKnowledgeFSSpaceJoin(
         tenant_id="tenant-1",
         control_space_id=space.id,
@@ -214,27 +206,24 @@ def _seed_external_principals(
                 service_api_enabled=True,
                 agent_enabled=True,
             ),
-            credential,
+            api_token,
             join,
         ]
     )
     sqlite_session.commit()
     return (
         space,
-        KnowledgeFSServiceCredentialProfile(
+        KnowledgeFSServiceApiProfile(
             tenant_id="tenant-1",
             control_space_id=space.id,
-            credential_id=credential.id,
-            principal_id=credential.principal,
-            allowed_actions=frozenset(credential.allowed_actions),
+            api_token_id=api_token.id,
+            principal_id=api_token.id,
             knowledge_space_id="space-1",
             knowledge_space_revision=0,
             membership_epoch=1,
             space_acl_epoch=2,
             external_access_epoch=3,
             content_policy_revision=4,
-            credential_revision=credential.revision,
-            expires_at=None,
         ),
         KnowledgeFSAppPrincipalProfile(
             tenant_id="tenant-1",
@@ -257,7 +246,7 @@ _ISSUANCE_FENCE_MODELS = (
     KnowledgeFSControlSpace,
     KnowledgeFSAuthorizationRevision,
     KnowledgeFSExternalAccessPolicy,
-    KnowledgeFSApiCredential,
+    ApiToken,
     AppKnowledgeFSSpaceJoin,
     KnowledgeFSCapabilityIssuanceReservation,
     KnowledgeFSCapabilityIssuanceAudit,
@@ -560,9 +549,9 @@ def test_stale_external_profile_is_revalidated_before_reservation(
 ) -> None:
     space, service_profile, app_profile = _seed_external_principals(sqlite_session)
     if principal_kind == "service":
-        credential = sqlite_session.get(KnowledgeFSApiCredential, service_profile.credential_id)
-        assert credential is not None
-        credential.status = KnowledgeFSApiCredentialStatus.REVOKED
+        api_token = sqlite_session.get(ApiToken, service_profile.api_token_id)
+        assert api_token is not None
+        sqlite_session.delete(api_token)
     else:
         join = sqlite_session.get(AppKnowledgeFSSpaceJoin, app_profile.join_id)
         assert join is not None
@@ -605,14 +594,11 @@ def test_external_issuance_uses_fresh_authorization_revision(
     revision = sqlite_session.scalar(
         sa.select(KnowledgeFSAuthorizationRevision).where(KnowledgeFSAuthorizationRevision.control_space_id == space.id)
     )
-    credential = sqlite_session.get(KnowledgeFSApiCredential, service_profile.credential_id)
     assert revision is not None
-    assert credential is not None
     revision.membership_epoch = 11
     revision.space_acl_epoch = 12
     revision.external_access_epoch = 13
     revision.content_policy_revision = 14
-    credential.revision = 15
     sqlite_session.commit()
     issuer = FakeIssuer()
     broker = KnowledgeFSCapabilityBroker(
@@ -640,7 +626,7 @@ def test_external_issuance_uses_fresh_authorization_revision(
     assert request.authz_revision.space_acl_epoch == 12
     assert request.authz_revision.external_access_epoch == 13
     assert request.content_policy_revision == 14
-    assert request.authz_revision.credential_revision == (15 if principal_kind == "service" else None)
+    assert request.authz_revision.credential_revision is None
 
 
 @pytest.mark.parametrize(
@@ -772,7 +758,7 @@ def test_uncutover_workspace_rejects_service_and_app_capabilities_before_issuanc
     if principal_kind == "service":
         with pytest.raises(KnowledgeFSOperationUnavailableError, match="not cut over"):
             broker.issue_service(
-                profile=cast(KnowledgeFSServiceCredentialProfile, SimpleNamespace(tenant_id="tenant-1")),
+                profile=cast(KnowledgeFSServiceApiProfile, SimpleNamespace(tenant_id="tenant-1")),
                 operation_id="createQuery",
             )
     else:

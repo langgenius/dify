@@ -22,7 +22,6 @@ from controllers.console.knowledge_fs.error import (
 from controllers.console.wraps import RBACPermission, RBACResourceScope
 from controllers.service_api import service_api_ns
 from controllers.service_api.knowledge_fs import resources as service_resources
-from services.knowledge_fs.credential_service import KnowledgeFSServiceCredentialProfile
 from services.knowledge_fs.download_service import KnowledgeFSDownloadUnavailableError
 from services.knowledge_fs.object_storage import KnowledgeFSObjectMetadata
 from services.knowledge_fs.product_dto import (
@@ -41,6 +40,7 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSRemoteMultipartFile,
     KnowledgeFSRemoteSSEResponse,
 )
+from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiProfile
 
 _API_ROOT = Path(__file__).resolve().parents[3]
 
@@ -70,7 +70,6 @@ def test_console_and_service_api_routes_are_registered() -> None:
         "/knowledge-fs/spaces/<string:control_space_id>/app-bindings",
         ("/knowledge-fs/spaces/<string:control_space_id>/app-bindings/<string:caller_kind>/<string:app_id>"),
         "/knowledge-fs/spaces/<string:control_space_id>/external-access",
-        "/knowledge-fs/spaces/<string:control_space_id>/credentials",
         "/knowledge-fs/spaces/<string:control_space_id>/settings",
         "/knowledge-fs/spaces/<string:control_space_id>/documents",
         "/knowledge-fs/spaces/<string:control_space_id>/documents/<string:document_id>/multimodal",
@@ -382,7 +381,6 @@ def test_knowledge_fs_request_and_response_schemas_are_registered() -> None:
         "KnowledgeFSSpaceUpdatePayload",
         "KnowledgeFSMembersReplacePayload",
         "KnowledgeFSExternalAccessPayload",
-        "KnowledgeFSCredentialCreatePayload",
         "KnowledgeFSSettingsPayload",
         "KnowledgeFSSourceCreatePayload",
         "KnowledgeFSQueryCreatePayload",
@@ -391,7 +389,6 @@ def test_knowledge_fs_request_and_response_schemas_are_registered() -> None:
         "KnowledgeFSStreamCapabilityPayload",
         "KnowledgeFSSpaceListResponse",
         "KnowledgeFSSpaceDetailResponse",
-        "KnowledgeFSCredentialCreateResponse",
         "KnowledgeFSDocumentStagedUploadPayload",
         "KnowledgeFSDocumentStagedUploadAcceptedResponse",
         "KnowledgeFSDocumentMultimodalAssetQuery",
@@ -1051,37 +1048,41 @@ def test_jwks_http_resource_returns_only_public_keys(monkeypatch: pytest.MonkeyP
     assert not {"d", "p", "q", "dp", "dq", "qi"} & set().union(*(key.keys() for key in payload["keys"]))
 
 
-def test_service_profile_rejects_cross_control_space_before_facade_io() -> None:
-    class Credentials:
-        def validate_service_credential(self, **kwargs):
-            _ = kwargs
-            return KnowledgeFSServiceCredentialProfile(
-                tenant_id="tenant-1",
-                control_space_id="control-1",
-                credential_id="credential-1",
-                principal_id="credential-1",
-                allowed_actions=frozenset({"documents.list"}),
-                knowledge_space_id="space-1",
-                knowledge_space_revision=1,
-                membership_epoch=0,
-                space_acl_epoch=0,
-                external_access_epoch=0,
-                content_policy_revision=0,
-                credential_revision=0,
-                expires_at=None,
-            )
-
-    runtime = SimpleNamespace(credentials=Credentials())
+def test_service_profile_authorizes_the_dataset_key_for_the_route_space(monkeypatch: pytest.MonkeyPatch) -> None:
+    profile = KnowledgeFSServiceApiProfile(
+        tenant_id="tenant-1",
+        control_space_id="control-2",
+        api_token_id="token-1",
+        principal_id="token-1",
+        knowledge_space_id="space-1",
+        knowledge_space_revision=1,
+        membership_epoch=0,
+        space_acl_epoch=0,
+        external_access_epoch=0,
+        content_policy_revision=0,
+    )
+    authorization = MagicMock()
+    authorization.authorize.return_value = profile
+    runtime = SimpleNamespace(service_api_authorization=authorization)
+    monkeypatch.setattr(
+        service_resources,
+        "validate_and_get_api_token",
+        MagicMock(return_value=SimpleNamespace(id="token-1", tenant_id="tenant-1")),
+    )
     app = Flask(__name__)
-    with app.test_request_context(headers={"Authorization": "Bearer kfs_test_credential_value_123456"}):
-        with pytest.raises(Exception) as raised:
-            service_resources._profile(
-                runtime,  # type: ignore[arg-type]
-                operation_id="listDocuments",
-                control_space_id="control-2",
-            )
+    with app.test_request_context(headers={"Authorization": "Bearer dataset-test-key"}):
+        result = service_resources._profile(
+            runtime,  # type: ignore[arg-type]
+            operation_id="listDocuments",
+            control_space_id="control-2",
+        )
 
-    assert raised.value.__class__.__name__ == "KnowledgeFSCredentialValidationError"
+    assert result is profile
+    authorization.authorize.assert_called_once_with(
+        api_token_id="token-1",
+        tenant_id="tenant-1",
+        control_space_id="control-2",
+    )
 
 
 def test_product_modules_do_not_import_dify_dataset_or_document_services() -> None:
@@ -1369,13 +1370,9 @@ def test_task_stream_capability_uses_broker(
 
 def test_service_query_admission_uses_broker(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[dict[str, object]] = []
-    credential_calls: list[dict[str, object]] = []
     profile = SimpleNamespace(tenant_id="tenant-1", control_space_id="control-1")
-
-    class Credentials:
-        def validate_service_credential(self, **kwargs):
-            credential_calls.append(kwargs)
-            return profile
+    authorization = MagicMock()
+    authorization.authorize.return_value = profile
 
     class Broker:
         def issue_service(self, **kwargs):
@@ -1387,8 +1384,13 @@ def test_service_query_admission_uses_broker(monkeypatch: pytest.MonkeyPatch) ->
             )
 
     runtime = SimpleNamespace(
-        credentials=Credentials(),
+        service_api_authorization=authorization,
         broker=Broker(),
+    )
+    monkeypatch.setattr(
+        service_resources,
+        "validate_and_get_api_token",
+        MagicMock(return_value=SimpleNamespace(id="token-1", tenant_id="tenant-1")),
     )
     monkeypatch.setattr(service_resources.dify_config, "SERVICE_API_URL", "https://api.dify.test")
     monkeypatch.setattr(service_resources, "_runtime", lambda: runtime)
@@ -1396,7 +1398,7 @@ def test_service_query_admission_uses_broker(monkeypatch: pytest.MonkeyPatch) ->
 
     with app.test_request_context(
         json={"query": "What changed?", "mode": "fast"},
-        headers={"Authorization": "Bearer kfs_test_credential_value_123456"},
+        headers={"Authorization": "Bearer dataset-test-key"},
     ):
         post = inspect.unwrap(service_resources.KnowledgeFSServiceQueryAdmissionApi.post)
         response = post(service_resources.KnowledgeFSServiceQueryAdmissionApi(), "control-1")
@@ -1404,10 +1406,9 @@ def test_service_query_admission_uses_broker(monkeypatch: pytest.MonkeyPatch) ->
     assert response["operation_id"] == "createQuery"
     assert response["request"]["knowledgeSpaceId"] == "space-1"
     assert response["url"] == "https://api.dify.test/v1/knowledge-fs/query-stream"
-    assert credential_calls == [
-        {
-            "raw_credential": "kfs_test_credential_value_123456",
-            "required_action": "queries.create",
-        }
-    ]
+    authorization.authorize.assert_called_once_with(
+        api_token_id="token-1",
+        tenant_id="tenant-1",
+        control_space_id="control-1",
+    )
     assert calls == [{"profile": profile, "operation_id": "createQuery"}]

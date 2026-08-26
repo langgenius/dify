@@ -70,7 +70,7 @@
     },
     "service": {
       "authorizedParty": "dify-service-api",
-      "subjectPrefix": "dify-kfs-credential:"
+      "subjectPrefix": "dify-dataset-api-key:"
     },
     "workflow": {
       "authorizedParty": "dify-workflow",

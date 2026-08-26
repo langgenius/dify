@@ -309,7 +309,7 @@ def test_capability_metric_export_failure_never_changes_issuance() -> None:
     ("caller_kind", "principal_id", "expected_subject", "expected_azp"),
     [
         ("interactive", "account-1", "dify-account:account-1", "dify-console"),
-        ("service", "credential-1", "dify-kfs-credential:credential-1", "dify-service-api"),
+        ("service", "credential-1", "dify-dataset-api-key:credential-1", "dify-service-api"),
         ("agent", "app-1", "dify-app:app-1", "dify-agent"),
         ("workflow", "app-1", "dify-app:app-1", "dify-workflow"),
         ("internal_worker", "indexer-1", "dify-worker:indexer-1", "dify-worker"),

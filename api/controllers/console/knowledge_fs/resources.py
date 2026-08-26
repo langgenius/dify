@@ -56,9 +56,6 @@ from services.knowledge_fs.app_binding_management import KnowledgeFSAppBindingMa
 from services.knowledge_fs.control_plane_service import (
     KnowledgeFSControlPlaneInvariantError,
 )
-from services.knowledge_fs.credential_service import (
-    KnowledgeFSCredentialPolicyError,
-)
 from services.knowledge_fs.download_service import (
     KnowledgeFSDownloadObjectNotFoundError,
     KnowledgeFSDownloadService,
@@ -103,9 +100,6 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSCrawlPreviewPageListQuery,
     KnowledgeFSCrawlPreviewPageListResponse,
     KnowledgeFSCrawlPreviewSelectionPayload,
-    KnowledgeFSCredentialCreatePayload,
-    KnowledgeFSCredentialCreateResponse,
-    KnowledgeFSCredentialListResponse,
     KnowledgeFSCursorQuery,
     KnowledgeFSDocumentAvailabilityPayload,
     KnowledgeFSDocumentBatchDownloadPayload,
@@ -279,7 +273,6 @@ register_schema_models(
     KnowledgeFSBadCaseCreatePayload,
     KnowledgeFSBadCaseUpdatePayload,
     KnowledgeFSOverviewWindowQuery,
-    KnowledgeFSCredentialCreatePayload,
     KnowledgeFSCursorQuery,
     KnowledgeFSBulkDocumentAvailabilityPayload,
     KnowledgeFSBulkDocumentDeletePayload,
@@ -357,8 +350,6 @@ register_response_schema_models(
     KnowledgeFSBulkDeletionAcceptedResponse,
     KnowledgeFSBulkDocumentAvailabilityResponse,
     KnowledgeFSBulkJobResponse,
-    KnowledgeFSCredentialCreateResponse,
-    KnowledgeFSCredentialListResponse,
     KnowledgeFSDocumentListResponse,
     KnowledgeFSDocumentChunkListResponse,
     KnowledgeFSDocumentChunkResponse,
@@ -482,7 +473,6 @@ def _knowledge_fs_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise KnowledgeFSInvalidRequestHTTPError() from exc
         except (
             KnowledgeFSAppBindingManagementError,
-            KnowledgeFSCredentialPolicyError,
             KnowledgeFSControlPlaneInvariantError,
             ValidationError,
         ) as exc:
@@ -1208,65 +1198,6 @@ class KnowledgeFSSpaceAppBindingApi(Resource):
             control_space_id=control_space_id,
             app_id=app_id,
             caller_kind=parsed_caller_kind,
-        )
-        return "", HTTPStatus.NO_CONTENT
-
-
-@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/credentials")
-class KnowledgeFSSpaceCredentialsApi(Resource):
-    @console_ns.response(
-        HTTPStatus.OK,
-        "KnowledgeFS credentials",
-        console_ns.models[KnowledgeFSCredentialListResponse.__name__],
-    )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @_knowledge_fs_errors
-    def get(self, control_space_id: str):
-        actor_id, tenant_id = _actor()
-        result = _console_services().credentials.list(
-            tenant_id=tenant_id,
-            actor_account_id=actor_id,
-            control_space_id=control_space_id,
-        )
-        return dump_response(KnowledgeFSCredentialListResponse, result)
-
-    @console_ns.expect(console_ns.models[KnowledgeFSCredentialCreatePayload.__name__])
-    @console_ns.response(
-        HTTPStatus.CREATED,
-        "KnowledgeFS credential created",
-        console_ns.models[KnowledgeFSCredentialCreateResponse.__name__],
-    )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @_knowledge_fs_errors
-    def post(self, control_space_id: str):
-        actor_id, tenant_id = _actor()
-        result = _console_services().credentials.create(
-            tenant_id=tenant_id,
-            actor_account_id=actor_id,
-            control_space_id=control_space_id,
-            payload=_payload(KnowledgeFSCredentialCreatePayload),
-        )
-        return dump_response(KnowledgeFSCredentialCreateResponse, result), HTTPStatus.CREATED
-
-
-@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/credentials/<string:credential_id>")
-class KnowledgeFSSpaceCredentialApi(Resource):
-    @console_ns.response(HTTPStatus.NO_CONTENT, "KnowledgeFS credential revoked")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @_knowledge_fs_errors
-    def delete(self, control_space_id: str, credential_id: str):
-        actor_id, tenant_id = _actor()
-        _console_services().credentials.revoke(
-            tenant_id=tenant_id,
-            actor_account_id=actor_id,
-            control_space_id=control_space_id,
-            credential_id=credential_id,
         )
         return "", HTTPStatus.NO_CONTENT
 

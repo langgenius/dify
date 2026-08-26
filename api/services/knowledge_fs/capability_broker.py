@@ -11,10 +11,9 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
 from libs.datetime_utils import naive_utc_now
+from models.enums import ApiTokenType
 from models.knowledge_fs import (
     AppKnowledgeFSSpaceJoin,
-    KnowledgeFSApiCredential,
-    KnowledgeFSApiCredentialStatus,
     KnowledgeFSAppSpaceJoinStatus,
     KnowledgeFSAppSpaceJoinType,
     KnowledgeFSAuthorizationRevision,
@@ -22,11 +21,11 @@ from models.knowledge_fs import (
     KnowledgeFSControlSpaceState,
     KnowledgeFSExternalAccessPolicy,
 )
+from models.model import ApiToken
 from repositories.sqlalchemy_knowledge_fs_capability_issuance_reservation_repository import (
     SQLAlchemyKnowledgeFSCapabilityIssuanceReservationRepository,
 )
 from services.knowledge_fs.app_admission_service import KnowledgeFSAppPrincipalProfile
-from services.knowledge_fs.credential_service import KnowledgeFSServiceCredentialProfile
 from services.knowledge_fs.cutover_runtime_gate import KnowledgeFSWorkspaceRuntimeGatePort
 from services.knowledge_fs.product_operations import (
     KNOWLEDGE_FS_PRODUCT_OPERATIONS,
@@ -35,6 +34,7 @@ from services.knowledge_fs.product_operations import (
 )
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
 from services.knowledge_fs.product_service import KnowledgeFSProductService
+from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiProfile
 from services.knowledge_fs_capability import (
     KNOWLEDGE_FS_CAPABILITY_OPERATIONS,
     CapabilityAuthzRevision,
@@ -135,7 +135,7 @@ class KnowledgeFSCapabilityBroker:
     def issue_service(
         self,
         *,
-        profile: KnowledgeFSServiceCredentialProfile,
+        profile: KnowledgeFSServiceApiProfile,
         operation_id: str,
         resource_id: str | None = None,
         trace_id: str | None = None,
@@ -144,35 +144,32 @@ class KnowledgeFSCapabilityBroker:
         _, capability_operation_id = _operation_contract(operation_id)
         issuer = self._require_issuer()
         normalized_trace_id = _trace_id(trace_id)
-        capability_operation = KNOWLEDGE_FS_CAPABILITY_OPERATIONS[capability_operation_id]
         with self._session_maker.begin() as session:
             revision = _lock_authorization_revision(
                 session,
                 tenant_id=profile.tenant_id,
                 control_space_id=profile.control_space_id,
             )
-            credential, space, policy = _load_service_authorization(session, profile=profile)
+            api_token, space, policy = _load_service_authorization(session, profile=profile)
             if (
-                credential.status is not KnowledgeFSApiCredentialStatus.ACTIVE
-                or credential.principal != profile.principal_id
-                or (credential.expires_at is not None and credential.expires_at <= naive_utc_now())
+                api_token.type is not ApiTokenType.DATASET
+                or api_token.tenant_id != profile.tenant_id
                 or policy is None
                 or not policy.service_api_enabled
-                or capability_operation.action not in credential.allowed_actions
                 or space.state is not KnowledgeFSControlSpaceState.ACTIVE
                 or space.knowledge_space_id is None
             ):
-                raise KnowledgeFSOperationUnavailableError("KnowledgeFS credential is no longer authorized")
+                raise KnowledgeFSOperationUnavailableError("KnowledgeFS Service API access is no longer authorized")
             knowledge_space_id = space.knowledge_space_id
             request = _issue_request(
                 capability_operation_id=capability_operation_id,
                 tenant_id=profile.tenant_id,
                 control_space_id=profile.control_space_id,
                 knowledge_space_id=knowledge_space_id,
-                principal_id=credential.principal,
-                actor=f"dify-kfs-credential:{credential.principal}",
+                principal_id=api_token.id,
+                actor=f"dify-dataset-api-key:{api_token.id}",
                 caller_kind="service",
-                credential_revision=credential.revision,
+                credential_revision=None,
                 revision=revision,
                 resource_id=resource_id,
                 trace_id=normalized_trace_id,
@@ -336,36 +333,34 @@ def _lock_authorization_revision(
 def _load_service_authorization(
     session: Session,
     *,
-    profile: KnowledgeFSServiceCredentialProfile,
-) -> tuple[KnowledgeFSApiCredential, KnowledgeFSControlSpace, KnowledgeFSExternalAccessPolicy | None]:
+    profile: KnowledgeFSServiceApiProfile,
+) -> tuple[ApiToken, KnowledgeFSControlSpace, KnowledgeFSExternalAccessPolicy | None]:
     row = session.execute(
         sa.select(
-            KnowledgeFSApiCredential,
+            ApiToken,
             KnowledgeFSControlSpace,
             KnowledgeFSExternalAccessPolicy,
         )
         .join(
             KnowledgeFSControlSpace,
-            sa.and_(
-                KnowledgeFSControlSpace.tenant_id == KnowledgeFSApiCredential.tenant_id,
-                KnowledgeFSControlSpace.id == KnowledgeFSApiCredential.control_space_id,
-            ),
+            KnowledgeFSControlSpace.tenant_id == ApiToken.tenant_id,
         )
         .outerjoin(
             KnowledgeFSExternalAccessPolicy,
             sa.and_(
-                KnowledgeFSExternalAccessPolicy.tenant_id == KnowledgeFSApiCredential.tenant_id,
-                KnowledgeFSExternalAccessPolicy.control_space_id == KnowledgeFSApiCredential.control_space_id,
+                KnowledgeFSExternalAccessPolicy.tenant_id == KnowledgeFSControlSpace.tenant_id,
+                KnowledgeFSExternalAccessPolicy.control_space_id == KnowledgeFSControlSpace.id,
             ),
         )
         .where(
-            KnowledgeFSApiCredential.tenant_id == profile.tenant_id,
-            KnowledgeFSApiCredential.control_space_id == profile.control_space_id,
-            KnowledgeFSApiCredential.id == profile.credential_id,
+            ApiToken.id == profile.api_token_id,
+            ApiToken.tenant_id == profile.tenant_id,
+            ApiToken.type == ApiTokenType.DATASET,
+            KnowledgeFSControlSpace.id == profile.control_space_id,
         )
     ).one_or_none()
     if row is None:
-        raise KnowledgeFSOperationUnavailableError("KnowledgeFS credential is no longer authorized")
+        raise KnowledgeFSOperationUnavailableError("KnowledgeFS Service API access is no longer authorized")
     return row._t
 
 

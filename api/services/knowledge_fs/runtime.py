@@ -24,7 +24,6 @@ from services.knowledge_fs.control_plane_service import (
     SQLKnowledgeFSWorkspaceMemberPort,
 )
 from services.knowledge_fs.control_space_commands import KnowledgeFSControlSpaceCommandService
-from services.knowledge_fs.credential_service import KnowledgeFSCredentialService
 from services.knowledge_fs.cutover import KnowledgeFSWorkspaceCutoverService
 from services.knowledge_fs.cutover_runtime_gate import SQLKnowledgeFSWorkspaceRuntimeGate
 from services.knowledge_fs.data_facade import KnowledgeFSDataFacade
@@ -36,6 +35,7 @@ from services.knowledge_fs.product_remote_http import HTTPKnowledgeFSProductRemo
 from services.knowledge_fs.product_service import KnowledgeFSProductService
 from services.knowledge_fs.remote_registry import get_knowledge_fs_lifecycle_remote
 from services.knowledge_fs.revocation_commands import KnowledgeFSRevocationCommandProducer
+from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiAuthorizationService
 from services.knowledge_fs.space_tag_service import KnowledgeFSSpaceTagService
 from services.knowledge_fs_capability import create_configured_knowledge_fs_capability_issuer
 
@@ -47,7 +47,7 @@ class KnowledgeFSRuntime(NamedTuple):
     app_capabilities: KnowledgeFSAppExecutionCapabilityService
     broker: KnowledgeFSCapabilityBroker
     control_plane: KnowledgeFSControlPlaneService
-    credentials: KnowledgeFSCredentialService
+    service_api_authorization: KnowledgeFSServiceApiAuthorizationService
     facade: KnowledgeFSDataFacade
     space_tags: KnowledgeFSSpaceTagService
 
@@ -124,7 +124,7 @@ def create_knowledge_fs_runtime(session_maker: sessionmaker[Session]) -> Knowled
         issuer=issuer,
     )
     facade = KnowledgeFSDataFacade(broker=broker, remote=remote)
-    credentials = KnowledgeFSCredentialService(session_maker, product=product, revocations=revocations)
+    service_api_authorization = KnowledgeFSServiceApiAuthorizationService(session_maker)
     application = KnowledgeFSProductApplicationService(
         product=product,
         control_plane=control_plane,
@@ -149,7 +149,7 @@ def create_knowledge_fs_runtime(session_maker: sessionmaker[Session]) -> Knowled
         ),
         broker=broker,
         control_plane=control_plane,
-        credentials=credentials,
+        service_api_authorization=service_api_authorization,
         facade=facade,
         space_tags=KnowledgeFSSpaceTagService(session_maker, product=product),
     )

@@ -21,7 +21,6 @@ class KnowledgeFSProductPermission(StrEnum):
     EDIT = "knowledge_space_edit"
     DELETE = "knowledge_space_delete"
     ACCESS_CONFIG = "knowledge_space_access_config"
-    API_KEY_MANAGE = "knowledge_space_api_key_manage"
     DOCUMENT_WRITE = "knowledge_space_document_write"
     QUERY = "knowledge_space_query"
 

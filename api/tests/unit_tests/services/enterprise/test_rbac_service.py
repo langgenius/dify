@@ -1007,7 +1007,6 @@ class TestResourcePermissions:
             "knowledge_space_edit",
             "knowledge_space_delete",
             "knowledge_space_access_config",
-            "knowledge_space_api_key_manage",
             "knowledge_space_document_write",
             "knowledge_space_query",
         ]

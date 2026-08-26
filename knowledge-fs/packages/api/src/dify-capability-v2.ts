@@ -154,7 +154,7 @@ const PROFILE_CLAIMS: Readonly<
   interactive: { azp: "dify-console", subjectPrefix: "dify-account:" },
   mcp: { azp: "dify-mcp", subjectPrefix: "dify-mcp-session:" },
   internal_worker: { azp: "dify-worker", subjectPrefix: "dify-worker:" },
-  service: { azp: "dify-service-api", subjectPrefix: "dify-kfs-credential:" },
+  service: { azp: "dify-service-api", subjectPrefix: "dify-dataset-api-key:" },
   workflow: { azp: "dify-workflow", subjectPrefix: "dify-app:" },
 };
 

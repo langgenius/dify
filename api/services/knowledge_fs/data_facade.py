@@ -8,7 +8,6 @@ from typing import Literal
 from pydantic import BaseModel, JsonValue
 
 from services.knowledge_fs.capability_broker import KnowledgeFSCapabilityBroker
-from services.knowledge_fs.credential_service import KnowledgeFSServiceCredentialProfile
 from services.knowledge_fs.product_dto import (
     KnowledgeFSAdmittedQueryRequest,
     KnowledgeFSAnswerTraceResponse,
@@ -150,6 +149,7 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSRemoteSSERequest,
     KnowledgeFSRemoteSSEResponse,
 )
+from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiProfile
 
 
 class KnowledgeFSDataFacade:
@@ -2280,7 +2280,7 @@ class KnowledgeFSDataFacade:
     def execute_service(
         self,
         *,
-        profile: KnowledgeFSServiceCredentialProfile,
+        profile: KnowledgeFSServiceApiProfile,
         operation_id: str,
         payload: BaseModel | None = None,
         query: tuple[tuple[str, str], ...] = (),

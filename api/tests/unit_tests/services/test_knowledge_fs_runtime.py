@@ -47,7 +47,7 @@ def test_runtime_wires_one_shared_authorization_and_remote_graph(monkeypatch: py
         "KnowledgeFSCapabilityBroker",
         "KnowledgeFSControlPlaneService",
         "KnowledgeFSControlSpaceCommandService",
-        "KnowledgeFSCredentialService",
+        "KnowledgeFSServiceApiAuthorizationService",
         "KnowledgeFSDataFacade",
         "KnowledgeFSProductApplicationService",
         "KnowledgeFSProductService",
@@ -77,7 +77,7 @@ def test_runtime_wires_one_shared_authorization_and_remote_graph(monkeypatch: py
     assert result.app_capabilities is factories["KnowledgeFSAppExecutionCapabilityService"].return_value
     assert result.broker is factories["KnowledgeFSCapabilityBroker"].return_value
     assert result.control_plane is factories["KnowledgeFSControlPlaneService"].return_value
-    assert result.credentials is factories["KnowledgeFSCredentialService"].return_value
+    assert result.service_api_authorization is factories["KnowledgeFSServiceApiAuthorizationService"].return_value
     assert result.facade is factories["KnowledgeFSDataFacade"].return_value
 
     factories["HTTPKnowledgeFSProductRemoteClient"].assert_called_once_with(

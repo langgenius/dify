@@ -242,7 +242,7 @@ class CapabilityIssuanceProfile(NamedTuple):
 CAPABILITY_ISSUANCE_PROFILES: Final[Mapping[CapabilityCallerKind, CapabilityIssuanceProfile]] = MappingProxyType(
     {
         "interactive": CapabilityIssuanceProfile("dify-console", True, "dify-account"),
-        "service": CapabilityIssuanceProfile("dify-service-api", True, "dify-kfs-credential"),
+        "service": CapabilityIssuanceProfile("dify-service-api", True, "dify-dataset-api-key"),
         "agent": CapabilityIssuanceProfile("dify-agent", True, "dify-app"),
         "workflow": CapabilityIssuanceProfile("dify-workflow", True, "dify-app"),
         "internal_worker": CapabilityIssuanceProfile("dify-worker", True, "dify-worker"),

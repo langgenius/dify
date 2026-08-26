@@ -1143,39 +1143,6 @@ class KnowledgeFSAppBindingListResponse(ResponseModel):
     data: list[KnowledgeFSAppBindingResponse]
 
 
-class KnowledgeFSCredentialCreatePayload(BaseModel):
-    allowed_actions: list[str] = Field(min_length=1, max_length=100)
-    expires_at: datetime | None = None
-
-    model_config = ConfigDict(extra="forbid")
-
-
-class KnowledgeFSCredentialCreateResponse(ResponseModel):
-    id: str
-    credential: str
-    credential_prefix: str
-    credential_last4: str
-    principal: str
-    allowed_actions: list[str]
-    expires_at: datetime | None
-
-
-class KnowledgeFSCredentialItemResponse(ResponseModel):
-    id: str
-    credential_prefix: str
-    credential_last4: str
-    principal: str
-    allowed_actions: list[str]
-    status: str
-    revision: int
-    expires_at: datetime | None
-    last_used_at: datetime | None
-
-
-class KnowledgeFSCredentialListResponse(ResponseModel):
-    data: list[KnowledgeFSCredentialItemResponse]
-
-
 class KnowledgeFSProfileModelSelection(BaseModel):
     model: str = Field(min_length=1, max_length=256)
     plugin_id: str = Field(min_length=1, max_length=256, alias="pluginId")
@@ -3813,10 +3780,6 @@ __all__ = [
     "KnowledgeFSCrawlPreviewPageListQuery",
     "KnowledgeFSCrawlPreviewPageListResponse",
     "KnowledgeFSCrawlPreviewSelectionPayload",
-    "KnowledgeFSCredentialCreatePayload",
-    "KnowledgeFSCredentialCreateResponse",
-    "KnowledgeFSCredentialItemResponse",
-    "KnowledgeFSCredentialListResponse",
     "KnowledgeFSCursorQuery",
     "KnowledgeFSDeferredSyncPolicyPayload",
     "KnowledgeFSDocumentAvailabilityPayload",

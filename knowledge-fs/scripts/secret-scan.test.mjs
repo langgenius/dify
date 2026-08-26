@@ -131,7 +131,7 @@ test("secret scan recognizes Dify KnowledgeFS credentials without flagging datab
       'table_name = "kfs_capability_issuance_reservations"',
       'ann_table = "kfs_ann_dense_0123456789abcdef0123456789abcdef"',
     ].join("\n"),
-    path: "api/services/knowledge_fs/credential_service.py",
+    path: "api/services/knowledge_fs/service_api_authorization.py",
   });
 
   assert.deepEqual(
@@ -150,7 +150,7 @@ test("secret scan accepts every valid character class distribution in a Dify cre
   ];
   const findings = scanText({
     content: credentials.join("\n"),
-    path: "api/services/knowledge_fs/credential_service.py",
+    path: "api/services/knowledge_fs/service_api_authorization.py",
   });
 
   assert.deepEqual(
@@ -275,7 +275,7 @@ test("integration scan covers the complete KnowledgeFS and Dify integration surf
     "api/extensions/ext_knowledge_fs_observability.py",
     "api/models/knowledge_fs.py",
     "api/repositories/sqlalchemy_knowledge_fs_control_space_repository.py",
-    "api/services/knowledge_fs/credential_service.py",
+    "api/services/knowledge_fs/service_api_authorization.py",
     "api/tasks/knowledge_fs_lifecycle_tasks.py",
     "api/migrations/versions/2026_07_21_add_knowledge_fs.py",
     "docker/docker-compose.yaml",
