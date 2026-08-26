@@ -7,10 +7,10 @@ import type {
 import type { DeploymentVersion } from '../version'
 import type { UndeployHandler } from './types'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   ScrollArea,
   ScrollAreaContent,
-  ScrollAreaCorner,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -43,6 +43,51 @@ type EnvironmentTableProps = {
   onUndeploy: UndeployHandler
 }
 
+function EnvironmentTableColumns() {
+  return (
+    <colgroup>
+      <col className="w-43" />
+      <col className="w-46" />
+      <col className="w-44" />
+      <col />
+      <col className="w-36" />
+      <col className="w-44" />
+    </colgroup>
+  )
+}
+
+function EnvironmentTableHeader() {
+  const { t } = useTranslation('deployments')
+
+  return (
+    <table className="w-full shrink-0 table-fixed border-separate border-spacing-0">
+      <EnvironmentTableColumns />
+      <thead>
+        <tr className="h-7 bg-background-section-burn">
+          <th className="rounded-l-lg pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary">
+            {t(($) => $['deployTab.col.environment'])}
+          </th>
+          <th className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary">
+            {t(($) => $['studio.liveVersion'])}
+          </th>
+          <th className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary">
+            {t(($) => $['deployTab.col.status'])}
+          </th>
+          <th className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary">
+            {t(($) => $['studio.lastActivity'])}
+          </th>
+          <th className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary">
+            {t(($) => $['studio.accessPoints'])}
+          </th>
+          <th className="rounded-r-lg pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary">
+            {t(($) => $['deployTab.col.actions'])}
+          </th>
+        </tr>
+      </thead>
+    </table>
+  )
+}
+
 export function EnvironmentTable({
   appId,
   onChangeVersion,
@@ -67,6 +112,7 @@ export function EnvironmentTable({
   const showLoadingState = isLoading && deployments.length === 0
   const showErrorState = isError && deployments.length === 0
   const showEmptyState = !isLoading && !isError && deployments.length === 0
+  const hasDeployments = deployments.length > 0
 
   return (
     <section className="flex min-h-0 grow flex-col gap-3">
@@ -118,82 +164,69 @@ export function EnvironmentTable({
         </div>
       )}
 
-      <ScrollArea className="relative min-h-0 w-full grow overflow-hidden">
-        <ScrollAreaViewport
-          aria-labelledby="deploy-environments-title"
-          aria-busy={showLoadingState || isRetrying || latestVersionIsRetrying}
-          className="overscroll-contain"
-          role="region"
-        >
-          <ScrollAreaContent className="min-h-full">
-            {showLoadingState ? (
-              <Loading className="h-full" />
-            ) : showErrorState ? (
-              <EnvironmentTableEmpty
-                state="error"
-                isRetrying={isRetrying}
-                onRetry={() => void refetchDeployments()}
-              />
-            ) : showEmptyState ? (
-              <EnvironmentTableEmpty state="empty" onSelectEnvironment={onDeployToEnvironment} />
-            ) : (
-              <table className="w-full min-w-260 table-fixed border-separate border-spacing-0">
-                <colgroup>
-                  <col className="w-43" />
-                  <col className="w-46" />
-                  <col className="w-44" />
-                  <col />
-                  <col className="w-36" />
-                  <col className="w-44" />
-                </colgroup>
-                <thead>
-                  <tr className="sticky top-0 z-10 h-7 bg-background-section-burn">
-                    <th className="rounded-l-lg pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary">
-                      {t(($) => $['deployTab.col.environment'])}
-                    </th>
-                    <th className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary">
-                      {t(($) => $['studio.liveVersion'])}
-                    </th>
-                    <th className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary">
-                      {t(($) => $['deployTab.col.status'])}
-                    </th>
-                    <th className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary">
-                      {t(($) => $['studio.lastActivity'])}
-                    </th>
-                    <th className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary">
-                      {t(($) => $['studio.accessPoints'])}
-                    </th>
-                    <th className="rounded-r-lg pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary">
-                      {t(($) => $['deployTab.col.actions'])}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {deployments.map((row) => (
-                    <EnvironmentRow
-                      key={row.environment.id}
-                      appId={appId}
-                      latestVersion={deployableLatestVersion}
-                      row={row}
-                      onChangeVersion={onChangeVersion}
-                      onDeployLatest={onDeployLatest}
-                      onRedeploy={onRedeploy}
-                      onUndeploy={onUndeploy}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </ScrollAreaContent>
-        </ScrollAreaViewport>
-        <ScrollAreaScrollbar>
-          <ScrollAreaThumb />
-        </ScrollAreaScrollbar>
-        <ScrollAreaScrollbar orientation="horizontal">
-          <ScrollAreaThumb />
-        </ScrollAreaScrollbar>
-        <ScrollAreaCorner />
-      </ScrollArea>
+      <div
+        className={cn(
+          'min-h-0 w-full grow overflow-y-hidden',
+          hasDeployments ? 'overflow-x-auto' : 'overflow-x-hidden',
+        )}
+      >
+        <div className={cn('flex h-full flex-col', hasDeployments && 'min-w-260')}>
+          {hasDeployments && <EnvironmentTableHeader />}
+          <ScrollArea className="relative min-h-0 w-full grow overflow-hidden">
+            <ScrollAreaViewport
+              aria-labelledby="deploy-environments-title"
+              aria-busy={showLoadingState || isRetrying || latestVersionIsRetrying}
+              className="overscroll-contain"
+              role="region"
+              style={{ overflowX: 'hidden' }}
+            >
+              <ScrollAreaContent
+                className={cn(
+                  'w-full max-w-full',
+                  showLoadingState || showErrorState || showEmptyState ? 'h-full' : undefined,
+                )}
+                style={{ minWidth: 0 }}
+              >
+                {showLoadingState ? (
+                  <Loading type="app" />
+                ) : showErrorState ? (
+                  <EnvironmentTableEmpty
+                    state="error"
+                    isRetrying={isRetrying}
+                    onRetry={() => void refetchDeployments()}
+                  />
+                ) : showEmptyState ? (
+                  <EnvironmentTableEmpty
+                    state="empty"
+                    onSelectEnvironment={onDeployToEnvironment}
+                  />
+                ) : (
+                  <table className="w-full table-fixed border-separate border-spacing-0">
+                    <EnvironmentTableColumns />
+                    <tbody>
+                      {deployments.map((row) => (
+                        <EnvironmentRow
+                          key={row.environment.id}
+                          appId={appId}
+                          latestVersion={deployableLatestVersion}
+                          row={row}
+                          onChangeVersion={onChangeVersion}
+                          onDeployLatest={onDeployLatest}
+                          onRedeploy={onRedeploy}
+                          onUndeploy={onUndeploy}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </ScrollAreaContent>
+            </ScrollAreaViewport>
+            <ScrollAreaScrollbar>
+              <ScrollAreaThumb />
+            </ScrollAreaScrollbar>
+          </ScrollArea>
+        </div>
+      </div>
     </section>
   )
 }

@@ -172,7 +172,7 @@ function VersionList({
         style={{ overflowX: 'hidden' }}
       >
         <ScrollAreaContent
-          className={cn('min-h-full w-full max-w-full', className)}
+          className={cn('h-full w-full max-w-full', className)}
           style={{ minWidth: 0 }}
         >
           <div className="flex flex-col gap-px">
@@ -183,14 +183,16 @@ function VersionList({
               versions={versions}
             />
           </div>
-          {isLoading && <Loading className="h-20" />}
+          {isLoading && <Loading type="app" />}
           {!isLoading && versionsError && versions.length === 0 && (
-            <p role="alert" className="px-2 py-6 text-center system-xs-regular text-text-tertiary">
-              {tCommon(($) => $.error)}
-            </p>
+            <div className="flex h-full flex-col items-center justify-center px-2 py-6">
+              <p role="alert" className="text-center system-xs-regular text-text-tertiary">
+                {tCommon(($) => $.error)}
+              </p>
+            </div>
           )}
           {!isLoading && !versionsError && versions.length === 0 && (
-            <div className="flex flex-col items-center gap-2 px-2 py-6">
+            <div className="flex h-full flex-col items-center justify-center gap-2 px-2 py-6">
               <p className="text-center system-sm-regular text-text-tertiary">
                 {t(($) => $['studio.accessPoint.noPublishedTitle'])}
               </p>
