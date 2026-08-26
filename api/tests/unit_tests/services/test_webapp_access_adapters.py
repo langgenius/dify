@@ -78,9 +78,7 @@ def test_get_access_mode_maps_unknown_mode_to_unavailable() -> None:
 
 def test_get_access_mode_does_not_hide_unknown_errors() -> None:
     failure = TypeError("adapter bug")
-    gateway = EnterpriseWebAppAccessPolicyGateway(
-        webapp_auth=EnterpriseWebAppAuthStub(access_mode_error=failure)
-    )
+    gateway = EnterpriseWebAppAccessPolicyGateway(webapp_auth=EnterpriseWebAppAuthStub(access_mode_error=failure))
 
     with pytest.raises(TypeError) as raised:
         gateway.get_access_mode("app-1")
@@ -98,9 +96,7 @@ def test_is_user_allowed_delegates_to_enterprise_service() -> None:
 
 def test_is_user_allowed_maps_connection_failure() -> None:
     failure = httpx.ConnectError("connection failed")
-    gateway = EnterpriseWebAppAccessPolicyGateway(
-        webapp_auth=EnterpriseWebAppAuthStub(permission_error=failure)
-    )
+    gateway = EnterpriseWebAppAccessPolicyGateway(webapp_auth=EnterpriseWebAppAuthStub(permission_error=failure))
 
     with pytest.raises(WebAppAccessUnavailableError) as raised:
         gateway.is_user_allowed(user_id="user-1", app_id="app-1")
