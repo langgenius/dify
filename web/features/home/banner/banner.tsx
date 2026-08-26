@@ -1,5 +1,6 @@
 import type { BannerResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { ComponentProps, FocusEvent } from 'react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,6 +23,8 @@ type BannerCarouselContentProps = {
   accountId?: string
   language: string
 }
+
+type TemporaryPauseReason = 'focus' | 'pointer'
 
 type BannerSlideProps = {
   banner: BannerResponse
@@ -56,26 +59,61 @@ function BannerCarouselContent({ banners, accountId, language }: BannerCarouselC
   const { t } = useTranslation()
   const { api, selectedIndex } = useCarousel()
   const [isPlaying, setIsPlaying] = useState(false)
+  const [isRotationEnabled, setIsRotationEnabled] = useState(false)
   const trackedBannerKeysRef = useRef(new Set<string>())
-  const shouldResumeAfterFocusRef = useRef(false)
+  const isRotationEnabledRef = useRef(false)
+  const temporaryPauseReasonsRef = useRef(new Set<TemporaryPauseReason>())
+  const shouldResumeAfterInteractionRef = useRef(false)
   const nextIndex = (selectedIndex + 1) % banners.length
   const activeBanner = banners[selectedIndex]
   const trackingKey = accountId && activeBanner ? `${accountId}:${activeBanner.id}` : null
 
-  const pauseRotationForFocus = () => {
+  const pauseRotationForInteraction = (reason: TemporaryPauseReason) => {
     const autoplay = api?.plugins().autoplay
+    temporaryPauseReasonsRef.current.add(reason)
+    if (!isRotationEnabledRef.current) return
     if (!autoplay?.isPlaying()) return
 
-    shouldResumeAfterFocusRef.current = true
+    shouldResumeAfterInteractionRef.current = true
     autoplay.stop()
+  }
+
+  const resumeRotationAfterInteraction = (reason: TemporaryPauseReason) => {
+    temporaryPauseReasonsRef.current.delete(reason)
+    if (temporaryPauseReasonsRef.current.size > 0) return
+    if (!shouldResumeAfterInteractionRef.current) return
+
+    shouldResumeAfterInteractionRef.current = false
+    if (!isRotationEnabledRef.current) return
+    api?.plugins().autoplay?.play()
   }
 
   const resumeRotationAfterFocus = (event: FocusEvent<HTMLDivElement>) => {
     if (event.currentTarget.contains(event.relatedTarget)) return
-    if (!shouldResumeAfterFocusRef.current) return
 
-    shouldResumeAfterFocusRef.current = false
-    api?.plugins().autoplay?.play()
+    resumeRotationAfterInteraction('focus')
+  }
+
+  const toggleRotation = () => {
+    const autoplay = api?.plugins().autoplay
+    if (!autoplay) return
+
+    if (isRotationEnabledRef.current) {
+      isRotationEnabledRef.current = false
+      setIsRotationEnabled(false)
+      shouldResumeAfterInteractionRef.current = false
+      autoplay.stop()
+      return
+    }
+
+    isRotationEnabledRef.current = true
+    setIsRotationEnabled(true)
+    if (temporaryPauseReasonsRef.current.size > 0) {
+      shouldResumeAfterInteractionRef.current = true
+      return
+    }
+
+    autoplay.play()
   }
 
   const selectBanner = (index: number) => {
@@ -105,9 +143,13 @@ function BannerCarouselContent({ banners, accountId, language }: BannerCarouselC
 
     const handleAutoplayPlay = () => setIsPlaying(true)
     const handleAutoplayStop = () => setIsPlaying(false)
+    const autoplayIsPlaying = api.plugins().autoplay?.isPlaying() ?? false
 
     // oxlint-disable-next-line eslint-react/set-state-in-effect -- Embla owns this external playback state.
-    setIsPlaying(api.plugins().autoplay?.isPlaying() ?? false)
+    setIsPlaying(autoplayIsPlaying)
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Embla owns the initial rotation-control state.
+    setIsRotationEnabled(autoplayIsPlaying)
+    isRotationEnabledRef.current = autoplayIsPlaying
     api.on('autoplay:play', handleAutoplayPlay)
     api.on('autoplay:stop', handleAutoplayStop)
 
@@ -121,13 +163,17 @@ function BannerCarouselContent({ banners, accountId, language }: BannerCarouselC
     banners.length > 1 ? (
       <div
         data-carousel-control
-        role="group"
-        aria-label={t(($) => $['pagination.pageNumber'], { ns: 'common' })}
         className="pointer-events-auto flex h-7 min-w-0 shrink-0 items-center gap-2 @min-[996px]/banner:max-w-150 @min-[996px]/banner:min-w-60 @min-[996px]/banner:flex-[1_0_0] @min-[996px]/banner:pr-10"
-        onFocusCapture={pauseRotationForFocus}
-        onBlurCapture={resumeRotationAfterFocus}
       >
-        <div className="flex items-center gap-0.5">
+        <div
+          role="group"
+          aria-label={t(($) => $['pagination.pageNumber'], { ns: 'common' })}
+          className="flex items-center gap-0.5"
+          onFocusCapture={() => pauseRotationForInteraction('focus')}
+          onBlurCapture={resumeRotationAfterFocus}
+          onMouseEnter={() => pauseRotationForInteraction('pointer')}
+          onMouseLeave={() => resumeRotationAfterInteraction('pointer')}
+        >
           {banners.map((banner, index) => (
             <IndicatorButton
               key={banner.id}
@@ -141,6 +187,21 @@ function BannerCarouselContent({ banners, accountId, language }: BannerCarouselC
             />
           ))}
         </div>
+        <IconButton
+          size="md"
+          aria-label={t(($) => $[isRotationEnabled ? 'operation.pause' : 'operation.play'], {
+            ns: 'common',
+          })}
+          className="shrink-0"
+          onClick={toggleRotation}
+        >
+          <span
+            aria-hidden="true"
+            className={
+              isRotationEnabled ? 'i-ri-pause-circle-line size-4' : 'i-ri-play-circle-line size-4'
+            }
+          />
+        </IconButton>
         <div className="hidden h-px flex-1 bg-divider-regular @min-[1068px]/banner:block" />
       </div>
     ) : null
@@ -148,7 +209,13 @@ function BannerCarouselContent({ banners, accountId, language }: BannerCarouselC
 
   return (
     <>
-      <Carousel.Content aria-live={isPlaying ? 'off' : 'polite'}>
+      <Carousel.Content
+        aria-live={isPlaying ? 'off' : 'polite'}
+        onFocusCapture={() => pauseRotationForInteraction('focus')}
+        onBlurCapture={resumeRotationAfterFocus}
+        onMouseEnter={() => pauseRotationForInteraction('pointer')}
+        onMouseLeave={() => resumeRotationAfterInteraction('pointer')}
+      >
         {banners.map((banner, index) => (
           <BannerSlide
             key={banner.id}
@@ -197,9 +264,9 @@ export function Banner({ banners }: BannerProps) {
     Carousel.Plugin.Fade(),
     Carousel.Plugin.Autoplay({
       delay: AUTOPLAY_DELAY,
-      stopOnFocusIn: true,
-      stopOnInteraction: false,
-      stopOnMouseEnter: true,
+      stopOnFocusIn: false,
+      stopOnInteraction: true,
+      stopOnMouseEnter: false,
       breakpoints: {
         '(prefers-reduced-motion: reduce)': { active: false },
       },

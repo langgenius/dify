@@ -1,5 +1,6 @@
 import type { BannerResponse } from '@dify/contracts/api/console/explore/types.gen'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -239,7 +240,7 @@ describe('Banner', () => {
       />,
     )
 
-    expect(screen.getAllByRole('button')).toHaveLength(2)
+    expect(screen.getAllByRole('button')).toHaveLength(3)
     const secondBannerButton = screen.getByRole('button', { name: '02 Second banner' })
     secondBannerButton.focus()
     fireEvent.click(secondBannerButton)
@@ -247,7 +248,7 @@ describe('Banner', () => {
 
     act(() => setMockSelectedIndex(1))
     expect(secondBannerButton).toHaveFocus()
-    expect(screen.getAllByRole('button')).toHaveLength(2)
+    expect(screen.getAllByRole('button')).toHaveLength(3)
   })
 
   it('keeps autoplay running when pointer selection does not move focus', () => {
@@ -315,6 +316,57 @@ describe('Banner', () => {
     expect(screen.getByTestId('carousel-content')).toHaveAttribute('aria-live', 'polite')
     act(() => mockAutoplay.play())
     expect(mockAutoplay.play).toHaveBeenCalledOnce()
+    expect(screen.getByTestId('carousel-content')).toHaveAttribute('aria-live', 'off')
+  })
+
+  it('keeps the pause action while pointer hover temporarily pauses rotation', () => {
+    render(
+      <Banner
+        banners={[
+          createMockBanner('1', 'enabled', 'First banner'),
+          createMockBanner('2', 'enabled', 'Second banner'),
+        ]}
+      />,
+    )
+
+    fireEvent.mouseEnter(screen.getByTestId('carousel-content'))
+
+    expect(mockAutoplay.stop).toHaveBeenCalledOnce()
+    expect(screen.getByRole('button', { name: 'operation.pause' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'operation.play' })).not.toBeInTheDocument()
+
+    fireEvent.mouseLeave(screen.getByTestId('carousel-content'))
+
+    expect(mockAutoplay.play).toHaveBeenCalledOnce()
+    expect(screen.getByRole('button', { name: 'operation.pause' })).toBeInTheDocument()
+  })
+
+  it('keeps an explicit pause until the user starts rotation again', async () => {
+    const user = userEvent.setup()
+    render(
+      <Banner
+        banners={[
+          createMockBanner('1', 'enabled', 'First banner'),
+          createMockBanner('2', 'enabled', 'Second banner'),
+        ]}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'operation.pause' }))
+
+    expect(mockAutoplay.stop).toHaveBeenCalledOnce()
+    expect(screen.getByRole('button', { name: 'operation.play' })).toBeInTheDocument()
+    expect(screen.getByTestId('carousel-content')).toHaveAttribute('aria-live', 'polite')
+
+    const secondBannerButton = screen.getByRole('button', { name: '02 Second banner' })
+    fireEvent.focus(secondBannerButton)
+    fireEvent.blur(secondBannerButton)
+    expect(mockAutoplay.play).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'operation.play' }))
+
+    expect(mockAutoplay.play).toHaveBeenCalledOnce()
+    expect(screen.getByRole('button', { name: 'operation.pause' })).toBeInTheDocument()
     expect(screen.getByTestId('carousel-content')).toHaveAttribute('aria-live', 'off')
   })
 
