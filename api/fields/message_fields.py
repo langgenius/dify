@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
+from typing import Annotated
 from uuid import uuid4
 
-from pydantic import Field, computed_field, field_validator
+from pydantic import Field, WithJsonSchema, computed_field, field_validator
 
 from core.entities.execution_extra_content import ExecutionExtraContentDomainModel
 from fields.base import ResponseModel
@@ -13,6 +14,9 @@ from graphon.file import File
 from libs.helper import to_timestamp
 
 type JSONValueType = JSONValue
+UUIDString = Annotated[str, WithJsonSchema({"format": "uuid", "type": "string"})]
+Int64 = Annotated[int, WithJsonSchema({"format": "int64", "type": "integer"})]
+FloatNumber = Annotated[float, WithJsonSchema({"format": "float", "type": "number"})]
 
 
 class SimpleFeedback(ResponseModel):
@@ -20,23 +24,23 @@ class SimpleFeedback(ResponseModel):
 
 
 class RetrieverResource(ResponseModel):
-    id: str = Field(default_factory=lambda: str(uuid4()))
-    message_id: str = Field(default_factory=lambda: str(uuid4()))
+    id: UUIDString = Field(default_factory=lambda: str(uuid4()))
+    message_id: UUIDString = Field(default_factory=lambda: str(uuid4()))
     position: int
-    dataset_id: str | None = None
+    dataset_id: UUIDString | None = None
     dataset_name: str | None = None
-    document_id: str | None = None
+    document_id: UUIDString | None = None
     document_name: str | None = None
     data_source_type: str | None = None
-    segment_id: str | None = None
-    score: float | None = None
+    segment_id: UUIDString | None = None
+    score: FloatNumber | None = None
     hit_count: int | None = None
     word_count: int | None = None
     segment_position: int | None = None
     index_node_hash: str | None = None
     content: str | None = None
     summary: str | None = None
-    created_at: int | None = None
+    created_at: Int64 | None = None
 
     @field_validator("created_at", mode="before")
     @classmethod
@@ -45,20 +49,20 @@ class RetrieverResource(ResponseModel):
 
 
 class MessageListItem(ResponseModel):
-    id: str
-    conversation_id: str
-    parent_message_id: str | None = None
+    id: UUIDString
+    conversation_id: UUIDString
+    parent_message_id: UUIDString | None = None
     inputs: dict[str, JSONValueType]
     query: str
     answer: str = Field(validation_alias="re_sign_file_url_answer")
     feedback: SimpleFeedback | None = Field(default=None, validation_alias="user_feedback")
     retriever_resources: list[RetrieverResource]
-    created_at: int | None = None
+    created_at: Int64 | None = None
     agent_thoughts: list[AgentThought]
     message_files: list[MessageFile]
     message_tokens: int = 0
     answer_tokens: int = 0
-    provider_response_latency: float = 0
+    provider_response_latency: FloatNumber = 0
     total_price: Decimal | None = None
     currency: str | None = None
     status: str

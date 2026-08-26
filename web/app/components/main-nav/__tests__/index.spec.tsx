@@ -168,6 +168,11 @@ type MainNavConsoleState = ConsoleStateFixture & {
 const mockConsoleState = vi.hoisted(() => ({
   current: undefined as MainNavConsoleState | undefined,
 }))
+const mockProviderContextState = vi.hoisted(() => ({
+  current: {
+    enableSkill: true,
+  } as Partial<ProviderContextState>,
+}))
 
 vi.mock('@/features/agent-v2/feature-flag', () => ({
   isAgentV2Enabled: () => mockIsAgentV2Enabled(),
@@ -187,6 +192,9 @@ vi.mock('@/context/permission-state', async () => {
 })
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
+  useProviderContextSelector: vi.fn((selector: (state: Partial<ProviderContextState>) => unknown) =>
+    selector(mockProviderContextState.current),
+  ),
 }))
 
 vi.mock('@/context/modal-context', () => ({
@@ -638,6 +646,9 @@ describe('MainNav', () => {
       refresh: vi.fn(),
     })
     mockConsoleState.current = consoleState
+    mockProviderContextState.current = {
+      enableSkill: true,
+    }
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
       enableEducationPlan: false,
@@ -757,6 +768,16 @@ describe('MainNav', () => {
     expect(
       screen.queryByRole('link', { name: /common.mainNav.marketplace/ }),
     ).not.toBeInTheDocument()
+  })
+
+  it('hides the skills entry when skill is disabled', () => {
+    mockProviderContextState.current = {
+      enableSkill: false,
+    }
+
+    renderMainNav()
+
+    expect(screen.queryByRole('link', { name: /common.mainNav.skills/ })).not.toBeInTheDocument()
   })
 
   it('orders the Step-by-step Tour before the account and help actions', async () => {

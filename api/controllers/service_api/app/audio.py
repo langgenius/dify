@@ -23,6 +23,7 @@ from controllers.service_api.app.error import (
 )
 from controllers.service_api.schema import binary_response, expect_with_user, multipart_file_params
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from core.base.tts.audio_mime import SUPPORTED_TTS_AUDIO_MIME_TYPES
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
@@ -166,8 +167,7 @@ class TextApi(Resource):
         },
     )
     @expect_with_user(service_api_ns, TextToAudioPayload)
-    # OpenAPI 2 cannot express a runtime-selected response MIME type, so document the body as generic binary.
-    @binary_response(service_api_ns, "application/octet-stream")
+    @binary_response(service_api_ns, SUPPORTED_TTS_AUDIO_MIME_TYPES)
     @service_api_ns.doc("text_to_audio")
     @service_api_ns.doc(description="Convert text to audio using text-to-speech")
     @service_api_ns.doc(

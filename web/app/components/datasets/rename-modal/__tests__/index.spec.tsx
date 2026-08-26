@@ -27,13 +27,8 @@ vi.mock('@/service/datasets', () => ({
   updateDatasetSetting: (params: unknown) => mockUpdateDatasetSetting(params),
 }))
 
-// Mock AppIcon - simplified mock to enable testing onClick callback
 vi.mock('../../../base/app-icon', () => ({
-  default: ({ onClick }: { onClick?: () => void }) => (
-    <button data-testid="app-icon" onClick={onClick}>
-      Icon
-    </button>
-  ),
+  default: () => <span data-testid="app-icon">Icon</span>,
 }))
 
 vi.mock('@/app/components/base/app-icon-picker', () => ({
@@ -165,9 +160,9 @@ describe('RenameDatasetModal', () => {
   })
 
   describe('Rendering', () => {
-    it('should render modal when show is true', () => {
+    it('should render a named dialog when show is true', () => {
       render(<RenameDatasetModal {...defaultProps} show={true} />)
-      expect(screen.getByText('datasetSettings.title'))!.toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'datasetSettings.title' })).toBeInTheDocument()
     })
 
     it('should render name input with dataset name', () => {
@@ -325,6 +320,33 @@ describe('RenameDatasetModal', () => {
       expect(handleClose).toHaveBeenCalledTimes(1)
     })
 
+    it('should call onClose when Escape is pressed', async () => {
+      const user = userEvent.setup()
+      const handleClose = vi.fn()
+      render(<RenameDatasetModal {...defaultProps} onClose={handleClose} />)
+
+      await user.keyboard('{Escape}')
+
+      expect(handleClose).toHaveBeenCalledTimes(1)
+    })
+
+    it('should submit the form when Enter is pressed in the name input', async () => {
+      const user = userEvent.setup()
+      render(<RenameDatasetModal {...defaultProps} />)
+
+      await user.type(screen.getByRole('textbox', { name: 'datasetSettings.form.name' }), '{Enter}')
+
+      await waitFor(() => {
+        expect(mockUpdateDatasetSetting).toHaveBeenCalledWith({
+          datasetId: 'dataset-1',
+          body: expect.objectContaining({
+            name: 'Test Dataset',
+            description: 'Test description',
+          }),
+        })
+      })
+    })
+
     it('should call API when save button is clicked with valid name', async () => {
       render(<RenameDatasetModal {...defaultProps} />)
 
@@ -362,7 +384,7 @@ describe('RenameDatasetModal', () => {
       })
 
       await waitFor(() => {
-        expect(saveButton)!.toBeDisabled()
+        expect(saveButton).toHaveAttribute('aria-disabled', 'true')
       })
 
       // Resolve the promise to clean up
@@ -777,12 +799,11 @@ describe('RenameDatasetModal', () => {
   describe('Icon Picker Integration', () => {
     it('should render app icon component', () => {
       render(<RenameDatasetModal {...defaultProps} />)
-      // The modal should render with name label and input
-      // AppIcon is rendered alongside the name input
-      // The modal should render with name label and input
-      // AppIcon is rendered alongside the name input
-      expect(screen.getByText('datasetSettings.form.name'))!.toBeInTheDocument()
-      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', {
+          name: 'common.operation.edit datasetSettings.form.nameAndIcon',
+        }),
+      ).toContainElement(screen.getByTestId('app-icon'))
     })
 
     it('should initialize icon state from dataset', () => {
@@ -1145,7 +1166,7 @@ describe('RenameDatasetModal', () => {
 
       // Button should be disabled now
       // Button should be disabled now
-      expect(saveButton)!.toBeDisabled()
+      expect(saveButton).toHaveAttribute('aria-disabled', 'true')
 
       // Second click should not trigger another API call because button is disabled
       await act(async () => {
@@ -1263,7 +1284,7 @@ describe('RenameDatasetModal', () => {
 
       // Button should be disabled during loading
       await waitFor(() => {
-        expect(saveButton)!.toBeDisabled()
+        expect(saveButton).toHaveAttribute('aria-disabled', 'true')
       })
 
       // Resolve promise to complete the test
