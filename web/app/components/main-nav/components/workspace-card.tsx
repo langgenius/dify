@@ -100,6 +100,7 @@ function WorkspaceCardTrigger({
 }) {
   const { t } = useTranslation()
   const creditsUnit = t(($) => $['mainNav.workspace.creditsUnit'], { ns: 'common' })
+  const openMenuLabel = t(($) => $['mainNav.workspace.openMenu'], { ns: 'common' })
   const isUnlimited = credits === -1
   const formattedCredits = isUnlimited
     ? t(($) => $['license.unlimited'], { ns: 'common' })
@@ -111,7 +112,7 @@ function WorkspaceCardTrigger({
   return (
     <div className="overflow-hidden rounded-xl border border-components-card-border bg-components-card-bg text-left shadow-xs">
       <PopoverTrigger
-        aria-label={t(($) => $['mainNav.workspace.openMenu'], { ns: 'common' })}
+        aria-label={`${name}, ${openMenuLabel}`}
         title={name}
         onMouseEnter={onPrefetchWorkspaces}
         onFocus={onPrefetchWorkspaces}
