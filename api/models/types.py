@@ -12,15 +12,17 @@ from sqlalchemy.engine.interfaces import Dialect
 from sqlalchemy.sql.type_api import TypeEngine
 
 from configs import dify_config
+from graphon.model_runtime.entities.model_entities import ModelType
+
+_MODEL_TYPE_BY_ORIGIN = {member.to_origin_model_type(): member for member in ModelType}
 
 
 def parse_enum_text[T: enum.StrEnum](enum_class: type[T], value: str | T) -> T:
     """Parse a ``StrEnum`` from a stored or cached string.
 
-    Canonical values are constructed normally. When the constructor rejects the
-    string, this also accepts ``value_of()`` (if present) and origin aliases
-    exposed by ``to_origin_model_type()`` so pre-1.15 ``ModelType`` rows such as
-    ``text-generation`` can still be loaded.
+    Canonical values are constructed normally. For ``ModelType``, pre-1.15 origin
+    aliases such as ``text-generation`` map to the current enum member. Bind
+    still rejects those aliases so new rows stay canonical.
     """
     if isinstance(value, enum_class):
         return value
@@ -29,17 +31,10 @@ def parse_enum_text[T: enum.StrEnum](enum_class: type[T], value: str | T) -> T:
     try:
         return enum_class(value)
     except ValueError:
-        value_of = getattr(enum_class, "value_of", None)
-        if callable(value_of):
-            return cast(T, value_of(value))
-        to_origin = getattr(enum_class, "to_origin_model_type", None)
-        if callable(to_origin):
-            for member in enum_class:
-                try:
-                    if to_origin(member) == value:
-                        return member
-                except ValueError:
-                    continue
+        if enum_class is ModelType:
+            mapped = _MODEL_TYPE_BY_ORIGIN.get(value)
+            if mapped is not None:
+                return cast(T, mapped)
         raise
 
 
