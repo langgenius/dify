@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { KnowledgeSettingsForm } from '../knowledge-settings-form'
 
 const serviceMock = vi.hoisted(() => ({
@@ -30,10 +31,12 @@ const routerMock = vi.hoisted(() => ({
 }))
 
 const queryKeys = {
+  accountProfile: [['console', 'account', 'profile', 'get'], { type: 'query' }],
   externalAccess: ['knowledge-fs', 'external-access'],
   permissions: ['knowledge-fs', 'permissions'],
   settings: ['knowledge-fs', 'settings'],
   space: ['knowledge-fs', 'space'],
+  systemFeatures: ['console', 'system-features'],
 }
 
 vi.mock('@/next/navigation', () => ({
@@ -42,6 +45,11 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    account: {
+      profile: {
+        get: { queryKey: () => queryKeys.accountProfile },
+      },
+    },
     knowledgeFs: {
       spaces: {
         byControlSpaceId: {
@@ -89,6 +97,11 @@ vi.mock('@/service/client', () => ({
             },
           },
         },
+      },
+    },
+    systemFeatures: {
+      get: {
+        queryOptions: () => ({ queryKey: queryKeys.systemFeatures }),
       },
     },
   },
@@ -245,6 +258,7 @@ const externalAccess = {
 }
 
 function renderForm({
+  accountProfile = {},
   externalAccess: externalAccessOverride = externalAccess,
   members = [],
   onDraftFinish,
@@ -254,6 +268,15 @@ function renderForm({
   settings: settingsOverride = settings,
   space: spaceOverride = space,
 }: {
+  accountProfile?: Partial<{
+    avatar: string
+    avatar_url: string | null
+    email: string
+    id: string
+    is_password_set: boolean
+    name: string
+    timezone: string
+  }>
   externalAccess?: typeof externalAccess
   members?: Member[]
   onDraftFinish?: () => void
@@ -271,6 +294,20 @@ function renderForm({
         queries: { retry: false },
       },
     })
+  queryClient.setQueryData(queryKeys.accountProfile, {
+    meta: { currentEnv: null, currentVersion: null },
+    profile: {
+      avatar: '',
+      avatar_url: null,
+      email: 'test@dify.ai',
+      id: 'user-1',
+      is_password_set: false,
+      name: 'Test User',
+      timezone: 'Asia/Shanghai',
+      ...accountProfile,
+    },
+  })
+  queryClient.setQueryData(queryKeys.systemFeatures, createSystemFeaturesFixture())
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
@@ -839,7 +876,7 @@ describe('KnowledgeSettingsForm', () => {
     expect(serviceMock.patchSpace).not.toHaveBeenCalled()
   })
 
-  it('shows the empty state when member search does not match the owner', async () => {
+  it('reuses the legacy permission picker for modes, search, and member selection', async () => {
     const user = userEvent.setup()
     const owner = {
       avatar: '',
@@ -851,22 +888,65 @@ describe('KnowledgeSettingsForm', () => {
       roles: [],
       status: 'active',
     } satisfies Member
+    const member = {
+      ...owner,
+      email: 'member@example.com',
+      id: 'member-1',
+      name: 'Team Member',
+      role: 'normal',
+    } satisfies Member
     renderForm({
-      members: [owner],
-      space: {
-        ...space,
-        visibility: 'partial_members',
+      members: [owner, member],
+    })
+
+    await user.click(
+      screen.getByRole('button', { name: /datasetSettings\.form\.permissionsOnlyMe/ }),
+    )
+    const picker = screen.getByRole('dialog', { name: 'datasetSettings.form.permissions' })
+    expect(
+      within(picker).getByRole('radio', {
+        name: 'datasetSettings.form.permissionsAllMember',
+      }),
+    ).toBeInTheDocument()
+    await user.click(
+      within(picker).getByRole('radio', {
+        name: 'datasetSettings.form.permissionsInvitedMembers',
+      }),
+    )
+
+    const search = within(picker).getByRole('searchbox', { name: 'common.operation.search' })
+    await user.type(search, 'Team')
+    expect(await within(picker).findByRole('button', { name: /Team Member/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.operation.add' })).not.toBeInTheDocument()
+  })
+
+  it('requires a non-owner member for partial access and disables save', async () => {
+    const user = userEvent.setup()
+    renderForm({
+      accountProfile: {
+        email: 'owner@example.com',
+        id: 'owner-1',
+        name: 'Workspace owner',
       },
     })
 
-    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
-    await user.type(
-      screen.getByRole('textbox', { name: 'common.operation.search' }),
-      'no-such-member',
+    await user.click(
+      screen.getByRole('button', { name: /datasetSettings\.form\.permissionsOnlyMe/ }),
+    )
+    await user.click(
+      screen.getByRole('radio', {
+        name: 'datasetSettings.form.permissionsInvitedMembers',
+      }),
     )
 
-    expect(screen.getByText('dataset.newKnowledge.settings.noMembersFound')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Workspace owner/ })).not.toBeInTheDocument()
+    const error = screen.getByRole('alert')
+    const trigger = screen.getByRole('button', { name: /Workspace owner/ })
+    expect(error).toHaveTextContent('dataset.newKnowledge.settings.membersRequired')
+    expect(trigger).toHaveAttribute('aria-invalid', 'true')
+    expect(trigger).toHaveAttribute('aria-describedby', error.id)
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.settings.saveChanges' }),
+    ).toBeDisabled()
   })
 
   it('clamps retrieval values and shows their supported ranges', async () => {
@@ -1759,7 +1839,7 @@ describe('KnowledgeSettingsForm', () => {
     expect(screen.getByText('dataset.newKnowledge.settings.viewOnly')).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'datasetSettings.form.name' })).toBeDisabled()
     expect(
-      screen.getByRole('combobox', { name: 'datasetSettings.form.permissions' }),
+      screen.getByRole('button', { name: /datasetSettings\.form\.permissionsOnlyMe/ }),
     ).toBeDisabled()
     expect(
       screen.getByRole('switch', { name: 'dataset.newKnowledge.apiAgentAccess' }),

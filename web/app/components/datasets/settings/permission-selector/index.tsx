@@ -15,7 +15,10 @@ import MemberItem from './member-item'
 import PermissionItem from './permission-item'
 
 type PermissionSelectorProps = {
+  ariaDescribedBy?: string
   disabled?: boolean
+  disableWhenRbacEnabled?: boolean
+  invalid?: boolean
   permission?: DatasetPermission
   value: string[]
   memberList: Member[]
@@ -24,7 +27,10 @@ type PermissionSelectorProps = {
 }
 
 const PermissionSelector = ({
+  ariaDescribedBy,
   disabled,
+  disableWhenRbacEnabled = true,
+  invalid,
   permission,
   value,
   memberList,
@@ -71,17 +77,20 @@ const PermissionSelector = ({
   const showMe =
     userProfile.name.includes(searchKeywords) || userProfile.email.includes(searchKeywords)
   const selectedMemberNames = selectedMembers.map((member) => member.name).join(', ')
-  const isDisabledByRbac = isRbacEnabled
+  const isDisabledByRbac = disableWhenRbacEnabled && isRbacEnabled
   const isDisabled = disabled || isDisabledByRbac
   const permissionLabel = t(($) => $['form.permissions'], { ns: 'datasetSettings' })
 
   return (
     <Popover>
       <PopoverTrigger
+        aria-describedby={ariaDescribedBy}
+        aria-invalid={invalid}
         disabled={isDisabled}
         className={cn(
           'group/permission-trigger flex w-full cursor-pointer touch-manipulation items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 text-left outline-hidden hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover-alt',
           'data-disabled:cursor-not-allowed! data-disabled:bg-components-input-bg-disabled! data-disabled:hover:bg-components-input-bg-disabled!',
+          invalid && 'ring-1 ring-text-destructive',
         )}
       >
         {isDisabledByRbac && (
