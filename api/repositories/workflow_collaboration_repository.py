@@ -224,7 +224,7 @@ class WorkflowCollaborationRepository:
             "1" if active else "0",
             sequence,
         )
-        return bool(result)
+        return result
 
     def graph_view_state_lock(self, workflow_id: str) -> Lock:
         """Serialize visibility state changes and their leader-election side effects."""
@@ -237,7 +237,7 @@ class WorkflowCollaborationRepository:
         self._redis.set(self.server_key(server_id), "1", ex=SERVER_HEARTBEAT_TTL_SECONDS)
 
     def server_heartbeat_exists(self, server_id: str) -> bool:
-        return bool(self._redis.exists(self.server_key(server_id)))  # tests assert `is True`
+        return self._redis.exists(self.server_key(server_id))  # tests assert `is True`
 
     def refresh_server_sessions(self, server_id: str) -> None:
         """Refresh Redis TTLs for sessions owned by a live websocket worker."""
@@ -260,7 +260,7 @@ class WorkflowCollaborationRepository:
         return self._decode(raw)
 
     def set_leader_if_absent(self, workflow_id: str, sid: str) -> bool:
-        return bool(self._redis.set(self.leader_key(workflow_id), sid, nx=True, ex=SESSION_STATE_TTL_SECONDS))
+        return self._redis.set(self.leader_key(workflow_id), sid, nx=True, ex=SESSION_STATE_TTL_SECONDS)
 
     def set_leader(self, workflow_id: str, sid: str) -> None:
         self._redis.set(self.leader_key(workflow_id), sid, ex=SESSION_STATE_TTL_SECONDS)
