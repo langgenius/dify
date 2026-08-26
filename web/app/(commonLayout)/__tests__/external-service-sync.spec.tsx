@@ -1,8 +1,6 @@
 import { render, waitFor } from '@testing-library/react'
-import {
-  REGISTRATION_SUCCESS_STORAGE_KEY,
-  rememberRegistrationSuccess,
-} from '@/app/components/base/amplitude/registration-tracking'
+import { REGISTRATION_SUCCESS_STORAGE_KEY } from '@/app/components/base/amplitude/registration-session-state'
+import { rememberRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
 import { AmplitudeIdentitySync } from '../external-service-sync'
 
 const { mockSetUserId, mockSetUserProperties, mockTrackEvent } = vi.hoisted(() => ({

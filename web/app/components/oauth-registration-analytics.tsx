@@ -6,12 +6,16 @@ import { useAnalyticsConsent } from '@/app/components/base/analytics-consent/con
 import { useSearchParams } from '@/next/navigation'
 import { sendGAEvent } from '@/utils/gtag'
 import {
+  clearOAuthRegistrationGAGuard,
+  hasSentOAuthRegistrationGA,
+  markOAuthRegistrationGASent,
+} from './base/amplitude/registration-session-state'
+import {
   normalizeRegistrationAttribution,
   rememberRegistrationSuccess,
 } from './base/amplitude/registration-tracking'
 
 const OAUTH_NEW_USER_PARAM = 'oauth_new_user'
-const OAUTH_REGISTRATION_GA_SENT_KEY = 'oauth_registration_ga_sent'
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -20,34 +24,6 @@ const removeOAuthNewUserParam = () => {
   const url = new URL(window.location.href)
   url.searchParams.delete(OAUTH_NEW_USER_PARAM)
   window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`)
-}
-
-const getSessionStorage = () => {
-  try {
-    return window.sessionStorage
-  } catch {
-    return null
-  }
-}
-
-const hasSentGARegistration = () => {
-  try {
-    return getSessionStorage()?.getItem(OAUTH_REGISTRATION_GA_SENT_KEY) === 'true'
-  } catch {
-    return false
-  }
-}
-
-const markGARegistrationSent = () => {
-  try {
-    getSessionStorage()?.setItem(OAUTH_REGISTRATION_GA_SENT_KEY, 'true')
-  } catch {}
-}
-
-const clearGARegistrationSent = () => {
-  try {
-    getSessionStorage()?.removeItem(OAUTH_REGISTRATION_GA_SENT_KEY)
-  } catch {}
 }
 
 export function OAuthRegistrationAnalytics() {
@@ -62,13 +38,16 @@ export function OAuthRegistrationAnalytics() {
   )
 
   useEffect(() => {
-    if (oauthNewUserParam === null) return
+    if (oauthNewUserParam === null) {
+      clearOAuthRegistrationGAGuard()
+      return
+    }
 
     const oauthNewUser = oauthNewUserParam === 'true'
     if (!oauthNewUser) {
       if (!cleanedRef.current) {
         cleanedRef.current = true
-        clearGARegistrationSent()
+        clearOAuthRegistrationGAGuard()
         Cookies.remove('utm_info')
         removeOAuthNewUserParam()
       }
@@ -94,12 +73,12 @@ export function OAuthRegistrationAnalytics() {
 
     if (!gaHandledRef.current) {
       gaHandledRef.current = true
-      if (!hasSentGARegistration()) {
+      if (!hasSentOAuthRegistrationGA()) {
         sendGAEvent(eventName, {
           method: 'oauth',
           ...utmInfo,
         })
-        markGARegistrationSent()
+        markOAuthRegistrationGASent()
       }
     }
 
@@ -113,7 +92,7 @@ export function OAuthRegistrationAnalytics() {
 
     if (!cleanedRef.current) {
       cleanedRef.current = true
-      clearGARegistrationSent()
+      clearOAuthRegistrationGAGuard()
       Cookies.remove('utm_info')
       removeOAuthNewUserParam()
     }

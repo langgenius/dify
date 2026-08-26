@@ -1,7 +1,10 @@
 import {
+  discardRegistrationSessionState,
+  REGISTRATION_SUCCESS_STORAGE_KEY,
+} from '../registration-session-state'
+import {
   coordinateRegistrationConsent,
   flushRegistrationSuccess,
-  REGISTRATION_SUCCESS_STORAGE_KEY,
   rememberRegistrationSuccess,
   subscribeRegistrationSuccess,
 } from '../registration-tracking'
@@ -45,6 +48,11 @@ describe('registration tracking', () => {
     vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(
       '11111111-1111-4111-8111-111111111111',
     )
+  })
+
+  afterEach(() => {
+    discardRegistrationSessionState()
+    vi.useRealTimers()
   })
 
   describe('rememberRegistrationSuccess', () => {
@@ -124,6 +132,55 @@ describe('registration tracking', () => {
       mockConsent.value = 'granted'
       coordinateRegistrationConsent('granted')
       expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
+    })
+
+    it('expires an unknown-consent intent when its thirty-minute timer elapses', () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-08-26T09:00:00.000Z'))
+      mockConsent.value = 'unknown'
+      rememberRegistrationSuccess({ method: 'email' })
+
+      vi.advanceTimersByTime(30 * 60 * 1000)
+      mockConsent.value = 'granted'
+      coordinateRegistrationConsent('granted')
+
+      expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
+    })
+
+    it('cancels the old expiration timer when a volatile intent is replaced', () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-08-26T09:00:00.000Z'))
+      mockConsent.value = 'unknown'
+      rememberRegistrationSuccess({ method: 'email', utmInfo: { utm_source: 'first' } })
+      vi.advanceTimersByTime(20 * 60 * 1000)
+
+      rememberRegistrationSuccess({
+        method: 'workspace_invite',
+        utmInfo: { utm_source: 'replacement' },
+      })
+      vi.advanceTimersByTime(10 * 60 * 1000)
+      mockConsent.value = 'granted'
+      coordinateRegistrationConsent('granted')
+
+      expect(getStoredMarker()).toMatchObject({
+        method: 'workspace_invite',
+        attribution: { utm_source: 'replacement' },
+      })
+    })
+
+    it('discards a volatile intent and GA guard at an account boundary', async () => {
+      mockConsent.value = 'unknown'
+      rememberRegistrationSuccess({ method: 'email' })
+      window.sessionStorage.setItem('oauth_registration_ga_sent', 'true')
+
+      discardRegistrationSessionState()
+      mockConsent.value = 'granted'
+      coordinateRegistrationConsent('granted')
+      await flushRegistrationSuccess()
+
+      expect(mockTrackEvent).not.toHaveBeenCalled()
+      expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
+      expect(window.sessionStorage.getItem('oauth_registration_ga_sent')).toBeNull()
     })
 
     it.each(['denied', 'disabled'] as const)(
@@ -284,6 +341,20 @@ describe('registration tracking', () => {
       })
     })
 
+    it('does not retry an acknowledgement-failed marker after an account boundary', async () => {
+      rememberRegistrationSuccess({ method: 'email' })
+      mockTrackEvent.mockReturnValueOnce({ promise: Promise.reject(new Error('network failed')) })
+
+      await flushRegistrationSuccess()
+      expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).not.toBeNull()
+
+      discardRegistrationSessionState()
+      await flushRegistrationSuccess()
+
+      expect(mockTrackEvent).toHaveBeenCalledTimes(1)
+      expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
+    })
+
     it('coalesces concurrent flushes into one SDK send', async () => {
       let resolveTrack!: (result: { code: number }) => void
       mockTrackEvent.mockReturnValue({
@@ -330,6 +401,27 @@ describe('registration tracking', () => {
         expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
       }
       expect(mockTrackEvent).not.toHaveBeenCalled()
+    })
+
+    it('accepts a persisted timestamp just inside the five-minute clock-skew allowance', async () => {
+      vi.setSystemTime(new Date('2026-08-26T09:04:59.999Z'))
+      rememberRegistrationSuccess({ method: 'email' })
+      vi.setSystemTime(new Date('2026-08-26T09:00:00.000Z'))
+
+      await flushRegistrationSuccess()
+
+      expect(mockTrackEvent).toHaveBeenCalledTimes(1)
+    })
+
+    it('rejects a persisted timestamp just outside the five-minute clock-skew allowance', async () => {
+      vi.setSystemTime(new Date('2026-08-26T09:05:00.001Z'))
+      rememberRegistrationSuccess({ method: 'email' })
+      vi.setSystemTime(new Date('2026-08-26T09:00:00.000Z'))
+
+      await flushRegistrationSuccess()
+
+      expect(mockTrackEvent).not.toHaveBeenCalled()
+      expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
     })
 
     it('handles storage read errors without throwing', async () => {

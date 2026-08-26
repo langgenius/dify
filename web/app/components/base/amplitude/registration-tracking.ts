@@ -1,13 +1,29 @@
+import type {
+  RegistrationAttribution,
+  RegistrationIntent,
+  RegistrationMethod,
+} from './registration-session-state'
 import type { AnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
 import { getAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
 import { getIsAmplitudeInitialized } from './init'
+import {
+  ATTRIBUTION_KEYS,
+  clearVolatileRegistrationIntent,
+  getRegistrationSessionStorage,
+  getVolatileRegistrationIntent,
+  REGISTRATION_METHODS,
+  REGISTRATION_SUCCESS_STORAGE_KEY,
+  removeStoredRegistrationMarker,
+  replaceVolatileRegistrationIntent,
+  VOLATILE_INTENT_TTL_MS,
+} from './registration-session-state'
 import { trackEvent } from './utils'
-
-export const REGISTRATION_SUCCESS_STORAGE_KEY = 'pending_registration_success_event'
 
 const REGISTRATION_MARKER_VERSION = 2
 const REGISTRATION_MARKER_TTL_MS = 24 * 60 * 60 * 1000
-const VOLATILE_INTENT_TTL_MS = 30 * 60 * 1000
+// Browser clocks may be corrected between registration and delivery. Permit a small
+// correction, but reject timestamps far enough ahead to corrupt Amplitude ordering.
+const REGISTRATION_FUTURE_CLOCK_SKEW_ALLOWANCE_MS = 5 * 60 * 1000
 const SUCCESSFUL_TRACK_RESULT_MIN = 200
 const SUCCESSFUL_TRACK_RESULT_MAX = 299
 
@@ -16,27 +32,7 @@ const REGISTRATION_EVENT_NAMES = [
   'user_registration_success_with_utm',
 ] as const
 
-const REGISTRATION_METHODS = ['email', 'email_code', 'oauth', 'workspace_invite'] as const
-
-const ATTRIBUTION_KEYS = [
-  'utm_source',
-  'utm_medium',
-  'utm_campaign',
-  'utm_content',
-  'utm_term',
-  'slug',
-] as const
-
 export type RegistrationEventName = (typeof REGISTRATION_EVENT_NAMES)[number]
-export type RegistrationMethod = (typeof REGISTRATION_METHODS)[number]
-export type RegistrationAttribution = Partial<Record<(typeof ATTRIBUTION_KEYS)[number], string>>
-
-type RegistrationIntent = {
-  registrationId: string
-  occurredAt: number
-  method: RegistrationMethod
-  attribution: RegistrationAttribution
-}
 
 type PendingRegistrationSuccessEvent = RegistrationIntent & {
   version: typeof REGISTRATION_MARKER_VERSION
@@ -44,7 +40,6 @@ type PendingRegistrationSuccessEvent = RegistrationIntent & {
   eventName: RegistrationEventName
 }
 
-let volatileIntent: RegistrationIntent | null = null
 let registrationSnapshot = 0
 let activeFlush: Promise<void> | null = null
 const registrationListeners = new Set<() => void>()
@@ -68,15 +63,6 @@ const createRegistrationId = () => {
     return globalThis.crypto.randomUUID()
   } catch {
     return `${Date.now()}-${Math.random().toString(36).slice(2)}`
-  }
-}
-
-const getSessionStorage = (): Storage | null => {
-  try {
-    if (typeof window === 'undefined') return null
-    return window.sessionStorage
-  } catch {
-    return null
   }
 }
 
@@ -108,7 +94,7 @@ const createRegistrationIntent = (
 })
 
 const storeRegistrationIntent = (intent: RegistrationIntent) => {
-  const storage = getSessionStorage()
+  const storage = getRegistrationSessionStorage()
   if (!storage) return false
 
   const pending: PendingRegistrationSuccessEvent = {
@@ -138,14 +124,14 @@ export const rememberRegistrationSuccess = ({
 }) => {
   const consent = getAnalyticsConsent()
   if (consent === 'denied' || consent === 'disabled') {
-    volatileIntent = null
+    clearVolatileRegistrationIntent()
     return false
   }
 
   const intent = createRegistrationIntent(method, utmInfo)
   if (consent === 'unknown') {
     if (method === 'oauth') return false
-    volatileIntent = intent
+    replaceVolatileRegistrationIntent(intent)
     return true
   }
 
@@ -154,23 +140,21 @@ export const rememberRegistrationSuccess = ({
 
 export const coordinateRegistrationConsent = (consent: AnalyticsConsent) => {
   if (consent === 'denied' || consent === 'disabled') {
-    volatileIntent = null
-    const storage = getSessionStorage()
-    try {
-      storage?.removeItem(REGISTRATION_SUCCESS_STORAGE_KEY)
-    } catch {}
+    clearVolatileRegistrationIntent()
+    removeStoredRegistrationMarker()
     return
   }
+  const volatileIntent = getVolatileRegistrationIntent()
   if (consent !== 'granted' || !volatileIntent) return
 
   const intent = volatileIntent
   const age = Date.now() - intent.occurredAt
-  if (age < 0 || age > VOLATILE_INTENT_TTL_MS) {
-    volatileIntent = null
+  if (age < 0 || age >= VOLATILE_INTENT_TTL_MS) {
+    clearVolatileRegistrationIntent()
     return
   }
 
-  if (storeRegistrationIntent(intent)) volatileIntent = null
+  if (storeRegistrationIntent(intent)) clearVolatileRegistrationIntent()
 }
 
 export const subscribeRegistrationSuccess = (listener: () => void) => {
@@ -213,21 +197,15 @@ const parsePendingRegistration = (raw: string): PendingRegistrationSuccessEvent 
   }
 }
 
-const removeStoredMarker = (storage: Storage) => {
-  try {
-    storage.removeItem(REGISTRATION_SUCCESS_STORAGE_KEY)
-  } catch {}
-}
-
 const runRegistrationFlush = async () => {
   const consent = getAnalyticsConsent()
   if (consent === 'unknown') return
 
-  const storage = getSessionStorage()
+  const storage = getRegistrationSessionStorage()
   if (!storage) return
 
   if (consent === 'denied' || consent === 'disabled') {
-    removeStoredMarker(storage)
+    removeStoredRegistrationMarker(storage)
     return
   }
   if (!getIsAmplitudeInitialized()) return
@@ -242,8 +220,13 @@ const runRegistrationFlush = async () => {
     if (!raw) return
 
     const pending = parsePendingRegistration(raw)
-    if (!pending || pending.expiresAt <= Date.now()) {
-      removeStoredMarker(storage)
+    const now = Date.now()
+    if (
+      !pending ||
+      pending.expiresAt <= now ||
+      pending.occurredAt > now + REGISTRATION_FUTURE_CLOCK_SKEW_ALLOWANCE_MS
+    ) {
+      removeStoredRegistrationMarker(storage)
       return
     }
 
@@ -290,7 +273,7 @@ const runRegistrationFlush = async () => {
     }
     if (currentRaw !== raw) continue
 
-    removeStoredMarker(storage)
+    removeStoredRegistrationMarker(storage)
     return
   }
 }

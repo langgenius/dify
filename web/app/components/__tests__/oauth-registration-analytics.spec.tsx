@@ -235,4 +235,15 @@ describe('OAuthRegistrationAnalytics', () => {
     expect(mockRememberRegistrationSuccess).not.toHaveBeenCalled()
     expect(mockSendGAEvent).not.toHaveBeenCalled()
   })
+
+  it('clears an abandoned flow guard so a later OAuth registration can emit GA', () => {
+    window.sessionStorage.setItem('oauth_registration_ga_sent', 'true')
+    const abandonedFlow = render(<OAuthRegistrationAnalytics />)
+    abandonedFlow.unmount()
+
+    setSearchParams('oauth_new_user=true')
+    render(<OAuthRegistrationAnalytics />)
+
+    expect(mockSendGAEvent).toHaveBeenCalledTimes(1)
+  })
 })
