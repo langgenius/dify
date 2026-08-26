@@ -2,18 +2,16 @@ from __future__ import annotations
 
 from pathlib import Path
 import secrets
-from typing import cast
 
-import httpx
 import pytest
 from pydantic import ValidationError
 
-from dify_agent.agent_stub.server.agent_stub_drive import DifyApiAgentStubDriveRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import DifyApiAgentStubFileRequestHandler
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
 from dify_agent.server.settings import ServerSettings
-from dify_agent.runtime_backend.e2b import E2BExecutionBindingBackend
-from dify_agent.runtime_backend.enterprise import EnterpriseExecutionBindingBackend
+from dify_agent.runtime.runner import DEFAULT_AGENT_RUN_TIMEOUT_SECONDS
+from dify_agent.runtime_backend.e2b import E2B_MAX_ACTIVE_TIMEOUT_SECONDS, E2BExecutionBindingBackend
+from dify_agent.runtime_backend.enterprise import EnterpriseExecutionBindingBackend, EnterpriseHomeSnapshotBackend
 from dify_agent.runtime_backend.local import LocalExecutionBindingBackend, LocalHomeSnapshotBackend
 
 
@@ -49,12 +47,61 @@ def test_server_settings_reads_enterprise_timeouts_from_env(monkeypatch: pytest.
     assert settings.enterprise_sandbox_proxy_timeout == 90
 
 
-def test_server_settings_reads_e2b_active_timeout_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS", "900")
+def test_server_settings_run_and_e2b_timeouts_default_align_and_override_independently(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.delenv("DIFY_AGENT_RUN_TIMEOUT_SECONDS", raising=False)
+    monkeypatch.delenv("DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS", raising=False)
+    monkeypatch.chdir(tmp_path)
 
     settings = ServerSettings()
 
-    assert settings.e2b_active_timeout_seconds == 900
+    assert settings.run_timeout_seconds == DEFAULT_AGENT_RUN_TIMEOUT_SECONDS == 3600
+    assert settings.e2b_active_timeout_seconds == E2B_MAX_ACTIVE_TIMEOUT_SECONDS == 3600
+
+    monkeypatch.setenv("DIFY_AGENT_RUN_TIMEOUT_SECONDS", "900.5")
+
+    run_override_settings = ServerSettings()
+    assert run_override_settings.run_timeout_seconds == 900.5
+    assert run_override_settings.e2b_active_timeout_seconds == 3600
+
+    monkeypatch.delenv("DIFY_AGENT_RUN_TIMEOUT_SECONDS")
+    monkeypatch.setenv("DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS", "900")
+
+    e2b_override_settings = ServerSettings()
+    assert e2b_override_settings.run_timeout_seconds == 3600
+    assert e2b_override_settings.e2b_active_timeout_seconds == 900
+
+
+def test_server_settings_rejects_non_positive_run_timeout() -> None:
+    with pytest.raises(ValidationError, match="greater than 0"):
+        _ = ServerSettings(run_timeout_seconds=0)
+
+
+def test_server_settings_reads_binding_file_download_command_timeout_from_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DIFY_AGENT_BINDING_FILE_DOWNLOAD_COMMAND_TIMEOUT_SECONDS", "123.5")
+
+    settings = ServerSettings()
+
+    assert settings.binding_file_download_command_timeout_seconds == 123.5
+
+
+def test_server_settings_defaults_binding_file_download_command_timeout_to_210_seconds(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.delenv("DIFY_AGENT_BINDING_FILE_DOWNLOAD_COMMAND_TIMEOUT_SECONDS", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+    assert ServerSettings().binding_file_download_command_timeout_seconds == 210.0
+
+
+def test_server_settings_rejects_non_positive_binding_file_download_command_timeout() -> None:
+    with pytest.raises(ValidationError, match="greater than 0"):
+        _ = ServerSettings(binding_file_download_command_timeout_seconds=0)
 
 
 def test_server_settings_defaults_shellctl_auth_token_to_none(
@@ -72,12 +119,31 @@ def test_server_settings_defaults_shellctl_auth_token_to_none(
 def test_server_settings_reads_agent_stub_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub/")
     monkeypatch.setenv("DIFY_AGENT_SANDBOX_FILES_BASE_URL", "https://dify.example.com/prefix/")
+    monkeypatch.setenv("DIFY_AGENT_STUB_UPLOAD_FILE_SIZE_LIMIT", "72")
     monkeypatch.setenv("DIFY_AGENT_SERVER_SECRET_KEY", _base64url_secret(secrets.token_bytes(32)))
 
     settings = ServerSettings()
 
     assert settings.agent_stub_api_base_url == "https://agent.example.com/agent-stub"
     assert settings.sandbox_files_base_url == "https://dify.example.com/prefix"
+    assert settings.stub_upload_file_size_limit == 72
+
+
+def test_server_settings_defaults_stub_upload_file_size_limit_to_50_mib(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.delenv("DIFY_AGENT_STUB_UPLOAD_FILE_SIZE_LIMIT", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+    assert ServerSettings().stub_upload_file_size_limit == 50
+
+
+def test_server_settings_accepts_zero_and_rejects_negative_stub_upload_file_size_limit() -> None:
+    assert ServerSettings(stub_upload_file_size_limit=0).stub_upload_file_size_limit == 0
+
+    with pytest.raises(ValidationError):
+        _ = ServerSettings(stub_upload_file_size_limit=-1)
 
 
 def test_server_settings_normalizes_agent_stub_service_root_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -169,6 +235,11 @@ def test_server_settings_normalizes_inner_api_url_from_env(monkeypatch: pytest.M
     assert settings.inner_api_key == "inner-secret"
 
 
+@pytest.mark.parametrize(("value", "expected"), [("", None), ("  ", None), (" secret-token ", "secret-token")])
+def test_server_settings_normalizes_api_token(value: str, expected: str | None) -> None:
+    assert ServerSettings(api_token=value).api_token == expected
+
+
 def test_server_settings_allows_inner_api_url_without_key_until_a_bridge_is_used() -> None:
     settings = ServerSettings(inner_api_key="inner-secret")
     assert settings.inner_api_key == "inner-secret"
@@ -210,6 +281,7 @@ def test_server_settings_create_agent_stub_file_request_handler_returns_handler_
         inner_api_url="https://api.example.com",
         inner_api_key="inner-secret",
         sandbox_files_base_url="https://sandbox-files.example.com/dify",
+        stub_upload_file_size_limit=72,
     )
 
     handler = settings.create_agent_stub_file_request_handler()
@@ -218,32 +290,7 @@ def test_server_settings_create_agent_stub_file_request_handler_returns_handler_
     assert handler.inner_api_url == "https://api.example.com"
     assert handler.inner_api_key == "inner-secret"
     assert handler.sandbox_files_base_url == "https://sandbox-files.example.com/dify"
-
-
-def test_server_settings_create_agent_stub_drive_request_handler_returns_none_without_full_settings() -> None:
-    assert ServerSettings().create_agent_stub_drive_request_handler() is None
-
-
-def test_server_settings_create_agent_stub_drive_request_handler_returns_handler_when_configured() -> None:
-    settings = ServerSettings(
-        inner_api_url="https://api.example.com",
-        inner_api_key="inner-secret",
-        outbound_http_connect_timeout=11,
-        outbound_http_read_timeout=22,
-        outbound_http_write_timeout=33,
-        outbound_http_pool_timeout=44,
-    )
-
-    handler = settings.create_agent_stub_drive_request_handler()
-
-    assert isinstance(handler, DifyApiAgentStubDriveRequestHandler)
-    assert handler.inner_api_url == "https://api.example.com"
-    assert handler.inner_api_key == "inner-secret"
-    timeout = cast(httpx.Timeout, handler.timeout)
-    assert timeout.connect == 11
-    assert timeout.read == 22
-    assert timeout.write == 33
-    assert timeout.pool == 44
+    assert handler.max_upload_size_bytes == 72 * 1024 * 1024
 
 
 def test_build_runtime_backend_profile_returns_none_when_local_endpoint_is_unset(
@@ -286,6 +333,7 @@ def test_build_runtime_backend_profile_returns_enterprise_drivers_when_selected(
         enterprise_sandbox_gateway_auth_token="gateway-secret",
         enterprise_sandbox_gateway_timeout=45,
         enterprise_sandbox_proxy_timeout=90,
+        enterprise_sandbox_snapshot_timeout=120,
     )
 
     profile = settings.build_runtime_backend_profile()
@@ -296,6 +344,20 @@ def test_build_runtime_backend_profile_returns_enterprise_drivers_when_selected(
     assert profile.execution_bindings.auth_token == "gateway-secret"
     assert profile.execution_bindings.gateway_timeout == 45
     assert profile.execution_bindings.proxy_timeout == 90
+    assert isinstance(profile.home_snapshots, EnterpriseHomeSnapshotBackend)
+    assert profile.home_snapshots.gateway_endpoint == "https://gateway.example"
+    assert profile.home_snapshots.auth_token == "gateway-secret"
+    assert profile.home_snapshots.snapshot_timeout == 120
+    assert profile.execution_bindings.snapshot_timeout == 120
+
+
+def test_enterprise_snapshot_timeout_defaults_above_the_gateway_budget() -> None:
+    settings = ServerSettings(
+        runtime_backend="enterprise",
+        enterprise_sandbox_gateway_endpoint="https://gateway.example",
+    )
+
+    assert settings.enterprise_sandbox_snapshot_timeout > settings.enterprise_sandbox_gateway_timeout
 
 
 def test_build_runtime_backend_profile_passes_e2b_active_timeout() -> None:

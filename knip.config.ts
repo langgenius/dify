@@ -24,6 +24,7 @@ const config: KnipConfig = {
         '!.storybook/**!',
         '!plugins/**!',
         '!test/**!',
+        '!vitest.browser.setup.ts!',
         '!vitest.setup.ts!',
       ],
       ignore: ['public/**'],

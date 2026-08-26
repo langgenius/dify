@@ -41,7 +41,7 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
         placement="bottom-start"
         sideOffset={4}
         alignOffset={-12}
-        popupClassName="w-[208px] rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
+        className="w-[208px] rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
       >
         <div className="flex h-5.5 items-center px-3 pl-3 system-xs-medium-uppercase text-text-tertiary">
           {t(($) => $['generate.versions'], { ns: 'appDebug' })}

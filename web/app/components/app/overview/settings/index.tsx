@@ -4,9 +4,10 @@ import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { AppIconType, Language, SiteConfig } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { Field, FieldControl, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import {
   ScrollArea,
@@ -34,7 +35,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import Divider from '@/app/components/base/divider'
 import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
-import { Plan } from '@/app/components/billing/type'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { languages } from '@/i18n-config/language'
@@ -43,6 +43,7 @@ import { AppModeEnum } from '@/types/app'
 
 type ISettingsModalProps = {
   isChat: boolean
+  canDeploy?: boolean
   appInfo: SettingsAppInfo
   isShow: boolean
   defaultValue?: string
@@ -181,6 +182,7 @@ const getSettingsResetKey = (appInfo: ISettingsModalProps['appInfo']) =>
 
 const SettingsModal: FC<ISettingsModalProps> = ({
   isChat,
+  canDeploy = false,
   appInfo,
   isShow = false,
   onClose,
@@ -203,7 +205,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
 
   const { enableBilling, plan, webappCopyrightEnabled } = useProviderContext()
   const { setShowPricingModal } = useModalContext()
-  const isCloudSandboxPlan = enableBilling && plan.type === Plan.sandbox
+  const isCloudSandboxPlan = enableBilling && plan.type === 'sandbox'
   const selectedLanguage = LANGUAGE_OPTIONS.find((item) => item.value === language)
   const inputPlaceholderLabelId = React.useId()
   const inputPlaceholderDescriptionId = React.useId()
@@ -364,27 +366,63 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               <DialogTitle className="grow title-2xl-semi-bold text-text-primary">
                 {t(($) => $[`${prefixSettings}.title`], { ns: 'appOverview' })}
               </DialogTitle>
-              <DialogCloseButton className="relative top-auto right-auto shrink-0" />
+              <DialogClose
+                render={
+                  <IconButton
+                    aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                    size="sm"
+                    className="relative top-auto right-auto shrink-0 rounded-2xl"
+                  >
+                    <span aria-hidden className="i-ri-close-line size-4" />
+                  </IconButton>
+                }
+              />
             </div>
             <div className="mt-0.5 system-xs-regular text-text-tertiary">
               <span>{t(($) => $[`${prefixSettings}.modalTip`], { ns: 'appOverview' })}</span>
             </div>
           </div>
           <Form
-            className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto]"
+            className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)_auto]"
             onFormSubmit={handleFormSubmit}
           >
+            {canDeploy && (
+              <div className="row-start-1 px-6 py-2">
+                <div
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                  className="relative flex min-h-10 items-start gap-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]"
+                >
+                  <div
+                    aria-hidden="true"
+                    className="absolute -inset-px bg-linear-to-r from-components-badge-status-light-normal-halo to-background-gradient-mask-transparent opacity-40"
+                  />
+                  <div className="relative flex size-6 shrink-0 items-center justify-center p-1">
+                    <span
+                      aria-hidden="true"
+                      className="i-ri-information-2-fill size-4 text-text-accent"
+                    />
+                  </div>
+                  <p className="relative min-w-0 flex-1 py-1 system-xs-medium wrap-break-word text-text-primary">
+                    {t(($) => $[`${prefixSettings}.multiEnvironmentNotice`], {
+                      ns: 'appOverview',
+                    })}
+                  </p>
+                </div>
+              </div>
+            )}
             {/* form body */}
-            <ScrollArea className="relative min-h-0">
-              <ScrollAreaViewport className="overscroll-contain">
-                <ScrollAreaContent style={{ minWidth: 0 }} className="space-y-5 px-6 py-3">
+            <ScrollArea className="relative row-start-2 min-h-0 overflow-hidden">
+              <ScrollAreaViewport className="max-h-full overflow-y-auto overscroll-contain">
+                <ScrollAreaContent className="flex min-w-0 flex-col gap-y-5 px-6 py-3">
                   {/* name & icon */}
                   <div className="flex gap-4">
                     <Field name="title" className="grow">
                       <FieldLabel>
                         {t(($) => $[`${prefixSettings}.webName`], { ns: 'appOverview' })}
                       </FieldLabel>
-                      <FieldControl
+                      <Input
                         value={inputInfo.title}
                         onValueChange={(value) =>
                           setInputInfo((item) => ({ ...item, title: value }))
@@ -483,7 +521,10 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                         </div>
                       </div>
                       <Field name="chat_color_theme" className="w-50 shrink-0">
-                        <FieldControl
+                        <Input
+                          aria-label={t(($) => $[`${prefixSettings}.chatColorTheme`], {
+                            ns: 'appOverview',
+                          })}
                           className="mb-1"
                           value={inputInfo.chatColorTheme ?? ''}
                           onValueChange={(value) =>
@@ -738,7 +779,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               </ScrollAreaScrollbar>
             </ScrollArea>
             {/* footer */}
-            <div className="flex shrink-0 justify-end p-6 pt-5">
+            <div className="row-start-3 flex shrink-0 justify-end p-6 pt-5">
               <Button type="button" className="mr-2" onClick={handleClose}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>

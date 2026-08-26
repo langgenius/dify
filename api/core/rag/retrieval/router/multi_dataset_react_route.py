@@ -2,7 +2,8 @@ from collections.abc import Generator, Sequence
 from typing import Any, Union
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.app.llm import deduct_llm_quota
+from core.credit_usage import CreditUsageCreatedBy
+from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelInstance, ModelManager
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
@@ -136,6 +137,7 @@ class ReactMultiDatasetRouter:
             return react_decision.tool, usage
         return None, usage
 
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_RETRIEVAL)
     def _invoke_llm(
         self,
         completion_param: dict[str, Any],
@@ -167,9 +169,6 @@ class ReactMultiDatasetRouter:
 
         # handle invoke result
         text, usage = self._handle_invoke_result(invoke_result=invoke_result)
-
-        # deduct quota
-        deduct_llm_quota(tenant_id=tenant_id, model_instance=bound_model_instance, usage=usage)
 
         return text, usage
 

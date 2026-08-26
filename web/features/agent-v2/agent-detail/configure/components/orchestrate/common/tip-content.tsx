@@ -1,6 +1,6 @@
 'use client'
 
-import { Trans, useTranslation } from 'react-i18next'
+import { Trans } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import { DocsLink } from './docs-link'
 
@@ -9,8 +9,19 @@ type AgentConfigureTipContentProps = {
 }
 
 export function AgentConfigureTipContent({ type }: AgentConfigureTipContentProps) {
-  const { t } = useTranslation('agentV2')
   const docLink = useDocLink()
+
+  if (type === 'prompt') {
+    return (
+      <Trans
+        i18nKey={($) => $['agentDetail.configure.prompt.richTip']}
+        ns="agentV2"
+        components={{
+          docLink: <DocsLink href={docLink('/use-dify/build/new-agent/build#prompt')} />,
+        }}
+      />
+    )
+  }
 
   if (type === 'env') {
     return (
@@ -68,10 +79,19 @@ export function AgentConfigureTipContent({ type }: AgentConfigureTipContentProps
     )
   }
 
-  if (type === 'files')
+  if (type === 'files') {
     return (
-      <span className="whitespace-pre-line">{t(($) => $['agentDetail.configure.files.tip'])}</span>
+      <span className="whitespace-pre-line">
+        <Trans
+          i18nKey={($) => $['agentDetail.configure.files.richTip']}
+          ns="agentV2"
+          components={{
+            docLink: <DocsLink href={docLink('/use-dify/build/new-agent/build#files')} />,
+          }}
+        />
+      </span>
     )
+  }
 
-  return <>{t(($) => $[`agentDetail.configure.${type}.tip`])}</>
+  return null
 }

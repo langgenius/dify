@@ -1,13 +1,15 @@
 'use client'
 import type { MailSendResponse, MailValidityResponse } from '@/service/use-common'
 import { Button } from '@langgenius/dify-ui/button'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import Countdown from '@/app/components/signin/countdown'
 import { useLocale } from '@/context/i18n'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useMailValidity, useSendMail } from '@/service/use-common'
 
@@ -22,8 +24,11 @@ export default function CheckCode() {
   const locale = useLocale()
   const { mutateAsync: submitMail } = useSendMail()
   const { mutateAsync: verifyCode } = useMailValidity()
+  const pageTitle = t(($) => $['checkCode.checkYourEmail'], { ns: 'login' })
+  useDocumentTitle(pageTitle)
 
   const verify = async () => {
+    if (loading) return
     try {
       if (!code.trim()) {
         toast.error(t(($) => $['checkCode.emptyCode'], { ns: 'login' }))
@@ -70,9 +75,7 @@ export default function CheckCode() {
         <RiMailSendFill className="size-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pt-2 pb-4">
-        <h1 className="title-4xl-semi-bold text-text-primary">
-          {t(($) => $['checkCode.checkYourEmail'], { ns: 'login' })}
-        </h1>
+        <h1 className="title-4xl-semi-bold text-text-primary">{pageTitle}</h1>
         <p className="mt-2 body-md-regular text-text-secondary">
           <span>
             {t(($) => $['checkCode.tipsPrefix'], { ns: 'login' })}
@@ -83,26 +86,31 @@ export default function CheckCode() {
         </p>
       </div>
 
-      <form action="">
-        <label htmlFor="code" className="mb-1 system-md-semibold text-text-secondary">
-          {t(($) => $['checkCode.verificationCode'], { ns: 'login' })}
-        </label>
-        <Input
-          value={code}
-          onChange={(e) => setVerifyCode(e.target.value)}
-          maxLength={6}
-          className="mt-1"
-          placeholder={
-            t(($) => $['checkCode.verificationCodePlaceholder'], { ns: 'login' }) as string
-          }
-        />
-        <Button
-          loading={loading}
-          disabled={loading}
-          className="my-3 w-full"
-          variant="primary"
-          onClick={verify}
-        >
+      <form
+        onSubmit={(event) => {
+          event.preventDefault()
+          void verify()
+        }}
+      >
+        <Field name="code">
+          <FieldLabel htmlFor="code" className="mb-1 system-md-semibold text-text-secondary">
+            {t(($) => $['checkCode.verificationCode'], { ns: 'login' })}
+          </FieldLabel>
+          <Input
+            id="code"
+            name="code"
+            value={code}
+            onValueChange={setVerifyCode}
+            maxLength={6}
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            className="mt-1"
+            placeholder={
+              t(($) => $['checkCode.verificationCodePlaceholder'], { ns: 'login' }) as string
+            }
+          />
+        </Field>
+        <Button type="submit" loading={loading} className="my-3 w-full" variant="primary">
           {t(($) => $['checkCode.verify'], { ns: 'login' })}
         </Button>
         <Countdown onResend={resendCode} />

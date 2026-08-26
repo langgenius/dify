@@ -45,7 +45,7 @@ from core.app.entities.app_invoke_entities import (
     InvokeFrom,
     UserFrom,
 )
-from core.app.llm.model_access import build_dify_model_access
+from core.credit_usage import CreditUsageAppType
 from core.db.session_factory import session_factory
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.file_reference import build_file_reference, is_canonical_file_reference
@@ -219,6 +219,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             agent_config_snapshot_id=agent_config_id,
             agent_config_version_kind=agent_config_version_kind,
             agent_session_scope_config_version_id=session_scope_config_version_id,
+            agent_llm_gateway_enabled=True,
         )
 
         conversation, message = self._init_generate_records(
@@ -349,6 +350,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             agent_id=agent.id,
             agent_config_snapshot_id=agent_config_id,
             agent_config_version_kind=agent_config_version_kind,
+            agent_llm_gateway_enabled=True,
         )
 
         conversation, message = self._init_generate_records(
@@ -497,6 +499,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     user_id=application_generate_entity.user_id,
                     user_from=user_from,
                     invoke_from=application_generate_entity.invoke_from,
+                    app_type=CreditUsageAppType.AGENT_V2,
                 )
                 with session_factory.create_session() as session:
                     agent, config_version, agent_soul = self._resolve_agent_by_id(
@@ -506,7 +509,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                         session=session,
                     )
 
-                runner = self._build_runner(dify_context)
+                runner = self._build_runner()
                 runner.run(
                     dify_context=dify_context,
                     agent_id=application_generate_entity.agent_id,
@@ -542,10 +545,9 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         return query.replace("\x00", "")
 
     @staticmethod
-    def _build_runner(dify_context: DifyRunContext) -> AgentAppRunner:
-        credentials_provider, _ = build_dify_model_access(dify_context)
+    def _build_runner() -> AgentAppRunner:
         return AgentAppRunner(
-            request_builder=AgentAppRuntimeRequestBuilder(credentials_provider=credentials_provider),
+            request_builder=AgentAppRuntimeRequestBuilder(),
             agent_backend_client=create_agent_backend_run_client(
                 base_url=dify_config.AGENT_BACKEND_BASE_URL,
                 api_token=dify_config.AGENT_BACKEND_API_TOKEN,
@@ -553,7 +555,6 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 fake_scenario=dify_config.AGENT_BACKEND_FAKE_SCENARIO,
                 stream_read_timeout_seconds=dify_config.AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS,
                 stream_max_reconnects=dify_config.AGENT_BACKEND_STREAM_MAX_RECONNECTS,
-                stream_run_timeout_seconds=dify_config.AGENT_BACKEND_RUN_TIMEOUT_SECONDS,
             ),
             event_adapter=AgentBackendRunEventAdapter(),
             session_store=AgentAppWorkspaceStore(),

@@ -548,8 +548,8 @@ export const zDocumentResponse = z.object({
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   created_from: z.string().nullish(),
-  data_source_detail_dict: z.unknown().optional(),
-  data_source_info: z.unknown().optional(),
+  data_source_detail_dict: z.record(z.string(), z.unknown()),
+  data_source_info: z.record(z.string(), z.unknown()).nullish(),
   data_source_type: z.string().nullish(),
   dataset_process_rule_id: z.string().nullish(),
   disabled_at: z.int().nullish(),
@@ -588,8 +588,8 @@ export const zDocumentWithSegmentsResponse = z.object({
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   created_from: z.string().nullish(),
-  data_source_detail_dict: z.unknown().optional(),
-  data_source_info: z.unknown().optional(),
+  data_source_detail_dict: z.record(z.string(), z.unknown()),
+  data_source_info: z.record(z.string(), z.unknown()).nullish(),
   data_source_type: z.string().nullish(),
   dataset_process_rule_id: z.string().nullish(),
   disabled_at: z.int().nullish(),
@@ -868,7 +868,7 @@ export const zProcessRule = z.object({
  * MetadataDetail
  */
 export const zMetadataDetail = z.object({
-  id: z.string(),
+  id: z.uuid(),
   name: z.string(),
   value: z.union([z.string(), z.int(), z.number()]).nullish(),
 })
@@ -877,7 +877,7 @@ export const zMetadataDetail = z.object({
  * DocumentMetadataOperation
  */
 export const zDocumentMetadataOperation = z.object({
-  document_id: z.string(),
+  document_id: z.uuid(),
   metadata_list: z.array(zMetadataDetail),
   partial_update: z.boolean().optional().default(false),
 })

@@ -414,18 +414,21 @@ vi.mock('../app-card', () => ({
       }),
     )
   },
-  AppCardActionBar: ({ app }: { app: { id: string } }) => {
-    return React.createElement('button', {
-      'data-testid': `app-card-action-bar-${app.id}`,
-      type: 'button',
-    })
-  },
   default: ({ app }: { app: { id: string; name: string } }) => {
     return React.createElement(
       'div',
       { 'data-testid': `app-card-${app.id}`, role: 'article' },
       app.name,
     )
+  },
+}))
+
+vi.mock('../app-card/action-bar', () => ({
+  AppCardActionBar: ({ app }: { app: { id: string; name: string } }) => {
+    return React.createElement('button', {
+      'aria-label': `Actions for ${app.name}`,
+      type: 'button',
+    })
   },
 }))
 
@@ -690,7 +693,7 @@ describe('List', () => {
       const starredCard = screen.getByRole('link', { name: /Starred App/ })
       const allAppsLabel = screen.getByText('All Apps')
       const firstAppCard = screen.getByTestId('app-card-app-1')
-      const actionBar = screen.getByTestId('app-card-action-bar-starred-app-1')
+      const actionBar = screen.getByRole('button', { name: 'Actions for Starred App' })
 
       expect(starredCard).toBeInTheDocument()
       expect(actionBar).toBeInTheDocument()
@@ -737,7 +740,9 @@ describe('List', () => {
       const firstWorkspaceCard = screen.getByTestId('app-card-app-1')
       const firstWorkspaceActionBar = screen.getByTestId('app-card-action-bar-app-1')
       const starredCard = screen.getByRole('link', { name: /Starred App/ })
-      const starredActionBar = screen.getByTestId('app-card-action-bar-starred-app-1')
+      const starredActionBar = screen.getByRole('button', {
+        name: 'Actions for Starred App',
+      })
 
       expect(firstWorkspaceCard).toHaveAttribute(
         'data-step-by-step-tour-target',
@@ -891,29 +896,6 @@ describe('List', () => {
       ).toHaveAttribute(
         'data-step-by-step-tour-target',
         STEP_BY_STEP_TOUR_TARGETS.studioEmptyLearnDify,
-      )
-    })
-
-    it('should lay out first empty state placeholder cards with auto-fill grid columns', () => {
-      mockAppData = { pages: [{ data: [], total: 0 }] }
-
-      const { container } = renderList()
-      const placeholderGrid = Array.from(container.querySelectorAll('.pointer-events-none')).find(
-        (element) => element.className.includes('grid-rows-4'),
-      )
-
-      if (!placeholderGrid) throw new Error('Expected first empty state placeholder grid to render')
-
-      expect(placeholderGrid).toHaveClass(
-        'grid',
-        'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
-        'grid-rows-4',
-      )
-      expect(placeholderGrid).not.toHaveClass(
-        'grid-cols-1',
-        'sm:grid-cols-2',
-        'lg:grid-cols-3',
-        'xl:grid-cols-4',
       )
     })
 

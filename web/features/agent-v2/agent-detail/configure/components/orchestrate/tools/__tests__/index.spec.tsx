@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
@@ -16,7 +16,10 @@ import {
   isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
-import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
+import {
+  AgentOrchestrateReadOnlyContext,
+  AgentOrchestrateViewingVersionContext,
+} from '../../read-only-context'
 import { AgentTools } from '../index'
 
 const toolProviderState = vi.hoisted(() => ({
@@ -107,18 +110,21 @@ vi.mock('@/utils/get-icon', () => ({
 
 vi.mock('@/app/components/plugins/plugin-auth/authorize/add-oauth-button', () => ({
   default: ({ buttonText, onUpdate, renderTrigger }: AddOAuthButtonProps) => {
-    if (renderTrigger) {
-      return renderTrigger({
-        isConfigured: false,
-        onClick: () => onUpdate?.(),
-      })
-    }
-
-    return (
+    const trigger = (
       <button type="button" onClick={onUpdate}>
         {buttonText}
       </button>
     )
+
+    if (renderTrigger) {
+      return renderTrigger({
+        isConfigured: false,
+        onClick: () => onUpdate?.(),
+        trigger,
+      })
+    }
+
+    return trigger
   },
 }))
 
@@ -424,7 +430,13 @@ function renderAgentToolsWithStore(initialDraft: AgentSoulConfigFormState = agen
   }
 }
 
-function renderReadonlyAgentTools(initialDraft: AgentSoulConfigFormState = agentToolsDraft) {
+function renderReadonlyAgentTools({
+  initialDraft = agentToolsDraft,
+  viewingVersion = false,
+}: {
+  initialDraft?: AgentSoulConfigFormState
+  viewingVersion?: boolean
+} = {}) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -437,9 +449,11 @@ function renderReadonlyAgentTools(initialDraft: AgentSoulConfigFormState = agent
   return render(
     <QueryClientProvider client={queryClient}>
       <AgentComposerProvider initialDraft={initialDraft}>
-        <AgentOrchestrateReadOnlyContext value>
-          <AgentTools />
-        </AgentOrchestrateReadOnlyContext>
+        <AgentOrchestrateViewingVersionContext value={viewingVersion}>
+          <AgentOrchestrateReadOnlyContext value>
+            <AgentTools />
+          </AgentOrchestrateReadOnlyContext>
+        </AgentOrchestrateViewingVersionContext>
       </AgentComposerProvider>
     </QueryClientProvider>,
   )
@@ -530,9 +544,9 @@ describe('AgentTools', () => {
       ).toBeInTheDocument()
     })
 
-    it('should hide add, edit, and remove actions when readonly', async () => {
+    it('should hide add, edit, and remove actions when viewing a version', async () => {
       const user = userEvent.setup()
-      renderReadonlyAgentTools()
+      renderReadonlyAgentTools({ viewingVersion: true })
 
       expect(
         screen.queryByRole('button', {
@@ -569,6 +583,16 @@ describe('AgentTools', () => {
       expect(
         screen.queryByRole('button', {
           name: 'agentV2.agentDetail.configure.tools.removeAction:{"name":"Lark CLI"}',
+        }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('should hide the add action while a build draft is read-only', () => {
+      renderReadonlyAgentTools()
+
+      expect(
+        screen.queryByRole('button', {
+          name: 'agentV2.agentDetail.configure.tools.add',
         }),
       ).not.toBeInTheDocument()
     })

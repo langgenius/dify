@@ -9,10 +9,6 @@ vi.mock('@/next/navigation', () => ({
   redirect: mockRedirect,
 }))
 
-vi.mock('@/app/education/paused-content', () => ({
-  EducationPausedContent: () => <div>Education paused</div>,
-}))
-
 vi.mock('../application-form', () => ({
   default: ({ token }: { token: string }) => <div>Application form: {token}</div>,
 }))
@@ -31,7 +27,7 @@ describe('EducationApplyRoute', () => {
     expect(mockRedirect).toHaveBeenCalledWith('/')
   })
 
-  it('renders the pause state for a direct token URL', () => {
+  it('renders the application form for a direct token URL', () => {
     const { queryClient, wrapper } = createConsoleQueryWrapper({
       educationStatus: { is_student: false },
     })
@@ -42,7 +38,6 @@ describe('EducationApplyRoute', () => {
 
     render(<EducationApplyRoute token="education-token" />, { wrapper })
 
-    expect(screen.getByText('Education paused')).toBeInTheDocument()
-    expect(screen.queryByText(/Application form/)).not.toBeInTheDocument()
+    expect(screen.getByText('Application form: education-token')).toBeInTheDocument()
   })
 })

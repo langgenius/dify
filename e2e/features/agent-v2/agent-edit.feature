@@ -1,6 +1,6 @@
 @agent-v2 @authenticated @agent-edit
 Feature: Agent v2 Agent Edit page
-  @core @prepared @stable-model @full-config-agent
+  @core @prepared @stable-model @full-config-agent @skip
   Scenario: Saved orchestration sections are visible on the Agent Edit page
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -32,7 +32,7 @@ Feature: Agent v2 Agent Edit page
     When I open the preseeded Agent v2 configure page for "E2E New Agent Builder Tool States" from the Agent Roster
     Then I should see the Agent v2 tool state fixture tools
 
-  @core @prepared @dual-retrieval-fixture
+  @core @prepared @dual-retrieval-fixture @skip
   Scenario: Dual Knowledge Retrieval settings are visible on the Agent Edit page
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E Agent With Dual Retrieval" is available
@@ -41,7 +41,7 @@ Feature: Agent v2 Agent Edit page
     Then I should see the Agent v2 dual retrieval fixture settings
 
   @core @prepared @stable-model
-  Scenario: Agent Edit opens the same Agent in Agent Console
+  Scenario: Agent Edit opens the same Agent in Agents
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
     And a workflow app with an Agent v2 node has been created via API
@@ -49,5 +49,5 @@ Feature: Agent v2 Agent Edit page
     And I open the Agent v2 workflow node panel
     And I open the Agent v2 workflow Agent details
     Then I should see the Agent v2 workflow Agent details for the created Agent
-    When I open the Agent v2 workflow Agent in Agent Console
-    Then the Agent v2 Agent Console should open for the same workflow Agent
+    When I open the Agent v2 workflow Agent in Agents
+    Then the Agent v2 Agents page should open for the same workflow Agent

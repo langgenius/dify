@@ -2,7 +2,7 @@ import type { BannerResponse } from '@dify/contracts/api/console/explore/types.g
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
 import { act } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { Banner } from '../banner'
@@ -73,9 +73,7 @@ vi.mock('react-i18next', async () => {
   return {
     useTranslation: () => ({
       i18n: { language: 'en-US' },
-      t: withSelectorKey((key: string, opts?: Record<string, unknown>) => {
-        if (key === 'banner.greeting') return `Welcome back, ${opts?.name}👋`
-        if (key === 'banner.tagline') return 'What if… this is where your next idea begins.'
+      t: withSelectorKey((key: string) => {
         return key
       }),
     }),
@@ -185,10 +183,6 @@ describe('Banner', () => {
   it('renders nothing when there are no banners', () => {
     render(<Banner banners={[]} />)
 
-    expect(screen.queryByText('Welcome back, Evan👋')).not.toBeInTheDocument()
-    expect(
-      screen.queryByText('What if… this is where your next idea begins.'),
-    ).not.toBeInTheDocument()
     expect(screen.queryByRole('region')).not.toBeInTheDocument()
   })
 

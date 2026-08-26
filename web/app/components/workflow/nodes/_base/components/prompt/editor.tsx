@@ -2,6 +2,7 @@
 import type { FC, ReactNode } from 'react'
 import type { ModelConfig, Node, NodeOutPutVar, Variable } from '../../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -11,7 +12,6 @@ import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { Copy, CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { Jinja } from '@/app/components/base/icons/src/vender/workflow'
@@ -193,7 +193,7 @@ const Editor: FC<Props> = ({
                       </button>
                     }
                   />
-                  <PopoverContent popupClassName="max-w-[300px] px-3 py-2 system-xs-regular text-text-tertiary">
+                  <PopoverContent className="max-w-[300px] px-3 py-2 system-xs-regular text-text-tertiary">
                     {titleTooltip}
                   </PopoverContent>
                 </Popover>
@@ -238,7 +238,7 @@ const Editor: FC<Props> = ({
                           </button>
                         }
                       />
-                      <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
+                      <PopoverContent className="px-3 py-2 system-xs-regular text-text-tertiary">
                         <div>
                           <div>{t(($) => $['common.enableJinja'], { ns: 'workflow' })}</div>
                           <a
@@ -265,9 +265,12 @@ const Editor: FC<Props> = ({
                   <Tooltip>
                     <TooltipTrigger
                       render={
-                        <ActionButton onClick={handleInsertVariable}>
-                          <Variable02 className="size-4" />
-                        </ActionButton>
+                        <IconButton
+                          aria-label={t(($) => $['common.insertVarTip'], { ns: 'workflow' })}
+                          onClick={handleInsertVariable}
+                        >
+                          <Variable02 aria-hidden="true" className="size-4" />
+                        </IconButton>
                       }
                     />
                     <TooltipContent>
@@ -276,18 +279,24 @@ const Editor: FC<Props> = ({
                   </Tooltip>
                 )}
                 {showRemove && (
-                  <ActionButton onClick={onRemove}>
-                    <RiDeleteBinLine className="size-4" />
-                  </ActionButton>
+                  <IconButton
+                    aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
+                    onClick={onRemove}
+                  >
+                    <RiDeleteBinLine aria-hidden="true" className="size-4" />
+                  </IconButton>
                 )}
                 {!isCopied ? (
-                  <ActionButton onClick={handleCopy}>
-                    <Copy className="size-4" />
-                  </ActionButton>
+                  <IconButton
+                    aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
+                    onClick={handleCopy}
+                  >
+                    <Copy aria-hidden="true" className="size-4" />
+                  </IconButton>
                 ) : (
-                  <ActionButton>
-                    <CopyCheck className="size-4" />
-                  </ActionButton>
+                  <IconButton aria-label={t(($) => $['operation.copy'], { ns: 'common' })}>
+                    <CopyCheck aria-hidden="true" className="size-4" />
+                  </IconButton>
                 )}
                 <ToggleExpandBtn isExpand={isExpand} onExpandChange={setIsExpand} />
               </div>

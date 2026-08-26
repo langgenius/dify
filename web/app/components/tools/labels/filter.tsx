@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
-import Input from '@/app/components/base/input'
+import { SearchInput } from '@/app/components/base/search-input'
 import { useTags } from '@/app/components/plugins/hooks'
 
 type LabelFilterProps = {
@@ -72,17 +72,11 @@ const LabelFilter: FC<LabelFilterProps> = ({ value, onChange }) => {
         <PopoverContent
           placement="bottom-start"
           sideOffset={4}
-          popupClassName="w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
+          className="w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
         >
           <div className="relative">
             <div className="p-2">
-              <Input
-                showLeftIcon
-                showClearIcon
-                value={keywords}
-                onChange={(e) => setKeywords(e.target.value)}
-                onClear={() => setKeywords('')}
-              />
+              <SearchInput value={keywords} onValueChange={setKeywords} />
             </div>
             <div className="p-1">
               {filteredLabelList.map((label) => (

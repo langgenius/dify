@@ -13,7 +13,6 @@ from controllers.common.schema import query_params_from_model, register_response
 from controllers.console import console_ns
 from controllers.console.wraps import RBACPermission, RBACResourceScope, model_validate, rbac_permission_required
 from core.db.session_factory import session_factory
-from core.rbac import RBACResourceWhitelistScope
 from enums import DeploymentEdition
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
@@ -53,6 +52,7 @@ register_response_schema_models(
     svc.DatasetAccessMatrix,
     svc.WorkspaceAccessMatrix,
     svc.ResourceWhitelist,
+    svc.ResourceWhitelistConfig,
     svc.ResourceUserAccessPoliciesResponse,
     svc.ReplaceUserAccessPoliciesResponse,
     svc.RoleBindingsResponse,
@@ -169,6 +169,22 @@ def _hydrate_resource_user_account_names(items: list[svc.ResourceUserAccessPolic
             item.account.account_name = account_names.get(account_id, {}).get("name", "")
             item.account.avatar = account_names.get(account_id, {}).get("avatar", "")
             item.account.email = account_names.get(account_id, {}).get("email", "")
+
+
+def _move_resource_maintainer_first(items: list[svc.ResourceUserAccessPolicies], maintainer_id: str | None) -> None:
+    if not maintainer_id:
+        return
+
+    normalized_maintainer_id = str(maintainer_id).strip()
+    if not normalized_maintainer_id:
+        return
+
+    for index, item in enumerate(items):
+        account_id = str(item.account.account_id or "").strip()
+        if account_id == normalized_maintainer_id:
+            if index:
+                items.insert(0, items.pop(index))
+            return
 
 
 class _PaginationQuery(BaseModel):
@@ -538,7 +554,7 @@ class RBACAccessPolicyBindingUnlockApi(Resource):
 
 
 class _ResourceAccessScopeRequest(BaseModel):
-    scope: RBACResourceWhitelistScope
+    automatic_include_workspace_members: bool
 
 
 class _ReplaceBindingsRequest(BaseModel):
@@ -568,12 +584,17 @@ class _AccessControlLanguageQuery(BaseModel):
     language: Literal["en", "ja", "zh"] | None = Field(default=None, description="Localized policy label language")
 
 
+class _ResourceUserAccessPoliciesQuery(_PaginationQuery):
+    language: Literal["en", "ja", "zh"] | None = Field(default=None, description="Localized policy label language")
+
+
 register_schema_models(
     console_ns,
     _ResourceAccessScopeRequest,
     _ReplaceBindingsRequest,
     _DeleteMemberBindingsRequest,
     _AccessControlLanguageQuery,
+    _ResourceUserAccessPoliciesQuery,
     svc.ReplaceUserAccessPolicies,
 )
 
@@ -625,21 +646,32 @@ class RBACAppWhitelistApi(Resource):
             tenant_id,
             account_id,
             str(app_id),
-            svc.ReplaceMemberBindings(scope=request.scope.value),
+            svc.ReplaceMemberBindings(automatic_include_workspace_members=request.automatic_include_workspace_members),
         )
-        if dify_config.RBAC_ENABLED and request.scope is RBACResourceWhitelistScope.ALL:
-            initialize_created_app_rbac_access_task.delay(tenant_id, account_id, str(app_id))
+        if request.automatic_include_workspace_members:
+            initialize_created_app_rbac_access_task.delay(tenant_id, account_id, app_id=str(app_id))
         return _dump(result)
+
+
+@console_ns.route("/workspaces/current/rbac/apps/<uuid:app_id>/whitelist_config")
+class RBACAppWhitelistConfigApi(Resource):
+    @login_required
+    @console_ns.response(200, "Success", console_ns.models[svc.ResourceWhitelistConfig.__name__])
+    def get(self, app_id):
+        tenant_id, account_id = _current_ids()
+        return _dump(svc.RBACService.AppAccess.whitelist_config(tenant_id, account_id, str(app_id)))
 
 
 @console_ns.route("/workspaces/current/rbac/apps/<uuid:app_id>/user-access-policies")
 class RBACAppUserAccessPoliciesApi(Resource):
     @login_required
-    @console_ns.doc(params=query_params_from_model(_AccessControlLanguageQuery))
+    @console_ns.doc(params=query_params_from_model(_ResourceUserAccessPoliciesQuery))
     @console_ns.response(200, "Success", console_ns.models[svc.ResourceUserAccessPoliciesResponse.__name__])
     def get(self, app_id):
         tenant_id, account_id = _current_ids()
-        result = svc.RBACService.AppAccess.user_access_policies(tenant_id, account_id, str(app_id))
+        options = _pagination_options()
+        result = svc.RBACService.AppAccess.user_access_policies(tenant_id, account_id, str(app_id), options=options)
+        _move_resource_maintainer_first(result.data, svc.app_maintainer_id(tenant_id, str(app_id)))
         _hydrate_resource_user_account_names(result.data)
         return _dump(result)
 
@@ -713,6 +745,15 @@ class RBACDatasetMatrixApi(Resource):
         return _dump(result)
 
 
+@console_ns.route("/workspaces/current/rbac/datasets/<uuid:dataset_id>/whitelist_config")
+class RBACDatasetWhitelistConfigApi(Resource):
+    @login_required
+    @console_ns.response(200, "Success", console_ns.models[svc.ResourceWhitelistConfig.__name__])
+    def get(self, dataset_id):
+        tenant_id, account_id = _current_ids()
+        return _dump(svc.RBACService.DatasetAccess.whitelist_config(tenant_id, account_id, str(dataset_id)))
+
+
 @console_ns.route("/workspaces/current/rbac/datasets/<uuid:dataset_id>/whitelist")
 class RBACDatasetWhitelistApi(Resource):
     @login_required
@@ -727,24 +768,31 @@ class RBACDatasetWhitelistApi(Resource):
     def put(self, dataset_id):
         tenant_id, account_id = _current_ids()
         request = _payload(_ResourceAccessScopeRequest)
-        return _dump(
-            svc.RBACService.DatasetAccess.replace_whitelist(
-                tenant_id,
-                account_id,
-                str(dataset_id),
-                svc.ReplaceMemberBindings(scope=request.scope.value),
-            )
+        result = svc.RBACService.DatasetAccess.replace_whitelist(
+            tenant_id,
+            account_id,
+            str(dataset_id),
+            svc.ReplaceMemberBindings(automatic_include_workspace_members=request.automatic_include_workspace_members),
         )
+        # Widening the scope only records it: the members still need the default access policy
+        # before they can reach the dataset, same as the app whitelist route above.
+        if request.automatic_include_workspace_members:
+            initialize_created_app_rbac_access_task.delay(tenant_id, account_id, dataset_id=str(dataset_id))
+        return _dump(result)
 
 
 @console_ns.route("/workspaces/current/rbac/datasets/<uuid:dataset_id>/user-access-policies")
 class RBACDatasetUserAccessPoliciesApi(Resource):
     @login_required
-    @console_ns.doc(params=query_params_from_model(_AccessControlLanguageQuery))
+    @console_ns.doc(params=query_params_from_model(_ResourceUserAccessPoliciesQuery))
     @console_ns.response(200, "Success", console_ns.models[svc.ResourceUserAccessPoliciesResponse.__name__])
     def get(self, dataset_id):
         tenant_id, account_id = _current_ids()
-        result = svc.RBACService.DatasetAccess.user_access_policies(tenant_id, account_id, str(dataset_id))
+        options = _pagination_options()
+        result = svc.RBACService.DatasetAccess.user_access_policies(
+            tenant_id, account_id, str(dataset_id), options=options
+        )
+        _move_resource_maintainer_first(result.data, svc.dataset_maintainer_id(tenant_id, str(dataset_id)))
         _hydrate_resource_user_account_names(result.data)
         return _dump(result)
 

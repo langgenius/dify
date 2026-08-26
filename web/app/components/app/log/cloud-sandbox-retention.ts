@@ -1,7 +1,6 @@
 'use client'
 
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { Plan } from '@/app/components/billing/type'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
@@ -50,5 +49,5 @@ export function useCloudSandboxPlanStatus(): CloudSandboxPlanState {
   if (!enableBilling) return 'unrestricted'
   if (!isFetchedPlan) return 'pending'
 
-  return plan.type === Plan.sandbox ? 'sandbox' : 'unrestricted'
+  return plan.type === 'sandbox' ? 'sandbox' : 'unrestricted'
 }

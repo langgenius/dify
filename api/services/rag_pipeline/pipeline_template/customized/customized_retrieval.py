@@ -49,8 +49,10 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         )
 
     @override
-    def get_pipeline_template_detail(self, template_id: str, *, session: Session) -> dict[str, Any] | None:
-        return self.fetch_pipeline_template_detail_from_db(template_id, session=session)
+    def get_pipeline_template_detail(
+        self, template_id: str, current_tenant_id: str, *, session: Session
+    ) -> dict[str, Any] | None:
+        return self.fetch_pipeline_template_detail_from_db(template_id, current_tenant_id, session=session)
 
     @override
     def get_type(self) -> str:
@@ -89,13 +91,20 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return {"pipeline_templates": recommended_pipelines_results}
 
     @classmethod
-    def fetch_pipeline_template_detail_from_db(cls, template_id: str, *, session: Session) -> dict[str, Any] | None:
+    def fetch_pipeline_template_detail_from_db(
+        cls, template_id: str, current_tenant_id: str, *, session: Session
+    ) -> dict[str, Any] | None:
         """
         Fetch pipeline template detail from db.
         :param template_id: Template ID
         :return:
         """
-        pipeline_template = session.get(PipelineCustomizedTemplate, template_id)
+        pipeline_template = session.scalar(
+            select(PipelineCustomizedTemplate).where(
+                PipelineCustomizedTemplate.id == template_id,
+                PipelineCustomizedTemplate.tenant_id == current_tenant_id,
+            )
+        )
         if not pipeline_template:
             return None
 

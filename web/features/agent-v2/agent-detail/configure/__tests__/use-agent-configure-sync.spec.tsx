@@ -95,15 +95,13 @@ type PublishAgentResponse = {
 }
 
 const publishAgentMutationFn = vi.hoisted(() =>
-  vi.fn(
-    async (_variables: PublishAgentVariables): Promise<PublishAgentResponse> => ({
-      active_config_snapshot: {
-        id: 'snapshot-1',
-      },
-      active_config_snapshot_id: 'snapshot-1',
-      result: 'success',
-    }),
-  ),
+  vi.fn(async (_variables: PublishAgentVariables): Promise<PublishAgentResponse> => ({
+    active_config_snapshot: {
+      id: 'snapshot-1',
+    },
+    active_config_snapshot_id: 'snapshot-1',
+    result: 'success',
+  })),
 )
 
 const publishAgentMutationOptions = vi.hoisted(() =>

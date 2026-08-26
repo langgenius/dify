@@ -1,6 +1,17 @@
 import pytest
+from pydantic import ValidationError
 
-from services.entities.feature_entities import LicenseLimitationModel
+from enums import CloudPlan
+from services.entities.feature_entities import LicenseLimitationModel, SubscriptionModel
+
+
+def test_subscription_model_uses_the_cloud_plan_value_set() -> None:
+    subscription = SubscriptionModel(plan="team")
+
+    assert subscription.plan is CloudPlan.TEAM
+
+    with pytest.raises(ValidationError):
+        SubscriptionModel(plan="unknown")
 
 
 @pytest.mark.parametrize(

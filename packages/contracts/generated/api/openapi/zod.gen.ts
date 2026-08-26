@@ -51,7 +51,7 @@ export const zAppDescribeResponse = z.object({
  */
 export const zAppDslExportQuery = z.object({
   include_secret: z.boolean().optional().default(false),
-  workflow_id: z.string().nullish(),
+  workflow_id: z.uuid().nullish(),
 })
 
 /**
@@ -253,12 +253,12 @@ export const zEventStreamResponse = z.string()
  * FileResponse
  */
 export const zFileResponse = z.object({
-  conversation_id: z.string().nullish(),
+  conversation_id: z.uuid().nullish(),
   created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
+  created_by: z.uuid().nullish(),
   extension: z.string().nullish(),
   file_key: z.string().nullish(),
-  id: z.string(),
+  id: z.uuid(),
   mime_type: z.string().nullish(),
   name: z.string(),
   original_url: z.string().nullish(),
@@ -266,8 +266,8 @@ export const zFileResponse = z.object({
   reference: z.string().nullish(),
   size: z.int(),
   source_url: z.string().nullish(),
-  tenant_id: z.string().nullish(),
-  user_id: z.string().nullish(),
+  tenant_id: z.uuid().nullish(),
+  user_id: z.uuid().nullish(),
 })
 
 /**
@@ -584,7 +584,7 @@ export const zAppListQuery = z.object({
   mode: zSupportedAppType.nullish(),
   name: z.string().max(200).nullish(),
   page: z.int().gte(1).optional().default(1),
-  workspace_id: z.string(),
+  workspace_id: z.uuid(),
 })
 
 /**
@@ -753,7 +753,7 @@ export const zGetAppsQuery = z.object({
   mode: z.enum(['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow']).optional(),
   name: z.string().max(200).optional(),
   page: z.int().gte(1).optional().default(1),
-  workspace_id: z.string(),
+  workspace_id: z.uuid(),
 })
 
 /**
@@ -789,7 +789,7 @@ export const zGetAppsByAppIdDslPath = z.object({
 
 export const zGetAppsByAppIdDslQuery = z.object({
   include_secret: z.boolean().optional().default(false),
-  workflow_id: z.string().optional(),
+  workflow_id: z.uuid().optional(),
 })
 
 /**

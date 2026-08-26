@@ -1,5 +1,6 @@
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import useDocumentTitle from '@/hooks/use-document-title'
 import {
   fetchInitValidateStatus,
   fetchSetupStatus,
@@ -7,21 +8,21 @@ import {
 } from '@/service/common'
 import ForgotPasswordForm from './ForgotPasswordForm'
 
-const mockPush = vi.fn()
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: mockPush }),
-}))
-
 vi.mock('@/service/common', () => ({
   fetchSetupStatus: vi.fn(),
   fetchInitValidateStatus: vi.fn(),
   sendForgotPasswordEmail: vi.fn(),
 }))
 
+vi.mock('@/hooks/use-document-title', () => ({
+  __esModule: true,
+  default: vi.fn(),
+}))
+
 const mockFetchSetupStatus = vi.mocked(fetchSetupStatus)
 const mockFetchInitValidateStatus = vi.mocked(fetchInitValidateStatus)
 const mockSendForgotPasswordEmail = vi.mocked(sendForgotPasswordEmail)
+const mockUseDocumentTitle = vi.mocked(useDocumentTitle)
 
 const prepareLoadedState = () => {
   mockFetchSetupStatus.mockResolvedValue({ step: 'not_started' } as SetupStatusResponse)
@@ -39,8 +40,10 @@ describe('ForgotPasswordForm', () => {
   it('should render form after loading', async () => {
     render(<ForgotPasswordForm />)
 
+    expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('common.loading')
     expect(await screen.findByLabelText('login.email')).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.forgotPassword')
+    expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('login.forgotPassword')
   })
 
   it('should show validation error when email is empty', async () => {
@@ -56,7 +59,7 @@ describe('ForgotPasswordForm', () => {
     expect(mockSendForgotPasswordEmail).not.toHaveBeenCalled()
   })
 
-  it('should send reset email and navigate after confirmation', async () => {
+  it('should send the reset email and show a sign-in link after confirmation', async () => {
     mockSendForgotPasswordEmail.mockResolvedValue({ result: 'success', data: 'ok' } as any)
 
     render(<ForgotPasswordForm />)
@@ -74,11 +77,12 @@ describe('ForgotPasswordForm', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /login\.backToSignIn/ })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /login\.backToSignIn/ })).toHaveAttribute(
+        'href',
+        '/signin',
+      )
     })
-
-    fireEvent.click(screen.getByRole('button', { name: /login\.backToSignIn/ }))
-    expect(mockPush).toHaveBeenCalledWith('/signin')
+    expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('login.resetLinkSent')
   })
 
   it('should submit when form is submitted', async () => {
@@ -129,7 +133,7 @@ describe('ForgotPasswordForm', () => {
     resolveRequest?.({ result: 'success', data: 'ok' })
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /login\.backToSignIn/ })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /login\.backToSignIn/ })).toBeInTheDocument()
     })
   })
 
@@ -149,7 +153,6 @@ describe('ForgotPasswordForm', () => {
     })
 
     expect(screen.getByRole('button', { name: /login\.sendResetLink/ })).toBeInTheDocument()
-    expect(mockPush).not.toHaveBeenCalled()
 
     consoleSpy.mockRestore()
   })

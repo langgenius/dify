@@ -14,6 +14,7 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookParameter,
 )
 from graphon.variables.types import SegmentType
+from models.trigger import WorkflowWebhookTrigger
 from services.trigger import webhook_service as service_module
 from services.trigger.webhook_service import WebhookService
 
@@ -23,8 +24,16 @@ def flask_app() -> Flask:
     return Flask(__name__)
 
 
-def _workflow_trigger(**kwargs: Any) -> Any:
-    return SimpleNamespace(**kwargs)
+def _workflow_trigger(**kwargs: Any) -> WorkflowWebhookTrigger:
+    values = {
+        "webhook_id": "webhook-123",
+        "tenant_id": "tenant-1",
+        "app_id": "app-1",
+        "node_id": "node-1",
+        "created_by": "user-1",
+    }
+    values.update(kwargs)
+    return WorkflowWebhookTrigger(**values)
 
 
 class TestWebhookServiceExtractionFallbacks:
@@ -34,7 +43,7 @@ class TestWebhookServiceExtractionFallbacks:
         monkeypatch: pytest.MonkeyPatch,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        webhook_trigger = MagicMock()
+        webhook_trigger = _workflow_trigger()
 
         with caplog.at_level(logging.WARNING, logger="services.trigger.webhook_service"):
             with flask_app.test_request_context(
@@ -57,10 +66,10 @@ class TestWebhookServiceExtractionFallbacks:
 
         with flask_app.test_request_context("/webhook", method="POST", data="ab"):
             with pytest.raises(RequestEntityTooLarge):
-                WebhookService.extract_webhook_data(MagicMock())
+                WebhookService.extract_webhook_data(_workflow_trigger())
 
     def test_extract_octet_stream_body_should_return_none_when_empty_payload(self, flask_app: Flask) -> None:
-        webhook_trigger = MagicMock()
+        webhook_trigger = _workflow_trigger()
 
         with flask_app.test_request_context("/webhook", method="POST", data=b""):
             body, files = WebhookService._extract_octet_stream_body(webhook_trigger)
@@ -73,7 +82,7 @@ class TestWebhookServiceExtractionFallbacks:
         flask_app: Flask,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        webhook_trigger = MagicMock()
+        webhook_trigger = _workflow_trigger()
         monkeypatch.setattr(
             WebhookService, "_detect_binary_mimetype", MagicMock(return_value="application/octet-stream")
         )

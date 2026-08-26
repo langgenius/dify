@@ -44,6 +44,7 @@ import { resolveLoginRedirectTarget } from '@/utils/login-redirect'
 import { basePath } from '@/utils/var'
 import { base, ContentType, getBaseOptions } from './fetch'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
+import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import { getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
@@ -79,19 +80,29 @@ export type IOnError = (msg: string, code?: string) => void
 const reportStreamResponseError = async (
   response: Response,
   onError: IOnError | undefined,
-  onNotifyError: IOnError,
+  onNotifyError?: IOnError,
 ) => {
   let errorMessage = 'Server Error'
+  let errorCode: string | undefined
   try {
     const data: unknown = await response.json()
     if (typeof data === 'object' && data !== null && 'message' in data) {
       const message = data.message
       if (typeof message === 'string' && message) errorMessage = message
     }
+    if (typeof data === 'object' && data !== null && 'code' in data) {
+      const code = data.code
+      if (typeof code === 'string' && code) errorCode = code
+    }
   } catch {}
 
-  onError?.(errorMessage)
-  onNotifyError(errorMessage)
+  if (errorCode) {
+    onError?.(errorMessage, errorCode)
+    onNotifyError?.(errorMessage, errorCode)
+  } else {
+    onError?.(errorMessage)
+    onNotifyError?.(errorMessage)
+  }
 }
 
 type UnhandledEventError = {
@@ -115,7 +126,7 @@ type IOnParallelBranchFinished = (parallelBranchFinished: ParallelBranchFinished
 type IOnTextChunk = (textChunk: TextChunkResponse) => void
 type IOnReasoning = (reasoningChunk: ReasoningChunkResponse) => void
 type IOnTTSChunk = (messageId: string, audioStr: string, audioType?: string) => void
-type IOnTTSEnd = (messageId: string, audioStr: string, audioType?: string) => void
+type IOnTTSEnd = (messageId: string, audioStr: string) => void
 type IOnTextReplace = (textReplace: TextReplaceResponse) => void
 type IOnLoopStarted = (workflowStarted: LoopStartedResponse) => void
 type IOnLoopNext = (workflowStarted: LoopNextResponse) => void
@@ -265,9 +276,14 @@ function requiredWebSSOLogin(message?: string, code?: number) {
 }
 
 function formatURL(url: string, isPublicAPI: boolean) {
-  const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
+  let urlPrefix = API_PREFIX
+  if (isPublicAPI) urlPrefix = PUBLIC_API_PREFIX
   if (url.startsWith('http://') || url.startsWith('https://')) return url
-  const urlWithoutProtocol = url.startsWith('/') ? url : `/${url}`
+  const urlWithoutProtocol = isPublicAPI
+    ? getWebAppPublicApiPath(resolveWebAppAddress(), url)
+    : url.startsWith('/')
+      ? url
+      : `/${url}`
   return `${urlPrefix}${urlWithoutProtocol}`
 }
 
@@ -500,15 +516,21 @@ export const upload = async (
   url?: string,
   searchParams?: string,
 ): Promise<UploadResponse> => {
-  const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]
+  const address = resolveWebAppAddress()
+  const shareCode = address?.code
+  const publicApiPrefix = PUBLIC_API_PREFIX
+  const urlPrefix = isPublicAPI ? publicApiPrefix : API_PREFIX
   const defaultOptions = {
     method: 'POST',
-    url: (url ? `${urlPrefix}${url}` : `${urlPrefix}/files/upload`) + (searchParams || ''),
+    url:
+      (url
+        ? `${urlPrefix}${isPublicAPI ? getWebAppPublicApiPath(address, url) : url}`
+        : `${urlPrefix}${isPublicAPI ? getWebAppPublicApiPath(address, '/files/upload') : '/files/upload'}`) +
+      (searchParams || ''),
     headers: {
       [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
-      [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode!),
-      [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
+      [PASSPORT_HEADER_NAME]: getWebAppPassport(address),
+      [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode || '',
     },
   }
   const mergedOptions = {
@@ -578,13 +600,14 @@ export const ssePost = async (
     onDataSourceNodeCompleted,
     onDataSourceNodeError,
     onUnhandledEvent,
+    silent,
   } = otherOptions
   const abortController = new AbortController()
 
   // No need to get token from localStorage, cookies will be sent automatically
 
   const baseOptions = getBaseOptions()
-  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]!
+  const shareCode = resolveWebAppAddress()?.code
   const options = Object.assign(
     {},
     baseOptions,
@@ -593,8 +616,8 @@ export const ssePost = async (
       signal: abortController.signal,
       headers: new Headers({
         [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME())! || '',
-        [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
-        [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode!),
+        [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode || '',
+        [PASSPORT_HEADER_NAME]: getWebAppPassport(resolveWebAppAddress()),
       }),
     } as RequestInit,
     fetchOptions,
@@ -638,14 +661,10 @@ export const ssePost = async (
               })
           }
         } else {
-          if (onNotifyError) {
-            void reportStreamResponseError(res, onError, onNotifyError)
-          } else {
-            res.json().then((data) => {
-              toast.error(data.message || 'Server Error')
-            })
-            onError?.('Server Error')
-          }
+          if (onNotifyError && !silent) void reportStreamResponseError(res, onError, onNotifyError)
+          else if (!silent)
+            void reportStreamResponseError(res, onError, (message) => toast.error(message))
+          else void reportStreamResponseError(res, onError)
         }
         return
       }
@@ -655,7 +674,7 @@ export const ssePost = async (
           if (moreInfo.errorMessage) {
             onError?.(moreInfo.errorMessage, moreInfo.errorCode)
             // These errors can happen when a stream is intentionally stopped or its page is left.
-            if (shouldNotifyStreamError(moreInfo.errorMessage)) {
+            if (!silent && shouldNotifyStreamError(moreInfo.errorMessage)) {
               if (onNotifyError) onNotifyError(moreInfo.errorMessage, moreInfo.errorCode)
               else toast.error(moreInfo.errorMessage)
             }
@@ -699,7 +718,7 @@ export const ssePost = async (
     })
     .catch((e) => {
       const errorMessage = String(e)
-      if (shouldNotifyStreamError(e)) {
+      if (!silent && shouldNotifyStreamError(e)) {
         if (onNotifyError) onNotifyError(errorMessage)
         else toast.error(errorMessage)
       }
@@ -750,11 +769,12 @@ export const sseGet = async (
     onDataSourceNodeCompleted,
     onDataSourceNodeError,
     onUnhandledEvent,
+    silent,
   } = otherOptions
   const abortController = new AbortController()
 
   const baseOptions = getBaseOptions()
-  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]!
+  const shareCode = resolveWebAppAddress()?.code
   const options = Object.assign(
     {},
     baseOptions,
@@ -762,8 +782,8 @@ export const sseGet = async (
       signal: abortController.signal,
       headers: new Headers({
         [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME())! || '',
-        [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
-        [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode!),
+        [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode || '',
+        [PASSPORT_HEADER_NAME]: getWebAppPassport(resolveWebAppAddress()),
       }),
     } as RequestInit,
     fetchOptions,
@@ -804,14 +824,10 @@ export const sseGet = async (
               })
           }
         } else {
-          if (onNotifyError) {
-            void reportStreamResponseError(res, onError, onNotifyError)
-          } else {
-            res.json().then((data) => {
-              toast.error(data.message || 'Server Error')
-            })
-            onError?.('Server Error')
-          }
+          if (onNotifyError && !silent) void reportStreamResponseError(res, onError, onNotifyError)
+          else if (!silent)
+            void reportStreamResponseError(res, onError, (message) => toast.error(message))
+          else void reportStreamResponseError(res, onError)
         }
         return
       }
@@ -821,7 +837,7 @@ export const sseGet = async (
           if (moreInfo.errorMessage) {
             onError?.(moreInfo.errorMessage, moreInfo.errorCode)
             // These errors can happen when a stream is intentionally stopped or its page is left.
-            if (shouldNotifyStreamError(moreInfo.errorMessage)) {
+            if (!silent && shouldNotifyStreamError(moreInfo.errorMessage)) {
               if (onNotifyError) onNotifyError(moreInfo.errorMessage, moreInfo.errorCode)
               else toast.error(moreInfo.errorMessage)
             }
@@ -865,7 +881,7 @@ export const sseGet = async (
     })
     .catch((e) => {
       const errorMessage = String(e)
-      if (shouldNotifyStreamError(e)) {
+      if (!silent && shouldNotifyStreamError(e)) {
         if (onNotifyError) onNotifyError(errorMessage)
         else toast.error(errorMessage)
       }

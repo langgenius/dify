@@ -81,7 +81,7 @@ export const sizeFormat = (size: number) => {
   else return `${remainder}K`
 }
 
-export const modelTypeFormat = (modelType: ModelTypeEnum | ModelType) => {
+export const modelTypeFormat = (modelType: string) => {
   if (modelType === ModelTypeEnum.textEmbedding) return 'TEXT EMBEDDING'
 
   return modelType.toLocaleUpperCase()

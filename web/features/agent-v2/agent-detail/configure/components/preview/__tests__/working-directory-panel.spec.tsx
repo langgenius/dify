@@ -3,7 +3,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { AgentWorkingDirectoryPanel } from '../working-directory-panel'
 
 type QueryOptionsInput = {

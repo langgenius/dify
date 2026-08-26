@@ -8,7 +8,6 @@ from flask import Response
 from flask_restx import Resource, marshal, marshal_with
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import sessionmaker
-from werkzeug.exceptions import Forbidden
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.schema import query_params_from_model, register_schema_models
@@ -19,12 +18,22 @@ from controllers.console.app.error import (
 from controllers.console.app.workflow_draft_variable import (
     _WORKFLOW_DRAFT_VARIABLE_FIELDS,  # type: ignore[private-usage]
     EnvironmentVariableListResponse,
+    ensure_variable_access,
     workflow_draft_variable_list_model,
     workflow_draft_variable_list_without_value_model,
     workflow_draft_variable_model,
 )
 from controllers.console.datasets.wraps import get_rag_pipeline
-from controllers.console.wraps import account_initialization_required, model_validate, setup_required, with_current_user
+from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
+    account_initialization_required,
+    edit_permission_required,
+    model_validate,
+    rbac_permission_required,
+    setup_required,
+    with_current_user,
+)
 from core.app.file_access import DatabaseFileAccessController
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable, environment_variable_value_type
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
@@ -62,21 +71,21 @@ def _api_prerequisite[T, **P, R](
 
     It ensures the following conditions are satisfied:
 
-    - Dify has been property setup.
+    - Dify has been properly set up.
     - The request user has logged in and initialized.
-    - The requested app is a workflow or a chat flow.
-    - The request user has the edit permission for the app.
+    - The requested RAG pipeline belongs to the current tenant.
+    - The request user has legacy edit permission or Dataset edit RBAC access.
     """
 
     @setup_required
     @login_required
     @account_initialization_required
     @get_rag_pipeline
+    @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_current_user
     @wraps(f)
     def wrapper(self: T, current_user: Account, *args: P.args, **kwargs: P.kwargs) -> R | Response:
-        if not current_user.has_edit_permission:
-            raise Forbidden()
         return f(self, current_user, *args, **kwargs)
 
     return wrapper
@@ -180,16 +189,17 @@ class RagPipelineVariableApi(Resource):
     @console_ns.response(200, "Variable retrieved successfully", workflow_draft_variable_model)
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_model)
-    def get(self, _current_user: Account, pipeline: Pipeline, variable_id: UUID):
+    def get(self, current_user: Account, pipeline: Pipeline, variable_id: UUID):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
         variable_id_str = str(variable_id)
-        variable = draft_var_srv.get_variable(variable_id=variable_id_str)
-        if variable is None:
-            raise NotFoundError(description=f"variable not found, id={variable_id_str}")
-        if variable.app_id != pipeline.id:
-            raise NotFoundError(description=f"variable not found, id={variable_id_str}")
+        variable = ensure_variable_access(
+            variable=draft_var_srv.get_variable(variable_id=variable_id_str),
+            app_id=pipeline.id,
+            variable_id=variable_id_str,
+            current_user_id=current_user.id,
+        )
         return variable
 
     @console_ns.response(200, "Variable updated successfully", workflow_draft_variable_model)
@@ -200,7 +210,7 @@ class RagPipelineVariableApi(Resource):
     def patch(
         self,
         req_data: WorkflowDraftVariablePatchPayload,
-        _current_user: Account,
+        current_user: Account,
         pipeline: Pipeline,
         variable_id: UUID,
     ):
@@ -231,11 +241,12 @@ class RagPipelineVariableApi(Resource):
         args = req_data.model_dump(exclude_none=True)
 
         variable_id_str = str(variable_id)
-        variable = draft_var_srv.get_variable(variable_id=variable_id_str)
-        if variable is None:
-            raise NotFoundError(description=f"variable not found, id={variable_id_str}")
-        if variable.app_id != pipeline.id:
-            raise NotFoundError(description=f"variable not found, id={variable_id_str}")
+        variable = ensure_variable_access(
+            variable=draft_var_srv.get_variable(variable_id=variable_id_str),
+            app_id=pipeline.id,
+            variable_id=variable_id_str,
+            current_user_id=current_user.id,
+        )
 
         new_name = args.get(self._PATCH_NAME_FIELD, None)
         raw_value = args.get(self._PATCH_VALUE_FIELD, None)
@@ -272,16 +283,17 @@ class RagPipelineVariableApi(Resource):
 
     @console_ns.response(204, "Variable deleted successfully")
     @_api_prerequisite
-    def delete(self, _current_user: Account, pipeline: Pipeline, variable_id: UUID):
+    def delete(self, current_user: Account, pipeline: Pipeline, variable_id: UUID):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
         variable_id_str = str(variable_id)
-        variable = draft_var_srv.get_variable(variable_id=variable_id_str)
-        if variable is None:
-            raise NotFoundError(description=f"variable not found, id={variable_id_str}")
-        if variable.app_id != pipeline.id:
-            raise NotFoundError(description=f"variable not found, id={variable_id_str}")
+        variable = ensure_variable_access(
+            variable=draft_var_srv.get_variable(variable_id=variable_id_str),
+            app_id=pipeline.id,
+            variable_id=variable_id_str,
+            current_user_id=current_user.id,
+        )
         draft_var_srv.delete_variable(variable)
         db.session.commit()
         return Response("", 204)
@@ -292,7 +304,7 @@ class RagPipelineVariableResetApi(Resource):
     @console_ns.response(200, "Variable reset successfully", workflow_draft_variable_model)
     @console_ns.response(204, "Variable reset (no content)")
     @_api_prerequisite
-    def put(self, _current_user: Account, pipeline: Pipeline, variable_id: UUID):
+    def put(self, current_user: Account, pipeline: Pipeline, variable_id: UUID):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
@@ -304,11 +316,12 @@ class RagPipelineVariableResetApi(Resource):
                 f"Draft workflow not found, pipeline_id={pipeline.id}",
             )
         variable_id_str = str(variable_id)
-        variable = draft_var_srv.get_variable(variable_id=variable_id_str)
-        if variable is None:
-            raise NotFoundError(description=f"variable not found, id={variable_id_str}")
-        if variable.app_id != pipeline.id:
-            raise NotFoundError(description=f"variable not found, id={variable_id_str}")
+        variable = ensure_variable_access(
+            variable=draft_var_srv.get_variable(variable_id=variable_id_str),
+            app_id=pipeline.id,
+            variable_id=variable_id_str,
+            current_user_id=current_user.id,
+        )
 
         resetted = draft_var_srv.reset_variable(draft_workflow, variable)
         db.session.commit()

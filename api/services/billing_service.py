@@ -5,17 +5,20 @@ from collections.abc import Sequence
 from typing import Any, Literal, NotRequired, TypedDict
 
 import httpx
-from pydantic import TypeAdapter
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from pydantic import TypeAdapter, ValidationError
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
+from typing_extensions import deprecated
 from werkzeug.exceptions import InternalServerError
 
 from core.helper.http_client_pooling import get_pooled_http_client
 from enums import CloudPlan
 from extensions.ext_redis import redis_client
-from libs.helper import RateLimiter
-from models import Account, TenantAccountJoin, TenantAccountRole
+from services.billing_portal_service import BillingPortalLink
+from services.compliance_download_service import ComplianceDownloadLink
+from services.errors.billing import (
+    BillingUpstreamInvalidResponseError,
+    BillingUpstreamUnavailableError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -28,11 +31,47 @@ _http_client: httpx.Client = get_pooled_http_client(
 )
 
 
+EmailFreezeType = Literal["freeze", "email_domain_suspended"]
+
+
+class _BillingHTTPStatusError(ValueError):
+    def __init__(self, message: str, status_code: int) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+
+
 class SubscriptionPlan(TypedDict):
     """Tenant subscriptionplan information."""
 
     plan: str
     expiration_date: int
+
+
+class MessageResponseDict(TypedDict):
+    message: str
+
+
+class EducationVerifyResponseDict(TypedDict):
+    token: str
+
+
+class EducationStatusResponseDict(TypedDict):
+    result: bool
+    is_student: bool
+    expire_at: str
+    allow_refresh: bool
+
+
+class EducationAutocompleteResponseDict(TypedDict):
+    data: list[str]
+    curr_page: int
+    has_next: bool
+
+
+_billing_portal_link_adapter = TypeAdapter(BillingPortalLink)
+
+
+_compliance_download_link_adapter = TypeAdapter(ComplianceDownloadLink)
 
 
 class QuotaReserveResult(TypedDict):
@@ -184,14 +223,6 @@ class AccountNotificationDict(TypedDict, total=False):
     notifications: list[dict]
 
 
-class UpsertNotificationDict(TypedDict):
-    notification_id: str
-
-
-class BatchAddNotificationAccountsDict(TypedDict):
-    count: int
-
-
 class DismissNotificationDict(TypedDict):
     success: bool
 
@@ -201,12 +232,18 @@ class BillingService:
     quota_base_url = os.environ.get("BILLING_QUOTA_API_URL") or base_url
     secret_key = os.environ.get("BILLING_API_SECRET_KEY", "BILLING_API_SECRET_KEY")
 
-    compliance_download_rate_limiter = RateLimiter("compliance_download_rate_limiter", 4, 60)
-
     # Redis key prefix for tenant plan cache
     _PLAN_CACHE_KEY_PREFIX = "tenant_plan:"
     # Cache TTL: 10 minutes
     _PLAN_CACHE_TTL = 600
+
+    @classmethod
+    def ensure_new_agent_beta_revision(cls, revision_id: str) -> None:
+        cls._send_request("POST", f"/new-agent-beta/revisions/{revision_id}/ensure")
+
+    @classmethod
+    def ensure_new_agent_beta_workflow(cls, workflow_id: str) -> None:
+        cls._send_request("POST", f"/new-agent-beta/workflows/{workflow_id}/ensure")
 
     @classmethod
     def get_info(cls, tenant_id: str, exclude_vector_space: bool = False) -> BillingInfo:
@@ -232,13 +269,6 @@ class BillingService:
     @classmethod
     def invalidate_vector_space_cache(cls, tenant_id: str) -> None:
         cls.get_vector_space(tenant_id, bypass_cache=True)
-
-    @classmethod
-    def get_tenant_feature_plan_usage_info(cls, tenant_id: str):
-        """Deprecated: Use get_quota_info instead."""
-        params = {"tenant_id": tenant_id}
-        usage_info = cls._send_request("GET", "/tenant-feature-usage/info", params=params)
-        return usage_info
 
     @classmethod
     def get_quota_info(cls, tenant_id: str) -> TenantFeatureQuotaInfo:
@@ -352,11 +382,14 @@ class BillingService:
         }
 
     @classmethod
-    def get_subscription(cls, plan: str, interval: str, prefilled_email: str = "", tenant_id: str = ""):
+    def get_subscription(
+        cls, plan: str, interval: str, prefilled_email: str = "", tenant_id: str = ""
+    ) -> BillingPortalLink:
         params = {"plan": plan, "interval": interval, "prefilled_email": prefilled_email, "tenant_id": tenant_id}
-        return cls._send_request("GET", "/subscription/payment-link", params=params)
+        return cls._send_billing_portal_request("/subscription/payment-link", params=params)
 
     @classmethod
+    @deprecated("Only used by the deprecated model-provider checkout endpoint.")
     def get_model_provider_payment_link(cls, provider_name: str, tenant_id: str, account_id: str, prefilled_email: str):
         params = {
             "provider_name": provider_name,
@@ -367,9 +400,9 @@ class BillingService:
         return cls._send_request("GET", "/model-provider/payment-link", params=params)
 
     @classmethod
-    def get_invoices(cls, prefilled_email: str = "", tenant_id: str = ""):
+    def get_invoices(cls, prefilled_email: str = "", tenant_id: str = "") -> BillingPortalLink:
         params = {"prefilled_email": prefilled_email, "tenant_id": tenant_id}
-        return cls._send_request("GET", "/invoices", params=params)
+        return cls._send_billing_portal_request("/invoices", params=params)
 
     @classmethod
     def update_tenant_feature_plan_usage(
@@ -407,6 +440,7 @@ class BillingService:
         return cls._send_request("POST", "/tenant-feature-usage/refund", params={"quota_usage_history_id": history_id})
 
     @classmethod
+    @deprecated("Legacy tenant feature-plan usage endpoint; use the quota APIs instead.")
     def get_tenant_feature_plan_usage(cls, tenant_id: str, feature_key: str):
         params = {"tenant_id": tenant_id, "feature_key": feature_key}
         return cls._send_request("GET", "/billing/tenant_feature_plan/usage", params=params)
@@ -414,7 +448,7 @@ class BillingService:
     @classmethod
     def _send_quota_request(
         cls, method: Literal["GET", "POST", "DELETE", "PUT"], endpoint: str, json=None, params=None
-    ):
+    ) -> dict[str, Any]:
         return cls._send_request(method, endpoint, json=json, params=params, base_url=cls.quota_base_url)
 
     @classmethod
@@ -431,13 +465,15 @@ class BillingService:
         json=None,
         params=None,
         base_url: str | None = None,
-    ):
+    ) -> Any:
         headers = {"Content-Type": "application/json", "Billing-Api-Secret-Key": cls.secret_key}
-
         url = f"{base_url or cls.base_url}{endpoint}"
         response = _http_client.request(method, url, json=json, params=params, headers=headers, follow_redirects=True)
         if method == "GET" and response.status_code != httpx.codes.OK:
-            raise ValueError("Unable to retrieve billing information. Please try again later or contact support.")
+            raise _BillingHTTPStatusError(
+                "Unable to retrieve billing information. Please try again later or contact support.",
+                response.status_code,
+            )
         if method == "PUT":
             if response.status_code == httpx.codes.INTERNAL_SERVER_ERROR:
                 raise InternalServerError(
@@ -446,79 +482,94 @@ class BillingService:
             if response.status_code != httpx.codes.OK:
                 raise ValueError("Invalid arguments.")
         if method == "POST" and response.status_code != httpx.codes.OK:
-            raise ValueError(f"Unable to send request to {url}. Please try again later or contact support.")
+            raise _BillingHTTPStatusError(
+                f"Unable to send request to {url}. Please try again later or contact support.",
+                response.status_code,
+            )
         if method == "DELETE" and response.status_code != httpx.codes.OK:
             logger.error("billing_service: DELETE response: %s %s", response.status_code, response.text)
             raise ValueError(f"Unable to process delete request {url}. Please try again later or contact support.")
         return response.json()
 
-    @staticmethod
-    def is_tenant_owner_or_admin(current_user: Account, *, session: Session):
-        tenant_id = current_user.current_tenant_id
-
-        join: TenantAccountJoin | None = session.scalar(
-            select(TenantAccountJoin)
-            .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.account_id == current_user.id)
-            .limit(1)
-        )
-
-        if not join:
-            raise ValueError("Tenant account join not found")
-
-        if not TenantAccountRole.is_privileged_role(TenantAccountRole(join.role)):
-            raise ValueError("Only team owner or team admin can perform this action")
+    @classmethod
+    def _send_billing_portal_request(
+        cls,
+        endpoint: str,
+        *,
+        params: dict[str, str],
+    ) -> BillingPortalLink:
+        try:
+            response = cls._send_request("GET", endpoint, params=params)
+            return _billing_portal_link_adapter.validate_python(response)
+        except _BillingHTTPStatusError as error:
+            if error.status_code in {httpx.codes.REQUEST_TIMEOUT, httpx.codes.TOO_MANY_REQUESTS} or (
+                error.status_code >= 500
+            ):
+                raise BillingUpstreamUnavailableError from error
+            raise BillingUpstreamInvalidResponseError from error
+        except httpx.RequestError as error:
+            raise BillingUpstreamUnavailableError from error
+        except (json.JSONDecodeError, UnicodeDecodeError, ValidationError) as error:
+            raise BillingUpstreamInvalidResponseError from error
+        except ValueError as error:
+            raise RuntimeError("Unexpected billing service value error") from error
 
     @classmethod
-    def delete_account(cls, account_id: str):
+    def delete_account(cls, account_id: str) -> MessageResponseDict:
         """Delete account."""
         params = {"account_id": account_id}
         return cls._send_request("DELETE", "/account", params=params)
 
     @classmethod
-    def is_email_in_freeze(cls, email: str) -> bool:
+    def get_email_freeze_type(cls, email: str) -> EmailFreezeType | None:
         params = {"email": email}
         try:
             response = cls._send_request("GET", "/account/in-freeze", params=params)
-            return bool(response.get("data", False))
+            if not response.get("data", False):
+                return None
+
+            freeze_type = response.get("freeze_type") or response.get("freezeType")
+            if freeze_type in ("freeze", "email_domain_suspended"):
+                return freeze_type
+
+            # Keep compatibility with older billing services that only return
+            # the boolean `data` field.
+            return "freeze"
         except Exception:
-            return False
+            return None
 
     @classmethod
-    def update_account_deletion_feedback(cls, email: str, feedback: str):
+    def is_email_in_freeze(cls, email: str) -> bool:
+        return cls.get_email_freeze_type(email) is not None
+
+    @classmethod
+    def update_account_deletion_feedback(cls, email: str, feedback: str) -> MessageResponseDict:
         """Update account deletion feedback."""
         json = {"email": email, "feedback": feedback}
         return cls._send_request("POST", "/account/delete-feedback", json=json)
 
     class EducationIdentity:
-        verification_rate_limit = RateLimiter(prefix="edu_verification_rate_limit", max_attempts=10, time_window=60)
-        activation_rate_limit = RateLimiter(prefix="edu_activation_rate_limit", max_attempts=10, time_window=60)
-
         @classmethod
-        def verify(cls, account_id: str, account_email: str):
-            if cls.verification_rate_limit.is_rate_limited(account_email):
-                from controllers.console.error import EducationVerifyLimitError
-
-                raise EducationVerifyLimitError()
-
-            cls.verification_rate_limit.increment_rate_limit(account_email)
-
+        def verify(cls, account_id: str) -> EducationVerifyResponseDict:
             params = {"account_id": account_id}
             return BillingService._send_request("GET", "/education/verify", params=params)
 
         @classmethod
-        def status(cls, account_id: str):
+        def status(cls, account_id: str) -> EducationStatusResponseDict:
             params = {"account_id": account_id}
             return BillingService._send_request("GET", "/education/status", params=params)
 
         @classmethod
-        def activate(cls, account: Account, token: str, institution: str, role: str):
-            if cls.activation_rate_limit.is_rate_limited(account.email):
-                from controllers.console.error import EducationActivateLimitError
-
-                raise EducationActivateLimitError()
-
-            cls.activation_rate_limit.increment_rate_limit(account.email)
-            params = {"account_id": account.id, "curr_tenant_id": account.current_tenant_id}
+        def activate(
+            cls,
+            *,
+            account_id: str,
+            tenant_id: str,
+            token: str,
+            institution: str,
+            role: str,
+        ) -> MessageResponseDict:
+            params = {"account_id": account_id, "curr_tenant_id": tenant_id}
             json = {
                 "institution": institution,
                 "token": token,
@@ -527,7 +578,7 @@ class BillingService:
             return BillingService._send_request("POST", "/education/", json=json, params=params)
 
         @classmethod
-        def autocomplete(cls, keywords: str, page: int = 0, limit: int = 20):
+        def autocomplete(cls, keywords: str, page: int = 0, limit: int = 20) -> EducationAutocompleteResponseDict:
             params = {"keywords": keywords, "page": page, "limit": limit}
             return BillingService._send_request("GET", "/education/autocomplete", params=params)
 
@@ -539,30 +590,38 @@ class BillingService:
         tenant_id: str,
         ip: str,
         device_info: str,
-    ):
-        limiter_key = f"{account_id}:{tenant_id}"
-        if cls.compliance_download_rate_limiter.is_rate_limited(limiter_key):
-            from controllers.console.error import ComplianceRateLimitError
-
-            raise ComplianceRateLimitError()
-
-        json = {
+    ) -> ComplianceDownloadLink:
+        payload = {
             "doc_name": doc_name,
             "account_id": account_id,
             "tenant_id": tenant_id,
             "ip_address": ip,
             "device_info": device_info,
         }
-        res = cls._send_request("POST", "/compliance/download", json=json)
-        cls.compliance_download_rate_limiter.increment_rate_limit(limiter_key)
-        return res
+        try:
+            response = cls._send_request("POST", "/compliance/download", json=payload)
+            result = _compliance_download_link_adapter.validate_python(response)
+        except _BillingHTTPStatusError as error:
+            if error.status_code in {httpx.codes.REQUEST_TIMEOUT, httpx.codes.TOO_MANY_REQUESTS} or (
+                error.status_code >= 500
+            ):
+                raise BillingUpstreamUnavailableError from error
+            raise BillingUpstreamInvalidResponseError from error
+        except httpx.RequestError as error:
+            raise BillingUpstreamUnavailableError from error
+        except (json.JSONDecodeError, UnicodeDecodeError, ValidationError) as error:
+            raise BillingUpstreamInvalidResponseError from error
+        except ValueError as error:
+            raise RuntimeError("Unexpected billing service value error") from error
+
+        return result
 
     @classmethod
-    def clean_billing_info_cache(cls, tenant_id: str):
+    def clean_billing_info_cache(cls, tenant_id: str) -> None:
         redis_client.delete(f"tenant:{tenant_id}:billing_info")
 
     @classmethod
-    def sync_partner_tenants_bindings(cls, account_id: str, partner_key: str, click_id: str):
+    def sync_partner_tenants_bindings(cls, account_id: str, partner_key: str, click_id: str) -> dict[str, Any]:
         payload = {"account_id": account_id, "click_id": click_id}
         return cls._send_request("PUT", f"/partners/{partner_key}/tenants", json=payload)
 
@@ -723,49 +782,6 @@ class BillingService:
           }
         """
         return cls._send_request("GET", "/notifications/active", params={"account_id": account_id})
-
-    @classmethod
-    def upsert_notification(
-        cls,
-        contents: list[LangContentDict],
-        frequency: str = "once",
-        status: str = "active",
-        notification_id: str | None = None,
-        start_time: str | None = None,
-        end_time: str | None = None,
-    ) -> UpsertNotificationDict:
-        """Create or update a notification.
-
-        contents: list of {"lang": str, "title": str, "subtitle": str, "body": str, "title_pic_url": str}
-        start_time / end_time: RFC3339 strings (e.g. "2026-03-01T00:00:00Z"), optional.
-        Returns {"notification_id": str}.
-        """
-        payload: dict[str, Any] = {
-            "contents": contents,
-            "frequency": frequency,
-            "status": status,
-        }
-        if notification_id:
-            payload["notification_id"] = notification_id
-        if start_time:
-            payload["start_time"] = start_time
-        if end_time:
-            payload["end_time"] = end_time
-        return cls._send_request("POST", "/notifications", json=payload)
-
-    @classmethod
-    def batch_add_notification_accounts(
-        cls, notification_id: str, account_ids: list[str]
-    ) -> BatchAddNotificationAccountsDict:
-        """Register target account IDs for a notification (max 1000 per call).
-
-        Returns {"count": int}.
-        """
-        return cls._send_request(
-            "POST",
-            f"/notifications/{notification_id}/accounts",
-            json={"account_ids": account_ids},
-        )
 
     @classmethod
     def dismiss_notification(cls, notification_id: str, account_id: str) -> DismissNotificationDict:

@@ -4,7 +4,7 @@ import type { AutoUpdateConfig } from '@/app/components/plugins/reference-settin
 import type { dayjsToTimeOfDay } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/utils'
 import type { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RadioGroup } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -163,7 +163,6 @@ const UpdateSettingDialogForm = ({
               title={t(($) => $['autoUpdate.updateTime'], { ns: 'plugin' })}
               minuteFilter={minuteFilter}
               renderTrigger={renderTimePickerTrigger}
-              placement="bottom-start"
             />
           </div>
           <div className="flex w-full flex-col items-start gap-2">

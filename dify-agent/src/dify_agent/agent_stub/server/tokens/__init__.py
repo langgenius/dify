@@ -9,6 +9,7 @@ from dify_agent.agent_stub.server.tokens.agent_stub import (
     AgentStubTokenClaims,
     AgentStubTokenCodec,
     AgentStubTokenError,
+    AgentStubTokenExpiredError,
     decode_server_secret_key,
     derive_agent_stub_jwe_key,
 )
@@ -22,6 +23,7 @@ __all__ = [
     "AgentStubTokenClaims",
     "AgentStubTokenCodec",
     "AgentStubTokenError",
+    "AgentStubTokenExpiredError",
     "decode_server_secret_key",
     "derive_agent_stub_jwe_key",
 ]

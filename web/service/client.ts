@@ -140,7 +140,7 @@ type ConsoleQueryUtils = RouterUtils<
 >
 
 function isTagType(type: string | null | undefined): type is TagType {
-  return type === 'app' || type === 'knowledge' || type === 'snippet'
+  return type === 'app' || type === 'knowledge' || type === 'skill' || type === 'snippet'
 }
 
 const defaultAppDeployInvalidationOptions = {
@@ -159,6 +159,64 @@ const defaultAppDeployInvalidationOptions = {
 
 function invalidateQueryKeys(client: QueryClient, queryKeys: QueryKey[]) {
   return Promise.all(queryKeys.map((queryKey) => client.invalidateQueries({ queryKey })))
+}
+
+function invalidateEnvironmentApiKeyQueries(
+  query: ConsoleQueryUtils,
+  client: QueryClient,
+  params: { app_id: string; environment_id: string },
+) {
+  const environmentParams = {
+    app_id: params.app_id,
+    environment_id: params.environment_id,
+  }
+
+  return invalidateQueryKeys(client, [
+    query.enterprise.appDeploy.accessService.listEnvironmentApiKeys.queryOptions({
+      input: { params: environmentParams },
+    }).queryKey,
+    query.enterprise.appDeploy.accessService.getEnvironmentApi.queryOptions({
+      input: { params: environmentParams },
+    }).queryKey,
+  ])
+}
+
+function invalidateWorkflowDeploymentQueries(
+  query: ConsoleQueryUtils,
+  client: QueryClient,
+  params: { app_id: string; environment_id: string },
+  { appEnvironments }: { appEnvironments: boolean },
+) {
+  const environmentParams = {
+    app_id: params.app_id,
+    environment_id: params.environment_id,
+  }
+  const queryKeys: QueryKey[] = [
+    query.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions({
+      input: {
+        params: {
+          app_id: params.app_id,
+        },
+      },
+    }).queryKey,
+    query.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryOptions({
+      input: { params: environmentParams },
+    }).queryKey,
+  ]
+
+  if (appEnvironments) {
+    queryKeys.push(
+      query.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({
+        input: {
+          params: {
+            app_id: params.app_id,
+          },
+        },
+      }).queryKey,
+    )
+  }
+
+  return invalidateQueryKeys(client, queryKeys)
 }
 
 function appInstanceQueryKey(query: ConsoleQueryUtils, appInstanceId: string) {
@@ -1004,6 +1062,15 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           delete: {
             mutationOptions: {
               onSuccess: (_data, variables, _onMutateResult, context) => {
+                context.client.removeQueries({
+                  queryKey: consoleQuery.agent.byAgentId.key({
+                    input: {
+                      params: {
+                        agent_id: variables.params.agent_id,
+                      },
+                    },
+                  }),
+                })
                 context.client.setQueriesData(
                   {
                     queryKey: consoleQuery.agent.get.key({ type: 'query' }),
@@ -1172,6 +1239,58 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
         },
       },
       enterprise: {
+        appDeploy: {
+          accessService: {
+            createEnvironmentApiKey: {
+              mutationOptions: {
+                onSuccess: (_data, variables, _result, context) => {
+                  return invalidateEnvironmentApiKeyQueries(
+                    consoleQuery,
+                    context.client,
+                    variables.params,
+                  )
+                },
+              },
+            },
+            deleteEnvironmentApiKey: {
+              mutationOptions: {
+                onSuccess: (_data, variables, _result, context) => {
+                  return invalidateEnvironmentApiKeyQueries(
+                    consoleQuery,
+                    context.client,
+                    variables.params,
+                  )
+                },
+              },
+            },
+          },
+          deploymentService: {
+            deployWorkflow: {
+              mutationOptions: {
+                onSuccess: (_data, variables, _result, context) => {
+                  return invalidateWorkflowDeploymentQueries(
+                    consoleQuery,
+                    context.client,
+                    variables.params,
+                    { appEnvironments: false },
+                  )
+                },
+              },
+            },
+            undeployWorkflow: {
+              mutationOptions: {
+                onSuccess: (_data, variables, _result, context) => {
+                  return invalidateWorkflowDeploymentQueries(
+                    consoleQuery,
+                    context.client,
+                    variables.params,
+                    { appEnvironments: true },
+                  )
+                },
+              },
+            },
+          },
+        },
         webAppAuth: {
           updateWebAppWhitelistSubjects: {
             mutationOptions: {

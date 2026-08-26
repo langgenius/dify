@@ -1,5 +1,5 @@
 import Cookies from 'js-cookie'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import * as amplitude from '@/app/components/base/amplitude/utils'
 import { AppModeEnum } from '@/types/app'
 import {
@@ -316,6 +316,30 @@ describe('create-app-tracking', () => {
         app_mode: 'workflow',
         time: expect.stringMatching(/^\d{2}-\d{2}-\d{2}:\d{2}:\d{2}$/),
         template_id: 'template-1',
+      })
+    })
+
+    it('should attribute an agent roster creation to the external agents landing URL', () => {
+      window.history.replaceState(
+        {},
+        '',
+        '/agents?utm_source=dify_blog&slug=buildaisupportassistantwithdify',
+      )
+      rememberCreateAppExternalAttribution({
+        searchParams: new URLSearchParams(window.location.search),
+      })
+
+      trackCreateApp({
+        source: 'studio_blank',
+        appMode: 'agent-v2',
+      })
+
+      expect(amplitude.trackEvent).toHaveBeenCalledWith('create_app', {
+        source: 'external',
+        app_mode: 'agent-v2',
+        time: expect.stringMatching(/^\d{2}-\d{2}-\d{2}:\d{2}:\d{2}$/),
+        utm_source: 'dify_blog',
+        slug: 'buildaisupportassistantwithdify',
       })
     })
 

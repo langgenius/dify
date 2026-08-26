@@ -1,11 +1,11 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type * as React from 'react'
 import { NumberField as BaseNumberField } from '@base-ui/react/number-field'
 import { cva } from 'class-variance-authority'
+import * as React from 'react'
 import { cn } from '../cn'
-import { textControlCompoundFocusClassName } from '../form-control-shared'
+import { textControlCompoundInputFocusClassName } from '../form-control-shared'
 
 const NumberField = BaseNumberField.Root
 type NumberFieldProps = BaseNumberField.Root.Props
@@ -14,7 +14,7 @@ const numberFieldGroupVariants = cva(
   [
     'group/number-field flex w-full min-w-0 items-stretch overflow-hidden border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color,box-shadow]',
     'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-    textControlCompoundFocusClassName,
+    textControlCompoundInputFocusClassName,
     'data-focused:border-components-input-border-active data-focused:bg-components-input-bg-active data-focused:shadow-xs',
     'data-invalid:border-components-input-border-destructive data-invalid:bg-components-input-bg-destructive',
     'data-disabled:cursor-not-allowed data-disabled:border-transparent data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled',

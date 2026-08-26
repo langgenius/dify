@@ -13,7 +13,7 @@ from uuid import uuid4
 import pytest
 from flask import Flask
 from pydantic import ValidationError
-from sqlalchemy import event, select
+from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
@@ -24,10 +24,11 @@ from controllers.inner_api.app.dsl import (
     InnerAppDSLImportPayload,
     _get_active_account,
 )
-from models import Account, App
-from models.account import AccountStatus
+from models import Account, App, Tenant, TenantAccountJoin
+from models.account import AccountStatus, TenantAccountRole
 from models.model import AppMode, IconType
 from services.app_dsl_service import Import, ImportStatus
+from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
 
 
 def _persist_app(session: Session) -> App:
@@ -45,6 +46,24 @@ def _persist_app(session: Session) -> App:
     session.add(app)
     session.commit()
     return app
+
+
+def _persist_account(session: Session, *, workspace_id: str = "ws-123") -> Account:
+    account = Account(name="DSL Creator", email="user@example.com", status=AccountStatus.ACTIVE)
+    tenant = Tenant(name="DSL Workspace")
+    tenant.id = workspace_id
+    session.add_all([account, tenant])
+    session.flush()
+    session.add(
+        TenantAccountJoin(
+            tenant_id=tenant.id,
+            account_id=account.id,
+            current=True,
+            role=TenantAccountRole.OWNER,
+        )
+    )
+    session.commit()
+    return account
 
 
 class TestInnerAppDSLImportPayload:
@@ -159,9 +178,10 @@ class TestEnterpriseAppDSLImport:
 
     @pytest.mark.usefixtures("_mock_import_deps")
     @patch("controllers.inner_api.app.dsl._get_active_account")
-    def test_import_success_returns_200(self, mock_get_account, api_instance, app: Flask):
-        mock_account = MagicMock()
-        mock_get_account.return_value = mock_account
+    def test_import_success_returns_200(self, mock_get_account, api_instance, app: Flask, sqlite_session: Session):
+        account = _persist_account(sqlite_session)
+        self._transaction_events.clear()
+        mock_get_account.return_value = account
         self._mock_dsl.import_app.return_value = self._make_import_result(ImportStatus.COMPLETED)
 
         unwrapped = inspect.unwrap(api_instance.post)
@@ -176,14 +196,15 @@ class TestEnterpriseAppDSLImport:
         body, status_code = result
         assert status_code == 200
         assert body["status"] == "completed"
-        call_session = mock_account.set_tenant_id_with_session.call_args.kwargs["session"]
-        assert isinstance(call_session, Session)
+        assert account.current_tenant_id == "ws-123"
+        assert self._mock_dsl.import_app.call_args.kwargs["account"] is account
         assert self._transaction_events == ["commit"]
 
     @pytest.mark.usefixtures("_mock_import_deps")
     @patch("controllers.inner_api.app.dsl._get_active_account")
-    def test_import_pending_returns_202(self, mock_get_account, api_instance, app: Flask):
-        mock_get_account.return_value = MagicMock()
+    def test_import_pending_returns_202(self, mock_get_account, api_instance, app: Flask, sqlite_session: Session):
+        mock_get_account.return_value = _persist_account(sqlite_session)
+        self._transaction_events.clear()
         self._mock_dsl.import_app.return_value = self._make_import_result(ImportStatus.PENDING)
 
         unwrapped = inspect.unwrap(api_instance.post)
@@ -198,10 +219,9 @@ class TestEnterpriseAppDSLImport:
 
     @pytest.mark.usefixtures("_mock_import_deps")
     @patch("controllers.inner_api.app.dsl._get_active_account")
-    def test_import_failed_returns_400(self, mock_get_account, api_instance, app: Flask):
-        mock_account = MagicMock()
-        mock_account.set_tenant_id_with_session.side_effect = lambda _tenant_id, *, session: session.execute(select(1))
-        mock_get_account.return_value = mock_account
+    def test_import_failed_returns_400(self, mock_get_account, api_instance, app: Flask, sqlite_session: Session):
+        mock_get_account.return_value = _persist_account(sqlite_session)
+        self._transaction_events.clear()
         self._mock_dsl.import_app.return_value = self._make_import_result(ImportStatus.FAILED)
 
         unwrapped = inspect.unwrap(api_instance.post)
@@ -234,6 +254,15 @@ class TestEnterpriseAppDSLExport:
 
     Uses inspect.unwrap() to bypass auth/setup decorators.
     """
+
+    def test_export_documents_query_parameters(self):
+        params = EnterpriseAppDSLExport.get.__apidoc__["params"]
+
+        assert params["include_secret"]["in"] == "query"
+        assert params["include_secret"]["type"] == "boolean"
+        assert params["workflow_id"]["in"] == "query"
+        assert params["workflow_id"]["type"] == "string"
+        assert params["workflow_id"]["format"] == "uuid"
 
     @pytest.fixture
     def api_instance(self):
@@ -292,6 +321,160 @@ class TestEnterpriseAppDSLExport:
         assert call_kwargs["app_model"].id == app_model.id
         assert call_kwargs["session"] is scoped_db()
         assert call_kwargs["include_secret"] is True
+
+    @patch("controllers.inner_api.app.dsl.AppDslService")
+    def test_export_selected_workflow_forwards_canonical_uuid(
+        self,
+        mock_dsl_cls,
+        api_instance,
+        app: Flask,
+        sqlite_session: Session,
+        scoped_db,
+    ):
+        app_model = _persist_app(sqlite_session)
+        mock_dsl_cls.export_dsl.return_value = "yaml-data"
+        workflow_id = "F1FD7266-56FC-45C7-9D81-A72CD5A1B4F6"
+
+        unwrapped = inspect.unwrap(api_instance.get)
+        with app.test_request_context(f"?workflow_id={workflow_id}"):
+            body, status_code = unwrapped(api_instance, app_id=app_model.id)
+
+        assert status_code == 200
+        assert body["data"] == "yaml-data"
+        call_kwargs = mock_dsl_cls.export_dsl.call_args.kwargs
+        assert call_kwargs["app_model"].id == app_model.id
+        assert call_kwargs["session"] is scoped_db()
+        assert call_kwargs["include_secret"] is False
+        assert call_kwargs["workflow_id"] == "f1fd7266-56fc-45c7-9d81-a72cd5a1b4f6"
+
+    @patch("controllers.inner_api.app.dsl.AppDslService")
+    def test_export_selected_workflow_with_secret(
+        self,
+        mock_dsl_cls,
+        api_instance,
+        app: Flask,
+        sqlite_session: Session,
+        scoped_db,
+    ):
+        app_model = _persist_app(sqlite_session)
+        mock_dsl_cls.export_dsl.return_value = "yaml-data"
+        workflow_id = "f1fd7266-56fc-45c7-9d81-a72cd5a1b4f6"
+
+        unwrapped = inspect.unwrap(api_instance.get)
+        with app.test_request_context(f"?include_secret=true&workflow_id={workflow_id}"):
+            body, status_code = unwrapped(api_instance, app_id=app_model.id)
+
+        assert status_code == 200
+        assert body["data"] == "yaml-data"
+        call_kwargs = mock_dsl_cls.export_dsl.call_args.kwargs
+        assert call_kwargs["app_model"].id == app_model.id
+        assert call_kwargs["session"] is scoped_db()
+        assert call_kwargs["include_secret"] is True
+        assert call_kwargs["workflow_id"] == workflow_id
+
+    @patch("controllers.inner_api.app.dsl.AppDslService")
+    def test_export_rejects_invalid_selected_workflow_id(
+        self,
+        mock_dsl_cls,
+        api_instance,
+        app: Flask,
+        scoped_db,
+    ):
+        assert scoped_db() is not None
+        unwrapped = inspect.unwrap(api_instance.get)
+        with app.test_request_context("?workflow_id=not-a-uuid"):
+            body, status_code = unwrapped(api_instance, app_id=str(uuid4()))
+
+        assert status_code == 400
+        assert body == {
+            "code": "invalid_workflow_id",
+            "message": "workflow_id must be a valid UUID",
+            "status": 400,
+        }
+        mock_dsl_cls.export_dsl.assert_not_called()
+
+    @patch("controllers.inner_api.app.dsl.AppDslService")
+    def test_export_selected_missing_workflow_returns_404(
+        self,
+        mock_dsl_cls,
+        api_instance,
+        app: Flask,
+        sqlite_session: Session,
+        scoped_db,
+    ):
+        app_model = _persist_app(sqlite_session)
+        mock_dsl_cls.export_dsl.side_effect = WorkflowNotFoundError("selected workflow not found")
+        workflow_id = "f1fd7266-56fc-45c7-9d81-a72cd5a1b4f6"
+
+        unwrapped = inspect.unwrap(api_instance.get)
+        with app.test_request_context(f"?workflow_id={workflow_id}"):
+            body, status_code = unwrapped(api_instance, app_id=app_model.id)
+
+        assert status_code == 404
+        assert body == {
+            "code": "workflow_version_not_found",
+            "message": "selected workflow not found",
+            "status": 404,
+        }
+        call_kwargs = mock_dsl_cls.export_dsl.call_args.kwargs
+        assert call_kwargs["app_model"].id == app_model.id
+        assert call_kwargs["session"] is scoped_db()
+        assert call_kwargs["include_secret"] is False
+        assert call_kwargs["workflow_id"] == workflow_id
+
+    @patch("controllers.inner_api.app.dsl.AppDslService")
+    def test_export_selected_draft_workflow_returns_400(
+        self,
+        mock_dsl_cls,
+        api_instance,
+        app: Flask,
+        sqlite_session: Session,
+        scoped_db,
+    ):
+        app_model = _persist_app(sqlite_session)
+        mock_dsl_cls.export_dsl.side_effect = IsDraftWorkflowError("selected workflow is a draft")
+        workflow_id = "f1fd7266-56fc-45c7-9d81-a72cd5a1b4f6"
+
+        unwrapped = inspect.unwrap(api_instance.get)
+        with app.test_request_context(f"?workflow_id={workflow_id}"):
+            body, status_code = unwrapped(api_instance, app_id=app_model.id)
+
+        assert status_code == 400
+        assert body == {
+            "code": "workflow_version_not_published",
+            "message": "selected workflow is a draft",
+            "status": 400,
+        }
+        call_kwargs = mock_dsl_cls.export_dsl.call_args.kwargs
+        assert call_kwargs["app_model"].id == app_model.id
+        assert call_kwargs["session"] is scoped_db()
+        assert call_kwargs["include_secret"] is False
+        assert call_kwargs["workflow_id"] == workflow_id
+
+    @patch("controllers.inner_api.app.dsl.AppDslService")
+    def test_export_without_selected_workflow_preserves_workflow_error(
+        self,
+        mock_dsl_cls,
+        api_instance,
+        app: Flask,
+        sqlite_session: Session,
+        scoped_db,
+    ):
+        app_model = _persist_app(sqlite_session)
+        mock_dsl_cls.export_dsl.side_effect = WorkflowNotFoundError(
+            "Missing draft workflow configuration, please check."
+        )
+
+        unwrapped = inspect.unwrap(api_instance.get)
+        with app.test_request_context():
+            with pytest.raises(WorkflowNotFoundError, match="Missing draft workflow configuration"):
+                unwrapped(api_instance, app_id=app_model.id)
+
+        call_kwargs = mock_dsl_cls.export_dsl.call_args.kwargs
+        assert call_kwargs["app_model"].id == app_model.id
+        assert call_kwargs["session"] is scoped_db()
+        assert call_kwargs["include_secret"] is False
+        assert "workflow_id" not in call_kwargs
 
     def test_export_app_not_found_returns_404(self, api_instance, app: Flask, scoped_db):
         assert scoped_db() is not None

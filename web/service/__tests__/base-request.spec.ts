@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 // oxlint-disable-next-line no-restricted-imports -- This spec directly tests the legacy request owner.
 import { request } from '../base'
 

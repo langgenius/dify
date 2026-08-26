@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react'
 import type { AgentPreviewChatController } from '../chat-conversation'
 import type { AgentChatRuntimeEmptyStateProps } from '../chat-runtime'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -57,7 +58,7 @@ vi.mock('@/next/dynamic', async () => {
     default: () =>
       function MockChat(props: {
         answerActionPosition?: 'auto' | 'below'
-        onSend: (message: string) => unknown
+        onSend: (message: string, files?: FileEntity[]) => unknown
         onStopResponding: () => void
         sendButtonLabel?: string
         sendButtonLoading?: boolean
@@ -112,6 +113,26 @@ vi.mock('@/next/dynamic', async () => {
               }}
             >
               send
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSent(true)
+                sendResultRef.current = props.onSend('read this file', [
+                  {
+                    id: 'file-1',
+                    name: 'brief.docx',
+                    size: 1024,
+                    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    progress: 100,
+                    transferMethod: TransferMethod.local_file,
+                    supportFileType: 'document',
+                    uploadedId: 'uploaded-file-1',
+                  },
+                ])
+              }}
+            >
+              send with document
             </button>
             <button type="button" onClick={props.onStopResponding}>
               stop
@@ -720,6 +741,21 @@ describe('AgentPreviewChat', () => {
     )
   })
 
+  it('should deliver non-image attachments even when the selected model does not support vision', async () => {
+    renderPreviewChat()
+
+    fireEvent.click(screen.getByRole('button', { name: 'send with document' }))
+
+    await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
+    expect(handleSendMock).toHaveBeenCalledWith(
+      'agent/agent-1/chat-messages',
+      expect.objectContaining({
+        files: [expect.objectContaining({ id: 'file-1', name: 'brief.docx' })],
+      }),
+      expect.any(Object),
+    )
+  })
+
   it('should save draft before sending preview chat through the agent chat endpoints', async () => {
     const saveDraftBeforeRun = vi.fn().mockResolvedValue(undefined)
     renderPreviewChat({
@@ -821,13 +857,13 @@ describe('AgentPreviewChat', () => {
         event: 'error',
         code: 'agent_run_limit_exceeded',
         status: 400,
-        message: 'Server-provided message',
+        message: 'Agent run exceeded the configured limit of 3600 seconds',
       }),
     ).toEqual({
       conversationId: undefined,
       messageId: undefined,
       errorCode: 'agent_run_limit_exceeded',
-      errorMessage: 'Server-provided message',
+      errorMessage: 'Agent run exceeded the configured limit of 3600 seconds',
     })
 
     expect(mockToastError).toHaveBeenCalledTimes(1)
@@ -850,6 +886,38 @@ describe('AgentPreviewChat', () => {
     )
     expect(learnMoreLink).toHaveAttribute('target', '_blank')
     expect(learnMoreLink).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
+  it('should show a dedicated error toast when an agent run reaches the model request limit', async () => {
+    renderPreviewChat()
+
+    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+
+    await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
+    const callbacks = handleSendMock.mock.calls.at(0)?.[2]
+
+    expect(
+      callbacks.onUnhandledEvent({
+        event: 'error',
+        code: 'agent_run_limit_exceeded',
+        status: 400,
+        message: 'The next request would exceed the request_limit of 500',
+      }),
+    ).toEqual({
+      conversationId: undefined,
+      messageId: undefined,
+      errorCode: 'agent_run_limit_exceeded',
+      errorMessage: 'The next request would exceed the request_limit of 500',
+    })
+
+    expect(mockToastError).toHaveBeenCalledTimes(1)
+    expect(mockToastError).toHaveBeenCalledWith(
+      'agentV2.agentDetail.configure.preview.errors.agentModelRequestLimitExceeded',
+      expect.objectContaining({
+        description: expect.anything(),
+        timeout: 0,
+      }),
+    )
   })
 
   it('should show the send button loading state while preparing a build run', async () => {

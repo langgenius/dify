@@ -10,6 +10,7 @@ from sqlalchemy import select
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.app.llm.model_access import build_dify_model_access, fetch_model_config
+from core.credit_usage import created_by_from_app_type
 from core.db.session_factory import session_factory
 from core.file import remote_fetcher
 from core.helper.code_executor.code_executor import (
@@ -27,6 +28,7 @@ from core.workflow.llm_environment_variable import (
     resolve_llm_model_config,
     should_resolve_llm_model_selector,
 )
+from core.workflow.llm_node import DifyLLMNode
 from core.workflow.node_runtime import (
     DifyFileReferenceFactory,
     DifyHumanInputNodeRuntime,
@@ -46,6 +48,7 @@ from core.workflow.nodes.agent.plugin_strategy_adapter import (
 from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
 from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingResolver
+from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
@@ -133,11 +136,26 @@ def get_node_type_classes_mapping() -> Mapping[NodeType, Mapping[str, type[Node]
     return Node.get_node_type_classes_mapping()
 
 
-def resolve_workflow_node_class(*, node_type: NodeType, node_version: str) -> type[Node]:
+def resolve_workflow_node_class(
+    *,
+    node_type: NodeType,
+    node_version: str,
+    node_data: Mapping[str, Any] | BaseNodeData | None = None,
+) -> type[Node]:
     """Resolve the production node class for the requested type/version."""
     node_mapping = get_node_type_classes_mapping().get(node_type)
     if not node_mapping:
         raise ValueError(f"No class mapping found for node type: {node_type}")
+
+    # Historical Agent nodes used version=2 for their tool-parameter format.
+    # Only the explicit kind marker identifies the newer Dify Agent node.
+    if (
+        node_data is not None
+        and node_type == BuiltinNodeTypes.AGENT
+        and node_version == "2"
+        and not is_dify_agent_node_data(node_data)
+    ):
+        node_version = "1"
 
     latest_node_class = node_mapping.get(LATEST_VERSION)
     matched_node_class = node_mapping.get(node_version)
@@ -399,7 +417,11 @@ class DifyNodeFactory(NodeFactory):
         typed_node_config = NodeConfigDictAdapter.validate_python(adapted_node_config)
         node_id = typed_node_config["id"]
         node_data = typed_node_config["data"]
-        node_class = self._resolve_node_class(node_type=node_data.type, node_version=str(node_data.version))
+        node_class = self._resolve_node_class(
+            node_type=node_data.type,
+            node_version=str(node_data.version),
+            node_data=node_data,
+        )
         # Graph configs are initially validated against permissive shared node data.
         # Re-validate using the resolved node class so workflow-local node schemas
         # stay explicit and constructors receive the concrete typed payload.
@@ -492,8 +514,19 @@ class DifyNodeFactory(NodeFactory):
         return node_data
 
     @staticmethod
-    def _resolve_node_class(*, node_type: NodeType, node_version: str) -> type[Node]:
-        return resolve_workflow_node_class(node_type=node_type, node_version=node_version)
+    def _resolve_node_class(
+        *,
+        node_type: NodeType,
+        node_version: str,
+        node_data: Mapping[str, Any] | BaseNodeData | None = None,
+    ) -> type[Node]:
+        if node_type == BuiltinNodeTypes.LLM:
+            return DifyLLMNode
+        return resolve_workflow_node_class(
+            node_type=node_type,
+            node_version=node_version,
+            node_data=node_data,
+        )
 
     def _resolve_llm_model_reference(self, node_data: LLMNodeData) -> LLMNodeData:
         """Resolve an optional shared model selector from the workflow variable pool."""
@@ -527,7 +560,6 @@ class DifyNodeFactory(NodeFactory):
             return {
                 "binding_resolver": WorkflowAgentBindingResolver(),
                 "runtime_request_builder": WorkflowAgentRuntimeRequestBuilder(
-                    credentials_provider=self._llm_credentials_provider,
                     request_builder=AgentBackendRunRequestBuilder(),
                 ),
                 "agent_backend_client": create_agent_backend_run_client(
@@ -537,7 +569,6 @@ class DifyNodeFactory(NodeFactory):
                     fake_scenario=dify_config.AGENT_BACKEND_FAKE_SCENARIO,
                     stream_read_timeout_seconds=dify_config.AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS,
                     stream_max_reconnects=dify_config.AGENT_BACKEND_STREAM_MAX_RECONNECTS,
-                    stream_run_timeout_seconds=dify_config.AGENT_BACKEND_RUN_TIMEOUT_SECONDS,
                 ),
                 "event_adapter": AgentBackendRunEventAdapter(),
                 # Agent Files §4.6: reback file outputs from the ToolFile row so
@@ -586,18 +617,28 @@ class DifyNodeFactory(NodeFactory):
     ) -> dict[str, object]:
         validated_node_data = cast(LLMCompatibleNodeData, node_data)
         model_instance = self._build_model_instance_for_llm_node(validated_node_data)
+        request_metadata: dict[str, object] = {"app_id": self._dify_context.app_id}
+        app_type = self._dify_context.app_type
+        created_by = self._dify_context.created_by
+        if app_type is not None:
+            request_metadata["app_type"] = app_type
+            request_metadata["created_by"] = created_by_from_app_type(app_type)
+        elif created_by is not None:
+            request_metadata["created_by"] = created_by
+
+        node_model_instance = (
+            self._wrap_model_instance_for_node(
+                node_data=validated_node_data,
+                model_instance=model_instance,
+                request_metadata=request_metadata,
+            )
+            if wrap_model_instance
+            else model_instance
+        )
         node_init_kwargs: dict[str, object] = {
             "credentials_provider": self._llm_credentials_provider,
             "model_factory": self._llm_model_factory,
-            "model_instance": (
-                self._wrap_model_instance_for_node(
-                    node_data=validated_node_data,
-                    model_instance=model_instance,
-                    request_metadata={"app_id": self._dify_context.app_id},
-                )
-                if wrap_model_instance
-                else model_instance
-            ),
+            "model_instance": node_model_instance,
             "memory": self._build_memory_for_llm_node(
                 node_data=validated_node_data,
                 model_instance=model_instance,
@@ -619,6 +660,7 @@ class DifyNodeFactory(NodeFactory):
             node_init_kwargs["jinja2_template_renderer"] = self._jinja2_template_renderer
         if validated_node_data.type == BuiltinNodeTypes.LLM:
             node_init_kwargs["default_query_selector"] = system_variable_selector(SystemVariableKey.QUERY)
+            node_init_kwargs["polling_finalizer"] = cast(DifyPreparedLLM, node_model_instance).finalize_llm_polling
         return node_init_kwargs
 
     @staticmethod

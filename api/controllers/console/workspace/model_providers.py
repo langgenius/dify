@@ -20,7 +20,6 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -209,6 +208,8 @@ class ModelProviderCredentialApi(Resource):
     )
     @setup_required
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str, provider: str):
@@ -401,6 +402,7 @@ class PreferredProviderTypeUpdateApi(Resource):
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/checkout-url")
 class ModelProviderPaymentCheckoutUrlApi(Resource):
+    @console_ns.doc(deprecated=True)
     @console_ns.response(
         200,
         "Model provider checkout URL retrieved successfully",
@@ -408,13 +410,14 @@ class ModelProviderPaymentCheckoutUrlApi(Resource):
     )
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
     def get(self, current_tenant_id: str, current_user: Account, provider: str):
         if provider != "anthropic":
             raise ValueError(f"provider name {provider} is invalid")
-        BillingService.is_tenant_owner_or_admin(current_user, session=db.session())
+        # pyrefly: ignore [deprecated]
         data = BillingService.get_model_provider_payment_link(
             provider_name=provider,
             tenant_id=current_tenant_id,

@@ -67,8 +67,8 @@ class ToolFileApi(Resource):
         except NotFound:
             raise
 
-        except Exception:
-            raise UnsupportedFileTypeError()
+        except Exception as e:
+            raise UnsupportedFileTypeError() from e
 
         mime_type = tool_file.mime_type
         filename = tool_file.filename

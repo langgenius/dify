@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import inspect
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
@@ -20,6 +20,7 @@ from controllers.openapi.apps_permitted_external import (
     PermittedExternalAppDescribeApi,
     PermittedExternalAppsListQuery,
 )
+from models.model import App, AppMode
 
 from ._mode_constants import NON_LISTABLE_MODES
 
@@ -74,7 +75,14 @@ def test_describe_forwards_request_session_to_response_builder(unbound_session: 
     api = PermittedExternalAppDescribeApi()
     method = inspect.unwrap(api.get)
     session = unbound_session
-    app = MagicMock()
+    app = App(
+        id="app-id",
+        tenant_id="tenant-1",
+        name="Permitted app",
+        mode=AppMode.CHAT,
+        enable_site=True,
+        enable_api=True,
+    )
     auth_data = SimpleNamespace(app=app)
     query = SimpleNamespace(fields={"info"})
     response = object()

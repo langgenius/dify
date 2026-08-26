@@ -1010,6 +1010,7 @@ class TestAppDslService:
                     "data": {
                         "type": BuiltinNodeTypes.AGENT,
                         "version": "2",
+                        "agent_node_kind": "dify_agent",
                         "agent_binding": {
                             "binding_type": WorkflowAgentBindingType.ROSTER_AGENT.value,
                             AGENT_PACKAGE_REF_KEY: "agent_1",
@@ -1021,6 +1022,7 @@ class TestAppDslService:
                     "data": {
                         "type": BuiltinNodeTypes.AGENT,
                         "version": "2",
+                        "agent_node_kind": "dify_agent",
                         "agent_binding": {
                             "binding_type": WorkflowAgentBindingType.INLINE_AGENT.value,
                             AGENT_PACKAGE_REF_KEY: "agent_1",
@@ -1318,7 +1320,7 @@ class TestAppDslService:
 
         with pytest.raises(
             WorkflowNotFoundError,
-            match="Missing draft workflow configuration, please check.",
+            match="Workflow version not found. Workflow ID:",
         ):
             AppDslService.export_dsl(
                 app, include_secret=False, workflow_id=str(uuid4()), session=db_session_with_containers

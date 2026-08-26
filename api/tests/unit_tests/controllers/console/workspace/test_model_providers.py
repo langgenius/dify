@@ -1,11 +1,10 @@
 from inspect import unwrap
-from types import SimpleNamespace
-from typing import cast
-from unittest.mock import ANY, patch
+from unittest.mock import patch
 
 import pytest
-from flask import Flask
+from flask import Flask, g
 from pydantic_core import ValidationError
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -21,6 +20,7 @@ from controllers.console.workspace.model_providers import (
     PreferredProviderTypeUpdateApi,
 )
 from core.entities.provider_entities import CredentialConfiguration
+from enums import DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
@@ -44,7 +44,9 @@ INVALID_UUID = "123"
 
 
 def make_account() -> Account:
-    return cast(Account, SimpleNamespace(id="account-1", email="owner@example.com"))
+    account = Account(name="Provider Owner", email="owner@example.com")
+    account.id = "account-1"
+    return account
 
 
 def make_provider_response() -> ProviderResponse:
@@ -225,10 +227,10 @@ class TestModelProviderSummaryListApi:
 
 
 class TestModelProviderCreditsApi:
-    def test_get_success(self):
+    def test_get_success(self, unbound_session: Session):
         api = ModelProviderCreditsApi()
         method = unwrap(api.get)
-        session = SimpleNamespace()
+        session = unbound_session
         credit_pool = EffectiveCreditPool(
             plan="team",
             pool_type="paid",
@@ -255,10 +257,10 @@ class TestModelProviderCreditsApi:
             "next_credit_reset_date": 1775001600,
         }
 
-    def test_get_without_effective_pool(self):
+    def test_get_without_effective_pool(self, unbound_session: Session):
         api = ModelProviderCreditsApi()
         method = unwrap(api.get)
-        session = SimpleNamespace()
+        session = unbound_session
 
         with patch(
             "controllers.console.workspace.model_providers.WorkspaceService.get_effective_credit_pool",
@@ -570,13 +572,8 @@ class TestModelProviderPaymentCheckoutUrlApi:
         method = unwrap(api.get)
 
         user = make_account()
-
         with (
             app.test_request_context("/"),
-            patch(
-                "controllers.console.workspace.model_providers.BillingService.is_tenant_owner_or_admin",
-                return_value=None,
-            ) as is_tenant_owner_or_admin,
             patch(
                 "controllers.console.workspace.model_providers.BillingService.get_model_provider_payment_link",
                 return_value={"payment_link": "https://payment.example.com/provider"},
@@ -584,7 +581,6 @@ class TestModelProviderPaymentCheckoutUrlApi:
         ):
             result = method(api, "tenant1", user, provider="anthropic")
 
-        is_tenant_owner_or_admin.assert_called_once_with(user, session=ANY)
         get_model_provider_payment_link.assert_called_once_with(
             provider_name="anthropic",
             tenant_id="tenant1",
@@ -601,18 +597,21 @@ class TestModelProviderPaymentCheckoutUrlApi:
             with pytest.raises(ValueError):
                 method(api, "tenant1", make_account(), provider="openai")
 
-    def test_permission_denied(self, app: Flask):
+    def test_checkout_rejects_non_privileged_role(self, app: Flask):
         api = ModelProviderPaymentCheckoutUrlApi()
-        method = unwrap(api.get)
-
-        user = make_account()
+        account = make_account()
 
         with (
             app.test_request_context("/"),
+            patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+            patch.object(dify_config, "LOGIN_DISABLED", True),
+            patch.object(dify_config, "RBAC_ENABLED", False),
             patch(
-                "controllers.console.workspace.model_providers.BillingService.is_tenant_owner_or_admin",
-                side_effect=Forbidden(),
-            ),
+                "controllers.console.workspace.model_providers.BillingService.get_model_provider_payment_link",
+            ) as get_model_provider_payment_link,
         ):
+            g._login_user = account
             with pytest.raises(Forbidden):
-                method(api, "tenant1", user, provider="anthropic")
+                api.get(provider="anthropic")
+
+        get_model_provider_payment_link.assert_not_called()

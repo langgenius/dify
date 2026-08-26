@@ -127,9 +127,9 @@ const StackExamples = () => {
   }
 
   const createVaryingHeightStack = () => {
-    toast.info('Long background toast', {
+    toast.error('Failed to publish the workflow', {
       description:
-        'This longer toast intentionally spans multiple lines so the collapsed stack can be checked against the shorter frontmost toast height without panel overflow.',
+        'The workflow could not be published because several dependent resources are unavailable. Check the model provider credentials, reconnect the knowledge base, and try publishing again after every dependency is ready.',
     })
     toast.success('Short front toast', {
       description: 'Short message.',

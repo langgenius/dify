@@ -1,88 +1,133 @@
+import * as React from 'react'
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { SegmentedControl, SegmentedControlDivider, SegmentedControlItem } from '../index'
 
-describe('SegmentedControl wrappers', () => {
-  it('renders a segmented control with Base UI pressed state', async () => {
+function SegmentedControlTypeExamples() {
+  return (
+    <>
+      <SegmentedControl<number> value={10} onValueChange={() => {}} aria-label="Page size">
+        <SegmentedControlItem<number> value={10}>10</SegmentedControlItem>
+        <SegmentedControlItem<number> value={20}>20</SegmentedControlItem>
+      </SegmentedControl>
+      {/* @ts-expect-error segmented controls require either value or defaultValue */}
+      <SegmentedControl aria-label="Missing value">
+        <SegmentedControlItem value="one">One</SegmentedControlItem>
+      </SegmentedControl>
+    </>
+  )
+}
+
+void SegmentedControlTypeExamples
+
+describe('SegmentedControl', () => {
+  it('exposes a required single choice through radio semantics', async () => {
     const screen = await render(
-      <SegmentedControl defaultValue={['one']} aria-label="View">
+      <SegmentedControl defaultValue="one" aria-label="View">
         <SegmentedControlItem value="one">One</SegmentedControlItem>
         <SegmentedControlItem value="two">Two</SegmentedControlItem>
       </SegmentedControl>,
     )
 
+    await expect.element(screen.getByRole('radiogroup', { name: 'View' })).toBeInTheDocument()
     await expect
-      .element(screen.getByRole('button', { name: 'One' }))
-      .toHaveAttribute('aria-pressed', 'true')
+      .element(screen.getByRole('radio', { name: 'One' }))
+      .toHaveAttribute('aria-checked', 'true')
+    await expect
+      .element(screen.getByRole('radio', { name: 'Two' }))
+      .toHaveAttribute('aria-checked', 'false')
   })
 
-  it('uses single selection by default', async () => {
-    const screen = await render(
-      <SegmentedControl defaultValue={['one']} aria-label="View">
-        <SegmentedControlItem value="one">One</SegmentedControlItem>
-        <SegmentedControlItem value="two">Two</SegmentedControlItem>
-      </SegmentedControl>,
-    )
-
-    await screen.getByRole('button', { name: 'Two' }).click()
-
-    await expect
-      .element(screen.getByRole('button', { name: 'One' }))
-      .toHaveAttribute('aria-pressed', 'false')
-    await expect
-      .element(screen.getByRole('button', { name: 'Two' }))
-      .toHaveAttribute('aria-pressed', 'true')
-  })
-
-  it('calls onValueChange while leaving controlled value to the caller', async () => {
+  it('updates an uncontrolled selection without allowing the selected item to be cleared', async () => {
     const onValueChange = vi.fn()
     const screen = await render(
-      <SegmentedControl value={['one']} onValueChange={onValueChange} aria-label="View">
+      <SegmentedControl defaultValue="one" onValueChange={onValueChange} aria-label="View">
         <SegmentedControlItem value="one">One</SegmentedControlItem>
         <SegmentedControlItem value="two">Two</SegmentedControlItem>
       </SegmentedControl>,
     )
 
-    await screen.getByRole('button', { name: 'Two' }).click()
+    await screen.getByRole('radio', { name: 'One' }).click()
 
-    expect(onValueChange).toHaveBeenCalledWith(['two'], expect.anything())
+    expect(onValueChange).not.toHaveBeenCalled()
     await expect
-      .element(screen.getByRole('button', { name: 'One' }))
-      .toHaveAttribute('aria-pressed', 'true')
+      .element(screen.getByRole('radio', { name: 'One' }))
+      .toHaveAttribute('aria-checked', 'true')
+
+    await screen.getByRole('radio', { name: 'Two' }).click()
+
+    expect(onValueChange).toHaveBeenCalledWith('two', expect.anything())
+    await expect
+      .element(screen.getByRole('radio', { name: 'Two' }))
+      .toHaveAttribute('aria-checked', 'true')
   })
 
-  it('preserves Base UI empty-array behavior when a single selected item is toggled off', async () => {
+  it('leaves a controlled selection to its caller', async () => {
     const onValueChange = vi.fn()
     const screen = await render(
-      <SegmentedControl value={['one']} onValueChange={onValueChange} aria-label="View">
+      <SegmentedControl value="one" onValueChange={onValueChange} aria-label="View">
         <SegmentedControlItem value="one">One</SegmentedControlItem>
         <SegmentedControlItem value="two">Two</SegmentedControlItem>
       </SegmentedControl>,
     )
 
-    await screen.getByRole('button', { name: 'One' }).click()
+    await screen.getByRole('radio', { name: 'Two' }).click()
 
-    expect(onValueChange).toHaveBeenCalledWith([], expect.anything())
+    expect(onValueChange).toHaveBeenCalledWith('two', expect.anything())
     await expect
-      .element(screen.getByRole('button', { name: 'One' }))
-      .toHaveAttribute('aria-pressed', 'true')
+      .element(screen.getByRole('radio', { name: 'One' }))
+      .toHaveAttribute('aria-checked', 'true')
   })
 
-  it('forwards disabled and className to composable parts', async () => {
+  it('selects the next enabled item with an arrow key', async () => {
     const screen = await render(
-      <SegmentedControl defaultValue={['one']} aria-label="View" className="custom-group">
-        <SegmentedControlItem value="one" className="custom-item">
-          One
+      <SegmentedControl defaultValue="one" aria-label="View">
+        <SegmentedControlItem value="one">One</SegmentedControlItem>
+        <SegmentedControlItem value="two" disabled>
+          Two
         </SegmentedControlItem>
-        <SegmentedControlDivider className="custom-divider" data-testid="divider" />
+        <SegmentedControlItem value="three">Three</SegmentedControlItem>
+      </SegmentedControl>,
+    )
+
+    const one = screen.getByRole('radio', { name: 'One' })
+    const three = screen.getByRole('radio', { name: 'Three' })
+    ;(one.element() as HTMLElement).focus()
+
+    await userEvent.keyboard('{ArrowRight}')
+
+    await expect.element(three).toHaveFocus()
+    await expect.element(three).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('uses non-submitting native buttons for its items', async () => {
+    const onSubmit = vi.fn((event: React.FormEvent) => event.preventDefault())
+    const screen = await render(
+      <form onSubmit={onSubmit}>
+        <SegmentedControl defaultValue="one" aria-label="View">
+          <SegmentedControlItem value="one">One</SegmentedControlItem>
+          <SegmentedControlItem value="two">Two</SegmentedControlItem>
+        </SegmentedControl>
+      </form>,
+    )
+
+    await screen.getByRole('radio', { name: 'Two' }).click()
+
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('keeps disabled item semantics and a decorative divider', async () => {
+    const screen = await render(
+      <SegmentedControl defaultValue="one" aria-label="View">
+        <SegmentedControlItem value="one">One</SegmentedControlItem>
+        <SegmentedControlDivider data-testid="divider" />
         <SegmentedControlItem value="two" disabled>
           Two
         </SegmentedControlItem>
       </SegmentedControl>,
     )
 
-    await expect.element(screen.getByRole('group')).toHaveClass('custom-group')
-    await expect.element(screen.getByRole('button', { name: 'One' })).toHaveClass('custom-item')
-    await expect.element(screen.getByRole('button', { name: 'Two' })).toBeDisabled()
-    await expect.element(screen.getByTestId('divider')).toHaveClass('custom-divider')
+    await expect.element(screen.getByRole('radio', { name: 'Two' })).toBeDisabled()
+    await expect.element(screen.getByTestId('divider')).toHaveAttribute('aria-hidden', 'true')
   })
 })

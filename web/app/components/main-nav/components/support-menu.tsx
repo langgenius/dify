@@ -1,9 +1,7 @@
 import { DropdownMenuItem, DropdownMenuLinkItem } from '@langgenius/dify-ui/dropdown-menu'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { openZendeskWindow } from '@/app/components/base/zendesk/utils'
-import { Plan } from '@/app/components/billing/type'
 import {
   ExternalLinkIndicator,
   MenuItemContent,
@@ -12,7 +10,6 @@ import { mailToSupport } from '@/app/components/header/utils/util'
 import { SUPPORT_EMAIL_ADDRESS, ZENDESK_WIDGET_KEY } from '@/config'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
@@ -23,17 +20,19 @@ export default function SupportMenu() {
     select: ({ deployment_edition }) => deployment_edition,
   })
   const { enableBilling, plan } = useProviderContext()
-  const { data: userProfileEmail } = useSuspenseQuery({
+  const { data: accountProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
-    select: (data) => data.profile.email,
+    select: (data) => ({
+      email: data.profile.email,
+      currentVersion: data.meta.currentVersion,
+    }),
   })
-  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
   const { setShowPricingModal } = useModalContext()
-  const hasDedicatedChannel = plan.type !== Plan.sandbox || Boolean(SUPPORT_EMAIL_ADDRESS.trim())
+  const hasDedicatedChannel = plan.type !== 'sandbox' || Boolean(SUPPORT_EMAIL_ADDRESS.trim())
   const shouldShowUpgradeContact =
     deploymentEdition === 'CLOUD' &&
     enableBilling &&
-    plan.type === Plan.sandbox &&
+    plan.type === 'sandbox' &&
     !hasDedicatedChannel
   const hasZendeskWidget = deploymentEdition === 'CLOUD' && Boolean(ZENDESK_WIDGET_KEY.trim())
 
@@ -82,9 +81,9 @@ export default function SupportMenu() {
         <DropdownMenuLinkItem
           className="mx-0 h-8 gap-1 px-3 py-1"
           href={mailToSupport(
-            userProfileEmail,
+            accountProfile.email,
             plan.type,
-            langGeniusVersionInfo?.current_version,
+            accountProfile.currentVersion ?? '',
             SUPPORT_EMAIL_ADDRESS,
           )}
           rel="noopener noreferrer"
@@ -99,25 +98,13 @@ export default function SupportMenu() {
       )}
       <DropdownMenuLinkItem
         className="mx-0 h-8 gap-1 px-3 py-1"
-        href="https://forum.dify.ai/"
-        rel="noopener noreferrer"
-        target="_blank"
-      >
-        <MenuItemContent
-          iconClassName="i-ri-discuss-line"
-          label={t(($) => $['userProfile.forum'], { ns: 'common' })}
-          trailing={<ExternalLinkIndicator />}
-        />
-      </DropdownMenuLinkItem>
-      <DropdownMenuLinkItem
-        className="mx-0 h-8 gap-1 px-3 py-1"
         href="https://discord.gg/5AEfbxcd9k"
         rel="noopener noreferrer"
         target="_blank"
       >
         <MenuItemContent
           iconClassName="i-ri-discord-line"
-          label={t(($) => $['userProfile.community'], { ns: 'common' })}
+          label="Discord"
           trailing={<ExternalLinkIndicator />}
         />
       </DropdownMenuLinkItem>

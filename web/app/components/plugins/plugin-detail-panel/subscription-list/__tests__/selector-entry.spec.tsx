@@ -1,7 +1,7 @@
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import { SubscriptionSelectorEntry } from '../selector-entry'
 

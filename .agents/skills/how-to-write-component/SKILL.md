@@ -32,7 +32,7 @@ Use this skill to route component architecture decisions to its bundled referenc
 1. Identify the behavior owner and the public contract being changed.
 2. Read the nearby implementation, tests, and only the routed skill references.
 3. Implement one coherent vertical slice. Do not expand into equivalent patterns elsewhere unless the current contract cannot be completed without them.
-4. Verify observable behavior at the narrowest sufficient boundary, then run the checks documented by the owning package: `web/docs/test.md` or `web/docs/lint.md` for Web, and the `packages/dify-ui/README.md` Development section for Dify UI.
+4. Verify observable behavior at the narrowest sufficient boundary, then run the checks documented by the owning package: `web/docs/test.md` or `web/docs/lint.md` for Web, and `packages/dify-ui/docs/testing.md` for Dify UI.
 
 [data]: references/data.md
 [interactions]: references/interactions.md

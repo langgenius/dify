@@ -1,18 +1,17 @@
+import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import type { VersionHistory } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiCloseLine } from '@remixicon/react'
-import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type VersionInfoModalProps = {
   isOpen: boolean
-  versionInfo?: VersionHistory
+  versionInfo?: Pick<WorkflowResponse, 'id' | 'marked_comment' | 'marked_name'>
   onClose: () => void
   onPublish: (params: { title: string; releaseNotes: string; id?: string }) => void
 }
@@ -87,7 +86,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             onClick={onClose}
           >
-            <RiCloseLine className="h-4.5 w-4.5 text-text-tertiary" aria-hidden="true" />
+            <span className="i-ri-close-line h-4.5 w-4.5 text-text-tertiary" aria-hidden="true" />
           </button>
         </div>
         <div className="flex flex-col gap-y-4 px-6 py-3">
@@ -95,7 +94,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
             <FieldLabel className="flex h-6 items-center py-0 system-sm-semibold text-text-secondary">
               {t(($) => $['versionHistory.editField.title'], { ns: 'workflow' })}
             </FieldLabel>
-            <FieldControl
+            <Input
               value={title}
               placeholder={`${t(($) => $['versionHistory.nameThisVersion'], { ns: 'workflow' })}${t(($) => $['panel.optional'], { ns: 'workflow' })}`}
               onValueChange={setTitle}
@@ -118,7 +117,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </Button>
             <Button nativeButton={false} variant="primary" onClick={handlePublish}>
-              {t(($) => $['common.publish'], { ns: 'workflow' })}
+              {t(($) => $['operation.save'], { ns: 'common' })}
             </Button>
           </div>
         </div>

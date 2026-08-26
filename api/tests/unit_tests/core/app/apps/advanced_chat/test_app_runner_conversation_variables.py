@@ -10,7 +10,8 @@ from core.app.apps.advanced_chat import app_runner as app_runner_module
 from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
 from factories import variable_factory
 from graphon.variables import SegmentType
-from models import ConversationVariable
+from models import App, Conversation, ConversationVariable, Message
+from models.workflow import Workflow, WorkflowType
 
 APP_ID = "11111111-1111-1111-1111-111111111111"
 CONVERSATION_ID = "22222222-2222-2222-2222-222222222222"
@@ -31,19 +32,28 @@ def _variable(variable_id: str, name: str, value: str):
 
 
 def _runner(workflow_variables: list[object]) -> AdvancedChatAppRunner:
-    workflow = MagicMock()
+    workflow = Workflow(
+        id="55555555-5555-5555-5555-555555555555",
+        tenant_id="66666666-6666-6666-6666-666666666666",
+        app_id=APP_ID,
+        type=WorkflowType.CHAT,
+        version=Workflow.VERSION_DRAFT,
+        graph="{}",
+        features="{}",
+        created_by="44444444-4444-4444-4444-444444444444",
+    )
     workflow.conversation_variables = workflow_variables
-    conversation = MagicMock(app_id=APP_ID, id=CONVERSATION_ID)
+    conversation = Conversation(id=CONVERSATION_ID, app_id=APP_ID)
     return AdvancedChatAppRunner(
         application_generate_entity=MagicMock(),
         queue_manager=MagicMock(),
         conversation=conversation,
-        message=MagicMock(),
+        message=Message(id="77777777-7777-7777-7777-777777777777"),
         dialogue_count=1,
         variable_loader=MagicMock(),
         workflow=workflow,
         system_user_id="44444444-4444-4444-4444-444444444444",
-        app=MagicMock(),
+        app=App(id=APP_ID, tenant_id=workflow.tenant_id),
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),
     )

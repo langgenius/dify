@@ -5,19 +5,28 @@ const createResourceUserAccessPoliciesResponse = (
   overrides: Partial<ResourceUserAccessPoliciesResponse> = {},
 ): ResourceUserAccessPoliciesResponse => ({
   data: [],
-  scope: 'specific',
   ...overrides,
 })
 
 describe('access-control normalizers', () => {
-  // Resource access scope values come from the RBAC whitelist enum and must not be collapsed.
   describe('Resource user access policies', () => {
-    it('should preserve only-me open scope when normalizing app user access policies', () => {
+    it('should preserve pagination metadata', () => {
       const response = createResourceUserAccessPoliciesResponse({
-        scope: 'only_me',
+        pagination: {
+          current_page: 2,
+          per_page: 20,
+          total_count: 45,
+          total_pages: 3,
+        },
       })
+      const result = normalizeAppUserAccessPolicies(response)
 
-      expect(normalizeAppUserAccessPolicies(response).scope).toBe('only_me')
+      expect(result.pagination).toEqual({
+        current_page: 2,
+        per_page: 20,
+        total_count: 45,
+        total_pages: 3,
+      })
     })
   })
 })

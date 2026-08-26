@@ -12,6 +12,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from enums import CloudPlan, DeploymentEdition
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.file import FileTransferMethod, FileType
 from models.account import Tenant
 from models.enums import (
@@ -20,6 +21,7 @@ from models.enums import (
     FeedbackFromSource,
     FeedbackRating,
     MessageChainType,
+    WorkflowRunTriggeredFrom,
 )
 from models.model import (
     App,
@@ -34,7 +36,14 @@ from models.model import (
     MessageFile,
 )
 from models.web import SavedMessage
-from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom
+from models.workflow import (
+    WorkflowAppLog,
+    WorkflowAppLogCreatedFrom,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowRun,
+    WorkflowType,
+)
 from services import clear_free_plan_tenant_expired_logs as service_module
 from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
 
@@ -154,6 +163,66 @@ def _create_workflow_app_log(
     log.id = log_id
     log.created_at = created_at
     return log
+
+
+def _create_workflow_node_execution(
+    execution_id: str,
+    *,
+    node_id: str = "node-1",
+) -> WorkflowNodeExecutionModel:
+    """Create a real mapped node execution returned by the repository boundary."""
+    return WorkflowNodeExecutionModel(
+        id=execution_id,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        workflow_run_id="workflow-run-1",
+        index=1,
+        predecessor_node_id=None,
+        node_execution_id=execution_id,
+        node_id=node_id,
+        node_type="start",
+        title="Start",
+        agent_workspace_binding_id=None,
+        inputs="{}",
+        process_data=None,
+        outputs="{}",
+        status=WorkflowNodeExecutionStatus.SUCCEEDED,
+        error=None,
+        elapsed_time=0.1,
+        execution_metadata="{}",
+        created_at=REAL_DATETIME(2026, 1, 1),
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+        finished_at=REAL_DATETIME(2026, 1, 1, 0, 0, 1),
+    )
+
+
+def _create_workflow_run(run_id: str) -> WorkflowRun:
+    """Create a real mapped workflow run returned by the repository boundary."""
+    return WorkflowRun(
+        id=run_id,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        type=WorkflowType.WORKFLOW,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        version="1",
+        graph="{}",
+        inputs="{}",
+        status=WorkflowExecutionStatus.SUCCEEDED,
+        outputs="{}",
+        error=None,
+        elapsed_time=0.1,
+        total_tokens=0,
+        total_steps=1,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+        created_at=REAL_DATETIME(2026, 1, 1),
+        finished_at=REAL_DATETIME(2026, 1, 1, 0, 0, 1),
+        exceptions_count=0,
+    )
 
 
 def _create_related_records(message_id: str) -> list[object]:
@@ -396,14 +465,13 @@ def test_process_tenant_processes_and_persists_all_batches(
     clear_related = MagicMock()
     monkeypatch.setattr(ClearFreePlanTenantExpiredLogs, "_clear_message_related_tables", clear_related)
 
-    node_execution = SimpleNamespace(id="node-execution-1")
-    node_execution.__table__ = SimpleNamespace(columns=[SimpleNamespace(name="id")])
+    node_execution = _create_workflow_node_execution("node-execution-1")
     node_repo = MagicMock()
     node_repo.get_expired_executions_batch.side_effect = [[node_execution], []]
     node_repo.delete_executions_by_ids.return_value = 1
     run_repo = MagicMock()
     run_repo.get_expired_runs_batch.side_effect = [
-        [SimpleNamespace(id="workflow-run-1", to_dict=lambda: {"id": "workflow-run-1"})],
+        [_create_workflow_run("workflow-run-1")],
         [],
     ]
     run_repo.delete_runs_by_ids.return_value = 1
@@ -445,18 +513,13 @@ def test_process_tenant_processes_and_persists_all_batches(
 
 
 def test_serialize_record_falls_back_to_table_columns() -> None:
-    record = SimpleNamespace(id="node-execution-1", node_id="node-1")
-    record.__table__ = SimpleNamespace(
-        columns=[
-            SimpleNamespace(name="id"),
-            SimpleNamespace(name="node_id"),
-        ]
-    )
+    record = _create_workflow_node_execution("node-execution-1")
 
-    assert ClearFreePlanTenantExpiredLogs._serialize_record(record) == {
-        "id": "node-execution-1",
-        "node_id": "node-1",
-    }
+    serialized = ClearFreePlanTenantExpiredLogs._serialize_record(record)
+
+    assert serialized["id"] == "node-execution-1"
+    assert serialized["node_id"] == "node-1"
+    assert set(serialized) == {column.name for column in WorkflowNodeExecutionModel.__table__.columns}
 
 
 def test_process_with_tenant_ids_filters_by_plan_and_logs_errors(
@@ -642,17 +705,18 @@ def test_process_tenant_repo_loops_break_on_empty_second_batch(
     monkeypatch.setattr(service_module.click, "style", lambda message, **_kwargs: message)
     monkeypatch.setattr(ClearFreePlanTenantExpiredLogs, "_clear_message_related_tables", MagicMock())
 
-    node_executions = [SimpleNamespace(id="node-1"), SimpleNamespace(id="node-2")]
-    for node_execution in node_executions:
-        node_execution.__table__ = SimpleNamespace(columns=[SimpleNamespace(name="id")])
+    node_executions = [
+        _create_workflow_node_execution("node-1"),
+        _create_workflow_node_execution("node-2", node_id="node-2"),
+    ]
     node_repo = MagicMock()
     node_repo.get_expired_executions_batch.side_effect = [node_executions, []]
     node_repo.delete_executions_by_ids.return_value = 2
     run_repo = MagicMock()
     run_repo.get_expired_runs_batch.side_effect = [
         [
-            SimpleNamespace(id="run-1", to_dict=lambda: {"id": "run-1"}),
-            SimpleNamespace(id="run-2", to_dict=lambda: {"id": "run-2"}),
+            _create_workflow_run("run-1"),
+            _create_workflow_run("run-2"),
         ],
         [],
     ]

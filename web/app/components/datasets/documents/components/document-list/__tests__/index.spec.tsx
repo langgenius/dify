@@ -1,6 +1,6 @@
 import type { SimpleDocumentDetail } from '@/models/datasets'
 import { act, fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'

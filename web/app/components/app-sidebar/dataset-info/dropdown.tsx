@@ -11,9 +11,12 @@ import {
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
-  DropdownMenuContent,
+  DropdownMenuPopup,
+  DropdownMenuPortal,
+  DropdownMenuPositioner,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -31,7 +34,6 @@ import { useInvalid } from '@/service/use-base'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { downloadBlob } from '@/utils/download'
 import { getDatasetACLCapabilities } from '@/utils/permission'
-import ActionButton from '../../base/action-button'
 import RenameDatasetModal from '../../datasets/rename-modal'
 import Menu from './menu'
 
@@ -174,31 +176,31 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
         render={
-          <ActionButton
+          <IconButton
             aria-label={t(($) => $['operation.more'], { ns: 'common' })}
-            size={expand ? 'l' : 'm'}
+            size={expand ? 'lg' : 'md'}
             className={cn('data-popup-open:bg-state-base-hover', triggerClassName)}
-          />
+          >
+            <span aria-hidden className="i-ri-more-fill size-4" />
+          </IconButton>
         }
-      >
-        <span aria-hidden className="i-ri-more-fill size-4" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        placement={expand ? 'bottom-end' : 'right-start'}
-        sideOffset={4}
-        popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
-      >
-        <Menu
-          showEdit={datasetACLCapabilities.canEdit}
-          showDelete={datasetACLCapabilities.canDelete}
-          showExportPipeline={datasetACLCapabilities.canImportExportDSL}
-          showAccessConfig={datasetACLCapabilities.canAccessConfig}
-          openRenameModal={openRenameModal}
-          handleExportPipeline={handleExportPipeline}
-          detectIsUsedByApp={detectIsUsedByApp}
-          openAccessConfig={openAccessConfig}
-        />
-      </DropdownMenuContent>
+      />
+      <DropdownMenuPortal>
+        <DropdownMenuPositioner placement={expand ? 'bottom-end' : 'right-start'} sideOffset={4}>
+          <DropdownMenuPopup>
+            <Menu
+              showEdit={datasetACLCapabilities.canEdit}
+              showDelete={datasetACLCapabilities.canDelete}
+              showExportPipeline={datasetACLCapabilities.canImportExportDSL}
+              showAccessConfig={datasetACLCapabilities.canAccessConfig}
+              openRenameModal={openRenameModal}
+              handleExportPipeline={handleExportPipeline}
+              detectIsUsedByApp={detectIsUsedByApp}
+              openAccessConfig={openAccessConfig}
+            />
+          </DropdownMenuPopup>
+        </DropdownMenuPositioner>
+      </DropdownMenuPortal>
       {showRenameModal && (
         <RenameDatasetModal
           show={showRenameModal}

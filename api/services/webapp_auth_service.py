@@ -74,7 +74,10 @@ class WebAppAuthService:
 
         code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
         token = TokenManager.generate_token(
-            account=account, email=email, token_type="email_code_login", additional_data={"code": code}
+            account_id=account.id if account else None,
+            email=email,
+            token_type="email_code_login",
+            additional_data={"code": code},
         )
         send_email_code_login_mail_task.delay(
             language=language,
