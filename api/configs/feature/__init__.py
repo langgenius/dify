@@ -12,6 +12,7 @@ from pydantic import (
     PositiveInt,
     computed_field,
     field_validator,
+    model_validator,
 )
 from pydantic_settings import BaseSettings
 
@@ -83,7 +84,7 @@ class AppExecutionConfig(BaseSettings):
 
     APP_MAX_EXECUTION_TIME: PositiveInt = Field(
         description="Maximum allowed execution time for the application in seconds",
-        default=1200,
+        default=3600,
     )
     APP_DEFAULT_ACTIVE_REQUESTS: NonNegativeInt = Field(
         description="Default number of concurrent active requests per app (0 for unlimited)",
@@ -889,7 +890,7 @@ class WorkflowConfig(BaseSettings):
 
     WORKFLOW_MAX_EXECUTION_TIME: PositiveInt = Field(
         description="Maximum execution time in seconds for a single workflow",
-        default=1200,
+        default=3600,
     )
 
     WORKFLOW_CALL_MAX_DEPTH: PositiveInt = Field(
@@ -1290,6 +1291,13 @@ class DataSetConfig(BaseSettings):
     )
 
 
+class SkillConfig(BaseSettings):
+    ENABLE_SKILL: bool = Field(
+        description="Enable or disable Skill feature entry points",
+        default=True,
+    )
+
+
 class WorkspaceConfig(BaseSettings):
     """
     Configuration for workspace management
@@ -1336,15 +1344,36 @@ class NewAgentBetaConfig(BaseSettings):
 
 
 class OpsTraceConfig(BaseSettings):
+    OPS_TRACE_UNIFIED_ENABLED: bool = Field(
+        description="Enable unified ops tracing for providers registered in the unified registry.",
+        default=False,
+    )
+
+    # Include scheduling and export grace after the parent workflow's maximum execution time.
+    # Recommended: max_retries >= ceil((WORKFLOW_MAX_EXECUTION_TIME + grace_seconds) / delay_seconds).
     OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES: PositiveInt = Field(
         description="Maximum retry attempts for transient ops trace provider dispatch failures.",
-        default=60,
+        default=780,
     )
 
     OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS: PositiveInt = Field(
         description="Delay in seconds between transient ops trace provider dispatch retry attempts.",
         default=5,
     )
+
+    OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS: PositiveInt = Field(
+        description="Retention in seconds for unified tracing parent contexts.",
+        default=3900,
+    )
+
+    @model_validator(mode="after")
+    def validate_parent_context_retention(self) -> "OpsTraceConfig":
+        if not self.OPS_TRACE_UNIFIED_ENABLED:
+            return self
+        retry_window = self.OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES * self.OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS
+        if retry_window > self.OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS:
+            raise ValueError("OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS must cover the retry window")
+        return self
 
 
 class CeleryBeatConfig(BaseSettings):
@@ -1663,6 +1692,7 @@ class FeatureConfig(
     RepositoryConfig,
     SandboxExpiredRecordsCleanConfig,
     SecurityConfig,
+    SkillConfig,
     TenantIsolatedTaskQueueConfig,
     ToolConfig,
     UpdateConfig,

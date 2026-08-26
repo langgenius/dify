@@ -16,6 +16,11 @@ const PKG_PATH_ENV = 'DIFYCTL_PKG_PATH'
 // window" is a case distinct from either bound.
 export const FIXTURE_COMPAT = { minDify: '2.0.0', maxDify: '2.5.0' }
 
+export const FIXTURE_VERSION_CORE = '7.7.7'
+export const FIXTURE_VERSION = `${FIXTURE_VERSION_CORE}-alpha`
+export const FIXTURE_CHANNEL = 'alpha'
+export const FIXTURE_TAG_PREFIX = 'difyctl-v'
+
 export const FIXTURE_TARGET_IDS = [
   'linux-x64',
   'linux-arm64',
@@ -25,7 +30,7 @@ export const FIXTURE_TARGET_IDS = [
 ] as const
 
 const FIXTURE_RELEASE = {
-  tagPrefix: 'difyctl-v',
+  tagPrefix: FIXTURE_TAG_PREFIX,
   binName: 'difyctl',
   checksumsSuffix: '-checksums.txt',
   targets: FIXTURE_TARGET_IDS.map((id) => ({
@@ -44,9 +49,9 @@ export type PkgManifestOverrides = {
 // Returns the env additions that point a spawned script at the fixture.
 export function pkgManifestEnv(overrides: PkgManifestOverrides = {}): Record<string, string> {
   const manifest = {
-    version: overrides.version ?? '0.2.0-alpha',
+    version: overrides.version ?? FIXTURE_VERSION,
     difyctl: {
-      channel: overrides.channel ?? 'alpha',
+      channel: overrides.channel ?? FIXTURE_CHANNEL,
       compat: overrides.compat ?? FIXTURE_COMPAT,
       release: FIXTURE_RELEASE,
     },

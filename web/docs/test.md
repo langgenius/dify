@@ -1,6 +1,6 @@
 # Frontend Testing Guide
 
-This document is the single source of truth for automated frontend tests under `web/` and `packages/dify-ui/`. Tests should protect product behavior and make refactoring safer. They are not a file-by-file completion exercise.
+This document is the single source of truth for automated frontend tests under `web/`. Tests should protect product behavior and make refactoring safer. They are not a file-by-file completion exercise. Dify UI owns its package-specific test boundary in the [Dify UI testing contract].
 
 ## Testing Mindset
 
@@ -37,7 +37,7 @@ Use the smallest boundary that includes the behavior owner and proves the produc
 - Use React Testing Library for component and feature behavior visible through the DOM or external side effects.
 - Use integration tests for behavior that crosses meaningful module boundaries.
 - Use a real browser for layout, responsive behavior, browser-specific APIs, animation, and focus behavior that `happy-dom` cannot represent faithfully.
-- Follow `packages/dify-ui/README.md` for the Storybook and Vitest boundary of Dify UI primitives.
+- Follow the [Dify UI testing contract] for the Storybook and Vitest boundary of Dify UI primitives.
 
 Test the behavior owner. Barrel exports, pass-through wrappers, and purely presentational children do not need separate tests when the owning feature already proves their contract. Do not repeat generic behavior already owned by Base UI, React Aria, or the browser; test Dify's integration, overrides, and known regressions.
 
@@ -117,7 +117,6 @@ Mocks must preserve the public contract needed by the test. Do not mock interact
 
 - Following [Vite+ testing configuration], tests under `web/` use two explicit projects in `web/vite.config.ts`. Supported commands and CI select one project explicitly: `unit` runs in `happy-dom` and loads `web/vitest.setup.ts`, while `browser` runs matching `app/**/*.browser.spec.{ts,tsx}` files in Playwright Chromium and loads `web/vitest.browser.setup.ts`. Bare `vp test` runs both registered projects.
 - Browser failures keep screenshots and Playwright traces under `web/.vitest-browser/`. CI uploads that directory only when failure artifacts exist; Browser Mode does not own coverage or report merging.
-- Tests under `packages/dify-ui/` use two Chromium Browser Mode projects: `unit` owns focused primitive contracts and loads the package styles through `vitest.setup.ts`; `storybook` owns story render, play, and accessibility contracts through `@storybook/addon-vitest`. The names identify behavior owners, not different runtimes.
 - New component and feature specs should generally use a sibling `__tests__/` directory. Existing colocated utility and hook specs may follow their owning module's convention. Cross-feature integration specs belong in `web/__tests__/`.
 - The shared `react-i18next` mock is loaded globally. Use `createReactI18nextMock` from `web/test/i18n-mock` only when a test needs custom translations.
 - For `nuqs` behavior, use the helpers in `web/test/nuqs-testing.tsx` and assert URL updates. Mock `nuqs` only when URL synchronization is explicitly outside the test contract.
@@ -180,6 +179,7 @@ Always pass `--project unit` or `--project browser`. Bare `vp test` runs both re
 - [Testing Library query guidance]
 - [Testing Library user-event guidance]
 
+[Dify UI testing contract]: ../../packages/dify-ui/docs/testing.md
 [React Testing Library documentation]: https://testing-library.com/docs/react-testing-library/intro
 [Storybook Vitest addon]: https://storybook.js.org/docs/writing-tests/integrations/vitest-addon
 [Testing Library guiding principles]: https://testing-library.com/docs/guiding-principles

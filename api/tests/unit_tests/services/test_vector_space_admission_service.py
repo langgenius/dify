@@ -1,9 +1,9 @@
 import json
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from types import SimpleNamespace, TracebackType
-from typing import cast
+from types import TracebackType
 from unittest.mock import call, patch
+from uuid import uuid4
 
 import pytest
 from sqlalchemy.orm import Session
@@ -65,18 +65,20 @@ class _FakeRedis:
         self.ttls[key] = ttl
 
 
-def _dataset() -> Dataset:
-    return cast(
-        Dataset,
-        SimpleNamespace(
-            id="dataset-1",
-            tenant_id="tenant-1",
-            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
-            embedding_model_provider="provider",
-            embedding_model="model",
-            index_struct_dict={"type": VectorType.TIDB_ON_QDRANT},
-        ),
+def _dataset(session: Session) -> Dataset:
+    dataset = Dataset(
+        id=str(uuid4()),
+        tenant_id="tenant-1",
+        name="Dataset",
+        created_by=str(uuid4()),
+        indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+        embedding_model_provider="provider",
+        embedding_model="model",
+        index_struct=json.dumps({"type": VectorType.TIDB_ON_QDRANT}),
     )
+    session.add(dataset)
+    session.flush()
+    return dataset
 
 
 def _workload() -> VectorStorageWorkload:
@@ -84,6 +86,7 @@ def _workload() -> VectorStorageWorkload:
 
 
 def _check_estimate(
+    session: Session,
     plan: CloudPlan,
     estimated_mb: float,
     *,
@@ -118,10 +121,10 @@ def _check_estimate(
         patch("services.vector_space_admission_service.redis_client", redis),
     ):
         service._ensure_can_write(
-            dataset=_dataset(),
+            dataset=_dataset(session),
             document_id=document_id,
             workload=_workload(),
-            session=cast(Session, SimpleNamespace()),
+            session=session,
         )
     return service
 
@@ -234,7 +237,7 @@ def test_pipeline_qa_workload_counts_question_vectors_without_summaries() -> Non
     assert workload.summary_points == 0
 
 
-def test_admission_is_cloud_only() -> None:
+def test_admission_is_cloud_only(sqlite_session: Session) -> None:
     service = VectorSpaceAdmissionService()
     with (
         patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
@@ -242,17 +245,17 @@ def test_admission_is_cloud_only() -> None:
         patch("services.vector_space_admission_service.BillingService.get_info") as get_info,
     ):
         service._ensure_can_write(
-            dataset=_dataset(),
+            dataset=_dataset(sqlite_session),
             document_id="document-1",
             workload=_workload(),
-            session=cast(Session, SimpleNamespace()),
+            session=sqlite_session,
         )
 
     resolve_vector_type.assert_not_called()
     get_info.assert_not_called()
 
 
-def test_admission_skips_non_tidb_vector_backends() -> None:
+def test_admission_skips_non_tidb_vector_backends(sqlite_session: Session) -> None:
     service = VectorSpaceAdmissionService()
     with (
         patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
@@ -260,31 +263,31 @@ def test_admission_skips_non_tidb_vector_backends() -> None:
         patch("services.vector_space_admission_service.BillingService.get_info") as get_info,
     ):
         service._ensure_can_write(
-            dataset=_dataset(),
+            dataset=_dataset(sqlite_session),
             document_id="document-1",
             workload=_workload(),
-            session=cast(Session, SimpleNamespace()),
+            session=sqlite_session,
         )
 
     get_info.assert_not_called()
 
 
-def test_sandbox_allows_60_mb_estimate() -> None:
-    _check_estimate(CloudPlan.SANDBOX, 60)
+def test_sandbox_allows_60_mb_estimate(sqlite_session: Session) -> None:
+    _check_estimate(sqlite_session, CloudPlan.SANDBOX, 60)
 
 
-def test_sandbox_compares_current_usage_plus_document_estimate() -> None:
-    _check_estimate(CloudPlan.SANDBOX, 20, usage_mb=40)
+def test_sandbox_compares_current_usage_plus_document_estimate(sqlite_session: Session) -> None:
+    _check_estimate(sqlite_session, CloudPlan.SANDBOX, 20, usage_mb=40)
 
     with pytest.raises(VectorSpaceAdmissionError):
-        _check_estimate(CloudPlan.SANDBOX, 21, usage_mb=40)
+        _check_estimate(sqlite_session, CloudPlan.SANDBOX, 21, usage_mb=40)
 
 
-def test_admission_compares_fractional_usage_without_rounding_down() -> None:
-    _check_estimate(CloudPlan.SANDBOX, 10.5, usage_mb=49.5)
+def test_admission_compares_fractional_usage_without_rounding_down(sqlite_session: Session) -> None:
+    _check_estimate(sqlite_session, CloudPlan.SANDBOX, 10.5, usage_mb=49.5)
 
     with pytest.raises(VectorSpaceAdmissionError) as exc_info:
-        _check_estimate(CloudPlan.SANDBOX, 10.6, usage_mb=49.5)
+        _check_estimate(sqlite_session, CloudPlan.SANDBOX, 10.6, usage_mb=49.5)
 
     assert get_vector_space_admission_error_fields(str(exc_info.value)) == {
         "error_code": VECTOR_SPACE_ADMISSION_ERROR_CODE,
@@ -293,11 +296,11 @@ def test_admission_compares_fractional_usage_without_rounding_down() -> None:
     }
 
 
-def test_admission_uses_configured_threshold_above_nominal_limit() -> None:
-    _check_estimate(CloudPlan.SANDBOX, 10, usage_mb=50)
+def test_admission_uses_configured_threshold_above_nominal_limit(sqlite_session: Session) -> None:
+    _check_estimate(sqlite_session, CloudPlan.SANDBOX, 10, usage_mb=50)
 
     with pytest.raises(VectorSpaceAdmissionError):
-        _check_estimate(CloudPlan.SANDBOX, 10.1, usage_mb=50)
+        _check_estimate(sqlite_session, CloudPlan.SANDBOX, 10.1, usage_mb=50)
 
 
 @pytest.mark.parametrize(
@@ -308,21 +311,23 @@ def test_admission_uses_configured_threshold_above_nominal_limit() -> None:
     ],
 )
 def test_paid_plan_projected_usage_boundaries(
+    sqlite_session: Session,
     plan: CloudPlan,
     usage_mb: int,
     allowed_estimate_mb: int,
     rejected_estimate_mb: int,
 ) -> None:
-    _check_estimate(plan, allowed_estimate_mb, usage_mb=usage_mb)
+    _check_estimate(sqlite_session, plan, allowed_estimate_mb, usage_mb=usage_mb)
 
     with pytest.raises(VectorSpaceAdmissionError):
-        _check_estimate(plan, rejected_estimate_mb, usage_mb=usage_mb)
+        _check_estimate(sqlite_session, plan, rejected_estimate_mb, usage_mb=usage_mb)
 
 
-def test_same_batch_accumulates_projected_usage() -> None:
+def test_same_batch_accumulates_projected_usage(sqlite_session: Session) -> None:
     service = VectorSpaceAdmissionService()
     redis = _FakeRedis()
     _check_estimate(
+        sqlite_session,
         CloudPlan.SANDBOX,
         10,
         usage_mb=40,
@@ -331,6 +336,7 @@ def test_same_batch_accumulates_projected_usage() -> None:
         redis=redis,
     )
     _check_estimate(
+        sqlite_session,
         CloudPlan.SANDBOX,
         10,
         usage_mb=40,
@@ -341,6 +347,7 @@ def test_same_batch_accumulates_projected_usage() -> None:
 
     with pytest.raises(VectorSpaceAdmissionError):
         _check_estimate(
+            sqlite_session,
             CloudPlan.SANDBOX,
             1,
             usage_mb=40,
@@ -350,7 +357,7 @@ def test_same_batch_accumulates_projected_usage() -> None:
         )
 
 
-def test_usage_lookup_is_refreshed_for_each_document() -> None:
+def test_usage_lookup_is_refreshed_for_each_document(sqlite_session: Session) -> None:
     service = VectorSpaceAdmissionService()
     redis = _FakeRedis()
     with (
@@ -376,25 +383,26 @@ def test_usage_lookup_is_refreshed_for_each_document() -> None:
         patch("services.vector_space_admission_service.redis_client", redis),
     ):
         service._ensure_can_write(
-            dataset=_dataset(),
+            dataset=_dataset(sqlite_session),
             document_id="document-1",
             workload=_workload(),
-            session=cast(Session, SimpleNamespace()),
+            session=sqlite_session,
         )
         with pytest.raises(VectorSpaceAdmissionError):
             service._ensure_can_write(
-                dataset=_dataset(),
+                dataset=_dataset(sqlite_session),
                 document_id="document-2",
                 workload=_workload(),
-                session=cast(Session, SimpleNamespace()),
+                session=sqlite_session,
             )
 
     assert get_vector_space.call_args_list == [call("tenant-1"), call("tenant-1")]
 
 
-def test_independent_services_use_watermark_without_double_counting_fresh_usage() -> None:
+def test_independent_services_use_watermark_without_double_counting_fresh_usage(sqlite_session: Session) -> None:
     redis = _FakeRedis()
     _check_estimate(
+        sqlite_session,
         CloudPlan.SANDBOX,
         10,
         usage_mb=40,
@@ -403,6 +411,7 @@ def test_independent_services_use_watermark_without_double_counting_fresh_usage(
         redis=redis,
     )
     _check_estimate(
+        sqlite_session,
         CloudPlan.SANDBOX,
         10,
         usage_mb=50,
@@ -413,6 +422,7 @@ def test_independent_services_use_watermark_without_double_counting_fresh_usage(
 
     with pytest.raises(VectorSpaceAdmissionError):
         _check_estimate(
+            sqlite_session,
             CloudPlan.SANDBOX,
             1,
             usage_mb=50,
@@ -427,9 +437,10 @@ def test_independent_services_use_watermark_without_double_counting_fresh_usage(
     assert redis.ttls["tenant:tenant-1:vector_space_estimate_watermark"] == 1800
 
 
-def test_fresh_usage_above_watermark_becomes_next_projection_base() -> None:
+def test_fresh_usage_above_watermark_becomes_next_projection_base(sqlite_session: Session) -> None:
     redis = _FakeRedis()
     _check_estimate(
+        sqlite_session,
         CloudPlan.SANDBOX,
         10,
         usage_mb=40,
@@ -438,6 +449,7 @@ def test_fresh_usage_above_watermark_becomes_next_projection_base() -> None:
         redis=redis,
     )
     _check_estimate(
+        sqlite_session,
         CloudPlan.SANDBOX,
         5,
         usage_mb=55,
@@ -450,10 +462,11 @@ def test_fresh_usage_above_watermark_becomes_next_projection_base() -> None:
     assert state["projected_usage_bytes"] == 60 * _MEBIBYTE
 
 
-def test_same_document_is_not_added_to_watermark_twice() -> None:
+def test_same_document_is_not_added_to_watermark_twice(sqlite_session: Session) -> None:
     redis = _FakeRedis()
     for _ in range(2):
         _check_estimate(
+            sqlite_session,
             CloudPlan.SANDBOX,
             10,
             usage_mb=40,
@@ -463,6 +476,7 @@ def test_same_document_is_not_added_to_watermark_twice() -> None:
         )
 
     _check_estimate(
+        sqlite_session,
         CloudPlan.SANDBOX,
         10,
         usage_mb=40,
@@ -512,12 +526,13 @@ def test_concurrent_services_reserve_watermark_atomically() -> None:
     ],
 )
 def test_plan_threshold_rejection_reports_billing_limit(
+    sqlite_session: Session,
     plan: CloudPlan,
     estimated_mb: int,
     plan_limit_mb: int,
 ) -> None:
     with pytest.raises(VectorSpaceAdmissionError) as exc_info:
-        _check_estimate(plan, estimated_mb, plan_limit_mb=plan_limit_mb)
+        _check_estimate(sqlite_session, plan, estimated_mb, plan_limit_mb=plan_limit_mb)
 
     assert get_vector_space_admission_error_fields(str(exc_info.value)) == {
         "error_code": VECTOR_SPACE_ADMISSION_ERROR_CODE,
@@ -526,11 +541,11 @@ def test_plan_threshold_rejection_reports_billing_limit(
     }
 
 
-def test_2060_mb_estimate_rejects_sandbox_but_allows_pro() -> None:
+def test_2060_mb_estimate_rejects_sandbox_but_allows_pro(sqlite_session: Session) -> None:
     with pytest.raises(VectorSpaceAdmissionError):
-        _check_estimate(CloudPlan.SANDBOX, 2060)
+        _check_estimate(sqlite_session, CloudPlan.SANDBOX, 2060)
 
-    _check_estimate(CloudPlan.PROFESSIONAL, 2060)
+    _check_estimate(sqlite_session, CloudPlan.PROFESSIONAL, 2060)
 
 
 def test_billing_plan_lookup_excludes_vector_space_and_is_cached() -> None:

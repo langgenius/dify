@@ -436,7 +436,7 @@ export const AppCardActionBar = memo(
                   {...getStepByStepTourDropdownMenuContentProps({
                     highlightPart: stepByStepTourActionMenuHighlightPart,
                     interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',
-                    popupClassName: OPERATIONS_MENU_POPUP_CLASS_NAME,
+                    className: OPERATIONS_MENU_POPUP_CLASS_NAME,
                   })}
                 >
                   <AppCardOperationsMenuContent

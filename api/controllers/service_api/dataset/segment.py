@@ -77,7 +77,7 @@ class SegmentListQuery(BaseModel):
 
 
 class SegmentUpdatePayload(BaseModel):
-    segment: SegmentUpdateArgs = Field(description="Chunk update payload.")
+    segment: SegmentUpdateArgs = Field(description="Chunk data to update.")
 
 
 class ChildChunkListQuery(BaseModel):
@@ -259,6 +259,7 @@ class SegmentApi(DatasetApiResource):
     @service_api_ns.doc(
         responses={
             200: "Segments retrieved successfully",
+            400: "Bad request - embedding model is not configured",
             401: "Unauthorized - invalid API token",
             404: "Dataset or document not found",
         }
@@ -353,6 +354,7 @@ class DatasetSegmentApi(DatasetApiResource):
     @service_api_ns.doc(
         responses={
             204: "Segment deleted successfully",
+            400: "Bad request - invalid dataset model state or concurrent deletion",
             401: "Unauthorized - invalid API token",
             404: "Dataset, document, or segment not found",
         }
@@ -395,6 +397,7 @@ class DatasetSegmentApi(DatasetApiResource):
     @service_api_ns.doc(
         responses={
             200: "Segment updated successfully",
+            400: "Bad request - invalid segment or embedding model configuration",
             401: "Unauthorized - invalid API token",
             404: "Dataset, document, or segment not found",
         }
@@ -469,6 +472,7 @@ class DatasetSegmentApi(DatasetApiResource):
     @service_api_ns.doc(
         responses={
             200: "Segment retrieved successfully",
+            400: "Bad request - invalid dataset model configuration",
             401: "Unauthorized - invalid API token",
             404: "Dataset, document, or segment not found",
         }

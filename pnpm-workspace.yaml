@@ -50,14 +50,14 @@ overrides:
   postcss-selector-parser@>=6.0.0 <6.1.3: 6.1.4
   postcss-selector-parser@>=7.0.0 <7.1.3: 7.1.5
   postcss@<8.5.10: ^8.5.10
-  rollup@>=4.0.0 <4.59.0: 4.62.4
+  rollup@>=4.0.0 <4.59.0: 4.62.5
   safer-buffer: npm:@nolyfill/safer-buffer@^1.0.44
   side-channel: npm:@nolyfill/side-channel@^1.0.44
-  solid-js: 1.9.14
+  solid-js: 1.9.15
   string-width: ~8.2.2
   tar@<=7.5.15: ^7.5.16
-  vite: 'catalog:'
-  vitest: 'catalog:'
+  vite@*: 'catalog:'
+  vitest@*: 'catalog:'
   ws@>=8.0.0 <8.20.1: ^8.21.3
   yaml@>=2.0.0 <2.8.3: 2.9.0
   yauzl@<3.2.1: 3.2.1
@@ -87,7 +87,7 @@ catalog:
   '@lexical/selection': 0.47.0
   '@lexical/text': 0.47.0
   '@lexical/utils': 0.47.0
-  '@mediabunny/mp3-encoder': 1.53.1
+  '@mediabunny/mp3-encoder': 1.55.2
   '@monaco-editor/react': 4.7.0
   '@napi-rs/keyring': 1.3.0
   '@orpc/client': 1.15.0
@@ -98,32 +98,32 @@ catalog:
   '@remixicon/react': 4.9.0
   '@rgrove/parse-xml': 4.2.3
   '@sentry/react': 10.70.0
-  '@storybook/addon-a11y': 10.5.8
-  '@storybook/addon-docs': 10.5.8
-  '@storybook/addon-links': 10.5.8
-  '@storybook/addon-onboarding': 10.5.8
-  '@storybook/addon-themes': 10.5.8
-  '@storybook/addon-vitest': 10.5.8
-  '@storybook/nextjs-vite': 10.5.8
-  '@storybook/react': 10.5.8
-  '@storybook/react-vite': 10.5.8
+  '@storybook/addon-a11y': 10.5.10
+  '@storybook/addon-docs': 10.5.10
+  '@storybook/addon-links': 10.5.10
+  '@storybook/addon-onboarding': 10.5.10
+  '@storybook/addon-themes': 10.5.10
+  '@storybook/addon-vitest': 10.5.10
+  '@storybook/nextjs-vite': 10.5.10
+  '@storybook/react': 10.5.10
+  '@storybook/react-vite': 10.5.10
   '@streamdown/math': 1.0.2
   '@svgdotjs/svg.js': 3.2.8
   '@t3-oss/env-core': 0.13.11
   '@t3-oss/env-nextjs': 0.13.11
   '@tailwindcss/postcss': 4.3.3
   '@tailwindcss/vite': 4.3.3
-  '@tanstack/eslint-plugin-query': 5.101.4
+  '@tanstack/eslint-plugin-query': 5.102.2
   '@tanstack/form-core': 1.33.5
-  '@tanstack/query-core': 5.101.4
+  '@tanstack/query-core': 5.102.2
   '@tanstack/react-form': 1.33.5
   '@tanstack/react-hotkeys': 0.10.0
-  '@tanstack/react-query': 5.101.4
-  '@tanstack/react-virtual': 3.14.9
+  '@tanstack/react-query': 5.102.2
+  '@tanstack/react-virtual': 3.14.10
   '@testing-library/dom': 10.4.1
   '@testing-library/jest-dom': 6.9.1
   '@testing-library/react': 16.3.2
-  '@testing-library/user-event': 14.6.4
+  '@testing-library/user-event': 14.6.6
   '@tsslint/cli': 3.1.4
   '@tsslint/compat-eslint': 3.1.4
   '@tsslint/config': 3.1.4
@@ -133,14 +133,14 @@ catalog:
   '@types/node': 25.9.5
   '@types/qs': 6.15.1
   '@types/react': 19.2.18
-  '@types/react-dom': 19.2.4
+  '@types/react-dom': 19.2.5
   '@types/sortablejs': 1.15.9
   '@typescript-eslint/parser': 8.67.0
   '@typescript/native': npm:typescript@7.0.2
-  '@vitejs/plugin-react': 6.0.5
+  '@vitejs/plugin-react': 6.1.0
   '@vitejs/plugin-rsc': 0.5.34
-  '@vitest/browser-playwright': 4.1.10
-  '@vitest/coverage-v8': 4.1.10
+  '@vitest/browser-playwright': 4.1.11
+  '@vitest/coverage-v8': 4.1.11
   abcjs: 6.7.0
   agentation: 3.0.2
   ahooks: 3.9.7
@@ -150,12 +150,12 @@ catalog:
   cli-table3: 0.6.5
   clsx: 2.1.1
   code-inspector-plugin: 1.6.6
-  concurrently: 10.0.4
+  concurrently: 10.0.5
   copy-to-clipboard: 4.0.2
   cron-parser: 5.6.2
-  dayjs: 1.11.21
+  dayjs: 1.11.23
   decimal.js: 10.6.0
-  dompurify: 3.4.13
+  dompurify: 3.4.14
   echarts: 6.1.0
   echarts-for-react: 3.0.6
   elkjs: 0.11.1
@@ -163,43 +163,43 @@ catalog:
   embla-carousel-fade: 8.6.0
   embla-carousel-react: 8.6.0
   emoji-mart: 5.6.0
-  es-toolkit: 1.50.0
-  eslint: 10.8.1
+  es-toolkit: 1.51.0
+  eslint: 10.9.0
   eslint-markdown: 0.12.1
   eslint-plugin-antfu: 3.2.3
   eslint-plugin-better-tailwindcss: 4.7.0
   eslint-plugin-command: 3.5.3
   eslint-plugin-erasable-syntax-only: 0.4.2
   eslint-plugin-jsdoc: 63.3.3
-  eslint-plugin-jsonc: 3.4.1
+  eslint-plugin-jsonc: 3.4.2
   eslint-plugin-markdown-preferences: 0.41.1
   eslint-plugin-n: 18.3.0
   eslint-plugin-no-barrel-files: 1.3.1
   eslint-plugin-perfectionist: 5.10.1
   eslint-plugin-pnpm: 1.8.0
   eslint-plugin-regexp: 3.1.1
-  eslint-plugin-storybook: 10.5.8
+  eslint-plugin-storybook: 10.5.10
   eslint-plugin-toml: 1.5.0
   eslint-plugin-unicorn: 71.1.0
   eslint-plugin-yml: 3.8.1
   eventsource-parser: 3.1.1
   fast-deep-equal: 3.1.3
-  foxact: 0.3.8
+  foxact: 0.3.9
   fuse.js: 7.5.0
-  happy-dom: 20.11.2
+  happy-dom: 20.11.6
   hast-util-to-jsx-runtime: 2.3.6
-  hono: 4.13.2
+  hono: 4.13.3
   html-entities: 2.6.0
   html-to-image: 1.11.13
-  i18next: 26.3.6
+  i18next: 26.4.0
   i18next-resources-to-backend: 1.2.3
   iconify-import-svg: 0.2.0
-  immer: 11.1.16
+  immer: 11.1.18
   jotai: 2.20.2
   jotai-scope: 0.11.0
   jotai-tanstack-query: 0.11.0
   js-cookie: 3.0.8
-  js-yaml: 5.2.3
+  js-yaml: 5.3.0
   jsonschema: 1.5.0
   katex: 0.17.0
   knip: 6.32.2
@@ -207,19 +207,19 @@ catalog:
   lexical: 0.47.0
   lockfile: 1.0.4
   loro-crdt: 1.14.1
-  mediabunny: 1.53.1
-  mermaid: 11.16.1
+  mediabunny: 1.55.2
+  mermaid: 11.17.0
   mime: 4.1.0
   mitt: 3.0.1
   motion: 12.43.0
-  negotiator: 1.0.0
-  next: 16.3.0
+  negotiator: 1.1.0
+  next: 16.3.3
   next-themes: 0.4.6
-  nuqs: 2.9.5
+  nuqs: 2.10.0
   open: 11.0.1
   ora: 9.4.1
   picocolors: 1.1.1
-  pinyin-pro: 3.29.1
+  pinyin-pro: 3.29.3
   playwright: 1.62.1
   postcss: 8.5.26
   qrcode.react: 4.2.0
@@ -227,7 +227,7 @@ catalog:
   react: 19.2.8
   react-dom: 19.2.8
   react-easy-crop: 6.2.3
-  react-i18next: 17.0.11
+  react-i18next: 17.0.12
   react-papaparse: 4.4.0
   react-pdf-highlighter: 8.0.0-rc.0
   react-server-dom-webpack: 19.2.8
@@ -242,7 +242,7 @@ catalog:
   socket.io-client: 4.8.3
   sortablejs: 1.15.7
   std-semver: 1.0.8
-  storybook: 10.5.8
+  storybook: 10.5.10
   streamdown: 2.5.0
   string-ts: 2.3.1
   tailwind-merge: 3.6.0
@@ -254,12 +254,12 @@ catalog:
   undici: 7.29.0
   unist-util-visit: 5.1.0
   use-context-selector: 2.0.0
-  uuid: 14.0.1
-  vinext: 1.0.0-beta.5
-  vite: npm:@voidzero-dev/vite-plus-core@0.2.9
+  uuid: 14.0.2
+  vinext: 1.0.0-beta.8
+  vite: npm:@voidzero-dev/vite-plus-core@0.3.0
   vite-plugin-inspect: 12.0.2
-  vite-plus: 0.2.9
-  vitest: 4.1.10
+  vite-plus: 0.3.0
+  vitest: 4.1.11
   vitest-browser-react: 2.2.0
   vitest-canvas-mock: 1.1.5
   zod: 4.4.3

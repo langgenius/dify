@@ -68,7 +68,6 @@
   "overview.appInfo.preUseReminder": "使用前请先打开开关",
   "overview.appInfo.preview": "预览",
   "overview.appInfo.qrcode.download": "下载二维码",
-  "overview.appInfo.qrcode.scan": "扫码分享应用",
   "overview.appInfo.qrcode.title": "二维码分享",
   "overview.appInfo.regenerate": "重新生成",
   "overview.appInfo.regenerateNotice": "您是否要重新生成公开访问 URL？当前 URL 将立即失效。",

@@ -1,19 +1,19 @@
 import logging
 from collections.abc import Mapping
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from dateutil.parser import isoparse
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, WithJsonSchema, field_validator, model_validator
 from pydantic.json_schema import SkipJsonSchema
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from configs import dify_config
 from controllers.common.controller_schemas import WorkflowRunPayload as WorkflowRunPayloadBase
-from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
+from controllers.common.fields import SimpleResultResponse, WorkflowBlockingResponse
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -31,6 +31,7 @@ from controllers.service_api.app.error import (
     WorkflowVersionExecutionNotAllowedError,
 )
 from controllers.service_api.schema import (
+    WORKFLOW_TASK_STOP_USER_DESCRIPTION,
     expect_user_json,
     expect_with_user,
     json_or_event_stream_response,
@@ -65,6 +66,10 @@ from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_service import WorkflowAppService
 
 logger = logging.getLogger(__name__)
+
+UUIDString = Annotated[str, WithJsonSchema({"format": "uuid", "type": "string"})]
+Int64 = Annotated[int, WithJsonSchema({"format": "int64", "type": "integer"})]
+FloatNumber = Annotated[float, WithJsonSchema({"format": "float", "type": "number"})]
 
 
 class WorkflowRunPayload(WorkflowRunPayloadBase):
@@ -106,7 +111,7 @@ class WorkflowLogQuery(BaseModel):
 
 
 register_schema_models(service_api_ns, WorkflowRunPayload, WorkflowLogQuery)
-register_response_schema_models(service_api_ns, GeneratedAppResponse, SimpleResultResponse)
+register_response_schema_models(service_api_ns, WorkflowBlockingResponse, SimpleResultResponse)
 
 
 def _enum_value(value):
@@ -114,17 +119,17 @@ def _enum_value(value):
 
 
 class WorkflowRunResponse(ResponseModel):
-    id: str
-    workflow_id: str
+    id: UUIDString
+    workflow_id: UUIDString
     status: str
     inputs: dict | list | str | int | float | bool | None = Field(default=None)
     outputs: dict = Field(default_factory=dict, validation_alias="outputs_dict")
     error: str | None = None
     total_steps: int | None = None
     total_tokens: int | None = None
-    created_at: int | None = None
-    finished_at: int | None = None
-    elapsed_time: float | int | None = None
+    created_at: Int64 | None = None
+    finished_at: Int64 | None = None
+    elapsed_time: FloatNumber | int | None = None
 
     @field_validator("status", mode="before")
     @classmethod
@@ -155,16 +160,16 @@ class WorkflowRunResponse(ResponseModel):
 
 
 class WorkflowRunForLogResponse(ResponseModel):
-    id: str
+    id: UUIDString
     version: str | None = None
     status: str | None = None
     triggered_from: str | None = None
     error: str | None = None
-    elapsed_time: float | int | None = None
+    elapsed_time: FloatNumber | int | None = None
     total_tokens: int | None = None
     total_steps: int | None = None
-    created_at: int | None = None
-    finished_at: int | None = None
+    created_at: Int64 | None = None
+    finished_at: Int64 | None = None
     exceptions_count: int | None = None
 
     @field_validator("status", "triggered_from", mode="before")
@@ -179,14 +184,14 @@ class WorkflowRunForLogResponse(ResponseModel):
 
 
 class WorkflowAppLogPartialResponse(ResponseModel):
-    id: str
+    id: UUIDString
     workflow_run: WorkflowRunForLogResponse | None = None
     details: dict | list | str | int | float | bool | None = Field(default=None)
     created_from: str | None = None
     created_by_role: str | None = None
     created_by_account: SimpleAccountResponse | None = None
     created_by_end_user: SimpleEndUser | None = None
-    created_at: int | None = None
+    created_at: Int64 | None = None
 
     @field_validator("created_from", "created_by_role", mode="before")
     @classmethod
@@ -319,7 +324,7 @@ class WorkflowRunApi(Resource):
     @service_api_ns.response(
         200,
         "Workflow executed successfully",
-        service_api_ns.models[GeneratedAppResponse.__name__],
+        service_api_ns.models[WorkflowBlockingResponse.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     @with_session
@@ -438,7 +443,7 @@ class WorkflowRunByIdApi(Resource):
     @service_api_ns.response(
         200,
         "Workflow executed successfully",
-        service_api_ns.models[GeneratedAppResponse.__name__],
+        service_api_ns.models[WorkflowBlockingResponse.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     @with_session
@@ -518,7 +523,11 @@ class WorkflowTaskStopApi(Resource):
             ),
         },
     )
-    @expect_user_json(service_api_ns)
+    @expect_user_json(
+        service_api_ns,
+        model_name="WorkflowTaskStopPayload",
+        user_description=WORKFLOW_TASK_STOP_USER_DESCRIPTION,
+    )
     @service_api_ns.doc("stop_workflow_task")
     @service_api_ns.doc(description="Stop a running workflow task")
     @service_api_ns.doc(
@@ -528,7 +537,6 @@ class WorkflowTaskStopApi(Resource):
         responses={
             200: "Task stopped successfully",
             401: "Unauthorized - invalid API token",
-            404: "Task not found",
         }
     )
     @service_api_ns.response(200, "Task stopped successfully", service_api_ns.models[SimpleResultResponse.__name__])
@@ -565,6 +573,7 @@ class WorkflowAppLogApi(Resource):
     @service_api_ns.doc(
         responses={
             200: "Logs retrieved successfully",
+            400: "Bad request - invalid query parameters",
             401: "Unauthorized - invalid API token",
         }
     )

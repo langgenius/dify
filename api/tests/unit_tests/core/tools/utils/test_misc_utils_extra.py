@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 from contextlib import nullcontext
 from datetime import datetime
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -148,7 +149,7 @@ def test_is_valid_uuid_handles_valid_invalid_and_empty_values():
     assert is_valid_uuid(None) is False
 
 
-def test_load_yaml_file_valid(tmp_path):
+def test_load_yaml_file_valid(tmp_path: Path):
     valid_file = tmp_path / "valid.yaml"
     valid_file.write_text("a: 1\nb: two\n", encoding="utf-8")
 
@@ -157,12 +158,12 @@ def test_load_yaml_file_valid(tmp_path):
     assert loaded == {"a": 1, "b": "two"}
 
 
-def test_load_yaml_file_missing(tmp_path):
+def test_load_yaml_file_missing(tmp_path: Path):
     with pytest.raises(FileNotFoundError):
         _load_yaml_file(file_path=str(tmp_path / "missing.yaml"))
 
 
-def test_load_yaml_file_invalid(tmp_path):
+def test_load_yaml_file_invalid(tmp_path: Path):
     invalid_file = tmp_path / "invalid.yaml"
     invalid_file.write_text("a: [1, 2\n", encoding="utf-8")
 
@@ -170,7 +171,7 @@ def test_load_yaml_file_invalid(tmp_path):
         _load_yaml_file(file_path=str(invalid_file))
 
 
-def test_load_yaml_file_cached_hits(tmp_path):
+def test_load_yaml_file_cached_hits(tmp_path: Path):
     valid_file = tmp_path / "valid.yaml"
     valid_file.write_text("a: 1\nb: two\n", encoding="utf-8")
 

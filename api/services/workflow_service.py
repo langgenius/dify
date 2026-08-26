@@ -94,6 +94,7 @@ from services.errors.app import (
     WorkflowHashNotEqualError,
     WorkflowNotFoundError,
 )
+from tasks.new_agent_beta_task import register_new_agent_beta_workflow_publish_after_commit
 
 
 @dataclass(frozen=True)
@@ -338,15 +339,17 @@ class WorkflowService:
 
         return workflow
 
-    def get_accessible_app_ids(self, app_ids: Sequence[str], tenant_id: str, *, session: Session) -> set[str]:
-        """
-        Return app IDs that belong to the given tenant.
-        """
+    def get_tenant_app_maintainers(
+        self, app_ids: Sequence[str], tenant_id: str, *, session: Session
+    ) -> dict[str, str | None]:
+        """Return requested normal apps and their maintainers within a tenant."""
         if not app_ids:
-            return set()
+            return {}
 
-        stmt = select(App.id).where(App.id.in_(app_ids), App.tenant_id == tenant_id)
-        return {str(app_id) for app_id in session.scalars(stmt).all()}
+        stmt = select(App.id, App.maintainer).where(
+            App.id.in_(app_ids), App.tenant_id == tenant_id, App.status == "normal"
+        )
+        return {str(app_id): maintainer for app_id, maintainer in session.execute(stmt)}
 
     def get_all_published_workflow(
         self,
@@ -746,11 +749,17 @@ class WorkflowService:
 
         # commit db session changes
         session.add(workflow)
-        WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
+        has_inline_agent = WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
             session=session,
             draft_workflow=draft_workflow,
             published_workflow=workflow,
         )
+        if has_inline_agent:
+            register_new_agent_beta_workflow_publish_after_commit(
+                session=session,
+                published_workflow_id=workflow.id,
+                published_at=workflow.created_at,
+            )
 
         # trigger app workflow events
         app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
