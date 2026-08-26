@@ -13,11 +13,13 @@ from controllers.console.auth.email_register import (
     EmailRegisterResetApi,
     EmailRegisterSendEmailApi,
 )
+from controllers.console.auth.error import NormalizedEmailAlreadyInUseError
 from controllers.console.error import AccountInFreezeError, EmailDomainSuspendedError
 from enums import DeploymentEdition
 from models.account import Account
 from services.entities.feature_entities import SystemFeatureModel
 from services.errors.account import (
+    AccountNormalizedEmailAlreadyInUseError,
     AccountRegisterError,
 )
 from services.errors.account import (
@@ -28,6 +30,14 @@ from services.errors.account import (
 @pytest.fixture(autouse=True)
 def _cloud_edition(config_overrides: Callable[..., None]) -> None:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+
+
+def test_normalized_email_conflict_exposes_a_distinct_error_code() -> None:
+    error = NormalizedEmailAlreadyInUseError()
+
+    assert error.code == 400
+    assert error.data is not None
+    assert error.data["code"] == "normalized_email_already_in_use"
 
 
 class TestEmailRegisterSendEmailApi:
@@ -166,6 +176,7 @@ class TestEmailRegisterResetApi:
         ("service_error", "expected_error"),
         [
             (EmailDomainSuspendedRegistrationError(), EmailDomainSuspendedError),
+            (AccountNormalizedEmailAlreadyInUseError(), NormalizedEmailAlreadyInUseError),
             (AccountRegisterError("frozen"), AccountInFreezeError),
         ],
     )

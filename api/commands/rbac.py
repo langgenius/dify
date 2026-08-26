@@ -399,7 +399,9 @@ def migrate_dataset_permissions_to_rbac(
             )
 
             scanned_count += 1
-            replace_whitelist_payload = ReplaceMemberBindings(scope=scope)
+            replace_whitelist_payload = ReplaceMemberBindings(
+                automatic_include_workspace_members=scope is RBACResourceWhitelistScope.ALL
+            )
             if dry_run:
                 _emit_dataset_permission_migration_event(
                     {

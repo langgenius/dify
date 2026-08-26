@@ -241,6 +241,36 @@ class TestCompletionEndpoints:
 
 
 class TestAppEndpoints:
+    def test_publish_to_creators_platform_issues_oauth_code_through_application_service(
+        self,
+        database_app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        api = app_module.AppPublishToCreatorsPlatformApi()
+        method = unwrap(api.post)
+        oauth_server = MagicMock()
+        oauth_server.issue_authorization_code.return_value = MagicMock(code="oauth-code-1")
+        services = MagicMock(oauth_server=oauth_server)
+
+        monkeypatch.setattr(app_module.dify_config, "CREATORS_PLATFORM_FEATURES_ENABLED", True)
+        monkeypatch.setattr(app_module.dify_config, "CREATORS_PLATFORM_OAUTH_CLIENT_ID", "client-1")
+        monkeypatch.setattr(app_module, "application_services", lambda: services)
+        monkeypatch.setattr(app_module.AppDslService, "export_dsl", MagicMock(return_value="app: demo"))
+
+        with (
+            database_app.test_request_context(),
+            patch("core.helper.creators.upload_dsl", return_value="claim-1"),
+            patch("core.helper.creators.get_redirect_url", return_value="https://creators.example.com") as redirect,
+        ):
+            response = method(api, USER_ID, _make_app())
+
+        assert response == {"redirect_url": "https://creators.example.com"}
+        oauth_server.issue_authorization_code.assert_called_once_with(
+            client_id="client-1",
+            account_id=USER_ID,
+        )
+        redirect.assert_called_once_with("claim-1", oauth_code="oauth-code-1")
+
     def test_app_put_should_preserve_icon_type_when_payload_omits_it(
         self, app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
     ):

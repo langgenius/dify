@@ -27,6 +27,7 @@ from controllers.console.auth.error import (
     EmailPasswordLoginLimitError,
     InvalidEmailError,
     InvalidTokenError,
+    NormalizedEmailAlreadyInUseError,
     TurnstileServiceUnavailableError,
     TurnstileVerificationFailedError,
 )
@@ -70,6 +71,7 @@ from services.email_code_login_challenge import (
 )
 from services.entities.auth_entities import LoginFailureReason, LoginPayloadBase
 from services.errors.account import (
+    AccountNormalizedEmailAlreadyInUseError,
     AccountRegisterError,
     RefreshTokenAccountNotFoundError,
     RefreshTokenNotFoundError,
@@ -412,6 +414,7 @@ class EmailCodeLoginApi(Resource):
                     interface_language=get_valid_language(language),
                     timezone=req_data.timezone,
                     ip_address=ip_address,
+                    check_normalized_email=True,
                     session=db.session(),
                 )
             except WorkSpaceNotAllowedCreateError:
@@ -421,6 +424,8 @@ class EmailCodeLoginApi(Resource):
             except EmailDomainSuspendedRegistrationError as exc:
                 _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
                 raise EmailDomainSuspendedError() from exc
+            except AccountNormalizedEmailAlreadyInUseError as exc:
+                raise NormalizedEmailAlreadyInUseError() from exc
             except AccountRegisterError as exc:
                 _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
                 raise AccountInFreezeError() from exc
