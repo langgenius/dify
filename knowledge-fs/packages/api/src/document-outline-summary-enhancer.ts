@@ -628,7 +628,7 @@ function summaryInput({
     promptVersion,
     sectionPath: [...node.sectionPath],
     ...(signal ? { signal } : {}),
-    text: truncateText(sectionText(artifact, node), maxInputChars),
+    text: sectionText(artifact, node, maxInputChars),
     title: node.title,
     ...(traceId ? { traceId } : {}),
   };
@@ -804,12 +804,37 @@ function applySummaryResults({
   });
 }
 
-function sectionText(artifact: ParseArtifact, node: DocumentOutlineNode): string {
-  return artifact.elements
-    .filter((element) => elementSectionStartsWith(element.sectionPath, node.sectionPath))
-    .map((element) => element.text?.trim() ?? "")
-    .filter(Boolean)
-    .join("\n\n");
+function sectionText(artifact: ParseArtifact, node: DocumentOutlineNode, maxChars: number): string {
+  // Build only the admitted prefix. Joining an entire large table/HTML section before truncating
+  // multiplies the document size by the number of ancestor outline nodes.
+  let text = "";
+  let selectedElements = 0;
+  const materializationLimit = maxChars + 1;
+
+  for (const element of artifact.elements) {
+    if (!elementSectionStartsWith(element.sectionPath, node.sectionPath)) {
+      continue;
+    }
+    const elementText = element.text?.trim() ?? "";
+    if (!elementText) {
+      continue;
+    }
+    if (selectedElements > 0) {
+      const separator = "\n\n".slice(0, materializationLimit - text.length);
+      text += separator;
+    }
+    const remaining = materializationLimit - text.length;
+    if (remaining <= 0) {
+      break;
+    }
+    text += elementText.slice(0, remaining);
+    selectedElements += 1;
+    if (elementText.length > remaining || text.length >= materializationLimit) {
+      break;
+    }
+  }
+
+  return truncateText(text, maxChars);
 }
 
 function elementSectionStartsWith(

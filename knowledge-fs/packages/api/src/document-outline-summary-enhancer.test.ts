@@ -112,6 +112,38 @@ describe("document outline summary enhancer", () => {
     ).toThrow("Document outline summary maxSummaryChars must be at least 1");
   });
 
+  it("materializes only the admitted prefix of a large section", async () => {
+    const synthetic = largeOutline(1);
+    const calls: Parameters<DocumentOutlineSummaryProvider["summarize"]>[0][] = [];
+    const artifact: ParseArtifact = {
+      ...synthetic.artifact,
+      elements: [
+        {
+          ...(synthetic.artifact.elements[0] as ParseArtifact["elements"][number]),
+          text: "长文本".repeat(500_000),
+        },
+      ],
+    };
+    const enhancer = createDocumentOutlineSummaryEnhancer({
+      maxInputChars: 80,
+      maxSummaryChars: 40,
+      model: "outline-summary-model",
+      promptVersion: "document-outline-summary-v1",
+      provider: {
+        summarize: async (input) => {
+          calls.push(input);
+          return { summary: "bounded" };
+        },
+      },
+    });
+
+    await enhancer.enhance({ outline: synthetic.outline, parseArtifact: artifact });
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.text).toHaveLength(80);
+    expect(calls[0]?.text.endsWith("...")).toBe(true);
+  });
+
   it("bounds provider concurrency across independent outline branches", async () => {
     let active = 0;
     let maxActive = 0;

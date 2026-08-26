@@ -9,6 +9,7 @@ import {
   type KnowledgeSpaceRetrievalProfile,
   type ParseArtifact,
   emptyImageElementIndexText,
+  knowledgeNodeSourceMetadataWithProjection,
   stableJson,
 } from "@knowledge/core";
 import {
@@ -243,7 +244,7 @@ interface EffectiveChunkConfig {
 interface MaterializedElement {
   readonly elementId: string;
   readonly elementIndex: number;
-  readonly elementMetadata: Record<string, unknown>;
+  readonly elementMetadata: Readonly<Record<string, unknown>>;
   readonly elementType: ParseArtifact["elements"][number]["type"];
   readonly endCodeUnit: number;
   readonly endOffset: number;
@@ -256,7 +257,6 @@ interface MaterializedElement {
 
 interface AtomicUnit {
   readonly elementId: string;
-  readonly elementMetadata: Record<string, unknown>;
   readonly elementType: ParseArtifact["elements"][number]["type"];
   readonly endCodeUnit: number;
   readonly endOffset: number;
@@ -265,6 +265,8 @@ interface AtomicUnit {
   readonly isolationKey?: string | undefined;
   readonly pageNumber?: number | undefined;
   readonly sectionPath: readonly string[];
+  /** Shared source element reference; never clone parser metadata per atomic unit. */
+  readonly sourceElement: MaterializedElement;
   readonly startCodeUnit: number;
   readonly startOffset: number;
   readonly text: string;
@@ -1692,7 +1694,7 @@ function materializeElements(parseArtifact: ParseArtifact): {
     elements.push({
       elementId: element.id,
       elementIndex,
-      elementMetadata: cloneJsonObject(element.metadata),
+      elementMetadata: element.metadata,
       elementType: element.type,
       endCodeUnit: canonicalText.length,
       endOffset: span.endOffset,
@@ -1720,17 +1722,26 @@ function materializeAtomicUnits(
   for (const element of elements) {
     const sentenceRanges = semanticRanges(element);
     let atomicIndex = 0;
+    let byteCursorCodeUnit = 0;
+    let byteCursorOffset = element.startOffset;
     for (const range of sentenceRanges) {
       const sentence = element.text.slice(range.start, range.end);
       for (const hardRange of graphemeRanges(sentence, maxChunkChars)) {
         const localStart = range.start + hardRange.start;
         const localEnd = range.start + hardRange.end;
         const text = element.text.slice(localStart, localEnd);
-        const startOffset = element.startOffset + utf8ByteLength(element.text.slice(0, localStart));
-        const endOffset = element.startOffset + utf8ByteLength(element.text.slice(0, localEnd));
+        if (localStart < byteCursorCodeUnit) {
+          throw new Error("LLM semantic chunking atomic units must preserve source order");
+        }
+        if (localStart > byteCursorCodeUnit) {
+          byteCursorOffset += utf8ByteLength(element.text.slice(byteCursorCodeUnit, localStart));
+        }
+        const startOffset = byteCursorOffset;
+        const endOffset = startOffset + utf8ByteLength(text);
+        byteCursorCodeUnit = localEnd;
+        byteCursorOffset = endOffset;
         units.push({
           elementId: element.elementId,
-          elementMetadata: cloneJsonObject(element.elementMetadata),
           elementType: element.elementType,
           endCodeUnit: element.startCodeUnit + localEnd,
           endOffset,
@@ -1742,7 +1753,8 @@ function materializeAtomicUnits(
             ? { isolationKey: `${element.elementType}:${element.elementId}` }
             : {}),
           ...(element.pageNumber === undefined ? {} : { pageNumber: element.pageNumber }),
-          sectionPath: [...element.sectionPath],
+          sectionPath: element.sectionPath,
+          sourceElement: element,
           startCodeUnit: element.startCodeUnit + localStart,
           startOffset,
           text,
@@ -2701,7 +2713,16 @@ function materializeKnowledgeNode({
     textNormalization: DOCUMENT_ELEMENT_TEXT_NORMALIZATION,
   };
   if (uniqueStrings(chunk.units.map((unit) => unit.elementId)).length === 1) {
-    mergeSingleElementMetadata(metadata, first.elementMetadata);
+    const completeElement =
+      first.sourceElement === last.sourceElement &&
+      first.startCodeUnit === first.sourceElement.startCodeUnit &&
+      last.endCodeUnit === first.sourceElement.endCodeUnit;
+    Object.assign(
+      metadata,
+      knowledgeNodeSourceMetadataWithProjection(first.sourceElement.elementMetadata, {
+        completeElement,
+      }),
+    );
   }
   const pageNumber = commonPageNumber(chunk.units);
 
@@ -2789,25 +2810,6 @@ function commonSpecialKind(units: readonly AtomicUnit[]): "image" | "table" | un
 function commonPageNumber(units: readonly AtomicUnit[]): number | undefined {
   const pageNumber = units[0]?.pageNumber;
   return units.every((unit) => unit.pageNumber === pageNumber) ? pageNumber : undefined;
-}
-
-function mergeSingleElementMetadata(
-  target: Record<string, unknown>,
-  source: Readonly<Record<string, unknown>>,
-): void {
-  for (const key of [
-    "assetRef",
-    "boundingBox",
-    "caption",
-    "ocrText",
-    "table",
-    "textAsHtml",
-    "title",
-  ]) {
-    if (Object.hasOwn(source, key)) {
-      target[key] = JSON.parse(JSON.stringify(source[key])) as unknown;
-    }
-  }
 }
 
 function validatePositiveInteger(name: string, value: number): void {

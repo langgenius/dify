@@ -179,6 +179,38 @@ describe("document outline builder", () => {
     });
   });
 
+  it("builds a bounded summary for a large table without joining the complete payload", () => {
+    const builder = createDocumentOutlineBuilder({
+      generateId: sequenceIds([
+        "018f0d60-7a49-7cc2-9c1b-5b36f18f2c50",
+        "018f0d60-7a49-7cc2-9c1b-5b36f18f2c51",
+      ]),
+      maxElements: 20,
+      maxNodes: 10,
+      maxSummaryChars: 80,
+      now: () => createdAt,
+    });
+    const text = `表头\n${"字段值   ".repeat(300_000)}`;
+
+    const outline = builder.build({
+      knowledgeSpaceId,
+      parseArtifact: parseArtifact([
+        {
+          id: "large-table",
+          sectionPath: ["知识库"],
+          text,
+          type: "table",
+        },
+      ]),
+    });
+
+    expect(outline.nodes[0]?.summary).toHaveLength(80);
+    expect(outline.nodes[0]?.summary?.endsWith("...")).toBe(true);
+    expect(outline.nodes[0]?.metadata).toMatchObject({
+      canonicalCharacterCount: text.trim().length,
+    });
+  });
+
   it("uses the same normalized UTF-8 byte coordinates as artifact segments and chunking", () => {
     const builder = createDocumentOutlineBuilder({
       generateId: sequenceIds([

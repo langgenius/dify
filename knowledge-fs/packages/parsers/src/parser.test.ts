@@ -1049,7 +1049,7 @@ describe("parser adapters", () => {
       metadata: {
         filename: "report.pdf",
         mimeType: "application/pdf",
-        parserVersion: "unstructured@5",
+        parserVersion: "unstructured@6",
       },
       parser: "unstructured",
       version: 1,
@@ -1099,7 +1099,6 @@ describe("parser adapters", () => {
         metadata: {
           table: { html: "<table><tr><td>ARR</td></tr></table>" },
           textAsHtml: "<table><tr><td>ARR</td></tr></table>",
-          text_as_html: "<table><tr><td>ARR</td></tr></table>",
           unstructuredType: "Table",
         },
         pageNumber: 3,
@@ -1139,7 +1138,7 @@ describe("parser adapters", () => {
           version: 1,
         }),
       ).resolves.toMatchObject({
-        metadata: { parserVersion: "unstructured@5" },
+        metadata: { parserVersion: "unstructured@6" },
         parser: "unstructured",
       });
     },

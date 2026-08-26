@@ -352,7 +352,7 @@ function createOutlineDraft({
 }
 
 function applySpanToDraft(draft: OutlineNodeDraft, span: ElementSpan): void {
-  draft.characterCount += Array.from(span.text).length;
+  draft.characterCount += countCodePoints(span.text);
   draft.startOffset =
     draft.startOffset === undefined
       ? span.startOffset
@@ -555,13 +555,13 @@ function summarizeOutlineTexts({
   readonly texts: readonly string[];
   readonly title: string;
 }): string {
-  const ownText = texts.join(" ").replaceAll(/\s+/gu, " ").trim();
-  const childSummary = children
-    .map((child) => child.summary)
-    .filter((summary): summary is string => Boolean(summary?.trim()))
-    .join(" ")
-    .replaceAll(/\s+/gu, " ")
-    .trim();
+  const ownText = normalizedTextPrefix(texts, maxSummaryChars + 1);
+  const childSummary = ownText
+    ? ""
+    : normalizedTextPrefix(
+        children.flatMap((child) => (child.summary?.trim() ? [child.summary] : [])),
+        maxSummaryChars + 1,
+      );
   const summary = ownText || childSummary || title;
 
   if (summary.length <= maxSummaryChars) {
@@ -573,6 +573,39 @@ function summarizeOutlineTexts({
   }
 
   return `${summary.slice(0, maxSummaryChars - 3)}...`;
+}
+
+function normalizedTextPrefix(texts: readonly string[], maxChars: number): string {
+  let result = "";
+  let pendingSpace = false;
+  const whitespace = /\s/u;
+
+  outer: for (const text of texts) {
+    if (result.length > 0) {
+      pendingSpace = true;
+    }
+    for (const character of text) {
+      if (whitespace.test(character)) {
+        if (result.length > 0) pendingSpace = true;
+        continue;
+      }
+      if (pendingSpace) {
+        if (result.length > 0) result += " ";
+        pendingSpace = false;
+        if (result.length >= maxChars) break outer;
+      }
+      result += character;
+      if (result.length >= maxChars) break outer;
+    }
+  }
+
+  return result;
+}
+
+function countCodePoints(text: string): number {
+  let count = 0;
+  for (const _character of text) count += 1;
+  return count;
 }
 
 function outlineSectionKey(sectionPath: readonly string[]): string {

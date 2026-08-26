@@ -371,6 +371,59 @@ describe("LLM semantic chunker", () => {
     expect(nodes[1]?.endOffset).toBe(new TextEncoder().encode(text).byteLength);
   });
 
+  it("does not amplify large parser metadata across fragmented table units", async () => {
+    const largeTableHtml = `<table>${"<tr><td>value</td></tr>".repeat(24_000)}</table>`;
+    const text = Array.from(
+      { length: 240 },
+      (_, index) => `第 ${index + 1} 行 | 字段 ${index + 1} | 这是用于检索的表格内容`,
+    ).join("\n");
+    const parseArtifact = artifact([
+      {
+        id: "large-spreadsheet-table",
+        metadata: {
+          assetRef: { objectKey: "assets/spreadsheet-table.png" },
+          table: { html: largeTableHtml },
+          textAsHtml: largeTableHtml,
+          title: "知识库",
+        },
+        sectionPath: ["知识库"],
+        text,
+        type: "table",
+      },
+    ]);
+    const config = { maxChunkChars: 80, maxWindowChars: 320 } as const;
+    const preflight = preflightLlmSemanticWindows({ config, parseArtifact });
+    const provider = new ScriptedProvider([echoEachUnit]);
+    const nodes = await createLlmSemanticChunker({
+      ...config,
+      reasoningProviderFactory: () => provider,
+    }).chunk({
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      parseArtifact,
+      retrievalProfile: profile(),
+    });
+
+    expect(preflight.unitCount).toBeGreaterThan(20);
+    expect(nodes).toHaveLength(preflight.unitCount);
+    expect(nodes.map((node) => node.text).join("")).toBe(text);
+    expect(nodes.at(-1)?.endOffset).toBe(new TextEncoder().encode(text).byteLength);
+    for (const node of nodes) {
+      expect(node.metadata).toMatchObject({
+        assetRef: { objectKey: "assets/spreadsheet-table.png" },
+        sourceMetadataProjection: {
+          completeElement: false,
+          omitted: [
+            { field: "table", reason: "fragmented-source-element" },
+            { field: "textAsHtml", reason: "fragmented-source-element" },
+          ],
+        },
+        title: "知识库",
+      });
+      expect(node.metadata).not.toHaveProperty("table");
+      expect(node.metadata).not.toHaveProperty("textAsHtml");
+    }
+  });
+
   it("records legacy overlap as unapplied provenance and keeps semantic chunks contiguous", async () => {
     const chunker = createLlmSemanticChunker({
       reasoningProviderFactory: () => new ScriptedProvider([echoEachUnit]),

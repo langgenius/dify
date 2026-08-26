@@ -318,7 +318,7 @@ export function createUnstructuredParserClient({
       requestGate.run(async () => {
         const deadline = createUnstructuredRequestDeadline(input.signal, requestTimeoutMs);
         try {
-          const parserVersion = options.parserVersion ?? "unstructured@5";
+          const parserVersion = options.parserVersion ?? "unstructured@6";
           const partitionStrategy = unstructuredPartitionStrategy(input);
           const providerImageBlockTypes = unstructuredProviderImageBlockTypes(input);
           assertInputBounds(input.body, options.maxInputBytes ?? defaultMaxInputBytes);
@@ -1683,9 +1683,13 @@ function unstructuredParseElementMetadata({
 }): Record<string, unknown> {
   // `image_base64` can be several megabytes. Move it into the short-lived assetRef URI consumed
   // by the multimodal extractor instead of retaining a second copy in ParseElement metadata.
+  // `text_as_html` is normalized below. Keeping the provider spelling as well would retain the
+  // same potentially multi-megabyte table HTML three times (`text_as_html`, `textAsHtml`, and
+  // `table.html`) in every parse artifact.
   const {
     image_base64: _imageBase64,
     page_number: _pageNumber,
+    text_as_html: _textAsHtml,
     ...metadataWithoutInlineImage
   } = metadata;
   const parsed = cloneMetadata(metadataWithoutInlineImage);

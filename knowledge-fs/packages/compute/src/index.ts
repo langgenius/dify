@@ -6,6 +6,7 @@ import {
   type ParseArtifact,
   ParseArtifactSchema,
   emptyImageElementIndexText,
+  knowledgeNodeSourceMetadataWithProjection,
 } from "@knowledge/core";
 import { isAlphabetic } from "unicode-segmenter/general";
 import {
@@ -275,9 +276,11 @@ interface TextSegment {
   elementType: string;
   endOffset: number;
   graphemeLength: number;
-  metadata: Record<string, unknown>;
+  metadata: Readonly<Record<string, unknown>>;
   pageNumber?: number | undefined;
   sectionPath: string[];
+  sourceEndOffset: number;
+  sourceStartOffset: number;
   startOffset: number;
   text: string;
 }
@@ -452,7 +455,14 @@ function chunkParseArtifact(input: ChunkParseArtifactInput): KnowledgeNode[] {
       textNormalization: DOCUMENT_ELEMENT_TEXT_NORMALIZATION,
     };
     if (nodeSegments.length === 1) {
-      mergeSingleSegmentMetadata(metadata, first.metadata);
+      Object.assign(
+        metadata,
+        knowledgeNodeSourceMetadataWithProjection(first.metadata, {
+          completeElement:
+            first.startOffset === first.sourceStartOffset &&
+            first.endOffset === first.sourceEndOffset,
+        }),
+      );
     }
     const pageNumber = commonPageNumber(nodeSegments);
 
@@ -549,9 +559,11 @@ function materializeSegments(parseArtifact: ParseArtifact): TextSegment[] {
       elementType: element.type,
       endOffset,
       graphemeLength: countGraphemes(text),
-      metadata: jsonClone(element.metadata),
+      metadata: element.metadata,
       ...(element.pageNumber === undefined ? {} : { pageNumber: element.pageNumber }),
       sectionPath: [...element.sectionPath],
+      sourceEndOffset: endOffset,
+      sourceStartOffset: startOffset,
       startOffset,
       text,
     });
@@ -905,25 +917,6 @@ function toGraphemeSpan(boundaries: GraphemeBoundary[]): GraphemeSpan {
     startByte: first.startByte,
     startCodeUnit: first.startCodeUnit,
   };
-}
-
-function mergeSingleSegmentMetadata(
-  target: Record<string, unknown>,
-  source: Record<string, unknown>,
-): void {
-  for (const key of [
-    "assetRef",
-    "boundingBox",
-    "caption",
-    "ocrText",
-    "table",
-    "textAsHtml",
-    "title",
-  ]) {
-    if (Object.hasOwn(source, key)) {
-      target[key] = jsonClone(source[key]);
-    }
-  }
 }
 
 function commonPageNumber(segments: TextSegment[]): number | undefined {

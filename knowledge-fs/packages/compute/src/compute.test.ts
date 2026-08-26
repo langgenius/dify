@@ -293,6 +293,47 @@ describe("createTypeScriptComputeRuntime", () => {
       expect(nodes[2]?.metadata).toMatchObject({ table: { columns: 2 }, textAsHtml: "<table />" });
     });
 
+    it("does not copy large table metadata onto every deterministic fragment", () => {
+      const tableHtml = `<table>${"<tr><td>value</td></tr>".repeat(16_000)}</table>`;
+      const text = "表格字段".repeat(40);
+      const nodes = runtime.chunkParseArtifact({
+        config: { maxChunkChars: 16, overlapChars: 0 },
+        knowledgeSpaceId,
+        parseArtifact: artifact([
+          {
+            id: "large-table",
+            metadata: {
+              assetRef: { objectKey: "space/large-table.png" },
+              table: { html: tableHtml },
+              textAsHtml: tableHtml,
+              title: "知识库",
+            },
+            sectionPath: ["知识库"],
+            text,
+            type: "table",
+          },
+        ]),
+      });
+
+      expect(nodes).toHaveLength(10);
+      expect(nodes.map((node) => node.text).join("")).toBe(text);
+      for (const node of nodes) {
+        expect(node.metadata).toMatchObject({
+          assetRef: { objectKey: "space/large-table.png" },
+          sourceMetadataProjection: {
+            completeElement: false,
+            omitted: [
+              { field: "table", reason: "fragmented-source-element" },
+              { field: "textAsHtml", reason: "fragmented-source-element" },
+            ],
+          },
+          title: "知识库",
+        });
+        expect(node.metadata).not.toHaveProperty("table");
+        expect(node.metadata).not.toHaveProperty("textAsHtml");
+      }
+    });
+
     it("returns independent output objects and enforces all configured bounds", () => {
       const input = {
         config: { maxChunkChars: 120, overlapChars: 0 },
