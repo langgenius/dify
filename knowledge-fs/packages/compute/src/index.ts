@@ -5,6 +5,7 @@ import {
   KnowledgeNodeSchema,
   type ParseArtifact,
   ParseArtifactSchema,
+  emptyImageElementIndexText,
 } from "@knowledge/core";
 import { isAlphabetic } from "unicode-segmenter/general";
 import {
@@ -534,7 +535,9 @@ function materializeSegments(parseArtifact: ParseArtifact): TextSegment[] {
   const segments: TextSegment[] = [];
   let offset = 0;
   for (const element of parseArtifact.elements) {
-    const text = element.text === undefined ? undefined : trimUnicodeWhitespace(element.text);
+    const normalizedText =
+      element.text === undefined ? undefined : trimUnicodeWhitespace(element.text);
+    const text = normalizedText || emptyImageElementIndexText(element);
     if (!text) {
       continue;
     }

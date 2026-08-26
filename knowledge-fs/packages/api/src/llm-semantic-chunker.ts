@@ -8,6 +8,7 @@ import {
   KnowledgeSpaceModelSelectionSchema,
   type KnowledgeSpaceRetrievalProfile,
   type ParseArtifact,
+  emptyImageElementIndexText,
   stableJson,
 } from "@knowledge/core";
 import {
@@ -1679,7 +1680,8 @@ function materializeElements(parseArtifact: ParseArtifact): {
   let nextOffset = 0;
 
   for (const [elementIndex, element] of recomposed.artifact.elements.entries()) {
-    const span = materializeDocumentElementByteSpan(element.text, nextOffset);
+    const sourceText = element.text?.trim() ? element.text : emptyImageElementIndexText(element);
+    const span = materializeDocumentElementByteSpan(sourceText, nextOffset);
     if (!span) {
       continue;
     }

@@ -192,6 +192,27 @@ describe("createTypeScriptComputeRuntime", () => {
       expect(nodes[0]?.sourceLocation).toMatchObject({ endOffset: 21, startOffset: 0 });
     });
 
+    it("keeps an object-backed image indexable when the parser emits no text", () => {
+      const nodes = runtime.chunkParseArtifact({
+        knowledgeSpaceId,
+        parseArtifact: artifact([
+          {
+            id: "image-only",
+            metadata: { assetRef: { objectKey: "space/image-only.png" } },
+            sectionPath: [],
+            type: "image",
+          },
+        ]),
+      });
+
+      expect(nodes).toHaveLength(1);
+      expect(nodes[0]).toMatchObject({
+        kind: "image",
+        metadata: { assetRef: { objectKey: "space/image-only.png" } },
+        text: "Image",
+      });
+    });
+
     it("splits extended graphemes with overlap while preserving UTF-8 offsets", () => {
       const nodes = runtime.chunkParseArtifact({
         config: { maxChunkChars: 3, overlapChars: 1 },

@@ -496,6 +496,31 @@ describe("LLM semantic chunker", () => {
     });
   });
 
+  it("keeps an object-backed image indexable when the parser emits no text", async () => {
+    const provider = new ScriptedProvider([echoSemanticBoundaries]);
+    const chunker = createLlmSemanticChunker({ reasoningProviderFactory: () => provider });
+    const nodes = await chunker.chunk({
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      parseArtifact: artifact([
+        {
+          id: "image-only",
+          metadata: { assetRef: { objectKey: "assets/image-only.png" } },
+          sectionPath: [],
+          type: "image",
+        },
+      ]),
+      retrievalProfile: profile(),
+    });
+
+    expect(provider.calls).toHaveLength(1);
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0]).toMatchObject({
+      kind: "image",
+      metadata: { assetRef: { objectKey: "assets/image-only.png" } },
+      text: "Image",
+    });
+  });
+
   it("bounds compact parser units per request without invalidating v2 generation replay", async () => {
     const parseArtifact = artifact(
       Array.from({ length: 96 }, (_, index) => ({
