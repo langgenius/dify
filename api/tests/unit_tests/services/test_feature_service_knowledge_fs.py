@@ -62,12 +62,17 @@ def test_get_system_features_reads_knowledge_fs_availability(
 
 
 @pytest.mark.parametrize(
-    ("edition", "expected"),
-    [(DeploymentEdition.ENTERPRISE, True), (DeploymentEdition.COMMUNITY, False)],
+    ("edition", "community_dev_enabled", "expected"),
+    [
+        (DeploymentEdition.ENTERPRISE, False, True),
+        (DeploymentEdition.COMMUNITY, False, False),
+        (DeploymentEdition.COMMUNITY, True, True),
+    ],
 )
-def test_get_system_features_controls_knowledge_fs_by_edition(
+def test_get_system_features_controls_knowledge_fs_by_edition_or_development_flag(
     monkeypatch: pytest.MonkeyPatch,
     edition: DeploymentEdition,
+    community_dev_enabled: bool,
     expected: bool,
 ) -> None:
     monkeypatch.setattr(
@@ -76,6 +81,11 @@ def test_get_system_features_controls_knowledge_fs_by_edition(
         edition,
     )
     monkeypatch.setattr(feature_service_module.dify_config, "KNOWLEDGE_FS_ENABLED", True)
+    monkeypatch.setattr(
+        feature_service_module.dify_config,
+        "KNOWLEDGE_FS_COMMUNITY_DEV_ENABLED",
+        community_dev_enabled,
+    )
     monkeypatch.setattr(FeatureService, "_fulfill_params_from_enterprise", lambda _: None)
 
     result = FeatureService.get_system_features()

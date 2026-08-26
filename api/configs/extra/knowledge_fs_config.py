@@ -14,6 +14,10 @@ class KnowledgeFSConfig(BaseSettings):
         default=False,
         description="Enable the KnowledgeFS control-plane product routes.",
     )
+    KNOWLEDGE_FS_COMMUNITY_DEV_ENABLED: bool = Field(
+        default=False,
+        description="Explicitly expose KnowledgeFS in Community edition for development deployments.",
+    )
     KNOWLEDGE_FS_LIFECYCLE_WORKER_ENABLED: bool = Field(
         default=False,
         description="Enable delivery of durable KnowledgeFS lifecycle commands after every rollout gate is ready.",
