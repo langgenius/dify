@@ -1020,7 +1020,7 @@ Pagination for GET /account/sessions. Strict (extra='forbid').
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| result | string |  | Yes |
+| result | string | Operation result. | Yes |
 
 #### SupportedAppType
 

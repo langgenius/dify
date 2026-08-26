@@ -287,19 +287,27 @@ def test_service_openapi_documents_decorator_user_contracts():
 
     required_json_user_operations = (
         ("/completion-messages", "post"),
-        ("/completion-messages/{task_id}/stop", "post"),
         ("/chat-messages", "post"),
-        ("/chat-messages/{task_id}/stop", "post"),
         ("/messages/{message_id}/feedbacks", "post"),
         ("/form/human_input/{form_token}", "post"),
         ("/workflows/run", "post"),
         ("/workflows/{workflow_id}/run", "post"),
-        ("/workflows/tasks/{task_id}/stop", "post"),
     )
     for path, method in required_json_user_operations:
         schema = _json_body_schema(payload, paths[path][method])
         assert schema["properties"]["user"] == USER_PROPERTY_SCHEMA
         assert "user" in schema["required"]
+
+    task_stop_user_descriptions = {
+        "/completion-messages/{task_id}/stop": "Send the same",
+        "/chat-messages/{task_id}/stop": "Send the same",
+        "/workflows/tasks/{task_id}/stop": "does not need to match",
+    }
+    for path, expected_behavior in task_stop_user_descriptions.items():
+        schema = _json_body_schema(payload, paths[path]["post"])
+        assert expected_behavior in schema["properties"]["user"]["description"]
+        assert "user" in schema["required"]
+        assert "404" not in paths[path]["post"]["responses"]
 
     optional_json_user_operations = (
         ("/text-to-audio", "post"),
