@@ -44,8 +44,8 @@ class Scope(StrEnum):
     """Catalog of bearer scopes recognised by the openapi surface.
 
     `FULL` is the catch-all carried by `dfoa_` account tokens — it satisfies
-    any per-route `require_scope`. `dfoe_` tokens carry the per-feature scopes
-    (`APPS_RUN`, `APPS_READ_PERMITTED_EXTERNAL`).
+    any per-route scope requirement. `dfoe_` tokens carry the per-feature
+    scopes (`APPS_RUN`, `APPS_READ_PERMITTED_EXTERNAL`).
     """
 
     FULL = "full"
@@ -226,9 +226,8 @@ class BearerAuthenticator:
     def authenticate(self, token: str) -> AuthContext:
         """Identity + per-token rate limit (single source).
 
-        Both the openapi pipeline (`BearerCheck`) and the decorator
-        (`validate_bearer`) call this — rate-limit fires exactly once per
-        request regardless of which path hosts the route.
+        The openapi auth pipeline is the only caller, so the rate limit fires
+        exactly once per request.
         """
         kind = self._registry.find(token)
         if kind is None:
@@ -425,10 +424,9 @@ def get_authenticator() -> BearerAuthenticator:
 def extract_bearer(req) -> str | None:
     """Pull the bearer token out of an HTTP request's Authorization header.
 
-    Used by both attachment paths (the ``validate_bearer`` decorator and the
-    openapi ``Pipeline.guard``) so the parsing rule lives in one place. Pipeline
-    callers extract once at the boundary and pass the token through ``Context``
-    so steps stay independent of the request object.
+    Used by the openapi auth pipeline, which extracts once at the request
+    boundary so the parsing rule lives in one place and later steps stay
+    independent of the request object.
     """
     header = req.headers.get("Authorization", "")
     scheme, _, value = header.partition(" ")
