@@ -26,6 +26,7 @@ export const VOLATILE_INTENT_TTL_MS = 30 * 60 * 1000
 
 let volatileIntent: RegistrationIntent | null = null
 let volatileIntentExpirationTimer: ReturnType<typeof setTimeout> | null = null
+let registrationDeliveryGeneration = 0
 
 export const getRegistrationSessionStorage = (): Storage | null => {
   try {
@@ -81,8 +82,15 @@ export const replaceVolatileRegistrationIntent = (intent: RegistrationIntent) =>
 
 export const getVolatileRegistrationIntent = () => volatileIntent
 
-export const discardRegistrationSessionState = () => {
+export const getRegistrationDeliveryGeneration = () => registrationDeliveryGeneration
+
+export const invalidateRegistrationDeliveryState = () => {
+  registrationDeliveryGeneration += 1
   clearVolatileRegistrationIntent()
   removeStoredRegistrationMarker()
+}
+
+export const discardRegistrationSessionState = () => {
+  invalidateRegistrationDeliveryState()
   clearOAuthRegistrationGAGuard()
 }

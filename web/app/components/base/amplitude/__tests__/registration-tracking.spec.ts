@@ -355,6 +355,85 @@ describe('registration tracking', () => {
       expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
     })
 
+    it.each([
+      ['session discard', 'resolves'] as const,
+      ['session discard', 'rejects'] as const,
+      ['denied consent', 'resolves'] as const,
+      ['disabled analytics', 'resolves'] as const,
+    ])(
+      'isolates a new registration flush after %s while the old SDK acknowledgement %s',
+      async (invalidation, oldAcknowledgement) => {
+        const accountARegistrationId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+        const accountBRegistrationId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+        vi.spyOn(globalThis.crypto, 'randomUUID')
+          .mockReturnValueOnce(accountARegistrationId)
+          .mockReturnValueOnce(accountBRegistrationId)
+
+        let resolveAccountA!: (result: { code: number }) => void
+        let rejectAccountA!: (error: Error) => void
+        let resolveAccountB!: (result: { code: number }) => void
+        const accountAAcknowledgement = new Promise<{ code: number }>((resolve, reject) => {
+          resolveAccountA = resolve
+          rejectAccountA = reject
+        })
+        const accountBAcknowledgement = new Promise<{ code: number }>((resolve) => {
+          resolveAccountB = resolve
+        })
+        mockTrackEvent
+          .mockReturnValueOnce({ promise: accountAAcknowledgement })
+          .mockReturnValueOnce({ promise: accountBAcknowledgement })
+
+        rememberRegistrationSuccess({ method: 'email' })
+        const accountAFlush = flushRegistrationSuccess()
+
+        if (invalidation === 'session discard') {
+          discardRegistrationSessionState()
+        } else {
+          const terminalConsent = invalidation === 'denied consent' ? 'denied' : 'disabled'
+          mockConsent.value = terminalConsent
+          coordinateRegistrationConsent(terminalConsent)
+          mockConsent.value = 'granted'
+        }
+
+        rememberRegistrationSuccess({ method: 'workspace_invite' })
+        const accountBMarker = window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)
+        const accountBFlush = flushRegistrationSuccess()
+
+        const settleAccountA = () => {
+          if (oldAcknowledgement === 'resolves') resolveAccountA({ code: 200 })
+          else rejectAccountA(new Error('account A request failed'))
+        }
+
+        try {
+          expect(accountBMarker).not.toBeNull()
+          expect(accountBFlush).not.toBe(accountAFlush)
+          expect(mockTrackEvent).toHaveBeenCalledTimes(2)
+          expect(mockTrackEvent.mock.calls.map((call) => call[2])).toEqual([
+            { insert_id: accountARegistrationId, time: expect.any(Number) },
+            { insert_id: accountBRegistrationId, time: expect.any(Number) },
+          ])
+
+          settleAccountA()
+          await accountAFlush
+
+          expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBe(
+            accountBMarker,
+          )
+          expect(flushRegistrationSuccess()).toBe(accountBFlush)
+          expect(mockTrackEvent).toHaveBeenCalledTimes(2)
+
+          resolveAccountB({ code: 200 })
+          await accountBFlush
+
+          expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
+        } finally {
+          settleAccountA()
+          resolveAccountB({ code: 200 })
+          await Promise.allSettled([accountAFlush, accountBFlush])
+        }
+      },
+    )
+
     it('coalesces concurrent flushes into one SDK send', async () => {
       let resolveTrack!: (result: { code: number }) => void
       mockTrackEvent.mockReturnValue({

@@ -9,8 +9,10 @@ import { getIsAmplitudeInitialized } from './init'
 import {
   ATTRIBUTION_KEYS,
   clearVolatileRegistrationIntent,
+  getRegistrationDeliveryGeneration,
   getRegistrationSessionStorage,
   getVolatileRegistrationIntent,
+  invalidateRegistrationDeliveryState,
   REGISTRATION_METHODS,
   REGISTRATION_SUCCESS_STORAGE_KEY,
   removeStoredRegistrationMarker,
@@ -41,7 +43,7 @@ type PendingRegistrationSuccessEvent = RegistrationIntent & {
 }
 
 let registrationSnapshot = 0
-let activeFlush: Promise<void> | null = null
+let activeFlush: { generation: number; promise: Promise<void> } | null = null
 const registrationListeners = new Set<() => void>()
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -124,7 +126,7 @@ export const rememberRegistrationSuccess = ({
 }) => {
   const consent = getAnalyticsConsent()
   if (consent === 'denied' || consent === 'disabled') {
-    clearVolatileRegistrationIntent()
+    invalidateRegistrationDeliveryState()
     return false
   }
 
@@ -140,8 +142,7 @@ export const rememberRegistrationSuccess = ({
 
 export const coordinateRegistrationConsent = (consent: AnalyticsConsent) => {
   if (consent === 'denied' || consent === 'disabled') {
-    clearVolatileRegistrationIntent()
-    removeStoredRegistrationMarker()
+    invalidateRegistrationDeliveryState()
     return
   }
   const volatileIntent = getVolatileRegistrationIntent()
@@ -197,7 +198,10 @@ const parsePendingRegistration = (raw: string): PendingRegistrationSuccessEvent 
   }
 }
 
-const runRegistrationFlush = async () => {
+const runRegistrationFlush = async (generation: number) => {
+  const isStale = () => generation !== getRegistrationDeliveryGeneration()
+  if (isStale()) return
+
   const consent = getAnalyticsConsent()
   if (consent === 'unknown') return
 
@@ -205,12 +209,14 @@ const runRegistrationFlush = async () => {
   if (!storage) return
 
   if (consent === 'denied' || consent === 'disabled') {
-    removeStoredRegistrationMarker(storage)
+    invalidateRegistrationDeliveryState()
     return
   }
   if (!getIsAmplitudeInitialized()) return
 
   while (true) {
+    if (isStale()) return
+
     let raw: string | null
     try {
       raw = storage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)
@@ -257,6 +263,7 @@ const runRegistrationFlush = async () => {
     } catch {
       return
     }
+    if (isStale()) return
 
     if (
       typeof result.code !== 'number' ||
@@ -279,10 +286,12 @@ const runRegistrationFlush = async () => {
 }
 
 export const flushRegistrationSuccess = () => {
-  if (activeFlush) return activeFlush
+  const generation = getRegistrationDeliveryGeneration()
+  if (activeFlush?.generation === generation) return activeFlush.promise
 
-  activeFlush = runRegistrationFlush().finally(() => {
-    activeFlush = null
+  const promise = runRegistrationFlush(generation).finally(() => {
+    if (activeFlush?.promise === promise) activeFlush = null
   })
-  return activeFlush
+  activeFlush = { generation, promise }
+  return promise
 }
