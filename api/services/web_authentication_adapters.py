@@ -177,11 +177,7 @@ class PassportWebAppSessionGateway(WebAppSessionGateway):
             token_app_code = decoded.get("app_code")
             app_id = decoded.get("app_id")
             end_user_id = decoded.get("end_user_id")
-            if (
-                not isinstance(token_app_code, str)
-                or not isinstance(app_id, str)
-                or not isinstance(end_user_id, str)
-            ):
+            if not isinstance(token_app_code, str) or not isinstance(app_id, str) or not isinstance(end_user_id, str):
                 return False
 
             session = self._sessions.find_active_session(
