@@ -1,11 +1,12 @@
 'use client'
 import type { MailSendResponse, MailValidityResponse } from '@/service/use-common'
 import { Button } from '@langgenius/dify-ui/button'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import Countdown from '@/app/components/signin/countdown'
 import { useLocale } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -27,6 +28,7 @@ export default function CheckCode() {
   useDocumentTitle(pageTitle)
 
   const verify = async () => {
+    if (loading) return
     try {
       if (!code.trim()) {
         toast.error(t(($) => $['checkCode.emptyCode'], { ns: 'login' }))
@@ -84,26 +86,31 @@ export default function CheckCode() {
         </p>
       </div>
 
-      <form action="">
-        <label htmlFor="code" className="mb-1 system-md-semibold text-text-secondary">
-          {t(($) => $['checkCode.verificationCode'], { ns: 'login' })}
-        </label>
-        <Input
-          value={code}
-          onChange={(e) => setVerifyCode(e.target.value)}
-          maxLength={6}
-          className="mt-1"
-          placeholder={
-            t(($) => $['checkCode.verificationCodePlaceholder'], { ns: 'login' }) as string
-          }
-        />
-        <Button
-          loading={loading}
-          disabled={loading}
-          className="my-3 w-full"
-          variant="primary"
-          onClick={verify}
-        >
+      <form
+        onSubmit={(event) => {
+          event.preventDefault()
+          void verify()
+        }}
+      >
+        <Field name="code">
+          <FieldLabel htmlFor="code" className="mb-1 system-md-semibold text-text-secondary">
+            {t(($) => $['checkCode.verificationCode'], { ns: 'login' })}
+          </FieldLabel>
+          <Input
+            id="code"
+            name="code"
+            value={code}
+            onValueChange={setVerifyCode}
+            maxLength={6}
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            className="mt-1"
+            placeholder={
+              t(($) => $['checkCode.verificationCodePlaceholder'], { ns: 'login' }) as string
+            }
+          />
+        </Field>
+        <Button type="submit" loading={loading} className="my-3 w-full" variant="primary">
           {t(($) => $['checkCode.verify'], { ns: 'login' })}
         </Button>
         <Countdown onResend={resendCode} />
