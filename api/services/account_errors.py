@@ -85,6 +85,10 @@ class AccountEmailAlreadyInUseError(AccountApplicationError):
     """The target email already belongs to an account."""
 
 
+class AccountNormalizedEmailAlreadyInUseError(AccountEmailAlreadyInUseError):
+    """A normalized equivalent of the target email already belongs to an account."""
+
+
 class EmailRegistrationSendIPLimitedError(AccountApplicationError):
     """The caller IP exceeded the registration-email send policy."""
 
@@ -123,3 +127,7 @@ class EmailRegistrationSeatsLimitError(AccountApplicationError):
 
 class EducationDiscountPausedError(AccountApplicationError):
     """Education discount activation is temporarily paused."""
+
+
+class EducationRateLimitExceededError(AccountApplicationError):
+    """Too many education verification or activation requests were made."""

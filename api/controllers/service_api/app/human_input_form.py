@@ -8,11 +8,11 @@ paused human input forms in workflow/chatflow runs.
 import json
 import logging
 from collections.abc import Sequence
-from typing import Any
+from typing import Annotated
 
 from flask import Response
 from flask_restx import Resource
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, WithJsonSchema
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
@@ -21,7 +21,7 @@ from controllers.service_api import service_api_ns
 from controllers.service_api.schema import expect_with_user
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
-from core.workflow.nodes.human_input.entities import FormInputConfig
+from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
@@ -31,12 +31,15 @@ from services.human_input_service import Form, FormNotFoundError, HumanInputServ
 logger = logging.getLogger(__name__)
 
 
+Int64 = Annotated[int, WithJsonSchema({"format": "int64", "type": "integer"})]
+
+
 class HumanInputFormDefinitionResponse(ResponseModel):
     form_content: str
-    inputs: list[dict[str, Any]] = Field(default_factory=list)
+    inputs: list[FormInputConfig]
     resolved_default_values: dict[str, str]
-    user_actions: list[dict[str, Any]] = Field(default_factory=list)
-    expiration_time: int | None = None
+    user_actions: list[UserActionConfig]
+    expiration_time: Int64 | None = None
 
 
 class HumanInputFormSubmitResponse(ResponseModel):

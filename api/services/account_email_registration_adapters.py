@@ -22,6 +22,7 @@ from services.account_email_registration_service import (
 from services.account_errors import (
     AccountEmailDomainSuspendedError,
     AccountEmailFrozenError,
+    AccountNormalizedEmailAlreadyInUseError,
     EmailRegistrationSeatsLimitError,
 )
 from services.account_service import AccountService
@@ -30,6 +31,9 @@ from services.entities.account_entities import (
     AccountEmailRegistrationPhase,
     AccountEmailRegistrationToken,
     AccountSessionTokens,
+)
+from services.errors.account import (
+    AccountNormalizedEmailAlreadyInUseError as AccountNormalizedEmailAlreadyInUseServiceError,
 )
 from services.errors.account import AccountRegisterError, EmailDomainSuspendedError, SeatsLimitExceededError
 from tasks.mail_register_task import send_email_register_mail_task, send_email_register_mail_task_when_account_exist
@@ -199,12 +203,15 @@ class AccountServiceRegistrationGateway(AccountRegistrationGateway):
                     interface_language=interface_language,
                     timezone=timezone,
                     ip_address=ip_address,
+                    check_normalized_email=True,
                     session=session,
                 )
             except SeatsLimitExceededError as exc:
                 raise EmailRegistrationSeatsLimitError from exc
             except EmailDomainSuspendedError as exc:
                 raise AccountEmailDomainSuspendedError from exc
+            except AccountNormalizedEmailAlreadyInUseServiceError as exc:
+                raise AccountNormalizedEmailAlreadyInUseError from exc
             except AccountRegisterError as exc:
                 raise AccountEmailFrozenError from exc
             return account.id

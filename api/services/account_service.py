@@ -47,6 +47,7 @@ from models.account import (
 )
 from models.dataset import Dataset
 from models.model import App, DifySetup
+from services.account_email import normalize_email
 from services.billing_service import BillingService
 from services.email_code_login_challenge import (
     EmailCodeLoginChallengeResult,
@@ -62,6 +63,7 @@ from services.entities.auth_entities import (
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountLoginError,
+    AccountNormalizedEmailAlreadyInUseError,
     AccountNotLinkTenantError,
     AccountPasswordError,
     AccountRegisterError,
@@ -299,6 +301,18 @@ class AccountService:
         return row is not None
 
     @staticmethod
+    def has_account_with_normalized_email(email: str, *, session: Session) -> bool:
+        """Check the normalized identity through its indexed column."""
+        normalized_email = normalize_email(email)
+        row = session.scalar(select(Account.id).where(Account.normalized_email == normalized_email).limit(1))
+        return row is not None
+
+    @staticmethod
+    def ensure_registration_email_available(email: str, *, session: Session) -> None:
+        if AccountService.has_account_with_normalized_email(email, session=session):
+            raise AccountNormalizedEmailAlreadyInUseError("An account with an equivalent email already exists.")
+
+    @staticmethod
     def get_account_by_id(account_id: str, *, session: Session) -> Account | None:
         """Plain ``Account`` getter — no banned check, no tenant rotation,
         no ``last_active_at`` write. Use this from read-only identity
@@ -420,6 +434,7 @@ class AccountService:
         is_setup: bool | None = False,
         timezone: str | None = None,
         ip_address: str | None = None,
+        check_normalized_email: bool = False,
         *,
         session: Session,
     ) -> Account:
@@ -428,6 +443,9 @@ class AccountService:
             from controllers.console.error import AccountNotFound
 
             raise AccountNotFound()
+
+        if check_normalized_email:
+            AccountService.ensure_registration_email_available(email, session=session)
 
         # A licensed seat is one Account row, deployment-wide; joining an existing
         # account into another workspace does not pass through here and costs no seat.
@@ -470,6 +488,7 @@ class AccountService:
         account = Account(
             name=name,
             email=email,
+            normalized_email=normalize_email(email),
             password=password_to_set,
             password_salt=salt_to_set,
             interface_language=interface_language,
@@ -490,6 +509,7 @@ class AccountService:
         password: str | None = None,
         timezone: str | None = None,
         ip_address: str | None = None,
+        check_normalized_email: bool = False,
         *,
         session: Session,
     ) -> Account:
@@ -501,6 +521,7 @@ class AccountService:
             password=password,
             timezone=timezone,
             ip_address=ip_address,
+            check_normalized_email=check_normalized_email,
             session=session,
         )
 
@@ -548,6 +569,7 @@ class AccountService:
     def update_account_email(account: Account, email: str, session: Session) -> Account:
         """Update account email"""
         account.email = email
+        account.normalized_email = normalize_email(email)
         account_integrate = session.scalar(
             select(AccountIntegrate).where(AccountIntegrate.account_id == account.id).limit(1)
         )
@@ -1813,6 +1835,7 @@ class RegisterService:
         create_workspace_required: bool | None = True,
         timezone: str | None = None,
         ip_address: str | None = None,
+        check_normalized_email: bool = True,
         *,
         session: Session,
     ) -> Account:
@@ -1828,6 +1851,7 @@ class RegisterService:
                 is_setup=is_setup,
                 timezone=timezone,
                 ip_address=ip_address,
+                check_normalized_email=check_normalized_email,
                 session=session,
             )
             account.status = status or AccountStatus.ACTIVE
@@ -1905,6 +1929,7 @@ class RegisterService:
                 language=language,
                 status=AccountStatus.PENDING,
                 is_setup=True,
+                check_normalized_email=True,
                 session=session,
             )
             TenantService.create_tenant_member(tenant, account, session, tenant_join_role)

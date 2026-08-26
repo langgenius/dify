@@ -25,6 +25,7 @@ from controllers.console.auth.error import (
     EmailRegisterRateLimitExceededError,
     InvalidEmailError,
     InvalidTokenError,
+    NormalizedEmailAlreadyInUseError,
     PasswordMismatchError,
 )
 from controllers.console.error import (
@@ -39,6 +40,7 @@ from services.account_errors import (
     AccountEmailAlreadyInUseError,
     AccountEmailDomainSuspendedError,
     AccountEmailFrozenError,
+    AccountNormalizedEmailAlreadyInUseError,
     EmailRegistrationPasswordMismatchError,
     EmailRegistrationSeatsLimitError,
     EmailRegistrationSendIPLimitedError,
@@ -78,6 +80,14 @@ def _request(
 
 def _service() -> Mock:
     return Mock(spec=AccountEmailRegistrationService)
+
+
+def test_normalized_email_conflict_exposes_a_distinct_error_code() -> None:
+    error = NormalizedEmailAlreadyInUseError()
+
+    assert error.code == 400
+    assert error.data is not None
+    assert error.data["code"] == "normalized_email_already_in_use"
 
 
 def test_send_email_delegates_with_remote_ip(app: Flask) -> None:
@@ -218,6 +228,11 @@ def test_register_delegates_and_serializes_tokens(app: Flask) -> None:
     [
         pytest.param(EmailRegistrationPasswordMismatchError(), PasswordMismatchError, id="password"),
         pytest.param(InvalidEmailRegistrationTokenError(), InvalidTokenError, id="token"),
+        pytest.param(
+            AccountNormalizedEmailAlreadyInUseError(),
+            NormalizedEmailAlreadyInUseError,
+            id="normalized-email-in-use",
+        ),
         pytest.param(AccountEmailAlreadyInUseError(), EmailAlreadyInUseError, id="email-in-use"),
         pytest.param(EmailRegistrationSeatsLimitError(), SeatsLimitExceeded, id="seat-limit"),
         pytest.param(AccountEmailFrozenError(), AccountInFreezeError, id="frozen"),

@@ -68,7 +68,6 @@
   "overview.appInfo.preUseReminder": "โปรดเปิดใช้งาน web app ก่อนดําเนินการต่อ",
   "overview.appInfo.preview": "ดูตัวอย่าง",
   "overview.appInfo.qrcode.download": "ดาวน์โหลด QR Code",
-  "overview.appInfo.qrcode.scan": "สแกนเพื่อแบ่งปัน",
   "overview.appInfo.qrcode.title": "เชื่อมโยงรหัส QR",
   "overview.appInfo.regenerate": "สร้างใหม่",
   "overview.appInfo.regenerateNotice": "คุณต้องการสร้าง URL สาธารณะใหม่หรือไม่ URL ปัจจุบันจะหยุดทำงานทันที",

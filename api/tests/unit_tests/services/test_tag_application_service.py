@@ -7,6 +7,7 @@ from services.tag_application_service import (
     CreateTagInput,
     TagApplicationService,
     TagBindingInput,
+    TagBindingTargetNotFoundError,
     TagSummary,
     UpdateTagInput,
 )
@@ -47,3 +48,7 @@ def test_service_rejects_context_without_active_workspace() -> None:
 
     with pytest.raises(RuntimeError, match="active workspace"):
         service.list_tags(context, "app")
+
+
+def test_skill_binding_target_error_message() -> None:
+    assert str(TagBindingTargetNotFoundError("skill")) == "Skill not found"

@@ -108,7 +108,7 @@ Dify 是一个开源的 LLM 应用开发平台。其直观的界面结合了 AI 
 
 在 GitHub 上给 Dify Star，并立即收到新版本的通知。
 
-![star-us](https://github.com/langgenius/dify/assets/13230914/b823edc1-6388-4e25-ad45-2f6b187adbb4)
+<img width="1344" height="720" alt="star" src="https://github.com/user-attachments/assets/dcd086d1-af0f-471b-ae52-1ad2fa040595" />
 
 ## 安装社区版
 
@@ -131,97 +131,37 @@ docker compose up -d
 
 运行后，可以在浏览器上访问 [http://localhost/install](http://localhost/install) 进入 Dify 控制台并开始初始化安装操作。
 
-### 自定义配置
+### 高级设置
 
-如果您需要自定义配置，请参考 [.env.example](../../docker/.env.example) 文件中的注释，并更新 `.env` 文件中对应的值。此外，您可能需要根据您的具体部署环境和需求对 `docker-compose.yaml` 文件本身进行调整，例如更改镜像版本、端口映射或卷挂载。完成任何更改后，请重新运行 `docker-compose up -d`。您可以在[此处](https://docs.dify.ai/getting-started/install-self-hosted/environments)找到可用环境变量的完整列表。
+如需自定义配置、可观测性和部署选项，请参阅[高级设置](ADVANCED_SETUP.md)。
 
-### 使用 Grafana 进行指标监控
+## 贡献
 
-将仪表板导入 Grafana，使用 Dify 的 PostgreSQL 数据库作为数据源，以监控应用、租户、消息等粒度的指标。
+Dify 欢迎各种形式的贡献：
 
-- [由 @bowenliang123 提供的 Grafana 仪表板](https://github.com/bowenliang123/dify-grafana-dashboard)
+- **代码**：阅读[贡献指南](./CONTRIBUTING.md)，然后浏览[适合新手的问题](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22)。
+- **想法与反馈**：发起或加入 [GitHub Discussions](https://github.com/langgenius/dify/discussions)。
+- **翻译**：按照[国际化指南](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md)添加或更新语言。
+- **社区**：分享您构建的应用、帮助其他用户，并向更多人介绍 Dify。
 
-#### 使用 Helm Chart 或 Kubernetes 资源清单（YAML）部署
-
-使用 [Helm Chart](https://helm.sh/) 版本或者 Kubernetes 资源清单（YAML），可以在 Kubernetes 上部署 Dify。
-
-- [Helm Chart by @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
-
-- [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
-
-- [Helm Chart by @magicsong](https://github.com/magicsong/ai-charts)
-
-- [YAML 文件 by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
-
-- [YAML file by @wyy-holding](https://github.com/wyy-holding/dify-k8s)
-
-- [🚀 NEW! YAML 文件 (支持 Dify v1.6.0) by @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
-
-#### 使用 Terraform 部署
-
-使用 [terraform](https://www.terraform.io/) 一键将 Dify 部署到云平台
-
-##### Azure Global
-
-- [Azure Terraform by @nikawang](https://github.com/nikawang/dify-azure-terraform)
-
-##### Google Cloud
-
-- [Google Cloud Terraform by @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
-
-#### 使用 AWS CDK 部署
-
-使用 [CDK](https://aws.amazon.com/cdk/) 将 Dify 部署到 AWS
-
-##### AWS
-
-- [AWS CDK by @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
-- [AWS CDK by @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
-
-#### 使用 阿里云计算巢 部署
-
-使用 [阿里云计算巢](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88) 将 Dify 一键部署到 阿里云
-
-#### 使用 阿里云数据管理DMS 部署
-
-使用 [阿里云数据管理DMS](https://help.aliyun.com/zh/dms/dify-in-invitational-preview) 将 Dify 一键部署到 阿里云
-
-#### 使用 Azure Devops Pipeline 部署到AKS
-
-使用[Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) 将 Dify 一键部署到 AKS
-
-#### 使用 Sealos 部署
-
-通过 [Sealos App Store](https://sealos.io/products/app-store/dify/) 一键部署 Dify
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
-
-## Contributing
-
-对于那些想要贡献代码的人，请参阅我们的[贡献指南](./CONTRIBUTING.md)。
-同时，请考虑通过社交媒体、活动和会议来支持 Dify 的分享。
-
-> 我们正在寻找贡献者来帮助将 Dify 翻译成除了中文和英文之外的其他语言。如果您有兴趣帮助，请参阅我们的[i18n README](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md)获取更多信息，并在我们的[Discord 社区服务器](https://discord.gg/8Tpq4AcN9c)的`global-users`频道中留言。
-
-**Contributors**
+### 贡献者
 
 <a href="https://github.com/langgenius/dify/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=langgenius/dify" />
+  <img alt="Dify contributors" src="https://contrib.rocks/image?repo=langgenius/dify" />
 </a>
 
 ## 社区与支持
 
-我们欢迎您为 Dify 做出贡献，以帮助改善 Dify。包括：提交代码、问题、新想法，或分享您基于 Dify 创建的有趣且有用的 AI 应用程序。同时，我们也欢迎您在不同的活动、会议和社交媒体上分享 Dify。
+请选择最适合您问题的渠道：
 
-- [GitHub Discussion](https://github.com/langgenius/dify/discussions). 👉：分享您的应用程序并与社区交流。
-- [GitHub Issues](https://github.com/langgenius/dify/issues)。👉：使用 Dify.AI 时遇到的错误和问题，请参阅[贡献指南](./CONTRIBUTING.md)。
-- [电子邮件支持](mailto:hello@dify.ai?subject=%5BGitHub%5DQuestions%20About%20Dify)。👉：关于使用 Dify.AI 的问题。
-- [Discord](https://discord.gg/FngNHpbcY7)。👉：分享您的应用程序并与社区交流。
-- [X(Twitter)](https://twitter.com/dify_ai)。👉：分享您的应用程序并与社区交流。
-- [商业许可](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry)。👉：有关商业用途许可 Dify.AI 的商业咨询。
+- [GitHub Discussions](https://github.com/langgenius/dify/discussions)：获取帮助、分享反馈并提出想法。
+- [GitHub Issues](https://github.com/langgenius/dify/issues)：报告可重现的错误并跟踪工程工作。创建问题前，请先阅读[贡献指南](./CONTRIBUTING.md)。
+- [Discord](https://discord.gg/FngNHpbcY7)：实时交流、分享您的应用，并与其他 Dify 用户互动。
+- [X](https://x.com/dify_ai)：关注版本新闻和项目更新。
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
 ## 安全问题
 
 为了保护您的隐私，请避免在 GitHub 上发布安全问题。发送问题至 security@dify.ai，我们将为您做更细致的解答。

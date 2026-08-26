@@ -11,9 +11,16 @@ from services.account_email_registration_adapters import (
     RedisEmailRegistrationSecurityGateway,
     TokenManagerEmailRegistrationTokenGateway,
 )
-from services.account_errors import AccountEmailDomainSuspendedError, EmailRegistrationSeatsLimitError
+from services.account_errors import (
+    AccountEmailDomainSuspendedError,
+    AccountNormalizedEmailAlreadyInUseError,
+    EmailRegistrationSeatsLimitError,
+)
 from services.account_service import TokenPair
 from services.entities.account_entities import AccountEmailRegistrationPhase, AccountEmailRegistrationToken
+from services.errors.account import (
+    AccountNormalizedEmailAlreadyInUseError as AccountNormalizedEmailAlreadyInUseServiceError,
+)
 from services.errors.account import EmailDomainSuspendedError, SeatsLimitExceededError
 
 
@@ -101,6 +108,11 @@ def test_billing_policy_is_disabled_outside_cloud() -> None:
     [
         pytest.param(SeatsLimitExceededError(), EmailRegistrationSeatsLimitError, id="seat-limit"),
         pytest.param(EmailDomainSuspendedError(), AccountEmailDomainSuspendedError, id="suspended-domain"),
+        pytest.param(
+            AccountNormalizedEmailAlreadyInUseServiceError(),
+            AccountNormalizedEmailAlreadyInUseError,
+            id="normalized-email-in-use",
+        ),
     ],
 )
 def test_registration_gateway_translates_account_provisioning_errors(
@@ -140,7 +152,7 @@ def test_registration_gateway_owns_short_lived_sessions(
     with patch(
         "services.account_email_registration_adapters.AccountService.create_account_and_tenant",
         side_effect=create_account,
-    ):
+    ) as create_account_and_tenant:
         account_id = gateway.create(
             email="user@example.com",
             password="ValidPass123!",
@@ -149,6 +161,7 @@ def test_registration_gateway_owns_short_lived_sessions(
             ip_address="127.0.0.1",
         )
 
+    assert create_account_and_tenant.call_args.kwargs["check_normalized_email"] is True
     sqlite_session.expire_all()
     assert sqlite_session.get(Account, account_id) is not None
 

@@ -1,6 +1,7 @@
 """Composition root for application services used by transport adapters."""
 
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import cast
 
@@ -12,6 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import get_session_maker
+from core.helper.ssrf_proxy import ssrf_proxy
 from core.schemas.schema_manager import SchemaManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_redis import RedisClientWrapper, redis_client
@@ -21,9 +23,12 @@ from repositories.account_activation_repository import SQLAlchemyAccountActivati
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
+from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
+from repositories.data_source_oauth_binding_repository import SQLAlchemyDataSourceOAuthBindingRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.installation_state_repository import InstallationStateRepository
+from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
 from repositories.tag_repository import TagRepository
 from repositories.trial_app_query_repository import TrialAppQueryRepository
@@ -78,11 +83,16 @@ from services.account_password_hasher import LegacyAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
 from services.app_definition_query_service import AppDefinitionQueryService
+from services.app_site_service import AppSiteService
 from services.auth.data_source_api_key_auth_gateways import (
     ProviderApiKeyAuthCredentialValidator,
     TenantApiKeyAuthCredentialEncryptor,
 )
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
+from services.billing_portal_service import BillingPortalService
+from services.billing_service import BillingService
+from services.compliance_download_service import ComplianceDownloadService
+from services.data_source_oauth_service import DataSourceOAuthService, InvalidDataSourceOAuthProviderError
 from services.enterprise.enterprise_service import EnterpriseService
 from services.errors.enterprise import EnterpriseServiceError
 from services.explore_banner_query_service import ExploreBannerQueryService
@@ -91,6 +101,9 @@ from services.feature_service import FeatureService
 from services.feature_service_gateway import FeatureServiceGateway
 from services.file_service import FileService
 from services.init_validation_service import InitValidationService
+from services.notion_data_source_gateway import NotionDataSourceGateway
+from services.oauth_server_service import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthServerService
+from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.recommended_app_catalog_gateway import (
     BuiltinRecommendedAppCatalogGateway,
     RecommendedAppCatalogRouter,
@@ -152,19 +165,65 @@ class ApplicationServices:
     accounts: AccountServices
     account_activation: AccountActivationService
     app_definitions: AppDefinitionQueryService
+    app_sites: AppSiteService
+    billing_portal: BillingPortalService
+    compliance_downloads: ComplianceDownloadService
     data_source_api_key_auth: DataSourceApiKeyAuthService
+    data_source_oauth: Mapping[str, DataSourceOAuthService]
     webapp_access: WebAppAccessQueryService
     web_app_runtime: WebAppRuntimeQueryService
     explore_banner_queries: ExploreBannerQueryService
     schema_definitions: SchemaDefinitionService
     setup: SetupService
     feature_queries: FeatureQueryService
+    oauth_server: OAuthServerService
     init_validation: InitValidationService
+    partner_tenant_bindings: PartnerTenantBindingService
     recommended_app_queries: RecommendedAppQueryService
     trial_app_usage: TrialAppUsageRecorder
     workspace_queries: WorkspaceQueryService
     workspace_member_queries: WorkspaceMemberQueryService
     tags: TagApplicationService
+
+    def resolve_data_source_oauth(self, provider: str) -> DataSourceOAuthService:
+        service = self.data_source_oauth.get(provider)
+        if service is None:
+            raise InvalidDataSourceOAuthProviderError("Invalid provider")
+        return service
+
+
+def _build_data_source_oauth_services(
+    *,
+    database_client: sessionmaker[Session],
+) -> Mapping[str, DataSourceOAuthService]:
+    notion_data_source = NotionDataSourceGateway(
+        client_id=dify_config.NOTION_CLIENT_ID or "",
+        client_secret=dify_config.NOTION_CLIENT_SECRET or "",
+        redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/data-source/callback/notion",
+        http_client=ssrf_proxy,
+    )
+    bindings = SQLAlchemyDataSourceOAuthBindingRepository(session_factory=database_client)
+    return {
+        "notion": DataSourceOAuthService(
+            provider_name="notion",
+            provider_gateway=notion_data_source,
+            bindings=bindings,
+            is_internal_provider=dify_config.NOTION_INTEGRATION_TYPE == "internal",
+            internal_access_token=dify_config.NOTION_INTERNAL_SECRET,
+        )
+    }
+
+
+def _build_oauth_server_service(
+    *,
+    database_client: sessionmaker[Session],
+    redis: RedisClientWrapper,
+) -> OAuthServerService:
+    return OAuthServerService(
+        repository=SQLAlchemyOAuthServerRepository(session_factory=database_client),
+        tokens=RedisOAuthServerTokenRepository(redis=redis),
+        access_token_expires_in=OAUTH_ACCESS_TOKEN_EXPIRES_IN,
+    )
 
 
 def build_application_services(
@@ -174,7 +233,7 @@ def build_application_services(
     initialization_password: str,
     redis: RedisClientWrapper,
 ) -> ApplicationServices:
-    installation_state = InstallationStateRepository(client=database_client)
+    installation_state = InstallationStateRepository(session_factory=database_client)
     data_source_api_key_auth_bindings = SQLAlchemyDataSourceApiKeyAuthBindingRepository(session_factory=database_client)
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
     feature_gateway = FeatureServiceGateway()
@@ -189,7 +248,7 @@ def build_application_services(
         database=database_catalog,
         builtin=builtin_catalog,
     )
-    workspace_query_repository = WorkspaceQueryRepository(client=database_client)
+    workspace_query_repository = WorkspaceQueryRepository(session_factory=database_client)
     return ApplicationServices(
         accounts=AccountServices(
             avatar=AccountAvatarService(
@@ -262,6 +321,18 @@ def build_application_services(
             education=AccountEducationService(
                 accounts=accounts,
                 education=BillingAccountEducationGateway(),
+                verification_rate_limiter=RateLimiter(
+                    prefix="edu_verification_rate_limit",
+                    max_attempts=10,
+                    time_window=60,
+                    redis_client=redis,
+                ),
+                activation_rate_limiter=RateLimiter(
+                    prefix="edu_activation_rate_limit",
+                    max_attempts=10,
+                    time_window=60,
+                    redis_client=redis,
+                ),
             ),
             initialization=AccountInitializationService(
                 accounts=accounts,
@@ -277,7 +348,7 @@ def build_application_services(
         ),
         account_activation=AccountActivationService(
             tokens=RegisterServiceInvitationTokenStore(),
-            accounts=SQLAlchemyAccountActivationRepository(database_client),
+            accounts=SQLAlchemyAccountActivationRepository(session_factory=database_client),
             workspace_policy=DeploymentWorkspaceInvitePolicy(),
             eligibility=BillingAccountActivationEligibility(
                 enabled=deployment_edition == DeploymentEdition.CLOUD,
@@ -292,11 +363,29 @@ def build_application_services(
                 dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
             ),
         ),
+        app_sites=AppSiteService(
+            sites=AppSiteCommandRepository(session_factory=database_client),
+        ),
+        billing_portal=BillingPortalService(
+            accounts=accounts,
+            get_subscription=BillingService.get_subscription,
+            get_invoices=BillingService.get_invoices,
+        ),
+        compliance_downloads=ComplianceDownloadService(
+            fetch_link=BillingService.get_compliance_download_link,
+            rate_limiter=RateLimiter(
+                prefix="compliance_download_rate_limiter",
+                max_attempts=4,
+                time_window=60,
+                redis_client=redis,
+            ),
+        ),
         data_source_api_key_auth=DataSourceApiKeyAuthService(
             bindings=data_source_api_key_auth_bindings,
             validator=ProviderApiKeyAuthCredentialValidator(),
             encryptor=TenantApiKeyAuthCredentialEncryptor(),
         ),
+        data_source_oauth=_build_data_source_oauth_services(database_client=database_client),
         webapp_access=WebAppAccessQueryService(
             access=WebAppAccessQueryRepository(session_factory=database_client),
             webapp_auth_enabled=FeatureService.is_webapp_auth_enabled(),
@@ -305,30 +394,33 @@ def build_application_services(
         ),
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=app_definition_repository,
-            file_service=FileService(database_client),
+            file_service=FileService(session_factory=database_client),
             workspace_features=feature_gateway.get_workspace_features,
             files_url=dify_config.FILES_URL,
         ),
         explore_banner_queries=ExploreBannerQueryService(
-            banners=ExploreBannerQueryRepository(client=database_client),
+            banners=ExploreBannerQueryRepository(session_factory=database_client),
             enabled=FeatureService.is_explore_banner_enabled(),
         ),
         schema_definitions=SchemaDefinitionService(source_factory=SchemaManager),
         setup=SetupService(
             state=installation_state,
-            accounts=RegisterServiceAccountProvisioner(client=database_client),
+            accounts=RegisterServiceAccountProvisioner(session_factory=database_client),
             lock=RedisSetupLock(client=redis),
             setup_required=deployment_edition != DeploymentEdition.CLOUD,
         ),
         feature_queries=FeatureQueryService(
             features=feature_gateway,
-            trial_models=FeatureService.get_trial_models(),
             app_dsl_version=CURRENT_APP_DSL_VERSION,
         ),
+        oauth_server=_build_oauth_server_service(database_client=database_client, redis=redis),
         init_validation=InitValidationService(
             state=installation_state,
             validation_required=(deployment_edition != DeploymentEdition.CLOUD and bool(initialization_password)),
             expected_password=initialization_password,
+        ),
+        partner_tenant_bindings=PartnerTenantBindingService(
+            sync_bindings=BillingService.sync_partner_tenants_bindings,
         ),
         recommended_app_queries=RecommendedAppQueryService(
             catalog=recommended_app_catalog,

@@ -20,6 +20,8 @@ from pathlib import Path
 from typing import Protocol, TypeGuard
 
 from flask import Flask
+from flask_restx import Api
+from flask_restx.swagger import Swagger
 
 logger = logging.getLogger(__name__)
 
@@ -27,12 +29,13 @@ API_ROOT = Path(__file__).resolve().parents[1]
 if str(API_ROOT) not in sys.path:
     sys.path.insert(0, str(API_ROOT))
 
+from libs.flask_restx_compat import finalize_openapi_payload
+
 
 @dataclass(frozen=True)
 class SpecTarget:
     route: str
     filename: str
-    namespace: str
 
 
 class RestxApi(Protocol):
@@ -42,10 +45,10 @@ class RestxApi(Protocol):
 
 
 SPEC_TARGETS: tuple[SpecTarget, ...] = (
-    SpecTarget(route="/console/api/openapi.json", filename="console-openapi.json", namespace="console"),
-    SpecTarget(route="/api/openapi.json", filename="web-openapi.json", namespace="web"),
-    SpecTarget(route="/v1/openapi.json", filename="service-openapi.json", namespace="service"),
-    SpecTarget(route="/openapi/v1/openapi.json", filename="openapi-openapi.json", namespace="openapi"),
+    SpecTarget(route="/console/api/openapi.json", filename="console-openapi.json"),
+    SpecTarget(route="/api/openapi.json", filename="web-openapi.json"),
+    SpecTarget(route="/v1/openapi.json", filename="service-openapi.json"),
+    SpecTarget(route="/openapi/v1/openapi.json", filename="openapi-openapi.json"),
 )
 
 
@@ -142,14 +145,13 @@ def apply_runtime_defaults() -> None:
     os.environ.setdefault("SECRET_KEY", "spec-export")
     os.environ.setdefault("STORAGE_TYPE", "local")
     os.environ.setdefault("STORAGE_LOCAL_PATH", "/tmp/dify-storage")
-    os.environ.setdefault("SWAGGER_UI_ENABLED", "true")
 
     from configs import dify_config
 
     dify_config.SECRET_KEY = os.environ["SECRET_KEY"]
     dify_config.STORAGE_TYPE = "local"
     dify_config.STORAGE_LOCAL_PATH = os.environ["STORAGE_LOCAL_PATH"]
-    dify_config.SWAGGER_UI_ENABLED = os.environ["SWAGGER_UI_ENABLED"].lower() == "true"
+    dify_config.SWAGGER_UI_ENABLED = True
 
 
 def create_spec_app() -> Flask:
@@ -184,39 +186,20 @@ def create_spec_app() -> Flask:
     return app
 
 
-def _registered_models(namespace: str) -> dict[str, object]:
-    """Return the Flask-RESTX models registered for an OpenAPI namespace."""
+def _target_apis() -> dict[str, Api]:
+    """Return the API instance that owns each exported OpenAPI target."""
 
-    if namespace == "console":
-        from controllers.console import console_ns
+    from controllers.console import api as console_api
+    from controllers.openapi import api as openapi_api
+    from controllers.service_api import api as service_api
+    from controllers.web import api as web_api
 
-        models = dict(console_ns.models)
-        for api in console_ns.apis:
-            models.update(api.models)
-        return models
-    if namespace == "web":
-        from controllers.web import web_ns
-
-        models = dict(web_ns.models)
-        for api in web_ns.apis:
-            models.update(api.models)
-        return models
-    if namespace == "service":
-        from controllers.service_api import service_api_ns
-
-        models = dict(service_api_ns.models)
-        for api in service_api_ns.apis:
-            models.update(api.models)
-        return models
-    if namespace == "openapi":
-        from controllers.openapi import openapi_ns
-
-        models = dict(openapi_ns.models)
-        for api in openapi_ns.apis:
-            models.update(api.models)
-        return models
-
-    raise ValueError(f"unknown OpenAPI namespace: {namespace}")
+    return {
+        "/console/api/openapi.json": console_api,
+        "/api/openapi.json": web_api,
+        "/v1/openapi.json": service_api,
+        "/openapi/v1/openapi.json": openapi_api,
+    }
 
 
 def _materialize_inline_model_definitions(api: RestxApi) -> None:
@@ -281,135 +264,23 @@ def _materialize_inline_model_definitions(api: RestxApi) -> None:
                 materialize_field(field)
 
 
-def drop_null_values(value: object) -> object:
-    """Remove JSON null values that make the Markdown converter crash."""
-
-    if isinstance(value, dict):
-        return {key: drop_null_values(item) for key, item in value.items() if item is not None}
-    if isinstance(value, list):
-        return [drop_null_values(item) for item in value]
-    return value
-
-
-def sort_openapi_arrays(value: object, *, parent_key: str | None = None) -> object:
-    """Sort order-insensitive OpenAPI arrays so generated Markdown is stable."""
-
-    if isinstance(value, dict):
-        return {key: sort_openapi_arrays(item, parent_key=key) for key, item in value.items()}
-    if not isinstance(value, list):
-        return value
-
-    sorted_items = [sort_openapi_arrays(item, parent_key=parent_key) for item in value]
-    if parent_key == "parameters":
-        return sorted(
-            sorted_items,
-            key=lambda item: (
-                item.get("in", "") if isinstance(item, dict) else "",
-                item.get("name", "") if isinstance(item, dict) else "",
-                json.dumps(item, sort_keys=True, default=str),
-            ),
-        )
-    if parent_key in {"enum", "required", "schemes", "tags"}:
-        string_items = [item for item in sorted_items if isinstance(item, str)]
-        if len(string_items) == len(sorted_items):
-            return sorted(string_items)
-    return sorted_items
-
-
-def _replace_legacy_refs(value: object) -> object:
-    if isinstance(value, dict):
-        replaced: dict[object, object] = {}
-        for key, item in value.items():
-            if key == "$ref" and isinstance(item, str) and item.startswith("#/definitions/"):
-                replaced[key] = item.replace("#/definitions/", "#/components/schemas/", 1)
-            else:
-                replaced[key] = _replace_legacy_refs(item)
-        return replaced
-    if isinstance(value, list):
-        return [_replace_legacy_refs(item) for item in value]
-    return value
-
-
-HTTP_METHODS = {"delete", "get", "head", "options", "patch", "post", "put", "trace"}
-
-
-def _deduplicate_operation_ids(payload: dict[str, object]) -> dict[str, object]:
-    """Make operationId values unique while preserving already-unique IDs."""
-
-    paths = payload.get("paths")
-    if not isinstance(paths, dict):
-        return payload
-
-    operations_by_id: dict[str, list[tuple[str, str, dict[str, object]]]] = {}
-    for path, path_item in paths.items():
-        if not isinstance(path, str) or not isinstance(path_item, dict):
-            continue
-        for method, operation in path_item.items():
-            if method not in HTTP_METHODS or not isinstance(operation, dict):
-                continue
-            operation_id = operation.get("operationId")
-            if isinstance(operation_id, str):
-                operations_by_id.setdefault(operation_id, []).append((method, path, operation))
-
-    for operation_id, operations in operations_by_id.items():
-        if len(operations) < 2:
-            continue
-        for method, path, operation in operations:
-            digest = hashlib.sha1(f"{method}:{path}".encode()).hexdigest()[:8]
-            operation["operationId"] = f"{operation_id}_{digest}"
-
-    return payload
-
-
-def _component_schemas(payload: dict[str, object]) -> dict[str, object]:
-    components = payload.setdefault("components", {})
-    if not isinstance(components, dict):
-        raise RuntimeError("unexpected OpenAPI components payload")
-
-    schemas = components.setdefault("schemas", {})
-    if not isinstance(schemas, dict):
-        raise RuntimeError("unexpected OpenAPI component schemas payload")
-
-    return schemas
-
-
-def _merge_registered_schemas(payload: dict[str, object], namespace: str) -> dict[str, object]:
-    """Include registered but route-indirect models in exported OpenAPI schemas."""
-
-    schemas = _component_schemas(payload)
-
-    for name, model in _registered_models(namespace).items():
-        schema = getattr(model, "__schema__", None)
-        if isinstance(schema, dict):
-            schemas.setdefault(name, _replace_legacy_refs(schema))
-
-    payload.pop("definitions", None)
-    payload = _replace_legacy_refs(payload)  # type: ignore[assignment]
-
-    return payload
-
-
 def generate_specs(output_dir: Path) -> list[Path]:
     """Write all OpenAPI specs to `output_dir` and return the written paths."""
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
     app = create_spec_app()
-    client = app.test_client()
+    target_apis = _target_apis()
 
     written_paths: list[Path] = []
     for target in SPEC_TARGETS:
-        response = client.get(target.route)
-        if response.status_code != 200:
-            raise RuntimeError(f"failed to fetch {target.route}: {response.status_code}")
-
-        payload = response.get_json()
-        if not isinstance(payload, dict):
-            raise RuntimeError(f"unexpected response payload for {target.route}")
-        payload = _merge_registered_schemas(payload, target.namespace)
-        payload = _deduplicate_operation_ids(payload)
-        payload = drop_null_values(payload)
-        payload = sort_openapi_arrays(payload)
+        # Build directly from the API instance instead of depending on the
+        # optional HTTP spec route. ExternalApi decides whether to register
+        # that route when controller modules are first imported, which may
+        # happen before this exporter forces its generation-only defaults.
+        with app.test_request_context(target.route):
+            payload = Swagger(target_apis[target.route]).as_dict()
+        payload = finalize_openapi_payload(payload)
 
         output_path = output_dir / target.filename
         output_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")

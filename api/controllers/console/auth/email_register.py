@@ -12,6 +12,7 @@ from controllers.console.auth.error import (
     EmailRegisterRateLimitExceededError,
     InvalidEmailError,
     InvalidTokenError,
+    NormalizedEmailAlreadyInUseError,
     PasswordMismatchError,
 )
 from controllers.console.flask_admission import console_email_registration_admission
@@ -25,6 +26,7 @@ from services.account_errors import (
     AccountEmailAlreadyInUseError,
     AccountEmailDomainSuspendedError,
     AccountEmailFrozenError,
+    AccountNormalizedEmailAlreadyInUseError,
     EmailRegistrationPasswordMismatchError,
     EmailRegistrationSeatsLimitError,
     EmailRegistrationSendIPLimitedError,
@@ -164,6 +166,8 @@ class EmailRegisterResetApi(Resource):
             raise PasswordMismatchError() from None
         except InvalidEmailRegistrationTokenError:
             raise InvalidTokenError() from None
+        except AccountNormalizedEmailAlreadyInUseError:
+            raise NormalizedEmailAlreadyInUseError() from None
         except AccountEmailAlreadyInUseError:
             raise EmailAlreadyInUseError() from None
         except EmailRegistrationSeatsLimitError:

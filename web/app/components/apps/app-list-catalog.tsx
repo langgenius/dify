@@ -208,35 +208,34 @@ function AppListCatalogContent({
               />
             )}
             {hasNextPage && (
-              <div className="relative col-span-full">
+              <>
+                <AppCardSkeleton count={3} />
+                {isFetchNextPageError && (
+                  <div
+                    className="absolute inset-x-0 bottom-0 flex h-40 items-center justify-center gap-2 bg-background-body system-xs-regular text-text-tertiary"
+                    role="alert"
+                  >
+                    <span>{t(($) => $['errorBoundary.title'], { ns: 'common' })}</span>
+                    <Button
+                      loading={isFetchingNextPage}
+                      size="small"
+                      variant="secondary"
+                      onClick={() => void onFetchNextPage()}
+                    >
+                      {t(($) => $['operation.retry'], { ns: 'common' })}
+                    </Button>
+                  </div>
+                )}
                 <InfiniteScrollSentinel
                   canLoadMore={!isFetching && !isFetchNextPageError}
+                  className="absolute inset-x-0 bottom-0"
                   onLoadMore={() => {
                     void onFetchNextPage()
                   }}
                   preloadDistance={getPreloadDistance}
                   scrollContainerRef={scrollViewportRef}
                 />
-                <div className="relative grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-2.5">
-                  <AppCardSkeleton count={3} />
-                  {isFetchNextPageError && (
-                    <div
-                      className="absolute inset-0 flex items-center justify-center gap-2 bg-background-body system-xs-regular text-text-tertiary"
-                      role="alert"
-                    >
-                      <span>{t(($) => $['errorBoundary.title'], { ns: 'common' })}</span>
-                      <Button
-                        loading={isFetchingNextPage}
-                        size="small"
-                        variant="secondary"
-                        onClick={() => void onFetchNextPage()}
-                      >
-                        {t(($) => $['operation.retry'], { ns: 'common' })}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
+              </>
             )}
           </div>
         </>

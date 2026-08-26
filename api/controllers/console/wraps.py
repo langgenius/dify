@@ -663,7 +663,8 @@ def model_validate[T, M: BaseModel, **P, R](
     """Validate request data and inject the model instance as the first arg after self.
 
     Source is determined by HTTP method:
-      GET/DELETE -> request.args
+      GET -> request.args
+      DELETE -> request.args, falling back to JSON body when the query string is empty
       POST/PUT/PATCH -> JSON body
     """
 

@@ -1,12 +1,12 @@
 [project]
 name = "dify-api"
-version = "1.16.1"
+version = "1.17.0"
 requires-python = "~=3.12.0"
 
 dependencies = [
     # Legacy: mature and widely deployed
     "bleach>=6.4.0,<7.0.0",
-    "boto3>=1.43.71,<2.0.0",
+    "boto3>=1.43.76,<2.0.0",
     "celery>=5.6.3,<6.0.0",
     "croniter>=6.2.2,<7.0.0",
     "dify-agent",
@@ -16,7 +16,7 @@ dependencies = [
     "gevent-websocket==0.10.1",
     "gmpy2>=2.3.0,<3.0.0",
     "google-api-python-client>=2.198.0,<3.0.0",
-    "gunicorn>=26.0.0,<27.0.0",
+    "gunicorn>=26.1.0,<27.0.0",
     "psycogreen>=1.0.2,<2.0.0",
     "psycopg2-binary>=2.9.12,<3.0.0",
     "python-socketio>=5.13.0,<6.0.0",
