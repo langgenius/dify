@@ -221,6 +221,24 @@ class TestCurrentContextInjection:
         assert admission_context.active_workspace_id == "tenant-123"
         assert route_value == "route-value"
 
+    def test_console_account_admission_enforces_declared_edition_first(self):
+        class Handler:
+            @flask_admission.console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+            def get(self, request_context: RequestContext):
+                return request_context
+
+        with (
+            patch(
+                "controllers.console.flask_admission.dify_config.DEPLOYMENT_EDITION",
+                DeploymentEdition.COMMUNITY,
+            ),
+            Flask(__name__).test_request_context(),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            Handler().get()
+
+        assert exc_info.value.code == 404
+
     def test_console_account_admission_enforces_legacy_workspace_roles(self):
         current_user = make_account()
         current_user.role = TenantAccountRole.NORMAL
@@ -649,6 +667,49 @@ class TestModelValidationInjection:
 
         with app.test_request_context("/items?name=alpha&count=2", method="GET"):
             payload = Handler().get()
+
+        assert payload == self.Payload(name="alpha", count=2)
+
+    def test_should_inject_delete_payload_from_query_params(self):
+        app = Flask(__name__)
+
+        class Handler:
+            @model_validate(TestModelValidationInjection.Payload)
+            def delete(self, payload: TestModelValidationInjection.Payload):
+                return payload
+
+        with app.test_request_context("/items?name=alpha&count=2", method="DELETE"):
+            payload = Handler().delete()
+
+        assert payload == self.Payload(name="alpha", count=2)
+
+    def test_should_inject_delete_payload_from_json_body(self):
+        app = Flask(__name__)
+
+        class Handler:
+            @model_validate(TestModelValidationInjection.Payload)
+            def delete(self, payload: TestModelValidationInjection.Payload):
+                return payload
+
+        with app.test_request_context("/items", method="DELETE", json={"name": "alpha", "count": 2}):
+            payload = Handler().delete()
+
+        assert payload == self.Payload(name="alpha", count=2)
+
+    def test_should_prefer_delete_query_params_over_json_body(self):
+        app = Flask(__name__)
+
+        class Handler:
+            @model_validate(TestModelValidationInjection.Payload)
+            def delete(self, payload: TestModelValidationInjection.Payload):
+                return payload
+
+        with app.test_request_context(
+            "/items?name=alpha&count=2",
+            method="DELETE",
+            json={"name": "beta", "count": 9},
+        ):
+            payload = Handler().delete()
 
         assert payload == self.Payload(name="alpha", count=2)
 

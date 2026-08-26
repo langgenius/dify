@@ -243,7 +243,7 @@ class AgentThought(ResponseModel):
     thought: str | None = None
     answer: str | None = None
     tool: str | None = None
-    tool_labels: JSONValue
+    tool_labels: JSONValue = Field(description="Labels for tools used.")
     tool_input: str | None = None
     created_at: int | None = None
     observation: str | None = None

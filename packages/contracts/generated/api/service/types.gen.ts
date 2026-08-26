@@ -1824,10 +1824,6 @@ export type PublishedPipelineRunResponse = {
   documents: Array<PipelineDocument>
 }
 
-export type RequiredServiceApiUserPayload = {
-  user: string
-}
-
 export type RerankingModel = {
   reranking_model_name?: string | null
   reranking_provider_name?: string | null
@@ -1880,6 +1876,10 @@ export type Rule = {
   pre_processing_rules?: Array<PreProcessingRule> | null
   segmentation?: Segmentation | null
   subchunk_segmentation?: Segmentation | null
+}
+
+export type ScopedTaskStopPayload = {
+  user: string
 }
 
 export type SegmentAttachmentResponse = {
@@ -2368,6 +2368,10 @@ export type WorkflowRunResponse = {
   workflow_id: string
 }
 
+export type WorkflowTaskStopPayload = {
+  user: string
+}
+
 export type HumanInputFormSubmitResponseWritable = {
   [key: string]: never
 }
@@ -2632,7 +2636,7 @@ export type PostChatMessagesResponses = {
 export type PostChatMessagesResponse = PostChatMessagesResponses[keyof PostChatMessagesResponses]
 
 export type PostChatMessagesByTaskIdStopData = {
-  body: RequiredServiceApiUserPayload
+  body: ScopedTaskStopPayload
   path: {
     task_id: string
   }
@@ -2644,7 +2648,6 @@ export type PostChatMessagesByTaskIdStopErrors = {
   400: unknown
   401: unknown
   403: unknown
-  404: unknown
 }
 
 export type PostChatMessagesByTaskIdStopResponses = {
@@ -2678,7 +2681,7 @@ export type PostCompletionMessagesResponse =
   PostCompletionMessagesResponses[keyof PostCompletionMessagesResponses]
 
 export type PostCompletionMessagesByTaskIdStopData = {
-  body: RequiredServiceApiUserPayload
+  body: ScopedTaskStopPayload
   path: {
     task_id: string
   }
@@ -2690,7 +2693,6 @@ export type PostCompletionMessagesByTaskIdStopErrors = {
   400: unknown
   401: unknown
   403: unknown
-  404: unknown
 }
 
 export type PostCompletionMessagesByTaskIdStopResponses = {
@@ -3092,7 +3094,9 @@ export type PostDatasetsByDatasetIdDocumentCreateByFileErrors = {
   400: unknown
   401: unknown
   403: unknown
+  404: unknown
   413: unknown
+  503: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByFileResponses = {
@@ -3115,6 +3119,8 @@ export type PostDatasetsByDatasetIdDocumentCreateByTextErrors = {
   400: unknown
   401: unknown
   403: unknown
+  404: unknown
+  503: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByTextResponses = {
@@ -3140,7 +3146,9 @@ export type PostDatasetsByDatasetIdDocumentCreateByFile2Errors = {
   400: unknown
   401: unknown
   403: unknown
+  404: unknown
   413: unknown
+  503: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByFile2Responses = {
@@ -3163,6 +3171,8 @@ export type PostDatasetsByDatasetIdDocumentCreateByText2Errors = {
   400: unknown
   401: unknown
   403: unknown
+  404: unknown
+  503: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByText2Responses = {
@@ -3361,6 +3371,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
   404: unknown
   413: unknown
   415: unknown
+  503: unknown
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
@@ -3437,6 +3448,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors = {
   401: unknown
   403: unknown
   404: unknown
+  503: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses = {
@@ -3512,6 +3524,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdError
   401: unknown
   403: unknown
   404: unknown
+  503: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses = {
@@ -3565,6 +3578,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChild
   401: unknown
   403: unknown
   404: unknown
+  503: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses = {
@@ -3622,6 +3636,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
     401: unknown
     403: unknown
     404: unknown
+    503: unknown
   }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses =
@@ -3652,6 +3667,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileErrors = {
   404: unknown
   413: unknown
   415: unknown
+  503: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponses = {
@@ -3676,6 +3692,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors = {
   401: unknown
   403: unknown
   404: unknown
+  503: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses = {
@@ -3705,6 +3722,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Errors = {
   404: unknown
   413: unknown
   415: unknown
+  503: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Responses = {
@@ -3728,6 +3746,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Errors = {
   401: unknown
   403: unknown
   404: unknown
+  503: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Responses = {
@@ -3818,6 +3837,7 @@ export type GetDatasetsByDatasetIdMetadataBuiltInData = {
 export type GetDatasetsByDatasetIdMetadataBuiltInErrors = {
   401: unknown
   403: unknown
+  404: unknown
 }
 
 export type GetDatasetsByDatasetIdMetadataBuiltInResponses = {
@@ -4006,6 +4026,7 @@ export type GetDatasetsByDatasetIdTagsData = {
 export type GetDatasetsByDatasetIdTagsErrors = {
   401: unknown
   403: unknown
+  404: unknown
 }
 
 export type GetDatasetsByDatasetIdTagsResponses = {
@@ -4404,7 +4425,7 @@ export type GetWorkflowsRunByWorkflowRunIdResponse =
   GetWorkflowsRunByWorkflowRunIdResponses[keyof GetWorkflowsRunByWorkflowRunIdResponses]
 
 export type PostWorkflowsTasksByTaskIdStopData = {
-  body: RequiredServiceApiUserPayload
+  body: WorkflowTaskStopPayload
   path: {
     task_id: string
   }
@@ -4416,7 +4437,6 @@ export type PostWorkflowsTasksByTaskIdStopErrors = {
   400: unknown
   401: unknown
   403: unknown
-  404: unknown
 }
 
 export type PostWorkflowsTasksByTaskIdStopResponses = {

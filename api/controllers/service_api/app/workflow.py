@@ -31,6 +31,7 @@ from controllers.service_api.app.error import (
     WorkflowVersionExecutionNotAllowedError,
 )
 from controllers.service_api.schema import (
+    WORKFLOW_TASK_STOP_USER_DESCRIPTION,
     expect_user_json,
     expect_with_user,
     json_or_event_stream_response,
@@ -522,7 +523,11 @@ class WorkflowTaskStopApi(Resource):
             ),
         },
     )
-    @expect_user_json(service_api_ns)
+    @expect_user_json(
+        service_api_ns,
+        model_name="WorkflowTaskStopPayload",
+        user_description=WORKFLOW_TASK_STOP_USER_DESCRIPTION,
+    )
     @service_api_ns.doc("stop_workflow_task")
     @service_api_ns.doc(description="Stop a running workflow task")
     @service_api_ns.doc(
@@ -532,7 +537,6 @@ class WorkflowTaskStopApi(Resource):
         responses={
             200: "Task stopped successfully",
             401: "Unauthorized - invalid API token",
-            404: "Task not found",
         }
     )
     @service_api_ns.response(200, "Task stopped successfully", service_api_ns.models[SimpleResultResponse.__name__])
