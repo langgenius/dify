@@ -7,7 +7,7 @@ from typing import cast
 
 import click
 
-from commands.rbac import migrate_dataset_permissions_to_rbac
+from commands.rbac import migrate_dataset_permissions_to_rbac, migrate_resource_whitelist_scopes_to_automatic_include
 from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelType
 from services.legacy_model_type_migration import (
@@ -179,3 +179,4 @@ def legacy_model_types(
 
 data_migrate.add_command(legacy_model_types)
 data_migrate.add_command(migrate_dataset_permissions_to_rbac)
+data_migrate.add_command(migrate_resource_whitelist_scopes_to_automatic_include)
