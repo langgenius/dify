@@ -399,8 +399,9 @@ def test_squid_block_raises_actionable_tool_ssrf_error(mock_get_client) -> None:
     # The remediation hint must include a concrete example, otherwise users
     # still have to grep the squid config to figure out the syntax.
     assert "172.21.0.0/16" in msg
-    # And it must point to the issue so maintainers can find context.
-    assert "issues/38443" in msg
+    # And it must point to the dify issue so maintainers can find context
+    # (not some other project's tracker with a coincidentally matching number).
+    assert "https://github.com/langgenius/dify/issues/38443" in msg
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)

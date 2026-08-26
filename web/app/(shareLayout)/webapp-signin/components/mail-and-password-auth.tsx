@@ -1,10 +1,11 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
+import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
-import Input from '@/app/components/base/input'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useWebAppStore } from '@/context/web-app-context'
@@ -82,7 +83,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
           appCode: loginRedirect.appCode,
           userId: embeddedUserId || undefined,
         })
-        setWebAppPassport(loginRedirect.appCode, access_token)
+        setWebAppPassport(loginRedirect.address, access_token)
         replaceLoginRedirect(loginRedirect.target, router.replace, basePath)
       } else {
         toast.error(res.data)
@@ -100,21 +101,19 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
   }
 
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault()
+    <Form
+      onFormSubmit={() => {
         void handleEmailPasswordLogin()
       }}
     >
-      <div className="mb-3">
-        <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">
+      <Field name="email" className="mb-3 block">
+        <FieldLabel className="my-2 py-0 text-sm leading-5 font-semibold text-text-secondary">
           {t(($) => $.email, { ns: 'login' })}
-        </label>
+        </FieldLabel>
         <div className="mt-1">
-          <Input
-            name="email"
+          <FieldControl
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onValueChange={setEmail}
             id="email"
             type="email"
             autoComplete="email"
@@ -122,13 +121,13 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
             placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
           />
         </div>
-      </div>
+      </Field>
 
-      <div className="mb-3">
-        <label htmlFor="password" className="my-2 flex items-center justify-between">
-          <span className="system-md-semibold text-text-secondary">
+      <Field name="password" className="mb-3 block">
+        <div className="my-2 flex items-center justify-between">
+          <FieldLabel className="py-0 text-sm leading-5 font-semibold text-text-secondary">
             {t(($) => $.password, { ns: 'login' })}
-          </span>
+          </FieldLabel>
           <Link
             href={`/webapp-reset-password?${searchParams.toString()}`}
             className={`system-xs-regular ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
@@ -137,12 +136,11 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
           >
             {t(($) => $.forget, { ns: 'login' })}
           </Link>
-        </label>
+        </div>
         <div className="relative mt-1">
-          <Input
-            name="password"
+          <FieldControl
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onValueChange={setPassword}
             id="password"
             type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
@@ -150,12 +148,19 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
             placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
           />
           <div className="absolute inset-y-0 right-0 flex items-center">
-            <Button type="button" variant="ghost" onClick={() => setShowPassword(!showPassword)}>
-              {showPassword ? '👀' : '😝'}
+            <Button
+              type="button"
+              variant="ghost"
+              aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
+                ns: 'login',
+              })}
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              <span aria-hidden="true">{showPassword ? '👀' : '😝'}</span>
             </Button>
           </div>
         </div>
-      </div>
+      </Field>
 
       <div className="mb-2">
         <Button
@@ -167,6 +172,6 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
           {t(($) => $.signBtn, { ns: 'login' })}
         </Button>
       </div>
-    </form>
+    </Form>
   )
 }

@@ -67,7 +67,11 @@ export function ContactsManagementRuntimeProvider({ children }: { children: Reac
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { plan } = useProviderContext()
   const deployment =
-    plan.type === Plan.enterprise ? 'ee' : deploymentEdition === 'CLOUD' ? 'saas' : ('ce' as const)
+    deploymentEdition === 'ENTERPRISE'
+      ? 'ee'
+      : deploymentEdition === 'CLOUD'
+        ? 'saas'
+        : ('ce' as const)
   const scenario = useMemo(() => {
     const defaultScenario = createDefaultContactsScenario(deployment, canManage)
     return { ...defaultScenario, workspaceId: workspaceId || defaultScenario.workspaceId }

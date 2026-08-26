@@ -2,12 +2,13 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { userProfileAtom } from '@/context/account-state'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { ownershipTransfer, sendOwnerEmail, verifyOwnerEmail } from '@/service/common'
 import MemberSelector from './member-selector'
 
@@ -29,7 +30,10 @@ const getErrorMessage = (error: unknown) => {
 const TransferOwnershipModal = ({ onClose, show }: Props) => {
   const { t } = useTranslation()
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
-  const userProfile = useAtomValue(userProfileAtom)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
   const [step, setStep] = useState<Step>(STEP.start)
   const [code, setCode] = useState<string>('')
   const [time, setTime] = useState<number>(0)

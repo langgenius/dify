@@ -23,7 +23,7 @@ import pytest
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
 
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from services.billing_service import BillingService
 

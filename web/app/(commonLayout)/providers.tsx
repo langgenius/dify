@@ -6,17 +6,14 @@ import { ProviderContextProvider } from '@/context/provider-context-provider'
 import { ContactsManagementRuntimeProvider } from '@/features/contacts/management/composition'
 import { ExternalServiceSync } from './external-service-sync'
 import { CommonLayoutHydrationBoundary } from './hydration-boundary'
-import { ProfileBootstrapGate } from './profile-bootstrap-gate'
 
 export async function ConsoleRuntimeProviders({ children }: { children: ReactNode }) {
   return (
     <>
       <OAuthRegistrationAnalytics />
       <CommonLayoutHydrationBoundary>
-        <ProfileBootstrapGate>
-          <ExternalServiceSync />
-          {children}
-        </ProfileBootstrapGate>
+        <ExternalServiceSync />
+        {children}
       </CommonLayoutHydrationBoundary>
     </>
   )

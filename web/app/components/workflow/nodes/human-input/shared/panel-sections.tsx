@@ -2,12 +2,12 @@ import type { FormInputItem, HumanInputSharedNodeType, UserAction } from './type
 import type { Var } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { Infotip } from '@/app/components/base/infotip'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
@@ -193,12 +193,12 @@ const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
           </div>
           {!readOnly && (
             <div className="flex items-center px-1">
-              <ActionButton
-                aria-label={t(($) => $[`${i18nPrefix}.userActions.add`], { ns: 'workflow' })}
+              <IconButton
+                aria-label={t(($) => $['operation.add'], { ns: 'common' })}
                 onClick={onAddUserAction}
               >
                 <span className="i-ri-add-line size-4" aria-hidden />
-              </ActionButton>
+              </IconButton>
             </div>
           )}
         </div>

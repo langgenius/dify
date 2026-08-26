@@ -65,6 +65,8 @@ resource registry. Its private control-plane endpoints create or destroy
 backend resources from requests made by Dify API. Redis run records and event
 streams are observability state, not the Home/Workspace/Binding ledger.
 
+When `DIFY_AGENT_API_TOKEN` is configured, every private control-plane request must carry the matching Dify API `AGENT_BACKEND_API_TOKEN` as a Bearer token.
+
 ## Creation and execution flow
 
 Agent creation does not create a Home Snapshot. A config with no logical Home
@@ -115,9 +117,11 @@ Retirement is a database transition from `ACTIVE` to `RETIRED`. It prevents new
 product use without performing network I/O inside the caller's transaction.
 Product lifecycle paths commit this transition synchronously. After the
 transaction commits, one Celery task asks Dify Agent to destroy the physical
-resources. A successful collector deletes the corresponding ledger row; a
-failed collector logs the failure and leaves the RETIRED row available for a
-future retry or reconciler.
+resources. A successful collector deletes the corresponding ledger row. If a
+collector raises, the task logs the tenant, resource type, and resource ID,
+re-raises the exception so collection stops and Celery records the task as
+failed, and leaves the RETIRED row intact. No automatic retry or reconciliation
+is performed.
 
 The unified `collect_agent_resources` task is registered on normal Celery
 workers and explicitly uses the existing `retention` queue. Standard workers
@@ -192,9 +196,11 @@ Neither path creates a fallback Workspace or switches backends.
 
 `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` limits continuous active time for an E2B
 resource to one hour. The limit covers the complete Agent run held by one
-RuntimeLease rather than an individual tool call. Runtime resources pause on
-timeout. It is not a retention TTL and does not delete paused resources or
-immutable snapshots.
+RuntimeLease rather than an individual tool call. Its 3600-second default is
+intentionally the same as `DIFY_AGENT_RUN_TIMEOUT_SECONDS`, but the two settings
+remain independently configurable. Runtime resources pause on timeout, but this
+resource setting does not own the Agent run terminal state. It is not a retention
+TTL and does not delete paused resources or immutable snapshots.
 
 See the [Shell layer](../../user-manual/shell-layer/index.md) for request
 composition and the [Operations Guide](../../guide/index.md) for Local and E2B

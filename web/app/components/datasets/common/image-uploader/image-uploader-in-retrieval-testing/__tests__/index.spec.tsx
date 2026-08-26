@@ -1,6 +1,6 @@
 import type { FileEntity } from '../../types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import ImageUploaderInRetrievalTestingWrapper from '../index'
 
 vi.mock('@/service/use-common', () => ({

@@ -180,6 +180,8 @@ def test_openapi_json_endpoints_render(monkeypatch: pytest.MonkeyPatch):
         assert "paths" in payload
         assert "schemas" in payload["components"]
         assert isinstance(payload["components"]["schemas"], dict)
+        if route == "/console/api/openapi.json":
+            assert "/test/retrieval" not in payload["paths"]
         missing_refs = _schema_refs(payload) - set(payload["components"]["schemas"])
         assert not missing_refs
         get_request_body_paths = [path for path, operation in _get_operations(payload) if "requestBody" in operation]
@@ -397,7 +399,7 @@ def test_service_openapi_documents_app_multipart_contracts(monkeypatch: pytest.M
             assert schema["properties"]["file"] == {
                 "description": (
                     "Audio file to transcribe. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, "
-                    "`audio/wav`, and `audio/amr`. File size limit is `30 MB`."
+                    "`audio/x-m4a`, `audio/wav`, and `audio/amr`. File size limit is `30 MB`."
                 ),
                 "format": "binary",
                 "type": "string",

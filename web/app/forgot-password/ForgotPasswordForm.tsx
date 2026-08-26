@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import * as z from 'zod'
 import { formContext, useAppForm } from '@/app/components/base/form'
 import { zodSubmitValidator } from '@/app/components/base/form/utils/zod-submit-validator'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import {
   fetchInitValidateStatus,
@@ -29,6 +30,12 @@ const ForgotPasswordForm = () => {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [isEmailSent, setIsEmailSent] = useState(false)
+  const documentTitle = loading
+    ? t(($) => $.loading, { ns: 'common' })
+    : isEmailSent
+      ? t(($) => $.resetLinkSent, { ns: 'login' })
+      : t(($) => $.forgotPassword, { ns: 'login' })
+  useDocumentTitle(documentTitle)
 
   const form = useAppForm({
     defaultValues: { email: '' },

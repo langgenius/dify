@@ -1015,6 +1015,7 @@ export type WorkflowResponse = {
   updated_at: number
   updated_by?: SimpleAccountResponse | null
   version: string
+  version_number?: number | null
 }
 
 export type SyncDraftWorkflowPayload = {

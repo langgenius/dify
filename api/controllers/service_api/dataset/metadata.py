@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, cast
 from uuid import UUID
 
 from flask_login import current_user
@@ -17,6 +17,7 @@ from fields.dataset_fields import (
     DatasetMetadataResponse,
 )
 from libs.helper import dump_response
+from models import Account
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import (
     DocumentMetadataOperation,
@@ -24,6 +25,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     MetadataDetail,
     MetadataOperationData,
 )
+from services.errors.metadata import MetadataResourceNotFoundError
 from services.metadata_service import MetadataService
 
 BUILT_IN_METADATA_ACTION_PARAM = {
@@ -158,12 +160,14 @@ class DatasetMetadataServiceApi(DatasetApiResource):
 
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
+        dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, tenant_id, session=session)
         if dataset is None:
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user, session)
 
-        metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, payload.name, session=session)
+        metadata = MetadataService.update_metadata_name(
+            dataset, metadata_id_str, payload.name, cast(Account, current_user), session=session
+        )
         return dump_response(DatasetMetadataResponse, metadata), 200
 
     @service_api_ns.doc(
@@ -194,12 +198,12 @@ class DatasetMetadataServiceApi(DatasetApiResource):
         """Delete metadata."""
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
+        dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, tenant_id, session=session)
         if dataset is None:
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user, session)
 
-        MetadataService.delete_metadata(dataset_id_str, metadata_id_str, session)
+        MetadataService.delete_metadata(dataset, metadata_id_str, session)
         return "", 204
 
 
@@ -297,7 +301,7 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
         responses={
             200: "Documents metadata updated successfully",
             401: "Unauthorized - invalid API token",
-            404: "Dataset not found",
+            404: "Dataset, document, or metadata not found",
         }
     )
     @service_api_ns.response(
@@ -309,14 +313,18 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
     @with_session
     def post(self, session: Session, tenant_id, dataset_id: UUID):
         """Update metadata for multiple documents."""
-        dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
+        dataset = DatasetService.get_dataset_for_tenant(str(dataset_id), str(tenant_id), session=session)
         if dataset is None:
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user, session)
 
         metadata_args = MetadataOperationData.model_validate(service_api_ns.payload or {})
 
-        MetadataService.update_documents_metadata(dataset, metadata_args, session=session)
+        try:
+            MetadataService.update_documents_metadata(
+                dataset, metadata_args, cast(Account, current_user), session=session
+            )
+        except MetadataResourceNotFoundError as exc:
+            raise NotFound(str(exc)) from exc
 
         return dump_response(DatasetMetadataActionResponse, {"result": "success"}), 200

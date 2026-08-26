@@ -1,7 +1,7 @@
 'use client'
 import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -14,7 +14,6 @@ import { useAtomValue } from 'jotai'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import BillingPage from '@/app/components/billing/billing-page'
-import { Plan } from '@/app/components/billing/type'
 import CustomPage from '@/app/components/custom/custom-page'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
@@ -61,7 +60,7 @@ export default function AccountSetting({
   onTabChangeAction,
 }: IAccountSettingProps) {
   const { t } = useTranslation()
-  const { enableBilling, enableReplaceWebAppLogo, plan } = useProviderContext()
+  const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
@@ -73,7 +72,9 @@ export default function AccountSetting({
   const canViewBilling = enableBilling && !isCurrentWorkspaceDatasetOperator
   const canViewWorkflowLogArchives =
     systemFeatures.deployment_edition === 'CLOUD' && isCurrentWorkspaceManager
-  const canViewContactsImPlatform = isContactsImPlatformEnabled(plan.type === Plan.enterprise)
+  const canViewContactsImPlatform = isContactsImPlatformEnabled(
+    systemFeatures.deployment_edition === 'ENTERPRISE',
+  )
   const activeMenu = (() => {
     if (activeTab === ACCOUNT_SETTING_TAB.BILLING && !canViewBilling)
       return ACCOUNT_SETTING_TAB.PREFERENCES
@@ -190,15 +191,14 @@ export default function AccountSetting({
   return (
     <MenuDialog show onClose={onCancelAction}>
       <div className="fixed top-6 right-6 z-20 flex shrink-0 flex-col items-center">
-        <Button
+        <IconButton
           variant="tertiary"
-          size="large"
-          className="px-2"
+          size="xl"
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           onClick={onCancelAction}
         >
-          <span className="i-ri-close-line size-5" />
-        </Button>
+          <span aria-hidden className="i-ri-close-line size-5" />
+        </IconButton>
         <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
       </div>
       <div className="flex h-screen w-full max-w-full pl-0 sm:pl-58">
