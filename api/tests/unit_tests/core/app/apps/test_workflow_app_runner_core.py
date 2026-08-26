@@ -679,11 +679,13 @@ class TestWorkflowBasedAppRunner:
                 published.append(event)
 
         runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
-        graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
-            start_at=0.0,
+        workflow_entry = SimpleNamespace(
+            graph_engine=SimpleNamespace(
+                graph=SimpleNamespace(
+                    graph_config={"nodes": [{"id": "iteration", "data": {"type": "iteration"}}]}
+                )
+            )
         )
-        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))
 
         runner._handle_event(
             workflow_entry,
@@ -694,7 +696,7 @@ class TestWorkflowBasedAppRunner:
                 start_at=datetime.now(UTC),
                 finished_at=datetime.now(UTC),
                 node_run_result=NodeRunResult(outputs={"answer": "inside iteration"}),
-                in_iteration_id="iteration",
+                container_id="iteration",
             ),
         )
 
@@ -713,11 +715,7 @@ class TestWorkflowBasedAppRunner:
                 published.append(event)
 
         runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
-        graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
-            start_at=0.0,
-        )
-        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))
+        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace())
 
         runner._handle_event(
             workflow_entry,
