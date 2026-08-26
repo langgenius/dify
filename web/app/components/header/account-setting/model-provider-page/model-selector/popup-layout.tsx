@@ -24,7 +24,7 @@ export function ModelSelectorSearchHeader({
   return (
     <SearchInput
       aria-label={t(($) => $['form.searchModel'], { ns: 'datasetSettings' }) || ''}
-      className="mx-2 mt-2 mb-1 shrink-0"
+      className="mx-2 mt-2 mb-1 w-auto shrink-0"
       placeholder={t(($) => $['form.searchModel'], { ns: 'datasetSettings' }) || ''}
       value={inputValue}
       onValueChange={onInputValueChange}
