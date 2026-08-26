@@ -40,7 +40,7 @@ COPY --from=packages /app/ .
 COPY . .
 
 WORKDIR /app/web
-ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV NODE_OPTIONS="--max-old-space-size=6144"
 ENV pnpm_config_verify_deps_before_run=false
 RUN pnpm build && pnpm build:vinext
 
