@@ -616,15 +616,15 @@ class WorkflowBasedAppRunner:
                     outputs=node_run_result.outputs,
                 )
                 execution_metadata = node_run_result.metadata
-                if event.node_type == BuiltinNodeTypes.ANSWER and (event.in_iteration_id or event.in_loop_id):
+                if event.node_type == BuiltinNodeTypes.ANSWER and (iteration_id or loop_id):
                     answer = outputs.get("answer")
                     if isinstance(answer, str) and answer:
                         self._publish_event(
                             QueueTextChunkEvent(
                                 text=answer,
                                 from_variable_selector=[event.node_id, "answer"],
-                                in_iteration_id=event.in_iteration_id,
-                                in_loop_id=event.in_loop_id,
+                                in_iteration_id=iteration_id,
+                                in_loop_id=loop_id,
                             )
                         )
                 self._publish_event(
