@@ -1,17 +1,74 @@
+import type { AnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
 import { getAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
+import { getIsAmplitudeInitialized } from './init'
 import { trackEvent } from './utils'
 
-/**
- * Storage key for a registration success event that is waiting to be sent to
- * Amplitude until a user ID has been attached.
- */
 export const REGISTRATION_SUCCESS_STORAGE_KEY = 'pending_registration_success_event'
 
-type RegistrationMethod = 'email' | 'oauth'
+const REGISTRATION_MARKER_VERSION = 2
+const REGISTRATION_MARKER_TTL_MS = 24 * 60 * 60 * 1000
+const VOLATILE_INTENT_TTL_MS = 30 * 60 * 1000
+const SUCCESSFUL_TRACK_RESULT_MIN = 200
+const SUCCESSFUL_TRACK_RESULT_MAX = 299
 
-type PendingRegistrationSuccessEvent = {
-  eventName: string
-  properties: Record<string, unknown>
+const REGISTRATION_EVENT_NAMES = [
+  'user_registration_success',
+  'user_registration_success_with_utm',
+] as const
+
+const REGISTRATION_METHODS = ['email', 'email_code', 'oauth', 'workspace_invite'] as const
+
+const ATTRIBUTION_KEYS = [
+  'utm_source',
+  'utm_medium',
+  'utm_campaign',
+  'utm_content',
+  'utm_term',
+  'slug',
+] as const
+
+export type RegistrationEventName = (typeof REGISTRATION_EVENT_NAMES)[number]
+export type RegistrationMethod = (typeof REGISTRATION_METHODS)[number]
+export type RegistrationAttribution = Partial<Record<(typeof ATTRIBUTION_KEYS)[number], string>>
+
+type RegistrationIntent = {
+  registrationId: string
+  occurredAt: number
+  method: RegistrationMethod
+  attribution: RegistrationAttribution
+}
+
+type PendingRegistrationSuccessEvent = RegistrationIntent & {
+  version: typeof REGISTRATION_MARKER_VERSION
+  expiresAt: number
+  eventName: RegistrationEventName
+}
+
+let volatileIntent: RegistrationIntent | null = null
+let registrationSnapshot = 0
+let activeFlush: Promise<void> | null = null
+const registrationListeners = new Set<() => void>()
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+
+const isRegistrationMethod = (value: unknown): value is RegistrationMethod =>
+  typeof value === 'string' && REGISTRATION_METHODS.includes(value as RegistrationMethod)
+
+const isRegistrationEventName = (value: unknown): value is RegistrationEventName =>
+  typeof value === 'string' && REGISTRATION_EVENT_NAMES.includes(value as RegistrationEventName)
+
+const notifyRegistrationMarkerStored = () => {
+  registrationSnapshot += 1
+  registrationListeners.forEach((listener) => listener())
+}
+
+const createRegistrationId = () => {
+  try {
+    return globalThis.crypto.randomUUID()
+  } catch {
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  }
 }
 
 const getSessionStorage = (): Storage | null => {
@@ -23,16 +80,52 @@ const getSessionStorage = (): Storage | null => {
   }
 }
 
-/**
- * Remember a registration success event after analytics consent so it can be sent
- * to Amplitude *after* the user ID is attached (see `flushRegistrationSuccess`).
- *
- * Amplitude attributes events to whatever identity is active when `track` runs. At
- * registration time the client does not yet know the user ID, so firing the event
- * immediately records it under an anonymous profile. We persist the event here and
- * replay it once `setUserId` runs in the bootstrap effects after the redirect. An
- * event produced before analytics consent is granted is dropped instead of queued.
- */
+export const normalizeRegistrationAttribution = (
+  value?: Record<string, unknown> | null,
+): RegistrationAttribution | null => {
+  if (!value) return null
+
+  const attribution: RegistrationAttribution = {}
+  ATTRIBUTION_KEYS.forEach((key) => {
+    const item = value[key]
+    if (typeof item !== 'string') return
+
+    const normalized = item.trim()
+    if (normalized) attribution[key] = normalized
+  })
+
+  return Object.keys(attribution).length ? attribution : null
+}
+
+const createRegistrationIntent = (
+  method: RegistrationMethod,
+  utmInfo?: Record<string, unknown> | null,
+): RegistrationIntent => ({
+  registrationId: createRegistrationId(),
+  occurredAt: Date.now(),
+  method,
+  attribution: normalizeRegistrationAttribution(utmInfo) ?? {},
+})
+
+const storeRegistrationIntent = (intent: RegistrationIntent) => {
+  const storage = getSessionStorage()
+  if (!storage) return
+
+  const pending: PendingRegistrationSuccessEvent = {
+    ...intent,
+    version: REGISTRATION_MARKER_VERSION,
+    expiresAt: intent.occurredAt + REGISTRATION_MARKER_TTL_MS,
+    eventName: Object.keys(intent.attribution).length
+      ? 'user_registration_success_with_utm'
+      : 'user_registration_success',
+  }
+
+  try {
+    storage.setItem(REGISTRATION_SUCCESS_STORAGE_KEY, JSON.stringify(pending))
+    notifyRegistrationMarkerStored()
+  } catch {}
+}
+
 export const rememberRegistrationSuccess = ({
   method,
   utmInfo,
@@ -40,49 +133,167 @@ export const rememberRegistrationSuccess = ({
   method: RegistrationMethod
   utmInfo?: Record<string, unknown> | null
 }) => {
-  if (getAnalyticsConsent() !== 'granted') return
-
-  const storage = getSessionStorage()
-  if (!storage) return
-
-  const pending: PendingRegistrationSuccessEvent = {
-    eventName: utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success',
-    properties: { method, ...utmInfo },
-  }
-
-  try {
-    storage.setItem(REGISTRATION_SUCCESS_STORAGE_KEY, JSON.stringify(pending))
-  } catch {}
-}
-
-/**
- * Send a previously remembered registration success event to Amplitude.
- *
- * MUST be called after `setUserId` so the event lands on the identified user profile.
- * No-op when nothing is pending. The pending entry is removed before tracking so the
- * event fires at most once even if this runs multiple times.
- */
-export const flushRegistrationSuccess = () => {
-  const storage = getSessionStorage()
-  if (!storage) return
-
-  let raw: string | null = null
-  try {
-    raw = storage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)
-  } catch {
+  const consent = getAnalyticsConsent()
+  if (consent === 'denied') {
+    volatileIntent = null
     return
   }
 
-  if (!raw) return
+  const intent = createRegistrationIntent(method, utmInfo)
+  if (consent === 'unknown') {
+    if (method !== 'oauth') volatileIntent = intent
+    return
+  }
 
+  storeRegistrationIntent(intent)
+}
+
+export const coordinateRegistrationConsent = (consent: AnalyticsConsent) => {
+  if (consent === 'denied') {
+    volatileIntent = null
+    const storage = getSessionStorage()
+    try {
+      storage?.removeItem(REGISTRATION_SUCCESS_STORAGE_KEY)
+    } catch {}
+    return
+  }
+  if (consent !== 'granted' || !volatileIntent) return
+
+  const intent = volatileIntent
+  volatileIntent = null
+  const age = Date.now() - intent.occurredAt
+  if (age < 0 || age > VOLATILE_INTENT_TTL_MS) return
+
+  storeRegistrationIntent(intent)
+}
+
+export const subscribeRegistrationSuccess = (listener: () => void) => {
+  registrationListeners.add(listener)
+  return () => registrationListeners.delete(listener)
+}
+
+export const getRegistrationSuccessSnapshot = () => registrationSnapshot
+
+const isRegistrationAttribution = (value: unknown): value is RegistrationAttribution => {
+  if (!isRecord(value)) return false
+
+  return Object.entries(value).every(
+    ([key, item]) =>
+      ATTRIBUTION_KEYS.includes(key as (typeof ATTRIBUTION_KEYS)[number]) &&
+      typeof item === 'string' &&
+      Boolean(item.trim()),
+  )
+}
+
+const parsePendingRegistration = (raw: string): PendingRegistrationSuccessEvent | null => {
+  try {
+    const value: unknown = JSON.parse(raw)
+    if (!isRecord(value)) return null
+    if (value.version !== REGISTRATION_MARKER_VERSION) return null
+    if (typeof value.registrationId !== 'string' || !value.registrationId) return null
+    if (typeof value.occurredAt !== 'number' || !Number.isFinite(value.occurredAt)) return null
+    if (typeof value.expiresAt !== 'number' || !Number.isFinite(value.expiresAt)) return null
+    if (value.expiresAt !== value.occurredAt + REGISTRATION_MARKER_TTL_MS) return null
+    if (!isRegistrationEventName(value.eventName)) return null
+    if (!isRegistrationMethod(value.method)) return null
+    if (!isRegistrationAttribution(value.attribution)) return null
+
+    const hasAttribution = Object.keys(value.attribution).length > 0
+    if (hasAttribution !== (value.eventName === 'user_registration_success_with_utm')) return null
+
+    return value as PendingRegistrationSuccessEvent
+  } catch {
+    return null
+  }
+}
+
+const removeStoredMarker = (storage: Storage) => {
   try {
     storage.removeItem(REGISTRATION_SUCCESS_STORAGE_KEY)
   } catch {}
+}
 
-  if (getAnalyticsConsent() !== 'granted') return
+const runRegistrationFlush = async () => {
+  const consent = getAnalyticsConsent()
+  if (consent === 'unknown') return
 
-  try {
-    const pending = JSON.parse(raw) as PendingRegistrationSuccessEvent
-    if (pending?.eventName) trackEvent(pending.eventName, pending.properties)
-  } catch {}
+  const storage = getSessionStorage()
+  if (!storage) return
+
+  if (consent === 'denied') {
+    removeStoredMarker(storage)
+    return
+  }
+  if (!getIsAmplitudeInitialized()) return
+
+  while (true) {
+    let raw: string | null
+    try {
+      raw = storage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)
+    } catch {
+      return
+    }
+    if (!raw) return
+
+    const pending = parsePendingRegistration(raw)
+    if (!pending || pending.expiresAt <= Date.now()) {
+      removeStoredMarker(storage)
+      return
+    }
+
+    let trackResult: ReturnType<typeof trackEvent>
+    try {
+      trackResult = trackEvent(
+        pending.eventName,
+        {
+          method: pending.method,
+          ...pending.attribution,
+          registration_id: pending.registrationId,
+          event_version: REGISTRATION_MARKER_VERSION,
+          tracking_contract_version: 'consent_wait_v2',
+        },
+        {
+          insert_id: pending.registrationId,
+          time: pending.occurredAt,
+        },
+      )
+    } catch {
+      return
+    }
+    if (!trackResult) return
+
+    let result: { code?: unknown }
+    try {
+      result = await trackResult.promise
+    } catch {
+      return
+    }
+
+    if (
+      typeof result.code !== 'number' ||
+      result.code < SUCCESSFUL_TRACK_RESULT_MIN ||
+      result.code > SUCCESSFUL_TRACK_RESULT_MAX
+    )
+      return
+
+    let currentRaw: string | null
+    try {
+      currentRaw = storage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)
+    } catch {
+      return
+    }
+    if (currentRaw !== raw) continue
+
+    removeStoredMarker(storage)
+    return
+  }
+}
+
+export const flushRegistrationSuccess = () => {
+  if (activeFlush) return activeFlush
+
+  activeFlush = runRegistrationFlush().finally(() => {
+    activeFlush = null
+  })
+  return activeFlush
 }

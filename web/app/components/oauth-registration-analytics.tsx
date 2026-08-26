@@ -2,9 +2,13 @@
 
 import Cookies from 'js-cookie'
 import { useEffect, useRef } from 'react'
+import { useAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
 import { useSearchParams } from '@/next/navigation'
 import { sendGAEvent } from '@/utils/gtag'
-import { rememberRegistrationSuccess } from './base/amplitude/registration-tracking'
+import {
+  normalizeRegistrationAttribution,
+  rememberRegistrationSuccess,
+} from './base/amplitude/registration-tracking'
 
 const OAUTH_NEW_USER_PARAM = 'oauth_new_user'
 
@@ -18,46 +22,67 @@ const removeOAuthNewUserParam = () => {
 }
 
 export function OAuthRegistrationAnalytics() {
+  const analyticsConsent = useAnalyticsConsent()
   const searchParams = useSearchParams()
   const oauthNewUserParam = searchParams.get(OAUTH_NEW_USER_PARAM)
-  const handledParamRef = useRef<string | null>(null)
+  const gaHandledRef = useRef(false)
+  const amplitudeHandledRef = useRef(false)
+  const cleanedRef = useRef(false)
+  const utmInfoRef = useRef<ReturnType<typeof normalizeRegistrationAttribution> | undefined>(
+    undefined,
+  )
 
   useEffect(() => {
-    if (oauthNewUserParam === null || handledParamRef.current === oauthNewUserParam) return
+    if (oauthNewUserParam === null) return
 
-    handledParamRef.current = oauthNewUserParam
     const oauthNewUser = oauthNewUserParam === 'true'
     if (!oauthNewUser) {
-      removeOAuthNewUserParam()
+      if (!cleanedRef.current) {
+        cleanedRef.current = true
+        Cookies.remove('utm_info')
+        removeOAuthNewUserParam()
+      }
       return
     }
 
-    let utmInfo: Record<string, unknown> | null = null
-    const utmInfoStr = Cookies.get('utm_info')
-    if (utmInfoStr) {
-      try {
-        const parsed: unknown = JSON.parse(utmInfoStr)
-        if (isRecord(parsed)) utmInfo = parsed
-      } catch (e) {
-        console.error('Failed to parse utm_info cookie:', e)
+    if (utmInfoRef.current === undefined) {
+      let parsedUtmInfo: Record<string, unknown> | null = null
+      const utmInfoStr = Cookies.get('utm_info')
+      if (utmInfoStr) {
+        try {
+          const parsed: unknown = JSON.parse(utmInfoStr)
+          if (isRecord(parsed)) parsedUtmInfo = parsed
+        } catch (e) {
+          console.error('Failed to parse utm_info cookie:', e)
+        }
       }
+      utmInfoRef.current = normalizeRegistrationAttribution(parsedUtmInfo)
     }
+    const utmInfo = utmInfoRef.current
 
     const eventName = utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success'
 
-    // Defer the Amplitude event until the user ID is attached. The app context
-    // external sync replays it after setUserId runs. Firing it here would record it under an
-    // anonymous Amplitude profile (no user ID set yet).
-    rememberRegistrationSuccess({ method: 'oauth', utmInfo })
+    if (!gaHandledRef.current) {
+      gaHandledRef.current = true
+      sendGAEvent(eventName, {
+        method: 'oauth',
+        ...utmInfo,
+      })
+    }
 
-    sendGAEvent(eventName, {
-      method: 'oauth',
-      ...utmInfo,
-    })
+    if (analyticsConsent === 'unknown') return
 
-    Cookies.remove('utm_info')
-    removeOAuthNewUserParam()
-  }, [oauthNewUserParam])
+    if (analyticsConsent === 'granted' && !amplitudeHandledRef.current) {
+      amplitudeHandledRef.current = true
+      rememberRegistrationSuccess({ method: 'oauth', utmInfo })
+    }
+
+    if (!cleanedRef.current) {
+      cleanedRef.current = true
+      Cookies.remove('utm_info')
+      removeOAuthNewUserParam()
+    }
+  }, [analyticsConsent, oauthNewUserParam])
 
   return null
 }
