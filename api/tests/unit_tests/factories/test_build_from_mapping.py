@@ -13,6 +13,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
 from core.workflow.file_reference import build_file_reference, parse_file_reference, resolve_file_record_id
 from extensions.storage.storage_type import StorageType
+from factories.file_factory.builders import _resolve_file_type
 from factories.file_factory.builders import build_from_mapping as _build_from_mapping
 from factories.file_factory.builders import build_from_mappings as _build_from_mappings
 from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig
@@ -485,7 +486,11 @@ def test_disallowed_extensions(file_records: FileRecords):
 
 
 def test_custom_file_type_uses_extension_validation_under_strict_mode(file_records: FileRecords):
-    """Custom form uploads are classified by the configured extension list."""
+    """Custom form uploads are classified by the configured extension list.
+
+    Strict MIME matching is skipped for the custom bucket, but the File still
+    carries the detected type so LLM nodes can read known formats (#41236).
+    """
     file_records.upload_file.extension = "txt"
     file_records.upload_file.name = "notes.txt"
     file_records.upload_file.mime_type = "text/plain"
@@ -508,4 +513,74 @@ def test_custom_file_type_uses_extension_validation_under_strict_mode(file_recor
         strict_type_validation=True,
     )
 
-    assert file.type == FileType.CUSTOM
+    assert file.type == FileType.DOCUMENT
+
+
+@pytest.mark.parametrize(
+    ("extension", "name", "mime_type", "expected_type"),
+    [
+        ("jpg", "photo.jpg", "image/jpeg", FileType.IMAGE),
+        ("pdf", "report.pdf", "application/pdf", FileType.DOCUMENT),
+        ("m4a", "notes.m4a", "audio/mp4", FileType.AUDIO),
+        ("mp4", "clip.mp4", "video/mp4", FileType.VIDEO),
+        ("wma", "meeting.wma", "audio/x-ms-wma", FileType.AUDIO),
+        ("xyz", "blob.xyz", "application/octet-stream", FileType.CUSTOM),
+    ],
+)
+def test_custom_bucket_preserves_detected_type_for_llm(
+    file_records: FileRecords,
+    extension: str,
+    name: str,
+    mime_type: str,
+    expected_type: FileType,
+):
+    """Other File Types is an upload bucket, not a prompt-content type.
+
+    Graphon LLM nodes skip ``FileType.CUSTOM``, so known files accepted through
+    that bucket must keep their detected image/document/audio/video type.
+    """
+    file_records.upload_file.extension = extension
+    file_records.upload_file.name = name
+    file_records.upload_file.mime_type = mime_type
+    file_records.session.commit()
+
+    custom_config = FileUploadConfig(
+        allowed_file_types=[FileType.CUSTOM],
+        allowed_file_extensions=[f".{extension}"],
+    )
+    mapping = {
+        "transfer_method": "local_file",
+        "upload_file_id": TEST_UPLOAD_FILE_ID,
+        "type": "custom",
+    }
+
+    file = build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID, config=custom_config)
+
+    assert file.type == expected_type
+    assert file.filename == name
+
+
+@pytest.mark.parametrize(
+    ("detected", "specified", "strict", "expected"),
+    [
+        (FileType.IMAGE, "custom", True, FileType.IMAGE),
+        (FileType.DOCUMENT, "custom", False, FileType.DOCUMENT),
+        (FileType.CUSTOM, "custom", True, FileType.CUSTOM),
+        (FileType.IMAGE, None, True, FileType.IMAGE),
+        (FileType.AUDIO, "audio", True, FileType.AUDIO),
+    ],
+)
+def test_resolve_file_type_custom_bucket_keeps_detected_type(
+    detected: FileType,
+    specified: str | None,
+    strict: bool,
+    expected: FileType,
+):
+    assert (
+        _resolve_file_type(
+            detected_file_type=detected,
+            specified_type=specified,
+            strict_type_validation=strict,
+        )
+        == expected
+    )
