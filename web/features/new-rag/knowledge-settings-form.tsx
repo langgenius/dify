@@ -24,6 +24,14 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
+import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@langgenius/dify-ui/number-field'
 import { Slider } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -1350,24 +1358,33 @@ export function KnowledgeSettingsForm({
                   {t(($) => $['newKnowledge.settings.topKLabel'])}
                 </label>
                 <div className="flex items-center gap-3">
-                  <Input
+                  <NumberField
                     id="knowledge-top-k"
-                    autoComplete="off"
                     name="knowledge-top-k"
-                    type="number"
                     min={TOP_K_MIN}
                     max={TOP_K_MAX}
+                    step={1}
                     value={topK}
                     disabled={retrievalFieldsDisabled}
-                    className="w-18 shrink-0"
-                    onBlur={() => void performSettingsSave(liveSettingsDraftRef.current)}
-                    onChange={(event) => {
-                      const nextTopK = clamp(Number(event.target.value), TOP_K_MIN, TOP_K_MAX)
+                    onValueChange={(value) => {
+                      const nextTopK = value ?? TOP_K_MIN
                       const draft = beginSettingsDraft({ topK: nextTopK })
                       setTopK(nextTopK)
                       scheduleSettingsSave(draft)
                     }}
-                  />
+                    onValueCommitted={() => void performSettingsSave(liveSettingsDraftRef.current)}
+                  >
+                    <NumberFieldGroup className="w-18 shrink-0">
+                      <NumberFieldInput
+                        aria-label={t(($) => $['newKnowledge.settings.topKLabel'])}
+                        autoComplete="off"
+                      />
+                      <NumberFieldControls>
+                        <NumberFieldIncrement />
+                        <NumberFieldDecrement />
+                      </NumberFieldControls>
+                    </NumberFieldGroup>
+                  </NumberField>
                   <Slider
                     aria-label={t(($) => $['newKnowledge.settings.topKLabel'])}
                     min={TOP_K_MIN}
@@ -1406,34 +1423,33 @@ export function KnowledgeSettingsForm({
                   </label>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Input
+                  <NumberField
                     id="knowledge-score-threshold"
-                    autoComplete="off"
                     name="knowledge-score-threshold"
-                    type="number"
                     min={SCORE_THRESHOLD_MIN}
                     max={SCORE_THRESHOLD_MAX}
                     step={0.01}
                     value={scoreThreshold}
                     disabled={retrievalFieldsDisabled || !scoreThresholdEnabled}
-                    className="w-18 shrink-0"
-                    onBlur={() => {
-                      const nextScoreThreshold = clamp(
-                        scoreThreshold,
-                        SCORE_THRESHOLD_MIN,
-                        SCORE_THRESHOLD_MAX,
-                      )
-                      const draft = beginSettingsDraft({ scoreThreshold: nextScoreThreshold })
-                      setScoreThreshold(nextScoreThreshold)
-                      void performSettingsSave(draft)
-                    }}
-                    onChange={(event) => {
-                      const nextScoreThreshold = Number(event.target.value)
+                    onValueChange={(value) => {
+                      const nextScoreThreshold = value ?? SCORE_THRESHOLD_MIN
                       const draft = beginSettingsDraft({ scoreThreshold: nextScoreThreshold })
                       setScoreThreshold(nextScoreThreshold)
                       scheduleSettingsSave(draft)
                     }}
-                  />
+                    onValueCommitted={() => void performSettingsSave(liveSettingsDraftRef.current)}
+                  >
+                    <NumberFieldGroup className="w-18 shrink-0">
+                      <NumberFieldInput
+                        aria-label={tAppDebug(($) => $['datasetConfig.score_threshold'])}
+                        autoComplete="off"
+                      />
+                      <NumberFieldControls>
+                        <NumberFieldIncrement />
+                        <NumberFieldDecrement />
+                      </NumberFieldControls>
+                    </NumberFieldGroup>
+                  </NumberField>
                   <Slider
                     aria-label={tAppDebug(($) => $['datasetConfig.score_threshold'])}
                     min={SCORE_THRESHOLD_MIN}

@@ -87,6 +87,10 @@ describe("parser adapters", () => {
           "const answer = 42;",
           "```",
           "",
+          "```",
+          "plain code block",
+          "```",
+          "",
           "| A | B |",
           "| - | - |",
           "| 1 | 2 |",
@@ -143,10 +147,67 @@ describe("parser adapters", () => {
         id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c45:element-5",
         metadata: {},
         sectionPath: ["Overview"],
+        text: "plain code block",
+        type: "code",
+      },
+      {
+        id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c45:element-6",
+        metadata: {},
+        sectionPath: ["Overview"],
         text: "A | B\n1 | 2",
         type: "table",
       },
     ]);
+  });
+
+  it.each(["text/mdx", "text/plain"])(
+    "preserves searchable text inside MDX JSX blocks declared as %s",
+    async (mimeType) => {
+      const parser = createNativeMarkdownParser({
+        generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c95",
+        now: () => createdAt,
+      });
+
+      const artifact = await parser.parse(
+        createParseInput({
+          body: [
+            "# Overview",
+            "",
+            '<Callout title="Important">',
+            "MDX keeps this searchable.",
+            "<strong>Nested detail</strong>",
+            "<script>ignored()</script>",
+            "</Callout>",
+          ].join("\n"),
+          filename: "guide.mdx",
+          mimeType,
+        }),
+      );
+
+      expect(artifact.elements.map((element) => element.text)).toEqual([
+        "Overview",
+        "MDX keeps this searchable.\nNested detail",
+      ]);
+      expect(artifact.metadata.parserVersion).toBe("native-mdx@1");
+    },
+  );
+
+  it("keeps plain Markdown raw HTML behavior and parser version unchanged", async () => {
+    const parser = createNativeMarkdownParser({
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c96",
+      now: () => createdAt,
+    });
+
+    const artifact = await parser.parse(
+      createParseInput({
+        body: ["<Callout>", "Plain Markdown keeps its existing behavior.", "</Callout>"].join("\n"),
+        filename: "guide.md",
+        mimeType: "text/markdown",
+      }),
+    );
+
+    expect(artifact.elements).toEqual([]);
+    expect(artifact.metadata.parserVersion).toBe("native-markdown@1");
   });
 
   it("normalizes Markdown image references into image parse elements", async () => {
@@ -541,8 +602,15 @@ describe("parser adapters", () => {
       mimeType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
       version: 1,
     });
+    await router.parse({
+      body: textBytes("%PDF-1.7"),
+      documentAssetId,
+      filename: "report.pdf",
+      mimeType: "text/plain",
+      version: 1,
+    });
 
-    expect(selected).toEqual(["markdown", "html", "unstructured"]);
+    expect(selected).toEqual(["markdown", "html", "unstructured", "unstructured"]);
   });
 
   it("routes by file size, OCR need, layout complexity, and language hints", async () => {
@@ -756,6 +824,31 @@ describe("parser adapters", () => {
     });
   });
 
+  it("uses the JSONL extension when the declared MIME type is application/json", async () => {
+    const parser = createNativeStructuredDataParser({
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c5d",
+      now: () => createdAt,
+    });
+
+    await expect(
+      parser.parse(
+        createParseInput({
+          body: '{"name":"Ada"}\n{"name":"Lin"}',
+          filename: "records.jsonl",
+          mimeType: "application/json",
+        }),
+      ),
+    ).resolves.toMatchObject({
+      elements: [
+        {
+          metadata: { columns: ["name"], format: "jsonl", rowCount: 2 },
+          text: "name\nAda\nLin",
+          type: "table",
+        },
+      ],
+    });
+  });
+
   it("routes structured data formats to the native structured parser", async () => {
     const selected: string[] = [];
     const structured = createNativeStructuredDataParser({
@@ -821,6 +914,36 @@ describe("parser adapters", () => {
     ).resolves.toMatchObject({
       metadata: { routeReason: "native-size-limit", routedParser: "unstructured" },
       parser: "unstructured",
+    });
+  });
+
+  it.each([
+    ["captions.vtt", "text/vtt"],
+    ["application.properties", "text/x-java-properties"],
+  ])("routes lightweight text format %s to the native text parser", async (filename, mimeType) => {
+    const router = createParserRouter({
+      html: createNativeHtmlParser(),
+      markdown: createNativeMarkdownParser(),
+      structured: createNativeStructuredDataParser(),
+      unstructured: {
+        kind: "unstructured",
+        parse: async () => {
+          throw new Error("lightweight text should not require Unstructured");
+        },
+      },
+    });
+
+    await expect(
+      router.parse(
+        createParseInput({
+          body: "first line\nsecond line",
+          filename,
+          mimeType,
+        }),
+      ),
+    ).resolves.toMatchObject({
+      metadata: { routeReason: "native-file-type", routedParser: "native-markdown" },
+      parser: "native-markdown",
     });
   });
 
@@ -1696,6 +1819,35 @@ describe("parser adapters", () => {
     expect(sleepCalls).toBe(0);
   });
 
+  it.each([0, 1])(
+    "uses the bounded default delay before retrying a transient provider failure (%d ms)",
+    async (retryDelayMs) => {
+      let fetchCalls = 0;
+      const parser = createUnstructuredParserClient({
+        endpoint: "https://unstructured.example.test",
+        fetch: async () => {
+          fetchCalls += 1;
+          return new Response(JSON.stringify([{ text: "Recovered", type: "NarrativeText" }]), {
+            status: fetchCalls === 1 ? 500 : 200,
+          });
+        },
+        maxRetries: 1,
+        retryDelayMs,
+      });
+
+      await expect(
+        parser.parse({
+          body: new Uint8Array([1]),
+          documentAssetId,
+          filename: "delayed-retry.pdf",
+          mimeType: "application/pdf",
+          version: 1,
+        }),
+      ).resolves.toMatchObject({ parser: "unstructured" });
+      expect(fetchCalls).toBe(2);
+    },
+  );
+
   it("preserves caller cancellation while an Unstructured request is active", async () => {
     const controller = new AbortController();
     let fetchStarted = false;
@@ -1722,6 +1874,102 @@ describe("parser adapters", () => {
 
     await waitForCondition(() => fetchStarted);
     controller.abort();
+
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+  });
+
+  it("rejects an Unstructured request whose caller signal is already aborted", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async () => new Response("[]"),
+    });
+
+    await expect(
+      parser.parse({
+        body: new Uint8Array([1]),
+        documentAssetId,
+        filename: "already-aborted.pdf",
+        mimeType: "application/pdf",
+        signal: controller.signal,
+        version: 1,
+      }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+  });
+
+  it("aborts an active Unstructured request when its deadline expires", async () => {
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async (input) => {
+        const request = input instanceof Request ? input : new Request(input);
+        return await new Promise<Response>((_resolve, reject) => {
+          request.signal.addEventListener("abort", () => reject(request.signal.reason), {
+            once: true,
+          });
+        });
+      },
+      requestTimeoutMs: 1,
+    });
+
+    await expect(
+      parser.parse({
+        body: new Uint8Array([1]),
+        documentAssetId,
+        filename: "timeout.pdf",
+        mimeType: "application/pdf",
+        version: 1,
+      }),
+    ).rejects.toThrow("Unstructured parser request timed out after requestTimeoutMs=1");
+  });
+
+  it("rejects a successful Unstructured response completed after its deadline", async () => {
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        return new Response(JSON.stringify([{ text: "Too late", type: "NarrativeText" }]));
+      },
+      requestTimeoutMs: 1,
+    });
+
+    await expect(
+      parser.parse({
+        body: new Uint8Array([1]),
+        documentAssetId,
+        filename: "late-success.pdf",
+        mimeType: "application/pdf",
+        version: 1,
+      }),
+    ).rejects.toThrow("Unstructured parser request timed out after requestTimeoutMs=1");
+  });
+
+  it("uses the standard AbortError when an abort event has no signal reason", async () => {
+    const controller = new AbortController();
+    let fetchStarted = false;
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async (input) => {
+        const request = input instanceof Request ? input : new Request(input);
+        fetchStarted = true;
+        return await new Promise<Response>((_resolve, reject) => {
+          request.signal.addEventListener("abort", () => reject(request.signal.reason), {
+            once: true,
+          });
+        });
+      },
+    });
+    const pending = parser.parse({
+      body: new Uint8Array([1]),
+      documentAssetId,
+      filename: "abort-event.pdf",
+      mimeType: "application/pdf",
+      signal: controller.signal,
+      version: 1,
+    });
+
+    await waitForCondition(() => fetchStarted);
+    controller.signal.dispatchEvent(new Event("abort"));
 
     await expect(pending).rejects.toMatchObject({ name: "AbortError" });
   });

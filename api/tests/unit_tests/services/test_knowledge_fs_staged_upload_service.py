@@ -265,10 +265,10 @@ def test_stage_persists_workspace_owned_upload(
     file_service.upload_file.assert_called_once_with(
         filename="guide.pdf",
         content=_BODY,
-        mimetype="application/octet-stream",
+        mimetype="application/pdf",
         user=account,
         tenant_id=_TENANT_ID,
-        source="datasets",
+        source="knowledge_fs",
         default_file_size_limit=15,
     )
     with sqlite_session_factory() as session:
@@ -278,13 +278,72 @@ def test_stage_persists_workspace_owned_upload(
 
 
 @pytest.mark.parametrize(
+    ("file_name", "content_type", "expected_content_type"),
+    [
+        ("report.pdf", "text/plain", "application/pdf"),
+        ("formatted.rtf", "text/rtf", "application/rtf"),
+        ("message.msg", "application/x-msg", "application/vnd.ms-outlook"),
+    ],
+)
+def test_stage_canonicalizes_content_type_from_the_supported_extension(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    file_name: str,
+    content_type: str,
+    expected_content_type: str,
+) -> None:
+    upload_file = _upload_file()
+    upload_file.name = file_name
+    upload_file.extension = file_name.rsplit(".", 1)[1]
+    upload_file.mime_type = expected_content_type
+    with sqlite_session_factory.begin() as session:
+        session.add(upload_file)
+    file_service = MagicMock()
+    file_service.upload_file.return_value = upload_file
+    monkeypatch.setattr(staged_upload_module, "FileService", lambda _: file_service)
+    service = KnowledgeFSStagedUploadService(
+        sqlite_session_factory,
+        facade=cast(KnowledgeFSDataFacade, MagicMock()),
+    )
+    account = cast(Account, SimpleNamespace(id=_ACCOUNT_ID))
+
+    response = service.stage(
+        tenant_id=_TENANT_ID,
+        account=account,
+        file_name=file_name,
+        content_type=content_type,
+        body=_BODY,
+        file_size_limit_mb=15,
+    )
+
+    assert response.content_type == expected_content_type
+    file_service.upload_file.assert_called_once_with(
+        filename=file_name,
+        content=_BODY,
+        mimetype=expected_content_type,
+        user=account,
+        tenant_id=_TENANT_ID,
+        source="knowledge_fs",
+        default_file_size_limit=15,
+    )
+
+
+@pytest.mark.parametrize(
     ("file_name", "content_type", "body"),
     [
         ("notes.txt", "text/plain", b"KnowledgeFS notes"),
         ("guide.md", "text/markdown", b"# KnowledgeFS guide"),
+        ("README.markdown", "text/markdown", b"# KnowledgeFS guide"),
+        ("component.mdx", "text/mdx", b"# KnowledgeFS component"),
+        ("captions.vtt", "text/vtt", b"WEBVTT\n\n00:00.000 --> 00:01.000\nKnowledgeFS"),
+        ("application.properties", "text/x-java-properties", b"knowledge.fs=enabled"),
+        ("feed.xml", "application/xml", b"<knowledge>KnowledgeFS</knowledge>"),
+        ("manual.odt", "application/vnd.oasis.opendocument.text", b"odt"),
+        ("message.eml", "message/rfc822", b"Subject: KnowledgeFS\n\nBody"),
+        ("message.msg", "application/vnd.ms-outlook", b"msg"),
     ],
 )
-def test_stage_accepts_supported_text_files_with_the_real_file_service(
+def test_stage_accepts_knowledge_fs_document_formats_with_the_real_file_service(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     file_name: str,
@@ -320,6 +379,34 @@ def test_stage_accepts_supported_text_files_with_the_real_file_service(
         persisted = session.get(KnowledgeFSStagedUpload, response.id)
         assert persisted is not None
         assert persisted.upload_file_id
+
+
+@pytest.mark.parametrize("file_name", ["malware.exe", "md"])
+def test_stage_rejects_an_unsupported_filename_with_the_real_file_service(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, file_name: str
+) -> None:
+    backend = FakeStorage()
+    monkeypatch.setattr(file_service_module, "storage", backend)
+    monkeypatch.setattr(staged_upload_module, "storage", backend)
+    monkeypatch.setattr(file_service_module.file_helpers, "get_signed_file_url", lambda **_: "signed")
+    account = Account(name="KnowledgeFS tester", email="knowledge-fs@example.com")
+    account.id = _ACCOUNT_ID
+    service = KnowledgeFSStagedUploadService(
+        sqlite_session_factory,
+        facade=cast(KnowledgeFSDataFacade, MagicMock()),
+    )
+
+    with pytest.raises(KnowledgeFSStagedUploadInvalidError, match="invalid"):
+        service.stage(
+            tenant_id=_TENANT_ID,
+            account=account,
+            file_name=file_name,
+            content_type="application/octet-stream",
+            body=b"not executable content",
+            file_size_limit_mb=15,
+        )
+
+    assert backend.objects == {}
 
 
 def test_stage_rejects_empty_and_maps_file_service_errors(

@@ -253,7 +253,7 @@
   "newKnowledge.documentUploadExclusion.quota": "ເກີນໂຄຕ້າພື້ນທີ່ເຮັດວຽກ",
   "newKnowledge.documentUploadExclusion.target": "ເປົ້າໝາຍເອກະສານບໍ່ຖືກຕ້ອງອີກຕໍ່ໄປ",
   "newKnowledge.documentUploadFailed": "ພວກເຮົາບໍ່ສາມາດອັບໂຫລດເອກະສານເຫຼົ່ານີ້ໄດ້. ລອງອີກຄັ້ງ.",
-  "newKnowledge.documentUploadFormats": "ຮອງຮັບ TXT, Markdown, PDF, HTML, XLSX, CSV ແລະ JSONL · ສູງສຸດ 15 MB ຕໍ່ໄຟລ໌",
+  "newKnowledge.documentUploadFormats": "ຮອງຮັບຂໍ້ຄວາມ, Markdown, HTML, PDF, Office, EPUB, ອີເມວ ແລະຂໍ້ມູນທີ່ມີໂຄງສ້າງ (CSV, JSON/JSONL, XML) · ສູງສຸດ 15 MB ຕໍ່ໄຟລ໌",
   "newKnowledge.documentUploadPartial": "ເອກະສານ {{accepted}} ລາຍການເລີ່ມແລ້ວ; ບໍ່ສາມາດເພີ່ມ {{excluded}} ລາຍການໄດ້: {{details}}",
   "newKnowledge.documentUploadRejected": "ບໍ່ມີເອກະສານໄດ້ຮັບການຍອມຮັບ: {{details}}",
   "newKnowledge.documentUploadStarted": "ການປະມວນຜົນເອກະສານໄດ້ເລີ່ມຕົ້ນ.",

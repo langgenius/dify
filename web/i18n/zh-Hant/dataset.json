@@ -263,7 +263,7 @@
   "newKnowledge.documentUploadExclusion.quota": "超出工作區配額",
   "newKnowledge.documentUploadExclusion.target": "文件目標已失效",
   "newKnowledge.documentUploadFailed": "無法上傳這些文件，請再試一次。",
-  "newKnowledge.documentUploadFormats": "支援 TXT、Markdown、PDF、HTML、XLSX、CSV 和 JSONL · 每個檔案不超過 15 MB",
+  "newKnowledge.documentUploadFormats": "支援文字、Markdown、HTML、PDF、Office、EPUB、郵件及結構化資料（CSV、JSON/JSONL、XML）· 每個檔案不超過 15 MB",
   "newKnowledge.documentUploadPartial": "已開始處理 {{accepted}} 個文件；{{excluded}} 個無法新增：{{details}}",
   "newKnowledge.documentUploadRejected": "未接受任何文件：{{details}}",
   "newKnowledge.documentUploadStarted": "文件處理已開始。",

@@ -32,6 +32,33 @@ from services.knowledge_fs.product_dto import (
 )
 
 STAGED_UPLOAD_TTL = timedelta(hours=24)
+_KNOWLEDGE_FS_DOCUMENT_MIME_TYPES = {
+    "csv": "text/csv",
+    "doc": "application/msword",
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "eml": "message/rfc822",
+    "epub": "application/epub+zip",
+    "htm": "text/html",
+    "html": "text/html",
+    "json": "application/json",
+    "jsonl": "application/x-ndjson",
+    "markdown": "text/markdown",
+    "md": "text/markdown",
+    "mdx": "text/mdx",
+    "msg": "application/vnd.ms-outlook",
+    "odt": "application/vnd.oasis.opendocument.text",
+    "pdf": "application/pdf",
+    "ppt": "application/vnd.ms-powerpoint",
+    "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "properties": "text/x-java-properties",
+    "rtf": "application/rtf",
+    "text": "text/plain",
+    "txt": "text/plain",
+    "vtt": "text/vtt",
+    "xls": "application/vnd.ms-excel",
+    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "xml": "application/xml",
+}
 
 
 class KnowledgeFSStagedUploadError(ValueError):
@@ -78,7 +105,12 @@ class KnowledgeFSStagedUploadService:
     ) -> KnowledgeFSStagedUploadResponse:
         if not body:
             raise KnowledgeFSStagedUploadInvalidError("KnowledgeFS staged upload is empty")
-        normalized_content_type = content_type.strip() or "application/octet-stream"
+        _, separator, extension = file_name.strip().lower().rpartition(".")
+        if not separator or extension not in _KNOWLEDGE_FS_DOCUMENT_MIME_TYPES:
+            raise KnowledgeFSStagedUploadInvalidError("KnowledgeFS staged upload is invalid")
+        # Browser/OS MIME declarations are inconsistent and can route a binary document through a
+        # text parser. The admitted extension is the product contract, so persist its canonical MIME.
+        normalized_content_type = _KNOWLEDGE_FS_DOCUMENT_MIME_TYPES[extension]
         checksum = b64encode(sha256(body).digest()).decode()
         try:
             upload_file = FileService(self._session_maker).upload_file(
@@ -87,7 +119,7 @@ class KnowledgeFSStagedUploadService:
                 mimetype=normalized_content_type,
                 user=account,
                 tenant_id=tenant_id,
-                source="datasets",
+                source="knowledge_fs",
                 default_file_size_limit=file_size_limit_mb,
             )
         except FileTooLargeError as exc:

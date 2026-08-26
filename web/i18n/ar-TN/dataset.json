@@ -260,7 +260,7 @@
   "newKnowledge.documentUploadExclusion.quota": "تم تجاوز حصة مساحة العمل",
   "newKnowledge.documentUploadExclusion.target": "لم يعد هدف المستند صالحًا",
   "newKnowledge.documentUploadFailed": "لم نتمكن من تحميل هذه المستندات. حاول ثانية.",
-  "newKnowledge.documentUploadFormats": "يدعم TXT وMarkdown وPDF وHTML وXLSX وCSV وJSONL · حتى 15 ميغابايت لكل ملف",
+  "newKnowledge.documentUploadFormats": "يدعم النصوص وMarkdown وHTML وPDF وOffice وEPUB والبريد الإلكتروني والبيانات المنظمة (CSV وJSON/JSONL وXML) · حتى 15 ميغابايت لكل ملف",
   "newKnowledge.documentUploadPartial": "بدأت معالجة {{accepted}} مستندًا؛ تعذرت إضافة {{excluded}}: {{details}}",
   "newKnowledge.documentUploadRejected": "لم يتم قبول أي مستند: {{details}}",
   "newKnowledge.documentUploadStarted": "بدأت معالجة المستندات.",

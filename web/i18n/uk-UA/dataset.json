@@ -260,7 +260,7 @@
   "newKnowledge.documentUploadExclusion.quota": "перевищено квоту робочої області",
   "newKnowledge.documentUploadExclusion.target": "ціль документа більше недійсна",
   "newKnowledge.documentUploadFailed": "Нам не вдалося завантажити ці документи. Спробуйте знову.",
-  "newKnowledge.documentUploadFormats": "Підтримуються TXT, Markdown, PDF, HTML, XLSX, CSV і JSONL · до 15 МБ на файл",
+  "newKnowledge.documentUploadFormats": "Підтримуються текст, Markdown, HTML, PDF, Office, EPUB, електронна пошта та структуровані дані (CSV, JSON/JSONL, XML) · до 15 МБ на файл",
   "newKnowledge.documentUploadPartial": "Розпочато обробку {{accepted}} документів; не вдалося додати {{excluded}}: {{details}}",
   "newKnowledge.documentUploadRejected": "Жодного документа не прийнято: {{details}}",
   "newKnowledge.documentUploadStarted": "Розпочато обробку документів.",

@@ -126,6 +126,25 @@ describe('PermissionSelector', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
+  it('can keep access configuration enabled when RBAC is handled by the caller', async () => {
+    const user = userEvent.setup()
+    renderSelector({ disableWhenRbacEnabled: false }, { rbacEnabled: true })
+
+    const trigger = screen.getByRole('button', { name: /permissionsOnlyMe/ })
+    expect(trigger).toBeEnabled()
+
+    await user.click(trigger)
+    expect(screen.getByRole('dialog', { name: /form.permissions/ })).toBeInTheDocument()
+  })
+
+  it('exposes validation state and its accessible description on the trigger', () => {
+    renderSelector({ ariaDescribedBy: 'permission-error', invalid: true })
+
+    const trigger = screen.getByRole('button', { name: /permissionsOnlyMe/ })
+    expect(trigger).toHaveAttribute('aria-invalid', 'true')
+    expect(trigger).toHaveAttribute('aria-describedby', 'permission-error')
+  })
+
   it.each([
     [DatasetPermission.onlyMe, /permissionsOnlyMe/],
     [DatasetPermission.allTeamMembers, /permissionsAllMember/],
