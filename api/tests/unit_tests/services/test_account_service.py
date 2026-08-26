@@ -980,6 +980,35 @@ class TestTenantService:
             operator_account_id="operator-1",
         )
 
+    def test_create_tenant_member_does_not_queue_pending_member_rbac_sync(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        """Pending invited members are synced after activation, not at invitation time."""
+        import tasks.initialize_created_app_rbac_access_task as rbac_task_module
+
+        delay = MagicMock()
+        with sqlite_session_factory() as service_session:
+            tenant = Tenant(name="Test Workspace")
+            account = Account(name="Test User", email="test@example.com", status=AccountStatus.PENDING)
+            service_session.add_all([tenant, account])
+            service_session.flush()
+            service_session.commit()
+
+            with (
+                patch("services.account_service.dify_config.RBAC_ENABLED", True),
+                patch.object(rbac_task_module.sync_joined_workspace_member_rbac_access_task, "delay", delay),
+            ):
+                TenantService.create_tenant_member(
+                    tenant,
+                    account,
+                    service_session,
+                    "normal",
+                    operator_account_id="operator-1",
+                )
+
+        delay.assert_not_called()
+
     # ==================== Member Removal Tests ====================
 
     def test_remove_pending_member_deletes_orphaned_account(

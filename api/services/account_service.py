@@ -82,7 +82,6 @@ from services.errors.workspace import WorkSpaceNotAllowedCreateError, Workspaces
 from services.feature_service import FeatureService
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from services.telemetry_service import CommunityTelemetryService
-from tasks.initialize_created_app_rbac_access_task import sync_joined_workspace_member_rbac_access_task
 from tasks.mail_change_mail_task import (
     send_change_mail_completed_notification_task,
     send_change_mail_task,
@@ -1349,7 +1348,14 @@ class TenantService:
         session.commit()
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             BillingService.clean_billing_info_cache(tenant.id)
-        if membership_created and dify_config.RBAC_ENABLED and TenantAccountRole(role) != TenantAccountRole.OWNER:
+        if (
+            membership_created
+            and dify_config.RBAC_ENABLED
+            and TenantAccountRole(role) != TenantAccountRole.OWNER
+            and account.status != AccountStatus.PENDING
+        ):
+            from tasks.initialize_created_app_rbac_access_task import sync_joined_workspace_member_rbac_access_task
+
             sync_joined_workspace_member_rbac_access_task.delay(
                 str(tenant.id),
                 str(account.id),
