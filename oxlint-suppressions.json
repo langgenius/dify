@@ -2403,11 +2403,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/settings/form/components/basic-info-section.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/settings/option-card.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
