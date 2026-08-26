@@ -12,7 +12,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
@@ -58,7 +58,7 @@ export function DuplicateAgentDialog({
       }),
     ) ?? agent
   const [renderedFormKey, setRenderedFormKey] = useState(formKey)
-  const [name, setName] = useState('')
+  const [name, setName] = useState(() => getDefaultCopyName(latestAgent.name))
   const [description, setDescription] = useState(latestAgent.description ?? '')
   const [role, setRole] = useState(latestAgent.role ?? '')
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
@@ -68,11 +68,9 @@ export function DuplicateAgentDialog({
   const duplicateAgentMutation = useMutation(
     consoleQuery.agent.byAgentId.copy.post.mutationOptions(),
   )
-  const defaultCopyName = getDefaultCopyName(latestAgent.name)
-
   if (formKey !== renderedFormKey) {
     setRenderedFormKey(formKey)
-    setName('')
+    setName(getDefaultCopyName(latestAgent.name))
     setDescription(latestAgent.description ?? '')
     setRole(latestAgent.role ?? '')
     setIconPickerOpen(false)
@@ -91,7 +89,7 @@ export function DuplicateAgentDialog({
             },
           }),
         ) ?? agent
-      setName('')
+      setName(getDefaultCopyName(currentAgent.name))
       setDescription(currentAgent.description ?? '')
       setRole(currentAgent.role ?? '')
       setAgentIcon(createAgentIconSelection(currentAgent))
@@ -107,12 +105,12 @@ export function DuplicateAgentDialog({
     const trimmedName = formValues.name?.trim() ?? ''
     const trimmedRole = formValues.role?.trim() ?? ''
     const body: AgentAppCopyPayload = {
+      name: trimmedName,
       description: formValues.description?.trim() ?? '',
       role: trimmedRole,
       icon_type: agentIcon.type,
       icon: agentIcon.type === 'image' ? agentIcon.fileId : agentIcon.icon,
       icon_background: agentIcon.type === 'emoji' ? agentIcon.background : undefined,
-      ...(trimmedName ? { name: trimmedName } : {}),
     }
 
     duplicateAgentMutation.mutate(
@@ -180,22 +178,33 @@ export function DuplicateAgentDialog({
                   />
                 </button>
                 <div className="flex min-w-0 flex-1 gap-3 pb-1">
-                  <Field name="name" className="relative min-w-0 flex-1">
-                    <FieldLabel>
-                      {t(($) => $['roster.createForm.nameLabel'])}
-                      <span className="ml-1 system-xs-regular text-text-tertiary">
-                        {tCommon(($) => $['label.optional'])}
-                      </span>
-                    </FieldLabel>
+                  <Field
+                    name="name"
+                    className="relative min-w-0 flex-1"
+                    validate={(value) => {
+                      if (typeof value === 'string' && value.length > 0 && !value.trim())
+                        return t(($) => $['roster.createForm.nameRequired'])
+
+                      return null
+                    }}
+                  >
+                    <FieldLabel>{t(($) => $['roster.createForm.nameLabel'])}</FieldLabel>
                     <Input
                       autoComplete="off"
                       // oxlint-disable-next-line jsx-a11y/no-autofocus -- The duplicate dialog opens from an explicit command, and naming the copy is the primary editable action.
                       autoFocus
                       maxLength={255}
                       onValueChange={setName}
-                      placeholder={defaultCopyName}
+                      placeholder={t(($) => $['roster.createForm.namePlaceholder'])}
+                      required
                       value={name}
                     />
+                    <div className="absolute top-full left-0 mt-1">
+                      <FieldError match="valueMissing">
+                        {t(($) => $['roster.createForm.nameRequired'])}
+                      </FieldError>
+                      <FieldError match="customError" />
+                    </div>
                   </Field>
                   <Field name="role" className="relative min-w-0 flex-1">
                     <FieldLabel>

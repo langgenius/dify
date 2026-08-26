@@ -102,7 +102,7 @@ Tất cả các dịch vụ của Dify đều đi kèm với các API tương �
 
 Yêu thích Dify trên GitHub và được thông báo ngay lập tức về các bản phát hành mới.
 
-![star-us](https://github.com/langgenius/dify/assets/13230914/b823edc1-6388-4e25-ad45-2f6b187adbb4)
+<img width="1344" height="720" alt="star" src="https://github.com/user-attachments/assets/dcd086d1-af0f-471b-ae52-1ad2fa040595" />
 
 ## Bắt đầu nhanh
 
@@ -127,81 +127,31 @@ Sau khi chạy, bạn có thể truy cập bảng điều khiển Dify trong tr�
 
 ## Các bước tiếp theo
 
-Nếu bạn cần tùy chỉnh cấu hình, vui lòng tham khảo các nhận xét trong tệp [.env.example](../../docker/.env.example) của chúng tôi và cập nhật các giá trị tương ứng trong tệp `.env` của bạn. Ngoài ra, bạn có thể cần điều chỉnh tệp `docker-compose.yaml`, chẳng hạn như thay đổi phiên bản hình ảnh, ánh xạ cổng hoặc gắn kết khối lượng, dựa trên môi trường triển khai cụ thể và yêu cầu của bạn. Sau khi thực hiện bất kỳ thay đổi nào, vui lòng chạy lại `docker-compose up -d`. Bạn có thể tìm thấy danh sách đầy đủ các biến môi trường có sẵn [tại đây](https://docs.dify.ai/getting-started/install-self-hosted/environments).
-
-### Giám sát Số liệu với Grafana
-
-Nhập bảng điều khiển vào Grafana, sử dụng cơ sở dữ liệu PostgreSQL của Dify làm nguồn dữ liệu, để giám sát số liệu theo mức độ chi tiết của ứng dụng, người thuê, tin nhắn và hơn thế nữa.
-
-- [Bảng điều khiển Grafana của @bowenliang123](https://github.com/bowenliang123/dify-grafana-dashboard)
-
-### Triển khai với Kubernetes
-
-Nếu bạn muốn cấu hình một cài đặt có độ sẵn sàng cao, có các [Helm Charts](https://helm.sh/) và tệp YAML do cộng đồng đóng góp cho phép Dify được triển khai trên Kubernetes.
-
-- [Helm Chart bởi @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
-- [Helm Chart bởi @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
-- [Tệp YAML bởi @Winson-030](https://github.com/Winson-030/dify-kubernetes)
-- [Tệp YAML bởi @wyy-holding](https://github.com/wyy-holding/dify-k8s)
-- [🚀 MỚI! Tệp YAML (Hỗ trợ Dify v1.6.0) bởi @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
-
-#### Sử dụng Terraform để Triển khai
-
-Triển khai Dify lên nền tảng đám mây với một cú nhấp chuột bằng cách sử dụng [terraform](https://www.terraform.io/)
-
-##### Azure Global
-
-- [Azure Terraform bởi @nikawang](https://github.com/nikawang/dify-azure-terraform)
-
-##### Google Cloud
-
-- [Google Cloud Terraform bởi @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
-
-#### Sử dụng AWS CDK để Triển khai
-
-Triển khai Dify trên AWS bằng [CDK](https://aws.amazon.com/cdk/)
-
-##### AWS
-
-- [AWS CDK bởi @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
-- [AWS CDK bởi @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
-
-#### Alibaba Cloud
-
-[Alibaba Cloud Computing Nest](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88)
-
-#### Alibaba Cloud Data Management
-
-Triển khai Dify lên Alibaba Cloud chỉ với một cú nhấp chuột bằng [Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/)
-
-#### Sử dụng Azure Devops Pipeline để Triển khai lên AKS
-
-Triển khai Dify lên AKS chỉ với một cú nhấp chuột bằng [Azure Devops Pipeline Helm Chart bởi @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)
-
-#### Triển khai với Sealos
-
-Triển khai Dify chỉ với một cú nhấp chuột từ [Sealos App Store](https://sealos.io/products/app-store/dify/)
+Để biết các tùy chọn cấu hình tùy chỉnh, khả năng quan sát và triển khai, hãy xem [Thiết lập nâng cao](ADVANCED_SETUP.md).
 
 ## Đóng góp
 
-Đối với những người muốn đóng góp mã, xem [Hướng dẫn Đóng góp](./CONTRIBUTING.md) của chúng tôi.
-Đồng thời, vui lòng xem xét hỗ trợ Dify bằng cách chia sẻ nó trên mạng xã hội và tại các sự kiện và hội nghị.
+Dify chào đón mọi hình thức đóng góp:
 
-> Chúng tôi đang tìm kiếm người đóng góp để giúp dịch Dify sang các ngôn ngữ khác ngoài tiếng Trung hoặc tiếng Anh. Nếu bạn quan tâm đến việc giúp đỡ, vui lòng xem [README i18n](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) để biết thêm thông tin và để lại bình luận cho chúng tôi trong kênh `global-users` của [Máy chủ Cộng đồng Discord](https://discord.gg/8Tpq4AcN9c) của chúng tôi.
+- **Mã nguồn**: đọc [Hướng dẫn đóng góp](./CONTRIBUTING.md), sau đó xem các [issue phù hợp cho người mới](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
+- **Ý tưởng và phản hồi**: bắt đầu hoặc tham gia một [thảo luận trên GitHub](https://github.com/langgenius/dify/discussions).
+- **Bản dịch**: làm theo [hướng dẫn quốc tế hóa](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) để thêm hoặc cập nhật một ngôn ngữ.
+- **Cộng đồng**: chia sẻ ứng dụng bạn xây dựng, hỗ trợ người dùng khác và giới thiệu Dify đến nhiều người hơn.
 
-**Người đóng góp**
+### Người đóng góp
 
 <a href="https://github.com/langgenius/dify/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=langgenius/dify" />
+  <img alt="Dify contributors" src="https://contrib.rocks/image?repo=langgenius/dify" />
 </a>
 
-## Cộng đồng & liên hệ
+## Cộng đồng và liên hệ
 
-- [Thảo luận GitHub](https://github.com/langgenius/dify/discussions). Tốt nhất cho: chia sẻ phản hồi và đặt câu hỏi.
-- [Vấn đề GitHub](https://github.com/langgenius/dify/issues). Tốt nhất cho: lỗi bạn gặp phải khi sử dụng Dify.AI và đề xuất tính năng. Xem [Hướng dẫn Đóng góp](./CONTRIBUTING.md) của chúng tôi.
-- [Discord](https://discord.gg/FngNHpbcY7). Tốt nhất cho: chia sẻ ứng dụng của bạn và giao lưu với cộng đồng.
-- [X(Twitter)](https://twitter.com/dify_ai). Tốt nhất cho: chia sẻ ứng dụng của bạn và giao lưu với cộng đồng.
+Chọn kênh phù hợp nhất với câu hỏi của bạn:
 
+- [GitHub Discussions](https://github.com/langgenius/dify/discussions): nhận trợ giúp, chia sẻ phản hồi và đề xuất ý tưởng.
+- [GitHub Issues](https://github.com/langgenius/dify/issues): báo cáo lỗi có thể tái hiện và theo dõi công việc kỹ thuật. Đọc [Hướng dẫn đóng góp](./CONTRIBUTING.md) trước khi mở issue.
+- [Discord](https://discord.gg/FngNHpbcY7): trò chuyện theo thời gian thực, chia sẻ ứng dụng và kết nối với những người dùng Dify khác.
+- [X](https://x.com/dify_ai): theo dõi tin tức phát hành và cập nhật dự án.
 ## Lịch sử Yêu thích
 
 [![Biểu đồ Lịch sử Yêu thích](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)

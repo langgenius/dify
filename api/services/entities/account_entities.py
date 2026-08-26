@@ -184,6 +184,11 @@ class AccountEducationVerification:
 
 
 @dataclass(frozen=True, slots=True)
+class AccountEducationActivation:
+    message: str
+
+
+@dataclass(frozen=True, slots=True)
 class AccountEducationStatus:
     result: bool | None
     is_student: bool | None

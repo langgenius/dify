@@ -3,6 +3,7 @@ from collections.abc import Mapping
 from typing import Any, Protocol, override
 
 from flask import Blueprint, Flask, current_app, got_request_exception, request
+from flask.typing import ResponseReturnValue
 from flask_restx import Api
 from werkzeug.exceptions import HTTPException
 from werkzeug.http import HTTP_STATUS_CODES
@@ -156,9 +157,11 @@ class ExternalApi(Api):
         app: Blueprint | Flask,
         *args,
         error_body_formatter: ErrorBodyFormatter | None = None,
+        register_default_root: bool = True,
         **kwargs,
     ):
         self._error_body_formatter = error_body_formatter
+        self._register_default_root = register_default_root
         install_swagger_compatibility()
         kwargs.setdefault("authorizations", self._authorizations)
         kwargs.setdefault("security", "Bearer")
@@ -176,6 +179,20 @@ class ExternalApi(Api):
         super().__init__(app=None, *args, **kwargs)
         self.init_app(app, **kwargs)
         register_external_error_handlers(self, body_formatter=error_body_formatter)
+
+    @override
+    def _register_doc(self, app_or_blueprint: Blueprint | Flask) -> None:
+        if self._add_specs and self._doc:
+            app_or_blueprint.add_url_rule(self._doc, "doc", self.render_doc)
+        # Api.base_path resolves the ``root`` endpoint. A caller that disables
+        # Flask-RESTX's 404 root must register its own resource with that endpoint.
+        if self._register_default_root:
+
+            def render_default_root() -> ResponseReturnValue:
+                self.render_root()
+                return "", 404
+
+            app_or_blueprint.add_url_rule(self.prefix or "/", "root", render_default_root)
 
     @override
     def _should_use_fr_error_handler(self):

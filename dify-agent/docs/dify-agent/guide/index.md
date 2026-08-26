@@ -226,11 +226,13 @@ Agent run deadline owns the terminal `agent_run_limit_exceeded` failure.
 
 Run the disposable Local contract from the `dify-agent` directory. The script
 starts one local-sandbox container on an unused port and removes that exact
-container on exit:
+container on exit. It intentionally has no image fallback: provide a Local
+Sandbox image built from the same commit as the code under test so an older
+shellctl implementation cannot make the lifecycle contract pass incorrectly:
 
 ```bash
 cd dify-agent
-DIFY_AGENT_TEST_LOCAL_SANDBOX_IMAGE=langgenius/dify-agent-local-sandbox:1.16.0 \
+DIFY_AGENT_TEST_LOCAL_SANDBOX_IMAGE=<same-commit-local-sandbox-image> \
   tests/integration/dify_agent/runtime_backend/run_local_integration.sh
 ```
 

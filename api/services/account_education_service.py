@@ -1,31 +1,37 @@
 """Application service for account education-discount use cases."""
 
-from typing import Any, Protocol
+from typing import Protocol
 
 from machinery.context import RequestContext
 from machinery.errors import ActiveWorkspaceRequiredError
-from services.account_errors import AccountNotFoundError
+from services.account_errors import AccountNotFoundError, EducationRateLimitExceededError
 from services.account_ports import AccountRepository
 from services.entities.account_entities import (
+    AccountEducationActivation,
     AccountEducationAutocomplete,
     AccountEducationStatus,
     AccountEducationVerification,
 )
 
 
+class AccountEducationRateLimiter(Protocol):
+    def is_rate_limited(self, key: str, /) -> bool: ...
+
+    def increment_rate_limit(self, key: str, /) -> None: ...
+
+
 class AccountEducationGateway(Protocol):
-    def verify(self, *, account_id: str, email: str) -> AccountEducationVerification: ...
+    def verify(self, *, account_id: str) -> AccountEducationVerification: ...
 
     def activate(
         self,
         *,
         account_id: str,
-        email: str,
         tenant_id: str,
         token: str,
         institution: str,
         role: str,
-    ) -> dict[str, Any] | None: ...
+    ) -> AccountEducationActivation: ...
 
     def status(self, account_id: str) -> AccountEducationStatus: ...
 
@@ -38,15 +44,22 @@ class AccountEducationService:
         *,
         accounts: AccountRepository,
         education: AccountEducationGateway,
+        verification_rate_limiter: AccountEducationRateLimiter,
+        activation_rate_limiter: AccountEducationRateLimiter,
     ) -> None:
         self._accounts = accounts
         self._education = education
+        self._verification_rate_limiter = verification_rate_limiter
+        self._activation_rate_limiter = activation_rate_limiter
 
     def verify(self, context: RequestContext) -> AccountEducationVerification:
         account = self._accounts.get(context.account_id)
         if account is None:
             raise AccountNotFoundError
-        return self._education.verify(account_id=account.id, email=account.email)
+        if self._verification_rate_limiter.is_rate_limited(account.email):
+            raise EducationRateLimitExceededError
+        self._verification_rate_limiter.increment_rate_limit(account.email)
+        return self._education.verify(account_id=account.id)
 
     def activate(
         self,
@@ -55,15 +68,17 @@ class AccountEducationService:
         token: str,
         institution: str,
         role: str,
-    ) -> dict[str, Any] | None:
+    ) -> AccountEducationActivation:
         account = self._accounts.get(context.account_id)
         if account is None:
             raise AccountNotFoundError
         if context.active_workspace_id is None:
             raise ActiveWorkspaceRequiredError
+        if self._activation_rate_limiter.is_rate_limited(account.email):
+            raise EducationRateLimitExceededError
+        self._activation_rate_limiter.increment_rate_limit(account.email)
         return self._education.activate(
             account_id=account.id,
-            email=account.email,
             tenant_id=context.active_workspace_id,
             token=token,
             institution=institution,

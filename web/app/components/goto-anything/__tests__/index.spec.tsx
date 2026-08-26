@@ -22,8 +22,8 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 let debouncedSearchQuery: string | undefined
-vi.mock('ahooks', () => ({
-  useDebounce: <T,>(value: T) => (debouncedSearchQuery ?? value) as T,
+vi.mock('foxact/use-debounced-value', () => ({
+  useDebouncedValue: <T,>(value: T) => (debouncedSearchQuery ?? value) as T,
 }))
 
 const isMac = detectPlatform() === 'mac'
@@ -39,6 +39,7 @@ function triggerSearchShortcut(target: Document | HTMLElement = document) {
 type RemoteQueryState = {
   data: TestSearchResult[]
   isLoading: boolean
+  isFetching?: boolean
   isError: boolean
   error: Error | null
 }
@@ -50,37 +51,96 @@ const emptyRemoteQueryState = (): RemoteQueryState => ({
   error: null,
 })
 
-let remoteQueryStates: Record<'app' | 'knowledge' | 'plugin', RemoteQueryState> = {
+let remoteQueryStates: Record<
+  'app' | 'knowledge' | 'plugin' | 'skill' | 'agent',
+  RemoteQueryState
+> = {
   app: emptyRemoteQueryState(),
   knowledge: emptyRemoteQueryState(),
   plugin: emptyRemoteQueryState(),
+  skill: emptyRemoteQueryState(),
+  agent: emptyRemoteQueryState(),
 }
 let enabledRemoteQueryKeys: string[] = []
+let enabledRemoteSearches: Array<[keyof typeof remoteQueryStates, string]> = []
+let previousRemoteData: Partial<Record<keyof typeof remoteQueryStates, TestSearchResult[]>> = {}
 
 function setRemoteResults(results: TestSearchResult[]) {
   results.forEach((result) => {
-    if (result.type === 'app' || result.type === 'knowledge' || result.type === 'plugin')
+    if (
+      result.type === 'app' ||
+      result.type === 'knowledge' ||
+      result.type === 'plugin' ||
+      result.type === 'skill' ||
+      result.type === 'agent'
+    )
       remoteQueryStates[result.type].data.push(result)
   })
 }
 
 vi.mock('@tanstack/react-query', () => ({
-  useQuery: (options: { queryKey: [key: keyof typeof remoteQueryStates]; enabled?: boolean }) => {
-    if (options.enabled) enabledRemoteQueryKeys.push(options.queryKey[0])
-    return options.enabled ? remoteQueryStates[options.queryKey[0]] : emptyRemoteQueryState()
+  keepPreviousData: (previousData: unknown) => previousData,
+  useQuery: (options: {
+    queryKey: [key: keyof typeof remoteQueryStates, searchTerm: string]
+    enabled?: boolean
+    placeholderData?: (previousData: unknown) => unknown
+  }) => {
+    const provider = options.queryKey[0]
+    if (!options.enabled) return emptyRemoteQueryState()
+
+    enabledRemoteQueryKeys.push(provider)
+    enabledRemoteSearches.push(options.queryKey)
+    const state = remoteQueryStates[provider]
+    let data = state.data
+    if (state.isFetching && data.length === 0 && options.placeholderData)
+      data = (options.placeholderData(previousRemoteData[provider]) as TestSearchResult[]) ?? []
+    if (!state.isLoading && !state.isFetching && !state.isError)
+      previousRemoteData[provider] = state.data
+
+    return { ...state, data }
   },
 }))
 
 vi.mock('../actions/app', () => ({
-  appSearchQueryOptions: () => ({ queryKey: ['app'] }),
+  appSearchQueryOptions: (searchTerm: string) => ({ queryKey: ['app', searchTerm] }),
 }))
 
 vi.mock('../actions/knowledge', () => ({
-  knowledgeSearchQueryOptions: () => ({ queryKey: ['knowledge'] }),
+  knowledgeSearchQueryOptions: (searchTerm: string) => ({ queryKey: ['knowledge', searchTerm] }),
 }))
 
 vi.mock('../actions/plugin', () => ({
-  pluginSearchQueryOptions: () => ({ queryKey: ['plugin'] }),
+  pluginSearchQueryOptions: (searchTerm: string) => ({ queryKey: ['plugin', searchTerm] }),
+}))
+
+vi.mock('../actions/skill', () => ({
+  skillSearchQueryOptions: (searchTerm: string) => ({ queryKey: ['skill', searchTerm] }),
+}))
+
+vi.mock('../actions/agent', () => ({
+  agentSearchQueryOptions: (searchTerm: string) => ({ queryKey: ['agent', searchTerm] }),
+}))
+
+const visibilityState = vi.hoisted(() => ({
+  agentEnabled: true,
+  canManageAgents: true,
+  datasetOperator: false,
+}))
+
+vi.mock('jotai', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('jotai')>()
+  return {
+    ...actual,
+    useAtomValue: () => visibilityState.datasetOperator,
+  }
+})
+
+vi.mock('@/features/agent-v2/feature-flag', () => ({
+  isAgentV2Enabled: () => visibilityState.agentEnabled,
+}))
+
+vi.mock('@/features/agent-v2/permissions', () => ({
+  useCanManageAgents: () => visibilityState.canManageAgents,
 }))
 vi.mock(
   '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission',
@@ -100,6 +160,10 @@ const createRemoteAction = (key: ActionItem['key'], shortcut: string): ActionIte
   source: 'remote',
 })
 
+const slashSearchMock = vi.fn(
+  (_query: string, _searchTerm: string, _locale?: string): SearchResult[] => [],
+)
+
 const actionsMock = {
   slash: {
     key: '/',
@@ -108,19 +172,27 @@ const actionsMock = {
     description: '/ desc',
     source: 'local',
     action: vi.fn(),
-    search: vi.fn(() => []),
+    search: slashSearchMock,
   } satisfies ActionItem,
   app: createRemoteAction('@app', '@app'),
   knowledge: createRemoteAction('@knowledge', '@kb'),
   plugin: createRemoteAction('@plugin', '@plugin'),
+  skill: createRemoteAction('@skill', '@skill'),
+  agent: createRemoteAction('@agents', '@agents'),
 }
 
-const createActionsMock = vi.fn(() => actionsMock)
+const createActionsMock = vi.fn(
+  (
+    _isWorkflowPage?: boolean,
+    _isRagPipelinePage?: boolean,
+    _availability?: { agents: boolean; skills: boolean },
+  ) => actionsMock,
+)
 const matchActionMock = vi.fn<
   (query: string, actions: Record<string, ActionItem>) => ActionItem | undefined
 >(() => undefined)
 vi.mock('../actions', () => ({
-  createActions: () => createActionsMock(),
+  createActions: (...args: Parameters<typeof createActionsMock>) => createActionsMock(...args),
   getActionSearchTerm: (_query: string, action: ActionItem) => action.key,
   matchAction: (query: string, actions: Record<string, ActionItem>) =>
     matchActionMock(query, actions),
@@ -178,12 +250,21 @@ describe('GotoAnything', () => {
       app: emptyRemoteQueryState(),
       knowledge: emptyRemoteQueryState(),
       plugin: emptyRemoteQueryState(),
+      skill: emptyRemoteQueryState(),
+      agent: emptyRemoteQueryState(),
     }
     debouncedSearchQuery = undefined
     enabledRemoteQueryKeys = []
+    enabledRemoteSearches = []
+    previousRemoteData = {}
     matchActionMock.mockReset()
+    visibilityState.agentEnabled = true
+    visibilityState.canManageAgents = true
+    visibilityState.datasetOperator = false
     mockFindCommand = null
     mockAvailableCommands = []
+    actionsMock.slash.search.mockReset()
+    actionsMock.slash.search.mockReturnValue([])
   })
 
   describe('modal behavior', () => {
@@ -322,6 +403,21 @@ describe('GotoAnything', () => {
   })
 
   describe('search functionality', () => {
+    it.each([
+      [{ agentEnabled: true, canManageAgents: true, datasetOperator: false }, true, true],
+      [{ agentEnabled: false, canManageAgents: true, datasetOperator: false }, false, true],
+      [{ agentEnabled: true, canManageAgents: false, datasetOperator: true }, false, false],
+    ] as const)(
+      'matches scope visibility to workspace capabilities',
+      (visibility, agents, skills) => {
+        Object.assign(visibilityState, visibility)
+
+        renderGotoAnything(<GotoAnything />)
+
+        expect(createActionsMock).toHaveBeenCalledWith(false, false, { agents, skills })
+      },
+    )
+
     it('should navigate to selected result', async () => {
       const user = userEvent.setup()
       setRemoteResults([
@@ -380,7 +476,7 @@ describe('GotoAnything', () => {
       expect(routerPush).toHaveBeenCalledTimes(1)
     })
 
-    it('should loop from the last command to the first with ArrowDown', async () => {
+    it('should navigate and loop within a command grid row with ArrowRight', async () => {
       const user = userEvent.setup()
       mockAvailableCommands = [
         { name: 'theme', description: 'Change theme' },
@@ -394,15 +490,15 @@ describe('GotoAnything', () => {
       })
 
       await user.type(input, '/')
-      const options = screen.getAllByRole('option')
+      const options = screen.getAllByRole('gridcell')
       expect(options).toHaveLength(2)
       const [firstOption, secondOption] = options
       if (!firstOption || !secondOption) throw new Error('Expected two command options')
 
-      await user.keyboard('{ArrowDown}')
+      await user.keyboard('{ArrowRight}')
       expect(input).toHaveAttribute('aria-activedescendant', secondOption.id)
 
-      await user.keyboard('{ArrowDown}')
+      await user.keyboard('{ArrowRight}')
       expect(input).toHaveAttribute('aria-activedescendant', firstOption.id)
     })
 
@@ -454,10 +550,318 @@ describe('GotoAnything', () => {
       await user.type(input, '@')
 
       expect(
-        screen.getByRole('option', {
+        screen.getByRole('gridcell', {
           name: /@kb app\.gotoAnything\.actions\.searchKnowledgeBasesDesc/,
         }),
       ).toBeInTheDocument()
+    })
+
+    it('shows the localized system model description for /models', async () => {
+      const user = userEvent.setup()
+      mockAvailableCommands = [{ name: 'models', description: 'Fallback description' }]
+      renderGotoAnything(<GotoAnything />)
+      triggerSearchShortcut()
+      const input = await screen.findByRole('combobox', {
+        name: 'app.gotoAnything.searchTitle',
+      })
+
+      await user.type(input, '/')
+
+      expect(screen.getByText('common.modelProvider.systemModelSettingsDesc')).toBeInTheDocument()
+      expect(screen.queryByText('Fallback description')).not.toBeInTheDocument()
+    })
+
+    it('keeps an exact submenu command in the grid until selection commits it', async () => {
+      const user = userEvent.setup()
+      mockAvailableCommands = [{ name: 'theme', description: 'Change theme' }]
+      matchActionMock.mockImplementation((query: string) =>
+        query.startsWith('/theme ') ? actionsMock.slash : undefined,
+      )
+      actionsMock.slash.search.mockReturnValue([
+        {
+          id: 'theme-dark',
+          type: 'command',
+          title: 'Dark Theme',
+          description: 'Use dark appearance',
+          data: { command: 'theme.set', args: { value: 'dark' } },
+        },
+      ])
+
+      renderGotoAnything(<GotoAnything />)
+      triggerSearchShortcut()
+      const input = await screen.findByRole('combobox', {
+        name: 'app.gotoAnything.searchTitle',
+      })
+
+      await user.type(input, '/theme')
+
+      expect(input).toHaveValue('/theme')
+      expect(screen.getByRole('gridcell', { name: /\/theme/ })).toBeInTheDocument()
+      expect(screen.queryByText('Dark Theme')).not.toBeInTheDocument()
+
+      await user.keyboard('{Enter}')
+
+      expect(input).toHaveValue('/theme ')
+      expect(screen.getByRole('option', { name: /Dark Theme/ })).toBeInTheDocument()
+    })
+
+    it('keeps a submenu root result visible while the committed delimiter catches up', async () => {
+      const user = userEvent.setup()
+      mockAvailableCommands = [{ name: 'theme', description: 'Change theme' }]
+      matchActionMock.mockImplementation((query: string) =>
+        query.startsWith('/theme ') ? actionsMock.slash : undefined,
+      )
+      actionsMock.slash.search.mockImplementation((query: string) =>
+        query === '/theme '
+          ? [
+              {
+                id: 'theme-dark',
+                type: 'command',
+                title: 'Dark Theme',
+                data: { command: 'theme.set', args: { value: 'dark' } },
+              },
+            ]
+          : [],
+      )
+
+      renderGotoAnything(<GotoAnything />)
+      triggerSearchShortcut()
+      const input = await screen.findByRole('combobox', {
+        name: 'app.gotoAnything.searchTitle',
+      })
+      await user.type(input, '/theme')
+
+      debouncedSearchQuery = '/theme'
+      await user.keyboard('{Enter}')
+      await user.type(input, 'unknown')
+
+      expect(input).toHaveValue('/theme unknown')
+      expect(screen.getByRole('option', { name: /Dark Theme/ })).toBeInTheDocument()
+      expect(screen.getByRole('status')).toHaveTextContent('app.gotoAnything.searching')
+      expect(screen.queryByText('app.gotoAnything.noResults')).not.toBeInTheDocument()
+    })
+
+    it('does not leak a pending remote search into command or local-result contexts', async () => {
+      const user = userEvent.setup()
+      mockAvailableCommands = [{ name: 'theme', description: 'Change theme' }]
+      matchActionMock.mockImplementation((query: string) =>
+        query.startsWith('/theme ') ? actionsMock.slash : undefined,
+      )
+      actionsMock.slash.search.mockReturnValue([
+        {
+          id: 'theme-dark',
+          type: 'command',
+          title: 'Dark Theme',
+          data: { command: 'theme.set', args: { value: 'dark' } },
+        },
+      ])
+      setRemoteResults([
+        {
+          id: 'app-1',
+          type: 'app',
+          title: 'Stale Remote App',
+          path: '/apps/stale',
+          data: {},
+        },
+      ])
+
+      renderGotoAnything(<GotoAnything />)
+      triggerSearchShortcut()
+      const input = await screen.findByRole('combobox', {
+        name: 'app.gotoAnything.searchTitle',
+      })
+      await user.type(input, 'search')
+      expect(await screen.findByText('Stale Remote App')).toBeInTheDocument()
+
+      debouncedSearchQuery = 'search'
+      remoteQueryStates.app = {
+        ...emptyRemoteQueryState(),
+        isFetching: true,
+      }
+      await user.clear(input)
+      await user.type(input, '/')
+
+      expect(screen.getByRole('gridcell', { name: /\/theme/ })).toBeInTheDocument()
+      expect(screen.queryByText('Stale Remote App')).not.toBeInTheDocument()
+
+      await user.keyboard('{Enter}')
+
+      expect(input).toHaveValue('/theme ')
+      expect(screen.getByRole('option', { name: /Dark Theme/ })).toBeInTheDocument()
+      expect(screen.queryByText('Stale Remote App')).not.toBeInTheDocument()
+    })
+
+    it('keeps submenu results visible while its argument is being debounced', async () => {
+      const user = userEvent.setup()
+      const darkThemeResult: SearchResult = {
+        id: 'theme-dark',
+        type: 'command',
+        title: 'Dark Theme',
+        description: 'Use dark appearance',
+        data: { command: 'theme.set', args: { value: 'dark' } },
+      }
+      matchActionMock.mockImplementation((query: string) =>
+        query.startsWith('/theme ') ? actionsMock.slash : undefined,
+      )
+      actionsMock.slash.search.mockImplementation((query: string) =>
+        query === '/theme ' ? [darkThemeResult] : [],
+      )
+
+      renderGotoAnything(<GotoAnything />)
+      triggerSearchShortcut()
+      const input = await screen.findByRole('combobox', {
+        name: 'app.gotoAnything.searchTitle',
+      })
+      await user.type(input, '/theme ')
+      expect(screen.getByRole('option', { name: /Dark Theme/ })).toBeInTheDocument()
+
+      debouncedSearchQuery = '/theme '
+      await user.type(input, 'unknown')
+
+      expect(screen.getByRole('option', { name: /Dark Theme/ })).toBeInTheDocument()
+      expect(screen.getByRole('status')).toHaveTextContent('app.gotoAnything.searching')
+      expect(screen.queryByText('app.gotoAnything.noResults')).not.toBeInTheDocument()
+
+      debouncedSearchQuery = '/theme unknownx'
+      await user.type(input, 'x')
+
+      expect(await screen.findByText('app.gotoAnything.noResults')).toBeInTheDocument()
+      expect(screen.queryByText('Dark Theme')).not.toBeInTheDocument()
+    })
+
+    it('queries skills and agents during ordinary search', async () => {
+      const user = userEvent.setup()
+      renderGotoAnything(<GotoAnything />)
+      triggerSearchShortcut()
+      const input = await screen.findByRole('combobox', {
+        name: 'app.gotoAnything.searchTitle',
+      })
+
+      await user.type(input, 'research')
+
+      expect(enabledRemoteQueryKeys).toEqual(
+        expect.arrayContaining(['app', 'knowledge', 'plugin', 'skill', 'agent']),
+      )
+    })
+
+    it('trims trailing whitespace before an ordinary remote search', async () => {
+      const user = userEvent.setup()
+      renderGotoAnything(<GotoAnything />)
+      triggerSearchShortcut()
+      const input = await screen.findByRole('combobox', {
+        name: 'app.gotoAnything.searchTitle',
+      })
+
+      await user.type(input, 'research ')
+
+      expect(enabledRemoteSearches).toEqual(
+        expect.arrayContaining([
+          ['app', 'research'],
+          ['knowledge', 'research'],
+          ['plugin', 'research'],
+        ]),
+      )
+      expect(enabledRemoteSearches).not.toEqual(
+        expect.arrayContaining([
+          ['app', 'research '],
+          ['knowledge', 'research '],
+          ['plugin', 'research '],
+        ]),
+      )
+    })
+
+    it('keeps general local results aligned with the debounced remote result set', async () => {
+      const user = userEvent.setup()
+      const nodeResult = {
+        id: 'node-1',
+        type: 'workflow-node',
+        title: 'Stable Node',
+        data: {},
+      } as SearchResult
+      const nodeSearch = vi.fn((query: string) => (query === 'node' ? [nodeResult] : []))
+      createActionsMock.mockImplementationOnce(() => ({
+        ...actionsMock,
+        node: {
+          key: '@node',
+          shortcut: '@node',
+          title: '@node title',
+          description: '@node desc',
+          source: 'local',
+          search: nodeSearch,
+        },
+      }))
+
+      renderGotoAnything(<GotoAnything />)
+      triggerSearchShortcut()
+      const input = await screen.findByRole('combobox', {
+        name: 'app.gotoAnything.searchTitle',
+      })
+      await user.type(input, 'node')
+      expect(await screen.findByText('Stable Node')).toBeInTheDocument()
+
+      debouncedSearchQuery = 'node'
+      await user.type(input, 'x')
+
+      expect(screen.getByText('Stable Node')).toBeInTheDocument()
+      expect(screen.getByRole('status')).toHaveTextContent('app.gotoAnything.searching')
+
+      debouncedSearchQuery = 'nodex2'
+      await user.type(input, '2')
+
+      expect(await screen.findByText('app.gotoAnything.noResults')).toBeInTheDocument()
+      expect(screen.queryByText('Stable Node')).not.toBeInTheDocument()
+    })
+
+    it.each([
+      ['@skill', actionsMock.skill, 'skill'],
+      ['@agents', actionsMock.agent, 'agent'],
+    ] as const)('limits %s searches to the matching provider', async (scope, action, provider) => {
+      const user = userEvent.setup()
+      matchActionMock.mockImplementation((query: string) =>
+        query.startsWith(scope) ? action : undefined,
+      )
+
+      renderGotoAnything(<GotoAnything />)
+      triggerSearchShortcut()
+      const input = await screen.findByRole('combobox', {
+        name: 'app.gotoAnything.searchTitle',
+      })
+
+      await user.type(input, `${scope} research`)
+
+      expect(enabledRemoteQueryKeys).toContain(provider)
+      expect(enabledRemoteQueryKeys).not.toEqual(
+        expect.arrayContaining(
+          ['app', 'knowledge', 'plugin', 'skill', 'agent'].filter((key) => key !== provider),
+        ),
+      )
+    })
+
+    it.each([
+      ['skill', '/skills/skill-1'],
+      ['agent', '/agents/agent-1/configure'],
+    ] as const)('navigates to a selected %s result', async (type, path) => {
+      const user = userEvent.setup()
+      setRemoteResults([
+        {
+          id: `${type}-1`,
+          type,
+          title: `${type} result`,
+          path,
+          data: {},
+        },
+      ])
+
+      renderGotoAnything(<GotoAnything />)
+      triggerSearchShortcut()
+      const input = await screen.findByRole('combobox', {
+        name: 'app.gotoAnything.searchTitle',
+      })
+
+      await user.type(input, type)
+      await user.click(await screen.findByText(`${type} result`))
+
+      expect(routerPush).toHaveBeenCalledWith(path)
     })
 
     it('should not search providers with a stale scope prefix', async () => {
@@ -502,6 +906,8 @@ describe('GotoAnything', () => {
       const searchingTexts = screen.getAllByText('app.gotoAnything.searching')
       expect(searchingTexts.length).toBeGreaterThanOrEqual(1)
       expect(screen.getByRole('status')).toHaveTextContent('app.gotoAnything.searching')
+      const list = screen.getByRole('listbox')
+      expect(input).toHaveAttribute('aria-controls', list.id)
       expect(document.querySelector('[aria-busy="true"]')).toBeInTheDocument()
     })
 
@@ -512,6 +918,8 @@ describe('GotoAnything', () => {
         app: { data: [], isLoading: false, isError: true, error: testError },
         knowledge: { data: [], isLoading: false, isError: true, error: testError },
         plugin: { data: [], isLoading: false, isError: true, error: testError },
+        skill: { data: [], isLoading: false, isError: true, error: testError },
+        agent: { data: [], isLoading: false, isError: true, error: testError },
       }
 
       renderGotoAnything(<GotoAnything />)
@@ -528,6 +936,7 @@ describe('GotoAnything', () => {
 
       expect(screen.getByRole('status')).toHaveTextContent('app.gotoAnything.searchFailed')
       expect(screen.getAllByText('app.gotoAnything.searchFailed')).toHaveLength(2)
+      expect(screen.queryByText('app.gotoAnything.someServicesUnavailable')).not.toBeInTheDocument()
     })
 
     it('should preserve successful results when one provider fails', async () => {
@@ -564,17 +973,32 @@ describe('GotoAnything', () => {
       expect(screen.queryByText('app.gotoAnything.searchFailed')).not.toBeInTheDocument()
     })
 
-    it('should show default state when no query', async () => {
+    it('should show scope cards with the matching sidebar icons when opened', async () => {
       renderGotoAnything(<GotoAnything />)
       triggerSearchShortcut()
 
-      await waitFor(() => {
-        expect(
-          screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder'),
-        ).toBeInTheDocument()
-      })
+      const expectedScopeIcons = [
+        ['@app', 'i-custom-vender-main-nav-studio-v2'],
+        ['@kb', 'i-custom-vender-main-nav-knowledge-v2'],
+        ['@plugin', 'i-custom-vender-main-nav-marketplace-v2'],
+        ['@skill', 'i-custom-vender-main-nav-skill'],
+        ['@agents', 'i-custom-vender-main-nav-agent'],
+      ] as const
 
-      expect(screen.getAllByText('app.gotoAnything.searchTitle')).toHaveLength(2)
+      for (const [scope, icon] of expectedScopeIcons) {
+        const option = await screen.findByRole('gridcell', { name: new RegExp(scope) })
+        expect(option.querySelector(`.${icon}`)).toBeInTheDocument()
+      }
+
+      const input = screen.getByRole('combobox', { name: 'app.gotoAnything.searchTitle' })
+      expect(input).toHaveAttribute('aria-haspopup', 'grid')
+      expect(screen.getByRole('grid')).toHaveAttribute('id', input.getAttribute('aria-controls'))
+      expect(screen.getByRole('rowgroup')).toBeInTheDocument()
+      for (const cell of screen.getAllByRole('gridcell'))
+        expect(cell.parentElement).toHaveAttribute('role', 'row')
+      expect(screen.getByText('app.gotoAnything.selectSearchType')).toBeInTheDocument()
+      expect(screen.queryByText('app.gotoAnything.resultCount:{"count":5}')).not.toBeInTheDocument()
+      expect(screen.getByText('app.gotoAnything.activate')).toBeInTheDocument()
     })
 
     it('should show no results state when search returns empty', async () => {
@@ -592,6 +1016,51 @@ describe('GotoAnything', () => {
       await user.type(input, 'nonexistent')
 
       expect(await screen.findByText('app.gotoAnything.noResults')).toBeInTheDocument()
+    })
+
+    it('keeps previous results visible while the next query is pending', async () => {
+      const user = userEvent.setup()
+      setRemoteResults([
+        {
+          id: 'app-1',
+          type: 'app',
+          title: 'Stable App',
+          path: '/apps/stable',
+          data: {},
+        },
+      ])
+
+      renderGotoAnything(<GotoAnything />)
+      triggerSearchShortcut()
+      const input = await screen.findByRole('combobox', {
+        name: 'app.gotoAnything.searchTitle',
+      })
+      await user.type(input, 'app')
+      expect(await screen.findByText('Stable App')).toBeInTheDocument()
+
+      debouncedSearchQuery = 'app'
+      remoteQueryStates.app = {
+        ...emptyRemoteQueryState(),
+        isFetching: true,
+      }
+      await user.type(input, 'x')
+
+      expect(screen.getByText('Stable App')).toBeInTheDocument()
+      expect(screen.getByRole('status')).toHaveTextContent('app.gotoAnything.searching')
+      expect(screen.queryByText('app.gotoAnything.noResults')).not.toBeInTheDocument()
+
+      remoteQueryStates = {
+        app: emptyRemoteQueryState(),
+        knowledge: emptyRemoteQueryState(),
+        plugin: emptyRemoteQueryState(),
+        skill: emptyRemoteQueryState(),
+        agent: emptyRemoteQueryState(),
+      }
+      debouncedSearchQuery = 'appx2'
+      await user.type(input, '2')
+
+      expect(await screen.findByText('app.gotoAnything.noResults')).toBeInTheDocument()
+      expect(screen.queryByText('Stable App')).not.toBeInTheDocument()
     })
   })
 

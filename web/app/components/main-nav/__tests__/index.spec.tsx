@@ -16,7 +16,7 @@ import type { ProviderContextState } from '@/context/provider-context'
 import type { UserProfileWithMeta } from '@/features/account-profile/client'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
@@ -168,6 +168,11 @@ type MainNavConsoleState = ConsoleStateFixture & {
 const mockConsoleState = vi.hoisted(() => ({
   current: undefined as MainNavConsoleState | undefined,
 }))
+const mockProviderContextState = vi.hoisted(() => ({
+  current: {
+    enableSkill: true,
+  } as Partial<ProviderContextState>,
+}))
 
 vi.mock('@/features/agent-v2/feature-flag', () => ({
   isAgentV2Enabled: () => mockIsAgentV2Enabled(),
@@ -187,6 +192,9 @@ vi.mock('@/context/permission-state', async () => {
 })
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
+  useProviderContextSelector: vi.fn((selector: (state: Partial<ProviderContextState>) => unknown) =>
+    selector(mockProviderContextState.current),
+  ),
 }))
 
 vi.mock('@/context/modal-context', () => ({
@@ -638,6 +646,9 @@ describe('MainNav', () => {
       refresh: vi.fn(),
     })
     mockConsoleState.current = consoleState
+    mockProviderContextState.current = {
+      enableSkill: true,
+    }
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
       enableEducationPlan: false,
@@ -679,22 +690,47 @@ describe('MainNav', () => {
     expect(screen.getByRole('button', { name: 'common.account.account' })).not.toHaveTextContent(
       'team',
     )
-    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/')
-    expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
-    expect(screen.getByRole('link', { name: /Agents/ })).toHaveAttribute('href', '/agents')
+    const homeLink = screen.getByRole('link', { name: /common.mainNav.home/ })
+    expect(homeLink).toHaveAttribute('href', '/')
+    expect(homeLink.querySelector('.i-custom-vender-main-nav-home-v2')).toBeInTheDocument()
+    const studioLink = screen.getByRole('link', { name: /common.menus.apps/ })
+    expect(studioLink).toHaveAttribute('href', '/apps')
+    expect(studioLink.querySelector('.i-custom-vender-main-nav-studio-v2')).toBeInTheDocument()
+    const agentsLink = screen.getByRole('link', { name: /Agents/ })
+    expect(agentsLink).toHaveAttribute('href', '/agents')
     expect(screen.getByRole('link', { name: /Agents common.menus.status/ })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute(
-      'href',
+    expect(agentsLink.querySelector('.i-custom-vender-main-nav-agent')).toBeInTheDocument()
+    const skillsLink = screen.getByRole('link', { name: /common.mainNav.skills/ })
+    expect(skillsLink).toHaveAttribute('href', '/skills')
+    expect(skillsLink.querySelector('.i-custom-vender-main-nav-skill')).toBeInTheDocument()
+    const knowledgeLink = screen.getByRole('link', { name: /common.menus.datasets/ })
+    expect(knowledgeLink).toHaveAttribute('href', '/datasets')
+    expect(
+      knowledgeLink.querySelector('.i-custom-vender-main-nav-knowledge-v2'),
+    ).toBeInTheDocument()
+    const integrationsLink = screen.getByRole('link', { name: /common.mainNav.integrations/ })
+    expect(integrationsLink).toHaveAttribute('href', '/integrations/model-provider')
+    expect(
+      integrationsLink.querySelector('.i-custom-vender-main-nav-integrations-v2'),
+    ).toBeInTheDocument()
+    const marketplaceLink = screen.getByRole('link', { name: /common.mainNav.marketplace/ })
+    expect(marketplaceLink).toHaveAttribute('href', '/marketplace')
+    expect(
+      marketplaceLink.querySelector('.i-custom-vender-main-nav-marketplace-v2'),
+    ).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('navigation'))
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('href')),
+    ).toEqual([
+      '/',
+      '/apps',
+      '/agents',
       '/datasets',
-    )
-    expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute(
-      'href',
+      '/skills',
       '/integrations/model-provider',
-    )
-    expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute(
-      'href',
       '/marketplace',
-    )
+    ])
   })
 
   it('hides the roster entry when Agent v2 is disabled', () => {
@@ -703,6 +739,10 @@ describe('MainNav', () => {
     renderMainNav()
 
     expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.mainNav.skills/ })).toHaveAttribute(
+      'href',
+      '/skills',
+    )
   })
 
   it('hides the roster entry when the user lacks agent.manage', () => {
@@ -728,6 +768,16 @@ describe('MainNav', () => {
     expect(
       screen.queryByRole('link', { name: /common.mainNav.marketplace/ }),
     ).not.toBeInTheDocument()
+  })
+
+  it('hides the skills entry when skill is disabled', () => {
+    mockProviderContextState.current = {
+      enableSkill: false,
+    }
+
+    renderMainNav()
+
+    expect(screen.queryByRole('link', { name: /common.mainNav.skills/ })).not.toBeInTheDocument()
   })
 
   it('orders the Step-by-step Tour before the account and help actions', async () => {
@@ -803,6 +853,7 @@ describe('MainNav', () => {
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
     expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /common.mainNav.skills/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute(
       'href',
       '/datasets',
