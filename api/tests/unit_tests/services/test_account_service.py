@@ -945,6 +945,41 @@ class TestTenantService:
             assert persisted_tenant_account_join.account_id == account_id
             assert persisted_tenant_account_join.role == TenantAccountRole.NORMAL
 
+    def test_create_tenant_member_queues_joined_member_rbac_sync(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        """New regular members are synced into auto-included RBAC resource whitelists."""
+        import tasks.initialize_created_app_rbac_access_task as rbac_task_module
+
+        delay = MagicMock()
+        with sqlite_session_factory() as service_session:
+            tenant = Tenant(name="Test Workspace")
+            account = Account(name="Test User", email="test@example.com")
+            service_session.add_all([tenant, account])
+            service_session.flush()
+            tenant_id = tenant.id
+            account_id = account.id
+            service_session.commit()
+
+            with (
+                patch("services.account_service.dify_config.RBAC_ENABLED", True),
+                patch.object(rbac_task_module.sync_joined_workspace_member_rbac_access_task, "delay", delay),
+            ):
+                TenantService.create_tenant_member(
+                    tenant,
+                    account,
+                    service_session,
+                    "normal",
+                    operator_account_id="operator-1",
+                )
+
+        delay.assert_called_once_with(
+            str(tenant_id),
+            str(account_id),
+            operator_account_id="operator-1",
+        )
+
     # ==================== Member Removal Tests ====================
 
     def test_remove_pending_member_deletes_orphaned_account(
@@ -2169,7 +2204,13 @@ class TestRegisterService:
                         "add",
                         session=sqlite_session,
                     )
-                    mock_create_member.assert_called_once_with(mock_tenant, mock_new_account, sqlite_session, "normal")
+                    mock_create_member.assert_called_once_with(
+                        mock_tenant,
+                        mock_new_account,
+                        sqlite_session,
+                        "normal",
+                        operator_account_id=mock_inviter.id,
+                    )
                     mock_switch_tenant.assert_called_once_with(mock_new_account, mock_tenant.id, session=sqlite_session)
                     mock_generate_token.assert_called_once_with(
                         mock_tenant, mock_new_account, "normal", requires_setup=True
@@ -2214,7 +2255,13 @@ class TestRegisterService:
 
                 # Verify results
                 assert result == "invite-token-123"
-                mock_create_member.assert_called_once_with(mock_tenant, mock_existing_account, sqlite_session, "normal")
+                mock_create_member.assert_called_once_with(
+                    mock_tenant,
+                    mock_existing_account,
+                    sqlite_session,
+                    "normal",
+                    operator_account_id=mock_inviter.id,
+                )
                 mock_generate_token.assert_called_once_with(
                     mock_tenant, mock_existing_account, "normal", requires_setup=True
                 )
@@ -2360,7 +2407,11 @@ class TestRegisterService:
 
                 assert result == "rbac-token"
                 mock_create_member.assert_called_once_with(
-                    mock_tenant, mock_new_account, sqlite_session, TenantAccountRole.NORMAL.value
+                    mock_tenant,
+                    mock_new_account,
+                    sqlite_session,
+                    TenantAccountRole.NORMAL.value,
+                    operator_account_id=mock_inviter.id,
                 )
                 mock_rbac_service.MemberRoles.replace.assert_called_once_with(
                     tenant_id=mock_tenant.id,
@@ -2409,6 +2460,7 @@ class TestRegisterService:
                     mock_existing_account,
                     sqlite_session,
                     TenantAccountRole.NORMAL.value,
+                    operator_account_id=mock_inviter.id,
                 )
                 mock_rbac_service.MemberRoles.replace.assert_called_once_with(
                     tenant_id=mock_tenant.id,
@@ -2458,6 +2510,7 @@ class TestRegisterService:
                     mock_existing_account,
                     sqlite_session,
                     TenantAccountRole.NORMAL.value,
+                    operator_account_id=mock_inviter.id,
                 )
                 mock_rbac_service.MemberRoles.replace.assert_called_once_with(
                     tenant_id=mock_tenant.id,
@@ -2506,7 +2559,13 @@ class TestRegisterService:
                 )
 
                 assert result == "legacy-token"
-                mock_create_member.assert_called_once_with(mock_tenant, mock_new_account, sqlite_session, "editor")
+                mock_create_member.assert_called_once_with(
+                    mock_tenant,
+                    mock_new_account,
+                    sqlite_session,
+                    "editor",
+                    operator_account_id=mock_inviter.id,
+                )
                 mock_rbac_service.MemberRoles.replace.assert_not_called()
 
     # ==================== Token Management Tests ====================
