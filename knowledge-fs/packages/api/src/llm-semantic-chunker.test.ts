@@ -37,8 +37,20 @@ interface PromptUnit {
   readonly id: string;
   readonly sourceElementId?: string;
   readonly sourceSectionPath?: readonly string[];
+  readonly tableMode?: "matrix" | "record-list" | "single-record" | "unknown";
+  readonly tableRecordCount?: number;
+  readonly tableRecordIndex?: number;
+  readonly tableSourceRowEnd?: number;
+  readonly tableSourceRowStart?: number;
   readonly text: string;
   readonly type: string;
+}
+
+interface PromptTableSchema {
+  readonly columns: readonly string[];
+  readonly mode: "matrix" | "record-list" | "single-record" | "unknown";
+  readonly recordCount: number;
+  readonly sourceElementId: string;
 }
 
 interface PromptPayload {
@@ -46,6 +58,7 @@ interface PromptPayload {
   readonly fixedCoreBoundary?: boolean;
   readonly lookAheadUnits?: readonly PromptUnit[];
   readonly sectionPath: readonly string[];
+  readonly tableSchemas?: readonly PromptTableSchema[];
   readonly units: readonly PromptUnit[];
   readonly windowId: string;
 }
@@ -290,7 +303,7 @@ describe("LLM semantic chunker", () => {
         completed: true,
         entityCount: 2,
         model: "reasoner-model",
-        promptVersion: "semantic-chunking-v4",
+        promptVersion: "semantic-chunking-v5",
       },
       relationExtraction: { completed: true, relationCount: 1 },
       semanticChunking: {
@@ -405,7 +418,7 @@ describe("LLM semantic chunker", () => {
 
     expect(preflight.unitCount).toBeGreaterThan(20);
     expect(nodes).toHaveLength(preflight.unitCount);
-    expect(nodes.map((node) => node.text).join("")).toBe(text);
+    expect(nodes.map((node) => node.text).join("\n")).toBe(text);
     expect(nodes.at(-1)?.endOffset).toBe(new TextEncoder().encode(text).byteLength);
     for (const node of nodes) {
       expect(node.metadata).toMatchObject({
@@ -544,7 +557,7 @@ describe("LLM semantic chunker", () => {
       windowPlanning: {
         atomicDocument: false,
         sourceSectionPathCount: 2,
-        version: "v4",
+        version: "v5",
       },
     });
   });
@@ -620,7 +633,7 @@ describe("LLM semantic chunker", () => {
       parseArtifact.elements.map((element) => element.text?.trim() ?? "").join("\n"),
     );
     expect(nodes[0]?.metadata.semanticChunking).toMatchObject({
-      windowPlanning: { version: "v4" },
+      windowPlanning: { version: "v5" },
     });
     expect(v2Nodes[0]?.metadata.semanticChunking).toMatchObject({
       windowPlanning: { version: "v2" },
@@ -857,12 +870,252 @@ describe("LLM semantic chunker", () => {
       windowPlanning: {
         atomicDocument: true,
         sourceSectionPathCount: 1,
-        version: "v4",
+        version: "v5",
       },
     });
     expect(nodes[0]?.metadata.extractedEntities).toEqual([
       expect.objectContaining({ text: "26322000006288006226", type: "term" }),
     ]);
+  });
+
+  it("materializes one table chunk per record even when the model groups the whole table", async () => {
+    const parseArtifact = artifact([
+      {
+        id: "issue-records",
+        metadata: {
+          table: {
+            columns: ["时间", "问题描述", "是否解决"],
+            headerRowCount: 1,
+            mode: "record-list",
+            recordCount: 3,
+            semanticVersion: 1,
+            sourceRowCount: 4,
+          },
+        },
+        sectionPath: ["Issue Log"],
+        text: [
+          "时间: 2026-07-01 | 问题描述: 复制按钮无法点击 | 是否解决: 是",
+          "时间: 2026-07-02 | 问题描述: 工作流页面被清空 | 是否解决: 否",
+          "时间: 2026-08-04 | 问题描述: 插件凭证被重置 | 是否解决: 否",
+        ].join("\n"),
+        type: "table",
+      },
+    ]);
+    const provider = new ScriptedProvider([echoWholeWindow]);
+
+    const nodes = await createLlmSemanticChunker({
+      reasoningProviderFactory: () => provider,
+    }).chunk({
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      parseArtifact,
+      retrievalProfile: profile(),
+    });
+
+    expect(preflightLlmSemanticWindows({ parseArtifact })).toEqual({
+      maximumWindowCount: 1,
+      unitCount: 3,
+    });
+    expect(provider.calls).toHaveLength(1);
+    expect(nodes).toHaveLength(3);
+    expect(nodes.map((node) => node.kind)).toEqual(["table", "table", "table"]);
+    expect(nodes.map((node) => node.text)).toEqual(parseArtifact.elements[0]?.text?.split("\n"));
+    expect(
+      nodes.map(
+        (node) => (node.metadata.semanticChunking as { tableRecord?: unknown }).tableRecord,
+      ),
+    ).toEqual([
+      {
+        count: 3,
+        index: 0,
+        mode: "record-list",
+        sourceRowEnd: 2,
+        sourceRowStart: 2,
+      },
+      {
+        count: 3,
+        index: 1,
+        mode: "record-list",
+        sourceRowEnd: 3,
+        sourceRowStart: 3,
+      },
+      {
+        count: 3,
+        index: 2,
+        mode: "record-list",
+        sourceRowEnd: 4,
+        sourceRowStart: 4,
+      },
+    ]);
+
+    const prompt = JSON.parse(
+      provider.calls[0]?.messages.find((message) => message.role === "user")?.content ?? "{}",
+    ) as PromptPayload;
+    expect(prompt.atomicDocument).toBe(false);
+    expect(prompt.tableSchemas).toEqual([
+      {
+        columns: ["时间", "问题描述", "是否解决"],
+        mode: "record-list",
+        recordCount: 3,
+        sourceElementId: "issue-records",
+      },
+    ]);
+    expect(prompt.units.map((unit) => unit.tableRecordIndex)).toEqual([0, 1, 2]);
+    expect(prompt.units.map((unit) => unit.tableSourceRowStart)).toEqual([2, 3, 4]);
+    expect(prompt.units.every((unit) => unit.tableMode === "record-list")).toBe(true);
+    expect(prompt.units.every((unit) => !Object.hasOwn(unit, "tableColumns"))).toBe(true);
+  });
+
+  it("keeps a hard-split table record bounded without combining adjacent records", async () => {
+    const parseArtifact = artifact([
+      {
+        id: "long-table-record",
+        metadata: {
+          table: {
+            columns: ["问题", "详情"],
+            headerRowCount: 1,
+            mode: "record-list",
+            recordCount: 2,
+            semanticVersion: 1,
+            sourceRowCount: 3,
+          },
+        },
+        sectionPath: ["Issue Log"],
+        text: [
+          `问题: 超长记录 | 详情: ${"长文本".repeat(24)}`,
+          "问题: 普通记录 | 详情: 已解决",
+        ].join("\n"),
+        type: "table",
+      },
+    ]);
+    const provider = new ScriptedProvider([echoWholeWindow]);
+    const nodes = await createLlmSemanticChunker({
+      maxChunkChars: 24,
+      maxWindowChars: 256,
+      reasoningProviderFactory: () => provider,
+    }).chunk({
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      parseArtifact,
+      retrievalProfile: profile(),
+    });
+
+    expect(nodes.length).toBeGreaterThan(2);
+    expect(nodes.every((node) => countGraphemes(node.text) <= 24)).toBe(true);
+    expect(
+      nodes
+        .map((node) => node.text)
+        .join("\n")
+        .replaceAll("\n\n", "\n"),
+    ).toContain("问题: 普通记录 | 详情: 已解决");
+    const recordIndexes = nodes.map(
+      (node) =>
+        (node.metadata.semanticChunking as { tableRecord?: { index?: number } }).tableRecord?.index,
+    );
+    expect(recordIndexes.at(-1)).toBe(1);
+    expect(recordIndexes.slice(0, -1).every((index) => index === 0)).toBe(true);
+  });
+
+  it("splits legacy header-first table text without requiring a reparse", async () => {
+    const parseArtifact = artifact([
+      {
+        id: "legacy-rows",
+        metadata: {
+          columns: ["name", "status"],
+          format: "csv",
+          rowCount: 3,
+        },
+        sectionPath: ["Legacy export"],
+        text: "name | status\nAlpha | open\nBeta | closed\nGamma | open",
+        type: "table",
+      },
+    ]);
+    const provider = new ScriptedProvider([echoWholeWindow]);
+
+    const nodes = await createLlmSemanticChunker({
+      reasoningProviderFactory: () => provider,
+    }).chunk({
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      parseArtifact,
+      retrievalProfile: profile(),
+    });
+
+    expect(preflightLlmSemanticWindows({ parseArtifact })).toEqual({
+      maximumWindowCount: 1,
+      unitCount: 3,
+    });
+    expect(provider.calls).toHaveLength(1);
+    expect(nodes.map((node) => node.text)).toEqual([
+      "name | status\nAlpha | open",
+      "Beta | closed",
+      "Gamma | open",
+    ]);
+  });
+
+  it("replays semantic-chunking-v4 with its original table unitization", () => {
+    const parseArtifact = artifact([
+      {
+        id: "versioned-table",
+        metadata: {
+          table: {
+            columns: ["name", "status"],
+            headerRowCount: 1,
+            mode: "record-list",
+            recordCount: 2,
+            semanticVersion: 1,
+            sourceRowCount: 3,
+          },
+        },
+        sectionPath: ["Versioned"],
+        text: "name: Alpha | status: open\nname: Beta | status: closed",
+        type: "table",
+      },
+    ]);
+
+    expect(preflightLlmSemanticWindows({ parseArtifact })).toEqual({
+      maximumWindowCount: 1,
+      unitCount: 2,
+    });
+    expect(
+      preflightLlmSemanticWindows({
+        parseArtifact,
+        promptVersion: "semantic-chunking-v4",
+      }),
+    ).toEqual({ maximumWindowCount: 1, unitCount: 1 });
+  });
+
+  it("does not invent a business record for a schema-only table", async () => {
+    const parseArtifact = artifact([
+      {
+        id: "empty-table",
+        metadata: {
+          table: {
+            columns: ["Name", "Status"],
+            headerRowCount: 1,
+            mode: "unknown",
+            recordCount: 0,
+            semanticVersion: 1,
+            sourceRowCount: 1,
+          },
+        },
+        sectionPath: ["Empty export"],
+        text: "Name | Status",
+        type: "table",
+      },
+    ]);
+    const provider = new ScriptedProvider([echoWholeWindow]);
+    const nodes = await createLlmSemanticChunker({
+      reasoningProviderFactory: () => provider,
+    }).chunk({
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      parseArtifact,
+      retrievalProfile: profile(),
+    });
+
+    const prompt = JSON.parse(
+      provider.calls[0]?.messages.find((message) => message.role === "user")?.content ?? "{}",
+    ) as PromptPayload;
+    expect(prompt.tableSchemas).toEqual([]);
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0]?.metadata.semanticChunking).not.toHaveProperty("tableRecord");
   });
 
   it("fails closed when model output violates atomic-record or special-element boundaries", async () => {

@@ -298,7 +298,7 @@ describe("incremental reindexer semantic generations", () => {
     });
   });
 
-  it("replays legacy v3 nodes without a generation receipt under the current v4 runtime", async () => {
+  it("replays legacy v3 nodes without a generation receipt under the current v5 runtime", async () => {
     const artifacts = createInMemoryParseArtifactRepository({ maxArtifacts: 4 });
     const nodes = createInMemoryKnowledgeNodeRepository({
       maxBatchSize: 4,
@@ -334,7 +334,7 @@ describe("incremental reindexer semantic generations", () => {
         compute: computeRuntime(),
         maxNodes: 4,
         nodes: nodesWithoutHistoricalReceipt,
-        semanticChunker: echoSemanticChunker(() => currentCalls++, "semantic-chunking-v4"),
+        semanticChunker: echoSemanticChunker(() => currentCalls++, "semantic-chunking-v5"),
       }).reindex(input),
     ).resolves.toMatchObject({ nodesCreated: 1, status: "rebuilt" });
     expect(legacyCalls).toBe(1);

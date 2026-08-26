@@ -62,9 +62,10 @@ const DEFAULT_MAX_ENTITIES_PER_CHUNK = 100;
 const DEFAULT_MAX_RELATIONS_PER_CHUNK = 100;
 const DEFAULT_MAX_OUTPUT_TOKENS = 6_000;
 const DEFAULT_MAX_RESPONSE_CHARS = 1_000_000;
-const DEFAULT_PROMPT_VERSION = "semantic-chunking-v4";
+const DEFAULT_PROMPT_VERSION = "semantic-chunking-v5";
 const SEMANTIC_CHUNKING_V2_PROMPT_VERSION = "semantic-chunking-v2";
 const SEMANTIC_CHUNKING_V3_PROMPT_VERSION = "semantic-chunking-v3";
+const SEMANTIC_CHUNKING_V4_PROMPT_VERSION = "semantic-chunking-v4";
 const V3_MAX_CORE_UNITS_PER_WINDOW = 32;
 const V3_MAX_LOOK_AHEAD_UNITS_PER_WINDOW = 8;
 const DEFAULT_MAX_CONCURRENT_WINDOWS = 4;
@@ -269,7 +270,26 @@ interface AtomicUnit {
   readonly sourceElement: MaterializedElement;
   readonly startCodeUnit: number;
   readonly startOffset: number;
+  readonly tableRecord?: TableRecordProvenance | undefined;
   readonly text: string;
+}
+
+type TableSemanticMode = "matrix" | "record-list" | "single-record" | "unknown";
+
+interface TableRecordProvenance {
+  readonly columns: readonly string[];
+  readonly count: number;
+  readonly index: number;
+  readonly key: string;
+  readonly mode: TableSemanticMode;
+  readonly sourceRowEnd: number;
+  readonly sourceRowStart: number;
+}
+
+interface SemanticRange {
+  readonly end: number;
+  readonly start: number;
+  readonly tableRecord?: TableRecordProvenance | undefined;
 }
 
 interface SemanticWindow {
@@ -283,7 +303,14 @@ interface SemanticWindow {
   readonly units: readonly AtomicUnit[];
 }
 
-type SemanticWindowPlanningVersion = "v1" | "v2" | "v3" | "v4";
+interface SemanticWindowTableSchema {
+  readonly columns: readonly string[];
+  readonly mode: TableSemanticMode;
+  readonly recordCount: number;
+  readonly sourceElementId: string;
+}
+
+type SemanticWindowPlanningVersion = "v1" | "v2" | "v3" | "v4" | "v5";
 
 interface SemanticWindowPlanningPolicy {
   readonly atomicDocument: boolean;
@@ -342,7 +369,7 @@ export function preflightLlmSemanticWindows({
     requestedOverlapChars: 0,
   });
   const { canonicalText, elements } = materializeElements(parseArtifact);
-  const units = materializeAtomicUnits(elements, effectiveConfig.maxChunkChars);
+  const units = materializeAtomicUnits(elements, effectiveConfig.maxChunkChars, promptVersion);
   const planningPolicy = resolveSemanticWindowPlanningPolicy({
     canonicalText,
     maxChunkChars: effectiveConfig.maxChunkChars,
@@ -418,7 +445,7 @@ export function createLlmSemanticChunker({
         return [];
       }
 
-      const units = materializeAtomicUnits(elements, effectiveConfig.maxChunkChars);
+      const units = materializeAtomicUnits(elements, effectiveConfig.maxChunkChars, promptVersion);
       const planningPolicy = resolveSemanticWindowPlanningPolicy({
         canonicalText,
         maxChunkChars: effectiveConfig.maxChunkChars,
@@ -515,7 +542,11 @@ export function createLlmSemanticChunker({
               : {}),
             ...(provider.kind ? { transportProvider: provider.kind } : {}),
           });
-          const output = parseSemanticChunkingOutput(resolvedCompletion.text);
+          const output = normalizeTableRecordBoundaries({
+            maxChunkChars: effectiveConfig.maxChunkChars,
+            output: parseSemanticChunkingOutput(resolvedCompletion.text),
+            window,
+          });
           const windowChunks = validateAndMaterializeWindowOutput({
             maxChunkChars: effectiveConfig.maxChunkChars,
             maxEntitiesPerChunk,
@@ -611,7 +642,7 @@ export function createLlmSemanticChunker({
         windowIndex += 1;
       };
 
-      if (planningPolicy.version === "v4") {
+      if (usesFixedCoreBoundary(planningPolicy.version)) {
         const windows = materializeDeterministicSemanticWindows({
           canonicalText,
           effectiveConfig,
@@ -684,7 +715,7 @@ export function assertValidLlmSemanticGenerationReplay({
     throw new Error("LLM semantic replay promptVersion is required");
   }
   const { canonicalText, elements, layoutRecomposition } = materializeElements(parseArtifact);
-  const units = materializeAtomicUnits(elements, effectiveConfig.maxChunkChars);
+  const units = materializeAtomicUnits(elements, effectiveConfig.maxChunkChars, promptVersion);
   const planningPolicy = resolveSemanticWindowPlanningPolicy({
     canonicalText,
     maxChunkChars: effectiveConfig.maxChunkChars,
@@ -808,7 +839,7 @@ export function assertValidLlmSemanticGenerationReplay({
         commitStart === coreStart &&
         commitEnd !== undefined &&
         commitEnd >= coreEnd &&
-        (planningPolicy.version !== "v4" || commitEnd === coreEnd),
+        (!usesFixedCoreBoundary(planningPolicy.version) || commitEnd === coreEnd),
       `chunk ${chunkIndex} has invalid core or committed window ranges`,
     );
     const resolvedWindow = materializeSemanticWindow({
@@ -1104,7 +1135,7 @@ export function assertValidLlmSemanticWindowManifestReplay({
   }
 
   const { canonicalText, elements } = materializeElements(parseArtifact);
-  const units = materializeAtomicUnits(elements, effectiveConfig.maxChunkChars);
+  const units = materializeAtomicUnits(elements, effectiveConfig.maxChunkChars, promptVersion);
   const planningPolicy = resolveSemanticWindowPlanningPolicy({
     canonicalText,
     maxChunkChars: effectiveConfig.maxChunkChars,
@@ -1201,7 +1232,7 @@ export function assertValidLlmSemanticWindowManifestReplay({
       commitEnd !== undefined &&
         commitEnd >= coreEnd &&
         commitEnd <= eligibleEnd &&
-        (planningPolicy.version !== "v4" || commitEnd === coreEnd),
+        (!usesFixedCoreBoundary(planningPolicy.version) || commitEnd === coreEnd),
       `window ${windowOrdinal} has an invalid committed boundary`,
     );
 
@@ -1716,11 +1747,13 @@ function materializeElements(parseArtifact: ParseArtifact): {
 function materializeAtomicUnits(
   elements: readonly MaterializedElement[],
   maxChunkChars: number,
+  promptVersion: string,
 ): AtomicUnit[] {
   const units: AtomicUnit[] = [];
+  const planningVersion = semanticWindowPlanningVersion(promptVersion);
 
   for (const element of elements) {
-    const sentenceRanges = semanticRanges(element);
+    const sentenceRanges = semanticRanges(element, planningVersion);
     let atomicIndex = 0;
     let byteCursorCodeUnit = 0;
     let byteCursorOffset = element.startOffset;
@@ -1757,6 +1790,7 @@ function materializeAtomicUnits(
           sourceElement: element,
           startCodeUnit: element.startCodeUnit + localStart,
           startOffset,
+          ...(range.tableRecord ? { tableRecord: range.tableRecord } : {}),
           text,
         });
         atomicIndex += 1;
@@ -1767,7 +1801,13 @@ function materializeAtomicUnits(
   return units;
 }
 
-function semanticRanges(element: MaterializedElement): Array<{ end: number; start: number }> {
+function semanticRanges(
+  element: MaterializedElement,
+  planningVersion: SemanticWindowPlanningVersion,
+): SemanticRange[] {
+  if (planningVersion === "v5" && element.elementType === "table") {
+    return semanticTableRanges(element);
+  }
   if (element.elementType !== "paragraph" && element.elementType !== "list") {
     return [{ end: element.text.length, start: 0 }];
   }
@@ -1781,6 +1821,174 @@ function semanticRanges(element: MaterializedElement): Array<{ end: number; star
   );
 
   return ranges;
+}
+
+function semanticTableRanges(element: MaterializedElement): SemanticRange[] {
+  const lines = nonEmptyLineRanges(element.text);
+  if (lines.length === 0) return [{ end: element.text.length, start: 0 }];
+
+  const table = isPlainObject(element.elementMetadata.table)
+    ? element.elementMetadata.table
+    : undefined;
+  const columns = boundedTableColumns(table?.columns ?? element.elementMetadata.columns);
+  const declaredMode = tableSemanticMode(table?.mode);
+  const semanticVersion = table?.semanticVersion;
+  const nestedRecordCount = nonNegativeSafeInteger(table?.recordCount);
+  const legacyRecordCount = positiveSafeInteger(element.elementMetadata.rowCount);
+  const headerRowCount = nonNegativeSafeInteger(table?.headerRowCount) ?? 0;
+  const sourceRowCount = positiveSafeInteger(table?.sourceRowCount);
+
+  if (semanticVersion === 1 && nestedRecordCount === 0) {
+    return [{ end: element.text.length, start: 0 }];
+  }
+
+  if (
+    semanticVersion === 1 &&
+    nestedRecordCount !== undefined &&
+    nestedRecordCount === lines.length
+  ) {
+    const mode = declaredMode ?? inferTableSemanticMode({ columns, lines });
+    return lines.map((line, index) => ({
+      ...line,
+      tableRecord: tableRecordProvenance(element, columns, mode, index, lines.length, {
+        headerRowCount,
+        sourceRowCount: sourceRowCount ?? headerRowCount + lines.length,
+      }),
+    }));
+  }
+
+  if (
+    legacyRecordCount !== undefined &&
+    legacyRecordCount > 0 &&
+    lines.length === legacyRecordCount + 1
+  ) {
+    const legacyHeaderRowCount = element.elementMetadata.format === "csv" ? 1 : 0;
+    const mode = declaredMode ?? inferTableSemanticMode({ columns, lines: lines.slice(1) });
+    return lines.slice(1).map((line, index) => ({
+      end: line.end,
+      start: index === 0 ? (lines[0] as SemanticRange).start : line.start,
+      tableRecord: tableRecordProvenance(element, columns, mode, index, legacyRecordCount, {
+        headerRowCount: legacyHeaderRowCount,
+        sourceRowCount: legacyRecordCount + legacyHeaderRowCount,
+      }),
+    }));
+  }
+
+  if (lines.length > 1 && looksLikeDelimitedTableHeader(element.text.slice(0, lines[0]?.end))) {
+    const recordLines = lines.slice(1);
+    const inferredColumns =
+      columns.length > 0
+        ? columns
+        : boundedTableColumns(element.text.slice(0, lines[0]?.end).split(" | "));
+    const mode =
+      declaredMode ?? inferTableSemanticMode({ columns: inferredColumns, lines: recordLines });
+    return recordLines.map((line, index) => ({
+      end: line.end,
+      start: index === 0 ? (lines[0] as SemanticRange).start : line.start,
+      tableRecord: tableRecordProvenance(
+        element,
+        inferredColumns,
+        mode,
+        index,
+        recordLines.length,
+        { headerRowCount: 1, sourceRowCount: lines.length },
+      ),
+    }));
+  }
+
+  const mode = declaredMode ?? (lines.length === 1 ? "single-record" : "unknown");
+  return lines.map((line, index) => ({
+    ...line,
+    tableRecord: tableRecordProvenance(element, columns, mode, index, lines.length, {
+      headerRowCount: 0,
+      sourceRowCount: lines.length,
+    }),
+  }));
+}
+
+function nonEmptyLineRanges(text: string): SemanticRange[] {
+  const ranges: SemanticRange[] = [];
+  let start = 0;
+  while (start < text.length) {
+    const newline = text.indexOf("\n", start);
+    const end = newline === -1 ? text.length : newline;
+    if (text.slice(start, end).trim()) ranges.push({ end, start });
+    if (newline === -1) break;
+    start = newline + 1;
+  }
+  return ranges;
+}
+
+function boundedTableColumns(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const columns: string[] = [];
+  for (const entry of value.slice(0, 64)) {
+    if (typeof entry !== "string") return [];
+    const column = entry.trim().slice(0, 160);
+    if (!column) return [];
+    columns.push(column);
+  }
+  return columns;
+}
+
+function positiveSafeInteger(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : undefined;
+}
+
+function nonNegativeSafeInteger(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
+}
+
+function tableSemanticMode(value: unknown): TableSemanticMode | undefined {
+  return value === "matrix" ||
+    value === "record-list" ||
+    value === "single-record" ||
+    value === "unknown"
+    ? value
+    : undefined;
+}
+
+function inferTableSemanticMode({
+  columns,
+  lines,
+}: {
+  readonly columns: readonly string[];
+  readonly lines: readonly SemanticRange[];
+}): TableSemanticMode {
+  if (lines.length <= 1) return "single-record";
+  if (columns.length === 0) return "unknown";
+  return "record-list";
+}
+
+function looksLikeDelimitedTableHeader(value: string): boolean {
+  return value.split(" | ").filter((cell) => cell.trim()).length >= 2;
+}
+
+function tableRecordProvenance(
+  element: MaterializedElement,
+  columns: readonly string[],
+  mode: TableSemanticMode,
+  index: number,
+  count: number,
+  {
+    headerRowCount,
+    sourceRowCount,
+  }: { readonly headerRowCount: number; readonly sourceRowCount: number },
+): TableRecordProvenance {
+  const sourceRowStart = headerRowCount + index + 1;
+  const sourceRowEnd =
+    mode === "single-record" && count === 1
+      ? Math.max(sourceRowStart, sourceRowCount)
+      : sourceRowStart;
+  return {
+    columns,
+    count,
+    index,
+    key: `${element.elementId}:record:${index}`,
+    mode,
+    sourceRowEnd,
+    sourceRowStart,
+  };
 }
 
 function graphemeRanges(
@@ -1872,14 +2080,7 @@ function resolveSemanticWindowPlanningPolicy({
   readonly promptVersion: string;
   readonly units: readonly AtomicUnit[];
 }): SemanticWindowPlanningPolicy {
-  const version: SemanticWindowPlanningVersion =
-    promptVersion === DEFAULT_PROMPT_VERSION
-      ? "v4"
-      : promptVersion === SEMANTIC_CHUNKING_V3_PROMPT_VERSION
-        ? "v3"
-        : promptVersion === SEMANTIC_CHUNKING_V2_PROMPT_VERSION
-          ? "v2"
-          : "v1";
+  const version = semanticWindowPlanningVersion(promptVersion);
   if (version === "v1") {
     return { atomicDocument: false, version };
   }
@@ -1894,15 +2095,36 @@ function resolveSemanticWindowPlanningPolicy({
   const hasNarrativeText = units.some(
     (unit) => unit.elementType !== "image" && unit.elementType !== "table",
   );
+  const tableRecordKeys = new Set(
+    units.flatMap((unit) => (unit.tableRecord ? [unit.tableRecord.key] : [])),
+  );
+  const hasMultiRecordTable = tableRecordKeys.size > 1;
   const atomicDocument =
     units.length > 0 &&
-    ((version !== "v3" && version !== "v4") || units.length <= V3_MAX_CORE_UNITS_PER_WINDOW) &&
+    (!usesBoundedCoreUnits(version) || units.length <= V3_MAX_CORE_UNITS_PER_WINDOW) &&
     tableElementIds.size === 1 &&
+    !hasMultiRecordTable &&
     hasNarrativeText &&
     hasCompletePageProvenance &&
     pageNumbers.size === 1 &&
     countUnicodeGraphemes(canonicalText) <= maxChunkChars;
   return { atomicDocument, version };
+}
+
+function semanticWindowPlanningVersion(promptVersion: string): SemanticWindowPlanningVersion {
+  if (promptVersion === DEFAULT_PROMPT_VERSION) return "v5";
+  if (promptVersion === SEMANTIC_CHUNKING_V4_PROMPT_VERSION) return "v4";
+  if (promptVersion === SEMANTIC_CHUNKING_V3_PROMPT_VERSION) return "v3";
+  if (promptVersion === SEMANTIC_CHUNKING_V2_PROMPT_VERSION) return "v2";
+  return "v1";
+}
+
+function usesBoundedCoreUnits(version: SemanticWindowPlanningVersion): boolean {
+  return version === "v3" || version === "v4" || version === "v5";
+}
+
+function usesFixedCoreBoundary(version: SemanticWindowPlanningVersion): boolean {
+  return version === "v4" || version === "v5";
 }
 
 function materializeSemanticWindow({
@@ -1931,7 +2153,7 @@ function materializeSemanticWindow({
   let cursor = startUnitIndex;
   while (cursor < units.length) {
     if (
-      (planningPolicy.version === "v3" || planningPolicy.version === "v4") &&
+      usesBoundedCoreUnits(planningPolicy.version) &&
       coreUnits.length >= V3_MAX_CORE_UNITS_PER_WINDOW
     ) {
       break;
@@ -1957,7 +2179,7 @@ function materializeSemanticWindow({
   const firstLookAhead = units[cursor];
   while (firstLookAhead && cursor < units.length) {
     if (
-      (planningPolicy.version === "v3" || planningPolicy.version === "v4") &&
+      usesBoundedCoreUnits(planningPolicy.version) &&
       lookAheadUnits.length >= V3_MAX_LOOK_AHEAD_UNITS_PER_WINDOW
     ) {
       break;
@@ -1992,6 +2214,7 @@ function materializeSemanticWindow({
           ),
           planningVersion: planningPolicy.version,
           sectionPath,
+          tableSchemas: semanticWindowTableSchemas([...coreUnits, ...lookAheadUnits]),
           units: coreUnits.map((unit) => semanticPromptUnit(unit, planningPolicy.version)),
           windowId: id,
         };
@@ -2017,6 +2240,11 @@ function semanticPromptUnit(
   readonly id: string;
   readonly sourceElementId?: string | undefined;
   readonly sourceSectionPath?: readonly string[] | undefined;
+  readonly tableMode?: TableSemanticMode | undefined;
+  readonly tableRecordCount?: number | undefined;
+  readonly tableRecordIndex?: number | undefined;
+  readonly tableSourceRowEnd?: number | undefined;
+  readonly tableSourceRowStart?: number | undefined;
   readonly text: string;
   readonly type: string;
 } {
@@ -2033,9 +2261,33 @@ function semanticPromptUnit(
           sourceSectionPath: [...unit.sectionPath],
         }
       : {}),
+    ...(planningVersion === "v5" && unit.tableRecord
+      ? {
+          tableMode: unit.tableRecord.mode,
+          tableRecordCount: unit.tableRecord.count,
+          tableRecordIndex: unit.tableRecord.index,
+          tableSourceRowEnd: unit.tableRecord.sourceRowEnd,
+          tableSourceRowStart: unit.tableRecord.sourceRowStart,
+        }
+      : {}),
     text: unit.text,
     type: unit.elementType,
   };
+}
+
+function semanticWindowTableSchemas(units: readonly AtomicUnit[]): SemanticWindowTableSchema[] {
+  const schemas = new Map<string, SemanticWindowTableSchema>();
+  for (const unit of units) {
+    const record = unit.tableRecord;
+    if (!record || schemas.has(unit.elementId)) continue;
+    schemas.set(unit.elementId, {
+      columns: [...record.columns],
+      mode: record.mode,
+      recordCount: record.count,
+      sourceElementId: unit.elementId,
+    });
+  }
+  return [...schemas.values()];
 }
 
 function isLegacyWindowCompatible(first: AtomicUnit, candidate: AtomicUnit): boolean {
@@ -2088,7 +2340,7 @@ function semanticChunkingMessages({
           : "PageIndex is disabled: preserve only the supplied sectionPath, omit sectionSummary, and do not invent child section levels.",
         "Return strict JSON only. Never return, rewrite, summarize, correct, or duplicate source text.",
         "The units field is the core: cover every core unit exactly once, in order, by contiguous inclusive ranges.",
-        ...(window.planningVersion === "v4"
+        ...(usesFixedCoreBoundary(window.planningVersion)
           ? [
               "lookAheadUnits is read-only context. Never include a look-ahead unit in any returned range; another request owns it.",
               "The final range must end at the final unit in units so independent windows can be processed safely.",
@@ -2113,6 +2365,13 @@ function semanticChunkingMessages({
                 : [
                     "A unit marked boundaryPolicy=isolated must occupy a chunk containing only units from that same table or image element.",
                   ]),
+              ...(window.planningVersion === "v5"
+                ? [
+                    "Table records carry tableMode/tableRecordIndex/tableRecordCount; resolve their bounded columns from tableSchemas by sourceElementId.",
+                    "For tableMode=record-list or matrix, return exactly one chunk per table record; hard-split units with the same tableRecordIndex may stay together, but never combine different records.",
+                    "For tableMode=single-record, keep all units from that record together when the maxChunkChars limit permits.",
+                  ]
+                : []),
               ...(window.atomicDocument
                 ? [
                     "atomicDocument=true: the complete input is one short structured record. Return exactly one chunk covering every core unit; table boundaries are metadata, not retrieval boundaries.",
@@ -2140,11 +2399,16 @@ function semanticChunkingMessages({
       content: JSON.stringify({
         ...(carriesParserProvenance ? { atomicDocument: window.atomicDocument } : {}),
         features: { enableGraph, enablePageIndex },
-        ...(window.planningVersion === "v4" ? { fixedCoreBoundary: true } : {}),
+        ...(usesFixedCoreBoundary(window.planningVersion) ? { fixedCoreBoundary: true } : {}),
         lookAheadUnits: window.lookAheadUnits.map((unit) =>
           semanticPromptUnit(unit, window.planningVersion),
         ),
         sectionPath: window.sectionPath,
+        ...(window.planningVersion === "v5"
+          ? {
+              tableSchemas: semanticWindowTableSchemas([...window.units, ...window.lookAheadUnits]),
+            }
+          : {}),
         units: window.units.map((unit) => semanticPromptUnit(unit, window.planningVersion)),
         windowId: window.id,
       }),
@@ -2356,6 +2620,98 @@ function parseSemanticChunkingOutput(text: string): LlmSemanticChunkingOutput {
   }
 }
 
+function normalizeTableRecordBoundaries({
+  maxChunkChars,
+  output,
+  window,
+}: {
+  readonly maxChunkChars: number;
+  readonly output: LlmSemanticChunkingOutput;
+  readonly window: SemanticWindow;
+}): LlmSemanticChunkingOutput {
+  if (window.planningVersion !== "v5" || window.atomicDocument) return output;
+
+  const eligibleUnits = [...window.units, ...window.lookAheadUnits];
+  const unitIndex = new Map(eligibleUnits.map((unit, index) => [unit.id, index]));
+  const normalized: LlmSemanticChunkingOutput["chunks"] = [];
+
+  for (const candidate of output.chunks) {
+    const start = unitIndex.get(candidate.startUnitId);
+    const end = unitIndex.get(candidate.endUnitId);
+    if (start === undefined || end === undefined || end < start) {
+      normalized.push(candidate);
+      continue;
+    }
+    const candidateUnits = eligibleUnits.slice(start, end + 1);
+    if (
+      candidateUnits.length === 0 ||
+      !candidateUnits.every(
+        (unit) => unit.tableRecord?.mode === "record-list" || unit.tableRecord?.mode === "matrix",
+      )
+    ) {
+      normalized.push(candidate);
+      continue;
+    }
+
+    const recordGroups: AtomicUnit[][] = [];
+    for (const unit of candidateUnits) {
+      const current = recordGroups.at(-1);
+      if (current && current[0]?.tableRecord?.key === unit.tableRecord?.key) {
+        current.push(unit);
+      } else {
+        recordGroups.push([unit]);
+      }
+    }
+    const boundedGroups = recordGroups.flatMap((group) =>
+      splitTableRecordGroup(group, maxChunkChars),
+    );
+    if (boundedGroups.length <= 1) {
+      normalized.push(candidate);
+      continue;
+    }
+
+    for (const group of boundedGroups) {
+      const groupText = semanticUnitsText(group);
+      const entities = candidate.entities.filter((entity) =>
+        groupText.includes(entity.text.trim()),
+      );
+      const entityIds = new Set(entities.map((entity) => entity.id));
+      normalized.push({
+        ...candidate,
+        endUnitId: (group.at(-1) as AtomicUnit).id,
+        entities,
+        relations: candidate.relations.filter(
+          (relation) =>
+            entityIds.has(relation.subjectEntityId) && entityIds.has(relation.objectEntityId),
+        ),
+        startUnitId: (group[0] as AtomicUnit).id,
+      });
+    }
+  }
+
+  return { chunks: normalized };
+}
+
+function splitTableRecordGroup(
+  units: readonly AtomicUnit[],
+  maxChunkChars: number,
+): AtomicUnit[][] {
+  const groups: AtomicUnit[][] = [];
+  let current: AtomicUnit[] = [];
+  for (const unit of units) {
+    if (
+      current.length > 0 &&
+      countUnicodeGraphemes(semanticUnitsText([...current, unit])) > maxChunkChars
+    ) {
+      groups.push(current);
+      current = [];
+    }
+    current.push(unit);
+  }
+  if (current.length > 0) groups.push(current);
+  return groups;
+}
+
 function validateAndMaterializeWindowOutput({
   maxChunkChars,
   maxEntitiesPerChunk,
@@ -2392,25 +2748,15 @@ function validateAndMaterializeWindowOutput({
         "LLM semantic chunking response must cover units contiguously without gaps or overlap",
       );
     }
-    if (window.planningVersion === "v4" && end > coreEnd) {
+    if (usesFixedCoreBoundary(window.planningVersion) && end > coreEnd) {
       throw new Error(
-        "LLM semantic chunking v4 response must not commit read-only look-ahead units",
+        "LLM semantic chunking fixed-core response must not commit read-only look-ahead units",
       );
     }
     const chunkUnits = eligibleUnits.slice(start, end + 1);
     const first = chunkUnits[0] as AtomicUnit;
     const last = chunkUnits.at(-1) as AtomicUnit;
-    const chunkText = chunkUnits
-      .map((unit) => unit.text)
-      .reduce((combined, text, index) => {
-        if (index === 0) return text;
-        const previous = chunkUnits[index - 1] as AtomicUnit;
-        const separator =
-          previous.endCodeUnit === (chunkUnits[index] as AtomicUnit).startCodeUnit
-            ? ""
-            : DOCUMENT_ELEMENT_SEPARATOR;
-        return `${combined}${separator}${text}`;
-      }, "");
+    const chunkText = semanticUnitsText(chunkUnits);
     if (countUnicodeGraphemes(chunkText) > maxChunkChars) {
       throw new Error(`LLM semantic chunking response exceeded maxChunkChars=${maxChunkChars}`);
     }
@@ -2497,8 +2843,8 @@ function validateAndMaterializeWindowOutput({
   if (finalStart > coreEnd) {
     throw new Error("LLM semantic chunking final chunk must start in the core window");
   }
-  if (window.planningVersion === "v4" && finalEnd !== coreEnd) {
-    throw new Error("LLM semantic chunking v4 response must end at the fixed core boundary");
+  if (usesFixedCoreBoundary(window.planningVersion) && finalEnd !== coreEnd) {
+    throw new Error("LLM semantic chunking fixed-core response must end at the core boundary");
   }
   const commitEndUnitId = eligibleUnits[finalEnd]?.id;
   if (!commitEndUnitId) {
@@ -2507,11 +2853,30 @@ function validateAndMaterializeWindowOutput({
   return chunks.map((chunk) => ({ ...chunk, windowCommitEndUnitId: commitEndUnitId }));
 }
 
+function semanticUnitsText(units: readonly AtomicUnit[]): string {
+  return units.reduce((combined, unit, index) => {
+    if (index === 0) return unit.text;
+    const previous = units[index - 1] as AtomicUnit;
+    const separator = previous.endCodeUnit === unit.startCodeUnit ? "" : DOCUMENT_ELEMENT_SEPARATOR;
+    return `${combined}${separator}${unit.text}`;
+  }, "");
+}
+
 function respectsIsolatedElementBoundaries(units: readonly AtomicUnit[]): boolean {
   const isolated = units.filter((unit) => unit.isolationKey !== undefined);
   if (isolated.length === 0) return true;
   const isolationKey = isolated[0]?.isolationKey;
-  return isolationKey !== undefined && units.every((unit) => unit.isolationKey === isolationKey);
+  if (isolationKey === undefined || !units.every((unit) => unit.isolationKey === isolationKey)) {
+    return false;
+  }
+  const recordKeys = new Set(
+    units.flatMap((unit) =>
+      unit.tableRecord?.mode === "record-list" || unit.tableRecord?.mode === "matrix"
+        ? [unit.tableRecord.key]
+        : [],
+    ),
+  );
+  return recordKeys.size <= 1;
 }
 
 function groundEntity(entity: LlmSemanticEntity, chunkText: string): LlmSemanticEntity | undefined {
@@ -2624,6 +2989,7 @@ function materializeKnowledgeNode({
     subject: relation.subject,
     type: relation.type,
   }));
+  const tableRecord = semanticTableRecordMetadata(chunk.units);
   const metadata: Record<string, unknown> = {
     chunkIndex,
     elementIds: uniqueStrings(chunk.units.map((unit) => unit.elementId)),
@@ -2681,6 +3047,7 @@ function materializeKnowledgeNode({
       },
       sourceSpans: semanticSourceSpans(chunk.units),
       strategy: SEMANTIC_CHUNKING_STRATEGY,
+      ...(tableRecord ? { tableRecord } : {}),
       unitRange: {
         endUnitId: chunk.endUnitId,
         startUnitId: chunk.startUnitId,
@@ -2751,6 +3118,26 @@ function materializeKnowledgeNode({
     startOffset: first.startOffset,
     text,
   });
+}
+
+function semanticTableRecordMetadata(units: readonly AtomicUnit[]):
+  | {
+      readonly count: number;
+      readonly index: number;
+      readonly mode: TableSemanticMode;
+      readonly sourceRowEnd: number;
+      readonly sourceRowStart: number;
+    }
+  | undefined {
+  const record = units[0]?.tableRecord;
+  if (!record || !units.every((unit) => unit.tableRecord?.key === record.key)) return undefined;
+  return {
+    count: record.count,
+    index: record.index,
+    mode: record.mode,
+    sourceRowEnd: record.sourceRowEnd,
+    sourceRowStart: record.sourceRowStart,
+  };
 }
 
 function semanticSourceSpans(units: readonly AtomicUnit[]): Array<{
