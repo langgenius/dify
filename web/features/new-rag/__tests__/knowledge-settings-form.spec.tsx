@@ -362,11 +362,10 @@ describe('KnowledgeSettingsForm', () => {
     const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
     await user.clear(nameInput)
     await user.type(nameInput, 'Updated camera specs')
-    await user.click(
-      screen.getByRole('button', {
-        name: 'dataset.newKnowledge.settings.saveChanges',
-      }),
-    )
+    const saveButton = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.settings.saveChanges',
+    })
+    await user.click(saveButton)
 
     await waitFor(() => {
       expect(serviceMock.patchSpace).toHaveBeenCalledWith(
@@ -380,7 +379,7 @@ describe('KnowledgeSettingsForm', () => {
       )
     })
     expect(serviceMock.patchSettings).not.toHaveBeenCalled()
-    expect(toastMock.success).not.toHaveBeenCalled()
+    expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
   })
 
   it('finishes the basic info draft before refreshing saved server data', async () => {
@@ -433,6 +432,12 @@ describe('KnowledgeSettingsForm', () => {
     )
 
     await waitFor(() => expect(serviceMock.patchSpace).toHaveBeenCalledOnce())
+    const saveButton = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.settings.saveChanges',
+    })
+    expect(saveButton).toHaveAttribute('aria-disabled', 'true')
+    expect(saveButton).toHaveTextContent('dataset.newKnowledge.settings.saveChanges')
+    expect(screen.queryByText('common.operation.saving')).not.toBeInTheDocument()
     const apiAccessSwitch = screen.getByRole('switch', {
       name: 'dataset.newKnowledge.apiAgentAccess',
     })
@@ -624,7 +629,7 @@ describe('KnowledgeSettingsForm', () => {
         name: 'dataset.newKnowledge.settings.saveChanges',
       }),
     ).toBeDisabled()
-    expect(toastMock.success).not.toHaveBeenCalled()
+    expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
   })
 
   it('keeps access channels submittable before the first model profile activates', async () => {
@@ -799,7 +804,7 @@ describe('KnowledgeSettingsForm', () => {
     await waitFor(() => expect(workflowAccessSwitch).toHaveAttribute('aria-checked', 'true'))
   })
 
-  it('restores the Workflow access switch after failure and retries the intended value', async () => {
+  it('keeps the Workflow access edit and shows an error toast after failure', async () => {
     const user = userEvent.setup()
     serviceMock.patchExternalAccess.mockRejectedValueOnce(new Error('network error'))
     renderForm({
@@ -814,27 +819,14 @@ describe('KnowledgeSettingsForm', () => {
     })
     await user.click(workflowAccessSwitch)
 
-    expect(await screen.findByText('dataset.newKnowledge.settings.saveFailed')).toBeInTheDocument()
-    expect(workflowAccessSwitch).toHaveAttribute('aria-checked', 'false')
-    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
-
-    await waitFor(() => expect(serviceMock.patchExternalAccess).toHaveBeenCalledTimes(2))
-    expect(serviceMock.patchExternalAccess).toHaveBeenLastCalledWith(
-      {
-        body: {
-          agent_enabled: true,
-          mcp_enabled: true,
-          service_api_enabled: true,
-          workflow_enabled: true,
-        },
-        params: { control_space_id: 'space-1' },
-      },
-      expect.anything(),
+    await waitFor(() =>
+      expect(toastMock.error).toHaveBeenCalledWith('dataset.newKnowledge.settings.saveFailed'),
     )
-    await waitFor(() => expect(workflowAccessSwitch).toHaveAttribute('aria-checked', 'true'))
+    expect(workflowAccessSwitch).toHaveAttribute('aria-checked', 'true')
+    expect(screen.queryByText('dataset.newKnowledge.settings.saveFailed')).not.toBeInTheDocument()
   })
 
-  it('restores the API access switch after failure and retries the intended value', async () => {
+  it('keeps the API access edit and shows an error toast after failure', async () => {
     const user = userEvent.setup()
     serviceMock.patchExternalAccess.mockRejectedValueOnce(new Error('network error'))
     renderForm({
@@ -851,24 +843,11 @@ describe('KnowledgeSettingsForm', () => {
     expect(apiAccessSwitch).toHaveAttribute('aria-checked', 'false')
     await user.click(apiAccessSwitch)
 
-    expect(await screen.findByText('dataset.newKnowledge.settings.saveFailed')).toBeInTheDocument()
-    expect(apiAccessSwitch).toHaveAttribute('aria-checked', 'false')
-    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
-
-    await waitFor(() => expect(serviceMock.patchExternalAccess).toHaveBeenCalledTimes(2))
-    expect(serviceMock.patchExternalAccess).toHaveBeenLastCalledWith(
-      {
-        body: {
-          agent_enabled: true,
-          mcp_enabled: true,
-          service_api_enabled: true,
-          workflow_enabled: true,
-        },
-        params: { control_space_id: 'space-1' },
-      },
-      expect.anything(),
+    await waitFor(() =>
+      expect(toastMock.error).toHaveBeenCalledWith('dataset.newKnowledge.settings.saveFailed'),
     )
-    await waitFor(() => expect(apiAccessSwitch).toHaveAttribute('aria-checked', 'true'))
+    expect(apiAccessSwitch).toHaveAttribute('aria-checked', 'true')
+    expect(screen.queryByText('dataset.newKnowledge.settings.saveFailed')).not.toBeInTheDocument()
   })
 
   it('requires the exact knowledge name before deletion', async () => {
@@ -904,7 +883,7 @@ describe('KnowledgeSettingsForm', () => {
     expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
   })
 
-  it('keeps edits and offers retry after saving fails', async () => {
+  it('keeps edits and shows a standard error toast after saving fails', async () => {
     const user = userEvent.setup()
     serviceMock.patchSpace.mockRejectedValueOnce(new Error('network error'))
     renderForm()
@@ -912,20 +891,24 @@ describe('KnowledgeSettingsForm', () => {
     const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
     await user.clear(nameInput)
     await user.type(nameInput, 'Camera specs draft')
-    await user.click(
-      screen.getByRole('button', {
-        name: 'dataset.newKnowledge.settings.saveChanges',
-      }),
+    const saveButton = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.settings.saveChanges',
+    })
+    await user.click(saveButton)
+
+    await waitFor(() =>
+      expect(toastMock.error).toHaveBeenCalledWith('dataset.newKnowledge.settings.saveFailed'),
     )
-
-    expect(await screen.findByText('dataset.newKnowledge.settings.saveFailed')).toBeInTheDocument()
     expect(nameInput).toHaveValue('Camera specs draft')
+    expect(screen.queryByText('dataset.newKnowledge.settings.saveFailed')).not.toBeInTheDocument()
+    expect(saveButton).toBeEnabled()
 
-    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await user.click(saveButton)
     await waitFor(() => expect(serviceMock.patchSpace).toHaveBeenCalledTimes(2))
+    expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
   })
 
-  it('retries an immediate retrieval settings update without submitting basic info', async () => {
+  it('shows an error toast for a failed retrieval settings update without submitting basic info', async () => {
     const user = userEvent.setup()
     serviceMock.patchSettings.mockRejectedValueOnce(new Error('settings unavailable'))
     renderForm()
@@ -936,10 +919,10 @@ describe('KnowledgeSettingsForm', () => {
       }),
     )
 
-    expect(await screen.findByText('dataset.newKnowledge.settings.saveFailed')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
-
-    await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledTimes(2))
+    await waitFor(() =>
+      expect(toastMock.error).toHaveBeenCalledWith('dataset.newKnowledge.settings.saveFailed'),
+    )
+    expect(screen.queryByText('dataset.newKnowledge.settings.saveFailed')).not.toBeInTheDocument()
     expect(serviceMock.patchSpace).not.toHaveBeenCalled()
   })
 
@@ -1176,25 +1159,11 @@ describe('KnowledgeSettingsForm', () => {
     await user.type(thresholdInput, '0.72')
     await user.tab()
 
-    expect(await screen.findByText('dataset.newKnowledge.permissionRestricted')).toBeInTheDocument()
-    expect(screen.queryByText('dataset.newKnowledge.settings.saveFailed')).not.toBeInTheDocument()
-    expect(thresholdInput).toHaveValue('0.72')
-
-    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
-
-    await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledTimes(2))
-    expect(serviceMock.patchSettings).toHaveBeenLastCalledWith(
-      {
-        body: {
-          expectedRevision: 5,
-          retrieval: expect.objectContaining({
-            scoreThreshold: expect.objectContaining({ value: 0.72 }),
-          }),
-        },
-        params: { control_space_id: 'space-1' },
-      },
-      expect.anything(),
+    await waitFor(() =>
+      expect(toastMock.error).toHaveBeenCalledWith('dataset.newKnowledge.permissionRestricted'),
     )
+    expect(screen.queryByText('dataset.newKnowledge.permissionRestricted')).not.toBeInTheDocument()
+    expect(thresholdInput).toHaveValue('0.72')
   })
 
   it('requires a rerank model for a legacy knowledge base and saves it as enabled', async () => {
@@ -1483,7 +1452,7 @@ describe('KnowledgeSettingsForm', () => {
           name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
         }),
       )
-      expect(await screen.findByRole('status')).toHaveTextContent('common.operation.saving')
+      expect(screen.queryByText('common.operation.saving')).not.toBeInTheDocument()
 
       fireEvent.change(
         screen.getByRole('textbox', {
@@ -1516,6 +1485,9 @@ describe('KnowledgeSettingsForm', () => {
           params: { control_space_id: 'space-1' },
         },
         expect.anything(),
+      )
+      await waitFor(() =>
+        expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess'),
       )
     } finally {
       vi.useRealTimers()
@@ -1884,7 +1856,7 @@ describe('KnowledgeSettingsForm', () => {
       }),
     )
 
-    expect(await screen.findByRole('status')).toHaveTextContent('common.operation.saving')
+    expect(screen.queryByText('common.operation.saving')).not.toBeInTheDocument()
     expect(toastMock.success).not.toHaveBeenCalled()
 
     resolveMigration({
@@ -1898,11 +1870,11 @@ describe('KnowledgeSettingsForm', () => {
       updated_at: '2026-07-28T00:01:00Z',
     })
 
-    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument())
-    expect(toastMock.success).not.toHaveBeenCalled()
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess'))
+    expect(screen.queryByText('common.operation.saving')).not.toBeInTheDocument()
   })
 
-  it('offers retry when a durable profile migration fails', async () => {
+  it('shows an error toast when a durable profile migration fails', async () => {
     const user = userEvent.setup()
     serviceMock.patchSettings.mockResolvedValueOnce({
       migration: {
@@ -1936,11 +1908,11 @@ describe('KnowledgeSettingsForm', () => {
       }),
     )
 
-    expect(await screen.findByText('dataset.newKnowledge.settings.saveFailed')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(toastMock.error).toHaveBeenCalledWith('dataset.newKnowledge.settings.saveFailed'),
+    )
+    expect(screen.queryByText('dataset.newKnowledge.settings.saveFailed')).not.toBeInTheDocument()
     expect(toastMock.success).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
-
-    await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledTimes(2))
   })
 
   it('fully locks the page for a view-only user', () => {
