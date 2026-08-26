@@ -177,10 +177,10 @@ def _preparer(
     assert source_storage is not None
     assert target_storage is not None
     return WorkflowRunArchiveDownloadPreparer(
-        archive_storage=cast(ArchiveStorage, source_storage),
-        download_storage=cast(ArchiveStorage, target_storage),
+        archive_storage_provider=lambda: cast(ArchiveStorage, source_storage),
         bundles=FakeBundleQuery(tuple([_bundle()] if bundles is None else bundles)),
         cache=cache,
+        download_storage_provider=lambda: cast(ArchiveStorage, target_storage),
     )
 
 
@@ -273,6 +273,26 @@ def test_prepare_workflow_run_archive_download_marks_failed_on_checksum_mismatch
     assert result.status == WorkflowRunArchiveDownloadStatus.FAILED
     assert "checksum mismatch" in (result.error or "")
     assert storage.put_objects == {}
+
+
+def test_prepare_workflow_run_archive_download_marks_failed_when_storage_is_unavailable() -> None:
+    task = _task()
+    cache = FakeTaskCache(task)
+    archive_storage_provider = MagicMock(side_effect=RuntimeError("archive storage unavailable"))
+    download_storage_provider = MagicMock()
+    preparer = WorkflowRunArchiveDownloadPreparer(
+        archive_storage_provider=archive_storage_provider,
+        bundles=FakeBundleQuery((_bundle(),)),
+        cache=cache,
+        download_storage_provider=download_storage_provider,
+    )
+
+    result = preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id)
+
+    assert result is not None
+    assert result.status == WorkflowRunArchiveDownloadStatus.FAILED
+    assert result.error == "archive storage unavailable"
+    download_storage_provider.assert_not_called()
 
 
 def test_prepare_workflow_run_archive_download_skips_duplicate_worker() -> None:

@@ -12,7 +12,7 @@ import io
 import logging
 import re
 import zipfile
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 import pyarrow as pa
 import pyarrow.compute as pc
@@ -20,7 +20,7 @@ import pyarrow.csv as pa_csv
 import pyarrow.parquet as pq
 
 from core.helper.csv_sanitizer import CSVSanitizer
-from libs.archive_storage import ArchiveStorage, get_archive_storage, get_export_storage
+from libs.archive_storage import ArchiveStorage
 from services.retention.workflow_run.archive_bundle_index import (
     ARCHIVE_BUNDLE_ROOT_PREFIX,
     ArchiveBundleManifest,
@@ -59,22 +59,21 @@ class WorkflowRunArchiveDownloadPreparer:
     without touching long-lived archives.
     """
 
-    archive_storage: ArchiveStorage | None
-    download_storage: ArchiveStorage | None
+    _archive_storage_provider: Callable[[], ArchiveStorage]
+    _download_storage_provider: Callable[[], ArchiveStorage]
     cache: WorkflowRunArchiveDownloadTaskStore
     _bundles: WorkflowRunArchiveBundleQuery
 
     def __init__(
         self,
         *,
-        storage: ArchiveStorage | None = None,
-        archive_storage: ArchiveStorage | None = None,
-        download_storage: ArchiveStorage | None = None,
+        archive_storage_provider: Callable[[], ArchiveStorage],
+        download_storage_provider: Callable[[], ArchiveStorage],
         bundles: WorkflowRunArchiveBundleQuery,
         cache: WorkflowRunArchiveDownloadTaskStore,
     ) -> None:
-        self.archive_storage = archive_storage or storage
-        self.download_storage = download_storage or storage
+        self._archive_storage_provider = archive_storage_provider
+        self._download_storage_provider = download_storage_provider
         self._bundles = bundles
         self.cache = cache
 
@@ -90,8 +89,8 @@ class WorkflowRunArchiveDownloadPreparer:
                 return task
             processing_task = self._mark_processing(task)
         try:
-            archive_storage = self.archive_storage or get_archive_storage()
-            download_storage = self.download_storage or get_export_storage()
+            archive_storage = self._archive_storage_provider()
+            download_storage = self._download_storage_provider()
             bundles = self._get_task_bundles(processing_task)
             payload = self._build_zip_payload(archive_storage, processing_task, bundles)
             storage_key = build_archive_download_storage_key(processing_task)

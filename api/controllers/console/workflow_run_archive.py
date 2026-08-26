@@ -30,7 +30,6 @@ from services.retention.workflow_run.archive_log_service import (
 )
 
 _WORKFLOW_RUN_ARCHIVE_ALLOWED_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})
-_CLOUD_EDITIONS = frozenset({DeploymentEdition.CLOUD})
 
 
 class WorkflowRunArchiveDownloadPayload(BaseModel):
@@ -97,7 +96,7 @@ class WorkflowRunArchivesApi(Resource):
     @console_ns.doc(description="List monthly workflow-run archive metadata for the current workspace")
     @console_ns.response(200, "Success", console_ns.models[WorkflowRunArchiveListResponse.__name__])
     @console_account_admission(
-        editions=_CLOUD_EDITIONS,
+        editions=frozenset({DeploymentEdition.CLOUD}),
         allowed_roles=_WORKFLOW_RUN_ARCHIVE_ALLOWED_ROLES,
     )
     @cloud_edition_billing_paid_plan_required
@@ -117,7 +116,7 @@ class WorkflowRunArchiveDownloadsApi(Resource):
         console_ns.models[WorkflowRunArchiveDownloadTaskResponse.__name__],
     )
     @console_account_admission(
-        editions=_CLOUD_EDITIONS,
+        editions=frozenset({DeploymentEdition.CLOUD}),
         allowed_roles=_WORKFLOW_RUN_ARCHIVE_ALLOWED_ROLES,
     )
     @cloud_edition_billing_paid_plan_required
@@ -140,7 +139,7 @@ class WorkflowRunArchiveDownloadApi(Resource):
     @console_ns.doc(description="Get a temporary workflow-run archive download task")
     @console_ns.response(200, "Success", console_ns.models[WorkflowRunArchiveDownloadTaskResponse.__name__])
     @console_account_admission(
-        editions=_CLOUD_EDITIONS,
+        editions=frozenset({DeploymentEdition.CLOUD}),
         allowed_roles=_WORKFLOW_RUN_ARCHIVE_ALLOWED_ROLES,
     )
     @cloud_edition_billing_paid_plan_required
@@ -166,7 +165,7 @@ class WorkflowRunArchiveDownloadFileApi(Resource):
     )
     @console_ns.response(409, "Download task is not ready")
     @console_account_admission(
-        editions=_CLOUD_EDITIONS,
+        editions=frozenset({DeploymentEdition.CLOUD}),
         allowed_roles=_WORKFLOW_RUN_ARCHIVE_ALLOWED_ROLES,
     )
     @cloud_edition_billing_paid_plan_required
