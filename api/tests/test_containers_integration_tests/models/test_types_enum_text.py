@@ -210,7 +210,7 @@ class TestEnumText:
 
         assert str(exc.value) == "'invalid' is not a valid _UserType"
 
-    def test_select_rejects_legacy_model_type_values(self, engine_with_containers: Engine):
+    def test_select_maps_legacy_model_type_values(self, engine_with_containers: Engine):
         insertion_sql = """
                         INSERT INTO enum_text_legacy_model_type_test (id, model_type) VALUES
                             (1, 'text-generation'),
@@ -221,9 +221,13 @@ class TestEnumText:
             session.execute(sa.text(insertion_sql))
             session.commit()
 
-        for record_id, legacy_value in enumerate(("text-generation", "embeddings", "reranking"), 1):
-            with pytest.raises(ValueError) as exc:
-                with Session(engine_with_containers) as session:
-                    session.scalar(select(_LegacyModelTypeRecord).where(_LegacyModelTypeRecord.id == record_id))
-
-            assert str(exc.value) == f"'{legacy_value}' is not a valid ModelType"
+        expected = {
+            1: ModelType.LLM,
+            2: ModelType.TEXT_EMBEDDING,
+            3: ModelType.RERANK,
+        }
+        with Session(engine_with_containers) as session:
+            for record_id, model_type in expected.items():
+                record = session.scalar(select(_LegacyModelTypeRecord).where(_LegacyModelTypeRecord.id == record_id))
+                assert record is not None
+                assert record.model_type is model_type

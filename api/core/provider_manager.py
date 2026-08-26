@@ -61,6 +61,7 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
+from models.types import parse_enum_text
 from services.feature_service import FeatureService
 
 if TYPE_CHECKING:
@@ -131,7 +132,7 @@ class _ProviderModelCacheEntry:
             id=row["id"],
             provider_name=row["provider_name"],
             model_name=row["model_name"],
-            model_type=ModelType(row["model_type"]),
+            model_type=parse_enum_text(ModelType, row["model_type"]),
             credential_id=row.get("credential_id"),
             credential_name=row.get("credential_name"),
             encrypted_config=row.get("encrypted_config"),
@@ -192,7 +193,7 @@ class _ProviderModelSettingCacheEntry:
         return cls(
             provider_name=row["provider_name"],
             model_name=row["model_name"],
-            model_type=ModelType(row["model_type"]),
+            model_type=parse_enum_text(ModelType, row["model_type"]),
             enabled=row["enabled"],
             load_balancing_enabled=row["load_balancing_enabled"],
         )
@@ -231,7 +232,7 @@ class _ProviderModelCredentialCacheEntry:
             id=row["id"],
             provider_name=row["provider_name"],
             model_name=row["model_name"],
-            model_type=ModelType(row["model_type"]),
+            model_type=parse_enum_text(ModelType, row["model_type"]),
             credential_name=row["credential_name"],
         )
 
@@ -306,7 +307,7 @@ class _LoadBalancingModelConfigCacheEntry:
             tenant_id=row["tenant_id"],
             provider_name=row["provider_name"],
             model_name=row["model_name"],
-            model_type=ModelType(row["model_type"]),
+            model_type=parse_enum_text(ModelType, row["model_type"]),
             name=row["name"],
             encrypted_config=row.get("encrypted_config"),
             credential_id=row.get("credential_id"),
@@ -1395,7 +1396,7 @@ class ProviderManager:
         return [
             {
                 "model": model_key[0],
-                "model_type": ModelType(model_key[1]),
+                "model_type": parse_enum_text(ModelType, model_key[1]),
                 "available_model_credentials": [
                     CredentialConfiguration(credential_id=cred.id, credential_name=cred.credential_name)
                     for cred in creds

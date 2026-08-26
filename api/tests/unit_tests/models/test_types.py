@@ -6,7 +6,8 @@ from sqlalchemy.dialects import mysql, postgresql, sqlite
 from sqlalchemy.dialects.mysql import LONGTEXT
 from sqlalchemy.sql.sqltypes import TEXT
 
-from models.types import JSONModelColumn
+from graphon.model_runtime.entities.model_entities import ModelType
+from models.types import EnumText, JSONModelColumn, parse_enum_text
 
 
 class JsonColumnSample(BaseModel):
@@ -63,3 +64,29 @@ def test_json_model_column_uses_long_text_compatible_dialect_types():
 def test_json_model_column_rejects_string_model_paths():
     with pytest.raises(TypeError):
         JSONModelColumn(cast(type[BaseModel], "tests.unit_tests.models.test_types.JsonColumnSample"))
+
+
+def test_parse_enum_text_maps_pre_1_15_model_type_aliases():
+    assert parse_enum_text(ModelType, "text-generation") is ModelType.LLM
+    assert parse_enum_text(ModelType, "embeddings") is ModelType.TEXT_EMBEDDING
+    assert parse_enum_text(ModelType, "reranking") is ModelType.RERANK
+    assert parse_enum_text(ModelType, "llm") is ModelType.LLM
+    assert parse_enum_text(ModelType, ModelType.LLM) is ModelType.LLM
+
+
+def test_parse_enum_text_rejects_unknown_values():
+    with pytest.raises(ValueError, match="not a valid ModelType"):
+        parse_enum_text(ModelType, "not-a-type")
+
+
+def test_enum_text_reads_legacy_model_type_aliases_but_does_not_bind_them():
+    column = EnumText(ModelType)
+    dialect = sqlite.dialect()
+
+    assert column.process_result_value("text-generation", dialect) is ModelType.LLM
+    assert column.process_result_value("embeddings", dialect) is ModelType.TEXT_EMBEDDING
+    assert column.process_result_value("reranking", dialect) is ModelType.RERANK
+    assert column.process_bind_param(ModelType.LLM, dialect) == "llm"
+
+    with pytest.raises(ValueError, match="not a valid ModelType"):
+        column.process_bind_param("text-generation", dialect)

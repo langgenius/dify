@@ -18,7 +18,7 @@ from core.entities.provider_entities import (
 from core.hosting_configuration import HostingProvider, TrialHostingQuota
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
-from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
+from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager, _ProviderModelCacheEntry
 from enums import DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -1319,3 +1319,20 @@ def test_get_all_provider_load_balancing_configs_populates_cache_and_groups_conf
     assert [record.provider_name for record in result["openai"]] == ["openai"]
     assert [record.provider_name for record in result["anthropic"]] == ["anthropic"]
     assert "other-provider" not in result
+
+
+def test_provider_model_cache_entry_reads_legacy_model_type_alias() -> None:
+    entry = _ProviderModelCacheEntry.from_cache_row(
+        {
+            "id": "model-1",
+            "provider_name": "openai",
+            "model_name": "gpt-4",
+            "model_type": "text-generation",
+            "credential_id": None,
+            "credential_name": None,
+            "encrypted_config": None,
+        }
+    )
+
+    assert entry.model_type is ModelType.LLM
+    assert entry.to_cache_row()["model_type"] == "llm"

@@ -14,6 +14,35 @@ from sqlalchemy.sql.type_api import TypeEngine
 from configs import dify_config
 
 
+def parse_enum_text[T: enum.StrEnum](enum_class: type[T], value: str | T) -> T:
+    """Parse a ``StrEnum`` from a stored or cached string.
+
+    Canonical values are constructed normally. When the constructor rejects the
+    string, this also accepts ``value_of()`` (if present) and origin aliases
+    exposed by ``to_origin_model_type()`` so pre-1.15 ``ModelType`` rows such as
+    ``text-generation`` can still be loaded.
+    """
+    if isinstance(value, enum_class):
+        return value
+    if not isinstance(value, str):
+        raise ValueError(f"'{value}' is not a valid {enum_class.__name__}")
+    try:
+        return enum_class(value)
+    except ValueError:
+        value_of = getattr(enum_class, "value_of", None)
+        if callable(value_of):
+            return cast(T, value_of(value))
+        to_origin = getattr(enum_class, "to_origin_model_type", None)
+        if callable(to_origin):
+            for member in enum_class:
+                try:
+                    if to_origin(member) == value:
+                        return member
+                except ValueError:
+                    continue
+        raise
+
+
 class StringUUID(TypeDecorator[uuid.UUID | str | None]):
     impl = CHAR
     cache_ok = True
@@ -207,14 +236,7 @@ class EnumText[T: enum.StrEnum](TypeDecorator[T | None]):
     def process_result_value(self, value: str | None, dialect: Dialect) -> T | None:
         if value is None or value == "":
             return None
-        try:
-            # Type annotation guarantees value is str at this point
-            return self._enum_class(value)
-        except ValueError:
-            value_of = getattr(self._enum_class, "value_of", None)
-            if callable(value_of):
-                return cast(T, value_of(value))
-            raise
+        return parse_enum_text(self._enum_class, value)
 
     @override
     def compare_values(self, x: T | None, y: T | None) -> bool:
