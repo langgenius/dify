@@ -3,7 +3,6 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
-import threading
 from collections.abc import Mapping
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
@@ -151,22 +150,6 @@ def _signed_request(
         body=body,
         received_at=_RECEIVED_AT,
     )
-
-
-def _assert_single_verified_digest_claim(
-    handler: object,
-    *,
-    signature: str,
-    body: bytes,
-) -> None:
-    assert isinstance(handler, adapter_module._FeishuLarkWebhookHandler)
-    expected_identity = bytes.fromhex(signature)
-    assert len(expected_identity) == hashlib.sha256().digest_size
-    assert set(handler._replay_claims) == {expected_identity}
-    assert all(isinstance(expires_at, float) for expires_at in handler._replay_claims.values())
-    assert body not in handler._replay_claims
-    assert _ENCRYPT_KEY.encode() not in handler._replay_claims
-    assert signature.encode() not in handler._replay_claims
 
 
 @pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
@@ -388,7 +371,7 @@ def test_signed_event_requires_exactly_one_signature_tuple_header(
     assert gateway.calls == []
 
 
-def test_replayed_signed_delivery_is_rejected_without_second_consumer_call(
+def test_replayed_signed_delivery_is_forwarded_to_the_durable_consumer(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     gateway = _Gateway(["tenant_sanitized", "tenant_sanitized"])
@@ -401,109 +384,7 @@ def test_replayed_signed_delivery_is_rejected_without_second_consumer_call(
     replay = handler.handle(request)
 
     assert first.status_code == 200
-    assert replay.status_code != 200
-    assert len(consumer.events) == 1
-
-
-def test_boundary_shifted_signature_material_shares_one_replay_claim(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    gateway = _Gateway(["tenant_sanitized", "tenant_sanitized"])
-    consumer = _Consumer()
-    handler = _adapter(monkeypatch, IMProvider.FEISHU, gateway).create_webhook_handler(consumer)
-    body = json.dumps({"encrypt": _encrypt(_event_body())}, separators=(",", ":")).encode()
-    first = _signed_request(body, timestamp="1", nonce="23")
-    signature = next(value for name, value in first.headers if name == "X-Lark-Signature")
-    boundary_shifted = _signed_request(body, timestamp="12", nonce="3", signature=signature)
-
-    responses = (handler.handle(first), handler.handle(boundary_shifted))
-
-    assert tuple(response.status_code for response in responses) == (200, 409)
-    assert len(consumer.events) == 1
-    _assert_single_verified_digest_claim(handler, signature=signature, body=body)
-
-
-def test_concurrent_replayed_signed_delivery_is_claimed_atomically(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    request_count = 8
-    gateway = _Gateway(["tenant_sanitized"] * request_count)
-    consumer = _Consumer()
-    handler = _adapter(monkeypatch, IMProvider.FEISHU, gateway).create_webhook_handler(consumer)
-    body = json.dumps({"encrypt": _encrypt(_event_body())}, separators=(",", ":")).encode()
-    request = _signed_request(body)
-
-    with ThreadPoolExecutor(max_workers=request_count) as executor:
-        responses = tuple(executor.map(handler.handle, (request,) * request_count))
-
-    assert sum(response.status_code == 200 for response in responses) == 1
-    assert len(consumer.events) == 1
-
-
-def test_concurrent_boundary_shifted_signature_material_is_claimed_atomically(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    request_count = 8
-    start_barrier = threading.Barrier(request_count)
-
-    class BarrierGateway(_Gateway):
-        def query_tenant(self) -> Mapping[str, object]:
-            start_barrier.wait(timeout=5)
-            return super().query_tenant()
-
-    gateway = BarrierGateway(["tenant_sanitized"] * request_count)
-    consumer = _Consumer()
-    handler = _adapter(monkeypatch, IMProvider.FEISHU, gateway).create_webhook_handler(consumer)
-    body = json.dumps({"encrypt": _encrypt(_event_body())}, separators=(",", ":")).encode()
-    first = _signed_request(body, timestamp="1", nonce="23")
-    signature = next(value for name, value in first.headers if name == "X-Lark-Signature")
-    boundary_shifted = _signed_request(body, timestamp="12", nonce="3", signature=signature)
-    requests = (first, boundary_shifted) * (request_count // 2)
-
-    with ThreadPoolExecutor(max_workers=request_count) as executor:
-        responses = tuple(executor.map(handler.handle, requests))
-
-    assert sum(response.status_code == 200 for response in responses) == 1
-    assert len(consumer.events) == 1
-    _assert_single_verified_digest_claim(handler, signature=signature, body=body)
-
-
-def test_signed_delivery_replay_claims_expire_and_remain_bounded(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monotonic_time = 1000.0
-    monkeypatch.setattr(adapter_module.time, "monotonic", lambda: monotonic_time)
-    monkeypatch.setattr(adapter_module, "_WEBHOOK_REPLAY_CACHE_CAPACITY", 2)
-    gateway = _Gateway(["tenant_sanitized"] * 4)
-    consumer = _Consumer()
-    handler = _adapter(monkeypatch, IMProvider.FEISHU, gateway).create_webhook_handler(consumer)
-    assert isinstance(handler, adapter_module._FeishuLarkWebhookHandler)
-    body = json.dumps({"encrypt": _encrypt(_event_body())}, separators=(",", ":")).encode()
-
-    assert handler.handle(_signed_request(body, nonce="sanitized-nonce-1")).status_code == 200
-    assert handler.handle(_signed_request(body, nonce="sanitized-nonce-2")).status_code == 200
-    assert handler.handle(_signed_request(body, nonce="sanitized-nonce-3")).status_code != 200
-    assert len(handler._replay_claims) == 2
-
-    monotonic_time += adapter_module._WEBHOOK_REPLAY_CLAIM_TTL_SECONDS + 1
-    assert handler.handle(_signed_request(body, nonce="sanitized-nonce-3")).status_code == 200
-    assert len(consumer.events) == 3
-
-
-def test_replay_capacity_never_evicts_an_unexpired_delivery_claim(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(adapter_module, "_WEBHOOK_REPLAY_CACHE_CAPACITY", 2)
-    gateway = _Gateway(["tenant_sanitized"] * 4)
-    consumer = _Consumer()
-    handler = _adapter(monkeypatch, IMProvider.FEISHU, gateway).create_webhook_handler(consumer)
-    body = json.dumps({"encrypt": _encrypt(_event_body())}, separators=(",", ":")).encode()
-    first = _signed_request(body, nonce="sanitized-nonce-1")
-
-    assert handler.handle(first).status_code == 200
-    assert handler.handle(_signed_request(body, nonce="sanitized-nonce-2")).status_code == 200
-    assert handler.handle(_signed_request(body, nonce="sanitized-nonce-3")).status_code != 200
-    assert handler.handle(first).status_code != 200
+    assert replay.status_code == 200
     assert len(consumer.events) == 2
 
 

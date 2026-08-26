@@ -896,7 +896,7 @@ def test_controller_projections_feed_typed_adapter_construction(
     assert LarkIMProviderAdapter(lark_resolved).provider is IMProvider.LARK
 
 
-def test_webhook_crypto_challenge_replay_and_ack_over_official_tenant_boundary(
+def test_webhook_crypto_challenge_and_ack_over_official_tenant_boundary(
     monkeypatch: pytest.MonkeyPatch,
     sdk_server: _RunningServer,
 ) -> None:
@@ -913,10 +913,8 @@ def test_webhook_crypto_challenge_replay_and_ack_over_official_tenant_boundary(
     request = _signed_request(encrypted_body, timestamp="opaque-provider-timestamp")
 
     response = handler.handle(request)
-    replay = handler.handle(request)
 
     assert response.status_code == 200
-    assert replay.status_code == 409
     assert len(consumer.events) == 1
     assert consumer.events[0].ingress_kind is IMEventIngressKind.WEBHOOK
     assert json.loads(consumer.events[0].payload) == json.loads(plaintext)
@@ -1738,9 +1736,7 @@ def test_commonmark_conversion_preserves_semantics_over_official_message_boundar
     }
 
 
-def test_secure_webhook_rejects_auth_crypto_boundaries_and_fails_closed_at_replay_capacity(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_secure_webhook_rejects_auth_crypto_boundaries() -> None:
     encrypted_payload = json.dumps(
         {"encrypt": _encrypt(json.dumps(_event_payload(), separators=(",", ":")).encode())},
         separators=(",", ":"),
@@ -1772,24 +1768,6 @@ def test_secure_webhook_rejects_auth_crypto_boundaries_and_fails_closed_at_repla
         _Consumer(),
     )
     assert plaintext_handler.handle(WebhookRequest("POST", (), encrypted_payload, datetime.now())).status_code == 401
-
-    monkeypatch.setattr(adapter_module, "_WEBHOOK_REPLAY_CACHE_CAPACITY", 1)
-    gateway = _ScriptedGateway()
-    gateway.tenant.extend([_tenant_response(), _tenant_response(), _tenant_response()])
-    consumer = _Consumer()
-    handler = adapter_module._FeishuLarkWebhookHandler(
-        gateway,
-        _secure_credentials(),
-        IMProvider.FEISHU,
-        consumer,
-    )
-
-    assert handler.handle(_signed_request(encrypted_payload, nonce="nonce-first")).status_code == 200
-    assert handler.handle(_signed_request(encrypted_payload, nonce="nonce-capacity")).status_code == 409
-    for replay_identity in handler._replay_claims:
-        handler._replay_claims[replay_identity] = 0
-    assert handler.handle(_signed_request(encrypted_payload, nonce="nonce-after-expiry")).status_code == 200
-    assert len(consumer.events) == 2
 
 
 def test_stream_failure_stop_and_late_callback_boundaries_are_one_shot(

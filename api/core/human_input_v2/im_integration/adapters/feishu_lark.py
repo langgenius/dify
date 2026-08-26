@@ -15,7 +15,6 @@ import hmac
 import json
 import logging
 import threading
-import time
 from collections import deque
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from concurrent.futures import Future
@@ -102,8 +101,6 @@ class _DepartmentIdentity:
 _ROOT_DEPARTMENT = _DepartmentIdentity("0", "department_id")
 _AUTHENTICATION_REJECTED_CODES = frozenset((99991663, 99991664, 99991665))
 _STALE_MESSAGE_CODES = frozenset((230001, 230011, 230020))
-_WEBHOOK_REPLAY_CLAIM_TTL_SECONDS = 300
-_WEBHOOK_REPLAY_CACHE_CAPACITY = 4096
 _JSON_RESPONSE_HEADERS = (("Content-Type", "application/json"),)
 _STREAM_READY_TIMEOUT_SECONDS = 30.0
 _STREAM_CLOSE_TIMEOUT_SECONDS = 5.0
@@ -1290,7 +1287,7 @@ class _FeishuLarkDynamicCardMessaging(IMDynamicCardMessaging):
 
 
 class _FeishuLarkWebhookHandler(IMWebhookHandler):
-    """Authenticated Webhook boundary safe for concurrent calls and replays."""
+    """Authenticated Webhook boundary safe for concurrent calls."""
 
     def __init__(
         self,
@@ -1304,8 +1301,6 @@ class _FeishuLarkWebhookHandler(IMWebhookHandler):
         self._encrypt_key = credentials.encrypt_key
         self._provider = provider
         self._consumer = consumer
-        self._replay_lock = threading.Lock()
-        self._replay_claims: dict[bytes, float] = {}
 
     @override
     def handle(self, request: WebhookRequest) -> WebhookResponse:
@@ -1314,7 +1309,7 @@ class _FeishuLarkWebhookHandler(IMWebhookHandler):
         authenticated = self._authenticate_and_decode(request)
         if authenticated is None:
             return _webhook_response(401, {"code": 1})
-        decoded, replay_identity, encrypted, native_payload = authenticated
+        decoded, encrypted, native_payload = authenticated
 
         if decoded.get("type") == "url_verification":
             try:
@@ -1348,8 +1343,6 @@ class _FeishuLarkWebhookHandler(IMWebhookHandler):
             ingress_kind=IMEventIngressKind.WEBHOOK,
             payload=native_payload,
         )
-        if replay_identity is not None and not self._claim_delivery(replay_identity):
-            return _webhook_response(409, {"code": 1})
         try:
             acceptance = self._consumer.accept(event)
         except Exception:
@@ -1365,7 +1358,7 @@ class _FeishuLarkWebhookHandler(IMWebhookHandler):
     def _authenticate_and_decode(
         self,
         request: WebhookRequest,
-    ) -> tuple[dict[str, object], bytes | None, bool, str] | None:
+    ) -> tuple[dict[str, object], bool, str] | None:
         # Authentication must parse Provider JSON for challenge, token, signature,
         # and tenant checks. The separate native string is never reconstructed;
         # it is persisted exactly so only the codec normalizes card callback facts.
@@ -1388,26 +1381,11 @@ class _FeishuLarkWebhookHandler(IMWebhookHandler):
             return None
         # The official SDK authenticates URL verification with the body token and requires signatures only for events.
         if decoded.get("type") == "url_verification":
-            return decoded, None, encrypted is not None, native_payload
-        replay_identity = None
+            return decoded, encrypted is not None, native_payload
         if self._encrypt_key is not None:
-            replay_identity = _valid_webhook_signature(request, self._encrypt_key)
-            if replay_identity is None:
+            if _valid_webhook_signature(request, self._encrypt_key) is None:
                 return None
-        return decoded, replay_identity, encrypted is not None, native_payload
-
-    def _claim_delivery(self, replay_identity: bytes) -> bool:
-        now = time.monotonic()
-        with self._replay_lock:
-            expired = tuple(identity for identity, expires_at in self._replay_claims.items() if expires_at <= now)
-            for identity in expired:
-                del self._replay_claims[identity]
-            if replay_identity in self._replay_claims:
-                return False
-            if len(self._replay_claims) >= _WEBHOOK_REPLAY_CACHE_CAPACITY:
-                return False
-            self._replay_claims[replay_identity] = now + _WEBHOOK_REPLAY_CLAIM_TTL_SECONDS
-            return True
+        return decoded, encrypted is not None, native_payload
 
     def _verification_token_matches(self, token: str | None) -> bool:
         return self._verification_token is None or (
