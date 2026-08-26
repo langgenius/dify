@@ -1,4 +1,3 @@
-import type { EmailCodeLoginPayload } from '@dify/contracts/api/console/email-code-login/types.gen'
 import type {
   PostWorkspacesInfoData,
   PostWorkspacesInfoResponse,
@@ -126,13 +125,6 @@ type InvitationCheckData = {
   requires_setup?: boolean
 }
 
-type ActivateMemberBody = {
-  token: string
-  name?: string
-  interface_language?: string
-  timezone?: string
-}
-
 export const invitationCheck = ({
   url,
   params,
@@ -141,16 +133,6 @@ export const invitationCheck = ({
   params: { workspace_id?: string; email?: string; token: string }
 }): Promise<CommonResponse & { is_valid: boolean; data: InvitationCheckData }> => {
   return get<CommonResponse & { is_valid: boolean; data: InvitationCheckData }>(url, { params })
-}
-
-export const activateMember = ({
-  url,
-  body,
-}: {
-  url: string
-  body: ActivateMemberBody
-}): Promise<LoginResponse> => {
-  return post<LoginResponse>(url, { body })
 }
 
 export const fetchModelList = (url: string): Promise<{ data: Model[] }> => {
@@ -233,9 +215,6 @@ export const sendEMailLoginCode = (
       ...(turnstileToken === undefined ? {} : { turnstile_token: turnstileToken }),
     },
   })
-
-export const emailLoginWithCode = (data: EmailCodeLoginPayload): Promise<LoginResponse> =>
-  post<LoginResponse>('/email-code-login/validity', { body: data })
 
 export const sendResetPasswordCode = (
   email: string,

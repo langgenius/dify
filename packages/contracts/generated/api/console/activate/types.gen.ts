@@ -14,7 +14,8 @@ export type ActivatePayload = {
 }
 
 export type ActivationResponse = {
-  result: string
+  registration_completed: boolean
+  result: 'success'
 }
 
 export type ActivationCheckResponse = {

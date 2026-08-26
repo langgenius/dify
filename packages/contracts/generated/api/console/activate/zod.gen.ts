@@ -18,7 +18,8 @@ export const zActivatePayload = z.object({
  * ActivationResponse
  */
 export const zActivationResponse = z.object({
-  result: z.string(),
+  registration_completed: z.boolean(),
+  result: z.literal('success'),
 })
 
 /**

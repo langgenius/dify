@@ -32,10 +32,11 @@ export const zEmailCodeLoginPayload = z.object({
 })
 
 /**
- * SimpleResultResponse
+ * EmailCodeLoginResponse
  */
-export const zSimpleResultResponse = z.object({
-  result: z.string(),
+export const zEmailCodeLoginResponse = z.object({
+  is_new_account: z.boolean(),
+  result: z.literal('success'),
 })
 
 export const zPostEmailCodeLoginBody = zEmailCodeSendPayload
@@ -50,4 +51,4 @@ export const zPostEmailCodeLoginValidityBody = zEmailCodeLoginPayload
 /**
  * Success
  */
-export const zPostEmailCodeLoginValidityResponse = zSimpleResultResponse
+export const zPostEmailCodeLoginValidityResponse = zEmailCodeLoginResponse

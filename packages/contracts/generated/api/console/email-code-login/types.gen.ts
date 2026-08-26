@@ -24,8 +24,9 @@ export type EmailCodeLoginPayload = {
   turnstile_token?: string | null
 }
 
-export type SimpleResultResponse = {
-  result: string
+export type EmailCodeLoginResponse = {
+  is_new_account: boolean
+  result: 'success'
 }
 
 export type PostEmailCodeLoginData = {
@@ -50,7 +51,7 @@ export type PostEmailCodeLoginValidityData = {
 }
 
 export type PostEmailCodeLoginValidityResponses = {
-  200: SimpleResultResponse
+  200: EmailCodeLoginResponse
 }
 
 export type PostEmailCodeLoginValidityResponse =

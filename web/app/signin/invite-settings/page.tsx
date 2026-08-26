@@ -14,8 +14,10 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { RiAccountCircleLine } from '@remixicon/react'
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
+import Cookies from 'js-cookie'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { rememberRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
 import Loading from '@/app/components/base/loading'
 import { LICENSE_LINK } from '@/constants/link'
 import { useLocale } from '@/context/i18n'
@@ -26,8 +28,7 @@ import { i18n, setLocaleOnClient } from '@/i18n-config'
 import { languages } from '@/i18n-config/language'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
-import { activateMember } from '@/service/common'
+import { consoleClient, consoleQuery } from '@/service/client'
 import { useInvitationCheck } from '@/service/use-common'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone, timezones } from '@/utils/timezone'
@@ -61,6 +62,18 @@ const getInitialLanguage = (locale: Locale): Locale => {
   if (LANGUAGE_OPTIONS.some((item) => item.value === locale)) return locale
 
   return i18n.defaultLocale
+}
+
+const parseUtmInfo = () => {
+  const utmInfoString = Cookies.get('utm_info')
+  if (!utmInfoString) return null
+
+  try {
+    return JSON.parse(utmInfoString) as Record<string, unknown>
+  } catch (error) {
+    console.error('Failed to parse utm_info cookie:', error)
+    return null
+  }
 }
 
 export default function InviteSettingsPage() {
@@ -156,11 +169,16 @@ export default function InviteSettingsPage() {
         : {
             token,
           }
-      const res = await activateMember({
-        url: '/activate',
+      const res = await consoleClient.activate.post({
         body,
       })
       if (res.result === 'success') {
+        if (res.registration_completed ?? false) {
+          const utmInfo = parseUtmInfo()
+          const accepted = rememberRegistrationSuccess({ method: 'workspace_invite', utmInfo })
+          if (accepted) Cookies.remove('utm_info')
+        }
+
         // Tokens are now stored in cookies by the backend
         if (requiresAccountSetup) await setLocaleOnClient(language!, false)
         await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })

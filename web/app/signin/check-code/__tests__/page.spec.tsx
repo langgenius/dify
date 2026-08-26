@@ -3,8 +3,9 @@ import type { DeploymentEdition } from '@dify/contracts/api/console/system-featu
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import Cookies from 'js-cookie'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
+import { sendEMailLoginCode } from '@/service/common'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import CheckCode from '../page'
 
@@ -16,6 +17,15 @@ const navigationMocks = vi.hoisted(() => ({
 
 const serviceBaseMocks = vi.hoisted(() => ({
   get: vi.fn(),
+}))
+
+const consoleClientMocks = vi.hoisted(() => ({
+  emailCodeLoginValidity: vi.fn(),
+}))
+
+const amplitudeMocks = vi.hoisted(() => ({
+  rememberRegistrationSuccess: vi.fn(),
+  trackEvent: vi.fn(),
 }))
 
 type ScriptProps = {
@@ -40,7 +50,11 @@ const turnstileMocks = vi.hoisted(() => ({
 const turnstileWidgets = new Map<string, HTMLElement>()
 
 vi.mock('@/app/components/base/amplitude', () => ({
-  trackEvent: vi.fn(),
+  trackEvent: amplitudeMocks.trackEvent,
+}))
+
+vi.mock('@/app/components/base/amplitude/registration-tracking', () => ({
+  rememberRegistrationSuccess: amplitudeMocks.rememberRegistrationSuccess,
 }))
 
 vi.mock('@/config', async (importOriginal) => ({
@@ -75,8 +89,23 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/service/base', () => serviceBaseMocks)
 
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+  return {
+    ...actual,
+    consoleClient: {
+      ...actual.consoleClient,
+      emailCodeLogin: {
+        ...actual.consoleClient.emailCodeLogin,
+        validity: {
+          post: consoleClientMocks.emailCodeLoginValidity,
+        },
+      },
+    },
+  }
+})
+
 vi.mock('@/service/common', () => ({
-  emailLoginWithCode: vi.fn(),
   sendEMailLoginCode: vi.fn(),
 }))
 
@@ -135,11 +164,15 @@ const accountProfile: GetAccountProfileResponse = {
   timezone: 'Asia/Singapore',
 }
 
+const emailLoginWithCode = consoleClientMocks.emailCodeLoginValidity
+
 describe('CheckCode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(emailLoginWithCode).mockReset().mockResolvedValue({ result: 'success' })
     vi.mocked(sendEMailLoginCode).mockReset()
+    amplitudeMocks.rememberRegistrationSuccess.mockReturnValue(true)
+    Cookies.remove('utm_info')
     turnstileWidgets.clear()
     navigationMocks.searchParams = new URLSearchParams({
       email: 'user@example.com',
@@ -243,11 +276,13 @@ describe('CheckCode', () => {
     await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
 
     expect(emailLoginWithCode).toHaveBeenCalledWith({
-      code: '123456',
-      email: 'user@example.com',
-      language: expect.any(String),
-      timezone: 'Asia/Singapore',
-      token: 'email-login-token',
+      body: {
+        code: '123456',
+        email: 'user@example.com',
+        language: expect.any(String),
+        timezone: 'Asia/Singapore',
+        token: 'email-login-token',
+      },
     })
     expect(turnstileMocks.render).not.toHaveBeenCalled()
   })
@@ -320,6 +355,91 @@ describe('CheckCode', () => {
     })
   })
 
+  describe('Registration completion', () => {
+    it('queues one attributed email-code registration while preserving login tracking', async () => {
+      const user = userEvent.setup()
+      const queryClient = createQueryClient()
+      Cookies.set(
+        'utm_info',
+        JSON.stringify({ utm_source: 'community', slug: 'email-code-launch' }),
+      )
+      vi.mocked(emailLoginWithCode).mockResolvedValue({
+        result: 'success',
+        is_new_account: true,
+      } as Awaited<ReturnType<typeof emailLoginWithCode>>)
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <CheckCode />
+        </QueryClientProvider>,
+      )
+
+      await user.type(screen.getByLabelText('login.checkCode.verificationCode'), '123456')
+      await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
+
+      await waitFor(() => {
+        expect(amplitudeMocks.rememberRegistrationSuccess).toHaveBeenCalledWith({
+          method: 'email_code',
+          utmInfo: { utm_source: 'community', slug: 'email-code-launch' },
+        })
+      })
+      expect(amplitudeMocks.rememberRegistrationSuccess).toHaveBeenCalledOnce()
+      expect(amplitudeMocks.trackEvent).toHaveBeenCalledWith('user_login_success', {
+        method: 'email_code',
+        is_invite: false,
+      })
+      expect(Cookies.get('utm_info')).toBeUndefined()
+    })
+
+    it.each([
+      ['existing account', { result: 'success', is_new_account: false }],
+      ['older backend response', { result: 'success' }],
+    ])('does not register an %s', async (_, response) => {
+      const user = userEvent.setup()
+      const queryClient = createQueryClient()
+      Cookies.set('utm_info', JSON.stringify({ utm_source: 'community' }))
+      vi.mocked(emailLoginWithCode).mockResolvedValue(
+        response as Awaited<ReturnType<typeof emailLoginWithCode>>,
+      )
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <CheckCode />
+        </QueryClientProvider>,
+      )
+
+      await user.type(screen.getByLabelText('login.checkCode.verificationCode'), '123456')
+      await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
+
+      await waitFor(() => expect(amplitudeMocks.trackEvent).toHaveBeenCalledOnce())
+      expect(amplitudeMocks.rememberRegistrationSuccess).not.toHaveBeenCalled()
+      expect(Cookies.get('utm_info')).toBeTruthy()
+    })
+
+    it('keeps attribution when the registration intent is not accepted', async () => {
+      const user = userEvent.setup()
+      const queryClient = createQueryClient()
+      Cookies.set('utm_info', JSON.stringify({ utm_source: 'community' }))
+      amplitudeMocks.rememberRegistrationSuccess.mockReturnValue(false)
+      vi.mocked(emailLoginWithCode).mockResolvedValue({
+        result: 'success',
+        is_new_account: true,
+      } as Awaited<ReturnType<typeof emailLoginWithCode>>)
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <CheckCode />
+        </QueryClientProvider>,
+      )
+
+      await user.type(screen.getByLabelText('login.checkCode.verificationCode'), '123456')
+      await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
+
+      await waitFor(() => expect(amplitudeMocks.rememberRegistrationSuccess).toHaveBeenCalledOnce())
+      expect(Cookies.get('utm_info')).toBeTruthy()
+    })
+  })
+
   it('requires a fresh verify-action Turnstile token after every Cloud login attempt', async () => {
     const user = userEvent.setup()
     turnstileMocks.deploymentEdition = 'CLOUD'
@@ -363,7 +483,9 @@ describe('CheckCode', () => {
     await waitFor(() => {
       expect(emailLoginWithCode).toHaveBeenCalledWith(
         expect.objectContaining({
-          turnstile_token: 'signin_code_verify-token-1',
+          body: expect.objectContaining({
+            turnstile_token: 'signin_code_verify-token-1',
+          }),
         }),
       )
     })
@@ -385,7 +507,9 @@ describe('CheckCode', () => {
     await waitFor(() => {
       expect(emailLoginWithCode).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          turnstile_token: 'signin_code_verify-token-2',
+          body: expect.objectContaining({
+            turnstile_token: 'signin_code_verify-token-2',
+          }),
         }),
       )
     })
