@@ -68,7 +68,6 @@
   "overview.appInfo.preUseReminder": "Pred nadaljevanjem omogočite spletno aplikacijo.",
   "overview.appInfo.preview": "Predogled",
   "overview.appInfo.qrcode.download": "Prenesi QR kodo",
-  "overview.appInfo.qrcode.scan": "Skeniraj za deljenje",
   "overview.appInfo.qrcode.title": "Povezava QR koda",
   "overview.appInfo.regenerate": "Ustvari ponovno",
   "overview.appInfo.regenerateNotice": "Ali želite ponovno ustvariti javni URL? Trenutni URL bo takoj prenehal delovati.",

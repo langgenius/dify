@@ -68,7 +68,6 @@
   "overview.appInfo.preUseReminder": "使用前請先開啟開關",
   "overview.appInfo.preview": "預覽",
   "overview.appInfo.qrcode.download": "下載二維碼",
-  "overview.appInfo.qrcode.scan": "掃碼分享應用",
   "overview.appInfo.qrcode.title": "二維碼分享",
   "overview.appInfo.regenerate": "重新生成",
   "overview.appInfo.regenerateNotice": "您是否要重新生成公開訪問 URL？目前的 URL 將立即失效。",

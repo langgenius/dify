@@ -337,9 +337,9 @@ function AddToolMenu({
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        placement="top-end"
         sideOffset={4}
-        popupClassName={
+        className={
           view === 'menu'
             ? 'w-[280px] bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]'
             : 'w-[400px] overflow-hidden border-none bg-transparent p-0 shadow-none'

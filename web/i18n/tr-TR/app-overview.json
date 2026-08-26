@@ -68,7 +68,6 @@
   "overview.appInfo.preUseReminder": "Devam etmeden önce web app'i etkinleştirin.",
   "overview.appInfo.preview": "Önizleme",
   "overview.appInfo.qrcode.download": "QR Kodu İndir",
-  "overview.appInfo.qrcode.scan": "Paylaşmak İçin Tara",
   "overview.appInfo.qrcode.title": "Bağlantı QR Kodu",
   "overview.appInfo.regenerate": "Yeniden Oluştur",
   "overview.appInfo.regenerateNotice": "Genel URL'yi yeniden oluşturmak istiyor musunuz? Mevcut URL hemen çalışmayı durduracaktır.",

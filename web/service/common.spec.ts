@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { sendEMailLoginCode } from './common'
+import { emailLoginWithCode, sendEMailLoginCode } from './common'
 
 const mocks = vi.hoisted(() => ({
   post: vi.fn(),
@@ -36,6 +36,34 @@ describe('sendEMailLoginCode', () => {
       body: {
         email: 'user@example.com',
         language: 'en-US',
+      },
+    })
+  })
+})
+
+describe('emailLoginWithCode', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('includes the verification-specific Turnstile token when provided', async () => {
+    await emailLoginWithCode({
+      code: 'encrypted-code',
+      email: 'user@example.com',
+      language: 'en-US',
+      timezone: 'Asia/Singapore',
+      token: 'email-login-token',
+      turnstile_token: 'verify-turnstile-token',
+    })
+
+    expect(mocks.post).toHaveBeenCalledWith('/email-code-login/validity', {
+      body: {
+        code: 'encrypted-code',
+        email: 'user@example.com',
+        language: 'en-US',
+        timezone: 'Asia/Singapore',
+        token: 'email-login-token',
+        turnstile_token: 'verify-turnstile-token',
       },
     })
   })

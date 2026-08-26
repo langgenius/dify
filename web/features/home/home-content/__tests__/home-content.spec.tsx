@@ -47,7 +47,7 @@ function StepByStepTourSessionFixture({
 }
 
 const mockConsoleState = vi.hoisted(() => ({
-  userProfile: { id: 'user-1' },
+  userProfile: { id: 'user-1', name: 'Evan' },
   currentWorkspace: { id: 'workspace-1' },
   workspacePermissionKeys: [] as string[],
 }))
@@ -634,6 +634,20 @@ describe('HomeContent', () => {
   })
 
   describe('Rendering', () => {
+    it('should always render the page intro as the only h1 when the banner is disabled', () => {
+      renderHomeContent()
+
+      expect(
+        screen.getByRole('heading', {
+          level: 1,
+          name: 'explore.banner.greeting:{"name":"Evan"}',
+        }),
+      ).toBeInTheDocument()
+      expect(screen.getByText('explore.banner.tagline')).toBeInTheDocument()
+      expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
+      expect(screen.queryByTestId('explore-banner')).not.toBeInTheDocument()
+    })
+
     it('should not render learn dify content while learn dify items are loading', () => {
       mockExploreData = {
         categories: ['Writing'],
@@ -684,7 +698,7 @@ describe('HomeContent', () => {
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.getByText('Beta')).toBeInTheDocument()
-      expect(screen.getByText('explore.apps.title')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'explore.apps.title' })).toBeInTheDocument()
     })
 
     it('should render continue work with the first eight workspace apps', () => {
@@ -1517,6 +1531,7 @@ describe('HomeContent', () => {
 
       expect(screen.getByTestId('explore-banner')).toBeInTheDocument()
       expect(screen.getByTestId('explore-banner')).toHaveAttribute('data-banner-count', '1')
+      expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
     })
   })
 })

@@ -1,18 +1,24 @@
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vite-plus/test'
-import { FIXTURE_COMPAT, pkgManifestEnv } from '../test/fixtures/pkg-manifest'
+import {
+  FIXTURE_CHANNEL,
+  FIXTURE_COMPAT,
+  FIXTURE_TAG_PREFIX,
+  FIXTURE_VERSION,
+  FIXTURE_VERSION_CORE,
+  pkgManifestEnv,
+} from '../test/fixtures/pkg-manifest'
 
 const SCRIPT = fileURLToPath(new URL('./release-naming.mjs', import.meta.url))
 
-function run(
-  args: string[],
-  env: Record<string, string> = {},
-): { code: number; stdout: string; stderr: string } {
+const PKG_ENV = pkgManifestEnv()
+
+function run(args: string[]): { code: number; stdout: string; stderr: string } {
   try {
     const stdout = execFileSync('node', [SCRIPT, ...args], {
       encoding: 'utf8',
-      env: { ...process.env, ...env },
+      env: { ...process.env, ...PKG_ENV },
     })
     return { code: 0, stdout, stderr: '' }
   } catch (e) {
@@ -23,9 +29,8 @@ function run(
 
 describe('release-naming compat-check', () => {
   const { minDify, maxDify } = FIXTURE_COMPAT // 2.0.0 .. 2.5.0
-  const pkgEnv = pkgManifestEnv()
   const compatCheck = (difyVersion?: string) =>
-    run(difyVersion === undefined ? ['compat-check'] : ['compat-check', difyVersion], pkgEnv).code
+    run(difyVersion === undefined ? ['compat-check'] : ['compat-check', difyVersion]).code
 
   it('accepts a version inside the window', () => {
     expect(compatCheck('2.3.0')).toBe(0)
@@ -69,23 +74,22 @@ describe('release-naming compat-check', () => {
 })
 
 describe('release-naming github-env', () => {
-  it('emits difyctlTag = tagPrefix + version', () => {
-    const { stdout } = run(['github-env'])
-    expect(stdout).toMatch(/^difyctlTag=difyctl-v0\.2\.0-alpha$/m)
-  })
-
-  it('still emits the existing trace fields', () => {
-    const { stdout } = run(['github-env'])
-    for (const key of ['version', 'channel', 'prerelease', 'minDify', 'maxDify', 'tagPrefix'])
-      expect(stdout).toMatch(new RegExp(`^${key}=`, 'm'))
-  })
-
-  // The only assertion against the live manifest: the window must exist and be
-  // well-formed, whatever release it currently points at.
-  it('emits a well-formed compat window from the real cli/package.json', () => {
-    const { stdout } = run(['github-env'])
-    expect(stdout).toMatch(/^minDify=\d+\.\d+\.\d+$/m)
-    expect(stdout).toMatch(/^maxDify=\d+\.\d+\.\d+$/m)
+  it('emits every manifest field for $GITHUB_ENV, plus a composed difyctlTag', () => {
+    const fields = Object.fromEntries(
+      run(['github-env'])
+        .stdout.split('\n')
+        .filter(Boolean)
+        .map((line) => [line.slice(0, line.indexOf('=')), line.slice(line.indexOf('=') + 1)]),
+    )
+    expect(fields).toEqual({
+      version: FIXTURE_VERSION,
+      channel: FIXTURE_CHANNEL,
+      prerelease: 'true',
+      minDify: FIXTURE_COMPAT.minDify,
+      maxDify: FIXTURE_COMPAT.maxDify,
+      tagPrefix: FIXTURE_TAG_PREFIX,
+      difyctlTag: `${FIXTURE_TAG_PREFIX}${FIXTURE_VERSION}`,
+    })
   })
 })
 
@@ -95,13 +99,14 @@ describe('release-naming edge channel', () => {
   })
 
   it('edge-version derives <pkgcore>-edge.<sha> from the package version', () => {
-    // package.json version is 0.2.0-alpha -> core 0.2.0
-    expect(run(['edge-version', '2fd7b82']).stdout.trim()).toBe('0.2.0-edge.2fd7b82')
+    expect(run(['edge-version', '2fd7b82']).stdout.trim()).toBe(
+      `${FIXTURE_VERSION_CORE}-edge.2fd7b82`,
+    )
   })
 
   it('edge-version accepts a 40-char sha', () => {
     const sha = '2fd7b829e1f0aaaabbbbccccddddeeeeffff0000'
-    expect(run(['edge-version', sha]).stdout.trim()).toBe(`0.2.0-edge.${sha}`)
+    expect(run(['edge-version', sha]).stdout.trim()).toBe(`${FIXTURE_VERSION_CORE}-edge.${sha}`)
   })
 
   it('edge-version rejects a non-hex sha', () => {

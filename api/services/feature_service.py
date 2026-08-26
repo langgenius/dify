@@ -21,6 +21,16 @@ class _EnterprisePluginInstallationPermission(BaseModel):
 
 class FeatureService:
     @classmethod
+    def get_workspace_plan(cls, tenant_id: str) -> CloudPlan:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return CloudPlan.SANDBOX
+
+        billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
+        if not billing_info["enabled"]:
+            return CloudPlan.SANDBOX
+        return CloudPlan(billing_info["subscription"]["plan"])
+
+    @classmethod
     def get_features(cls, tenant_id: str, exclude_vector_space: bool = False) -> feature_entities.FeatureModel:
         features = feature_entities.FeatureModel()
         if exclude_vector_space:
@@ -76,11 +86,8 @@ class FeatureService:
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD or not tenant_id:
             return default_limit
 
-        billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
-        if billing_info["enabled"] and billing_info["subscription"]["plan"] in (
-            CloudPlan.PROFESSIONAL,
-            CloudPlan.TEAM,
-        ):
+        subscription_plan = cls.get_workspace_plan(tenant_id)
+        if subscription_plan.is_paid:
             return max(default_limit, dify_config.KNOWLEDGE_UPLOAD_FILE_SIZE_LIMIT_FOR_PAID_PLAN)
 
         return default_limit
@@ -93,10 +100,7 @@ class FeatureService:
             return True
         if not tenant_id:
             return False
-        return features.billing.enabled and features.billing.subscription.plan in (
-            CloudPlan.PROFESSIONAL,
-            CloudPlan.TEAM,
-        )
+        return features.billing.enabled and features.billing.subscription.plan.is_paid
 
     @classmethod
     def get_system_features(cls) -> feature_entities.SystemFeatureModel:
@@ -104,10 +108,10 @@ class FeatureService:
         system_features.rbac_enabled = dify_config.RBAC_ENABLED
 
         cls._fulfill_system_params_from_env(system_features)
+        system_features.webapp_auth.enabled = cls.is_webapp_auth_enabled()
 
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
             system_features.branding.enabled = True
-            system_features.webapp_auth.enabled = True
             system_features.enable_change_email = False
             cls._fulfill_params_from_enterprise(system_features)
 
@@ -159,6 +163,14 @@ class FeatureService:
     def is_explore_banner_enabled() -> bool:
         return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.ENABLE_EXPLORE_BANNER
 
+    @staticmethod
+    def is_webapp_auth_enabled() -> bool:
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE
+
+    @staticmethod
+    def is_trial_app_enabled() -> bool:
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.ENABLE_TRIAL_APP
+
     @classmethod
     def _fulfill_system_params_from_env(cls, system_features: feature_entities.SystemFeatureModel):
         system_features.enable_email_code_login = dify_config.ENABLE_EMAIL_CODE_LOGIN
@@ -175,20 +187,26 @@ class FeatureService:
         system_features.knowledge_fs_enabled = dify_config.KNOWLEDGE_FS_ENABLED
 
     @classmethod
-    def _fulfill_trial_models_from_env(cls) -> list[str]:
+    def _fulfill_trial_models_from_env(cls, quota_types: tuple[str, ...] | None = None) -> list[str]:
+        allowed_quota_types = quota_types or ("PAID", "TRIAL")
         return [
             provider.value
             for provider in HostedTrialProvider
-            if (
-                getattr(dify_config, f"HOSTED_{provider.config_key}_PAID_ENABLED", False)
-                and getattr(dify_config, f"HOSTED_{provider.config_key}_TRIAL_ENABLED", False)
+            if any(
+                getattr(dify_config, f"HOSTED_{provider.config_key}_{quota_type}_ENABLED", False)
+                for quota_type in allowed_quota_types
             )
         ]
 
     @classmethod
-    def get_trial_models(cls) -> list[str]:
-        """Return hosted trial provider ids without requiring the full system-features payload."""
-        return cls._fulfill_trial_models_from_env()
+    def get_trial_models(cls, tenant_id: str) -> list[str]:
+        """Return hosted credit providers filtered by the workspace subscription plan."""
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return cls._fulfill_trial_models_from_env()
+
+        subscription_plan = cls.get_workspace_plan(tenant_id)
+        quota_types = ("PAID", "TRIAL") if subscription_plan.is_paid else ("TRIAL",)
+        return cls._fulfill_trial_models_from_env(quota_types)
 
     @classmethod
     def _fulfill_params_from_env(cls, features: feature_entities.FeatureModel):
@@ -196,6 +214,7 @@ class FeatureService:
         features.model_load_balancing_enabled = dify_config.MODEL_LB_ENABLED
         features.dataset_operator_enabled = dify_config.DATASET_OPERATOR_ENABLED
         features.education.enabled = dify_config.EDUCATION_ENABLED
+        features.enable_skill = dify_config.ENABLE_SKILL
         features.dify_builder_enabled = dify_config.DIFY_BUILDER_ENABLED
         features.skill_learning_policy = dify_config.DIFY_BUILDER_SKILL_LEARNING_POLICY
 

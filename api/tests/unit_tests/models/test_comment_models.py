@@ -3,18 +3,8 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
-import models.comment as comment_module
 from models.account import Account
 from models.comment import WorkflowComment, WorkflowCommentMention, WorkflowCommentReply
-
-
-class _DatabaseBinding:
-    """Expose a real SQLite session to model properties that use ``db.session``."""
-
-    session: Session
-
-    def __init__(self, session: Session) -> None:
-        self.session = session
 
 
 def _account(name: str) -> Account:
@@ -39,18 +29,15 @@ COMMENT_MODELS = (Account, WorkflowComment, WorkflowCommentReply, WorkflowCommen
 
 
 @pytest.mark.parametrize("sqlite_session", [COMMENT_MODELS], indirect=True)
-def test_workflow_comment_account_properties_and_cache(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
+def test_workflow_comment_account_accessors_and_cache(sqlite_session: Session) -> None:
     created_account = _account("Creator")
     resolved_account = _account("Resolver")
     comment = _comment(created_account.id, resolved_account.id)
     sqlite_session.add_all([created_account, resolved_account, comment])
     sqlite_session.commit()
-    monkeypatch.setattr(comment_module, "db", _DatabaseBinding(sqlite_session))
 
-    assert comment.created_by_account is created_account
-    assert comment.resolved_by_account is resolved_account
+    assert comment.created_by_account(sqlite_session) is created_account
+    assert comment.resolved_by_account(sqlite_session) is resolved_account
 
     comment.cache_created_by_account(created_account)
     comment.cache_resolved_by_account(resolved_account)
@@ -58,17 +45,17 @@ def test_workflow_comment_account_properties_and_cache(
     sqlite_session.delete(resolved_account)
     sqlite_session.commit()
 
-    assert comment.created_by_account is created_account
-    assert comment.resolved_by_account is resolved_account
+    assert comment.created_by_account(sqlite_session) is created_account
+    assert comment.resolved_by_account(sqlite_session) is resolved_account
 
     comment_without_resolver = _comment(str(uuid4()))
     sqlite_session.add(comment_without_resolver)
     sqlite_session.commit()
-    assert comment_without_resolver.resolved_by_account is None
+    assert comment_without_resolver.resolved_by_account(sqlite_session) is None
 
 
 @pytest.mark.parametrize("sqlite_session", [COMMENT_MODELS], indirect=True)
-def test_workflow_comment_counts_and_participants(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+def test_workflow_comment_counts_and_participants(sqlite_session: Session) -> None:
     account_1 = _account("Creator")
     account_2 = _account("Replier")
     account_3 = _account("Mentioned")
@@ -84,9 +71,8 @@ def test_workflow_comment_counts_and_participants(monkeypatch: pytest.MonkeyPatc
     ]
     sqlite_session.add_all([account_1, account_2, account_3, comment])
     sqlite_session.commit()
-    monkeypatch.setattr(comment_module, "db", _DatabaseBinding(sqlite_session))
 
-    participants = comment.participants
+    participants = comment.participants(sqlite_session)
 
     assert comment.reply_count == 2
     assert comment.mention_count == 2
@@ -94,9 +80,7 @@ def test_workflow_comment_counts_and_participants(monkeypatch: pytest.MonkeyPatc
 
 
 @pytest.mark.parametrize("sqlite_session", [COMMENT_MODELS], indirect=True)
-def test_workflow_comment_participants_use_cached_accounts(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
+def test_workflow_comment_participants_use_cached_accounts(sqlite_session: Session) -> None:
     account_1 = _account("Creator")
     account_2 = _account("Replier")
     account_3 = _account("Mentioned")
@@ -107,7 +91,6 @@ def test_workflow_comment_participants_use_cached_accounts(
     comment.mentions = [mention]
     sqlite_session.add_all([account_1, account_2, account_3, comment])
     sqlite_session.commit()
-    monkeypatch.setattr(comment_module, "db", _DatabaseBinding(sqlite_session))
 
     comment.cache_created_by_account(account_1)
     reply.cache_created_by_account(account_2)
@@ -117,13 +100,15 @@ def test_workflow_comment_participants_use_cached_accounts(
     sqlite_session.delete(account_3)
     sqlite_session.commit()
 
-    assert {account.id for account in comment.participants} == {account_1.id, account_2.id, account_3.id}
+    assert {account.id for account in comment.participants(sqlite_session)} == {
+        account_1.id,
+        account_2.id,
+        account_3.id,
+    }
 
 
 @pytest.mark.parametrize("sqlite_session", [COMMENT_MODELS], indirect=True)
-def test_reply_and_mention_account_properties_and_cache(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
+def test_reply_and_mention_account_accessors_and_cache(sqlite_session: Session) -> None:
     reply_account = _account("Replier")
     mention_account = _account("Mentioned")
     comment = _comment(reply_account.id)
@@ -133,10 +118,9 @@ def test_reply_and_mention_account_properties_and_cache(
     comment.mentions = [mention]
     sqlite_session.add_all([reply_account, mention_account, comment])
     sqlite_session.commit()
-    monkeypatch.setattr(comment_module, "db", _DatabaseBinding(sqlite_session))
 
-    assert reply.created_by_account is reply_account
-    assert mention.mentioned_user_account is mention_account
+    assert reply.created_by_account(sqlite_session) is reply_account
+    assert mention.mentioned_user_account(sqlite_session) is mention_account
 
     reply.cache_created_by_account(reply_account)
     mention.cache_mentioned_user_account(mention_account)
@@ -144,5 +128,5 @@ def test_reply_and_mention_account_properties_and_cache(
     sqlite_session.delete(mention_account)
     sqlite_session.commit()
 
-    assert reply.created_by_account is reply_account
-    assert mention.mentioned_user_account is mention_account
+    assert reply.created_by_account(sqlite_session) is reply_account
+    assert mention.mentioned_user_account(sqlite_session) is mention_account

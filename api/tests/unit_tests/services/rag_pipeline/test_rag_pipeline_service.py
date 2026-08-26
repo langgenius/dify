@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -67,6 +68,22 @@ def rag_pipeline_service(
 
 class MockRepo:
     pass
+
+
+def test_get_published_workflow_by_id_locks_restore_source(mocker: MockerFixture) -> None:
+    session = mocker.Mock(spec=Session)
+    workflow = _make_workflow()
+    workflow.version = "v1"
+    session.scalar.return_value = workflow
+    service = RagPipelineService.__new__(RagPipelineService)
+    service._session = session
+
+    result = service.get_published_workflow_by_id(_make_pipeline(), workflow.id)
+
+    stmt = session.scalar.call_args.args[0]
+    sql = str(stmt.compile(dialect=postgresql.dialect()))
+    assert result is workflow
+    assert "FOR UPDATE" in sql
 
 
 def _make_account(account_id: str = "u1", tenant_id: str = "t1") -> Account:

@@ -25,10 +25,11 @@ from services.account_service import AccountService, RegisterService, TenantServ
 from services.enterprise.rbac_service import MembersInRole, Paginated
 from services.errors.account import (
     AccountAlreadyInTenantError,
+    AccountEmailAlreadyInUseError,
     AccountLoginError,
     AccountPasswordError,
     AccountRegisterError,
-    CurrentPasswordIncorrectError,
+    EmailDomainSuspendedError,
     NoPermissionError,
 )
 
@@ -135,6 +136,27 @@ class TestAccountService:
 
         assert result is account
 
+    def test_authenticate_keeps_using_the_stored_email(
+        self,
+        sqlite_session: Session,
+        mock_password_dependencies: _MockDependencies,
+    ) -> None:
+        account = Account(
+            name="Gmail User",
+            email="u.ser+tag@gmail.com",
+            normalized_email="user@gmail.com",
+            password="hashed_password",
+            password_salt="salt",
+        )
+        sqlite_session.add(account)
+        sqlite_session.commit()
+
+        mock_password_dependencies["compare_password"].return_value = True
+
+        result = AccountService.authenticate("u.ser+tag@gmail.com", "password", session=sqlite_session)
+
+        assert result is account
+
     def test_authenticate_account_not_found(self, sqlite_session: Session) -> None:
         """Test authentication when account does not exist."""
         with pytest.raises(AccountPasswordError):
@@ -230,6 +252,7 @@ class TestAccountService:
             account_id = result.id
 
             assert result.email == "test@example.com"
+            assert result.normalized_email == "test@example.com"
             assert result.name == "Test User"
             assert result.interface_language == "en-US"
             assert result.interface_theme == "light"
@@ -242,6 +265,7 @@ class TestAccountService:
             persisted_account = assertion_session.get(Account, account_id)
             assert persisted_account is not None
             assert persisted_account.email == "test@example.com"
+            assert persisted_account.normalized_email == "test@example.com"
             assert persisted_account.name == "Test User"
             assert persisted_account.interface_language == "en-US"
             assert persisted_account.interface_theme == "light"
@@ -249,6 +273,40 @@ class TestAccountService:
             assert persisted_account.password_salt is not None
             assert persisted_account.timezone == "America/New_York"
             assert persisted_account.last_login_ip == "203.0.113.10"
+
+    def test_create_account_rejects_normalized_email_only_when_requested(
+        self,
+        sqlite_session: Session,
+        mock_external_service_dependencies: _MockDependencies,
+    ) -> None:
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        sqlite_session.add(
+            Account(
+                name="Existing User",
+                email="u.ser+existing@gmail.com",
+                normalized_email="user@gmail.com",
+            )
+        )
+        sqlite_session.commit()
+
+        with pytest.raises(AccountEmailAlreadyInUseError):
+            AccountService.create_account(
+                email="user@googlemail.com",
+                name="New User",
+                interface_language="en-US",
+                check_normalized_email=True,
+                session=sqlite_session,
+            )
+
+        duplicate = AccountService.create_account(
+            email="user@googlemail.com",
+            name="New User",
+            interface_language="en-US",
+            session=sqlite_session,
+        )
+        assert duplicate.normalized_email == "user@gmail.com"
 
     def test_create_account_uses_explicit_timezone(
         self,
@@ -311,6 +369,50 @@ class TestAccountService:
                     interface_language="en-US",
                     session=unbound_session,
                 )
+
+    def test_create_account_suspended_email_domain(
+        self, unbound_session: Session, mock_external_service_dependencies: _MockDependencies
+    ) -> None:
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = True
+        mock_external_service_dependencies[
+            "billing_service"
+        ].get_email_freeze_type.return_value = "email_domain_suspended"
+
+        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD):
+            with pytest.raises(EmailDomainSuspendedError):
+                AccountService.create_account(
+                    email="user@suspended.example",
+                    name="Test User",
+                    interface_language="en-US",
+                    session=unbound_session,
+                )
+
+    def test_get_user_through_email_rejects_suspended_email_domain(
+        self, unbound_session: Session, mock_external_service_dependencies: _MockDependencies
+    ) -> None:
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = True
+        mock_external_service_dependencies[
+            "billing_service"
+        ].get_email_freeze_type.return_value = "email_domain_suspended"
+
+        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD):
+            with pytest.raises(EmailDomainSuspendedError):
+                AccountService.get_user_through_email("user@suspended.example", session=unbound_session)
+
+    def test_get_account_freeze_type_is_enabled_only_for_cloud(
+        self, mock_external_service_dependencies: _MockDependencies
+    ) -> None:
+        mock_external_service_dependencies["billing_service"].get_email_freeze_type.return_value = "freeze"
+
+        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD):
+            assert AccountService.get_account_freeze_type("frozen@example.com") == "freeze"
+        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
+            assert AccountService.get_account_freeze_type("frozen@example.com") is None
+
+        mock_external_service_dependencies["billing_service"].get_email_freeze_type.assert_called_once_with(
+            "frozen@example.com"
+        )
 
     def test_create_account_without_password(
         self,
@@ -381,103 +483,6 @@ class TestAccountService:
             assert persisted_account.last_login_ip == "203.0.113.11"
             assert persisted_account.last_login_at is not None
 
-    # ==================== Password Management Tests ====================
-
-    def test_update_account_password_success(
-        self,
-        sqlite_session_factory: sessionmaker[Session],
-        mock_password_dependencies: _MockDependencies,
-    ) -> None:
-        """Test successful password update with correct current password and valid new password."""
-        with sqlite_session_factory() as service_session:
-            account = Account(
-                name="Test User",
-                email="test@example.com",
-                password="hashed_password",
-                password_salt="salt",
-            )
-            service_session.add(account)
-            service_session.commit()
-            account_id = account.id
-
-            mock_password_dependencies["compare_password"].return_value = True
-            mock_password_dependencies["valid_password"].return_value = None
-            mock_password_dependencies["hash_password"].return_value = b"new_hashed_password"
-
-            result = AccountService.update_account_password(
-                account,
-                "old_password",
-                "new_password123",
-                session=service_session,
-            )
-            assert result is account
-
-        mock_password_dependencies["compare_password"].assert_called_once_with(
-            "old_password", "hashed_password", "salt"
-        )
-        mock_password_dependencies["valid_password"].assert_called_once_with("new_password123")
-
-        with sqlite_session_factory() as assertion_session:
-            persisted_account = assertion_session.get(Account, account_id)
-            assert persisted_account is not None
-            assert persisted_account.password is not None
-            assert persisted_account.password != "hashed_password"
-            assert persisted_account.password_salt is not None
-            assert persisted_account.password_salt != "salt"
-
-    def test_update_account_password_current_password_incorrect(
-        self, unbound_session: Session, mock_password_dependencies: _MockDependencies
-    ) -> None:
-        """Test password update with incorrect current password."""
-        # Setup test data
-        mock_account = Account(
-            name="Test User",
-            email="test@example.com",
-            password="hashed_password",
-            password_salt="salt",
-        )
-        mock_password_dependencies["compare_password"].return_value = False
-
-        # Execute test and verify exception
-        with pytest.raises(CurrentPasswordIncorrectError):
-            AccountService.update_account_password(
-                mock_account,
-                "wrong_password",
-                "new_password123",
-                session=unbound_session,
-            )
-
-        # Verify password comparison was called
-        mock_password_dependencies["compare_password"].assert_called_once_with(
-            "wrong_password", "hashed_password", "salt"
-        )
-
-    def test_update_account_password_invalid_new_password(
-        self, unbound_session: Session, mock_password_dependencies: _MockDependencies
-    ) -> None:
-        """Test password update with invalid new password."""
-        # Setup test data
-        mock_account = Account(
-            name="Test User",
-            email="test@example.com",
-            password="hashed_password",
-            password_salt="salt",
-        )
-        mock_password_dependencies["compare_password"].return_value = True
-        mock_password_dependencies["valid_password"].side_effect = ValueError("Password too short")
-
-        # Execute test and verify exception
-        with pytest.raises(ValueError):
-            AccountService.update_account_password(
-                mock_account,
-                "old_password",
-                "short",
-                session=unbound_session,
-            )
-
-        # Verify password validation was called
-        mock_password_dependencies["valid_password"].assert_called_once_with("short")
-
     # ==================== User Loading Tests ====================
 
     def test_load_user_success(self, sqlite_session: Session) -> None:
@@ -500,6 +505,7 @@ class TestAccountService:
 
             assert result is account
             assert result.current_tenant_id == tenant.id
+            assert result.current_role == TenantAccountRole.NORMAL
             mock_refresh_last_active.assert_called_once_with(account, sqlite_session)
 
     def test_load_user_not_found(self, sqlite_session: Session) -> None:
@@ -1599,6 +1605,7 @@ class TestRegisterService:
                 password=None,
                 timezone=None,
                 ip_address="203.0.113.10",
+                check_normalized_email=False,
                 session=sqlite_session,
             )
             mock_create_workspace.assert_called_once_with(account=mock_account, session=sqlite_session)
@@ -1716,9 +1723,34 @@ class TestRegisterService:
                     is_setup=False,
                     timezone=None,
                     ip_address="203.0.113.10",
+                    check_normalized_email=True,
                     session=sqlite_session,
                 )
                 mock_create_owner_tenant.assert_called_once_with(mock_account, session=sqlite_session)
+
+    def test_register_rejects_existing_normalized_email(
+        self,
+        sqlite_session: Session,
+        mock_external_service_dependencies: _MockDependencies,
+    ) -> None:
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        sqlite_session.add(
+            Account(
+                name="Existing User",
+                email="u.ser+existing@gmail.com",
+                normalized_email="user@gmail.com",
+            )
+        )
+        sqlite_session.commit()
+
+        with pytest.raises(AccountEmailAlreadyInUseError):
+            RegisterService.register(
+                email="user@googlemail.com",
+                name="New User",
+                language="en-US",
+                create_workspace_required=False,
+                session=sqlite_session,
+            )
 
     def test_register_calls_default_workspace_join_for_enterprise_edition(
         self,
@@ -2079,6 +2111,7 @@ class TestRegisterService:
                         language="en-US",
                         status=AccountStatus.PENDING,
                         is_setup=True,
+                        check_normalized_email=True,
                         session=sqlite_session,
                     )
                     mock_lookup.assert_called_once_with("newuser@example.com", session=sqlite_session)
@@ -2125,6 +2158,7 @@ class TestRegisterService:
                         language="en-US",
                         status=AccountStatus.PENDING,
                         is_setup=True,
+                        check_normalized_email=True,
                         session=sqlite_session,
                     )
                     mock_lookup.assert_called_once_with(mixed_email, session=sqlite_session)

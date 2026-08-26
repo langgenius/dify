@@ -95,6 +95,12 @@ class EmailCodeError(BaseHTTPException):
     code = 400
 
 
+class EmailCodeLoginServiceUnavailableError(BaseHTTPException):
+    error_code = "email_code_login_service_unavailable"
+    description = "Email code verification is temporarily unavailable. Please try again later."
+    code = 503
+
+
 class EmailOrPasswordMismatchError(BaseHTTPException):
     error_code = "email_or_password_mismatch"
     description = "The email or password is mismatched."
@@ -167,6 +173,11 @@ class EmailAlreadyInUseError(BaseHTTPException):
     error_code = "email_already_in_use"
     description = "A user with this email already exists."
     code = 400
+
+
+class NormalizedEmailAlreadyInUseError(EmailAlreadyInUseError):
+    error_code = "normalized_email_already_in_use"
+    description = "An account with an equivalent email address already exists."
 
 
 class OwnerTransferLimitError(BaseHTTPException):

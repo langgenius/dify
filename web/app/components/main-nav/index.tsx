@@ -4,12 +4,13 @@ import type { MainNavItem, MainNavProps } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
 import StepByStepTourMount from '@/app/components/step-by-step-tour/mount'
+import { useProviderContextSelector } from '@/context/provider-context'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
@@ -38,7 +39,9 @@ export function MainNav({ className }: MainNavProps) {
   })
   const agentV2Enabled = isAgentV2Enabled()
   const canManageAgents = useCanManageAgents()
+  const enableSkill = useProviderContextSelector((state) => state.enableSkill)
   const showEnvTag = currentEnv === 'TESTING' || currentEnv === 'DEVELOPMENT'
+  const helpMenuTriggerRef = useRef<HTMLButtonElement>(null)
 
   const navItems = useMemo<MainNavItem[]>(
     () =>
@@ -48,6 +51,7 @@ export function MainNav({ className }: MainNavProps) {
           canManageAgents,
           isCurrentWorkspaceDatasetOperator,
           marketplaceEnabled: systemFeatures.enable_marketplace,
+          skillEnabled: enableSkill,
         }),
       ).map((route) => ({
         href: route.href,
@@ -59,6 +63,7 @@ export function MainNav({ className }: MainNavProps) {
     [
       agentV2Enabled,
       canManageAgents,
+      enableSkill,
       isCurrentWorkspaceDatasetOperator,
       systemFeatures.enable_marketplace,
       t,
@@ -127,13 +132,16 @@ export function MainNav({ className }: MainNavProps) {
         )}
       </div>
       <div className="isolate w-60 shrink-0">
-        <StepByStepTourMount className="relative z-1 -mb-1 ml-2.5 h-8 w-45.75 overflow-visible" />
+        <StepByStepTourMount
+          recoveryAnchorRef={systemFeatures.branding.enabled ? undefined : helpMenuTriggerRef}
+          className="relative z-1 -mb-1 ml-2.5 h-8 w-45.75 overflow-visible"
+        />
         <div className="flex w-60 items-center justify-between bg-linear-to-b from-background-body-transparent to-background-body to-50% py-3 pr-1 pl-3 backdrop-blur-[2px]">
           <div className="flex min-w-0 items-center gap-1 overflow-hidden">
             <AccountSection />
           </div>
           <div className="flex shrink-0 items-center justify-center rounded-full p-1">
-            <HelpMenu />
+            <HelpMenu triggerRef={helpMenuTriggerRef} />
           </div>
         </div>
       </div>

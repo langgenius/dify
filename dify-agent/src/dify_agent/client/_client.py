@@ -52,7 +52,6 @@ from dify_agent.protocol import (
 _ResponseModelT = TypeVar("_ResponseModelT", bound=BaseModel)
 _TERMINAL_EVENT_TYPES = {"run_succeeded", "run_failed", "run_cancelled"}
 _TERMINAL_RUN_STATUSES = {"succeeded", "failed", "cancelled"}
-_BINDING_FILE_DOWNLOAD_TIMEOUT_SECONDS = 90.0
 _function_tool_result_payload_key_cache: str | None = None
 
 
@@ -271,6 +270,7 @@ class Client:
     _base_url: str
     _timeout: float | httpx.Timeout
     _stream_timeout: float | httpx.Timeout | None
+    _binding_file_download_timeout: float | httpx.Timeout
     _headers: dict[str, str]
     _sync_http_client: httpx.Client | None
     _async_http_client: httpx.AsyncClient | None
@@ -285,6 +285,7 @@ class Client:
         base_url: str,
         timeout: float | httpx.Timeout = 30.0,
         stream_timeout: float | httpx.Timeout | None = 30.0,
+        binding_file_download_timeout: float | httpx.Timeout = 240.0,
         headers: dict[str, str] | None = None,
         sync_http_client: httpx.Client | None = None,
         async_http_client: httpx.AsyncClient | None = None,
@@ -292,6 +293,7 @@ class Client:
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout
         self._stream_timeout = stream_timeout
+        self._binding_file_download_timeout = binding_file_download_timeout
         self._headers = dict(headers or {})
         self._sync_http_client = sync_http_client
         self._async_http_client = async_http_client
@@ -549,7 +551,7 @@ class Client:
             "download_binding_file",
             "/execution-bindings/files/download",
             request,
-            timeout=_BINDING_FILE_DOWNLOAD_TIMEOUT_SECONDS,
+            timeout=self._binding_file_download_timeout,
         )
         return _parse_model_response(response, BindingFileDownloadResponse)
 
@@ -558,7 +560,7 @@ class Client:
             "download_binding_file_sync",
             "/execution-bindings/files/download",
             request,
-            timeout=_BINDING_FILE_DOWNLOAD_TIMEOUT_SECONDS,
+            timeout=self._binding_file_download_timeout,
         )
         return _parse_model_response(response, BindingFileDownloadResponse)
 

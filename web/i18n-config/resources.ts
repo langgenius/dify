@@ -30,6 +30,7 @@ import type plugin from '../i18n/en-US/plugin.json'
 import type register from '../i18n/en-US/register.json'
 import type runLog from '../i18n/en-US/run-log.json'
 import type share from '../i18n/en-US/share.json'
+import type skill from '../i18n/en-US/skill.json'
 import type snippet from '../i18n/en-US/snippet.json'
 import type time from '../i18n/en-US/time.json'
 import type tools from '../i18n/en-US/tools.json'
@@ -69,6 +70,7 @@ type RawResources = {
   register: typeof register
   runLog: typeof runLog
   share: typeof share
+  skill: typeof skill
   snippet: typeof snippet
   time: typeof time
   tools: typeof tools
@@ -81,6 +83,7 @@ type PluralBaseResources = {
     'agentDetail.access.workflow.nodeCount': string
     'agentDetail.configure.buildDraft.changesToApply': string
     'agentDetail.configure.publishImpact.workflowCount': string
+    'skillManagement.detail.uploadFilesFailedStatus': string
   }
   app: {
     'accessControlDialog.groups': string
@@ -122,6 +125,9 @@ type PluralBaseResources = {
   permission: {
     'accessRule.summary': string
     'role.copyMembersDescription': string
+  }
+  skill: {
+    'skillManagement.detail.uploadFilesFailedStatus': string
   }
   workflow: {
     'changeHistory.stepBackward': string
@@ -173,6 +179,7 @@ export const namespaces = [
   'register',
   'runLog',
   'share',
+  'skill',
   'snippet',
   'time',
   'tools',
