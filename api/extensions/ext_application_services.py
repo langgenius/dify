@@ -103,6 +103,7 @@ from services.webapp_access_query_service import (
     WebAppAccessQueryService,
     WebAppAccessUnavailableError,
 )
+from services.workflow_run_service import WorkflowRunService
 from services.workspace_member_query_service import WorkspaceMemberQueryService
 from services.workspace_member_role_resolver import DeploymentWorkspaceMemberRoleResolver
 from services.workspace_plan_gateway import DeploymentWorkspacePlanGateway
@@ -161,6 +162,7 @@ class ApplicationServices:
     partner_tenant_bindings: PartnerTenantBindingService
     recommended_app_queries: RecommendedAppQueryService
     trial_app_usage: TrialAppUsageRecorder
+    workflow_runs: WorkflowRunService
     workspace_queries: WorkspaceQueryService
     workspace_member_queries: WorkspaceMemberQueryService
     tags: TagApplicationService
@@ -343,6 +345,7 @@ def build_application_services(
             trial_enabled=trial_app_enabled,
         ),
         trial_app_usage=TrialAppUsageRepository(session_factory=database_client),
+        workflow_runs=WorkflowRunService(session_factory=database_client),
         workspace_queries=WorkspaceQueryService(
             workspaces=workspace_query_repository,
             plans=DeploymentWorkspacePlanGateway(),

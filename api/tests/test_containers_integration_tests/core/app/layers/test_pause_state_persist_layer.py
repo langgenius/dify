@@ -99,7 +99,7 @@ class TestPauseStatePersistenceLayerTestContainers:
     @pytest.fixture
     def workflow_run_service(self, engine: Engine, file_service: FileService):
         """Create WorkflowRunService instance with TestContainers engine and FileService."""
-        return WorkflowRunService(engine)
+        return WorkflowRunService(session_factory=engine)
 
     @pytest.fixture(autouse=True)
     def setup_test_data(self, db_session_with_containers: Session, file_service, workflow_run_service):

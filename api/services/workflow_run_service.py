@@ -1,16 +1,18 @@
 import threading
+from dataclasses import dataclass
+from datetime import datetime
 from typing import TypedDict
 
 from sqlalchemy import Engine, select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
-from extensions.ext_database import db
+from core.workflow.human_input_forms import load_form_tokens_by_form_id as _load_form_tokens_by_form_id
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from graphon.enums import WorkflowExecutionStatus
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
+from machinery.context import RequestContext
 from models import (
-    Account,
-    App,
-    EndUser,
     Message,
     WorkflowRun,
     WorkflowRunTriggeredFrom,
@@ -31,17 +33,28 @@ class WorkflowRunListArgs(TypedDict, total=False):
     status: str
 
 
+@dataclass(frozen=True, slots=True)
+class WorkflowRunPausedNode:
+    node_id: str
+    node_title: str
+    form_id: str
+    form_token: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class WorkflowRunPauseDetails:
+    paused_at: datetime | None
+    paused_nodes: tuple[WorkflowRunPausedNode, ...]
+
+
 class WorkflowRunService:
-    _session_factory: sessionmaker
+    _session_factory: sessionmaker[Session]
     _workflow_run_repo: APIWorkflowRunRepository
 
-    def __init__(self, session_factory: Engine | sessionmaker | None = None):
+    def __init__(self, session_factory: Engine | sessionmaker[Session]):
         """Initialize WorkflowRunService with repository dependencies."""
-        match session_factory:
-            case None:
-                session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
-            case Engine():
-                session_factory = sessionmaker(bind=session_factory, expire_on_commit=False)
+        if isinstance(session_factory, Engine):
+            session_factory = sessionmaker(bind=session_factory, expire_on_commit=False)
 
         self._session_factory = session_factory
         self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
@@ -51,14 +64,17 @@ class WorkflowRunService:
 
     def get_paginate_advanced_chat_workflow_runs(
         self,
-        app_model: App,
+        context: RequestContext,
+        *,
+        app_id: str,
         args: WorkflowRunListArgs,
         triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.DEBUGGING,
     ) -> InfiniteScrollPagination:
         """
         Get advanced chat app workflow run list
 
-        :param app_model: app model
+        :param context: admitted Console request context
+        :param app_id: app id
         :param args: request args
         :param triggered_from: workflow run triggered from (default: DEBUGGING for preview runs)
         """
@@ -73,7 +89,12 @@ class WorkflowRunService:
             def __getattr__(self, item):
                 return getattr(self._workflow_run, item)
 
-        pagination = self.get_paginate_workflow_runs(app_model, args, triggered_from)
+        pagination = self.get_paginate_workflow_runs(
+            context,
+            app_id=app_id,
+            args=args,
+            triggered_from=triggered_from,
+        )
 
         # Batch-load the associated Message for every run in a single query to avoid
         # an N+1 pattern: the deprecated WorkflowRun.message property issues one query
@@ -85,7 +106,7 @@ class WorkflowRunService:
             with self._session_factory() as session:
                 messages = session.scalars(
                     select(Message).where(
-                        Message.app_id == app_model.id,
+                        Message.app_id == app_id,
                         Message.workflow_run_id.in_(run_ids),
                     )
                 ).all()
@@ -111,14 +132,17 @@ class WorkflowRunService:
 
     def get_paginate_workflow_runs(
         self,
-        app_model: App,
+        context: RequestContext,
+        *,
+        app_id: str,
         args: WorkflowRunListArgs,
         triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.DEBUGGING,
     ) -> InfiniteScrollPagination:
         """
         Get workflow run list
 
-        :param app_model: app model
+        :param context: admitted Console request context
+        :param app_id: app id
         :param args: request args
         :param triggered_from: workflow run triggered from (default: DEBUGGING)
         """
@@ -127,30 +151,33 @@ class WorkflowRunService:
         status = args.get("status")
 
         return self._workflow_run_repo.get_paginated_workflow_runs(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
+            tenant_id=self._workspace_id(context),
+            app_id=app_id,
             triggered_from=triggered_from,
             limit=limit,
             last_id=last_id,
             status=status,
         )
 
-    def get_workflow_run(self, app_model: App, run_id: str) -> WorkflowRun | None:
+    def get_workflow_run(self, context: RequestContext, *, app_id: str, run_id: str) -> WorkflowRun | None:
         """
         Get workflow run detail
 
-        :param app_model: app model
+        :param context: admitted Console request context
+        :param app_id: app id
         :param run_id: workflow run id
         """
         return self._workflow_run_repo.get_workflow_run_by_id(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
+            tenant_id=self._workspace_id(context),
+            app_id=app_id,
             run_id=run_id,
         )
 
     def get_workflow_runs_count(
         self,
-        app_model: App,
+        context: RequestContext,
+        *,
+        app_id: str,
         status: str | None = None,
         time_range: str | None = None,
         triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.DEBUGGING,
@@ -158,15 +185,16 @@ class WorkflowRunService:
         """
         Get workflow runs count statistics
 
-        :param app_model: app model
+        :param context: admitted Console request context
+        :param app_id: app id
         :param status: optional status filter
         :param time_range: optional time range filter (e.g., "7d", "4h", "30m", "30s")
         :param triggered_from: workflow run triggered from (default: DEBUGGING)
         :return: dict with total and status counts
         """
         return self._workflow_run_repo.get_workflow_runs_count(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
+            tenant_id=self._workspace_id(context),
+            app_id=app_id,
             triggered_from=triggered_from,
             status=status,
             time_range=time_range,
@@ -174,14 +202,15 @@ class WorkflowRunService:
 
     def get_workflow_run_node_executions(
         self,
-        app_model: App,
+        context: RequestContext,
+        *,
+        app_id: str,
         run_id: str,
-        user: Account | EndUser,
     ) -> list[WorkflowNodeExecutionTrace]:
         """
         Get workflow run node execution list
         """
-        workflow_run = self.get_workflow_run(app_model, run_id)
+        workflow_run = self.get_workflow_run(context, app_id=app_id, run_id=run_id)
 
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
@@ -189,14 +218,60 @@ class WorkflowRunService:
         if not workflow_run:
             return []
 
-        # Get tenant_id from user
-        tenant_id = user.tenant_id if isinstance(user, EndUser) else user.current_tenant_id
-        if tenant_id is None:
-            raise ValueError("User tenant_id cannot be None")
-
         node_executions = self._node_execution_service_repo.get_executions_by_workflow_run(
-            tenant_id=tenant_id,
-            app_id=app_model.id,
+            tenant_id=self._workspace_id(context),
+            app_id=app_id,
             workflow_run_id=run_id,
         )
         return assemble_workflow_node_execution_traces(node_executions, self._node_execution_service_repo)
+
+    def get_pause_details(
+        self,
+        context: RequestContext,
+        *,
+        workflow_run_id: str,
+    ) -> WorkflowRunPauseDetails | None:
+        workspace_id = self._workspace_id(context)
+        workflow_run = self._workflow_run_repo.get_workflow_run_by_id_and_tenant_id(
+            tenant_id=workspace_id,
+            run_id=workflow_run_id,
+        )
+        if workflow_run is None:
+            return None
+        if workflow_run.status != WorkflowExecutionStatus.PAUSED:
+            return WorkflowRunPauseDetails(paused_at=None, paused_nodes=())
+
+        pause_entity = self._workflow_run_repo.get_workflow_pause(workflow_run_id)
+        pause_reasons = pause_entity.get_pause_reasons() if pause_entity else []
+        human_input_reasons: list[HumanInputRequired] = []
+        for reason in pause_reasons:
+            if not isinstance(reason, HumanInputRequired):
+                raise AssertionError("unimplemented.")
+            human_input_reasons.append(reason)
+
+        form_tokens_by_form_id: dict[str, str] = {}
+        if human_input_reasons:
+            with self._session_factory() as session:
+                form_tokens_by_form_id = _load_form_tokens_by_form_id(
+                    [reason.form_id for reason in human_input_reasons],
+                    session=session,
+                )
+
+        return WorkflowRunPauseDetails(
+            paused_at=pause_entity.paused_at if pause_entity else None,
+            paused_nodes=tuple(
+                WorkflowRunPausedNode(
+                    node_id=reason.node_id,
+                    node_title=reason.node_title,
+                    form_id=reason.form_id,
+                    form_token=form_tokens_by_form_id.get(reason.form_id),
+                )
+                for reason in human_input_reasons
+            ),
+        )
+
+    @staticmethod
+    def _workspace_id(context: RequestContext) -> str:
+        if context.active_workspace_id is None:
+            raise RuntimeError("Console account admission did not resolve an active workspace")
+        return context.active_workspace_id

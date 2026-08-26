@@ -41,6 +41,7 @@ from services.init_validation_service import InvalidInitializationPasswordError
 from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.tag_application_service import TagApplicationService
 from services.webapp_access_query_service import WebAppAccessUnavailableError
+from services.workflow_run_service import WorkflowRunService
 
 
 @pytest.mark.parametrize(
@@ -192,6 +193,20 @@ def test_build_application_services_wires_app_site_boundary(
     assert isinstance(services.app_sites, AppSiteService)
     assert isinstance(services.app_sites._sites, AppSiteCommandRepository)
     assert services.app_sites._sites._session_factory is sqlite_session_factory
+
+
+def test_build_application_services_wires_workflow_run_service(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.workflow_runs, WorkflowRunService)
+    assert services.workflow_runs._session_factory is sqlite_session_factory
 
 
 def test_build_application_services_wires_billing_service(
