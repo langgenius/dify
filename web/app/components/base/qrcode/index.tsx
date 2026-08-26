@@ -48,7 +48,6 @@ const ShareQRCode = ({ content, downloadLabel, scanLabel, triggerLabel }: Props)
   const tooltipText = triggerLabel ?? t(($) => $[`${prefixEmbedded}`], { ns: 'appOverview' })
   /* v8 ignore next -- react-i18next returns a non-empty key/string in configured runtime; empty fallback protects against missing i18n payloads. @preserve */
   const safeTooltipText = tooltipText || ''
-  const scanText = scanLabel ?? t(($) => $['overview.appInfo.qrcode.scan'], { ns: 'appOverview' })
   const downloadText =
     downloadLabel ?? t(($) => $['overview.appInfo.qrcode.download'], { ns: 'appOverview' })
 
@@ -69,8 +68,12 @@ const ShareQRCode = ({ content, downloadLabel, scanLabel, triggerLabel }: Props)
           >
             <QRCode size={160} value={content} className="mb-2" />
             <div className="flex items-center system-xs-regular">
-              <div className="text-text-tertiary">{scanText}</div>
-              <div className="text-text-tertiary">·</div>
+              {scanLabel ? (
+                <>
+                  <div className="text-text-tertiary">{scanLabel}</div>
+                  <div className="text-text-tertiary">·</div>
+                </>
+              ) : null}
               <button
                 type="button"
                 className="cursor-pointer border-none bg-transparent p-0 text-left text-text-accent-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"

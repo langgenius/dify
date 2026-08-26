@@ -81,6 +81,9 @@ const mocks = vi.hoisted(() => ({
   fileUploadConfig: {
     skill_file_size_limit: 64,
   },
+  providerContext: {
+    enableSkill: true,
+  },
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -111,6 +114,11 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: ['dataset.tag.manage'],
   }))
 })
+
+vi.mock('@/context/provider-context', () => ({
+  useProviderContextSelector: (selector: (state: { enableSkill: boolean }) => unknown) =>
+    selector(mocks.providerContext),
+}))
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
@@ -342,6 +350,7 @@ function renderAgentSkills({
 describe('AgentSkills', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.providerContext.enableSkill = true
     mocks.fileUploadConfig.skill_file_size_limit = 64
     vi.stubGlobal('fetch', mocks.fetch)
     document.cookie = 'csrf_token=csrf-token; path=/'
@@ -732,9 +741,14 @@ describe('AgentSkills', () => {
     })
     renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
 
-    await user.click(
-      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
-    )
+    const addButton = screen.getByRole('button', {
+      name: /agentV2\.agentDetail\.configure\.skills\.add/i,
+    })
+    expect(addButton).not.toHaveAttribute('data-popup-open')
+
+    await user.click(addButton)
+    expect(addButton).toHaveAttribute('data-popup-open', '')
+
     const workspaceMenuItem = screen.getByRole('button', {
       name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
     })
@@ -768,6 +782,30 @@ describe('AgentSkills', () => {
     const snapshot = JSON.parse(screen.getByLabelText('config snapshot').textContent ?? '{}')
     expect(snapshot.config_skills).toEqual([])
     expect(toast.success).not.toHaveBeenCalled()
+  })
+
+  it('should hide workspace skill selection when skill is disabled', async () => {
+    const user = userEvent.setup()
+    mocks.providerContext.enableSkill = false
+
+    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await user.click(
+      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
+    )
+
+    expect(
+      screen.queryByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
+      }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.upload\.label/i,
+      }),
+    ).toBeInTheDocument()
+    expect(mocks.agentSkillBindingsQueryOptions).toHaveBeenCalledWith(expect.anything())
+    expect(mocks.workspaceSkillsInfiniteOptions).not.toHaveBeenCalled()
   })
 
   it('should not replace existing workspace skill bindings before they finish loading', async () => {
@@ -1516,7 +1554,7 @@ describe('AgentSkills', () => {
     })
   })
 
-  it('should keep delete available for an embedded skill while a build draft is read-only', async () => {
+  it('should expose only download for an embedded skill while a build draft is read-only', async () => {
     const user = userEvent.setup()
     renderAgentSkills({
       apiContext: { agentId: 'agent-1', draftType: 'debug_build' },
@@ -1530,20 +1568,8 @@ describe('AgentSkills', () => {
     )
 
     expect(screen.getByText('common.operation.download')).toBeInTheDocument()
-    await user.click(screen.getByText('common.operation.delete'))
-
-    await waitFor(() => {
-      expect(mocks.deleteSkillMutationFn.mock.calls[0]?.[0]).toEqual({
-        params: {
-          agent_id: 'agent-1',
-          name: 'Tender Analyzer',
-        },
-        query: {
-          draft_type: 'debug_build',
-          version_id: undefined,
-        },
-      })
-    })
+    expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
+    expect(mocks.deleteSkillMutationFn).not.toHaveBeenCalled()
   })
 
   it('should expose only download from an embedded skill row when viewing a version', async () => {
@@ -1853,8 +1879,7 @@ describe('AgentSkills', () => {
     expect(mocks.replaceAgentSkillBindingsMutationFn).not.toHaveBeenCalled()
   })
 
-  it('should keep the add menu available for build draft skills', async () => {
-    const user = userEvent.setup()
+  it('should hide the add action while a build draft is read-only', () => {
     renderAgentSkills({
       apiContext: {
         agentId: 'agent-1',
@@ -1867,21 +1892,10 @@ describe('AgentSkills', () => {
       readOnly: true,
     })
 
-    await user.click(
-      await screen.findByRole('button', {
+    expect(
+      screen.queryByRole('button', {
         name: /agentV2\.agentDetail\.configure\.skills\.add/i,
       }),
-    )
-
-    expect(
-      await screen.findByRole('button', {
-        name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
-      }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', {
-        name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.upload\.label/i,
-      }),
-    ).toBeInTheDocument()
+    ).not.toBeInTheDocument()
   })
 })

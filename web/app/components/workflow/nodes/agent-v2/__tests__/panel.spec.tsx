@@ -122,6 +122,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 
   return {
     ...actual,
+    useSuspenseQuery: () => ({ data: { rbac_enabled: false } }),
     useMutation: () => ({
       isPending: mockCopyFromRosterState.isPending,
       mutate: mockCopyFromRosterMutate,
@@ -142,6 +143,10 @@ vi.mock('@/app/components/base/prompt-editor/plugins/custom-text/node', () => ({
   $createCustomTextNode: (text: string) => ({
     getTextContent: () => text,
   }),
+}))
+
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.example.test${path}`,
 }))
 
 vi.mock('../../_base/hooks/use-node-crud', () => ({
@@ -453,6 +458,17 @@ describe('agent/panel', () => {
     expect(
       screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }),
     ).toBeInTheDocument()
+  })
+
+  it('links the Agent task explanation to its documentation', async () => {
+    const user = userEvent.setup()
+    render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
+
+    await user.click(screen.getByRole('button', { name: 'workflow.nodes.agent.task.tooltip' }))
+
+    expect(
+      await screen.findByRole('link', { name: 'workflow.nodes.agent.task.learnMore' }),
+    ).toHaveAttribute('href', 'https://docs.example.test/use-dify/nodes/agent#give-it-a-task')
   })
 
   it('opens and closes the roster agent layered panel', () => {

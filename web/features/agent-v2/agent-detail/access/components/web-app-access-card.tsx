@@ -47,7 +47,6 @@ export function WebAppAccessCard({
   const appBaseUrl =
     site?.app_base_url || (typeof window === 'undefined' ? '' : window.location.origin)
   const webAppUrl = getAgentWebAppUrl(agent)
-  const isEnabled = Boolean(agent?.enable_site)
   const accessReady = Boolean(agent?.access_ready)
   const canManageWebApp = Boolean(appId && accessReady)
   const embeddedConfig =
@@ -80,18 +79,22 @@ export function WebAppAccessCard({
   })
   const toggleSiteMutation = useMutation(
     consoleQuery.apps.byAppId.siteEnable.post.mutationOptions({
-      onSuccess: (_updatedApp, variables) => {
+      scope: {
+        id: `agent-web-app-toggle:${agentId}`,
+      },
+      onSuccess: (updatedApp) => {
         queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
           agentDetailQueryKey,
           (agentDetail) =>
             agentDetail
               ? {
                   ...agentDetail,
-                  enable_site: variables.body.enable_site,
+                  enable_site: updatedApp.enable_site,
+                  updated_at: updatedApp.updated_at,
+                  updated_by: updatedApp.updated_by,
                 }
               : agentDetail,
         )
-        toast.success(tCommon(($) => $['actionMsg.modifiedSuccessfully']))
       },
       onError: () => {
         toast.error(tCommon(($) => $['actionMsg.modifiedUnsuccessfully']))
@@ -124,23 +127,28 @@ export function WebAppAccessCard({
     }),
   )
   const updateSiteMutation = useMutation(consoleQuery.apps.byAppId.site.post.mutationOptions())
-  const isBusy =
-    toggleSiteMutation.isPending ||
-    resetAccessTokenMutation.isPending ||
-    updateSiteMutation.isPending
-  const status = isLoading ? 'loading' : isEnabled ? 'inService' : 'disabled'
+  const pendingEnabled = toggleSiteMutation.variables?.body.enable_site
+  const optimisticEnabled =
+    toggleSiteMutation.isPending && pendingEnabled !== undefined
+      ? pendingEnabled
+      : Boolean(agent?.enable_site)
+  const status = isLoading ? 'loading' : optimisticEnabled ? 'inService' : 'disabled'
   const statusLabel = isLoading
     ? tCommon(($) => $.loading)
     : t(
         ($) =>
           $[
-            isEnabled
+            optimisticEnabled
               ? 'agentDetail.access.status.inService'
               : 'agentDetail.access.status.outOfService'
           ],
       )
   const icon = agent ? getSettingsIcon(agent) : null
   const notAvailableLabel = t(($) => $['agentDetail.access.workflow.notAvailable'])
+  const openUrl =
+    webAppUrl && agent?.enable_site && !toggleSiteMutation.isPending ? webAppUrl : undefined
+  const publishRequiredMessage = t(($) => $['agentDetail.access.publishRequired'])
+  const showPublishRequiredMessage = !isLoading && !accessReady
 
   function handleEnabledChange(enabled: boolean) {
     if (!appId) return
@@ -235,11 +243,11 @@ export function WebAppAccessCard({
         status={status}
         statusLabel={statusLabel}
         switchDisabled={isLoading || !canManageWebApp}
+        switchDisabledReason={showPublishRequiredMessage ? publishRequiredMessage : undefined}
         switchLabel={t(($) => $['agentDetail.access.toggleSurface'], {
           name: t(($) => $['agentDetail.access.webApp.title']),
         })}
         onEnabledChange={handleEnabledChange}
-        busy={isBusy}
         actions={
           <>
             <Button
@@ -275,20 +283,21 @@ export function WebAppAccessCard({
         <AccessPointUrl
           label={t(($) => $['agentDetail.access.webApp.accessUrl'])}
           value={webAppUrl || notAvailableLabel}
-          enabled={isEnabled}
+          enabled={optimisticEnabled}
           copyDisabled={!webAppUrl}
           loading={isLoading}
           unavailableLabel={notAvailableLabel}
           showOpen
           showQrCode
           showRegenerate
+          openDisabledReason={showPublishRequiredMessage ? publishRequiredMessage : undefined}
           openLabel={t(($) => $['agentDetail.access.webApp.actions.open'])}
-          openUrl={webAppUrl}
+          openUrl={openUrl}
           qrCodeLabel={t(($) => $['agentDetail.access.webApp.showQrCode'])}
           qrCodeScanLabel={t(($) => $['agentDetail.access.webApp.qrCode.scanToShare'])}
           qrCodeDownloadLabel={t(($) => $['agentDetail.access.webApp.qrCode.download'])}
           regenerateLabel={t(($) => $['agentDetail.access.webApp.refreshUrl'])}
-          regenerateDisabled={!canManageWebApp || isBusy}
+          regenerateDisabled={!canManageWebApp}
           regenerating={resetAccessTokenMutation.isPending}
           onRegenerate={handleRefreshUrl}
           copyLabel={t(($) => $['agentDetail.access.copyAccessUrl'])}

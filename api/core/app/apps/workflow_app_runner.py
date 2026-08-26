@@ -34,6 +34,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
+from core.credit_usage import CreditUsageAppType
 from core.rag.entities import RetrievalSourceMetadata
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.node_factory import (
@@ -124,6 +125,7 @@ class WorkflowBasedAppRunner:
         tenant_id: str = "",
         user_id: str = "",
         root_node_id: str | None = None,
+        app_type: CreditUsageAppType | None = None,
         trace_session_id: str | None = None,
     ) -> Graph:
         """
@@ -145,6 +147,7 @@ class WorkflowBasedAppRunner:
             user_id=user_id,
             user_from=user_from,
             invoke_from=invoke_from,
+            app_type=app_type,
             trace_session_id=trace_session_id,
         )
         graph_init_context = DifyGraphInitContext(
@@ -179,6 +182,7 @@ class WorkflowBasedAppRunner:
         single_loop_run: Any | None = None,
         *,
         user_id: str,
+        app_type: CreditUsageAppType | None = None,
         trace_session_id: str | None = None,
     ) -> tuple[Graph, VariablePool, GraphRuntimeState]:
         """
@@ -217,6 +221,7 @@ class WorkflowBasedAppRunner:
                 node_type_filter_key="iteration_id",
                 node_type_label="iteration",
                 user_id=user_id,
+                app_type=app_type,
                 trace_session_id=trace_session_id,
             )
         elif single_loop_run:
@@ -228,6 +233,7 @@ class WorkflowBasedAppRunner:
                 node_type_filter_key="loop_id",
                 node_type_label="loop",
                 user_id=user_id,
+                app_type=app_type,
                 trace_session_id=trace_session_id,
             )
         else:
@@ -247,6 +253,7 @@ class WorkflowBasedAppRunner:
         node_type_label: str = "node",  # 'iteration' or 'loop' for error messages
         *,
         user_id: str = "",
+        app_type: CreditUsageAppType | None = None,
         trace_session_id: str | None = None,
     ) -> tuple[Graph, VariablePool]:
         """
@@ -313,6 +320,7 @@ class WorkflowBasedAppRunner:
             user_id=user_id,
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
+            app_type=app_type,
             trace_session_id=trace_session_id,
         )
         graph_init_context = DifyGraphInitContext(

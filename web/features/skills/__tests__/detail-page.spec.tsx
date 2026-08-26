@@ -4,6 +4,7 @@ import type {
   SkillVersionResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
+import { Dialog, DialogPopup, DialogPortal, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -12,9 +13,22 @@ import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import { StrictMode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import SkillDetailPage from '../detail-page'
 
 const primaryModifier = detectPlatform() === 'mac' ? { metaKey: true } : { ctrlKey: true }
+
+function TestGotoAnythingDialog() {
+  return (
+    <Dialog handle={gotoAnythingDialogHandle}>
+      <DialogPortal>
+        <DialogPopup>
+          <DialogTitle>Goto Anything</DialogTitle>
+        </DialogPopup>
+      </DialogPortal>
+    </Dialog>
+  )
+}
 
 const mocks = vi.hoisted(() => ({
   deleteSkillMutationFn: vi.fn(),
@@ -793,7 +807,6 @@ describe('SkillDetailPage', () => {
             latest_published_at: version.created_at,
             latest_published_version_id: version.id,
             latest_published_version_number: version.version_number,
-            updated_at: version.created_at,
           }
         : mocks.skillDetail
       return version
@@ -856,7 +869,7 @@ describe('SkillDetailPage', () => {
     expect(skillsLink).not.toHaveClass('flex-1')
     expect(
       screen.getByRole('button', {
-        name: 'skill.skillManagement.detail.searchFiles',
+        name: 'app.gotoAnything.searchTitle',
       }),
     ).toHaveClass('size-8', 'rounded-[10px]')
     expect(document.querySelector('.i-custom-vender-main-nav-skill')).toBeInTheDocument()
@@ -2133,6 +2146,71 @@ describe('SkillDetailPage', () => {
     expect(document.body).toHaveTextContent('skill.skillManagement.detail.unpublishedChanges')
   })
 
+  it('keeps the skill timestamp for metadata updates after publishing', async () => {
+    const user = userEvent.setup()
+    const skillUpdatedAt = 1784638490
+    const versionCreatedAt = 1784638491
+    mocks.skillDetail = createSkillDetail({ updated_at: skillUpdatedAt })
+    mocks.publishSkillMutationFn.mockImplementationOnce(async () => {
+      const version = {
+        id: 'version-2',
+        version_number: 2,
+        version_name: '',
+        publish_note: '',
+        hash_code: 'hash-code',
+        archive_size: 180,
+        published_by: 'user-1',
+        published_by_name: 'Fate',
+        created_at: versionCreatedAt,
+        is_latest: true,
+      }
+      mocks.skillDetail = mocks.skillDetail
+        ? {
+            ...mocks.skillDetail,
+            latest_published_at: version.created_at,
+            latest_published_version_id: version.id,
+            latest_published_version_number: version.version_number,
+          }
+        : mocks.skillDetail
+      return version
+    })
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.publishUpdate',
+      }),
+    )
+    await waitFor(() => {
+      expect(mocks.publishSkillMutationFn).toHaveBeenCalled()
+    })
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.rename' }))
+    const renameInput = screen.getByRole('textbox', { name: 'common.operation.rename' })
+    await user.clear(renameInput)
+    await user.type(renameInput, 'Renamed after publish{Enter}')
+
+    await waitFor(() => {
+      expect(mocks.skillMetadataMutationFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            display_name: 'Renamed after publish',
+            expected_updated_at: skillUpdatedAt,
+          }),
+        }),
+        expect.anything(),
+      )
+    })
+    expect(mocks.skillMetadataMutationFn).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          expected_updated_at: versionCreatedAt,
+        }),
+      }),
+      expect.anything(),
+    )
+  })
+
   it('adds custom metadata from the value field Enter key and saves it on publish', async () => {
     const user = userEvent.setup()
     renderSkillDetailPage()
@@ -2288,7 +2366,6 @@ describe('SkillDetailPage', () => {
   })
 
   it('updates and removes existing custom metadata from the manifest editor', async () => {
-    const user = userEvent.setup()
     const content =
       '---\nname: github-actions-failure-debugging\ndescription: Guide for debugging failing GitHub Actions workflows.\nmetadata:\n  display-name: Untitled skill\n  owner: support\n---\n# GitHub Actions Failure Debugging\n'
     mocks.skillDetail = createSkillDetail({
@@ -2304,9 +2381,8 @@ describe('SkillDetailPage', () => {
     renderSkillDetailPage()
 
     const ownerValue = await screen.findByRole('textbox', { name: 'owner value' })
-    await user.clear(ownerValue)
-    await user.type(ownerValue, 'success')
-    await user.tab()
+    fireEvent.change(ownerValue, { target: { value: 'success' } })
+    fireEvent.blur(ownerValue)
 
     await waitFor(
       () => {
@@ -2323,7 +2399,7 @@ describe('SkillDetailPage', () => {
       { timeout: 2500 },
     )
 
-    await user.click(screen.getByRole('button', { name: 'Remove owner' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove owner' }))
 
     await waitFor(
       () => {
@@ -3062,6 +3138,26 @@ describe('SkillDetailPage', () => {
     )
   })
 
+  it('renders a non-interactive reference count when no agent uses the skill', async () => {
+    mocks.skillDetail = createSkillDetail({ reference_count: 0 })
+    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
+      queryKey: ['skill-references', options],
+      queryFn: async () => ({ data: [] }),
+    }))
+
+    renderSkillDetailPage()
+
+    const referenceCount = await screen.findByText(
+      'skill.skillManagement.detail.referencedBy_other:{"count":0}',
+    )
+    expect(referenceCount).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: 'skill.skillManagement.detail.referencedBy_other:{"count":0}',
+      }),
+    ).not.toBeInTheDocument()
+  })
+
   it('uses the references query count when the cached sidebar reference count is stale', async () => {
     mocks.skillDetail = createSkillDetail({ reference_count: 0 })
     mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
@@ -3103,7 +3199,7 @@ describe('SkillDetailPage', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'skill.skillManagement.detail.searchFiles',
+        name: 'app.gotoAnything.searchTitle',
       }),
     )
 
@@ -3112,117 +3208,14 @@ describe('SkillDetailPage', () => {
     })
   })
 
-  it('opens files from the file tree search dialog', async () => {
-    const user = userEvent.setup()
-    mocks.skillDetail = createSkillDetail({
-      files: [
-        ...createSkillDetail().files!,
-        {
-          id: 'file-guide',
-          path: 'docs/guide.md',
-          kind: 'file',
-          storage: 'text',
-          mime_type: 'text/markdown',
-          content: '# Guide',
-          tool_file_id: null,
-          size: 7,
-          hash: 'hash-guide',
-        },
-        {
-          id: 'file-policy',
-          path: 'references/policy.md',
-          kind: 'file',
-          storage: 'text',
-          mime_type: 'text/markdown',
-          content: '# Policy',
-          tool_file_id: null,
-          size: 8,
-          hash: 'hash-policy',
-        },
-      ],
-    })
-
+  it('opens Go to Anything from the sidebar search action', async () => {
     renderSkillDetailPage()
+    render(<TestGotoAnythingDialog />)
 
-    await user.click(
-      await screen.findByRole('button', { name: 'skill.skillManagement.detail.searchFiles' }),
-    )
-    await user.type(
-      screen.getByRole('textbox', { name: 'skill.skillManagement.detail.searchFiles' }),
-      'guide',
-    )
+    expect(screen.queryByRole('dialog', { name: 'Goto Anything' })).not.toBeInTheDocument()
+    fireEvent.click(await screen.findByRole('button', { name: 'app.gotoAnything.searchTitle' }))
 
-    expect(screen.getByRole('button', { name: 'docs/guide.md' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'references/policy.md' })).not.toBeInTheDocument()
-
-    await user.keyboard('{Enter}')
-
-    expect(
-      await screen.findByRole('button', {
-        name: 'skill.skillManagement.detail.closeFileTab:{"name":"docs/guide.md"}',
-      }),
-    ).toBeInTheDocument()
-  })
-
-  it('opens files by clicking search results and shows the empty search state', async () => {
-    const user = userEvent.setup()
-    mocks.skillDetail = createSkillDetail({
-      files: [
-        ...createSkillDetail().files!,
-        {
-          id: 'file-guide',
-          path: 'docs/guide.md',
-          kind: 'file',
-          storage: 'text',
-          mime_type: 'text/markdown',
-          content: '# Guide',
-          tool_file_id: null,
-          size: 7,
-          hash: 'hash-guide',
-        },
-      ],
-    })
-
-    renderSkillDetailPage()
-
-    await user.click(
-      await screen.findByRole('button', { name: 'skill.skillManagement.detail.searchFiles' }),
-    )
-    const searchInput = screen.getByRole('textbox', {
-      name: 'skill.skillManagement.detail.searchFiles',
-    })
-    await user.type(searchInput, 'missing')
-    expect(screen.getByText('skill.skillManagement.detail.noSearchResults')).toBeInTheDocument()
-
-    await user.clear(searchInput)
-    await user.type(searchInput, 'guide')
-    await user.click(screen.getByRole('button', { name: 'docs/guide.md' }))
-
-    expect(
-      await screen.findByRole('button', {
-        name: 'skill.skillManagement.detail.closeFileTab:{"name":"docs/guide.md"}',
-      }),
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByRole('textbox', { name: 'skill.skillManagement.detail.searchFiles' }),
-    ).not.toBeInTheDocument()
-  })
-
-  it('keeps the file search dialog open when Enter is pressed without results', async () => {
-    const user = userEvent.setup()
-    renderSkillDetailPage()
-
-    await user.click(
-      await screen.findByRole('button', { name: 'skill.skillManagement.detail.searchFiles' }),
-    )
-    const searchInput = screen.getByRole('textbox', {
-      name: 'skill.skillManagement.detail.searchFiles',
-    })
-
-    await user.type(searchInput, 'not-present{Enter}')
-
-    expect(searchInput).toBeInTheDocument()
-    expect(screen.getByText('skill.skillManagement.detail.noSearchResults')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Goto Anything' })).toBeInTheDocument()
   })
 
   it('collapses and expands the file tree sidebar', async () => {
@@ -3237,7 +3230,7 @@ describe('SkillDetailPage', () => {
     expect(screen.queryByTestId('skill-detail-sidebar-header')).not.toBeInTheDocument()
     expect(screen.getByTestId('skill-detail-sidebar-shell')).toHaveClass('w-16')
 
-    await user.click(
+    fireEvent.click(
       screen.getByRole('button', {
         name: 'skill.skillManagement.detail.expandSidebar',
       }),

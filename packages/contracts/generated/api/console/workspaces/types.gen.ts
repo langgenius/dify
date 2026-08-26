@@ -1191,9 +1191,9 @@ export type SubscriptionBuilderApiEntity = {
 }
 
 export type TriggerSubscriptionBuilderVerifyPayload = {
-  credentials: {
+  credentials?: {
     [key: string]: unknown
-  }
+  } | null
 }
 
 export type TriggerVerificationResponse = {
@@ -1210,6 +1210,12 @@ export type TriggerOAuthAuthorizeResponse = {
   authorization_url: string
   subscription_builder: SubscriptionBuilderApiEntity
   subscription_builder_id: string
+}
+
+export type TriggerSubscriptionVerifyPayload = {
+  credentials: {
+    [key: string]: unknown
+  }
 }
 
 export type TriggerProviderListResponse = Array<TriggerProviderApiEntity>
@@ -6314,7 +6320,7 @@ export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAutho
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdData =
   {
-    body: TriggerSubscriptionBuilderVerifyPayload
+    body: TriggerSubscriptionVerifyPayload
     path: {
       provider: string
       subscription_id: string

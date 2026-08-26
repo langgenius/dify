@@ -1,9 +1,10 @@
 import logging
+from typing import Annotated
 from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import BaseModel, Field, TypeAdapter, WithJsonSchema
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
@@ -31,21 +32,24 @@ from services.message_service import MessageService
 logger = logging.getLogger(__name__)
 
 
+UUIDString = Annotated[str, WithJsonSchema({"format": "uuid", "type": "string"})]
+
+
 class FeedbackListQuery(BaseModel):
     page: int = Field(default=1, ge=1, description="Page number for pagination.")
     limit: int = Field(default=20, ge=1, le=101, description="Number of records per page.")
 
 
 class AppFeedbackResponse(ResponseModel):
-    id: str
-    app_id: str
-    conversation_id: str
-    message_id: str
+    id: UUIDString
+    app_id: UUIDString
+    conversation_id: UUIDString
+    message_id: UUIDString
     rating: str
     content: str | None = None
     from_source: str
-    from_end_user_id: str | None = None
-    from_account_id: str | None = None
+    from_end_user_id: UUIDString | None = None
+    from_account_id: UUIDString | None = None
     created_at: str
     updated_at: str
 
@@ -150,6 +154,7 @@ class MessageFeedbackApi(Resource):
     @service_api_ns.doc(
         responses={
             200: "Feedback submitted successfully",
+            400: "Bad request - invalid feedback payload",
             401: "Unauthorized - invalid API token",
             404: "Message not found",
         }

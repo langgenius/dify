@@ -5,8 +5,6 @@ import { versionInfo } from '@/version/info'
 import { renderSkill } from './skill'
 import { SKILL_TEMPLATE } from './skill-template'
 
-// Self-references the skill is allowed to name — operational pointers, not a
-// command listing. Everything else must be discovered via `help -o json`.
 const SELF_REFERENCES = new Set(['resume app', 'skills install', 'version'])
 
 describe('renderSkill', () => {
@@ -25,8 +23,14 @@ describe('renderSkill', () => {
     expect(renderSkill({ version: versionInfo.version })).not.toContain('{{')
   })
 
-  it('points at the machine-readable surface instead of inlining it', () => {
-    expect(renderSkill({ version: versionInfo.version })).toContain('difyctl help -o json')
+  it('uses the compact sitemap before per-command help', () => {
+    const skill = renderSkill({ version: versionInfo.version })
+    expect(skill).toContain('difyctl help -o json --compact')
+    expect(skill).toContain('difyctl help <path> -o json')
+    expect(skill).toContain('difyctl help agent')
+    expect(skill.indexOf('difyctl help -o json --compact')).toBeLessThan(
+      skill.indexOf('difyctl help <path> -o json'),
+    )
   })
 
   it('enumerates no command from the tree (zero drift surface)', () => {
@@ -54,6 +58,8 @@ describe('renderSkill', () => {
   it('inlines no command-specific flags (only the --help pointer)', () => {
     const skill = renderSkill({ version: versionInfo.version })
     const longFlags = skill.match(/--[a-z][\w-]+/g) ?? []
-    for (const flag of longFlags) expect(flag, `unexpected flag in skill: ${flag}`).toBe('--help')
+    const allowed = new Set(['--help', '--compact'])
+    for (const flag of longFlags)
+      expect(allowed.has(flag), `unexpected flag in skill: ${flag}`).toBe(true)
   })
 })

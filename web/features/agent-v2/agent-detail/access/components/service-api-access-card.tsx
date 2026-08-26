@@ -30,6 +30,9 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
   const apiAccess = apiAccessQuery.data
   const toggleServiceApiMutation = useMutation(
     consoleQuery.agent.byAgentId.apiEnable.post.mutationOptions({
+      scope: {
+        id: `agent-service-api-toggle:${agentId}`,
+      },
       onSuccess: (updatedApiAccess, variables) => {
         queryClient.setQueryData(apiAccessQueryOptions.queryKey, updatedApiAccess)
         queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
@@ -42,7 +45,6 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
                 }
               : agentDetail,
         )
-        toast.success(tCommon(($) => $['actionMsg.modifiedSuccessfully']))
       },
       onError: () => {
         toast.error(tCommon(($) => $['actionMsg.modifiedUnsuccessfully']))
@@ -50,14 +52,17 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
     }),
   )
   const accessReady = Boolean(apiAccess?.access_ready)
-  const isBusy = apiAccessQuery.isPending || toggleServiceApiMutation.isPending
-  const enabled = Boolean(apiAccess?.enabled)
+  const pendingEnabled = toggleServiceApiMutation.variables?.body.enable_api
+  const optimisticEnabled =
+    toggleServiceApiMutation.isPending && pendingEnabled !== undefined
+      ? pendingEnabled
+      : Boolean(apiAccess?.enabled)
   const endpoint = apiAccess?.service_api_base_url ?? ''
   const status = apiAccessQuery.isPending
     ? 'loading'
     : apiAccessQuery.isError
       ? 'unavailable'
-      : enabled
+      : optimisticEnabled
         ? 'inService'
         : 'disabled'
   const statusLabel = apiAccessQuery.isPending
@@ -67,13 +72,15 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
       : t(
           ($) =>
             $[
-              enabled
+              optimisticEnabled
                 ? 'agentDetail.access.status.inService'
                 : 'agentDetail.access.status.outOfService'
             ],
         )
   const notAvailableLabel = t(($) => $['agentDetail.access.workflow.notAvailable'])
-  const apiKeyActionDisabled = isBusy || apiAccessQuery.isError || !accessReady
+  const apiKeyActionDisabled = apiAccessQuery.isPending || apiAccessQuery.isError || !accessReady
+  const showPublishRequiredMessage =
+    !apiAccessQuery.isPending && !apiAccessQuery.isError && !accessReady
 
   function handleEnabledChange(enabled: boolean) {
     toggleServiceApiMutation.mutate({
@@ -97,11 +104,13 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
         status={status}
         statusLabel={statusLabel}
         switchDisabled={apiAccessQuery.isPending || apiAccessQuery.isError || !accessReady}
+        switchDisabledReason={
+          showPublishRequiredMessage ? t(($) => $['agentDetail.access.publishRequired']) : undefined
+        }
         switchLabel={t(($) => $['agentDetail.access.toggleSurface'], {
           name: t(($) => $['agentDetail.access.serviceApi.title']),
         })}
         onEnabledChange={handleEnabledChange}
-        busy={toggleServiceApiMutation.isPending}
         actions={
           <>
             <Button
@@ -153,7 +162,7 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
         <AccessPointUrl
           label={t(($) => $['agentDetail.access.serviceApi.endpoint'])}
           value={endpoint || notAvailableLabel}
-          enabled={enabled}
+          enabled={optimisticEnabled}
           copyDisabled={!endpoint}
           loading={apiAccessQuery.isPending}
           unavailable={apiAccessQuery.isError}

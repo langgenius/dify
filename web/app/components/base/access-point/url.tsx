@@ -2,6 +2,7 @@
 
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import ShareQRCode from '@/app/components/base/qrcode'
@@ -23,6 +24,7 @@ type AccessPointUrlProps = {
   openUrl?: string
   onCopyError?: () => void
   onRegenerate?: () => void
+  openDisabledReason?: string
   openLabel?: string
   qrCodeDownloadLabel?: string
   qrCodeLabel?: string
@@ -41,6 +43,7 @@ export function AccessPointUrl({
   loading = false,
   onCopyError,
   onRegenerate,
+  openDisabledReason,
   openLabel,
   openUrl,
   qrCodeDownloadLabel,
@@ -58,6 +61,26 @@ export function AccessPointUrl({
 }: AccessPointUrlProps) {
   const { t } = useTranslation()
   const detailsAvailable = !loading && !unavailable
+  const disabledOpenButton = (
+    <Button
+      variant="secondary"
+      size="small"
+      className="h-6 gap-1 px-1.5"
+      disabled
+      focusableWhenDisabled={Boolean(openDisabledReason)}
+    >
+      <span aria-hidden className="i-ri-external-link-line size-3.5" />
+      {openLabel}
+    </Button>
+  )
+  const disabledOpenAction = openDisabledReason ? (
+    <Tooltip>
+      <TooltipTrigger render={disabledOpenButton} />
+      <TooltipContent role="tooltip">{openDisabledReason}</TooltipContent>
+    </Tooltip>
+  ) : (
+    disabledOpenButton
+  )
 
   const disabledActions = (
     <div className="flex items-center gap-0.5">
@@ -144,10 +167,7 @@ export function AccessPointUrl({
               {openLabel}
             </a>
           ) : (
-            <Button variant="secondary" size="small" className="h-6 gap-1 px-1.5" disabled>
-              <span aria-hidden className="i-ri-external-link-line size-3.5" />
-              {openLabel}
-            </Button>
+            disabledOpenAction
           )}
         </>
       )}
