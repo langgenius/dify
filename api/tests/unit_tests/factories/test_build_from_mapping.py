@@ -2,7 +2,7 @@ import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from httpx import Response
@@ -17,10 +17,12 @@ from factories.file_factory.builders import _resolve_file_type
 from factories.file_factory.builders import build_from_mapping as _build_from_mapping
 from factories.file_factory.builders import build_from_mappings as _build_from_mappings
 from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig
+from graphon.file.file_manager import to_prompt_message_content
 from graphon.model_runtime.entities import (
     DocumentPromptMessageContent,
     ImagePromptMessageContent,
     PromptMessageRole,
+    TextPromptMessageContent,
 )
 from graphon.nodes.llm import llm_utils
 from graphon.nodes.llm.entities import LLMNodeChatModelMessage
@@ -645,3 +647,38 @@ def test_custom_bucket_document_is_attached_to_llm_prompt(file_records: FileReco
     mock_to_prompt.assert_called_once()
     assert mock_to_prompt.call_args.args[0] is file
     assert prompt_content in prompt_messages[-1].content
+
+
+def test_custom_bucket_pdf_converts_to_document_prompt_content(file_records: FileRecords):
+    """Detected type must produce document prompt content, not an unsupported placeholder."""
+    file_records.upload_file.extension = "pdf"
+    file_records.upload_file.name = "report.pdf"
+    file_records.upload_file.mime_type = "application/pdf"
+    file_records.session.commit()
+
+    file = build_from_mapping(
+        mapping={
+            "transfer_method": "local_file",
+            "upload_file_id": TEST_UPLOAD_FILE_ID,
+            "type": "custom",
+        },
+        tenant_id=TEST_TENANT_ID,
+        config=FileUploadConfig(
+            allowed_file_types=[FileType.CUSTOM],
+            allowed_file_extensions=[".pdf"],
+        ),
+    )
+    assert file.type == FileType.DOCUMENT
+
+    runtime = MagicMock()
+    runtime.multimodal_send_format = "url"
+    with (
+        patch("graphon.file.file_manager.get_workflow_file_runtime", return_value=runtime),
+        patch("graphon.file.helpers.resolve_file_url", return_value="https://files.example/report.pdf"),
+    ):
+        content = to_prompt_message_content(file)
+
+    assert isinstance(content, DocumentPromptMessageContent)
+    assert content.mime_type == "application/pdf"
+    assert content.filename == "report.pdf"
+    assert not isinstance(content, TextPromptMessageContent)
