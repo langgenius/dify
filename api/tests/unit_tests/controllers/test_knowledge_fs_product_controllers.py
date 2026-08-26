@@ -40,7 +40,10 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSRemoteMultipartFile,
     KnowledgeFSRemoteSSEResponse,
 )
-from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiProfile
+from services.knowledge_fs.service_api_authorization import (
+    KnowledgeFSServiceApiAuthorizationError,
+    KnowledgeFSServiceApiProfile,
+)
 
 _API_ROOT = Path(__file__).resolve().parents[3]
 
@@ -1083,6 +1086,25 @@ def test_service_profile_authorizes_the_dataset_key_for_the_route_space(monkeypa
         tenant_id="tenant-1",
         control_space_id="control-2",
     )
+
+
+def test_service_profile_rejects_a_dataset_key_without_a_workspace(monkeypatch: pytest.MonkeyPatch) -> None:
+    authorization = MagicMock()
+    runtime = SimpleNamespace(service_api_authorization=authorization)
+    monkeypatch.setattr(
+        service_resources,
+        "validate_and_get_api_token",
+        MagicMock(return_value=SimpleNamespace(id="token-1", tenant_id=None)),
+    )
+
+    with pytest.raises(KnowledgeFSServiceApiAuthorizationError, match="not workspace-scoped"):
+        service_resources._profile(
+            runtime,  # type: ignore[arg-type]
+            operation_id="listDocuments",
+            control_space_id="control-2",
+        )
+
+    authorization.authorize.assert_not_called()
 
 
 def test_product_modules_do_not_import_dify_dataset_or_document_services() -> None:

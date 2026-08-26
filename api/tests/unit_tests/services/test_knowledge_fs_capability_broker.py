@@ -584,6 +584,102 @@ def test_stale_external_profile_is_revalidated_before_reservation(
     assert sqlite_session.scalar(sa.select(sa.func.count(KnowledgeFSCapabilityIssuanceReservation.id))) == 0
 
 
+@pytest.mark.parametrize("sqlite_session", [_ISSUANCE_FENCE_MODELS], indirect=True)
+def test_service_issuance_rejects_a_space_disabled_after_authorization(sqlite_session: Session) -> None:
+    space, service_profile, _ = _seed_external_principals(sqlite_session)
+    policy = sqlite_session.scalar(
+        sa.select(KnowledgeFSExternalAccessPolicy).where(
+            KnowledgeFSExternalAccessPolicy.control_space_id == service_profile.control_space_id
+        )
+    )
+    assert policy is not None
+    policy.service_api_enabled = False
+    sqlite_session.commit()
+    issuer = FakeIssuer()
+    broker = KnowledgeFSCapabilityBroker(
+        sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
+        cutover_gate=FakeCutoverGate(),
+        product=FakeProduct(space),  # type: ignore[arg-type]
+        issuer=issuer,  # type: ignore[arg-type]
+    )
+
+    with pytest.raises(KnowledgeFSOperationUnavailableError, match="no longer authorized"):
+        broker.issue_service(
+            profile=service_profile,
+            operation_id="createQuery",
+            trace_id="trace-disabled-service-api",
+        )
+
+    assert issuer.requests == []
+    assert sqlite_session.scalar(sa.select(sa.func.count(KnowledgeFSCapabilityIssuanceReservation.id))) == 0
+
+
+@pytest.mark.parametrize(
+    ("operation_id", "issuer", "trace_id", "message"),
+    [
+        ("unknownOperation", FakeIssuer(), "trace-invalid-operation", "operation is unavailable"),
+        ("createQuery", None, "trace-disabled-capability", "Capability v2 is disabled"),
+        ("createQuery", FakeIssuer(), " ", "trace id is required"),
+    ],
+)
+@pytest.mark.parametrize("sqlite_session", [_ISSUANCE_FENCE_MODELS], indirect=True)
+def test_interactive_issuance_rejects_invalid_preflight_inputs(
+    sqlite_session: Session,
+    operation_id: str,
+    issuer: FakeIssuer | None,
+    trace_id: str,
+    message: str,
+) -> None:
+    space, _, _ = _seed_external_principals(sqlite_session)
+    broker = KnowledgeFSCapabilityBroker(
+        sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
+        cutover_gate=FakeCutoverGate(),
+        product=FakeProduct(space),  # type: ignore[arg-type]
+        issuer=issuer,  # type: ignore[arg-type]
+    )
+
+    with pytest.raises(KnowledgeFSOperationUnavailableError, match=message):
+        broker.issue_interactive(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id=space.id,
+            operation_id=operation_id,
+            trace_id=trace_id,
+        )
+
+
+@pytest.mark.parametrize("sqlite_session", [_ISSUANCE_FENCE_MODELS], indirect=True)
+def test_workflow_app_issuance_uses_the_workflow_caller_kind(sqlite_session: Session) -> None:
+    space, _, app_profile = _seed_external_principals(sqlite_session)
+    join = sqlite_session.get(AppKnowledgeFSSpaceJoin, app_profile.join_id)
+    assert join is not None
+    join.join_type = KnowledgeFSAppSpaceJoinType.WORKFLOW
+    policy = sqlite_session.scalar(
+        sa.select(KnowledgeFSExternalAccessPolicy).where(
+            KnowledgeFSExternalAccessPolicy.control_space_id == app_profile.control_space_id
+        )
+    )
+    assert policy is not None
+    policy.workflow_enabled = True
+    sqlite_session.commit()
+    app_profile = app_profile._replace(caller_kind=KnowledgeFSAppSpaceJoinType.WORKFLOW)
+    issuer = FakeIssuer()
+    broker = KnowledgeFSCapabilityBroker(
+        sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
+        cutover_gate=FakeCutoverGate(),
+        product=FakeProduct(space),  # type: ignore[arg-type]
+        issuer=issuer,  # type: ignore[arg-type]
+    )
+
+    broker.issue_app(
+        profile=app_profile,
+        operation_id="createQuery",
+        trace_id="trace-workflow-app",
+    )
+
+    assert issuer.requests[0].caller_kind == "workflow"
+
+
 @pytest.mark.parametrize("principal_kind", ["service", "app"])
 @pytest.mark.parametrize("sqlite_session", [_ISSUANCE_FENCE_MODELS], indirect=True)
 def test_external_issuance_uses_fresh_authorization_revision(
