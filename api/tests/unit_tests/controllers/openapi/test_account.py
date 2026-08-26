@@ -2,13 +2,12 @@
 
 import builtins
 import sys
-import uuid
 from types import SimpleNamespace
 
 import pytest
 from flask import Flask
 from flask.views import MethodView
-from werkzeug.exceptions import UnprocessableEntity
+from werkzeug.exceptions import NotFound, UnprocessableEntity
 
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi.account import (
@@ -17,8 +16,8 @@ from controllers.openapi.account import (
     AccountSessionsApi,
     AccountSessionsSelfApi,
 )
-from controllers.openapi.auth.data import AuthData
-from libs.oauth_bearer import Scope, TokenType
+from machinery.context import RequestContext
+from services.entities.account_access_entities import AccountSessionPage
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -88,96 +87,48 @@ def test_session_by_id_dispatches_to_correct_class(openapi_app: Flask):
     assert "DELETE" in rule.methods
 
 
-def test_subject_match_for_account_filters_by_account_id():
-    """Account subject scopes queries via account_id."""
-    import uuid as _uuid
-
-    from libs.oauth_bearer import AuthContext, SubjectType, TokenType
-    from services.oauth_device_flow import subject_match_clauses
-
-    aid = _uuid.uuid4()
-    ctx = AuthContext(
-        subject_type=SubjectType.ACCOUNT,
-        subject_email="user@example.com",
-        subject_issuer="dify:account",
-        account_id=aid,
-        client_id="difyctl",
-        scopes=frozenset({"full"}),
-        token_id=_uuid.uuid4(),
-        token_type=TokenType.OAUTH_ACCOUNT,
-        expires_at=None,
-        token_hash="h1",
-        verified_tenants={},
-    )
-    clauses = subject_match_clauses(ctx)
-    # One predicate, on account_id
-    assert len(clauses) == 1
-    assert "account_id" in str(clauses[0])
-
-
-def test_subject_match_for_external_sso_filters_by_email_and_issuer():
-    """External SSO subject scopes via (subject_email, subject_issuer)
-    AND account_id IS NULL — so a same-email account row from a
-    federated tenant cannot be revoked through an SSO bearer.
-    """
-    import uuid as _uuid
-
-    from libs.oauth_bearer import AuthContext, SubjectType, TokenType
-    from services.oauth_device_flow import subject_match_clauses
-
-    ctx = AuthContext(
-        subject_type=SubjectType.EXTERNAL_SSO,
-        subject_email="sso@partner.com",
-        subject_issuer="https://idp.partner.com",
-        account_id=None,
-        client_id="difyctl",
-        scopes=frozenset({"apps:run"}),
-        token_id=_uuid.uuid4(),
-        token_type=TokenType.OAUTH_EXTERNAL_SSO,
-        expires_at=None,
-        token_hash="h1",
-        verified_tenants={},
-    )
-    clauses = subject_match_clauses(ctx)
-    assert len(clauses) == 3
-    rendered = " ".join(str(c) for c in clauses)
-    assert "subject_email" in rendered
-    assert "subject_issuer" in rendered
-    assert "account_id IS NULL" in rendered
+def test_session_by_id_rejects_malformed_uuid(app: Flask) -> None:
+    api = AccountSessionByIdApi()
+    with app.test_request_context("/openapi/v1/account/sessions/not-a-uuid", method="DELETE"):
+        with pytest.raises(NotFound, match="session not found"):
+            api.delete.__wrapped__(api, _request_context(), session_id="not-a-uuid")
 
 
 # --- GET /account/sessions query validation (the handler routes ?page/?limit through
-# SessionListQuery so the server enforces the bounds the contract advertises). The auth ctx and
-# DB read are stubbed so these exercise only the validation + paging path; __wrapped__ skips the
-# auth guard, which is covered separately in auth/. ---
+# SessionListQuery so the server enforces the bounds the contract advertises). The application
+# service is replaced with a small fake so these exercise only parsing and serialization;
+# __wrapped__ skips the complete Admission boundary. ---
 
 _ACCOUNT_MOD = "controllers.openapi.account"
 
 
-def _session_auth_data() -> AuthData:
-    return AuthData(
-        token_type=TokenType.OAUTH_ACCOUNT,
-        account_id=uuid.uuid4(),
-        token_hash="test",
-        token_id=uuid.uuid4(),
-        scopes=frozenset({Scope.FULL}),
-        required_scope=Scope.FULL,
-        allowed_roles=None,
+def _request_context() -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id="account-1",
+        active_workspace_id=None,
+        access_token_id="token-1",
     )
 
 
-def _stub_session_deps(monkeypatch: pytest.MonkeyPatch, rows):
+class _SessionListService:
+    def list_sessions(self, context: RequestContext, *, page: int, limit: int) -> AccountSessionPage:
+        return AccountSessionPage(page=page, limit=limit, total=0, items=())
+
+
+def _stub_account_service(monkeypatch: pytest.MonkeyPatch) -> None:
     mod = sys.modules[_ACCOUNT_MOD]
-    monkeypatch.setattr(mod, "get_auth_ctx", lambda: SimpleNamespace())
-    monkeypatch.setattr(mod, "list_active_sessions", lambda *args, **kwargs: rows)
+    services = SimpleNamespace(accounts=SimpleNamespace(access=_SessionListService()))
+    monkeypatch.setattr(mod, "application_services", lambda: services)
 
 
 def test_sessions_list_valid_query_parses_page_and_limit(app: Flask, monkeypatch: pytest.MonkeyPatch):
     """A valid ?page&limit round-trips through SessionListQuery into the response envelope."""
     api = AccountSessionsApi()
-    _stub_session_deps(monkeypatch, [])
+    _stub_account_service(monkeypatch)
     with app.test_request_context("/openapi/v1/account/sessions?page=2&limit=5"):
-        body, status = api.get.__wrapped__(api, auth_data=_session_auth_data())
+        body, status = api.get.__wrapped__(api, _request_context())
     assert status == 200
     assert body["page"] == 2
     assert body["limit"] == 5
@@ -188,9 +139,9 @@ def test_sessions_list_valid_query_parses_page_and_limit(app: Flask, monkeypatch
 def test_sessions_list_defaults_when_query_omitted(app: Flask, monkeypatch: pytest.MonkeyPatch):
     """No query → the model's defaults (page=1, limit=100) drive the envelope."""
     api = AccountSessionsApi()
-    _stub_session_deps(monkeypatch, [])
+    _stub_account_service(monkeypatch)
     with app.test_request_context("/openapi/v1/account/sessions"):
-        body, status = api.get.__wrapped__(api, auth_data=_session_auth_data())
+        body, status = api.get.__wrapped__(api, _request_context())
     assert status == 200
     assert body["page"] == 1
     assert body["limit"] == 100
@@ -210,7 +161,7 @@ def test_sessions_list_defaults_when_query_omitted(app: Flask, monkeypatch: pyte
 def test_sessions_list_rejects_out_of_bounds_query(app: Flask, monkeypatch: pytest.MonkeyPatch, query):
     """Out-of-range / unknown query params raise 422 instead of being silently coerced."""
     api = AccountSessionsApi()
-    _stub_session_deps(monkeypatch, [])
+    _stub_account_service(monkeypatch)
     with app.test_request_context(f"/openapi/v1/account/sessions?{query}"):
         with pytest.raises(UnprocessableEntity):
-            api.get.__wrapped__(api, auth_data=_session_auth_data())
+            api.get.__wrapped__(api, _request_context())

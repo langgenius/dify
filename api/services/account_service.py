@@ -304,9 +304,9 @@ class AccountService:
     @staticmethod
     def get_account_by_id(account_id: str, *, session: Session) -> Account | None:
         """Plain ``Account`` getter — no banned check, no tenant rotation,
-        no ``last_active_at`` write. Use this from read-only identity
-        endpoints (``/openapi/v1/account``) where ``load_user``'s
-        side-effects (current-tenant assignment, commit) are unwanted.
+        no ``last_active_at`` write. Use this from authentication and read
+        paths where ``load_user``'s current-tenant assignment and commit are
+        unwanted.
 
         ``session`` is injected by the caller so this service stays free
         of a Flask-scoped session import.
@@ -1333,35 +1333,11 @@ class TenantService:
         )
 
     @staticmethod
-    def get_account_memberships(account_id: str, *, session: Session) -> list[Row[tuple[TenantAccountJoin, Tenant]]]:
-        """Return ``(TenantAccountJoin, Tenant)`` rows for every workspace
-        the account belongs to. Unlike :meth:`get_join_tenants` this keeps
-        the join row so callers can read ``role``/``current`` alongside the
-        tenant — used by ``/openapi/v1/account`` to render workspace
-        membership + pick the default workspace.
-
-        ``session`` is injected by the caller so this service stays free
-        of a Flask-scoped session import.
-
-        No tenant-status filter: parity with the legacy controller query
-        (the openapi identity endpoint listed all joined tenants).
-        """
-        return (
-            session.query(TenantAccountJoin, Tenant)
-            .join(Tenant, Tenant.id == TenantAccountJoin.tenant_id)
-            .filter(TenantAccountJoin.account_id == account_id)
-            .all()
-        )
-
-    @staticmethod
     def get_workspaces_for_account(account_id: str, *, session: Session) -> list[Row[tuple[Tenant, TenantAccountJoin]]]:
         """``(Tenant, TenantAccountJoin)`` rows for every workspace the
         account belongs to, ordered by ``Tenant.created_at`` ASC — the
-        canonical ordering for ``/openapi/v1/workspaces``.
-
-        Distinct from :meth:`get_account_memberships`: tuple order is
-        flipped (tenant first) and rows are sorted, so the workspace
-        listing is stable across requests.
+        canonical ordering for ``/openapi/v1/workspaces``. Rows keep the
+        tenant first so callers can serialize the workspace directly.
         """
         return list(
             session.execute(

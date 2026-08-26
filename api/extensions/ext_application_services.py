@@ -2,6 +2,7 @@
 
 import json
 from dataclasses import dataclass
+from functools import partial
 from typing import cast
 
 import httpx
@@ -15,8 +16,9 @@ from core.db.session_factory import get_session_maker
 from core.schemas.schema_manager import SchemaManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_redis import RedisClientWrapper, redis_client
-from libs.datetime_utils import naive_utc_now
+from libs.datetime_utils import naive_utc_now, utc_now
 from libs.helper import RateLimiter
+from libs.oauth_bearer import invalidate_oauth_token_cache
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
@@ -24,6 +26,7 @@ from repositories.app_definition_query_repository import AppDefinitionQueryRepos
 from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.installation_state_repository import InstallationStateRepository
+from repositories.oauth_access_token_repository import SQLAlchemyOAuthAccessTokenRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
 from repositories.tag_repository import TagRepository
 from repositories.trial_app_query_repository import TrialAppQueryRepository
@@ -31,6 +34,7 @@ from repositories.trial_app_usage_repository import TrialAppUsageRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
+from services.account_access_service import AccountAccessService
 from services.account_activation_adapters import (
     BillingAccountActivationEligibility,
     BillingWorkspaceMembershipCache,
@@ -128,6 +132,7 @@ def _is_user_allowed_to_access_webapp(user_id: str, app_id: str) -> bool:
 
 @dataclass(frozen=True, slots=True)
 class AccountServices:
+    access: AccountAccessService
     avatar: AccountAvatarService
     change_email: AccountChangeEmailService
     deletion: AccountDeletionService
@@ -186,6 +191,13 @@ def build_application_services(
     workspace_query_repository = WorkspaceQueryRepository(session_factory=database_client)
     return ApplicationServices(
         accounts=AccountServices(
+            access=AccountAccessService(
+                accounts=accounts,
+                workspaces=workspace_query_repository,
+                sessions=SQLAlchemyOAuthAccessTokenRepository(session_factory=database_client),
+                invalidate_token_cache=partial(invalidate_oauth_token_cache, redis),
+                now=utc_now,
+            ),
             avatar=AccountAvatarService(
                 files=SQLAlchemyAccountAvatarFileGateway(session_factory=database_client),
             ),

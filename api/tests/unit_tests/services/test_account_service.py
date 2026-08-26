@@ -2769,22 +2769,6 @@ class TestSessionInjectedGetters:
     def test_account_belongs_to_tenant_false_when_no_join(self, sqlite_session: Session) -> None:
         assert TenantService.account_belongs_to_tenant("user-1", "tenant-1", session=sqlite_session) is False
 
-    def test_get_account_memberships_returns_join_tenant_pairs(self, sqlite_session: Session) -> None:
-        """Returns every ``(TenantAccountJoin, Tenant)`` pair for an account."""
-        tenant = Tenant(name="Joined Workspace")
-        other_tenant = Tenant(name="Other Workspace")
-        sqlite_session.add_all([tenant, other_tenant])
-        sqlite_session.flush()
-        join = self._add_tenant_account_join(sqlite_session, tenant, "user-123", TenantAccountRole.NORMAL, current=True)
-        self._add_tenant_account_join(sqlite_session, other_tenant, "other-user", TenantAccountRole.NORMAL)
-        sqlite_session.commit()
-
-        out = TenantService.get_account_memberships("user-123", session=sqlite_session)
-
-        assert len(out) == 1
-        assert out[0][0] is join
-        assert out[0][1] is tenant
-
     def test_get_workspaces_for_account_uses_session_execute(self, sqlite_session: Session) -> None:
         """The list endpoint orders by ``Tenant.created_at``; the helper
         returns ``(Tenant, TenantAccountJoin)`` rows in that order.

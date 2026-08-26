@@ -8,3 +8,4 @@ class RequestContext(NamedTuple):
     trace_id: str | None
     account_id: str
     active_workspace_id: str | None
+    access_token_id: str | None = None

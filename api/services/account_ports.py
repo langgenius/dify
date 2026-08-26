@@ -1,8 +1,14 @@
-"""Persistence ports used by account application services."""
+"""Ports used by account application services."""
 
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Protocol
 
+from services.entities.account_access_entities import (
+    AccountSessionRevocation,
+    AccountSessionSnapshot,
+    AccountWorkspaceSnapshot,
+)
 from services.entities.account_entities import (
     AccountCredentials,
     AccountDeletionChallenge,
@@ -14,6 +20,10 @@ from services.entities.account_entities import (
     AccountProfileChanges,
     AccountSnapshot,
 )
+
+
+class AccountSnapshotQuery(Protocol):
+    def get(self, account_id: str) -> AccountSnapshot | None: ...
 
 
 class AccountRepository(Protocol):
@@ -45,6 +55,33 @@ class AccountIntegrationRepository(Protocol):
 
 class AccountWorkspaceMembershipQuery(Protocol):
     def list_ids_for_account(self, account_id: str) -> Sequence[str]: ...
+
+
+class AccountWorkspaceSnapshotQuery(Protocol):
+    def list_account_access_workspaces(self, account_id: str) -> Sequence[AccountWorkspaceSnapshot]: ...
+
+
+class AccountSessionRepository(Protocol):
+    def list_active(
+        self,
+        *,
+        account_id: str,
+        active_at: datetime,
+        offset: int,
+        limit: int,
+    ) -> tuple[int, Sequence[AccountSessionSnapshot]]: ...
+
+    def revoke(
+        self,
+        *,
+        account_id: str,
+        token_id: str,
+        revoked_at: datetime,
+    ) -> AccountSessionRevocation: ...
+
+
+class AccountTokenCacheInvalidator(Protocol):
+    def __call__(self, token_hash: str) -> None: ...
 
 
 class AccountAvatarFileGateway(Protocol):

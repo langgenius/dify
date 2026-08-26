@@ -12,10 +12,10 @@ from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Any, NotRequired, TypedDict
 
-from sqlalchemy import and_, func, select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from libs.oauth_bearer import TOKEN_CACHE_KEY_FMT, AuthContext, SubjectType
+from libs.oauth_bearer import invalidate_oauth_token_cache
 from models.oauth import OAuthAccessToken
 
 logger = logging.getLogger(__name__)
@@ -382,7 +382,7 @@ def mint_oauth_token(
     )
 
     if outcome.rotated and outcome.old_hash:
-        redis_client.delete(TOKEN_CACHE_KEY_FMT.format(hash=outcome.old_hash))
+        invalidate_oauth_token_cache(redis_client, outcome.old_hash)
 
     return MintResult(token=token, token_id=outcome.token_id, expires_at=expires_at)
 
@@ -487,70 +487,3 @@ def oauth_ttl_days(tenant_id: str | None = None) -> int:
         logger.warning("%s=%d above max %d; clamping", _TTL_ENV_VAR, value, MAX_TTL_DAYS)
         return MAX_TTL_DAYS
     return value
-
-
-def subject_match_clauses(ctx: AuthContext) -> tuple[Any, ...]:
-    if ctx.subject_type == SubjectType.ACCOUNT:
-        return (OAuthAccessToken.account_id == str(ctx.account_id),)
-    return (
-        OAuthAccessToken.subject_email == ctx.subject_email,
-        OAuthAccessToken.subject_issuer == ctx.subject_issuer,
-        OAuthAccessToken.account_id.is_(None),
-    )
-
-
-def list_active_sessions(ctx: AuthContext, now: datetime, *, session: Session) -> list[OAuthAccessToken]:
-    return list(
-        session.execute(
-            select(OAuthAccessToken)
-            .where(
-                and_(
-                    *subject_match_clauses(ctx),
-                    OAuthAccessToken.revoked_at.is_(None),
-                    OAuthAccessToken.token_hash.is_not(None),
-                    OAuthAccessToken.expires_at > now,
-                )
-            )
-            .order_by(OAuthAccessToken.created_at.desc())
-        )
-        .scalars()
-        .all()
-    )
-
-
-def token_belongs_to_subject(token_id: str, ctx: AuthContext, *, session: Session) -> bool:
-    row = session.execute(
-        select(OAuthAccessToken.id).where(
-            and_(
-                OAuthAccessToken.id == token_id,
-                *subject_match_clauses(ctx),
-            )
-        )
-    ).first()
-    return row is not None
-
-
-def revoke_oauth_token(redis_client: Any, token_id: str, *, session: Session) -> None:
-    row = (
-        session.query(OAuthAccessToken.token_hash)
-        .filter(
-            OAuthAccessToken.id == token_id,
-            OAuthAccessToken.revoked_at.is_(None),
-        )
-        .one_or_none()
-    )
-    pre_revoke_hash = row[0] if row else None
-
-    stmt = (
-        update(OAuthAccessToken)
-        .where(
-            OAuthAccessToken.id == token_id,
-            OAuthAccessToken.revoked_at.is_(None),
-        )
-        .values(revoked_at=datetime.now(UTC), token_hash=None)
-    )
-    session.execute(stmt)
-    session.commit()
-
-    if pre_revoke_hash:
-        redis_client.delete(TOKEN_CACHE_KEY_FMT.format(hash=pre_revoke_hash))

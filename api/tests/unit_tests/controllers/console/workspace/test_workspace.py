@@ -197,6 +197,7 @@ class TestWorkspaceQueryRepository:
                 TenantAccountJoin(
                     tenant_id=earlier.id,
                     account_id="account-1",
+                    current=True,
                     last_opened_at=last_opened_at,
                 ),
                 TenantAccountJoin(tenant_id=later.id, account_id="account-1"),
@@ -209,6 +210,7 @@ class TestWorkspaceQueryRepository:
         repository = WorkspaceQueryRepository(workspace_session.session_factory)
         result = repository.list_for_account("account-1")
         membership_ids = repository.list_ids_for_account("account-1")
+        access_workspaces = repository.list_account_access_workspaces("account-1")
 
         assert result == (
             WorkspaceRecord(
@@ -227,6 +229,10 @@ class TestWorkspaceQueryRepository:
             ),
         )
         assert set(membership_ids) == {earlier.id, later.id, archived.id}
+        access_by_id = {workspace.id: workspace for workspace in access_workspaces}
+        assert set(access_by_id) == {earlier.id, later.id, archived.id}
+        assert access_by_id[earlier.id].current is True
+        assert access_by_id[earlier.id].role == "normal"
 
 
 class TestDeploymentWorkspacePlanGateway:
