@@ -75,7 +75,6 @@ class AuthPipeline:
         data = AuthData(
             token_type=identity.token_type,
             account_id=identity.account_id,
-            token_hash=identity.token_hash,
             token_id=identity.token_id,
             scopes=frozenset(identity.scopes),
             required_scope=scope,
