@@ -49,6 +49,7 @@ Deprecated legacy alias for creating a new document by providing text content. U
 | 400 | Bad request - invalid parameters |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
+| 404 | `not_found` : Knowledge base not found. |  |
 | 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ### ~~[POST] /datasets/{dataset_id}/documents/{document_id}/update_by_text~~

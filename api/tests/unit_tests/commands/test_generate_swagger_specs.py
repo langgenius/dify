@@ -487,6 +487,7 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
     for path in (
         "/datasets/{dataset_id}/document/create-by-file",
         "/datasets/{dataset_id}/document/create-by-text",
+        "/datasets/{dataset_id}/document/create_by_text",
         "/datasets/{dataset_id}/metadata/built-in",
         "/datasets/{dataset_id}/tags",
     ):

@@ -570,6 +570,7 @@ class DeprecatedDocumentAddByTextApi(DatasetApiResource):
             200: "Document created successfully",
             401: "Unauthorized - invalid API token",
             400: "Bad request - invalid parameters",
+            404: "`not_found` : Knowledge base not found.",
         }
     )
     @service_api_ns.response(

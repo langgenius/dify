@@ -3173,6 +3173,7 @@ export type PostDatasetsByDatasetIdDocumentCreateByText2Errors = {
   400: unknown
   401: unknown
   403: unknown
+  404: unknown
   503: unknown
 }
 
