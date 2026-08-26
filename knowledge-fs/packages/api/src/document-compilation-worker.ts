@@ -49,7 +49,10 @@ import {
 } from "./document-knowledge-paths";
 import type { DocumentModelBudget } from "./document-model-budget";
 import { finalizeDocumentMultimodalArtifact } from "./document-multimodal-artifact";
-import { extractDocumentMultimodalAssets } from "./document-multimodal-asset-extractor";
+import {
+  type DocumentRemoteAssetFetcher,
+  extractDocumentMultimodalAssets,
+} from "./document-multimodal-asset-extractor";
 import { createDocumentMultimodalManifestBuilder } from "./document-multimodal-manifest-builder";
 import type { DocumentMultimodalManifestRepository } from "./document-multimodal-manifest-repository";
 import type { DocumentOutlineBuilder } from "./document-outline-builder";
@@ -111,6 +114,7 @@ export interface DocumentCompilationWorkerOptions {
   readonly multimodalMaxConcurrency?: number | undefined;
   readonly multimodalMaxLocalAssetBytes?: number | undefined;
   readonly multimodalMaxPdfRasterizedAssets?: number | undefined;
+  readonly multimodalRemoteAssetFetcher?: DocumentRemoteAssetFetcher | undefined;
   readonly multimodalManifests: DocumentMultimodalManifestRepository;
   readonly modelBudget?: DocumentModelBudget | undefined;
   readonly objectStorage: PlatformAdapter["objectStorage"];
@@ -247,6 +251,7 @@ export function createDocumentCompilationWorker({
   multimodalMaxConcurrency = 2,
   multimodalMaxLocalAssetBytes,
   multimodalMaxPdfRasterizedAssets,
+  multimodalRemoteAssetFetcher,
   multimodalManifests,
   modelBudget,
   objectStorage,
@@ -469,6 +474,10 @@ export function createDocumentCompilationWorker({
                   ? { imageVariantGenerator: multimodalImageVariantGenerator }
                   : {}),
                 objectStorage: multimodalObjectStorage,
+                ...(multimodalRemoteAssetFetcher
+                  ? { remoteAssetFetcher: multimodalRemoteAssetFetcher }
+                  : {}),
+                ...(signal ? { signal } : {}),
                 tenantId: input.tenantId,
                 writeOwnerId: multimodalWriteOwnerId,
               });

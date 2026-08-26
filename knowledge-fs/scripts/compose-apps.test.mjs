@@ -328,6 +328,7 @@ test("KnowledgeFS deployment env contains only operator-owned runtime inputs", (
     "UNSTRUCTURED_REQUEST_TIMEOUT_MS",
     "UNSTRUCTURED_MAX_RESPONSE_BYTES",
     "DIFY_OBJECT_STORAGE_REQUEST_TIMEOUT_MS",
+    "DIFY_REMOTE_IMAGE_REQUEST_TIMEOUT_MS",
   ]);
   assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_DOCUMENT_COMPILATION_RUNTIME=on$/m);
   assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_PDF_RASTERIZER=poppler$/m);

@@ -26,6 +26,115 @@ const firstArtifactId = "30000000-0000-4000-8000-000000000001";
 const retryArtifactId = "30000000-0000-4000-8000-000000000002";
 
 describe("compileDocumentArtifact canonical artifact", () => {
+  it("materializes parser-provided remote image refs before persisting the manifest", async () => {
+    const adapter = createNodePlatformAdapter({ env: {} });
+    const artifacts = createInMemoryParseArtifactRepository({ maxArtifacts: 4 });
+    const artifactSegments = createInMemoryArtifactSegmentRepository({
+      maxBatchSize: 10,
+      maxListLimit: 10,
+      maxSegments: 10,
+    });
+    const documentMultimodalManifests = createInMemoryDocumentMultimodalManifestRepository({
+      maxManifests: 4,
+    });
+    const outlines = createInMemoryDocumentOutlineRepository({ maxOutlines: 4 });
+    const knowledgePaths = createInMemoryKnowledgePathRepository({
+      maxListLimit: 20,
+      maxPaths: 20,
+    });
+    const remoteBody = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3]);
+    const remoteFetches: unknown[] = [];
+
+    const artifact = await compileDocumentArtifact(
+      {
+        asset: { ...documentAsset(), filename: "linked-images.docx", mimeType: "application/docx" },
+        body: new Uint8Array([1, 2, 3]),
+        knowledgeSpaceId,
+        permissionScope: [],
+        tenantId: "tenant-1",
+        traceId: randomUUID(),
+      },
+      {
+        artifacts,
+        artifactSegments,
+        documentMultimodalManifests,
+        documentMultimodalRemoteAssetFetcher: {
+          fetch: async (input) => {
+            remoteFetches.push(input);
+            return { body: remoteBody, contentType: "image/png" };
+          },
+        },
+        documentParser: {
+          kind: "unstructured",
+          parse: async (input) =>
+            ParseArtifactSchema.parse({
+              artifactHash: "c".repeat(64),
+              contentType: "mixed",
+              createdAt: "2026-07-13T00:00:00.000Z",
+              documentAssetId: input.documentAssetId,
+              elements: [
+                {
+                  id: "linked-image",
+                  metadata: {
+                    assetRef: { uri: "https://cdn.example.test/office-linked.png" },
+                  },
+                  sectionPath: [],
+                  type: "image",
+                },
+              ],
+              id: firstArtifactId,
+              metadata: {},
+              parser: "unstructured",
+              version: input.version,
+            }),
+        },
+        generateArtifactSegmentId: randomUUID,
+        generateKnowledgePathId: randomUUID,
+        knowledgePaths,
+        now: () => "2026-07-13T00:00:00.000Z",
+        objectStorage: adapter.objectStorage,
+        outlineBuilder: createDocumentOutlineBuilder({
+          generateId: randomUUID,
+          maxElements: 10,
+          maxNodes: 10,
+          maxSummaryChars: 1_000,
+          now: () => "2026-07-13T00:00:00.000Z",
+        }),
+        outlines,
+        synchronousUploadReindexer: null,
+        traces: createNoopTraceRecorder(),
+      },
+    );
+
+    expect(remoteFetches).toEqual([
+      { maxBytes: 10 * 1024 * 1024, url: "https://cdn.example.test/office-linked.png" },
+    ]);
+    expect(artifact.elements[0]?.metadata).toMatchObject({
+      assetRef: {
+        contentType: "image/png",
+        objectKey: expect.any(String),
+        source: "remote-url",
+      },
+    });
+    expect(artifact.elements[0]?.metadata).not.toHaveProperty("assetRef.uri");
+    expect(artifact.artifactHash).not.toBe("c".repeat(64));
+    expect(artifact.metadata).toMatchObject({
+      multimodalMaterialization: {
+        assetCount: 1,
+        sourceArtifactHash: "c".repeat(64),
+      },
+    });
+    await expect(
+      documentMultimodalManifests.getByDocumentVersion({ documentAssetId, version: 1 }),
+    ).resolves.toMatchObject({
+      items: [
+        expect.objectContaining({
+          assetRef: expect.objectContaining({ objectKey: expect.any(String) }),
+        }),
+      ],
+    });
+  });
+
   it("uses the first persisted artifact id for every derived write on parser retry", async () => {
     const adapter = createNodePlatformAdapter({ env: {} });
     const artifacts = createInMemoryParseArtifactRepository({ maxArtifacts: 4 });

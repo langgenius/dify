@@ -28,6 +28,7 @@ import type {
 } from "./document-chunk-repository";
 import type { DocumentCompilationJobStateMachine } from "./document-compilation-job";
 import type { DocumentImageVariantGenerator } from "./document-image-variant-generator";
+import type { DocumentRemoteAssetFetcher } from "./document-multimodal-asset-extractor";
 import type { DocumentMultimodalManifestEnhancer } from "./document-multimodal-manifest-enhancer";
 import type { DocumentMultimodalManifestRepository } from "./document-multimodal-manifest-repository";
 import type { DocumentOutlineRepository } from "./document-outline-repository";
@@ -211,6 +212,7 @@ export interface KnowledgeGatewayOptions {
   documentMultimodalLocalAssetAllowlist?: readonly string[];
   documentMultimodalMaxLocalAssetBytes?: number;
   documentMultimodalMaxPdfRasterizedAssets?: number;
+  documentMultimodalRemoteAssetFetcher?: DocumentRemoteAssetFetcher;
   documentPdfRasterizer?: DocumentPdfRasterizer;
   documentOutlineSummaryEnhancer?: DocumentOutlineSummaryEnhancer;
   documentOutlines?: DocumentOutlineRepository;

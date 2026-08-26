@@ -22,10 +22,21 @@ export interface ExtractDocumentMultimodalAssetsInput {
   readonly maxEmbeddedAssetBytes?: number | undefined;
   readonly maxExtractedAssets?: number | undefined;
   readonly maxLocalAssetBytes?: number | undefined;
+  readonly maxRemoteAssetBytes?: number | undefined;
   readonly imageVariantGenerator?: DocumentImageVariantGenerator | undefined;
   readonly objectStorage: PlatformAdapter["objectStorage"];
+  readonly remoteAssetFetcher?: DocumentRemoteAssetFetcher | undefined;
+  readonly signal?: AbortSignal | undefined;
   readonly tenantId: string;
   readonly writeOwnerId?: string | undefined;
+}
+
+export interface DocumentRemoteAssetFetcher {
+  fetch(input: {
+    readonly maxBytes: number;
+    readonly signal?: AbortSignal | undefined;
+    readonly url: string;
+  }): Promise<{ readonly body: Uint8Array; readonly contentType: string } | null>;
 }
 
 export interface ExtractDocumentMultimodalAssetsResult {
@@ -39,7 +50,7 @@ interface DataUriImage {
   readonly body: Uint8Array;
   readonly contentType: string;
   readonly dimensions?: ImageDimensions | undefined;
-  readonly source: "data-uri" | "local-file";
+  readonly source: "data-uri" | "local-file" | "remote-url";
 }
 
 interface ImageDimensions {
@@ -51,6 +62,13 @@ const dataUriPattern = /^data:(image\/[a-z0-9.+-]+);base64,([a-z0-9+/=\s]+)$/iu;
 const defaultMaxEmbeddedAssetBytes = 10 * 1024 * 1024;
 const defaultMaxExtractedAssets = 1_000;
 const defaultMaxLocalAssetBytes = 50 * 1024 * 1024;
+const defaultMaxRemoteAssetBytes = 10 * 1024 * 1024;
+const supportedRemoteImageContentTypes = new Set([
+  "image/gif",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
 
 export async function extractDocumentMultimodalAssets({
   allowLocalAssetPaths = [],
@@ -59,8 +77,11 @@ export async function extractDocumentMultimodalAssets({
   maxEmbeddedAssetBytes = defaultMaxEmbeddedAssetBytes,
   maxExtractedAssets = defaultMaxExtractedAssets,
   maxLocalAssetBytes = defaultMaxLocalAssetBytes,
+  maxRemoteAssetBytes = defaultMaxRemoteAssetBytes,
   imageVariantGenerator,
   objectStorage,
+  remoteAssetFetcher,
+  signal,
   tenantId,
   writeOwnerId,
 }: ExtractDocumentMultimodalAssetsInput): Promise<ExtractDocumentMultimodalAssetsResult> {
@@ -74,6 +95,10 @@ export async function extractDocumentMultimodalAssets({
 
   if (!Number.isSafeInteger(maxExtractedAssets) || maxExtractedAssets < 1) {
     throw new Error("Document multimodal max extracted assets must be at least 1");
+  }
+
+  if (!Number.isSafeInteger(maxRemoteAssetBytes) || maxRemoteAssetBytes < 1) {
+    throw new Error("Document multimodal remote asset max bytes must be at least 1");
   }
 
   let extractedCount = 0;
@@ -90,7 +115,7 @@ export async function extractDocumentMultimodalAssets({
 
     const assetRef = isPlainObject(element.metadata.assetRef) ? element.metadata.assetRef : null;
     const uri = typeof assetRef?.uri === "string" ? assetRef.uri.trim() : "";
-    const image =
+    let image =
       parseDataUriImage(uri, maxEmbeddedAssetBytes) ??
       (await readLocalImageAsset({
         allowedRoots: allowedLocalRoots,
@@ -98,6 +123,40 @@ export async function extractDocumentMultimodalAssets({
         maxLocalAssetBytes,
         uri,
       }));
+
+    if (!image && remoteAssetFetcher && isRemoteHttpUri(uri)) {
+      if (extractedCount >= maxExtractedAssets) {
+        skippedForCapCount += 1;
+        elements.push(element);
+        continue;
+      }
+      const fetched = await remoteAssetFetcher.fetch({
+        maxBytes: maxRemoteAssetBytes,
+        ...(signal ? { signal } : {}),
+        url: uri,
+      });
+      if (fetched) {
+        if (fetched.body.byteLength > maxRemoteAssetBytes) {
+          throw new Error(
+            `Document multimodal remote asset exceeds maxRemoteAssetBytes=${maxRemoteAssetBytes}`,
+          );
+        }
+        const contentType = normalizeRemoteImageContentType(fetched.contentType);
+        if (!contentType) {
+          throw new Error("Document multimodal remote asset content type is unsupported");
+        }
+        if (fetched.body.byteLength === 0) {
+          throw new Error("Document multimodal remote asset is empty");
+        }
+        const dimensions = readImageDimensions(fetched.body, contentType);
+        image = {
+          body: fetched.body,
+          contentType,
+          ...(dimensions ? { dimensions } : {}),
+          source: "remote-url",
+        };
+      }
+    }
 
     if (!assetRef || !image) {
       elements.push(element);
@@ -202,6 +261,24 @@ export async function extractDocumentMultimodalAssets({
     extractedCount,
     skippedForCapCount,
   };
+}
+
+function isRemoteHttpUri(uri: string): boolean {
+  try {
+    const parsed = new URL(uri);
+    return (
+      (parsed.protocol === "http:" || parsed.protocol === "https:") &&
+      !parsed.username &&
+      !parsed.password
+    );
+  } catch {
+    return false;
+  }
+}
+
+function normalizeRemoteImageContentType(value: string): string | null {
+  const normalized = value.split(";", 1)[0]?.trim().toLowerCase() ?? "";
+  return supportedRemoteImageContentTypes.has(normalized) ? normalized : null;
 }
 
 async function storeGeneratedImageVariants({

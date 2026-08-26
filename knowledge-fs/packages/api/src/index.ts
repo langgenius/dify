@@ -105,6 +105,7 @@ export * from "./document-asset-repository";
 export * from "./document-asset-embedding-profile-guard";
 export * from "./durable-deletion-repository";
 export * from "./document-image-variant-generator";
+export * from "./document-multimodal-asset-extractor";
 export * from "./document-multimodal-enrichment-providers";
 export * from "./document-multimodal-candidate-resolver";
 export * from "./document-multimodal-evaluation";
@@ -735,6 +736,7 @@ export function createKnowledgeGateway({
   documentMultimodalMaxExtractedAssets,
   documentMultimodalMaxLocalAssetBytes,
   documentMultimodalMaxPdfRasterizedAssets,
+  documentMultimodalRemoteAssetFetcher,
   documentPdfRasterizer,
   documentOutlineSummaryEnhancer,
   documentOutlines,
@@ -2012,6 +2014,7 @@ export function createKnowledgeGateway({
     ...(documentMultimodalMaxExtractedAssets ? { documentMultimodalMaxExtractedAssets } : {}),
     ...(documentMultimodalImageVariantGenerator ? { documentMultimodalImageVariantGenerator } : {}),
     ...(documentMultimodalMaxLocalAssetBytes ? { documentMultimodalMaxLocalAssetBytes } : {}),
+    ...(documentMultimodalRemoteAssetFetcher ? { documentMultimodalRemoteAssetFetcher } : {}),
     ...(documentMultimodalMaxPdfRasterizedAssets
       ? { documentMultimodalMaxPdfRasterizedAssets }
       : {}),
@@ -2071,6 +2074,7 @@ export function createKnowledgeGateway({
     documentMultimodalMaxExtractedAssets,
     documentMultimodalMaxLocalAssetBytes,
     documentMultimodalMaxPdfRasterizedAssets,
+    documentMultimodalRemoteAssetFetcher,
     documentMultimodalManifests: multimodalManifestRepository,
     documentParser,
     documentPdfRasterizer,

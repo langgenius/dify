@@ -3,6 +3,7 @@ import { type PlatformAdapter, collectPlatformHealth } from "@knowledge/core";
 import { createMemoryCacheAdapter } from "./cache";
 import { createSchemaDatabaseAdapter } from "./database";
 import { createDifyObjectStorageAdapter } from "./dify-object-storage";
+import { createDifyRemoteImageFetcher } from "./dify-remote-image";
 import { createInlineJobQueueAdapter } from "./job-queue";
 import { type PgBossClient, createPgBossJobQueueAdapter } from "./pg-boss-job-queue";
 import {
@@ -50,6 +51,16 @@ export function createNodePlatformAdapter(
   };
 
   return adapter;
+}
+
+export function createNodeRemoteDocumentImageFetcher(options: NodePlatformAdapterOptions = {}) {
+  const env = options.env ?? process.env;
+  return createDifyRemoteImageFetcher({
+    apiKey: env.DIFY_INNER_API_KEY?.trim() || defaultDifyInnerApiKey,
+    baseUrl: env.DIFY_INNER_API_URL?.trim() || defaultDifyInnerApiUrl,
+    ...(options.difyStorageFetch ? { fetch: options.difyStorageFetch } : {}),
+    requestTimeoutMs: parsePositiveInteger(env.DIFY_REMOTE_IMAGE_REQUEST_TIMEOUT_MS, 30_000),
+  });
 }
 
 function createNodeDatabaseAdapter(env: RuntimeEnv, databasePool?: PostgresPoolLike) {
