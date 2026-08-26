@@ -16,6 +16,6 @@
 - [x] 3.1 Transfer Contact / External Contact management implementation responsibility to `WTA-1267`; this change keeps only the contract surface.
 - [x] 3.2 Transfer Dify internal HTTP and `OrganizationContactProjectionService` upstream ownership to `WTA-1968`, with EE façade delivery coordinated by `implement-ee-human-input-admin-api`.
 - [x] 3.3 Transfer draft `form/preview`, `form/run`, and `message-template/test` backend wiring to `WTA-1969`; keep only the route and DTO contract here.
-- [x] 3.4 Transfer runtime dispatch, form creation, submission composition, workflow resume, and end-to-end execution ownership to `WTA-1908`–`WTA-1913` and `implement-human-input-v1-v2-runtime-composition`.
+- [x] 3.4 Transfer runtime dispatch, form creation, submission composition, workflow resume, and end-to-end execution ownership to `WTA-1908`–`WTA-1913` and `implement-human-input-v2-runtime-composition`.
 - [x] 3.5 Transfer IM sync delivery, workspace override behavior, and production latest-only UI integration to `WTA-1270` and `integrate-im-contact-sync-end-to-end`; transfer IM management API unification to `WTA-1875`.
 - [x] 3.6 Record backend node-data migration implementation as already landed under archived `WTA-1288`, and transfer remaining migration compatibility UI round-trip work to `WTA-1971`.

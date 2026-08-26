@@ -46,7 +46,7 @@
   - Contact / External Contact management: `WTA-1267`
   - IM sync and workspace override delivery: `WTA-1270`, `integrate-im-contact-sync-end-to-end`
   - IM management API unification: `WTA-1875`
-  - Workflow runtime composition / submit / resume / E2E: `WTA-1908`–`WTA-1913`, `implement-human-input-v1-v2-runtime-composition`
+  - Workflow runtime composition / submit / resume / E2E: `WTA-1908`–`WTA-1913`, `implement-human-input-v2-runtime-composition`
   - Dify internal HTTP + Organization Contact projection upstream: `WTA-1968`, `implement-ee-human-input-admin-api`
   - draft `preview/run` + `message-template/test` backend wiring: `WTA-1969`
   - migration compatibility UI round-trip: `WTA-1971`

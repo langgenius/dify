@@ -86,7 +86,7 @@ contract 保留以下边界：
 - public read 不授予 submit authority
 - v1 / v2 token、DTO、submit logic 继续隔离
 
-runtime 的真正 wiring、submit handler composition、resume 和 workflow orchestration 由 `WTA-1908`–`WTA-1913` 与 `implement-human-input-v1-v2-runtime-composition` 持有。
+runtime 的真正 wiring、submit handler composition、resume 和 workflow orchestration 由 `WTA-1908`–`WTA-1913` 与 `implement-human-input-v2-runtime-composition` 持有。
 
 ### 4. EE admin contract stays narrow; its upstream owner is explicit and externalized
 
@@ -125,7 +125,7 @@ runtime 的真正 wiring、submit handler composition、resume 和 workflow orch
 | draft preview/run and `message-template/test` implementation | `WTA-1969` |
 | IM card handled-status update | `WTA-1970` |
 | migration compatibility UI round-trip | `WTA-1971` |
-| runtime dispatch / form creation / submit / resume / E2E | `WTA-1908`–`WTA-1913`, `implement-human-input-v1-v2-runtime-composition` |
+| runtime dispatch / form creation / submit / resume / E2E | `WTA-1908`–`WTA-1913`, `implement-human-input-v2-runtime-composition` |
 | IM sync implementation and latest-only UI delivery | `WTA-1270`, `integrate-im-contact-sync-end-to-end` |
 | IM management API unification | `WTA-1875` |
 | backend node-data migration helper implementation | archived `WTA-1288` |
