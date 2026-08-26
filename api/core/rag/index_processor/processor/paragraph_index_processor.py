@@ -152,6 +152,8 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             else:
                 keyword.add_texts(documents, session)
 
+        self._sync_graph_index(dataset, documents, session=session)
+
     @override
     def clean(
         self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, *, session: Session, **kwargs
@@ -190,6 +192,8 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 keyword.delete_by_ids(node_ids, session)
             else:
                 keyword.delete(session=session)
+
+        self._clean_graph_index(dataset, node_ids, session=session)
 
     @override
     def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any, session: Session) -> None:
@@ -264,6 +268,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             elif dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                 keyword = Keyword(dataset)
                 keyword.add_texts(documents, session)
+            self._sync_graph_index(dataset, documents, session=session)
 
     @override
     def format_preview(self, chunks: Any) -> ParagraphFormatPreviewDict:

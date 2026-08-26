@@ -220,6 +220,13 @@ storage = [
 tools = ["cloudscraper>=1.2.71,<2.0.0", "nltk>=3.10.0,<4.0.0"]
 
 ############################################################
+# [ Knowledge graph ] dependency group
+# Only needed when GRAPH_STORE=neo4j; the default 'postgres' backend
+# reuses the metadata database and requires nothing extra.
+############################################################
+graph-neo4j = ["neo4j>=5.28.0,<6.0.0"]
+
+############################################################
 # [ VDB ] workspace plugins — hollow packages under providers/vdb/*
 # Each declares its own third-party deps and registers dify.vector_backends entry points.
 # Use: uv sync --group vdb-all | uv sync --group vdb-qdrant

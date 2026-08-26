@@ -142,6 +142,7 @@
   "datasetMenus.documents": "Documente",
   "datasetMenus.emptyTip": "Cunoștințele nu au fost asociate, vă rugăm să mergeți la aplicație sau la plug-in pentru a finaliza asocierea.",
   "datasetMenus.hitTesting": "Testare recuperare",
+  "datasetMenus.knowledgeGraph": "Graf de cunoștințe",
   "datasetMenus.pipeline": "Pipeline",
   "datasetMenus.relatedApp": "aplicații asociate",
   "datasetMenus.settings": "Setări",

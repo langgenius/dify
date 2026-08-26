@@ -89,6 +89,14 @@ class DatasetSummaryIndexSettingResponse(ResponseModel):
     summary_prompt: str | None = None
 
 
+class DatasetGraphIndexSettingResponse(ResponseModel):
+    enabled: bool | None = None
+    model_name: str | None = None
+    model_provider_name: str | None = None
+    entity_types: list[str] | None = None
+    max_depth: int | None = None
+
+
 class DatasetTagResponse(ResponseModel):
     id: str
     name: str
@@ -144,6 +152,7 @@ class DatasetDetailResponse(ResponseModel):
     summary_index_setting: DatasetSummaryIndexSettingResponse = Field(
         default_factory=DatasetSummaryIndexSettingResponse
     )
+    graph_index_setting: DatasetGraphIndexSettingResponse = Field(default_factory=DatasetGraphIndexSettingResponse)
     tags: list[DatasetTagResponse]
     doc_form: str | None
     external_knowledge_info: DatasetExternalKnowledgeInfoResponse = Field(
@@ -169,7 +178,9 @@ class DatasetDetailResponse(ResponseModel):
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
         return to_timestamp(value)
 
-    @field_validator("summary_index_setting", "external_knowledge_info", "icon_info", mode="before")
+    @field_validator(
+        "summary_index_setting", "graph_index_setting", "external_knowledge_info", "icon_info", mode="before"
+    )
     @classmethod
     def _expand_null_nested(cls, value: object) -> object:
         return {} if value is None else value

@@ -142,6 +142,7 @@
   "datasetMenus.documents": "문서",
   "datasetMenus.emptyTip": "연결된 지식이 없습니다. 애플리케이션 또는 플러그인으로 이동하여 연결을 완료하세요.",
   "datasetMenus.hitTesting": "검색 테스트",
+  "datasetMenus.knowledgeGraph": "지식 그래프",
   "datasetMenus.pipeline": "파이프라인",
   "datasetMenus.relatedApp": "관련 앱",
   "datasetMenus.settings": "설정",

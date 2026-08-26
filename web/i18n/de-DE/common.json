@@ -142,6 +142,7 @@
   "datasetMenus.documents": "Dokumente",
   "datasetMenus.emptyTip": "Das Wissen wurde nicht zugeordnet, bitte gehen Sie zur Anwendung oder zum Plug-in, um die Zuordnung abzuschließen.",
   "datasetMenus.hitTesting": "Wiederherstellungstest",
+  "datasetMenus.knowledgeGraph": "Wissensgraph",
   "datasetMenus.pipeline": "Rohrleitung",
   "datasetMenus.relatedApp": "verbundene Apps",
   "datasetMenus.settings": "Einstellungen",

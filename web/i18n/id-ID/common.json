@@ -142,6 +142,7 @@
   "datasetMenus.documents": "Dokumen",
   "datasetMenus.emptyTip": "Pengetahuan ini belum terintegrasi dalam aplikasi apa pun. Silakan lihat dokumen untuk panduan.",
   "datasetMenus.hitTesting": "Pengujian Pengambilan",
+  "datasetMenus.knowledgeGraph": "Graf pengetahuan",
   "datasetMenus.pipeline": "Pipa",
   "datasetMenus.relatedApp": "Aplikasi tertaut",
   "datasetMenus.settings": "Pengaturan",

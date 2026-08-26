@@ -142,6 +142,7 @@
   "datasetMenus.documents": "दस्तावेज़",
   "datasetMenus.emptyTip": "ज्ञान को संबद्ध नहीं किया गया है, कृपया संबद्धता पूरी करने के लिए एप्लिकेशन या प्लग-इन पर जाएं।",
   "datasetMenus.hitTesting": "पुनः प्राप्ति परीक्षण",
+  "datasetMenus.knowledgeGraph": "नॉलेज ग्राफ",
   "datasetMenus.pipeline": "पाइपलाइन",
   "datasetMenus.relatedApp": "संबंधित ऐप्स",
   "datasetMenus.settings": "सेटिंग्स",

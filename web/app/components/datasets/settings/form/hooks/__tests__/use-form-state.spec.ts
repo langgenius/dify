@@ -490,6 +490,103 @@ describe('useFormState', () => {
     })
   })
 
+  describe('Graph Index Setting Handler', () => {
+    it('should update the graph index setting', () => {
+      const { result } = renderHook(() => useFormState())
+
+      act(() => {
+        result.current.handleGraphIndexSettingChange({ enabled: true })
+      })
+
+      expect(result.current.graphIndexSetting).toMatchObject({ enabled: true })
+    })
+
+    it('should merge with existing settings', () => {
+      const { result } = renderHook(() => useFormState())
+
+      act(() => {
+        result.current.handleGraphIndexSettingChange({ enabled: true })
+      })
+
+      act(() => {
+        result.current.handleGraphIndexSettingChange({
+          model_provider_name: 'openai',
+          model_name: 'gpt-4',
+          max_depth: 3,
+        })
+      })
+
+      expect(result.current.graphIndexSetting).toMatchObject({
+        enabled: true,
+        model_provider_name: 'openai',
+        model_name: 'gpt-4',
+        max_depth: 3,
+      })
+    })
+
+    it('should block saving when enabled without an extraction model', async () => {
+      const { toast } = await import('@langgenius/dify-ui/toast')
+      const { updateDatasetSetting } = await import('@/service/datasets')
+      const { result } = renderHook(() => useFormState())
+
+      act(() => {
+        result.current.handleGraphIndexSettingChange({ enabled: true })
+      })
+
+      await act(async () => {
+        await result.current.handleSave()
+      })
+
+      // Extraction cannot run without a model, so this must fail loudly rather
+      // than saving a configuration that silently indexes nothing.
+      expect(toast.error).toHaveBeenCalledWith(expect.any(String))
+      expect(updateDatasetSetting).not.toHaveBeenCalled()
+    })
+
+    it('should save once an extraction model is chosen', async () => {
+      const { updateDatasetSetting } = await import('@/service/datasets')
+      const { result } = renderHook(() => useFormState())
+
+      act(() => {
+        result.current.handleGraphIndexSettingChange({
+          enabled: true,
+          model_provider_name: 'openai',
+          model_name: 'gpt-4',
+        })
+      })
+
+      await act(async () => {
+        await result.current.handleSave()
+      })
+
+      expect(updateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({
+          graph_index_setting: expect.objectContaining({
+            enabled: true,
+            model_provider_name: 'openai',
+            model_name: 'gpt-4',
+          }),
+        }),
+      })
+    })
+
+    it('should not require a model while the graph stays disabled', async () => {
+      const { updateDatasetSetting } = await import('@/service/datasets')
+      const { result } = renderHook(() => useFormState())
+
+      act(() => {
+        result.current.handleGraphIndexSettingChange({ enabled: false })
+      })
+
+      await act(async () => {
+        await result.current.handleSave()
+      })
+
+      expect(updateDatasetSetting).toHaveBeenCalled()
+    })
+  })
+
   describe('handleSave', () => {
     it('should show error toast when name is empty', async () => {
       const { toast } = await import('@langgenius/dify-ui/toast')

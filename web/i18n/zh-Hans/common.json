@@ -142,6 +142,7 @@
   "datasetMenus.documents": "文档",
   "datasetMenus.emptyTip": "此知识尚未集成到任何应用程序中。请参阅文档以获取指导。",
   "datasetMenus.hitTesting": "召回测试",
+  "datasetMenus.knowledgeGraph": "知识图谱",
   "datasetMenus.pipeline": "流水线",
   "datasetMenus.relatedApp": "个关联应用",
   "datasetMenus.settings": "设置",

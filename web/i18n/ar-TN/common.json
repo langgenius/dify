@@ -142,6 +142,7 @@
   "datasetMenus.documents": "المستندات",
   "datasetMenus.emptyTip": "لم يتم دمج هذه المعرفة في أي تطبيق. يرجى الرجوع إلى المستند للحصول على إرشادات.",
   "datasetMenus.hitTesting": "اختبار الاسترجاع",
+  "datasetMenus.knowledgeGraph": "الرسم البياني للمعرفة",
   "datasetMenus.pipeline": "خط الأنابيب",
   "datasetMenus.relatedApp": "التطبيقات المرتبطة",
   "datasetMenus.settings": "الإعدادات",

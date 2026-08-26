@@ -142,6 +142,7 @@
   "datasetMenus.documents": "Tài liệu",
   "datasetMenus.emptyTip": "Kiến thức chưa được liên kết, vui lòng đi đến ứng dụng hoặc plug-in để hoàn thành liên kết.",
   "datasetMenus.hitTesting": "Kiểm tra truy vấn",
+  "datasetMenus.knowledgeGraph": "Đồ thị tri thức",
   "datasetMenus.pipeline": "Đường ống",
   "datasetMenus.relatedApp": "các ứng dụng liên kết",
   "datasetMenus.settings": "Cài đặt",

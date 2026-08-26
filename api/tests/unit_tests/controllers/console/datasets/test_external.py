@@ -111,6 +111,14 @@ def _expected_dataset_detail_payload() -> dict[str, Any]:
             "model_provider_name": "provider-a",
             "summary_prompt": "Summarize this.",
         },
+        # External datasets never build a knowledge graph, so every field stays unset.
+        "graph_index_setting": {
+            "enabled": None,
+            "model_name": None,
+            "model_provider_name": None,
+            "entity_types": None,
+            "max_depth": None,
+        },
         "tags": [{"id": "tag-1", "name": "Support", "type": "knowledge"}],
         "doc_form": "text_model",
         "external_knowledge_info": {
@@ -151,6 +159,8 @@ def _dataset_detail_object() -> SimpleNamespace:
         **{
             **payload,
             "summary_index_setting": SimpleNamespace(**payload["summary_index_setting"]),
+            # Mirrors the nullable JSONB column: unset on the row, expanded to empty fields.
+            "graph_index_setting": None,
             "tags": [SimpleNamespace(**tag) for tag in payload["tags"]],
             "external_knowledge_info": SimpleNamespace(**payload["external_knowledge_info"]),
             "external_retrieval_model": SimpleNamespace(**payload["external_retrieval_model"]),

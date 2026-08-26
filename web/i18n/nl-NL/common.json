@@ -142,6 +142,7 @@
   "datasetMenus.documents": "Documents",
   "datasetMenus.emptyTip": "This Knowledge has not been integrated within any application. Please refer to the document for guidance.",
   "datasetMenus.hitTesting": "Retrieval Testing",
+  "datasetMenus.knowledgeGraph": "Kennisgrafiek",
   "datasetMenus.pipeline": "Pipeline",
   "datasetMenus.relatedApp": "linked apps",
   "datasetMenus.settings": "Settings",

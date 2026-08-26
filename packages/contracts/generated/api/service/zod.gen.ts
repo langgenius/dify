@@ -620,6 +620,17 @@ export const zDatasetExternalRetrievalModelResponse = z.object({
 })
 
 /**
+ * DatasetGraphIndexSettingResponse
+ */
+export const zDatasetGraphIndexSettingResponse = z.object({
+  enabled: z.boolean().nullish(),
+  entity_types: z.array(z.string()).nullish(),
+  max_depth: z.int().nullish(),
+  model_name: z.string().nullish(),
+  model_provider_name: z.string().nullish(),
+})
+
+/**
  * DatasetIconInfoResponse
  */
 export const zDatasetIconInfoResponse = z.object({
@@ -776,6 +787,7 @@ export const zDatasetDetailResponse = z.object({
   enable_api: z.boolean(),
   external_knowledge_info: zDatasetExternalKnowledgeInfoResponse.optional(),
   external_retrieval_model: zDatasetExternalRetrievalModelResponse.nullable(),
+  graph_index_setting: zDatasetGraphIndexSettingResponse.optional(),
   icon_info: zDatasetIconInfoResponse.optional(),
   id: z.string(),
   indexing_technique: z.string().nullable(),
@@ -819,6 +831,7 @@ export const zDatasetDetailWithPartialMembersResponse = z.object({
   enable_api: z.boolean(),
   external_knowledge_info: zDatasetExternalKnowledgeInfoResponse.optional(),
   external_retrieval_model: zDatasetExternalRetrievalModelResponse.nullable(),
+  graph_index_setting: zDatasetGraphIndexSettingResponse.optional(),
   icon_info: zDatasetIconInfoResponse.optional(),
   id: z.string(),
   indexing_technique: z.string().nullable(),
@@ -1761,6 +1774,7 @@ export const zResultResponse = z.object({
  */
 export const zRetrievalMethod = z.enum([
   'full_text_search',
+  'graph_search',
   'hybrid_search',
   'keyword_search',
   'semantic_search',

@@ -107,6 +107,26 @@ class BaseIndexProcessor(ABC):
     def format_preview(self, chunks: Any) -> Mapping[str, Any]:
         raise NotImplementedError
 
+    def _sync_graph_index(self, dataset: Dataset, documents: list[Document], *, session: Session) -> None:
+        """Extract entities/relations for freshly indexed chunks.
+
+        No-op unless the dataset has knowledge-graph indexing enabled. Failures
+        are contained inside the service so the vector/keyword index is never
+        rolled back because extraction was unavailable.
+        """
+        from core.rag.graph.graph_index_service import GraphIndexService
+
+        GraphIndexService.build_for_documents(dataset, documents, session=session)
+
+    def _clean_graph_index(self, dataset: Dataset, node_ids: list[str] | None, *, session: Session) -> None:
+        """Drop the graph facts sourced from the given chunks, or the whole graph."""
+        from core.rag.graph.graph_index_service import GraphIndexService
+
+        if node_ids:
+            GraphIndexService.delete_by_index_node_ids(dataset, node_ids, session=session)
+        else:
+            GraphIndexService.delete_all(dataset, session=session)
+
     def _get_splitter(
         self,
         processing_rule_mode: str,

@@ -142,6 +142,7 @@
   "datasetMenus.documents": "Dokumentov",
   "datasetMenus.emptyTip": "Znanje ni bilo povezano, prosimo, pojdite na aplikacijo ali vtičnik, da dokončate združenje.",
   "datasetMenus.hitTesting": "Testiranje pridobivanja",
+  "datasetMenus.knowledgeGraph": "Graf znanja",
   "datasetMenus.pipeline": "Cevovod",
   "datasetMenus.relatedApp": "Povezane aplikacije",
   "datasetMenus.settings": "Nastavitve",

@@ -142,6 +142,7 @@
   "datasetMenus.documents": "文件",
   "datasetMenus.emptyTip": " 知識庫尚未關聯，請前往應用程式或外掛完成關聯。",
   "datasetMenus.hitTesting": "檢索測試",
+  "datasetMenus.knowledgeGraph": "知識圖譜",
   "datasetMenus.pipeline": "管道",
   "datasetMenus.relatedApp": "個關聯應用",
   "datasetMenus.settings": "設定",

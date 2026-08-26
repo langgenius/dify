@@ -142,6 +142,7 @@
   "datasetMenus.documents": "Dokumenty",
   "datasetMenus.emptyTip": "Wiedza nie została powiązana, przejdź do aplikacji lub wtyczki, aby ukończyć powiązanie.",
   "datasetMenus.hitTesting": "Testowanie poboru",
+  "datasetMenus.knowledgeGraph": "Graf wiedzy",
   "datasetMenus.pipeline": "Rurociąg",
   "datasetMenus.relatedApp": "powiązane aplikacje",
   "datasetMenus.settings": "Ustawienia",
