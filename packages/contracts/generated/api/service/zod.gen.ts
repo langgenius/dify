@@ -1735,13 +1735,6 @@ export const zPublishedPipelineRunResponse = z.object({
 })
 
 /**
- * ServiceApiUserPayload
- */
-export const zRequiredServiceApiUserPayload = z.object({
-  user: z.string(),
-})
-
-/**
  * RerankingModel
  */
 export const zRerankingModel = z.object({
@@ -1787,6 +1780,13 @@ export const zRetrieverResource = z.object({
   segment_position: z.int().nullish(),
   summary: z.string().nullish(),
   word_count: z.int().nullish(),
+})
+
+/**
+ * ServiceApiUserPayload
+ */
+export const zScopedTaskStopPayload = z.object({
+  user: z.string(),
 })
 
 /**
@@ -2884,7 +2884,7 @@ export const zWorkflowBlockingResponse = z.union([
 /**
  * PipelineRunJsonResponse
  *
- * JSON responses returned by published and draft knowledge pipeline runs.
+ * Complete pipeline execution result. Returned when `response_mode` is `blocking`.
  */
 export const zPipelineRunJsonResponse = z.union([
   zPublishedPipelineRunResponse,
@@ -3054,6 +3054,13 @@ export const zWorkflowRunResponse = z.object({
 })
 
 /**
+ * ServiceApiUserPayload
+ */
+export const zWorkflowTaskStopPayload = z.object({
+  user: z.string(),
+})
+
+/**
  * HumanInputFormSubmitResponse
  */
 export const zHumanInputFormSubmitResponseWritable = z.record(z.string(), z.never())
@@ -3210,7 +3217,7 @@ export const zPostChatMessagesBody = zChatRequestPayloadWithUser
  */
 export const zPostChatMessagesResponse = z.union([zChatBlockingResponse, z.string()])
 
-export const zPostChatMessagesByTaskIdStopBody = zRequiredServiceApiUserPayload
+export const zPostChatMessagesByTaskIdStopBody = zScopedTaskStopPayload
 
 export const zPostChatMessagesByTaskIdStopPath = z.object({
   task_id: z.string(),
@@ -3231,7 +3238,7 @@ export const zPostCompletionMessagesBody = zCompletionRequestPayloadWithUser
  */
 export const zPostCompletionMessagesResponse = z.union([zCompletionBlockingResponse, z.string()])
 
-export const zPostCompletionMessagesByTaskIdStopBody = zRequiredServiceApiUserPayload
+export const zPostCompletionMessagesByTaskIdStopBody = zScopedTaskStopPayload
 
 export const zPostCompletionMessagesByTaskIdStopPath = z.object({
   task_id: z.string(),
@@ -4069,7 +4076,7 @@ export const zGetWorkflowsRunByWorkflowRunIdPath = z.object({
  */
 export const zGetWorkflowsRunByWorkflowRunIdResponse = zWorkflowRunResponse
 
-export const zPostWorkflowsTasksByTaskIdStopBody = zRequiredServiceApiUserPayload
+export const zPostWorkflowsTasksByTaskIdStopBody = zWorkflowTaskStopPayload
 
 export const zPostWorkflowsTasksByTaskIdStopPath = z.object({
   task_id: z.string(),

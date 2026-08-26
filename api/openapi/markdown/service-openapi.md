@@ -25,6 +25,8 @@ Service operations
 
 ***DEPRECATED***
 
+**Create document by text through the deprecated underscore alias**
+
 Deprecated legacy alias for creating a new document by providing text content. Use /datasets/{dataset_id}/document/create-by-text instead.
 
 #### Parameters
@@ -47,10 +49,13 @@ Deprecated legacy alias for creating a new document by providing text content. U
 | 400 | Bad request - invalid parameters |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ### ~~[POST] /datasets/{dataset_id}/documents/{document_id}/update_by_text~~
 
 ***DEPRECATED***
+
+**Update document by text through the deprecated underscore alias**
 
 Deprecated legacy alias for updating an existing document by providing text content. Use /datasets/{dataset_id}/documents/{document_id}/update-by-text instead.
 
@@ -75,6 +80,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Document not found |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ---
 ## default
@@ -350,7 +356,7 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [RequiredServiceApiUserPayload](#requiredserviceapiuserpayload)<br> |
+|  Yes | **application/json**: [ScopedTaskStopPayload](#scopedtaskstoppayload)<br> |
 
 #### Responses
 
@@ -498,7 +504,7 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [RequiredServiceApiUserPayload](#requiredserviceapiuserpayload)<br> |
+|  Yes | **application/json**: [ScopedTaskStopPayload](#scopedtaskstoppayload)<br> |
 
 #### Responses
 
@@ -574,7 +580,7 @@ Stops a completion message generation task. Only supported in `streaming` mode.
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [RequiredServiceApiUserPayload](#requiredserviceapiuserpayload)<br> |
+|  Yes | **application/json**: [ScopedTaskStopPayload](#scopedtaskstoppayload)<br> |
 
 #### Responses
 
@@ -1156,6 +1162,7 @@ Returns the list of tags bound to a specific knowledge base.
 | 200 | Tags bound to the knowledge base. | **application/json**: [DatasetBoundTagListResponse](#datasetboundtaglistresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
+| 404 | `not_found` : Knowledge base not found. |  |
 
 ---
 ## default
@@ -1185,7 +1192,9 @@ Create a document by uploading a file. Supports common document formats (PDF, TX
 | 400 | - `no_file_uploaded` : Please upload your file. - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, missing required fields, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
+| 404 | `not_found` : Knowledge base not found. |  |
 | 413 | `file_too_large` : File size exceeded. |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ### [POST] /datasets/{dataset_id}/document/create-by-text
 **Create Document by Text**
@@ -1212,6 +1221,8 @@ Create a document from raw text content. The document is processed asynchronousl
 | 400 | - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist. / indexing_technique is required. / Invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
+| 404 | `not_found` : Knowledge base not found. |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ### ~~[POST] /datasets/{dataset_id}/document/create_by_file~~
 
@@ -1241,7 +1252,9 @@ Create a document by uploading a file. Supports common document formats (PDF, TX
 | 400 | - `no_file_uploaded` : Please upload your file. - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, missing required fields, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
+| 404 | `not_found` : Knowledge base not found. |  |
 | 413 | `file_too_large` : File size exceeded. |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ### [GET] /datasets/{dataset_id}/documents
 **List Documents**
@@ -1416,6 +1429,7 @@ Update an existing document by uploading a new file. Re-triggers indexing — us
 | 404 | Document not found |  |
 | 413 | `file_too_large` : File size exceeded. |  |
 | 415 | Unsupported file type |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/download
 **Download Document**
@@ -1470,6 +1484,7 @@ Update an existing document by uploading a new file. Re-triggers indexing — us
 | 404 | Document not found |  |
 | 413 | `file_too_large` : File size exceeded. |  |
 | 415 | Unsupported file type |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/update-by-text
 **Update Document by Text**
@@ -1498,6 +1513,7 @@ Update an existing document's text content, name, or processing configuration. R
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Document not found |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ### ~~[POST] /datasets/{dataset_id}/documents/{document_id}/update_by_file~~
 
@@ -1531,6 +1547,7 @@ Update an existing document by uploading a new file. Re-triggers indexing — us
 | 404 | Document not found |  |
 | 413 | `file_too_large` : File size exceeded. |  |
 | 415 | Unsupported file type |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ---
 ## default
@@ -1627,6 +1644,7 @@ Returns the list of built-in metadata fields provided by the system (e.g., docum
 | 200 | Built-in metadata fields. | **application/json**: [DatasetMetadataBuiltInFieldsResponse](#datasetmetadatabuiltinfieldsresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
+| 404 | `not_found` : Knowledge base not found. |  |
 
 ### [POST] /datasets/{dataset_id}/metadata/built-in/{action}
 **Update Built-in Metadata Field**
@@ -1754,6 +1772,7 @@ Create one or more chunks within a document. Each chunk can include optional key
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | `not_found` : Document is not completed or is disabled. |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
 **Delete Chunk**
@@ -1829,6 +1848,7 @@ Update a chunk's content, keywords, or answer. Re-triggers indexing for the modi
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset, document, or segment not found |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
 **List Child Chunks**
@@ -1883,6 +1903,7 @@ Create a child chunk under the specified segment.
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset, document, or segment not found |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}
 **Delete Child Chunk**
@@ -1937,6 +1958,7 @@ Update the content of an existing child chunk.
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset, document, segment, or child chunk not found |  |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
 
 ---
 ## default
@@ -2232,7 +2254,7 @@ Stop a running workflow task. Only supported in `streaming` mode.
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [RequiredServiceApiUserPayload](#requiredserviceapiuserpayload)<br> |
+|  Yes | **application/json**: [WorkflowTaskStopPayload](#workflowtaskstoppayload)<br> |
 
 #### Responses
 
@@ -2312,7 +2334,7 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 | thought | string |  | No |
 | tool | string |  | No |
 | tool_input | string |  | No |
-| tool_labels | [JSONValue](#jsonvalue) |  | Yes |
+| tool_labels | [JSONValue](#jsonvalue) | Labels for tools used. | Yes |
 
 #### Annotation
 
@@ -2500,7 +2522,7 @@ Blocking chat response for a completed message or paused Chatflow.
 | event | string |  | Yes |
 | id | string |  | Yes |
 | message_id | string |  | Yes |
-| metadata | [BlockingMetadataResponse](#blockingmetadataresponse) |  | Yes |
+| metadata | [BlockingMetadataResponse](#blockingmetadataresponse) | Metadata including usage and retriever resources. | Yes |
 | mode | string |  | Yes |
 | task_id | string |  | Yes |
 
@@ -2534,7 +2556,7 @@ Public pause reason emitted by a blocking Chatflow execution.
 | elapsed_time | float |  | Yes |
 | id | string (uuid) |  | Yes |
 | message_id | string (uuid) |  | Yes |
-| metadata | [BlockingMetadataResponse](#blockingmetadataresponse) |  | Yes |
+| metadata | [BlockingMetadataResponse](#blockingmetadataresponse) | Metadata including usage and retriever resources. | Yes |
 | mode | string |  | Yes |
 | paused_nodes | [ string ] |  | Yes |
 | reasons | [ [ChatPauseReasonResponse](#chatpausereasonresponse) ] |  | Yes |
@@ -2554,7 +2576,7 @@ Public pause reason emitted by a blocking Chatflow execution.
 | event | string |  | Yes |
 | id | string |  | Yes |
 | message_id | string |  | Yes |
-| metadata | [BlockingMetadataResponse](#blockingmetadataresponse) |  | Yes |
+| metadata | [BlockingMetadataResponse](#blockingmetadataresponse) | Metadata including usage and retriever resources. | Yes |
 | mode | string |  | Yes |
 | task_id | string |  | Yes |
 | workflow_run_id | string |  | Yes |
@@ -2642,7 +2664,7 @@ Public pause reason emitted by a blocking Chatflow execution.
 | event | string |  | Yes |
 | id | string (uuid) |  | Yes |
 | message_id | string (uuid) |  | Yes |
-| metadata | [BlockingMetadataResponse](#blockingmetadataresponse) |  | Yes |
+| metadata | [BlockingMetadataResponse](#blockingmetadataresponse) | Metadata including usage and retriever resources. | Yes |
 | mode | string |  | Yes |
 | task_id | string (uuid) |  | Yes |
 
@@ -2782,7 +2804,7 @@ Enum class for custom configuration status.
 | name | string | Name of the knowledge base. | Yes |
 | permission | [PermissionEnum](#permissionenum) | Controls who can access this knowledge base. `only_me` restricts access to the creator, `all_team_members` grants workspace-wide access, and `partial_members` grants access to specified members. | No |
 | provider | string, <br>**Available values:** "external", "vendor", <br>**Default:** vendor | Knowledge base provider: `vendor` for internal knowledge bases, `external` for external ones.<br>*Enum:* `"external"`, `"vendor"` | No |
-| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked. | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked when querying this knowledge base. | No |
 | summary_index_setting | object | Summary index configuration. | No |
 
 #### DatasetDetailResponse
@@ -2804,9 +2826,9 @@ Enum class for custom configuration status.
 | embedding_model | string |  | Yes |
 | embedding_model_provider | string |  | Yes |
 | enable_api | boolean |  | Yes |
-| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) |  | No |
+| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) | Connection details for external knowledge bases. Present when `provider` is `external`. | No |
 | external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
-| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) |  | No |
+| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) | Icon display configuration for the knowledge base. | No |
 | id | string |  | Yes |
 | indexing_technique | string |  | Yes |
 | is_multimodal | boolean |  | Yes |
@@ -2817,9 +2839,9 @@ Enum class for custom configuration status.
 | permission_keys | [ string ] |  | No |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
-| retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
+| retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) | Retrieval configuration for the knowledge base. | Yes |
 | runtime_mode | string |  | Yes |
-| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) |  | No |
+| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) | Summary index configuration. | No |
 | tags | [ [DatasetTagResponse](#datasettagresponse) ] |  | Yes |
 | total_available_documents | integer |  | Yes |
 | total_documents | integer |  | Yes |
@@ -2846,9 +2868,9 @@ Enum class for custom configuration status.
 | embedding_model | string |  | Yes |
 | embedding_model_provider | string |  | Yes |
 | enable_api | boolean |  | Yes |
-| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) |  | No |
+| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) | Connection details for external knowledge bases. Present when `provider` is `external`. | No |
 | external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
-| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) |  | No |
+| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) | Icon display configuration for the knowledge base. | No |
 | id | string |  | Yes |
 | indexing_technique | string |  | Yes |
 | is_multimodal | boolean |  | Yes |
@@ -2860,9 +2882,9 @@ Enum class for custom configuration status.
 | permission_keys | [ string ] |  | No |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
-| retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
+| retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) | Retrieval configuration for the knowledge base. | Yes |
 | runtime_mode | string |  | Yes |
-| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) |  | No |
+| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) | Summary index configuration. | No |
 | tags | [ [DatasetTagResponse](#datasettagresponse) ] |  | Yes |
 | total_available_documents | integer |  | Yes |
 | total_documents | integer |  | Yes |
@@ -2934,7 +2956,7 @@ Enum class for custom configuration status.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| result | string |  | Yes |
+| result | string | Operation result. | Yes |
 
 #### DatasetMetadataBuiltInFieldResponse
 
@@ -2986,7 +3008,7 @@ Enum class for custom configuration status.
 | ---- | ---- | ----------- | -------- |
 | reranking_enable | boolean |  | Yes |
 | reranking_mode | string |  | No |
-| reranking_model | [DatasetRerankingModelResponse](#datasetrerankingmodelresponse) |  | No |
+| reranking_model | [DatasetRerankingModelResponse](#datasetrerankingmodelresponse) | Reranking model configuration. | No |
 | score_threshold | number |  | No |
 | score_threshold_enabled | boolean |  | Yes |
 | search_method | string |  | Yes |
@@ -3024,7 +3046,7 @@ Enum class for custom configuration status.
 | name | string | Name of the knowledge base. | No |
 | partial_member_list | [ object ] | List of team members with access when `permission` is `partial_members`. | No |
 | permission | [PermissionEnum](#permissionenum) | Controls who can access this knowledge base. `only_me` restricts access to the creator, `all_team_members` grants workspace-wide access, and `partial_members` grants access to specified members. | No |
-| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked. | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked when querying this knowledge base. | No |
 
 #### DatasetVectorSettingResponse
 
@@ -3038,8 +3060,8 @@ Enum class for custom configuration status.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword_setting | [DatasetKeywordSettingResponse](#datasetkeywordsettingresponse) |  | No |
-| vector_setting | [DatasetVectorSettingResponse](#datasetvectorsettingresponse) |  | No |
+| keyword_setting | [DatasetKeywordSettingResponse](#datasetkeywordsettingresponse) | Keyword search weight settings. | No |
+| vector_setting | [DatasetVectorSettingResponse](#datasetvectorsettingresponse) | Semantic search weight settings. | No |
 | weight_type | string |  | No |
 
 #### DatasourceCredentialInfoResponse
@@ -3250,7 +3272,7 @@ Request payload for bulk downloading documents as a zip archive.
 | name | string | Document name. | Yes |
 | original_document_id | string | Original document ID for replacement. | No |
 | process_rule | [ProcessRule](#processrule) | Processing rules for chunking. | No |
-| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked. | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) | Controls how chunks are searched and ranked when querying this knowledge base. | No |
 | text | string | Document text content. | Yes |
 
 #### DocumentTextUpdate
@@ -3261,7 +3283,7 @@ Request payload for bulk downloading documents as a zip archive.
 | doc_language | string, <br>**Default:** English | Language of the document for processing optimization. | No |
 | name | string | Document name. Required when `text` is provided. | No |
 | process_rule | [ProcessRule](#processrule) | Processing rules for chunking. | No |
-| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked. | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) | Controls how chunks are searched and ranked when querying this knowledge base. | No |
 | text | string | Document text content. | No |
 
 #### EndUserDetail
@@ -3414,7 +3436,7 @@ Enum class for fetch from.
 | attachment_ids | [ string ] | List of attachment IDs to include in the retrieval context. | No |
 | external_retrieval_model | object | Retrieval settings for external knowledge bases. | No |
 | query | string | Search query text. | Yes |
-| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked. | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked when querying this knowledge base. | No |
 
 #### HitTestingQuery
 
@@ -3429,7 +3451,7 @@ Enum class for fetch from.
 | child_chunks | [ [HitTestingChildChunk](#hittestingchildchunk) ] |  | Yes |
 | files | [ [HitTestingFile](#hittestingfile) ] |  | Yes |
 | score | number |  | Yes |
-| segment | [HitTestingSegment](#hittestingsegment) |  | Yes |
+| segment | [HitTestingSegment](#hittestingsegment) | Matched chunk from the knowledge base. | Yes |
 | summary | string |  | Yes |
 | tsne_position |  |  | Yes |
 
@@ -3437,7 +3459,7 @@ Enum class for fetch from.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| query | [HitTestingQuery](#hittestingquery) |  | Yes |
+| query | [HitTestingQuery](#hittestingquery) | The original query object. | Yes |
 | records | [ [HitTestingRecord](#hittestingrecord) ] |  | Yes |
 
 #### HitTestingSegment
@@ -3451,7 +3473,7 @@ Enum class for fetch from.
 | created_by | string |  | Yes |
 | disabled_at | integer |  | Yes |
 | disabled_by | string |  | Yes |
-| document | [HitTestingDocument](#hittestingdocument) |  | Yes |
+| document | [HitTestingDocument](#hittestingdocument) | Parent document information for the matched chunk. | Yes |
 | document_id | string |  | Yes |
 | enabled | boolean |  | Yes |
 | error | string |  | Yes |
@@ -3742,7 +3764,7 @@ Form input definition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| default | [StringSource](#stringsource) |  | No |
+| default | [StringSource](#stringsource) | Raw default-value configuration for the paragraph input. Runtime-resolved values are exposed in the surrounding `resolved_default_values` mapping. | No |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
 
@@ -3759,7 +3781,7 @@ Form input definition.
 | speech_to_text | { **"enabled"**: boolean } |  | Yes |
 | suggested_questions | [ string ] |  | Yes |
 | suggested_questions_after_answer | { **"enabled"**: boolean } |  | Yes |
-| system_parameters | [SystemParameters](#systemparameters) |  | Yes |
+| system_parameters | [SystemParameters](#systemparameters) | System-level parameter limits. | Yes |
 | text_to_speech | { **"autoPlay"**: string, **"enabled"**: boolean, **"language"**: string, **"voice"**: string } |  | Yes |
 | user_input_form | [ object ] |  | Yes |
 
@@ -3806,11 +3828,11 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 #### PipelineRunJsonResponse
 
-JSON responses returned by published and draft knowledge pipeline runs.
+Complete pipeline execution result. Returned when `response_mode` is `blocking`.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| PipelineRunJsonResponse | [PublishedPipelineRunResponse](#publishedpipelinerunresponse)<br>[WorkflowBlockingResponse](#workflowblockingresponse) | JSON responses returned by published and draft knowledge pipeline runs. |  |
+| PipelineRunJsonResponse | [PublishedPipelineRunResponse](#publishedpipelinerunresponse)<br>[WorkflowBlockingResponse](#workflowblockingresponse) | Complete pipeline execution result. Returned when `response_mode` is `blocking`. |  |
 
 #### PipelineUploadFileResponse
 
@@ -3835,7 +3857,7 @@ JSON responses returned by published and draft knowledge pipeline runs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| mode | [ProcessRuleMode](#processrulemode) | Processing mode. `automatic` uses built-in rules, `custom` allows manual configuration, and `hierarchical` enables parent-child chunk structure for `doc_form: hierarchical_model`. | Yes |
+| mode | [ProcessRuleMode](#processrulemode) | `automatic` uses built-in rules, `custom` allows manual configuration, `hierarchical` enables parent-child chunk structure (use with `doc_form: hierarchical_model`). | Yes |
 | rules | [Rule](#rule) | Custom processing rules. | No |
 
 #### ProcessRuleMode
@@ -3854,14 +3876,14 @@ Model class for model response.
 | ---- | ---- | ----------- | -------- |
 | deprecated | boolean |  | No |
 | features | [ [ModelFeature](#modelfeature) ] |  | No |
-| fetch_from | [FetchFrom](#fetchfrom) |  | Yes |
+| fetch_from | [FetchFrom](#fetchfrom) | Where the model definition comes from. `predefined-model` for built-in models, `customizable-model` for user-configured models. | Yes |
 | has_invalid_load_balancing_configs | boolean |  | No |
-| label | [I18nObject](#i18nobject) |  | Yes |
+| label | [I18nObject](#i18nobject) | Localized display name of the model. | Yes |
 | load_balancing_enabled | boolean |  | No |
 | model | string |  | Yes |
 | model_properties | object |  | Yes |
-| model_type | [ModelType](#modeltype) |  | Yes |
-| status | [ModelStatus](#modelstatus) |  | Yes |
+| model_type | [ModelType](#modeltype) | Type of the model, matching the `model_type` path parameter. | Yes |
+| status | [ModelStatus](#modelstatus) | Model availability status. `active` when ready to use. | Yes |
 
 #### ProviderWithModelsListResponse
 
@@ -3877,10 +3899,10 @@ Model class for provider with models response.
 | ---- | ---- | ----------- | -------- |
 | icon_small | [I18nObject](#i18nobject) |  | No |
 | icon_small_dark | [I18nObject](#i18nobject) |  | No |
-| label | [I18nObject](#i18nobject) |  | Yes |
+| label | [I18nObject](#i18nobject) | Localized display name of the provider. | Yes |
 | models | [ [ProviderModelWithStatusEntity](#providermodelwithstatusentity) ] |  | Yes |
 | provider | string |  | Yes |
-| status | [CustomConfigurationStatus](#customconfigurationstatus) |  | Yes |
+| status | [CustomConfigurationStatus](#customconfigurationstatus) | Provider status. `active` when credentials are configured and valid. | Yes |
 | tenant_id | string |  | Yes |
 
 #### PublishedPipelineRunResponse
@@ -3890,12 +3912,6 @@ Model class for provider with models response.
 | batch | string |  | Yes |
 | dataset | [PipelineDataset](#pipelinedataset) |  | Yes |
 | documents | [ [PipelineDocument](#pipelinedocument) ] |  | Yes |
-
-#### RequiredServiceApiUserPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | Yes |
 
 #### RerankingModel
 
@@ -3960,6 +3976,12 @@ Model class for provider with models response.
 | pre_processing_rules | [ [PreProcessingRule](#preprocessingrule) ] | Pre-processing rules to apply before segmentation. | No |
 | segmentation | [Segmentation](#segmentation) | Parent chunk segmentation settings. | No |
 | subchunk_segmentation | [Segmentation](#segmentation) | Child chunk segmentation settings. | No |
+
+#### ScopedTaskStopPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| user | string | End-user identifier, defined by your app and unique within it. Must match the `user` sent with the original generation request; if it differs, the stop silently does nothing and still returns success. See [End User Identity](/api-reference/guides/end-user-identity). | Yes |
 
 #### SegmentAttachmentResponse
 
@@ -4069,7 +4091,7 @@ Model class for provider with models response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| segment | [SegmentUpdateArgs](#segmentupdateargs) | Chunk update payload. | Yes |
+| segment | [SegmentUpdateArgs](#segmentupdateargs) | Chunk data to update. | Yes |
 
 #### Segmentation
 
@@ -4084,7 +4106,7 @@ Model class for provider with models response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| option_source | [StringListSource](#stringlistsource) |  | Yes |
+| option_source | [StringListSource](#stringlistsource) | Source of options for `select` inputs. Present only when `type` is `select`. | Yes |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
 
@@ -4127,7 +4149,7 @@ Model class for provider with models response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| result | string |  | Yes |
+| result | string | Operation result. | Yes |
 
 #### SimpleResultStringListResponse
 
@@ -4160,9 +4182,9 @@ Model class for provider with models response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| selector | [ string ] |  | No |
-| type | [ValueSourceType](#valuesourcetype) |  | Yes |
-| value | [ string ] |  | No |
+| selector | [ string ] | Variable reference path when `type` is `variable`. | No |
+| type | [ValueSourceType](#valuesourcetype) | Origin of the options. `constant` means `value` lists the options literally; `variable` means `selector` points to an `array[string]` workflow variable that provides them. | Yes |
+| value | [ string ] | Literal option list when `type` is `constant`. | No |
 
 #### StringSource
 
@@ -4459,3 +4481,9 @@ Public pause reason emitted by a blocking Workflow execution.
 | total_steps | integer |  | No |
 | total_tokens | integer |  | No |
 | workflow_id | string (uuid) |  | Yes |
+
+#### WorkflowTaskStopPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| user | string | End-user identifier, defined by your app and unique within it. It does not need to match the `user` that started the run; the stop applies to the task regardless of `user`. See [End User Identity](/api-reference/guides/end-user-identity). | Yes |
