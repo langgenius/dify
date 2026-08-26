@@ -670,6 +670,49 @@ class TestModelValidationInjection:
 
         assert payload == self.Payload(name="alpha", count=2)
 
+    def test_should_inject_delete_payload_from_query_params(self):
+        app = Flask(__name__)
+
+        class Handler:
+            @model_validate(TestModelValidationInjection.Payload)
+            def delete(self, payload: TestModelValidationInjection.Payload):
+                return payload
+
+        with app.test_request_context("/items?name=alpha&count=2", method="DELETE"):
+            payload = Handler().delete()
+
+        assert payload == self.Payload(name="alpha", count=2)
+
+    def test_should_inject_delete_payload_from_json_body(self):
+        app = Flask(__name__)
+
+        class Handler:
+            @model_validate(TestModelValidationInjection.Payload)
+            def delete(self, payload: TestModelValidationInjection.Payload):
+                return payload
+
+        with app.test_request_context("/items", method="DELETE", json={"name": "alpha", "count": 2}):
+            payload = Handler().delete()
+
+        assert payload == self.Payload(name="alpha", count=2)
+
+    def test_should_prefer_delete_query_params_over_json_body(self):
+        app = Flask(__name__)
+
+        class Handler:
+            @model_validate(TestModelValidationInjection.Payload)
+            def delete(self, payload: TestModelValidationInjection.Payload):
+                return payload
+
+        with app.test_request_context(
+            "/items?name=alpha&count=2",
+            method="DELETE",
+            json={"name": "beta", "count": 9},
+        ):
+            payload = Handler().delete()
+
+        assert payload == self.Payload(name="alpha", count=2)
+
     def test_should_raise_unprocessable_entity_for_invalid_payload(self):
         app = Flask(__name__)
 
