@@ -1319,6 +1319,19 @@ class IndexingConfig(BaseSettings):
         default=4000,
     )
 
+    INDEXING_MAX_WORKERS_NUMBER: PositiveInt = Field(
+        description="Concurrent workers for embedding indexing within one document. "
+        "Lower values help avoid embedding provider rate limits.",
+        default=10,
+    )
+
+    EMBEDDING_BATCH_DELAY: float = Field(
+        description="Delay in seconds between embedding HTTP requests to avoid provider rate limits. "
+        "0 disables.",
+        default=0,
+        ge=0,
+    )
+
     CHILD_CHUNKS_PREVIEW_NUMBER: PositiveInt = Field(
         description="Maximum number of child chunks to preview",
         default=50,
