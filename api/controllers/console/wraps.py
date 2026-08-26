@@ -642,8 +642,10 @@ def with_current_user_id[T, **P, R](
 def validate_request[M: BaseModel](model: type[M]) -> M:
     """Parse and validate the current request without exposing submitted values."""
 
-    if request.method in ("GET", "DELETE"):
+    if request.method == "GET":
         raw = request.args.to_dict(flat=True)
+    elif request.method == "DELETE":
+        raw = request.args.to_dict(flat=True) or (request.get_json(silent=True) or {})
     else:
         raw = request.get_json(silent=True) or {}
 
