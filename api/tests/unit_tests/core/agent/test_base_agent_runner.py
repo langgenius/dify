@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from decimal import Decimal
 
 import pytest
@@ -25,20 +26,23 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.model_manager import ModelInstance
 from core.tools.__base.tool import Tool
+from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ToolDescription,
     ToolEntity,
     ToolIdentity,
-    ToolParameter,
     ToolProviderType,
 )
+from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
-from graphon.file import FileTransferMethod, FileType, FileUploadConfig, ImageConfig
+from extensions.ext_storage import storage
+from extensions.storage.storage_type import StorageType
+from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities import LLMUsage, PromptMessageTool
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
-from models.model import AppMode, AppModelConfig, Conversation, Message, MessageAgentThought, MessageFile
+from models.model import AppMode, AppModelConfig, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
 
 
 def _message(
@@ -184,6 +188,14 @@ def _tool_entity(name: str) -> ToolEntity:
     )
 
 
+def _dataset_tool(mocker: MockerFixture, name: str) -> DatasetRetrieverTool:
+    return DatasetRetrieverTool(
+        entity=_tool_entity(name),
+        runtime=ToolRuntime(tenant_id="tenant"),
+        retrieval_tool=mocker.Mock(spec=DatasetRetrieverBaseTool),
+    )
+
+
 @pytest.fixture
 def database_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Session:
     """Bind legacy global-session writes to a real SQLite Session."""
@@ -193,17 +205,30 @@ def database_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -
 
 
 @pytest.fixture
-def runner() -> BaseAgentRunner:
-    instance = BaseAgentRunner.__new__(BaseAgentRunner)
-    instance.tenant_id = "tenant"
-    instance.user_id = "user"
-    instance.agent_thought_count = 0
-    instance.message = _message()
-    instance.app_config = _app_config()
-    instance.dataset_tools = []
-    instance.application_generate_entity = _app_generate(app_config=instance.app_config)
-    instance._current_thoughts = []
-    return instance
+def runner(sqlite_session: Session, mocker: MockerFixture) -> BaseAgentRunner:
+    app_config = _app_config()
+    llm = mocker.Mock(spec=LargeLanguageModel)
+    llm.get_model_schema.return_value = None
+    model_instance = mocker.Mock(
+        spec=ModelInstance,
+        model_type_instance=llm,
+        model_name="model",
+        credentials={},
+    )
+
+    return BaseAgentRunner(
+        session=sqlite_session,
+        tenant_id="tenant",
+        application_generate_entity=_app_generate(app_config=app_config),
+        conversation=_conversation(),
+        app_config=app_config,
+        model_config=ModelConfigWithCredentialsEntity.model_construct(),
+        config=_agent(),
+        queue_manager=mocker.Mock(spec=AppQueueManager),
+        message=_message(),
+        user_id="user",
+        model_instance=model_instance,
+    )
 
 
 class TestRepack:
@@ -391,15 +416,52 @@ def test_save_agent_thought_accepts_empty_message_ids(
     assert stored.tool_meta_str == "meta_string"
 
 
-def _message_file(*, message_id: str = "m1") -> MessageFile:
+def _message_file(
+    *,
+    message_id: str = "m1",
+    belongs_to: MessageFileBelongsTo = MessageFileBelongsTo.ASSISTANT,
+    upload_file_id: str = "upload-1",
+) -> MessageFile:
     return MessageFile(
         message_id=message_id,
         type=FileType.IMAGE,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by="user",
-        belongs_to=MessageFileBelongsTo.ASSISTANT,
-        upload_file_id="upload-1",
+        belongs_to=belongs_to,
+        upload_file_id=upload_file_id,
+    )
+
+
+def _file_enabled_app_model_config() -> AppModelConfig:
+    return AppModelConfig(
+        app_id="app1",
+        file_upload=json.dumps(
+            {
+                "enabled": True,
+                "allowed_file_types": [FileType.IMAGE],
+                "allowed_file_extensions": [".png"],
+                "allowed_file_upload_methods": [FileTransferMethod.LOCAL_FILE],
+                "number_limits": 1,
+                "image": {"detail": "low"},
+            }
+        ),
+    )
+
+
+def _upload_file() -> UploadFile:
+    return UploadFile(
+        tenant_id="tenant",
+        storage_type=StorageType.LOCAL,
+        key="image.png",
+        name="image.png",
+        size=1,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user",
+        created_at=datetime.now(),
+        used=False,
     )
 
 
@@ -420,16 +482,10 @@ def test_organize_user_prompt_with_files_but_no_config(runner: BaseAgentRunner, 
 def test_organize_user_prompt_uses_file_config(
     runner: BaseAgentRunner,
     sqlite_session: Session,
-    mocker: MockerFixture,
 ) -> None:
-    config = AppModelConfig(app_id="app1")
+    config = _file_enabled_app_model_config()
     sqlite_session.add_all([config, _conversation(app_model_config_id=config.id), _message_file()])
     sqlite_session.commit()
-    file_config = FileUploadConfig(image_config=ImageConfig(detail=None))
-    mocker.patch.object(AppModelConfig, "to_dict", return_value={})
-    mocker.patch.object(module.FileUploadConfigManager, "convert", return_value=file_config)
-    mocker.patch.object(module.file_factory, "build_from_message_files", return_value=[])
-    load_config = mocker.patch.object(module, "load_annotation_reply_config", return_value={"enabled": False})
 
     result = runner.organize_agent_user_prompt(
         _message(message_id="m1"),
@@ -437,7 +493,6 @@ def test_organize_user_prompt_uses_file_config(
     )
 
     assert result.content == "hello"
-    load_config.assert_called_once_with(sqlite_session, "app1")
 
 
 def test_organize_user_prompt_builds_file_content(
@@ -445,20 +500,15 @@ def test_organize_user_prompt_builds_file_content(
     sqlite_session: Session,
     mocker: MockerFixture,
 ) -> None:
-    config = AppModelConfig(app_id="app1")
-    sqlite_session.add_all([config, _conversation(app_model_config_id=config.id), _message_file()])
-    sqlite_session.commit()
-    file_config = FileUploadConfig(image_config=ImageConfig(detail=None))
-    mocker.patch.object(AppModelConfig, "to_dict", return_value={})
-    mocker.patch.object(module.FileUploadConfigManager, "convert", return_value=file_config)
-    mocker.patch.object(module.file_factory, "build_from_message_files", return_value=["file1"])
-    prompt_content = module.ImagePromptMessageContent(
-        url="https://files.example/image.png",
-        format="png",
-        mime_type="image/png",
+    config = _file_enabled_app_model_config()
+    upload_file = _upload_file()
+    message_file = _message_file(
+        belongs_to=MessageFileBelongsTo.USER,
+        upload_file_id=upload_file.id,
     )
-    mocker.patch.object(module.file_manager, "to_prompt_message_content", return_value=prompt_content)
-    mocker.patch.object(module, "load_annotation_reply_config", return_value={"enabled": False})
+    sqlite_session.add_all([config, _conversation(app_model_config_id=config.id), upload_file, message_file])
+    sqlite_session.commit()
+    mocker.patch.object(storage, "load", return_value=b"image")
 
     result = runner.organize_agent_user_prompt(
         _message(message_id="m1"),
@@ -466,7 +516,7 @@ def test_organize_user_prompt_builds_file_content(
     )
 
     assert isinstance(result.content, list)
-    assert result.content[0] is prompt_content
+    assert isinstance(result.content[0], module.ImagePromptMessageContent)
     assert isinstance(result.content[-1], module.TextPromptMessageContent)
 
 
@@ -500,7 +550,6 @@ def test_organize_history_skips_current_message(runner: BaseAgentRunner, sqlite_
 def test_organize_history_reconstructs_tool_flows(
     runner: BaseAgentRunner,
     sqlite_session: Session,
-    mocker: MockerFixture,
     tool: str,
     tool_input: str | None,
     observation: str | None,
@@ -514,7 +563,6 @@ def test_organize_history_reconstructs_tool_flows(
         observation=observation,
     )
     _persist_history(sqlite_session, message, thoughts=[thought])
-    mocker.patch("uuid.uuid4", return_value="uuid")
 
     result = runner.organize_agent_history([], session=sqlite_session)
 
@@ -550,16 +598,7 @@ def test_convert_tool_to_prompt_message_tool(runner: BaseAgentRunner, mocker: Mo
 
 
 def test_convert_dataset_retriever_tool(runner: BaseAgentRunner, mocker: MockerFixture) -> None:
-    dataset_tool = mocker.Mock(spec=DatasetRetrieverTool, entity=_tool_entity("ds"))
-    parameter = ToolParameter(
-        name="query",
-        label=I18nObject(en_US="Query"),
-        type=ToolParameter.ToolParameterType.STRING,
-        form=ToolParameter.ToolParameterForm.LLM,
-        llm_description="desc",
-        required=True,
-    )
-    dataset_tool.get_runtime_parameters.return_value = [parameter]
+    dataset_tool = _dataset_tool(mocker, "ds")
 
     prompt = runner._convert_dataset_retriever_tool_to_prompt_message_tool(dataset_tool)
 
@@ -569,27 +608,23 @@ def test_convert_dataset_retriever_tool(runner: BaseAgentRunner, mocker: MockerF
 
 def test_init_prompt_tools_adds_agent_and_dataset_tools(runner: BaseAgentRunner, mocker: MockerFixture) -> None:
     agent_tool = _agent_tool("agent_tool")
-    dataset_tool = mocker.Mock(spec=DatasetRetrieverTool, entity=_tool_entity("dataset_tool"))
+    agent_runtime = mocker.Mock(spec=Tool, entity=_tool_entity("agent_tool"))
+    agent_runtime.get_llm_parameters_json_schema.return_value = {"type": "object", "properties": {}}
+    mocker.patch.object(module.ToolManager, "get_agent_tool_runtime", return_value=agent_runtime)
+    dataset_tool = _dataset_tool(mocker, "dataset_tool")
     runner.app_config.agent = _agent(agent_tool)
     runner.dataset_tools = [dataset_tool]
-    prompt_tool = PromptMessageTool(name="tool", description="", parameters={})
-    mocker.patch.object(runner, "_convert_tool_to_prompt_message_tool", return_value=(prompt_tool, "agent-entity"))
-    mocker.patch.object(
-        runner,
-        "_convert_dataset_retriever_tool_to_prompt_message_tool",
-        return_value=prompt_tool,
-    )
 
     tools, prompts = runner._init_prompt_tools()
 
-    assert tools == {"agent_tool": "agent-entity", "dataset_tool": dataset_tool}
+    assert tools == {"agent_tool": agent_runtime, "dataset_tool": dataset_tool}
     assert len(prompts) == 2
 
 
 def test_init_prompt_tools_skips_deleted_agent_tool(runner: BaseAgentRunner, mocker: MockerFixture) -> None:
     agent_tool = _agent_tool("bad_tool")
     runner.app_config.agent = _agent(agent_tool)
-    mocker.patch.object(runner, "_convert_tool_to_prompt_message_tool", side_effect=Exception)
+    mocker.patch.object(module.ToolManager, "get_agent_tool_runtime", side_effect=Exception)
 
     tools, prompts = runner._init_prompt_tools()
 
@@ -609,7 +644,6 @@ def test_init_uses_real_session_for_count_and_dependencies(
         ]
     )
     sqlite_session.commit()
-    organize_history = mocker.patch.object(BaseAgentRunner, "organize_agent_history", return_value=[])
     get_dataset_tools = mocker.patch.object(
         module.DatasetRetrieverTool,
         "get_dataset_tools",
@@ -655,5 +689,5 @@ def test_init_uses_real_session_for_count_and_dependencies(
     assert initialized.files == ["file1"]
     assert initialized.dataset_tools == ["ds_tool"]
     assert initialized.agent_thought_count == 2
-    organize_history.assert_called_once_with(session=sqlite_session, prompt_messages=[])
+    assert initialized.history_prompt_messages == []
     assert get_dataset_tools.call_args.kwargs["session"] is sqlite_session
