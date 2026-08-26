@@ -296,14 +296,14 @@ importers:
         specifier: 1.0.0
         version: 1.0.0
       next:
-        specifier: 16.2.11
-        version: 16.2.11(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0)
+        specifier: 16.3.3
+        version: 16.3.3(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0)
       next-themes:
         specifier: 0.4.6
         version: 0.4.6(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       nuqs:
         specifier: 2.8.9
-        version: 2.8.9(next@16.2.11(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0))(react@19.2.8)
+        version: 2.8.9(next@16.3.3(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0))(react@19.2.8)
       pinyin-pro:
         specifier: 3.28.0
         version: 3.28.0
@@ -406,7 +406,7 @@ importers:
     devDependencies:
       '@antfu/eslint-config':
         specifier: 7.7.3
-        version: 7.7.3(@eslint-react/eslint-plugin@3.0.0(eslint@10.1.0(jiti@1.21.7))(typescript@5.9.3))(@next/eslint-plugin-next@16.2.11)(@typescript-eslint/rule-tester@8.57.1(eslint@10.1.0(jiti@1.21.7))(typescript@5.9.3))(@typescript-eslint/typescript-estree@8.57.1(typescript@5.9.3))(@typescript-eslint/utils@8.57.1(eslint@10.1.0(jiti@1.21.7))(typescript@5.9.3))(@voidzero-dev/vite-plus-test@0.1.24)(@vue/compiler-sfc@3.5.30)(eslint-plugin-react-hooks@7.0.1(eslint@10.1.0(jiti@1.21.7)))(eslint-plugin-react-refresh@0.5.2(eslint@10.1.0(jiti@1.21.7)))(eslint@10.1.0(jiti@1.21.7))(oxlint@1.67.0(oxlint-tsgolint@0.23.0)(vite-plus@0.1.24(@types/node@25.5.0)(@vitest/coverage-v8@4.1.8(@voidzero-dev/vite-plus-test@0.1.24))(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.5.0)(esbuild@0.28.1)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3))(esbuild@0.28.1)(jiti@1.21.7)(jsdom@29.0.1(canvas@3.2.3))(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)))(typescript@5.9.3)
+        version: 7.7.3(ffee96347d1ea3bf199daef987d16561)
       '@chromatic-com/storybook':
         specifier: 5.0.2
         version: 5.0.2(storybook@10.3.1(@testing-library/dom@10.4.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))
@@ -435,11 +435,11 @@ importers:
         specifier: 3.1.1
         version: 3.1.1(rollup@4.59.0)
       '@next/eslint-plugin-next':
-        specifier: 16.2.11
-        version: 16.2.11
+        specifier: 16.3.3
+        version: 16.3.3(eslint@10.1.0(jiti@1.21.7))
       '@next/mdx':
-        specifier: 16.2.11
-        version: 16.2.11(@mdx-js/loader@3.1.1(webpack@5.105.4(esbuild@0.28.1)(uglify-js@3.19.3)))(@mdx-js/react@3.1.1(@types/react@19.2.14)(react@19.2.8))
+        specifier: 16.3.3
+        version: 16.3.3(@mdx-js/loader@3.1.1(webpack@5.105.4(esbuild@0.28.1)(uglify-js@3.19.3)))(@mdx-js/react@3.1.1(@types/react@19.2.14)(react@19.2.8))
       '@rgrove/parse-xml':
         specifier: 4.2.0
         version: 4.2.0
@@ -457,7 +457,7 @@ importers:
         version: 10.3.1(storybook@10.3.1(@testing-library/dom@10.4.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))
       '@storybook/nextjs-vite':
         specifier: 10.3.1
-        version: 10.3.1(@babel/core@7.29.7)(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.5.0)(esbuild@0.28.1)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3))(esbuild@0.28.1)(next@16.2.11(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(rollup@4.59.0)(storybook@10.3.1(@testing-library/dom@10.4.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(typescript@5.9.3)(webpack@5.105.4(esbuild@0.28.1)(uglify-js@3.19.3))
+        version: 10.3.1(@babel/core@7.29.7)(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.5.0)(esbuild@0.28.1)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3))(esbuild@0.28.1)(next@16.3.3(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(rollup@4.59.0)(storybook@10.3.1(@testing-library/dom@10.4.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(typescript@5.9.3)(webpack@5.105.4(esbuild@0.28.1)(uglify-js@3.19.3))
       '@storybook/react':
         specifier: 10.3.1
         version: 10.3.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(storybook@10.3.1(@testing-library/dom@10.4.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(typescript@5.9.3)
@@ -634,7 +634,7 @@ importers:
         version: 3.19.3
       vinext:
         specifier: 0.1.6
-        version: 0.1.6(8fcc09c59464416a524f47c9bfd84514)
+        version: 0.1.6(94cf2da65c5798072645eaf4f3ce284c)
       vite:
         specifier: npm:@voidzero-dev/vite-plus-core@0.1.24
         version: '@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.5.0)(esbuild@0.28.1)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)'
@@ -1768,14 +1768,14 @@ packages:
   '@next/env@16.0.0':
     resolution: {integrity: sha512-s5j2iFGp38QsG1LWRQaE2iUY3h1jc014/melHFfLdrsMJPqxqDQwWNwyQTcNoUSGZlCVZuM7t7JDMmSyRilsnA==}
 
-  '@next/env@16.2.11':
-    resolution: {integrity: sha512-0do5A3BJ2gxWr0ZCMcD6BhW+e595jyxdTl3rXTS6lOtD8ektMiW6CO+EPwt1Eca1DBnm90r/7GdiKWBKxH++DA==}
+  '@next/env@16.3.3':
+    resolution: {integrity: sha512-U2eYQRwXj+dsqxV79zFqExDdatnNY/ZWc2nsJU1p/OgT7fd3dXwlF6OjYaFQCfMoeTA19PWq+wVmYgimVA+V+g==}
 
-  '@next/eslint-plugin-next@16.2.11':
-    resolution: {integrity: sha512-vMEf/aXOpzFFdtIvFYOnIDPKb0xBbrXONsz83CcKdRrekfxNdL8PNkq5qHqAHSXVlIifnX68LOMaxr3z5PkeLQ==}
+  '@next/eslint-plugin-next@16.3.3':
+    resolution: {integrity: sha512-pbEh30vvjKpDoTAmo1v3q2uM4JUi8QaEBpbmjWvGfoec2jLghy/WNtvzAT0bk+Ik9oz6etjt4YjXEk4BQnicCw==}
 
-  '@next/mdx@16.2.11':
-    resolution: {integrity: sha512-9y/dvZAUwANCm9S2I/CaE/XJ7j6eBYQmLohfXlP+LTtjItDAMu+vbg8pxYlT/8EaT4NxyyxOJcHyTUclk86jVg==}
+  '@next/mdx@16.3.3':
+    resolution: {integrity: sha512-DR5rq7bLDntGu49rUBAYOEjDwXsMHJ/Q/qjF+7dxLZwq9RZOVm/YoaVfrf1Mal3zBf3expNVtn8oQp590bt/Gw==}
     peerDependencies:
       '@mdx-js/loader': '>=0.15.0'
       '@mdx-js/react': '>=0.15.0'
@@ -1785,54 +1785,54 @@ packages:
       '@mdx-js/react':
         optional: true
 
-  '@next/swc-darwin-arm64@16.2.11':
-    resolution: {integrity: sha512-wryL4pjKmDwGv2ox6+GZDFxvmtSRLqApBR8kL1j4+vhB7Z5vJC/zAnXpiR9Xkfzl0AS8WLMnsuGV/UKI67/rrw==}
+  '@next/swc-darwin-arm64@16.3.3':
+    resolution: {integrity: sha512-8Hiv32QJPwdV6KYJ8meR9SBA061tQqnIKTJDocvOXlEQqib0xMFpzArosuffFUUc0sslbh7QQ8a3Yey1QV8EIw==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
 
-  '@next/swc-darwin-x64@16.2.11':
-    resolution: {integrity: sha512-aZl2j4f/fLyjQvOhv0Oe9UaMAQHolYpKhctsoYzplSumKJKPUmgjcf6545aBtysLTcu994TREd0+pSgNE4ohmg==}
+  '@next/swc-darwin-x64@16.3.3':
+    resolution: {integrity: sha512-A1lgKgwVchRYmSe467zdwhxT9040dd8lH+o65sL5Jet8fjB4kegw/rDyPIpYVRb6jAqwXFOJpjIXJLxQKLiE3A==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
 
-  '@next/swc-linux-arm64-gnu@16.2.11':
-    resolution: {integrity: sha512-5jEriyEnH/LWFy27L2ZG0XaLlyEJIjhsImEsiS9P563PKEVp2BVups/xfOucIrsvVntp11oNcZwjHvaDPYVB5g==}
+  '@next/swc-linux-arm64-gnu@16.3.3':
+    resolution: {integrity: sha512-bf0FIssMFueU2dm7vQEWWxk0c8UjKTdW0yzuh0sQsD8pf1+KCLDdaqhYZNMYGmXwEOiHAUzgBKudovIlcvvBjg==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
     libc: [glibc]
 
-  '@next/swc-linux-arm64-musl@16.2.11':
-    resolution: {integrity: sha512-eIjcpx2fnnFSSkZDbTxy74KnokUXDjfoLClpWelfgHLf621aTqswhwXQ7GkD5K5rplrS6LZ/Bj+mVuvzluBOEg==}
+  '@next/swc-linux-arm64-musl@16.3.3':
+    resolution: {integrity: sha512-W7viwCk9JY/cAkdz/A273rd5bb3RgT/IHwR7Upv90tunjBWNtAAhGhoecHh+teRNRSinuAFmE+l7fwZ4YKkrXg==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
     libc: [musl]
 
-  '@next/swc-linux-x64-gnu@16.2.11':
-    resolution: {integrity: sha512-8WgzpaWMs46qJT9kiV47cje86L0x/Mu9t8/Gwj+pnbgW3rETVfCnaScPjlYUwNScpOozdcIMHWmAvuZJUonR2w==}
+  '@next/swc-linux-x64-gnu@16.3.3':
+    resolution: {integrity: sha512-0W46zw1N3ODpI6n0GeivHvvob1pooozgZVqy65k0mh4/7vr+FbY9+WpHzNVXjHipJf/A3FDheBG19H1s5A25rA==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
     libc: [glibc]
 
-  '@next/swc-linux-x64-musl@16.2.11':
-    resolution: {integrity: sha512-I3UgPds7G4ZYnTb/H+5GBGuUT2DhAk6j0mL6A4s63RjFs74wB2hOWP0vaxsK+3NJraExt3eYEPQ/UtT0x/64Nw==}
+  '@next/swc-linux-x64-musl@16.3.3':
+    resolution: {integrity: sha512-H4mBso8ZTMBPtdT0PN0pBx2ayTvQuTuvS6qT13d77yVFJXAPCxkyIhLTmdMaGTJs0krQYI/qpzdHijCeihXhbg==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
     libc: [musl]
 
-  '@next/swc-win32-arm64-msvc@16.2.11':
-    resolution: {integrity: sha512-n89CjtcThnjrwgJMAiI5xbqwLY51zvwC9tSlArmVndAJLYVl9T9UAdlkXTmZvE++idoXe8KdglQlhNRdUp1c6g==}
+  '@next/swc-win32-arm64-msvc@16.3.3':
+    resolution: {integrity: sha512-cTMUJpcEGmeywofCUfhR+rSsoE33+rVPnPEYNTNdLNlsOeEg/vktOsKUSTb28vUGqD2jkm4Zaskcwn7OCI6FQg==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [win32]
 
-  '@next/swc-win32-x64-msvc@16.2.11':
-    resolution: {integrity: sha512-md8CLNggS1Dx9pUgApzps5uAf+N8GN9xywzmNx9vHAWo94HtBwCCqkSnhIrdfQe83Dhz8Lfo/20Nb1Zxal092w==}
+  '@next/swc-win32-x64-msvc@16.3.3':
+    resolution: {integrity: sha512-2VR4cTBzHXaBjnGsuH6GyJjENzQOmHeAh11uY1iUhjm3j5dEUrVJuUj+VL78jaGi/Dik8xS76zEj18BsFhlVZQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [win32]
@@ -3186,11 +3186,11 @@ packages:
   '@svgdotjs/svg.js@3.2.5':
     resolution: {integrity: sha512-/VNHWYhNu+BS7ktbYoVGrCmsXDh+chFMaONMwGNdIBcFHrWqk2jY8fNyr3DLdtQUIalvkPfM554ZSFa3dm3nxQ==}
 
-  '@swc/helpers@0.5.15':
-    resolution: {integrity: sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g==}
-
   '@swc/helpers@0.5.19':
     resolution: {integrity: sha512-QamiFeIK3txNjgUTNppE6MiG3p7TdninpZu0E0PbqVh1a9FNLT2FRhisaa4NcaX52XVhA5l7Pk58Ft7Sqi/2sA==}
+
+  '@swc/helpers@0.5.23':
+    resolution: {integrity: sha512-5lSsMOTXURePglDfvuAQUqkGek9Hg2kksOYay2m0+XR++b2NWYL/4sWyuvVBIs8oKnJaxkdi9whaL/sqN13afw==}
 
   '@t3-oss/env-core@0.13.11':
     resolution: {integrity: sha512-sM7GYY+KL7H/Hl0BE0inWfk3nRHZOLhmVn7sHGxaZt9FAR6KqREXAE+6TqKfiavfXmpRxO/OZ2QgKRd+oiBYRQ==}
@@ -6399,6 +6399,11 @@ packages:
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
+  nanoid@3.3.18:
+    resolution: {integrity: sha512-DTg4MJbGMWkfi6VZFdNt2/caMbQy4Ou+Op/hJQvGEWcnVfoA1QA+xzRKAzw9jD6+GVOOeYr/mIcuDSdug6F6+w==}
+    engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
+    hasBin: true
+
   napi-build-utils@2.0.0:
     resolution: {integrity: sha512-GEbrYkbfF7MoNaoh2iGG84Mnf/WZfB0GdGEsM8wz7Expx/LlWf5U8t9nvJKXSp3qr5IsEbK04cBGhol/KwOsWA==}
 
@@ -6422,8 +6427,8 @@ packages:
       react: ^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc
       react-dom: ^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc
 
-  next@16.2.11:
-    resolution: {integrity: sha512-B339zaqbyK8cmxhoAvLrcwoabwCP1wz21zSzfqxqXAemTu2BXnH7tQnfcglKv1vnMUIDBc+Hth7XODQriTZiRQ==}
+  next@16.3.3:
+    resolution: {integrity: sha512-tuRTx1nQ/yVw83cwJBo9F+njGUgMn3UHQycreWHB8XsStvvAh1AthbI8/4IpKnFaF58F+iSiHejYOlMQ/eq83g==}
     engines: {node: '>=20.9.0'}
     hasBin: true
     peerDependencies:
@@ -6771,6 +6776,10 @@ packages:
 
   postcss@8.5.15:
     resolution: {integrity: sha512-FfR8sjd4em2T6fb3I2MwAJU7HWVMr9zba+enmQeeWFfCbm+UOC/0X4DS8XtpUTMwWMGbjKYP7xjfNekzyGmB3A==}
+    engines: {node: ^10 || ^12 || >=14}
+
+  postcss@8.5.23:
+    resolution: {integrity: sha512-g50586zr4bZmwFiTlflMu8E0bDTb5I5gertgwAKmsdUlTQIhZtunzUlD1WSzwcVWPoAVpsrA6vlfCD7oXvRwgg==}
     engines: {node: ^10 || ^12 || >=14}
 
   prebuild-install@7.1.3:
@@ -8288,8 +8297,8 @@ snapshots:
       idb: 8.0.0
       tslib: 2.8.1
 
-  ? '@antfu/eslint-config@7.7.3(@eslint-react/eslint-plugin@3.0.0(eslint@10.1.0(jiti@1.21.7))(typescript@5.9.3))(@next/eslint-plugin-next@16.2.11)(@typescript-eslint/rule-tester@8.57.1(eslint@10.1.0(jiti@1.21.7))(typescript@5.9.3))(@typescript-eslint/typescript-estree@8.57.1(typescript@5.9.3))(@typescript-eslint/utils@8.57.1(eslint@10.1.0(jiti@1.21.7))(typescript@5.9.3))(@voidzero-dev/vite-plus-test@0.1.24)(@vue/compiler-sfc@3.5.30)(eslint-plugin-react-hooks@7.0.1(eslint@10.1.0(jiti@1.21.7)))(eslint-plugin-react-refresh@0.5.2(eslint@10.1.0(jiti@1.21.7)))(eslint@10.1.0(jiti@1.21.7))(oxlint@1.67.0(oxlint-tsgolint@0.23.0)(vite-plus@0.1.24(@types/node@25.5.0)(@vitest/coverage-v8@4.1.8(@voidzero-dev/vite-plus-test@0.1.24))(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.5.0)(esbuild@0.28.1)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3))(esbuild@0.28.1)(jiti@1.21.7)(jsdom@29.0.1(canvas@3.2.3))(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)))(typescript@5.9.3)'
-  : dependencies:
+  '@antfu/eslint-config@7.7.3(ffee96347d1ea3bf199daef987d16561)':
+    dependencies:
       '@antfu/install-pkg': 1.1.0
       '@clack/prompts': 1.1.0
       '@e18e/eslint-plugin': 0.2.0(eslint@10.1.0(jiti@1.21.7))(oxlint@1.67.0(oxlint-tsgolint@0.23.0)(vite-plus@0.1.24(@types/node@25.5.0)(@vitest/coverage-v8@4.1.8(@voidzero-dev/vite-plus-test@0.1.24))(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.5.0)(esbuild@0.28.1)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3))(esbuild@0.28.1)(jiti@1.21.7)(jsdom@29.0.1(canvas@3.2.3))(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)))
@@ -8329,7 +8338,7 @@ snapshots:
       yaml-eslint-parser: 2.0.0
     optionalDependencies:
       '@eslint-react/eslint-plugin': 3.0.0(eslint@10.1.0(jiti@1.21.7))(typescript@5.9.3)
-      '@next/eslint-plugin-next': 16.2.11
+      '@next/eslint-plugin-next': 16.3.3(eslint@10.1.0(jiti@1.21.7))
       eslint-plugin-react-hooks: 7.0.1(eslint@10.1.0(jiti@1.21.7))
       eslint-plugin-react-refresh: 0.5.2(eslint@10.1.0(jiti@1.21.7))
     transitivePeerDependencies:
@@ -9466,41 +9475,44 @@ snapshots:
 
   '@next/env@16.0.0': {}
 
-  '@next/env@16.2.11': {}
+  '@next/env@16.3.3': {}
 
-  '@next/eslint-plugin-next@16.2.11':
+  '@next/eslint-plugin-next@16.3.3(eslint@10.1.0(jiti@1.21.7))':
     dependencies:
+      '@eslint-community/eslint-utils': 4.9.1(eslint@10.1.0(jiti@1.21.7))
       fast-glob: 3.3.1
+    transitivePeerDependencies:
+      - eslint
 
-  '@next/mdx@16.2.11(@mdx-js/loader@3.1.1(webpack@5.105.4(esbuild@0.28.1)(uglify-js@3.19.3)))(@mdx-js/react@3.1.1(@types/react@19.2.14)(react@19.2.8))':
+  '@next/mdx@16.3.3(@mdx-js/loader@3.1.1(webpack@5.105.4(esbuild@0.28.1)(uglify-js@3.19.3)))(@mdx-js/react@3.1.1(@types/react@19.2.14)(react@19.2.8))':
     dependencies:
       source-map: 0.7.6
     optionalDependencies:
       '@mdx-js/loader': 3.1.1(webpack@5.105.4(esbuild@0.28.1)(uglify-js@3.19.3))
       '@mdx-js/react': 3.1.1(@types/react@19.2.14)(react@19.2.8)
 
-  '@next/swc-darwin-arm64@16.2.11':
+  '@next/swc-darwin-arm64@16.3.3':
     optional: true
 
-  '@next/swc-darwin-x64@16.2.11':
+  '@next/swc-darwin-x64@16.3.3':
     optional: true
 
-  '@next/swc-linux-arm64-gnu@16.2.11':
+  '@next/swc-linux-arm64-gnu@16.3.3':
     optional: true
 
-  '@next/swc-linux-arm64-musl@16.2.11':
+  '@next/swc-linux-arm64-musl@16.3.3':
     optional: true
 
-  '@next/swc-linux-x64-gnu@16.2.11':
+  '@next/swc-linux-x64-gnu@16.3.3':
     optional: true
 
-  '@next/swc-linux-x64-musl@16.2.11':
+  '@next/swc-linux-x64-musl@16.3.3':
     optional: true
 
-  '@next/swc-win32-arm64-msvc@16.2.11':
+  '@next/swc-win32-arm64-msvc@16.3.3':
     optional: true
 
-  '@next/swc-win32-x64-msvc@16.2.11':
+  '@next/swc-win32-x64-msvc@16.3.3':
     optional: true
 
   '@nodelib/fs.scandir@2.1.5':
@@ -10497,18 +10509,18 @@ snapshots:
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
 
-  '@storybook/nextjs-vite@10.3.1(@babel/core@7.29.7)(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.5.0)(esbuild@0.28.1)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3))(esbuild@0.28.1)(next@16.2.11(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(rollup@4.59.0)(storybook@10.3.1(@testing-library/dom@10.4.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(typescript@5.9.3)(webpack@5.105.4(esbuild@0.28.1)(uglify-js@3.19.3))':
+  '@storybook/nextjs-vite@10.3.1(@babel/core@7.29.7)(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.5.0)(esbuild@0.28.1)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3))(esbuild@0.28.1)(next@16.3.3(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(rollup@4.59.0)(storybook@10.3.1(@testing-library/dom@10.4.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(typescript@5.9.3)(webpack@5.105.4(esbuild@0.28.1)(uglify-js@3.19.3))':
     dependencies:
       '@storybook/builder-vite': 10.3.1(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.5.0)(esbuild@0.28.1)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3))(esbuild@0.28.1)(rollup@4.59.0)(storybook@10.3.1(@testing-library/dom@10.4.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(webpack@5.105.4(esbuild@0.28.1)(uglify-js@3.19.3))
       '@storybook/react': 10.3.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(storybook@10.3.1(@testing-library/dom@10.4.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(typescript@5.9.3)
       '@storybook/react-vite': 10.3.1(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.5.0)(esbuild@0.28.1)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3))(esbuild@0.28.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(rollup@4.59.0)(storybook@10.3.1(@testing-library/dom@10.4.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(typescript@5.9.3)(webpack@5.105.4(esbuild@0.28.1)(uglify-js@3.19.3))
-      next: 16.2.11(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0)
+      next: 16.3.3(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0)
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
       storybook: 10.3.1(@testing-library/dom@10.4.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       styled-jsx: 5.1.6(@babel/core@7.29.7)(react@19.2.8)
       vite: '@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.5.0)(esbuild@0.28.1)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)'
-      vite-plugin-storybook-nextjs: 3.2.3(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.5.0)(esbuild@0.28.1)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3))(next@16.2.11(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0))(storybook@10.3.1(@testing-library/dom@10.4.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(typescript@5.9.3)
+      vite-plugin-storybook-nextjs: 3.2.3(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.5.0)(esbuild@0.28.1)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3))(next@16.3.3(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0))(storybook@10.3.1(@testing-library/dom@10.4.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(typescript@5.9.3)
     optionalDependencies:
       typescript: 5.9.3
     transitivePeerDependencies:
@@ -10582,11 +10594,11 @@ snapshots:
 
   '@svgdotjs/svg.js@3.2.5': {}
 
-  '@swc/helpers@0.5.15':
+  '@swc/helpers@0.5.19':
     dependencies:
       tslib: 2.8.1
 
-  '@swc/helpers@0.5.19':
+  '@swc/helpers@0.5.23':
     dependencies:
       tslib: 2.8.1
 
@@ -11234,13 +11246,13 @@ snapshots:
     dependencies:
       unpic: 4.2.2
 
-  '@unpic/react@1.0.2(next@16.2.11(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+  '@unpic/react@1.0.2(next@16.3.3(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
       '@unpic/core': 1.0.3
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
     optionalDependencies:
-      next: 16.2.11(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0)
+      next: 16.3.3(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0)
 
   '@upsetjs/venn.js@2.0.0':
     optionalDependencies:
@@ -14389,6 +14401,8 @@ snapshots:
 
   nanoid@3.3.12: {}
 
+  nanoid@3.3.18: {}
+
   napi-build-utils@2.0.0:
     optional: true
 
@@ -14405,25 +14419,25 @@ snapshots:
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
 
-  next@16.2.11(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0):
+  next@16.3.3(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0):
     dependencies:
-      '@next/env': 16.2.11
-      '@swc/helpers': 0.5.15
+      '@next/env': 16.3.3
+      '@swc/helpers': 0.5.23
       baseline-browser-mapping: 2.10.8
       caniuse-lite: 1.0.30001780
-      postcss: 8.5.15
+      postcss: 8.5.23
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
       styled-jsx: 5.1.6(@babel/core@7.29.7)(react@19.2.8)
     optionalDependencies:
-      '@next/swc-darwin-arm64': 16.2.11
-      '@next/swc-darwin-x64': 16.2.11
-      '@next/swc-linux-arm64-gnu': 16.2.11
-      '@next/swc-linux-arm64-musl': 16.2.11
-      '@next/swc-linux-x64-gnu': 16.2.11
-      '@next/swc-linux-x64-musl': 16.2.11
-      '@next/swc-win32-arm64-msvc': 16.2.11
-      '@next/swc-win32-x64-msvc': 16.2.11
+      '@next/swc-darwin-arm64': 16.3.3
+      '@next/swc-darwin-x64': 16.3.3
+      '@next/swc-linux-arm64-gnu': 16.3.3
+      '@next/swc-linux-arm64-musl': 16.3.3
+      '@next/swc-linux-x64-gnu': 16.3.3
+      '@next/swc-linux-x64-musl': 16.3.3
+      '@next/swc-win32-arm64-msvc': 16.3.3
+      '@next/swc-win32-x64-msvc': 16.3.3
       sass: 1.98.0
       sharp: 0.35.3(@types/node@25.5.0)
     transitivePeerDependencies:
@@ -14457,12 +14471,12 @@ snapshots:
     dependencies:
       boolbase: 1.0.0
 
-  nuqs@2.8.9(next@16.2.11(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0))(react@19.2.8):
+  nuqs@2.8.9(next@16.3.3(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0))(react@19.2.8):
     dependencies:
       '@standard-schema/spec': 1.0.0
       react: 19.2.8
     optionalDependencies:
-      next: 16.2.11(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0)
+      next: 16.3.3(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0)
 
   object-assign@4.1.1: {}
 
@@ -14807,6 +14821,12 @@ snapshots:
   postcss@8.5.15:
     dependencies:
       nanoid: 3.3.12
+      picocolors: 1.1.1
+      source-map-js: 1.2.1
+
+  postcss@8.5.23:
+    dependencies:
+      nanoid: 3.3.18
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
@@ -16047,9 +16067,9 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vinext@0.1.6(8fcc09c59464416a524f47c9bfd84514):
+  vinext@0.1.6(94cf2da65c5798072645eaf4f3ce284c):
     dependencies:
-      '@unpic/react': 1.0.2(next@16.2.11(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@unpic/react': 1.0.2(next@16.3.3(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@vercel/og': 0.8.6
       '@vitejs/plugin-react': 6.0.1(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.5.0)(esbuild@0.28.1)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3))
       image-size: 2.0.2
@@ -16108,13 +16128,13 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  vite-plugin-storybook-nextjs@3.2.3(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.5.0)(esbuild@0.28.1)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3))(next@16.2.11(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0))(storybook@10.3.1(@testing-library/dom@10.4.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(typescript@5.9.3):
+  vite-plugin-storybook-nextjs@3.2.3(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.5.0)(esbuild@0.28.1)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3))(next@16.3.3(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0))(storybook@10.3.1(@testing-library/dom@10.4.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(typescript@5.9.3):
     dependencies:
       '@next/env': 16.0.0
       image-size: 2.0.2
       magic-string: 0.30.21
       module-alias: 2.3.4
-      next: 16.2.11(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0)
+      next: 16.3.3(@babel/core@7.29.7)(@types/node@25.5.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.98.0)
       storybook: 10.3.1(@testing-library/dom@10.4.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       ts-dedent: 2.2.0
       vite: '@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.5.0)(esbuild@0.28.1)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)'

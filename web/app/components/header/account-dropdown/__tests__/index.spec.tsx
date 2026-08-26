@@ -180,6 +180,7 @@ describe('AccountDropdown', () => {
       back: vi.fn(),
       forward: vi.fn(),
       refresh: vi.fn(),
+      bfcacheId: 'test-route',
     })
   })
 
