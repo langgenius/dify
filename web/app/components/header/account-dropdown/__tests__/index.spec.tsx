@@ -56,6 +56,7 @@ const userProfile = {
   email: 'current@example.com',
   avatar_url: 'current-avatar.png',
 }
+const accountMenuAccessibleName = `${userProfile.name}, common.account.account`
 
 const renderAccountDropdown = () => {
   const queryClient = createAccountProfileQueryClient(userProfile)
@@ -86,6 +87,14 @@ describe('AccountDropdown', () => {
     } as unknown as ReturnType<typeof useLogout>)
   })
 
+  it('includes the visible account name in the main navigation trigger accessible name', () => {
+    const queryClient = createAccountProfileQueryClient(userProfile)
+
+    renderWithConsoleQuery(<AccountSection />, { queryClient })
+
+    expect(screen.getByRole('button', { name: accountMenuAccessibleName })).toBeInTheDocument()
+  })
+
   it('reads the signed-in account from the account profile query', async () => {
     const user = userEvent.setup()
     const queryClient = createAccountProfileQueryClient(userProfile)
@@ -94,7 +103,7 @@ describe('AccountDropdown', () => {
 
     expect(screen.getByText('Current User')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'common.account.account' }))
+    await user.click(screen.getByRole('button', { name: accountMenuAccessibleName }))
 
     expect(await screen.findByText('current@example.com')).toBeInTheDocument()
   })
