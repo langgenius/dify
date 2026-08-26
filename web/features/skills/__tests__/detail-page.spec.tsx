@@ -779,7 +779,6 @@ describe('SkillDetailPage', { timeout: 10000 }, () => {
             latest_published_at: version.created_at,
             latest_published_version_id: version.id,
             latest_published_version_number: version.version_number,
-            updated_at: version.created_at,
           }
         : mocks.skillDetail
       return version
@@ -2106,6 +2105,71 @@ describe('SkillDetailPage', { timeout: 10000 }, () => {
     expect(document.body).toHaveTextContent('skill.skillManagement.detail.unpublishedChanges')
   })
 
+  it('keeps the skill timestamp for metadata updates after publishing', async () => {
+    const user = userEvent.setup()
+    const skillUpdatedAt = 1784638490
+    const versionCreatedAt = 1784638491
+    mocks.skillDetail = createSkillDetail({ updated_at: skillUpdatedAt })
+    mocks.publishSkillMutationFn.mockImplementationOnce(async () => {
+      const version = {
+        id: 'version-2',
+        version_number: 2,
+        version_name: '',
+        publish_note: '',
+        hash_code: 'hash-code',
+        archive_size: 180,
+        published_by: 'user-1',
+        published_by_name: 'Fate',
+        created_at: versionCreatedAt,
+        is_latest: true,
+      }
+      mocks.skillDetail = mocks.skillDetail
+        ? {
+            ...mocks.skillDetail,
+            latest_published_at: version.created_at,
+            latest_published_version_id: version.id,
+            latest_published_version_number: version.version_number,
+          }
+        : mocks.skillDetail
+      return version
+    })
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.publishUpdate',
+      }),
+    )
+    await waitFor(() => {
+      expect(mocks.publishSkillMutationFn).toHaveBeenCalled()
+    })
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.rename' }))
+    const renameInput = screen.getByRole('textbox', { name: 'common.operation.rename' })
+    await user.clear(renameInput)
+    await user.type(renameInput, 'Renamed after publish{Enter}')
+
+    await waitFor(() => {
+      expect(mocks.skillMetadataMutationFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            display_name: 'Renamed after publish',
+            expected_updated_at: skillUpdatedAt,
+          }),
+        }),
+        expect.anything(),
+      )
+    })
+    expect(mocks.skillMetadataMutationFn).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          expected_updated_at: versionCreatedAt,
+        }),
+      }),
+      expect.anything(),
+    )
+  })
+
   it('adds custom metadata from the value field Enter key and saves it on publish', async () => {
     const user = userEvent.setup()
     renderSkillDetailPage()
@@ -2261,7 +2325,6 @@ describe('SkillDetailPage', { timeout: 10000 }, () => {
   })
 
   it('updates and removes existing custom metadata from the manifest editor', async () => {
-    const user = userEvent.setup()
     const content =
       '---\nname: github-actions-failure-debugging\ndescription: Guide for debugging failing GitHub Actions workflows.\nmetadata:\n  display-name: Untitled skill\n  owner: support\n---\n# GitHub Actions Failure Debugging\n'
     mocks.skillDetail = createSkillDetail({
@@ -2277,9 +2340,8 @@ describe('SkillDetailPage', { timeout: 10000 }, () => {
     renderSkillDetailPage()
 
     const ownerValue = await screen.findByRole('textbox', { name: 'owner value' })
-    await user.clear(ownerValue)
-    await user.type(ownerValue, 'success')
-    await user.tab()
+    fireEvent.change(ownerValue, { target: { value: 'success' } })
+    fireEvent.blur(ownerValue)
 
     await waitFor(
       () => {
@@ -2296,7 +2358,7 @@ describe('SkillDetailPage', { timeout: 10000 }, () => {
       { timeout: 2500 },
     )
 
-    await user.click(screen.getByRole('button', { name: 'Remove owner' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove owner' }))
 
     await waitFor(
       () => {

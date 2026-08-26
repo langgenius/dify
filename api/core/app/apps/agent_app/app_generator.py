@@ -45,6 +45,7 @@ from core.app.entities.app_invoke_entities import (
     InvokeFrom,
     UserFrom,
 )
+from core.credit_usage import CreditUsageAppType
 from core.db.session_factory import session_factory
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.file_reference import build_file_reference, is_canonical_file_reference
@@ -498,6 +499,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     user_id=application_generate_entity.user_id,
                     user_from=user_from,
                     invoke_from=application_generate_entity.invoke_from,
+                    app_type=CreditUsageAppType.AGENT_V2,
                 )
                 with session_factory.create_session() as session:
                     agent, config_version, agent_soul = self._resolve_agent_by_id(

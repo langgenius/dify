@@ -1,12 +1,14 @@
 """
-This test file is used to verify the compatibility of Workflow before and after supporting multiple file types.
+This unit test verifies Workflow compatibility before and after supporting multiple file types.
 """
 
 import json
 
+from pydantic import JsonValue
+
 from models import Workflow
 
-OLD_VERSION_WORKFLOW_FEATURES = {
+OLD_VERSION_WORKFLOW_FEATURES: dict[str, JsonValue] = {
     "file_upload": {
         "image": {
             "enabled": True,
@@ -23,7 +25,7 @@ OLD_VERSION_WORKFLOW_FEATURES = {
     "text_to_speech": {"enabled": False, "language": "", "voice": ""},
 }
 
-NEW_VERSION_WORKFLOW_FEATURES = {
+NEW_VERSION_WORKFLOW_FEATURES: dict[str, JsonValue] = {
     "file_upload": {
         "enabled": True,
         "allowed_file_types": ["image"],
@@ -41,7 +43,7 @@ NEW_VERSION_WORKFLOW_FEATURES = {
 }
 
 
-def test_workflow_features():
+def test_workflow_features() -> None:
     workflow = Workflow(
         tenant_id="",
         app_id="",

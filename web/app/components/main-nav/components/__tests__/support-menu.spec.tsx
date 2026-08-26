@@ -100,7 +100,7 @@ describe('SupportMenu', () => {
     )
   }
 
-  it('renders contact us before community support entries when Zendesk is configured', () => {
+  it('renders contact us before Discord when Zendesk is configured', () => {
     renderSupportMenu()
 
     expect(screen.getByText('common.userProfile.contactUs')).toBeInTheDocument()

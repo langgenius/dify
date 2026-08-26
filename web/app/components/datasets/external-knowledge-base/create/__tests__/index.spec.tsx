@@ -117,10 +117,12 @@ describe('ExternalKnowledgeBaseCreate', () => {
     it('should render KnowledgeBaseInfo component with correct labels', () => {
       renderComponent()
 
-      // KnowledgeBaseInfo renders these labels
-      // KnowledgeBaseInfo renders these labels
-      expect(screen.getByText('dataset.externalKnowledgeName'))!.toBeInTheDocument()
-      expect(screen.getByText('dataset.externalKnowledgeDescription'))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('textbox', { name: 'dataset.externalKnowledgeName' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('textbox', { name: 'dataset.externalKnowledgeDescription' }),
+      ).toBeInTheDocument()
     })
 
     it('should render ExternalApiSelection component', () => {

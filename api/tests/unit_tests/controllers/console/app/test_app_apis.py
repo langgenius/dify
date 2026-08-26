@@ -52,6 +52,7 @@ from controllers.console.app import (
     wraps as wraps_module,
 )
 from controllers.console.app.completion import ChatMessagePayload, CompletionMessagePayload
+from controllers.console.app.error import AppNotFoundError
 from controllers.console.app.mcp_server import MCPServerCreatePayload, MCPServerUpdatePayload
 from controllers.console.app.ops_trace import TraceConfigPayload, TraceProviderQuery
 from controllers.console.app.site import AppSiteUpdatePayload
@@ -64,12 +65,18 @@ from controllers.console.app.workflow_draft_variable import (
 )
 from controllers.console.app.workflow_statistic import WorkflowStatisticQuery
 from controllers.console.app.workflow_trigger import Parser, ParserEnable
+from machinery.context import RequestContext
 from models import App, Site
 from models.account import Account, AccountStatus
 from models.engine import db
-from models.enums import CustomizeTokenStrategy
 from models.trigger import WorkflowWebhookTrigger
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from services.app_site_service import (
+    AppSiteAppNotFoundError,
+    AppSiteChanges,
+    AppSiteCommandResult,
+    AppSiteNotFoundError,
+)
 
 APP_ID = "11111111-1111-1111-1111-111111111111"
 TENANT_ID = "22222222-2222-2222-2222-222222222222"
@@ -387,27 +394,37 @@ class TestOpsTraceEndpoints:
 
 class TestSiteEndpoints:
     @staticmethod
-    def _add_site(session: Session) -> Site:
-        site = Site(
+    def _command_result(*, code: str = "test-code") -> AppSiteCommandResult:
+        return AppSiteCommandResult(
             app_id=APP_ID,
             title="My Site",
             description="Test site",
             default_language="en-US",
-            customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
-            code="test-code",
+            input_placeholder="Ask me anything",
+            code=code,
+            icon=None,
+            icon_background=None,
+            customize_domain=None,
+            copyright=None,
+            privacy_policy=None,
+            custom_disclaimer="",
+            customize_token_strategy="not_allow",
+            prompt_public=False,
+            show_workflow_steps=True,
+            use_icon_as_answer_icon=False,
         )
-        session.add(site)
-        session.commit()
-        return site
 
-    def test_site_response_structure(self):
+    def test_site_payload_maps_to_application_changes(self):
         payload = AppSiteUpdatePayload(
             title="My Site",
             description="Test site",
             input_placeholder="Ask me anything",
         )
-        assert payload.title == "My Site"
-        assert payload.input_placeholder == "Ask me anything"
+        assert payload.to_changes() == AppSiteChanges(
+            title="My Site",
+            description="Test site",
+            input_placeholder="Ask me anything",
+        )
 
     def test_site_default_language_validation(self):
         payload = AppSiteUpdatePayload(default_language="en-US")
@@ -415,44 +432,74 @@ class TestSiteEndpoints:
 
     def test_app_site_update_post(
         self,
-        database_app: Flask,
     ) -> None:
         api = site_module.AppSite()
         method = unwrap(api.post)
-        site = self._add_site(db.session)
+        services = MagicMock()
+        services.app_sites.update.return_value = self._command_result()
+        context = RequestContext("request-1", None, USER_ID, TENANT_ID)
 
-        with database_app.test_request_context("/", json={"title": "My Site", "input_placeholder": "Ask me anything"}):
+        with patch.object(site_module, "application_services", return_value=services):
             result = method(
                 api,
                 AppSiteUpdatePayload(title="My Site", input_placeholder="Ask me anything"),
-                db.session,
-                _make_account(),
-                app_model=_make_app(),
+                context,
+                app_id=uuid.UUID(APP_ID),
             )
 
-        db.session.refresh(site)
         assert isinstance(result, dict)
         assert result["title"] == "My Site"
         assert result["input_placeholder"] == "Ask me anything"
-        assert site.input_placeholder == "Ask me anything"
+        assert result["access_token"] == "test-code"
+        assert result["code"] == "test-code"
+        services.app_sites.update.assert_called_once_with(
+            context,
+            APP_ID,
+            AppSiteChanges(title="My Site", input_placeholder="Ask me anything"),
+        )
 
     def test_app_site_access_token_reset(
         self,
-        database_app: Flask,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         api = site_module.AppSiteAccessTokenReset()
         method = unwrap(api.post)
-        site = self._add_site(db.session)
-        monkeypatch.setattr(site_module.Site, "generate_code", lambda *_args, **_kwargs: "code")
+        services = MagicMock()
+        services.app_sites.reset_access_token.return_value = self._command_result(code="new-code")
+        context = RequestContext("request-1", None, USER_ID, TENANT_ID)
 
-        with database_app.test_request_context("/"):
-            result = method(api, db.session, _make_account(), app_model=_make_app())
+        with patch.object(site_module, "application_services", return_value=services):
+            result = method(api, context, app_id=uuid.UUID(APP_ID))
 
-        db.session.refresh(site)
         assert isinstance(result, dict)
-        assert result["access_token"] == "code"
-        assert site.code == "code"
+        assert result["access_token"] == "new-code"
+        assert result["code"] == "new-code"
+        services.app_sites.reset_access_token.assert_called_once_with(context, APP_ID)
+
+    def test_app_site_update_maps_missing_app(self) -> None:
+        api = site_module.AppSite()
+        method = unwrap(api.post)
+        services = MagicMock()
+        services.app_sites.update.side_effect = AppSiteAppNotFoundError()
+        context = RequestContext("request-1", None, USER_ID, TENANT_ID)
+
+        with (
+            patch.object(site_module, "application_services", return_value=services),
+            pytest.raises(AppNotFoundError),
+        ):
+            method(api, AppSiteUpdatePayload(), context, app_id=uuid.UUID(APP_ID))
+
+    def test_app_site_reset_maps_missing_site(self) -> None:
+        api = site_module.AppSiteAccessTokenReset()
+        method = unwrap(api.post)
+        services = MagicMock()
+        services.app_sites.reset_access_token.side_effect = AppSiteNotFoundError()
+        context = RequestContext("request-1", None, USER_ID, TENANT_ID)
+
+        with (
+            patch.object(site_module, "application_services", return_value=services),
+            pytest.raises(NotFound),
+        ):
+            method(api, context, app_id=uuid.UUID(APP_ID))
 
 
 class TestWorkflowEndpoints:

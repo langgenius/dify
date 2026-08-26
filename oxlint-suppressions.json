@@ -2030,14 +2030,6 @@
       "count": 3
     }
   },
-  "web/app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/header.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/hooks/use-dsl-import.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -2045,17 +2037,6 @@
   },
   "web/app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/index.tsx": {
     "no-barrel-files/no-barrel-files": {
-      "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/tab/item.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
       "count": 1
     }
   },
@@ -2436,11 +2417,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/documents/detail/metadata/components/field-info.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/documents/detail/metadata/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
@@ -2471,11 +2447,6 @@
     "eslint-react/set-state-in-effect": {
       "count": 1
     },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/external-knowledge-base/create/KnowledgeBaseInfo.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -2605,18 +2576,8 @@
       "count": 2
     }
   },
-  "web/app/components/datasets/rename-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/settings/chunk-structure/types.ts": {
     "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/settings/form/components/basic-info-section.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },

@@ -2,17 +2,13 @@
 
 import AmplitudeProvider from '@/app/components/base/amplitude'
 import ExternalAttributionRecorder from '@/app/components/external-attribution-recorder'
-import { usePathname } from '@/next/navigation'
 import { CookieYesConsentBridge } from './cookieyes-consent-bridge'
-import { isCloudAnalyticsPath } from './request-boundary'
 
-export function CloudAnalyticsRuntime() {
-  const pathname = usePathname()
-
+export function ConsoleAnalyticsRuntime() {
   return (
     <>
       <CookieYesConsentBridge />
-      <AmplitudeProvider active={isCloudAnalyticsPath(pathname)} />
+      <AmplitudeProvider />
       <ExternalAttributionRecorder />
     </>
   )
