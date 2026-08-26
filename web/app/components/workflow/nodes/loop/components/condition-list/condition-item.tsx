@@ -212,7 +212,7 @@ const ConditionItem = ({
       const newCondition = produce(condition, (draft) => {
         draft.variable_selector = valueSelector
         draft.varType = varItem.type
-        draft.value = ''
+        draft.value = varItem.type === VarType.boolean ? false : ''
         draft.comparison_operator = getOperators(varItem.type)[0]
         delete draft.key
         delete draft.sub_variable_condition
