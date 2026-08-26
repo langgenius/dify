@@ -676,6 +676,7 @@ class TestEmailCodeLoginApi:
             interface_language="en-US",
             timezone="Asia/Shanghai",
             ip_address="203.0.113.10",
+            check_normalized_email=True,
             session=ANY,
         )
 

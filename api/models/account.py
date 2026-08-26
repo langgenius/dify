@@ -88,13 +88,18 @@ class AccountStatus(enum.StrEnum):
 
 class Account(UserMixin, TypeBase):
     __tablename__ = "accounts"
-    __table_args__ = (sa.PrimaryKeyConstraint("id", name="account_pkey"), sa.Index("account_email_idx", "email"))
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="account_pkey"),
+        sa.Index("account_email_idx", "email"),
+        sa.Index("account_normalized_email_idx", "normalized_email"),
+    )
 
     id: Mapped[str] = mapped_column(
         StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
     )
     name: Mapped[str] = mapped_column(String(255))
     email: Mapped[str] = mapped_column(String(255))
+    normalized_email: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     password: Mapped[str | None] = mapped_column(String(255), default=None)
     password_salt: Mapped[str | None] = mapped_column(String(255), default=None)
     avatar: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
