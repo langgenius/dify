@@ -1,33 +1,38 @@
 ## Context
 
-Provider adapter 已经把 Webhook authentication、challenge、payload decoding 和 Provider ACK 封装在 `IMWebhookHandler.handle(WebhookRequest) -> WebhookResponse` 中。`IMMessageInboxSink` 已经把认证后的 `AuthenticatedIMEvent` 原子写入 `im_message_inbox`，并在 commit 后发送仅包含 inbox record ID 的 Celery wakeup。
+Canonical Channel Management 已经由 Console controller 直接组合 Email Management owner 与 IM Integration owner。`IMIntegrationView.webhook_url` 是 IM owner 提供的 credential-free field，现有 Console mapper只把它映射到 `ChannelSummary.webhook_url`。Create、update 和 replacement 也直接返回该 canonical summary。
 
-当前缺少三段连接代码：公开 callback route、由公开标识解析当前 Integration 的 application service，以及把 Integration credential、Provider adapter、durable sink 组合为长生命周期 handler 的 composition。现有 `HumanInputIMIntegration.callback_url` 复制了 deployment origin，却没有提供可用于反向查找 Integration 的稳定 route identity。Contact Sync composition 还私有持有完整 credential 解密和 Provider adapter construction，直接复制这段逻辑会让 Provider credential schema 泄漏到多个 use case。
+IM Integration 已经把完整 Provider credentials 保存为一个 versioned opaque `EncryptedCredentials` envelope，并将安全的 `app_identifier` 单独持久化。`IMCredentialCodec` 负责通过已绑定 owner 的 `BoundCredentialCipher` 解封 envelope、验证 resolved credential union，并拒绝 Provider discriminator mismatch。`build_im_provider_adapter()` 已经是唯一的 Provider adapter constructor dispatch。Contact Sync composition 仍私有持有 `DifyIMIntegrationAdapterFactory`，但该 factory 只组合 cipher resolver、`IMCredentialCodec` 和现有 adapter builder，不再知道 provider-specific persisted fields。
 
-该 ingress 运行在 Flask/WSGI。WSGI 通常会合并同名 request header，因此 application 无法诚实恢复原始 header 顺序或重复边界。设计必须保留框架实际暴露的 field-value，并确保认证字段遇到合并或歧义时 fail closed。
+Provider adapters 已经把 Webhook authentication、challenge、payload decoding 和 Provider ACK 封装在 `IMWebhookHandler.handle(WebhookRequest) -> WebhookResponse` 中。`IMMessageInboxSink` 已经把认证后的 `AuthenticatedIMEvent` 原子写入 `im_message_inbox`，并在 commit 后发送只包含 inbox record ID 的 Celery wakeup。当前仍缺少公开 callback route、由公开标识解析 current Integration 的 application service，以及为单个 callback request 组合 Integration adapter、Provider handler 和 durable sink 的 runtime composition。
+
+该 ingress 运行在 Flask。Controller 使用 `tuple(request.headers.items())` 填充 framework-neutral `WebhookRequest.headers`。
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-- 为 deployment-owned Webhook transport 提供一个稳定、公开、无 Console authentication 的 callback endpoint。
-- 在 Provider handler 运行前，从 authoritative current Integration 解析 Provider、provider tenant、configuration revision 和 protected credentials。
+- 为 deployment-selected Webhook transport 提供稳定、公开、无 Console authentication 的 callback endpoint。
+- 从 authoritative current Integration 读取 Provider、provider tenant、complete revision、opaque credential envelope 和 owner scope，并为每个 admitted callback 恢复 credentials和构造 handler。
 - 复用 Provider handler 的 challenge/authentication/ACK 语义，并把业务事件交给 durable inbox。
 - 让 credential rotation 保留 callback URL，让 replacement、delete/recreate 使旧 URL 永久失效。
-- 对 body size、内部失败、日志、指标和并发 revision 切换给出可测试的安全语义。
-- 让 Contact Sync、Webhook ingress 和后续 STREAM composition 共享同一个 Provider adapter factory。
+- 让 canonical Channel read 使用 credential-free Webhook capability check，不执行 credential recovery 或 Provider I/O。
+- 让 Contact Sync、Webhook ingress 和后续 STREAM composition 共享同一个 Integration-to-adapter factory，同时继续复用现有 credential codec 和 adapter builder。
+- 对 body size、cipher unavailable、invalid envelope、内部失败、日志、指标和并发 revision 切换给出可测试的安全语义。
 
 **Non-Goals:**
 
-- 不修改任何 Provider signature、challenge、decryption 或 card-event decoding algorithm。
+- 不修改 Provider signature、challenge、payload decryption 或 card-event decoding algorithm。
+- 不修改 opaque credential envelope format、resolved credential union 或 `build_im_provider_adapter()` dispatch。
+- 不实现 deployment credential cipher provisioning、storage 或 rotation；tenant-less Integration 只接受显式注入的 deployment-bounded cipher。
 - 不实现 STREAM supervisor、business inbox consumer、submission authorization 或 inbox retention。
 - 不将 `event_transport_mode` 变成 tenant request field 或 Integration column。
 - 不提供 per-provider public route、provider query parameter、Console session fallback 或 system-wide shared Provider credential。
-- 不保证跨进程的 handler object reuse；跨进程 deduplication 继续由 durable inbox 的 real Provider event ID contract 负责。
+- 不在 callback requests之间复用 adapter 或 handler；跨请求与跨进程 deduplication 继续由 durable inbox 的 real Provider event ID contract 负责。
 
 ## Decisions
 
-### 1. Integration 持有公开 route identity，而不持有 callback URL
+### 1. Integration 持有 credential envelope 之外的公开 route identity
 
 新增 `WebhookId` value object 和 `HumanInputIMIntegration.webhook_id`：
 
@@ -35,126 +40,132 @@ Provider adapter 已经把 Webhook authentication、challenge、payload decoding
 |---|---|
 | `webhook_id` | 32-character URL-safe value generated from 192 bits of randomness |
 | Database type | `VARCHAR(32) NOT NULL` with a global unique constraint |
+| Credential envelope | Stored separately and never sealed into `EncryptedCredentials` |
 | Authentication | None; Provider authentication remains mandatory |
 | Rotation | Preserved when `integration_id` is preserved |
 | Replacement | A replacement Integration receives a new value |
 | Delete/recreate | A recreated Integration receives a new value |
 
-`webhook_id` 是不可枚举的 routing identifier，不是 bearer credential。日志、metrics 和 exceptions 不记录完整值，避免把 defense-in-depth route entropy 变成普通 diagnostic data。
+`webhook_id` 是 server-generated routing metadata，不是 Provider configuration、credential 或 bearer credential。日志、metrics 和 exceptions 不记录完整值。`IMIntegration.create()` 接收新值；credential rotation 不接收 replacement value；explicit replacement 接收另一个由 application service 生成的新值。该接口形状让 rotation 无法意外修改 route identity。
 
-删除 `callback_url` aggregate/ORM column。`generate_im_provider_webhook_url(webhook_id)` 在 response projection 时使用 `TRIGGER_URL` 生成 `/callbacks/human-input/im/<webhook_id>`；deployment origin 变化不再要求改写所有 Integration rows。只有 effective mode 为 `WEBHOOK` 且 Provider factory 返回 Webhook handler 时，Channel summary 才返回该 URL。
+删除 `callback_url` aggregate/ORM column和 `ConfirmedIMConfiguration.callback_url`。`generate_im_provider_webhook_url(webhook_id)` 使用 `TRIGGER_URL` 生成 `/callbacks/human-input/v2/im/<webhook_id>`。Deployment origin 变化只影响后续 projection，不更新 Integration row。
 
-考虑过两个替代方案：
+直接使用 `integration_id` 会把 aggregate identity固化为公共协议，也更容易针对已知 Integration ID 制造 credential-recovery load。独立 route table 会复制一对一 Integration replacement/delete transaction knowledge。把 route identity 放在 Integration 上保持 lookup 简单，并保留 replacement ABA safety。
 
-- 直接在 path 使用 `integration_id`：不需要 schema change，但会把内部 aggregate identity 固化为公共协议，并允许更容易地针对已知 Integration ID 制造 credential-resolution load。
-- 新建 `human_input_im_webhook_routes` 表：能独立管理 route，但一对一 current route 没有独立 lifecycle，额外表会复制 Integration replacement/delete transaction knowledge。
+### 2. Deployment mode 和 Provider capability 只控制 Webhook surface
 
-把 `webhook_id` 放在 Integration 上使常见 lookup 简单，同时保持 replacement ABA safety。
+新增只读 `IMEventTransportModeResolver`，只返回 `WEBHOOK` 或 `STREAM`。Production adapter 必须从 deployment configuration 解析出其中一个值；缺失值或非法值属于 deployment configuration error，MUST NOT被转换为第三种 mode。Console request 和 Integration persistence 均不能设置该值。
 
-### 2. Deployment mode 由只读 port 提供
+新增不读取 persisted credentials 的 Provider-level Webhook capability check。当前 Slack、Feishu、Lark 和 Microsoft Teams 支持 Webhook；DingTalk 和 WeCom 不支持。该 check 只用于 `IMIntegrationView.webhook_url` projection 和 Webhook ingress admission。
 
-新增 `IMEventTransportModeResolver`，返回 `DISABLED`、`WEBHOOK` 或 `STREAM`。Production adapter 读取 deployment configuration；Console request 和 Integration persistence 均不能设置该值。默认值为 `DISABLED`，避免 migration 后意外暴露 callback surface。
+Management read uses Provider metadata and credential-runtime availability only；it never calls `IMCredentialCodec.load()`、`build_im_provider_adapter()` or `create_webhook_handler()`。Ingress still treats actual handler construction as authoritative；capability check declares support but adapter returns `None` is an internal drift and maps to `503`。
 
-Ingress service 只在 mode 为 `WEBHOOK` 时解析和调用 handler。Channel Management 使用同一 resolver 判断 provider availability 和是否返回 `webhook_url`，避免管理面与实际 ingress capability 产生两个判断来源。
+### 3. Canonical IM owner生成 derived Webhook URL
 
-### 3. 使用独立 callback blueprint，不复用 Console、Web 或 Workflow Trigger route
+`HumanInputIMIntegrationManagementService` uses the mode resolver、credential-free Webhook capability check、credential-runtime availability and URL generator when constructing `IMIntegrationView`。It returns `webhook_url` only when all of the following are true:
 
-新增 `controllers.im_provider_webhook` blueprint，prefix 为 `/callbacks/human-input/im`，只注册 `POST /<webhook_id>`。它不安装 CORS，不执行 session、CSRF、workspace 或 account decorator；Provider signature/token 才是请求认证。
+- effective mode is `WEBHOOK`;
+- the persisted Provider has Webhook potential;
+- production composition can resolve a `BoundCredentialCipher` for that Integration owner.
+
+This check does not decrypt the envelope。Workspace-owned Integration uses the existing tenant key provider and is runtime-ready。Deployment-owned Integration is runtime-ready only when a deployment-bounded cipher is explicitly wired。The Console controller continues to copy `IMIntegrationView.webhook_url` into the existing `ChannelSummary`; it does not import runtime factory、cipher、Provider SDK or persistence code。
+
+### 4. 使用独立 callback blueprint
+
+新增 `controllers.im_provider_webhook` blueprint，prefix 为 `/callbacks/human-input/v2/im`，只注册 `POST /<webhook_id>`。它不安装 CORS，不执行 session、CSRF、workspace 或 account decorator；Provider signature/token 才是 request authentication。
 
 Controller 按以下顺序工作：
 
-1. 在 body read、database query 和 Provider work 之前捕获 trusted UTC receive time。
-2. 验证 `webhook_id` 的长度和字符集；无效值返回与未知值相同的 `404`。
+1. 在 body read、database query 和 Provider work 前捕获 trusted UTC receive time。
+2. 验证 `webhook_id` 的长度和字符集；无效值返回与 unknown route相同的 `404`。
 3. 通过 bounded reader 读取 exact body bytes；超过 `HUMAN_INPUT_IM_WEBHOOK_MAX_BODY_BYTES` 返回 `413`。
-4. 将 uppercase method、框架暴露的 header field-values、body bytes 和 receive time 组装成现有 `WebhookRequest`。
+4. 将 uppercase method、`tuple(request.headers.items())`、body bytes 和 receive time 组装为 adapters package 中的 `WebhookRequest`。
 5. 调用 `IMWebhookIngressService.handle()`，再用 status、headers 和 body 构造 Flask `Response`。
 
-Controller 不解析 JSON/form、不读取 Provider 字段、不查 tenant、不捕获 Provider-specific exception，也不修改 handler response body。Flask 可以自行重算 `Content-Length`；其他 response header 按 `WebhookResponse` 顺序写入。
+Controller 不解析 JSON/form、不读取 Provider 字段、不查 tenant、不捕获 Provider-specific exception，也不修改 handler response body。Flask 可以重算 `Content-Length`；其他 response header 按 `WebhookResponse` 顺序写入。
 
-### 4. Service 是 routing、composition 与安全失败语义的唯一 owner
+### 5. Service 隐藏 routing、credential recovery 和失败映射
 
-公开接口保持为一个深方法：
+公开接口保持为：
 
 `IMWebhookIngressService.handle(webhook_id, request) -> WebhookResponse`
-
-Service 内部流程如下：
 
 ```mermaid
 flowchart LR
     HTTP["Flask callback controller"] --> Service["IMWebhookIngressService"]
-    Service --> Mode["IMEventTransportModeResolver"]
+    Service --> Mode["Transport mode and Webhook capability"]
     Service --> Route["IMWebhookIntegrationRepository"]
     Route --> Integration["Current IMIntegration revision"]
-    Service --> Cache["Revision-aware handler cache"]
-    Cache --> Factory["DifyIMProviderAdapterFactory"]
-    Cache --> Sink["IMMessageInboxSink"]
-    Factory --> Handler["IMWebhookHandler"]
-    Sink --> Inbox["im_message_inbox"]
+    Service --> Factory["DifyIMIntegrationAdapterFactory"]
+    Factory --> Cipher["BoundCredentialCipher"]
+    Factory --> Codec["IMCredentialCodec"]
+    Factory --> Builder["build_im_provider_adapter"]
+    Builder --> Handler["IMWebhookHandler"]
+    Service --> Sink["IMMessageInboxSink"]
     Handler --> Sink
     Handler --> Response["WebhookResponse"]
     Response --> HTTP
 ```
 
-`IMWebhookIntegrationRepository.load_by_webhook_id()` 是 credential-bearing query port，只返回 domain `IMIntegration`，不返回 ORM record。它按全局唯一 route identity 查询，因此 request path 不包含或推导 tenant。数据库故障与 not-found 必须可区分；not-found 映射为 `404`，query failure 映射为 `503`。
+Service rejects `STREAM` mode with `404`。For `WEBHOOK` mode, `IMWebhookIntegrationRepository.load_by_webhook_id()` loads current domain `IMIntegration` without recovering credentials。Database not-found and query failure remain distinct。Immediately after a successful lookup，the Service emits one structured `im_webhook_integration_resolved` log containing `provider` and `integration_id`。It records this event before the Webhook capability check、cipher resolution or credential recovery。
 
-Service 对未知 route、inactive mode 和不支持 Webhook 的 Provider 返回同形 `404`。Credential reveal、adapter construction、cache construction 或其他内部暂时失败返回 payload-free `503`。Provider handler 已经产生的 `200/400/401/403/405/415/503` response 不会被 Service 重新分类。
+For every admitted callback, the shared Integration adapter factory resolves a bound cipher、loads and validates the opaque envelope、constructs the adapter and creates a handler bound to that Integration's `IMMessageInboxSink`。The Service closes the root adapter after handler creation and does not retain the adapter or handler after the request completes。
 
-### 5. 共享 Provider adapter factory 集中隐藏 credential schema
+Malformed/unknown route、`STREAM` mode and credential-free Webhook capability check unsupported Provider return the same `404`。Query failure、bound cipher unavailable、unknown envelope version、decrypt/JSON/Pydantic failure、Provider discriminator mismatch、capability/factory drift、adapter construction and unclassified internal failure return payload-free `503`。Provider handler responses are not reclassified。
 
-把现有 Contact Sync 私有的 `DifyIMProviderAdapterFactory` 移到 `services.human_input_v2.im_provider.composition`，并让它返回完整 `IMProviderAdapter` protocol。Factory 继续根据 `integration.tenant_id` 或 deployment owner key 解密 protected credentials，校验 persisted Pydantic credential variant 与 Provider discriminator，并构造 concrete adapter。
+### 6. 共享现有 Integration-to-adapter factory
 
-Contact Sync 只读取返回 adapter 的 `directory` capability；Webhook ingress 只调用 `create_webhook_handler()`；后续 STREAM owner 可调用 `create_stream_handler()`。调用方不再知道 encrypted field name、owner key selection 或 Provider constructor signature。
+Move `DifyIMIntegrationAdapterFactory` from `services.human_input_v2.im_contact_sync.composition` into a shared Human Input v2 runtime module。Its interface remains one deep call:
 
-### 6. Handler cache 以完整 revision 为 key，route lookup 每次仍读取 authoritative state
+`DifyIMIntegrationAdapterFactory(integration) -> IMProviderAdapter`
 
-Provider handler 可以安全并发并允许 outlive root adapter；Feishu/Lark handler 还持有进程内 replay claims。Application extension 因此持有一个 bounded handler cache，key 为 `(integration_id, config_version)`。Cache value 是绑定当前 Provider/provider tenant 的 `IMWebhookHandler`，其 consumer 是该 Integration 的 `IMMessageInboxSink`。
+The factory accepts a `cipher_resolver` and existing `build_im_provider_adapter()` injection。It calls `IMCredentialCodec.load(provider, envelope)` exactly once and never interprets credential fields itself。The default Workspace resolver constructs `TenantBoundCredentialCipher` from the persisted `tenant_id`。A tenant-less Integration requires an explicitly injected deployment-bounded cipher；the factory never derives one from `DifySetup.instance_id`、`SECRET_KEY` or a synthetic tenant。
 
-每个 HTTP request 仍先按 `webhook_id` 读取当前 Integration，再访问 cache：
+Contact Sync uses the returned adapter's `directory` capability。Webhook ingress uses `create_webhook_handler()`。`DifyIMProviderConfigurationService` continues to use `build_im_provider_adapter()` directly for submitted complete candidates and does not pass an unpersisted candidate through the Integration factory。
 
-- credential rotation 增加 `config_version`，后续 request 构建新 handler；
-- provider replacement 使用新 Integration 和新 `webhook_id`；
-- delete 后旧 route lookup 返回 not-found，即使进程 cache 仍暂时保留旧 handler；
-- bounded LRU/TTL eviction 防止 tenant 数量造成无界内存增长。
+### 7. Handler 生命周期限制在单个 callback request
 
-Cache miss 使用 per-key single-flight construction，避免并发首个 callback 重复 reveal credentials 和创建 SDK clients。Factory 创建 handler 后立即关闭 root adapter；现有 `IMWebhookHandler` contract 保证 root close 不会 invalidate handler。
+Every admitted callback constructs one Provider adapter and one `IMWebhookHandler` from the Integration revision returned by that request's route lookup。The Service does not reuse handlers across HTTP requests and does not retain resolved credentials after request-scoped objects become unreachable。
 
-Ingress 不在 Provider authentication 或 inbox commit 期间持有 Integration row lock。一个在 rotation/replacement commit 前已经解析旧 revision 的 in-flight request 可以按该 snapshot 完成；commit 后开始 route lookup 的 request 必须使用新 revision 或得到 `404`。这是避免长数据库 transaction 包围 cryptography、SDK authentication 和 inbox I/O 的明确一致性选择。下游 business consumer 仍必须按当前 Integration/Binding 执行 authorization。
+Ingress does not hold an Integration row lock or write transaction during cipher work、Provider authentication or inbox commit。A request admitted before a configuration commit may finish with its captured revision。A request whose route lookup begins after credential rotation must recover the new envelope；after replacement or deletion it must observe route absence。
 
-### 7. Durable acceptance 仍由现有 sink 定义
+Per-request construction means handler-local replay state is not preserved across callbacks。Provider authentication remains mandatory，and durable inbox deduplication by real Provider event ID remains the cross-request deduplication boundary。
 
-Service 为 handler 构造 `IMMessageInboxSink`，绑定 `integration_id`、Provider 和 `provider_tenant_id`。Challenge response 不调用 sink。业务事件只有在 sink commit 新 record 或解析 real-ID duplicate 后才能得到 Provider handler 的成功 ACK；broker publish failure 不撤销 ACK，inbox persistence failure 保持 retry-compatible response。
+### 8. Durable acceptance 仍由现有 sink 定义
 
-Ingress Service 不启动 business consumer、不解码 card action、不把 HTTP response state写入 inbox，也不扩展 `AuthenticatedIMEvent`。
+The handler consumer is an `IMMessageInboxSink` bound to `integration_id`、Provider and `provider_tenant_id`。Challenge responses do not call the sink。A business event receives a success ACK only after the sink commits a new record or resolves a real-ID duplicate。Broker publish failure does not revoke an already durable ACK；inbox persistence failure remains retry-compatible。
 
-### 8. WSGI header 只承诺可观察事实，并对歧义 fail closed
+Ingress does not start the business consumer、decode card actions、persist HTTP response state or extend `AuthenticatedIMEvent`。
 
-Controller 使用 Werkzeug 暴露的 header sequence 构造 `WebhookRequest.headers`。若 server 分别暴露重复 field，controller 保持它们的顺序和值；若 WSGI 已把重复 field 合并为一个值，controller 不按逗号拆分、不声称恢复原始边界。
+### 9. Controller 直接映射 Flask request headers
 
-Slack、Feishu/Lark 和 Microsoft Teams 的 authentication header 都按 singleton 处理。多个独立值或一个无法通过 Provider verifier 的合并值必须认证失败，不能选择其中一个值继续。这比应用层猜测 HTTP list grammar 更安全，也符合当前 adapters 的 fail-closed 行为。
+Controller sets `WebhookRequest.headers` to `tuple(request.headers.items())` without additional parsing or transformation。
 
-### 9. Observability 不接触 body、header、credential 或完整 route identity
+### 10. Observability 不接触敏感内容
 
-新增低基数 ingress metrics：request count、route miss、oversize、handler response class、internal unavailable、duration。维度只允许 Provider（成功解析后）、outcome 和 status class。日志只允许 Integration ID、Provider 和安全错误 code；不得包含 request body、headers、Provider response body、plaintext/protected credentials 或完整 `webhook_id`。
+Ingress records low-cardinality request count、route miss、oversize、handler response class、internal unavailable and duration metrics。Dimensions are limited to Provider after successful route lookup、safe outcome and status class。Every successful Integration lookup emits one structured `im_webhook_integration_resolved` log with `provider` and `integration_id` before capability or credential work。Other logs may contain Integration ID、Provider and safe error code。
+
+Logs、metrics、traces and exceptions must not contain request body、headers、Provider response body、credential plaintext、credential ciphertext、complete `webhook_id` or raw cipher/validation exception details。
 
 ## Risks / Trade-offs
 
-- [WSGI 无法恢复 wire-level duplicate header] → 修改 contract 只承诺框架可观察 header；Provider singleton authentication 遇到合并或歧义时 fail closed，并增加真实 Flask request tests。
-- [每次 route lookup 增加一次 database read] → 保留该 read 作为 delete/rotation 的 authority；缓存昂贵的 credential reveal 和 handler construction，而不缓存 route existence。
-- [进程内 cache 不能提供跨进程 replay protection] → 不把 cache 当作 deduplication authority；real Provider event ID 继续由 database inbox 全局去重，business consumer 保持 at-least-once idempotency。
-- [in-flight request 可以跨越 configuration commit] → 明确 snapshot admission semantics；不让 database transaction 包围 Provider work，commit 后的新 request 必须读取新 revision。
-- [公开 random route 被误当成 authentication] → 文档、类型和 tests 明确 Provider verification 必须始终执行；route entropy 只降低枚举和无效 lookup load。
-- [删除 `callback_url` 影响旧 application nodes] → 使用 expand/contract migration，并在 drop 前迁移所有 readers 到 derived URL generator。
-- [Provider SDK construction 失败导致持续 `503`] → 返回 retry-compatible safe response并记录低基数 unavailable metric；Channel connection status 由 management diagnostics 暴露给管理员。
+- [Every request performs credential recovery and SDK construction] → Accept the bounded per-request cost in the first implementation，measure callback latency and construction failures，and add reuse only after operational evidence。
+- [Credential-free Webhook capability metadata can drift from adapter behavior] → Add provider-family consistency tests and map an unexpected `None` handler to `503`。
+- [Per-request handler construction resets handler-local replay state] → Keep Provider authentication mandatory and use durable inbox deduplication when the Provider supplies a real event ID。
+- [Deployment cipher may be unavailable] → Do not project a usable URL without runtime readiness; return safe `503` if a tenant-less route is nevertheless invoked。
+- [In-flight request can cross configuration commit] → Define snapshot admission semantics and keep Provider work outside the write transaction。
+- [Public random route can be mistaken for authentication] → Require Provider verification on every request and document route entropy only as enumeration/load defense。
+- [Directly editing an unshipped migration invalidates local development databases] → Require developers to recreate only the unreleased schema in development; do not add production dual-read complexity for data that has not shipped。
 
 ## Migration Plan
 
-1. Expand migration 增加 nullable `webhook_id`，为现有 Integration 使用 cryptographically secure generator 回填，建立 unique constraint 后改为 non-null；暂时保留 `callback_url`。
-2. 部署 aggregate、mapper、repository query、shared adapter factory、Service、callback blueprint 和 tests。Deployment mode 默认 `DISABLED`，此时 route 统一返回 `404` 且 Channel summary 不暴露 URL。
-3. 将 Channel summary 和其他 readers 切换到 derived URL generator，确认没有代码读取或写入 persisted `callback_url`。
-4. Contract migration 删除 `callback_url`，然后显式把 deployment mode 切换为 `WEBHOOK`。
-5. Rollback 在步骤 4 前只需回退 application。步骤 4 后 downgrade 重新添加 nullable `callback_url`；旧 application 可以把空值解释为未配置 callback，现有 `webhook_id` 可保留到后续 cleanup。
+1. Amend the unreleased IM control-plane migration to create non-null unique `webhook_id` and omit `callback_url`。Update aggregate、ORM、mapper、guarded UoW and tests in the same schema change。
+2. Deploy the shared Integration adapter factory、Webhook capability check、management projection、Webhook service and callback blueprint while the deployment remains in `STREAM` mode。No callback URL is exposed and ingress returns `404`。
+3. Verify canonical Channel list/detail/mutation responses、Workspace tenant-bound credential recovery、Provider challenge/authentication and durable inbox acceptance。
+4. Select `WEBHOOK` only after `TRIGGER_URL` and the required cipher runtime are ready。Deployment-owned callbacks MUST NOT be enabled until a deployment-bounded cipher is explicitly injected。
+
+Before the unreleased schema ships, rollback restores the previous migration and application code together。No field-level credential reader、callback URL backfill or reverse data conversion is required。
 
 ## Open Questions
 
-- 是否需要在首个 release 就让 `HUMAN_INPUT_IM_WEBHOOK_MAX_BODY_BYTES` 可配置，还是先采用一个覆盖三类 Provider payload 的固定上限并等到有实际 operational evidence 再暴露配置？本方案的任务默认实现配置项，以便 self-hosted deployment 处理 Provider attachment metadata 差异。
-
+无。
