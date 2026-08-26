@@ -2,6 +2,7 @@ export * from "./cache";
 export * from "./cloudflare-job-queue";
 export * from "./database";
 export * from "./dify-object-storage";
+export * from "./dify-remote-image";
 export * from "./job-queue";
 export * from "./memory-object-storage";
 export * from "./migration-runner";

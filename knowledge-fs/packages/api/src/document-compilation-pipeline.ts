@@ -18,7 +18,9 @@ import {
   buildDocumentOutlineKnowledgePath,
   buildDocumentSectionKnowledgePaths,
 } from "./document-knowledge-paths";
+import { finalizeDocumentMultimodalArtifact } from "./document-multimodal-artifact";
 import { extractDocumentMultimodalAssets } from "./document-multimodal-asset-extractor";
+import type { DocumentRemoteAssetFetcher } from "./document-multimodal-asset-extractor";
 import { createDocumentMultimodalManifestBuilder } from "./document-multimodal-manifest-builder";
 import type { DocumentMultimodalManifestRepository } from "./document-multimodal-manifest-repository";
 import {
@@ -70,6 +72,7 @@ export interface CompileDocumentArtifactDeps {
   readonly documentMultimodalMaxExtractedAssets?: number | undefined;
   readonly documentMultimodalMaxLocalAssetBytes?: number | undefined;
   readonly documentMultimodalMaxPdfRasterizedAssets?: number | undefined;
+  readonly documentMultimodalRemoteAssetFetcher?: DocumentRemoteAssetFetcher | undefined;
   readonly documentMultimodalManifests: DocumentMultimodalManifestRepository;
   readonly documentParser: ParserAdapter;
   readonly documentPdfRasterizer?: DocumentPdfRasterizer | undefined;
@@ -111,6 +114,7 @@ export async function compileDocumentArtifact(
     documentMultimodalMaxExtractedAssets,
     documentMultimodalMaxLocalAssetBytes,
     documentMultimodalMaxPdfRasterizedAssets,
+    documentMultimodalRemoteAssetFetcher,
     documentMultimodalManifests,
     documentParser,
     documentPdfRasterizer,
@@ -190,13 +194,17 @@ export async function compileDocumentArtifact(
           ? { imageVariantGenerator: documentMultimodalImageVariantGenerator }
           : {}),
         objectStorage,
+        ...(documentMultimodalRemoteAssetFetcher
+          ? { remoteAssetFetcher: documentMultimodalRemoteAssetFetcher }
+          : {}),
         tenantId,
       }),
   );
+  const materializedArtifact = finalizeDocumentMultimodalArtifact(assetExtractionResult.artifact);
   const artifactToPersist = ParseArtifactSchema.parse({
-    ...assetExtractionResult.artifact,
+    ...materializedArtifact,
     metadata: {
-      ...assetExtractionResult.artifact.metadata,
+      ...materializedArtifact.metadata,
       ...(assetExtractionResult.extractedCount > 0
         ? { multimodalAssetExtractionCount: assetExtractionResult.extractedCount }
         : {}),

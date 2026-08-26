@@ -1405,6 +1405,56 @@ describe("parser adapters", () => {
     });
   });
 
+  it("requests and preserves provider image payloads for legacy DOC files", async () => {
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async (request) => {
+        const form = await (request instanceof Request ? request : new Request(request)).formData();
+
+        expect(form.get("strategy")).toBe("hi_res");
+        expect(form.getAll("extract_image_block_types")).toEqual(["Image"]);
+        expect(form.get("extract_image_block_to_payload")).toBe("true");
+
+        return new Response(
+          JSON.stringify([
+            {
+              metadata: {
+                image_base64: "AQIDBA==",
+                image_mime_type: "image/png",
+                page_number: 1,
+              },
+              type: "Image",
+            },
+          ]),
+          { headers: { "content-type": "application/json" }, status: 200 },
+        );
+      },
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c54",
+      now: () => createdAt,
+    });
+
+    const artifact = await parser.parse({
+      body: new Uint8Array([0xd0, 0xcf, 0x11, 0xe0]),
+      documentAssetId,
+      filename: "legacy.doc",
+      mimeType: "application/msword",
+      parserHints: { requiresImages: true },
+      version: 1,
+    });
+
+    expect(artifact.elements).toEqual([
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          assetRef: {
+            contentType: "image/png",
+            uri: "data:image/png;base64,AQIDBA==",
+          },
+        }),
+        type: "image",
+      }),
+    ]);
+  });
+
   it("preserves nested Unstructured title paths from parent ids and category depth", async () => {
     const parser = createUnstructuredParserClient({
       endpoint: "https://unstructured.example.test",

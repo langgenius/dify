@@ -32,6 +32,7 @@ import type { DocumentCompilationJobStateMachine } from "./document-compilation-
 import { compileDocumentArtifact } from "./document-compilation-pipeline";
 import type { DocumentImageVariantGenerator } from "./document-image-variant-generator";
 import { buildDocumentKnowledgePath } from "./document-knowledge-paths";
+import type { DocumentRemoteAssetFetcher } from "./document-multimodal-asset-extractor";
 import type { DocumentMultimodalManifestRepository } from "./document-multimodal-manifest-repository";
 import type { DocumentOutlineBuilder } from "./document-outline-builder";
 import type { DocumentOutlineRepository } from "./document-outline-repository";
@@ -149,6 +150,7 @@ export interface RegisterDocumentWriteHandlersOptions {
   readonly documentMultimodalMaxExtractedAssets?: number | undefined;
   readonly documentMultimodalMaxLocalAssetBytes?: number | undefined;
   readonly documentMultimodalMaxPdfRasterizedAssets?: number | undefined;
+  readonly documentMultimodalRemoteAssetFetcher?: DocumentRemoteAssetFetcher | undefined;
   readonly documentMultimodalManifests: DocumentMultimodalManifestRepository;
   readonly documentParser: ParserAdapter;
   readonly documentPdfRasterizer?: DocumentPdfRasterizer | undefined;
@@ -220,6 +222,7 @@ export function registerDocumentWriteHandlers({
   documentMultimodalMaxExtractedAssets,
   documentMultimodalMaxLocalAssetBytes,
   documentMultimodalMaxPdfRasterizedAssets,
+  documentMultimodalRemoteAssetFetcher,
   documentMultimodalManifests,
   documentParser,
   documentPdfRasterizer,
@@ -1437,6 +1440,7 @@ export function registerDocumentWriteHandlers({
               documentMultimodalMaxExtractedAssets,
               documentMultimodalMaxLocalAssetBytes,
               documentMultimodalMaxPdfRasterizedAssets,
+              documentMultimodalRemoteAssetFetcher,
               documentMultimodalManifests,
               documentParser,
               documentPdfRasterizer,

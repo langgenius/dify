@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
 
-import { createNodePlatformAdapter } from "@knowledge/adapters/node";
+import {
+  createNodePlatformAdapter,
+  createNodeRemoteDocumentImageFetcher,
+} from "@knowledge/adapters/node";
 import {
   type KnowledgeSpaceEmbeddingResolver,
   createDatabaseDeletionObjectWriteAdmission,
@@ -121,6 +124,7 @@ const researchTaskDirectStream = createApiResearchTaskDirectStreamAssembly({
 });
 
 const adapter = createNodePlatformAdapter();
+const documentRemoteAssetFetcher = createNodeRemoteDocumentImageFetcher();
 const queryImageResolver = createApiQueryImageResolver({ env: process.env });
 const queryImageExpansionProvider = createApiQueryImageExpansionProvider(process.env);
 const operationalMetrics = createApiKnowledgeFsOperationalMetrics({
@@ -165,7 +169,10 @@ const visualEmbeddingOptions = createApiVisualEmbeddingOptions({
   modelRequestGate: ingestionModelRuntimeOptions.modelRequestGate,
   objectStorage: adapter.objectStorage,
 });
-const multimodalOptions = createApiMultimodalOptions();
+const multimodalOptions = {
+  ...createApiMultimodalOptions(),
+  documentMultimodalRemoteAssetFetcher: documentRemoteAssetFetcher,
+};
 const multimodalAnswerOptions = createApiMultimodalAnswerOptions({
   objectStorage: adapter.objectStorage,
 });

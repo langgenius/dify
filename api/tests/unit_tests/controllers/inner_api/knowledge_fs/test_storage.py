@@ -15,6 +15,7 @@ from controllers.inner_api.knowledge_fs.storage import (
     KnowledgeFSObjectMetadataApi,
     KnowledgeFSObjectStorageHttpError,
     KnowledgeFSQueryImageApi,
+    KnowledgeFSRemoteImageApi,
 )
 from services.knowledge_fs.object_storage import (
     KnowledgeFSObjectList,
@@ -23,6 +24,7 @@ from services.knowledge_fs.object_storage import (
     KnowledgeFSObjectStorageUnavailableError,
 )
 from services.knowledge_fs.query_images import KnowledgeFSResolvedQueryImage
+from services.knowledge_fs.remote_images import KnowledgeFSRemoteImageError, KnowledgeFSResolvedRemoteImage
 
 
 @pytest.fixture
@@ -38,6 +40,60 @@ def object_metadata() -> KnowledgeFSObjectMetadata:
 
 def _metadata_header(metadata: dict[str, str]) -> str:
     return urlsafe_b64encode(json.dumps(metadata).encode()).decode().rstrip("=")
+
+
+@patch("controllers.inner_api.knowledge_fs.storage.load_remote_image")
+def test_remote_image_endpoint_returns_only_sniffed_bounded_image_bytes(
+    load_remote_image: MagicMock,
+    app: Flask,
+) -> None:
+    body = b"\x89PNG\r\n\x1a\nremote"
+    load_remote_image.return_value = KnowledgeFSResolvedRemoteImage(
+        byte_size=len(body),
+        mime_type="image/png",
+        body=body,
+        sha256="a" * 64,
+    )
+    handler = KnowledgeFSRemoteImageApi()
+
+    with app.test_request_context("/?url=https%3A%2F%2Fcdn.example.test%2Fimage.png"):
+        result = inspect.unwrap(handler.get)(handler)
+
+    assert result.get_data() == body
+    assert result.content_type == "image/png"
+    assert result.headers["X-Knowledge-FS-Remote-Image-Sha256"] == "a" * 64
+    load_remote_image.assert_called_once_with("https://cdn.example.test/image.png")
+
+
+@pytest.mark.parametrize(
+    ("error", "expected_status"),
+    [
+        (KnowledgeFSRemoteImageError("REMOTE_IMAGE_BLOCKED", "blocked", retryable=False), 403),
+        (KnowledgeFSRemoteImageError("REMOTE_IMAGE_NOT_FOUND", "missing", retryable=False), 404),
+        (KnowledgeFSRemoteImageError("REMOTE_IMAGE_TOO_LARGE", "large", retryable=False), 413),
+        (
+            KnowledgeFSRemoteImageError("REMOTE_IMAGE_CONTENT_UNSUPPORTED", "unsupported", retryable=False),
+            415,
+        ),
+        (KnowledgeFSRemoteImageError("REMOTE_IMAGE_RATE_LIMITED", "limited", retryable=True), 429),
+        (KnowledgeFSRemoteImageError("REMOTE_IMAGE_UPSTREAM_UNAVAILABLE", "offline", retryable=True), 502),
+    ],
+)
+@patch("controllers.inner_api.knowledge_fs.storage.load_remote_image")
+def test_remote_image_endpoint_maps_safe_failure_statuses(
+    load_remote_image: MagicMock,
+    error: KnowledgeFSRemoteImageError,
+    expected_status: int,
+    app: Flask,
+) -> None:
+    load_remote_image.side_effect = error
+    handler = KnowledgeFSRemoteImageApi()
+
+    with app.test_request_context("/?url=https%3A%2F%2Fcdn.example.test%2Fimage.png"):
+        with pytest.raises(KnowledgeFSObjectStorageHttpError) as exc_info:
+            inspect.unwrap(handler.get)(handler)
+
+    assert exc_info.value.code == expected_status
 
 
 @patch("controllers.inner_api.knowledge_fs.storage.load_query_image")

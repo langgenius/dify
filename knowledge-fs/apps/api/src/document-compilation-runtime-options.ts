@@ -165,6 +165,7 @@ export interface CreateApiDocumentCompilationRuntimeOptions {
         | "documentMultimodalMaxExtractedAssets"
         | "documentMultimodalMaxLocalAssetBytes"
         | "documentMultimodalMaxPdfRasterizedAssets"
+        | "documentMultimodalRemoteAssetFetcher"
         | "documentPdfRasterizer"
       > & { readonly documentMultimodalMaxConcurrency?: number | undefined })
     | undefined;
@@ -602,6 +603,11 @@ export function createApiDocumentCompilationRuntime({
         ...(multimodal?.documentMultimodalMaxPdfRasterizedAssets
           ? {
               multimodalMaxPdfRasterizedAssets: multimodal.documentMultimodalMaxPdfRasterizedAssets,
+            }
+          : {}),
+        ...(multimodal?.documentMultimodalRemoteAssetFetcher
+          ? {
+              multimodalRemoteAssetFetcher: multimodal.documentMultimodalRemoteAssetFetcher,
             }
           : {}),
         multimodalManifests: repositories.multimodalManifests,

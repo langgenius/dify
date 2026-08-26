@@ -30,6 +30,10 @@ from services.knowledge_fs.object_storage import (
     KnowledgeFSObjectStorageUnavailableError,
 )
 from services.knowledge_fs.query_images import KnowledgeFSQueryImageError, load_query_image
+from services.knowledge_fs.remote_images import (
+    KnowledgeFSRemoteImageError,
+    load_remote_image,
+)
 
 _METADATA_HEADER = "X-Knowledge-FS-Metadata"
 _CHECKSUM_HEADER = "X-Knowledge-FS-Checksum-Sha256"
@@ -95,6 +99,12 @@ class KnowledgeFSQueryImageQuery(BaseModel):
     subject_id: str = Field(min_length=1)
 
 
+class KnowledgeFSRemoteImageQuery(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    url: str = Field(min_length=1, max_length=8_192)
+
+
 register_response_schema_models(
     inner_api_ns,
     KnowledgeFSObjectMetadataResponse,
@@ -139,6 +149,28 @@ class KnowledgeFSQueryImageApi(Resource):
         response.content_length = image.byte_size
         response.headers["X-Query-Image-Sha256"] = image.sha256
         response.headers["X-Query-Image-Upload-File-Id"] = image.upload_file_id
+        return response
+
+
+@inner_api_ns.route("/knowledge-fs/remote-image")
+class KnowledgeFSRemoteImageApi(Resource):
+    """Resolve one bounded document image through Dify's SSRF-protected network client."""
+
+    @knowledge_fs_inner_api_only
+    @inner_api_ns.doc(params=query_params_from_model(KnowledgeFSRemoteImageQuery))
+    @inner_api_ns.produces(["image/gif", "image/jpeg", "image/png", "image/webp"])
+    def get(self) -> Response:
+        try:
+            query = KnowledgeFSRemoteImageQuery.model_validate(request.args.to_dict(flat=True))
+            image = load_remote_image(query.url)
+        except ValidationError as exc:
+            raise _invalid_request_error() from exc
+        except KnowledgeFSRemoteImageError as exc:
+            raise _remote_image_http_error(exc) from exc
+
+        response = Response(image.body, content_type=image.mime_type)
+        response.content_length = image.byte_size
+        response.headers["X-Knowledge-FS-Remote-Image-Sha256"] = image.sha256
         return response
 
 
@@ -356,4 +388,23 @@ def _not_found_error() -> KnowledgeFSObjectStorageHttpError:
         error_code="knowledge_fs_object_not_found",
         description="KnowledgeFS object was not found.",
         status_code=HTTPStatus.NOT_FOUND,
+    )
+
+
+def _remote_image_http_error(error: KnowledgeFSRemoteImageError) -> KnowledgeFSObjectStorageHttpError:
+    status_by_code = {
+        "REMOTE_IMAGE_BLOCKED": HTTPStatus.FORBIDDEN,
+        "REMOTE_IMAGE_CONTENT_UNSUPPORTED": HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+        "REMOTE_IMAGE_EMPTY": HTTPStatus.UNPROCESSABLE_ENTITY,
+        "REMOTE_IMAGE_NOT_FOUND": HTTPStatus.NOT_FOUND,
+        "REMOTE_IMAGE_RATE_LIMITED": HTTPStatus.TOO_MANY_REQUESTS,
+        "REMOTE_IMAGE_REQUEST_REJECTED": HTTPStatus.UNPROCESSABLE_ENTITY,
+        "REMOTE_IMAGE_TOO_LARGE": HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+        "REMOTE_IMAGE_UPSTREAM_UNAVAILABLE": HTTPStatus.BAD_GATEWAY,
+        "REMOTE_IMAGE_URL_INVALID": HTTPStatus.BAD_REQUEST,
+    }
+    return KnowledgeFSObjectStorageHttpError(
+        error_code=error.code.lower(),
+        description=str(error),
+        status_code=status_by_code.get(error.code, HTTPStatus.BAD_GATEWAY),
     )
