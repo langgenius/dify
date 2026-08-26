@@ -627,6 +627,73 @@ describe('KnowledgeSettingsForm', () => {
     expect(toastMock.success).not.toHaveBeenCalled()
   })
 
+  it('keeps access channels submittable before the first model profile activates', async () => {
+    const user = userEvent.setup()
+    renderForm({
+      settings: {
+        ...settings,
+        active_profile_available: false,
+        active_profile_revisions: {},
+        capabilities: {
+          deep: false,
+          index: false,
+          ingest: true,
+          query: false,
+          research: false,
+          source_sync: true,
+        },
+      },
+    })
+
+    const apiAccessSwitch = screen.getByRole('switch', {
+      name: 'dataset.newKnowledge.apiAgentAccess',
+    })
+    const workflowAccessSwitch = screen.getByRole('switch', {
+      name: 'dataset.newKnowledge.workflowAccess',
+    })
+    expect(apiAccessSwitch).not.toHaveAttribute('aria-disabled', 'true')
+    expect(workflowAccessSwitch).not.toHaveAttribute('aria-disabled', 'true')
+    expect(apiAccessSwitch).toHaveAccessibleDescription(
+      'dataset.newKnowledge.settings.apiAccessDescription',
+    )
+
+    await user.click(apiAccessSwitch)
+
+    await waitFor(() => {
+      expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith(
+        {
+          body: {
+            agent_enabled: false,
+            mcp_enabled: true,
+            service_api_enabled: false,
+            workflow_enabled: true,
+          },
+          params: { control_space_id: 'space-1' },
+        },
+        expect.anything(),
+      )
+    })
+    await waitFor(() => expect(apiAccessSwitch).toHaveAttribute('aria-checked', 'false'))
+    expect(apiAccessSwitch).not.toHaveAttribute('aria-disabled', 'true')
+    expect(workflowAccessSwitch).not.toHaveAttribute('aria-disabled', 'true')
+
+    await user.click(apiAccessSwitch)
+
+    await waitFor(() => expect(serviceMock.patchExternalAccess).toHaveBeenCalledTimes(2))
+    expect(serviceMock.patchExternalAccess).toHaveBeenLastCalledWith(
+      {
+        body: {
+          agent_enabled: true,
+          mcp_enabled: true,
+          service_api_enabled: true,
+          workflow_enabled: true,
+        },
+        params: { control_space_id: 'space-1' },
+      },
+      expect.anything(),
+    )
+  })
+
   it('keeps unrelated form controls interactive while external access is saving', async () => {
     const user = userEvent.setup()
     let finishExternalAccessSave!: (value: typeof externalAccess) => void
@@ -1558,10 +1625,10 @@ describe('KnowledgeSettingsForm', () => {
     )
     expect(
       screen.getByRole('switch', { name: 'dataset.newKnowledge.apiAgentAccess' }),
-    ).toHaveAttribute('aria-disabled', 'true')
+    ).not.toHaveAttribute('aria-disabled', 'true')
     expect(
       screen.getByRole('switch', { name: 'dataset.newKnowledge.workflowAccess' }),
-    ).toHaveAttribute('aria-disabled', 'true')
+    ).not.toHaveAttribute('aria-disabled', 'true')
 
     await user.click(
       screen.getByRole('button', {

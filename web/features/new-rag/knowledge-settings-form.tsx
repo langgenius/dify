@@ -366,7 +366,6 @@ export function KnowledgeSettingsForm({
   const canManageAccess = space.permission_keys.includes('knowledge_space_access_config')
   const canDelete = space.permission_keys.includes('knowledge_space_delete')
   const initialModelSetup = !settings.active_profile_available
-  const modelSetupReady = settings.active_profile_available
   const readinessFieldLabel = (field: KnowledgeFsSettingsResponse['issues'][number]['field']) => {
     if (field === 'embedding') return tSettings(($) => $['form.embeddingModel'])
     if (field === 'reasoning') return tCommon(($) => $['modelProvider.systemReasoningModel.key'])
@@ -451,7 +450,7 @@ export function KnowledgeSettingsForm({
     settingsMutation.isPending ||
     Boolean(pendingMigrationId)
   const basicFieldsDisabled = !canEdit || isBasicSaving
-  const externalAccessDisabled = !canEdit || !canManageAccess || !modelSetupReady
+  const externalAccessDisabled = !canEdit || !canManageAccess
   const retrievalFieldsDisabled = !canEdit || (!initialModelSetup && embeddingDirty)
   const saveDisabled =
     !basicDirty ||
