@@ -1,6 +1,6 @@
 # Dify Builder
 
-Shared session/stream logic for the enterprise dify-builder Fix API, consumed by
+Shared session/stream logic for the OSS dify-builder Fix API, consumed by
 both the standalone debug page and the in-editor Dify Builder panel.
 
 ## Internal Modules
