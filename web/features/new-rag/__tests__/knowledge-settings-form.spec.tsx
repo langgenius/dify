@@ -647,7 +647,7 @@ describe('KnowledgeSettingsForm', () => {
     expect(nameInput).toHaveValue('Unsaved camera notes')
     expect(screen.getByRole('textbox', { name: 'datasetSettings.form.desc' })).toBeEnabled()
     expect(
-      screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.settings.topKLabel' }),
+      screen.getByRole('textbox', { name: 'dataset.newKnowledge.settings.topKLabel' }),
     ).toBeEnabled()
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.settings.saveChanges' }),
@@ -953,14 +953,23 @@ describe('KnowledgeSettingsForm', () => {
     const user = userEvent.setup()
     renderForm()
 
-    const topKInput = screen.getByRole('spinbutton', {
+    const topKInput = screen.getByRole('textbox', {
       name: 'dataset.newKnowledge.settings.topKLabel',
     })
+    const thresholdInput = screen.getByRole('textbox', {
+      name: 'appDebug.datasetConfig.score_threshold',
+    })
+    expect(topKInput).toHaveAttribute('aria-roledescription', 'Number field')
+    expect(thresholdInput).toHaveAttribute('aria-roledescription', 'Number field')
+    expect(thresholdInput).toBeDisabled()
+    expect(screen.getAllByRole('button', { name: 'Increment value' })).toHaveLength(2)
+    expect(screen.getAllByRole('button', { name: 'Decrement value' })).toHaveLength(2)
+
     await user.clear(topKInput)
     await user.type(topKInput, '99')
     await user.tab()
 
-    expect(topKInput).toHaveValue(10)
+    expect(topKInput).toHaveValue('10')
     expect(screen.getByText('dataset.newKnowledge.settings.topKMinimum')).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.settings.scoreRange')).toBeInTheDocument()
     await waitFor(() =>
@@ -969,6 +978,45 @@ describe('KnowledgeSettingsForm', () => {
           body: {
             expectedRevision: 5,
             retrieval: expect.objectContaining({ topK: 10 }),
+          },
+          params: { control_space_id: 'space-1' },
+        },
+        expect.anything(),
+      ),
+    )
+  })
+
+  it('clamps the score threshold to the standard field range', async () => {
+    const user = userEvent.setup()
+    renderForm({
+      settings: {
+        ...settings,
+        retrieval: {
+          ...settings.retrieval,
+          score_threshold: {
+            ...settings.retrieval.score_threshold,
+            enabled: true,
+          },
+        },
+      },
+    })
+
+    const thresholdInput = screen.getByRole('textbox', {
+      name: 'appDebug.datasetConfig.score_threshold',
+    })
+    await user.clear(thresholdInput)
+    await user.type(thresholdInput, '2')
+    await user.tab()
+
+    expect(thresholdInput).toHaveValue('1')
+    await waitFor(() =>
+      expect(serviceMock.patchSettings).toHaveBeenCalledWith(
+        {
+          body: {
+            expectedRevision: 5,
+            retrieval: expect.objectContaining({
+              scoreThreshold: expect.objectContaining({ value: 1 }),
+            }),
           },
           params: { control_space_id: 'space-1' },
         },
@@ -1054,7 +1102,7 @@ describe('KnowledgeSettingsForm', () => {
       },
     })
 
-    const thresholdInput = screen.getByRole('spinbutton', {
+    const thresholdInput = screen.getByRole('textbox', {
       name: 'appDebug.datasetConfig.score_threshold',
     })
     await user.clear(thresholdInput)
@@ -1063,7 +1111,7 @@ describe('KnowledgeSettingsForm', () => {
 
     expect(await screen.findByText('dataset.newKnowledge.permissionRestricted')).toBeInTheDocument()
     expect(screen.queryByText('dataset.newKnowledge.settings.saveFailed')).not.toBeInTheDocument()
-    expect(thresholdInput).toHaveValue(0.72)
+    expect(thresholdInput).toHaveValue('0.72')
 
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
 
@@ -1371,7 +1419,7 @@ describe('KnowledgeSettingsForm', () => {
       expect(await screen.findByRole('status')).toHaveTextContent('common.operation.saving')
 
       fireEvent.change(
-        screen.getByRole('spinbutton', {
+        screen.getByRole('textbox', {
           name: 'dataset.newKnowledge.settings.topKLabel',
         }),
         { target: { value: '8' } },
@@ -1631,7 +1679,7 @@ describe('KnowledgeSettingsForm', () => {
     document.body.append(destination)
 
     fireEvent.change(
-      screen.getByRole('spinbutton', {
+      screen.getByRole('textbox', {
         name: 'dataset.newKnowledge.settings.topKLabel',
       }),
       { target: { value: '8' } },
