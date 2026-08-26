@@ -11,6 +11,30 @@ import {
   getWebAppCard,
 } from './access-point-helpers'
 
+async function setAccessSurfaceEnabled(
+  world: DifyWorld,
+  surface: AccessSurfaceName,
+  enabled: boolean,
+) {
+  const accessToggle = getAccessSurfaceCard(world, surface).getByLabel(`Toggle ${surface} access`)
+
+  await expect(accessToggle).toBeEnabled({ timeout: 30_000 })
+  await expect(accessToggle).toHaveAttribute('aria-checked', String(!enabled))
+  await accessToggle.click()
+
+  const client = world.getConsoleClient()
+  const agentId = getCurrentAgentId(world)
+  await expect
+    .poll(
+      async () => {
+        const agent = await client.agent.byAgentId.get({ params: { agent_id: agentId } })
+        return surface === 'Web app' ? agent.enable_site : agent.enable_api
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(enabled)
+}
+
 Given('the Agent v2 draft has been published via API', async function (this: DifyWorld) {
   await publishAgentWithPublishableDraft(this.getConsoleClient(), getCurrentAgentId(this))
 })
@@ -73,14 +97,14 @@ When(
       this.agentBuilder.accessPoint.webAppURL = href
     }
 
-    await accessSurfaceCard.getByLabel(`Toggle ${surface} access`).click()
+    await setAccessSurfaceEnabled(this, surface, false)
   },
 )
 
 When(
   /^I enable Agent v2 (Web app|Backend service API) access$/,
   async function (this: DifyWorld, surface: AccessSurfaceName) {
-    await getAccessSurfaceCard(this, surface).getByLabel(`Toggle ${surface} access`).click()
+    await setAccessSurfaceEnabled(this, surface, true)
   },
 )
 
