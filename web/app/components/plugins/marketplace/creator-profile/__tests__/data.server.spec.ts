@@ -175,8 +175,38 @@ describe('loadCreatorProfile', () => {
     expect(loaded?.viewModel.creations.map(({ kind }) => kind)).toEqual(['template'])
   })
 
-  it('returns null when the primary creator does not exist', async () => {
+  it('loads a profile from published work when the creator record is missing', async () => {
     mocks.creatorDetail.mockResolvedValue({ data: {} })
+
+    const loaded = await loadCreatorProfile({
+      uniqueHandle: 'template-author',
+      locale: 'en-US',
+    })
+
+    expect(loaded?.viewModel.profile).toMatchObject({
+      kind: 'individual',
+      handle: 'template-author',
+      displayName: 'template-author',
+    })
+    expect(loaded?.viewModel.creations.map(({ kind }) => kind)).toEqual(['plugin', 'template'])
+  })
+
+  it('loads a profile from published work when the creator request fails', async () => {
+    mocks.creatorDetail.mockRejectedValue(new Error('creator not found or deleted'))
+
+    const loaded = await loadCreatorProfile({
+      uniqueHandle: 'template-author',
+      locale: 'en-US',
+    })
+
+    expect(loaded?.viewModel.profile.handle).toBe('template-author')
+    expect(loaded?.viewModel.creations).toHaveLength(2)
+  })
+
+  it('returns null when the creator record and published work are both missing', async () => {
+    mocks.creatorDetail.mockResolvedValue({ data: {} })
+    mocks.publisherPlugins.mockResolvedValue({ data: { plugins: [] } })
+    mocks.publisherTemplates.mockResolvedValue({ data: { templates: [] } })
 
     await expect(
       loadCreatorProfile({ uniqueHandle: 'missing-creator', locale: 'en-US' }),

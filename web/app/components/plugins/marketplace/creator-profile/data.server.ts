@@ -104,13 +104,22 @@ const loadCreatorProfileCached = cache(
       getPublisherTemplates(uniqueHandle, sortField, sortOrder),
     ])
 
-    const creator = creatorResult.status === 'fulfilled' ? creatorResult.value : undefined
-    if (!creator) return null
-
     const plugins: MarketplacePlugin[] =
       pluginsResult.status === 'fulfilled' ? pluginsResult.value : []
     const templates: MarketplaceTemplate[] =
       templatesResult.status === 'fulfilled' ? templatesResult.value : []
+    let creator = creatorResult.status === 'fulfilled' ? creatorResult.value : undefined
+    // Templates/plugins are keyed by publisher handle. A missing synced creator
+    // row must not 404 a publisher who already has public work.
+    if (!creator && (plugins.length > 0 || templates.length > 0)) {
+      creator = {
+        unique_handle: uniqueHandle,
+        display_name: uniqueHandle,
+        name: uniqueHandle,
+        social_links: [],
+      }
+    }
+    if (!creator) return null
     const kind = publisherType === 'organization' ? 'organization' : 'individual'
     const resource = kind === 'organization' ? 'organizations' : 'creators'
     const encodedHandle = encodeURIComponent(uniqueHandle)
