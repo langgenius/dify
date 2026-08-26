@@ -323,7 +323,7 @@ export function DocumentDetailPage({
 
   const document = documentQuery.data
   return (
-    <section className="flex min-h-0 flex-1 flex-col px-6 pt-3 pb-5 xl:px-8">
+    <section className="flex min-h-0 flex-1 flex-col px-6 pt-3 pb-5">
       <KnowledgeModelReadinessBanner
         capability="index"
         className="mb-4"

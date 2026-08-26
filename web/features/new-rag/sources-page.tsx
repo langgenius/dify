@@ -299,7 +299,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   ])
 
   return (
-    <div className="flex min-h-full min-w-0 flex-1 flex-col p-4 @min-[768px]/knowledge-content:p-6 @min-[1280px]/knowledge-content:p-8">
+    <div className="flex min-h-full min-w-0 flex-1 flex-col px-6 pt-3 pb-6 sm:pb-8">
       <header className="flex items-start justify-between gap-4">
         <div>
           <h2 className="title-xl-semi-bold leading-6 text-text-primary">
