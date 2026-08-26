@@ -73,7 +73,6 @@ class AuthContext:
     token_id: uuid.UUID
     token_type: TokenType
     expires_at: datetime | None
-    token_hash: str
 
 
 _auth_ctx_var: ContextVar[AuthContext] = ContextVar("openapi_auth_ctx")
@@ -249,7 +248,6 @@ class BearerAuthenticator:
             token_id=row.token_id,
             token_type=kind.token_type,
             expires_at=row.expires_at,
-            token_hash=token_hash,
         )
 
 

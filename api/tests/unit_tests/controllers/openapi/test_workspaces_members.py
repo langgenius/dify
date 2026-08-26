@@ -112,7 +112,6 @@ def _auth_ctx(account_id: uuid.UUID | None = None) -> AuthContext:
         token_id=uuid.uuid4(),
         token_type=TokenType.OAUTH_ACCOUNT,
         expires_at=datetime.now(UTC),
-        token_hash="h",
     )
 
 
@@ -123,7 +122,6 @@ def _auth_data(account_id: uuid.UUID) -> AuthData:
     return AuthData(
         token_type=TokenType.OAUTH_ACCOUNT,
         account_id=account_id,
-        token_hash="testhash",
         scopes=frozenset({Scope.FULL}),
     )
 
