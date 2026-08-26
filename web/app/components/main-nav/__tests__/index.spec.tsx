@@ -501,7 +501,7 @@ const mainNavUserProfile = {
   avatar_url: '',
   is_password_set: true,
 }
-const accountMenuAccessibleName = `${mainNavUserProfile.name}, common.account.account`
+const accountMenuAccessibleName = `${mainNavUserProfile.name} common.account.account`
 
 const consoleState: MainNavConsoleState = {
   userProfile: mainNavUserProfile,
@@ -529,7 +529,7 @@ const consoleState: MainNavConsoleState = {
   isLoadingWorkspacePermissionKeys: false,
   workspacePermissionKeys: ownerWorkspacePermissionKeys,
 }
-const workspaceMenuAccessibleName = 'Solar Studio, common.mainNav.workspace.openMenu'
+const workspaceMenuAccessibleName = /Solar Studio.*common\.mainNav\.workspace\.openMenu/
 
 type MainNavSystemFeatures = Exclude<
   NonNullable<Parameters<typeof renderWithConsoleQuery>[1]>['systemFeatures'],
@@ -1613,7 +1613,9 @@ describe('MainNav', () => {
     renderMainNav()
 
     await user.hover(await screen.findByText('Alpha App'))
-    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    await user.click(
+      screen.getByRole('button', { name: /common\.operation\.moreActionsFor.*Alpha App/ }),
+    )
     await user.click(await screen.findByText('explore.sidebar.action.pin'))
 
     await waitFor(() => {
@@ -1624,7 +1626,9 @@ describe('MainNav', () => {
     })
 
     await user.hover(screen.getByText('Alpha App'))
-    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    await user.click(
+      screen.getByRole('button', { name: /common\.operation\.moreActionsFor.*Alpha App/ }),
+    )
     await user.click(await screen.findByText('explore.sidebar.action.delete'))
     await user.click(await screen.findByText('common.operation.confirm'))
 

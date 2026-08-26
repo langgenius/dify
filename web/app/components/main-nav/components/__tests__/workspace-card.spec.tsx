@@ -102,7 +102,9 @@ const currentWorkspaceValue: GetWorkspacesCurrentSummaryResponse = {
   role: 'owner',
   credits: 7500,
 }
-const workspaceMenuAccessibleName = `${currentWorkspaceValue.name}, common.mainNav.workspace.openMenu`
+const workspaceMenuAccessibleName = new RegExp(
+  `${currentWorkspaceValue.name}.*common\\.mainNav\\.workspace\\.openMenu`,
+)
 
 const mockSetShowPricingModal = vi.fn()
 const mockSetSettingsDestination = vi.fn()
@@ -192,6 +194,16 @@ describe('WorkspaceCard', () => {
     expect(screen.getByRole('button', { name: workspaceMenuAccessibleName })).toBeInTheDocument()
   })
 
+  it('includes the visible workspace plan in the menu trigger accessible name', () => {
+    renderWorkspaceCard({ systemFeatures: { deployment_edition: 'CLOUD' } })
+
+    expect(
+      screen.getByRole('button', {
+        name: /Solar Studio.*sandbox.*common\.mainNav\.workspace\.openMenu/i,
+      }),
+    ).toBeInTheDocument()
+  })
+
   it('hides cloud-only credits and upgrade actions outside cloud edition', () => {
     renderWorkspaceCard()
 
@@ -205,9 +217,12 @@ describe('WorkspaceCard', () => {
   it('links workspace credits to model provider settings in cloud edition', () => {
     renderWorkspaceCard({ systemFeatures: { deployment_edition: 'CLOUD' } })
 
-    expect(
-      screen.getByRole('link', { name: /common\.mainNav\.workspace\.credits/ }),
-    ).toHaveAttribute('href', '/integrations/model-provider')
+    const creditsLink = screen.getByRole('link', {
+      name: '7,500 common.mainNav.workspace.creditsUnit',
+    })
+
+    expect(creditsLink).toHaveAttribute('href', '/integrations/model-provider')
+    expect(creditsLink).toHaveTextContent('7,500 common.mainNav.workspace.creditsUnit')
   })
 
   it('renders unlimited credits from the summary contract', () => {

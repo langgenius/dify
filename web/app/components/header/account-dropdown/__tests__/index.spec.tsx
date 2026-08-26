@@ -56,7 +56,7 @@ const userProfile = {
   email: 'current@example.com',
   avatar_url: 'current-avatar.png',
 }
-const accountMenuAccessibleName = `${userProfile.name}, common.account.account`
+const accountMenuAccessibleName = `${userProfile.name} common.account.account`
 
 const renderAccountDropdown = () => {
   const queryClient = createAccountProfileQueryClient(userProfile)
@@ -93,6 +93,15 @@ describe('AccountDropdown', () => {
     renderWithConsoleQuery(<AccountSection />, { queryClient })
 
     expect(screen.getByRole('button', { name: accountMenuAccessibleName })).toBeInTheDocument()
+  })
+
+  it('keeps the account identity in the compact trigger accessible name', () => {
+    const queryClient = createAccountProfileQueryClient(userProfile)
+
+    renderWithConsoleQuery(<AccountSection compact />, { queryClient })
+
+    expect(screen.getByRole('button', { name: accountMenuAccessibleName })).toBeInTheDocument()
+    expect(screen.queryByText('Current User')).not.toBeInTheDocument()
   })
 
   it('reads the signed-in account from the account profile query', async () => {
