@@ -1,6 +1,5 @@
 import json
 from decimal import Decimal
-from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
@@ -8,7 +7,36 @@ from sqlalchemy.orm import Session
 
 import core.agent.base_agent_runner as module
 from core.agent.base_agent_runner import BaseAgentRunner
-from graphon.file import FileTransferMethod, FileType
+from core.agent.entities import AgentEntity, AgentToolEntity
+from core.app.app_config.entities import (
+    AppAdditionalFeatures,
+    DatasetEntity,
+    DatasetRetrieveConfigEntity,
+    EasyUIBasedAppModelConfigFrom,
+    ModelConfigEntity,
+    PromptTemplateEntity,
+)
+from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
+from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.entities.app_invoke_entities import (
+    AgentChatAppGenerateEntity,
+    InvokeFrom,
+    ModelConfigWithCredentialsEntity,
+)
+from core.model_manager import ModelInstance
+from core.tools.__base.tool import Tool
+from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import (
+    ToolDescription,
+    ToolEntity,
+    ToolIdentity,
+    ToolParameter,
+    ToolProviderType,
+)
+from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
+from graphon.file import FileTransferMethod, FileType, FileUploadConfig, ImageConfig
+from graphon.model_runtime.entities import LLMUsage, PromptMessageTool
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
 from models.model import AppMode, AppModelConfig, Conversation, Message, MessageAgentThought, MessageFile
 
@@ -82,6 +110,80 @@ def _persist_history(session: Session, *messages: Message, thoughts: list[Messag
     session.commit()
 
 
+def _app_config(
+    *,
+    simple_prompt_template: str | None = "",
+    agent: AgentEntity | None = None,
+    dataset: DatasetEntity | None = None,
+    additional_features: AppAdditionalFeatures | None = None,
+) -> AgentChatAppConfig:
+    return AgentChatAppConfig(
+        tenant_id="tenant",
+        app_id="app1",
+        app_mode=AppMode.AGENT_CHAT,
+        app_model_config_from=EasyUIBasedAppModelConfigFrom.ARGS,
+        app_model_config_dict={},
+        model=ModelConfigEntity(provider="provider", model="model"),
+        prompt_template=PromptTemplateEntity(
+            prompt_type=PromptTemplateEntity.PromptType.SIMPLE,
+            simple_prompt_template=simple_prompt_template,
+        ),
+        agent=agent,
+        dataset=dataset,
+        additional_features=additional_features,
+    )
+
+
+def _app_generate(
+    *,
+    app_config: AgentChatAppConfig | None = None,
+    files: list[str] | None = None,
+) -> AgentChatAppGenerateEntity:
+    """Build the real generate entity with only the fields used by these unit tests."""
+
+    return AgentChatAppGenerateEntity.model_construct(
+        task_id="task",
+        app_config=app_config or _app_config(),
+        inputs={},
+        files=files or [],
+        user_id="user",
+        stream=False,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
+
+
+def _agent_tool(tool_name: str) -> AgentToolEntity:
+    return AgentToolEntity(
+        provider_type=ToolProviderType.BUILT_IN,
+        provider_id="provider",
+        tool_name=tool_name,
+    )
+
+
+def _agent(*tools: AgentToolEntity) -> AgentEntity:
+    return AgentEntity(
+        provider="provider",
+        model="model",
+        strategy=AgentEntity.Strategy.FUNCTION_CALLING,
+        tools=list(tools),
+    )
+
+
+def _tool_entity(name: str) -> ToolEntity:
+    return ToolEntity(
+        identity=ToolIdentity(
+            author="author",
+            name=name,
+            label=I18nObject(en_US=name),
+            provider="provider",
+        ),
+        description=ToolDescription(
+            human=I18nObject(en_US="Description"),
+            llm="desc",
+        ),
+    )
+
+
 @pytest.fixture
 def database_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Session:
     """Bind legacy global-session writes to a real SQLite Session."""
@@ -91,44 +193,40 @@ def database_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -
 
 
 @pytest.fixture
-def runner(mocker: MockerFixture) -> BaseAgentRunner:
+def runner() -> BaseAgentRunner:
     instance = BaseAgentRunner.__new__(BaseAgentRunner)
     instance.tenant_id = "tenant"
     instance.user_id = "user"
     instance.agent_thought_count = 0
     instance.message = _message()
-    instance.app_config = mocker.MagicMock()
-    instance.app_config.app_id = "app1"
-    instance.app_config.agent = None
+    instance.app_config = _app_config()
     instance.dataset_tools = []
-    instance.application_generate_entity = mocker.MagicMock(invoke_from="test")
+    instance.application_generate_entity = _app_generate(app_config=instance.app_config)
     instance._current_thoughts = []
     return instance
 
 
 class TestRepack:
-    def test_sets_empty_if_none(self, runner: BaseAgentRunner, mocker: MockerFixture) -> None:
-        entity = mocker.MagicMock()
-        entity.app_config.prompt_template.simple_prompt_template = None
+    def test_sets_empty_if_none(self, runner: BaseAgentRunner) -> None:
+        entity = _app_generate(app_config=_app_config(simple_prompt_template=None))
         result = runner._repack_app_generate_entity(entity)
         assert result.app_config.prompt_template.simple_prompt_template == ""
 
-    def test_keeps_existing(self, runner: BaseAgentRunner, mocker: MockerFixture) -> None:
-        entity = mocker.MagicMock()
-        entity.app_config.prompt_template.simple_prompt_template = "abc"
+    def test_keeps_existing(self, runner: BaseAgentRunner) -> None:
+        entity = _app_generate(app_config=_app_config(simple_prompt_template="abc"))
         result = runner._repack_app_generate_entity(entity)
         assert result.app_config.prompt_template.simple_prompt_template == "abc"
 
 
 def test_update_prompt_tool_replaces_parameters(runner: BaseAgentRunner, mocker: MockerFixture) -> None:
-    tool = mocker.MagicMock()
+    tool = mocker.Mock(spec=Tool)
     schema = {
         "type": "object",
         "properties": {"p1": {"type": "string", "description": "desc"}},
         "required": ["p1"],
     }
     tool.get_llm_parameters_json_schema.return_value = schema
-    prompt_tool = mocker.MagicMock(parameters={"properties": {}, "required": []})
+    prompt_tool = PromptMessageTool(name="tool", description="", parameters={"properties": {}, "required": []})
 
     result = runner.update_prompt_message_tool(tool, prompt_tool)
 
@@ -171,18 +269,21 @@ def test_save_agent_thought_full_update(
     mocker: MockerFixture,
 ) -> None:
     thought = _persist_thought(database_session)
-    label = mocker.MagicMock()
-    label.to_dict.return_value = {"en_US": "label"}
+    label = I18nObject(en_US="label")
     mocker.patch.object(module.ToolManager, "get_tool_label", return_value=label)
-    usage = mocker.MagicMock(
+    usage = LLMUsage(
         prompt_tokens=1,
         prompt_price_unit=Decimal("0.1"),
         prompt_unit_price=Decimal("0.1"),
+        prompt_price=Decimal("0.1"),
         completion_tokens=2,
         completion_price_unit=Decimal("0.2"),
         completion_unit_price=Decimal("0.2"),
+        completion_price=Decimal("0.2"),
         total_tokens=3,
         total_price=Decimal("0.3"),
+        currency="USD",
+        latency=0,
     )
 
     runner.save_agent_thought(
@@ -324,8 +425,7 @@ def test_organize_user_prompt_uses_file_config(
     config = AppModelConfig(app_id="app1")
     sqlite_session.add_all([config, _conversation(app_model_config_id=config.id), _message_file()])
     sqlite_session.commit()
-    file_config = mocker.MagicMock()
-    file_config.image_config = mocker.MagicMock(detail=None)
+    file_config = FileUploadConfig(image_config=ImageConfig(detail=None))
     mocker.patch.object(AppModelConfig, "to_dict", return_value={})
     mocker.patch.object(module.FileUploadConfigManager, "convert", return_value=file_config)
     mocker.patch.object(module.file_factory, "build_from_message_files", return_value=[])
@@ -348,8 +448,7 @@ def test_organize_user_prompt_builds_file_content(
     config = AppModelConfig(app_id="app1")
     sqlite_session.add_all([config, _conversation(app_model_config_id=config.id), _message_file()])
     sqlite_session.commit()
-    file_config = mocker.MagicMock()
-    file_config.image_config = mocker.MagicMock(detail=None)
+    file_config = FileUploadConfig(image_config=ImageConfig(detail=None))
     mocker.patch.object(AppModelConfig, "to_dict", return_value={})
     mocker.patch.object(module.FileUploadConfigManager, "convert", return_value=file_config)
     mocker.patch.object(module.file_factory, "build_from_message_files", return_value=["file1"])
@@ -434,9 +533,8 @@ def test_organize_history_without_tool_name(runner: BaseAgentRunner, sqlite_sess
 
 
 def test_convert_tool_to_prompt_message_tool(runner: BaseAgentRunner, mocker: MockerFixture) -> None:
-    tool = mocker.MagicMock(tool_name="tool1")
-    tool_entity = mocker.MagicMock()
-    tool_entity.entity.description.llm = "desc"
+    tool = _agent_tool("tool1")
+    tool_entity = mocker.Mock(spec=Tool, entity=_tool_entity("tool1"))
     schema = {
         "type": "object",
         "properties": {"param1": {"type": "string", "description": "desc"}},
@@ -452,11 +550,15 @@ def test_convert_tool_to_prompt_message_tool(runner: BaseAgentRunner, mocker: Mo
 
 
 def test_convert_dataset_retriever_tool(runner: BaseAgentRunner, mocker: MockerFixture) -> None:
-    dataset_tool = mocker.MagicMock()
-    dataset_tool.entity.identity.name = "ds"
-    dataset_tool.entity.description.llm = "desc"
-    parameter = mocker.MagicMock(name="query", llm_description="desc", required=True)
-    parameter.name = "query"
+    dataset_tool = mocker.Mock(spec=DatasetRetrieverTool, entity=_tool_entity("ds"))
+    parameter = ToolParameter(
+        name="query",
+        label=I18nObject(en_US="Query"),
+        type=ToolParameter.ToolParameterType.STRING,
+        form=ToolParameter.ToolParameterForm.LLM,
+        llm_description="desc",
+        required=True,
+    )
     dataset_tool.get_runtime_parameters.return_value = [parameter]
 
     prompt = runner._convert_dataset_retriever_tool_to_prompt_message_tool(dataset_tool)
@@ -466,13 +568,17 @@ def test_convert_dataset_retriever_tool(runner: BaseAgentRunner, mocker: MockerF
 
 
 def test_init_prompt_tools_adds_agent_and_dataset_tools(runner: BaseAgentRunner, mocker: MockerFixture) -> None:
-    agent_tool = mocker.MagicMock(tool_name="agent_tool")
-    dataset_tool = mocker.MagicMock()
-    dataset_tool.entity.identity.name = "dataset_tool"
-    runner.app_config.agent = mocker.MagicMock(tools=[agent_tool])
+    agent_tool = _agent_tool("agent_tool")
+    dataset_tool = mocker.Mock(spec=DatasetRetrieverTool, entity=_tool_entity("dataset_tool"))
+    runner.app_config.agent = _agent(agent_tool)
     runner.dataset_tools = [dataset_tool]
-    mocker.patch.object(runner, "_convert_tool_to_prompt_message_tool", return_value=(MagicMock(), "agent-entity"))
-    mocker.patch.object(runner, "_convert_dataset_retriever_tool_to_prompt_message_tool", return_value=MagicMock())
+    prompt_tool = PromptMessageTool(name="tool", description="", parameters={})
+    mocker.patch.object(runner, "_convert_tool_to_prompt_message_tool", return_value=(prompt_tool, "agent-entity"))
+    mocker.patch.object(
+        runner,
+        "_convert_dataset_retriever_tool_to_prompt_message_tool",
+        return_value=prompt_tool,
+    )
 
     tools, prompts = runner._init_prompt_tools()
 
@@ -481,8 +587,8 @@ def test_init_prompt_tools_adds_agent_and_dataset_tools(runner: BaseAgentRunner,
 
 
 def test_init_prompt_tools_skips_deleted_agent_tool(runner: BaseAgentRunner, mocker: MockerFixture) -> None:
-    agent_tool = mocker.MagicMock(tool_name="bad_tool")
-    runner.app_config.agent = mocker.MagicMock(tools=[agent_tool])
+    agent_tool = _agent_tool("bad_tool")
+    runner.app_config.agent = _agent(agent_tool)
     mocker.patch.object(runner, "_convert_tool_to_prompt_message_tool", side_effect=Exception)
 
     tools, prompts = runner._init_prompt_tools()
@@ -509,21 +615,26 @@ def test_init_uses_real_session_for_count_and_dependencies(
         "get_dataset_tools",
         return_value=["ds_tool"],
     )
-    llm = mocker.MagicMock()
-    llm.get_model_schema.return_value = mocker.MagicMock(
+    llm = mocker.Mock(spec=LargeLanguageModel)
+    llm.get_model_schema.return_value = mocker.Mock(
         features=[module.ModelFeature.STREAM_TOOL_CALL, module.ModelFeature.VISION]
     )
-    model_instance = mocker.MagicMock(
+    model_instance = mocker.Mock(
+        spec=ModelInstance,
         model_type_instance=llm,
         model_name="m",
         credentials="c",
     )
-    app_config = mocker.MagicMock()
-    app_config.app_id = "app1"
-    app_config.agent = None
-    app_config.dataset = mocker.MagicMock(dataset_ids=["d1"], retrieve_config={"k": "v"})
-    app_config.additional_features = mocker.MagicMock(show_retrieve_source=True)
-    app_generate = mocker.MagicMock(invoke_from="test", inputs={}, files=["file1"])
+    app_config = _app_config(
+        dataset=DatasetEntity(
+            dataset_ids=["d1"],
+            retrieve_config=DatasetRetrieveConfigEntity(
+                retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE,
+            ),
+        ),
+        additional_features=AppAdditionalFeatures(show_retrieve_source=True),
+    )
+    app_generate = _app_generate(app_config=app_config, files=["file1"])
     message = _message(message_id="msg1")
 
     initialized = BaseAgentRunner(
@@ -532,9 +643,9 @@ def test_init_uses_real_session_for_count_and_dependencies(
         application_generate_entity=app_generate,
         conversation=_conversation(),
         app_config=app_config,
-        model_config=mocker.MagicMock(),
-        config=mocker.MagicMock(),
-        queue_manager=mocker.MagicMock(),
+        model_config=ModelConfigWithCredentialsEntity.model_construct(),
+        config=_agent(),
+        queue_manager=mocker.Mock(spec=AppQueueManager),
         message=message,
         user_id="user",
         model_instance=model_instance,
