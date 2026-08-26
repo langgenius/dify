@@ -646,7 +646,9 @@ def test_custom_bucket_document_is_attached_to_llm_prompt(file_records: FileReco
 
     mock_to_prompt.assert_called_once()
     assert mock_to_prompt.call_args.args[0] is file
-    assert prompt_content in prompt_messages[-1].content
+    last_content = prompt_messages[-1].content
+    assert isinstance(last_content, list)
+    assert prompt_content in last_content
 
 
 def test_custom_bucket_pdf_converts_to_document_prompt_content(file_records: FileRecords):
