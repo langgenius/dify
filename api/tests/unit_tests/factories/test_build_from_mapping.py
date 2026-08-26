@@ -17,6 +17,14 @@ from factories.file_factory.builders import _resolve_file_type
 from factories.file_factory.builders import build_from_mapping as _build_from_mapping
 from factories.file_factory.builders import build_from_mappings as _build_from_mappings
 from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig
+from graphon.model_runtime.entities import (
+    DocumentPromptMessageContent,
+    ImagePromptMessageContent,
+    PromptMessageRole,
+)
+from graphon.nodes.llm import llm_utils
+from graphon.nodes.llm.entities import LLMNodeChatModelMessage
+from graphon.runtime import VariablePool
 from models import CreatorUserRole, ToolFile, UploadFile
 
 # Test Data
@@ -584,3 +592,56 @@ def test_resolve_file_type_custom_bucket_keeps_detected_type(
         )
         == expected
     )
+
+
+def test_custom_bucket_document_is_attached_to_llm_prompt(file_records: FileRecords):
+    """A Start-node Other File Types PDF must reach LLM prompt conversion (#41236)."""
+    file_records.upload_file.extension = "pdf"
+    file_records.upload_file.name = "report.pdf"
+    file_records.upload_file.mime_type = "application/pdf"
+    file_records.session.commit()
+
+    file = build_from_mapping(
+        mapping={
+            "transfer_method": "local_file",
+            "upload_file_id": TEST_UPLOAD_FILE_ID,
+            "type": "custom",
+        },
+        tenant_id=TEST_TENANT_ID,
+        config=FileUploadConfig(
+            allowed_file_types=[FileType.CUSTOM],
+            allowed_file_extensions=[".pdf"],
+        ),
+    )
+    assert file.type == FileType.DOCUMENT
+
+    variable_pool = VariablePool.empty()
+    variable_pool.add(["start", "file"], file)
+    prompt_content = DocumentPromptMessageContent(
+        format="pdf",
+        url="https://example.com/report.pdf",
+        mime_type="application/pdf",
+        filename="report.pdf",
+    )
+
+    with patch(
+        "graphon.nodes.llm.llm_utils.file_manager.to_prompt_message_content",
+        return_value=prompt_content,
+    ) as mock_to_prompt:
+        prompt_messages = llm_utils.handle_list_messages(
+            messages=[
+                LLMNodeChatModelMessage(
+                    text="Read {{#start.file#}}",
+                    role=PromptMessageRole.USER,
+                    edition_type="basic",
+                )
+            ],
+            context="",
+            jinja2_variables=[],
+            variable_pool=variable_pool,
+            vision_detail_config=ImagePromptMessageContent.DETAIL.HIGH,
+        )
+
+    mock_to_prompt.assert_called_once()
+    assert mock_to_prompt.call_args.args[0] is file
+    assert prompt_content in prompt_messages[-1].content
