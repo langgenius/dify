@@ -88,7 +88,6 @@ function DifyBuilderPanel() {
   const { view, lastError, progressLog, startFix, startChecklistFix, runAction, sendMessage } =
     useDifyBuilderSession({
       baseUrl: API_PREFIX,
-      workspaceId: currentWorkspace.id,
     })
 
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
