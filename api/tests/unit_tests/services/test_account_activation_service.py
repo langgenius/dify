@@ -183,7 +183,10 @@ class TestActivateInvitation:
         tokens.find.return_value = _token()
         invitation = _invitation(role="owner")
         accounts.resolve.return_value = invitation
-        accounts.activate.return_value = ActivationPersistenceResult(membership_created=True)
+        accounts.activate.return_value = ActivationPersistenceResult(
+            membership_created=True,
+            registration_completed=True,
+        )
         command = ActivationCommand(
             invitation=_lookup("Invitee@Example.com"),
             name="John Doe",
@@ -212,7 +215,10 @@ class TestActivateInvitation:
             requires_setup=False,
         )
         accounts.resolve.return_value = invitation
-        accounts.activate.return_value = ActivationPersistenceResult(membership_created=False)
+        accounts.activate.return_value = ActivationPersistenceResult(
+            membership_created=False,
+            registration_completed=False,
+        )
 
         result = service.activate(
             ActivationCommand(
@@ -237,7 +243,10 @@ class TestActivateInvitation:
             requires_setup=True,
         )
         accounts.resolve.return_value = invitation
-        accounts.activate.return_value = ActivationPersistenceResult(membership_created=True)
+        accounts.activate.return_value = ActivationPersistenceResult(
+            membership_created=True,
+            registration_completed=False,
+        )
 
         result = service.activate(
             ActivationCommand(
@@ -258,7 +267,10 @@ class TestActivateInvitation:
         tokens.find.return_value = _token()
         invitation = _invitation(requires_setup=None)
         accounts.resolve.return_value = invitation
-        accounts.activate.return_value = ActivationPersistenceResult(membership_created=True)
+        accounts.activate.return_value = ActivationPersistenceResult(
+            membership_created=True,
+            registration_completed=True,
+        )
 
         result = service.activate(
             ActivationCommand(
@@ -276,6 +288,27 @@ class TestActivateInvitation:
             role="admin",
             setup=AccountSetup(name="Legacy Invitee", interface_language="en-US", timezone="UTC"),
         )
+
+    def test_reports_locked_persistence_result_when_concurrent_request_wins(self) -> None:
+        service, tokens, accounts, _, _, _ = _service()
+        tokens.find.return_value = _token()
+        accounts.resolve.return_value = _invitation()
+        accounts.activate.return_value = ActivationPersistenceResult(
+            membership_created=True,
+            registration_completed=False,
+        )
+
+        result = service.activate(
+            ActivationCommand(
+                invitation=_lookup(),
+                name="Concurrent Loser",
+                interface_language="en-US",
+                timezone="UTC",
+            ),
+            authenticated_account_id=None,
+        )
+
+        assert result.registration_completed is False
 
     def test_does_not_return_completion_when_persistence_fails(self) -> None:
         service, tokens, accounts, _, _, membership_cache = _service()
