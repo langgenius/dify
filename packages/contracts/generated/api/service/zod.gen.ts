@@ -2884,7 +2884,7 @@ export const zWorkflowBlockingResponse = z.union([
 /**
  * PipelineRunJsonResponse
  *
- * Complete pipeline execution result. Returned when `response_mode` is `blocking`.
+ * JSON result for published runs and draft runs using `response_mode: blocking`.
  */
 export const zPipelineRunJsonResponse = z.union([
   zPublishedPipelineRunResponse,

@@ -337,7 +337,8 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
             "knowledge base."
         ),
         ("DatasetDetailResponse", "external_knowledge_info"): (
-            "Connection details for external knowledge bases. Present when `provider` is `external`."
+            "Connection details for external knowledge bases. Populated when `provider` is `external`; otherwise "
+            "its properties are `null`."
         ),
         ("DatasetDetailResponse", "icon_info"): "Icon display configuration for the knowledge base.",
         ("DatasetDetailResponse", "retrieval_model_dict"): "Retrieval configuration for the knowledge base.",
@@ -369,11 +370,12 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
         assert schemas[schema_name]["properties"][property_name]["description"] == description
 
     assert schemas["PipelineRunJsonResponse"]["description"] == (
-        "Complete pipeline execution result. Returned when `response_mode` is `blocking`."
+        "JSON result for published runs and draft runs using `response_mode: blocking`."
     )
     for schema_name in ("DatasetDetailResponse", "DatasetDetailWithPartialMembersResponse"):
         assert schemas[schema_name]["properties"]["external_knowledge_info"]["description"] == (
-            "Connection details for external knowledge bases. Present when `provider` is `external`."
+            "Connection details for external knowledge bases. Populated when `provider` is `external`; otherwise "
+            "its properties are `null`."
         )
 
     chat_blocking_schema = schemas["ChatBlockingResponse"]

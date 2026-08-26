@@ -119,7 +119,7 @@ class PublishedPipelineRunResponse(ResponseModel):
 
 
 class PipelineRunJsonResponse(RootModel[PublishedPipelineRunResponse | WorkflowBlockingResponse]):
-    """Complete pipeline execution result. Returned when `response_mode` is `blocking`."""
+    """JSON result for published runs and draft runs using `response_mode: blocking`."""
 
 
 register_schema_model(service_api_ns, DatasourceNodeRunPayload)

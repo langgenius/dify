@@ -2826,7 +2826,7 @@ Enum class for custom configuration status.
 | embedding_model | string |  | Yes |
 | embedding_model_provider | string |  | Yes |
 | enable_api | boolean |  | Yes |
-| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) | Connection details for external knowledge bases. Present when `provider` is `external`. | No |
+| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) | Connection details for external knowledge bases. Populated when `provider` is `external`; otherwise its properties are `null`. | No |
 | external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
 | icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) | Icon display configuration for the knowledge base. | No |
 | id | string |  | Yes |
@@ -2868,7 +2868,7 @@ Enum class for custom configuration status.
 | embedding_model | string |  | Yes |
 | embedding_model_provider | string |  | Yes |
 | enable_api | boolean |  | Yes |
-| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) | Connection details for external knowledge bases. Present when `provider` is `external`. | No |
+| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) | Connection details for external knowledge bases. Populated when `provider` is `external`; otherwise its properties are `null`. | No |
 | external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
 | icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) | Icon display configuration for the knowledge base. | No |
 | id | string |  | Yes |
@@ -3828,11 +3828,11 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 #### PipelineRunJsonResponse
 
-Complete pipeline execution result. Returned when `response_mode` is `blocking`.
+JSON result for published runs and draft runs using `response_mode: blocking`.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| PipelineRunJsonResponse | [PublishedPipelineRunResponse](#publishedpipelinerunresponse)<br>[WorkflowBlockingResponse](#workflowblockingresponse) | Complete pipeline execution result. Returned when `response_mode` is `blocking`. |  |
+| PipelineRunJsonResponse | [PublishedPipelineRunResponse](#publishedpipelinerunresponse)<br>[WorkflowBlockingResponse](#workflowblockingresponse) | JSON result for published runs and draft runs using `response_mode: blocking`. |  |
 
 #### PipelineUploadFileResponse
 

@@ -228,7 +228,7 @@ def cloud_edition_billing_resource_check[**P, R](
         if resource == "vector_space":
             cast(_RestxDocumentedView, decorated).__apidoc__ = cast(
                 dict[str, object],
-                merge(getattr(decorated, "__apidoc__", {}), {"responses": VECTOR_SPACE_UNAVAILABLE_RESPONSE}),
+                merge(decorated.__dict__.get("__apidoc__", {}), {"responses": VECTOR_SPACE_UNAVAILABLE_RESPONSE}),
             )
         return decorated
 

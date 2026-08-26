@@ -160,7 +160,10 @@ class DatasetDetailResponse(ResponseModel):
     doc_form: str | None
     external_knowledge_info: DatasetExternalKnowledgeInfoResponse = Field(
         default_factory=DatasetExternalKnowledgeInfoResponse,
-        description="Connection details for external knowledge bases. Present when `provider` is `external`.",
+        description=(
+            "Connection details for external knowledge bases. Populated when `provider` is `external`; otherwise "
+            "its properties are `null`."
+        ),
     )
     external_retrieval_model: DatasetExternalRetrievalModelResponse | None
     doc_metadata: list[DatasetDocMetadataResponse]
