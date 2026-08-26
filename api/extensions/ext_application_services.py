@@ -1,6 +1,7 @@
 """Composition root for application services used by transport adapters."""
 
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import cast
 
@@ -12,6 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import get_session_maker
+from core.helper.ssrf_proxy import ssrf_proxy
 from core.schemas.schema_manager import SchemaManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_redis import RedisClientWrapper, redis_client
@@ -23,8 +25,10 @@ from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
+from repositories.data_source_oauth_binding_repository import SQLAlchemyDataSourceOAuthBindingRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.installation_state_repository import InstallationStateRepository
+from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
 from repositories.tag_repository import TagRepository
 from repositories.trial_app_query_repository import TrialAppQueryRepository
@@ -78,6 +82,7 @@ from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthS
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
+from services.data_source_oauth_service import DataSourceOAuthService, InvalidDataSourceOAuthProviderError
 from services.enterprise.enterprise_service import EnterpriseService
 from services.errors.enterprise import EnterpriseServiceError
 from services.explore_banner_query_service import ExploreBannerQueryService
@@ -86,6 +91,8 @@ from services.feature_service import FeatureService
 from services.feature_service_gateway import FeatureServiceGateway
 from services.file_service import FileService
 from services.init_validation_service import InitValidationService
+from services.notion_data_source_gateway import NotionDataSourceGateway
+from services.oauth_server_service import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthServerService
 from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.recommended_app_catalog_gateway import (
     BuiltinRecommendedAppCatalogGateway,
@@ -151,12 +158,14 @@ class ApplicationServices:
     billing_portal: BillingPortalService
     compliance_downloads: ComplianceDownloadService
     data_source_api_key_auth: DataSourceApiKeyAuthService
+    data_source_oauth: Mapping[str, DataSourceOAuthService]
     webapp_access: WebAppAccessQueryService
     web_app_runtime: WebAppRuntimeQueryService
     explore_banner_queries: ExploreBannerQueryService
     schema_definitions: SchemaDefinitionService
     setup: SetupService
     feature_queries: FeatureQueryService
+    oauth_server: OAuthServerService
     init_validation: InitValidationService
     partner_tenant_bindings: PartnerTenantBindingService
     recommended_app_queries: RecommendedAppQueryService
@@ -164,6 +173,46 @@ class ApplicationServices:
     workspace_queries: WorkspaceQueryService
     workspace_member_queries: WorkspaceMemberQueryService
     tags: TagApplicationService
+
+    def resolve_data_source_oauth(self, provider: str) -> DataSourceOAuthService:
+        service = self.data_source_oauth.get(provider)
+        if service is None:
+            raise InvalidDataSourceOAuthProviderError("Invalid provider")
+        return service
+
+
+def _build_data_source_oauth_services(
+    *,
+    database_client: sessionmaker[Session],
+) -> Mapping[str, DataSourceOAuthService]:
+    notion_data_source = NotionDataSourceGateway(
+        client_id=dify_config.NOTION_CLIENT_ID or "",
+        client_secret=dify_config.NOTION_CLIENT_SECRET or "",
+        redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/data-source/callback/notion",
+        http_client=ssrf_proxy,
+    )
+    bindings = SQLAlchemyDataSourceOAuthBindingRepository(session_factory=database_client)
+    return {
+        "notion": DataSourceOAuthService(
+            provider_name="notion",
+            provider_gateway=notion_data_source,
+            bindings=bindings,
+            is_internal_provider=dify_config.NOTION_INTEGRATION_TYPE == "internal",
+            internal_access_token=dify_config.NOTION_INTERNAL_SECRET,
+        )
+    }
+
+
+def _build_oauth_server_service(
+    *,
+    database_client: sessionmaker[Session],
+    redis: RedisClientWrapper,
+) -> OAuthServerService:
+    return OAuthServerService(
+        repository=SQLAlchemyOAuthServerRepository(session_factory=database_client),
+        tokens=RedisOAuthServerTokenRepository(redis=redis),
+        access_token_expires_in=OAUTH_ACCESS_TOKEN_EXPIRES_IN,
+    )
 
 
 def build_application_services(
@@ -302,6 +351,7 @@ def build_application_services(
             validator=ProviderApiKeyAuthCredentialValidator(),
             encryptor=TenantApiKeyAuthCredentialEncryptor(),
         ),
+        data_source_oauth=_build_data_source_oauth_services(database_client=database_client),
         webapp_access=WebAppAccessQueryService(
             access=WebAppAccessQueryRepository(session_factory=database_client),
             webapp_auth_enabled=FeatureService.is_webapp_auth_enabled(),
@@ -329,6 +379,7 @@ def build_application_services(
             features=feature_gateway,
             app_dsl_version=CURRENT_APP_DSL_VERSION,
         ),
+        oauth_server=_build_oauth_server_service(database_client=database_client, redis=redis),
         init_validation=InitValidationService(
             state=installation_state,
             validation_required=(deployment_edition != DeploymentEdition.CLOUD and bool(initialization_password)),

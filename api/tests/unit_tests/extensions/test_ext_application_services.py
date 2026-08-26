@@ -134,6 +134,7 @@ def test_build_application_services_configures_setup_policy(
     )
 
     assert services.setup.get_status().completed is setup_completed
+    assert services.oauth_server is not None
 
 
 def test_build_application_services_wires_builtin_schema_definitions(
