@@ -50,20 +50,6 @@ class MessageMetadata(BaseModel):
     retriever_resources: list[dict[str, Any]] = []
 
 
-class PaginationEnvelope[T](BaseModel):
-    """Canonical pagination envelope for `/openapi/v1/*` list endpoints."""
-
-    page: int
-    limit: int
-    total: int
-    has_more: bool
-    data: list[T]
-
-    @classmethod
-    def build(cls, *, page: int, limit: int, total: int, items: list[T]) -> PaginationEnvelope[T]:
-        return cls(page=page, limit=limit, total=total, has_more=page * limit < total, data=items)
-
-
 class AppListRow(BaseModel):
     id: str
     name: str
@@ -109,29 +95,6 @@ class AppDescribeResponse(BaseModel):
     input_schema: dict[str, Any] | None = Field(default=None)
 
 
-class ChatMessageResponse(BaseModel):
-    event: str
-    task_id: str
-    id: str
-    message_id: str
-    conversation_id: str
-    mode: str
-    answer: str
-    metadata: MessageMetadata = Field(default_factory=MessageMetadata)
-    created_at: int
-
-
-class CompletionMessageResponse(BaseModel):
-    event: str
-    task_id: str
-    id: str
-    message_id: str
-    mode: str
-    answer: str
-    metadata: MessageMetadata = Field(default_factory=MessageMetadata)
-    created_at: int
-
-
 class WorkflowRunData(BaseModel):
     id: str
     workflow_id: str
@@ -143,13 +106,6 @@ class WorkflowRunData(BaseModel):
     total_steps: int | None = None
     created_at: int | None = None
     finished_at: int | None = None
-
-
-class WorkflowRunResponse(BaseModel):
-    workflow_run_id: str
-    task_id: str
-    mode: Literal["workflow"] = "workflow"
-    data: WorkflowRunData
 
 
 class AccountPayload(BaseModel):
