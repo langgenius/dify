@@ -419,6 +419,7 @@ class TestResourceAccess:
         mock_send.return_value = {
             "account_ids": ["acct-1"],
             "automatic_include_workspace_members": False,
+            "scope": "specific",
         }
 
         out = svc.RBACService.DatasetAccess.whitelist_config("tenant-1", "acct-1", "dataset-1")
@@ -428,6 +429,22 @@ class TestResourceAccess:
         assert call.endpoint == "/rbac/datasets/whitelist"
         assert call.params == {"dataset_id": "dataset-1"}
         assert out.model_dump(mode="json") == {"automatic_include_workspace_members": False}
+
+    def test_dataset_legacy_whitelist_config_reads_old_scope_without_public_dump(self, mock_send: MagicMock):
+        mock_send.return_value = {
+            "account_ids": ["acct-1"],
+            "automatic_include_workspace_members": False,
+            "scope": "specific",
+        }
+
+        out = svc.RBACService.DatasetAccess.legacy_whitelist_config("tenant-1", "acct-1", "dataset-1")
+
+        call = _call_args(mock_send)
+        assert call.method == "GET"
+        assert call.endpoint == "/rbac/datasets/whitelist"
+        assert call.params == {"dataset_id": "dataset-1"}
+        assert out.account_ids == ["acct-1"]
+        assert out.rbac_whitelist_scope == "specific"
 
     def test_app_matrix(self, mock_send: MagicMock):
         mock_send.return_value = {"resource_id": "app-1", "items": []}
