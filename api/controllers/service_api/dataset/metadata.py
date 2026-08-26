@@ -219,6 +219,7 @@ class DatasetMetadataBuiltInFieldServiceApi(DatasetApiResource):
         tags=["Metadata"],
         responses={
             200: "Built-in metadata fields.",
+            404: "`not_found` : Knowledge base not found.",
         },
     )
     @service_api_ns.doc("get_built_in_fields")

@@ -77,7 +77,7 @@ class SegmentListQuery(BaseModel):
 
 
 class SegmentUpdatePayload(BaseModel):
-    segment: SegmentUpdateArgs = Field(description="Chunk update payload.")
+    segment: SegmentUpdateArgs = Field(description="Chunk data to update.")
 
 
 class ChildChunkListQuery(BaseModel):

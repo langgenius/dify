@@ -19,6 +19,16 @@ USER_DESCRIPTION = (
     "User identifier, unique within the application. This identifier scopes data access; resources created with "
     "one `user` value are only visible when queried with the same `user` value."
 )
+SCOPED_TASK_STOP_USER_DESCRIPTION = (
+    "End-user identifier, defined by your app and unique within it. Send the same `user` value used for the original "
+    "generation request. See "
+    "[End User Identity](/api-reference/guides/end-user-identity)."
+)
+WORKFLOW_TASK_STOP_USER_DESCRIPTION = (
+    "End-user identifier, defined by your app and unique within it. It does not need to match the `user` that "
+    "started the run; the stop applies to the task regardless of `user`. See "
+    "[End User Identity](/api-reference/guides/end-user-identity)."
+)
 USER_PROPERTY_SCHEMA: dict[str, object] = {"description": USER_DESCRIPTION, "type": "string"}
 USER_QUERY_PARAM: dict[str, object] = {
     "description": "User identifier, used for end-user context.",
@@ -113,17 +123,24 @@ def expect_with_user(namespace: Namespace, model: type[BaseModel]):
     return decorator
 
 
-def expect_user_json(namespace: Namespace):
+def expect_user_json(
+    namespace: Namespace,
+    *,
+    model_name: str | None = None,
+    user_description: str = USER_DESCRIPTION,
+):
     """Document a JSON request body that only carries the Service API ``user``."""
 
     def decorator(view_func):
         required = _json_user_required(view_func)
         schema: dict[str, object] = {"properties": {}, "title": "ServiceApiUserPayload", "type": "object"}
-        _add_user_property(schema, required=required)
-        model_name = "RequiredServiceApiUserPayload" if required else "OptionalServiceApiUserPayload"
-        if model_name not in namespace.models:
-            namespace.schema_model(model_name, schema)
-        return namespace.expect(namespace.models[model_name], validate=False)(view_func)
+        _add_user_property(schema, required=required, description=user_description)
+        resolved_model_name = model_name or (
+            "RequiredServiceApiUserPayload" if required else "OptionalServiceApiUserPayload"
+        )
+        if resolved_model_name not in namespace.models:
+            namespace.schema_model(resolved_model_name, schema)
+        return namespace.expect(namespace.models[resolved_model_name], validate=False)(view_func)
 
     return decorator
 
@@ -163,7 +180,7 @@ def _json_user_required(view_func) -> bool:
     return bool(getattr(view_func, USER_REQUIRED_ATTR, False))
 
 
-def _add_user_property(schema: dict[str, object], *, required: bool) -> None:
+def _add_user_property(schema: dict[str, object], *, required: bool, description: str = USER_DESCRIPTION) -> None:
     variants: list[dict[str, object]] = []
     for keyword in ("anyOf", "oneOf"):
         candidates = schema.get(keyword)
@@ -172,15 +189,15 @@ def _add_user_property(schema: dict[str, object], *, required: bool) -> None:
 
     if variants:
         for variant in variants:
-            _add_user_property_to_object_schema(variant, required=required)
+            _add_user_property_to_object_schema(variant, required=required, description=description)
 
-    _add_user_property_to_object_schema(schema, required=required)
+    _add_user_property_to_object_schema(schema, required=required, description=description)
 
 
-def _add_user_property_to_object_schema(schema: dict[str, object], *, required: bool) -> None:
+def _add_user_property_to_object_schema(schema: dict[str, object], *, required: bool, description: str) -> None:
     properties = schema.setdefault("properties", {})
     if isinstance(properties, dict):
-        cast(dict[str, object], properties)["user"] = USER_PROPERTY_SCHEMA
+        cast(dict[str, object], properties)["user"] = {"description": description, "type": "string"}
 
     if required:
         required_fields = schema.setdefault("required", [])
