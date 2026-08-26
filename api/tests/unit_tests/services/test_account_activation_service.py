@@ -228,6 +228,31 @@ class TestActivateInvitation:
         accounts.activate.assert_called_once_with(invitation, role="editor", setup=None)
         membership_cache.invalidate.assert_not_called()
 
+    def test_stale_setup_invitation_does_not_reinitialize_active_account(self) -> None:
+        service, tokens, accounts, _, _, membership_cache = _service()
+        tokens.find.return_value = _token()
+        invitation = _invitation(
+            account_status="active",
+            role="editor",
+            requires_setup=True,
+        )
+        accounts.resolve.return_value = invitation
+        accounts.activate.return_value = ActivationPersistenceResult(membership_created=True)
+
+        result = service.activate(
+            ActivationCommand(
+                invitation=_lookup(),
+                name="Stale Setup",
+                interface_language="zh-Hans",
+                timezone="Asia/Shanghai",
+            ),
+            authenticated_account_id="account-1",
+        )
+
+        assert result.registration_completed is False
+        accounts.activate.assert_called_once_with(invitation, role="editor", setup=None)
+        membership_cache.invalidate.assert_called_once_with("workspace-1")
+
     def test_legacy_pending_invitation_reports_registration_completed_after_persistence(self) -> None:
         service, tokens, accounts, _, _, _ = _service()
         tokens.find.return_value = _token()

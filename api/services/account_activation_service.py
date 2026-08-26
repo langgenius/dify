@@ -154,9 +154,10 @@ class AccountActivationService:
 
     @staticmethod
     def _requires_setup(invitation: AccountInvitation) -> bool:
+        is_pending = invitation.account_status == _PENDING_ACCOUNT_STATUS
         if invitation.requires_setup is not None:
-            return invitation.requires_setup
-        return invitation.account_status == _PENDING_ACCOUNT_STATUS
+            return is_pending and invitation.requires_setup
+        return is_pending
 
     @classmethod
     def _resolve_setup(cls, invitation: AccountInvitation, command: ActivationCommand) -> AccountSetup | None:
