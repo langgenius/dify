@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { ActionItem, SearchResult } from '../actions/types'
+import type { ProviderContextState } from '@/context/provider-context'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -106,6 +107,7 @@ const visibilityState = vi.hoisted(() => ({
   agentEnabled: true,
   canManageAgents: true,
   datasetOperator: false,
+  enableSkill: true,
 }))
 
 vi.mock('jotai', async (importOriginal) => {
@@ -123,6 +125,13 @@ vi.mock('@/features/agent-v2/feature-flag', () => ({
 vi.mock('@/features/agent-v2/permissions', () => ({
   useCanManageAgents: () => visibilityState.canManageAgents,
 }))
+
+vi.mock('@/context/provider-context', () => ({
+  useProviderContextSelector: vi.fn((selector: (state: Partial<ProviderContextState>) => unknown) =>
+    selector({ enableSkill: visibilityState.enableSkill }),
+  ),
+}))
+
 vi.mock(
   '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission',
   () => ({
@@ -236,6 +245,7 @@ describe('GotoAnything', () => {
     visibilityState.agentEnabled = true
     visibilityState.canManageAgents = true
     visibilityState.datasetOperator = false
+    visibilityState.enableSkill = true
     mockFindCommand = null
     mockAvailableCommands = []
   })
@@ -377,9 +387,26 @@ describe('GotoAnything', () => {
 
   describe('search functionality', () => {
     it.each([
-      [{ agentEnabled: true, canManageAgents: true, datasetOperator: false }, true, true],
-      [{ agentEnabled: false, canManageAgents: true, datasetOperator: false }, false, true],
-      [{ agentEnabled: true, canManageAgents: false, datasetOperator: true }, false, false],
+      [
+        { agentEnabled: true, canManageAgents: true, datasetOperator: false, enableSkill: true },
+        true,
+        true,
+      ],
+      [
+        { agentEnabled: false, canManageAgents: true, datasetOperator: false, enableSkill: true },
+        false,
+        true,
+      ],
+      [
+        { agentEnabled: true, canManageAgents: false, datasetOperator: true, enableSkill: true },
+        false,
+        false,
+      ],
+      [
+        { agentEnabled: true, canManageAgents: true, datasetOperator: false, enableSkill: false },
+        true,
+        false,
+      ],
     ] as const)(
       'matches scope visibility to workspace capabilities',
       (visibility, agents, skills) => {
@@ -557,6 +584,24 @@ describe('GotoAnything', () => {
       expect(enabledRemoteQueryKeys).toEqual(
         expect.arrayContaining(['app', 'knowledge', 'plugin', 'skill', 'agent']),
       )
+    })
+
+    it('does not query skills when the skill feature is disabled', async () => {
+      const user = userEvent.setup()
+      visibilityState.enableSkill = false
+
+      renderGotoAnything(<GotoAnything />)
+      triggerSearchShortcut()
+      const input = await screen.findByRole('combobox', {
+        name: 'app.gotoAnything.searchTitle',
+      })
+
+      await user.type(input, 'research')
+
+      expect(enabledRemoteQueryKeys).toEqual(
+        expect.arrayContaining(['app', 'knowledge', 'plugin', 'agent']),
+      )
+      expect(enabledRemoteQueryKeys).not.toContain('skill')
     })
 
     it.each([
