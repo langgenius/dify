@@ -101,9 +101,6 @@ export function EnvironmentWebAppCard({
       scope: {
         id: `environment-web-app-toggle:${appId}:${environmentId}`,
       },
-      onSuccess: (updatedSite) => {
-        queryClient.setQueryData(siteQueryOptions.queryKey, updatedSite)
-      },
       onError: () => {
         toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       },

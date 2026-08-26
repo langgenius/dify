@@ -1,5 +1,6 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
+import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { DocumentProcessingTaskEvent } from '@dify/contracts/knowledge-fs/types.gen'
 import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/react-query'
 import type { consoleQuery as ConsoleQuery } from './client'
@@ -1527,6 +1528,148 @@ describe('consoleQuery Web app access mutation defaults', () => {
 describe('consoleQuery App Deploy mutation defaults', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+  })
+
+  it('should synchronize environment access details and deployment summaries after toggles', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const params = {
+      app_id: 'app-1',
+      environment_id: 'staging',
+    }
+    const siteQuery =
+      consoleQuery.enterprise.appDeploy.accessService.getEnvironmentSite.queryOptions({
+        input: { params },
+      })
+    const apiQuery = consoleQuery.enterprise.appDeploy.accessService.getEnvironmentApi.queryOptions(
+      {
+        input: { params },
+      },
+    )
+    const deploymentsQuery =
+      consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions({
+        input: {
+          params: {
+            app_id: params.app_id,
+          },
+        },
+      })
+    const deploymentQuery =
+      consoleQuery.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryOptions({
+        input: { params },
+      })
+    const stagingDeployment: EnvironmentDeployment = {
+      access: {
+        enable_api: false,
+        enable_site: false,
+      },
+      environment: {
+        description: 'Staging environment',
+        display_name: 'Staging',
+        id: params.environment_id,
+        status: 'ENVIRONMENT_STATUS_READY',
+      },
+    }
+    const productionDeployment: EnvironmentDeployment = {
+      access: {
+        enable_api: false,
+        enable_site: false,
+      },
+      environment: {
+        description: 'Production environment',
+        display_name: 'Production',
+        id: 'production',
+        status: 'ENVIRONMENT_STATUS_READY',
+      },
+    }
+    const updatedSite = {
+      access_mode: 'private',
+      app_base_url: 'https://site.example.test',
+      code: 'staging-code',
+      enabled: true,
+    }
+    const updatedApi = {
+      api_key_count: 2,
+      base_url: 'https://api.example.test/v1',
+      enabled: true,
+    }
+
+    queryClient.setQueryData(siteQuery.queryKey, { ...updatedSite, enabled: false })
+    queryClient.setQueryData(apiQuery.queryKey, { ...updatedApi, enabled: false })
+    queryClient.setQueryData(deploymentsQuery.queryKey, {
+      environment_deployments: [stagingDeployment, productionDeployment],
+    })
+    queryClient.setQueryData(deploymentQuery.queryKey, {
+      environment_deployment: stagingDeployment,
+    })
+
+    const siteMutation =
+      consoleQuery.enterprise.appDeploy.accessService.updateEnvironmentSite.mutationOptions()
+    await siteMutation.onSuccess?.(
+      updatedSite,
+      { body: { enabled: true }, params },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(queryClient.getQueryData(siteQuery.queryKey)).toEqual(updatedSite)
+    expect(queryClient.getQueryData(deploymentsQuery.queryKey)).toEqual({
+      environment_deployments: [
+        {
+          ...stagingDeployment,
+          access: {
+            enable_api: false,
+            enable_site: true,
+          },
+        },
+        productionDeployment,
+      ],
+    })
+    expect(queryClient.getQueryData(deploymentQuery.queryKey)).toEqual({
+      environment_deployment: {
+        ...stagingDeployment,
+        access: {
+          enable_api: false,
+          enable_site: true,
+        },
+      },
+    })
+
+    const apiMutation =
+      consoleQuery.enterprise.appDeploy.accessService.updateEnvironmentApi.mutationOptions()
+    await apiMutation.onSuccess?.(
+      updatedApi,
+      { body: { enabled: true }, params },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(queryClient.getQueryData(apiQuery.queryKey)).toEqual(updatedApi)
+    expect(queryClient.getQueryData(deploymentsQuery.queryKey)).toEqual({
+      environment_deployments: [
+        {
+          ...stagingDeployment,
+          access: {
+            enable_api: true,
+            enable_site: true,
+          },
+        },
+        productionDeployment,
+      ],
+    })
+    expect(queryClient.getQueryData(deploymentQuery.queryKey)).toEqual({
+      environment_deployment: {
+        ...stagingDeployment,
+        access: {
+          enable_api: true,
+          enable_site: true,
+        },
+      },
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: deploymentsQuery.queryKey })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: deploymentQuery.queryKey })
+    expect(invalidateQueries).toHaveBeenCalledTimes(4)
   })
 
   it('should invalidate the environment key list and API summary after creating or deleting a key', async () => {

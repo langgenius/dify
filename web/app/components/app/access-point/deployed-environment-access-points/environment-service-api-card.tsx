@@ -1,7 +1,7 @@
 'use client'
 
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { consoleQuery } from '@/service/client'
@@ -21,7 +21,6 @@ export function EnvironmentServiceApiCard({
   highlighted,
 }: EnvironmentServiceApiCardProps) {
   const { t } = useTranslation()
-  const queryClient = useQueryClient()
   const appMode = useAppStore((state) => state.appDetail?.mode)
   const params = {
     app_id: appId,
@@ -37,9 +36,6 @@ export function EnvironmentServiceApiCard({
     consoleQuery.enterprise.appDeploy.accessService.updateEnvironmentApi.mutationOptions({
       scope: {
         id: `environment-service-api-toggle:${appId}:${environmentId}`,
-      },
-      onSuccess: (updatedApi) => {
-        queryClient.setQueryData(apiQueryOptions.queryKey, updatedApi)
       },
       onError: () => {
         toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
