@@ -23,6 +23,7 @@ from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
+from repositories.factory import DifyAPIRepositoryFactory
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
 from repositories.tag_repository import TagRepository
@@ -100,6 +101,7 @@ from services.webapp_access_query_service import (
     WebAppAccessQueryService,
     WebAppAccessUnavailableError,
 )
+from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from services.workspace_member_query_service import WorkspaceMemberQueryService
 from services.workspace_member_role_resolver import DeploymentWorkspaceMemberRoleResolver
 from services.workspace_plan_gateway import DeploymentWorkspacePlanGateway
@@ -159,6 +161,7 @@ class ApplicationServices:
     workspace_queries: WorkspaceQueryService
     workspace_member_queries: WorkspaceMemberQueryService
     tags: TagApplicationService
+    workflow_statistics: WorkflowStatisticQueryService
 
 
 def build_application_services(
@@ -338,6 +341,11 @@ def build_application_services(
         ),
         tags=TagApplicationService(
             tags=TagRepository(session_factory=database_client),
+        ),
+        workflow_statistics=WorkflowStatisticQueryService(
+            workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(
+                session_maker=database_client,
+            ),
         ),
     )
 

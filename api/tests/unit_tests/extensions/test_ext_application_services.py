@@ -38,6 +38,7 @@ from services.init_validation_service import InvalidInitializationPasswordError
 from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.tag_application_service import TagApplicationService
 from services.webapp_access_query_service import WebAppAccessUnavailableError
+from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 
 
 @pytest.mark.parametrize(
@@ -108,6 +109,7 @@ def test_init_app_registers_services_for_the_current_app(
         services = ext_application_services.application_services()
         assert services is app.extensions["application_services"]
         assert services.init_validation.is_validated(session_validated=False) is False
+        assert isinstance(services.workflow_statistics, WorkflowStatisticQueryService)
 
 
 @pytest.mark.parametrize(
