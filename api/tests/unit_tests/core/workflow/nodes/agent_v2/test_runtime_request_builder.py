@@ -100,7 +100,8 @@ class CapturingPluginLayerBuilder:
         # hard-coded to a placeholder like ``VALIDATION``.
         self.last_invoke_from: InvokeFrom | None = None
 
-    def build_layers(self, *, tenant_id, app_id, user_id, tools, invoke_from):
+    def build_layers(self, *, session, tenant_id, app_id, user_id, tools, invoke_from):
+        del session
         assert tenant_id == "tenant-1"
         assert app_id == "app-1"
         assert user_id == "user-1"
@@ -130,7 +131,8 @@ class CapturingPluginLayerBuilder:
 
 
 class FakeCoreLayerBuilder:
-    def build_layers(self, *, tenant_id, app_id, user_id, tools, invoke_from):
+    def build_layers(self, *, session, tenant_id, app_id, user_id, tools, invoke_from):
+        del session
         assert tenant_id == "tenant-1"
         assert app_id == "app-1"
         assert user_id == "user-1"

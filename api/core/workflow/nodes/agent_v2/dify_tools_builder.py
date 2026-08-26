@@ -15,6 +15,7 @@ from dify_agent.layers.dify_plugin import (
     DifyPluginToolsLayerConfig,
 )
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -24,7 +25,6 @@ from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.tool_manager import ToolManager
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
-from extensions.ext_database import db
 from models.agent_config_entities import AgentSoulDifyToolConfig, AgentSoulToolsConfig
 from models.provider_ids import ToolProviderID
 from models.tools import WorkflowToolProvider
@@ -64,6 +64,7 @@ class ProviderToolsLister(Protocol):
     def __call__(
         self,
         *,
+        session: Session,
         tenant_id: str,
         provider_type: ToolProviderType,
         provider_id: str,
@@ -71,7 +72,7 @@ class ProviderToolsLister(Protocol):
 
 
 class MCPProviderIDResolver(Protocol):
-    def __call__(self, *, tenant_id: str, provider_id: str) -> str: ...
+    def __call__(self, *, session: Session, tenant_id: str, provider_id: str) -> str: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,6 +93,7 @@ class WorkflowAgentDifyToolLayersBuilder(Protocol):
     def build_layers(
         self,
         *,
+        session: Session,
         tenant_id: str,
         app_id: str,
         user_id: str | None,
@@ -102,6 +104,7 @@ class WorkflowAgentDifyToolLayersBuilder(Protocol):
 
 def _list_provider_tool_names(
     *,
+    session: Session,
     tenant_id: str,
     provider_type: ToolProviderType,
     provider_id: str,
@@ -118,7 +121,7 @@ def _list_provider_tool_names(
             api_provider, _ = ToolManager.get_api_provider_controller(tenant_id, provider_id)
             return [tool.entity.identity.name for tool in api_provider.get_tools(tenant_id) or []]
         case ToolProviderType.WORKFLOW:
-            db_provider = db.session.scalar(
+            db_provider = session.scalar(
                 select(WorkflowToolProvider)
                 .where(
                     WorkflowToolProvider.id == provider_id,
@@ -137,9 +140,9 @@ def _list_provider_tool_names(
             raise ToolProviderNotFoundError(f"provider type {provider_type.value} not found")
 
 
-def _resolve_mcp_provider_id(*, tenant_id: str, provider_id: str) -> str:
+def _resolve_mcp_provider_id(*, session: Session, tenant_id: str, provider_id: str) -> str:
     """Normalize MCP provider ids to the runtime-facing server identifier."""
-    service = MCPToolManageService(session=db.session())
+    service = MCPToolManageService(session=session)
     try:
         return service.get_provider_entity(provider_id, tenant_id, by_server_id=True).provider_id
     except ValueError:
@@ -170,6 +173,7 @@ class WorkflowAgentDifyToolsBuilder:
     def build_layers(
         self,
         *,
+        session: Session,
         tenant_id: str,
         app_id: str,
         user_id: str | None,
@@ -191,8 +195,12 @@ class WorkflowAgentDifyToolsBuilder:
         prepared_core: list[DifyCoreToolConfig] = []
         seen_names: set[str] = set()
 
-        for tool_config in self._expand_provider_entries(tenant_id=tenant_id, enabled_tools=enabled_tools):
-            normalized_tool_config = self._normalized_tool_config(tenant_id=tenant_id, tool_config=tool_config)
+        for tool_config in self._expand_provider_entries(
+            session=session, tenant_id=tenant_id, enabled_tools=enabled_tools
+        ):
+            normalized_tool_config = self._normalized_tool_config(
+                session=session, tenant_id=tenant_id, tool_config=tool_config
+            )
             destination = self._tool_layer_destination(normalized_tool_config)
             exposed_name = self._exposed_tool_name(normalized_tool_config)
             if exposed_name in seen_names:
@@ -229,6 +237,7 @@ class WorkflowAgentDifyToolsBuilder:
     def _expand_provider_entries(
         self,
         *,
+        session: Session,
         tenant_id: str,
         enabled_tools: list[AgentSoulDifyToolConfig],
     ) -> list[AgentSoulDifyToolConfig]:
@@ -247,6 +256,7 @@ class WorkflowAgentDifyToolsBuilder:
             provider_id = self._provider_id(tool_config)
             try:
                 tool_names = self._provider_declared_tool_names(
+                    session=session,
                     tenant_id=tenant_id,
                     provider_type=provider_type,
                     provider_id=provider_id,
@@ -271,11 +281,13 @@ class WorkflowAgentDifyToolsBuilder:
     def _provider_declared_tool_names(
         self,
         *,
+        session: Session,
         tenant_id: str,
         provider_type: ToolProviderType,
         provider_id: str,
     ) -> list[str]:
         return self._provider_tools_lister(
+            session=session,
             tenant_id=tenant_id,
             provider_type=provider_type,
             provider_id=provider_id,
@@ -284,12 +296,15 @@ class WorkflowAgentDifyToolsBuilder:
     def _normalized_tool_config(
         self,
         *,
+        session: Session,
         tenant_id: str,
         tool_config: AgentSoulDifyToolConfig,
     ) -> AgentSoulDifyToolConfig:
         if tool_config.provider_type is not ToolProviderType.MCP:
             return tool_config
-        provider_id = self._mcp_provider_id_resolver(tenant_id=tenant_id, provider_id=self._provider_id(tool_config))
+        provider_id = self._mcp_provider_id_resolver(
+            session=session, tenant_id=tenant_id, provider_id=self._provider_id(tool_config)
+        )
         return tool_config.model_copy(update={"provider_id": provider_id, "plugin_id": None, "provider": None})
 
     def _fetch_tool_runtime(

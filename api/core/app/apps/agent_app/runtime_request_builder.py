@@ -20,6 +20,7 @@ from dify_agent.layers.execution_context import (
     DifyExecutionContextUserFrom,
 )
 from dify_agent.protocol import CreateRunRequest, DeferredToolResultsPayload
+from sqlalchemy.orm import Session
 
 from clients.agent_backend import (
     AgentBackendAgentAppRunInput,
@@ -30,6 +31,7 @@ from clients.agent_backend import (
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.app.llm.model_access import resolve_model_context_window
+from core.db.session_factory import session_factory
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.workflow.nodes.agent_v2.dify_tools_builder import (
     WorkflowAgentDifyToolLayersBuilder,
@@ -106,13 +108,15 @@ class AgentAppRuntimeRequestBuilder:
 
         metadata = self._build_metadata(context)
         try:
-            tool_layers = self._build_tool_layers(
-                tenant_id=context.dify_context.tenant_id,
-                app_id=context.dify_context.app_id,
-                user_id=context.dify_context.user_id,
-                tools=agent_soul.tools,
-                invoke_from=context.dify_context.invoke_from,
-            )
+            with session_factory.create_session() as session:
+                tool_layers = self._build_tool_layers(
+                    session=session,
+                    tenant_id=context.dify_context.tenant_id,
+                    app_id=context.dify_context.app_id,
+                    user_id=context.dify_context.user_id,
+                    tools=agent_soul.tools,
+                    invoke_from=context.dify_context.invoke_from,
+                )
         except WorkflowAgentDifyToolsBuildError as error:
             raise AgentAppRuntimeRequestBuildError(error.error_code, str(error)) from error
         if tool_layers.plugin_tools is not None or tool_layers.core_tools is not None or agent_soul.tools.cli_tools:
@@ -202,6 +206,7 @@ class AgentAppRuntimeRequestBuilder:
     def _build_tool_layers(
         self,
         *,
+        session: Session,
         tenant_id: str,
         app_id: str,
         user_id: str | None,
@@ -212,6 +217,7 @@ class AgentAppRuntimeRequestBuilder:
         # on the direct `dify.plugin.tools` route. This builder emits plugin
         # tools directly and non-plugin Dify tools through `dify.core.tools`.
         return self._dify_tools_builder.build_layers(
+            session=session,
             tenant_id=tenant_id,
             app_id=app_id,
             user_id=user_id,

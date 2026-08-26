@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from typing import Any
+from unittest.mock import Mock
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -24,6 +26,8 @@ from core.workflow.nodes.agent_v2.dify_tools_builder import (
     WorkflowAgentDifyToolsBuildError,
 )
 from models.agent_config_entities import AgentSoulToolsConfig
+
+TEST_SESSION = Mock(spec=Session)
 
 
 class FakeRuntimeProvider:
@@ -217,6 +221,7 @@ def _build(
 ):
     """Shorthand for tests that expect ``build_layers(...)`` to return only plugin tools."""
     layers = builder.build_layers(
+        session=TEST_SESSION,
         tenant_id="tenant-1",
         app_id="app-1",
         user_id="user-1",
@@ -305,6 +310,7 @@ def test_builds_core_tool_with_file_llm_parameter():
     )
 
     result = builder.build_layers(
+        session=TEST_SESSION,
         tenant_id="tenant-1",
         app_id="app-1",
         user_id="user-1",
@@ -399,6 +405,7 @@ def test_builds_builtin_compat_plugin_tool_with_files_llm_parameter_schema():
     )
 
     result = builder.build_layers(
+        session=TEST_SESSION,
         tenant_id="tenant-1",
         app_id="app-1",
         user_id="user-1",
@@ -445,6 +452,7 @@ def test_build_layers_routes_plugin_direct_and_builtin_via_core() -> None:
     )
 
     result = builder.build_layers(
+        session=TEST_SESSION,
         tenant_id="tenant-1",
         app_id="app-1",
         user_id="user-1",
@@ -483,6 +491,7 @@ def test_build_layers_routes_api_and_workflow_via_core(provider_type: str, provi
     )
 
     result = builder.build_layers(
+        session=TEST_SESSION,
         tenant_id="tenant-1",
         app_id="app-1",
         user_id="user-1",
@@ -501,7 +510,7 @@ def test_build_layers_normalizes_mcp_provider_ids_to_server_identifier() -> None
     runtime_provider = FakeRuntimeProvider(_tool())
     builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=runtime_provider,
-        mcp_provider_id_resolver=lambda *, tenant_id, provider_id: "mcp-server-1",
+        mcp_provider_id_resolver=lambda *, session, tenant_id, provider_id: "mcp-server-1",
     )
     tools = AgentSoulToolsConfig.model_validate(
         {
@@ -517,6 +526,7 @@ def test_build_layers_normalizes_mcp_provider_ids_to_server_identifier() -> None
     )
 
     result = builder.build_layers(
+        session=TEST_SESSION,
         tenant_id="tenant-1",
         app_id="app-1",
         user_id="user-1",
@@ -546,6 +556,7 @@ def test_build_layers_rejects_app_provider_type() -> None:
 
     with pytest.raises(WorkflowAgentDifyToolsBuildError, match="not supported"):
         builder.build_layers(
+            session=TEST_SESSION,
             tenant_id="tenant-1",
             app_id="app-1",
             user_id="user-1",
@@ -573,6 +584,7 @@ def test_build_layers_rejects_dataset_retrieval_provider_type() -> None:
 
     with pytest.raises(WorkflowAgentDifyToolsBuildError) as exc_info:
         builder.build_layers(
+            session=TEST_SESSION,
             tenant_id="tenant-1",
             app_id="app-1",
             user_id="user-1",
@@ -601,6 +613,7 @@ def test_builds_core_tool_with_missing_required_select_default():
     )
 
     result = builder.build_layers(
+        session=TEST_SESSION,
         tenant_id="tenant-1",
         app_id="app-1",
         user_id="user-1",
@@ -930,7 +943,8 @@ def test_provider_level_entry_expands_to_all_tools():
     runtime_provider = FakeRuntimeProvider(_tool())
     listed: list[tuple[str, str, ToolProviderType]] = []
 
-    def lister(*, tenant_id: str, provider_type: ToolProviderType, provider_id: str) -> list[str]:
+    def lister(*, session: Session, tenant_id: str, provider_type: ToolProviderType, provider_id: str) -> list[str]:
+        del session
         listed.append((tenant_id, provider_id, provider_type))
         return ["search", "image_search"]
 
@@ -957,7 +971,7 @@ def test_provider_level_entry_expands_to_all_tools():
 def test_explicit_tool_entry_wins_over_provider_expansion():
     builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=FakeRuntimeProvider(_tool()),
-        provider_tools_lister=lambda *, tenant_id, provider_type, provider_id: ["search", "image_search"],
+        provider_tools_lister=lambda *, session, tenant_id, provider_type, provider_id: ["search", "image_search"],
     )
     tools = AgentSoulToolsConfig.model_validate(
         {
@@ -988,7 +1002,7 @@ def test_explicit_tool_entry_wins_over_provider_expansion():
 def test_provider_level_entry_with_no_tools_maps_to_declaration_not_found():
     builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=FakeRuntimeProvider(_tool()),
-        provider_tools_lister=lambda *, tenant_id, provider_type, provider_id: [],
+        provider_tools_lister=lambda *, session, tenant_id, provider_type, provider_id: [],
     )
     tools = AgentSoulToolsConfig.model_validate(
         {
@@ -1010,7 +1024,8 @@ def test_provider_level_entry_with_no_tools_maps_to_declaration_not_found():
 def test_provider_level_entry_unknown_provider_maps_to_declaration_not_found():
     from core.tools.errors import ToolProviderNotFoundError
 
-    def lister(*, tenant_id: str, provider_type: ToolProviderType, provider_id: str) -> list[str]:
+    def lister(*, session: Session, tenant_id: str, provider_type: ToolProviderType, provider_id: str) -> list[str]:
+        del session
         raise ToolProviderNotFoundError("provider gone")
 
     builder = WorkflowAgentDifyToolsBuilder(
@@ -1056,6 +1071,7 @@ def test_list_provider_tool_names_reads_builtin_provider(monkeypatch: pytest.Mon
     monkeypatch.setattr(module.ToolManager, "get_builtin_provider", staticmethod(fake_get_builtin_provider))
 
     names = module._list_provider_tool_names(
+        session=TEST_SESSION,
         tenant_id="tenant-1",
         provider_type=module.ToolProviderType.BUILT_IN,
         provider_id="langgenius/duckduckgo/duckduckgo",
