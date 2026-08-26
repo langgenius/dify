@@ -629,6 +629,12 @@ def test_app_create_api_attaches_permission_keys(
                 "batch_get",
                 lambda tenant_id, account_id, app_ids, session: {"app-new": ["app.acl.view_layout", "app.acl.edit"]},
             )
+            monkeypatch.setattr(
+                app_module.enterprise_rbac_service.RBACService.AppAccess,
+                "replace_whitelist",
+                MagicMock(),
+            )
+            monkeypatch.setattr(app_module.initialize_created_app_rbac_access_task, "delay", MagicMock())
             resp, status = method(
                 app_module.AppListApi(),
                 app_module.CreateAppPayload(

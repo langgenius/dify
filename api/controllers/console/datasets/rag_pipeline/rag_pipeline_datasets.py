@@ -79,10 +79,11 @@ class CreateRagPipelineDatasetApi(Resource):
                 tenant_id=current_tenant_id,
                 rag_pipeline_dataset_create_entity=rag_pipeline_dataset_create_entity,
             )
+            dataset_id = import_info["dataset_id"]
             if rag_pipeline_dataset_create_entity.permission == "partial_members":
                 DatasetPermissionService.update_partial_member_list(
                     current_tenant_id,
-                    import_info["dataset_id"],
+                    dataset_id,
                     rag_pipeline_dataset_create_entity.partial_member_list,
                     db.session(),
                 )
@@ -90,16 +91,14 @@ class CreateRagPipelineDatasetApi(Resource):
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
-        if dify_config.RBAC_ENABLED:
+        if dify_config.RBAC_ENABLED and dataset_id is not None:
             enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
                 current_tenant_id,
                 current_user.id,
-                import_info["dataset_id"],
+                dataset_id,
                 enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
             )
-            initialize_created_app_rbac_access_task.delay(
-                current_tenant_id, current_user.id, dataset_id=import_info["dataset_id"]
-            )
+            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, dataset_id=dataset_id)
 
         return dump_response(RagPipelineImportResponse, import_info), 201
 

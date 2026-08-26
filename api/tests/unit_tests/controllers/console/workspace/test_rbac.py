@@ -349,7 +349,7 @@ class TestResourceAccessScopeBindings:
         ):
             inspect.unwrap(rbac_mod.RBACAppWhitelistApi.put)(rbac_mod.RBACAppWhitelistApi(), "app-1")
 
-        mock_sync_task.delay.assert_called_once_with("tenant-1", "acct-actor", "app-1")
+        mock_sync_task.delay.assert_called_once_with("tenant-1", "acct-actor", app_id="app-1")
 
     def test_dataset_whitelist_all_schedules_member_policy_sync(self, app):
         # Widening a dataset to the whole workspace only records the scope; without granting the
