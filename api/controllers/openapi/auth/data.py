@@ -53,7 +53,6 @@ class AuthData(BaseModel):
     token_hash: str
     token_id: uuid.UUID | None = None
     scopes: frozenset[Scope]
-    tenants: dict[str, bool] = Field(default_factory=dict)
     external_identity: ExternalIdentity | None = None
     path_params: dict[str, str] = Field(default_factory=dict)
 

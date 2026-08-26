@@ -78,7 +78,6 @@ class AuthPipeline:
             token_hash=identity.token_hash,
             token_id=identity.token_id,
             scopes=frozenset(identity.scopes),
-            tenants=dict(identity.verified_tenants),
             required_scope=scope,
             allowed_roles=allowed_roles,
             rbac=rbac,

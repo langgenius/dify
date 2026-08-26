@@ -111,7 +111,6 @@ def _auth_ctx(account_id: uuid.UUID | None = None) -> AuthContext:
         token_type=TokenType.OAUTH_ACCOUNT,
         expires_at=datetime.now(UTC),
         token_hash="h",
-        verified_tenants={},
     )
 
 

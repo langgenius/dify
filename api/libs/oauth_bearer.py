@@ -13,23 +13,20 @@ import logging
 import uuid
 from collections.abc import Callable, Iterable
 from contextvars import ContextVar, Token
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
 from functools import wraps
 from typing import Literal, ParamSpec, Protocol, TypeVar
 
 from flask import request
-from sqlalchemy import select, update
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, ServiceUnavailable, Unauthorized
 
 from configs import dify_config
-from enums import DeploymentEdition
-from extensions.ext_database import db
-from extensions.ext_redis import redis_client
 from libs.rate_limit import enforce_bearer_rate_limit
-from models import Account, OAuthAccessToken, TenantAccountJoin
+from models import OAuthAccessToken
 
 logger = logging.getLogger(__name__)
 
@@ -87,10 +84,6 @@ class AuthContext:
     (see :func:`set_auth_ctx` / :func:`get_auth_ctx`). ``scopes`` /
     ``subject_type`` / ``token_type`` come from the TokenKind, not the DB —
     corrupt rows can't elevate scope.
-
-    `verified_tenants` is a snapshot of the Layer-0 verdict cache at
-    authenticate time. Per-request mutations write through to Redis via
-    `record_layer0_verdict`; this snapshot is not updated in place (frozen).
     """
 
     subject_type: SubjectType
@@ -103,7 +96,6 @@ class AuthContext:
     token_type: TokenType
     expires_at: datetime | None
     token_hash: str
-    verified_tenants: dict[str, bool] = field(default_factory=dict)
 
 
 _auth_ctx_var: ContextVar[AuthContext] = ContextVar("openapi_auth_ctx")
@@ -133,7 +125,6 @@ class ResolvedRow:
     client_id: str | None
     token_id: uuid.UUID
     expires_at: datetime | None
-    verified_tenants: dict[str, bool] = field(default_factory=dict)
 
     def to_cache(self) -> dict:
         return {
@@ -143,7 +134,6 @@ class ResolvedRow:
             "client_id": self.client_id,
             "token_id": str(self.token_id),
             "expires_at": self.expires_at.isoformat() if self.expires_at else None,
-            "verified_tenants": dict(self.verified_tenants),
         }
 
     @classmethod
@@ -155,27 +145,7 @@ class ResolvedRow:
             client_id=data.get("client_id"),
             token_id=uuid.UUID(data["token_id"]),
             expires_at=datetime.fromisoformat(data["expires_at"]) if data["expires_at"] else None,
-            verified_tenants=_coerce_verified_tenants(data.get("verified_tenants")),
         )
-
-
-def _coerce_verified_tenants(raw: object) -> dict[str, bool]:
-    """Tolerate legacy entries that stored 'ok'/'denied' string verdicts.
-
-    TODO(post-v1.0): remove once the AuthContext cache TTL has fully cycled
-    on all live deployments (60s TTL → safe to drop one release after rollout).
-    """
-    if not isinstance(raw, dict):
-        return {}
-    out: dict[str, bool] = {}
-    for k, v in raw.items():
-        if isinstance(v, bool):
-            out[k] = v
-        elif v == "ok":
-            out[k] = True
-        elif v == "denied":
-            out[k] = False
-    return out
 
 
 class Resolver(Protocol):
@@ -302,7 +272,6 @@ class BearerAuthenticator:
             token_type=kind.token_type,
             expires_at=row.expires_at,
             token_hash=token_hash,
-            verified_tenants=dict(row.verified_tenants),
         )
 
 
@@ -456,92 +425,6 @@ class _VariantResolver:
             )
             .one_or_none()
         )
-
-
-# ============================================================================
-# Layer 0 — workspace membership cache + helper
-# ============================================================================
-
-
-def record_layer0_verdict(token_hash: str, tenant_id: str, verdict: bool) -> None:
-    """Merge a Layer-0 membership verdict into the AuthContext cache entry at
-    `auth:token:{hash}`. No-op if entry missing/expired/invalid — next request
-    rebuilds via authenticate() and re-runs Layer 0.
-    """
-    cache_key = TOKEN_CACHE_KEY_FMT.format(hash=token_hash)
-    raw = redis_client.get(cache_key)
-    if raw is None:
-        return
-    text = raw.decode() if isinstance(raw, (bytes, bytearray)) else raw
-    if text == "invalid":
-        return
-    try:
-        data = json.loads(text)
-    except (ValueError, KeyError):
-        return
-    ttl = redis_client.ttl(cache_key)
-    if ttl <= 0:
-        return
-    data.setdefault("verified_tenants", {})[tenant_id] = verdict
-    redis_client.setex(cache_key, ttl, json.dumps(data))
-
-
-def check_workspace_membership(
-    *,
-    account_id: uuid.UUID | str,
-    tenant_id: str,
-    token_hash: str,
-    membership_cache: dict[str, bool] | None = None,
-    cached_verdicts: dict[str, bool] | None = None,
-) -> None:
-    """Layer-0 enforcement core. Raises `Forbidden` on deny, returns on allow.
-
-    Shared by the pipeline step (`WorkspaceMembershipCheck`) and the
-    inline helper (`require_workspace_member`). Caller is responsible for
-    short-circuiting on EE / SSO subjects before invoking — this function
-    runs the membership + active-status checks unconditionally.
-    """
-    cache = membership_cache if membership_cache is not None else cached_verdicts or {}
-    cached = cache.get(tenant_id)
-    if cached is True:
-        return
-    if cached is False:
-        raise Forbidden("workspace_membership_revoked")
-
-    join = db.session.execute(
-        select(TenantAccountJoin.id).where(
-            TenantAccountJoin.account_id == account_id,
-            TenantAccountJoin.tenant_id == tenant_id,
-        )
-    ).scalar_one_or_none()
-    if join is None:
-        record_layer0_verdict(token_hash, tenant_id, False)
-        raise Forbidden("workspace_membership_revoked")
-
-    status = db.session.execute(select(Account.status).where(Account.id == account_id)).scalar_one_or_none()
-    if status != "active":
-        record_layer0_verdict(token_hash, tenant_id, False)
-        raise Forbidden("workspace_membership_revoked")
-
-    record_layer0_verdict(token_hash, tenant_id, True)
-
-
-def require_workspace_member(ctx: AuthContext, tenant_id: str) -> None:
-    """AuthContext-flavoured wrapper around `check_workspace_membership`.
-
-    No-op on EE (gateway RBAC owns tenant isolation) and for SSO subjects
-    (no `tenant_account_joins` row by definition).
-    """
-    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
-        return
-    if ctx.subject_type != SubjectType.ACCOUNT or ctx.account_id is None:
-        return
-    check_workspace_membership(
-        account_id=ctx.account_id,
-        tenant_id=tenant_id,
-        token_hash=ctx.token_hash,
-        membership_cache=ctx.verified_tenants,
-    )
 
 
 # ============================================================================
