@@ -1,0 +1,47 @@
+name: Dify Agent Tests
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dify-agent-tests-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  dify-agent-unit:
+    name: Dify Agent Unit Tests
+    runs-on: depot-ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+        working-directory: dify-agent
+    strategy:
+      matrix:
+        python-version:
+          - '3.12'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+          cache-dependency-glob: dify-agent/uv.lock
+
+      - name: Check UV lockfile
+        run: uv lock --check
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Run unit tests
+        run: uv run pytest --timeout "${PYTEST_TIMEOUT:-20}"
