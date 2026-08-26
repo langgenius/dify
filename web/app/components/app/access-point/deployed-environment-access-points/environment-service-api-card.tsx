@@ -35,16 +35,21 @@ export function EnvironmentServiceApiCard({
   const api = apiQuery.data
   const apiMutation = useMutation(
     consoleQuery.enterprise.appDeploy.accessService.updateEnvironmentApi.mutationOptions({
+      scope: {
+        id: `environment-service-api-toggle:${appId}:${environmentId}`,
+      },
       onSuccess: (updatedApi) => {
         queryClient.setQueryData(apiQueryOptions.queryKey, updatedApi)
-        toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       },
       onError: () => {
         toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       },
     }),
   )
-  const running = Boolean(apiQuery.isSuccess && api?.enabled)
+  const pendingEnabled = apiMutation.variables?.body.enabled
+  const optimisticEnabled =
+    apiMutation.isPending && pendingEnabled !== undefined ? pendingEnabled : Boolean(api?.enabled)
+  const running = apiQuery.isSuccess && optimisticEnabled
   const status = apiQuery.isPending
     ? 'loading'
     : apiQuery.isError
@@ -78,7 +83,6 @@ export function EnvironmentServiceApiCard({
       highlighted={highlighted}
       switchDisabled={!canManage}
       onEnabledChange={apiQuery.isSuccess ? handleEnabledChange : undefined}
-      busy={apiMutation.isPending}
     />
   )
 }

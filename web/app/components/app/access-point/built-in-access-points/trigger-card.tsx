@@ -5,6 +5,8 @@ import type { TriggerWithProvider } from '@/app/components/workflow/block-select
 import type { AppTrigger } from '@/service/use-tools'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useMutation } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AccessPointCard, AccessPointEmptyContent } from '@/app/components/base/access-point/card'
@@ -13,11 +15,8 @@ import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-s
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
-import {
-  useAppTriggers,
-  useInvalidateAppTriggers,
-  useUpdateTriggerStatus,
-} from '@/service/use-tools'
+import { consoleQuery } from '@/service/client'
+import { useAppTriggers, useInvalidateAppTriggers } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { canFindTool } from '@/utils'
 import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
@@ -53,12 +52,89 @@ function TriggerIcon({
   )
 }
 
+function TriggerAccessPointItem({
+  appId,
+  canEdit,
+  trigger,
+  triggerPlugins,
+}: {
+  appId: string
+  canEdit: boolean
+  trigger: AppTrigger
+  triggerPlugins: TriggerWithProvider[]
+}) {
+  const { t } = useTranslation()
+  const invalidateTriggers = useInvalidateAppTriggers()
+  const updateTriggerMutation = useMutation(
+    consoleQuery.apps.byAppId.triggerEnable.post.mutationOptions({
+      scope: {
+        id: `app-trigger-toggle:${appId}:${trigger.id}`,
+      },
+      onSuccess: () => invalidateTriggers(appId),
+      onError: () => {
+        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      },
+    }),
+  )
+  const pendingEnabled = updateTriggerMutation.variables?.body.enable_trigger
+  const enabled =
+    updateTriggerMutation.isPending && pendingEnabled !== undefined
+      ? pendingEnabled
+      : trigger.status === 'enabled'
+  const statusLabel = enabled
+    ? t(($) => $['agentDetail.access.status.inService'], {
+        ns: 'agentV2',
+      })
+    : t(($) => $['overview.status.disable'], {
+        ns: 'appOverview',
+      })
+
+  const handleEnabledChange = (nextEnabled: boolean) => {
+    if (!canEdit) return
+
+    updateTriggerMutation.mutate({
+      params: {
+        app_id: appId,
+      },
+      body: {
+        trigger_id: trigger.id,
+        enable_trigger: nextEnabled,
+      },
+    })
+  }
+
+  return (
+    <div className="flex min-h-11 items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-state-base-hover">
+      <TriggerIcon trigger={trigger} triggerPlugins={triggerPlugins} />
+      <span className="w-28 shrink-0 truncate system-sm-medium text-text-secondary">
+        {trigger.title}
+      </span>
+      <span className="min-w-0 flex-1 truncate system-xs-regular text-text-tertiary">
+        {trigger.provider_name}
+      </span>
+      <span
+        className={`flex shrink-0 items-center gap-1 system-xs-semibold-uppercase ${
+          enabled ? 'text-text-success' : 'text-text-tertiary'
+        }`}
+      >
+        <StatusDot size="small" status={enabled ? 'success' : 'disabled'} />
+        {statusLabel}
+      </span>
+      <Switch
+        checked={enabled}
+        disabled={!canEdit}
+        aria-label={trigger.title}
+        onCheckedChange={handleEnabledChange}
+      />
+    </div>
+  )
+}
+
 type TriggerAccessPointCardProps = {
   appInfo: AccessPointAppInfo
   availability: 'available' | 'loading' | 'unavailable'
   canEdit: boolean
   highlighted?: boolean
-  onToggleResult: (error: Error | null) => void
 }
 
 export function TriggerAccessPointCard({
@@ -66,15 +142,12 @@ export function TriggerAccessPointCard({
   availability,
   canEdit,
   highlighted,
-  onToggleResult,
 }: TriggerAccessPointCardProps) {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { data: response, isLoading } = useAppTriggers(appInfo.id)
   const { data: triggerPlugins = [] } = useAllTriggerPlugins()
-  const { mutateAsync: updateTriggerStatus, isPending: statusUpdating } = useUpdateTriggerStatus()
-  const invalidateTriggers = useInvalidateAppTriggers()
-  const { setTriggerStatus, setTriggerStatuses } = useTriggerStatusStore()
+  const setTriggerStatuses = useTriggerStatusStore((state) => state.setTriggerStatuses)
   const triggers = useMemo(() => response?.data ?? [], [response?.data])
   const loading = availability === 'loading' || isLoading
   const active = availability === 'available' && !loading
@@ -96,25 +169,6 @@ export function TriggerAccessPointCard({
     )
   }, [setTriggerStatuses, triggers])
 
-  const toggleTrigger = async (trigger: AppTrigger, enabled: boolean) => {
-    if (!canEdit) return
-    const status = enabled ? 'enabled' : 'disabled'
-    setTriggerStatus(trigger.node_id, status)
-
-    try {
-      await updateTriggerStatus({
-        appId: appInfo.id,
-        triggerId: trigger.id,
-        enableTrigger: enabled,
-      })
-      invalidateTriggers(appInfo.id)
-      onToggleResult(null)
-    } catch (error) {
-      setTriggerStatus(trigger.node_id, enabled ? 'disabled' : 'enabled')
-      onToggleResult(error as Error)
-    }
-  }
-
   return (
     <AccessPointCard
       title={t(($) => $['settings.trigger'], { ns: 'common' })}
@@ -126,7 +180,6 @@ export function TriggerAccessPointCard({
       statusLabel={statusLabel}
       highlighted={highlighted}
       showStatus={!active}
-      busy={statusUpdating}
     >
       {loading && (
         <div className="flex h-full min-h-40 flex-col gap-4 px-4 py-5">
@@ -164,45 +217,15 @@ export function TriggerAccessPointCard({
             })}
           </div>
           <div className="mt-1 flex flex-col gap-1">
-            {triggers.map((trigger) => {
-              const enabled = trigger.status === 'enabled'
-              const statusLabel = enabled
-                ? t(($) => $['agentDetail.access.status.inService'], {
-                    ns: 'agentV2',
-                  })
-                : t(($) => $['overview.status.disable'], {
-                    ns: 'appOverview',
-                  })
-
-              return (
-                <div
-                  key={trigger.id}
-                  className="flex min-h-11 items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-state-base-hover"
-                >
-                  <TriggerIcon trigger={trigger} triggerPlugins={triggerPlugins} />
-                  <span className="w-28 shrink-0 truncate system-sm-medium text-text-secondary">
-                    {trigger.title}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate system-xs-regular text-text-tertiary">
-                    {trigger.provider_name}
-                  </span>
-                  <span
-                    className={`flex shrink-0 items-center gap-1 system-xs-semibold-uppercase ${
-                      enabled ? 'text-text-success' : 'text-text-tertiary'
-                    }`}
-                  >
-                    <StatusDot size="small" status={enabled ? 'success' : 'disabled'} />
-                    {statusLabel}
-                  </span>
-                  <Switch
-                    checked={enabled}
-                    disabled={!canEdit || statusUpdating}
-                    aria-label={trigger.title}
-                    onCheckedChange={(nextEnabled) => void toggleTrigger(trigger, nextEnabled)}
-                  />
-                </div>
-              )
-            })}
+            {triggers.map((trigger) => (
+              <TriggerAccessPointItem
+                key={trigger.id}
+                appId={appInfo.id}
+                canEdit={canEdit}
+                trigger={trigger}
+                triggerPlugins={triggerPlugins}
+              />
+            ))}
           </div>
         </div>
       )}

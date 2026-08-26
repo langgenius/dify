@@ -1,13 +1,45 @@
 import type { AccessPointAppInfo, PublishedWorkflow } from '../shared/utils'
 import type { InputVar, Node } from '@/app/components/workflow/types'
+import { toast } from '@langgenius/dify-ui/toast'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { AccessMode } from '@/models/access-control'
 import { render } from '@/test/console/render'
+import { createTestQueryClient } from '@/test/query-client'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 import { WebAppAccessPointCard } from '../built-in-access-points/web-app-card'
+
+const mocks = vi.hoisted(() => ({
+  siteEnable: vi.fn(),
+}))
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    error: vi.fn(),
+    success: vi.fn(),
+  },
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    apps: {
+      byAppId: {
+        siteEnable: {
+          post: {
+            mutationOptions: (options = {}) => ({
+              mutationFn: mocks.siteEnable,
+              ...options,
+            }),
+          },
+        },
+      },
+    },
+  },
+}))
 
 vi.mock('@/service/access-control/use-app-access-control', () => ({
   useAppWhiteListSubjects: () => ({
@@ -69,21 +101,51 @@ function renderCard(
   availability: 'available' | 'loading' | 'unavailable' = 'available',
   workflow?: PublishedWorkflow,
 ) {
-  render(
+  useAppStore.setState({ appDetail: createAppInfo(mode) })
+  const queryClient = createTestQueryClient()
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <StoreConnectedWebAppCard availability={availability} workflow={workflow} />
+    </QueryClientProvider>,
+  )
+}
+
+function StoreConnectedWebAppCard({
+  availability,
+  workflow,
+}: {
+  availability: 'available' | 'loading' | 'unavailable'
+  workflow?: PublishedWorkflow
+}) {
+  const appInfo = useAppStore((state) => state.appDetail)
+  if (!appInfo) return null
+
+  return (
     <WebAppAccessPointCard
-      appInfo={createAppInfo(mode)}
+      appInfo={appInfo}
       availability={availability}
       canEdit
       canDeploy
       canManageAccess
       showAccessControl
-      onChangeStatus={vi.fn().mockResolvedValue(undefined)}
       onRefreshApp={vi.fn().mockResolvedValue(undefined)}
       onRegenerate={vi.fn().mockResolvedValue(undefined)}
       onSaveSiteConfig={vi.fn().mockResolvedValue(undefined)}
       workflow={workflow}
-    />,
+    />
   )
+}
+
+function createDeferredPromise<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve
+    reject = promiseReject
+  })
+
+  return { promise, reject, resolve }
 }
 
 const startNode: Node<{ variables: InputVar[] }> = {
@@ -128,6 +190,13 @@ const workflowWithHiddenInput: NonNullable<PublishedWorkflow> = {
 }
 
 describe('WebAppAccessPointCard', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.siteEnable.mockResolvedValue({
+      enable_site: true,
+    })
+  })
+
   afterEach(() => {
     vi.restoreAllMocks()
   })
@@ -203,5 +272,45 @@ describe('WebAppAccessPointCard', () => {
 
     const card = screen.getByRole('region', { name: /webApp\.title/ })
     expect(within(card).queryByRole('status', { name: 'common.loading' })).not.toBeInTheDocument()
+  })
+
+  it('optimistically serializes status changes without a success toast', async () => {
+    const user = userEvent.setup()
+    const firstToggle = createDeferredPromise<{ enable_site: boolean }>()
+    const secondToggle = createDeferredPromise<{ enable_site: boolean }>()
+    mocks.siteEnable
+      .mockReturnValueOnce(firstToggle.promise)
+      .mockReturnValueOnce(secondToggle.promise)
+    renderCard(AppModeEnum.CHAT)
+
+    const accessSwitch = screen.getByRole('switch')
+    await user.click(accessSwitch)
+
+    expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
+    expect(mocks.siteEnable).toHaveBeenCalledTimes(1)
+
+    await user.click(accessSwitch)
+
+    expect(accessSwitch).toHaveAttribute('aria-checked', 'true')
+    expect(mocks.siteEnable).toHaveBeenCalledTimes(1)
+    expect(
+      screen.queryByRole('link', { name: /studio\.accessPoint\.open/ }),
+    ).not.toBeInTheDocument()
+
+    firstToggle.resolve({ enable_site: false })
+
+    await waitFor(() => {
+      expect(mocks.siteEnable).toHaveBeenCalledTimes(2)
+    })
+    expect(mocks.siteEnable.mock.calls[1]?.[0]).toEqual({
+      body: { enable_site: true },
+      params: { app_id: 'app-1' },
+    })
+
+    secondToggle.resolve({ enable_site: true })
+
+    await screen.findByRole('link', { name: /studio\.accessPoint\.open/ })
+    expect(accessSwitch).toHaveAttribute('aria-checked', 'true')
+    expect(toast.success).not.toHaveBeenCalled()
   })
 })
