@@ -139,11 +139,12 @@ export type EnvironmentDeployedAppStatus =
 export const DeploymentStatus = {
   DEPLOYMENT_STATUS_UNSPECIFIED: 'DEPLOYMENT_STATUS_UNSPECIFIED',
   DEPLOYMENT_STATUS_UNDEPLOYED: 'DEPLOYMENT_STATUS_UNDEPLOYED',
-  DEPLOYMENT_STATUS_DEPLOYING: 'DEPLOYMENT_STATUS_DEPLOYING',
   DEPLOYMENT_STATUS_RUNNING: 'DEPLOYMENT_STATUS_RUNNING',
-  DEPLOYMENT_STATUS_UNDEPLOYING: 'DEPLOYMENT_STATUS_UNDEPLOYING',
-  DEPLOYMENT_STATUS_INVALID: 'DEPLOYMENT_STATUS_INVALID',
-  DEPLOYMENT_STATUS_FAILED: 'DEPLOYMENT_STATUS_FAILED',
+  DEPLOYMENT_STATUS_STARTING: 'DEPLOYMENT_STATUS_STARTING',
+  DEPLOYMENT_STATUS_STOPPING: 'DEPLOYMENT_STATUS_STOPPING',
+  DEPLOYMENT_STATUS_SUSPENDED: 'DEPLOYMENT_STATUS_SUSPENDED',
+  DEPLOYMENT_STATUS_ERROR: 'DEPLOYMENT_STATUS_ERROR',
+  DEPLOYMENT_STATUS_UNKNOWN: 'DEPLOYMENT_STATUS_UNKNOWN',
 } as const
 
 export type DeploymentStatus = (typeof DeploymentStatus)[keyof typeof DeploymentStatus]
@@ -559,6 +560,8 @@ export type Error = {
     | 'APPDEPLOY_APPLICATION_UNAVAILABLE'
     | 'APPDEPLOY_TARGET_ENVIRONMENT_REMOVED'
     | 'APPDEPLOY_VERSION_UNAVAILABLE'
+    | 'APPDEPLOY_CONVERSATION_NOT_FOUND'
+    | 'APPDEPLOY_CHAT_MESSAGE_NOT_FOUND'
     | 'APPDEPLOY_CONFLICT'
     | 'APPDEPLOY_DEPLOYMENT_IN_PROGRESS'
     | 'APPDEPLOY_ALREADY_UNDEPLOYED'
@@ -597,10 +600,13 @@ export type Error = {
     | 'APPDEPLOY_ENVIRONMENT_CPU_POOL_EXHAUSTED'
     | 'APPDEPLOY_RESOURCE_NOT_APPLICABLE_FOR_MODE'
     | 'APPDEPLOY_ENVIRONMENT_CPU_POOL_BELOW_ALLOCATED'
+    | 'APPDEPLOY_CHAT_CONTEXT_TOO_LARGE'
+    | 'APPDEPLOY_FILE_GRANT_UNAVAILABLE'
     | 'APPDEPLOY_APP_RUNNER_CONTROL_NOT_CONFIGURED'
     | 'APPDEPLOY_RUNTIME_ASSIGNMENT_FAILED'
     | 'APPDEPLOY_REVISION_TIMEOUT'
     | 'APPDEPLOY_INTERNAL_ERROR'
+    | 'APPDEPLOY_RECEIPT_RETRY'
     | 'APPDEPLOY_ENVIRONMENT_BOOTSTRAP_AUTH_REJECTED'
     | 'APPDEPLOY_ENVIRONMENT_BOOTSTRAP_NAMESPACE_MISSING'
     | 'APPDEPLOY_ENVIRONMENT_BOOTSTRAP_INSUFFICIENT_RBAC'
@@ -650,6 +656,11 @@ export type GetEnvironmentWebAppSubjectsResponse = {
 
 export type GetWebAppAccessModeResponse = {
   accessMode?: string
+}
+
+export type GetWebAppLoginStatusResponse = {
+  logged_in?: boolean
+  app_logged_in?: boolean
 }
 
 export type GetWebAppPermissionResponse = {
@@ -702,6 +713,18 @@ export type ListOperationAppsResponse = {
   pagination: Pagination
 }
 
+export type MintServiceApiFileGrantRequest = {
+  tenantId?: string
+  appId?: string
+  environmentId?: string
+  user?: string
+}
+
+export type MintServiceApiFileGrantResponse = {
+  grant?: string
+  expiresAt?: string
+}
+
 export type NamedRef = {
   id: string
   displayName: string
@@ -728,6 +751,13 @@ export type PrepareAppDeletionRequest = {
   appId?: string
 }
 
+export type RenameWebAppConversationRequest = {
+  appCode: string
+  conversationId: string
+  name?: string
+  autoGenerate?: boolean
+}
+
 export type ResolveApiTokenRouteRequest = {
   token?: string
 }
@@ -737,17 +767,14 @@ export type ResolveApiTokenRouteResponse = {
   namespace?: string
   serviceName?: string
   servicePort?: number
-  environmentStatus?: EnvironmentStatus
   appId?: string
   tenantId?: string
   deploymentId?: string
   servingRevisionId?: string
-  deploymentStatus?: DeploymentStatus
-  revoked?: boolean
-  unavailableReason?: string
   targetKind?: RouteTargetKind
   directUpstream?: string
   deploymentGeneration?: string
+  decision?: string
 }
 
 export type ResolveWebAppRouteRequest = {
@@ -761,18 +788,18 @@ export type ResolveWebAppRouteResponse = {
   namespace?: string
   serviceName?: string
   servicePort?: number
-  environmentStatus?: EnvironmentStatus
   appId?: string
   tenantId?: string
   deploymentId?: string
   servingRevisionId?: string
-  deploymentStatus?: DeploymentStatus
-  unavailableReason?: string
   targetKind?: RouteTargetKind
   directUpstream?: string
   deploymentGeneration?: string
   userId?: string
   userFrom?: string
+  userAuthType?: string
+  fileGrant?: string
+  fileGrantExpiresAt?: string
 }
 
 export type RetryEnvironmentBootstrapRequest = {

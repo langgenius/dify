@@ -91,11 +91,12 @@ export const zEnvironmentDeployedAppStatus = z.enum([
 export const zDeploymentStatus = z.enum([
   'DEPLOYMENT_STATUS_UNSPECIFIED',
   'DEPLOYMENT_STATUS_UNDEPLOYED',
-  'DEPLOYMENT_STATUS_DEPLOYING',
   'DEPLOYMENT_STATUS_RUNNING',
-  'DEPLOYMENT_STATUS_UNDEPLOYING',
-  'DEPLOYMENT_STATUS_INVALID',
-  'DEPLOYMENT_STATUS_FAILED',
+  'DEPLOYMENT_STATUS_STARTING',
+  'DEPLOYMENT_STATUS_STOPPING',
+  'DEPLOYMENT_STATUS_SUSPENDED',
+  'DEPLOYMENT_STATUS_ERROR',
+  'DEPLOYMENT_STATUS_UNKNOWN',
 ])
 
 export const zEnvVarValueSource = z.enum([
@@ -400,6 +401,8 @@ export const zError = z.object({
       'APPDEPLOY_APPLICATION_UNAVAILABLE',
       'APPDEPLOY_TARGET_ENVIRONMENT_REMOVED',
       'APPDEPLOY_VERSION_UNAVAILABLE',
+      'APPDEPLOY_CONVERSATION_NOT_FOUND',
+      'APPDEPLOY_CHAT_MESSAGE_NOT_FOUND',
       'APPDEPLOY_CONFLICT',
       'APPDEPLOY_DEPLOYMENT_IN_PROGRESS',
       'APPDEPLOY_ALREADY_UNDEPLOYED',
@@ -438,10 +441,13 @@ export const zError = z.object({
       'APPDEPLOY_ENVIRONMENT_CPU_POOL_EXHAUSTED',
       'APPDEPLOY_RESOURCE_NOT_APPLICABLE_FOR_MODE',
       'APPDEPLOY_ENVIRONMENT_CPU_POOL_BELOW_ALLOCATED',
+      'APPDEPLOY_CHAT_CONTEXT_TOO_LARGE',
+      'APPDEPLOY_FILE_GRANT_UNAVAILABLE',
       'APPDEPLOY_APP_RUNNER_CONTROL_NOT_CONFIGURED',
       'APPDEPLOY_RUNTIME_ASSIGNMENT_FAILED',
       'APPDEPLOY_REVISION_TIMEOUT',
       'APPDEPLOY_INTERNAL_ERROR',
+      'APPDEPLOY_RECEIPT_RETRY',
       'APPDEPLOY_ENVIRONMENT_BOOTSTRAP_AUTH_REJECTED',
       'APPDEPLOY_ENVIRONMENT_BOOTSTRAP_NAMESPACE_MISSING',
       'APPDEPLOY_ENVIRONMENT_BOOTSTRAP_INSUFFICIENT_RBAC',
@@ -482,6 +488,11 @@ export const zGetWebAppAccessModeResponse = z.object({
   accessMode: z.string().optional(),
 })
 
+export const zGetWebAppLoginStatusResponse = z.object({
+  logged_in: z.boolean().optional(),
+  app_logged_in: z.boolean().optional(),
+})
+
 export const zGetWebAppPermissionResponse = z.object({
   result: z.boolean().optional(),
 })
@@ -501,6 +512,18 @@ export const zListEnvironmentApiKeysResponse = z.object({
 
 export const zListEnvironmentTriggersResponse = z.object({
   data: z.array(zEnvironmentTrigger),
+})
+
+export const zMintServiceApiFileGrantRequest = z.object({
+  tenantId: z.string().optional(),
+  appId: z.string().optional(),
+  environmentId: z.string().optional(),
+  user: z.string().optional(),
+})
+
+export const zMintServiceApiFileGrantResponse = z.object({
+  grant: z.string().optional(),
+  expiresAt: z.string().optional(),
 })
 
 export const zNamedRef = z.object({
@@ -577,6 +600,13 @@ export const zPrepareAppDeletionRequest = z.object({
   appId: z.string().optional(),
 })
 
+export const zRenameWebAppConversationRequest = z.object({
+  appCode: z.string(),
+  conversationId: z.string(),
+  name: z.string().optional(),
+  autoGenerate: z.boolean().optional(),
+})
+
 export const zResolveApiTokenRouteRequest = z.object({
   token: z.string().optional(),
 })
@@ -590,17 +620,14 @@ export const zResolveApiTokenRouteResponse = z.object({
     .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
     .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
     .optional(),
-  environmentStatus: zEnvironmentStatus.optional(),
   appId: z.string().optional(),
   tenantId: z.string().optional(),
   deploymentId: z.string().optional(),
   servingRevisionId: z.string().optional(),
-  deploymentStatus: zDeploymentStatus.optional(),
-  revoked: z.boolean().optional(),
-  unavailableReason: z.string().optional(),
   targetKind: zRouteTargetKind.optional(),
   directUpstream: z.string().optional(),
   deploymentGeneration: z.string().optional(),
+  decision: z.string().optional(),
 })
 
 export const zResolveWebAppRouteRequest = z.object({
@@ -618,18 +645,18 @@ export const zResolveWebAppRouteResponse = z.object({
     .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
     .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
     .optional(),
-  environmentStatus: zEnvironmentStatus.optional(),
   appId: z.string().optional(),
   tenantId: z.string().optional(),
   deploymentId: z.string().optional(),
   servingRevisionId: z.string().optional(),
-  deploymentStatus: zDeploymentStatus.optional(),
-  unavailableReason: z.string().optional(),
   targetKind: zRouteTargetKind.optional(),
   directUpstream: z.string().optional(),
   deploymentGeneration: z.string().optional(),
   userId: z.string().optional(),
   userFrom: z.string().optional(),
+  userAuthType: z.string().optional(),
+  fileGrant: z.string().optional(),
+  fileGrantExpiresAt: z.string().optional(),
 })
 
 export const zRetryEnvironmentBootstrapRequest = z.object({

@@ -227,8 +227,8 @@ export function shouldPollEnvironmentDeployment(deployment?: EnvironmentDeployme
 
   const status = deployment?.deployment?.status
   return (
-    status === DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING ||
-    status === DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING
+    status === DeploymentStatus.DEPLOYMENT_STATUS_STARTING ||
+    status === DeploymentStatus.DEPLOYMENT_STATUS_STOPPING
   )
 }
 
@@ -350,8 +350,8 @@ export function getEnvironmentDeploymentActions(
   }
 
   if (
-    deployment.status === DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING ||
-    deployment.status === DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING
+    deployment.status === DeploymentStatus.DEPLOYMENT_STATUS_STARTING ||
+    deployment.status === DeploymentStatus.DEPLOYMENT_STATUS_STOPPING
   ) {
     return actions(
       hasCurrentVersion

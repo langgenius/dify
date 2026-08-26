@@ -252,7 +252,7 @@ const APP_ENVIRONMENT_DEPLOYMENTS: EnvironmentDeployment[] = [
       targetVersion: VERSIONS.sprint42,
     }),
     name: 'Staging',
-    status: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+    status: DeploymentStatus.DEPLOYMENT_STATUS_STARTING,
   }),
   environmentDeployment({
     currentVersion: VERSIONS.sprint42,
@@ -333,7 +333,7 @@ const APP_ENVIRONMENT_DEPLOYMENTS: EnvironmentDeployment[] = [
       targetVersion: VERSIONS.sprint42,
     }),
     name: 'Preview',
-    status: DeploymentStatus.DEPLOYMENT_STATUS_FAILED,
+    status: DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYED,
   }),
 ]
 
@@ -427,7 +427,7 @@ const ACTION_MATRIX_CASES: Array<{
         type: DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_UNDEPLOY,
       }),
       name: 'Undeploying',
-      status: DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING,
+      status: DeploymentStatus.DEPLOYMENT_STATUS_STOPPING,
     }),
   },
   {
@@ -444,7 +444,7 @@ const ACTION_MATRIX_CASES: Array<{
         targetVersion: VERSIONS.sprint42,
       }),
       name: 'Failed',
-      status: DeploymentStatus.DEPLOYMENT_STATUS_FAILED,
+      status: DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYED,
     }),
   },
   {
@@ -477,7 +477,7 @@ const ACTION_MATRIX_CASES: Array<{
       currentVersion: VERSIONS.qa,
       id: 'invalid',
       name: 'Invalid',
-      status: DeploymentStatus.DEPLOYMENT_STATUS_INVALID,
+      status: DeploymentStatus.DEPLOYMENT_STATUS_ERROR,
     }),
   },
   {
@@ -486,7 +486,7 @@ const ACTION_MATRIX_CASES: Array<{
     row: environmentDeployment({
       id: 'invalid-without-version',
       name: 'Invalid without version',
-      status: DeploymentStatus.DEPLOYMENT_STATUS_INVALID,
+      status: DeploymentStatus.DEPLOYMENT_STATUS_ERROR,
     }),
   },
   {
@@ -494,12 +494,12 @@ const ACTION_MATRIX_CASES: Array<{
       { disabled: false, kind: 'redeploy' },
       { disabled: false, kind: 'undeploy' },
     ],
-    name: 'unspecified',
+    name: 'unknown',
     row: environmentDeployment({
       currentVersion: VERSIONS.qa,
-      id: 'unspecified',
-      name: 'Unspecified',
-      status: DeploymentStatus.DEPLOYMENT_STATUS_UNSPECIFIED,
+      id: 'unknown',
+      name: 'Unknown',
+      status: DeploymentStatus.DEPLOYMENT_STATUS_UNKNOWN,
     }),
   },
 ]
@@ -857,11 +857,12 @@ describe('AppDeploy', () => {
   it.each([
     [DeploymentStatus.DEPLOYMENT_STATUS_UNSPECIFIED, 'Unknown'],
     [DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYED, 'Not deployed'],
-    [DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING, 'Deploying'],
     [DeploymentStatus.DEPLOYMENT_STATUS_RUNNING, 'Running'],
-    [DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING, 'Undeploying'],
-    [DeploymentStatus.DEPLOYMENT_STATUS_INVALID, 'Invalid'],
-    [DeploymentStatus.DEPLOYMENT_STATUS_FAILED, 'Deploy failed'],
+    [DeploymentStatus.DEPLOYMENT_STATUS_STARTING, 'Deploying'],
+    [DeploymentStatus.DEPLOYMENT_STATUS_STOPPING, 'Undeploying'],
+    [DeploymentStatus.DEPLOYMENT_STATUS_SUSPENDED, 'Unknown'],
+    [DeploymentStatus.DEPLOYMENT_STATUS_ERROR, 'Invalid'],
+    [DeploymentStatus.DEPLOYMENT_STATUS_UNKNOWN, 'Unknown'],
   ] as const)('renders contract deployment status %s as %s', (status, label) => {
     render(<DeploymentStatusView status={status} />)
 
@@ -869,8 +870,8 @@ describe('AppDeploy', () => {
   })
 
   it.each([
-    DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
-    DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING,
+    DeploymentStatus.DEPLOYMENT_STATUS_STARTING,
+    DeploymentStatus.DEPLOYMENT_STATUS_STOPPING,
   ])('continues polling transitional status %s without a latest operation', (status) => {
     expect(
       shouldPollEnvironmentDeployment(
@@ -1345,7 +1346,7 @@ describe('AppDeploy', () => {
                   targetVersion: workflowVersion('Release 6', 'workflow-version-6'),
                 }),
                 name: 'Dev',
-                status: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+                status: DeploymentStatus.DEPLOYMENT_STATUS_STARTING,
               }),
             ],
           }),
@@ -1494,7 +1495,7 @@ describe('AppDeploy', () => {
                       type: DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_UNDEPLOY,
                     }),
                     name: 'Canary',
-                    status: DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING,
+                    status: DeploymentStatus.DEPLOYMENT_STATUS_STOPPING,
                   })
                 : deployment,
             ),
@@ -1634,7 +1635,7 @@ describe('AppDeploy', () => {
             type: DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_UNDEPLOY,
           }),
           name: 'Canary',
-          status: DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING,
+          status: DeploymentStatus.DEPLOYMENT_STATUS_STOPPING,
         }),
       ],
     })
