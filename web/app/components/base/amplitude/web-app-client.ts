@@ -1,9 +1,35 @@
+import type { Types } from '@amplitude/analytics-browser'
 import type { WebAppEventName, WebAppEventProperties } from './web-app-event'
 import { AMPLITUDE_API_KEY } from '@/config'
 
 type WebAppAmplitudeClient = ReturnType<
   (typeof import('@amplitude/analytics-browser'))['createInstance']
 >
+type WebAppAmplitudeStorageProvider = NonNullable<Types.BrowserOptions['storageProvider']>
+
+const webAppAmplitudeEventQueue = new Map<string, Types.Event[]>()
+
+const webAppAmplitudeStorageProvider: WebAppAmplitudeStorageProvider = {
+  async isEnabled() {
+    return true
+  },
+  async get(key) {
+    return webAppAmplitudeEventQueue.get(key)
+  },
+  async getRaw(key) {
+    const value = webAppAmplitudeEventQueue.get(key)
+    return value ? JSON.stringify(value) : undefined
+  },
+  async set(key, value) {
+    webAppAmplitudeEventQueue.set(key, value)
+  },
+  async remove(key) {
+    webAppAmplitudeEventQueue.delete(key)
+  },
+  async reset() {
+    webAppAmplitudeEventQueue.clear()
+  },
+}
 
 let webAppAmplitude: WebAppAmplitudeClient | null = null
 let webAppAmplitudeInitialization: Promise<WebAppAmplitudeClient | null> | null = null
@@ -18,9 +44,12 @@ async function initializeWebAppAmplitude(): Promise<WebAppAmplitudeClient | null
       autocapture: false,
       defaultTracking: false,
       fetchRemoteConfig: false,
+      flushQueueSize: 1,
+      identityStorage: 'none',
       instanceName: 'webapp',
+      optOut: shouldWebAppAmplitudeOptOut,
+      storageProvider: webAppAmplitudeStorageProvider,
     })
-    client.setOptOut(shouldWebAppAmplitudeOptOut)
     webAppAmplitude = client
 
     return client
