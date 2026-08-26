@@ -786,12 +786,6 @@ export type WorkflowRunDetailResponse = {
   version?: string | null
 }
 
-export type WorkflowRunExportResponse = {
-  presigned_url?: string | null
-  presigned_url_expires_at?: string | null
-  status: string
-}
-
 export type WorkflowRunNodeExecutionListResponse = {
   data: Array<WorkflowRunNodeExecutionResponse>
 }
@@ -5287,23 +5281,6 @@ export type GetAppsByAppIdWorkflowRunsByRunIdResponses = {
 
 export type GetAppsByAppIdWorkflowRunsByRunIdResponse =
   GetAppsByAppIdWorkflowRunsByRunIdResponses[keyof GetAppsByAppIdWorkflowRunsByRunIdResponses]
-
-export type GetAppsByAppIdWorkflowRunsByRunIdExportData = {
-  body?: never
-  path: {
-    app_id: string
-    run_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/workflow-runs/{run_id}/export'
-}
-
-export type GetAppsByAppIdWorkflowRunsByRunIdExportResponses = {
-  200: WorkflowRunExportResponse
-}
-
-export type GetAppsByAppIdWorkflowRunsByRunIdExportResponse =
-  GetAppsByAppIdWorkflowRunsByRunIdExportResponses[keyof GetAppsByAppIdWorkflowRunsByRunIdExportResponses]
 
 export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsData = {
   body?: never

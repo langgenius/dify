@@ -3459,22 +3459,6 @@ Stop running workflow task
 | 200 | Workflow run detail retrieved successfully | **application/json**: [WorkflowRunDetailResponse](#workflowrundetailresponse)<br> |
 | 404 | Workflow run not found |  |
 
-### [GET] /apps/{app_id}/workflow-runs/{run_id}/export
-Generate a download URL for an archived workflow run.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| run_id | path | Workflow run ID | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Export URL generated | **application/json**: [WorkflowRunExportResponse](#workflowrunexportresponse)<br> |
-
 ### [GET] /apps/{app_id}/workflow-runs/{run_id}/node-executions
 **Get workflow run node execution list**
 
@@ -24572,14 +24556,6 @@ Lifecycle state for an asynchronous archive download request.
 | total_steps | integer |  | No |
 | total_tokens | integer |  | No |
 | version | string |  | No |
-
-#### WorkflowRunExportResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| presigned_url | string | Pre-signed URL for download | No |
-| presigned_url_expires_at | string | Pre-signed URL expiration time | No |
-| status | string | Export status: success/failed | Yes |
 
 #### WorkflowRunForArchivedLogResponse
 

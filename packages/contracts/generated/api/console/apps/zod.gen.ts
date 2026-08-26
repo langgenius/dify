@@ -504,15 +504,6 @@ export const zWorkflowTriggerListResponse = z.object({
 })
 
 /**
- * WorkflowRunExportResponse
- */
-export const zWorkflowRunExportResponse = z.object({
-  presigned_url: z.string().nullish(),
-  presigned_url_expires_at: z.string().nullish(),
-  status: z.string(),
-})
-
-/**
  * WorkflowAgentSandboxDownloadPayload
  */
 export const zWorkflowAgentSandboxDownloadPayload = z.object({
@@ -5570,16 +5561,6 @@ export const zGetAppsByAppIdWorkflowRunsByRunIdPath = z.object({
  * Workflow run detail retrieved successfully
  */
 export const zGetAppsByAppIdWorkflowRunsByRunIdResponse = zWorkflowRunDetailResponse
-
-export const zGetAppsByAppIdWorkflowRunsByRunIdExportPath = z.object({
-  app_id: z.uuid(),
-  run_id: z.uuid(),
-})
-
-/**
- * Export URL generated
- */
-export const zGetAppsByAppIdWorkflowRunsByRunIdExportResponse = zWorkflowRunExportResponse
 
 export const zGetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsPath = z.object({
   app_id: z.uuid(),
