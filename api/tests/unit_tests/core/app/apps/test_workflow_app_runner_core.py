@@ -681,9 +681,7 @@ class TestWorkflowBasedAppRunner:
         runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
         workflow_entry = SimpleNamespace(
             graph_engine=SimpleNamespace(
-                graph=SimpleNamespace(
-                    graph_config={"nodes": [{"id": "iteration", "data": {"type": "iteration"}}]}
-                )
+                graph=SimpleNamespace(graph_config={"nodes": [{"id": "iteration", "data": {"type": "iteration"}}]})
             )
         )
 
