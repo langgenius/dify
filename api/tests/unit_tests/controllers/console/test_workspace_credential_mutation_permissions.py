@@ -4,6 +4,7 @@ from types import FunctionType
 import pytest
 
 from controllers.common.wraps import RBACPermission, RBACResourceScope
+from controllers.console.agent.composer import AgentComposerApi
 from controllers.console.agent.roster import AgentAppApi
 from controllers.console.datasets.data_source import DataSourceApi
 from controllers.console.datasets.rag_pipeline.datasource_auth import DatasourceAuth
@@ -107,11 +108,16 @@ def test_workspace_model_preferences_get_require_admin_and_rbac(
     assert rbac_config["resource_required"] is False
 
 
-def test_agent_app_get_requires_rbac() -> None:
-    """GET endpoint that returns agent app details must enforce
-    the same RBAC gates as its sibling PUT/DELETE methods."""
-    method = AgentAppApi.get
-
+@pytest.mark.parametrize(
+    "method",
+    [
+        AgentAppApi.get,
+        AgentComposerApi.get,
+    ],
+)
+def test_agent_app_get_requires_rbac(method: FunctionType) -> None:
+    """GET endpoints that return agent app details or composer state must enforce
+    the same RBAC gates as their sibling PUT/DELETE methods."""
     rbac_wrapper = unwrap(method, stop=lambda wrapper: "rbac_permission_required" in wrapper.__code__.co_qualname)
     rbac_config = getclosurevars(rbac_wrapper).nonlocals
     assert rbac_config["resource_type"] == RBACResourceScope.WORKSPACE
