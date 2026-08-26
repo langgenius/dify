@@ -1142,9 +1142,7 @@ class TestSegmentServiceAdditionalRegenerationBranches:
         assert segment.error == "The knowledge base index technique is not high quality!"
         vector_service.update_multimodel_vector.assert_not_called()
 
-    def test_update_qa_segment_omitted_answer_preserves_existing_answer(
-        self, account_context
-    ):
+    def test_update_qa_segment_omitted_answer_preserves_existing_answer(self, account_context):
         session = MagicMock()
         segment = _make_segment(content="old question", word_count=len("old questionold answer"))
         segment.answer = "old answer"
@@ -1174,9 +1172,7 @@ class TestSegmentServiceAdditionalRegenerationBranches:
         assert result is refreshed_segment
         assert segment.answer == "old answer"
 
-    def test_update_qa_segment_content_change_omitted_answer_preserves_answer_in_embedding(
-        self, account_context
-    ):
+    def test_update_qa_segment_content_change_omitted_answer_preserves_answer_in_embedding(self, account_context):
         session = MagicMock()
         segment = _make_segment(content="old question", word_count=len("old questionold answer"))
         segment.answer = "old answer"
@@ -1212,6 +1208,4 @@ class TestSegmentServiceAdditionalRegenerationBranches:
 
         assert result is refreshed_segment
         assert segment.answer == "old answer"
-        embedding_model_instance.get_text_embedding_num_tokens.assert_called_once_with(
-            texts=["new questionold answer"]
-        )
+        embedding_model_instance.get_text_embedding_num_tokens.assert_called_once_with(texts=["new questionold answer"])

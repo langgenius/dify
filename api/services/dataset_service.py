@@ -3713,7 +3713,9 @@ class SegmentService:
                     if document.doc_form == IndexStructureType.QA_INDEX:
                         if args.answer is not None:
                             segment.answer = args.answer
-                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + (segment.answer or "")])[0]  # type: ignore
+                        tokens = embedding_model.get_text_embedding_num_tokens(
+                            texts=[content + (segment.answer or "")]
+                        )[0]  # type: ignore
                     else:
                         tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
                 segment.content = content
