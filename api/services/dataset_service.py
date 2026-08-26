@@ -3612,8 +3612,9 @@ class SegmentService:
             if segment.content == content:
                 segment.word_count = len(content)
                 if document.doc_form == IndexStructureType.QA_INDEX:
-                    segment.answer = args.answer
-                    segment.word_count += len(args.answer) if args.answer else 0
+                    if args.answer is not None:
+                        segment.answer = args.answer
+                    segment.word_count += len(segment.answer) if segment.answer else 0
                 word_count_change = segment.word_count - word_count_change
                 keyword_changed = False
                 if args.keywords:
@@ -3710,8 +3711,9 @@ class SegmentService:
 
                     # calc embedding use tokens
                     if document.doc_form == IndexStructureType.QA_INDEX:
-                        segment.answer = args.answer
-                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])[0]  # type: ignore
+                        if args.answer is not None:
+                            segment.answer = args.answer
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + (segment.answer or "")])[0]  # type: ignore
                     else:
                         tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
                 segment.content = content
@@ -3727,8 +3729,9 @@ class SegmentService:
                 segment.disabled_at = None
                 segment.disabled_by = None
                 if document.doc_form == IndexStructureType.QA_INDEX:
-                    segment.answer = args.answer
-                    segment.word_count += len(args.answer) if args.answer else 0
+                    if args.answer is not None:
+                        segment.answer = args.answer
+                    segment.word_count += len(segment.answer) if segment.answer else 0
                 word_count_change = segment.word_count - word_count_change
                 # update document word count
                 if word_count_change != 0:
