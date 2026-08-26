@@ -10,21 +10,22 @@ import { useTranslation } from 'react-i18next'
 const STATUS_TEXT_CLASS_NAMES: Record<DeploymentStatusValue, string> = {
   [DeploymentStatusEnum.DEPLOYMENT_STATUS_UNSPECIFIED]: 'text-text-tertiary',
   [DeploymentStatusEnum.DEPLOYMENT_STATUS_UNDEPLOYED]: 'text-text-tertiary',
+  [DeploymentStatusEnum.DEPLOYMENT_STATUS_DEPLOYING]: 'text-util-colors-blue-light-blue-light-600',
   [DeploymentStatusEnum.DEPLOYMENT_STATUS_RUNNING]: 'text-util-colors-green-green-600',
-  [DeploymentStatusEnum.DEPLOYMENT_STATUS_STARTING]: 'text-util-colors-blue-light-blue-light-600',
-  [DeploymentStatusEnum.DEPLOYMENT_STATUS_STOPPING]: 'text-util-colors-blue-light-blue-light-600',
-  [DeploymentStatusEnum.DEPLOYMENT_STATUS_SUSPENDED]: 'text-text-tertiary',
-  [DeploymentStatusEnum.DEPLOYMENT_STATUS_ERROR]: 'text-util-colors-red-red-600',
-  [DeploymentStatusEnum.DEPLOYMENT_STATUS_UNKNOWN]: 'text-text-warning',
+  [DeploymentStatusEnum.DEPLOYMENT_STATUS_UNDEPLOYING]:
+    'text-util-colors-blue-light-blue-light-600',
+  [DeploymentStatusEnum.DEPLOYMENT_STATUS_INVALID]: 'text-util-colors-red-red-600',
+  [DeploymentStatusEnum.DEPLOYMENT_STATUS_FAILED]: 'text-util-colors-red-red-600',
 }
 
-const STATUS_DOT: Partial<Record<DeploymentStatusValue, StatusDotStatus>> = {
+const STATUS_DOT: Record<DeploymentStatusValue, StatusDotStatus | undefined> = {
   [DeploymentStatusEnum.DEPLOYMENT_STATUS_UNSPECIFIED]: 'disabled',
   [DeploymentStatusEnum.DEPLOYMENT_STATUS_UNDEPLOYED]: 'disabled',
+  [DeploymentStatusEnum.DEPLOYMENT_STATUS_DEPLOYING]: undefined,
   [DeploymentStatusEnum.DEPLOYMENT_STATUS_RUNNING]: 'success',
-  [DeploymentStatusEnum.DEPLOYMENT_STATUS_SUSPENDED]: 'disabled',
-  [DeploymentStatusEnum.DEPLOYMENT_STATUS_ERROR]: 'error',
-  [DeploymentStatusEnum.DEPLOYMENT_STATUS_UNKNOWN]: 'warning',
+  [DeploymentStatusEnum.DEPLOYMENT_STATUS_UNDEPLOYING]: undefined,
+  [DeploymentStatusEnum.DEPLOYMENT_STATUS_INVALID]: 'error',
+  [DeploymentStatusEnum.DEPLOYMENT_STATUS_FAILED]: 'error',
 }
 
 function getStatusLabel(
@@ -32,20 +33,24 @@ function getStatusLabel(
   t: ReturnType<typeof useTranslation<'deployments'>>['t'],
 ) {
   switch (status) {
-    case DeploymentStatusEnum.DEPLOYMENT_STATUS_STARTING:
+    case DeploymentStatusEnum.DEPLOYMENT_STATUS_DEPLOYING:
       return t(($) => $['status.RUNTIME_INSTANCE_STATUS_DEPLOYING'])
     case DeploymentStatusEnum.DEPLOYMENT_STATUS_RUNNING:
       return t(($) => $['status.RUNTIME_INSTANCE_STATUS_READY'])
-    case DeploymentStatusEnum.DEPLOYMENT_STATUS_STOPPING:
+    case DeploymentStatusEnum.DEPLOYMENT_STATUS_UNDEPLOYING:
       return t(($) => $['status.RUNTIME_INSTANCE_STATUS_UNDEPLOYING'])
-    case DeploymentStatusEnum.DEPLOYMENT_STATUS_ERROR:
+    case DeploymentStatusEnum.DEPLOYMENT_STATUS_INVALID:
       return t(($) => $['status.RUNTIME_INSTANCE_STATUS_INVALID'])
-    case DeploymentStatusEnum.DEPLOYMENT_STATUS_SUSPENDED:
-    case DeploymentStatusEnum.DEPLOYMENT_STATUS_UNKNOWN:
+    case DeploymentStatusEnum.DEPLOYMENT_STATUS_FAILED:
+      return t(($) => $['status.RUNTIME_INSTANCE_STATUS_FAILED'])
     case DeploymentStatusEnum.DEPLOYMENT_STATUS_UNSPECIFIED:
       return t(($) => $['status.RUNTIME_INSTANCE_STATUS_UNSPECIFIED'])
-    default:
+    case DeploymentStatusEnum.DEPLOYMENT_STATUS_UNDEPLOYED:
       return t(($) => $['status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED'])
+    default: {
+      const exhaustiveStatus: never = status
+      return exhaustiveStatus
+    }
   }
 }
 
@@ -54,8 +59,8 @@ export function DeploymentStatus({ status }: { status?: DeploymentStatusValue })
   const resolvedStatus = status ?? DeploymentStatusEnum.DEPLOYMENT_STATUS_UNDEPLOYED
   const label = getStatusLabel(resolvedStatus, t)
   const isInProgress =
-    resolvedStatus === DeploymentStatusEnum.DEPLOYMENT_STATUS_STARTING ||
-    resolvedStatus === DeploymentStatusEnum.DEPLOYMENT_STATUS_STOPPING
+    resolvedStatus === DeploymentStatusEnum.DEPLOYMENT_STATUS_DEPLOYING ||
+    resolvedStatus === DeploymentStatusEnum.DEPLOYMENT_STATUS_UNDEPLOYING
 
   return (
     <span

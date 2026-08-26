@@ -139,12 +139,11 @@ export type EnvironmentDeployedAppStatus =
 export const DeploymentStatus = {
   DEPLOYMENT_STATUS_UNSPECIFIED: 'DEPLOYMENT_STATUS_UNSPECIFIED',
   DEPLOYMENT_STATUS_UNDEPLOYED: 'DEPLOYMENT_STATUS_UNDEPLOYED',
+  DEPLOYMENT_STATUS_DEPLOYING: 'DEPLOYMENT_STATUS_DEPLOYING',
   DEPLOYMENT_STATUS_RUNNING: 'DEPLOYMENT_STATUS_RUNNING',
-  DEPLOYMENT_STATUS_STARTING: 'DEPLOYMENT_STATUS_STARTING',
-  DEPLOYMENT_STATUS_STOPPING: 'DEPLOYMENT_STATUS_STOPPING',
-  DEPLOYMENT_STATUS_SUSPENDED: 'DEPLOYMENT_STATUS_SUSPENDED',
-  DEPLOYMENT_STATUS_ERROR: 'DEPLOYMENT_STATUS_ERROR',
-  DEPLOYMENT_STATUS_UNKNOWN: 'DEPLOYMENT_STATUS_UNKNOWN',
+  DEPLOYMENT_STATUS_UNDEPLOYING: 'DEPLOYMENT_STATUS_UNDEPLOYING',
+  DEPLOYMENT_STATUS_INVALID: 'DEPLOYMENT_STATUS_INVALID',
+  DEPLOYMENT_STATUS_FAILED: 'DEPLOYMENT_STATUS_FAILED',
 } as const
 
 export type DeploymentStatus = (typeof DeploymentStatus)[keyof typeof DeploymentStatus]
@@ -602,7 +601,6 @@ export type Error = {
     | 'APPDEPLOY_RUNTIME_ASSIGNMENT_FAILED'
     | 'APPDEPLOY_REVISION_TIMEOUT'
     | 'APPDEPLOY_INTERNAL_ERROR'
-    | 'APPDEPLOY_RECEIPT_RETRY'
     | 'APPDEPLOY_ENVIRONMENT_BOOTSTRAP_AUTH_REJECTED'
     | 'APPDEPLOY_ENVIRONMENT_BOOTSTRAP_NAMESPACE_MISSING'
     | 'APPDEPLOY_ENVIRONMENT_BOOTSTRAP_INSUFFICIENT_RBAC'
@@ -739,14 +737,17 @@ export type ResolveApiTokenRouteResponse = {
   namespace?: string
   serviceName?: string
   servicePort?: number
+  environmentStatus?: EnvironmentStatus
   appId?: string
   tenantId?: string
   deploymentId?: string
   servingRevisionId?: string
+  deploymentStatus?: DeploymentStatus
+  revoked?: boolean
+  unavailableReason?: string
   targetKind?: RouteTargetKind
   directUpstream?: string
   deploymentGeneration?: string
-  decision?: string
 }
 
 export type ResolveWebAppRouteRequest = {
@@ -760,10 +761,13 @@ export type ResolveWebAppRouteResponse = {
   namespace?: string
   serviceName?: string
   servicePort?: number
+  environmentStatus?: EnvironmentStatus
   appId?: string
   tenantId?: string
   deploymentId?: string
   servingRevisionId?: string
+  deploymentStatus?: DeploymentStatus
+  unavailableReason?: string
   targetKind?: RouteTargetKind
   directUpstream?: string
   deploymentGeneration?: string

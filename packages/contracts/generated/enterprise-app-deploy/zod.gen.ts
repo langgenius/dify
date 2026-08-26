@@ -91,12 +91,11 @@ export const zEnvironmentDeployedAppStatus = z.enum([
 export const zDeploymentStatus = z.enum([
   'DEPLOYMENT_STATUS_UNSPECIFIED',
   'DEPLOYMENT_STATUS_UNDEPLOYED',
+  'DEPLOYMENT_STATUS_DEPLOYING',
   'DEPLOYMENT_STATUS_RUNNING',
-  'DEPLOYMENT_STATUS_STARTING',
-  'DEPLOYMENT_STATUS_STOPPING',
-  'DEPLOYMENT_STATUS_SUSPENDED',
-  'DEPLOYMENT_STATUS_ERROR',
-  'DEPLOYMENT_STATUS_UNKNOWN',
+  'DEPLOYMENT_STATUS_UNDEPLOYING',
+  'DEPLOYMENT_STATUS_INVALID',
+  'DEPLOYMENT_STATUS_FAILED',
 ])
 
 export const zEnvVarValueSource = z.enum([
@@ -443,7 +442,6 @@ export const zError = z.object({
       'APPDEPLOY_RUNTIME_ASSIGNMENT_FAILED',
       'APPDEPLOY_REVISION_TIMEOUT',
       'APPDEPLOY_INTERNAL_ERROR',
-      'APPDEPLOY_RECEIPT_RETRY',
       'APPDEPLOY_ENVIRONMENT_BOOTSTRAP_AUTH_REJECTED',
       'APPDEPLOY_ENVIRONMENT_BOOTSTRAP_NAMESPACE_MISSING',
       'APPDEPLOY_ENVIRONMENT_BOOTSTRAP_INSUFFICIENT_RBAC',
@@ -592,14 +590,17 @@ export const zResolveApiTokenRouteResponse = z.object({
     .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
     .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
     .optional(),
+  environmentStatus: zEnvironmentStatus.optional(),
   appId: z.string().optional(),
   tenantId: z.string().optional(),
   deploymentId: z.string().optional(),
   servingRevisionId: z.string().optional(),
+  deploymentStatus: zDeploymentStatus.optional(),
+  revoked: z.boolean().optional(),
+  unavailableReason: z.string().optional(),
   targetKind: zRouteTargetKind.optional(),
   directUpstream: z.string().optional(),
   deploymentGeneration: z.string().optional(),
-  decision: z.string().optional(),
 })
 
 export const zResolveWebAppRouteRequest = z.object({
@@ -617,10 +618,13 @@ export const zResolveWebAppRouteResponse = z.object({
     .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
     .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
     .optional(),
+  environmentStatus: zEnvironmentStatus.optional(),
   appId: z.string().optional(),
   tenantId: z.string().optional(),
   deploymentId: z.string().optional(),
   servingRevisionId: z.string().optional(),
+  deploymentStatus: zDeploymentStatus.optional(),
+  unavailableReason: z.string().optional(),
   targetKind: zRouteTargetKind.optional(),
   directUpstream: z.string().optional(),
   deploymentGeneration: z.string().optional(),

@@ -30,7 +30,12 @@ import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console
 import { AppACLPermission } from '@/utils/permission'
 import AppDeploy from '..'
 import { EnvironmentTable } from '../environment-table'
-import { AppDeployStateBoundary, getEnvironmentDeploymentActions } from '../state'
+import { DeploymentStatus as DeploymentStatusView } from '../shared/deployment-status'
+import {
+  AppDeployStateBoundary,
+  getEnvironmentDeploymentActions,
+  shouldPollEnvironmentDeployment,
+} from '../state'
 
 const APP_ID = 'app-1'
 const ACTIVITY_AT = 1_784_941_200
@@ -247,7 +252,7 @@ const APP_ENVIRONMENT_DEPLOYMENTS: EnvironmentDeployment[] = [
       targetVersion: VERSIONS.sprint42,
     }),
     name: 'Staging',
-    status: DeploymentStatus.DEPLOYMENT_STATUS_STARTING,
+    status: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
   }),
   environmentDeployment({
     currentVersion: VERSIONS.sprint42,
@@ -328,7 +333,7 @@ const APP_ENVIRONMENT_DEPLOYMENTS: EnvironmentDeployment[] = [
       targetVersion: VERSIONS.sprint42,
     }),
     name: 'Preview',
-    status: DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYED,
+    status: DeploymentStatus.DEPLOYMENT_STATUS_FAILED,
   }),
 ]
 
@@ -422,7 +427,7 @@ const ACTION_MATRIX_CASES: Array<{
         type: DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_UNDEPLOY,
       }),
       name: 'Undeploying',
-      status: DeploymentStatus.DEPLOYMENT_STATUS_STOPPING,
+      status: DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING,
     }),
   },
   {
@@ -439,7 +444,7 @@ const ACTION_MATRIX_CASES: Array<{
         targetVersion: VERSIONS.sprint42,
       }),
       name: 'Failed',
-      status: DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYED,
+      status: DeploymentStatus.DEPLOYMENT_STATUS_FAILED,
     }),
   },
   {
@@ -472,7 +477,7 @@ const ACTION_MATRIX_CASES: Array<{
       currentVersion: VERSIONS.qa,
       id: 'invalid',
       name: 'Invalid',
-      status: DeploymentStatus.DEPLOYMENT_STATUS_ERROR,
+      status: DeploymentStatus.DEPLOYMENT_STATUS_INVALID,
     }),
   },
   {
@@ -481,7 +486,7 @@ const ACTION_MATRIX_CASES: Array<{
     row: environmentDeployment({
       id: 'invalid-without-version',
       name: 'Invalid without version',
-      status: DeploymentStatus.DEPLOYMENT_STATUS_ERROR,
+      status: DeploymentStatus.DEPLOYMENT_STATUS_INVALID,
     }),
   },
   {
@@ -489,12 +494,12 @@ const ACTION_MATRIX_CASES: Array<{
       { disabled: false, kind: 'redeploy' },
       { disabled: false, kind: 'undeploy' },
     ],
-    name: 'unknown',
+    name: 'unspecified',
     row: environmentDeployment({
       currentVersion: VERSIONS.qa,
-      id: 'unknown',
-      name: 'Unknown',
-      status: DeploymentStatus.DEPLOYMENT_STATUS_UNKNOWN,
+      id: 'unspecified',
+      name: 'Unspecified',
+      status: DeploymentStatus.DEPLOYMENT_STATUS_UNSPECIFIED,
     }),
   },
 ]
@@ -713,7 +718,13 @@ vi.mock('react-i18next', async () => {
     'deployments.studio.undeployConfirmDesc':
       'The app will stop running in this environment, and all of its access points will become unavailable.',
     'deployments.studio.undeployConfirmTitle': 'Undeploy {{versionName}} from {{envName}}',
+    'deployments.status.RUNTIME_INSTANCE_STATUS_DEPLOYING': 'Deploying',
+    'deployments.status.RUNTIME_INSTANCE_STATUS_FAILED': 'Deploy failed',
+    'deployments.status.RUNTIME_INSTANCE_STATUS_INVALID': 'Invalid',
     'deployments.status.RUNTIME_INSTANCE_STATUS_READY': 'Running',
+    'deployments.status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED': 'Not deployed',
+    'deployments.status.RUNTIME_INSTANCE_STATUS_UNDEPLOYING': 'Undeploying',
+    'deployments.status.RUNTIME_INSTANCE_STATUS_UNSPECIFIED': 'Unknown',
     'deployments.studio.activity.deploySucceeded': 'Deploy {{target}} succeeded',
     'deployments.studio.activity.meta': '{{name}} · {{time}}',
     'deployments.studio.versionValue': 'Version value',
@@ -842,6 +853,35 @@ describe('AppDeploy', () => {
       expect(getEnvironmentDeploymentActions(row)).toEqual(actions)
     },
   )
+
+  it.each([
+    [DeploymentStatus.DEPLOYMENT_STATUS_UNSPECIFIED, 'Unknown'],
+    [DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYED, 'Not deployed'],
+    [DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING, 'Deploying'],
+    [DeploymentStatus.DEPLOYMENT_STATUS_RUNNING, 'Running'],
+    [DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING, 'Undeploying'],
+    [DeploymentStatus.DEPLOYMENT_STATUS_INVALID, 'Invalid'],
+    [DeploymentStatus.DEPLOYMENT_STATUS_FAILED, 'Deploy failed'],
+  ] as const)('renders contract deployment status %s as %s', (status, label) => {
+    render(<DeploymentStatusView status={status} />)
+
+    expect(screen.getByText(label)).toBeInTheDocument()
+  })
+
+  it.each([
+    DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+    DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING,
+  ])('continues polling transitional status %s without a latest operation', (status) => {
+    expect(
+      shouldPollEnvironmentDeployment(
+        environmentDeployment({
+          id: 'transitioning',
+          name: 'Transitioning',
+          status,
+        }),
+      ),
+    ).toBe(true)
+  })
 
   it('disables Deploy latest and retries after the latest workflow request fails', async () => {
     const user = userEvent.setup()
@@ -1305,7 +1345,7 @@ describe('AppDeploy', () => {
                   targetVersion: workflowVersion('Release 6', 'workflow-version-6'),
                 }),
                 name: 'Dev',
-                status: DeploymentStatus.DEPLOYMENT_STATUS_STARTING,
+                status: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
               }),
             ],
           }),
@@ -1454,7 +1494,7 @@ describe('AppDeploy', () => {
                       type: DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_UNDEPLOY,
                     }),
                     name: 'Canary',
-                    status: DeploymentStatus.DEPLOYMENT_STATUS_STOPPING,
+                    status: DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING,
                   })
                 : deployment,
             ),
@@ -1594,7 +1634,7 @@ describe('AppDeploy', () => {
             type: DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_UNDEPLOY,
           }),
           name: 'Canary',
-          status: DeploymentStatus.DEPLOYMENT_STATUS_STOPPING,
+          status: DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING,
         }),
       ],
     })

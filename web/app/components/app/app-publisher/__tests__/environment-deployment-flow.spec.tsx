@@ -575,8 +575,8 @@ describe('PublisherEnvironmentFlow', () => {
   })
 
   it.each([
-    DeploymentStatus.DEPLOYMENT_STATUS_STARTING,
-    DeploymentStatus.DEPLOYMENT_STATUS_STOPPING,
+    DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+    DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING,
   ])(
     'disables deployment triggers but keeps environment navigation available while the status is %s',
     (status) => {
@@ -641,7 +641,8 @@ describe('PublisherEnvironmentFlow', () => {
 
   it.each([
     DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYED,
-    DeploymentStatus.DEPLOYMENT_STATUS_ERROR,
+    DeploymentStatus.DEPLOYMENT_STATUS_INVALID,
+    DeploymentStatus.DEPLOYMENT_STATUS_FAILED,
   ])('shows the undeployed state when terminal status %s has no current version', (status) => {
     renderFlow(createDeployment({ deployed: false, status }))
 
