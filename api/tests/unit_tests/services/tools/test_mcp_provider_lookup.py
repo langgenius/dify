@@ -1,11 +1,10 @@
 """Unit tests for MCP provider get_provider logic."""
 
-from unittest.mock import MagicMock
 import uuid
+from unittest.mock import MagicMock
 
-import pytest
-from services.tools.mcp_tools_manage_service import MCPToolManageService
 from models.tools import MCPToolProvider
+from services.tools.mcp_tools_manage_service import MCPToolManageService
 
 
 def test_get_provider_with_non_uuid_identifier():
