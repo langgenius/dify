@@ -31,7 +31,7 @@ export const useAvailableNodesMetaData = () => {
   const isChatMode = useIsChatMode()
   const docLink = useDocLink()
   const agentV2Enabled = isAgentV2Enabled()
-  const shouldUseAgentV2 = agentV2Enabled && !isChatMode
+  const shouldUseAgentV2 = agentV2Enabled
 
   const startNodeMetaData = useMemo(
     () => ({
