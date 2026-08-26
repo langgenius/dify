@@ -239,6 +239,22 @@ class ResourceWhitelistConfig(_RBACModel):
     automatic_include_workspace_members: bool
 
 
+class _LegacyResourceWhitelistConfig(_RBACModel):
+    """RBAC service's pre-toggle whitelist payload, used only by data migrations."""
+
+    account_ids: list[str] = Field(default_factory=list)
+    rbac_whitelist_scope: str | None = Field(
+        default=None, validation_alias=AliasChoices("rbac_whitelist_scope", "scope")
+    )
+
+    @field_validator("account_ids", mode="before")
+    @classmethod
+    def _coerce_account_ids(cls, value: Any) -> list[str]:
+        if value is None:
+            return []
+        return value
+
+
 class ResourceWhitelistResources(_RBACModel):
     unrestricted: bool = False
     resource_ids: list[str] = Field(default_factory=list)
@@ -1181,6 +1197,19 @@ class RBACService:
             return ResourceWhitelistConfig.model_validate(data or {})
 
         @staticmethod
+        def legacy_whitelist_config(
+            tenant_id: str, account_id: str | None, app_id: str
+        ) -> _LegacyResourceWhitelistConfig:
+            data = _inner_call(
+                "GET",
+                f"{_INNER_PREFIX}/apps/whitelist",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params={"app_id": app_id},
+            )
+            return _LegacyResourceWhitelistConfig.model_validate(data or {})
+
+        @staticmethod
         def replace_whitelist(
             tenant_id: str,
             account_id: str | None,
@@ -1364,6 +1393,19 @@ class RBACService:
                 params={"dataset_id": dataset_id},
             )
             return ResourceWhitelistConfig.model_validate(data or {})
+
+        @staticmethod
+        def legacy_whitelist_config(
+            tenant_id: str, account_id: str | None, dataset_id: str
+        ) -> _LegacyResourceWhitelistConfig:
+            data = _inner_call(
+                "GET",
+                f"{_INNER_PREFIX}/datasets/whitelist",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params={"dataset_id": dataset_id},
+            )
+            return _LegacyResourceWhitelistConfig.model_validate(data or {})
 
         @staticmethod
         def replace_whitelist(
