@@ -612,7 +612,7 @@ class TestEmailCodeLoginApi:
             response = api.post()
 
         # Assert
-        assert response.json["result"] == "success"
+        assert response.json == {"result": "success", "is_new_account": False}
         mock_verify_challenge.assert_called_once_with(email="test@example.com", code="123456", token=TEST_TOKEN)
         mock_login.assert_called_once()
 
@@ -669,7 +669,7 @@ class TestEmailCodeLoginApi:
             response = api.post()
 
         # Assert
-        assert response.json["result"] == "success"
+        assert response.json == {"result": "success", "is_new_account": True}
         mock_create_account.assert_called_once_with(
             email="newuser@example.com",
             name="newuser@example.com",
@@ -758,8 +758,16 @@ class TestEmailCodeLoginApi:
     @patch("controllers.console.auth.login.AccountService.get_user_through_email")
     @patch("controllers.console.auth.login.TenantService.get_join_tenants")
     @patch("controllers.console.auth.login.FeatureService.is_workspace_creation_allowed")
+    @patch("controllers.console.auth.login.FeatureService.get_license")
+    @patch("controllers.console.auth.login.TenantService.create_owner_tenant")
+    @patch("controllers.console.auth.login.AccountService.login")
+    @patch("controllers.console.auth.login.AccountService.reset_login_error_rate_limit")
     def test_email_code_login_creates_workspace_for_user_without_tenant(
         self,
+        mock_reset_rate_limit,
+        mock_login,
+        mock_create_owner_tenant,
+        mock_get_license,
         mock_is_workspace_creation_allowed,
         mock_get_tenants,
         mock_get_user,
@@ -767,6 +775,7 @@ class TestEmailCodeLoginApi:
         mock_db,
         app: Flask,
         mock_account,
+        mock_token_pair,
     ):
         """
         Test email code login creates workspace for user without tenant.
@@ -782,16 +791,20 @@ class TestEmailCodeLoginApi:
         mock_get_user.return_value = mock_account
         mock_get_tenants.return_value = []
         mock_is_workspace_creation_allowed.return_value = True
+        mock_get_license.return_value.workspaces.is_available.return_value = True
+        mock_login.return_value = mock_token_pair
 
-        # Act & Assert - Should not raise WorkspacesLimitExceeded
+        # Act
         with app.test_request_context(
             "/email-code-login/validity",
             method="POST",
             json={"email": "test@example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
         ):
-            api = EmailCodeLoginApi()
-            # This would complete the flow, but we're testing workspace creation logic
-            # In real implementation, TenantService.create_tenant would be called
+            response = EmailCodeLoginApi().post()
+
+        # Assert
+        assert response.json == {"result": "success", "is_new_account": False}
+        mock_create_owner_tenant.assert_called_once()
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")

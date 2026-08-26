@@ -63,3 +63,8 @@ class ActivationCheckResult:
 @dataclass(frozen=True, slots=True)
 class ActivationPersistenceResult:
     membership_created: bool
+
+
+@dataclass(frozen=True, slots=True)
+class ActivationResult:
+    registration_completed: bool

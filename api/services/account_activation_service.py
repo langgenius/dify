@@ -9,6 +9,7 @@ from services.entities.account_activation_entities import (
     ActivationCheckResult,
     ActivationCommand,
     ActivationPersistenceResult,
+    ActivationResult,
     InvitationLookup,
     InvitationToken,
 )
@@ -97,7 +98,7 @@ class AccountActivationService:
             ),
         )
 
-    def activate(self, command: ActivationCommand, *, authenticated_account_id: str | None) -> None:
+    def activate(self, command: ActivationCommand, *, authenticated_account_id: str | None) -> ActivationResult:
         invitation = self._resolve(command.invitation)
         if invitation is None:
             raise InvalidInvitationError
@@ -111,6 +112,7 @@ class AccountActivationService:
         if freeze_type:
             raise FrozenAccountError
 
+        registration_completed = self._requires_setup(invitation)
         setup = self._resolve_setup(invitation, command)
         raw_role = invitation.role
         role = raw_role if raw_role is not None and raw_role in _NON_OWNER_ROLES else _DEFAULT_ROLE
@@ -123,11 +125,12 @@ class AccountActivationService:
                 token=command.invitation.token,
             )
         )
-        result = self._accounts.activate(invitation, role=role, setup=setup)
-        if result is None:
+        persistence_result = self._accounts.activate(invitation, role=role, setup=setup)
+        if persistence_result is None:
             raise InvalidInvitationError
-        if result.membership_created:
+        if persistence_result.membership_created:
             self._membership_cache.invalidate(invitation.workspace_id)
+        return ActivationResult(registration_completed=registration_completed)
 
     def _resolve(self, invitation: InvitationLookup) -> AccountInvitation | None:
         token = self._tokens.find(invitation)

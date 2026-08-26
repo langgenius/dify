@@ -115,6 +115,7 @@ class TestActivateApi:
         app: Flask,
         activation_service: Mock,
     ) -> None:
+        activation_service.activate.return_value = SimpleNamespace(registration_completed=True)
         payload = {
             "workspace_id": "workspace-123",
             "email": "Invitee@Example.com",
@@ -137,7 +138,7 @@ class TestActivateApi:
         ):
             response = unwrap(ActivateApi.post)(ActivateApi())
 
-        assert response == {"result": "success"}
+        assert response == {"result": "success", "registration_completed": True}
         activation_service.activate.assert_called_once_with(
             ActivationCommand(
                 invitation=InvitationLookup(
@@ -157,6 +158,7 @@ class TestActivateApi:
         app: Flask,
         activation_service: Mock,
     ) -> None:
+        activation_service.activate.return_value = SimpleNamespace(registration_completed=False)
         with (
             app.test_request_context("/activate", method="POST", json={"token": "valid-token"}),
             patch(
@@ -168,7 +170,7 @@ class TestActivateApi:
         ):
             response = unwrap(ActivateApi.post)(ActivateApi())
 
-        assert response == {"result": "success"}
+        assert response == {"result": "success", "registration_completed": False}
         activation_service.activate.assert_called_once_with(
             ActivationCommand(invitation=InvitationLookup(workspace_id=None, email=None, token="valid-token")),
             authenticated_account_id=None,

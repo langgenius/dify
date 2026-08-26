@@ -191,8 +191,9 @@ class TestActivateInvitation:
             timezone="UTC",
         )
 
-        service.activate(command, authenticated_account_id=None)
+        result = service.activate(command, authenticated_account_id=None)
 
+        assert result.registration_completed is True
         eligibility.get_freeze_type.assert_called_once_with("invitee@example.com")
         tokens.revoke.assert_called_once_with(_lookup("invitee@example.com"))
         accounts.activate.assert_called_once_with(
@@ -213,7 +214,7 @@ class TestActivateInvitation:
         accounts.resolve.return_value = invitation
         accounts.activate.return_value = ActivationPersistenceResult(membership_created=False)
 
-        service.activate(
+        result = service.activate(
             ActivationCommand(
                 invitation=_lookup(),
                 name="Ignored",
@@ -223,5 +224,49 @@ class TestActivateInvitation:
             authenticated_account_id="account-1",
         )
 
+        assert result.registration_completed is False
         accounts.activate.assert_called_once_with(invitation, role="editor", setup=None)
+        membership_cache.invalidate.assert_not_called()
+
+    def test_legacy_pending_invitation_reports_registration_completed_after_persistence(self) -> None:
+        service, tokens, accounts, _, _, _ = _service()
+        tokens.find.return_value = _token()
+        invitation = _invitation(requires_setup=None)
+        accounts.resolve.return_value = invitation
+        accounts.activate.return_value = ActivationPersistenceResult(membership_created=True)
+
+        result = service.activate(
+            ActivationCommand(
+                invitation=_lookup(),
+                name="Legacy Invitee",
+                interface_language="en-US",
+                timezone="UTC",
+            ),
+            authenticated_account_id=None,
+        )
+
+        assert result.registration_completed is True
+        accounts.activate.assert_called_once_with(
+            invitation,
+            role="admin",
+            setup=AccountSetup(name="Legacy Invitee", interface_language="en-US", timezone="UTC"),
+        )
+
+    def test_does_not_return_completion_when_persistence_fails(self) -> None:
+        service, tokens, accounts, _, _, membership_cache = _service()
+        tokens.find.return_value = _token()
+        accounts.resolve.return_value = _invitation()
+        accounts.activate.return_value = None
+
+        with pytest.raises(InvalidInvitationError):
+            service.activate(
+                ActivationCommand(
+                    invitation=_lookup(),
+                    name="Invitee",
+                    interface_language="en-US",
+                    timezone="UTC",
+                ),
+                authenticated_account_id=None,
+            )
+
         membership_cache.invalidate.assert_not_called()
