@@ -287,19 +287,27 @@ def test_service_openapi_documents_decorator_user_contracts():
 
     required_json_user_operations = (
         ("/completion-messages", "post"),
-        ("/completion-messages/{task_id}/stop", "post"),
         ("/chat-messages", "post"),
-        ("/chat-messages/{task_id}/stop", "post"),
         ("/messages/{message_id}/feedbacks", "post"),
         ("/form/human_input/{form_token}", "post"),
         ("/workflows/run", "post"),
         ("/workflows/{workflow_id}/run", "post"),
-        ("/workflows/tasks/{task_id}/stop", "post"),
     )
     for path, method in required_json_user_operations:
         schema = _json_body_schema(payload, paths[path][method])
         assert schema["properties"]["user"] == USER_PROPERTY_SCHEMA
         assert "user" in schema["required"]
+
+    task_stop_user_descriptions = {
+        "/completion-messages/{task_id}/stop": "Send the same",
+        "/chat-messages/{task_id}/stop": "Send the same",
+        "/workflows/tasks/{task_id}/stop": "does not need to match",
+    }
+    for path, expected_behavior in task_stop_user_descriptions.items():
+        schema = _json_body_schema(payload, paths[path]["post"])
+        assert expected_behavior in schema["properties"]["user"]["description"]
+        assert "user" in schema["required"]
+        assert "404" not in paths[path]["post"]["responses"]
 
     optional_json_user_operations = (
         ("/text-to-audio", "post"),
@@ -640,6 +648,12 @@ def test_console_billing_routes_document_error_responses(monkeypatch: pytest.Mon
             "502": "BillingOperationFailedErrorResponse",
             "503": "BillingUnavailableErrorResponse",
         },
+        ("/compliance/download", "get"): {
+            "422": "BillingUnprocessableEntityErrorResponse",
+            "429": "ComplianceRateLimitErrorResponse",
+            "502": "BillingOperationFailedErrorResponse",
+            "503": "BillingUnavailableErrorResponse",
+        },
     }
 
     for (path, method), responses in expected_responses.items():
@@ -648,12 +662,14 @@ def test_console_billing_routes_document_error_responses(monkeypatch: pytest.Mon
             schema = operation["responses"][status]["content"]["application/json"]["schema"]
             assert schema["$ref"] == f"#/components/schemas/{model_name}"
 
-        forbidden_response = operation["responses"]["403"]
-        assert forbidden_response["description"] == "Forbidden"
-        assert "content" not in forbidden_response
+        if path.startswith("/billing/"):
+            forbidden_response = operation["responses"]["403"]
+            assert forbidden_response["description"] == "Forbidden"
+            assert "content" not in forbidden_response
 
     expected_error_contracts = {
         "BillingUnprocessableEntityErrorResponse": ("unprocessable_entity", 422),
+        "ComplianceRateLimitErrorResponse": ("compliance_rate_limit", 429),
         "BillingOperationFailedErrorResponse": ("billing_operation_failed", 502),
         "BillingUnavailableErrorResponse": ("billing_unavailable", 503),
     }
@@ -662,6 +678,10 @@ def test_console_billing_routes_document_error_responses(monkeypatch: pytest.Mon
         properties = schemas[model_name]["properties"]
         assert properties["code"]["const"] == error_code
         assert properties["status"]["const"] == status
+
+    compliance_response = schemas["ComplianceDownloadResponse"]
+    assert set(compliance_response["properties"]) == {"url"}
+    assert compliance_response["required"] == ["url"]
 
 
 def test_console_model_provider_checkout_route_is_deprecated(monkeypatch: pytest.MonkeyPatch):

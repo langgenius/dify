@@ -139,7 +139,10 @@ class DatasetCreatePayload(BaseModel):
     external_knowledge_id: str | None = Field(default=None, description="ID of the external knowledge base.")
     retrieval_model: RetrievalModel | None = Field(
         default=None,
-        description="Retrieval model configuration. Controls how chunks are searched and ranked.",
+        description=(
+            "Retrieval model configuration. Controls how chunks are searched and ranked when querying this "
+            "knowledge base."
+        ),
     )
     embedding_model: str | None = Field(
         default=None,
@@ -192,7 +195,10 @@ class DatasetUpdatePayload(BaseModel):
     )
     retrieval_model: RetrievalModel | None = Field(
         default=None,
-        description="Retrieval model configuration. Controls how chunks are searched and ranked.",
+        description=(
+            "Retrieval model configuration. Controls how chunks are searched and ranked when querying this "
+            "knowledge base."
+        ),
     )
     partial_member_list: PartialMemberList = Field(
         default=None,
@@ -1111,6 +1117,7 @@ class DatasetTagsBindingStatusApi(DatasetApiResource):
         tags=["Tags"],
         responses={
             200: "Tags bound to the knowledge base.",
+            404: "`not_found` : Knowledge base not found.",
         },
     )
     @service_api_ns.doc("get_dataset_tags_binding_status")

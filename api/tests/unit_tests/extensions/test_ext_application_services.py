@@ -21,6 +21,7 @@ from models.model import AccountTrialAppRecord, DifySetup
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
+from repositories.app_site_command_repository import AppSiteCommandRepository
 from services import recommended_app_catalog_gateway
 from services.account_activation_adapters import (
     BillingAccountActivationEligibility,
@@ -29,9 +30,11 @@ from services.account_activation_adapters import (
     RegisterServiceInvitationTokenStore,
 )
 from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
+from services.app_site_service import AppSiteService
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
+from services.compliance_download_service import ComplianceDownloadService
 from services.enterprise.enterprise_service import WebAppSettings
 from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFoundError
 from services.init_validation_service import InvalidInitializationPasswordError
@@ -176,6 +179,21 @@ def test_build_application_services_wires_tag_boundary(
     assert isinstance(services.tags, TagApplicationService)
 
 
+def test_build_application_services_wires_app_site_boundary(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.app_sites, AppSiteService)
+    assert isinstance(services.app_sites._sites, AppSiteCommandRepository)
+    assert services.app_sites._sites._session_factory is sqlite_session_factory
+
+
 def test_build_application_services_wires_billing_service(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
@@ -231,6 +249,50 @@ def test_build_application_services_wires_billing_service(
     get_subscription.assert_called_once_with("professional", "month", "owner@example.com", "workspace-1")
     get_invoices.assert_called_once_with("owner@example.com", "workspace-1")
     sync_partner_tenants_bindings.assert_called_once_with("account-1", "partner-key", "click-1")
+
+
+def test_build_application_services_wires_compliance_downloads(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    redis = MagicMock(spec=RedisClientWrapper)
+    with (
+        patch.object(
+            BillingService,
+            "get_compliance_download_link",
+            return_value={"url": "https://billing.example.com/compliance"},
+        ) as fetch_link,
+        patch("extensions.ext_application_services.RateLimiter") as rate_limiter_type,
+    ):
+        rate_limiter = rate_limiter_type.return_value
+        rate_limiter.is_rate_limited.return_value = False
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            initialization_password="",
+            redis=redis,
+        )
+
+    assert isinstance(services.compliance_downloads, ComplianceDownloadService)
+    assert services.compliance_downloads.get_link(
+        request_context=RequestContext(
+            request_id="request-1",
+            trace_id="trace-1",
+            account_id="account-1",
+            active_workspace_id="workspace-1",
+        ),
+        document_name="SOC2_Type_II",
+        ip_address="127.0.0.1",
+        device_info="test-agent",
+    ) == {"url": "https://billing.example.com/compliance"}
+    rate_limiter_type.assert_any_call(
+        prefix="compliance_download_rate_limiter",
+        max_attempts=4,
+        time_window=60,
+        redis_client=redis,
+    )
+    rate_limiter.is_rate_limited.assert_called_once_with("account-1:workspace-1")
+    rate_limiter.increment_rate_limit.assert_called_once_with("account-1:workspace-1")
+    fetch_link.assert_called_once_with("SOC2_Type_II", "account-1", "workspace-1", "127.0.0.1", "test-agent")
 
 
 def test_build_application_services_wires_education_rate_limiters(
