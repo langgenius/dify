@@ -10,6 +10,7 @@
   "apps.resultNum": "{{num}}件の結果",
   "apps.title": "テンプレート",
   "apps.viewMore": "もっと見る",
+  "banner.carouselLabel": "注目のコンテンツ",
   "banner.greeting": "おかえりなさい、{{name}} 👋",
   "banner.tagline": "もしかしたら……次のアイデアは、ここから始まるかもしれません。",
   "banner.viewMore": "もっと見る",

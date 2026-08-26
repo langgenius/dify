@@ -255,6 +255,7 @@ type BannerProps = {
 }
 
 export function Banner({ banners }: BannerProps) {
+  const { t } = useTranslation()
   const locale = useLocale()
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -272,18 +273,14 @@ export function Banner({ banners }: BannerProps) {
       },
     }),
   ])
-  const firstBanner = banners[0]
-
-  if (!firstBanner) return null
-
-  const carouselLabel = firstBanner.content.category || firstBanner.content.title
+  if (banners.length === 0) return null
 
   return (
     <div className="relative flex w-full flex-col items-start px-8 pb-4">
       <Carousel
         opts={CAROUSEL_OPTIONS}
         plugins={carouselPlugins}
-        aria-label={carouselLabel}
+        aria-label={t(($) => $['banner.carouselLabel'], { ns: 'explore' })}
         className="@container/banner w-full rounded-2xl"
       >
         <BannerCarouselContent banners={banners} accountId={userProfile.id} language={locale} />

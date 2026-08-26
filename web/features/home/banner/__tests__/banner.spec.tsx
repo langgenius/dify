@@ -197,7 +197,7 @@ describe('Banner', () => {
       />,
     )
 
-    expect(screen.getByRole('region', { name: 'Featured' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'banner.carouselLabel' })).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'pagination.pageNumber' })).toBeInTheDocument()
     expect(screen.getAllByTestId('banner-item')).toHaveLength(2)
   })
