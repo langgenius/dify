@@ -52,6 +52,20 @@
 - **THEN** resolver MUST 返回 configuration error
 - **AND** system MUST NOT把该状态解释为第三种 transport mode
 
+### Requirement: IMProvider 必须声明静态 Webhook capability
+
+`IMProvider.supports_webhook()` MUST return whether the current Dify adapter implementation has Provider-level Webhook capability without reading credentials or constructing an adapter。It MUST return `True` for Slack、Feishu、Lark and Microsoft Teams，and `False` for DingTalk and WeCom。The method MUST NOT decide whether one concrete credential set can create a handler。
+
+#### Scenario: Provider capability is queried
+- **WHEN** management projection or ingress asks whether a Provider can support Webhook
+- **THEN** caller MUST use `IMProvider.supports_webhook()`
+- **AND** caller MUST NOT maintain another Provider-level Webhook allowlist
+
+#### Scenario: Static-capable Provider has concrete credentials
+- **WHEN** `IMProvider.supports_webhook()` returns `True` and ingress constructs the concrete adapter
+- **THEN** `adapter.create_webhook_handler()` MUST be the authority for whether those credentials permit Webhook
+- **AND** the shared adapter protocol MUST NOT enumerate Provider-specific credential requirements
+
 ### Requirement: Public controller 必须只做有界 HTTP adaptation
 
 系统 MUST 在独立、无 Console session 的 blueprint 暴露 `POST /callbacks/human-input/v2/im/<webhook_id>`。Controller MUST 在读取 body 或执行 I/O 前捕获 trusted UTC receive time，MUST 有界读取 exact body bytes，MUST 构造 adapters package 中的 `WebhookRequest`，并 MUST 把 Service 返回的 `WebhookResponse` 映射为 Flask response。Controller MUST NOT解析 Provider JSON、选择 Provider、查询 tenant、恢复 credentials或执行 business processing。
@@ -91,14 +105,14 @@
 - **THEN** Service MUST 仍以 route lookup 得到的 Integration 构造 handler
 - **AND** Provider handler 或 bound sink MUST 拒绝不匹配的 authenticated identity
 
-#### Scenario: Route query 失败
-- **WHEN** persistence 无法确定 route 是否对应 current Integration
+#### Scenario: Route lookup persistence failure
+- **WHEN** repository 因数据库连接、查询或结果映射失败而无法完成 `webhook_id` lookup
 - **THEN** Service MUST 返回 payload-free `503`
-- **AND** Service MUST NOT把 query failure 映射为 `404`
+- **AND** Service MUST NOT把 persistence failure 映射为 route not found
 
 ### Requirement: Service 必须为每个 callback 构造 request-scoped Provider handler
 
-Service MUST 为每个 admitted callback 先执行 authoritative route lookup，再通过 shared `DifyIMIntegrationAdapterFactory` 恢复 typed credentials、构造 `IMProviderAdapter` 并创建绑定到 `IMMessageInboxSink` 的 handler。Service MUST NOT在 HTTP requests 之间复用或持有 adapter、handler或 recovered credentials。
+Service MUST 为每个 callback 先执行 authoritative route lookup。When `IMProvider.supports_webhook()` returns `True`，Service MUST 将 current `IMIntegration` 交给 injected Integration-to-adapter dependency，获得 `IMProviderAdapter`，并调用 `create_webhook_handler()` with the bound `IMMessageInboxSink`。A `None` result MUST return the same `404` surface as an unsupported Provider。Service MUST NOT直接解码 ciphertext、调用 cipher、校验 resolved credential union或 dispatch Provider constructors。Service MUST NOT在 HTTP requests 之间复用或持有 adapter、handler或 recovered credentials。
 
 #### Scenario: 同一 revision 收到并发 callback
 - **WHEN** 多个 request 并发命中同一个 current Integration revision
@@ -117,35 +131,6 @@ Service MUST 为每个 admitted callback 先执行 authoritative route lookup，
 #### Scenario: Adapter root 已关闭
 - **WHEN** Service 从 adapter 创建 Webhook handler 后关闭 root adapter
 - **THEN** request-scoped handler MUST 按既有 `IMWebhookHandler` contract 完成当前 callback
-
-### Requirement: Shared Integration adapter factory 必须使用 opaque credential owner
-
-`DifyIMIntegrationAdapterFactory` MUST 成为 Contact Sync、Webhook ingress 和后续 STREAM composition 的共享 Integration-to-adapter runtime factory。Factory MUST 通过 injected `cipher_resolver` 获得 owner-bound `BoundCredentialCipher`，MUST 通过 `IMCredentialCodec.load(provider, envelope)` 恢复 typed credentials，并 MUST 复用 `build_im_provider_adapter()`。Factory MUST NOT解析 provider-specific persisted fields或实现另一套 Provider constructor dispatch。
-
-#### Scenario: Webhook Service 构造 Provider handler
-- **WHEN** Webhook Service 处理一个 admitted callback
-- **THEN** Service MUST 把 domain `IMIntegration` 交给 shared factory
-- **AND** Service MUST NOT直接解码 ciphertext、调用 cipher或校验 resolved credential union
-
-#### Scenario: Workspace credential envelope 被恢复
-- **WHEN** current Integration 持有 `tenant_id`
-- **THEN** production cipher resolver MUST 使用现有 tenant key provider构造 tenant-bound cipher
-- **AND** factory MUST 在 credential validation 成功后才调用 `build_im_provider_adapter()`
-
-#### Scenario: Deployment cipher 未注入
-- **WHEN** tenant-less Integration 没有 explicitly injected deployment-bounded cipher
-- **THEN** factory MUST 在 decrypt、adapter construction 和 Provider I/O 前失败
-- **AND** ingress MUST 返回 payload-free `503`
-
-#### Scenario: Envelope 无法恢复
-- **WHEN** envelope version、ciphertext、decrypted JSON、resolved credential schema 或 Provider discriminator 无效
-- **THEN** factory MUST 返回安全的 `IMCredentialError`
-- **AND** factory MUST NOT构造 adapter或执行 Provider I/O
-
-#### Scenario: Contact Sync 读取 directory
-- **WHEN** Contact Sync 为相同 Integration 构造 adapter
-- **THEN** Contact Sync MUST 使用同一个 shared factory
-- **AND** Contact Sync MUST 只访问 adapter 的 directory capability
 
 ### Requirement: Provider response 和 durable acceptance 语义必须保持不变
 
@@ -172,7 +157,7 @@ Service MUST 返回 Provider handler 产生的 status、headers 和 body，MUST 
 
 ### Requirement: Ingress failure 和 observability 必须保护敏感内容
 
-Malformed或unknown `webhook_id`、`STREAM` mode 和 credential-free Webhook capability check判定的 unsupported Provider MUST 使用相同的 `404` surface。Database query、cipher resolution、credential recovery、capability/factory consistency、handler construction 或未分类内部失败 MUST 返回 payload-free `503`。Immediately after a successful Integration lookup，Service MUST emit one structured `im_webhook_integration_resolved` log containing the resolved Provider and Integration ID。Logs、metrics、traces 和 exceptions MUST NOT包含 request body、request headers、Provider response body、credential plaintext、credential ciphertext 或完整 `webhook_id`。
+Malformed或unknown `webhook_id`、`STREAM` mode、`IMProvider.supports_webhook() == False` 和 `create_webhook_handler() is None` MUST 使用相同的 `404` surface。Database query、cipher resolution、credential recovery、adapter construction 或未分类内部失败 MUST 返回 payload-free `503`。Immediately after a successful Integration lookup，Service MUST emit one structured `im_webhook_integration_resolved` log containing the resolved Provider and Integration ID。Logs、metrics、traces 和 exceptions MUST NOT包含 request body、request headers、Provider response body、credential plaintext、credential ciphertext 或完整 `webhook_id`。
 
 #### Scenario: Malformed route identity 被探测
 - **WHEN** request 使用长度或字符集非法的 `webhook_id`
@@ -182,18 +167,18 @@ Malformed或unknown `webhook_id`、`STREAM` mode 和 credential-free Webhook cap
 - **WHEN** repository 返回 current `IMIntegration`
 - **THEN** Service MUST 立即记录一条 `im_webhook_integration_resolved` structured log
 - **AND** log MUST 包含 `provider` 和 `integration_id`
-- **AND** log MUST 发生在 Webhook capability check、cipher resolution、credential recovery 和 adapter construction 之前
+- **AND** log MUST 发生在 `IMProvider.supports_webhook()`、cipher resolution、credential recovery 和 adapter construction 之前
 - **AND** log MUST NOT包含 tenant ID、完整 `webhook_id`、headers、payload、credential plaintext 或 ciphertext
 
 #### Scenario: Credential envelope 无法恢复
-- **WHEN** shared factory raises `IMCredentialError`
+- **WHEN** Integration-to-adapter dependency raises `IMCredentialError`
 - **THEN** Service MUST 返回 `503`
 - **AND** diagnostic MUST 只记录 safe failure code、Integration ID 和 Provider
 
-#### Scenario: Capability metadata 与 adapter 漂移
-- **WHEN** credential-free capability check 宣告当前 Provider 支持 Webhook但 adapter返回 `None`
-- **THEN** Service MUST 返回 `503`
-- **AND** Service MUST NOT把内部 drift 伪装为 unknown route
+#### Scenario: Concrete credentials 不允许 Webhook
+- **WHEN** `IMProvider.supports_webhook()` returns `True` but `create_webhook_handler()` returns `None`
+- **THEN** Service MUST 返回 `404`
+- **AND** Service MUST NOT把 Provider-specific credential fields 泄漏给 caller
 
 #### Scenario: Ingress metric 被记录
 - **WHEN** controller 或 Service 记录 request outcome

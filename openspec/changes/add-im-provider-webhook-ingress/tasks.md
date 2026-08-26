@@ -10,7 +10,7 @@
 - [ ] 2.1 新增只包含 `WEBHOOK` 和 `STREAM` 的 `IMEventTransportMode` 及只读 `IMEventTransportModeResolver`；要求 deployment configuration 必须选择其中一个值，缺失或非法配置直接失败，并保持 mode 不进入 Console DTO 或 Integration persistence。
 - [ ] 2.2 增加 `HUMAN_INPUT_IM_WEBHOOK_MAX_BODY_BYTES` 配置及合法范围校验，并按部署约定把可选示例放入对应的 service-specific environment sample。
 - [ ] 2.3 实现 `generate_im_provider_webhook_url(webhook_id)`，用 `TRIGGER_URL` 和固定 path 动态生成 callback URL，覆盖 origin、path joining 和 escaping tests。
-- [ ] 2.4 让 IM Integration owner 使用 mode、Webhook capability 和 credential-runtime availability 生成 `IMIntegrationView.webhook_url`；现有 Console mapper只负责映射到 `ChannelSummary`。
+- [ ] 2.4 在 `IMProvider` 上实现 `supports_webhook() -> bool`，让 IM Integration owner 使用 mode、该方法和 credential-runtime availability 生成 `IMIntegrationView.webhook_url`；现有 Console mapper只负责映射到 `ChannelSummary`。
 - [ ] 2.5 增加 management tests，覆盖 canonical list/detail/mutation summaries、`WEBHOOK`、`STREAM`、缺失/非法 deployment configuration、unsupported Provider、`TRIGGER_URL` 变化、tenant mode override rejection，以及所有 projection 不调用 `IMCredentialCodec.load()` 或构造 adapter。
 
 ## 3. 共享 opaque-credential runtime composition
@@ -25,8 +25,8 @@
 - [ ] 4.1 定义 `IMWebhookIntegrationRepository.load_by_webhook_id()` port 和明确的 not-found/query-failure error contract；返回 current domain `IMIntegration` 及其 opaque envelope，但不执行 credential recovery。
 - [ ] 4.2 实现按全局唯一 `webhook_id` 查询 authoritative Integration 的 repository adapter，并测试删除、replacement、credential revision、opaque envelope mapping 和 database failure 行为。
 - [ ] 4.3 实现 `IMWebhookIngressService.handle(webhook_id, request)`：解析 deployment mode 和 current Integration，为每个 admitted callback 通过共享 factory恢复 credentials并创建 request-scoped handler，将 handler 绑定到 `IMMessageInboxSink`，随后关闭 root adapter且不保留 handler。
-- [ ] 4.4 实现安全失败映射：malformed/unknown route、`STREAM` mode 和 credential-free Webhook capability check 判定的 unsupported Provider 返回同形 `404`；query failure、cipher unavailable、`IMCredentialError`、capability/factory drift、adapter/handler construction 或其他内部失败返回 payload-free `503`。
-- [ ] 4.5 增加 service tests，覆盖每个 admitted callback 独立构造和释放 handler、unknown/deleted route、`STREAM` mode、unsupported Provider、query/cipher/envelope/factory failure、challenge、authentication failure、durable ACK、duplicate、inbox failure 和 response passthrough。
+- [ ] 4.4 实现安全失败映射：malformed/unknown route、`STREAM` mode、`IMProvider.supports_webhook() == False` 和 `create_webhook_handler() is None` 返回同形 `404`；query failure、cipher unavailable、`IMCredentialError`、adapter construction 或其他内部失败返回 payload-free `503`。
+- [ ] 4.5 增加 service tests，覆盖每个 admitted callback 独立构造和释放 handler、static unsupported Provider、credential-bound handler unavailable、query/cipher/envelope/factory failure、challenge、authentication failure、durable ACK、duplicate、inbox failure 和 response passthrough。
 - [ ] 4.6 增加 revision race tests，证明 rotation commit 后开始 lookup 的 request恢复新 envelope、replacement/delete 后旧 route 返回 `404`，而 commit 前已读取旧 revision 的 in-flight request 可以完成且不持有 Integration write transaction。
 
 ## 5. Public HTTP callback boundary
@@ -45,7 +45,8 @@
 ## 7. Observability、验收与 rollout
 
 - [ ] 7.1 增加低基数 ingress request、route miss、oversize、handler response class、internal unavailable 和 duration metrics；每次 successful Integration lookup 后立即记录 `im_webhook_integration_resolved` structured log，包含 `provider` 和 `integration_id`。
-- [ ] 7.2 增加 observability tests，断言 lookup log 发生在 capability/cipher/credential/adapter work 前，且 logs、metrics、traces 和 exceptions 不包含 request/response payload、headers、credential plaintext、credential ciphertext、tenant ID 或完整 `webhook_id`；metric labels 不得引入高基数 identity。
-- [ ] 7.3 增加 ingress-to-inbox integration coverage，验证 challenge 不写 inbox、认证失败不写 inbox、成功 ACK 依赖 durable accept、real event ID duplicate 可成功 ACK，以及 broker wakeup failure 不撤销已完成的 durable acceptance。
-- [ ] 7.4 执行相关 backend unit tests、unshipped migration tests、formatting 和 static checks；按 schema/API 一次切换、deployment mode 保持 `STREAM`、确认 management projection 正确、最后选择 `WEBHOOK` 的顺序完成人工验收清单。
-- [ ] 7.5 验证 Workspace Integration 使用 tenant-bound cipher 可以完成 callback；验证未注入 deployment-bounded cipher 时 tenant-less Integration 不暴露可用 URL且 ingress 返回安全 `503`，注入后才允许启用 deployment-owned callback。
+- [ ] 7.2 增加 observability tests，断言 lookup log 发生在 `IMProvider.supports_webhook()`、cipher、credential 和 adapter work 前，且 logs、metrics、traces 和 exceptions 不包含 request/response payload、headers、credential plaintext、credential ciphertext、tenant ID 或完整 `webhook_id`；metric labels 不得引入高基数 identity。
+- [ ] 7.3 增加 Provider adapter tests，固定 `IMProvider.supports_webhook()` 的静态结果；验证 Feishu/Lark 同时缺少 `verification_token` 与 `encrypt_key` 时 `create_webhook_handler()` 返回 `None`、任一字段存在时返回 handler，并验证 Slack resolved credential schema 必须包含 `signing_secret`；callers不得重复检查这些字段。
+- [ ] 7.4 增加 ingress-to-inbox integration coverage，验证 challenge 不写 inbox、认证失败不写 inbox、成功 ACK 依赖 durable accept、real event ID duplicate 可成功 ACK，以及 broker wakeup failure 不撤销已完成的 durable acceptance。
+- [ ] 7.5 执行相关 backend unit tests、unshipped migration tests、formatting 和 static checks；按 schema/API 一次切换、deployment mode 保持 `STREAM`、确认 management projection 正确、最后选择 `WEBHOOK` 的顺序完成人工验收清单。
+- [ ] 7.6 验证 Workspace Integration 使用 tenant-bound cipher 可以完成 callback；验证未注入 deployment-bounded cipher 时 tenant-less Integration 不暴露可用 URL且 ingress 返回安全 `503`，注入后才允许启用 deployment-owned callback。

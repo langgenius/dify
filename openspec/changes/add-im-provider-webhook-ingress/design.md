@@ -16,7 +16,7 @@ Provider adapters 已经把 Webhook authentication、challenge、payload decodin
 - 从 authoritative current Integration 读取 Provider、provider tenant、complete revision、opaque credential envelope 和 owner scope，并为每个 admitted callback 恢复 credentials和构造 handler。
 - 复用 Provider handler 的 challenge/authentication/ACK 语义，并把业务事件交给 durable inbox。
 - 让 credential rotation 保留 callback URL，让 replacement、delete/recreate 使旧 URL 永久失效。
-- 让 canonical Channel read 使用 credential-free Webhook capability check，不执行 credential recovery 或 Provider I/O。
+- 让 canonical Channel read 使用 `IMProvider.supports_webhook()`，不执行 credential recovery 或 Provider I/O。
 - 让 Contact Sync、Webhook ingress 和后续 STREAM composition 共享同一个 Integration-to-adapter factory，同时继续复用现有 credential codec 和 adapter builder。
 - 对 body size、cipher unavailable、invalid envelope、内部失败、日志、指标和并发 revision 切换给出可测试的安全语义。
 
@@ -56,13 +56,15 @@ Provider adapters 已经把 Webhook authentication、challenge、payload decodin
 
 新增只读 `IMEventTransportModeResolver`，只返回 `WEBHOOK` 或 `STREAM`。Production adapter 必须从 deployment configuration 解析出其中一个值；缺失值或非法值属于 deployment configuration error，MUST NOT被转换为第三种 mode。Console request 和 Integration persistence 均不能设置该值。
 
-新增不读取 persisted credentials 的 Provider-level Webhook capability check。当前 Slack、Feishu、Lark 和 Microsoft Teams 支持 Webhook；DingTalk 和 WeCom 不支持。该 check 只用于 `IMIntegrationView.webhook_url` projection 和 Webhook ingress admission。
+`IMProvider` 新增 `supports_webhook() -> bool`。当前 Slack、Feishu、Lark 和 Microsoft Teams 返回 `True`；DingTalk 和 WeCom 返回 `False`。该方法表示当前 Dify adapter implementation 是否具有静态 Webhook capability，不读取 credentials，也不构造 adapter。`IMIntegrationView.webhook_url` projection 和 Webhook ingress admission 使用该方法作为唯一的 Provider-level capability source。
 
-Management read uses Provider metadata and credential-runtime availability only；it never calls `IMCredentialCodec.load()`、`build_im_provider_adapter()` or `create_webhook_handler()`。Ingress still treats actual handler construction as authoritative；capability check declares support but adapter returns `None` is an internal drift and maps to `503`。
+Management read uses `IMProvider.supports_webhook()` and credential-runtime availability only；it never calls `IMCredentialCodec.load()`、`build_im_provider_adapter()` or `create_webhook_handler()`。After credential recovery，Ingress treats `adapter.create_webhook_handler()` as the credential-bound authority。A `None` return means the current adapter configuration does not permit Webhook and maps to the same `404` surface as an unsupported Provider；it is not an internal drift。
+
+The shared `IMProviderAdapter` protocol does not enumerate Provider-specific credential requirements。Concrete adapters own the current Dify implementation policy。Feishu/Lark may return `None` when neither `verification_token` nor `encrypt_key` is configured；Slack requires `signing_secret` through its resolved credential schema。`DifyIMProviderConfigurationService` must not duplicate these field checks；when it validates Webhook compatibility，it uses the concrete adapter result。
 
 ### 3. Canonical IM owner生成 derived Webhook URL
 
-`HumanInputIMIntegrationManagementService` uses the mode resolver、credential-free Webhook capability check、credential-runtime availability and URL generator when constructing `IMIntegrationView`。It returns `webhook_url` only when all of the following are true:
+`HumanInputIMIntegrationManagementService` uses the mode resolver、`IMProvider.supports_webhook()`、credential-runtime availability and URL generator when constructing `IMIntegrationView`。It returns `webhook_url` only when all of the following are true:
 
 - effective mode is `WEBHOOK`;
 - the persisted Provider has Webhook potential;
@@ -93,7 +95,7 @@ Controller 不解析 JSON/form、不读取 Provider 字段、不查 tenant、不
 ```mermaid
 flowchart LR
     HTTP["Flask callback controller"] --> Service["IMWebhookIngressService"]
-    Service --> Mode["Transport mode and Webhook capability"]
+    Service --> Mode["Transport mode and IMProvider.supports_webhook"]
     Service --> Route["IMWebhookIntegrationRepository"]
     Route --> Integration["Current IMIntegration revision"]
     Service --> Factory["DifyIMIntegrationAdapterFactory"]
@@ -107,11 +109,11 @@ flowchart LR
     Response --> HTTP
 ```
 
-Service rejects `STREAM` mode with `404`。For `WEBHOOK` mode, `IMWebhookIntegrationRepository.load_by_webhook_id()` loads current domain `IMIntegration` without recovering credentials。Database not-found and query failure remain distinct。Immediately after a successful lookup，the Service emits one structured `im_webhook_integration_resolved` log containing `provider` and `integration_id`。It records this event before the Webhook capability check、cipher resolution or credential recovery。
+Service rejects `STREAM` mode with `404`。For `WEBHOOK` mode, `IMWebhookIntegrationRepository.load_by_webhook_id()` loads current domain `IMIntegration` without recovering credentials。Database not-found and query failure remain distinct。Immediately after a successful lookup，the Service emits one structured `im_webhook_integration_resolved` log containing `provider` and `integration_id`。It records this event before calling `IMProvider.supports_webhook()`、resolving the cipher or recovering credentials。
 
-For every admitted callback, the shared Integration adapter factory resolves a bound cipher、loads and validates the opaque envelope、constructs the adapter and creates a handler bound to that Integration's `IMMessageInboxSink`。The Service closes the root adapter after handler creation and does not retain the adapter or handler after the request completes。
+For every callback whose Provider returns `True` from `supports_webhook()`，the shared Integration adapter factory resolves a bound cipher、loads and validates the opaque envelope、and constructs the adapter。The Service calls `create_webhook_handler()` with the Integration's `IMMessageInboxSink`。A returned handler processes the request；`None` returns `404` without invoking a Provider handler。The Service closes the root adapter and does not retain the adapter or handler after the request completes。
 
-Malformed/unknown route、`STREAM` mode and credential-free Webhook capability check unsupported Provider return the same `404`。Query failure、bound cipher unavailable、unknown envelope version、decrypt/JSON/Pydantic failure、Provider discriminator mismatch、capability/factory drift、adapter construction and unclassified internal failure return payload-free `503`。Provider handler responses are not reclassified。
+Malformed/unknown route、`STREAM` mode、`IMProvider.supports_webhook() == False` and `create_webhook_handler() is None` return the same `404`。Query failure、bound cipher unavailable、unknown envelope version、decrypt/JSON/Pydantic failure、Provider discriminator mismatch、adapter construction and unclassified internal failure return payload-free `503`。Provider handler responses are not reclassified。
 
 ### 6. 共享现有 Integration-to-adapter factory
 
@@ -121,13 +123,13 @@ Move `DifyIMIntegrationAdapterFactory` from `services.human_input_v2.im_contact_
 
 The factory accepts a `cipher_resolver` and existing `build_im_provider_adapter()` injection。It calls `IMCredentialCodec.load(provider, envelope)` exactly once and never interprets credential fields itself。The default Workspace resolver constructs `TenantBoundCredentialCipher` from the persisted `tenant_id`。A tenant-less Integration requires an explicitly injected deployment-bounded cipher；the factory never derives one from `DifySetup.instance_id`、`SECRET_KEY` or a synthetic tenant。
 
-Contact Sync uses the returned adapter's `directory` capability。Webhook ingress uses `create_webhook_handler()`。`DifyIMProviderConfigurationService` continues to use `build_im_provider_adapter()` directly for submitted complete candidates and does not pass an unpersisted candidate through the Integration factory。
+Webhook ingress uses `create_webhook_handler()`。`DifyIMProviderConfigurationService` continues to use `build_im_provider_adapter()` directly for submitted complete candidates and does not pass an unpersisted candidate through the Integration factory。
 
 ### 7. Handler 生命周期限制在单个 callback request
 
 Every admitted callback constructs one Provider adapter and one `IMWebhookHandler` from the Integration revision returned by that request's route lookup。The Service does not reuse handlers across HTTP requests and does not retain resolved credentials after request-scoped objects become unreachable。
 
-Ingress does not hold an Integration row lock or write transaction during cipher work、Provider authentication or inbox commit。A request admitted before a configuration commit may finish with its captured revision。A request whose route lookup begins after credential rotation must recover the new envelope；after replacement or deletion it must observe route absence。
+Each callback uses the Integration revision returned by its authoritative route lookup。The Service does not keep an Integration row lock or database transaction open during credential recovery、Provider authentication or inbox persistence。A request whose lookup completed before a configuration commit may finish with the old revision。A lookup started after credential rotation commits must return the new revision；after replacement or deletion，lookup by the old `webhook_id` must return not found。
 
 Per-request construction means handler-local replay state is not preserved across callbacks。Provider authentication remains mandatory，and durable inbox deduplication by real Provider event ID remains the cross-request deduplication boundary。
 
@@ -150,7 +152,7 @@ Logs、metrics、traces and exceptions must not contain request body、headers�
 ## Risks / Trade-offs
 
 - [Every request performs credential recovery and SDK construction] → Accept the bounded per-request cost in the first implementation，measure callback latency and construction failures，and add reuse only after operational evidence。
-- [Credential-free Webhook capability metadata can drift from adapter behavior] → Add provider-family consistency tests and map an unexpected `None` handler to `503`。
+- [`IMProvider.supports_webhook()` only describes static capability] → Treat `create_webhook_handler()` as the credential-bound authority and test current concrete adapter security policy without adding field checks to callers。
 - [Per-request handler construction resets handler-local replay state] → Keep Provider authentication mandatory and use durable inbox deduplication when the Provider supplies a real event ID。
 - [Deployment cipher may be unavailable] → Do not project a usable URL without runtime readiness; return safe `503` if a tenant-less route is nevertheless invoked。
 - [In-flight request can cross configuration commit] → Define snapshot admission semantics and keep Provider work outside the write transaction。
@@ -160,7 +162,7 @@ Logs、metrics、traces and exceptions must not contain request body、headers�
 ## Migration Plan
 
 1. Amend the unreleased IM control-plane migration to create non-null unique `webhook_id` and omit `callback_url`。Update aggregate、ORM、mapper、guarded UoW and tests in the same schema change。
-2. Deploy the shared Integration adapter factory、Webhook capability check、management projection、Webhook service and callback blueprint while the deployment remains in `STREAM` mode。No callback URL is exposed and ingress returns `404`。
+2. Deploy the shared Integration adapter factory、`IMProvider.supports_webhook()`、management projection、Webhook service and callback blueprint while the deployment remains in `STREAM` mode。No callback URL is exposed and ingress returns `404`。
 3. Verify canonical Channel list/detail/mutation responses、Workspace tenant-bound credential recovery、Provider challenge/authentication and durable inbox acceptance。
 4. Select `WEBHOOK` only after `TRIGGER_URL` and the required cipher runtime are ready。Deployment-owned callbacks MUST NOT be enabled until a deployment-bounded cipher is explicitly injected。
 
