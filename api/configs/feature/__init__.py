@@ -1326,8 +1326,7 @@ class IndexingConfig(BaseSettings):
     )
 
     EMBEDDING_BATCH_DELAY: float = Field(
-        description="Delay in seconds between embedding HTTP requests to avoid provider rate limits. "
-        "0 disables.",
+        description="Delay in seconds between embedding HTTP requests to avoid provider rate limits. 0 disables.",
         default=0,
         ge=0,
     )
