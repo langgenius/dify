@@ -31,7 +31,7 @@
   "accessRule.noAvailableMembers": "Nessun membro disponibile da aggiungere",
   "accessRule.noDescription": "Nessuna descrizione",
   "accessRule.noRules": "Nessuna regola di accesso",
-  "accessRule.noUserAccessSettings": "Nessuna eccezione ai permessi dei membri",
+  "accessRule.noUserAccessSettings": "Nessun membro è autorizzato ad accedere",
   "accessRule.onlyMe": "Solo io",
   "accessRule.onlyMeDescription": "Solo tu puoi accedere a questa risorsa.",
   "accessRule.resourceOpenScope": "Ambito di apertura della risorsa",

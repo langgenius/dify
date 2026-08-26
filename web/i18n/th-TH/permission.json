@@ -31,7 +31,7 @@
   "accessRule.noAvailableMembers": "ไม่มีสมาชิกที่จะเพิ่มได้",
   "accessRule.noDescription": "ไม่มีคําอธิบาย",
   "accessRule.noRules": "ไม่มีกฎการเข้าถึง",
-  "accessRule.noUserAccessSettings": "ไม่มีข้อยกเว้นสิทธิ์ของสมาชิก",
+  "accessRule.noUserAccessSettings": "ไม่มีสมาชิกที่ได้รับอนุญาตให้เข้าถึง",
   "accessRule.onlyMe": "ฉันเท่านั้น",
   "accessRule.onlyMeDescription": "เฉพาะคุณเท่านั้นที่เข้าถึงทรัพยากรนี้ได้",
   "accessRule.resourceOpenScope": "ขอบเขตการเปิดของทรัพยากร",

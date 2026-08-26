@@ -31,7 +31,7 @@
   "accessRule.noAvailableMembers": "Geen leden beschikbaar om toe te voegen",
   "accessRule.noDescription": "Geen beschrijving",
   "accessRule.noRules": "Geen toegangsregels",
-  "accessRule.noUserAccessSettings": "Geen rechtenuitzonderingen voor leden",
+  "accessRule.noUserAccessSettings": "Geen leden met toegang",
   "accessRule.onlyMe": "Alleen ik",
   "accessRule.onlyMeDescription": "Alleen jij kunt toegang krijgen tot deze resource.",
   "accessRule.resourceOpenScope": "Toegangsbereik van resource",

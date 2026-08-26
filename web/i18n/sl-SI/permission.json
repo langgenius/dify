@@ -31,7 +31,7 @@
   "accessRule.noAvailableMembers": "Ni članov, ki bi jih bilo mogoče dodati",
   "accessRule.noDescription": "Brez opisa",
   "accessRule.noRules": "Brez pravil za dostop",
-  "accessRule.noUserAccessSettings": "Ni izjem dovoljenj za člane",
+  "accessRule.noUserAccessSettings": "Noben član nima dostopa",
   "accessRule.onlyMe": "Samo jaz",
   "accessRule.onlyMeDescription": "Do tega vira lahko dostopate samo vi.",
   "accessRule.resourceOpenScope": "Obseg odprtosti vira",

@@ -43,6 +43,7 @@ from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.trigger.constants import TRIGGER_NODE_TYPES
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.enums import WorkflowExecutionStatus
@@ -1084,7 +1085,17 @@ class AppPublishToCreatorsPlatformApi(Resource):
         dsl_bytes = dsl_content.encode("utf-8")
 
         claim_code = upload_dsl(dsl_bytes)
-        redirect_url = get_redirect_url(current_user_id, claim_code)
+        # TODO: Move this configuration and OAuth orchestration into the Creators Platform application service
+        # when that domain is refactored. This controller-level integration is a temporary compatibility bridge.
+        oauth_code = None
+        client_id = str(dify_config.CREATORS_PLATFORM_OAUTH_CLIENT_ID or "")
+        if client_id:
+            authorization = application_services().oauth_server.issue_authorization_code(
+                client_id=client_id,
+                account_id=current_user_id,
+            )
+            oauth_code = authorization.code
+        redirect_url = get_redirect_url(claim_code, oauth_code=oauth_code)
 
         return RedirectUrlResponse(redirect_url=redirect_url).model_dump(mode="json")
 

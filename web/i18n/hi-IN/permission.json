@@ -31,7 +31,7 @@
   "accessRule.noAvailableMembers": "जोड़ने के लिए कोई सदस्य उपलब्ध नहीं",
   "accessRule.noDescription": "कोई विवरण नहीं",
   "accessRule.noRules": "कोई एक्सेस नियम नहीं",
-  "accessRule.noUserAccessSettings": "कोई सदस्य अनुमति अपवाद नहीं",
+  "accessRule.noUserAccessSettings": "किसी भी सदस्य को पहुँच की अनुमति नहीं है",
   "accessRule.onlyMe": "केवल मैं",
   "accessRule.onlyMeDescription": "केवल आप इस संसाधन तक पहुँच सकते हैं।",
   "accessRule.resourceOpenScope": "संसाधन का खुला दायरा",

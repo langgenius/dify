@@ -31,7 +31,7 @@
   "accessRule.noAvailableMembers": "Không có thành viên nào để thêm",
   "accessRule.noDescription": "Không có mô tả",
   "accessRule.noRules": "Không có quy tắc truy cập",
-  "accessRule.noUserAccessSettings": "Không có ngoại lệ quyền của thành viên",
+  "accessRule.noUserAccessSettings": "Không có thành viên nào được phép truy cập",
   "accessRule.onlyMe": "Chỉ mình tôi",
   "accessRule.onlyMeDescription": "Chỉ bạn có thể truy cập tài nguyên này.",
   "accessRule.resourceOpenScope": "Phạm vi mở của tài nguyên",

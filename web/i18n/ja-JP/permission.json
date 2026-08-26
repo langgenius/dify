@@ -31,7 +31,7 @@
   "accessRule.noAvailableMembers": "追加できるメンバーがいません",
   "accessRule.noDescription": "説明なし",
   "accessRule.noRules": "アクセスルールがありません",
-  "accessRule.noUserAccessSettings": "メンバーの例外権限はありません",
+  "accessRule.noUserAccessSettings": "アクセスを許可されたメンバーはいません",
   "accessRule.onlyMe": "自分のみ",
   "accessRule.onlyMeDescription": "このリソースにアクセスできるのは自分だけです。",
   "accessRule.resourceOpenScope": "リソース公開範囲",

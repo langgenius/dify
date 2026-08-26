@@ -513,7 +513,9 @@ class TestDatasetInitApi:
                 "controllers.console.datasets.datasets_document.DocumentService.save_document_without_dataset_id",
                 return_value=(created_dataset, [created_document], "batch-init"),
             ),
-            patch("controllers.console.datasets.datasets_document.enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist"),
+            patch(
+                "controllers.console.datasets.datasets_document.enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist"
+            ),
             patch("controllers.console.datasets.datasets_document.initialize_created_app_rbac_access_task.delay"),
         ):
             response = method(api, session, tenant_id, user)

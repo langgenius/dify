@@ -31,7 +31,7 @@
   "accessRule.noAvailableMembers": "Eklenecek uygun üye yok",
   "accessRule.noDescription": "Açıklama yok",
   "accessRule.noRules": "Erişim kuralı yok",
-  "accessRule.noUserAccessSettings": "Üye izin istisnası yok",
+  "accessRule.noUserAccessSettings": "Erişim izni verilen üye yok",
   "accessRule.onlyMe": "Yalnızca ben",
   "accessRule.onlyMeDescription": "Bu kaynağa yalnızca siz erişebilirsiniz.",
   "accessRule.resourceOpenScope": "Kaynak açık kapsamı",

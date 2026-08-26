@@ -31,7 +31,7 @@
   "accessRule.noAvailableMembers": "ບໍ່ມີສະມາຊິກທີ່ສາມາດເພີ່ມໄດ້",
   "accessRule.noDescription": "ບໍ່ມີຄຳອະທິບາຍ",
   "accessRule.noRules": "ບໍ່ມີກົດລະບຽບການເຂົ້າເຖິງ",
-  "accessRule.noUserAccessSettings": "ບໍ່ມີການຕັ້ງຄ່າສິດສ່ວນບຸກຄົນ",
+  "accessRule.noUserAccessSettings": "ບໍ່ມີສະມາຊິກທີ່ໄດ້ຮັບອະນຸຍາດໃຫ້ເຂົ້າເຖິງ",
   "accessRule.onlyMe": "ພຽງແຕ່ຂ້ອຍ",
   "accessRule.onlyMeDescription": "ມີພຽງແຕ່ທ່ານເທົ່ານັ້ນທີ່ສາມາດເຂົ້າເຖິງຊັບພະຍາກອນນີ້ໄດ້.",
   "accessRule.resourceOpenScope": "ຂອບເຂດການເປີດຊັບພະຍາກອນ",

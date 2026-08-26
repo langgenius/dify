@@ -31,7 +31,7 @@
   "accessRule.noAvailableMembers": "هیچ عضوی برای افزودن در دسترس نیست",
   "accessRule.noDescription": "بدون توضیحات",
   "accessRule.noRules": "بدون قانون دسترسی",
-  "accessRule.noUserAccessSettings": "هیچ استثنای مجوزی برای اعضا وجود ندارد",
+  "accessRule.noUserAccessSettings": "هیچ عضوی اجازه دسترسی ندارد",
   "accessRule.onlyMe": "فقط من",
   "accessRule.onlyMeDescription": "فقط شما می‌توانید به این منبع دسترسی داشته باشید.",
   "accessRule.resourceOpenScope": "دامنه دسترسی منبع",

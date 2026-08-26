@@ -31,7 +31,7 @@
   "accessRule.noAvailableMembers": "Niciun membru disponibil pentru adăugare",
   "accessRule.noDescription": "Fără descriere",
   "accessRule.noRules": "Fără reguli de acces",
-  "accessRule.noUserAccessSettings": "Nu există excepții de permisiuni pentru membri",
+  "accessRule.noUserAccessSettings": "Niciun membru nu are acces",
   "accessRule.onlyMe": "Doar eu",
   "accessRule.onlyMeDescription": "Numai tu poți accesa această resursă.",
   "accessRule.resourceOpenScope": "Domeniul de deschidere al resursei",

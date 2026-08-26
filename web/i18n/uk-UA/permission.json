@@ -31,7 +31,7 @@
   "accessRule.noAvailableMembers": "Немає доступних учасників для додавання",
   "accessRule.noDescription": "Немає опису",
   "accessRule.noRules": "Немає правил доступу",
-  "accessRule.noUserAccessSettings": "Немає винятків дозволів для учасників",
+  "accessRule.noUserAccessSettings": "Немає учасників із доступом",
   "accessRule.onlyMe": "Лише я",
   "accessRule.onlyMeDescription": "Лише ви можете отримати доступ до цього ресурсу.",
   "accessRule.resourceOpenScope": "Сфера відкритості ресурсу",

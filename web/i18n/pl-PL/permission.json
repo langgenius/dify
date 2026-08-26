@@ -31,7 +31,7 @@
   "accessRule.noAvailableMembers": "Brak członków dostępnych do dodania",
   "accessRule.noDescription": "Brak opisu",
   "accessRule.noRules": "Brak reguł dostępu",
-  "accessRule.noUserAccessSettings": "Brak wyjątków uprawnień członków",
+  "accessRule.noUserAccessSettings": "Brak członków z dostępem",
   "accessRule.onlyMe": "Tylko ja",
   "accessRule.onlyMeDescription": "Tylko Ty możesz uzyskać dostęp do tego zasobu.",
   "accessRule.resourceOpenScope": "Zakres otwarcia zasobu",

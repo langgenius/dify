@@ -31,7 +31,7 @@
   "accessRule.noAvailableMembers": "추가할 수 있는 멤버가 없습니다",
   "accessRule.noDescription": "설명 없음",
   "accessRule.noRules": "접근 규칙 없음",
-  "accessRule.noUserAccessSettings": "멤버 권한 예외 없음",
+  "accessRule.noUserAccessSettings": "접근이 허용된 멤버가 없습니다",
   "accessRule.onlyMe": "나만",
   "accessRule.onlyMeDescription": "이 리소스에는 본인만 접근할 수 있습니다.",
   "accessRule.resourceOpenScope": "리소스 공개 범위",

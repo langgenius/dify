@@ -31,7 +31,7 @@
   "accessRule.noAvailableMembers": "暂无可添加成员",
   "accessRule.noDescription": "无描述",
   "accessRule.noRules": "暂无访问规则",
-  "accessRule.noUserAccessSettings": "暂无成员例外权限",
+  "accessRule.noUserAccessSettings": "无允许访问的成员",
   "accessRule.onlyMe": "仅自己",
   "accessRule.onlyMeDescription": "仅你自己可以访问此资源。",
   "accessRule.resourceOpenScope": "访问范围",

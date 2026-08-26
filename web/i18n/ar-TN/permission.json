@@ -31,7 +31,7 @@
   "accessRule.noAvailableMembers": "لا يوجد أعضاء متاحون للإضافة",
   "accessRule.noDescription": "لا يوجد وصف",
   "accessRule.noRules": "لا توجد قواعد وصول",
-  "accessRule.noUserAccessSettings": "لا توجد استثناءات لأذونات الأعضاء",
+  "accessRule.noUserAccessSettings": "لا يوجد أعضاء مسموح لهم بالوصول",
   "accessRule.onlyMe": "أنا فقط",
   "accessRule.onlyMeDescription": "يمكنك وحدك الوصول إلى هذا المورد.",
   "accessRule.resourceOpenScope": "نطاق فتح المورد",

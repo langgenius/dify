@@ -31,7 +31,7 @@
   "accessRule.noAvailableMembers": "Нет участников для добавления",
   "accessRule.noDescription": "Без описания",
   "accessRule.noRules": "Нет правил доступа",
-  "accessRule.noUserAccessSettings": "Нет исключений из прав участников",
+  "accessRule.noUserAccessSettings": "Нет участников с доступом",
   "accessRule.onlyMe": "Только я",
   "accessRule.onlyMeDescription": "Только вы можете получить доступ к этому ресурсу.",
   "accessRule.resourceOpenScope": "Область открытости ресурса",
