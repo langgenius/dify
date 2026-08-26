@@ -1,11 +1,12 @@
 """Unit tests for the framework-neutral Web authentication application service."""
 
 from dataclasses import dataclass, field
+from datetime import datetime
 
 import pytest
 
 from machinery.context import RequestContext
-from services.entities.account_entities import AccountAuthenticationSnapshot, AccountPasswordDigest
+from services.entities.account_entities import AccountAuthenticationSnapshot, AccountPasswordDigest, AccountSnapshot
 from services.entities.authentication_entities import LoginFailureReason, StoredAuthenticationToken
 from services.web_authentication_service import (
     WebAccountBannedError,
@@ -26,9 +27,26 @@ class AccountRepositoryFake:
     def find_for_authentication(self, email: str) -> AccountAuthenticationSnapshot | None:
         return self.accounts.get(email) or self.accounts.get(email.lower())
 
-    def update_password(self, account_id: str, password: AccountPasswordDigest):
+    def update_password(self, account_id: str, password: AccountPasswordDigest) -> AccountSnapshot | None:
         self.updated = (account_id, password)
-        return next((account for account in self.accounts.values() if account.id == account_id), None)
+        account = next((account for account in self.accounts.values() if account.id == account_id), None)
+        if account is None:
+            return None
+        return AccountSnapshot(
+            id=account.id,
+            name="Account",
+            email=account.email,
+            avatar=None,
+            is_password_set=True,
+            interface_language="en-US",
+            interface_theme="light",
+            timezone="UTC",
+            last_login_at=None,
+            last_login_ip=None,
+            status=account.status,
+            initialized_at=None,
+            created_at=datetime(2026, 1, 1),
+        )
 
 
 class PasswordHasherFake:
