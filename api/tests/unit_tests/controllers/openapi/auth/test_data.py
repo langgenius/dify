@@ -75,15 +75,6 @@ def test_auth_data_external_identity_none_for_account():
     assert data.external_identity is None
 
 
-def test_auth_data_tenants_default_empty():
-    data = AuthData(
-        token_type=TokenType.OAUTH_ACCOUNT,
-        token_hash="abc",
-        scopes=frozenset(),
-    )
-    assert data.tenants == {}
-
-
 def test_auth_data_token_id_optional():
     data = AuthData(
         token_type=TokenType.OAUTH_ACCOUNT,

@@ -54,7 +54,6 @@ def _ctx(scopes) -> AuthContext:
         token_type=TokenType.OAUTH_ACCOUNT,
         expires_at=None,
         token_hash="h1",
-        verified_tenants={},
     )
 
 
