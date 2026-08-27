@@ -170,6 +170,10 @@ test("app compose profile uses local middleware and the required Dify dependency
   );
   assert.match(
     compose,
+    /^ {6}DURABLE_DELETION_STEP_TIMEOUT_MS: \$\{DURABLE_DELETION_STEP_TIMEOUT_MS:-30000\}$/m,
+  );
+  assert.match(
+    compose,
     /^ {6}DIFY_INNER_API_URL: \$\{DIFY_INNER_API_URL:-http:\/\/host\.docker\.internal:5001\}$/m,
   );
   assert.match(compose, /^ {6}DIFY_INNER_API_KEY: \$\{DIFY_INNER_API_KEY:-\}$/m);
@@ -304,6 +308,7 @@ test("KnowledgeFS deployment env contains only operator-owned runtime inputs", (
   assert.deepEqual(envVariableNames(difyKnowledgeFsEnv), [
     "DATABASE_URL",
     "KNOWLEDGE_DOCUMENT_COMPILATION_RUNTIME",
+    "DURABLE_DELETION_STEP_TIMEOUT_MS",
     "KNOWLEDGE_PDF_RASTERIZER",
     "KNOWLEDGE_PDF_RASTERIZER_DPI",
     "KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_DPI",
@@ -335,6 +340,7 @@ test("KnowledgeFS deployment env contains only operator-owned runtime inputs", (
     "DIFY_REMOTE_IMAGE_REQUEST_TIMEOUT_MS",
   ]);
   assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_DOCUMENT_COMPILATION_RUNTIME=on$/m);
+  assert.match(difyKnowledgeFsEnv, /^DURABLE_DELETION_STEP_TIMEOUT_MS=30000$/m);
   assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_PDF_RASTERIZER=poppler$/m);
   assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_PDF_RASTERIZER_DPI=144$/m);
   assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_DPI=48$/m);

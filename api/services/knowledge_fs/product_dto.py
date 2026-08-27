@@ -1769,6 +1769,7 @@ class KnowledgeFSDurableDeletionJobResponse(ResponseModel):
 
 
 class KnowledgeFSDurableDeletionAcceptedResponse(ResponseModel):
+    document_title: str | None = Field(default=None, validation_alias=AliasChoices("document_title", "documentTitle"))
     job: KnowledgeFSDurableDeletionJobResponse
     status_url: str = Field(validation_alias=AliasChoices("status_url", "statusUrl"))
 
@@ -2016,6 +2017,7 @@ class KnowledgeFSBackgroundTaskResponse(ResponseModel):
     completed_at: datetime | None = Field(default=None, validation_alias=AliasChoices("completed_at", "completedAt"))
     created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
     document_id: str | None = Field(default=None, validation_alias=AliasChoices("document_id", "documentId"))
+    document_title: str | None = Field(default=None, validation_alias=AliasChoices("document_title", "documentTitle"))
     document_revision: int | None = Field(
         default=None, ge=1, validation_alias=AliasChoices("document_revision", "documentRevision")
     )

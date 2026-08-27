@@ -42,6 +42,7 @@ export const BackgroundTaskSchema = z.object({
   completedAt: z.string().optional(),
   createdAt: z.string(),
   documentId: z.string().uuid().optional(),
+  documentTitle: z.string().min(1).optional(),
   documentRevision: z.number().int().positive().optional(),
   errorCode: KnowledgeFsPublicFailureSchema.shape.code.optional(),
   errorMessage: KnowledgeFsPublicFailureSchema.shape.message.optional(),

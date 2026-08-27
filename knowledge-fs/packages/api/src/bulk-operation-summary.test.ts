@@ -7,6 +7,7 @@ import type {
   DocumentCompilationJobStage,
   DocumentCompilationJobStateMachine,
 } from "./document-compilation-job";
+import type { DurableDeletionJob } from "./durable-deletion-repository";
 
 const CREATED_AT = "2026-05-15T00:00:00.000Z";
 const UPDATED_AT = "2026-05-15T00:01:00.000Z";
@@ -38,10 +39,35 @@ describe("summarizeBulkOperation", () => {
       failedItems: 0,
       id: operation.id,
       knowledgeSpaceId: operation.knowledgeSpaceId,
+      progressPercent: 67,
       status: "running",
       totalItems: 3,
       type: "document_reindex",
       updatedAt: UPDATED_AT,
+    });
+  });
+
+  it("reports durable deletion checkpoint progress before an item becomes terminal", async () => {
+    const deletionJobId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c55";
+    const operation = bulkOperation({
+      items: [{ deletionJobId, documentId: "doc-1", status: "queued" }],
+      type: "document_delete",
+    });
+    const deletionJob = {
+      checkpoint: "quiescing",
+      id: deletionJobId,
+      runState: "retry_wait",
+      updatedAt: UPDATED_AT,
+    } as DurableDeletionJob;
+
+    await expect(
+      summarizeBulkOperation(operation, undefined, {
+        getJob: async () => deletionJob,
+      }),
+    ).resolves.toMatchObject({
+      progressPercent: 10,
+      status: "running",
+      totalItems: 1,
     });
   });
 
@@ -86,8 +112,10 @@ describe("summarizeBulkOperation", () => {
 
 function bulkOperation({
   items,
+  type = "document_reindex",
 }: {
   readonly items: BulkOperation["items"];
+  readonly type?: BulkOperation["type"] | undefined;
 }): BulkOperation {
   return {
     createdAt: CREATED_AT,
@@ -95,7 +123,7 @@ function bulkOperation({
     items,
     knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
     tenantId: "tenant-1",
-    type: "document_reindex",
+    type,
     updatedAt: UPDATED_AT,
   };
 }

@@ -1509,36 +1509,6 @@ async function cancelScopedWork(
       tableName: "document_compilation_outbox",
     });
 
-    // Research uses whole-space snapshots; privacy-first deletion drains all tasks in the space.
-    await transaction.execute({
-      maxRows: 0,
-      operation: "update",
-      params: [job.tenantId, job.knowledgeSpaceId, nowMs],
-      sql: `UPDATE ${q("research_task_jobs")} SET ${q("stage")} = 'canceled', ${q("worker_id")} = NULL, ${q("lease_token")} = NULL, ${q("lease_expires_at")} = NULL, ${q("heartbeat_at")} = NULL, ${q("retry_at")} = NULL, ${q("completed_at")} = ${p(3)}, ${q("updated_at")} = ${p(3)}, ${q("row_version")} = ${q("row_version")} + 1 WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("stage")} NOT IN ('completed', 'failed', 'canceled') AND (${q("lease_token")} IS NULL OR ${q("lease_expires_at")} <= ${p(3)});`,
-      tableName: "research_task_jobs",
-    });
-    await transaction.execute({
-      maxRows: 0,
-      operation: "update",
-      params: [job.tenantId, job.knowledgeSpaceId, nowMs],
-      sql: `UPDATE ${q("research_task_outbox")} SET ${q("status")} = 'canceled', ${q("locked_by")} = NULL, ${q("lock_token")} = NULL, ${q("locked_until")} = NULL, ${q("updated_at")} = ${p(3)} WHERE ${q("research_task_job_id")} IN (SELECT ${q("id")} FROM ${q("research_task_jobs")} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("stage")} = 'canceled') AND ${q("status")} NOT IN ('completed', 'canceled', 'dead');`,
-      tableName: "research_task_outbox",
-    });
-
-    await transaction.execute({
-      maxRows: 0,
-      operation: "update",
-      params: [job.tenantId, job.knowledgeSpaceId, nowIso],
-      sql: `UPDATE ${q("knowledge_space_staged_commits")} SET ${q("status")} = 'canceled', ${q("updated_at")} = ${p(3)} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("status")} NOT IN ('published', 'failed-terminal', 'canceled', 'gc-complete');`,
-      tableName: "knowledge_space_staged_commits",
-    });
-    await transaction.execute({
-      maxRows: 0,
-      operation: "delete",
-      params: [job.tenantId, job.knowledgeSpaceId, nowIso],
-      sql: `DELETE FROM ${q("knowledge_space_mutation_leases")} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND (${q("expires_at")} IS NULL OR ${q("expires_at")} <= ${p(3)});`,
-      tableName: "knowledge_space_mutation_leases",
-    });
     await transaction.execute({
       maxRows: 0,
       operation: "update",

@@ -23,6 +23,7 @@ export interface BulkOperationSummary {
   readonly failedItems: number;
   readonly id: string;
   readonly knowledgeSpaceId: string;
+  readonly progressPercent: number;
   readonly status: "canceled" | "completed" | "failed" | "running";
   readonly totalItems: number;
   readonly type: BulkOperationType;
@@ -62,6 +63,7 @@ export async function summarizeBulkOperation(
 
   let completedItems = 0;
   let canceledItems = 0;
+  let accumulatedProgressPercent = 0;
   let updatedAtMs = Date.parse(operation.updatedAt);
   const failedItemIds: string[] = [];
   const failures: BulkOperationFailure[] = [];
@@ -78,6 +80,12 @@ export async function summarizeBulkOperation(
         : item.status;
     if (compilationJob) updatedAtMs = Math.max(updatedAtMs, compilationJob.updatedAt);
     if (deletionJob) updatedAtMs = Math.max(updatedAtMs, Date.parse(deletionJob.updatedAt));
+    accumulatedProgressPercent +=
+      operation.type === "document_delete"
+        ? deletionProgressPercent(deletionJob)
+        : status === "completed" || status === "failed" || status === "canceled"
+          ? 100
+          : 0;
 
     if (status === "failed") {
       failedItemIds.push(item.documentId);
@@ -107,6 +115,8 @@ export async function summarizeBulkOperation(
   const failedItems = failedItemIds.length;
   const totalItems = operation.items.length;
   const terminalItems = completedItems + failedItems + canceledItems;
+  const progressPercent =
+    totalItems === 0 ? 100 : Math.round(accumulatedProgressPercent / totalItems);
   const status: "canceled" | "completed" | "failed" | "running" =
     failedItems > 0 && terminalItems === totalItems
       ? "failed"
@@ -125,11 +135,30 @@ export async function summarizeBulkOperation(
     failedItems,
     id: operation.id,
     knowledgeSpaceId: operation.knowledgeSpaceId,
+    progressPercent,
     status,
     totalItems,
     type: operation.type,
     updatedAt: new Date(updatedAtMs).toISOString(),
   };
+}
+
+function deletionProgressPercent(job: DurableDeletionJob | undefined): number {
+  if (!job) return 0;
+  switch (job.checkpoint) {
+    case "requested":
+      return 0;
+    case "quiescing":
+      return 10;
+    case "deleting_objects":
+      return 35;
+    case "deleting_derived_data":
+      return 65;
+    case "deleting_primary_data":
+      return 90;
+    case "completed":
+      return 100;
+  }
 }
 
 function summarizeDeletionItemStatus(job: DurableDeletionJob | undefined): BulkOperationItemStatus {

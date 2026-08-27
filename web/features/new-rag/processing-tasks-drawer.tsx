@@ -530,12 +530,14 @@ export function ProcessingTasksDrawer({
                 ) : orderedTasks.length ? (
                   <ul>
                     {orderedTasks.map((task) => {
-                      const documentTitle = task.documentId
-                        ? (documentTitles.get(task.documentId) ??
-                          (documentsPending
-                            ? t(($) => $['newKnowledge.documentColumn'])
-                            : task.documentId))
-                        : undefined
+                      const documentTitle =
+                        task.documentTitle ??
+                        (task.documentId
+                          ? (documentTitles.get(task.documentId) ??
+                            (documentsPending
+                              ? t(($) => $['newKnowledge.documentColumn'])
+                              : task.documentId))
+                          : undefined)
                       const operationTitle = t(
                         ($) => $[`newKnowledge.overview.operation.${task.operation}`],
                       )
@@ -550,11 +552,13 @@ export function ProcessingTasksDrawer({
                             ? `${t(($) => $['newKnowledge.addDocument'])}${progress ? ` · ${progress.total}` : ''}`
                             : task.operation === 'document_reindex'
                               ? `${t(($) => $['newKnowledge.reindexDocuments'])}${progress ? ` · ${progress.total}` : documentTitle ? ` · ${documentTitle}` : ''}`
-                              : sourceTitle
-                                ? `${operationTitle} · ${sourceTitle}`
-                                : progress
-                                  ? `${operationTitle} · ${progress.total}`
-                                  : operationTitle
+                              : task.operation === 'document_delete' && documentTitle
+                                ? `${operationTitle} · ${documentTitle}`
+                                : sourceTitle
+                                  ? `${operationTitle} · ${sourceTitle}`
+                                  : progress
+                                    ? `${operationTitle} · ${progress.total}`
+                                    : operationTitle
                       const timestamp = Date.parse(
                         taskIsActive(task) ? task.createdAt : taskTime(task),
                       )

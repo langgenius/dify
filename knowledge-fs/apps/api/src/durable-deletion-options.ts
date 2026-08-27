@@ -22,10 +22,15 @@ export interface ApiDurableDeletionAssembly {
   stop(): void;
 }
 
+export interface ApiDurableDeletionEnv {
+  readonly DURABLE_DELETION_STEP_TIMEOUT_MS?: string | undefined;
+}
+
 export interface CreateApiDurableDeletionAssemblyOptions {
   readonly adapter: KnowledgeGatewayOptions["adapter"];
   readonly credentialMode?: "dify-managed" | "local" | undefined;
   readonly enabled: boolean;
+  readonly env?: ApiDurableDeletionEnv | undefined;
   readonly production: boolean;
   readonly repository?: DurableDeletionRepository | undefined;
   readonly secretStore?: Pick<SourceSecretStore, "delete"> | undefined;
@@ -48,6 +53,7 @@ export function createApiDurableDeletionAssembly({
   adapter,
   credentialMode = "local",
   enabled,
+  env = process.env,
   production,
   repository,
   secretStore,
@@ -87,18 +93,19 @@ export function createApiDurableDeletionAssembly({
     repository,
     source: capabilities,
   });
+  const timing = resolveApiDurableDeletionRuntimeTiming(env);
   const runtime = createDurableDeletionRuntime({
-    heartbeatIntervalMs: 10_000,
+    heartbeatIntervalMs: timing.heartbeatIntervalMs,
     initialRetryDelayMs: 1_000,
     intervalMs: 1_000,
-    leaseMs: 30_000,
+    leaseMs: timing.leaseMs,
     maxBatchSize: 10,
     maxRetryDelayMs: 5 * 60_000,
     maxStepsPerLease: 25,
     onError: writeDurableDeletionErrorLog,
     processor,
     repository,
-    stepTimeoutMs: 5_000,
+    stepTimeoutMs: timing.stepTimeoutMs,
     workerId: `durable-deletion:${randomUUID()}`,
   });
   const dispatcher = createDurableDeletionOutboxDispatcher({
@@ -125,6 +132,33 @@ export function createApiDurableDeletionAssembly({
       dispatcher.stop();
     },
   };
+}
+
+export function resolveApiDurableDeletionRuntimeTiming(env: ApiDurableDeletionEnv = process.env): {
+  readonly heartbeatIntervalMs: number;
+  readonly leaseMs: number;
+  readonly stepTimeoutMs: number;
+} {
+  const stepTimeoutMs = boundedStepTimeout(env.DURABLE_DELETION_STEP_TIMEOUT_MS);
+  const heartbeatIntervalMs = stepTimeoutMs + 5_000;
+  return {
+    heartbeatIntervalMs,
+    leaseMs: heartbeatIntervalMs * 3,
+    stepTimeoutMs,
+  };
+}
+
+function boundedStepTimeout(value: string | undefined): number {
+  if (value === undefined) return 30_000;
+  const trimmed = value.trim();
+  if (!/^\d+$/u.test(trimmed)) {
+    throw new Error("DURABLE_DELETION_STEP_TIMEOUT_MS must be an integer between 5000 and 120000");
+  }
+  const parsed = Number(trimmed);
+  if (!Number.isSafeInteger(parsed) || parsed < 5_000 || parsed > 120_000) {
+    throw new Error("DURABLE_DELETION_STEP_TIMEOUT_MS must be an integer between 5000 and 120000");
+  }
+  return parsed;
 }
 
 export function writeDurableDeletionErrorLog(input: {

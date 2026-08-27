@@ -71,6 +71,7 @@ export const DurableDeletionJobResponseSchema = z
 
 export const DurableDeletionAcceptedResponseSchema = z
   .object({
+    documentTitle: z.string().min(1).optional(),
     job: DurableDeletionJobResponseSchema,
     statusUrl: z.string().min(1),
   })

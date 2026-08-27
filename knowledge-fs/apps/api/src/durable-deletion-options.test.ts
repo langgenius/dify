@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   assertApiDurableDeletionDataReadiness,
   createApiDurableDeletionAssembly,
+  resolveApiDurableDeletionRuntimeTiming,
   writeDurableDeletionErrorLog,
 } from "./durable-deletion-options";
 
@@ -21,6 +22,34 @@ describe("API durable deletion assembly", () => {
   afterEach(() => {
     vi.useRealTimers();
   });
+
+  it("uses a deletion-step budget that covers normal quiescing transactions", () => {
+    expect(resolveApiDurableDeletionRuntimeTiming({})).toEqual({
+      heartbeatIntervalMs: 35_000,
+      leaseMs: 105_000,
+      stepTimeoutMs: 30_000,
+    });
+    expect(
+      resolveApiDurableDeletionRuntimeTiming({
+        DURABLE_DELETION_STEP_TIMEOUT_MS: "45000",
+      }),
+    ).toEqual({
+      heartbeatIntervalMs: 50_000,
+      leaseMs: 150_000,
+      stepTimeoutMs: 45_000,
+    });
+  });
+
+  it.each(["", "4999", "120001", "1.5", "not-a-number"])(
+    "rejects invalid durable deletion step timeout %j",
+    (value) => {
+      expect(() =>
+        resolveApiDurableDeletionRuntimeTiming({
+          DURABLE_DELETION_STEP_TIMEOUT_MS: value,
+        }),
+      ).toThrow("DURABLE_DELETION_STEP_TIMEOUT_MS");
+    },
+  );
 
   it("keeps every destructive worker absent while the rollout gate is off", () => {
     expect(

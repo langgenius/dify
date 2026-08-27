@@ -1904,6 +1904,25 @@ describe("database durable deletion target capabilities", () => {
       );
       expect(researchOutbox?.sql).toContain("stage");
       expect(researchOutbox?.sql).toContain("canceled");
+      for (const tableName of [
+        "research_task_jobs",
+        "research_task_outbox",
+        "knowledge_space_staged_commits",
+      ]) {
+        expect(
+          expired.calls.filter(
+            (call) => call.operation === "update" && call.tableName === tableName,
+          ),
+          `${tableName} must be canceled once per quiescing pass`,
+        ).toHaveLength(1);
+      }
+      expect(
+        expired.calls.filter(
+          (call) =>
+            call.operation === "delete" && call.tableName === "knowledge_space_mutation_leases",
+        ),
+        "mutation leases must be drained once per quiescing pass",
+      ).toHaveLength(1);
     });
 
     it(`removes only the logical-document Overview rows and never inventories source secrets (${dialect})`, async () => {

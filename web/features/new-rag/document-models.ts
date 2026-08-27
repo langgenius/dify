@@ -79,6 +79,7 @@ export type BackgroundTask = {
   completedAt?: string
   createdAt: string
   documentId?: string
+  documentTitle?: string
   documentRevision?: number
   errorCode?: string
   errorMessage?: string
@@ -245,6 +246,7 @@ export function backgroundTaskFromApi(task: KnowledgeFsBackgroundTaskResponse): 
     completedAt: task.completed_at ?? undefined,
     createdAt: task.created_at,
     documentId: task.document_id ?? undefined,
+    documentTitle: task.document_title ?? undefined,
     documentRevision: task.document_revision ?? undefined,
     errorCode: task.error_code ?? undefined,
     errorMessage: task.error_message ?? undefined,

@@ -133,6 +133,7 @@ describe("background task DTOs", () => {
       failedItems: 0,
       id: operation.id,
       knowledgeSpaceId: SPACE_ID,
+      progressPercent: 100,
       status: "canceled",
       totalItems: 3,
       type: operation.type,
@@ -171,6 +172,48 @@ describe("background task DTOs", () => {
     });
   });
 
+  it("projects a single deletion title and checkpoint progress", () => {
+    const operation: BulkOperation = {
+      createdAt: CREATED_AT,
+      id: "22222222-2222-4222-8222-222222222222",
+      items: [
+        {
+          deletionJobId: "33333333-3333-4333-8333-333333333333",
+          documentId: "44444444-4444-4444-8444-444444444444",
+          documentTitle: "dify使用问题反馈.xlsx",
+          status: "queued",
+        },
+      ],
+      knowledgeSpaceId: SPACE_ID,
+      requestedBySubjectId: "member-a",
+      tenantId: "tenant-1",
+      type: "document_delete",
+      updatedAt: UPDATED_AT,
+    };
+    const task = bulkBackgroundTask(operation, {
+      canceledItems: 0,
+      completedItems: 0,
+      createdAt: CREATED_AT,
+      failedItemIds: [],
+      failedItems: 0,
+      id: operation.id,
+      knowledgeSpaceId: SPACE_ID,
+      progressPercent: 10,
+      status: "running",
+      totalItems: 1,
+      type: operation.type,
+      updatedAt: UPDATED_AT,
+    });
+
+    expect(task).toMatchObject({
+      documentId: "44444444-4444-4444-8444-444444444444",
+      documentTitle: "dify使用问题反馈.xlsx",
+      operation: "document_delete",
+      progressPercent: 10,
+      progressTotal: 1,
+    });
+  });
+
   it("maps empty bulk operations and every source terminal state", () => {
     const operation: BulkOperation = {
       createdAt: CREATED_AT,
@@ -196,6 +239,7 @@ describe("background task DTOs", () => {
         failedItems: 0,
         id: operation.id,
         knowledgeSpaceId: SPACE_ID,
+        progressPercent: 100,
         status: "completed",
         totalItems: 0,
         type: operation.type,
@@ -291,6 +335,7 @@ describe("background task DTOs", () => {
       ],
       id: operation.id,
       knowledgeSpaceId: SPACE_ID,
+      progressPercent: 100,
       status: "failed",
       totalItems: 1,
       type: operation.type,

@@ -213,6 +213,7 @@ const taskApiResponse = vi.hoisted(() => (item: BackgroundTask) => ({
   completed_at: item.completedAt ?? null,
   created_at: item.createdAt,
   document_id: item.documentId ?? null,
+  document_title: item.documentTitle ?? null,
   document_revision: item.documentRevision ?? null,
   error_code: item.errorCode ?? null,
   error_message: item.errorMessage ?? null,
@@ -4045,6 +4046,47 @@ describe('DocumentsPage', () => {
       ),
     ).toBeInTheDocument()
     expect(within(panel).getByText('dataset.newKnowledge.taskFailure.internal')).toBeInTheDocument()
+  })
+
+  it('shows a single deletion document title and its checkpoint progress', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document({})] }] }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            backgroundTask({
+              documentId: 'deleted-document',
+              documentTitle: 'dify使用问题反馈.xlsx',
+              id: 'delete-task',
+              operation: 'document_delete',
+              progressCompleted: 0,
+              progressPercent: 10,
+              progressTotal: 1,
+              state: 'running',
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+
+    const panel = screen.getByRole('dialog', { name: 'dataset.newKnowledge.backgroundTasks' })
+    expect(
+      within(panel).getByText(
+        'dataset.newKnowledge.overview.operation.document_delete · dify使用问题反馈.xlsx',
+      ),
+    ).toBeInTheDocument()
+    expect(within(panel).getByText((content) => content.startsWith('10%'))).toBeInTheDocument()
+    expect(
+      within(panel).queryByText('dataset.newKnowledge.overview.operation.document_delete · 1'),
+    ).not.toBeInTheDocument()
   })
 
   it('gives duplicate task actions distinct accessible names', async () => {

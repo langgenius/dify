@@ -1504,6 +1504,7 @@ export type KnowledgeFsDocumentRevisionResponse = {
 }
 
 export type KnowledgeFsDurableDeletionAcceptedResponse = {
+  document_title?: string | null
   job: KnowledgeFsDurableDeletionJobResponse
   status_url: string
 }

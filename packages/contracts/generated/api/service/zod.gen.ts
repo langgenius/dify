@@ -1774,6 +1774,7 @@ export const zKnowledgeFsBulkDeletionAcceptedResponse = z.object({
  * KnowledgeFSDurableDeletionAcceptedResponse
  */
 export const zKnowledgeFsDurableDeletionAcceptedResponse = z.object({
+  document_title: z.string().nullish(),
   job: zKnowledgeFsDurableDeletionJobResponse,
   status_url: z.string(),
 })

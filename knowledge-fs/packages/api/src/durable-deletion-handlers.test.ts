@@ -118,7 +118,13 @@ describe("durable deletion handlers", () => {
     expect(service.requestDocumentDeletion).not.toHaveBeenCalled();
     await expect(bulkOperations.get({ id: JOB_ID, tenantId: "tenant-1" })).resolves.toMatchObject({
       capabilityGrantId: CAPABILITY_GRANT_ID,
-      items: [expect.objectContaining({ deletionJobId: JOB_ID, documentId: DOCUMENT_ID })],
+      items: [
+        expect.objectContaining({
+          deletionJobId: JOB_ID,
+          documentId: DOCUMENT_ID,
+          documentTitle: "Document title",
+        }),
+      ],
       type: "document_delete",
     });
   });
@@ -272,6 +278,7 @@ function serviceStub(): DurableDeletionService {
     requestKnowledgeSpaceDeletion: vi.fn(async () => accepted),
     requestLogicalDocumentDeletion: vi.fn(async () => ({
       ...accepted,
+      documentTitle: "Document title",
       job: { ...accepted.job, targetType: "logical_document" as const },
     })),
     requestSourceDeletion: vi.fn(async () => accepted),

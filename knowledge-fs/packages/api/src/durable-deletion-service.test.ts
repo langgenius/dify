@@ -389,6 +389,7 @@ describe("logical document deletion admission", () => {
             id: logicalJob.targetId,
             rowVersion: 4,
             status,
+            title: "dify使用问题反馈.xlsx",
           })),
           listRevisions,
         } as never,
@@ -407,6 +408,7 @@ describe("logical document deletion admission", () => {
           subject: subject(logicalJob.requestedBySubjectId, logicalJob.tenantId),
         }),
       ).resolves.toMatchObject({
+        documentTitle: "dify使用问题反馈.xlsx",
         job: { id: logicalJob.id, targetType: "logical_document" },
       });
       expect(listRevisions).toHaveBeenCalledWith(

@@ -568,7 +568,7 @@ export function createDurableDeletionService({
           ? {}
           : { idempotencyContext: input.idempotencyContext }),
       });
-      return accepted(result.job);
+      return { ...accepted(result.job), documentTitle: logical.title };
     } catch (error) {
       throw mapRepositoryRequestError(error);
     }

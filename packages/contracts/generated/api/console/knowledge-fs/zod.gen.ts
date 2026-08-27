@@ -1230,6 +1230,7 @@ export const zKnowledgeFsBackgroundTaskResponse = z.object({
   created_at: z.iso.datetime(),
   document_id: z.string().nullish(),
   document_revision: z.int().gte(1).nullish(),
+  document_title: z.string().nullish(),
   error_code: z.string().nullish(),
   error_message: z.string().nullish(),
   failure: zKnowledgeFsPublicFailureResponse.nullish(),
@@ -2372,6 +2373,7 @@ export const zKnowledgeFsDurableDeletionJobResponse = z.object({
  * KnowledgeFSDurableDeletionAcceptedResponse
  */
 export const zKnowledgeFsDurableDeletionAcceptedResponse = z.object({
+  document_title: z.string().nullish(),
   job: zKnowledgeFsDurableDeletionJobResponse,
   status_url: z.string(),
 })

@@ -251,7 +251,13 @@ export function registerDurableDeletionHandlers({
         await ensureLogicalDeletionBackgroundTask({
           bulkOperations,
           id: accepted.job.id,
-          items: [{ deletionJobId: accepted.job.id, documentId: params.documentId }],
+          items: [
+            {
+              deletionJobId: accepted.job.id,
+              documentId: params.documentId,
+              ...(accepted.documentTitle ? { documentTitle: accepted.documentTitle } : {}),
+            },
+          ],
           knowledgeSpaceId: params.id,
           requestedBySubjectId: subject.subjectId,
           tenantId: subject.tenantId,

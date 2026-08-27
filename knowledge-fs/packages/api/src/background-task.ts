@@ -40,6 +40,7 @@ export interface BackgroundTask {
   readonly completedAt?: string | undefined;
   readonly createdAt: string;
   readonly documentId?: string | undefined;
+  readonly documentTitle?: string | undefined;
   readonly documentRevision?: number | undefined;
   readonly errorCode?: string | undefined;
   readonly errorMessage?: string | undefined;
@@ -101,6 +102,7 @@ export function bulkBackgroundTask(
   operation: BulkOperation,
   summary: BulkOperationSummary,
 ): BackgroundTask {
+  const singleItem = operation.items.length === 1 ? operation.items[0] : undefined;
   const state = summary.status;
   const failures = summary.failures?.map((item) => {
     const failure = taskFailure(
@@ -126,6 +128,8 @@ export function bulkBackgroundTask(
       ? { completedAt: summary.updatedAt }
       : {}),
     createdAt: summary.createdAt,
+    ...(singleItem ? { documentId: singleItem.documentId } : {}),
+    ...(singleItem?.documentTitle ? { documentTitle: singleItem.documentTitle } : {}),
     ...(failure
       ? {
           errorCode: failure.code,
@@ -139,14 +143,7 @@ export function bulkBackgroundTask(
     operation: operation.type,
     progressCompleted: summary.completedItems,
     progressFailed: summary.failedItems,
-    progressPercent:
-      summary.totalItems === 0
-        ? 100
-        : Math.round(
-            ((summary.completedItems + summary.failedItems + summary.canceledItems) /
-              summary.totalItems) *
-              100,
-          ),
+    progressPercent: summary.progressPercent,
     progressTotal: summary.totalItems,
     state,
     taskKind: "document_bulk",

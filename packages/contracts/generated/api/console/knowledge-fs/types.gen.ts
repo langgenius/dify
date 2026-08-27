@@ -151,6 +151,7 @@ export type KnowledgeFsBackgroundTaskResponse = {
   created_at: string
   document_id?: string | null
   document_revision?: number | null
+  document_title?: string | null
   error_code?: string | null
   error_message?: string | null
   failure?: KnowledgeFsPublicFailureResponse | null
@@ -233,6 +234,7 @@ export type KnowledgeFsDocumentDeletePayload = {
 }
 
 export type KnowledgeFsDurableDeletionAcceptedResponse = {
+  document_title?: string | null
   job: KnowledgeFsDurableDeletionJobResponse
   status_url: string
 }
