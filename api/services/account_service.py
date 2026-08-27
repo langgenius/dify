@@ -115,6 +115,14 @@ logger = logging.getLogger(__name__)
 _change_email_token_adapter: TypeAdapter[ChangeEmailTokenData] = TypeAdapter(ChangeEmailTokenData)
 
 
+class EnterpriseWorkspaceMemberAccountNotFoundError(Exception):
+    pass
+
+
+class EnterpriseWorkspaceMemberWorkspaceNotFoundError(Exception):
+    pass
+
+
 class InvitationDetailDict(TypedDict):
     account: Account
     data: InvitationData
@@ -1362,6 +1370,43 @@ class TenantService:
                 operator_account_id=operator_account_id,
             )
         return ta
+
+    @staticmethod
+    def join_enterprise_workspace_member(
+        *,
+        workspace_id: str,
+        account_id: str,
+        email: str,
+        role: TenantAccountRole,
+        operator_account_id: str | None,
+        session: Session | None = None,
+    ) -> TenantAccountJoin:
+        session = session or db.session()
+        tenant = session.scalar(
+            select(Tenant).where(
+                Tenant.id == workspace_id,
+                Tenant.status == TenantStatus.NORMAL,
+            )
+        )
+        if tenant is None:
+            raise EnterpriseWorkspaceMemberWorkspaceNotFoundError
+
+        account = session.scalar(
+            select(Account).where(
+                Account.id == account_id,
+                Account.email == email,
+            )
+        )
+        if account is None:
+            raise EnterpriseWorkspaceMemberAccountNotFoundError
+
+        return TenantService.create_tenant_member(
+            tenant,
+            account,
+            session=session,
+            role=role.value,
+            operator_account_id=operator_account_id,
+        )
 
     @staticmethod
     def get_join_tenants(account: Account, *, session: Session) -> list[Tenant]:

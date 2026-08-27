@@ -21,7 +21,13 @@ from models.account import (
     TenantStatus,
 )
 from models.model import DifySetup
-from services.account_service import AccountService, RegisterService, TenantService
+from services.account_service import (
+    AccountService,
+    EnterpriseWorkspaceMemberAccountNotFoundError,
+    EnterpriseWorkspaceMemberWorkspaceNotFoundError,
+    RegisterService,
+    TenantService,
+)
 from services.enterprise.rbac_service import MembersInRole, Paginated
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -975,8 +981,8 @@ class TestTenantService:
                 )
 
         delay.assert_called_once_with(
-            str(tenant_id),
-            str(account_id),
+            tenant_id,
+            account_id,
             operator_account_id="operator-1",
         )
 
@@ -1008,6 +1014,86 @@ class TestTenantService:
                 )
 
         delay.assert_not_called()
+
+    def test_join_enterprise_workspace_member_success(self, sqlite_session_factory: sessionmaker[Session]) -> None:
+        with sqlite_session_factory() as service_session:
+            tenant = Tenant(name="Test Workspace", status=TenantStatus.NORMAL)
+            account = Account(name="Test User", email="test@example.com")
+            service_session.add_all([tenant, account])
+            service_session.flush()
+            tenant_id = tenant.id
+            account_id = account.id
+            service_session.commit()
+
+            with patch("services.account_service.TenantService.create_tenant_member") as create_tenant_member:
+                membership = TenantAccountJoin(
+                    tenant_id=tenant_id,
+                    account_id=account_id,
+                    role=TenantAccountRole.NORMAL,
+                )
+                create_tenant_member.return_value = membership
+
+                result = TenantService.join_enterprise_workspace_member(
+                    workspace_id=tenant_id,
+                    account_id=account_id,
+                    email="test@example.com",
+                    role=TenantAccountRole.NORMAL,
+                    operator_account_id="operator-1",
+                    session=service_session,
+                )
+
+                assert result is membership
+                create_tenant_member.assert_called_once()
+                call_args = create_tenant_member.call_args
+                assert call_args.args[0].id == tenant_id
+                assert call_args.args[1].id == account_id
+                assert call_args.kwargs == {
+                    "session": service_session,
+                    "role": "normal",
+                    "operator_account_id": "operator-1",
+                }
+
+    def test_join_enterprise_workspace_member_raises_when_workspace_missing(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        with sqlite_session_factory() as service_session:
+            account = Account(name="Test User", email="test@example.com")
+            service_session.add(account)
+            service_session.flush()
+            account_id = account.id
+            service_session.commit()
+
+            with pytest.raises(EnterpriseWorkspaceMemberWorkspaceNotFoundError):
+                TenantService.join_enterprise_workspace_member(
+                    workspace_id="missing-workspace",
+                    account_id=account_id,
+                    email="test@example.com",
+                    role=TenantAccountRole.NORMAL,
+                    operator_account_id=None,
+                    session=service_session,
+                )
+
+    def test_join_enterprise_workspace_member_raises_when_account_missing(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        with sqlite_session_factory() as service_session:
+            tenant = Tenant(name="Test Workspace", status=TenantStatus.NORMAL)
+            service_session.add(tenant)
+            service_session.flush()
+            tenant_id = tenant.id
+            service_session.commit()
+
+            with pytest.raises(EnterpriseWorkspaceMemberAccountNotFoundError):
+                TenantService.join_enterprise_workspace_member(
+                    workspace_id=tenant_id,
+                    account_id="missing-account",
+                    email="test@example.com",
+                    role=TenantAccountRole.NORMAL,
+                    operator_account_id=None,
+                    session=service_session,
+                )
 
     # ==================== Member Removal Tests ====================
 
