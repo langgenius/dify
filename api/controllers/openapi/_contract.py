@@ -117,6 +117,7 @@ def endpoint(
     body: type[BaseModel] | None = None,
     returns: ReturnSpec | Sequence[ReturnSpec] | None = None,
     edition: frozenset[DeploymentEdition] | None = None,
+    write: bool = True,
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """The one seam a route attaches to for auth, request validation and response
     serialisation. Fixes the stacking order internally — auth, then ``accepts``,
@@ -128,12 +129,16 @@ def endpoint(
     order and gets the identical nesting back — first entry outermost, last entry
     closest to the handler — including the N-times ``"default"`` error registration
     that stacking N ``@returns`` already produces.
+
+    ``write`` matches ``with_session``'s own default: true commits the
+    router's session on a successful call and rolls it back on failure; a
+    route that only reads sets ``write=False``.
     """
     requirements = tuple(requirements)
     for requirement in requirements:
         if not isinstance(requirement, Requirement):
             raise TypeError(f"requirements must be instances of Requirement, not {requirement!r}")
-    spec = EndpointSpec(requirements=requirements, edition=edition)
+    spec = EndpointSpec(requirements=requirements, edition=edition, write=write)
     return_specs = _normalize_returns(returns)
 
     def decorator(view: Callable[..., Any]) -> Callable[..., Any]:
