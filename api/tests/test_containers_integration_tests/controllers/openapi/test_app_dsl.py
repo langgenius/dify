@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Generator
-from inspect import unwrap
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -25,7 +24,7 @@ from services.account_service import AccountService, TenantService
 from services.app_dsl_service import CURRENT_DSL_VERSION
 from services.app_service import AppService, CreateAppParams
 from services.entities.dsl_entities import ImportStatus
-from tests.test_containers_integration_tests.controllers.openapi.conftest import auth_for
+from tests.test_containers_integration_tests.controllers.openapi.conftest import context_for
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
@@ -111,7 +110,12 @@ class TestDslImport:
         api = AppDslImportApi()
         body = AppDslImportPayload(mode="yaml-content", yaml_content="[]")  # not a mapping
         with app.test_request_context(f"/openapi/v1/workspaces/{tenant.id}/apps/imports", method="POST"):
-            result, code = unwrap(api.post)(api, workspace_id=tenant.id, auth_data=auth_for(account), body=body)
+            result, code = api.post.__handler__(
+                api,
+                context_for(account, session=db_session_with_containers, view_args={"workspace_id": tenant.id}),
+                tenant.id,
+                body=body,
+            )
 
         assert code == 400
         assert result.status == ImportStatus.FAILED
@@ -128,7 +132,12 @@ class TestDslImport:
         api = AppDslImportApi()
         body = AppDslImportPayload(mode="yaml-content", yaml_content=_workflow_yaml(version="99.0.0"))
         with app.test_request_context(f"/openapi/v1/workspaces/{tenant.id}/apps/imports", method="POST"):
-            result, code = unwrap(api.post)(api, workspace_id=tenant.id, auth_data=auth_for(account), body=body)
+            result, code = api.post.__handler__(
+                api,
+                context_for(account, session=db_session_with_containers, view_args={"workspace_id": tenant.id}),
+                tenant.id,
+                body=body,
+            )
 
         assert code == 202
         assert result.status == ImportStatus.PENDING
@@ -148,7 +157,12 @@ class TestDslImport:
         api = AppDslImportApi()
         body = AppDslImportPayload(mode="yaml-content", yaml_content=_workflow_yaml(name="Imported"))
         with app.test_request_context(f"/openapi/v1/workspaces/{tenant.id}/apps/imports", method="POST"):
-            result, code = unwrap(api.post)(api, workspace_id=tenant.id, auth_data=auth_for(account), body=body)
+            result, code = api.post.__handler__(
+                api,
+                context_for(account, session=db_session_with_containers, view_args={"workspace_id": tenant.id}),
+                tenant.id,
+                body=body,
+            )
 
         assert code == 200
         assert result.status in (ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS)
@@ -169,8 +183,15 @@ class TestDslImportConfirm:
         with app.test_request_context(
             f"/openapi/v1/workspaces/{tenant.id}/apps/imports/{import_id}:confirm", method="POST"
         ):
-            result, code = unwrap(api.post)(
-                api, workspace_id=tenant.id, import_id=import_id, auth_data=auth_for(account)
+            result, code = api.post.__handler__(
+                api,
+                context_for(
+                    account,
+                    session=db_session_with_containers,
+                    view_args={"workspace_id": tenant.id, "import_id": import_id},
+                ),
+                tenant.id,
+                import_id,
             )
 
         assert code == 400
@@ -199,8 +220,11 @@ class TestDslExport:
 
         api = AppDslExportApi()
         with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/dsl"):
-            response, code = unwrap(api.get)(
-                api, app_id=app_model.id, auth_data=auth_for(account, app_model=app_model), query=AppDslExportQuery()
+            response, code = api.get.__handler__(
+                api,
+                context_for(account, session=db_session_with_containers, view_args={"app_id": app_model.id}),
+                app_model.id,
+                query=AppDslExportQuery(),
             )
 
         assert code == 200
@@ -217,8 +241,11 @@ class TestDslExport:
 
         api = AppDslExportApi()
         with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/dsl"):
-            result, code = unwrap(api.get)(
-                api, app_id=app_model.id, auth_data=auth_for(account, app_model=app_model), query=AppDslExportQuery()
+            result, code = api.get.__handler__(
+                api,
+                context_for(account, session=db_session_with_containers, view_args={"app_id": app_model.id}),
+                app_model.id,
+                query=AppDslExportQuery(),
             )
 
         assert code == 404
@@ -233,7 +260,11 @@ class TestDslCheckDependencies:
 
         api = AppDslCheckDependenciesApi()
         with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/dependencies:check"):
-            result, code = unwrap(api.get)(api, app_id=app_model.id, auth_data=auth_for(account, app_model=app_model))
+            result, code = api.get.__handler__(
+                api,
+                context_for(account, session=db_session_with_containers, view_args={"app_id": app_model.id}),
+                app_model.id,
+            )
 
         assert code == 200
         assert result.leaked_dependencies == []

@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from inspect import unwrap
-from uuid import uuid4
 
 import pytest
 from flask import Flask
@@ -18,7 +16,7 @@ from controllers.openapi.account import (
 from extensions.ext_redis import redis_client
 from models import Account
 from services.oauth_device_flow import PREFIX_OAUTH_ACCOUNT, MintResult, mint_oauth_token
-from tests.test_containers_integration_tests.controllers.openapi.conftest import request_context_for
+from tests.test_containers_integration_tests.controllers.openapi.conftest import context_for
 
 
 def _mint_account_token(
@@ -51,9 +49,9 @@ class TestSessionList:
 
         api = AccountSessionsApi()
         with app.test_request_context("/openapi/v1/account/sessions"):
-            result = unwrap(api.get)(
+            result = api.get.__handler__(
                 api,
-                request_context_for(account, token_id=mint.token_id),
+                context_for(account, session=db_session_with_containers, token_id=mint.token_id),
                 query=SessionListQuery(),
             )
 
@@ -74,9 +72,9 @@ class TestSessionList:
 
         api = AccountSessionsApi()
         with app.test_request_context("/openapi/v1/account/sessions"):
-            result = unwrap(api.get)(
+            result = api.get.__handler__(
                 api,
-                request_context_for(account, token_id=mine.token_id),
+                context_for(account, session=db_session_with_containers, token_id=mine.token_id),
                 query=SessionListQuery(),
             )
 
@@ -92,16 +90,18 @@ class TestSessionRevoke:
 
         revoke_api = AccountSessionsSelfApi()
         with app.test_request_context("/openapi/v1/account/sessions/self", method="DELETE"):
-            result = unwrap(revoke_api.delete)(revoke_api, request_context_for(account, token_id=mint.token_id))
+            result = revoke_api.delete.__handler__(
+                revoke_api, context_for(account, session=db_session_with_containers, token_id=mint.token_id)
+            )
 
         assert result.status == "revoked"
 
         # Revocation persisted: the real list path no longer returns it.
         list_api = AccountSessionsApi()
         with app.test_request_context("/openapi/v1/account/sessions"):
-            listing = unwrap(list_api.get)(
+            listing = list_api.get.__handler__(
                 list_api,
-                request_context_for(account, token_id=mint.token_id),
+                context_for(account, session=db_session_with_containers, token_id=mint.token_id),
                 query=SessionListQuery(),
             )
         assert listing.total == 0
@@ -115,10 +115,15 @@ class TestSessionRevoke:
 
         api = AccountSessionByIdApi()
         with app.test_request_context(f"/openapi/v1/account/sessions/{session_id}", method="DELETE"):
-            result = unwrap(api.delete)(
+            result = api.delete.__handler__(
                 api,
-                request_context_for(account, token_id=mint.token_id),
-                session_id=session_id,
+                context_for(
+                    account,
+                    session=db_session_with_containers,
+                    view_args={"session_id": session_id},
+                    token_id=mint.token_id,
+                ),
+                session_id,
             )
 
         assert result.status == "revoked"
@@ -136,8 +141,12 @@ class TestSessionRevoke:
         session_id = str(foreign.token_id)
         with app.test_request_context(f"/openapi/v1/account/sessions/{session_id}", method="DELETE"):
             with pytest.raises(NotFound):
-                unwrap(api.delete)(
+                api.delete.__handler__(
                     api,
-                    request_context_for(outsider, token_id=uuid4()),
-                    session_id=session_id,
+                    context_for(
+                        outsider,
+                        session=db_session_with_containers,
+                        view_args={"session_id": session_id},
+                    ),
+                    session_id,
                 )
