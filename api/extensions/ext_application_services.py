@@ -35,6 +35,7 @@ from repositories.tag_repository import TagRepository
 from repositories.trial_app_query_repository import TrialAppQueryRepository
 from repositories.trial_app_usage_repository import TrialAppUsageRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
+from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
 from services.account_activation_adapters import (
@@ -101,6 +102,12 @@ from services.recommended_app_catalog_gateway import (
     RemoteRecommendedAppCatalogGateway,
 )
 from services.recommended_app_query_service import RecommendedAppQueryService
+from services.retention.workflow_run.archive_download_adapters import (
+    dispatch_workflow_run_archive_download_task,
+    sign_workflow_run_archive_download_url,
+)
+from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
+from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock, RegisterServiceAccountProvisioner
 from services.setup_service import SetupService
@@ -172,6 +179,7 @@ class ApplicationServices:
     partner_tenant_bindings: PartnerTenantBindingService
     recommended_app_queries: RecommendedAppQueryService
     trial_app_usage: TrialAppUsageRecorder
+    workflow_run_archives: WorkflowRunArchiveService
     workspace_queries: WorkspaceQueryService
     workspace_member_queries: WorkspaceMemberQueryService
     tags: TagApplicationService
@@ -397,6 +405,12 @@ def build_application_services(
             trial_enabled=trial_app_enabled,
         ),
         trial_app_usage=TrialAppUsageRepository(session_factory=database_client),
+        workflow_run_archives=WorkflowRunArchiveService(
+            bundles=WorkflowRunArchiveBundleQueryRepository(session_factory=database_client),
+            tasks=WorkflowRunArchiveDownloadTaskCache(redis=redis),
+            dispatcher=dispatch_workflow_run_archive_download_task,
+            sign_download_url=sign_workflow_run_archive_download_url,
+        ),
         workspace_queries=WorkspaceQueryService(
             workspaces=workspace_query_repository,
             plans=DeploymentWorkspacePlanGateway(),
