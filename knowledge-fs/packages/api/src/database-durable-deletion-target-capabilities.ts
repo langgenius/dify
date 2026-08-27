@@ -2522,44 +2522,70 @@ async function copyDeletionPublicationMembers(
     maxRows: 0,
     operation: "insert",
     params,
-    sql: `${insertPrefix} WHERE ${commonWhere} AND ${sourceMember}.${q("component_type")} = 'graph-entity' AND ${graphEntityMemberClosureSql(database, sourceMember, p(1))};`,
+    sql: graphMemberCopySql(database, {
+      commonWhere,
+      componentType: "graph-entity",
+      insertPrefix,
+      memberAlias: sourceMember,
+      visiblePublicationIdSql: p(1),
+    }),
     tableName: "projection_set_publication_members",
   });
   await transaction.execute({
     maxRows: 0,
     operation: "insert",
     params,
-    sql: `${insertPrefix} WHERE ${commonWhere} AND ${sourceMember}.${q("component_type")} = 'graph-relation' AND ${graphRelationMemberClosureSql(database, sourceMember, p(1))};`,
+    sql: graphMemberCopySql(database, {
+      commonWhere,
+      componentType: "graph-relation",
+      insertPrefix,
+      memberAlias: sourceMember,
+      visiblePublicationIdSql: p(1),
+    }),
     tableName: "projection_set_publication_members",
   });
 }
 
-function graphEntityMemberClosureSql(
+function graphMemberCopySql(
   database: DatabaseAdapter,
-  memberAlias: string,
-  visiblePublicationIdSql: string,
+  input: {
+    readonly commonWhere: string;
+    readonly componentType: "graph-entity" | "graph-relation";
+    readonly insertPrefix: string;
+    readonly memberAlias: string;
+    readonly visiblePublicationIdSql: string;
+  },
 ): string {
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
-  const componentAlias = "candidate_graph_entity";
-  return `EXISTS (SELECT 1 FROM ${q("graph_entities")} AS ${componentAlias} WHERE ${graphComponentMemberJoinSql(database, componentAlias, memberAlias)} AND ${graphSourceNodePublicationClosureSql(database, componentAlias, memberAlias, visiblePublicationIdSql)})`;
-}
-
-function graphRelationMemberClosureSql(
-  database: DatabaseAdapter,
-  memberAlias: string,
-  visiblePublicationIdSql: string,
-): string {
-  const q = (value: string) => quoteDatabaseIdentifier(database, value);
-  const componentAlias = "candidate_graph_relation";
-  const endpointMemberExists = (
-    column: "object_entity_id" | "subject_entity_id",
-    suffix: string,
-  ) => {
-    const endpointMember = `${suffix}_entity_member`;
-    const endpointEntity = `${suffix}_entity`;
-    return `EXISTS (SELECT 1 FROM ${q("projection_set_publication_members")} AS ${endpointMember} INNER JOIN ${q("graph_entities")} AS ${endpointEntity} ON ${graphComponentMemberJoinSql(database, endpointEntity, endpointMember)} WHERE ${endpointMember}.${q("tenant_id")} = ${memberAlias}.${q("tenant_id")} AND ${endpointMember}.${q("knowledge_space_id")} = ${memberAlias}.${q("knowledge_space_id")} AND ${endpointMember}.${q("publication_id")} = ${visiblePublicationIdSql} AND ${endpointMember}.${q("component_type")} = 'graph-entity' AND ${endpointMember}.${q("component_key")} = ${componentAlias}.${q(column)})`;
-  };
-  return `EXISTS (SELECT 1 FROM ${q("graph_relations")} AS ${componentAlias} WHERE ${graphComponentMemberJoinSql(database, componentAlias, memberAlias)} AND ${graphSourceNodePublicationClosureSql(database, componentAlias, memberAlias, visiblePublicationIdSql)} AND ${endpointMemberExists("subject_entity_id", "subject")} AND ${endpointMemberExists("object_entity_id", "object")})`;
+  const componentTable =
+    input.componentType === "graph-entity" ? "graph_entities" : "graph_relations";
+  const componentAlias =
+    input.componentType === "graph-entity" ? "candidate_graph_entity" : "candidate_graph_relation";
+  const ownerAlias = "graph_owner_document";
+  const sourceRefAlias = "candidate_source_ref";
+  const visibleNodeAlias = "visible_projection_node";
+  const endpointJoins =
+    input.componentType === "graph-relation"
+      ? graphRelationEndpointJoins(
+          database,
+          componentAlias,
+          input.memberAlias,
+          input.visiblePublicationIdSql,
+          "INNER JOIN",
+        )
+      : "";
+  const groupColumns = [
+    "tenant_id",
+    "knowledge_space_id",
+    "component_type",
+    "component_key",
+    "generation_id",
+    "document_asset_id",
+    "created_at",
+  ]
+    .map((column) => `${input.memberAlias}.${q(column)}`)
+    .join(", ");
+  return `${input.insertPrefix} INNER JOIN ${q(componentTable)} AS ${componentAlias} ON ${graphComponentMemberJoinSql(database, componentAlias, input.memberAlias)} INNER JOIN ${q("document_assets")} AS ${ownerAlias} ON ${ownerAlias}.${q("id")} = ${input.memberAlias}.${q("document_asset_id")} AND ${ownerAlias}.${q("knowledge_space_id")} = ${input.memberAlias}.${q("knowledge_space_id")} AND ${ownerAlias}.${q("lifecycle_state")} = 'active'${endpointJoins} ${graphSourceRowsJoinSql(database, `${componentAlias}.${q("source_node_ids")}`, sourceRefAlias, false)} LEFT JOIN ${visibleProjectionNodesSql(database, input.visiblePublicationIdSql, visibleNodeAlias)} ON ${visibleProjectionNodeMatchSql(database, input.memberAlias, sourceRefAlias, visibleNodeAlias)} WHERE ${input.commonWhere} AND ${input.memberAlias}.${q("component_type")} = '${input.componentType}' AND ${graphSourceLengthSql(database, `${componentAlias}.${q("source_node_ids")}`)} > 0 GROUP BY ${groupColumns} HAVING SUM(CASE WHEN ${visibleNodeAlias}.${q("source_node_id")} IS NULL THEN 1 ELSE 0 END) = 0;`;
 }
 
 function graphComponentMemberJoinSql(
@@ -2571,30 +2597,68 @@ function graphComponentMemberJoinSql(
   return `${componentAlias}.${q("id")} = ${memberAlias}.${q("component_key")} AND ${componentAlias}.${q("knowledge_space_id")} = ${memberAlias}.${q("knowledge_space_id")} AND ${componentAlias}.${q("publication_generation_id")} = ${memberAlias}.${q("generation_id")}`;
 }
 
-function graphSourceNodePublicationClosureSql(
+function graphRelationEndpointJoins(
   database: DatabaseAdapter,
   componentAlias: string,
   memberAlias: string,
   visiblePublicationIdSql: string,
+  joinKind: "INNER JOIN" | "LEFT JOIN",
 ): string {
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
-  const sourceNodeIds = `${componentAlias}.${q("source_node_ids")}`;
-  const sourceRows =
+  return (
+    [
+      ["subject_entity_id", "subject_entity_member"],
+      ["object_entity_id", "object_entity_member"],
+    ] as const
+  )
+    .map(
+      ([column, endpointAlias]) =>
+        ` ${joinKind} ${q("projection_set_publication_members")} AS ${endpointAlias} ON ${endpointAlias}.${q("tenant_id")} = ${memberAlias}.${q("tenant_id")} AND ${endpointAlias}.${q("knowledge_space_id")} = ${memberAlias}.${q("knowledge_space_id")} AND ${endpointAlias}.${q("publication_id")} = ${visiblePublicationIdSql} AND ${endpointAlias}.${q("component_type")} = 'graph-entity' AND ${endpointAlias}.${q("component_key")} = ${componentAlias}.${q(column)}`,
+    )
+    .join("");
+}
+
+function graphSourceRowsJoinSql(
+  database: DatabaseAdapter,
+  sourceNodeIdsSql: string,
+  sourceRefAlias: string,
+  optional: boolean,
+): string {
+  if (database.dialect === "postgres") {
+    return `${optional ? "LEFT JOIN" : "CROSS JOIN"} LATERAL jsonb_array_elements_text(${sourceNodeIdsSql}) AS ${sourceRefAlias}(node_id)${optional ? " ON TRUE" : ""}`;
+  }
+  return `${optional ? "LEFT JOIN" : "INNER JOIN"} JSON_TABLE(${sourceNodeIdsSql}, '$[*]' COLUMNS (node_id VARCHAR(255) PATH '$')) AS ${sourceRefAlias} ON TRUE`;
+}
+
+function graphSourceLengthSql(database: DatabaseAdapter, sourceNodeIdsSql: string): string {
+  return database.dialect === "postgres"
+    ? `jsonb_array_length(${sourceNodeIdsSql})`
+    : `JSON_LENGTH(${sourceNodeIdsSql})`;
+}
+
+function visibleProjectionNodesSql(
+  database: DatabaseAdapter,
+  publicationIdSql: string,
+  alias: string,
+): string {
+  const q = (value: string) => quoteDatabaseIdentifier(database, value);
+  const memberAlias = `${alias}_member`;
+  const projectionAlias = `${alias}_projection`;
+  const sourceNodeId =
     database.dialect === "postgres"
-      ? `jsonb_array_elements_text(${sourceNodeIds}) AS source_ref(node_id)`
-      : `JSON_TABLE(${sourceNodeIds}, '$[*]' COLUMNS (node_id VARCHAR(255) PATH '$')) AS source_ref`;
-  const sourceNodeIdMatch =
-    database.dialect === "postgres"
-      ? `CAST(source_node_row.${q("id")} AS TEXT) = source_ref.node_id`
-      : `CAST(source_node_row.${q("id")} AS CHAR(36)) = source_ref.node_id`;
-  const sourceLength =
-    database.dialect === "postgres"
-      ? `jsonb_array_length(${sourceNodeIds})`
-      : `JSON_LENGTH(${sourceNodeIds})`;
-  const visibleProjection = `EXISTS (SELECT 1 FROM ${q("projection_set_publication_members")} AS visible_projection_member INNER JOIN ${q("index_projections")} AS visible_projection ON visible_projection.${q("id")} = visible_projection_member.${q("component_key")} AND visible_projection.${q("knowledge_space_id")} = visible_projection_member.${q("knowledge_space_id")} AND visible_projection.${q("publication_generation_id")} = visible_projection_member.${q("generation_id")} WHERE visible_projection_member.${q("tenant_id")} = ${memberAlias}.${q("tenant_id")} AND visible_projection_member.${q("knowledge_space_id")} = ${memberAlias}.${q("knowledge_space_id")} AND visible_projection_member.${q("publication_id")} = ${visiblePublicationIdSql} AND visible_projection_member.${q("component_type")} = 'index-projection' AND visible_projection_member.${q("generation_id")} = ${memberAlias}.${q("generation_id")} AND visible_projection_member.${q("document_asset_id")} = ${memberAlias}.${q("document_asset_id")} AND visible_projection.${q("node_id")} = source_node_row.${q("id")} AND visible_projection.${q("status")} = 'ready')`;
-  const sourceNodeExists = `EXISTS (SELECT 1 FROM ${q("knowledge_nodes")} AS source_node_row WHERE source_node_row.${q("knowledge_space_id")} = ${memberAlias}.${q("knowledge_space_id")} AND source_node_row.${q("publication_generation_id")} = ${memberAlias}.${q("generation_id")} AND source_node_row.${q("document_asset_id")} = ${memberAlias}.${q("document_asset_id")} AND ${sourceNodeIdMatch} AND ${visibleProjection})`;
-  const activeOwner = `EXISTS (SELECT 1 FROM ${q("document_assets")} AS graph_owner_document WHERE graph_owner_document.${q("id")} = ${memberAlias}.${q("document_asset_id")} AND graph_owner_document.${q("knowledge_space_id")} = ${memberAlias}.${q("knowledge_space_id")} AND graph_owner_document.${q("lifecycle_state")} = 'active')`;
-  return `${memberAlias}.${q("document_asset_id")} IS NOT NULL AND ${activeOwner} AND ${sourceLength} > 0 AND NOT EXISTS (SELECT 1 FROM ${sourceRows} WHERE NOT (${sourceNodeExists}))`;
+      ? `CAST(${projectionAlias}.${q("node_id")} AS TEXT)`
+      : `CAST(${projectionAlias}.${q("node_id")} AS CHAR(36))`;
+  return `(SELECT DISTINCT ${memberAlias}.${q("tenant_id")}, ${memberAlias}.${q("knowledge_space_id")}, ${memberAlias}.${q("generation_id")}, ${memberAlias}.${q("document_asset_id")}, ${sourceNodeId} AS ${q("source_node_id")} FROM ${q("projection_set_publication_members")} AS ${memberAlias} INNER JOIN ${q("index_projections")} AS ${projectionAlias} ON ${projectionAlias}.${q("id")} = ${memberAlias}.${q("component_key")} AND ${projectionAlias}.${q("knowledge_space_id")} = ${memberAlias}.${q("knowledge_space_id")} AND ${projectionAlias}.${q("publication_generation_id")} = ${memberAlias}.${q("generation_id")} WHERE ${memberAlias}.${q("publication_id")} = ${publicationIdSql} AND ${memberAlias}.${q("component_type")} = 'index-projection' AND ${projectionAlias}.${q("status")} = 'ready') AS ${alias}`;
+}
+
+function visibleProjectionNodeMatchSql(
+  database: DatabaseAdapter,
+  memberAlias: string,
+  sourceRefAlias: string,
+  visibleNodeAlias: string,
+): string {
+  const q = (value: string) => quoteDatabaseIdentifier(database, value);
+  return `${visibleNodeAlias}.${q("tenant_id")} = ${memberAlias}.${q("tenant_id")} AND ${visibleNodeAlias}.${q("knowledge_space_id")} = ${memberAlias}.${q("knowledge_space_id")} AND ${visibleNodeAlias}.${q("generation_id")} = ${memberAlias}.${q("generation_id")} AND ${visibleNodeAlias}.${q("document_asset_id")} = ${memberAlias}.${q("document_asset_id")} AND ${visibleNodeAlias}.${q("source_node_id")} = ${sourceRefAlias}.node_id`;
 }
 
 function publicationExclusionSql(
@@ -2699,15 +2763,55 @@ async function publishedHeadHasInvalidGraphClosure(
 ): Promise<boolean> {
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
   const p = (position: number) => databasePlaceholder(database, position);
-  const memberAlias = "validated_graph_member";
   const result = await executor.execute({
     maxRows: 1,
     operation: "select",
     params: [publicationId, tenantId, knowledgeSpaceId],
-    sql: `SELECT ${memberAlias}.${q("component_key")} FROM ${q("projection_set_publication_members")} AS ${memberAlias} WHERE ${memberAlias}.${q("publication_id")} = ${p(1)} AND ${memberAlias}.${q("tenant_id")} = ${p(2)} AND ${memberAlias}.${q("knowledge_space_id")} = ${p(3)} AND ((${memberAlias}.${q("component_type")} = 'graph-entity' AND NOT (${graphEntityMemberClosureSql(database, memberAlias, p(1))})) OR (${memberAlias}.${q("component_type")} = 'graph-relation' AND NOT (${graphRelationMemberClosureSql(database, memberAlias, p(1))}))) LIMIT 1;`,
+    sql: `SELECT invalid_graph_member.${q("component_key")} FROM (${invalidGraphMemberSelectSql(database, "graph-entity", "validated_graph_member_entity", p(1), p(2), p(3))} UNION ALL ${invalidGraphMemberSelectSql(database, "graph-relation", "validated_graph_member_relation", p(1), p(2), p(3))}) AS invalid_graph_member LIMIT 1;`,
     tableName: "projection_set_publication_members",
   });
   return result.rows.length > 0;
+}
+
+function invalidGraphMemberSelectSql(
+  database: DatabaseAdapter,
+  componentType: "graph-entity" | "graph-relation",
+  memberAlias: string,
+  publicationIdSql: string,
+  tenantIdSql: string,
+  knowledgeSpaceIdSql: string,
+): string {
+  const q = (value: string) => quoteDatabaseIdentifier(database, value);
+  const componentTable = componentType === "graph-entity" ? "graph_entities" : "graph_relations";
+  const componentAlias = `${memberAlias}_component`;
+  const ownerAlias = `${memberAlias}_owner`;
+  const sourceRefAlias = `${memberAlias}_source_ref`;
+  const visibleNodeAlias = "validated_visible_projection_node";
+  const sourceNodeIds = graphSourceIdsOrEmptySql(
+    database,
+    `${componentAlias}.${q("source_node_ids")}`,
+  );
+  const endpointJoins =
+    componentType === "graph-relation"
+      ? graphRelationEndpointJoins(
+          database,
+          componentAlias,
+          memberAlias,
+          publicationIdSql,
+          "LEFT JOIN",
+        )
+      : "";
+  const endpointFailures =
+    componentType === "graph-relation"
+      ? ` OR MAX(CASE WHEN subject_entity_member.${q("component_key")} IS NULL THEN 1 ELSE 0 END) > 0 OR MAX(CASE WHEN object_entity_member.${q("component_key")} IS NULL THEN 1 ELSE 0 END) > 0`
+      : "";
+  return `SELECT ${memberAlias}.${q("component_key")} FROM ${q("projection_set_publication_members")} AS ${memberAlias} LEFT JOIN ${q(componentTable)} AS ${componentAlias} ON ${graphComponentMemberJoinSql(database, componentAlias, memberAlias)} LEFT JOIN ${q("document_assets")} AS ${ownerAlias} ON ${ownerAlias}.${q("id")} = ${memberAlias}.${q("document_asset_id")} AND ${ownerAlias}.${q("knowledge_space_id")} = ${memberAlias}.${q("knowledge_space_id")} AND ${ownerAlias}.${q("lifecycle_state")} = 'active'${endpointJoins} ${graphSourceRowsJoinSql(database, sourceNodeIds, sourceRefAlias, true)} LEFT JOIN ${visibleProjectionNodesSql(database, publicationIdSql, visibleNodeAlias)} ON ${visibleProjectionNodeMatchSql(database, memberAlias, sourceRefAlias, visibleNodeAlias)} WHERE ${memberAlias}.${q("publication_id")} = ${publicationIdSql} AND ${memberAlias}.${q("tenant_id")} = ${tenantIdSql} AND ${memberAlias}.${q("knowledge_space_id")} = ${knowledgeSpaceIdSql} AND ${memberAlias}.${q("component_type")} = '${componentType}' GROUP BY ${memberAlias}.${q("component_key")} HAVING MAX(CASE WHEN ${componentAlias}.${q("id")} IS NULL THEN 1 ELSE 0 END) > 0 OR MAX(CASE WHEN ${memberAlias}.${q("document_asset_id")} IS NULL THEN 1 ELSE 0 END) > 0 OR MAX(CASE WHEN ${ownerAlias}.${q("id")} IS NULL THEN 1 ELSE 0 END) > 0 OR COALESCE(MAX(${graphSourceLengthSql(database, sourceNodeIds)}), 0) = 0 OR SUM(CASE WHEN ${sourceRefAlias}.node_id IS NOT NULL AND ${visibleNodeAlias}.${q("source_node_id")} IS NULL THEN 1 ELSE 0 END) > 0${endpointFailures}`;
+}
+
+function graphSourceIdsOrEmptySql(database: DatabaseAdapter, sourceNodeIdsSql: string): string {
+  return database.dialect === "postgres"
+    ? `COALESCE(${sourceNodeIdsSql}, '[]'::jsonb)`
+    : `COALESCE(${sourceNodeIdsSql}, JSON_ARRAY())`;
 }
 
 async function assertJobFence(

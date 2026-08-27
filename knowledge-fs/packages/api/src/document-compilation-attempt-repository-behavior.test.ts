@@ -126,7 +126,7 @@ describe("in-memory document compilation repository completion behavior", () => 
         expectedRowVersion: 1,
         now: createdAt,
       }),
-    ).resolves.toBeNull();
+    ).resolves.toMatchObject({ rowVersion: 1, runState: "dispatch_pending" });
     await expect(
       repository.claimOutbox({
         limit: 1,
@@ -302,6 +302,24 @@ describe("in-memory document compilation repository completion behavior", () => 
 });
 
 describe("database document compilation repository transition behavior", () => {
+  it("returns the current attempt when deferred dispatch was already released", async () => {
+    const repository = databaseRepository(attemptRow({ row_version: 1 }), [
+      outboxRow({
+        available_at: createdAt,
+        delivered_at: null,
+        status: "pending",
+      }),
+    ]);
+
+    await expect(
+      repository.releaseDeferredDispatch?.({
+        attemptId,
+        expectedRowVersion: 1,
+        now: "2026-07-13T12:00:01.000Z",
+      }),
+    ).resolves.toMatchObject({ rowVersion: 1, runState: "dispatch_pending" });
+  });
+
   it("executes heartbeat, retry, terminal failure, exhaustion, and supersede CAS transitions", async () => {
     const running = attemptRow({
       execution_attempts: 1,

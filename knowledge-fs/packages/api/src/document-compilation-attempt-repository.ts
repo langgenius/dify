@@ -710,7 +710,10 @@ export function createInMemoryDocumentCompilationAttemptRepository(
         return null;
       }
       const event = requiredMemoryOutbox(outbox, current.id);
-      if (event.status !== "pending" || event.availableAt !== deferredDispatchAvailableAt) {
+      if (event.availableAt !== deferredDispatchAvailableAt) {
+        return cloneAttempt(current);
+      }
+      if (event.status !== "pending") {
         return null;
       }
       const now = canonicalDateTime(input.now, "now");
@@ -1275,6 +1278,15 @@ export function createDatabaseDocumentCompilationAttemptRepository({
           attempt.rowVersion === expectedRowVersion && attempt.runState === "dispatch_pending";
         const observed = await databaseGetAttempt(database, transaction, input.attemptId, false);
         if (!observed || !accepts(observed)) return null;
+        const observedEvent = await databaseGetAttemptOutbox(
+          database,
+          transaction,
+          observed.id,
+          false,
+        );
+        if (observedEvent && observedEvent.availableAt !== deferredDispatchAvailableAt) {
+          return observed;
+        }
         const current = await databaseLockCompilationControlAttemptAfterSpace(
           database,
           transaction,
@@ -1283,13 +1295,11 @@ export function createDatabaseDocumentCompilationAttemptRepository({
         );
         if (!current) return null;
         const event = await databaseGetAttemptOutbox(database, transaction, current.id, true);
-        if (
-          !event ||
-          event.status !== "pending" ||
-          event.availableAt !== deferredDispatchAvailableAt
-        ) {
+        if (!event) {
           return null;
         }
+        if (event.availableAt !== deferredDispatchAvailableAt) return current;
+        if (event.status !== "pending") return null;
         const now = canonicalDateTime(input.now, "now");
         await requireDatabaseCompilationControlResources(
           database,

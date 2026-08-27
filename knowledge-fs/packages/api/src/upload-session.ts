@@ -456,11 +456,16 @@ export function createUploadSessionService({
         assertReadyAndUnexpired(current, now());
         validateCompletionParts(current, parts);
       }
-      const claimed = await save(current, {
-        completionGrantId,
-        completionParts: parts,
-        status: "completing",
-      });
+      // A timed-out client may retry while the original completion is still publishing. The
+      // first request already owns the `ready -> completing` CAS, so a recovery must not advance
+      // the row version again and fence that owner from committing the completed state.
+      const claimed = recovering
+        ? current
+        : await save(current, {
+            completionGrantId,
+            completionParts: parts,
+            status: "completing",
+          });
       try {
         let object = recovering ? await objectStorage.headObject(claimed.objectKey) : null;
         if (claimed.mode === "multipart") {
@@ -520,6 +525,7 @@ export function createUploadSessionService({
       try {
         const completed = await save(claimed, {
           compilationJobId: requiredString(publication.compilationJobId, "compilationJobId", 255),
+          completionGrantId,
           completedAt: validTimestamp(now()),
           documentAssetId: requiredString(publication.documentAssetId, "documentAssetId", 255),
           reservedBytes: 0,

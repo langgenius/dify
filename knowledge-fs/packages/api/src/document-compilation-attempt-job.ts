@@ -100,16 +100,25 @@ export function createDurableDocumentCompilationJobStateMachine({
       if (!attempts.releaseDeferredDispatch) {
         throw new Error("Deferred document compilation dispatch is unavailable");
       }
-      const current = await requireAttempt(attempts, id);
-      const released = await attempts.releaseDeferredDispatch({
-        attemptId: current.id,
-        expectedRowVersion: current.rowVersion,
-        now: now(),
-      });
-      if (!released) {
-        throw new Error("Document compilation deferred dispatch cannot be released");
+      let current = await requireAttempt(attempts, id);
+      for (let retry = 0; retry < 3; retry += 1) {
+        if (current.runState !== "dispatch_pending") {
+          return attemptToCompilationJob(current);
+        }
+        const released = await attempts.releaseDeferredDispatch({
+          attemptId: current.id,
+          expectedRowVersion: current.rowVersion,
+          now: now(),
+        });
+        if (released) return attemptToCompilationJob(released);
+
+        const latest = await requireAttempt(attempts, id);
+        if (latest.rowVersion === current.rowVersion) {
+          throw new Error("Document compilation deferred dispatch cannot be released");
+        }
+        current = latest;
       }
-      return attemptToCompilationJob(released);
+      throw new Error("Document compilation deferred dispatch changed too many times");
     },
     retry: async (id, input) => {
       const permissionBinding = normalizeRetryInput(input);

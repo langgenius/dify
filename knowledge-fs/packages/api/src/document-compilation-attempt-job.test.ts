@@ -155,8 +155,62 @@ describe("durable document compilation job control plane", () => {
       id: job.id,
       runState: "dispatch_pending",
     });
+    await expect(jobs.releaseDispatch?.(job.id)).resolves.toMatchObject({
+      id: job.id,
+      runState: "dispatch_pending",
+    });
     await expect(
       attempts.claimOutbox({
+        limit: 1,
+        lockedUntil: "2026-07-13T10:05:00.000Z",
+        lockToken,
+        now: "2026-07-13T10:00:00.000Z",
+        workerId: "dispatcher-1",
+      }),
+    ).resolves.toEqual([expect.objectContaining({ attemptId, status: "dispatching" })]);
+  });
+
+  it("reconciles a concurrent deferred-dispatch release instead of failing publication", async () => {
+    const repository = createInMemoryDocumentCompilationAttemptRepository();
+    const releaseDeferredDispatch = repository.releaseDeferredDispatch;
+    if (!releaseDeferredDispatch) throw new Error("Expected deferred dispatch support");
+    let injectConcurrentRelease = true;
+    const attempts = {
+      ...repository,
+      releaseDeferredDispatch: async (
+        input: Parameters<NonNullable<typeof releaseDeferredDispatch>>[0],
+      ) => {
+        if (injectConcurrentRelease) {
+          injectConcurrentRelease = false;
+          await releaseDeferredDispatch(input);
+          return null;
+        }
+        return releaseDeferredDispatch(input);
+      },
+    };
+    const jobs = createDurableDocumentCompilationJobStateMachine({
+      attempts,
+      generateAttemptId: () => attemptId,
+      generateOutboxId: () => outboxId,
+      generatePublicationGenerationId: () => generationId,
+      maxExecutionAttempts: 5,
+      now: () => "2026-07-13T10:00:00.000Z",
+      resolveBaseHeadRevision: async () => 0,
+    });
+    const job = await jobs.start({
+      deferDispatch: true,
+      documentAssetId: assetId,
+      knowledgeSpaceId: spaceId,
+      tenantId: "tenant-1",
+      version: 1,
+    });
+
+    await expect(jobs.releaseDispatch?.(job.id)).resolves.toMatchObject({
+      id: job.id,
+      runState: "dispatch_pending",
+    });
+    await expect(
+      repository.claimOutbox({
         limit: 1,
         lockedUntil: "2026-07-13T10:05:00.000Z",
         lockToken,

@@ -596,13 +596,17 @@ describe("database durable deletion target capabilities", () => {
       const entityCopy = memberInserts[1]?.sql ?? "";
       expect(entityCopy).toContain("graph-entity");
       expect(entityCopy).toContain("candidate_graph_entity");
-      expect(entityCopy).toContain("visible_projection_member");
+      expect(entityCopy).toContain("visible_projection_node");
       expect(entityCopy).toContain("index_projections");
       expect(entityCopy).toContain("lifecycle_state");
       expect(entityCopy).toContain("active");
+      expect(entityCopy).toContain("SELECT DISTINCT");
+      expect(entityCopy).toContain("GROUP BY");
+      expect(entityCopy).toContain("HAVING SUM(CASE WHEN");
       expect(entityCopy).toContain(
         dialect === "postgres" ? "jsonb_array_elements_text" : "JSON_TABLE",
       );
+      expect(entityCopy).not.toContain("NOT EXISTS (SELECT 1 FROM");
 
       const relationCopy = memberInserts[2]?.sql ?? "";
       expect(relationCopy).toContain("graph-relation");
@@ -610,6 +614,8 @@ describe("database durable deletion target capabilities", () => {
       expect(relationCopy).toContain("object_entity_id");
       expect(relationCopy).toContain("subject_entity_member");
       expect(relationCopy).toContain("object_entity_member");
+      expect(relationCopy).toContain("GROUP BY");
+      expect(relationCopy).not.toContain("NOT EXISTS (SELECT 1 FROM");
 
       const targetProbes = calls.filter(
         (call) =>
@@ -631,8 +637,10 @@ describe("database durable deletion target capabilities", () => {
           call.tableName === "projection_set_publication_members" &&
           call.sql.includes("validated_graph_member"),
       );
-      expect(invalidProbe?.sql).toContain("NOT (");
-      expect(invalidProbe?.sql).toContain("visible_projection_member");
+      expect(invalidProbe?.sql).toContain("UNION ALL");
+      expect(invalidProbe?.sql).toContain("validated_visible_projection_node");
+      expect(invalidProbe?.sql).toContain("HAVING");
+      expect(invalidProbe?.sql).not.toContain("NOT (EXISTS");
     });
 
     it(`fails closed when the deletion publication contains a dangling graph member (${dialect})`, async () => {

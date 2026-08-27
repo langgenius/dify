@@ -500,6 +500,59 @@ describe("upload session service", () => {
     );
   });
 
+  it("lets the original completion commit when a retry overlaps its publication", async () => {
+    let resolveFirstPublication:
+      | ((value: { compilationJobId: string; documentAssetId: string }) => void)
+      | undefined;
+    let resolveRetryPublication:
+      | ((value: { compilationJobId: string; documentAssetId: string }) => void)
+      | undefined;
+    const firstPublication = new Promise<{
+      compilationJobId: string;
+      documentAssetId: string;
+    }>((resolve) => {
+      resolveFirstPublication = resolve;
+    });
+    const retryPublication = new Promise<{
+      compilationJobId: string;
+      documentAssetId: string;
+    }>((resolve) => {
+      resolveRetryPublication = resolve;
+    });
+    const publish = vi
+      .fn()
+      .mockReturnValueOnce(firstPublication)
+      .mockReturnValueOnce(retryPublication);
+    const fixture = uploadFixture({ publish });
+    await fixture.service.create(createInput("overlapping-completion"));
+
+    const original = fixture.service.complete({
+      grantId: COMPLETION_GRANT_ID,
+      sessionId: SESSION_ID,
+      tenantId: TENANT_ID,
+    });
+    await vi.waitFor(() => expect(publish).toHaveBeenCalledTimes(1));
+    const retry = fixture.service.complete({
+      grantId: RECOVERY_GRANT_ID,
+      sessionId: SESSION_ID,
+      tenantId: TENANT_ID,
+    });
+    await vi.waitFor(() => expect(publish).toHaveBeenCalledTimes(2));
+
+    resolveFirstPublication?.({ compilationJobId: "compilation-1", documentAssetId: "asset-1" });
+    await expect(original).resolves.toMatchObject({ session: { status: "completed" } });
+    resolveRetryPublication?.({ compilationJobId: "compilation-1", documentAssetId: "asset-1" });
+    await expect(retry).resolves.toMatchObject({ session: { status: "completed" } });
+    await expect(
+      fixture.repository.get({ id: SESSION_ID, tenantId: TENANT_ID }),
+    ).resolves.toMatchObject({
+      compilationJobId: "compilation-1",
+      documentAssetId: "asset-1",
+      reservedBytes: 0,
+      status: "completed",
+    });
+  });
+
   it.each([
     [{ maxFileBytes: 0 }, "maxFileBytes must be a positive safe integer"],
     [{ multipartThresholdBytes: 21 * MiB }, "must not exceed maxFileBytes"],
