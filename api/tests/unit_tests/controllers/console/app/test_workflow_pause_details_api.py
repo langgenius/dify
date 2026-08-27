@@ -1,193 +1,111 @@
-"""Console workflow pause-detail tests backed by persisted workflow execution state."""
+"""Controller tests for Console workflow pause details."""
 
 from __future__ import annotations
 
-import inspect
-from dataclasses import dataclass
 from datetime import datetime
+from inspect import unwrap
+from types import SimpleNamespace
 from unittest.mock import Mock
-from uuid import uuid4
 
 import pytest
 from flask import Flask
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session
 
 from controllers.common.errors import NotFoundError
 from controllers.console.app import workflow_run as workflow_run_module
-from core.workflow.nodes.human_input.entities import ParagraphInputConfig, UserActionConfig
-from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
-from graphon.enums import WorkflowExecutionStatus
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
-from models.workflow import WorkflowPause, WorkflowRun, WorkflowType
+from machinery.context import RequestContext
+from services.workflow_run_service import WorkflowRunPauseDetails, WorkflowRunPausedNode
 from tests.unit_tests.config_override import apply_config_overrides
 
 
-@dataclass(frozen=True)
-class _Database:
-    engine: Engine
-    session: Session
-
-
-def _persist_run(
-    session: Session,
-    *,
-    run_id: str,
-    tenant_id: str,
-    status: WorkflowExecutionStatus,
-    paused: bool = False,
-) -> WorkflowRun:
-    workflow_id = str(uuid4())
-    workflow_run = WorkflowRun(
-        id=run_id,
-        tenant_id=tenant_id,
-        app_id=str(uuid4()),
-        workflow_id=workflow_id,
-        type=WorkflowType.WORKFLOW,
-        triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
-        version="draft",
-        graph="{}",
-        inputs="{}",
-        status=status,
-        created_by_role=CreatorUserRole.ACCOUNT,
-        created_by=str(uuid4()),
-        created_at=datetime(2024, 1, 1, 12, 0, 0),
+def _request_context(*, workspace_id: str = "tenant-1") -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id="account-1",
+        active_workspace_id=workspace_id,
     )
-    session.add(workflow_run)
-    if paused:
-        session.add(
-            WorkflowPause(
-                workflow_id=workflow_id,
-                workflow_run_id=run_id,
-                state_object_key="workflow-pauses/state.json",
-            )
-        )
-    session.commit()
-    return workflow_run
 
 
-class _PauseEntity:
-    def __init__(self, paused_at: datetime, reasons: list[HumanInputRequired]):
-        self.paused_at = paused_at
-        self._reasons = reasons
-
-    def get_pause_reasons(self):
-        return self._reasons
-
-
-def test_pause_details_returns_backstage_input_url(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
-    apply_config_overrides(monkeypatch, APP_WEB_URL="https://web.example.com")
-
-    tenant_id = str(uuid4())
-    run_id = str(uuid4())
-    _persist_run(
-        sqlite_session,
-        run_id=run_id,
-        tenant_id=tenant_id,
-        status=WorkflowExecutionStatus.PAUSED,
-        paused=True,
-    )
+def _mock_application_services(monkeypatch: pytest.MonkeyPatch, workflow_runs: Mock) -> None:
     monkeypatch.setattr(
         workflow_run_module,
-        "db",
-        _Database(engine=sqlite_session.get_bind(), session=sqlite_session),
+        "application_services",
+        lambda: SimpleNamespace(workflow_runs=workflow_runs),
     )
 
-    reason = HumanInputRequired(
-        form_id="form-1",
-        form_content="content",
-        inputs=[ParagraphInputConfig(output_variable_name="name")],
-        actions=[UserActionConfig(id="approve", title="Approve")],
-        node_id="node-1",
-        node_title="Ask Name",
-    )
-    pause_entity = _PauseEntity(paused_at=datetime(2024, 1, 1, 12, 0, 0), reasons=[reason])
 
-    repo = Mock()
-    repo.get_workflow_pause.return_value = pause_entity
-    monkeypatch.setattr(
-        workflow_run_module.DifyAPIRepositoryFactory,
-        "create_api_workflow_run_repository",
-        lambda *_, **__: repo,
+def test_pause_details_returns_backstage_input_url(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, APP_WEB_URL="https://web.example.com/")
+    workflow_runs = Mock()
+    workflow_runs.get_pause_details.return_value = WorkflowRunPauseDetails(
+        paused_at=datetime(2024, 1, 1, 12, 0, 0),
+        paused_nodes=(
+            WorkflowRunPausedNode(
+                node_id="node-1",
+                node_title="Ask Name",
+                form_id="form-1",
+                form_token="backstage-token",
+            ),
+        ),
     )
-    monkeypatch.setattr(
-        workflow_run_module,
-        "_load_form_tokens_by_form_id",
-        lambda _form_ids: {"form-1": "backstage-token"},
-    )
+    _mock_application_services(monkeypatch, workflow_runs)
+    request_context = _request_context()
 
-    with app.test_request_context(f"/console/api/workflow/{run_id}/pause-details", method="GET"):
-        handler = inspect.unwrap(workflow_run_module.ConsoleWorkflowPauseDetailsApi.get)
-        response, status = handler(
-            workflow_run_module.ConsoleWorkflowPauseDetailsApi(),
-            tenant_id,
-            workflow_run_id=run_id,
-        )
+    api = workflow_run_module.ConsoleWorkflowPauseDetailsApi()
+    handler = unwrap(api.get)
+    with app.test_request_context("/console/api/workflow/run-1/pause-details", method="GET"):
+        response, status = handler(api, request_context, workflow_run_id="run-1")
 
     assert status == 200
-    assert response["paused_at"] == "2024-01-01T12:00:00Z"
-    assert response["paused_nodes"][0]["node_id"] == "node-1"
-    assert response["paused_nodes"][0]["pause_type"]["type"] == "human_input"
-    assert (
-        response["paused_nodes"][0]["pause_type"]["backstage_input_url"]
-        == "https://web.example.com/form/backstage-token"
-    )
-    assert "pending_human_inputs" not in response
-
-
-def test_pause_details_tenant_isolation(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    apply_config_overrides(monkeypatch, APP_WEB_URL="https://web.example.com")
-
-    run_id = str(uuid4())
-    _persist_run(
-        sqlite_session,
-        run_id=run_id,
-        tenant_id=str(uuid4()),
-        status=WorkflowExecutionStatus.PAUSED,
-        paused=True,
-    )
-    monkeypatch.setattr(
-        workflow_run_module,
-        "db",
-        _Database(engine=sqlite_session.get_bind(), session=sqlite_session),
+    assert response == {
+        "paused_at": "2024-01-01T12:00:00Z",
+        "paused_nodes": [
+            {
+                "node_id": "node-1",
+                "node_title": "Ask Name",
+                "pause_type": {
+                    "type": "human_input",
+                    "form_id": "form-1",
+                    "backstage_input_url": "https://web.example.com/form/backstage-token",
+                },
+            }
+        ],
+    }
+    workflow_runs.get_pause_details.assert_called_once_with(
+        request_context,
+        workflow_run_id="run-1",
     )
 
-    handler = inspect.unwrap(workflow_run_module.ConsoleWorkflowPauseDetailsApi.get)
-    with app.test_request_context(f"/console/api/workflow/{run_id}/pause-details", method="GET"):
-        with pytest.raises(NotFoundError):
-            handler(
-                workflow_run_module.ConsoleWorkflowPauseDetailsApi(),
-                str(uuid4()),
-                workflow_run_id=run_id,
-            )
 
-
-def test_pause_details_returns_empty_response_for_non_paused_run(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+def test_pause_details_maps_missing_or_inaccessible_run_to_not_found(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    tenant_id = str(uuid4())
-    run_id = str(uuid4())
-    _persist_run(
-        sqlite_session,
-        run_id=run_id,
-        tenant_id=tenant_id,
-        status=WorkflowExecutionStatus.RUNNING,
-    )
-    monkeypatch.setattr(
-        workflow_run_module,
-        "db",
-        _Database(engine=sqlite_session.get_bind(), session=sqlite_session),
+    workflow_runs = Mock()
+    workflow_runs.get_pause_details.return_value = None
+    _mock_application_services(monkeypatch, workflow_runs)
+    request_context = _request_context(workspace_id="other-tenant")
+    api = workflow_run_module.ConsoleWorkflowPauseDetailsApi()
+    handler = unwrap(api.get)
+
+    with app.test_request_context("/console/api/workflow/run-1/pause-details", method="GET"):
+        with pytest.raises(NotFoundError, match="Workflow run not found"):
+            handler(api, request_context, workflow_run_id="run-1")
+
+    workflow_runs.get_pause_details.assert_called_once_with(
+        request_context,
+        workflow_run_id="run-1",
     )
 
-    with app.test_request_context(f"/console/api/workflow/{run_id}/pause-details", method="GET"):
-        handler = inspect.unwrap(workflow_run_module.ConsoleWorkflowPauseDetailsApi.get)
-        response, status = handler(
-            workflow_run_module.ConsoleWorkflowPauseDetailsApi(),
-            tenant_id,
-            workflow_run_id=run_id,
-        )
+
+def test_pause_details_returns_empty_response_for_non_paused_run(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow_runs = Mock()
+    workflow_runs.get_pause_details.return_value = WorkflowRunPauseDetails(paused_at=None, paused_nodes=())
+    _mock_application_services(monkeypatch, workflow_runs)
+
+    api = workflow_run_module.ConsoleWorkflowPauseDetailsApi()
+    handler = unwrap(api.get)
+    with app.test_request_context("/console/api/workflow/run-1/pause-details", method="GET"):
+        response, status = handler(api, _request_context(), workflow_run_id="run-1")
 
     assert status == 200
     assert response == {"paused_at": None, "paused_nodes": []}

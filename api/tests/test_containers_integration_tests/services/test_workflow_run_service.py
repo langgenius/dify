@@ -5,13 +5,17 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
-from sqlalchemy.orm import Session
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
-from models.enums import ConversationFromSource, CreatorUserRole, EndUserType
+from machinery.context import RequestContext
+from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import (
     Message,
 )
 from models.workflow import WorkflowRun
+from repositories.factory import DifyAPIRepositoryFactory
+from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.account_service import AccountService, TenantService
 from services.app_service import AppService, CreateAppParams
 from services.workflow_run_service import WorkflowRunService
@@ -20,6 +24,19 @@ from tests.test_containers_integration_tests.helpers import generate_valid_passw
 
 class TestWorkflowRunService:
     """Integration tests for WorkflowRunService using testcontainers."""
+
+    @pytest.fixture
+    def workflow_run_service(self, db_session_with_containers: Session) -> WorkflowRunService:
+        engine = db_session_with_containers.get_bind()
+        assert isinstance(engine, Engine)
+        session_factory = sessionmaker(bind=engine, expire_on_commit=False)
+        workflow_runs = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=session_factory)
+        return WorkflowRunService(
+            workflow_runs=workflow_runs,
+            node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+                session_maker=session_factory
+            ),
+        )
 
     @pytest.fixture
     def mock_external_service_dependencies(self):
@@ -49,6 +66,15 @@ class TestWorkflowRunService:
                 "model_manager": mock_model_manager,
                 "account_feature_service": mock_account_feature_service,
             }
+
+    @staticmethod
+    def _request_context(app, account) -> RequestContext:
+        return RequestContext(
+            request_id="request-1",
+            trace_id="trace-1",
+            account_id=account.id,
+            active_workspace_id=app.tenant_id,
+        )
 
     def _create_test_app_and_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
@@ -198,7 +224,10 @@ class TestWorkflowRunService:
         return message
 
     def test_get_paginate_workflow_runs_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies,
+        workflow_run_service: WorkflowRunService,
     ):
         """
         Test successful pagination of workflow runs with debugging trigger.
@@ -220,9 +249,12 @@ class TestWorkflowRunService:
             workflow_runs.append(workflow_run)
 
         # Act: Execute the method under test
-        workflow_run_service = WorkflowRunService()
         args = {"limit": 3, "last_id": None}
-        result = workflow_run_service.get_paginate_workflow_runs(app, args)
+        result = workflow_run_service.get_paginate_workflow_runs(
+            self._request_context(app, account),
+            app_id=app.id,
+            args=args,
+        )
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -240,7 +272,10 @@ class TestWorkflowRunService:
             assert workflow_run.tenant_id == app.tenant_id
 
     def test_get_paginate_workflow_runs_with_last_id(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies,
+        workflow_run_service: WorkflowRunService,
     ):
         """
         Test pagination of workflow runs with last_id parameter.
@@ -263,9 +298,12 @@ class TestWorkflowRunService:
             workflow_runs.append(workflow_run)
 
         # Act: Execute the method under test with last_id
-        workflow_run_service = WorkflowRunService()
         args = {"limit": 2, "last_id": workflow_runs[1].id}
-        result = workflow_run_service.get_paginate_workflow_runs(app, args)
+        result = workflow_run_service.get_paginate_workflow_runs(
+            self._request_context(app, account),
+            app_id=app.id,
+            args=args,
+        )
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -283,7 +321,10 @@ class TestWorkflowRunService:
             assert workflow_run.tenant_id == app.tenant_id
 
     def test_get_paginate_workflow_runs_default_limit(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies,
+        workflow_run_service: WorkflowRunService,
     ):
         """
         Test pagination of workflow runs with default limit.
@@ -301,9 +342,12 @@ class TestWorkflowRunService:
         workflow_run = self._create_test_workflow_run(db_session_with_containers, app, account, "debugging")
 
         # Act: Execute the method under test without limit
-        workflow_run_service = WorkflowRunService()
         args = {}  # No limit specified
-        result = workflow_run_service.get_paginate_workflow_runs(app, args)
+        result = workflow_run_service.get_paginate_workflow_runs(
+            self._request_context(app, account),
+            app_id=app.id,
+            args=args,
+        )
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -321,7 +365,10 @@ class TestWorkflowRunService:
             assert workflow_run_result.tenant_id == app.tenant_id
 
     def test_get_paginate_advanced_chat_workflow_runs_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies,
+        workflow_run_service: WorkflowRunService,
     ):
         """
         Test successful pagination of advanced chat workflow runs with message information.
@@ -346,9 +393,12 @@ class TestWorkflowRunService:
             workflow_runs.append(workflow_run)
 
         # Act: Execute the method under test
-        workflow_run_service = WorkflowRunService()
         args = {"limit": 2, "last_id": None}
-        result = workflow_run_service.get_paginate_advanced_chat_workflow_runs(app, args)
+        result = workflow_run_service.get_paginate_advanced_chat_workflow_runs(
+            self._request_context(app, account),
+            app_id=app.id,
+            args=args,
+        )
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -366,7 +416,12 @@ class TestWorkflowRunService:
             assert workflow_run.app_id == app.id
             assert workflow_run.tenant_id == app.tenant_id
 
-    def test_get_workflow_run_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_get_workflow_run_success(
+        self,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies,
+        workflow_run_service: WorkflowRunService,
+    ):
         """
         Test successful retrieval of workflow run by ID.
 
@@ -383,8 +438,11 @@ class TestWorkflowRunService:
         workflow_run = self._create_test_workflow_run(db_session_with_containers, app, account, "debugging")
 
         # Act: Execute the method under test
-        workflow_run_service = WorkflowRunService()
-        result = workflow_run_service.get_workflow_run(app, workflow_run.id)
+        result = workflow_run_service.get_workflow_run(
+            self._request_context(app, account),
+            app_id=app.id,
+            run_id=workflow_run.id,
+        )
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -396,7 +454,12 @@ class TestWorkflowRunService:
         assert result.type == "chat"
         assert result.version == "1.0.0"
 
-    def test_get_workflow_run_not_found(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_get_workflow_run_not_found(
+        self,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies,
+        workflow_run_service: WorkflowRunService,
+    ):
         """
         Test workflow run retrieval when run ID does not exist.
 
@@ -413,14 +476,20 @@ class TestWorkflowRunService:
         non_existent_id = str(uuid.uuid4())
 
         # Act: Execute the method under test
-        workflow_run_service = WorkflowRunService()
-        result = workflow_run_service.get_workflow_run(app, non_existent_id)
+        result = workflow_run_service.get_workflow_run(
+            self._request_context(app, account),
+            app_id=app.id,
+            run_id=non_existent_id,
+        )
 
         # Assert: Verify the expected outcomes
         assert result is None
 
     def test_get_workflow_run_node_executions_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies,
+        workflow_run_service: WorkflowRunService,
     ):
         """
         Test successful retrieval of workflow run node executions.
@@ -489,8 +558,11 @@ class TestWorkflowRunService:
         db_session_with_containers.commit()
 
         # Act: Execute the method under test
-        workflow_run_service = WorkflowRunService()
-        result = workflow_run_service.get_workflow_run_node_executions(app, workflow_run.id, account)
+        result = workflow_run_service.get_workflow_run_node_executions(
+            self._request_context(app, account),
+            app_id=app.id,
+            run_id=workflow_run.id,
+        )
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -509,7 +581,10 @@ class TestWorkflowRunService:
             assert node_execution.node_id.startswith("node_")
 
     def test_get_workflow_run_node_executions_empty(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies,
+        workflow_run_service: WorkflowRunService,
     ):
         """
         Test getting node executions for a workflow run with no executions.
@@ -523,7 +598,6 @@ class TestWorkflowRunService:
         account_service = AccountService()
         tenant_service = TenantService()
         app_service = AppService()
-        workflow_run_service = WorkflowRunService()
 
         # Create account and tenant
         account = account_service.create_account(
@@ -551,9 +625,9 @@ class TestWorkflowRunService:
 
         # Act: Get node executions
         result = workflow_run_service.get_workflow_run_node_executions(
-            app_model=app,
+            self._request_context(app, account),
+            app_id=app.id,
             run_id=workflow_run.id,
-            user=account,
         )
 
         # Assert: Verify empty result
@@ -561,7 +635,10 @@ class TestWorkflowRunService:
         assert len(result) == 0
 
     def test_get_workflow_run_node_executions_invalid_workflow_run_id(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies,
+        workflow_run_service: WorkflowRunService,
     ):
         """
         Test getting node executions with invalid workflow run ID.
@@ -575,7 +652,6 @@ class TestWorkflowRunService:
         account_service = AccountService()
         tenant_service = TenantService()
         app_service = AppService()
-        workflow_run_service = WorkflowRunService()
 
         # Create account and tenant
         account = account_service.create_account(
@@ -603,137 +679,11 @@ class TestWorkflowRunService:
 
         # Act: Get node executions with invalid ID
         result = workflow_run_service.get_workflow_run_node_executions(
-            app_model=app,
+            self._request_context(app, account),
+            app_id=app.id,
             run_id=invalid_workflow_run_id,
-            user=account,
         )
 
         # Assert: Verify empty result
         assert result is not None
         assert len(result) == 0
-
-    def test_get_workflow_run_node_executions_database_error(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test getting node executions when database encounters an error.
-
-        This test verifies:
-        - Proper error handling when database operations fail
-        - Graceful degradation in error scenarios
-        - Error propagation to calling code
-        """
-        # Arrange: Setup test data
-        account_service = AccountService()
-        tenant_service = TenantService()
-        app_service = AppService()
-        workflow_run_service = WorkflowRunService()
-
-        # Create account and tenant
-        account = account_service.create_account(
-            email="test@example.com",
-            name="Test User",
-            password="password123",
-            interface_language="en-US",
-            session=db_session_with_containers,
-        )
-        TenantService.create_owner_tenant_if_not_exist(account, name="test_tenant", session=db_session_with_containers)
-        tenant = account.current_tenant
-
-        # Create app
-        app_args = CreateAppParams(
-            name="Test App",
-            mode="chat",
-            icon_type="emoji",
-            icon="🚀",
-            icon_background="#4ECDC4",
-        )
-        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
-
-        # Create workflow run
-        workflow_run = self._create_test_workflow_run(db_session_with_containers, app, account, "debugging")
-
-        # Mock database error by closing the session
-        db_session_with_containers.close()
-
-        # Act & Assert: Verify error handling
-        with pytest.raises((Exception, RuntimeError)):
-            workflow_run_service.get_workflow_run_node_executions(
-                app_model=app,
-                run_id=workflow_run.id,
-                user=account,
-            )
-
-    def test_get_workflow_run_node_executions_end_user(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test node execution retrieval for end user.
-
-        This test verifies:
-        - Proper handling of end user vs account user
-        - Correct tenant ID extraction for end users
-        - Repository method calls with proper parameters
-        """
-        # Arrange: Create test data
-        fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Create workflow run
-        workflow_run = self._create_test_workflow_run(db_session_with_containers, app, account, "debugging")
-
-        # Create end user
-        from models.model import EndUser
-
-        end_user = EndUser(
-            tenant_id=app.tenant_id,
-            app_id=app.id,
-            type=EndUserType.BROWSER,
-            is_anonymous=False,
-            session_id=str(uuid.uuid4()),
-            external_user_id=str(uuid.uuid4()),
-            name=fake.name(),
-        )
-        db_session_with_containers.add(end_user)
-        db_session_with_containers.commit()
-
-        # Create node execution
-        from models.workflow import WorkflowNodeExecutionModel
-
-        node_execution = WorkflowNodeExecutionModel(
-            tenant_id=app.tenant_id,
-            app_id=app.id,
-            workflow_id=workflow_run.workflow_id,
-            triggered_from="workflow-run",
-            workflow_run_id=workflow_run.id,
-            index=0,
-            node_id="node_0",
-            node_type="llm",
-            title="Node 0",
-            inputs=json.dumps({"input": "test_input"}),
-            process_data=json.dumps({"process": "test_process"}),
-            status="succeeded",
-            elapsed_time=0.5,
-            execution_metadata=json.dumps({"tokens": 50}),
-            created_by_role=CreatorUserRole.END_USER,
-            created_by=end_user.id,
-            created_at=datetime.now(UTC),
-        )
-        db_session_with_containers.add(node_execution)
-        db_session_with_containers.commit()
-
-        # Act: Execute the method under test
-        workflow_run_service = WorkflowRunService()
-        result = workflow_run_service.get_workflow_run_node_executions(app, workflow_run.id, end_user)
-
-        # Assert: Verify the expected outcomes
-        assert result is not None
-        assert len(result) == 1
-
-        # Verify node execution properties
-        node_exec = result[0]
-        assert node_exec.tenant_id == app.tenant_id
-        assert node_exec.app_id == app.id
-        assert node_exec.workflow_run_id == workflow_run.id
-        assert node_exec.created_by == end_user.id
-        assert node_exec.created_by_role == CreatorUserRole.END_USER

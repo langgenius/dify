@@ -31,6 +31,7 @@ from repositories.factory import DifyAPIRepositoryFactory
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
+from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourStateRepository
 from repositories.tag_repository import TagRepository
 from repositories.trial_app_query_repository import TrialAppQueryRepository
@@ -133,6 +134,7 @@ from services.webapp_access_query_service import (
     WebAppAccessQueryService,
     WebAppAccessUnavailableError,
 )
+from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from services.workspace_member_query_service import WorkspaceMemberQueryService
 from services.workspace_member_role_resolver import DeploymentWorkspaceMemberRoleResolver
@@ -198,6 +200,7 @@ class ApplicationServices:
     recommended_app_queries: RecommendedAppQueryService
     trial_app_usage: TrialAppUsageRecorder
     workflow_run_archives: WorkflowRunArchiveService
+    workflow_runs: WorkflowRunService
     workspace_queries: WorkspaceQueryService
     workspace_member_queries: WorkspaceMemberQueryService
     tags: TagApplicationService
@@ -267,6 +270,13 @@ def build_application_services(
         builtin=builtin_catalog,
     )
     workspace_query_repository = WorkspaceQueryRepository(session_factory=database_client)
+    # The API query Protocol historically extends the core write Protocol; the runtime class is not abstract.
+    workflow_run_repository = DifyAPISQLAlchemyWorkflowRunRepository(  # type: ignore[abstract]  # pyrefly: ignore [bad-instantiation]
+        session_maker=database_client
+    )
+    workflow_node_execution_repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+        session_maker=database_client
+    )
     return ApplicationServices(
         accounts=AccountServices(
             avatar=AccountAvatarService(
@@ -464,6 +474,10 @@ def build_application_services(
             tasks=WorkflowRunArchiveDownloadTaskCache(redis=redis),
             dispatcher=dispatch_workflow_run_archive_download_task,
             sign_download_url=sign_workflow_run_archive_download_url,
+        ),
+        workflow_runs=WorkflowRunService(
+            workflow_runs=workflow_run_repository,
+            node_executions=workflow_node_execution_repository,
         ),
         workspace_queries=WorkspaceQueryService(
             workspaces=workspace_query_repository,
