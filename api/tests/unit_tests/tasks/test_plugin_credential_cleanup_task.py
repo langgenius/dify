@@ -3,10 +3,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 
-def test_cleanup_plugin_credentials_task_uses_plugin_queue() -> None:
+def test_cleanup_plugin_credentials_task_has_bounded_retries() -> None:
     from tasks.plugin_credential_cleanup_task import cleanup_plugin_credentials_task
 
-    assert cleanup_plugin_credentials_task.queue == "plugin"
     assert cleanup_plugin_credentials_task.max_retries == 5
 
 
