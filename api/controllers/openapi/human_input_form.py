@@ -22,7 +22,8 @@ from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurface
 from controllers.openapi._models import FormSubmitResponse, HumanInputFormDefinitionResponse
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.data import CallerKind
-from controllers.openapi.auth.requirements import RBACCheck, RequireWebappAccess, TokenScope
+from controllers.openapi.auth.requirements import RBACCheck, RequireWebappAccess, SubjectCheck, TokenScope
+from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
 from core.rbac import RBACPermission, RBACResourceScope
 from core.workflow.human_input_policy import (
     HumanInputSurface,
@@ -39,6 +40,7 @@ logger = logging.getLogger(__name__)
 register_schema_models(openapi_ns, HumanInputFormSubmitPayload)
 
 _HUMAN_INPUT_FORM = (
+    SubjectCheck(allowed=(AccountSubject, ExternalSsoSubject)),
     TokenScope(Scope.APPS_RUN),
     RBACCheck(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
     RequireWebappAccess(),

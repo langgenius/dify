@@ -27,8 +27,10 @@ from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
 
+_ACCOUNT_SUBJECT = SubjectCheck(allowed=(AccountSubject,))
+
 _DSL_IMPORT_REQUIREMENTS = (
-    SubjectCheck(allowed=(AccountSubject,)),
+    _ACCOUNT_SUBJECT,
     TokenScope(Scope.WORKSPACE_WRITE),
     RequireWorkspaceMembership(),
     RBACCheck(
@@ -40,7 +42,7 @@ _DSL_IMPORT_REQUIREMENTS = (
 )
 
 _DSL_APP_REQUIREMENTS = (
-    SubjectCheck(allowed=(AccountSubject,)),
+    _ACCOUNT_SUBJECT,
     TokenScope(Scope.APPS_READ),
     RBACCheck(
         resource_type=RBACResourceScope.APP,

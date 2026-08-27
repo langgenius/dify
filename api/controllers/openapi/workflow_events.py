@@ -23,7 +23,8 @@ from controllers.openapi import openapi_ns
 from controllers.openapi._contract import endpoint
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.data import CallerKind
-from controllers.openapi.auth.requirements import RBACCheck, RequireWebappAccess, TokenScope
+from controllers.openapi.auth.requirements import RBACCheck, RequireWebappAccess, SubjectCheck, TokenScope
+from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
@@ -39,6 +40,13 @@ from models.model import AppMode
 from repositories.factory import DifyAPIRepositoryFactory
 from services.workflow_event_snapshot_service import build_workflow_event_stream
 
+_WORKFLOW_EVENTS = (
+    SubjectCheck(allowed=(AccountSubject, ExternalSsoSubject)),
+    TokenScope(Scope.APPS_RUN),
+    RBACCheck(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
+    RequireWebappAccess(),
+)
+
 
 class WorkflowEventsQuery(BaseModel):
     include_state_snapshot: bool = Field(default=False, description="Whether to include workflow state snapshots")
@@ -49,11 +57,7 @@ class WorkflowEventsQuery(BaseModel):
 class OpenApiWorkflowEventsApi(Resource):
     @openapi_ns.doc(params=query_params_from_model(WorkflowEventsQuery))
     @endpoint(
-        requirements=(
-            TokenScope(Scope.APPS_RUN),
-            RBACCheck(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
-            RequireWebappAccess(),
-        ),
+        requirements=_WORKFLOW_EVENTS,
         returns=(200, EventStreamResponse, "SSE event stream"),
         write=False,
     )
