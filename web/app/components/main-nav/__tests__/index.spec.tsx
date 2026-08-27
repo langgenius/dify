@@ -174,6 +174,8 @@ const mockProviderContextState = vi.hoisted(() => ({
   } as Partial<ProviderContextState>,
 }))
 
+vi.mock('@tanstack/react-virtual')
+
 vi.mock('@/features/agent-v2/feature-flag', () => ({
   isAgentV2Enabled: () => mockIsAgentV2Enabled(),
 }))
