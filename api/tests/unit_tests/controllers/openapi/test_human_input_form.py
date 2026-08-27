@@ -30,6 +30,7 @@ from controllers.openapi._errors import (
 )
 from controllers.openapi._models import FormSubmitResponse
 from controllers.openapi.auth.data import CallerKind
+from controllers.openapi.auth.requirements import Rank
 from controllers.openapi.human_input_form import (
     CheckFormSurface,
     OpenApiWorkflowHumanInputFormApi,
@@ -251,8 +252,31 @@ class TestOpenApiHumanInputFormPost:
         assert wire["details"]
 
 
+@pytest.mark.parametrize(
+    "view",
+    [OpenApiWorkflowHumanInputFormApi.get, OpenApiWorkflowHumanInputFormSubmitApi.post],
+    ids=["get", "submit"],
+)
+def test_both_routes_declare_the_surface_check(view):
+    """The wiring, not the requirement's own logic: `CheckFormSurface` only runs
+    on a route that declares it, and nothing else pins that — the allow/deny
+    matrix has no console-recipient case, so removing either declaration changes
+    no row there. It was previously pinned end to end by the handler-body call
+    this refactor removed.
+    """
+    assert any(isinstance(requirement, CheckFormSurface) for requirement in view.__spec__.requirements)
+
+
+def test_the_surface_check_decides_access_last():
+    """`Rank.ACCESS` is the top rank, so no fixed pipeline requirement can slip
+    behind it and it keeps the handler-body position it was moved from. `RESOURCE`
+    would run it ahead of the membership check.
+    """
+    assert CheckFormSurface.rank is Rank.ACCESS
+
+
 class TestCheckFormSurface:
-    """`Rank.ACCESS`, so it answers before any handler body runs."""
+    """The refusal itself. `Rank.ACCESS`, so it answers before any handler body runs."""
 
     def _run(self, app: Flask, monkeypatch: pytest.MonkeyPatch, form) -> None:
         _mock_service(monkeypatch, form)
