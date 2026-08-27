@@ -19,16 +19,18 @@ from werkzeug.exceptions import NotFound, UnprocessableEntity
 
 from controllers.common.fields import EventStreamResponse
 from controllers.common.schema import query_params_from_model
-from controllers.common.wraps import RBACPermission, RBACResourceScope
 from controllers.openapi import openapi_ns
-from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData, CallerKind, RBACRequirement
+from controllers.openapi._contract import endpoint
+from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.data import CallerKind
+from controllers.openapi.auth.requirements import RBACCheck, RequireWebappAccess, TokenScope
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.message_generator import MessageGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.task_entities import StreamEvent
+from core.rbac import RBACPermission, RBACResourceScope
 from core.workflow.human_input_policy import HumanInputSurface
 from extensions.ext_database import db
 from libs.oauth_bearer import Scope
@@ -46,13 +48,23 @@ class WorkflowEventsQuery(BaseModel):
 @openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>/events")
 class OpenApiWorkflowEventsApi(Resource):
     @openapi_ns.doc(params=query_params_from_model(WorkflowEventsQuery))
-    @openapi_ns.response(200, "SSE event stream", openapi_ns.models[EventStreamResponse.__name__])
-    @auth_router.guard(
-        scope=Scope.APPS_RUN,
-        rbac=RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
+    @endpoint(
+        requirements=(
+            TokenScope(Scope.APPS_RUN),
+            RBACCheck(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
+            RequireWebappAccess(),
+        ),
+        returns=(200, EventStreamResponse, "SSE event stream"),
+        write=False,
     )
-    def get(self, app_id: str, task_id: str, *, auth_data: AuthData):
-        app_model, caller, caller_kind = auth_data.require_app_context()
+    def get(self, ctx: Context, app_id: str, task_id: str):
+        # The router's session closes as soon as this returns, so everything the SSE
+        # body needs is read off `ctx` here and the generators below close over plain
+        # values only.
+        app_model = ctx.app
+        caller = ctx.caller
+        caller_kind = ctx.subject.caller_kind
+
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:
             raise UnprocessableEntity("mode_not_supported_for_event_reconnect")
@@ -70,7 +82,9 @@ class OpenApiWorkflowEventsApi(Resource):
         if workflow_run.app_id != app_model.id:
             raise NotFound("Workflow run not found")
 
-        if caller_kind == CallerKind.ACCOUNT:
+        # Ownership is a property of the run row, not of the app, so no pipeline
+        # requirement can answer it — the caller may only reconnect to its own run.
+        if caller_kind is CallerKind.ACCOUNT:
             if workflow_run.created_by_role != CreatorUserRole.ACCOUNT or workflow_run.created_by != caller.id:
                 raise NotFound("Workflow run not found")
         else:
@@ -78,6 +92,8 @@ class OpenApiWorkflowEventsApi(Resource):
                 raise NotFound("Workflow run not found")
 
         workflow_run_entity = workflow_run
+        tenant_id = app_model.tenant_id
+        owning_app_id = app_model.id
 
         if workflow_run_entity.finished_at is not None:
             response = WorkflowResponseConverter.workflow_run_result_to_finish_response(
@@ -110,8 +126,8 @@ class OpenApiWorkflowEventsApi(Resource):
                         build_workflow_event_stream(
                             app_mode=app_mode,
                             workflow_run=workflow_run_entity,
-                            tenant_id=app_model.tenant_id,
-                            app_id=app_model.id,
+                            tenant_id=tenant_id,
+                            app_id=owning_app_id,
                             session_maker=session_maker,
                             human_input_surface=HumanInputSurface.OPENAPI,
                             close_on_pause=not continue_on_pause,
