@@ -99,7 +99,7 @@ describe('useAvailableNodesMetaData', () => {
     expect(result.current.nodesMap?.[BlockEnum.AgentV2]?.checkValid).toEqual(expect.any(Function))
     expect(result.current.nodesMap?.[BlockEnum.Agent]?.checkValid).toEqual(expect.any(Function))
     expect(result.current.nodesMap?.[BlockEnum.AgentV2]?.metaData.helpLinkUri).toBe(
-      '/docs/use-dify/nodes/agent#choose-an-agent',
+      '/docs/use-dify/nodes/agent#new-agent',
     )
   })
 
@@ -115,7 +115,7 @@ describe('useAvailableNodesMetaData', () => {
     expect(result.current.nodesMap?.[BlockEnum.Agent]).toBeDefined()
     expect(result.current.nodesMap?.[BlockEnum.AgentV2]).toBeDefined()
     expect(result.current.nodesMap?.[BlockEnum.Agent]?.metaData.helpLinkUri).toBe(
-      '/docs/use-dify/nodes/agent',
+      '/docs/use-dify/nodes/agent#classic-agent',
     )
   })
 })
