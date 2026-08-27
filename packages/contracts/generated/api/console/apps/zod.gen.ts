@@ -2570,40 +2570,6 @@ export const zWorkflowAppLogPaginationResponse = z.object({
 })
 
 /**
- * WorkflowRunForArchivedLogResponse
- */
-export const zWorkflowRunForArchivedLogResponse = z.object({
-  elapsed_time: z.number().nullish(),
-  id: z.string(),
-  status: z.string().nullish(),
-  total_tokens: z.int().nullish(),
-  triggered_from: z.string().nullish(),
-})
-
-/**
- * WorkflowArchivedLogPartialResponse
- */
-export const zWorkflowArchivedLogPartialResponse = z.object({
-  created_at: z.int().nullish(),
-  created_by_account: zSimpleAccountResponse.nullish(),
-  created_by_end_user: zSimpleEndUser.nullish(),
-  id: z.string(),
-  trigger_metadata: z.unknown().optional(),
-  workflow_run: zWorkflowRunForArchivedLogResponse.nullish(),
-})
-
-/**
- * WorkflowArchivedLogPaginationResponse
- */
-export const zWorkflowArchivedLogPaginationResponse = z.object({
-  data: z.array(zWorkflowArchivedLogPartialResponse),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
-})
-
-/**
  * WorkflowFeatureTogglePayload
  */
 export const zWorkflowFeatureTogglePayload = z.object({
@@ -5487,29 +5453,6 @@ export const zGetAppsByAppIdWorkflowAppLogsQuery = z.object({
  * Workflow app logs retrieved successfully
  */
 export const zGetAppsByAppIdWorkflowAppLogsResponse = zWorkflowAppLogPaginationResponse
-
-export const zGetAppsByAppIdWorkflowArchivedLogsPath = z.object({
-  app_id: z.uuid(),
-})
-
-export const zGetAppsByAppIdWorkflowArchivedLogsQuery = z.object({
-  created_at__after: z.iso.datetime().optional(),
-  created_at__before: z.iso.datetime().optional(),
-  created_by_account: z.string().optional(),
-  created_by_end_user_session_id: z.string().optional(),
-  detail: z.boolean().optional().default(false),
-  keyword: z.string().optional(),
-  limit: z.int().gte(1).lte(100).optional().default(20),
-  page: z.int().gte(1).lte(99999).optional().default(1),
-  status: z
-    .enum(['failed', 'partial-succeeded', 'paused', 'running', 'scheduled', 'stopped', 'succeeded'])
-    .optional(),
-})
-
-/**
- * Workflow archived logs retrieved successfully
- */
-export const zGetAppsByAppIdWorkflowArchivedLogsResponse = zWorkflowArchivedLogPaginationResponse
 
 export const zGetAppsByAppIdWorkflowRunsPath = z.object({
   app_id: z.uuid(),
