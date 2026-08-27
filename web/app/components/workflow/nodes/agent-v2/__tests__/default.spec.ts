@@ -112,8 +112,8 @@ describe('agent/default', () => {
     })
   })
 
-  it('reuses the legacy agent node help document', () => {
-    expect(nodeDefault.metaData.helpLinkUri).toBe('agent')
+  it('links directly to the New Agent section of the shared agent node document', () => {
+    expect(nodeDefault.metaData.helpLinkUri).toBe('agent#choose-an-agent')
   })
 
   it('identifies version 2 agent data as Agent v2', () => {
