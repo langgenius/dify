@@ -1,5 +1,4 @@
 import logging
-from typing import Literal
 from uuid import UUID
 
 import flask_login
@@ -52,8 +51,7 @@ from controllers.console.wraps import (
 )
 from enums import DeploymentEdition
 from extensions.ext_database import db
-from fields.base import ResponseModel
-from libs.helper import EmailStr, dump_response, extract_remote_ip
+from libs.helper import EmailStr, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
 from libs.token import (
     clear_access_token_from_cookie,
@@ -132,15 +130,9 @@ class EmailCodeLoginPayload(BaseModel):
         return validate_timezone_string(value)
 
 
-class EmailCodeLoginResponse(ResponseModel):
-    result: Literal["success"]
-    is_new_account: bool
-
-
 register_schema_models(console_ns, LoginPayload, EmailPayload, EmailCodeSendPayload, EmailCodeLoginPayload)
 register_response_schema_models(
     console_ns,
-    EmailCodeLoginResponse,
     SimpleResultDataResponse,
     SimpleResultMessageResponse,
     SimpleResultOptionalDataResponse,
@@ -335,7 +327,7 @@ class EmailCodeLoginSendEmailApi(Resource):
 class EmailCodeLoginApi(Resource):
     @setup_required
     @console_ns.expect(console_ns.models[EmailCodeLoginPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[EmailCodeLoginResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @decrypt_code_field
     @model_validate(EmailCodeLoginPayload)
     def post(self, req_data: EmailCodeLoginPayload):
@@ -403,7 +395,6 @@ class EmailCodeLoginApi(Resource):
         except AccountRegisterError as exc:
             _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
             raise AccountInFreezeError() from exc
-        is_new_account = False
         if account:
             tenants = TenantService.get_join_tenants(account, session=db.session())
             if not tenants:
@@ -440,18 +431,12 @@ class EmailCodeLoginApi(Resource):
                 raise AccountInFreezeError() from exc
             except WorkspacesLimitExceededError:
                 raise WorkspacesLimitExceeded()
-            is_new_account = True
         token_pair = AccountService.login(account, session=db.session(), ip_address=ip_address)
         AccountService.reset_login_error_rate_limit(user_email)
 
         # Create response with cookies instead of returning tokens in body
         # response-contract:ignore cookie-bearing Flask response
-        response = make_response(
-            dump_response(
-                EmailCodeLoginResponse,
-                {"result": "success", "is_new_account": is_new_account},
-            )
-        )
+        response = make_response(SimpleResultResponse(result="success").model_dump(mode="json"))
 
         set_csrf_token_to_cookie(request, response, token_pair.csrf_token)
         # Set HTTP-only secure cookies for tokens

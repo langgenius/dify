@@ -9,7 +9,6 @@ from services.entities.account_activation_entities import (
     ActivationCheckResult,
     ActivationCommand,
     ActivationPersistenceResult,
-    ActivationResult,
     InvitationLookup,
     InvitationToken,
 )
@@ -98,7 +97,7 @@ class AccountActivationService:
             ),
         )
 
-    def activate(self, command: ActivationCommand, *, authenticated_account_id: str | None) -> ActivationResult:
+    def activate(self, command: ActivationCommand, *, authenticated_account_id: str | None) -> None:
         invitation = self._resolve(command.invitation)
         if invitation is None:
             raise InvalidInvitationError
@@ -124,12 +123,11 @@ class AccountActivationService:
                 token=command.invitation.token,
             )
         )
-        persistence_result = self._accounts.activate(invitation, role=role, setup=setup)
-        if persistence_result is None:
+        result = self._accounts.activate(invitation, role=role, setup=setup)
+        if result is None:
             raise InvalidInvitationError
-        if persistence_result.membership_created:
+        if result.membership_created:
             self._membership_cache.invalidate(invitation.workspace_id)
-        return ActivationResult(registration_completed=persistence_result.registration_completed)
 
     def _resolve(self, invitation: InvitationLookup) -> AccountInvitation | None:
         token = self._tokens.find(invitation)
@@ -153,10 +151,9 @@ class AccountActivationService:
 
     @staticmethod
     def _requires_setup(invitation: AccountInvitation) -> bool:
-        is_pending = invitation.account_status == _PENDING_ACCOUNT_STATUS
         if invitation.requires_setup is not None:
-            return is_pending and invitation.requires_setup
-        return is_pending
+            return invitation.requires_setup
+        return invitation.account_status == _PENDING_ACCOUNT_STATUS
 
     @classmethod
     def _resolve_setup(cls, invitation: AccountInvitation, command: ActivationCommand) -> AccountSetup | None:

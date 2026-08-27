@@ -5,11 +5,9 @@ import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import Cookies from 'js-cookie'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import { rememberRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
 import Countdown from '@/app/components/signin/countdown'
 import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
 import { TURNSTILE_SITE_KEY } from '@/config'
@@ -18,26 +16,13 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleClient } from '@/service/client'
-import { sendEMailLoginCode } from '@/service/common'
+import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
 import { encryptVerificationCode } from '@/utils/encryption'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone } from '@/utils/timezone'
 import { basePath } from '@/utils/var'
 import Turnstile from '../components/turnstile'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
-
-const parseUtmInfo = () => {
-  const utmInfoString = Cookies.get('utm_info')
-  if (!utmInfoString) return null
-
-  try {
-    return JSON.parse(utmInfoString) as Record<string, unknown>
-  } catch (error) {
-    console.error('Failed to parse utm_info cookie:', error)
-    return null
-  }
-}
 
 export default function CheckCode() {
   const { t, i18n } = useTranslation()
@@ -82,15 +67,13 @@ export default function CheckCode() {
 
       setIsLoading(true)
       shouldResetTurnstile = isTurnstileRequired
-      const ret = await consoleClient.emailCodeLogin.validity.post({
-        body: {
-          email,
-          code: encryptVerificationCode(code),
-          token,
-          language,
-          timezone: getBrowserTimezone(),
-          ...(isTurnstileRequired ? { turnstile_token: verifyTurnstileToken } : {}),
-        },
+      const ret = await emailLoginWithCode({
+        email,
+        code: encryptVerificationCode(code),
+        token,
+        language,
+        timezone: getBrowserTimezone(),
+        ...(isTurnstileRequired ? { turnstile_token: verifyTurnstileToken } : {}),
       })
       if (ret.result === 'success') {
         // Track login success event
@@ -98,12 +81,6 @@ export default function CheckCode() {
           method: 'email_code',
           is_invite: !!invite_token,
         })
-
-        if (ret.is_new_account ?? false) {
-          const utmInfo = parseUtmInfo()
-          const accepted = rememberRegistrationSuccess({ method: 'email_code', utmInfo })
-          if (accepted) Cookies.remove('utm_info')
-        }
 
         if (invite_token) {
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)

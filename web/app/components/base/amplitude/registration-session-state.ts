@@ -1,7 +1,7 @@
 export const REGISTRATION_SUCCESS_STORAGE_KEY = 'pending_registration_success_event'
 export const OAUTH_REGISTRATION_GA_SENT_KEY = 'oauth_registration_ga_sent'
 
-export const REGISTRATION_METHODS = ['email', 'email_code', 'oauth', 'workspace_invite'] as const
+export const REGISTRATION_METHODS = ['email', 'oauth'] as const
 
 export const ATTRIBUTION_KEYS = [
   'utm_source',

@@ -77,8 +77,6 @@ class SQLAlchemyAccountActivationRepository(AccountActivationRepository):
             if tenant_id is None or account is None:
                 return None
 
-            registration_completed = setup is not None and account.status == AccountStatus.PENDING
-
             membership = session.scalar(
                 select(TenantAccountJoin).where(
                     TenantAccountJoin.tenant_id == tenant_id,
@@ -94,8 +92,7 @@ class SQLAlchemyAccountActivationRepository(AccountActivationRepository):
                 )
                 session.add(membership)
 
-            if registration_completed:
-                assert setup is not None
+            if setup is not None:
                 account.name = setup.name
                 account.interface_language = setup.interface_language
                 account.timezone = setup.timezone
@@ -114,7 +111,4 @@ class SQLAlchemyAccountActivationRepository(AccountActivationRepository):
             membership.current = True
             membership.last_opened_at = naive_utc_now()
 
-            return ActivationPersistenceResult(
-                membership_created=membership_created,
-                registration_completed=registration_completed,
-            )
+            return ActivationPersistenceResult(membership_created=membership_created)

@@ -60,7 +60,7 @@ describe('registration tracking', () => {
       vi.setSystemTime(new Date('2026-08-26T09:00:00.000Z'))
 
       const persisted = rememberRegistrationSuccess({
-        method: 'email_code',
+        method: 'email',
         utmInfo: {
           utm_source: 'linkedin',
           utm_medium: 'social',
@@ -80,7 +80,7 @@ describe('registration tracking', () => {
         occurredAt,
         expiresAt: occurredAt + 24 * 60 * 60 * 1000,
         eventName: 'user_registration_success_with_utm',
-        method: 'email_code',
+        method: 'email',
         attribution: {
           utm_source: 'linkedin',
           utm_medium: 'social',
@@ -99,10 +99,7 @@ describe('registration tracking', () => {
       mockConsent.value = 'unknown'
 
       rememberRegistrationSuccess({ method: 'email', utmInfo: { utm_source: 'first' } })
-      rememberRegistrationSuccess({
-        method: 'workspace_invite',
-        utmInfo: { utm_source: 'latest' },
-      })
+      rememberRegistrationSuccess({ method: 'email', utmInfo: { utm_source: 'latest' } })
 
       expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
 
@@ -111,7 +108,7 @@ describe('registration tracking', () => {
 
       expect(getStoredMarker()).toMatchObject({
         version: 2,
-        method: 'workspace_invite',
+        method: 'email',
         attribution: { utm_source: 'latest' },
       })
     })
@@ -154,16 +151,13 @@ describe('registration tracking', () => {
       rememberRegistrationSuccess({ method: 'email', utmInfo: { utm_source: 'first' } })
       vi.advanceTimersByTime(20 * 60 * 1000)
 
-      rememberRegistrationSuccess({
-        method: 'workspace_invite',
-        utmInfo: { utm_source: 'replacement' },
-      })
+      rememberRegistrationSuccess({ method: 'email', utmInfo: { utm_source: 'replacement' } })
       vi.advanceTimersByTime(10 * 60 * 1000)
       mockConsent.value = 'granted'
       coordinateRegistrationConsent('granted')
 
       expect(getStoredMarker()).toMatchObject({
-        method: 'workspace_invite',
+        method: 'email',
         attribution: { utm_source: 'replacement' },
       })
     })
@@ -395,7 +389,7 @@ describe('registration tracking', () => {
           mockConsent.value = 'granted'
         }
 
-        rememberRegistrationSuccess({ method: 'workspace_invite' })
+        rememberRegistrationSuccess({ method: 'email' })
         const accountBMarker = window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)
         const accountBFlush = flushRegistrationSuccess()
 

@@ -176,28 +176,3 @@ class TestPersistActivation:
         assert membership is not None
         assert membership.role == TenantAccountRole.EDITOR
         assert membership.current is True
-
-    def test_does_not_reinitialize_account_activated_by_concurrent_request(
-        self,
-        sqlite_session: Session,
-        sqlite_session_factory: sessionmaker[Session],
-    ) -> None:
-        account, _ = _persist_invitation_state(sqlite_session)
-        account.status = AccountStatus.ACTIVE
-        sqlite_session.commit()
-        repository = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
-
-        result = repository.activate(
-            _invitation(),
-            role="admin",
-            setup=AccountSetup(name="Concurrent Loser", interface_language="zh-Hans", timezone="Asia/Shanghai"),
-        )
-
-        assert result is not None
-        assert result.registration_completed is False
-        sqlite_session.expire_all()
-        persisted_account = sqlite_session.get(Account, "account-1")
-        assert persisted_account is not None
-        assert persisted_account.name == "Invited"
-        assert persisted_account.status == AccountStatus.ACTIVE
-        assert persisted_account.initialized_at is None

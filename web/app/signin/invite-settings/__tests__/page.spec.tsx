@@ -1,25 +1,13 @@
 import type { MockedFunction } from 'vite-plus/test'
 import { useQuery } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import Cookies from 'js-cookie'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
+import { activateMember } from '@/service/common'
 import { useInvitationCheck } from '@/service/use-common'
 import { getBrowserTimezone } from '@/utils/timezone'
 import InviteSettingsPage from '../page'
-
-const amplitudeMocks = vi.hoisted(() => ({
-  rememberRegistrationSuccess: vi.fn(),
-}))
-
-const consoleClientMocks = vi.hoisted(() => ({
-  activate: vi.fn(),
-}))
-
-vi.mock('@/app/components/base/amplitude/registration-tracking', () => ({
-  rememberRegistrationSuccess: amplitudeMocks.rememberRegistrationSuccess,
-}))
 
 vi.mock('react-i18next', async () => {
   const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
@@ -69,19 +57,9 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(),
 }))
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
-  return {
-    ...actual,
-    consoleClient: {
-      ...actual.consoleClient,
-      activate: {
-        ...actual.consoleClient.activate,
-        post: consoleClientMocks.activate,
-      },
-    },
-  }
-})
+vi.mock('@/service/common', () => ({
+  activateMember: vi.fn(),
+}))
 
 vi.mock('@/service/use-common', () => ({
   useInvitationCheck: vi.fn(),
@@ -101,7 +79,7 @@ const mockRefetch = vi.fn()
 const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
 const mockUseRouter = useRouter as unknown as MockedFunction<typeof useRouter>
 const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
-const mockActivateMember = consoleClientMocks.activate
+const mockActivateMember = activateMember as unknown as MockedFunction<typeof activateMember>
 const mockUseQuery = vi.mocked(useQuery)
 const mockUseInvitationCheck = useInvitationCheck as unknown as MockedFunction<
   typeof useInvitationCheck
@@ -146,8 +124,6 @@ describe('InviteSettingsPage', () => {
       error: null,
     } as unknown as ReturnType<typeof useQuery>)
     mockGetBrowserTimezone.mockReturnValue('Asia/Shanghai')
-    amplitudeMocks.rememberRegistrationSuccess.mockReturnValue(true)
-    Cookies.remove('utm_info')
     mockActivateMember.mockResolvedValue({ result: 'success' })
   })
 
@@ -189,6 +165,7 @@ describe('InviteSettingsPage', () => {
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
+          url: '/activate',
           body: {
             token: 'invite-token',
             name: 'Invitee',
@@ -211,6 +188,7 @@ describe('InviteSettingsPage', () => {
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
+          url: '/activate',
           body: {
             token: 'invite-token',
             name: 'Invitee',
@@ -243,6 +221,7 @@ describe('InviteSettingsPage', () => {
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
+          url: '/activate',
           body: {
             token: 'invite-token',
           },
@@ -271,6 +250,7 @@ describe('InviteSettingsPage', () => {
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
+          url: '/activate',
           body: {
             token: 'invite-token',
           },
@@ -302,6 +282,7 @@ describe('InviteSettingsPage', () => {
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
+          url: '/activate',
           body: {
             token: 'invite-token',
             name: 'Invitee',
@@ -331,97 +312,6 @@ describe('InviteSettingsPage', () => {
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/')
       })
-    })
-  })
-
-  describe('Registration completion', () => {
-    it('queues one attributed workspace-invite registration before redirect', async () => {
-      Cookies.set(
-        'utm_info',
-        JSON.stringify({ utm_source: 'community', slug: 'workspace-invite-launch' }),
-      )
-      mockActivateMember.mockResolvedValue({
-        result: 'success',
-        registration_completed: true,
-      } as Awaited<ReturnType<typeof mockActivateMember>>)
-
-      render(<InviteSettingsPage />)
-
-      fireEvent.change(screen.getByLabelText('login.name'), {
-        target: { value: 'Invitee' },
-      })
-      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
-
-      await waitFor(() => {
-        expect(amplitudeMocks.rememberRegistrationSuccess).toHaveBeenCalledWith({
-          method: 'workspace_invite',
-          utmInfo: { utm_source: 'community', slug: 'workspace-invite-launch' },
-        })
-      })
-      expect(amplitudeMocks.rememberRegistrationSuccess).toHaveBeenCalledOnce()
-      expect(Cookies.get('utm_info')).toBeUndefined()
-      const registrationCallOrder =
-        amplitudeMocks.rememberRegistrationSuccess.mock.invocationCallOrder[0]
-      const redirectCallOrder = mockReplace.mock.invocationCallOrder[0]
-      if (registrationCallOrder === undefined || redirectCallOrder === undefined)
-        throw new Error('Expected registration tracking and redirect calls')
-      expect(registrationCallOrder).toBeLessThan(redirectCallOrder)
-    })
-
-    it.each([
-      ['existing account invitation', { result: 'success', registration_completed: false }],
-      ['older backend response', { result: 'success' }],
-    ])('does not register an %s', async (_, response) => {
-      Cookies.set('utm_info', JSON.stringify({ utm_source: 'community' }))
-      mockActivateMember.mockResolvedValue(
-        response as Awaited<ReturnType<typeof mockActivateMember>>,
-      )
-
-      render(<InviteSettingsPage />)
-
-      fireEvent.change(screen.getByLabelText('login.name'), {
-        target: { value: 'Invitee' },
-      })
-      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
-
-      await waitFor(() => expect(mockReplace).toHaveBeenCalledOnce())
-      expect(amplitudeMocks.rememberRegistrationSuccess).not.toHaveBeenCalled()
-      expect(Cookies.get('utm_info')).toBeTruthy()
-    })
-
-    it('keeps attribution when the registration intent is not accepted', async () => {
-      Cookies.set('utm_info', JSON.stringify({ utm_source: 'community' }))
-      amplitudeMocks.rememberRegistrationSuccess.mockReturnValue(false)
-      mockActivateMember.mockResolvedValue({
-        result: 'success',
-        registration_completed: true,
-      } as Awaited<ReturnType<typeof mockActivateMember>>)
-
-      render(<InviteSettingsPage />)
-
-      fireEvent.change(screen.getByLabelText('login.name'), {
-        target: { value: 'Invitee' },
-      })
-      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
-
-      await waitFor(() => expect(amplitudeMocks.rememberRegistrationSuccess).toHaveBeenCalledOnce())
-      expect(Cookies.get('utm_info')).toBeTruthy()
-    })
-
-    it('does not register when activation fails', async () => {
-      Cookies.set('utm_info', JSON.stringify({ utm_source: 'community' }))
-      mockActivateMember.mockRejectedValue(new Error('activation failed'))
-
-      render(<InviteSettingsPage />)
-
-      fireEvent.change(screen.getByLabelText('login.name'), {
-        target: { value: 'Invitee' },
-      })
-      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
-
-      await waitFor(() => expect(mockRefetch).toHaveBeenCalledOnce())
-      expect(amplitudeMocks.rememberRegistrationSuccess).not.toHaveBeenCalled()
-      expect(Cookies.get('utm_info')).toBeTruthy()
     })
   })
 

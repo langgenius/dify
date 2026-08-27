@@ -183,10 +183,7 @@ class TestActivateInvitation:
         tokens.find.return_value = _token()
         invitation = _invitation(role="owner")
         accounts.resolve.return_value = invitation
-        accounts.activate.return_value = ActivationPersistenceResult(
-            membership_created=True,
-            registration_completed=True,
-        )
+        accounts.activate.return_value = ActivationPersistenceResult(membership_created=True)
         command = ActivationCommand(
             invitation=_lookup("Invitee@Example.com"),
             name="John Doe",
@@ -194,9 +191,8 @@ class TestActivateInvitation:
             timezone="UTC",
         )
 
-        result = service.activate(command, authenticated_account_id=None)
+        service.activate(command, authenticated_account_id=None)
 
-        assert result.registration_completed is True
         eligibility.get_freeze_type.assert_called_once_with("invitee@example.com")
         tokens.revoke.assert_called_once_with(_lookup("invitee@example.com"))
         accounts.activate.assert_called_once_with(
@@ -215,12 +211,9 @@ class TestActivateInvitation:
             requires_setup=False,
         )
         accounts.resolve.return_value = invitation
-        accounts.activate.return_value = ActivationPersistenceResult(
-            membership_created=False,
-            registration_completed=False,
-        )
+        accounts.activate.return_value = ActivationPersistenceResult(membership_created=False)
 
-        result = service.activate(
+        service.activate(
             ActivationCommand(
                 invitation=_lookup(),
                 name="Ignored",
@@ -230,101 +223,5 @@ class TestActivateInvitation:
             authenticated_account_id="account-1",
         )
 
-        assert result.registration_completed is False
         accounts.activate.assert_called_once_with(invitation, role="editor", setup=None)
-        membership_cache.invalidate.assert_not_called()
-
-    def test_stale_setup_invitation_does_not_reinitialize_active_account(self) -> None:
-        service, tokens, accounts, _, _, membership_cache = _service()
-        tokens.find.return_value = _token()
-        invitation = _invitation(
-            account_status="active",
-            role="editor",
-            requires_setup=True,
-        )
-        accounts.resolve.return_value = invitation
-        accounts.activate.return_value = ActivationPersistenceResult(
-            membership_created=True,
-            registration_completed=False,
-        )
-
-        result = service.activate(
-            ActivationCommand(
-                invitation=_lookup(),
-                name="Stale Setup",
-                interface_language="zh-Hans",
-                timezone="Asia/Shanghai",
-            ),
-            authenticated_account_id="account-1",
-        )
-
-        assert result.registration_completed is False
-        accounts.activate.assert_called_once_with(invitation, role="editor", setup=None)
-        membership_cache.invalidate.assert_called_once_with("workspace-1")
-
-    def test_legacy_pending_invitation_reports_registration_completed_after_persistence(self) -> None:
-        service, tokens, accounts, _, _, _ = _service()
-        tokens.find.return_value = _token()
-        invitation = _invitation(requires_setup=None)
-        accounts.resolve.return_value = invitation
-        accounts.activate.return_value = ActivationPersistenceResult(
-            membership_created=True,
-            registration_completed=True,
-        )
-
-        result = service.activate(
-            ActivationCommand(
-                invitation=_lookup(),
-                name="Legacy Invitee",
-                interface_language="en-US",
-                timezone="UTC",
-            ),
-            authenticated_account_id=None,
-        )
-
-        assert result.registration_completed is True
-        accounts.activate.assert_called_once_with(
-            invitation,
-            role="admin",
-            setup=AccountSetup(name="Legacy Invitee", interface_language="en-US", timezone="UTC"),
-        )
-
-    def test_reports_locked_persistence_result_when_concurrent_request_wins(self) -> None:
-        service, tokens, accounts, _, _, _ = _service()
-        tokens.find.return_value = _token()
-        accounts.resolve.return_value = _invitation()
-        accounts.activate.return_value = ActivationPersistenceResult(
-            membership_created=True,
-            registration_completed=False,
-        )
-
-        result = service.activate(
-            ActivationCommand(
-                invitation=_lookup(),
-                name="Concurrent Loser",
-                interface_language="en-US",
-                timezone="UTC",
-            ),
-            authenticated_account_id=None,
-        )
-
-        assert result.registration_completed is False
-
-    def test_does_not_return_completion_when_persistence_fails(self) -> None:
-        service, tokens, accounts, _, _, membership_cache = _service()
-        tokens.find.return_value = _token()
-        accounts.resolve.return_value = _invitation()
-        accounts.activate.return_value = None
-
-        with pytest.raises(InvalidInvitationError):
-            service.activate(
-                ActivationCommand(
-                    invitation=_lookup(),
-                    name="Invitee",
-                    interface_language="en-US",
-                    timezone="UTC",
-                ),
-                authenticated_account_id=None,
-            )
-
         membership_cache.invalidate.assert_not_called()

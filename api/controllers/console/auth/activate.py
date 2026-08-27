@@ -1,16 +1,13 @@
-from typing import Literal
-
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
 from constants.languages import supported_language
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import InvitationAccountMismatchError as InvitationAccountMismatchHTTPError
 from controllers.console.error import AccountInFreezeError, AlreadyActivateError, EmailDomainSuspendedError
 from extensions.ext_application_services import application_services
-from fields.base import ResponseModel
 from libs.helper import EmailStr, dump_response, timezone
 from libs.login import current_account_with_tenant
 from libs.token import extract_access_token
@@ -54,12 +51,11 @@ class ActivatePayload(BaseModel):
         return timezone(value)
 
 
-class ActivationResponse(ResponseModel):
-    result: Literal["success"] = Field(description="Operation result")
-    registration_completed: bool = Field(description="Whether this request completed account registration")
+class ActivationResponse(BaseModel):
+    result: str = Field(description="Operation result")
 
 
-class ActivationCheckData(ResponseModel):
+class ActivationCheckData(BaseModel):
     workspace_name: str | None
     workspace_id: str | None
     email: str | None
@@ -67,7 +63,7 @@ class ActivationCheckData(ResponseModel):
     requires_setup: bool | None = None
 
 
-class ActivationCheckResponse(ResponseModel):
+class ActivationCheckResponse(BaseModel):
     is_valid: bool = Field(description="Whether token is valid")
     data: ActivationCheckData | None = Field(default=None, description="Activation data if valid")
 
@@ -76,9 +72,6 @@ register_schema_models(
     console_ns,
     ActivateCheckQuery,
     ActivatePayload,
-)
-register_response_schema_models(
-    console_ns,
     ActivationCheckData,
     ActivationCheckResponse,
     ActivationResponse,
@@ -134,7 +127,7 @@ class ActivateApi(Resource):
             authenticated_account_id = current_account_with_tenant().account.id
 
         try:
-            activation = application_services().account_activation.activate(
+            application_services().account_activation.activate(
                 ActivationCommand(
                     invitation=InvitationLookup(
                         workspace_id=args.workspace_id,
@@ -156,10 +149,4 @@ class ActivateApi(Resource):
         except FrozenAccountError:
             raise AccountInFreezeError() from None
 
-        return dump_response(
-            ActivationResponse,
-            {
-                "result": "success",
-                "registration_completed": activation.registration_completed,
-            },
-        )
+        return dump_response(ActivationResponse, {"result": "success"})
