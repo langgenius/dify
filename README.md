@@ -143,6 +143,7 @@ Dify welcomes contributions of all kinds:
 - **Ideas and feedback**: Start or join a [GitHub Discussion](https://github.com/langgenius/dify/discussions).
 - **Translations**: Follow the [internationalization guide](web/i18n-config/README.md) to add or update a locale.
 - **Community**: Share the apps you build, help other users, and spread the word about Dify.
+- **Ecosystem Tools**: [Hybrid RAG GitHub Action](https://github.com/Cagrik34/hybrid-rag-action) — Zero-dependency GitHub Action & Tool Provider combining Okapi BM25 and dense semantic embeddings with RRF for automated repo triage.
 
 ### Contributors
 
