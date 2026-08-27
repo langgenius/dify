@@ -43,14 +43,8 @@ export const useAvailableNodesMetaData = () => {
   )
 
   const mergedNodesMetaData = useMemo(() => {
-    const commonNodes = WORKFLOW_COMMON_NODES.filter((node) =>
-      shouldUseAgentV2
-        ? node.metaData.type !== BlockEnum.Agent
-        : node.metaData.type !== BlockEnum.AgentV2,
-    )
-
     return [
-      ...commonNodes,
+      ...WORKFLOW_COMMON_NODES,
       startNodeMetaData,
       ...(isChatMode
         ? [AnswerDefault]
@@ -62,9 +56,9 @@ export const useAvailableNodesMetaData = () => {
             TriggerPluginDefault,
           ]),
     ]
-  }, [isChatMode, shouldUseAgentV2, startNodeMetaData])
+  }, [isChatMode, startNodeMetaData])
 
-  const availableNodesMetaData = useMemo(
+  const nodesMetaData = useMemo(
     () =>
       mergedNodesMetaData.map((node) => {
         const { metaData } = node
@@ -93,25 +87,35 @@ export const useAvailableNodesMetaData = () => {
     [mergedNodesMetaData, t, docLink],
   )
 
-  const availableNodesMetaDataMap = useMemo(
+  const availableNodesMetaData = useMemo(
     () =>
-      availableNodesMetaData.reduce(
+      nodesMetaData.filter((node) =>
+        shouldUseAgentV2
+          ? node.metaData.type !== BlockEnum.Agent
+          : node.metaData.type !== BlockEnum.AgentV2,
+      ),
+    [nodesMetaData, shouldUseAgentV2],
+  )
+
+  const nodesMetaDataMap = useMemo(
+    () =>
+      nodesMetaData.reduce(
         (acc, node) => {
           acc![node.metaData.type] = node
           return acc
         },
         {} as AvailableNodesMetaData['nodesMap'],
       ),
-    [availableNodesMetaData],
+    [nodesMetaData],
   )
 
   return useMemo(() => {
     return {
       nodes: availableNodesMetaData,
       nodesMap: {
-        ...availableNodesMetaDataMap,
-        [BlockEnum.VariableAssigner]: availableNodesMetaDataMap?.[BlockEnum.VariableAggregator],
+        ...nodesMetaDataMap,
+        [BlockEnum.VariableAssigner]: nodesMetaDataMap?.[BlockEnum.VariableAggregator],
       },
     }
-  }, [availableNodesMetaData, availableNodesMetaDataMap])
+  }, [availableNodesMetaData, nodesMetaDataMap])
 }
