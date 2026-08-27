@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
+import { buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogClose,
@@ -102,22 +103,18 @@ const CustomizeModal: FC<IShareLinkProps> = ({
                 <div className="mt-1 mb-2 text-xs text-text-tertiary">
                   {t(($) => $[`${prefixCustomize}.way1.step1Tip`], { ns: 'appOverview' })}
                 </div>
-                <Button
-                  nativeButton={false}
-                  render={
-                    <a
-                      href={`https://github.com/langgenius/${repository}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={t(($) => $[`${prefixCustomize}.way1.step1Operation`], {
-                        ns: 'appOverview',
-                      })}
-                    />
-                  }
+                <a
+                  href={`https://github.com/langgenius/${repository}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={t(($) => $[`${prefixCustomize}.way1.step1Operation`], {
+                    ns: 'appOverview',
+                  })}
+                  className={buttonVariants()}
                 >
                   <GithubIcon className="text-text-secondary" />
                   {t(($) => $[`${prefixCustomize}.way1.step1Operation`], { ns: 'appOverview' })}
-                </Button>
+                </a>
               </div>
             </div>
             <div className="flex pt-4">
@@ -129,24 +126,20 @@ const CustomizeModal: FC<IShareLinkProps> = ({
                 <div className="mt-1 mb-2 text-xs text-text-tertiary">
                   {t(($) => $[`${prefixCustomize}.way1.step2Tip`], { ns: 'appOverview' })}
                 </div>
-                <Button
-                  nativeButton={false}
-                  render={
-                    <a
-                      href="https://vercel.com/docs/concepts/deployments/git/vercel-for-github"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={t(($) => $[`${prefixCustomize}.way1.step2Operation`], {
-                        ns: 'appOverview',
-                      })}
-                    />
-                  }
+                <a
+                  href="https://vercel.com/docs/concepts/deployments/git/vercel-for-github"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={t(($) => $[`${prefixCustomize}.way1.step2Operation`], {
+                    ns: 'appOverview',
+                  })}
+                  className={buttonVariants()}
                 >
                   <div className="border-t-0 border-r-[7px] border-b-12 border-l-[7px] border-solid border-text-primary border-t-transparent border-r-transparent border-l-transparent"></div>
                   <span>
                     {t(($) => $[`${prefixCustomize}.way1.step2Operation`], { ns: 'appOverview' })}
                   </span>
-                </Button>
+                </a>
               </div>
             </div>
             <div className="flex py-4">
@@ -176,19 +169,14 @@ const CustomizeModal: FC<IShareLinkProps> = ({
             <p className="my-2 system-sm-medium text-text-secondary">
               {t(($) => $[`${prefixCustomize}.way2.name`], { ns: 'appOverview' })}
             </p>
-            <Button
-              nativeButton={false}
-              render={
-                <a
-                  href={apiDocLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={t(($) => $[`${prefixCustomize}.way2.operation`], {
-                    ns: 'appOverview',
-                  })}
-                />
-              }
-              className="mt-2"
+            <a
+              href={apiDocLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t(($) => $[`${prefixCustomize}.way2.operation`], {
+                ns: 'appOverview',
+              })}
+              className={cn(buttonVariants(), 'mt-2')}
             >
               <span className="text-sm text-text-secondary">
                 {t(($) => $[`${prefixCustomize}.way2.operation`], { ns: 'appOverview' })}
@@ -197,7 +185,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
                 aria-hidden="true"
                 className="i-heroicons-arrow-top-right-on-square size-4 shrink-0 text-text-secondary"
               />
-            </Button>
+            </a>
           </div>
         </div>
       </DialogContent>

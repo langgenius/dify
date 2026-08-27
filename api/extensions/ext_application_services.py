@@ -27,6 +27,7 @@ from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
 from repositories.data_source_oauth_binding_repository import SQLAlchemyDataSourceOAuthBindingRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
+from repositories.factory import DifyAPIRepositoryFactory
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
@@ -34,6 +35,7 @@ from repositories.tag_repository import TagRepository
 from repositories.trial_app_query_repository import TrialAppQueryRepository
 from repositories.trial_app_usage_repository import TrialAppUsageRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
+from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
 from services.account_activation_adapters import (
@@ -100,6 +102,12 @@ from services.recommended_app_catalog_gateway import (
     RemoteRecommendedAppCatalogGateway,
 )
 from services.recommended_app_query_service import RecommendedAppQueryService
+from services.retention.workflow_run.archive_download_adapters import (
+    dispatch_workflow_run_archive_download_task,
+    sign_workflow_run_archive_download_url,
+)
+from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
+from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock, RegisterServiceAccountProvisioner
 from services.setup_service import SetupService
@@ -110,6 +118,7 @@ from services.webapp_access_query_service import (
     WebAppAccessQueryService,
     WebAppAccessUnavailableError,
 )
+from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from services.workspace_member_query_service import WorkspaceMemberQueryService
 from services.workspace_member_role_resolver import DeploymentWorkspaceMemberRoleResolver
 from services.workspace_plan_gateway import DeploymentWorkspacePlanGateway
@@ -170,9 +179,11 @@ class ApplicationServices:
     partner_tenant_bindings: PartnerTenantBindingService
     recommended_app_queries: RecommendedAppQueryService
     trial_app_usage: TrialAppUsageRecorder
+    workflow_run_archives: WorkflowRunArchiveService
     workspace_queries: WorkspaceQueryService
     workspace_member_queries: WorkspaceMemberQueryService
     tags: TagApplicationService
+    workflow_statistics: WorkflowStatisticQueryService
 
     def resolve_data_source_oauth(self, provider: str) -> DataSourceOAuthService:
         service = self.data_source_oauth.get(provider)
@@ -394,6 +405,12 @@ def build_application_services(
             trial_enabled=trial_app_enabled,
         ),
         trial_app_usage=TrialAppUsageRepository(session_factory=database_client),
+        workflow_run_archives=WorkflowRunArchiveService(
+            bundles=WorkflowRunArchiveBundleQueryRepository(session_factory=database_client),
+            tasks=WorkflowRunArchiveDownloadTaskCache(redis=redis),
+            dispatcher=dispatch_workflow_run_archive_download_task,
+            sign_download_url=sign_workflow_run_archive_download_url,
+        ),
         workspace_queries=WorkspaceQueryService(
             workspaces=workspace_query_repository,
             plans=DeploymentWorkspacePlanGateway(),
@@ -406,6 +423,11 @@ def build_application_services(
         ),
         tags=TagApplicationService(
             tags=TagRepository(session_factory=database_client),
+        ),
+        workflow_statistics=WorkflowStatisticQueryService(
+            workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(
+                session_maker=database_client,
+            ),
         ),
     )
 

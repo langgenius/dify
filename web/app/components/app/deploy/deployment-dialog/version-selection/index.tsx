@@ -2,7 +2,7 @@
 import type { ReactNode } from 'react'
 import type { DeploymentVersion } from '../../version'
 import type { DeploymentDialogRequest } from '../types'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogClose, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -159,14 +159,13 @@ function VersionList({
             {t(($) => $['studio.accessPoint.noPublishedTitle'])}
           </p>
           {publishHref && (
-            <Button
-              size="medium"
-              render={<Link href={publishHref} />}
-              className="flex items-center gap-1"
+            <Link
+              href={publishHref}
+              className={cn(buttonVariants({ size: 'medium' }), 'flex items-center gap-1')}
             >
               {t(($) => $['studio.accessPoint.goToPublish'])}
               <span aria-hidden className="i-ri-arrow-right-line size-4" />
-            </Button>
+            </Link>
           )}
         </div>
       )}
