@@ -550,13 +550,12 @@ export const useChat = (
   const handleRestart = useCallback(
     (cb?: any) => {
       conversationIdRef.current = initialConversationIdRef.current
-      taskIdRef.current = ''
-      handleStop()
+      handleDetach()
       setChatTree([])
       setSuggestedQuestions([])
       cb?.()
     },
-    [handleStop],
+    [handleDetach],
   )
 
   const createAudioPlayerManager = useCallback(() => {
