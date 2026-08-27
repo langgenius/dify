@@ -118,9 +118,11 @@ def account_auth_context(
     """Publish an account ``AuthContext`` for handlers that read ``get_auth_ctx()``.
 
     The router's pipeline normally sets this ContextVar; calling ``__handler__``
-    bypasses the router, so endpoints that resolve the caller through
-    ``get_auth_ctx()`` (the ``/account/sessions*`` family) need it set
-    explicitly. Resets on exit so the worker thread can't leak identity.
+    bypasses the router. Exactly one openapi handler reads it back —
+    ``AccountSessionsApi.get``, which hands the whole ``AuthContext`` to
+    ``list_active_sessions``. The rest of the ``/account/sessions*`` family
+    reads ``ctx.subject``, so wrapping those is harmless but not required.
+    Resets on exit so the worker thread can't leak identity.
     """
     ctx = _account_auth(account, token_id=token_id, client_id=client_id)
     reset_token = set_auth_ctx(ctx)
