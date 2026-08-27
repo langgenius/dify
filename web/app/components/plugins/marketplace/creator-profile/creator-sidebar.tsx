@@ -40,7 +40,7 @@ export default function CreatorSidebar({ profile }: CreatorSidebarProps) {
         isOrganization={isOrganization}
         size={100}
         className={cn(
-          'absolute -top-12 -left-2 z-10 !size-20 border-[1.5px] border-components-panel-bg bg-background-default-dodge md:-top-[68px] md:!size-[100px]',
+          'absolute -top-12 -left-2 z-10 !size-20 border-[1.5px] border-components-panel-bg bg-background-default-dodge shadow-xs md:-top-[68px] md:!size-[100px]',
           isOrganization && 'rounded-[10px]',
         )}
       />

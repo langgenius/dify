@@ -13,7 +13,9 @@ vi.mock('#i18n', async () => {
 })
 
 vi.mock('../publisher-avatar', () => ({
-  default: () => <div data-testid="publisher-avatar" />,
+  default: ({ className, size }: { className?: string; size?: number }) => (
+    <div data-testid="publisher-avatar" data-size={size} className={className} />
+  ),
 }))
 
 const profile: CreatorProfileViewModel['profile'] = {
@@ -42,6 +44,24 @@ const profile: CreatorProfileViewModel['profile'] = {
 }
 
 describe('CreatorSidebar social links', () => {
+  it('adds a light shadow without changing the avatar geometry', () => {
+    render(<CreatorSidebar profile={profile} />)
+
+    const avatar = screen.getByTestId('publisher-avatar')
+
+    expect(avatar).toHaveClass('shadow-xs')
+    expect(avatar).toHaveClass(
+      'absolute',
+      '-top-12',
+      '-left-2',
+      '!size-20',
+      'border-[1.5px]',
+      'md:-top-[68px]',
+      'md:!size-[100px]',
+    )
+    expect(avatar).toHaveAttribute('data-size', '100')
+  })
+
   it('renders a static platform icon at the start of every social row', () => {
     render(<CreatorSidebar profile={profile} />)
 
