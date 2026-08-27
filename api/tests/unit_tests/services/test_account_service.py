@@ -2826,10 +2826,7 @@ class TestSessionInjectedGetters:
         assert AccountService.get_account_by_id("missing", session=sqlite_session) is None
 
     def test_get_account_by_email_returns_scalar_or_none(self, sqlite_session: Session) -> None:
-        """Plain getter — case-sensitive equality (callers needing the
-        case-insensitive existence check use
-        :meth:`has_active_account_with_email`).
-        """
+        """Plain getter uses case-sensitive equality."""
         account = Account(name="Alice", email="alice@example.com")
         sqlite_session.add(account)
         sqlite_session.commit()

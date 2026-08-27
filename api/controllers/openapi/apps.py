@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Conflict, NotFound, UnprocessableEntity
 
 from configs import dify_config
+from constants.oauth_bearer import Scope, TokenType
 from controllers.common.app_access import AppAccessFilter, resolve_app_access_filter
 from controllers.common.fields import Parameters
 from controllers.common.session import with_session
@@ -30,7 +31,6 @@ from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData, CallerKind, RBACRequirement
 from controllers.service_api.app.error import AppUnavailableError
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
-from libs.oauth_bearer import Scope, TokenType
 from models import App
 from models.enums import AppStatus
 from models.model import AppMode

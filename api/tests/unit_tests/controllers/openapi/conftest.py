@@ -3,10 +3,10 @@ import uuid
 import pytest
 from flask import Flask
 
+from constants.oauth_bearer import Scope, TokenType
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi.auth.data import AuthData
 from controllers.openapi.auth.pipeline import PipelineRouter
-from libs.oauth_bearer import Scope, TokenType
 
 
 def _stub_execute(

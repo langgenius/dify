@@ -75,9 +75,9 @@ def test_layer0_skipped_for_enterprise_edition(
 ) -> None:
     """On EE, Layer 0 short-circuits — gateway RBAC owns tenant isolation.
 
-    /info uses validate_bearer + require_workspace_member inline (no
-    AppAuthzCheck), so a cross-tenant bearer reaches the app lookup and
-    gets 200 — gateway is expected to enforce isolation upstream.
+    Enterprise admission skips the CE membership check, so a cross-tenant
+    bearer reaches the app lookup and gets 200; the gateway is expected to
+    enforce isolation upstream.
     """
     from configs import dify_config
 

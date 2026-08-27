@@ -282,26 +282,8 @@ class AccountService:
 
     @staticmethod
     def get_account_by_email(email: str, *, session: Session) -> Account | None:
-        """Plain ``Account`` getter keyed by email. Case-sensitive — use
-        :meth:`has_active_account_with_email` for the case-insensitive
-        existence check that backs the SSO collision rule.
-        """
+        """Plain ``Account`` getter keyed by case-sensitive email."""
         return session.execute(select(Account).where(Account.email == email)).scalar_one_or_none()
-
-    @staticmethod
-    def has_active_account_with_email(email: str, *, session: Session) -> bool:
-        if not email:
-            return False
-        normalized = email.strip().lower()
-        if not normalized:
-            return False
-        row = session.execute(
-            select(Account.id).where(
-                func.lower(Account.email) == normalized,
-                Account.status == AccountStatus.ACTIVE,
-            )
-        ).scalar_one_or_none()
-        return row is not None
 
     @staticmethod
     def has_account_with_normalized_email(email: str, *, session: Session) -> bool:

@@ -1,4 +1,5 @@
-from unittest.mock import MagicMock
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 
 import pytest
 from redis import RedisError
@@ -13,6 +14,49 @@ from extensions.ext_redis import (
     _serialize_redis_name,
     redis_fallback,
 )
+
+type _RecordedCall = tuple[str, tuple[object, ...], dict[str, object]]
+
+
+@dataclass
+class _RecordingRedisClient:
+    calls: list[_RecordedCall] = field(default_factory=list)
+
+    def _record(self, method: str, *args: object, **kwargs: object) -> None:
+        self.calls.append((method, args, kwargs))
+
+    def register_script(self, script: str):
+        self._record("register_script", script)
+
+        def execute(*, keys, args, client):
+            self._record("script", keys, args, client)
+            return "result"
+
+        return execute
+
+    def get(self, name: str | bytes) -> None:
+        self._record("get", name)
+
+    def delete(self, *names: str | bytes) -> None:
+        self._record("delete", *names)
+
+    def lock(self, name: str, **kwargs: object) -> None:
+        self._record("lock", name, **kwargs)
+
+    def hset(self, name: str | bytes, *args: object, **kwargs: object) -> None:
+        self._record("hset", name, *args, **kwargs)
+
+    def hgetall(self, name: str | bytes) -> None:
+        self._record("hgetall", name)
+
+    def hkeys(self, name: str | bytes) -> None:
+        self._record("hkeys", name)
+
+    def hexists(self, name: str | bytes, key: str | bytes) -> None:
+        self._record("hexists", name, key)
+
+    def zadd(self, name: str | bytes, mapping: Mapping[object, object], **kwargs: object) -> None:
+        self._record("zadd", name, mapping, **kwargs)
 
 
 @pytest.fixture(autouse=True)
@@ -139,43 +183,57 @@ class TestRedisKeyPrefixHelpers:
 
 
 class TestRedisClientWrapperKeyPrefix:
-    def test_wrapper_get_prefixes_string_keys(self, config_overrides):
-        mock_client = MagicMock()
+    def test_wrapper_registered_script_prefixes_key_arguments(self, config_overrides):
+        raw_client = _RecordingRedisClient()
         wrapper = RedisClientWrapper()
-        wrapper.initialize(mock_client)
+        wrapper.initialize(raw_client)  # type: ignore[arg-type]
+
+        config_overrides(REDIS_KEY_PREFIX="enterprise-a")
+        script = wrapper.register_script("return redis.call('GET', KEYS[1])")
+
+        assert script(keys=["device_code:abc"], args=["argument"]) == "result"
+        assert raw_client.calls == [
+            ("register_script", ("return redis.call('GET', KEYS[1])",), {}),
+            ("script", (("enterprise-a:device_code:abc",), ["argument"], raw_client), {}),
+        ]
+
+    def test_wrapper_get_prefixes_string_keys(self, config_overrides):
+        client = _RecordingRedisClient()
+        wrapper = RedisClientWrapper()
+        wrapper.initialize(client)  # type: ignore[arg-type]
 
         config_overrides(REDIS_KEY_PREFIX="enterprise-a")
         wrapper.get("oauth_state:abc")
 
-        mock_client.get.assert_called_once_with("enterprise-a:oauth_state:abc")
+        assert client.calls == [("get", ("enterprise-a:oauth_state:abc",), {})]
 
     def test_wrapper_delete_prefixes_multiple_keys(self, config_overrides):
-        mock_client = MagicMock()
+        client = _RecordingRedisClient()
         wrapper = RedisClientWrapper()
-        wrapper.initialize(mock_client)
+        wrapper.initialize(client)  # type: ignore[arg-type]
 
         config_overrides(REDIS_KEY_PREFIX="enterprise-a")
         wrapper.delete("key:a", "key:b")
 
-        mock_client.delete.assert_called_once_with("enterprise-a:key:a", "enterprise-a:key:b")
+        assert client.calls == [("delete", ("enterprise-a:key:a", "enterprise-a:key:b"), {})]
 
     def test_wrapper_lock_prefixes_lock_name(self, config_overrides):
-        mock_client = MagicMock()
+        client = _RecordingRedisClient()
         wrapper = RedisClientWrapper()
-        wrapper.initialize(mock_client)
+        wrapper.initialize(client)  # type: ignore[arg-type]
 
         config_overrides(REDIS_KEY_PREFIX="enterprise-a")
         wrapper.lock("resource-lock", timeout=10)
 
-        mock_client.lock.assert_called_once()
-        args, kwargs = mock_client.lock.call_args
+        method, args, kwargs = client.calls[0]
+        assert method == "lock"
         assert args == ("enterprise-a:resource-lock",)
         assert kwargs["timeout"] == 10
 
     def test_wrapper_hash_operations_prefix_key_name(self, config_overrides):
-        mock_client = MagicMock()
+        client = _RecordingRedisClient()
         wrapper = RedisClientWrapper()
-        wrapper.initialize(mock_client)
+        wrapper.initialize(client)  # type: ignore[arg-type]
 
         config_overrides(REDIS_KEY_PREFIX="enterprise-a")
         wrapper.hset("hash:key", "field", "value")
@@ -183,30 +241,32 @@ class TestRedisClientWrapperKeyPrefix:
         wrapper.hkeys("hash:key")
         wrapper.hexists("hash:key", "field")
 
-        mock_client.hset.assert_called_once_with("enterprise-a:hash:key", "field", "value")
-        mock_client.hgetall.assert_called_once_with("enterprise-a:hash:key")
-        mock_client.hkeys.assert_called_once_with("enterprise-a:hash:key")
-        mock_client.hexists.assert_called_once_with("enterprise-a:hash:key", "field")
+        assert client.calls == [
+            ("hset", ("enterprise-a:hash:key", "field", "value"), {}),
+            ("hgetall", ("enterprise-a:hash:key",), {}),
+            ("hkeys", ("enterprise-a:hash:key",), {}),
+            ("hexists", ("enterprise-a:hash:key", "field"), {}),
+        ]
 
     def test_wrapper_zadd_prefixes_sorted_set_name(self, config_overrides):
-        mock_client = MagicMock()
+        client = _RecordingRedisClient()
         wrapper = RedisClientWrapper()
-        wrapper.initialize(mock_client)
+        wrapper.initialize(client)  # type: ignore[arg-type]
 
         config_overrides(REDIS_KEY_PREFIX="enterprise-a")
         wrapper.zadd("zset:key", {"member": 1})
 
-        mock_client.zadd.assert_called_once()
-        args, kwargs = mock_client.zadd.call_args
+        method, args, kwargs = client.calls[0]
+        assert method == "zadd"
         assert args == ("enterprise-a:zset:key", {"member": 1})
         assert kwargs["nx"] is False
 
     def test_wrapper_preserves_keys_when_prefix_is_empty(self, config_overrides):
-        mock_client = MagicMock()
+        client = _RecordingRedisClient()
         wrapper = RedisClientWrapper()
-        wrapper.initialize(mock_client)
+        wrapper.initialize(client)  # type: ignore[arg-type]
 
         config_overrides(REDIS_KEY_PREFIX="   ")
         wrapper.get("plain:key")
 
-        mock_client.get.assert_called_once_with("plain:key")
+        assert client.calls == [("get", ("plain:key",), {})]

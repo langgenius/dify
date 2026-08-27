@@ -97,9 +97,6 @@ ignore_imports =
     core.workflow.nodes.agent_v2.session_store -> services.agent.workspace_service
     core.workflow.nodes.agent_v2.validators -> services.agent.knowledge_datasets
     core.workflow.nodes.agent_v2.workspace_retirement_layer -> tasks.collect_agent_resources_task
-    libs.device_flow_security -> controllers.openapi._models
-    libs.device_flow_security -> services.entities.feature_entities
-    libs.device_flow_security -> services.feature_service
     libs.email_i18n -> services.entities.feature_entities
     libs.email_i18n -> services.feature_service
     libs.external_api -> core
@@ -327,6 +324,24 @@ name = OAuth server application service is framework and persistence neutral
 type = forbidden
 source_modules =
     services.oauth_server_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    httpx
+    libs
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:oauth-device-application-service-boundary]
+name = OAuth device application service and contracts are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.oauth_device_application_service
+    services.oauth_device_contracts
 forbidden_modules =
     configs
     controllers

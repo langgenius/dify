@@ -5,7 +5,7 @@ import ssl
 import sys
 from collections.abc import Callable
 from datetime import timedelta
-from typing import Any, Union, cast
+from typing import Any, Protocol, Union, cast, runtime_checkable
 
 import redis
 from redis import RedisError
@@ -39,6 +39,11 @@ _normalize_redis_key_prefix = normalize_redis_key_prefix
 _serialize_redis_name = serialize_redis_name
 _serialize_redis_name_arg = serialize_redis_name_arg
 _serialize_redis_name_args = serialize_redis_name_args
+
+
+@runtime_checkable
+class _ScriptRegistrar(Protocol):
+    def register_script(self, script: str) -> Callable[..., Any]: ...
 
 
 class RedisClientWrapper:
@@ -216,6 +221,28 @@ class RedisClientWrapper:
 
     def pipeline(self, transaction: bool = True, shard_hint: str | None = None) -> Any:
         return self._require_client().pipeline(transaction=transaction, shard_hint=shard_hint)
+
+    def register_script(self, script: str) -> Callable[..., Any]:
+        """Register a Lua script whose key arguments use logical Redis names."""
+        client = self._require_client()
+        if not isinstance(client, _ScriptRegistrar):
+            raise RuntimeError("Redis client does not support Lua script registration")
+        registered_script = client.register_script(script)
+
+        def execute(
+            keys: list[str | bytes] | tuple[str | bytes, ...] | None = None,
+            args: list[Any] | tuple[Any, ...] | None = None,
+            client: RedisClientWrapper | redis.Redis | RedisCluster | None = None,
+        ) -> Any:
+            redis_keys = _serialize_redis_name_args(tuple(keys or ()), self._get_prefix())
+            execution_client = client._require_client() if isinstance(client, RedisClientWrapper) else client
+            return registered_script(
+                keys=redis_keys,
+                args=args,
+                client=execution_client or self._require_client(),
+            )
+
+        return execute
 
     def __getattr__(self, item: str) -> Any:
         return getattr(self._require_client(), item)

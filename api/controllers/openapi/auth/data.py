@@ -6,8 +6,8 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field
 from werkzeug.exceptions import InternalServerError
 
+from constants.oauth_bearer import Scope, TokenType
 from core.rbac import RBACPermission, RBACResourceScope
-from libs.oauth_bearer import Scope, TokenType
 from models.account import Account, Tenant, TenantAccountRole
 from models.model import App, EndUser
 from services.enterprise.enterprise_service import WebAppAccessMode
@@ -53,7 +53,6 @@ class AuthData(BaseModel):
     token_hash: str
     token_id: uuid.UUID | None = None
     scopes: frozenset[Scope]
-    tenants: dict[str, bool] = Field(default_factory=dict)
     external_identity: ExternalIdentity | None = None
     path_params: dict[str, str] = Field(default_factory=dict)
 

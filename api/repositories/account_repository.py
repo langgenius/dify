@@ -2,7 +2,7 @@
 
 from typing import override
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Account, AccountIntegrate, AccountStatus, InvitationCode, InvitationCodeStatus
@@ -119,6 +119,22 @@ class SQLAlchemyAccountRepository(AccountRepository):
     def email_exists(self, email: str) -> bool:
         with self._session_factory() as session:
             return session.scalar(select(Account.id).where(Account.email == email).limit(1)) is not None
+
+    @override
+    def has_active_email(self, email: str) -> bool:
+        normalized = email.strip().lower()
+        if not normalized:
+            return False
+        stmt = (
+            select(Account.id)
+            .where(
+                func.lower(Account.email) == normalized,
+                Account.status == AccountStatus.ACTIVE,
+            )
+            .limit(1)
+        )
+        with self._session_factory() as session:
+            return session.scalar(stmt) is not None
 
     @override
     def reset_email(

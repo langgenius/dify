@@ -8,6 +8,7 @@ from flask_restx.api import HTTPStatus
 from werkzeug.exceptions import BadRequest
 
 import services
+from constants.oauth_bearer import Scope
 from controllers.common.errors import (
     BlockedFileExtensionError,
     FileTooLargeError,
@@ -22,7 +23,6 @@ from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
 from extensions.ext_database import db
 from fields.file_fields import FileResponse
-from libs.oauth_bearer import Scope
 from services.file_service import FileService
 
 

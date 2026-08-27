@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock, patch
 
+from constants.oauth_bearer import Scope, TokenType
 from controllers.openapi.auth.conditions import (
     EDITION_CLOUD,
     EDITION_COMMUNITY,
@@ -21,7 +22,6 @@ from controllers.openapi.auth.conditions import (
 from controllers.openapi.auth.data import AuthData, RBACRequirement, RequestContext
 from core.rbac import RBACPermission, RBACResourceScope
 from enums import DeploymentEdition
-from libs.oauth_bearer import Scope, TokenType
 from models.account import TenantAccountRole
 from services.enterprise.enterprise_service import WebAppAccessMode
 

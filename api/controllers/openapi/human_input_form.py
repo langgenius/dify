@@ -14,6 +14,7 @@ from flask import Response
 from flask_restx import Resource
 from werkzeug.exceptions import BadRequest
 
+from constants.oauth_bearer import Scope
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
 from controllers.common.schema import register_schema_models
 from controllers.common.wraps import RBACPermission, RBACResourceScope
@@ -29,7 +30,6 @@ from core.workflow.human_input_policy import (
 )
 from extensions.ext_database import db
 from libs.helper import to_timestamp
-from libs.oauth_bearer import Scope
 from models.model import App
 from services.human_input_service import FormNotFoundError, HumanInputService
 

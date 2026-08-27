@@ -1,22 +1,31 @@
+"""Redis state machine for OAuth device flow.
+
+Deployment contract: the CAS writer must not run alongside the pre-CAS
+GET/SETEX writer. Old approve and deny operations can overwrite a terminal
+state from this implementation because they do not participate in the same
+transition protocol. Drain API workers running the old writer before deploying
+this version. The JSON representation remains reader-compatible so pending
+device codes can survive that restart.
+"""
+
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
-import os
 import secrets
 import time
-import uuid
 from dataclasses import asdict, dataclass, field
-from datetime import UTC, datetime, timedelta
-from enum import StrEnum
-from typing import Any, NotRequired, TypedDict
+from datetime import UTC, datetime
 
-from sqlalchemy import and_, func, select, update
-from sqlalchemy.orm import Session
-
-from libs.oauth_bearer import TOKEN_CACHE_KEY_FMT, AuthContext, SubjectType
-from models.oauth import OAuthAccessToken
+from services.oauth_device_contracts import (
+    DEVICE_FLOW_TTL_SECONDS,
+    ApprovalTransitionConfirmation,
+    DeviceFlowStatus,
+    InvalidTransitionError,
+    PollPayload,
+    SlowDownDecision,
+    StateNotFoundError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -31,87 +40,78 @@ _USER_CODE_KEY_PREFIX = "user_code:"
 DEVICE_CODE_KEY_FMT = _DEVICE_CODE_KEY_PREFIX + "{code}"
 USER_CODE_KEY_FMT = _USER_CODE_KEY_PREFIX + "{code}"
 
-# Atomic GET → status-check → DEL(both keys). Two concurrent pollers must
+# Atomic GET → status-check → DEL(device key). Two concurrent pollers must
 # not both observe APPROVED — only the winner gets the plaintext token,
-# the loser sees nil and the caller maps that to expired_token.
+# the loser sees nil and the caller maps that to expired_token. The user-code
+# mapping is cleaned up separately so Redis Cluster only sees one script key.
 _CONSUME_ON_POLL_LUA = """
 local raw = redis.call('GET', KEYS[1])
 if not raw then return nil end
 local ok, decoded = pcall(cjson.decode, raw)
 if not ok then return nil end
 if decoded.status == 'pending' then return nil end
-if decoded.user_code then
-    redis.call('DEL', ARGV[1] .. decoded.user_code)
-end
 redis.call('DEL', KEYS[1])
 return raw
 """
 
-DEVICE_FLOW_TTL_SECONDS = 15 * 60  # RFC 8628 expires_in
+# The transition ID makes an approved write idempotent and lets callers
+# distinguish a committed write from a connection failure after SETEX.
+_TRANSITION_LUA = """
+local raw = redis.call('GET', KEYS[1])
+if not raw then return 0 end
+local ok, decoded = pcall(cjson.decode, raw)
+if not ok then return -2 end
+
+local target = ARGV[1]
+local transition_marker = ARGV[2]
+if decoded.status ~= 'pending' then
+    if decoded.status == target and decoded.token_id == transition_marker then
+        return 2
+    end
+    return -1
+end
+
+decoded.status = target
+decoded.token_id = transition_marker
+if target == 'approved' then
+    local payload_ok, payload = pcall(cjson.decode, ARGV[3])
+    if not payload_ok then return -2 end
+    decoded.poll_payload = payload
+else
+    decoded.poll_payload = nil
+end
+
+local ttl = redis.call('TTL', KEYS[1])
+local floor = tonumber(ARGV[4])
+if ttl < floor then ttl = floor end
+redis.call('SETEX', KEYS[1], ttl, cjson.encode(decoded))
+return 1
+"""
+
+_RELEASE_GUARD_LUA = """
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+    return redis.call('DEL', KEYS[1])
+end
+return 0
+"""
+
 APPROVED_TTL_SECONDS_MIN = 60  # plaintext-token lifetime floor
 
 USER_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXY3456789"  # ambiguous chars dropped
 USER_CODE_SEGMENT_LEN = 4
 USER_CODE_MAX_CLAIM_ATTEMPTS = 5
-
-DEFAULT_POLL_INTERVAL_SECONDS = 5  # RFC 8628 minimum
-
-
-class DeviceFlowStatus(StrEnum):
-    PENDING = "pending"
-    APPROVED = "approved"
-    DENIED = "denied"
-
-
-class SlowDownDecision(StrEnum):
-    OK = "ok"
-    SLOW_DOWN = "slow_down"
-
-
-class PollPayload(TypedDict):
-    """Body served by the unauthenticated poll endpoint
-    (`POST /openapi/v1/oauth/device/token`) once approve has run.
-
-    A single shape across both branches so the CLI/SPA can parse one
-    contract:
-
-    - ``account`` branch (built in `controllers.openapi.oauth_device.
-      _build_account_poll_payload`) populates ``account`` + ``workspaces``
-      + ``default_workspace_id`` and omits the SSO-only fields.
-    - ``external_sso`` branch (built in
-      `controllers.openapi.oauth_device_sso.approve_external`) populates
-      ``subject_email`` + ``subject_issuer`` and zero-fills the
-      account/workspace fields (``None`` / ``[]``).
-
-    Pre-rendering here means the unauthenticated poll handler doesn't
-    re-query accounts/tenants for authz data.
-    """
-
-    token: str
-    expires_at: str
-    subject_type: SubjectType
-    account: dict[str, object] | None
-    workspaces: list[dict[str, object]]
-    default_workspace_id: str | None
-    token_id: str
-    subject_email: NotRequired[str]
-    subject_issuer: NotRequired[str]
+_TRANSITION_TOKEN_PREFIX = "transition:"
+_LEGACY_APPROVAL_FIELDS = ("subject_email", "account_id", "subject_issuer", "minted_token", "transition_id")
 
 
 @dataclass
 class DeviceFlowState:
-    """``minted_token`` is plaintext between approve and the next poll;
-    DEL'd after the poll reads it.
-    """
+    """Ephemeral device state; approved payload is consumed exactly once."""
 
     user_code: str
     client_id: str
     device_label: str
     status: DeviceFlowStatus
-    subject_email: str | None = None
-    account_id: str | None = None
-    subject_issuer: str | None = None
-    minted_token: str | None = None
     token_id: str | None = None
     created_at: str = ""
     created_ip: str = ""
@@ -124,6 +124,10 @@ class DeviceFlowState:
     @classmethod
     def from_json(cls, raw: str) -> DeviceFlowState:
         data = json.loads(raw)
+        # Device codes live for at most 15 minutes, but tolerate state written
+        # by the previous schema during a rolling deployment.
+        for field_name in _LEGACY_APPROVAL_FIELDS:
+            data.pop(field_name, None)
         if "status" in data:
             data["status"] = DeviceFlowStatus(data["status"])
         return cls(**data)
@@ -141,14 +145,6 @@ def _random_user_code() -> str:
     return f"{_random_user_code_segment()}-{_random_user_code_segment()}"
 
 
-class StateNotFoundError(Exception):
-    pass
-
-
-class InvalidTransitionError(Exception):
-    pass
-
-
 class UserCodeExhaustedError(Exception):
     pass
 
@@ -157,6 +153,8 @@ class DeviceFlowRedis:
     def __init__(self, redis_client) -> None:
         self._redis = redis_client
         self._consume_on_poll_script = redis_client.register_script(_CONSUME_ON_POLL_LUA)
+        self._transition_script = redis_client.register_script(_TRANSITION_LUA)
+        self._release_guard_script = redis_client.register_script(_RELEASE_GUARD_LUA)
 
     def start(self, client_id: str, device_label: str, created_ip: str) -> tuple[str, str, int]:
         device_code = _random_device_code()
@@ -212,42 +210,43 @@ class DeviceFlowRedis:
     def approve(
         self,
         device_code: str,
-        subject_email: str,
-        account_id: str | None,
-        minted_token: str,
+        transition_id: str,
         token_id: str,
-        subject_issuer: str | None = None,
-        poll_payload: PollPayload | None = None,
+        poll_payload: PollPayload,
     ) -> None:
-        state = self._load_state(device_code)
-        if state is None:
-            raise StateNotFoundError(device_code)
-        if state.status is not DeviceFlowStatus.PENDING:
-            raise InvalidTransitionError(f"cannot approve {state.status}")
-
-        state.status = DeviceFlowStatus.APPROVED
-        state.subject_email = subject_email
-        state.account_id = account_id
-        state.subject_issuer = subject_issuer
-        state.minted_token = minted_token
-        state.token_id = token_id
-        state.poll_payload = poll_payload
-
-        new_ttl = self._remaining_ttl(device_code, floor=APPROVED_TTL_SECONDS_MIN)
-        self._redis.setex(DEVICE_CODE_KEY_FMT.format(code=device_code), new_ttl, state.to_json())
-
-    def deny(self, device_code: str) -> None:
-        state = self._load_state(device_code)
-        if state is None:
-            raise StateNotFoundError(device_code)
-        if state.status is not DeviceFlowStatus.PENDING:
-            raise InvalidTransitionError(f"cannot deny {state.status}")
-        state.status = DeviceFlowStatus.DENIED
-        self._redis.setex(
-            DEVICE_CODE_KEY_FMT.format(code=device_code),
-            self._remaining_ttl(device_code, floor=1),
-            state.to_json(),
+        self._transition(
+            device_code=device_code,
+            target=DeviceFlowStatus.APPROVED,
+            transition_id=transition_id,
+            token_id=token_id,
+            poll_payload=poll_payload,
+            ttl_floor=APPROVED_TTL_SECONDS_MIN,
         )
+
+    def deny(self, device_code: str, transition_id: str) -> None:
+        self._transition(
+            device_code=device_code,
+            target=DeviceFlowStatus.DENIED,
+            transition_id=transition_id,
+            token_id="",
+            poll_payload=None,
+            ttl_floor=1,
+        )
+
+    def confirm_approval(
+        self,
+        device_code: str,
+        transition_id: str,
+        token_id: str,
+    ) -> ApprovalTransitionConfirmation:
+        state = self._load_state(device_code)
+        if state is None:
+            return ApprovalTransitionConfirmation.UNKNOWN
+        if state.status is DeviceFlowStatus.APPROVED and state.token_id == self._transition_marker(
+            transition_id, token_id
+        ):
+            return ApprovalTransitionConfirmation.PUBLISHED
+        return ApprovalTransitionConfirmation.NOT_PUBLISHED
 
     def consume_on_poll(self, device_code: str) -> DeviceFlowState | None:
         """Race-safe via Lua EVAL: GET + status-check + DEL execute in a
@@ -257,16 +256,20 @@ class DeviceFlowRedis:
         """
         raw = self._consume_on_poll_script(
             keys=[DEVICE_CODE_KEY_FMT.format(code=device_code)],
-            args=[_USER_CODE_KEY_PREFIX],
         )
         if raw is None:
             return None
         text_ = raw.decode() if isinstance(raw, (bytes, bytearray)) else raw
         try:
-            return DeviceFlowState.from_json(text_)
+            state = DeviceFlowState.from_json(text_)
         except (ValueError, KeyError):
             logger.exception("device_flow: corrupt state on consume %s", device_code)
             return None
+        try:
+            self._redis.delete(USER_CODE_KEY_FMT.format(code=state.user_code))
+        except Exception:
+            logger.exception("device_flow: failed to clean consumed user-code mapping")
+        return state
 
     def record_poll(self, device_code: str, interval_seconds: int) -> SlowDownDecision:
         now = time.time()
@@ -284,273 +287,45 @@ class DeviceFlowRedis:
             return SlowDownDecision.SLOW_DOWN
         return SlowDownDecision.OK
 
-    def _remaining_ttl(self, device_code: str, floor: int) -> int:
-        """``max(remaining, floor)`` — guarantees the CLI has at least
-        ``floor`` seconds to poll after a near-expiry approve.
-        """
-        ttl = self._redis.ttl(DEVICE_CODE_KEY_FMT.format(code=device_code))
-        if ttl is None or ttl < 0:
-            return floor
-        return max(int(ttl), floor)
+    def try_acquire_approval(self, guard_id: str, owner_id: str, ttl_seconds: int) -> bool:
+        return bool(self._redis.set(self._approval_guard_key(guard_id), owner_id, nx=True, ex=ttl_seconds))
 
-
-# ============================================================================
-# Token mint — generate + upsert
-# ============================================================================
-
-
-OAUTH_BODY_BYTES = 32  # ~256 bits entropy
-PREFIX_OAUTH_ACCOUNT = "dfoa_"
-PREFIX_OAUTH_EXTERNAL_SSO = "dfoe_"
-
-# Sentinel issuer for account-flow rows. Postgres' default partial unique
-# index treats NULLs as distinct, which would let two live `dfoa_` rows
-# share (email, client, device) and break rotate-in-place. Storing a
-# non-empty literal makes the composite key collide as intended.
-ACCOUNT_ISSUER_SENTINEL = "dify:account"
-
-
-@dataclass(frozen=True, slots=True)
-class MintResult:
-    """Plaintext token surfaces to the caller once."""
-
-    token: str
-    token_id: uuid.UUID
-    expires_at: datetime
-
-
-@dataclass(frozen=True, slots=True)
-class UpsertOutcome:
-    token_id: uuid.UUID
-    rotated: bool
-    old_hash: str | None
-
-
-def generate_token(prefix: str) -> str:
-    return prefix + secrets.token_urlsafe(OAUTH_BODY_BYTES)
-
-
-def sha256_hex(token: str) -> str:
-    return hashlib.sha256(token.encode("utf-8")).hexdigest()
-
-
-def mint_oauth_token(
-    redis_client,
-    *,
-    subject_email: str,
-    subject_issuer: str | None,
-    account_id: str | None,
-    client_id: str,
-    device_label: str,
-    prefix: str,
-    ttl_days: int,
-    session: Session,
-) -> MintResult:
-    """Live row rotates in place via partial unique index
-    ``uq_oauth_active_per_device``; hard-expired rows are excluded by the
-    index predicate so re-login INSERTs fresh. Pre-rotate Redis entry is
-    deleted so stale AuthContext drops immediately.
-    """
-    if prefix == PREFIX_OAUTH_ACCOUNT:
-        # Account flow always writes the sentinel — caller may pass None
-        # (for clarity) or the sentinel itself; nothing else is valid.
-        if subject_issuer not in (None, ACCOUNT_ISSUER_SENTINEL):
-            raise ValueError(f"account-flow token must use ACCOUNT_ISSUER_SENTINEL, got {subject_issuer!r}")
-        subject_issuer = ACCOUNT_ISSUER_SENTINEL
-    elif prefix == PREFIX_OAUTH_EXTERNAL_SSO:
-        # Defense in depth: enterprise canonicalises + rejects empty,
-        # but a regression there must not yield a NULL composite key here.
-        if not subject_issuer or not subject_issuer.strip():
-            raise ValueError("external-SSO token requires non-empty subject_issuer")
-    else:
-        raise ValueError(f"unknown oauth prefix: {prefix!r}")
-
-    token = generate_token(prefix)
-    new_hash = sha256_hex(token)
-    expires_at = datetime.now(UTC) + timedelta(days=ttl_days)
-
-    outcome = _upsert(
-        session,
-        subject_email=subject_email,
-        subject_issuer=subject_issuer,
-        account_id=account_id,
-        client_id=client_id,
-        device_label=device_label,
-        prefix=prefix,
-        new_hash=new_hash,
-        expires_at=expires_at,
-    )
-
-    if outcome.rotated and outcome.old_hash:
-        redis_client.delete(TOKEN_CACHE_KEY_FMT.format(hash=outcome.old_hash))
-
-    return MintResult(token=token, token_id=outcome.token_id, expires_at=expires_at)
-
-
-def _upsert(
-    session: Session,
-    *,
-    subject_email: str,
-    subject_issuer: str | None,
-    account_id: str | None,
-    client_id: str,
-    device_label: str,
-    prefix: str,
-    new_hash: str,
-    expires_at: datetime,
-) -> UpsertOutcome:
-    # Snapshot prior live row's hash for Redis invalidation post-rotate.
-    # subject_issuer is always non-null here (account flow uses sentinel,
-    # external-SSO is validated upstream), so equality matches the index.
-    # FOR UPDATE locks the row so that concurrent logins for the same
-    # (subject, client, device) serialize here rather than both reading
-    # the same prior and producing two active tokens (TOCTOU race).
-    prior = session.execute(
-        select(OAuthAccessToken.id, OAuthAccessToken.token_hash)
-        .where(
-            OAuthAccessToken.subject_email == subject_email,
-            OAuthAccessToken.subject_issuer == subject_issuer,
-            OAuthAccessToken.client_id == client_id,
-            OAuthAccessToken.device_label == device_label,
-            OAuthAccessToken.revoked_at.is_(None),
+    def release_approval(self, guard_id: str, owner_id: str) -> None:
+        self._release_guard_script(
+            keys=[self._approval_guard_key(guard_id)],
+            args=[owner_id],
         )
-        .limit(1)
-        .with_for_update()
-    ).first()
-    old_hash = prior.token_hash if prior else None
 
-    # Revoke any existing active token for this (subject, client, device) combination.
-    # PostgreSQL's ON CONFLICT doesn't support partial unique indexes (those with WHERE clauses),
-    # so we use a manual revoke-then-insert pattern instead.
-    if prior:
-        session.execute(update(OAuthAccessToken).where(OAuthAccessToken.id == prior.id).values(revoked_at=func.now()))
-
-    # Insert the new token.
-    new_token = OAuthAccessToken(
-        subject_email=subject_email,
-        subject_issuer=subject_issuer,
-        account_id=account_id,
-        client_id=client_id,
-        device_label=device_label,
-        prefix=prefix,
-        token_hash=new_hash,
-        expires_at=expires_at,
-    )
-    session.add(new_token)
-    session.flush()
-
-    token_id = new_token.id
-    session.commit()
-
-    return UpsertOutcome(
-        token_id=uuid.UUID(str(token_id)),
-        rotated=prior is not None,
-        old_hash=old_hash,
-    )
-
-
-# ============================================================================
-# TTL policy — days new OAuth tokens live
-# ============================================================================
-
-
-DEFAULT_OAUTH_TTL_DAYS = 14
-MIN_TTL_DAYS = 1
-MAX_TTL_DAYS = 365
-
-_TTL_ENV_VAR = "OAUTH_TTL_DAYS"
-
-
-def oauth_ttl_days(tenant_id: str | None = None) -> int:
-    """``OAUTH_TTL_DAYS`` env, else default. EE tenant-level lookup
-    is deferred; when it lands it wins over the env (Redis-cached 60s).
-    """
-    _ = tenant_id
-
-    raw = os.environ.get(_TTL_ENV_VAR)
-    if raw is None:
-        return DEFAULT_OAUTH_TTL_DAYS
-    try:
-        value = int(raw)
-    except ValueError:
-        logger.warning(
-            "%s=%r is not an int; falling back to %d",
-            _TTL_ENV_VAR,
-            raw,
-            DEFAULT_OAUTH_TTL_DAYS,
-        )
-        return DEFAULT_OAUTH_TTL_DAYS
-    if value < MIN_TTL_DAYS:
-        logger.warning("%s=%d below min %d; clamping", _TTL_ENV_VAR, value, MIN_TTL_DAYS)
-        return MIN_TTL_DAYS
-    if value > MAX_TTL_DAYS:
-        logger.warning("%s=%d above max %d; clamping", _TTL_ENV_VAR, value, MAX_TTL_DAYS)
-        return MAX_TTL_DAYS
-    return value
-
-
-def subject_match_clauses(ctx: AuthContext) -> tuple[Any, ...]:
-    if ctx.subject_type == SubjectType.ACCOUNT:
-        return (OAuthAccessToken.account_id == str(ctx.account_id),)
-    return (
-        OAuthAccessToken.subject_email == ctx.subject_email,
-        OAuthAccessToken.subject_issuer == ctx.subject_issuer,
-        OAuthAccessToken.account_id.is_(None),
-    )
-
-
-def list_active_sessions(ctx: AuthContext, now: datetime, *, session: Session) -> list[OAuthAccessToken]:
-    return list(
-        session.execute(
-            select(OAuthAccessToken)
-            .where(
-                and_(
-                    *subject_match_clauses(ctx),
-                    OAuthAccessToken.revoked_at.is_(None),
-                    OAuthAccessToken.token_hash.is_not(None),
-                    OAuthAccessToken.expires_at > now,
-                )
-            )
-            .order_by(OAuthAccessToken.created_at.desc())
-        )
-        .scalars()
-        .all()
-    )
-
-
-def token_belongs_to_subject(token_id: str, ctx: AuthContext, *, session: Session) -> bool:
-    row = session.execute(
-        select(OAuthAccessToken.id).where(
-            and_(
-                OAuthAccessToken.id == token_id,
-                *subject_match_clauses(ctx),
+    def _transition(
+        self,
+        *,
+        device_code: str,
+        target: DeviceFlowStatus,
+        transition_id: str,
+        token_id: str,
+        poll_payload: PollPayload | None,
+        ttl_floor: int,
+    ) -> None:
+        result = int(
+            self._transition_script(
+                keys=[DEVICE_CODE_KEY_FMT.format(code=device_code)],
+                args=[
+                    target.value,
+                    self._transition_marker(transition_id, token_id),
+                    json.dumps(poll_payload) if poll_payload is not None else "",
+                    ttl_floor,
+                ],
             )
         )
-    ).first()
-    return row is not None
+        if result in (0, -2):
+            raise StateNotFoundError(device_code)
+        if result == -1:
+            raise InvalidTransitionError(f"cannot transition device flow to {target.value}")
 
+    @staticmethod
+    def _approval_guard_key(guard_id: str) -> str:
+        return f"oauth_device:approval_guard:{guard_id}"
 
-def revoke_oauth_token(redis_client: Any, token_id: str, *, session: Session) -> None:
-    row = (
-        session.query(OAuthAccessToken.token_hash)
-        .filter(
-            OAuthAccessToken.id == token_id,
-            OAuthAccessToken.revoked_at.is_(None),
-        )
-        .one_or_none()
-    )
-    pre_revoke_hash = row[0] if row else None
-
-    stmt = (
-        update(OAuthAccessToken)
-        .where(
-            OAuthAccessToken.id == token_id,
-            OAuthAccessToken.revoked_at.is_(None),
-        )
-        .values(revoked_at=datetime.now(UTC), token_hash=None)
-    )
-    session.execute(stmt)
-    session.commit()
-
-    if pre_revoke_hash:
-        redis_client.delete(TOKEN_CACHE_KEY_FMT.format(hash=pre_revoke_hash))
+    @staticmethod
+    def _transition_marker(transition_id: str, token_id: str) -> str:
+        return f"{_TRANSITION_TOKEN_PREFIX}{transition_id}:{token_id}"

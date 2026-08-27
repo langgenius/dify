@@ -11,8 +11,9 @@ from faker import Faker
 from flask import Flask
 from sqlalchemy.orm import Session
 
+from constants.oauth_bearer import Scope, SubjectType, TokenType
 from controllers.openapi.auth.data import AuthData
-from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType, reset_auth_ctx, set_auth_ctx
+from libs.oauth_bearer import AuthContext, reset_auth_ctx, set_auth_ctx
 from models import Account, Tenant
 from services.account_service import AccountService, TenantService
 from tests.test_containers_integration_tests.helpers import generate_valid_password

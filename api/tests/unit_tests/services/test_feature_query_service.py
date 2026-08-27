@@ -7,6 +7,7 @@ from machinery.context import RequestContext
 from services.entities.feature_entities import (
     FeatureModel,
     LicenseModel,
+    LicenseStatus,
     SystemFeatureModel,
     VectorSpaceLimitationModel,
 )
@@ -54,6 +55,26 @@ def test_deployment_queries_delegate_without_request_context() -> None:
     assert service.get_app_dsl_version() == "0.6.0"
     assert service.get_system_features() is system_features
     assert service.get_license() is license_model
+
+
+@pytest.mark.parametrize(
+    ("status", "expected"),
+    [
+        (LicenseStatus.ACTIVE, True),
+        (LicenseStatus.EXPIRING, True),
+        (LicenseStatus.INACTIVE, False),
+        (LicenseStatus.EXPIRED, False),
+    ],
+)
+def test_enterprise_license_admission(status: LicenseStatus, expected: bool) -> None:
+    gateway = create_autospec(FeatureQueryGateway, instance=True, spec_set=True)
+    gateway.get_public_system_features.return_value = SystemFeatureModel(
+        deployment_edition=DeploymentEdition.ENTERPRISE,
+        license={"status": status},
+    )
+    service = FeatureQueryService(features=gateway, app_dsl_version="0.7.0")
+
+    assert service.has_valid_enterprise_license() is expected
 
 
 def test_workspace_queries_require_active_workspace() -> None:

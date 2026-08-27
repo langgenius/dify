@@ -6,9 +6,12 @@ from machinery.context import RequestContext
 from services.entities.feature_entities import (
     FeatureModel,
     LicenseModel,
+    LicenseStatus,
     SystemFeatureModel,
     VectorSpaceLimitationModel,
 )
+
+_VALID_ENTERPRISE_LICENSE_STATUSES = frozenset({LicenseStatus.ACTIVE, LicenseStatus.EXPIRING})
 
 
 class FeatureQueryGateway(Protocol):
@@ -52,6 +55,10 @@ class FeatureQueryService:
 
     def get_license(self) -> LicenseModel:
         return self._features.get_license()
+
+    def has_valid_enterprise_license(self) -> bool:
+        status = self._features.get_public_system_features().license.status
+        return status in _VALID_ENTERPRISE_LICENSE_STATUSES
 
     @staticmethod
     def _require_active_workspace(context: RequestContext) -> str:

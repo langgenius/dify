@@ -17,6 +17,7 @@ from flask_login import user_logged_in
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from configs import dify_config
+from constants.oauth_bearer import Scope, TokenType
 from controllers.openapi._audit import emit_wrong_surface
 from controllers.openapi.auth.data import (
     AuthData,
@@ -28,8 +29,6 @@ from controllers.openapi.auth.flow import When
 from enums import DeploymentEdition
 from libs.oauth_bearer import (
     AuthContext,
-    Scope,
-    TokenType,
     extract_bearer,
     get_authenticator,
     reset_auth_ctx,
@@ -78,7 +77,6 @@ class AuthPipeline:
             token_hash=identity.token_hash,
             token_id=identity.token_id,
             scopes=frozenset(identity.scopes),
-            tenants=dict(identity.verified_tenants),
             required_scope=scope,
             allowed_roles=allowed_roles,
             rbac=rbac,

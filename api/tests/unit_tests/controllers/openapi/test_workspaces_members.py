@@ -8,8 +8,8 @@ Coverage:
 - Response shape matches the Pydantic models
 
 Auth-pipeline plumbing is bypassed via the `bypass_pipeline` fixture from
-conftest.py; the bearer identity is seeded into the openapi auth ContextVar
-via `_seed` (the slot `validate_bearer` publishes). Tests that exercise
+conftest.py; the bearer identity is seeded into the OpenAPI auth ContextVar.
+Tests that exercise
 endpoint *bodies* skip the single `guard_workspace` decorator via
 ``__wrapped__`` — membership and role enforcement live in the auth pipeline
 and are covered in `auth/test_prepare.py` and `auth/test_verify.py`.
@@ -32,6 +32,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound, UnprocessableEntity
 
+from constants.oauth_bearer import Scope, SubjectType, TokenType
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi import workspaces as workspaces_module
 from controllers.openapi._errors import MemberLicenseExceeded, MemberLimitExceeded
@@ -42,7 +43,7 @@ from controllers.openapi.workspaces import (
     WorkspaceMembersApi,
     WorkspaceSwitchApi,
 )
-from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType, reset_auth_ctx, set_auth_ctx
+from libs.oauth_bearer import AuthContext, reset_auth_ctx, set_auth_ctx
 from models import Account, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from services.account_service import TenantService as RealTenantService
@@ -111,13 +112,11 @@ def _auth_ctx(account_id: uuid.UUID | None = None) -> AuthContext:
         token_type=TokenType.OAUTH_ACCOUNT,
         expires_at=datetime.now(UTC),
         token_hash="h",
-        verified_tenants={},
     )
 
 
 def _auth_data(account_id: uuid.UUID) -> AuthData:
     from controllers.openapi.auth.data import AuthData
-    from libs.oauth_bearer import Scope, TokenType
 
     return AuthData(
         token_type=TokenType.OAUTH_ACCOUNT,

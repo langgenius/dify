@@ -190,3 +190,18 @@ def test_account_repository_updates_email_and_removes_integrations_atomically(
     assert persisted.email == "new@example.com"
     assert persisted.normalized_email == "new@example.com"
     assert sqlite_session.get(AccountIntegrate, integration_id) is None
+
+
+def test_has_active_email_is_case_insensitive_and_excludes_inactive_accounts(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    active = Account(name="Active", email="Active@Example.com", status=AccountStatus.ACTIVE)
+    banned = Account(name="Banned", email="banned@example.com", status=AccountStatus.BANNED)
+    sqlite_session.add_all([active, banned])
+    sqlite_session.commit()
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    assert repository.has_active_email(" active@example.COM ") is True
+    assert repository.has_active_email("banned@example.com") is False
+    assert repository.has_active_email("") is False

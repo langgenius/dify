@@ -7,10 +7,12 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Tenant, TenantAccountJoin, TenantStatus
 from services.account_ports import AccountWorkspaceMembershipQuery
+from services.oauth_device_application_service import DeviceWorkspaceQuery
+from services.oauth_device_contracts import DeviceWorkspace
 from services.workspace_query_service import WorkspaceQuery, WorkspaceRecord
 
 
-class WorkspaceQueryRepository(WorkspaceQuery, AccountWorkspaceMembershipQuery):
+class WorkspaceQueryRepository(WorkspaceQuery, AccountWorkspaceMembershipQuery, DeviceWorkspaceQuery):
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
@@ -50,3 +52,28 @@ class WorkspaceQueryRepository(WorkspaceQuery, AccountWorkspaceMembershipQuery):
         stmt = select(TenantAccountJoin.tenant_id).where(TenantAccountJoin.account_id == account_id)
         with self._session_factory() as session:
             return tuple(session.scalars(stmt).all())
+
+    @override
+    def list_for_device_flow(self, account_id: str) -> tuple[DeviceWorkspace, ...]:
+        stmt = (
+            select(
+                Tenant.id,
+                Tenant.name,
+                TenantAccountJoin.role,
+                TenantAccountJoin.current,
+            )
+            .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
+            .where(TenantAccountJoin.account_id == account_id)
+            .order_by(Tenant.created_at.asc())
+        )
+        with self._session_factory() as session:
+            rows = session.execute(stmt).all()
+            return tuple(
+                DeviceWorkspace(
+                    id=workspace_id,
+                    name=name,
+                    role=role.value,
+                    current=current,
+                )
+                for workspace_id, name, role, current in rows
+            )
