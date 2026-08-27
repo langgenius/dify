@@ -240,10 +240,9 @@
     gap: 4px;
   }
 
-  /* Event/ad mobile: 800×721 slot (Figma 1141:67292). Image fills the box. */
+  /* Event/ad mobile: match the fixed 197px artwork + 160px copy height. */
   :global([data-marketplace-standalone]) .imageSlide {
-    height: auto;
-    aspect-ratio: 800 / 721;
+    height: 357px;
   }
 
   :global([data-marketplace-standalone]) .imageSlide :is(picture, img) {

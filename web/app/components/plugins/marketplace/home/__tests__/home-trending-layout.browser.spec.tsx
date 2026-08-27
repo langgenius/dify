@@ -1,4 +1,5 @@
 import type { PluginBanner } from '@dify/contracts/marketplace'
+import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import HomeTrending from '../home-trending'
 import { HomeBannerSlide } from '../home-trending-slides'
@@ -19,6 +20,20 @@ const createBlogBanner = (id: string, title: string, sort: number): PluginBanner
 })
 
 const blogBanner = createBlogBanner('blog', 'Dify v1.9 new launch', 0)
+const adBanner: PluginBanner = {
+  id: 'ad',
+  style_type: 'ad',
+  title: 'Partner campaign',
+  sort: 1,
+  language: 'en',
+  content: {
+    images: {
+      desktop: '/api/v1/banners/images/banners/ad.png',
+    },
+    link: 'https://partner.example.com',
+    alt_text: 'Partner campaign',
+  },
+}
 const carouselBanners = [
   createBlogBanner('first', 'First banner', 0),
   createBlogBanner('second', 'Second banner', 1),
@@ -26,6 +41,26 @@ const carouselBanners = [
 ]
 
 describe('Marketplace home trending layout', () => {
+  it('keeps standalone mobile ad and blog banners at the same fixed height', async () => {
+    await page.viewport(600, 900)
+    await render(
+      <div data-marketplace-standalone className="w-[560px]">
+        <div data-testid="blog-banner">
+          <HomeBannerSlide banner={blogBanner} isMarketplacePlatform page="plugins" />
+        </div>
+        <div data-testid="ad-banner">
+          <HomeBannerSlide banner={adBanner} isMarketplacePlatform page="plugins" />
+        </div>
+      </div>,
+    )
+
+    const blogSlide = document.querySelector<HTMLElement>('[data-testid="blog-banner"] > a')!
+    const adSlide = document.querySelector<HTMLElement>('[data-testid="ad-banner"] > a')!
+
+    expect(blogSlide.getBoundingClientRect().height).toBe(357)
+    expect(adSlide.getBoundingClientRect().height).toBe(blogSlide.getBoundingClientRect().height)
+  })
+
   it('keeps the blog artwork left corners rounded when its image is cropped', async () => {
     const screen = await render(
       <div className="w-[600px]">
