@@ -1,0 +1,40 @@
+@media (max-width: 879px) {
+  :global([data-marketplace-standalone]) .partnerHeader {
+    box-sizing: border-box;
+    display: grid;
+    width: 100%;
+    grid-template-areas:
+      'title action'
+      'description description';
+    grid-template-columns: minmax(0, 1fr) max-content;
+    align-items: center;
+    column-gap: 12px;
+  }
+
+  :global([data-marketplace-standalone]) .partnerHeaderWithNavigation {
+    padding-right: 80px;
+  }
+
+  :global([data-marketplace-standalone]) .partnerTitle {
+    grid-area: title;
+  }
+
+  :global([data-marketplace-standalone]) .partnerMetadata {
+    display: contents;
+  }
+
+  :global([data-marketplace-standalone]) .partnerDescription {
+    grid-area: description;
+    min-width: 0;
+  }
+
+  :global([data-marketplace-standalone]) .partnerSeparator {
+    display: none;
+  }
+
+  :global([data-marketplace-standalone]) .partnerAction {
+    grid-area: action;
+    justify-self: end;
+    white-space: nowrap;
+  }
+}

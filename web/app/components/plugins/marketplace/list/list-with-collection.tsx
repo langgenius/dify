@@ -6,13 +6,14 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocale, useTranslation } from '#i18n'
 import { getLanguage } from '@/i18n-config/language'
+import { trackMarketplaceSiteEvent } from '@/utils/marketplace-site-track'
 import { useMarketplaceMoreClick } from '../atoms'
 import { MARKETPLACE_CONTAINER_ID } from '../constants'
 import { buildCarouselPages } from '../utils'
 import CardWrapper from './card-wrapper'
 import Carousel from './carousel'
-import { trackMarketplaceSiteEvent } from '@/utils/marketplace-site-track'
 import { BECOME_PARTNER_URL, GRID_CLASS, PARTNER_COLLECTION_NAMES } from './collection-constants'
+import styles from './list-with-collection.module.css'
 import { useCarouselItemsPerPage } from './use-carousel-items-per-page'
 
 const COLLECTION_PRELOAD_MARGIN = '320px 0px'
@@ -182,20 +183,44 @@ const CollectionSection = ({
   return (
     <div ref={sectionRef} className="py-3" data-marketplace-collection={collection.name}>
       <div className="flex items-end justify-between">
-        <div>
-          <div className="title-xl-semi-bold text-text-primary">
+        <div
+          className={cn(
+            isPartnersCollection && styles.partnerHeader,
+            isPartnersCollection && hasMultiplePages && styles.partnerHeaderWithNavigation,
+          )}
+        >
+          <div
+            className={cn(
+              'title-xl-semi-bold text-text-primary',
+              isPartnersCollection && styles.partnerTitle,
+            )}
+          >
             {collection.label[getLanguage(locale)]}
           </div>
-          <div className="flex items-center gap-x-2 system-xs-regular text-text-tertiary">
-            {collection.description[getLanguage(locale)]}
+          <div
+            className={cn(
+              'flex items-center gap-x-2 system-xs-regular text-text-tertiary',
+              isPartnersCollection && styles.partnerMetadata,
+            )}
+          >
+            {isPartnersCollection ? (
+              <span className={styles.partnerDescription}>
+                {collection.description[getLanguage(locale)]}
+              </span>
+            ) : (
+              collection.description[getLanguage(locale)]
+            )}
             {isPartnersCollection && (
               <>
-                <span className="text-divider-regular">|</span>
+                <span className={cn(styles.partnerSeparator, 'text-divider-regular')}>|</span>
                 <a
                   href={BECOME_PARTNER_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-x-0.5 text-text-accent hover:underline"
+                  className={cn(
+                    styles.partnerAction,
+                    'flex items-center gap-x-0.5 text-text-accent hover:underline',
+                  )}
                   onClick={() => {
                     trackMarketplaceSiteEvent('marketplace_creator_partner_click', {
                       click_target: 'Become a Partner',
