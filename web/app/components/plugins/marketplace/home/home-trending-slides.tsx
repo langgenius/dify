@@ -396,7 +396,7 @@ function BlogBannerSlide({
         className={cn(
           styles.updatesArt,
           isMarketplacePlatform && styles.stackedVisual,
-          'h-[200px] shrink-0 object-cover',
+          'h-[200px] shrink-0 rounded-2xl object-cover',
         )}
       />
     </Link>
@@ -435,11 +435,16 @@ function ImageBannerSlide({
     >
       <picture className="block size-full">
         <source
-          media={isMarketplacePlatform ? MARKETPLACE_MOBILE_BANNER_MEDIA : EMBEDDED_MOBILE_BANNER_MEDIA}
+          media={
+            isMarketplacePlatform ? MARKETPLACE_MOBILE_BANNER_MEDIA : EMBEDDED_MOBILE_BANNER_MEDIA
+          }
           srcSet={resolved.mobile}
         />
         {resolved.tablet && (
-          <source media={marketplaceTabletBannerMedia(isMarketplacePlatform)} srcSet={resolved.tablet} />
+          <source
+            media={marketplaceTabletBannerMedia(isMarketplacePlatform)}
+            srcSet={resolved.tablet}
+          />
         )}
         <img
           src={resolved.desktop}
