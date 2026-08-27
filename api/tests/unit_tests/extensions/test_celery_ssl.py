@@ -244,6 +244,7 @@ class TestCelerySSLConfiguration:
 
         assert celery_app.conf["broker_transport_options"]["global_keyprefix"] == "enterprise-a:"
         assert celery_app.conf["result_backend_transport_options"]["global_keyprefix"] == "enterprise-a:"
+        assert "tasks.collect_agent_config_tool_files_task" in celery_app.conf["imports"]
         assert "tasks.collect_agent_resources_task" in celery_app.conf["imports"]
         assert "tasks.delete_conversation_task" in celery_app.conf["imports"]
         assert celery_app.conf["beat_schedule"]["conversation_cleanup_sweeper"]["task"] == (

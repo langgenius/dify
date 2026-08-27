@@ -6,9 +6,9 @@ per-user build draft), reads only from ``AgentSoulConfig.config_skills``,
 ``config_files``, ``env.variables``, and ``config_note``, and mutates only the
 target Soul JSON. Source file refs are tenant-scoped rather than user-scoped:
 config writes can be owned by a build-draft Account while the uploaded
-``ToolFile`` came from an end-user execution context. It intentionally does not
-manage object-storage lifecycle: removing or replacing a config asset drops the
-Soul reference only.
+``ToolFile`` came from an end-user execution context. It does not delete object
+storage inline: removing or replacing a config asset commits the
+Soul first, then schedules reference-aware ToolFile collection.
 """
 
 from __future__ import annotations
@@ -51,6 +51,7 @@ from models.tools import ToolFile
 from services.agent.config_skill_normalize_service import ConfigSkillNormalizeService
 from services.agent.skill_package_service import SkillPackageError
 from services.skill_management_service import SkillManagementService, SkillManagementServiceError
+from tasks.collect_agent_config_tool_files_task import enqueue_agent_config_tool_file_collection
 
 
 class AgentConfigVersionKind(StrEnum):
@@ -147,10 +148,12 @@ class AgentConfigService:
         tool_file_manager: ToolFileManager | None = None,
         skill_normalize_service: ConfigSkillNormalizeService | None = None,
         session_factory: Callable[[], Session] | None = None,
+        tool_file_collection_enqueuer: Callable[..., None] | None = None,
     ) -> None:
         self._tool_files = tool_file_manager or ToolFileManager()
         self._skill_normalizer = skill_normalize_service or ConfigSkillNormalizeService()
         self._session_factory = session_factory or default_session_factory.create_session
+        self._enqueue_tool_file_collection = tool_file_collection_enqueuer or enqueue_agent_config_tool_file_collection
 
     def resolve_target(
         self,
@@ -608,6 +611,7 @@ class AgentConfigService:
                 user_id=user_id,
             )
             self._require_writable(target, surface=surface)
+            previous_tool_file_ids = self._soul_tool_file_ids(target.agent_soul)
             try:
                 skill_ref, _package = self._skill_normalizer.normalize(
                     content=content,
@@ -618,15 +622,24 @@ class AgentConfigService:
                 )
             except SkillPackageError as exc:
                 raise AgentConfigServiceError(exc.code, exc.message, status_code=exc.status_code) from exc
-            agent_soul = target.agent_soul.model_copy(deep=True)
-            existing = {item.name: item for item in agent_soul.config_skills}
-            order = [item.name for item in agent_soul.config_skills]
-            if skill_ref.name not in order:
-                order.append(skill_ref.name)
-            existing[skill_ref.name] = skill_ref
-            agent_soul.config_skills = [existing[name] for name in order if name in existing]
-            target.version.config_snapshot = agent_soul
-            session.commit()
+            try:
+                agent_soul = target.agent_soul.model_copy(deep=True)
+                existing = {item.name: item for item in agent_soul.config_skills}
+                order = [item.name for item in agent_soul.config_skills]
+                if skill_ref.name not in order:
+                    order.append(skill_ref.name)
+                existing[skill_ref.name] = skill_ref
+                agent_soul.config_skills = [existing[name] for name in order if name in existing]
+                target.version.config_snapshot = agent_soul
+                session.commit()
+            except Exception:
+                session.rollback()
+                self._enqueue_tool_file_collection(tenant_id=tenant_id, candidate_ids={skill_ref.file_id})
+                raise
+            self._enqueue_tool_file_collection(
+                tenant_id=tenant_id,
+                candidate_ids=(previous_tool_file_ids - self._soul_tool_file_ids(agent_soul)) | {skill_ref.file_id},
+            )
             target.agent_soul = agent_soul
             return {
                 "skill": self._serialize_skill_item(skill_ref),
@@ -730,27 +743,49 @@ class AgentConfigService:
             )
             self._require_writable(target, surface=surface)
             agent_soul = target.agent_soul.model_copy(deep=True)
-            if payload.files:
-                agent_soul.config_files = self._apply_file_updates(
-                    session,
+            previous_tool_file_ids = self._soul_tool_file_ids(agent_soul) if payload.files or payload.skills else set()
+            source_tool_file_ids = {
+                update.file_ref.id
+                for update in (*payload.files, *payload.skills)
+                if update.file_ref is not None and update.file_ref.kind == "tool_file"
+            }
+            created_tool_file_ids: set[str] = set()
+            try:
+                if payload.files:
+                    agent_soul.config_files = self._apply_file_updates(
+                        session,
+                        tenant_id=tenant_id,
+                        current=agent_soul.config_files,
+                        updates=payload.files,
+                    )
+                if payload.skills:
+                    agent_soul.config_skills = self._apply_skill_updates(
+                        session,
+                        tenant_id=tenant_id,
+                        user_id=user_id,
+                        current=agent_soul.config_skills,
+                        updates=payload.skills,
+                        created_tool_file_ids=created_tool_file_ids,
+                    )
+                if payload.env_text is not None:
+                    agent_soul.env.variables = self._apply_env_text(agent_soul.env.variables, payload.env_text)
+                if payload.note is not None:
+                    agent_soul.config_note = payload.note
+                target.version.config_snapshot = agent_soul
+                session.commit()
+            except Exception:
+                session.rollback()
+                self._enqueue_tool_file_collection(
                     tenant_id=tenant_id,
-                    current=agent_soul.config_files,
-                    updates=payload.files,
+                    candidate_ids=created_tool_file_ids,
                 )
-            if payload.skills:
-                agent_soul.config_skills = self._apply_skill_updates(
-                    session,
-                    tenant_id=tenant_id,
-                    user_id=user_id,
-                    current=agent_soul.config_skills,
-                    updates=payload.skills,
-                )
-            if payload.env_text is not None:
-                agent_soul.env.variables = self._apply_env_text(agent_soul.env.variables, payload.env_text)
-            if payload.note is not None:
-                agent_soul.config_note = payload.note
-            target.version.config_snapshot = agent_soul
-            session.commit()
+                raise
+            self._enqueue_tool_file_collection(
+                tenant_id=tenant_id,
+                candidate_ids=(previous_tool_file_ids - self._soul_tool_file_ids(agent_soul))
+                | source_tool_file_ids
+                | created_tool_file_ids,
+            )
             target.agent_soul = agent_soul
             return self._manifest_for_target(target)
 
@@ -1043,6 +1078,7 @@ class AgentConfigService:
         user_id: str,
         current: list[AgentConfigSkillRefConfig],
         updates: list[ConfigPushSkillItem],
+        created_tool_file_ids: set[str] | None = None,
     ) -> list[AgentConfigSkillRefConfig]:
         by_name = {item.name: item for item in current}
         order = [item.name for item in current]
@@ -1073,10 +1109,22 @@ class AgentConfigService:
                 )
             except SkillPackageError as exc:
                 raise AgentConfigServiceError(exc.code, exc.message, status_code=exc.status_code) from exc
+            if created_tool_file_ids is not None:
+                created_tool_file_ids.add(skill_ref.file_id)
             if name not in order:
                 order.append(name)
             by_name[name] = skill_ref
         return [by_name[name] for name in order if name in by_name]
+
+    @staticmethod
+    def _soul_tool_file_ids(agent_soul: AgentSoulConfig) -> set[str]:
+        ids = {skill.file_id for skill in agent_soul.config_skills if not skill.is_missing and skill.file_id}
+        ids.update(
+            file_ref.file_id
+            for file_ref in agent_soul.config_files
+            if file_ref.file_kind == "tool_file" and not file_ref.is_missing and file_ref.file_id
+        )
+        return ids
 
     def _validate_source_ref(
         self,
