@@ -186,8 +186,9 @@ def test_subject_only_requirement_outcomes(
 
 
 def test_ranks_reproduce_the_account_pipeline_order() -> None:
-    """`composition.py:48-55` as an executable assertion: strictly increasing,
-    so every pair is pinned — membership's 404 before RBAC's 403 included.
+    """The account pipeline's order as an executable assertion: strictly
+    increasing, so every pair is pinned — membership's 404 before RBAC's 403
+    included.
     """
     ordered = (
         SubjectCheck,
@@ -337,8 +338,8 @@ class TestMembership:
         RequireWorkspaceMembership().run(subject, ctx, sqlite_session)
 
     def test_declared_membership_runs_on_a_route_with_no_path_params(self, app: Flask, sqlite_session: Session) -> None:
-        """`GET /apps` is `guard_workspace` with `workspace_id` in the query
-        string, so membership cannot be inferred from `view_args`.
+        """`GET /apps` takes its workspace from the query string, so membership
+        cannot be inferred from `view_args`.
         """
         _persist(sqlite_session, _tenant(), _account())
         subject = _account_subject()
@@ -422,8 +423,8 @@ class TestRBACCheck:
     def test_the_role_floor_gives_way_to_rbac(
         self, app: Flask, sqlite_session: Session, config_overrides: Callable[..., None]
     ) -> None:
-        """`check_workspace_role` deliberately skips when RBAC is on, so a
-        member below the legacy floor must still reach the RBAC check.
+        """The role floor deliberately stands down when RBAC is on, so a member
+        below the legacy floor must still reach the RBAC check.
         """
         config_overrides(RBAC_ENABLED=True)
         _persist(sqlite_session, _app(), _tenant(), _account(), _membership(TenantAccountRole.NORMAL))
@@ -479,8 +480,8 @@ class TestRBACCheck:
     def test_a_scene_less_declaration_keeps_enforcing_the_role_floor(
         self, app: Flask, sqlite_session: Session, config_overrides: Callable[..., None]
     ) -> None:
-        """`workspaces.py`'s member-management routes declare `allowed_roles=`
-        and no `rbac=`, so today's skip condition never fires for them.
+        """`workspaces.py`'s member-management routes declare a role floor and no
+        scene, so the stand-down never fires for them.
         """
         config_overrides(RBAC_ENABLED=True)
         _persist(sqlite_session, _tenant(), _account(), _membership(TenantAccountRole.NORMAL))

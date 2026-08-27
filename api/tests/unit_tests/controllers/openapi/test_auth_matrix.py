@@ -1,16 +1,15 @@
 """The /openapi/v1 allow/deny matrix, and a snapshot of the generated document.
 
-Both artifacts are pinned against the auth layer as it stands *before* any route
-moves onto `@endpoint`, so a migration that changes an answer fails here rather
-than in production.
+Both artifacts were pinned against the auth layer as it stood *before* any route
+moved onto `@endpoint`, so a migration that changed an answer failed here rather
+than in production. The rows still say what each route answers today.
 
-The matrix is derived from `auth/composition.py`'s two pipelines, not from each
-route's guard kwargs: `check_app_api_enabled` and `check_workspace_member` fire
-on every app-scoped route through `When(PATH_HAS_APP_ID)`, `check_workspace_member`
-fires again on every `guard_workspace` route through `WORKSPACE_MEMBERSHIP_REQUIRED`,
-`check_workspace_role` stands down when RBAC is enabled *and* the route declares a
-scene, and `check_private_app_permission` is not gated on `webapp_auth.enabled`
-while `check_acl` is. Reading kwargs alone under-counts every one of those.
+The matrix is derived from what actually runs, not from what a route declares: a
+route's own requirements are merged with the fixed ones its subject's pipeline
+carries, `RBACCheck`'s role floor stands down when RBAC is enabled *and* the route
+declares a scene, and `RequireWebappAccess` applies the private-app check whether
+or not `webapp_auth.enabled` gates the ACL. Reading declarations alone under-counts
+every one of those.
 
 Requests run through the real Flask blueprint with the real router, the real
 pipeline and real database rows. The only substitutions are at process seams the
@@ -29,36 +28,31 @@ RBAC scene, and `files.upload-rbac_on_denied` is the row that says so.
 Admission is observed as HTTP 418: a `user_logged_in` receiver raises `ImATeapot`
 at the moment the pipeline mounts the caller, which is after every requirement has
 passed and before the view body runs. That keeps a row from depending on whether a
-view could complete (several stream SSE or invoke a workflow), and it is a seam
-both the current pipeline and its replacement go through. One route mounts no
+view could complete (several stream SSE or invoke a workflow). One route mounts no
 caller — `permitted_external.list` resolves no end user because it carries no
 `app_id` — so its admission row says so and asserts the view's own 200 instead.
 
-Three answers in the table are worth reading twice, because they are what the
-current code does rather than what a route's decorator suggests:
+Two answers in the table are worth reading twice, because they are what the code
+does rather than what a route's declaration suggests:
 
-* `workspaces.describe` uses plain `guard`, so a non-member is *admitted* by auth
-  and refused by the view's own lookup. `workspaces.switch`, one path segment away,
-  uses `guard_workspace` and is refused by auth.
-* `permitted_external.describe` carries an `app_id` but runs the external-SSO
-  pipeline, which has no `check_workspace_mismatch`; a foreign `workspace_id` query
-  is admitted there and answered 422 on every account-pipeline app route.
-* No token the shipped registry mints can fail `check_scope` — `dfoa_` carries
+* `workspaces.describe` declares no membership requirement, so a non-member is
+  *admitted* by auth and refused by the view's own lookup. `workspaces.switch`,
+  one path segment away, declares one and is refused by auth.
+* No token the shipped registry mints can fail `TokenScope` — `dfoa_` carries
   `Scope.FULL` and `dfoe_` carries exactly the two scopes its routes ask for — so
   the scope rows mint from a deliberately narrowed registry. Those rows are not
-  dead weight and must not be simplified away: `check_scope` is live code on every
+  dead weight and must not be simplified away: `TokenScope` is live code on every
   request, and the day a narrower token kind is minted it is the only thing
   standing between that token and every route it was not scoped for.
 
-Nine rows are eligible for an `accepted_delta`: the `foreign_workspace_query` answer
-on the app-scoped routes that run the account pipeline. That 422 comes from
+Nine rows were eligible for an `accepted_delta`: the `foreign_workspace_query`
+answer on the app-scoped routes that ran the account pipeline. That 422 came from
 `check_workspace_mismatch`, which the replacement layer deliberately does not have
-(spec 2.9, accepted behaviour exception 1). A row still on the old layer asserts
-today's exact status and message; the migration task that moves each route flips its
-own row in its own commit, to the plain admission the route gives once the query
-param is ignored. `test_accepted_behaviour_deltas_are_bounded_and_still_exact` stops
-that set from growing quietly, and stops a flipped row from being left loose enough
-to pass either way.
+(spec 2.9, accepted behaviour exception 1), so a foreign `?workspace_id=` is now
+ignored rather than refused. Each was flipped in the commit that moved its route,
+and the set is empty; `test_accepted_behaviour_deltas_are_bounded_and_still_exact`
+rebuilds the eligible set from route structure, so it keeps pinning the flipped
+answer exactly and would catch a marker reappearing on any row.
 """
 
 from __future__ import annotations
@@ -112,7 +106,7 @@ class Trait(StrEnum):
 
     Every member here is a fact about the *shape* of the request — is there an
     `app_id` in the path, can a `dfoe_` token address this route at all. None is
-    read off a guard's `allowed_roles=` or `rbac=` kwarg, deliberately: gating a
+    read off a route's declared requirements, deliberately: gating a
     case on a declared check means a route that *gains* that check during migration
     simply loses the row, and gaining a check is the hazard this plan cares about
     most. Cases like `RBAC_ON_DENIED` therefore run on every route an account
@@ -217,18 +211,6 @@ DENY_NON_MEMBER = Expect(404, "workspace not found")
 DENY_ROLE = Expect(403, "insufficient workspace role")
 DENY_API_DISABLED = Expect(403, "service_api_disabled")
 DENY_UNKNOWN_APP = Expect(404, "app not found")
-ACCEPTED_DELTA_FOREIGN_WORKSPACE = Expect(
-    422,
-    "workspace_id does not match app's workspace",
-    note="check_workspace_mismatch, from When(PATH_HAS_APP_ID) in the account pipeline",
-    accepted_delta=(
-        "spec 2.9 / accepted behaviour exception 1: the replacement layer has no "
-        "check_workspace_mismatch, so a foreign ?workspace_id= is ignored rather than "
-        "refused. No app route declares the query param and difyctl never sends it on an "
-        "app-scoped path, so only a raw HTTP caller can reach it. Flip this row in the "
-        "migration commit that moves this route, not before."
-    ),
-)
 DENY_ACCESS_MODE = Expect(403, "subject_not_allowed_for_access_mode")
 DENY_MODE_UNRESOLVED = Expect(403, "app or access mode not loaded")
 DENY_PRIVATE_APP = Expect(403, "user_not_allowed_for_private_app")
@@ -852,7 +834,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
         Case.FOREIGN_WORKSPACE_QUERY: Expect(
             ADMITTED,
-            note="the external-SSO pipeline runs no check_workspace_mismatch, unlike the account pipeline",
+            note="a foreign ?workspace_id= is ignored on every app-scoped route (spec 2.9)",
         ),
         Case.EE_EXTERNAL_PUBLIC: ADMIT,
         Case.EE_EXTERNAL_SSO_VERIFIED: ADMIT,
@@ -914,8 +896,8 @@ def _registry(rows: dict[str, ResolvedRow], *, narrow_scopes: bool) -> TokenKind
     """`narrow_scopes` mints tokens carrying no scope at all.
 
     The shipped registry gives `dfoa_` `Scope.FULL` and `dfoe_` exactly the two
-    scopes its routes ask for, so no shipped token can fail `check_scope`. That is
-    a property of today's two token kinds, not of the check: `check_scope` runs on
+    scopes its routes ask for, so no shipped token can fail `TokenScope`. That is
+    a property of today's two token kinds, not of the check: `TokenScope` runs on
     every request, and a narrower kind is the only way to reach its refusal. Do not
     delete the scope rows on the grounds that no real token trips them — they are
     what will catch a third token kind being routed somewhere it was not scoped for.
@@ -1366,7 +1348,7 @@ DEVICE_FLOW_OPERATIONS_OUTSIDE_THIS_PR: frozenset[tuple[str, str]] = frozenset(
         ("post", "/oauth/device/deny"),
     }
 )
-"""The other five raw sites — device-flow routes that carry no `auth_router.guard`.
+"""The other five raw sites — device-flow routes that carry no `@endpoint`.
 
 They authenticate through `bearer_feature_required`, are not among the 25 handlers
 this PR moves, and must therefore keep their exact response sets. Tolerating a
