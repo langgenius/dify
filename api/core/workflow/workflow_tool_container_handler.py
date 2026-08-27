@@ -288,7 +288,7 @@ class WorkflowToolContainerHandler:
         )
         node_factory = DifyNodeFactory.from_graph_init_context(
             graph_init_context=graph_init_context,
-            graph_runtime_state=state,
+            runtime_state=state,
             human_input_run_context=human_input_run_context,
         )
         graph = Graph.init(

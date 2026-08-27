@@ -76,8 +76,8 @@ def _build_graph(runtime_state: RuntimeState, form_repository: HumanInputFormRep
     start_node = StartNode(
         node_id="start",
         data=StartNodeData(title="start", variables=[]),
-        graph_init_params=params,
-        graph_runtime_state=runtime_state,
+        init_params=params,
+        runtime_state=runtime_state,
     )
 
     if_else_node = IfElseNode(
@@ -98,8 +98,8 @@ def _build_graph(runtime_state: RuntimeState, form_repository: HumanInputFormRep
                 )
             ],
         ),
-        graph_init_params=params,
-        graph_runtime_state=runtime_state,
+        init_params=params,
+        runtime_state=runtime_state,
     )
 
     human_data = HumanInputNodeData(
@@ -111,30 +111,30 @@ def _build_graph(runtime_state: RuntimeState, form_repository: HumanInputFormRep
     human_node = HumanInputNode(
         node_id="human_input",
         data=human_data,
-        graph_init_params=params,
-        graph_runtime_state=runtime_state,
+        init_params=params,
+        runtime_state=runtime_state,
         hitl_callback=DifyHITLCallback(form_repository=form_repository, node_data=human_data),
     )
 
     answer_false_node = AnswerNode(
         node_id="answer_false",
         data=AnswerNodeData(title="answer_false", answer="unreachable branch"),
-        graph_init_params=params,
-        graph_runtime_state=runtime_state,
+        init_params=params,
+        runtime_state=runtime_state,
     )
 
     answer_after_pause = AnswerNode(
         node_id="answer_after_pause",
         data=AnswerNodeData(title="answer_after_pause", answer="Post-branch answer chunk 1"),
-        graph_init_params=params,
-        graph_runtime_state=runtime_state,
+        init_params=params,
+        runtime_state=runtime_state,
     )
 
     answer_after_pause_2 = AnswerNode(
         node_id="answer_after_pause_2",
         data=AnswerNodeData(title="answer_after_pause_2", answer="Post-branch answer chunk 2"),
-        graph_init_params=params,
-        graph_runtime_state=runtime_state,
+        init_params=params,
+        runtime_state=runtime_state,
     )
 
     return (
@@ -170,7 +170,7 @@ def test_if_else_human_input_pause_resume_answer_chunks_survive_resume() -> None
     graph_1 = _build_graph(runtime_state_1, _mock_repo_paused())
     engine_1 = Engine(
         graph=graph_1,
-        graph_runtime_state=runtime_state_1,
+        runtime_state=runtime_state_1,
         command_channel=InMemoryChannel(),
     )
     filter_1 = ResponseStreamFilter()
@@ -194,7 +194,7 @@ def test_if_else_human_input_pause_resume_answer_chunks_survive_resume() -> None
     graph_2 = _build_graph(runtime_state_2, _mock_repo_resumed(action_id="continue"))
     engine_2 = Engine(
         graph=graph_2,
-        graph_runtime_state=runtime_state_2,
+        runtime_state=runtime_state_2,
         command_channel=InMemoryChannel(),
     )
     filter_2 = ResponseStreamFilter()

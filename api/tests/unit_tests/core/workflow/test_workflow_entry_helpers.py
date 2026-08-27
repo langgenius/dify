@@ -132,7 +132,7 @@ class TestWorkflowEntryInit:
         handler_factories = graph_engine_cls.call_args.kwargs["container_handler_factories"]
         graph_engine_cls.assert_called_once_with(
             graph=sentinel.graph,
-            graph_runtime_state=graph_runtime_state,
+            runtime_state=graph_runtime_state,
             command_channel=sentinel.command_channel,
             workers=workflow_entry.dify_config.GRAPH_ENGINE_MAX_WORKERS,
             container_handler_factories=handler_factories,
@@ -621,7 +621,7 @@ class TestWorkflowEntryHelpers:
         )
         dify_node_factory_cls.assert_called_once_with(
             graph_init_context=sentinel.graph_init_context,
-            graph_runtime_state=sentinel.graph_runtime_state,
+            runtime_state=sentinel.graph_runtime_state,
         )
         mapping_user_inputs_to_variable_pool.assert_called_once_with(
             variable_mapping={},
@@ -763,7 +763,7 @@ class TestWorkflowEntryNodeLayers:
         )
 
         class FakeNode:
-            graph_runtime_state = sentinel.graph_runtime_state
+            runtime_state = sentinel.graph_runtime_state
 
             def bind_execution_id(self, _execution_id):
                 return None
@@ -777,7 +777,7 @@ class TestWorkflowEntryNodeLayers:
             patch.object(workflow_entry, "InMemoryChannel", return_value=sentinel.command_channel),
             patch.object(
                 workflow_entry,
-                "ReadOnlyGraphRuntimeStateWrapper",
+                "ReadOnlyRuntimeStateWrapper",
                 return_value=sentinel.read_only_runtime_state,
             ) as runtime_state_wrapper,
         ):
@@ -796,7 +796,7 @@ class TestWorkflowEntryNodeLayers:
         observability_layer = MagicMock()
 
         class FakeNode:
-            graph_runtime_state = sentinel.graph_runtime_state
+            runtime_state = sentinel.graph_runtime_state
 
             def bind_execution_id(self, _execution_id):
                 return None
@@ -810,7 +810,7 @@ class TestWorkflowEntryNodeLayers:
             patch.object(workflow_entry, "ObservabilityLayer", return_value=observability_layer),
             patch.object(
                 workflow_entry,
-                "ReadOnlyGraphRuntimeStateWrapper",
+                "ReadOnlyRuntimeStateWrapper",
                 return_value=sentinel.read_only_runtime_state,
             ),
         ):

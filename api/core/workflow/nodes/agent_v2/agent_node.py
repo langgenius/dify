@@ -57,8 +57,7 @@ from .runtime_request_builder import (
 from .session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
 
 if TYPE_CHECKING:
-    from graphon.entities import InitParams
-    from graphon.runtime import RuntimeState
+    from graphon.runtime import InitParams, RuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -82,8 +81,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         node_id: str,
         data: DifyAgentNodeData,
         *,
-        graph_init_params: InitParams,
-        graph_runtime_state: RuntimeState,
+        init_params: InitParams,
+        runtime_state: RuntimeState,
         binding_resolver: WorkflowAgentBindingResolver,
         runtime_request_builder: WorkflowAgentRuntimeRequestBuilder,
         agent_backend_client: AgentBackendRunClient,
@@ -96,8 +95,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         super().__init__(
             node_id=node_id,
             data=data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=init_params,
+            runtime_state=runtime_state,
         )
         self._binding_resolver = binding_resolver
         self._runtime_request_builder = runtime_request_builder
@@ -157,15 +156,15 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         metadata: dict[str, Any],
     ) -> Generator[NodeEventPayload | NodeRunPauseRequestedEvent, None, None]:
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
-        workflow_id = self.graph_init_params.workflow_id
+        workflow_id = self.init_params.workflow_id
         workflow_run_id = get_system_text(
-            self.graph_runtime_state.variable_pool,
+            self.runtime_state.variable_pool,
             SystemVariableKey.WORKFLOW_EXECUTION_ID,
         )
         # Set on chatflow (advanced-chat) runs; None for a pure workflow run. Lets an
         # ask_human form be tagged with its conversation in addition to workflow_run_id.
         conversation_id = get_system_text(
-            self.graph_runtime_state.variable_pool,
+            self.runtime_state.variable_pool,
             SystemVariableKey.CONVERSATION_ID,
         )
 
@@ -274,7 +273,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         workflow_run_id=workflow_run_id,
                         node_id=self._node_id,
                         node_execution_id=self.execution_id,
-                        variable_pool=self.graph_runtime_state.variable_pool,
+                        variable_pool=self.runtime_state.variable_pool,
                         binding=bundle.binding,
                         agent=bundle.agent,
                         snapshot=bundle.snapshot,
@@ -604,7 +603,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
     def _is_graph_aborted(self) -> bool:
         """Let Agent SSE consumption observe Engine's cooperative abort state."""
         try:
-            return self.graph_runtime_state.graph_execution.aborted
+            return self.runtime_state.graph_execution.aborted
         except (AttributeError, RuntimeError):
             return False
 

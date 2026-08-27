@@ -81,14 +81,14 @@ def test_stop_aware_queue_delegates_reads() -> None:
     inner = Mock()
     inner.get.return_value = _start_task("queued")
     inner.qsize.return_value = 1
-    inner.drain.return_value = [_start_task("queued")]
+    inner.take_all.return_value = [_start_task("queued")]
     inner.dumps.return_value = "{}"
     queue = StopAwareReadyQueue(inner, task_id="task-1", graph_execution=_graph_execution())
 
     assert queue.get(timeout=0.1) == _start_task("queued")
     queue.task_done()
     assert queue.qsize() == 1
-    assert queue.drain() == [_start_task("queued")]
+    assert queue.take_all() == [_start_task("queued")]
     assert queue.dumps() == "{}"
     queue.loads("{}")
 

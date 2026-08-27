@@ -51,12 +51,11 @@ from core.workflow.nodes.agent_v2.session_store import (
 )
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.engine_events import NodeRunPauseRequestedEvent
-from graphon.entities import InitParams
 from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.node_events import StreamCompletedEvent
-from graphon.runtime import RuntimeState
+from graphon.runtime import InitParams, RuntimeState
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
@@ -442,8 +441,8 @@ def _node(
         data=DifyAgentNodeData.model_validate(
             {"type": BuiltinNodeTypes.AGENT, "version": "2", "agent_node_kind": "dify_agent"}
         ),
-        graph_init_params=graph_init_params,
-        graph_runtime_state=cast(
+        init_params=graph_init_params,
+        runtime_state=cast(
             RuntimeState,
             SimpleNamespace(
                 variable_pool=FakeVariablePool(),
@@ -1052,7 +1051,7 @@ def test_agent_node_cancels_backend_run_when_stream_raises_unexpected_error():
 def test_agent_node_uses_graph_abort_reason_when_cancel_request_fails(caplog):
     client = CancelFailingStreamBackendClient()
     node = _node(agent_backend_client=client)
-    node.graph_runtime_state.graph_execution = SimpleNamespace(aborted=True)
+    node.runtime_state.graph_execution = SimpleNamespace(aborted=True)
 
     terminal, failure = node._consume_event_stream(
         "run-1",

@@ -76,8 +76,8 @@ def init_parameter_extractor_node(config: dict, memory=None):
     node = ParameterExtractorNode(
         node_id=str(uuid.uuid4()),
         data=ParameterExtractorNodeData.model_validate(config["data"]),
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
         credentials_provider=MagicMock(spec=CredentialsProvider),
         model_factory=MagicMock(spec=ModelFactory),
         model_instance=MagicMock(spec=ModelInstance),

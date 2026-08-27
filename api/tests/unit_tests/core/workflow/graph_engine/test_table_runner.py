@@ -32,9 +32,8 @@ from graphon.engine_events import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
-from graphon.entities import InitParams
 from graphon.graph import Graph
-from graphon.runtime import RuntimeState, VariablePool
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.variables import (
     ArrayNumberVariable,
     ArrayObjectVariable,
@@ -220,10 +219,10 @@ class WorkflowRunner:
 
         if use_mock_factory:
             node_factory = MockNodeFactory(
-                graph_init_params=graph_init_params, graph_runtime_state=graph_runtime_state, mock_config=mock_config
+                init_params=graph_init_params, runtime_state=graph_runtime_state, mock_config=mock_config
             )
         else:
-            node_factory = DifyNodeFactory(graph_init_params=graph_init_params, graph_runtime_state=graph_runtime_state)
+            node_factory = DifyNodeFactory(init_params=graph_init_params, runtime_state=graph_runtime_state)
 
         graph = Graph.init(
             graph_config=graph_config,
@@ -325,7 +324,7 @@ class TableTestRunner:
             # Create and run the engine with configured worker settings
             engine = Engine(
                 graph=graph,
-                graph_runtime_state=graph_runtime_state,
+                runtime_state=graph_runtime_state,
                 command_channel=InMemoryChannel(),
                 workers=self.graph_engine_max_workers,
             )

@@ -69,15 +69,15 @@ class _StubToolNode(Node[_StubToolNodeData]):
         node_id: str,
         data: _StubToolNodeData,
         *,
-        graph_init_params,
-        graph_runtime_state,
+        init_params,
+        runtime_state,
         **_kwargs: Any,
     ) -> None:
         super().__init__(
             node_id=node_id,
             data=data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=init_params,
+            runtime_state=runtime_state,
         )
 
     def _get_error_strategy(self):
@@ -177,8 +177,8 @@ def _build_graph(runtime_state: RuntimeState, *, pause_on: str | None) -> Graph:
     )
 
     node_factory = DifyNodeFactory(
-        graph_init_params=params,
-        graph_runtime_state=runtime_state,
+        init_params=params,
+        runtime_state=runtime_state,
     )
 
     return Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
@@ -256,7 +256,7 @@ def _run_with_optional_pause(runtime_state: RuntimeState, *, pause_on: str | Non
     graph = _build_graph(runtime_state, pause_on=pause_on)
     engine = Engine(
         graph=graph,
-        graph_runtime_state=runtime_state,
+        runtime_state=runtime_state,
         command_channel=command_channel,
     )
 

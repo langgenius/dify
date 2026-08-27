@@ -22,12 +22,11 @@ from graphon.engine_events import (
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
-from graphon.entities import InitParams
 from graphon.enums import BuiltinNodeTypes
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.protocols import FileReferenceFactoryProtocol
-from graphon.runtime import RuntimeState, VariablePool
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from graphon.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
@@ -59,8 +58,8 @@ class _TestFileReferenceFactory(FileReferenceFactoryProtocol):
 def _create_human_input_node(
     *,
     config: dict,
-    graph_init_params: InitParams,
-    graph_runtime_state: RuntimeState,
+    init_params: InitParams,
+    runtime_state: RuntimeState,
     repo: _FakeFormRepository,
 ) -> HumanInputNode:
     node_data = (
@@ -76,8 +75,8 @@ def _create_human_input_node(
     node = HumanInputNode(
         node_id=config["id"],
         data=node_data,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=runtime_state,
         hitl_callback=callback,
     )
     node.bind_execution_id("00000000-0000-4000-8000-000000000001")
@@ -170,8 +169,8 @@ def _build_node(
     repo = _FakeFormRepository(fake_form)
     return _create_human_input_node(
         config=config,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=graph_init_params,
+        runtime_state=graph_runtime_state,
         repo=repo,
     )
 
@@ -226,8 +225,8 @@ def _build_timeout_node() -> HumanInputNode:
     repo = _FakeFormRepository(fake_form)
     return _create_human_input_node(
         config=config,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=graph_init_params,
+        runtime_state=graph_runtime_state,
         repo=repo,
     )
 

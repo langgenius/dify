@@ -122,8 +122,8 @@ def _workflow_tool_node(
     node = DifyWorkflowToolNode(
         node_id="tool",
         data=ToolNodeData.model_validate(graph_config["nodes"][0]["data"]),
-        graph_init_params=init_params,
-        graph_runtime_state=runtime_state,
+        init_params=init_params,
+        runtime_state=runtime_state,
         tool_file_manager=MagicMock(spec=ToolFileManagerProtocol),
         runtime=runtime,
     )
@@ -135,8 +135,8 @@ def _outer_graph(node: DifyWorkflowToolNode) -> Graph:
     start = StartNode(
         node_id="outer-start",
         data=StartNodeData(title="Start", variables=[]),
-        graph_init_params=node._graph_init_params,
-        graph_runtime_state=node.graph_runtime_state,
+        init_params=node.init_params,
+        runtime_state=node.runtime_state,
     )
     return Graph.new().add_root(start).add_node(node, from_node_id=start.id).build()
 
@@ -183,7 +183,7 @@ def test_workflow_tool_node_requests_child_container_and_resumes_successfully() 
     assert isinstance(completed, StreamCompletedEvent)
     assert completed.node_run_result.inputs == {"question": "hello"}
     assert completed.node_run_result.outputs == {"text": "done", "answer": 42}
-    assert node.graph_runtime_state.node_run_steps == 2
+    assert node.runtime_state.node_run_steps == 2
     assert completed.node_run_result.metadata[WorkflowNodeExecutionMetadataKey.TOOL_INFO] == {
         "provider_type": ToolProviderType.WORKFLOW.value,
         "provider_id": "workflow-provider",
@@ -205,7 +205,7 @@ def test_workflow_tool_node_returns_failure_when_runtime_cannot_be_loaded() -> N
     runtime.get_runtime.assert_called_once_with(
         node_id="tool",
         node_data=node.node_data,
-        variable_pool=node.graph_runtime_state.variable_pool,
+        variable_pool=node.runtime_state.variable_pool,
         node_execution_id="tool-execution",
     )
 
@@ -649,7 +649,7 @@ def test_workflow_tool_handler_restores_child_frame() -> None:
     assert answer.to_object() == "ok"
     assert restored_frame.state.ready_queue is runtime_state.ready_queue
     assert restored_frame.state.graph_execution is runtime_state.graph_execution
-    assert all(node.graph_runtime_state is restored_frame.state for node in restored_frame.graph.nodes.values())
+    assert all(node.runtime_state is restored_frame.state for node in restored_frame.graph.nodes.values())
 
 
 def test_workflow_tool_handler_restores_child_failure() -> None:
@@ -847,7 +847,7 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
     initial_events = list(
         Engine(
             graph=initial_graph,
-            graph_runtime_state=initial_state,
+            runtime_state=initial_state,
             command_channel=InMemoryChannel(),
             workers=1,
             container_handler_factories=(handler_factory,),
@@ -886,7 +886,7 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
     resumed_events = list(
         Engine(
             graph=restored_graph,
-            graph_runtime_state=restored_state,
+            runtime_state=restored_state,
             command_channel=InMemoryChannel(),
             workers=1,
             container_handler_factories=(handler_factory,),

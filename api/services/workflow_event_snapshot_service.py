@@ -41,7 +41,7 @@ from core.workflow.nodes.human_input.pause_reason import (
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import RuntimeState
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from libs.datetime_utils import to_utc_timestamp

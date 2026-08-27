@@ -14,10 +14,9 @@ from core.workflow.nodes.trigger_webhook.entities import (
 )
 from core.workflow.nodes.trigger_webhook.node import TriggerWebhookNode
 from core.workflow.system_variables import default_system_variables
-from graphon.entities import InitParams
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
-from graphon.runtime import RuntimeState, VariablePool
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.variables import FileVariable, StringVariable
 from tests.workflow_test_utils import build_test_variable_pool
 
@@ -46,8 +45,8 @@ def create_webhook_node(webhook_data: WebhookData, variable_pool: VariablePool) 
     node = TriggerWebhookNode(
         node_id="1",
         data=webhook_data,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=runtime_state,
+        init_params=graph_init_params,
+        runtime_state=runtime_state,
     )
 
     # Provide tenant_id for conversion path

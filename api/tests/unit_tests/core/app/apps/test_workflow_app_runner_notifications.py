@@ -23,7 +23,7 @@ class _DummyRuntimeState:
 
 class _DummyGraphEngine:
     def __init__(self):
-        self.graph_runtime_state = _DummyRuntimeState()
+        self.runtime_state = _DummyRuntimeState()
 
 
 class _DummyWorkflowEntry:

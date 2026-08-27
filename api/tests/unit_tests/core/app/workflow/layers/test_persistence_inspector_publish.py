@@ -55,8 +55,8 @@ def layer() -> WorkflowPersistenceLayer:
     instance._node_execution_cache = {}
     instance._node_snapshots = {}
     instance._node_sequence = 0
-    # `graph_runtime_state` is a layer-base property; stub it.
-    instance._graph_runtime_state = MagicMock(total_tokens=0, node_run_steps=0, outputs={}, exceptions_count=0)
+    # `runtime_state` is a layer-base property; stub it.
+    instance._runtime_state = MagicMock(total_tokens=0, node_run_steps=0, outputs={}, exceptions_count=0)
     return instance
 
 

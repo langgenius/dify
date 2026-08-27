@@ -103,8 +103,8 @@ class MockReadOnlyVariablePool:
         return {key: value for (nid, key), value in self._variables.items() if nid == prefix}
 
 
-class MockReadOnlyGraphRuntimeState:
-    """Mock implementation of ReadOnlyGraphRuntimeState for testing."""
+class MockReadOnlyRuntimeState:
+    """Mock implementation of ReadOnlyRuntimeState for testing."""
 
     def __init__(
         self,
@@ -232,7 +232,7 @@ class TestPauseStatePersistenceLayer:
         assert layer._session_maker is sqlite_session_factory
         assert layer._state_owner_user_id == state_owner_user_id
         with pytest.raises(RuntimeError, match="runtime state is not initialized"):
-            _ = layer.graph_runtime_state
+            _ = layer.runtime_state
         assert layer.command_channel is None
 
     def test_initialize_sets_dependencies(self, sqlite_session_factory: sessionmaker[Session]):
@@ -243,12 +243,12 @@ class TestPauseStatePersistenceLayer:
             response_stream_filter=ResponseStreamFilter(),
         )
 
-        graph_runtime_state = MockReadOnlyGraphRuntimeState()
+        graph_runtime_state = MockReadOnlyRuntimeState()
         command_channel = MockCommandChannel()
 
         layer.initialize(graph_runtime_state, command_channel)
 
-        assert layer.graph_runtime_state is graph_runtime_state
+        assert layer.runtime_state is graph_runtime_state
         assert layer.command_channel is command_channel
 
     def test_on_event_with_graph_run_paused_event(
@@ -266,7 +266,7 @@ class TestPauseStatePersistenceLayer:
         mock_factory = Mock(return_value=mock_repo)
         monkeypatch.setattr(DifyAPIRepositoryFactory, "create_api_workflow_run_repository", mock_factory)
 
-        graph_runtime_state = MockReadOnlyGraphRuntimeState(
+        graph_runtime_state = MockReadOnlyRuntimeState(
             outputs={"result": "test_output"},
             total_tokens=100,
             workflow_execution_id="run-123",
@@ -329,7 +329,7 @@ class TestPauseStatePersistenceLayer:
             raising=False,
         )
 
-        graph_runtime_state = MockReadOnlyGraphRuntimeState(
+        graph_runtime_state = MockReadOnlyRuntimeState(
             workflow_execution_id="run-123",
         )
         command_channel = MockCommandChannel()
@@ -365,7 +365,7 @@ class TestPauseStatePersistenceLayer:
         mock_factory = Mock(return_value=mock_repo)
         monkeypatch.setattr(DifyAPIRepositoryFactory, "create_api_workflow_run_repository", mock_factory)
 
-        graph_runtime_state = MockReadOnlyGraphRuntimeState()
+        graph_runtime_state = MockReadOnlyRuntimeState()
         command_channel = MockCommandChannel()
         layer.initialize(graph_runtime_state, command_channel)
 
@@ -381,9 +381,7 @@ class TestPauseStatePersistenceLayer:
         mock_factory.assert_not_called()
         mock_repo.create_workflow_pause.assert_not_called()
 
-    def test_on_event_raises_when_graph_runtime_state_is_uninitialized(
-        self, sqlite_session_factory: sessionmaker[Session]
-    ):
+    def test_on_event_raises_when_runtime_state_is_uninitialized(self, sqlite_session_factory: sessionmaker[Session]):
         layer = PauseStatePersistenceLayer(
             session_factory=sqlite_session_factory,
             state_owner_user_id="owner-123",
@@ -410,7 +408,7 @@ class TestPauseStatePersistenceLayer:
         mock_factory = Mock(return_value=mock_repo)
         monkeypatch.setattr(DifyAPIRepositoryFactory, "create_api_workflow_run_repository", mock_factory)
 
-        graph_runtime_state = MockReadOnlyGraphRuntimeState(workflow_execution_id=None)
+        graph_runtime_state = MockReadOnlyRuntimeState(workflow_execution_id=None)
         command_channel = MockCommandChannel()
         layer.initialize(graph_runtime_state, command_channel)
 
@@ -521,7 +519,7 @@ def test_on_event_persists_response_stream_filter_dump(
     mock_factory = Mock(return_value=mock_repo)
     monkeypatch.setattr(DifyAPIRepositoryFactory, "create_api_workflow_run_repository", mock_factory)
 
-    graph_runtime_state = MockReadOnlyGraphRuntimeState(workflow_execution_id="run-123")
+    graph_runtime_state = MockReadOnlyRuntimeState(workflow_execution_id="run-123")
     layer.initialize(graph_runtime_state, MockCommandChannel())
 
     event = TestDataFactory.create_graph_run_paused_event()

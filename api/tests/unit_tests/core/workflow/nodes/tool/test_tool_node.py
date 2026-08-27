@@ -118,8 +118,8 @@ def tool_node(monkeypatch) -> ToolNode:
     node = ToolNode(
         node_id="node-instance",
         data=ToolNodeData.model_validate(config["data"]),
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
         tool_file_manager=tool_file_manager,
         runtime=runtime,
     )
@@ -241,7 +241,7 @@ def test_tool_node_passes_node_execution_id_when_runtime_accepts_it(tool_node: T
     tool_node._runtime.get_runtime = MagicMock(return_value=runtime_handle)
 
     result = tool_node._get_tool_runtime(
-        variable_pool=tool_node.graph_runtime_state.variable_pool,
+        variable_pool=tool_node.runtime_state.variable_pool,
         node_execution_id="node-execution-id",
     )
 
@@ -249,6 +249,6 @@ def test_tool_node_passes_node_execution_id_when_runtime_accepts_it(tool_node: T
     tool_node._runtime.get_runtime.assert_called_once_with(
         node_id="node-instance",
         node_data=tool_node.node_data,
-        variable_pool=tool_node.graph_runtime_state.variable_pool,
+        variable_pool=tool_node.runtime_state.variable_pool,
         node_execution_id="node-execution-id",
     )

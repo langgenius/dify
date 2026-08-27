@@ -34,7 +34,7 @@ from graphon.enums import (
 )
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import NodeRunResult
-from graphon.runtime import ReadOnlyGraphRuntimeStateWrapper, RuntimeState, VariablePool
+from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
 
 
 class _RepoRecorder:
@@ -77,7 +77,7 @@ def _make_layer(
         variable_pool=VariablePool.from_bootstrap(system_variables=system_variables),
         start_at=0.0,
     )
-    read_only_state = ReadOnlyGraphRuntimeStateWrapper(runtime_state)
+    read_only_state = ReadOnlyRuntimeStateWrapper(runtime_state)
 
     application_generate_entity = WorkflowAppGenerateEntity.model_construct(
         task_id="task",

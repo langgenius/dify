@@ -60,8 +60,8 @@ def init_code_node(code_config: dict):
 
     # Create node factory
     node_factory = DifyNodeFactory(
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
     )
 
     graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
@@ -69,8 +69,8 @@ def init_code_node(code_config: dict):
     node = CodeNode(
         node_id=str(uuid.uuid4()),
         data=CodeNodeData.model_validate(code_config["data"]),
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
         code_executor=node_factory._code_executor,
         code_limits=CodeNodeLimits(
             max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
@@ -122,8 +122,8 @@ def test_execute_code(setup_code_executor_mock):
     }
 
     node = init_code_node(code_config)
-    node.graph_runtime_state.variable_pool.add(["1", "args1"], 1)
-    node.graph_runtime_state.variable_pool.add(["1", "args2"], 2)
+    node.runtime_state.variable_pool.add(["1", "args1"], 1)
+    node.runtime_state.variable_pool.add(["1", "args2"], 2)
 
     # execute node
     result = node._run()
@@ -169,8 +169,8 @@ def test_execute_code_output_validator(setup_code_executor_mock):
     }
 
     node = init_code_node(code_config)
-    node.graph_runtime_state.variable_pool.add(["1", "args1"], 1)
-    node.graph_runtime_state.variable_pool.add(["1", "args2"], 2)
+    node.runtime_state.variable_pool.add(["1", "args1"], 1)
+    node.runtime_state.variable_pool.add(["1", "args2"], 2)
 
     # execute node
     result = node._run()

@@ -82,8 +82,8 @@ def init_llm_node(config: dict) -> LLMNode:
     node = LLMNode(
         node_id=str(uuid.uuid4()),
         data=LLMNodeData.model_validate(config["data"]),
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
         credentials_provider=MagicMock(spec=CredentialsProvider),
         model_factory=MagicMock(spec=ModelFactory),
         model_instance=MagicMock(spec=ModelInstance),

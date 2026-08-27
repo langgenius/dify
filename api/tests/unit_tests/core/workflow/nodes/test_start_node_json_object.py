@@ -33,7 +33,7 @@ def make_start_node(user_inputs, variables):
     return StartNode(
         node_id="start",
         data=node_data,
-        graph_init_params=build_test_graph_init_params(
+        init_params=build_test_graph_init_params(
             workflow_id="wf",
             graph_config={},
             tenant_id="tenant",
@@ -43,7 +43,7 @@ def make_start_node(user_inputs, variables):
             invoke_from="debugger",
             call_depth=0,
         ),
-        graph_runtime_state=graph_runtime_state,
+        runtime_state=graph_runtime_state,
     )
 
 
@@ -264,7 +264,7 @@ def test_start_node_outputs_full_variable_pool_snapshot():
     node = StartNode(
         node_id="start",
         data=node_data,
-        graph_init_params=build_test_graph_init_params(
+        init_params=build_test_graph_init_params(
             workflow_id="wf",
             graph_config={},
             tenant_id="tenant",
@@ -274,7 +274,7 @@ def test_start_node_outputs_full_variable_pool_snapshot():
             invoke_from="debugger",
             call_depth=0,
         ),
-        graph_runtime_state=graph_runtime_state,
+        runtime_state=graph_runtime_state,
     )
 
     result = node._run()

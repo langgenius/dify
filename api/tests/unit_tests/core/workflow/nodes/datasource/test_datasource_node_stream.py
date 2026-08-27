@@ -68,8 +68,8 @@ def test_node_integration_minimal_stream(mocker: MockerFixture) -> None:
             plugin_id="plug",
             datasource_name="ds",
         ),
-        graph_init_params=graph_init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=graph_init_params,
+        runtime_state=graph_runtime_state,
     )
 
     out = list(node._run())

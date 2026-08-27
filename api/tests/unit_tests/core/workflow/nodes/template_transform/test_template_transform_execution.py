@@ -85,8 +85,8 @@ def test_execute_template_transform() -> None:
 
     # Create node factory (graph init path still works regardless of renderer choice below)
     node_factory = DifyNodeFactory(
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
     )
 
     graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
@@ -95,8 +95,8 @@ def test_execute_template_transform() -> None:
     node = TemplateTransformNode(
         node_id=str(uuid.uuid4()),
         data=TemplateTransformNodeData.model_validate(config["data"]),
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
         jinja2_template_renderer=cast(Jinja2TemplateRenderer, _SimpleJinja2Renderer()),
     )
 

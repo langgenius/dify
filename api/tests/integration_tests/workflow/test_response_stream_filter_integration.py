@@ -56,7 +56,7 @@ def test_dify_response_stream_filter_handles_issue_170_shape() -> None:
 
     engine = Engine(
         graph=graph,
-        graph_runtime_state=graph_runtime_state,
+        runtime_state=graph_runtime_state,
         command_channel=InMemoryChannel(),
     )
     events = list(iter_dify_graph_engine_events(engine))

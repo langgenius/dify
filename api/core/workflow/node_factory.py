@@ -78,8 +78,7 @@ from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
 from models.model import Conversation
 
 if TYPE_CHECKING:
-    from graphon.entities import InitParams
-    from graphon.runtime import RuntimeState
+    from graphon.runtime import InitParams, RuntimeState
 
 LATEST_VERSION = "latest"
 _START_NODE_TYPES: frozenset[NodeType] = frozenset(
@@ -102,7 +101,7 @@ class DifyGraphInitContext:
     call_depth: int
 
     def to_graph_init_params(self) -> "InitParams":
-        from graphon.entities import InitParams
+        from graphon.runtime import InitParams
 
         return InitParams(
             workflow_id=self.workflow_id,
@@ -312,28 +311,28 @@ class DifyNodeFactory(NodeFactory):
         cls,
         *,
         graph_init_context: DifyGraphInitContext,
-        graph_runtime_state: "RuntimeState",
+        runtime_state: "RuntimeState",
         human_input_run_context: Mapping[str, Any] | DifyRunContext | None = None,
         containerize_workflow_tools: bool = True,
     ) -> "DifyNodeFactory":
         """Bridge Dify's explicit init context into the current `graphon` API."""
         return cls(
-            graph_init_params=graph_init_context.to_graph_init_params(),
-            graph_runtime_state=graph_runtime_state,
+            init_params=graph_init_context.to_graph_init_params(),
+            runtime_state=runtime_state,
             human_input_run_context=human_input_run_context,
             containerize_workflow_tools=containerize_workflow_tools,
         )
 
     def __init__(
         self,
-        graph_init_params: "InitParams",
-        graph_runtime_state: "RuntimeState",
+        init_params: "InitParams",
+        runtime_state: "RuntimeState",
         human_input_run_context: Mapping[str, Any] | DifyRunContext | None = None,
         containerize_workflow_tools: bool = True,
     ) -> None:
-        self.graph_init_params = graph_init_params
-        self.graph_runtime_state = graph_runtime_state
-        self._dify_context = self._resolve_dify_context(graph_init_params.run_context)
+        self.init_params = init_params
+        self.runtime_state = runtime_state
+        self._dify_context = self._resolve_dify_context(init_params.run_context)
         self._human_input_run_context = human_input_run_context
         self._containerize_workflow_tools = containerize_workflow_tools
         human_input_context = (
@@ -377,7 +376,7 @@ class DifyNodeFactory(NodeFactory):
         self._human_input_runtime = DifyHumanInputNodeRuntime(
             human_input_context,
             workflow_execution_id_getter=lambda: get_system_text(
-                self.graph_runtime_state.variable_pool,
+                self.runtime_state.variable_pool,
                 SystemVariableKey.WORKFLOW_EXECUTION_ID,
             ),
             conversation_id_getter=self._conversation_id,
@@ -404,10 +403,10 @@ class DifyNodeFactory(NodeFactory):
         self._agent_runtime_support = AgentRuntimeSupport()
         self._agent_message_transformer = AgentMessageTransformer()
 
-    def with_runtime_state(self, graph_runtime_state: "RuntimeState") -> "DifyNodeFactory":
+    def with_runtime_state(self, runtime_state: "RuntimeState") -> "DifyNodeFactory":
         return DifyNodeFactory(
-            graph_init_params=self.graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=self.init_params,
+            runtime_state=runtime_state,
             human_input_run_context=self._human_input_run_context,
             containerize_workflow_tools=self._containerize_workflow_tools,
         )
@@ -415,7 +414,7 @@ class DifyNodeFactory(NodeFactory):
     @override
     def with_graph_config(self, graph_config: Mapping[str, Any]) -> "DifyNodeFactory":
         factory = copy(self)
-        factory.graph_init_params = self.graph_init_params.model_copy(update={"graph_config": graph_config})
+        factory.init_params = self.init_params.model_copy(update={"graph_config": graph_config})
         return factory
 
     @property
@@ -436,7 +435,7 @@ class DifyNodeFactory(NodeFactory):
         return DifyRunContext.model_validate(raw_ctx)
 
     def _conversation_id(self) -> str | None:
-        return get_system_text(self.graph_runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
+        return get_system_text(self.runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
 
     @override
     def create_node(self, node_config: dict[str, Any] | NodeConfigDict) -> Node:
@@ -523,8 +522,8 @@ class DifyNodeFactory(NodeFactory):
         node = node_class(
             node_id=node_id,
             data=constructor_node_data,
-            graph_init_params=self.graph_init_params,
-            graph_runtime_state=self.graph_runtime_state,
+            init_params=self.init_params,
+            runtime_state=self.runtime_state,
             **node_init_kwargs,
         )
         return node
@@ -611,7 +610,7 @@ class DifyNodeFactory(NodeFactory):
             return node_data
 
         selector = parse_llm_model_selector(model_selector)
-        variable = self.graph_runtime_state.variable_pool.get(selector)
+        variable = self.runtime_state.variable_pool.get(selector)
         if not isinstance(variable, ObjectSegment):
             raise ValueError(f"LLM environment variable '{selector[1]}' was not found or is not an LLM variable")
 
@@ -772,7 +771,7 @@ class DifyNodeFactory(NodeFactory):
             if not context_variable_selector:
                 return False
 
-            context_value = self.graph_runtime_state.variable_pool.get(context_variable_selector)
+            context_value = self.runtime_state.variable_pool.get(context_variable_selector)
             if not isinstance(context_value, ArrayObjectSegment):
                 return False
 
@@ -807,7 +806,7 @@ class DifyNodeFactory(NodeFactory):
         if node_data.memory is None:
             return None
 
-        conversation_id = get_system_text(self.graph_runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
+        conversation_id = get_system_text(self.runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
         return fetch_memory(
             conversation_id=conversation_id,
             app_id=self._dify_context.app_id,

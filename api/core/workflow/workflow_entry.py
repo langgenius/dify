@@ -51,7 +51,7 @@ from graphon.graph import Graph
 from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
 from graphon.nodes.container_effects import ContainerAwaitRequest
-from graphon.runtime import ReadOnlyGraphRuntimeStateWrapper, RuntimeState, VariablePool
+from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models.workflow import Workflow
 
@@ -159,7 +159,7 @@ class WorkflowEntry:
         )
         self.graph_engine = Engine(
             graph=graph,
-            graph_runtime_state=graph_runtime_state,
+            runtime_state=graph_runtime_state,
             command_channel=command_channel,
             workers=dify_config.GRAPH_ENGINE_MAX_WORKERS,
             container_handler_factories=(
@@ -302,7 +302,7 @@ class WorkflowEntry:
         # init workflow run state
         node_factory = DifyNodeFactory.from_graph_init_context(
             graph_init_context=graph_init_context,
-            graph_runtime_state=graph_runtime_state,
+            runtime_state=graph_runtime_state,
             containerize_workflow_tools=False,
         )
         node = node_factory.create_node(node_config)
@@ -423,7 +423,7 @@ class WorkflowEntry:
         node_config = NodeConfigDictAdapter.validate_python({"id": node_id, "data": node_data})
         node_factory = DifyNodeFactory.from_graph_init_context(
             graph_init_context=graph_init_context,
-            graph_runtime_state=graph_runtime_state,
+            runtime_state=graph_runtime_state,
         )
         node = node_factory.create_node(node_config)
 
@@ -573,7 +573,7 @@ class WorkflowEntry:
         """
         layers: Sequence[Layer] = (ObservabilityLayer(),)
         command_channel = InMemoryChannel()
-        runtime_state = ReadOnlyGraphRuntimeStateWrapper(node.graph_runtime_state)
+        runtime_state = ReadOnlyRuntimeStateWrapper(node.runtime_state)
         for layer in layers:
             layer.initialize(runtime_state, command_channel)
             layer.on_graph_start()

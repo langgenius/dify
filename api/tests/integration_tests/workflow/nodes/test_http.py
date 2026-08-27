@@ -70,8 +70,8 @@ def init_http_node(config: dict):
 
     # Create node factory
     node_factory = DifyNodeFactory(
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
     )
 
     graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
@@ -79,8 +79,8 @@ def init_http_node(config: dict):
     node = HttpRequestNode(
         node_id=str(uuid.uuid4()),
         data=HttpRequestNodeData.model_validate(config["data"]),
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
         http_request_config=HTTP_REQUEST_CONFIG,
         http_client=ssrf_proxy,
         tool_file_manager_factory=ToolFileManager,
@@ -719,8 +719,8 @@ def test_nested_object_variable_selector(setup_http_mock):
 
     # Create node factory
     node_factory = DifyNodeFactory(
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
     )
 
     graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
@@ -728,8 +728,8 @@ def test_nested_object_variable_selector(setup_http_mock):
     node = HttpRequestNode(
         node_id=str(uuid.uuid4()),
         data=HttpRequestNodeData.model_validate(graph_config["nodes"][1]["data"]),
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
         http_request_config=HTTP_REQUEST_CONFIG,
         http_client=ssrf_proxy,
         tool_file_manager_factory=ToolFileManager,

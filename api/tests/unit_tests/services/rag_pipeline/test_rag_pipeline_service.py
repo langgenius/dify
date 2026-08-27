@@ -208,7 +208,7 @@ def _make_failed_published_node_run() -> tuple[SimpleNamespace, NodeRunFailedEve
         workflow_id="wf-1",
         node_type="start",
         title="Start",
-        graph_runtime_state=SimpleNamespace(variable_pool=FakeVariablePool()),
+        runtime_state=SimpleNamespace(variable_pool=FakeVariablePool()),
         error_strategy=None,
     )
     run_result = NodeRunResult(
@@ -1386,7 +1386,7 @@ def test_handle_node_run_result_default_value_strategy(
         title="Start",
         error_strategy=ErrorStrategy.DEFAULT_VALUE,
         default_value_dict={"fallback": "ok"},
-        graph_runtime_state=SimpleNamespace(variable_pool=mocker.Mock()),
+        runtime_state=SimpleNamespace(variable_pool=mocker.Mock()),
     )
 
     failed_result = NodeRunResult(
@@ -1780,7 +1780,7 @@ def test_handle_node_run_result_raises_when_no_terminal_event(
         workflow_id="wf-1",
         node_type="start",
         title="Start",
-        graph_runtime_state=SimpleNamespace(variable_pool=SimpleNamespace(get=lambda _: None)),
+        runtime_state=SimpleNamespace(variable_pool=SimpleNamespace(get=lambda _: None)),
         error_strategy=None,
     )
 
