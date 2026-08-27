@@ -530,6 +530,7 @@ export function createDatabaseKnowledgeSpaceProfilePublicationRepository({
         if (!embedding) await requireNoExpectedEmbeddingSource(database, tx, input);
         requireEmbeddingProfile(embedding);
         if (embedding) {
+          await promoteProfileMigrationProjections(database, tx, publication, input.updatedAt);
           await assertEmbeddingPublicationVectorSpace(
             database,
             tx,
@@ -1887,6 +1888,48 @@ async function assertEmbeddingPublicationVectorSpace(
     tableName: "index_projections",
   });
   if (missing.rows[0]) throw new KnowledgeSpaceProfilePublicationVectorSpaceConflictError();
+}
+
+async function promoteProfileMigrationProjections(
+  database: DatabaseAdapter,
+  executor: DatabaseExecutor,
+  publication: PublicationRecord,
+  updatedAt: string,
+): Promise<void> {
+  await executor.execute({
+    maxRows: 0,
+    operation: "update",
+    params: [
+      updatedAt,
+      publication.knowledgeSpaceId,
+      publication.tenantId,
+      publication.knowledgeSpaceId,
+      publication.id,
+    ],
+    sql: `UPDATE ${q(database, "index_projections")} SET ${q(
+      database,
+      "status",
+    )} = 'ready', ${q(database, "updated_at")} = ${p(database, 1)} WHERE ${q(
+      database,
+      "knowledge_space_id",
+    )} = ${p(database, 2)} AND ${q(database, "status")} = 'building' AND (${q(
+      database,
+      "id",
+    )}, ${q(database, "publication_generation_id")}) IN (SELECT ${q(
+      database,
+      "component_key",
+    )}, ${q(database, "generation_id")} FROM ${q(
+      database,
+      "projection_set_publication_members",
+    )} WHERE ${q(database, "tenant_id")} = ${p(database, 3)} AND ${q(
+      database,
+      "knowledge_space_id",
+    )} = ${p(database, 4)} AND ${q(database, "publication_id")} = ${p(
+      database,
+      5,
+    )} AND ${q(database, "component_type")} = 'index-projection');`,
+    tableName: "index_projections",
+  });
 }
 
 async function requireProfileMigrationExecutionFence(

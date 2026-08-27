@@ -249,7 +249,7 @@ describe.each(["postgres", "tidb"] as const)(
       });
 
       expect(result).toMatchObject({ profileHeadRevision: 2, publicationHeadRevision: 5 });
-      expect(fake.committedMutations()).toBe(10);
+      expect(fake.committedMutations()).toBe(11);
       expect(
         fake.calls
           .filter((call) => call.input.operation !== "select")
@@ -258,9 +258,12 @@ describe.each(["postgres", "tidb"] as const)(
       const vectorChecks = fake.calls.filter(
         (call) => call.input.tableName === "index_projections",
       );
-      expect(vectorChecks).toHaveLength(2);
+      expect(vectorChecks).toHaveLength(3);
+      expect(vectorChecks[0]?.input.operation).toBe("update");
       expect(
-        vectorChecks.every((call) => call.input.params[3] === embedding(2, "b").vectorSpaceId),
+        vectorChecks
+          .filter((call) => call.input.operation === "select")
+          .every((call) => call.input.params[3] === embedding(2, "b").vectorSpaceId),
       ).toBe(true);
       expect(
         fake.calls.some(
@@ -1683,6 +1686,7 @@ function fakeDatabase(
       return options.failMigrationOutboxCompletion ? { rows: [], rowsAffected: 0 } : mutation();
     }
     if (input.tableName === "index_projections") {
+      if (input.operation === "update") return mutation();
       return options.vectorConflict ||
         (options.vectorMissingConflict && input.sql.includes("NOT EXISTS"))
         ? { rows: [{ id: "mixed-vector" }], rowsAffected: 1 }
