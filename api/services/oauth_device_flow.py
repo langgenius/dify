@@ -519,6 +519,10 @@ def list_active_sessions(ctx: AuthContext, now: datetime, *, session: Session) -
 
 
 def token_belongs_to_subject(token_id: str, ctx: AuthContext, *, session: Session) -> bool:
+    """Callers use a `False` result to answer 404, not 403, on a cross-subject
+    token id, so the endpoint never confirms that a session id it doesn't own
+    even exists.
+    """
     row = session.execute(
         select(OAuthAccessToken.id).where(
             and_(
