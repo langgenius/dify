@@ -46,7 +46,7 @@ function ScrollAreaViewport({ className, ...props }: ScrollAreaViewportProps) {
     <BaseScrollArea.Viewport
       {...props}
       data-dify-scroll-area-viewport=""
-      className={cn('isolate size-full min-h-0 min-w-0 rounded-[inherit] outline-none', className)}
+      className={cn('isolate size-full rounded-[inherit] outline-none', className)}
     />
   )
 }
