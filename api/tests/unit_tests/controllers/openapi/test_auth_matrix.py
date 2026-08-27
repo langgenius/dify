@@ -73,11 +73,13 @@ from flask import Flask
 from flask_login import LoginManager, user_logged_in
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import ImATeapot
+from werkzeug.routing import Rule
 from werkzeug.test import TestResponse
 
 import libs.oauth_bearer as oauth_bearer_module
 import libs.rate_limit as rate_limit_module
 from controllers.openapi import bp as openapi_bp
+from controllers.openapi.auth.spec import EndpointSpec
 from enums import DeploymentEdition, WebAppAccessMode
 from libs.oauth_bearer import (
     BearerAuthenticator,
@@ -1288,85 +1290,57 @@ def test_accepted_behaviour_deltas_are_bounded_and_still_exact() -> None:
             assert (expect.status, expect.message) == (ADMITTED, None), route.id
 
 
+def _endpoint_spec(app: Flask, rule: Rule, method: str) -> EndpointSpec | None:
+    """The `EndpointSpec` `@endpoint` attached to this rule's handler, or None.
+
+    Carrying a spec *is* being guarded: `@endpoint` is the only thing that sets
+    it, and it sets it on the same object it wraps in `subject_router.guard`.
+    """
+    view = app.view_functions.get(rule.endpoint)
+    resource = view.view_class if hasattr(view, "view_class") else None
+    if resource is None:
+        return None
+    handler = getattr(resource, method.lower(), None)  # guard-ignore: no-new-getattr -- HTTP verb selects the handler
+    return handler.__spec__ if hasattr(handler, "__spec__") else None
+
+
 def test_registered_openapi_routes_match_the_matrix(matrix_app: Flask) -> None:
-    """Every guarded /openapi/v1 route is in the table, and nothing else is."""
-    unguarded = {
-        ("GET", "/openapi/v1/_health"),
-        ("GET", "/openapi/v1/_version"),
-        ("GET", "/openapi/v1/openapi.json"),
-        ("GET", "/openapi/v1/swagger.json"),
-        ("POST", "/openapi/v1/oauth/device/code"),
-        ("POST", "/openapi/v1/oauth/device/token"),
-        ("GET", "/openapi/v1/oauth/device/lookup"),
-        ("POST", "/openapi/v1/oauth/device/approve"),
-        ("POST", "/openapi/v1/oauth/device/deny"),
-        ("GET", "/openapi/v1/oauth/device/approval-context"),
-        ("POST", "/openapi/v1/oauth/device/approve-external"),
-        ("GET", "/openapi/v1/oauth/device/sso-initiate"),
-        ("GET", "/openapi/v1/oauth/device/sso-complete"),
-        ("GET", "/openapi/v1/swagger-ui.html"),
-    }
-    registered: set[tuple[str, str]] = set()
+    """Every guarded /openapi/v1 route is in the table, and nothing else is.
+
+    Guarded-ness is derived from `view.__spec__`, not from a hand-kept list of
+    exemptions — so a route that gains a guard without gaining a row fails here,
+    and so does a guarded route that quietly stops carrying a spec. Neither can
+    be silenced by editing this file.
+    """
+    guarded: set[tuple[str, str]] = set()
+    unguarded: set[tuple[str, str]] = set()
     for rule in matrix_app.url_map.iter_rules():
-        if not str(rule).startswith("/openapi/v1"):
+        if not str(rule).startswith("/openapi/v1") or str(rule) == "/openapi/v1/":
             continue
         for method in rule.methods or set():
             if method in {"HEAD", "OPTIONS"}:
                 continue
-            registered.add((method, str(rule)))
+            entry = (method, str(rule))
+            target = guarded if _endpoint_spec(matrix_app, rule, method) is not None else unguarded
+            target.add(entry)
 
-    registered = {entry for entry in registered if entry[1] != "/openapi/v1/"}
     expected = {
         (route.method, "/openapi/v1" + route.path.replace("{", "<string:").replace("}", ">")) for route in ROUTES
     }
-    assert registered - unguarded == expected
+    assert guarded == expected
+    # The remainder is the device-flow and documentation surface. Its size is pinned
+    # rather than enumerated: a list of exemptions rots silently — the one this
+    # replaced still named `swagger.json`, a route that is not registered at all.
+    assert len(unguarded) == 13
 
 
-OPENAPI_DOCUMENT_DIGEST = "7d381ec1cc2fff4fccfe4554c5be6962c84fd928719277eef4711a2ce66ebe0c"
-
-OPERATIONS_MIGRATING_ONTO_RETURNS: frozenset[tuple[str, str]] = frozenset(
-    {
-        ("post", "/apps/{app_id}:run"),
-        ("get", "/apps/{app_id}/human-input-forms/{form_token}"),
-        ("get", "/apps/{app_id}/tasks/{task_id}/events"),
-    }
-)
-"""The three raw `openapi_ns.response` sites inside the nine files this PR migrates.
-
-`app_run.py`, `human_input_form.py` and `workflow_events.py` document their 200 by
-hand today; routing them through `@returns` adds `("default", "Error", ErrorBody)`.
-Nothing changes on the wire — all three return a Flask `Response` or a bare dict
-tuple, never a `BaseModel`.
-"""
-
-DEVICE_FLOW_OPERATIONS_OUTSIDE_THIS_PR: frozenset[tuple[str, str]] = frozenset(
-    {
-        ("post", "/oauth/device/code"),
-        ("post", "/oauth/device/token"),
-        ("get", "/oauth/device/lookup"),
-        ("post", "/oauth/device/approve"),
-        ("post", "/oauth/device/deny"),
-    }
-)
-"""The other five raw sites — device-flow routes that carry no `@endpoint`.
-
-They authenticate through `bearer_feature_required`, are not among the 25 handlers
-this PR moves, and must therefore keep their exact response sets. Tolerating a
-`default` entry on these too would make the snapshot pass whether or not the
-migration happened, which is a snapshot of nothing.
-"""
+OPENAPI_DOCUMENT_DIGEST = "fd38e44b042c800b7a4d677724c4d83be9cf1da90f4cf131dc624480ac09409f"
 
 ERROR_DEFAULT_RESPONSE: dict[str, object] = {
     "description": "Error",
     "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorBody"}}},
 }
-"""Exactly what `@returns` registers as `("default", "Error", ErrorBody)`.
-
-The normalisation below drops this entry from the three migrating sites before
-hashing, so the digest cannot see it. Without checking the popped value against
-this, a hand-written `default` pointing at some other schema would survive both
-the code-set comparison (which only looks at codes) and the digest.
-"""
+"""Exactly what `@returns` registers as `("default", "Error", ErrorBody)`."""
 
 EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/_health"): frozenset({"200", "default"}),
@@ -1380,11 +1354,14 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/apps/{app_id}/dependencies:check"): frozenset({"200", "default"}),
     ("get", "/apps/{app_id}/dsl"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/files"): frozenset({"201", "400", "401", "413", "415", "default"}),
-    ("get", "/apps/{app_id}/human-input-forms/{form_token}"): frozenset({"200"}),
+    ("get", "/apps/{app_id}/human-input-forms/{form_token}"): frozenset({"200", "default"}),
     ("post", "/apps/{app_id}/human-input-forms/{form_token}:submit"): frozenset({"200", "422", "default"}),
-    ("get", "/apps/{app_id}/tasks/{task_id}/events"): frozenset({"200"}),
+    ("get", "/apps/{app_id}/tasks/{task_id}/events"): frozenset({"200", "default"}),
     ("post", "/apps/{app_id}/tasks/{task_id}:stop"): frozenset({"200", "default"}),
-    ("post", "/apps/{app_id}:run"): frozenset({"200", "422"}),
+    ("post", "/apps/{app_id}:run"): frozenset({"200", "422", "default"}),
+    # The five device-flow rows are the only operations with no `default`: they
+    # document their 200 with a raw `openapi_ns.response` rather than `@returns`,
+    # so no `ErrorBody` schema is registered for them.
     ("post", "/oauth/device/approve"): frozenset({"200"}),
     ("post", "/oauth/device/code"): frozenset({"200"}),
     ("post", "/oauth/device/deny"): frozenset({"200"}),
@@ -1429,58 +1406,44 @@ def _operations(document: dict[str, object]) -> Iterator[tuple[tuple[str, str], 
 
 
 def test_openapi_document_operations_and_response_codes(openapi_document: dict[str, object]) -> None:
-    """Response codes are pinned; only the three migrating sites may gain `default`.
+    """Every operation's response codes are pinned exactly.
 
-    The five device-flow sites are asserted exactly, so a snapshot that would pass
-    whether or not the migration happened fails instead.
+    `@endpoint` routes through `@returns`, which registers `default` -> `ErrorBody`,
+    so a route that stops emitting the error schema (or one that starts) moves a row
+    here and has to be re-pinned deliberately.
     """
     seen = dict(_operations(openapi_document))
     assert set(seen) == set(EXPECTED_RESPONSE_CODES)
-    assert not OPERATIONS_MIGRATING_ONTO_RETURNS & DEVICE_FLOW_OPERATIONS_OUTSIDE_THIS_PR
-    for key in DEVICE_FLOW_OPERATIONS_OUTSIDE_THIS_PR:
-        assert "default" not in EXPECTED_RESPONSE_CODES[key]
     for key, operation in seen.items():
         responses = operation.get("responses", {})
         assert isinstance(responses, dict)
-        codes = frozenset(responses)
-        pinned = EXPECTED_RESPONSE_CODES[key]
-        allowed = {pinned, pinned | {"default"}} if key in OPERATIONS_MIGRATING_ONTO_RETURNS else {pinned}
-        assert codes in allowed, f"{key}: {sorted(codes)} is none of {[sorted(entry) for entry in allowed]}"
+        assert frozenset(responses) == EXPECTED_RESPONSE_CODES[key], (
+            f"{key}: {sorted(responses)} != {sorted(EXPECTED_RESPONSE_CODES[key])}"
+        )
 
 
 def test_openapi_document_is_otherwise_byte_stable(openapi_document: dict[str, object]) -> None:
-    """The whole document, with the one tolerated delta normalised away, is pinned.
+    """The whole document as generated, with nothing normalised away.
 
-    `@returns` also registers `("default", "Error", ErrorBody)`, which the three
-    sites in `OPERATIONS_MIGRATING_ONTO_RETURNS` lack today and gain on migration.
-    Dropping that entry from exactly those three makes the document identical
-    before and after, so any *other* drift — a renamed model, a changed
+    Any drift the code-set test above cannot see — a renamed model, a changed
     description, a new parameter — moves the digest and fails here.
     """
-    normalised = json.loads(json.dumps(openapi_document))
-    for key, operation in _operations(normalised):
-        if key in OPERATIONS_MIGRATING_ONTO_RETURNS:
-            responses = operation.get("responses")
-            if isinstance(responses, dict) and "default" in responses:
-                assert responses.pop("default") == ERROR_DEFAULT_RESPONSE, (
-                    f"{key} gained a `default` response that is not the one @returns emits; "
-                    "the digest below cannot see this entry, so it is checked here"
-                )
-    canonical = json.dumps(normalised, sort_keys=True, separators=(",", ":"))
+    canonical = json.dumps(openapi_document, sort_keys=True, separators=(",", ":"))
     digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
     assert digest == OPENAPI_DOCUMENT_DIGEST, (
         "The generated /openapi/v1/openapi.json changed in a way this PR does not expect. "
         "difyctl generates its client contract from this document, so do not re-pin "
         "OPENAPI_DOCUMENT_DIGEST until you have diffed the document and confirmed the change "
-        "is intended. Adding `default` to the three OPERATIONS_MIGRATING_ONTO_RETURNS sites is "
-        "already normalised away and cannot be the cause. "
-        f"Re-pin to {digest} only after that check."
+        f"is intended. Re-pin to {digest} only after that check."
     )
 
 
-def test_error_default_response_shape_is_what_returns_registers(openapi_document: dict[str, object]) -> None:
-    """Pins the entry the three migrating sites will gain, so the delta is a known shape."""
-    stop = dict(_operations(openapi_document))[("post", "/apps/{app_id}/tasks/{task_id}:stop")]
-    responses = stop["responses"]
-    assert isinstance(responses, dict)
-    assert responses["default"] == ERROR_DEFAULT_RESPONSE
+def test_every_default_response_is_the_one_returns_registers(openapi_document: dict[str, object]) -> None:
+    """A hand-written `default` pointing at some other schema would still satisfy
+    the code sets above, which compare codes and not bodies.
+    """
+    for key, operation in _operations(openapi_document):
+        responses = operation["responses"]
+        assert isinstance(responses, dict)
+        if "default" in responses:
+            assert responses["default"] == ERROR_DEFAULT_RESPONSE, key
