@@ -27,8 +27,9 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { toast } from '@langgenius/dify-ui/toast'
 import { keepPreviousData, useInfiniteQuery, useMutation } from '@tanstack/react-query'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { useAtomValue } from 'jotai'
-import { Fragment, useRef, useState } from 'react'
+import { Fragment, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
@@ -43,11 +44,29 @@ import { hasPermission } from '@/utils/permission'
 
 const emptyInstalledApps: InstalledAppResponse[] = []
 
+const appNavItemHeight = 32
+const appNavItemGap = 2
+const appNavSeparatorHeight = 17
+// Below this many rows the list is cheap enough to render in full, and plain flow
+// layout keeps the markup simpler than absolutely positioned virtual rows.
+const virtualizationThreshold = 50
+
 const getPreloadDistance = (scrollContainer: Element) =>
   Math.max(160, Math.min(scrollContainer.clientHeight * 0.25, 320))
 
 const selectInstalledApps = (data: InfiniteData<InstalledAppListResponse, string | undefined>) =>
   data.pages.flatMap((page) => page.installed_apps)
+
+type WebAppListRow =
+  | {
+      key: string
+      kind: 'app'
+      app: InstalledAppResponse
+    }
+  | {
+      key: string
+      kind: 'separator'
+    }
 
 const WebAppsSectionContent = () => {
   const { t } = useTranslation()
@@ -83,7 +102,31 @@ const WebAppsSectionContent = () => {
     consoleQuery.installedApps.byInstalledAppId.patch.mutationOptions(),
   )
 
-  const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
+  const webAppRows = useMemo<WebAppListRow[]>(() => {
+    const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
+
+    return installedApps.flatMap((app, index) => {
+      const rows: WebAppListRow[] = [{ key: app.id, kind: 'app', app }]
+
+      if (index === pinnedAppsCount - 1 && index !== installedApps.length - 1)
+        rows.push({ key: `${app.id}-separator`, kind: 'separator' })
+
+      return rows
+    })
+  }, [installedApps])
+  const shouldVirtualize = webAppRows.length > virtualizationThreshold
+
+  const rowVirtualizer = useVirtualizer({
+    count: webAppRows.length,
+    estimateSize: (index) =>
+      webAppRows[index]?.kind === 'separator' ? appNavSeparatorHeight : appNavItemHeight,
+    gap: appNavItemGap,
+    getItemKey: (index) => webAppRows[index]?.key ?? index,
+    getScrollElement: () => scrollRef.current,
+    overscan: 6,
+    paddingEnd: 8,
+  })
+
   const canLoadMore = !installedAppsQuery.isFetching && !installedAppsQuery.error
 
   const handleSearchTextChange = (value: string) => {
@@ -143,6 +186,11 @@ const WebAppsSectionContent = () => {
       onDelete={setUninstallDialogAppId}
     />
   )
+  const renderRow = (row: WebAppListRow) => {
+    if (row.kind === 'separator') return <Divider />
+
+    return renderAppNavItem(row.app)
+  }
   return (
     <Collapsible
       open={appsExpanded && searchVisible}
@@ -225,16 +273,34 @@ const WebAppsSectionContent = () => {
                   {t(($) => $['mainNav.webApps.noResults'], { ns: 'common' })}
                 </div>
               )}
-              {installedApps.length > 0 && (
+              {webAppRows.length > 0 && !shouldVirtualize && (
                 <div className="space-y-0.5 pb-2">
-                  {installedApps.map((installedApp, index) => (
-                    <Fragment key={installedApp.id}>
-                      {renderAppNavItem(installedApp)}
-                      {index === pinnedAppsCount - 1 && index !== installedApps.length - 1 && (
-                        <Divider />
-                      )}
-                    </Fragment>
+                  {webAppRows.map((row) => (
+                    <Fragment key={row.key}>{renderRow(row)}</Fragment>
                   ))}
+                </div>
+              )}
+              {shouldVirtualize && (
+                <div
+                  className="relative w-full"
+                  style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
+                >
+                  {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                    const row = webAppRows[virtualRow.index]!
+
+                    return (
+                      <div
+                        key={virtualRow.key}
+                        className="absolute top-0 left-0 w-full"
+                        style={{
+                          height: `${virtualRow.size}px`,
+                          transform: `translateY(${virtualRow.start}px)`,
+                        }}
+                      >
+                        {renderRow(row)}
+                      </div>
+                    )
+                  })}
                 </div>
               )}
               {installedAppsQuery.hasNextPage && (

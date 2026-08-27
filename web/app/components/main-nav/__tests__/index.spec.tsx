@@ -174,6 +174,8 @@ const mockProviderContextState = vi.hoisted(() => ({
   } as Partial<ProviderContextState>,
 }))
 
+vi.mock('@tanstack/react-virtual')
+
 vi.mock('@/features/agent-v2/feature-flag', () => ({
   isAgentV2Enabled: () => mockIsAgentV2Enabled(),
 }))
@@ -1369,6 +1371,38 @@ describe('MainNav', () => {
 
     expect(screen.getByText('common.mainNav.workspace.settings')).toBeInTheDocument()
     expect(screen.queryByText('common.mainNav.workspace.inviteMembers')).not.toBeInTheDocument()
+  })
+
+  const createInstalledAppList = (count: number) =>
+    Array.from({ length: count }, (_, index) =>
+      createInstalledApp({
+        id: `installed-${index}`,
+        app: { ...createInstalledApp().app, id: `app-${index}`, name: `App ${index}` },
+      }),
+    )
+
+  it('renders the installed web app list in flow layout below the virtualization threshold', async () => {
+    mockInstalledApps = createInstalledAppList(50)
+
+    renderMainNav()
+
+    const firstRow = await screen.findByText('App 0')
+    expect(firstRow.closest('div.absolute')).toBeNull()
+  })
+
+  it('virtualizes the installed web app list above the virtualization threshold', async () => {
+    mockInstalledApps = createInstalledAppList(51)
+
+    renderMainNav()
+
+    const firstRow = await screen.findByText('App 0')
+    const virtualRow = firstRow.closest('div.absolute')
+    expect(virtualRow).not.toBeNull()
+
+    // Rows are absolutely positioned inside a container sized to the full list, so
+    // off-screen entries stay out of the layout and paint path.
+    const virtualContainer = virtualRow!.parentElement
+    expect(virtualContainer).toHaveStyle({ height: '1632px' })
   })
 
   it('searches installed web apps and renders the matching navigation link', async () => {
