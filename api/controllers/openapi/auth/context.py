@@ -34,6 +34,10 @@ class Context:
         self._view_args = view_args
 
     @property
+    def session(self) -> Session:
+        return self._session
+
+    @property
     def has_app(self) -> bool:
         return "app_id" in self._view_args
 
