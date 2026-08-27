@@ -1,4 +1,6 @@
+import socket
 import ssl
+import sys
 from typing import Any, cast
 from urllib.parse import urlparse
 
@@ -26,11 +28,27 @@ def _build_redis_options(redis_url: str) -> dict[str, Any]:
     blocking ``pubsub.listen()`` loop that idles indefinitely between messages;
     applying a read timeout there causes a reconnect storm (issue #39423).
     ``socket_connect_timeout`` still guards connection establishment.
+
+    TCP keepalive mirrors the platform-specific options used for regular Redis
+    clients in ``ext_redis``: Linux exposes per-probe tuning knobs, while macOS
+    only exposes ``TCP_KEEPALIVE``. ``TCP_KEEPIDLE``/``TCP_KEEPINTVL``/
+    ``TCP_KEEPCNT`` are not available on every platform, so they are only set
+    when ``sys.platform`` is ``linux``.
     """
+    socket_keepalive_options: dict[int, int] = {}
+    if sys.platform == "linux":
+        socket_keepalive_options[socket.TCP_KEEPIDLE] = dify_config.REDIS_KEEPALIVE_IDLE
+        socket_keepalive_options[socket.TCP_KEEPINTVL] = dify_config.REDIS_KEEPALIVE_INTERVAL
+        socket_keepalive_options[socket.TCP_KEEPCNT] = dify_config.REDIS_KEEPALIVE_COUNT
+    elif sys.platform == "darwin":
+        socket_keepalive_options[socket.TCP_KEEPALIVE] = dify_config.REDIS_KEEPALIVE_IDLE
+
     options: dict[str, Any] = {
         "socket_connect_timeout": dify_config.REDIS_SOCKET_CONNECT_TIMEOUT,
         "health_check_interval": dify_config.REDIS_HEALTH_CHECK_INTERVAL,
         "protocol": dify_config.REDIS_SERIALIZATION_PROTOCOL,
+        "socket_keepalive": dify_config.REDIS_KEEPALIVE,
+        "socket_keepalive_options": socket_keepalive_options,
     }
 
     if dify_config.REDIS_MAX_CONNECTIONS:

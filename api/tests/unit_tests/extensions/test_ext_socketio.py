@@ -1,4 +1,6 @@
+import socket
 import ssl
+import sys
 
 import pytest
 import socketio
@@ -44,3 +46,41 @@ def test_build_redis_options_omits_socket_timeout(monkeypatch: pytest.MonkeyPatc
 
     assert "socket_timeout" not in options
     assert "socket_connect_timeout" in options
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="TCP_KEEPIDLE/TCP_KEEPINTVL/TCP_KEEPCNT are Linux-only")
+def test_build_redis_options_sets_linux_keepalive_options(monkeypatch) -> None:
+    monkeypatch.setattr(ext_socketio.sys, "platform", "linux")
+    monkeypatch.setattr(ext_socketio.dify_config, "REDIS_KEEPALIVE", True)
+    monkeypatch.setattr(ext_socketio.dify_config, "REDIS_KEEPALIVE_IDLE", 30)
+    monkeypatch.setattr(ext_socketio.dify_config, "REDIS_KEEPALIVE_INTERVAL", 10)
+    monkeypatch.setattr(ext_socketio.dify_config, "REDIS_KEEPALIVE_COUNT", 10)
+
+    options = ext_socketio._build_redis_options("redis://redis.example.com:6380/3")
+
+    assert options["socket_keepalive"] is True
+    assert options["socket_keepalive_options"] == {
+        socket.TCP_KEEPIDLE: 30,
+        socket.TCP_KEEPINTVL: 10,
+        socket.TCP_KEEPCNT: 10,
+    }
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="TCP_KEEPALIVE is the macOS keepalive idle knob")
+def test_build_redis_options_sets_darwin_keepalive_options(monkeypatch) -> None:
+    monkeypatch.setattr(ext_socketio.sys, "platform", "darwin")
+    monkeypatch.setattr(ext_socketio.dify_config, "REDIS_KEEPALIVE", True)
+    monkeypatch.setattr(ext_socketio.dify_config, "REDIS_KEEPALIVE_IDLE", 30)
+
+    options = ext_socketio._build_redis_options("redis://redis.example.com:6380/3")
+
+    assert options["socket_keepalive"] is True
+    assert options["socket_keepalive_options"] == {socket.TCP_KEEPALIVE: 30}
+
+
+def test_build_redis_options_no_keepalive_options_on_unsupported_platform(monkeypatch) -> None:
+    monkeypatch.setattr(ext_socketio.sys, "platform", "win32")
+
+    options = ext_socketio._build_redis_options("redis://redis.example.com:6380/3")
+
+    assert options["socket_keepalive_options"] == {}
