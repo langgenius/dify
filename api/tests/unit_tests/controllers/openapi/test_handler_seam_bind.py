@@ -158,14 +158,22 @@ class _Scan(ast.NodeVisitor):
         self.generic_visit(node)
         self.scopes.pop()
 
-    def _bind(self, target: ast.expr | None, in_effect_from: int, class_name: str | None) -> None:
+    def _bind(self, target: ast.expr | None, in_effect_from: int, value: ast.expr | None) -> None:
         if not self.scopes:
             return
         if isinstance(target, ast.Name):
-            self.scopes[-1][2].setdefault(target.id, []).append((in_effect_from, class_name))
+            self.scopes[-1][2].setdefault(target.id, []).append((in_effect_from, _instantiated_class(value)))
         elif isinstance(target, ast.Tuple | ast.List):
-            for element in target.elts:
-                self._bind(element, in_effect_from, None)
+            # `a, b = X(), Y()` resolves each name against its positional counterpart.
+            # Anything that breaks the correspondence — a length mismatch, a starred
+            # target, a right-hand side that is not a literal sequence — is ambiguous, so
+            # every element is poisoned instead of guessed at.
+            elements = value.elts if isinstance(value, ast.Tuple | ast.List) else []
+            positional = len(elements) == len(target.elts) and not any(
+                isinstance(element, ast.Starred) for element in target.elts
+            )
+            for index, element in enumerate(target.elts):
+                self._bind(element, in_effect_from, elements[index] if positional else None)
         elif isinstance(target, ast.Starred):
             self._bind(target.value, in_effect_from, None)
 
@@ -193,11 +201,11 @@ class _Scan(ast.NodeVisitor):
 
     def visit_Assign(self, node: ast.Assign) -> None:
         for target in node.targets:
-            self._bind(target, node.lineno + 1, _instantiated_class(node.value))
+            self._bind(target, node.lineno + 1, node.value)
         self.generic_visit(node)
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
-        self._bind(node.target, node.lineno + 1, _instantiated_class(node.value))
+        self._bind(node.target, node.lineno + 1, node.value)
         self.generic_visit(node)
 
     def visit_AugAssign(self, node: ast.AugAssign) -> None:
@@ -574,6 +582,38 @@ def test_checker_refuses_a_shadowed_receiver(tmp_path: Path, body: str) -> None:
     """A binding form the walker did not record would let the lookup reach past it to the
     `api = WorkspaceMembersApi()` on line 4 and bind against the wrong handler."""
     _path, report = _mutant(tmp_path, body)
+
+    assert report.bound == 0
+    assert len(report.failures) == 1
+    assert _REASON_SHADOWED in report.failures[0]
+
+
+def test_checker_resolves_a_positional_tuple_binding(tmp_path: Path) -> None:
+    """`a, b = X(), Y()` resolves unambiguously, so poisoning it would fail correct code.
+    Binding each name to the wrong counterpart would swap these two outcomes."""
+    _path, report = _mutant(
+        tmp_path,
+        "    api, other = WorkspaceSwitchApi(), WorkspaceMembersApi()\n"
+        '    other.get.__handler__(other, ctx, "ws", query=q)\n'
+        '    api.get.__handler__(api, ctx, "ws", query=q)\n',
+    )
+
+    assert report.bound == 1
+    assert len(report.failures) == 1
+    assert "`WorkspaceSwitchApi` has no `get`" in report.failures[0]
+
+
+_AMBIGUOUS_TUPLES = [
+    "    api, other = _make_apis()\n",
+    "    api, *rest = WorkspaceSwitchApi(), WorkspaceMembersApi()\n",
+]
+
+
+@pytest.mark.parametrize("binding", _AMBIGUOUS_TUPLES)
+def test_checker_refuses_an_ambiguous_tuple_binding(tmp_path: Path, binding: str) -> None:
+    """No positional correspondence to read, so the rebinding poisons the lookup rather
+    than letting it reach past to the `api = WorkspaceMembersApi()` on line 4."""
+    _path, report = _mutant(tmp_path, binding + '    api.get.__handler__(api, ctx, "ws", query=q)\n')
 
     assert report.bound == 0
     assert len(report.failures) == 1
