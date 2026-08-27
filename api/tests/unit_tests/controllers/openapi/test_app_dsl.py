@@ -8,7 +8,12 @@ from werkzeug.exceptions import Forbidden
 
 from controllers.openapi import app_dsl as app_dsl_module
 from controllers.openapi._models import AppDslImportPayload
-from controllers.openapi.app_dsl import AppDslImportApi, AppDslImportConfirmApi
+from controllers.openapi.app_dsl import (
+    AppDslCheckDependenciesApi,
+    AppDslExportApi,
+    AppDslImportApi,
+    AppDslImportConfirmApi,
+)
 from services.errors.account import NoPermissionError
 
 
@@ -17,14 +22,17 @@ from services.errors.account import NoPermissionError
     [
         (AppDslImportApi.post, False),
         (AppDslImportConfirmApi.post, False),
+        (AppDslExportApi.get, False),
+        (AppDslCheckDependenciesApi.get, False),
     ],
-    ids=["import", "import_confirm"],
+    ids=["import", "import_confirm", "export", "check_dependencies"],
 )
-def test_import_routes_leave_the_transaction_to_their_own_session(view, write: bool):
-    """Neither import route carried `@with_session` before it moved onto
-    `@endpoint`: each opens its own `Session` and commits or rolls it back on
-    the import's own outcome. `write=False` keeps the router's session — the
-    one the requirements read through — out of that decision, exactly as before.
+def test_dsl_routes_leave_the_transaction_to_their_own_session(view, write: bool):
+    """None of the four carried `@with_session` before moving onto `@endpoint`:
+    the imports open their own `Session` and commit or roll it back on the
+    import's own outcome, and the two reads never had a router-owned
+    transaction at all. `write=False` keeps the router's session — the one the
+    requirements read through — out of that decision, exactly as before.
     """
     assert view.__spec__.write is write
 
