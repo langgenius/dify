@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from functools import wraps
-from typing import Any
 from uuid import UUID
 
 import pytest
@@ -36,12 +35,12 @@ def _install_fake_transport(
     auth_data: AuthData,
     captured: dict[str, object],
 ) -> None:
-    def guard(**requirements: object) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    def guard(**requirements: object) -> Callable[[Callable[..., object]], Callable[..., object]]:
         captured.update(requirements)
 
-        def decorator(view: Callable[..., Any]) -> Callable[..., Any]:
+        def decorator(view: Callable[..., object]) -> Callable[..., object]:
             @wraps(view)
-            def admitted(*args: object, **kwargs: object) -> Any:
+            def admitted(*args: object, **kwargs: object) -> object:
                 return view(*args, auth_data=auth_data, **kwargs)
 
             return admitted
@@ -97,4 +96,22 @@ def test_admission_rejects_uninitialized_account(monkeypatch: pytest.MonkeyPatch
 
     with Flask(__name__).test_request_context("/openapi/v1/account"):
         with pytest.raises(Unauthorized, match="account not initialized"):
+            view(object())
+
+
+def test_admission_rejects_missing_auth_data(monkeypatch: pytest.MonkeyPatch) -> None:
+    def guard(**_requirements: object) -> Callable[[Callable[..., object]], Callable[..., object]]:
+        def decorator(view: Callable[..., object]) -> Callable[..., object]:
+            return view
+
+        return decorator
+
+    monkeypatch.setattr(flask_admission.auth_router, "guard", guard)
+
+    @flask_admission.openapi_account_admission(scope=Scope.FULL)
+    def view(_self: object, _context: RequestContext) -> None:
+        raise AssertionError("view must not run")
+
+    with Flask(__name__).test_request_context("/openapi/v1/account"):
+        with pytest.raises(RuntimeError, match="did not provide valid AuthData"):
             view(object())

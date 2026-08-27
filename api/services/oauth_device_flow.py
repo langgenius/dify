@@ -10,12 +10,12 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from typing import Any, NotRequired, TypedDict
+from typing import NotRequired, TypedDict
 
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from libs.oauth_bearer import invalidate_oauth_token_cache
+from libs.oauth_bearer import SubjectType, invalidate_oauth_token_cache
 from models.oauth import OAuthAccessToken
 
 logger = logging.getLogger(__name__)

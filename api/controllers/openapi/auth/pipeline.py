@@ -218,8 +218,7 @@ class PipelineRouter:
 
         license_checked = False
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE and (
-            require_valid_enterprise_license
-            or (edition is not None and DeploymentEdition.ENTERPRISE in edition)
+            require_valid_enterprise_license or (edition is not None and DeploymentEdition.ENTERPRISE in edition)
         ):
             _check_license()
             license_checked = True

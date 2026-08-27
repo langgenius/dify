@@ -113,7 +113,7 @@ def _request_context() -> RequestContext:
 
 
 class _SessionListService:
-    def list_sessions(self, context: RequestContext, *, page: int, limit: int) -> AccountSessionPage:
+    def list_sessions(self, _context: RequestContext, *, page: int, limit: int) -> AccountSessionPage:
         return AccountSessionPage(page=page, limit=limit, total=0, items=())
 
 

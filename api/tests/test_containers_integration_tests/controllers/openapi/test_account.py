@@ -16,9 +16,7 @@ from tests.test_containers_integration_tests.controllers.openapi.conftest import
 
 
 class TestAccountInfo:
-    def test_returns_account_and_owner_workspace(
-        self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
-    ) -> None:
+    def test_returns_account_and_owner_workspace(self, app: Flask, make_account: Callable[..., Account]) -> None:
         account = make_account()
         owner_tenant = account.current_tenant
         assert owner_tenant is not None

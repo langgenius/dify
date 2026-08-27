@@ -46,9 +46,11 @@ def openapi_account_admission[T, **P, R](
             self: T,
             /,
             *args: P.args,
-            auth_data: AuthData,
             **kwargs: P.kwargs,
         ) -> R:
+            auth_data = kwargs.pop("auth_data", None)
+            if not isinstance(auth_data, AuthData):
+                raise RuntimeError("OpenAPI auth pipeline did not provide valid AuthData")
             account = auth_data.caller
             if not isinstance(account, Account) or auth_data.account_id is None:
                 raise Unauthorized("account not found")
