@@ -14,16 +14,14 @@ import TriggerWebhookDefault from '@/app/components/workflow/nodes/trigger-webho
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
-import { docPathProductAvailability } from '@/types/doc-paths'
+import { isProductlessDocPathWithAnchor } from '@/types/doc-paths'
 import { useIsChatMode } from './use-is-chat-mode'
 
 const getNodeHelpLinkPath = (helpLinkUri?: string): DocPathWithoutLang | undefined => {
   if (!helpLinkUri) return undefined
 
   const helpLinkPath = `/use-dify/nodes/${helpLinkUri}`
-  if (!docPathProductAvailability[helpLinkPath]) return undefined
-
-  return helpLinkPath as DocPathWithoutLang
+  return isProductlessDocPathWithAnchor(helpLinkPath) ? helpLinkPath : undefined
 }
 
 export const useAvailableNodesMetaData = () => {
