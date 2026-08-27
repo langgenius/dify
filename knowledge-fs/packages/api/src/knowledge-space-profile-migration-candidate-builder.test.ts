@@ -342,6 +342,7 @@ describe("profile migration candidate builder", () => {
       expect.objectContaining({
         denseModel: fixture.baseVectorSpaceId,
         embeddingProfile: expect.objectContaining({ model: "embedding-v1" }),
+        projectionStatus: "building",
         retrievalProfile: expect.objectContaining({
           reasoningModel: expect.objectContaining({ model: "reasoning-v2" }),
         }),
@@ -417,6 +418,7 @@ describe("profile migration candidate builder", () => {
     expect(fixture.reindex).toHaveBeenCalledOnce();
     expect(fixture.reindex).toHaveBeenCalledWith(
       expect.objectContaining({
+        projectionStatus: "building",
         reuseNodeGenerationId: baseGenerationId,
         skipVisual: true,
         retrievalProfile: expect.objectContaining({
@@ -912,7 +914,13 @@ function builderFixture(
     semanticProviderCallsMaximum: 0,
   }));
   const reindex = vi.fn(
-    async ({ publicationGenerationId }: { readonly publicationGenerationId?: string }) => {
+    async ({
+      projectionStatus,
+      publicationGenerationId,
+    }: {
+      readonly projectionStatus?: IndexProjection["status"];
+      readonly publicationGenerationId?: string;
+    }) => {
       if (options.incompleteReindexReceipt) {
         return {
           artifact: {} as never,
@@ -923,12 +931,21 @@ function builderFixture(
         };
       }
       if (!publicationGenerationId) throw new Error("generation missing");
-      projections.set(rebuiltFtsId, projection(rebuiltFtsId, publicationGenerationId, "fts"));
+      projections.set(
+        rebuiltFtsId,
+        projection(rebuiltFtsId, publicationGenerationId, "fts", undefined, projectionStatus),
+      );
       const targetVectorSpaceId =
         scope === "full-vector-space" ? newVectorSpaceId : oldVectorSpaceId;
       projections.set(
         rebuiltDenseId,
-        projection(rebuiltDenseId, publicationGenerationId, "dense-vector", targetVectorSpaceId),
+        projection(
+          rebuiltDenseId,
+          publicationGenerationId,
+          "dense-vector",
+          targetVectorSpaceId,
+          projectionStatus,
+        ),
       );
       return {
         artifact: {} as never,
@@ -1198,8 +1215,8 @@ describe("profile migration structural evaluator", () => {
       candidateMembers,
       outlineGenerationId: rebuiltGenerationId,
       projections: [
-        projection(ftsId, rebuiltGenerationId, "fts"),
-        projection(denseId, rebuiltGenerationId, "dense-vector", vectorSpaceId),
+        projection(ftsId, rebuiltGenerationId, "fts", undefined, "building"),
+        projection(denseId, rebuiltGenerationId, "dense-vector", vectorSpaceId, "building"),
       ],
       summaryModel: "reasoning-v2",
     }).evaluate({
@@ -1223,8 +1240,8 @@ describe("profile migration structural evaluator", () => {
       baseMembers: [member("document-outline", outlineId, baseGenerationId)],
       candidateMembers,
       projections: [
-        projection(ftsId, generationId, "fts"),
-        projection(denseId, generationId, "dense-vector", vectorSpaceId),
+        projection(ftsId, generationId, "fts", undefined, "building"),
+        projection(denseId, generationId, "dense-vector", vectorSpaceId, "building"),
       ],
     }).evaluate({
       candidate: candidateResult(),
@@ -1385,6 +1402,7 @@ function projection(
   publicationGenerationId: string,
   type: IndexProjection["type"],
   model?: string,
+  status: IndexProjection["status"] = "ready",
 ): IndexProjection {
   return {
     id,
@@ -1394,7 +1412,7 @@ function projection(
     nodeId: deterministicChildId(id, "node"),
     projectionVersion: 1,
     publicationGenerationId,
-    status: "ready",
+    status,
     type,
   };
 }

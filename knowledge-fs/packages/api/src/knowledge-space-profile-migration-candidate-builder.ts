@@ -647,7 +647,7 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
               projection.publicationGenerationId !== expectedGeneration ||
               member.generationId !== expectedGeneration ||
               projectionDocumentAssetId(projection) !== document.documentAssetId ||
-              projection.status !== "ready"
+              projection.status !== "building"
             ) {
               throw candidateError(
                 "PROFILE_MIGRATION_REASONING_REBUILD_INCOMPLETE",
@@ -763,7 +763,7 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
             (!isOrdinarySearchProjection(projection) ||
               member.generationId !== expectedGeneration)) ||
           projectionDocumentAssetId(projection) !== document.documentAssetId ||
-          projection.status !== "ready"
+          projection.status !== (preserved ? "ready" : "building")
         ) {
           throw candidateError(
             "PROFILE_MIGRATION_VECTOR_REBUILD_INCOMPLETE",
@@ -955,7 +955,7 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
             knowledgeSpaceId: input.knowledgeSpaceId,
             parseArtifact: document.artifact,
             permissionScope: stringArray(document.asset.metadata.permissionScope),
-            projectionStatus: "ready",
+            projectionStatus: "building",
             projectionVersion: document.asset.version,
             publicationGenerationId: generationId,
             retrievalProfile,
@@ -1134,7 +1134,7 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
             knowledgeSpaceId: input.knowledgeSpaceId,
             parseArtifact: document.artifact,
             permissionScope: stringArray(document.asset.metadata.permissionScope),
-            projectionStatus: "ready",
+            projectionStatus: "building",
             projectionVersion: document.asset.version,
             publicationGenerationId: generationId,
             retrievalProfile,
@@ -1476,7 +1476,7 @@ export function createRepositoryKnowledgeSpaceProfileMigrationEvaluator({
               !projection ||
               projection.publicationGenerationId !== member.generationId ||
               projectionDocumentAssetId(projection) !== documentAssetId ||
-              projection.status !== "ready"
+              projection.status !== expectedMigrationProjectionStatus(run, member)
             ) {
               return failedEvaluation(`projection ${member.componentKey} lineage is invalid`);
             }
@@ -1785,6 +1785,17 @@ function isOrdinarySearchProjection(projection: IndexProjection | undefined): bo
     (projection.type === "fts" ||
       (projection.type === "dense-vector" && !isVisualProjection(projection)))
   );
+}
+
+function expectedMigrationProjectionStatus(
+  run: KnowledgeSpaceProfileMigrationRun,
+  member: ProjectionSetPublicationMember,
+): IndexProjection["status"] {
+  if (!member.documentAssetId || run.rebuildScope === "clone-publication") return "ready";
+  const scope = run.rebuildScope === "full-vector-space" ? "vector-space" : "page-index";
+  return member.generationId === migrationGenerationId(run.id, scope, member.documentAssetId)
+    ? "building"
+    : "ready";
 }
 
 function isGraphMember(member: Pick<ProjectionSetPublicationMember, "componentType">): boolean {
