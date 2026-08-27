@@ -30,16 +30,6 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 
-class SubjectType(StrEnum):
-    ACCOUNT = "account"
-    EXTERNAL_SSO = "external_sso"
-
-
-class TokenType(StrEnum):
-    OAUTH_ACCOUNT = "oauth_account"
-    OAUTH_EXTERNAL_SSO = "oauth_external_sso"
-
-
 class Scope(StrEnum):
     """Catalog of bearer scopes recognised by the openapi surface.
 
@@ -54,6 +44,27 @@ class Scope(StrEnum):
     APPS_RUN = "apps:run"
     WORKSPACE_READ = "workspace:read"
     WORKSPACE_WRITE = "workspace:write"
+
+
+class SubjectType(StrEnum):
+    ACCOUNT = ("account", "dfoa_", frozenset({Scope.FULL}))
+    EXTERNAL_SSO = (
+        "external_sso",
+        "dfoe_",
+        frozenset({Scope.APPS_RUN, Scope.APPS_READ_PERMITTED_EXTERNAL}),
+    )
+
+    def __new__(cls, value: str, prefix: str, scopes: frozenset[Scope]) -> SubjectType:
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj.prefix = prefix
+        obj.scopes = scopes
+        return obj
+
+
+class TokenType(StrEnum):
+    OAUTH_ACCOUNT = "oauth_account"
+    OAUTH_EXTERNAL_SSO = "oauth_external_sso"
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,40 +151,6 @@ class TokenKind:
 
     def matches(self, token: str) -> bool:
         return token.startswith(self.prefix)
-
-
-@dataclass(frozen=True, slots=True)
-class MintProfile:
-    """Single source of truth for (subject_type, prefix, scopes) at mint time.
-
-    Consumers:
-    - ``build_registry`` reads scopes here so the resolve-time TokenKind
-      cannot drift from the mint-time intent.
-    - Device-flow ``approve`` / ``approve-external`` read prefix + scopes
-      here when calling ``mint_oauth_token`` and ``validate_mint_policy``.
-    - ``services.openapi.mint_policy.validate_mint_policy`` cross-checks
-      the (subject_type, prefix, scopes) triple a caller intends to mint
-      against this table — a caller that assembles its own scope set
-      from a non-canonical source will fail closed at approve time.
-    """
-
-    subject_type: SubjectType
-    prefix: str
-    scopes: frozenset[Scope]
-
-
-MINTABLE_PROFILES: dict[SubjectType, MintProfile] = {
-    SubjectType.ACCOUNT: MintProfile(
-        subject_type=SubjectType.ACCOUNT,
-        prefix="dfoa_",
-        scopes=frozenset({Scope.FULL}),
-    ),
-    SubjectType.EXTERNAL_SSO: MintProfile(
-        subject_type=SubjectType.EXTERNAL_SSO,
-        prefix="dfoe_",
-        scopes=frozenset({Scope.APPS_RUN, Scope.APPS_READ_PERMITTED_EXTERNAL}),
-    ),
-}
 
 
 class InvalidBearerError(Exception):
@@ -456,21 +433,19 @@ def bearer_feature_required[**P, R](fn: Callable[P, R]) -> Callable[P, R]:
 
 def build_registry(session_factory, redis_client) -> TokenKindRegistry:
     oauth = OAuthAccessTokenResolver(session_factory, redis_client)
-    account = MINTABLE_PROFILES[SubjectType.ACCOUNT]
-    external = MINTABLE_PROFILES[SubjectType.EXTERNAL_SSO]
     return TokenKindRegistry(
         [
             TokenKind(
-                prefix=account.prefix,
-                subject_type=account.subject_type,
-                scopes=account.scopes,
+                prefix=SubjectType.ACCOUNT.prefix,
+                subject_type=SubjectType.ACCOUNT,
+                scopes=SubjectType.ACCOUNT.scopes,
                 token_type=TokenType.OAUTH_ACCOUNT,
                 resolver=oauth.for_account(),
             ),
             TokenKind(
-                prefix=external.prefix,
-                subject_type=external.subject_type,
-                scopes=external.scopes,
+                prefix=SubjectType.EXTERNAL_SSO.prefix,
+                subject_type=SubjectType.EXTERNAL_SSO,
+                scopes=SubjectType.EXTERNAL_SSO.scopes,
                 token_type=TokenType.OAUTH_EXTERNAL_SSO,
                 resolver=oauth.for_external_sso(),
             ),

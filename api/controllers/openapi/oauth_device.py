@@ -48,7 +48,7 @@ from controllers.openapi._models import (
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.helper import extract_remote_ip
-from libs.oauth_bearer import MINTABLE_PROFILES, SubjectType, bearer_feature_required
+from libs.oauth_bearer import SubjectType, bearer_feature_required
 from libs.rate_limit import (
     LIMIT_DEVICE_CODE_PER_IP,
     LIMIT_DEVICE_FLOW_APPROVE,
@@ -236,12 +236,11 @@ class DeviceApproveApi(Resource):
             return {"error": "approve_in_progress"}, 409
 
         try:
-            profile = MINTABLE_PROFILES[SubjectType.ACCOUNT]
             try:
                 validate_mint_policy(
-                    subject_type=profile.subject_type,
-                    prefix=profile.prefix,
-                    scopes=profile.scopes,
+                    subject_type=SubjectType.ACCOUNT,
+                    prefix=SubjectType.ACCOUNT.prefix,
+                    scopes=SubjectType.ACCOUNT.scopes,
                 )
             except MintPolicyViolation as e:
                 raise BadRequest(description=str(e)) from None
@@ -253,7 +252,7 @@ class DeviceApproveApi(Resource):
                 account_id=str(account.id),
                 client_id=state.client_id,
                 device_label=state.device_label,
-                prefix=profile.prefix,
+                prefix=SubjectType.ACCOUNT.prefix,
                 ttl_days=ttl_days,
                 session=db.session(),
             )
