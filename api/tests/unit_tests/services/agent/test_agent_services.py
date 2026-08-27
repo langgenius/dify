@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidationError
+from libs.helper import build_icon_url
 from models.account import Account
 from models.agent import (
     Agent,
@@ -21,6 +22,7 @@ from models.agent import (
     AgentConfigVersionKind,
     AgentDebugConversation,
     AgentHomeSnapshot,
+    AgentIconType,
     AgentKind,
     AgentScope,
     AgentSource,
@@ -233,6 +235,24 @@ def test_peek_authz_app_id_uses_the_roster_agent_app(sqlite_session: Session):
     result = AgentRosterService(session).peek_authz_app_id(tenant_id="tenant-1", agent_id="agent-1")
 
     assert result == "roster-app-1"
+
+
+def test_serialize_agent_includes_icon_url_for_image_icons(monkeypatch: pytest.MonkeyPatch):
+    agent = _agent()
+    agent.icon_type = AgentIconType.IMAGE
+    agent.icon = "upload-file-id"
+    monkeypatch.setattr(
+        "libs.helper.file_helpers.get_signed_file_url",
+        lambda upload_file_id: f"/files/{upload_file_id}/file-preview?sign=test",
+    )
+
+    # Pin AgentIconType → build_icon_url compatibility (StrEnum str() fallback, not IconType).
+    assert build_icon_url(AgentIconType.IMAGE, "upload-file-id") == "/files/upload-file-id/file-preview?sign=test"
+
+    payload = AgentRosterService.serialize_agent(agent)
+
+    assert payload["icon"] == "upload-file-id"
+    assert payload["icon_url"] == "/files/upload-file-id/file-preview?sign=test"
 
 
 def test_peek_authz_app_id_returns_none_without_creating_a_backing_app(sqlite_session: Session):

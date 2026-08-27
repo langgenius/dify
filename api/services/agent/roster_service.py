@@ -100,6 +100,8 @@ class AgentRosterService:
         reference_count: int | None = None,
     ) -> dict[str, Any]:
         published_references = published_references or []
+        from libs.helper import build_icon_url
+
         return {
             "id": agent.id,
             "name": agent.name,
@@ -108,6 +110,7 @@ class AgentRosterService:
             "icon_type": agent.icon_type.value if agent.icon_type else None,
             "icon": agent.icon,
             "icon_background": agent.icon_background,
+            "icon_url": build_icon_url(agent.icon_type, agent.icon),
             "agent_kind": agent.agent_kind.value,
             "scope": agent.scope.value,
             "source": agent.source.value,

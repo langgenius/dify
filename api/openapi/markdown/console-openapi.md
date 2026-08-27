@@ -14197,6 +14197,7 @@ Supported icon storage formats for Agent roster entries.
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | [AgentIconType](#agenticontype) |  | No |
+| icon_url | string |  | No |
 | id | string |  | Yes |
 | in_current_workflow_count | integer |  | No |
 | is_in_current_workflow | boolean |  | No |
@@ -14654,6 +14655,7 @@ section may be empty, which is how callers express "no knowledge layer".
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | [AgentIconType](#agenticontype) |  | No |
+| icon_url | string |  | No |
 | id | string |  | Yes |
 | name | string |  | Yes |
 | published_node_reference_count | integer |  | No |

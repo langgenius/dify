@@ -129,6 +129,22 @@ describe('AgentRosterList', () => {
     expect(screen.queryByText('agent')).not.toBeInTheDocument()
   })
 
+  it('renders uploaded image icons using icon_url', () => {
+    const { container } = renderList([
+      createAgent({
+        icon: '29bdb007-4d8c-4888-83a2-7587abcafb26',
+        icon_background: '#F5F3FF',
+        icon_type: 'image',
+        icon_url: '/files/29bdb007-4d8c-4888-83a2-7587abcafb26/file-preview?sign=abc',
+      }),
+    ])
+
+    expect(container.querySelector('img[alt="app icon"]')).toHaveAttribute(
+      'src',
+      '/files/29bdb007-4d8c-4888-83a2-7587abcafb26/file-preview?sign=abc',
+    )
+  })
+
   it('exposes each agent card with the agent name', () => {
     renderList([createAgent()])
 
