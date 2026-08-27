@@ -540,9 +540,9 @@ export function AgentEnvEditor() {
       panelId={envEditorTableId}
       tip={<AgentConfigureTipContent type="env" />}
       tipAriaLabel={envEditorTip}
-      rootClassName="gap-1 pt-3"
+      rootClassName="gap-1 py-3"
       headerClassName="mb-0 gap-1 px-3"
-      panelContentClassName="px-3 pb-3"
+      panelContentClassName="px-3"
       actions={
         !readOnly ? (
           <>
