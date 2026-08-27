@@ -129,9 +129,12 @@ jobs:
 
       - uses: ./.github/actions/setup-web
       - uses: oven-sh/setup-bun@v2
-        with: { bun-version: latest }
+        with:
+          bun-version: latest
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with: { package_json_field: packageManager, run_install: false }
+        with:
+          package_json_field: packageManager
+          run_install: false
       - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen
 
@@ -176,9 +179,12 @@ jobs:
 
       - uses: ./.github/actions/setup-web
       - uses: oven-sh/setup-bun@v2
-        with: { bun-version: latest }
+        with:
+          bun-version: latest
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with: { package_json_field: packageManager, run_install: false }
+        with:
+          package_json_field: packageManager
+          run_install: false
       - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen
 
@@ -239,9 +245,12 @@ jobs:
 
       - uses: ./.github/actions/setup-web
       - uses: oven-sh/setup-bun@v2
-        with: { bun-version: latest }
+        with:
+          bun-version: latest
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with: { package_json_field: packageManager, run_install: false }
+        with:
+          package_json_field: packageManager
+          run_install: false
       - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen
 
@@ -301,9 +310,12 @@ jobs:
 
       - uses: ./.github/actions/setup-web
       - uses: oven-sh/setup-bun@v2
-        with: { bun-version: latest }
+        with:
+          bun-version: latest
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with: { package_json_field: packageManager, run_install: false }
+        with:
+          package_json_field: packageManager
+          run_install: false
       - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen
 
@@ -357,9 +369,12 @@ jobs:
 
       - uses: ./.github/actions/setup-web
       - uses: oven-sh/setup-bun@v2
-        with: { bun-version: latest }
+        with:
+          bun-version: latest
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with: { package_json_field: packageManager, run_install: false }
+        with:
+          package_json_field: packageManager
+          run_install: false
       - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen
 
