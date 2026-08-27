@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from inspect import unwrap
 from uuid import uuid4
 
 import pytest
@@ -18,7 +17,7 @@ from controllers.openapi.account import (
 from extensions.ext_redis import redis_client
 from models import Account
 from services.oauth_device_flow import PREFIX_OAUTH_ACCOUNT, MintResult, mint_oauth_token
-from tests.test_containers_integration_tests.controllers.openapi.conftest import account_auth_context, auth_for
+from tests.test_containers_integration_tests.controllers.openapi.conftest import account_auth_context, context_for
 
 
 def _mint_account_token(
@@ -52,10 +51,9 @@ class TestSessionList:
         api = AccountSessionsApi()
         with app.test_request_context("/openapi/v1/account/sessions"):
             with account_auth_context(account, token_id=mint.token_id):
-                result = unwrap(api.get)(
+                result = api.get.__handler__(
                     api,
-                    db_session_with_containers,
-                    auth_data=auth_for(account, token_id=mint.token_id),
+                    context_for(account, session=db_session_with_containers, token_id=mint.token_id),
                     query=SessionListQuery(),
                 )
 
@@ -77,10 +75,9 @@ class TestSessionList:
         api = AccountSessionsApi()
         with app.test_request_context("/openapi/v1/account/sessions"):
             with account_auth_context(account, token_id=mine.token_id):
-                result = unwrap(api.get)(
+                result = api.get.__handler__(
                     api,
-                    db_session_with_containers,
-                    auth_data=auth_for(account, token_id=mine.token_id),
+                    context_for(account, session=db_session_with_containers, token_id=mine.token_id),
                     query=SessionListQuery(),
                 )
 
@@ -97,8 +94,8 @@ class TestSessionRevoke:
         revoke_api = AccountSessionsSelfApi()
         with app.test_request_context("/openapi/v1/account/sessions/self", method="DELETE"):
             with account_auth_context(account, token_id=mint.token_id):
-                result = unwrap(revoke_api.delete)(
-                    revoke_api, db_session_with_containers, auth_data=auth_for(account, token_id=mint.token_id)
+                result = revoke_api.delete.__handler__(
+                    revoke_api, context_for(account, session=db_session_with_containers, token_id=mint.token_id)
                 )
 
         assert result.status == "revoked"
@@ -107,10 +104,9 @@ class TestSessionRevoke:
         list_api = AccountSessionsApi()
         with app.test_request_context("/openapi/v1/account/sessions"):
             with account_auth_context(account, token_id=mint.token_id):
-                listing = unwrap(list_api.get)(
+                listing = list_api.get.__handler__(
                     list_api,
-                    db_session_with_containers,
-                    auth_data=auth_for(account, token_id=mint.token_id),
+                    context_for(account, session=db_session_with_containers, token_id=mint.token_id),
                     query=SessionListQuery(),
                 )
         assert listing.total == 0
@@ -125,11 +121,15 @@ class TestSessionRevoke:
         api = AccountSessionByIdApi()
         with app.test_request_context(f"/openapi/v1/account/sessions/{session_id}", method="DELETE"):
             with account_auth_context(account, token_id=mint.token_id):
-                result = unwrap(api.delete)(
+                result = api.delete.__handler__(
                     api,
-                    db_session_with_containers,
-                    session_id=session_id,
-                    auth_data=auth_for(account, token_id=mint.token_id),
+                    context_for(
+                        account,
+                        session=db_session_with_containers,
+                        view_args={"session_id": session_id},
+                        token_id=mint.token_id,
+                    ),
+                    session_id,
                 )
 
         assert result.status == "revoked"
@@ -148,9 +148,12 @@ class TestSessionRevoke:
         with app.test_request_context(f"/openapi/v1/account/sessions/{session_id}", method="DELETE"):
             with account_auth_context(outsider, token_id=uuid4()):
                 with pytest.raises(NotFound):
-                    unwrap(api.delete)(
+                    api.delete.__handler__(
                         api,
-                        db_session_with_containers,
-                        session_id=session_id,
-                        auth_data=auth_for(outsider, token_id=uuid4()),
+                        context_for(
+                            outsider,
+                            session=db_session_with_containers,
+                            view_args={"session_id": session_id},
+                        ),
+                        session_id,
                     )
