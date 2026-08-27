@@ -21,6 +21,7 @@ from models.model import AccountTrialAppRecord, DifySetup
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
+from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from services import recommended_app_catalog_gateway
@@ -31,6 +32,8 @@ from services.account_activation_adapters import (
     RegisterServiceInvitationTokenStore,
 )
 from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
+from services.app_scoped_end_user_query_service import AppScopedEndUserQueryService
+from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.app_site_service import AppSiteService
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
 from services.billing_portal_service import BillingPortalService
@@ -115,6 +118,12 @@ def test_init_app_registers_services_for_the_current_app(
         services = ext_application_services.application_services()
         assert services is app.extensions["application_services"]
         assert services.init_validation.is_validated(session_validated=False) is False
+        assert isinstance(services.app_scoped_end_users.commands, AppScopedEndUserService)
+        assert isinstance(services.app_scoped_end_users.queries, AppScopedEndUserQueryService)
+        repository = services.app_scoped_end_users.queries._app_scoped_end_users
+        assert isinstance(repository, AppScopedEndUserRepo)
+        assert services.app_scoped_end_users.commands._app_scoped_end_users is repository
+        assert repository._session_factory is sqlite_session_factory
         assert isinstance(services.workflow_statistics, WorkflowStatisticQueryService)
 
 

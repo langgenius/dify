@@ -23,6 +23,7 @@ from controllers.service_api.schema import (
     USER_REQUIRED_ATTR,
 )
 from enums import CloudPlan, DeploymentEdition
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.login import current_user
@@ -30,7 +31,6 @@ from models import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
 from models.model import ApiToken, App
 from services.api_token_service import ApiTokenCache, fetch_token_with_single_flight, record_token_usage
-from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
@@ -145,7 +145,11 @@ def validate_app_token[**P, R](
                 if user_id:
                     user_id = str(user_id)
 
-                end_user = EndUserService.get_or_create_end_user(app_model, user_id)
+                end_user = application_services().app_scoped_end_users.commands.get_or_create_end_user(
+                    app_model.tenant_id,
+                    app_model.id,
+                    user_id,
+                )
                 kwargs["end_user"] = end_user
 
                 # Set EndUser as current logged-in user for flask_login.current_user

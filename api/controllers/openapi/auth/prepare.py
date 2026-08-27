@@ -7,11 +7,11 @@ from werkzeug.exceptions import Forbidden, InternalServerError, NotFound, Unauth
 
 from controllers.openapi.auth.data import AuthData, CallerKind
 from core.db.session_factory import session_factory
+from extensions.ext_application_services import application_services
 from models.account import AccountStatus, TenantStatus
 from models.enums import AppStatus, EndUserType
 from services.account_service import AccountService, TenantService
 from services.app_service import AppService
-from services.end_user_service import EndUserService
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode
 
 
@@ -89,7 +89,7 @@ def load_workspace_role(data: AuthData) -> None:
 def resolve_external_user(data: AuthData) -> None:
     if data.tenant is None or data.app is None or data.external_identity is None:
         raise Unauthorized("missing context for external user resolution")
-    end_user = EndUserService.get_or_create_end_user_by_type(
+    end_user = application_services().app_scoped_end_users.commands.get_or_create_end_user_by_type(
         EndUserType.OPENAPI,
         tenant_id=str(data.tenant.id),
         app_id=str(data.app.id),
