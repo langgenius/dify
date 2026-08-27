@@ -26,14 +26,13 @@ const mockWorkflowAppDslExport = vi.hoisted(() => ({
   isExporting: false,
 }))
 const mockCopyApp = vi.hoisted(() =>
-  vi.fn(
-    (_variables: unknown): Promise<unknown> =>
-      Promise.resolve({
-        id: 'new-app-id',
-        mode: 'chat',
-        maintainer: 'user-1',
-        permission_keys: [],
-      }),
+  vi.fn((_variables: unknown): Promise<unknown> =>
+    Promise.resolve({
+      id: 'new-app-id',
+      mode: 'chat',
+      maintainer: 'user-1',
+      permission_keys: [],
+    }),
   ),
 )
 const mockUpdateAppMutation = vi.hoisted(() =>
