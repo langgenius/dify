@@ -108,7 +108,7 @@ def commit_source_import(
             source_id=source.id,
             payload=KnowledgeFSSourceUpdatePayload(
                 expectedVersion=source.version,
-                metadata={**source.metadata, "preview": False, _PENDING_IMPORT_KEY: pending_import},
+                metadata={"preview": False, _PENDING_IMPORT_KEY: pending_import},
                 status="syncing",
             ),
         )
@@ -154,9 +154,7 @@ def resume_committed_source_import(
         "syncPolicy": import_marker.get("syncPolicy"),
     }
     if last_import is not None or current_pending_import != pending_import or source.status != "syncing":
-        metadata = dict(source.metadata)
         # updateSource merges metadata; null explicitly supersedes the terminal marker while retrying.
-        metadata["lastImport"] = None
         try:
             facade.update_source(
                 tenant_id=tenant_id,
@@ -165,7 +163,7 @@ def resume_committed_source_import(
                 source_id=source.id,
                 payload=KnowledgeFSSourceUpdatePayload(
                     expectedVersion=source.version,
-                    metadata={**metadata, "preview": False, _PENDING_IMPORT_KEY: pending_import},
+                    metadata={"lastImport": None, "preview": False, _PENDING_IMPORT_KEY: pending_import},
                     status="syncing",
                 ),
             )

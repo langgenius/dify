@@ -95,9 +95,16 @@ export function sourceSyncPolicyChanged(
 }
 
 export type SourceEditValues = {
-  customIntervalHours: number
-  name: string
-  syncMode: SourceSyncPolicy['mode']
+  expectedVersion?: number
+  metadata?: Record<string, unknown>
+  name?: string
+  providerParameters?: Record<string, boolean | number | string>
+  syncPolicy?: {
+    customIntervalHours: number
+    expectedRevision: number
+    mode: SourceSyncPolicy['mode']
+  }
+  uri?: string
 }
 
 export function createIdempotencyKey() {

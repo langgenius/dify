@@ -358,10 +358,14 @@ export function WebsiteDatasourceParameterForm({
   const [optionsOpen, setOptionsOpen] = useState(false)
   const primarySchemas = schemas.filter((schema) => schema.required)
   const optionSchemas = schemas.filter((schema) => !schema.required)
+  const optionDefaults = datasourceParameterDefaults(optionSchemas)
+  const usingDefaultOptions = optionSchemas.every(
+    (schema) => parameters[schema.name] === optionDefaults[schema.name],
+  )
   const resetOptions = () => {
     const next = { ...parameters }
     optionSchemas.forEach((schema) => delete next[schema.name])
-    onChange({ ...next, ...datasourceParameterDefaults(optionSchemas) })
+    onChange({ ...next, ...optionDefaults })
   }
 
   if (!schemas.length) return null
@@ -399,7 +403,7 @@ export function WebsiteDatasourceParameterForm({
                 className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary transition-transform group-data-panel-open:rotate-90 motion-reduce:transition-none"
               />
               <span className="truncate">{t(($) => $['newKnowledge.crawlOptions'])}</span>
-              {!optionsOpen && (
+              {!optionsOpen && usingDefaultOptions && (
                 <span aria-hidden className="ml-auto shrink-0 system-xs-regular text-text-tertiary">
                   {t(($) => $['newKnowledge.usingDefaults'])}
                 </span>

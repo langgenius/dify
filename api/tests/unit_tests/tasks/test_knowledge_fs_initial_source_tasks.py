@@ -148,6 +148,7 @@ def _facade() -> MagicMock:
     facade.get_source.return_value = SimpleNamespace(
         metadata={
             "clientRequestId": "initial-website-source:operation-1",
+            "parameters": {"limit": 99},
             "preview": True,
         },
         status="disabled",
@@ -236,10 +237,7 @@ def test_initial_website_source_import_recrawls_exact_selection_and_configures_d
     ]
     source_update_payload = facade.update_source.call_args.kwargs["payload"]
     assert source_update_payload.expected_version == 3
-    assert source_update_payload.metadata == {
-        "clientRequestId": "initial-website-source:operation-1",
-        "preview": False,
-    }
+    assert source_update_payload.metadata == {"preview": False}
     assert source_update_payload.status == "active"
     sync_payload = facade.update_source_sync_policy.call_args.kwargs["payload"]
     assert sync_payload.mode == "interval"
@@ -378,6 +376,7 @@ def test_initial_website_source_import_reuses_source_across_pages_and_preserves_
     facade.list_source_connections.assert_not_called()
     source_update_payload = facade.update_source.call_args.kwargs["payload"]
     assert source_update_payload.status == "disabled"
+    assert "parameters" not in source_update_payload.metadata
     assert source_update_payload.metadata["preview"] is False
     assert source_update_payload.metadata["initialImport"]["state"] == "failed"
     facade.update_source_sync_policy.assert_not_called()

@@ -486,7 +486,11 @@ export const zKnowledgeFsSourceUpdatePayload = z.object({
   expectedVersion: z.int().gte(1).nullish(),
   metadata: z.record(z.string(), z.unknown()).nullish(),
   name: z.string().min(1).max(200).nullish(),
+  providerParameters: z
+    .record(z.string(), z.union([z.boolean(), z.number(), z.string()]))
+    .nullish(),
   status: z.enum(['active', 'disabled', 'error', 'syncing']).nullish(),
+  uri: z.string().min(1).max(4096).nullish(),
 })
 
 /**

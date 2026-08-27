@@ -164,7 +164,11 @@ export const updateSourceRoute = createRoute({
     },
     400: InvalidRequestResponse,
     404: NotFoundResponse,
-    409: SourceVersionConflictResponse,
+    409: {
+      ...SourceVersionConflictResponse,
+      description:
+        "Source was modified concurrently, or protected legacy credential-bearing parameters cannot be replaced",
+    },
     401: UnauthorizedResponse,
     403: ForbiddenResponse,
   },

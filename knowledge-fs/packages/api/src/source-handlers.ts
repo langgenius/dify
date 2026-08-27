@@ -8,6 +8,7 @@ import {
 } from "./candidate-content-authorization";
 import {
   SourceSyncPolicyResponseSchema,
+  containsSensitiveSourceMetadata,
   mergeSourceMetadataPatch,
   redactSourceMetadata,
   toSourceResponse,
@@ -49,6 +50,7 @@ import {
   type SourceRepository,
   SourceVersionConflictError,
 } from "./source-repository";
+import { SOURCE_URI_MAX_LENGTH } from "./source-request-schemas";
 import {
   browseSourceFilesRoute,
   crawlSourceRoute,
@@ -331,6 +333,12 @@ export function registerSourceHandlers({
     if (!inlineSourceCredentialsAllowed && readInlineCredentials(body.metadata)) {
       return context.json({ error: DIFY_MANAGED_CREDENTIALS_MESSAGE }, 400);
     }
+    if (
+      body.providerParameters !== undefined &&
+      containsSensitiveSourceMetadata(body.providerParameters)
+    ) {
+      return context.json({ error: "Provider parameters cannot contain credentials" }, 400);
+    }
 
     if (body.metadata?.syncPolicy !== undefined) {
       try {
@@ -362,22 +370,68 @@ export function registerSourceHandlers({
           throw new SourceVersionConflictError(params.sourceId, body.expectedVersion);
         }
 
+        if (
+          body.providerParameters !== undefined &&
+          containsSensitiveSourceMetadata(fresh.metadata.parameters)
+        ) {
+          return context.json(
+            { error: "Provider parameters containing credentials cannot be replaced" },
+            409,
+          );
+        }
+
         try {
+          const updatesMetadata =
+            body.metadata !== undefined ||
+            body.providerParameters !== undefined ||
+            (fresh.type === "web" && body.uri !== undefined);
+          let metadata: Record<string, unknown> | undefined;
+          let uri = body.uri;
+          if (updatesMetadata) {
+            metadata =
+              body.metadata === undefined
+                ? { ...fresh.metadata }
+                : mergeSourceMetadataPatch(fresh.metadata, body.metadata);
+            if (body.providerParameters !== undefined) {
+              metadata.parameters = { ...body.providerParameters };
+            }
+            if (fresh.type === "web") {
+              const parameters: Record<string, unknown> =
+                metadata.parameters !== null &&
+                typeof metadata.parameters === "object" &&
+                !Array.isArray(metadata.parameters)
+                  ? { ...metadata.parameters }
+                  : {};
+              if (body.uri !== undefined || body.providerParameters !== undefined) {
+                const nextWebSourceUrl = body.uri ?? parameters.url;
+                if (!isValidWebSourceUrl(nextWebSourceUrl)) {
+                  return context.json(
+                    { error: "Web source URL must be an HTTP(S) URL without inline credentials" },
+                    400,
+                  );
+                }
+                uri = nextWebSourceUrl;
+                parameters.url = nextWebSourceUrl;
+                metadata.parameters = parameters;
+              }
+            }
+          }
           source = await sources.update({
             expectedVersion: fresh.version,
             id: params.sourceId,
             knowledgeSpaceId: params.id,
-            ...(body.metadata === undefined
+            ...(metadata === undefined
               ? {}
               : {
                   metadata: {
-                    ...mergeSourceMetadataPatch(fresh.metadata, body.metadata),
+                    ...metadata,
                     // Never trust a client-supplied tenant stamp.
                     tenantId: subject.tenantId,
                   },
                 }),
             ...(body.name === undefined ? {} : { name: body.name }),
             ...(body.status === undefined ? {} : { status: body.status }),
+            ...(uri === undefined ? {} : { uri }),
           });
           break;
         } catch (error) {
@@ -1403,6 +1457,22 @@ function readInlineCredentials(
     return undefined;
   }
   return { ...(credentials as Record<string, unknown>) };
+}
+
+function isValidWebSourceUrl(value: unknown): value is string {
+  if (typeof value !== "string" || !value.trim() || value.length > SOURCE_URI_MAX_LENGTH)
+    return false;
+  try {
+    const url = new URL(value);
+    return (
+      (url.protocol === "http:" || url.protocol === "https:") &&
+      Boolean(url.hostname) &&
+      !url.username &&
+      !url.password
+    );
+  } catch {
+    return false;
+  }
 }
 
 async function resolveConnectorSource(input: {

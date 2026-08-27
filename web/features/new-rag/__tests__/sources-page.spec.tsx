@@ -1,4 +1,5 @@
 import type { Source, SourceSyncPolicy, SourceWorkflowRun } from '../source-models'
+import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import datasetTranslations from '@/i18n/en-US/dataset.json'
@@ -96,6 +97,16 @@ vi.mock('@/context/permission-state', async () => {
 
   return createPermissionStateModuleMock(() => permissionState)
 })
+
+const datasourcePluginsQuery = vi.hoisted(() => ({
+  data: [] as DataSourceItem[] | undefined,
+  isError: false,
+  isPending: false,
+}))
+
+vi.mock('@/service/use-pipeline', () => ({
+  useDataSourceList: () => datasourcePluginsQuery,
+}))
 
 type SourcesInfiniteOptions = {
   getNextPageParam: (lastPage: { next_cursor?: string | null }) => string | null | undefined
@@ -252,6 +263,66 @@ const source = (overrides: Partial<Source>): Source => ({
   ...overrides,
 })
 
+const firecrawlDatasourcePlugin: DataSourceItem = {
+  declaration: {
+    credentials_schema: [],
+    datasources: [
+      {
+        description: { en_US: 'Firecrawl', zh_Hans: 'Firecrawl' },
+        identity: {
+          author: 'langgenius',
+          label: { en_US: 'Firecrawl', zh_Hans: 'Firecrawl' },
+          name: 'crawl',
+          provider: 'firecrawl',
+        },
+        parameters: [
+          {
+            label: { en_US: 'Starting URL' },
+            name: 'url',
+            required: true,
+            type: 'string',
+          },
+          {
+            default: true,
+            label: { en_US: 'Follow links' },
+            name: 'crawl_subpages',
+            required: false,
+            type: 'boolean',
+          },
+          {
+            default: 100,
+            label: { en_US: 'Page cap' },
+            max: 200,
+            min: 1,
+            name: 'limit',
+            required: false,
+            type: 'integer',
+          },
+          {
+            label: { en_US: 'Included paths' },
+            name: 'include_paths',
+            required: false,
+            type: 'string',
+          },
+        ],
+      },
+    ],
+    identity: {
+      author: 'langgenius',
+      description: { en_US: 'Firecrawl', zh_Hans: 'Firecrawl' },
+      icon: 'icon.svg',
+      label: { en_US: 'Firecrawl', zh_Hans: 'Firecrawl' },
+      name: 'firecrawl',
+      tags: [],
+    },
+    provider_type: 'website_crawl',
+  },
+  is_authorized: true,
+  plugin_id: 'langgenius/firecrawl_datasource',
+  plugin_unique_identifier: 'langgenius/firecrawl_datasource:1.0.0@local',
+  provider: 'firecrawl',
+}
+
 const workflow = (state = 'queued') => ({
   canceled_at: null,
   checkpoint: 'sync',
@@ -306,6 +377,9 @@ describe('SourcesPage', () => {
     sourcesQuery.isFetchNextPageError = false
     sourcesQuery.isFetchingNextPage = false
     sourcesQuery.isPending = false
+    datasourcePluginsQuery.data = []
+    datasourcePluginsQuery.isError = false
+    datasourcePluginsQuery.isPending = false
     navigationMock.awaitInitialSource = null
     clientMock.deleteSource.mockResolvedValue({ status: 'accepted' })
     clientMock.patchSource.mockResolvedValue(source({}))
@@ -1188,6 +1262,340 @@ describe('SourcesPage', () => {
         'dataset.newKnowledge.syncPolicyDaily',
       ),
     ).toBeInTheDocument()
+  })
+
+  it('edits website source parameters from the row menu', async () => {
+    const user = userEvent.setup()
+    datasourcePluginsQuery.data = [firecrawlDatasourcePlugin]
+    const websiteSource = source({
+      metadata: {
+        crawlOptions: { includeSubpages: true, limit: 100 },
+        parameters: {
+          url: 'https://docs.example.com/',
+        },
+        providerId: 'plugin-daemon-website',
+        providerName: 'Firecrawl',
+      },
+      uri: 'https://docs.example.com/',
+    })
+    sourcesQuery.data = { pages: [{ items: [websiteSource] }] }
+    clientMock.patchSource.mockResolvedValue(
+      source({
+        metadata: {
+          ...websiteSource.metadata,
+          crawlOptions: { includeSubpages: true, limit: 50 },
+          parameters: {
+            crawl_subpages: true,
+            limit: 50,
+            url: 'https://handbook.example.com/',
+          },
+        },
+        uri: 'https://handbook.example.com/',
+        version: 4,
+      }),
+    )
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
+
+    const rootUrl = screen.getByRole('textbox', { name: 'Starting URL' })
+    expect(rootUrl).toHaveValue('https://docs.example.com/')
+    await user.clear(rootUrl)
+    await user.type(rootUrl, 'https://handbook.example.com')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlOptions' }))
+    expect(screen.getByRole('checkbox', { name: 'Follow links' })).toBeChecked()
+    const maxPages = screen.getByRole('spinbutton', {
+      name: 'Page cap',
+    })
+    expect(maxPages).toHaveValue(100)
+    await user.clear(maxPages)
+    await user.type(maxPages, '50')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    await waitFor(() =>
+      expect(clientMock.patchSource).toHaveBeenCalledWith({
+        body: {
+          expectedVersion: 3,
+          metadata: {
+            crawlOptions: { includeSubpages: true, limit: 50 },
+            datasourceParameterMode: 'exact',
+          },
+          providerParameters: {
+            crawl_subpages: true,
+            limit: 50,
+            url: 'https://handbook.example.com',
+          },
+          uri: 'https://handbook.example.com/',
+        },
+        params: { control_space_id: 'space-1', source_id: 'source-1' },
+      }),
+    )
+  })
+
+  it('clears the website parameter dirty state after restoring the opening values', async () => {
+    const user = userEvent.setup()
+    datasourcePluginsQuery.data = [firecrawlDatasourcePlugin]
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              metadata: {
+                datasourceParameterMode: 'exact',
+                parameters: { url: 'https://docs.example.com/' },
+                providerName: 'Firecrawl',
+              },
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlOptions' }))
+
+    const followLinks = screen.getByRole('checkbox', { name: 'Follow links' })
+    const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
+    expect(followLinks).toBeChecked()
+    expect(saveButton).toBeDisabled()
+
+    await user.click(followLinks)
+    expect(saveButton).toBeEnabled()
+    await user.click(followLinks)
+
+    expect(saveButton).toBeDisabled()
+  })
+
+  it('keeps the opening edit snapshot when the source refreshes in the background', async () => {
+    const user = userEvent.setup()
+    datasourcePluginsQuery.data = [firecrawlDatasourcePlugin]
+    const manualPolicy: SourceSyncPolicy = {
+      createdAt: '2026-07-20T10:00:00Z',
+      enabled: false,
+      expectedSourceVersion: 3,
+      id: 'policy-1',
+      knowledgeSpaceId: 'space-1',
+      mode: 'manual',
+      revision: 5,
+      sourceId: 'source-1',
+      updatedAt: '2026-07-20T10:00:00Z',
+    }
+    const websiteSource = source({
+      metadata: {
+        datasourceParameterMode: 'exact',
+        parameters: { limit: 100, url: 'https://docs.example.com/' },
+        providerName: 'Firecrawl',
+      },
+      syncPolicy: manualPolicy,
+    })
+    sourcesQuery.data = { pages: [{ items: [websiteSource] }] }
+    clientMock.patchSource.mockResolvedValue(
+      source({ name: 'Renamed documentation', syncPolicy: manualPolicy, version: 4 }),
+    )
+
+    const { rerender } = render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
+
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              metadata: {
+                datasourceParameterMode: 'exact',
+                parameters: { limit: 80, url: 'https://docs.example.com/' },
+                providerName: 'Firecrawl',
+              },
+              syncPolicy: { ...manualPolicy, revision: 6 },
+              version: 4,
+            }),
+          ],
+        },
+      ],
+    }
+    rerender(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
+    expect(saveButton).toBeDisabled()
+    const nameInput = screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Renamed documentation')
+    await user.click(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }))
+    await user.click(screen.getByRole('option', { name: 'dataset.newKnowledge.syncPolicyDaily' }))
+    await user.click(saveButton)
+
+    await waitFor(() =>
+      expect(clientMock.patchSource).toHaveBeenCalledWith({
+        body: { expectedVersion: 3, name: 'Renamed documentation' },
+        params: { control_space_id: 'space-1', source_id: 'source-1' },
+      }),
+    )
+    await waitFor(() =>
+      expect(clientMock.putSyncPolicy).toHaveBeenCalledWith({
+        body: {
+          enabled: true,
+          expectedRevision: 5,
+          expectedSourceVersion: 4,
+          mode: 'interval',
+        },
+        params: { control_space_id: 'space-1', source_id: 'source-1' },
+      }),
+    )
+  })
+
+  it('removes a cleared optional website provider parameter', async () => {
+    const user = userEvent.setup()
+    datasourcePluginsQuery.data = [firecrawlDatasourcePlugin]
+    const websiteSource = source({
+      metadata: {
+        datasourceParameterMode: 'exact',
+        parameters: {
+          include_paths: '/private/**',
+          url: 'https://docs.example.com/',
+        },
+        providerName: 'Firecrawl',
+      },
+      uri: 'https://docs.example.com/',
+    })
+    sourcesQuery.data = { pages: [{ items: [websiteSource] }] }
+    clientMock.patchSource.mockResolvedValue(
+      source({
+        metadata: {
+          ...websiteSource.metadata,
+          parameters: {
+            crawl_subpages: true,
+            limit: 100,
+            url: 'https://docs.example.com/',
+          },
+        },
+        version: 4,
+      }),
+    )
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlOptions' }))
+    const includedPaths = screen.getByRole('textbox', { name: 'Included paths' })
+    expect(includedPaths).toHaveValue('/private/**')
+    await user.clear(includedPaths)
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    await waitFor(() =>
+      expect(clientMock.patchSource).toHaveBeenCalledWith({
+        body: {
+          expectedVersion: 3,
+          metadata: {
+            crawlOptions: { includeSubpages: true, limit: 100 },
+            datasourceParameterMode: 'exact',
+          },
+          providerParameters: {
+            crawl_subpages: true,
+            limit: 100,
+            url: 'https://docs.example.com/',
+          },
+          uri: 'https://docs.example.com/',
+        },
+        params: { control_space_id: 'space-1', source_id: 'source-1' },
+      }),
+    )
+  })
+
+  it('does not expose legacy website fields while a provider declaration is loading', async () => {
+    const user = userEvent.setup()
+    datasourcePluginsQuery.data = undefined
+    datasourcePluginsQuery.isPending = true
+    const websiteSource = source({
+      metadata: {
+        datasourceParameterMode: 'exact',
+        parameters: { url: 'https://docs.example.com/' },
+        providerName: 'Firecrawl',
+      },
+    })
+    sourcesQuery.data = { pages: [{ items: [websiteSource] }] }
+    clientMock.patchSource.mockResolvedValue(
+      source({ name: 'Renamed documentation', metadata: websiteSource.metadata, version: 4 }),
+    )
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
+
+    expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('textbox', { name: 'dataset.newKnowledge.rootUrl' }),
+    ).not.toBeInTheDocument()
+    const nameInput = screen.getByRole('textbox', {
+      name: 'dataset.newKnowledge.sourceName',
+    })
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Renamed documentation')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    await waitFor(() =>
+      expect(clientMock.patchSource).toHaveBeenCalledWith({
+        body: { expectedVersion: 3, name: 'Renamed documentation' },
+        params: { control_space_id: 'space-1', source_id: 'source-1' },
+      }),
+    )
+  })
+
+  it('reports provider declaration failures without falling back to legacy fields', async () => {
+    const user = userEvent.setup()
+    datasourcePluginsQuery.data = undefined
+    datasourcePluginsQuery.isError = true
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              metadata: {
+                datasourceParameterMode: 'exact',
+                parameters: { url: 'https://docs.example.com/' },
+                providerName: 'Firecrawl',
+              },
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
+
+    expect(screen.getByRole('alert')).toHaveTextContent('dataset.newKnowledge.providerLoadFailed')
+    expect(
+      screen.queryByRole('textbox', { name: 'dataset.newKnowledge.rootUrl' }),
+    ).not.toBeInTheDocument()
   })
 
   it('syncs a source through the real KnowledgeFS action', async () => {

@@ -1,6 +1,7 @@
 import { z } from "@hono/zod-openapi";
 
 const DEFAULT_SOURCE_LIST_LIMIT = 50;
+export const SOURCE_URI_MAX_LENGTH = 4096;
 
 const SourceListLimitSchema = z.preprocess(
   (value) => (value === undefined ? DEFAULT_SOURCE_LIST_LIMIT : value),
@@ -53,11 +54,34 @@ export const UpdateSourceSchema = z
      * fail with 409 instead of overwriting a concurrent modification.
      */
     expectedVersion: z.number().int().min(1).optional(),
-    metadata: z.record(z.unknown()).optional(),
+    metadata: z
+      .record(z.unknown())
+      .refine(
+        (metadata) => !Object.prototype.hasOwnProperty.call(metadata, "parameters"),
+        "Use providerParameters to update provider parameters",
+      )
+      .optional(),
     name: z.string().min(1).max(200).optional(),
+    providerParameters: z
+      .record(z.union([z.boolean(), z.number().finite(), z.string()]))
+      .refine((parameters) => {
+        const keys = Object.keys(parameters);
+        return keys.length <= 50 && keys.every((key) => key.length >= 1 && key.length <= 255);
+      }, "Provider parameters must contain at most 50 bounded keys")
+      .optional(),
     status: z.enum(["active", "syncing", "error", "disabled"]).optional(),
+    uri: z.string().min(1).max(SOURCE_URI_MAX_LENGTH).optional(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (value) =>
+      value.metadata !== undefined ||
+      value.name !== undefined ||
+      value.providerParameters !== undefined ||
+      value.status !== undefined ||
+      value.uri !== undefined,
+    "At least one source update is required",
+  );
 
 export const RotateSourceCredentialsSchema = z
   .object({

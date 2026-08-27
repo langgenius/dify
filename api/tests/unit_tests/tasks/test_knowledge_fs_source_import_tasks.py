@@ -19,6 +19,7 @@ def _source(*, status: str = "syncing") -> SimpleNamespace:
     return SimpleNamespace(
         id="source-1",
         metadata={
+            "parameters": {"limit": 99},
             "preview": False,
             "pendingImport": {
                 "kind": "crawl-preview-selection",
@@ -84,6 +85,7 @@ def test_finalize_source_import_activates_source_then_applies_policy_for_new_ver
     assert policy.expected_source_version == 5
     update = facade.update_source.call_args.kwargs["payload"]
     assert update.status == "active"
+    assert "parameters" not in update.metadata
     assert update.metadata["pendingImport"] is None
     assert update.metadata["lastImport"]["state"] == "completed"
 
@@ -178,6 +180,7 @@ def test_finalize_source_import_persists_failure_on_visible_source() -> None:
 
     update = facade.update_source.call_args.kwargs["payload"]
     assert update.status == "error"
+    assert "parameters" not in update.metadata
     assert update.metadata["lastImport"] == {
         "errorCode": "PROVIDER_FAILED",
         "errorMessage": "provider failed",

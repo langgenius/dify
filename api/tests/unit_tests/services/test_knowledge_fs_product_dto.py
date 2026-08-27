@@ -896,6 +896,56 @@ def test_product_dto_cross_field_validators_accept_unambiguous_payloads() -> Non
     assert KnowledgeFSDocumentReindexPayload.model_validate({"all": True}).all is True
 
 
+def test_source_update_payload_accepts_mutable_source_configuration() -> None:
+    payload = KnowledgeFSSourceUpdatePayload.model_validate(
+        {
+            "expectedVersion": 3,
+            "providerParameters": {
+                "crawl_subpages": True,
+                "limit": 50,
+                "url": "https://docs.example.com",
+            },
+            "uri": "https://docs.example.com",
+        }
+    )
+
+    assert payload.model_dump(mode="json", by_alias=True, exclude_none=True) == {
+        "expectedVersion": 3,
+        "providerParameters": {
+            "crawl_subpages": True,
+            "limit": 50,
+            "url": "https://docs.example.com",
+        },
+        "uri": "https://docs.example.com",
+    }
+
+
+def test_source_update_payload_requires_provider_parameters_for_parameter_updates() -> None:
+    with pytest.raises(ValidationError):
+        KnowledgeFSSourceUpdatePayload.model_validate({"metadata": {"parameters": {"limit": 50}}})
+
+
+@pytest.mark.parametrize(
+    "provider_parameters",
+    [
+        {"limit": float("inf")},
+        {"": 50},
+        {"x" * 256: 50},
+    ],
+)
+def test_source_update_payload_rejects_invalid_provider_parameters(
+    provider_parameters: dict[str, object],
+) -> None:
+    with pytest.raises(ValidationError):
+        KnowledgeFSSourceUpdatePayload.model_validate({"providerParameters": provider_parameters})
+
+
+@pytest.mark.parametrize("field", ["connectionId", "permissionScope"])
+def test_source_update_payload_rejects_unsafe_general_mutations(field: str) -> None:
+    with pytest.raises(ValidationError):
+        KnowledgeFSSourceUpdatePayload.model_validate({field: None})
+
+
 def test_upload_session_dtos_validate_and_serialize_the_kfs_wire_shape() -> None:
     create = KnowledgeFSUploadSessionCreatePayload.model_validate(
         {

@@ -61,6 +61,7 @@ export interface UpdateSourceInput extends SourceLookupInput {
   readonly metadata?: Readonly<Record<string, unknown>> | undefined;
   readonly name?: string | undefined;
   readonly status?: Source["status"] | undefined;
+  readonly uri?: string | undefined;
 }
 
 export class SourceVersionConflictError extends Error {
@@ -290,6 +291,7 @@ export function createInMemorySourceRepository({
       metadata,
       name,
       status,
+      uri,
     }) => {
       const existing = sources.get(id);
 
@@ -316,6 +318,7 @@ export function createInMemorySourceRepository({
         ...(metadata === undefined ? {} : { metadata: cloneJsonObject(metadata) }),
         ...(name === undefined ? {} : { name }),
         ...(status === undefined ? {} : { status }),
+        ...(uri === undefined ? {} : { uri }),
         updatedAt: now(),
         version: existing.version + 1,
       });
@@ -588,6 +591,7 @@ export function createDatabaseSourceRepository({
       metadata,
       name,
       status,
+      uri,
     }) => {
       const existing = await databaseSourceGet(database, { id, knowledgeSpaceId });
 
@@ -614,6 +618,7 @@ export function createDatabaseSourceRepository({
         ...(metadata === undefined ? {} : { metadata: cloneJsonObject(metadata) }),
         ...(name === undefined ? {} : { name }),
         ...(status === undefined ? {} : { status }),
+        ...(uri === undefined ? {} : { uri }),
         updatedAt: now(),
         version: existing.version + 1,
       });
@@ -632,6 +637,10 @@ export function createDatabaseSourceRepository({
       if (connectionId !== undefined) {
         setColumns.push("connection_id");
         setParams.push(updated.connectionId ?? null);
+      }
+      if (uri !== undefined) {
+        setColumns.push("uri");
+        setParams.push(updated.uri);
       }
       const params = [
         ...setParams,

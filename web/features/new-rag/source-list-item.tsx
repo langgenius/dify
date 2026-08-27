@@ -23,7 +23,6 @@ import {
   metadataString,
   sourceLastSyncAt,
   sourceProviderDetails,
-  sourceSyncPolicyChanged,
   sourceSyncPolicyTranslationKey,
   syncPolicyConfiguration,
 } from './source-list-model'
@@ -231,30 +230,52 @@ export function SourceRow({
       },
     )
 
-  const editSource = ({ customIntervalHours, name, syncMode }: SourceEditValues) =>
-    runAction(
+  const editSource = ({
+    expectedVersion,
+    metadata,
+    name,
+    providerParameters,
+    syncPolicy: nextSyncPolicy,
+    uri,
+  }: SourceEditValues) => {
+    const sourcePatchRequested =
+      name !== undefined ||
+      metadata !== undefined ||
+      providerParameters !== undefined ||
+      uri !== undefined
+
+    return runAction(
       'edit',
       async () => {
         let updatedSource = source
-        if (name !== source.name)
+        if (sourcePatchRequested)
           updatedSource = sourceFromApi(
             await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch({
               body: {
-                ...(source.version === undefined ? {} : { expectedVersion: source.version }),
-                name,
+                ...(expectedVersion === undefined ? {} : { expectedVersion }),
+                ...(metadata === undefined ? {} : { metadata }),
+                ...(name === undefined ? {} : { name }),
+                ...(providerParameters === undefined ? {} : { providerParameters }),
+                ...(uri === undefined ? {} : { uri }),
               },
               params: { control_space_id: knowledgeSpaceId, source_id: source.id },
             }),
           )
-        if (sourceSyncPolicyChanged(source, syncMode, customIntervalHours)) {
-          if (updatedSource.version === undefined) throw new Error('Source version is required')
+        if (nextSyncPolicy) {
+          const expectedSourceVersion = sourcePatchRequested
+            ? updatedSource.version
+            : expectedVersion
+          if (expectedSourceVersion === undefined) throw new Error('Source version is required')
           const syncPolicy = sourceSyncPolicyFromApi(
             await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.syncPolicy.put(
               {
                 body: {
-                  ...syncPolicyConfiguration(syncMode, customIntervalHours),
-                  expectedRevision: source.syncPolicy?.revision ?? 0,
-                  expectedSourceVersion: updatedSource.version,
+                  ...syncPolicyConfiguration(
+                    nextSyncPolicy.mode,
+                    nextSyncPolicy.customIntervalHours,
+                  ),
+                  expectedRevision: nextSyncPolicy.expectedRevision,
+                  expectedSourceVersion,
                 },
                 params: { control_space_id: knowledgeSpaceId, source_id: source.id },
               },
@@ -273,6 +294,7 @@ export function SourceRow({
         })
       },
     )
+  }
 
   const removeSource = () =>
     runAction(

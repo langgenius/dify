@@ -11,7 +11,17 @@ from typing import Annotated, ClassVar, Literal
 from urllib.parse import urlsplit, urlunsplit
 from uuid import UUID
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, JsonValue, RootModel, field_validator, model_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    FiniteFloat,
+    JsonValue,
+    RootModel,
+    field_validator,
+    model_validator,
+)
 
 from fields.base import ResponseModel
 from models.knowledge_fs import (
@@ -2146,13 +2156,31 @@ class KnowledgeFSSourceUpdatePayload(BaseModel):
     expected_version: int | None = Field(default=None, ge=1, alias="expectedVersion")
     metadata: dict[str, object] | None = None
     name: str | None = Field(default=None, min_length=1, max_length=200)
+    provider_parameters: dict[str, bool | FiniteFloat | str] | None = Field(
+        default=None, max_length=50, alias="providerParameters"
+    )
     status: Literal["active", "disabled", "error", "syncing"] | None = None
+    uri: str | None = Field(default=None, min_length=1, max_length=4_096)
 
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
+    @field_validator("provider_parameters")
+    @classmethod
+    def validate_provider_parameter_keys(
+        cls, value: dict[str, bool | float | str] | None
+    ) -> dict[str, bool | float | str] | None:
+        if value is not None and any(not key or len(key) > 255 for key in value):
+            raise ValueError("Provider parameter keys must contain between 1 and 255 characters")
+        return value
+
     @model_validator(mode="after")
     def validate_update_present(self) -> KnowledgeFSSourceUpdatePayload:
-        if self.metadata is None and self.name is None and self.status is None:
+        if self.metadata is not None and "parameters" in self.metadata:
+            raise ValueError("Use providerParameters to update provider parameters")
+        if all(
+            value is None
+            for value in (self.metadata, self.name, self.provider_parameters, self.status, self.uri)
+        ):
             raise ValueError("At least one source update is required")
         return self
 

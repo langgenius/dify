@@ -472,7 +472,6 @@ def start_initial_source_import(
                 payload=KnowledgeFSSourceUpdatePayload(
                     expectedVersion=failed_source.version,
                     metadata={
-                        **failed_source.metadata,
                         "initialImport": initial_import,
                         "preview": False,
                     },
@@ -508,7 +507,7 @@ def start_initial_source_import(
             source_id=source_id,
             payload=KnowledgeFSSourceUpdatePayload(
                 expectedVersion=imported_source.version,
-                metadata={**imported_source.metadata, "preview": False},
+                metadata={"preview": False},
                 status="active",
             ),
         )
@@ -612,7 +611,7 @@ def submit_initial_source_for_upgrade(
             source_id=source.id,
             payload=KnowledgeFSSourceUpdatePayload(
                 expectedVersion=source.version,
-                metadata={**source.metadata, "preview": False, "upgradeJobId": operation_id},
+                metadata={"preview": False, "upgradeJobId": operation_id},
                 status="active",
             ),
         )

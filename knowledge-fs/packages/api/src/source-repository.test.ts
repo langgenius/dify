@@ -60,10 +60,12 @@ describe("createInMemorySourceRepository", () => {
       knowledgeSpaceId: SPACE_A,
       metadata: { provider: "firecrawl", sync: { lastRunAt: "2026-07-03T01:00:00.000Z" } },
       status: "syncing",
+      uri: "https://docs.example.com",
     });
     expect(updated).toMatchObject({
       metadata: { sync: { lastRunAt: "2026-07-03T01:00:00.000Z" } },
       status: "syncing",
+      uri: "https://docs.example.com",
     });
     // Update from a foreign space is a no-op returning null.
     await expect(
@@ -592,6 +594,38 @@ describe("createDatabaseSourceRepository dialect and row-shape branches", () => 
       ROW_ID,
       SPACE_A,
     ]);
+  });
+
+  it("persists a mutable source URI in the database repository", async () => {
+    const calls: DatabaseExecuteInput[] = [];
+    const repository = createDatabaseSourceRepository({
+      database: createSchemaDatabaseAdapter({
+        executor: async (input) => {
+          calls.push(input);
+          if (input.operation === "select") {
+            return { rows: [sourceRow(ROW_ID)], rowsAffected: 1 };
+          }
+
+          return { rows: [], rowsAffected: 1 };
+        },
+        kind: "postgres",
+      }),
+      now: () => "2026-07-08T00:00:00.000Z",
+    });
+
+    await expect(
+      repository.update({
+        id: ROW_ID,
+        knowledgeSpaceId: SPACE_A,
+        uri: "https://docs.example.com",
+      }),
+    ).resolves.toMatchObject({
+      uri: "https://docs.example.com",
+      version: 2,
+    });
+    const update = calls.find((call) => call.operation === "update");
+    expect(update?.sql).toContain('"uri"');
+    expect(update?.params).toContain("https://docs.example.com");
   });
 
   it("returns null for a missing row and conflicts before writing on a version mismatch", async () => {

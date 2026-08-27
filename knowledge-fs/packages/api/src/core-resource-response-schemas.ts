@@ -239,7 +239,7 @@ function cloneSourceMetadataValue(value: unknown): unknown {
   return value;
 }
 
-function containsSensitiveSourceMetadata(value: unknown): boolean {
+export function containsSensitiveSourceMetadata(value: unknown): boolean {
   if (Array.isArray(value)) {
     return value.some((item) => containsSensitiveSourceMetadata(item));
   }

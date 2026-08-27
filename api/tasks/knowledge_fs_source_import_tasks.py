@@ -55,13 +55,11 @@ def finalize_source_import_once(
     if pending is None and last_import is None:
         return workflow_id
 
-    metadata = dict(source.metadata)
     if workflow.state != "completed":
         if pending is None:
             return workflow_id
         # updateSource applies a metadata merge patch, so omission preserves the old marker.
         # An explicit null is the tombstone consumed by Dify/UI readers.
-        metadata[_PENDING_IMPORT_KEY] = None
         failure = {
             "errorCode": workflow.last_error_code,
             "errorMessage": workflow.failure.message if workflow.failure is not None else None,
@@ -78,7 +76,7 @@ def finalize_source_import_once(
             source_id=source_id,
             payload=KnowledgeFSSourceUpdatePayload(
                 expectedVersion=source.version,
-                metadata={**metadata, "lastImport": failure, "preview": False},
+                metadata={_PENDING_IMPORT_KEY: None, "lastImport": failure, "preview": False},
                 status="error",
             ),
         )
@@ -99,7 +97,6 @@ def finalize_source_import_once(
             "syncPolicy": import_metadata.get("syncPolicy"),
             "workflowId": workflow.id,
         }
-        metadata[_PENDING_IMPORT_KEY] = None
         source = facade.update_source(
             tenant_id=tenant_id,
             account_id=account_id,
@@ -107,7 +104,7 @@ def finalize_source_import_once(
             source_id=source_id,
             payload=KnowledgeFSSourceUpdatePayload(
                 expectedVersion=source.version,
-                metadata={**metadata, "lastImport": completion, "preview": False},
+                metadata={_PENDING_IMPORT_KEY: None, "lastImport": completion, "preview": False},
                 status="active",
             ),
         )

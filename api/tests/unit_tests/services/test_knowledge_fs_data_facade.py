@@ -1845,7 +1845,11 @@ def test_advanced_facade_binds_child_resources_parent_space_and_idempotency() ->
         account_id="account-1",
         control_space_id="control-1",
         source_id="source-1",
-        payload=KnowledgeFSSourceUpdatePayload(name="Docs"),
+        payload=KnowledgeFSSourceUpdatePayload(
+            name="Docs",
+            providerParameters={"limit": 50, "url": "https://docs.example.com"},
+            uri="https://docs.example.com",
+        ),
     )
     credential_test = facade.test_source(
         tenant_id="tenant-1",
@@ -1883,6 +1887,11 @@ def test_advanced_facade_binds_child_resources_parent_space_and_idempotency() ->
     )
 
     assert source.version == 2
+    assert remote.requests[-6].payload == {
+        "name": "Docs",
+        "providerParameters": {"limit": 50, "url": "https://docs.example.com"},
+        "uri": "https://docs.example.com",
+    }
     assert credential_test.valid is True
     assert job.id == "job-1"
     assert trace.id == "trace-1"

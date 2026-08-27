@@ -12,9 +12,11 @@ import {
   type OnlineDriveConnector,
   SOURCE_OPERATION_FAILURES,
   type SourceCredentialTester,
+  type SourceRepository,
   type WebsiteCrawlConnector,
   createDifyCapabilityV2RequestGuard,
   createInMemoryKnowledgeSpaceRepository,
+  createInMemorySourceRepository,
   createKnowledgeGateway,
   createStaticAuthVerifier,
 } from "./index";
@@ -36,6 +38,7 @@ function createApp(
     onlineDocumentConnector?: OnlineDocumentConnector;
     onlineDriveConnector?: OnlineDriveConnector;
     sourceCredentialTester?: SourceCredentialTester;
+    sources?: SourceRepository;
     websiteCrawlConnector?: WebsiteCrawlConnector;
   } = {},
 ) {
@@ -61,6 +64,7 @@ function createApp(
     ...(options.sourceCredentialTester
       ? { sourceCredentialTester: options.sourceCredentialTester }
       : {}),
+    ...(options.sources ? { sources: options.sources } : {}),
     ...(options.websiteCrawlConnector
       ? { websiteCrawlConnector: options.websiteCrawlConnector }
       : {}),
@@ -246,6 +250,193 @@ describe("knowledge space source CRUD", () => {
       headers: bearer(readToken),
     });
     expect(stillVisible.status).toBe(200);
+  });
+
+  it("updates mutable source configuration without changing the source type", async () => {
+    const app = createApp();
+    const spaceId = await createSpace(app);
+    const created = await app.request(`/knowledge-spaces/${spaceId}/sources`, {
+      body: JSON.stringify({
+        metadata: {
+          parameters: {
+            include_paths: "/private/**",
+            limit: 100,
+            url: "https://example.com",
+          },
+        },
+        name: "Docs crawl",
+        type: "web",
+        uri: "https://example.com",
+      }),
+      headers: json(writeToken),
+      method: "POST",
+    });
+    expect(created.status).toBe(201);
+    const sourceId = (await created.json()).id;
+
+    const response = await app.request(`/knowledge-spaces/${spaceId}/sources/${sourceId}`, {
+      body: JSON.stringify({
+        providerParameters: { limit: 50, url: "https://docs.example.com" },
+        uri: "https://docs.example.com",
+      }),
+      headers: json(writeToken),
+      method: "PATCH",
+    });
+
+    expect(response.status).toBe(200);
+    const updated = await response.json();
+    expect(updated).toMatchObject({
+      type: "web",
+      uri: "https://docs.example.com",
+    });
+    expect(updated.metadata.parameters).toEqual({
+      limit: 50,
+      url: "https://docs.example.com",
+    });
+
+    const uriOnlyResponse = await app.request(`/knowledge-spaces/${spaceId}/sources/${sourceId}`, {
+      body: JSON.stringify({ uri: "https://guide.example.com" }),
+      headers: json(writeToken),
+      method: "PATCH",
+    });
+    expect(uriOnlyResponse.status).toBe(200);
+    const uriOnlyUpdated = await uriOnlyResponse.json();
+    expect(uriOnlyUpdated.uri).toBe("https://guide.example.com");
+    expect(uriOnlyUpdated.metadata.parameters).toEqual({
+      limit: 50,
+      url: "https://guide.example.com",
+    });
+
+    const parametersOnlyResponse = await app.request(
+      `/knowledge-spaces/${spaceId}/sources/${sourceId}`,
+      {
+        body: JSON.stringify({
+          providerParameters: { limit: 25, url: "https://reference.example.com" },
+        }),
+        headers: json(writeToken),
+        method: "PATCH",
+      },
+    );
+    expect(parametersOnlyResponse.status).toBe(200);
+    const parametersOnlyUpdated = await parametersOnlyResponse.json();
+    expect(parametersOnlyUpdated.uri).toBe("https://reference.example.com");
+    expect(parametersOnlyUpdated.metadata.parameters).toEqual({
+      limit: 25,
+      url: "https://reference.example.com",
+    });
+  });
+
+  it("requires providerParameters for provider parameter updates", async () => {
+    const app = createApp();
+    const spaceId = await createSpace(app);
+    const sourceId = await createWebSource(app, spaceId);
+
+    const response = await app.request(`/knowledge-spaces/${spaceId}/sources/${sourceId}`, {
+      body: JSON.stringify({ metadata: { parameters: { limit: 50 } } }),
+      headers: json(writeToken),
+      method: "PATCH",
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("rejects invalid web source URL updates", async () => {
+    const app = createApp();
+    const spaceId = await createSpace(app);
+    const sourceId = await createWebSource(app, spaceId);
+
+    for (const body of [
+      { providerParameters: { limit: 50 } },
+      { providerParameters: { url: `https://docs.example.com/${"x".repeat(4096)}` } },
+      { uri: "ftp://docs.example.com" },
+      { uri: "https://user:secret@docs.example.com" },
+    ]) {
+      const response = await app.request(`/knowledge-spaces/${spaceId}/sources/${sourceId}`, {
+        body: JSON.stringify(body),
+        headers: json(writeToken),
+        method: "PATCH",
+      });
+      expect(response.status).toBe(400);
+    }
+  });
+
+  it("rejects source patches without a mutable field", async () => {
+    const app = createApp();
+    const spaceId = await createSpace(app);
+    const sourceId = await createWebSource(app, spaceId);
+
+    for (const body of [{}, { expectedVersion: 1 }]) {
+      const response = await app.request(`/knowledge-spaces/${spaceId}/sources/${sourceId}`, {
+        body: JSON.stringify(body),
+        headers: json(writeToken),
+        method: "PATCH",
+      });
+      expect(response.status).toBe(400);
+    }
+  });
+
+  it("rejects connection and permission mutations through the general source patch", async () => {
+    const app = createApp();
+    const spaceId = await createSpace(app);
+    const sourceId = await createWebSource(app, spaceId);
+
+    for (const body of [
+      { connectionId: "00000000-0000-4000-8000-000000000099" },
+      { permissionScope: ["private"] },
+    ]) {
+      const response = await app.request(`/knowledge-spaces/${spaceId}/sources/${sourceId}`, {
+        body: JSON.stringify(body),
+        headers: json(writeToken),
+        method: "PATCH",
+      });
+      expect(response.status).toBe(400);
+    }
+  });
+
+  it("rejects credentials disguised as provider parameters", async () => {
+    const app = createApp();
+    const spaceId = await createSpace(app);
+    const sourceId = await createWebSource(app, spaceId);
+
+    const response = await app.request(`/knowledge-spaces/${spaceId}/sources/${sourceId}`, {
+      body: JSON.stringify({ providerParameters: { apiKey: "secret" } }),
+      headers: json(writeToken),
+      method: "PATCH",
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Provider parameters cannot contain credentials",
+    });
+  });
+
+  it("refuses to overwrite legacy credential-bearing provider parameters", async () => {
+    const sources = createInMemorySourceRepository({ maxSources: 10 });
+    const app = createApp({ sources });
+    const spaceId = await createSpace(app);
+    const legacySource = await sources.create({
+      knowledgeSpaceId: spaceId,
+      metadata: {
+        parameters: { apiKey: "legacy-secret", url: "https://docs.example.com" },
+        tenantId: "tenant-1",
+      },
+      name: "Legacy crawl",
+      type: "web",
+      uri: "https://docs.example.com",
+    });
+
+    const response = await app.request(`/knowledge-spaces/${spaceId}/sources/${legacySource.id}`, {
+      body: JSON.stringify({
+        providerParameters: { limit: 50, url: "https://docs.example.com" },
+      }),
+      headers: json(writeToken),
+      method: "PATCH",
+    });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "Provider parameters containing credentials cannot be replaced",
+    });
   });
 
   it("rejects source creation in a space the tenant does not own", async () => {

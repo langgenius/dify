@@ -15,7 +15,10 @@ def test_commit_crawl_preview_selection_makes_source_visible_and_dispatches_reco
     facade.get_source_workflow.return_value = SimpleNamespace(source_id="source-1")
     facade.select_crawl_preview_pages.return_value = SimpleNamespace(id="import-1", source_id="source-1")
     facade.get_source.return_value = SimpleNamespace(
-        id="source-1", metadata={"preview": True}, status="disabled", version=3
+        id="source-1",
+        metadata={"parameters": {"limit": 99}, "preview": True},
+        status="disabled",
+        version=3,
     )
     payload = KnowledgeFSAsyncSourceImportPayload.model_validate(
         {
@@ -42,6 +45,7 @@ def test_commit_crawl_preview_selection_makes_source_visible_and_dispatches_reco
     assert selection["payload"].page_ids == ["page-1"]
     source_update = facade.update_source.call_args.kwargs["payload"]
     assert source_update.status == "syncing"
+    assert "parameters" not in source_update.metadata
     assert source_update.metadata["preview"] is False
     assert source_update.metadata["pendingImport"] == {
         "kind": "crawl-preview-selection",
@@ -135,6 +139,7 @@ def test_resume_committed_source_import_restores_pending_marker() -> None:
     facade.get_source.return_value = SimpleNamespace(
         id="source-1",
         metadata={
+            "parameters": {"limit": 99},
             "preview": False,
             "lastImport": {
                 "kind": "crawl-preview-selection",
@@ -159,6 +164,7 @@ def test_resume_committed_source_import_restores_pending_marker() -> None:
 
     update = facade.update_source.call_args.kwargs["payload"]
     assert update.status == "syncing"
+    assert "parameters" not in update.metadata
     assert update.metadata["lastImport"] is None
     assert update.metadata["pendingImport"]["workflowId"] == "import-1"
     delay.assert_called_once()

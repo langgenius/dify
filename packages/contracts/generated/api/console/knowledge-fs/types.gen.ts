@@ -965,7 +965,11 @@ export type KnowledgeFsSourceUpdatePayload = {
     [key: string]: unknown
   } | null
   name?: string | null
+  providerParameters?: {
+    [key: string]: boolean | number | string
+  } | null
   status?: 'active' | 'disabled' | 'error' | 'syncing' | null
+  uri?: string | null
 }
 
 export type KnowledgeFsAsyncSourceImportPayload =

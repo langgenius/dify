@@ -767,12 +767,12 @@ currently visible.
 **Responses**: `200` `Source`; `404`; `401`/`403`.
 
 ### `PATCH /knowledge-spaces/{id}/sources/{sourceId}`
-**Description**: Update a source's mutable fields (name/status/metadata), optionally guarded by optimistic locking.
+**Description**: Update a source's mutable fields, optionally guarded by optimistic locking.
 **Auth**: Bearer; scope `knowledge-spaces:write`.
-**Path params**: `id` (uuid); `sourceId` (uuid). **Body** (`application/json`, strict, all optional): `name` (1–200); `status` (enum); `metadata` (object, **replaces wholesale** — `tenantId` is re-stamped automatically); `expectedVersion` (int ≥1) — the `version` from your last read; when provided, a concurrent modification makes the update fail with `409` instead of overwriting it.
+**Path params**: `id` (uuid); `sourceId` (uuid). **Body** (`application/json`, strict; at least one mutable field is required): `name` (1–200); `status` (enum); `metadata` (object, recursively patches ordinary metadata and cannot contain `parameters`; `tenantId` is re-stamped automatically); `providerParameters` (object containing at most 50 boolean/finite-number/string values, fully replaces `metadata.parameters`, so omitted keys are removed); `uri` (1–4096); `expectedVersion` (int ≥1) — the `version` from your last read; when provided, a concurrent modification makes the update fail with `409` instead of overwriting it. For web sources, changing `uri` also changes the provider parameter `url`, while a replacement `providerParameters.url` changes `uri`; if both are supplied, `uri` is authoritative.
 **Responses**:
 - `200`: updated `Source` (`version` bumped).
-- `400` invalid `metadata.syncPolicy`; `404`; `409` concurrent modification (`expectedVersion` mismatch); `401`/`403`.
+- `400` invalid `metadata.syncPolicy`, provider parameters under `metadata`, credential-shaped provider parameters, or an invalid web Source URL; `404`; `409` concurrent modification (`expectedVersion` mismatch) or protected legacy credential-bearing parameters; `401`/`403`.
 
 ### `DELETE /knowledge-spaces/{id}/sources/{sourceId}`
 **Description**: Delete a source and, by default, cascade-delete its documents.

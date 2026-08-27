@@ -96,6 +96,21 @@ function GroupedWebsiteParameterForm() {
   )
 }
 
+function CustomizedGroupedWebsiteParameterForm() {
+  const schemas = websiteDatasourceParameterSchemas({ parameters: [] } as never)
+  const [parameters, setParameters] = useState<DatasourceParameters>(() => ({
+    ...datasourceParameterDefaults(schemas),
+    limit: 99,
+  }))
+  return (
+    <WebsiteDatasourceParameterForm
+      parameters={parameters}
+      schemas={schemas}
+      onChange={setParameters}
+    />
+  )
+}
+
 describe('DatasourceParameterForm', () => {
   it('keeps an out-of-range numeric value visible and reports it as invalid', async () => {
     const user = userEvent.setup()
@@ -160,6 +175,14 @@ describe('DatasourceParameterForm', () => {
 
     await user.click(resetButton)
     expect(includeSubpages).toBeChecked()
+  })
+
+  it('does not describe customized collapsed website options as defaults', () => {
+    render(<CustomizedGroupedWebsiteParameterForm />)
+
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.crawlOptions' }),
+    ).not.toHaveTextContent('dataset.newKnowledge.usingDefaults')
   })
 
   it('allows decimal input using the declaration precision', async () => {
