@@ -16,6 +16,7 @@ const mockCarouselListeners = new Set<() => void>()
 const mockAutoplayListeners = {
   play: new Set<() => void>(),
   stop: new Set<() => void>(),
+  reInit: new Set<() => void>(),
 }
 const mockConsoleState = vi.hoisted(() => ({
   userProfile: {
@@ -51,11 +52,13 @@ const mockApi = {
   on: vi.fn((event: string, listener: () => void) => {
     if (event === 'autoplay:play') mockAutoplayListeners.play.add(listener)
     if (event === 'autoplay:stop') mockAutoplayListeners.stop.add(listener)
+    if (event === 'reInit') mockAutoplayListeners.reInit.add(listener)
     return mockApi
   }),
   off: vi.fn((event: string, listener: () => void) => {
     if (event === 'autoplay:play') mockAutoplayListeners.play.delete(listener)
     if (event === 'autoplay:stop') mockAutoplayListeners.stop.delete(listener)
+    if (event === 'reInit') mockAutoplayListeners.reInit.delete(listener)
     return mockApi
   }),
 }
@@ -176,6 +179,7 @@ describe('Banner', () => {
     mockCarouselListeners.clear()
     mockAutoplayListeners.play.clear()
     mockAutoplayListeners.stop.clear()
+    mockAutoplayListeners.reInit.clear()
     mockConsoleState.userProfile = { id: 'account-123', name: 'Evan' }
   })
 
@@ -241,6 +245,7 @@ describe('Banner', () => {
     )
 
     expect(screen.getAllByRole('button')).toHaveLength(3)
+    expect(screen.getAllByRole('button')[0]).toHaveAccessibleName('operation.pause')
     const secondBannerButton = screen.getByRole('button', { name: '02 Second banner' })
     secondBannerButton.focus()
     fireEvent.click(secondBannerButton)
@@ -284,7 +289,6 @@ describe('Banner', () => {
   })
 
   it('does not control an inactive autoplay plugin during manual selection', () => {
-    mockAutoplayPlaying = false
     render(
       <Banner
         banners={[
@@ -293,6 +297,9 @@ describe('Banner', () => {
         ]}
       />,
     )
+    act(() => mockAutoplay.stop())
+    mockAutoplay.play.mockClear()
+    mockAutoplay.stop.mockClear()
 
     fireEvent.click(screen.getByRole('button', { name: '02 Second banner' }))
 
@@ -329,13 +336,13 @@ describe('Banner', () => {
       />,
     )
 
-    fireEvent.mouseEnter(screen.getByTestId('carousel-content'))
+    fireEvent.pointerOver(screen.getByTestId('carousel'))
 
     expect(mockAutoplay.stop).toHaveBeenCalledOnce()
     expect(screen.getByRole('button', { name: 'operation.pause' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'operation.play' })).not.toBeInTheDocument()
 
-    fireEvent.mouseLeave(screen.getByTestId('carousel-content'))
+    fireEvent.pointerOut(screen.getByTestId('carousel'))
 
     expect(mockAutoplay.play).toHaveBeenCalledOnce()
     expect(screen.getByRole('button', { name: 'operation.pause' })).toBeInTheDocument()
@@ -365,12 +372,17 @@ describe('Banner', () => {
 
     await user.click(screen.getByRole('button', { name: 'operation.play' }))
 
-    expect(mockAutoplay.play).toHaveBeenCalledOnce()
+    expect(mockAutoplay.play).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: 'operation.pause' })).toBeInTheDocument()
+    expect(screen.getByTestId('carousel-content')).toHaveAttribute('aria-live', 'polite')
+
+    await user.unhover(screen.getByTestId('carousel'))
+
+    expect(mockAutoplay.play).toHaveBeenCalledOnce()
     expect(screen.getByTestId('carousel-content')).toHaveAttribute('aria-live', 'off')
   })
 
-  it('pauses rotation while keyboard focus is within the pagination controls', () => {
+  it('stops rotation when keyboard focus enters and does not restart on blur', () => {
     render(
       <Banner
         banners={[
@@ -383,13 +395,14 @@ describe('Banner', () => {
     const secondBannerButton = screen.getByRole('button', { name: '02 Second banner' })
     fireEvent.focus(secondBannerButton)
     expect(mockAutoplay.stop).toHaveBeenCalledOnce()
+    expect(screen.getByRole('button', { name: 'operation.play' })).toBeInTheDocument()
 
     fireEvent.blur(secondBannerButton)
-    expect(mockAutoplay.play).toHaveBeenCalledOnce()
+    expect(mockAutoplay.play).not.toHaveBeenCalled()
   })
 
-  it('does not resume an autoplay plugin that was already inactive before focus', () => {
-    mockAutoplayPlaying = false
+  it('keeps an explicit pause through an Embla reinitialization', async () => {
+    const user = userEvent.setup()
     render(
       <Banner
         banners={[
@@ -398,6 +411,30 @@ describe('Banner', () => {
         ]}
       />,
     )
+
+    await user.click(screen.getByRole('button', { name: 'operation.pause' }))
+    mockAutoplay.play.mockClear()
+    act(() => {
+      mockAutoplayPlaying = false
+      mockAutoplayListeners.reInit.forEach((listener) => listener())
+    })
+
+    expect(mockAutoplay.play).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'operation.play' })).toBeInTheDocument()
+  })
+
+  it('does not resume an autoplay plugin that was already inactive before focus', () => {
+    render(
+      <Banner
+        banners={[
+          createMockBanner('1', 'enabled', 'First banner'),
+          createMockBanner('2', 'enabled', 'Second banner'),
+        ]}
+      />,
+    )
+    act(() => mockAutoplay.stop())
+    mockAutoplay.play.mockClear()
+    mockAutoplay.stop.mockClear()
 
     const secondBannerButton = screen.getByRole('button', { name: '02 Second banner' })
     fireEvent.focus(secondBannerButton)

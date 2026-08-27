@@ -27,7 +27,10 @@ function useDisplayPlatform() {
 export function MainNavSearchButton() {
   const { t } = useTranslation()
   const displayPlatform = useDisplayPlatform()
-  const ariaKeyShortcuts = `${GOTO_ANYTHING_HOTKEY.replace('Mod', 'Control')} ${GOTO_ANYTHING_HOTKEY.replace('Mod', 'Meta')}`
+  const ariaKeyShortcuts = GOTO_ANYTHING_HOTKEY.replace(
+    'Mod',
+    displayPlatform === 'mac' ? 'Meta' : 'Control',
+  )
 
   return (
     <DialogTrigger

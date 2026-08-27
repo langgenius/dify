@@ -18,7 +18,7 @@ describe('MainNavSearchButton', () => {
 
     expect(getSearchButton()).toHaveTextContent('CtrlK')
     expect(getSearchButton()).not.toHaveTextContent('⌘')
-    expect(getSearchButton()).toHaveAttribute('aria-keyshortcuts', 'Control+K Meta+K')
+    expect(getSearchButton()).toHaveAttribute('aria-keyshortcuts', 'Control+K')
     expect(container.querySelector('kbd')).toHaveAttribute('aria-hidden', 'true')
 
     const onRecoverableError = vi.fn()
@@ -28,6 +28,7 @@ describe('MainNavSearchButton', () => {
 
     try {
       await waitFor(() => expect(getSearchButton()).toHaveTextContent('⌘K'))
+      expect(getSearchButton()).toHaveAttribute('aria-keyshortcuts', 'Meta+K')
       expect(onRecoverableError).not.toHaveBeenCalled()
     } finally {
       act(() => root.unmount())
