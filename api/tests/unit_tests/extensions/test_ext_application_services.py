@@ -22,6 +22,7 @@ from repositories.account_activation_repository import SQLAlchemyAccountActivati
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_site_command_repository import AppSiteCommandRepository
+from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services import recommended_app_catalog_gateway
 from services.account_activation_adapters import (
     BillingAccountActivationEligibility,
@@ -41,6 +42,7 @@ from services.init_validation_service import InvalidInitializationPasswordError
 from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.tag_application_service import TagApplicationService
 from services.webapp_access_query_service import WebAppAccessUnavailableError
+from services.workflow_run_service import WorkflowRunService
 
 
 @pytest.mark.parametrize(
@@ -192,6 +194,22 @@ def test_build_application_services_wires_app_site_boundary(
     assert isinstance(services.app_sites, AppSiteService)
     assert isinstance(services.app_sites._sites, AppSiteCommandRepository)
     assert services.app_sites._sites._session_factory is sqlite_session_factory
+
+
+def test_build_application_services_wires_workflow_run_service(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    workflow_runs = services.workflow_runs
+    assert isinstance(workflow_runs, WorkflowRunService)
+    assert isinstance(workflow_runs._workflow_runs, DifyAPISQLAlchemyWorkflowRunRepository)
+    assert workflow_runs._workflow_runs._session_maker is sqlite_session_factory
 
 
 def test_build_application_services_wires_billing_service(

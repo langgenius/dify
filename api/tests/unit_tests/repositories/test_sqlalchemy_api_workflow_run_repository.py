@@ -1,14 +1,23 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from decimal import Decimal
+
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.nodes.human_input.entities import FormDefinition, ParagraphInputConfig, UserActionConfig
 from core.workflow.nodes.human_input.enums import FormInputType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.entities.pause_reason import HitlRequired, PauseReasonType
+from graphon.enums import WorkflowExecutionStatus, WorkflowType
+from models import Message
+from models.enums import ConversationFromSource, CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
-from models.workflow import WorkflowPause, WorkflowPauseReason
+from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.sqlalchemy_api_workflow_run_repository import (
+    DifyAPISQLAlchemyWorkflowRunRepository,
+    WorkflowRunMessageRef,
+    WorkflowRunPauseRecord,
     _build_human_input_required_reason,
     _PrivateWorkflowPauseEntity,
 )
@@ -151,3 +160,130 @@ def test_private_workflow_pause_entity_preserves_list_shaped_pause_reasons() -> 
 
     assert isinstance(result, list)
     assert result == pause_reasons
+
+
+def _message(*, message_id: str, app_id: str, workflow_run_id: str, conversation_id: str) -> Message:
+    message = Message(
+        app_id=app_id,
+        conversation_id=conversation_id,
+        query="query",
+        message={"role": "user", "content": "query"},
+        answer="answer",
+        message_unit_price=Decimal("0.0001"),
+        answer_unit_price=Decimal("0.0001"),
+        currency="USD",
+        from_source=ConversationFromSource.API,
+    )
+    message.id = message_id
+    message._inputs = {}
+    message.workflow_run_id = workflow_run_id
+    return message
+
+
+def _workflow_run(*, run_id: str, tenant_id: str, status: WorkflowExecutionStatus) -> WorkflowRun:
+    return WorkflowRun(
+        id=run_id,
+        tenant_id=tenant_id,
+        app_id="app-1",
+        workflow_id="workflow-1",
+        type=WorkflowType.WORKFLOW,
+        triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
+        version="1",
+        graph="{}",
+        inputs="{}",
+        status=status,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+    )
+
+
+def test_get_message_refs_filters_by_app_and_returns_lightweight_records(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    sqlite_session.add_all(
+        [
+            _message(message_id="msg-1", app_id="app-1", workflow_run_id="run-1", conversation_id="conv-1"),
+            _message(message_id="msg-2", app_id="app-2", workflow_run_id="run-2", conversation_id="conv-2"),
+        ]
+    )
+    sqlite_session.commit()
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sqlite_session_factory)
+
+    result = repository.get_message_refs(
+        app_id="app-1",
+        workflow_run_ids=["run-1", "run-2"],
+    )
+
+    assert result == {
+        "run-1": WorkflowRunMessageRef(message_id="msg-1", conversation_id="conv-1"),
+    }
+
+
+def test_get_pause_record_scopes_the_workflow_run_to_the_workspace(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    sqlite_session.add(
+        _workflow_run(
+            run_id="run-1",
+            tenant_id="tenant-1",
+            status=WorkflowExecutionStatus.SUCCEEDED,
+        )
+    )
+    sqlite_session.commit()
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sqlite_session_factory)
+
+    assert repository.get_pause_record(workspace_id="tenant-2", workflow_run_id="run-1") is None
+    assert repository.get_pause_record(
+        workspace_id="tenant-1",
+        workflow_run_id="run-1",
+    ) == WorkflowRunPauseRecord(
+        status=WorkflowExecutionStatus.SUCCEEDED,
+        paused_at=None,
+        reasons=(),
+        form_tokens={},
+    )
+
+
+def test_get_pause_record_loads_reasons_and_tokens_in_one_repository_call(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    workflow_run = _workflow_run(
+        run_id="run-1",
+        tenant_id="tenant-1",
+        status=WorkflowExecutionStatus.PAUSED,
+    )
+    pause = WorkflowPause(
+        workflow_id=workflow_run.workflow_id,
+        workflow_run_id=workflow_run.id,
+        state_object_key="pause-state",
+    )
+    pause.id = "pause-1"
+    reason = WorkflowPauseReason(
+        pause_id=pause.id,
+        type_=PauseReasonType.HITL_REQUIRED,
+        form_id="form-1",
+        node_id="node-1",
+    )
+    recipient = HumanInputFormRecipient(
+        form_id="form-1",
+        delivery_id="delivery-1",
+        recipient_type=RecipientType.CONSOLE,
+        recipient_payload="{}",
+        access_token="form-token",
+    )
+    sqlite_session.add_all([workflow_run, pause, reason, recipient])
+    sqlite_session.commit()
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sqlite_session_factory)
+
+    result = repository.get_pause_record(workspace_id="tenant-1", workflow_run_id="run-1")
+
+    assert result is not None
+    assert result.status == WorkflowExecutionStatus.PAUSED
+    assert result.paused_at == pause.created_at
+    assert len(result.reasons) == 1
+    assert isinstance(result.reasons[0], HumanInputRequired)
+    assert result.reasons[0].form_id == "form-1"
+    assert result.form_tokens == {"form-1": "form-token"}
