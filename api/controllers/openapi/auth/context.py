@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.openapi.auth.subjects import Subject
-from models.account import Account, Tenant, TenantStatus
+from models.account import Account, AccountStatus, Tenant, TenantAccountRole, TenantStatus
 from models.enums import AppStatus
 from models.model import App, EndUser
 from services.account_service import TenantService
@@ -85,3 +85,29 @@ class Context:
     @cached_property
     def caller(self) -> Account | EndUser:
         return self.subject.resolve_caller(self, self._session)
+
+    @cached_property
+    def workspace_role(self) -> TenantAccountRole:
+        """The caller's role in the resolved workspace.
+
+        Non-membership answers 404, never 403, so workspace ids cannot be probed
+        across tenants, and an account that is not `ACTIVE` is a non-member even
+        when it still holds a role.
+
+        `workspace` is read before `caller`: an account binds its current tenant
+        only once the workspace has been resolved.
+
+        Cached here rather than on the requirements that read it: a requirement is
+        a process-lifetime singleton, so its cache would outlive the membership it
+        recorded and two threads would race on it.
+        """
+        workspace = self.workspace
+        caller = self.caller
+        if not isinstance(caller, Account) or caller.status != AccountStatus.ACTIVE:
+            raise NotFound("workspace not found")
+        role = TenantService.get_account_role_in_tenant(
+            str(self.subject.account_id), str(workspace.id), session=self._session
+        )
+        if role is None:
+            raise NotFound("workspace not found")
+        return role
