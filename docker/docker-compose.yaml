@@ -4,6 +4,8 @@
 # or docker-compose-template.yaml and regenerate this file.
 # ==================================================================
 
+name: dify
+
 # Shared configuration using YAML anchors and env_file
 x-shared-api-worker-config: &shared-api-worker-config
   env_file:
@@ -442,6 +444,8 @@ services:
                -c 'idle_in_transaction_session_timeout=${POSTGRES_IDLE_IN_TRANSACTION_SESSION_TIMEOUT:-0}'
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
+    ports:
+      - '5433:5432'
     healthcheck:
       test:
         [
