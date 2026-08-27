@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { useGetPricingPageLanguage } from '@/context/i18n'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
-import Pricing from '../index'
+import { Pricing } from '../index'
 
 let mockConsoleState: Record<string, unknown> = {}
 
