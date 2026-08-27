@@ -8,7 +8,7 @@ import { isCloudAnalyticsRequest } from './request-boundary'
 export async function CloudAnalytics() {
   const systemFeatures = getCachedSystemFeatures()
 
-  if (!systemFeatures) return <AnalyticsDisabled />
+  if (!systemFeatures) return null
 
   const requestHeaders = await headers()
   const requestHost = requestHeaders.get('x-forwarded-host') || requestHeaders.get('host')

@@ -149,8 +149,12 @@ export const coordinateRegistrationConsent = (consent: AnalyticsConsent) => {
   if (consent !== 'granted' || !volatileIntent) return
 
   const intent = volatileIntent
-  const age = Date.now() - intent.occurredAt
-  if (age < 0 || age >= VOLATILE_INTENT_TTL_MS) {
+  const now = Date.now()
+  const age = now - intent.occurredAt
+  if (
+    age >= VOLATILE_INTENT_TTL_MS ||
+    intent.occurredAt > now + REGISTRATION_FUTURE_CLOCK_SKEW_ALLOWANCE_MS
+  ) {
     clearVolatileRegistrationIntent()
     return
   }
@@ -257,20 +261,15 @@ const runRegistrationFlush = async (generation: number) => {
     }
     if (!trackResult) return
 
-    let result: { code?: unknown }
+    let acknowledged = false
     try {
-      result = await trackResult.promise
-    } catch {
-      return
-    }
+      const result: { code?: unknown } = await trackResult.promise
+      acknowledged =
+        typeof result.code === 'number' &&
+        result.code >= SUCCESSFUL_TRACK_RESULT_MIN &&
+        result.code <= SUCCESSFUL_TRACK_RESULT_MAX
+    } catch {}
     if (isStale()) return
-
-    if (
-      typeof result.code !== 'number' ||
-      result.code < SUCCESSFUL_TRACK_RESULT_MIN ||
-      result.code > SUCCESSFUL_TRACK_RESULT_MAX
-    )
-      return
 
     let currentRaw: string | null
     try {
@@ -279,6 +278,7 @@ const runRegistrationFlush = async (generation: number) => {
       return
     }
     if (currentRaw !== raw) continue
+    if (!acknowledged) return
 
     removeStoredRegistrationMarker(storage)
     return

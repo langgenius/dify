@@ -253,6 +253,30 @@ describe('registration tracking', () => {
         attribution: { utm_source: 'blog' },
       })
     })
+
+    it('promotes a volatile intent just inside the five-minute clock-skew allowance', () => {
+      mockConsent.value = 'unknown'
+      vi.setSystemTime(new Date('2026-08-26T09:04:59.999Z'))
+      rememberRegistrationSuccess({ method: 'email' })
+
+      mockConsent.value = 'granted'
+      vi.setSystemTime(new Date('2026-08-26T09:00:00.000Z'))
+      coordinateRegistrationConsent('granted')
+
+      expect(getStoredMarker()).toMatchObject({ method: 'email' })
+    })
+
+    it('discards a volatile intent just outside the five-minute clock-skew allowance', () => {
+      mockConsent.value = 'unknown'
+      vi.setSystemTime(new Date('2026-08-26T09:05:00.001Z'))
+      rememberRegistrationSuccess({ method: 'email' })
+
+      mockConsent.value = 'granted'
+      vi.setSystemTime(new Date('2026-08-26T09:00:00.000Z'))
+      coordinateRegistrationConsent('granted')
+
+      expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
+    })
   })
 
   describe('flushRegistrationSuccess', () => {
@@ -334,6 +358,46 @@ describe('registration tracking', () => {
         time: marker.occurredAt,
       })
     })
+
+    it.each(['rejected acknowledgement', 'non-success acknowledgement'] as const)(
+      'continues with a replacement marker after a %s',
+      async (oldAcknowledgement) => {
+        const firstRegistrationId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+        const replacementRegistrationId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+        vi.spyOn(globalThis.crypto, 'randomUUID')
+          .mockReturnValueOnce(firstRegistrationId)
+          .mockReturnValueOnce(replacementRegistrationId)
+        let resolveOldAcknowledgement!: (result: { code: number }) => void
+        let rejectOldAcknowledgement!: (error: Error) => void
+        const pendingOldAcknowledgement = new Promise<{ code: number }>((resolve, reject) => {
+          resolveOldAcknowledgement = resolve
+          rejectOldAcknowledgement = reject
+        })
+        mockTrackEvent
+          .mockReturnValueOnce({ promise: pendingOldAcknowledgement })
+          .mockImplementation(successResult)
+
+        rememberRegistrationSuccess({ method: 'email' })
+        const firstFlush = flushRegistrationSuccess()
+        rememberRegistrationSuccess({ method: 'email' })
+        const replacementFlush = flushRegistrationSuccess()
+
+        expect(replacementFlush).toBe(firstFlush)
+        expect(mockTrackEvent).toHaveBeenCalledTimes(1)
+
+        if (oldAcknowledgement === 'rejected acknowledgement')
+          rejectOldAcknowledgement(new Error('network failed'))
+        else resolveOldAcknowledgement({ code: 500 })
+        await firstFlush
+
+        expect(mockTrackEvent).toHaveBeenCalledTimes(2)
+        expect(mockTrackEvent.mock.calls[1]?.[2]).toEqual({
+          insert_id: replacementRegistrationId,
+          time: expect.any(Number),
+        })
+        expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
+      },
+    )
 
     it('does not retry an acknowledgement-failed marker after an account boundary', async () => {
       rememberRegistrationSuccess({ method: 'email' })
