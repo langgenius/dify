@@ -32,6 +32,7 @@ from models import Account, App, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from models.enums import AppStatus
 from models.model import AppMode, IconType
+from services.account_service import TenantService
 from services.enterprise.enterprise_service import WebAppAccessMode, WebAppSettings
 from services.entities.feature_entities import (
     LicenseStatus,
@@ -292,8 +293,8 @@ class TestMembership:
             CheckAppWorkspaceMembership().run(subject, ctx, sqlite_session)
 
     def test_404s_an_inactive_account_that_still_holds_a_role(self, sqlite_session: Session) -> None:
-        """`load_workspace_role` bails on a non-active caller, and the missing
-        role becomes a 404 in `check_workspace_member`.
+        """`Context.workspace_role` treats a non-active caller as a non-member,
+        which is a 404 here.
         """
         _persist(
             sqlite_session,
@@ -351,6 +352,39 @@ class TestMembership:
         caller = ctx.caller
         assert isinstance(caller, Account)
         assert caller.current_tenant_id == TENANT_ID
+
+    def test_membership_and_the_role_floor_share_one_membership_read(
+        self,
+        app: Flask,
+        sqlite_session: Session,
+        config_overrides: Callable[..., None],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Both requirements run on a role-gated route. Reading the role off
+        `Context` is what keeps that one SELECT rather than two.
+        """
+        config_overrides(RBAC_ENABLED=False)
+        _persist(sqlite_session, _app(), _tenant(), _account(), _membership(TenantAccountRole.ADMIN))
+        calls: list[int] = []
+
+        def _counted(*_args: object, **_kwargs: object) -> TenantAccountRole:
+            calls.append(1)
+            return TenantAccountRole.ADMIN
+
+        monkeypatch.setattr(TenantService, "get_account_role_in_tenant", _counted)
+        subject = _account_subject()
+        ctx = _ctx(sqlite_session, subject=subject, app_id=APP_ID)
+        floor = RBACCheck(
+            resource_type=RBACResourceScope.APP,
+            scene=RBACPermission.APP_VIEW_LAYOUT,
+            roles=frozenset({TenantAccountRole.ADMIN}),
+        )
+
+        with app.test_request_context(f"/openapi/v1/apps/{APP_ID}"):
+            CheckAppWorkspaceMembership().run(subject, ctx, sqlite_session)
+            floor.run(subject, ctx, sqlite_session)
+
+        assert len(calls) == 1
 
 
 class TestRBACCheck:
@@ -472,9 +506,9 @@ class TestRBACCheck:
     def test_the_role_floor_404s_an_inactive_account_that_still_holds_a_role(
         self, app: Flask, sqlite_session: Session, config_overrides: Callable[..., None]
     ) -> None:
-        """`load_workspace_role` bails on a non-active caller, so the floor
-        404s a banned admin. The floor carries that rule itself rather than
-        borrowing it from whichever membership requirement ran first.
+        """`Context.workspace_role` treats a non-active caller as a non-member,
+        so the floor 404s a banned admin whether or not a membership requirement
+        ran first on this request.
         """
         config_overrides(RBAC_ENABLED=False)
         _persist(
