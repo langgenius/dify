@@ -3,11 +3,12 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
+from flask import request
 from flask_restx import Resource
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import accepts, returns
+from controllers.openapi._contract import endpoint
 from controllers.openapi._models import (
     AccountPayload,
     AccountResponse,
@@ -17,21 +18,28 @@ from controllers.openapi._models import (
     SessionRow,
     WorkspacePayload,
 )
-from controllers.openapi.flask_admission import openapi_account_admission
+from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.requirements import SubjectCheck, TokenScope
+from controllers.openapi.auth.subjects import AccountSubject
+from core.logging.context import get_request_id, get_trace_id
 from extensions.ext_application_services import application_services
 from libs.oauth_bearer import Scope
-from libs.rate_limit import LIMIT_ME_PER_ACCOUNT
+from libs.rate_limit import LIMIT_ME_PER_ACCOUNT, enforce
 from machinery.context import AccountRequestContext
 from services.account_errors import AccountNotFoundError, AccountSessionNotFoundError
 from services.entities.account_access_entities import AccountSessionSnapshot, AccountWorkspaceSnapshot
 from services.entities.account_entities import AccountSnapshot
 
+_ACCOUNT_REQUIREMENTS = (SubjectCheck(allowed=(AccountSubject,)), TokenScope(Scope.FULL))
+
 
 @openapi_ns.route("/account")
 class AccountApi(Resource):
-    @openapi_account_admission(scope=Scope.FULL, rate_limit=LIMIT_ME_PER_ACCOUNT)
-    @returns(200, AccountResponse, description="Account info")
-    def get(self, request_context: AccountRequestContext):
+    @endpoint(requirements=_ACCOUNT_REQUIREMENTS, returns=(200, AccountResponse, "Account info"))
+    def get(self, ctx: Context):
+        request_context = _request_context(ctx)
+        enforce(LIMIT_ME_PER_ACCOUNT, key=f"account:{request_context.account_id}")
+
         try:
             snapshot = application_services().accounts.access.get(request_context)
         except AccountNotFoundError:
@@ -47,21 +55,22 @@ class AccountApi(Resource):
 
 @openapi_ns.route("/account/sessions/self")
 class AccountSessionsSelfApi(Resource):
-    @openapi_account_admission(scope=Scope.FULL)
-    @returns(200, RevokeResponse, description="Session revoked")
-    def delete(self, request_context: AccountRequestContext):
-        application_services().accounts.access.revoke_current_session(request_context)
+    @endpoint(requirements=_ACCOUNT_REQUIREMENTS, returns=(200, RevokeResponse, "Session revoked"))
+    def delete(self, ctx: Context):
+        application_services().accounts.access.revoke_current_session(_request_context(ctx))
         return RevokeResponse(status="revoked")
 
 
 @openapi_ns.route("/account/sessions")
 class AccountSessionsApi(Resource):
-    @openapi_account_admission(scope=Scope.FULL)
-    @returns(200, SessionListResponse, description="Session list")
-    @accepts(query=SessionListQuery)
-    def get(self, request_context: AccountRequestContext, *, query: SessionListQuery):
+    @endpoint(
+        requirements=_ACCOUNT_REQUIREMENTS,
+        query=SessionListQuery,
+        returns=(200, SessionListResponse, "Session list"),
+    )
+    def get(self, ctx: Context, *, query: SessionListQuery):
         page = application_services().accounts.access.list_sessions(
-            request_context,
+            _request_context(ctx),
             page=query.page,
             limit=query.limit,
         )
@@ -76,19 +85,27 @@ class AccountSessionsApi(Resource):
 
 @openapi_ns.route("/account/sessions/<string:session_id>")
 class AccountSessionByIdApi(Resource):
-    @openapi_account_admission(scope=Scope.FULL)
-    @returns(200, RevokeResponse, description="Session revoked")
-    def delete(self, request_context: AccountRequestContext, session_id: str):
+    @endpoint(requirements=_ACCOUNT_REQUIREMENTS, returns=(200, RevokeResponse, "Session revoked"))
+    def delete(self, ctx: Context, session_id: str):
         try:
             token_id = str(UUID(session_id))
         except ValueError:
             raise NotFound("session not found") from None
         try:
-            application_services().accounts.access.revoke_session(request_context, token_id=token_id)
+            application_services().accounts.access.revoke_session(_request_context(ctx), token_id=token_id)
         except AccountSessionNotFoundError:
             # Do not reveal whether a token ID belongs to another account.
             raise NotFound("session not found") from None
         return RevokeResponse(status="revoked")
+
+
+def _request_context(ctx: Context) -> AccountRequestContext:
+    return AccountRequestContext(
+        request_id=get_request_id(),
+        trace_id=get_trace_id() or request.headers.get("X-Trace-Id"),
+        account_id=str(ctx.subject.account_id),
+        access_token_id=str(ctx.subject.token_id),
+    )
 
 
 def _iso(dt: datetime | None) -> str | None:
