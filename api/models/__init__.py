@@ -112,6 +112,7 @@ from .provider import (
     TenantDefaultModel,
     TenantPreferredModelProvider,
 )
+from .skill import AgentSkillBinding, Skill, SkillDraftFile, SkillFileKind, SkillFileStorage, SkillVersion
 from .snippet import CustomizedSnippet, SnippetType
 from .source import DataSourceApiKeyAuthBinding, DataSourceOauthBinding
 from .task import CeleryTask, CeleryTaskSet
@@ -170,6 +171,7 @@ __all__ = [
     "AgentIconType",
     "AgentKind",
     "AgentScope",
+    "AgentSkillBinding",
     "AgentSource",
     "AgentStatus",
     "AgentWorkingResourceStatus",
@@ -247,6 +249,11 @@ __all__ = [
     "RecommendedApp",
     "SavedMessage",
     "Site",
+    "Skill",
+    "SkillDraftFile",
+    "SkillFileKind",
+    "SkillFileStorage",
+    "SkillVersion",
     "SnippetType",
     "Tag",
     "TagBinding",

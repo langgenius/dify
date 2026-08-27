@@ -3481,7 +3481,7 @@ def test_composer_current_version_and_error_paths(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(
         AgentComposerService,
         "_require_agent",
-        lambda **kwargs: SimpleNamespace(updated_by=None, active_config_is_published=False),
+        lambda **kwargs: SimpleNamespace(id="agent-1", updated_by=None, active_config_is_published=False),
     )
     result = AgentComposerService._save_to_current_version(
         session=session,
@@ -5159,7 +5159,12 @@ class TestAgentAppBackingAgent:
             use_icon_as_answer_icon=False,
             tracing=None,
         )
-        source_agent = SimpleNamespace(id="source-agent", role="Analyst")
+        source_agent = SimpleNamespace(
+            id="source-agent",
+            role="Analyst",
+            active_config_snapshot_id="source-snapshot",
+            active_config_is_published=True,
+        )
         target_app = SimpleNamespace(id="target-app")
         session = sqlite_session
         service = AgentRosterService(session)
@@ -5225,7 +5230,12 @@ class TestAgentAppBackingAgent:
             use_icon_as_answer_icon=False,
             tracing=None,
         )
-        source_agent = SimpleNamespace(id="source-agent", role="Analyst")
+        source_agent = SimpleNamespace(
+            id="source-agent",
+            role="Analyst",
+            active_config_snapshot_id="source-snapshot",
+            active_config_is_published=True,
+        )
         target_app = SimpleNamespace(id="target-app")
         session = sqlite_session
         service = AgentRosterService(session)

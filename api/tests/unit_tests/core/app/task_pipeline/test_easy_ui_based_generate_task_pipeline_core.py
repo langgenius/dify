@@ -1026,8 +1026,15 @@ class TestEasyUiBasedGenerateTaskPipeline:
         )
 
         class _Publisher:
-            def check_and_get_audio(self):
+            def check_and_get_audio(self, *, block=False):
+                assert block
                 return AudioTrunk("finish", "")
+
+            def publish(self, message):
+                assert message is None
+
+            def cancel(self):
+                return None
 
         inline_audio = MessageAudioStreamResponse(task_id="task", audio="inline")
         audio_calls = iter([inline_audio, None])
@@ -1036,7 +1043,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         _set_method(pipeline, "_process_stream_response", lambda publisher, trace_manager: iter([payload]))
         monkeypatch.setattr(
             "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.AppGeneratorTTSPublisher",
-            lambda tenant_id, voice, language: _Publisher(),
+            lambda tenant_id, voice, language, app_type: _Publisher(),
         )
 
         responses = list(pipeline._wrapper_process_stream_response())
@@ -1044,8 +1051,9 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert responses[0] == inline_audio
         assert responses[1] == payload
         assert isinstance(responses[-1], MessageAudioEndStreamResponse)
+        assert "audio_type" not in responses[-1].model_dump()
 
-    def test_wrapper_process_stream_response_timeout_yields_audio_chunk(self, monkeypatch: pytest.MonkeyPatch):
+    def test_wrapper_process_stream_response_waits_for_the_audio_terminal(self, monkeypatch: pytest.MonkeyPatch):
         conversation = _make_conversation(AppMode.CHAT)
         message = _make_message()
         entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
@@ -1062,29 +1070,98 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         class _Publisher:
             def __init__(self):
-                self._events = iter([None, AudioTrunk("responding", "later"), AudioTrunk("finish", "")])
+                self._events = iter([AudioTrunk("responding", "later"), AudioTrunk("finish", "")])
 
-            def check_and_get_audio(self):
+            def check_and_get_audio(self, *, block=False):
+                assert block
                 return next(self._events)
 
-        clock = {"value": 0.0}
+            def publish(self, message):
+                assert message is None
 
-        def _fake_time():
-            clock["value"] += 0.1
-            return clock["value"]
+            def cancel(self):
+                return None
 
         _set_method(pipeline, "_process_stream_response", lambda publisher, trace_manager: iter([]))
         monkeypatch.setattr(
             "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.AppGeneratorTTSPublisher",
-            lambda tenant_id, voice, language: _Publisher(),
+            lambda tenant_id, voice, language, app_type: _Publisher(),
         )
-        monkeypatch.setattr("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.time.time", _fake_time)
-        monkeypatch.setattr("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.time.sleep", lambda _: None)
-
         responses = list(pipeline._wrapper_process_stream_response())
 
         assert any(isinstance(item, MessageAudioStreamResponse) for item in responses)
         assert isinstance(responses[-1], MessageAudioEndStreamResponse)
+
+    def test_wrapper_process_stream_response_ends_audio_before_reporting_tts_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        conversation = _make_conversation(AppMode.CHAT)
+        message = _make_message()
+        entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
+        entity.app_config.app_model_config_dict = {
+            "text_to_speech": {"autoPlay": "enabled", "enabled": True, "voice": "v", "language": "en"}
+        }
+        pipeline = EasyUIBasedGenerateTaskPipeline(
+            application_generate_entity=entity,
+            queue_manager=_FakeQueueManager(),
+            conversation=conversation,
+            message=message,
+            stream=True,
+        )
+        error = RuntimeError("tts failed")
+
+        class _Publisher:
+            def check_and_get_audio(self, *, block=False):
+                assert block
+                return AudioTrunk("error", b"", error=error)
+
+            def publish(self, message):
+                assert message is None
+
+            def cancel(self):
+                return None
+
+        _set_method(pipeline, "_process_stream_response", lambda publisher, trace_manager: iter([]))
+        monkeypatch.setattr(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.AppGeneratorTTSPublisher",
+            lambda tenant_id, voice, language, app_type: _Publisher(),
+        )
+
+        responses = list(pipeline._wrapper_process_stream_response())
+
+        assert isinstance(responses[-2], MessageAudioEndStreamResponse)
+        assert isinstance(responses[-1], ErrorStreamResponse)
+        assert responses[-1].err is error
+
+    def test_wrapper_process_stream_response_ends_audio_before_a_main_error(self, monkeypatch: pytest.MonkeyPatch):
+        conversation = _make_conversation(AppMode.CHAT)
+        message = _make_message()
+        entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
+        entity.app_config.app_model_config_dict = {
+            "text_to_speech": {"autoPlay": "enabled", "enabled": True, "voice": "v", "language": "en"}
+        }
+        pipeline = EasyUIBasedGenerateTaskPipeline(
+            application_generate_entity=entity,
+            queue_manager=_FakeQueueManager(),
+            conversation=conversation,
+            message=message,
+            stream=True,
+        )
+        publisher = Mock()
+        publisher.check_and_get_audio.return_value = None
+        error = ErrorStreamResponse(task_id="task", err=RuntimeError("generation failed"))
+        _set_method(pipeline, "_process_stream_response", lambda publisher, trace_manager: iter([error]))
+        monkeypatch.setattr(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.AppGeneratorTTSPublisher",
+            lambda tenant_id, voice, language, app_type: publisher,
+        )
+
+        responses = list(pipeline._wrapper_process_stream_response())
+
+        assert isinstance(responses[-2], MessageAudioEndStreamResponse)
+        assert responses[-1] is error
+        assert publisher.cancel.called
+        publisher.publish.assert_not_called()
 
     def test_process_stream_response_handles_stop_event_and_output_replacement(self, monkeypatch: pytest.MonkeyPatch):
         conversation = _make_conversation(AppMode.CHAT)

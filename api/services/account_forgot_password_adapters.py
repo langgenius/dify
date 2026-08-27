@@ -145,6 +145,7 @@ class RedisForgotPasswordTokenGateway(ForgotPasswordTokenGateway):
         return None
 
     def _create_token(self, token_data: ForgotPasswordToken) -> str:
+        payload: ForgotPasswordTokenData
         if isinstance(token_data, ForgotPasswordResetToken):
             payload = ForgotPasswordResetTokenData(
                 account_id=token_data.account_id,

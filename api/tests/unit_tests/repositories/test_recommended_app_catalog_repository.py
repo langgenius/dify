@@ -103,6 +103,30 @@ def test_list_recommended_returns_typed_records_and_falls_back_language(
     assert record.categories == ("Workflow",)
 
 
+def test_list_recommended_batches_app_and_site_lookups(
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory() as session:
+        app_ids = {_add_catalog_app(session).id for _ in range(3)}
+
+    select_count = 0
+
+    def count_selects(_conn, _cursor, statement: str, _parameters, _context, _executemany) -> None:
+        nonlocal select_count
+        if statement.lstrip().upper().startswith("SELECT"):
+            select_count += 1
+
+    event.listen(sqlite_engine, "before_cursor_execute", count_selects)
+    try:
+        page = _repository(sqlite_session_factory).list_recommended("en-US")
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", count_selects)
+
+    assert {app.app_id for app in page.recommended_apps} == app_ids
+    assert select_count == 3
+
+
 def test_list_recommended_skips_private_apps_and_apps_without_sites(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:

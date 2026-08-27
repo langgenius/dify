@@ -303,6 +303,15 @@ def test_shell_type_id_constant_matches_implementation_class() -> None:
     assert DIFY_SHELL_LAYER_TYPE_ID == DifyShellLayer.type_id
 
 
+def test_shell_layer_tools_have_non_empty_descriptions() -> None:
+    layer = DifyShellLayer.from_config_with_settings(DifyShellLayerConfig())
+
+    descriptions = {tool.name: tool.description for tool in layer.tools}
+
+    assert set(descriptions) == {"shell_run", "shell_wait", "shell_input", "shell_interrupt"}
+    assert all(description and description.strip() for description in descriptions.values())
+
+
 def test_shell_prefix_prompt_describes_workspace_as_temp_space() -> None:
     prompt = shell_layer_module._SHELL_LAYER_PREFIX_PROMPT
 

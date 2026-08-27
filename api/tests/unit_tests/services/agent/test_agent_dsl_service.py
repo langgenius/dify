@@ -246,6 +246,7 @@ def test_export_agent_app_uses_draft_or_active_snapshot(use_draft: bool) -> None
     draft = SimpleNamespace(config_snapshot_dict=AgentSoulConfig(config_note="draft").model_dump(mode="json"))
     session = Mock()
     session.scalar.side_effect = [agent, draft if use_draft else None]
+    session.execute.return_value = []
     service = AgentDslService(session)
     require_snapshot = Mock(return_value=_snapshot(soul=AgentSoulConfig(config_note="snapshot")))
     service._require_snapshot = require_snapshot
@@ -271,6 +272,7 @@ def test_export_workflow_packages_deduplicates_shared_agent() -> None:
     ]
     session = Mock()
     session.scalars.return_value.all.return_value = bindings
+    session.execute.return_value = []
     service = AgentDslService(session)
     service._require_agent = Mock(return_value=_agent())
     service._require_snapshot = Mock(return_value=_snapshot())

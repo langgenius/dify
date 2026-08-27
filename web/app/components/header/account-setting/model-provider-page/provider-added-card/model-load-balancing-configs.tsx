@@ -128,11 +128,13 @@ const ModelLoadBalancingConfigs = ({
 
   const clearCountdown = useCallback(
     (index: number) => {
-      updateConfigEntry(index, ({ ttl: _, ...entry }) => {
-        return {
+      updateConfigEntry(index, (entry) => {
+        const updatedEntry = {
           ...entry,
           in_cooldown: false,
         }
+        delete updatedEntry.ttl
+        return updatedEntry
       })
     },
     [updateConfigEntry],

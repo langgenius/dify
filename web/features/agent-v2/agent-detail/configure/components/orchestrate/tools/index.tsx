@@ -337,7 +337,7 @@ function AddToolMenu({
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        placement="top-end"
         sideOffset={4}
         className={
           view === 'menu'

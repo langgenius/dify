@@ -119,3 +119,7 @@ class AccountEmailAlreadyInUseError(AccountApplicationError):
 
 class EducationDiscountPausedError(AccountApplicationError):
     """Education discount activation is temporarily paused."""
+
+
+class EducationRateLimitExceededError(AccountApplicationError):
+    """Too many education verification or activation requests were made."""

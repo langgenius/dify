@@ -68,7 +68,6 @@
   "overview.appInfo.preUseReminder": "Будь ласка, активуйте веб-додаток перед продовженням.",
   "overview.appInfo.preview": "Попередній перегляд",
   "overview.appInfo.qrcode.download": "Завантажити QR-код",
-  "overview.appInfo.qrcode.scan": "Сканувати та обмінюватися додатком",
   "overview.appInfo.qrcode.title": "QR-код для обміну",
   "overview.appInfo.regenerate": "Відновити",
   "overview.appInfo.regenerateNotice": "Бажаєте згенерувати новий публічний URL? Поточний URL негайно припинить працювати.",

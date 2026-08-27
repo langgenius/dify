@@ -107,7 +107,7 @@ describe('CardWrapper', () => {
       screen.getByRole('button', { name: 'plugin.detailPanel.operation.install' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'plugin.detailPanel.operation.detail' }),
+      screen.getByRole('link', { name: 'plugin.detailPanel.operation.detail' }),
     ).toBeInTheDocument()
   })
 
@@ -122,18 +122,13 @@ describe('CardWrapper', () => {
     expect(screen.queryByTestId('install-modal')).not.toBeInTheDocument()
   })
 
-  it('opens marketplace detail from the detail action', () => {
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
-
+  it('links the detail action to the marketplace', () => {
     renderCardWrapper({ showInstallButton: true })
 
-    fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.detail' }))
-
-    expect(openSpy).toHaveBeenCalledWith(
-      '/marketplace/dify/plugin-a?language=en-US&theme=system',
-      '_blank',
-      'noopener,noreferrer',
-    )
+    const link = screen.getByRole('link', { name: 'plugin.detailPanel.operation.detail' })
+    expect(link).toHaveAttribute('href', '/marketplace/dify/plugin-a?language=en-US&theme=system')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
   it('opens and closes install modal from install action', () => {
