@@ -2,8 +2,9 @@
 
 Auth is not exercised here: `@endpoint` resolves the `Context` before the handler
 runs, and the allow/deny answers live in `test_auth_matrix.py`. The recipient-surface
-refusal is `CheckFormSurface`'s, pinned in `auth/test_requirements.py`. Body tests
-call `__handler__` — the one seam — with a `Context` double. The 422 test cannot use
+refusal is `CheckFormSurface`'s — a `Requirement` this feature owns rather than the
+auth layer, so it is pinned here too. Body tests call `__handler__` — the one seam —
+with a `Context` double. The 422 test cannot use
 it, because `@accepts` sits inside the guard and `__handler__` is below it; it goes
 over the wire through `admitted_bearer` and asserts the canonical `ErrorBody`.
 """
@@ -12,18 +13,25 @@ from __future__ import annotations
 
 import json
 import sys
+import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from flask import Flask
+from flask import Flask, request
 
 from controllers.common.human_input import HumanInputFormSubmitPayload
-from controllers.openapi._errors import ErrorBody, HumanInputFormNotFound, OpenApiErrorCode
+from controllers.openapi._errors import (
+    ErrorBody,
+    HumanInputFormNotFound,
+    OpenApiErrorCode,
+    RecipientSurfaceMismatch,
+)
 from controllers.openapi._models import FormSubmitResponse
 from controllers.openapi.auth.data import CallerKind
 from controllers.openapi.human_input_form import (
+    CheckFormSurface,
     OpenApiWorkflowHumanInputFormApi,
     OpenApiWorkflowHumanInputFormSubmitApi,
 )
@@ -241,3 +249,34 @@ class TestOpenApiHumanInputFormPost:
         ErrorBody.model_validate(wire)
         assert wire["code"] == OpenApiErrorCode.INVALID_PARAM
         assert wire["details"]
+
+
+class TestCheckFormSurface:
+    """`Rank.ACCESS`, so it answers before any handler body runs."""
+
+    def _run(self, app: Flask, monkeypatch: pytest.MonkeyPatch, form) -> None:
+        _mock_service(monkeypatch, form)
+        ctx = _context(_make_account(), CallerKind.ACCOUNT)
+        with app.test_request_context("/openapi/v1/apps/app-1/human-input-forms/tok-1"):
+            request.view_args = {"app_id": "app-1", "form_token": "tok-1"}
+            CheckFormSurface().run(ctx.subject, ctx, Mock())
+
+    def test_admits_a_web_app_recipient(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+        self._run(app, monkeypatch, _make_form(recipient_type=RecipientType.STANDALONE_WEB_APP))
+
+    @pytest.mark.parametrize("recipient_type", [RecipientType.CONSOLE, RecipientType.BACKSTAGE, None])
+    def test_refuses_a_recipient_this_surface_may_not_act_on(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, recipient_type
+    ):
+        with pytest.raises(RecipientSurfaceMismatch):
+            self._run(app, monkeypatch, _make_form(recipient_type=recipient_type))
+
+    @pytest.mark.parametrize("form", [None, "foreign"])
+    def test_leaves_a_form_the_caller_could_not_have_found_to_the_handlers_404(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, form
+    ):
+        """Answering 403 on a console-bound form in another app would confirm the
+        token exists; the handler's own 404 owns both cases.
+        """
+        foreign = _make_form(app_id=str(uuid.uuid4()), recipient_type=RecipientType.CONSOLE)
+        self._run(app, monkeypatch, foreign if form == "foreign" else None)

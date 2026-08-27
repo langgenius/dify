@@ -3,22 +3,18 @@ from __future__ import annotations
 import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
-from types import SimpleNamespace
 from typing import NoReturn
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from flask import Flask, request
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
-import controllers.openapi.auth.requirements as requirements_module
-from controllers.openapi._errors import RecipientSurfaceMismatch
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
     CheckAppWorkspaceMembership,
-    CheckFormSurface,
     CheckSessionOwnership,
     EditionCheck,
     LicenseCheck,
@@ -37,7 +33,6 @@ from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType
 from models import Account, App, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from models.enums import AppStatus
-from models.human_input import RecipientType
 from models.model import AppMode, IconType
 from models.oauth import OAuthAccessToken
 from services.account_service import TenantService
@@ -56,7 +51,6 @@ TOKEN_ID = "00000000-0000-0000-0000-000000000004"
 SESSION_ID = "00000000-0000-0000-0000-000000000005"
 CLIENT_ID = "openapi-client"
 SSO_EMAIL = "user@sso.com"
-FORM_TOKEN = "form-token-1"
 
 FEATURES = "controllers.openapi.auth.requirements.FeatureService.get_system_features"
 WEBAPP_AUTH = "controllers.openapi.auth.requirements.EnterpriseService.WebAppAuth"
@@ -685,57 +679,3 @@ class TestCheckSessionOwnership:
             request.view_args = {"session_id": SESSION_ID}
             with pytest.raises(NotFound, match="session not found"):
                 CheckSessionOwnership().run(subject, _ctx(sqlite_session, subject=subject), sqlite_session)
-
-
-class TestCheckFormSurface:
-    @staticmethod
-    def _bind_form(monkeypatch: pytest.MonkeyPatch, form: object) -> None:
-        service = Mock()
-        service.get_form_by_token.return_value = form
-        monkeypatch.setattr(requirements_module, "HumanInputService", lambda _maker: service)
-
-    @staticmethod
-    def _form(*, recipient_type: RecipientType | None, app_id: str = APP_ID) -> SimpleNamespace:
-        return SimpleNamespace(app_id=app_id, tenant_id=TENANT_ID, recipient_type=recipient_type)
-
-    def _run(self, app: Flask, sqlite_session: Session) -> None:
-        subject = _account_subject()
-        ctx = _ctx(sqlite_session, subject=subject, app_id=APP_ID)
-        with app.test_request_context(f"/openapi/v1/apps/{APP_ID}/human-input-forms/{FORM_TOKEN}"):
-            request.view_args = {"app_id": APP_ID, "form_token": FORM_TOKEN}
-            CheckFormSurface().run(subject, ctx, sqlite_session)
-
-    def test_admits_a_web_app_recipient(
-        self, app: Flask, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        _persist(sqlite_session, _app())
-        self._bind_form(monkeypatch, self._form(recipient_type=RecipientType.STANDALONE_WEB_APP))
-
-        self._run(app, sqlite_session)
-
-    @pytest.mark.parametrize("recipient_type", [RecipientType.CONSOLE, RecipientType.BACKSTAGE, None])
-    def test_refuses_a_recipient_this_surface_may_not_act_on(
-        self,
-        app: Flask,
-        sqlite_session: Session,
-        monkeypatch: pytest.MonkeyPatch,
-        recipient_type: RecipientType | None,
-    ) -> None:
-        _persist(sqlite_session, _app())
-        self._bind_form(monkeypatch, self._form(recipient_type=recipient_type))
-
-        with pytest.raises(RecipientSurfaceMismatch):
-            self._run(app, sqlite_session)
-
-    @pytest.mark.parametrize("form", [None, "foreign"])
-    def test_leaves_a_form_the_caller_could_not_have_found_to_the_handlers_404(
-        self, app: Flask, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, form: str | None
-    ) -> None:
-        """Answering 403 on a console-bound form in another app would confirm the
-        token exists; the handler's own 404 owns both cases.
-        """
-        _persist(sqlite_session, _app())
-        foreign = self._form(recipient_type=RecipientType.CONSOLE, app_id=str(uuid.uuid4()))
-        self._bind_form(monkeypatch, foreign if form == "foreign" else None)
-
-        self._run(app, sqlite_session)
