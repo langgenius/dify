@@ -72,7 +72,7 @@ function HomeCatalogNavigation({
         style={{ top: HOME_HEADER_HEIGHT_PX }}
       >
         <div className="w-full">
-          <div className={cn('-ml-2', isPinned && styles.catalogTabsPinned)}>{catalogTabs}</div>
+          <div className={cn(isPinned && styles.catalogTabsPinned)}>{catalogTabs}</div>
           <div
             className={cn(
               'mt-4 flex w-full items-center gap-2',

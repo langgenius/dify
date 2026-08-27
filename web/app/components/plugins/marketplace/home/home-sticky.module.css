@@ -43,7 +43,7 @@
 .catalogNavigation {
   position: sticky;
   z-index: 40;
-  padding: 24px 36px 16px;
+  padding: 24px 32px 16px;
 }
 
 .catalogNavigationPinned {
