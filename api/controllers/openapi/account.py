@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from flask_restx import Resource
-from werkzeug.exceptions import NotFound
 
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import endpoint
@@ -17,17 +16,13 @@ from controllers.openapi._models import (
     WorkspacePayload,
 )
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.requirements import SubjectCheck, TokenScope
+from controllers.openapi.auth.requirements import CheckSessionOwnership, SubjectCheck, TokenScope
 from controllers.openapi.auth.subjects import AccountSubject
 from extensions.ext_redis import redis_client
 from libs.oauth_bearer import Scope, get_auth_ctx
 from libs.rate_limit import LIMIT_ME_PER_ACCOUNT, enforce
 from services.account_service import TenantService
-from services.oauth_device_flow import (
-    list_active_sessions,
-    revoke_oauth_token,
-    token_belongs_to_subject,
-)
+from services.oauth_device_flow import list_active_sessions, revoke_oauth_token
 
 _ACCOUNT_REQUIREMENTS = (SubjectCheck(allowed=(AccountSubject,)), TokenScope(Scope.FULL))
 
@@ -102,12 +97,11 @@ class AccountSessionsApi(Resource):
 
 @openapi_ns.route("/account/sessions/<string:session_id>")
 class AccountSessionByIdApi(Resource):
-    @endpoint(requirements=_ACCOUNT_REQUIREMENTS, returns=(200, RevokeResponse, "Session revoked"))
+    @endpoint(
+        requirements=(*_ACCOUNT_REQUIREMENTS, CheckSessionOwnership()),
+        returns=(200, RevokeResponse, "Session revoked"),
+    )
     def delete(self, ctx: Context, session_id: str):
-        auth_ctx = get_auth_ctx()
-        if not token_belongs_to_subject(session_id, auth_ctx, session=ctx.session):
-            raise NotFound("session not found")
-
         revoke_oauth_token(redis_client, session_id, session=ctx.session)
         return RevokeResponse(status="revoked")
 

@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from uuid import uuid4
 
 import pytest
-from flask import Flask
+from flask import Flask, request
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
@@ -14,6 +13,7 @@ from controllers.openapi.account import (
     AccountSessionsApi,
     AccountSessionsSelfApi,
 )
+from controllers.openapi.auth.requirements import CheckSessionOwnership
 from extensions.ext_redis import redis_client
 from models import Account
 from services.oauth_device_flow import PREFIX_OAUTH_ACCOUNT, MintResult, mint_oauth_token
@@ -119,18 +119,17 @@ class TestSessionRevoke:
         session_id = str(mint.token_id)
 
         api = AccountSessionByIdApi()
+        ctx = context_for(
+            account,
+            session=db_session_with_containers,
+            view_args={"session_id": session_id},
+            token_id=mint.token_id,
+        )
         with app.test_request_context(f"/openapi/v1/account/sessions/{session_id}", method="DELETE"):
+            request.view_args = {"session_id": session_id}
             with account_auth_context(account, token_id=mint.token_id):
-                result = api.delete.__handler__(
-                    api,
-                    context_for(
-                        account,
-                        session=db_session_with_containers,
-                        view_args={"session_id": session_id},
-                        token_id=mint.token_id,
-                    ),
-                    session_id,
-                )
+                CheckSessionOwnership().run(ctx.subject, ctx, db_session_with_containers)
+                result = api.delete.__handler__(api, ctx, session_id)
 
         assert result.status == "revoked"
 
@@ -138,22 +137,18 @@ class TestSessionRevoke:
         self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
     ) -> None:
         """A token id owned by another subject must be indistinguishable from a
-        missing one (404), so token ids can't be probed across subjects."""
+        missing one (404), so token ids can't be probed across subjects.
+
+        The refusal is `CheckSessionOwnership`'s, so it is exercised where the
+        router runs it — ahead of the handler, which no longer checks.
+        """
         owner = make_account()
         outsider = make_account()
         foreign = _mint_account_token(db_session_with_containers, owner)
 
-        api = AccountSessionByIdApi()
         session_id = str(foreign.token_id)
+        ctx = context_for(outsider, session=db_session_with_containers, view_args={"session_id": session_id})
         with app.test_request_context(f"/openapi/v1/account/sessions/{session_id}", method="DELETE"):
-            with account_auth_context(outsider, token_id=uuid4()):
-                with pytest.raises(NotFound):
-                    api.delete.__handler__(
-                        api,
-                        context_for(
-                            outsider,
-                            session=db_session_with_containers,
-                            view_args={"session_id": session_id},
-                        ),
-                        session_id,
-                    )
+            request.view_args = {"session_id": session_id}
+            with pytest.raises(NotFound):
+                CheckSessionOwnership().run(ctx.subject, ctx, db_session_with_containers)

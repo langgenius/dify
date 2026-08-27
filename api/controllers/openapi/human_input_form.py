@@ -18,17 +18,19 @@ from controllers.common.human_input import HumanInputFormSubmitPayload, stringif
 from controllers.common.schema import register_schema_models
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import endpoint
-from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
+from controllers.openapi._errors import HumanInputFormNotFound
 from controllers.openapi._models import FormSubmitResponse, HumanInputFormDefinitionResponse
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.data import CallerKind
-from controllers.openapi.auth.requirements import RBACCheck, RequireWebappAccess, SubjectCheck, TokenScope
+from controllers.openapi.auth.requirements import (
+    CheckFormSurface,
+    RBACCheck,
+    RequireWebappAccess,
+    SubjectCheck,
+    TokenScope,
+)
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
 from core.rbac import RBACPermission, RBACResourceScope
-from core.workflow.human_input_policy import (
-    HumanInputSurface,
-    is_recipient_type_allowed_for_surface,
-)
 from extensions.ext_database import db
 from libs.helper import to_timestamp
 from libs.oauth_bearer import Scope
@@ -44,6 +46,7 @@ _HUMAN_INPUT_FORM = (
     TokenScope(Scope.APPS_RUN),
     RBACCheck(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
     RequireWebappAccess(),
+    CheckFormSurface(),
 )
 
 
@@ -64,11 +67,6 @@ def _ensure_form_belongs_to_app(form, app_model: App) -> None:
         raise HumanInputFormNotFound()
 
 
-def _ensure_form_is_allowed_for_openapi(form) -> None:
-    if not is_recipient_type_allowed_for_surface(form.recipient_type, HumanInputSurface.OPENAPI):
-        raise RecipientSurfaceMismatch()
-
-
 @openapi_ns.route("/apps/<string:app_id>/human-input-forms/<string:form_token>")
 class OpenApiWorkflowHumanInputFormApi(Resource):
     @endpoint(
@@ -83,7 +81,6 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
             raise HumanInputFormNotFound()
 
         _ensure_form_belongs_to_app(form, ctx.app)
-        _ensure_form_is_allowed_for_openapi(form)
         service.ensure_form_active(form)
         return _jsonify_form_definition(form)
 
@@ -103,7 +100,6 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
             raise HumanInputFormNotFound()
 
         _ensure_form_belongs_to_app(form, ctx.app)
-        _ensure_form_is_allowed_for_openapi(form)
 
         submission_user_id: str | None = None
         submission_end_user_id: str | None = None

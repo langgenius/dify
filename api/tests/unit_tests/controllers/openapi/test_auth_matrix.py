@@ -70,6 +70,7 @@ import uuid
 from collections.abc import Callable, Iterator
 from contextlib import ExitStack
 from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum, auto
 from unittest.mock import patch
 
@@ -96,6 +97,7 @@ from libs.oauth_bearer import (
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import EndUserType
 from models.model import App, EndUser
+from models.oauth import OAuthAccessToken
 from services.account_service import AccountService
 from services.end_user_service import EndUserService
 from services.enterprise.enterprise_service import EnterpriseService
@@ -886,6 +888,7 @@ class World:
     low_role_account_id: str
     outsider_account_id: str
     tokens: dict[Bearer, str] = field(default_factory=dict)
+    session_ids: dict[Bearer, str] = field(default_factory=dict)
 
 
 def _admit_on_mount(*_args: object, **_kwargs: object) -> None:
@@ -1026,30 +1029,57 @@ def world(sqlite_session_factory: sessionmaker[Session], token_rows: dict[str, R
         )
         session.commit()
 
-    def mint(prefix: str, *, account_id: str | None, email: str) -> str:
+    def mint(bearer: Bearer, prefix: str, *, account_id: str | None, email: str) -> None:
+        """Register a bearer with the fake resolver *and* persist the session row it
+        names, so `CheckSessionOwnership` has something real to match against.
+        """
         raw = prefix + uuid.uuid4().hex
+        token_id = uuid.uuid4()
+        issuer = "dify:account" if account_id else "https://idp.example"
         token_rows[sha256_hex(raw)] = ResolvedRow(
             subject_email=email,
-            subject_issuer="dify:account" if account_id else "https://idp.example",
+            subject_issuer=issuer,
             account_id=uuid.UUID(account_id) if account_id else None,
             client_id="difyctl",
-            token_id=uuid.uuid4(),
+            token_id=token_id,
             expires_at=None,
         )
-        return raw
+        row = OAuthAccessToken(
+            token_hash=sha256_hex(raw),
+            prefix=prefix,
+            account_id=account_id,
+            subject_email=email,
+            subject_issuer=issuer,
+            client_id="difyctl",
+            device_label="matrix",
+            expires_at=datetime.now(UTC) + timedelta(days=365),
+        )
+        row.id = str(token_id)
+        with sqlite_session_factory() as session:
+            session.add(row)
+            session.commit()
+        built.tokens[bearer] = raw
+        built.session_ids[bearer] = str(token_id)
 
-    built.tokens = {
-        Bearer.ACCOUNT_MEMBER: mint(
-            SubjectType.ACCOUNT.prefix, account_id=built.member_account_id, email="owner@example.com"
-        ),
-        Bearer.ACCOUNT_LOW_ROLE: mint(
-            SubjectType.ACCOUNT.prefix, account_id=built.low_role_account_id, email="normal@example.com"
-        ),
-        Bearer.ACCOUNT_OUTSIDER: mint(
-            SubjectType.ACCOUNT.prefix, account_id=built.outsider_account_id, email="outsider@example.com"
-        ),
-        Bearer.EXTERNAL: mint(SubjectType.EXTERNAL_SSO.prefix, account_id=None, email="external@example.com"),
-    }
+    mint(
+        Bearer.ACCOUNT_MEMBER,
+        SubjectType.ACCOUNT.prefix,
+        account_id=built.member_account_id,
+        email="owner@example.com",
+    )
+    mint(
+        Bearer.ACCOUNT_LOW_ROLE,
+        SubjectType.ACCOUNT.prefix,
+        account_id=built.low_role_account_id,
+        email="normal@example.com",
+    )
+    mint(
+        Bearer.ACCOUNT_OUTSIDER,
+        SubjectType.ACCOUNT.prefix,
+        account_id=built.outsider_account_id,
+        email="outsider@example.com",
+    )
+    mint(Bearer.EXTERNAL, SubjectType.EXTERNAL_SSO.prefix, account_id=None, email="external@example.com")
     return built
 
 
@@ -1105,7 +1135,7 @@ def _bearer_for(route: Route, scenario: Scenario) -> Bearer | None:
             return scenario.bearer
 
 
-def _url(route: Route, world: World, scenario: Scenario) -> str:
+def _url(route: Route, world: World, scenario: Scenario, bearer: Bearer | None) -> str:
     if scenario.unknown_app:
         app_id = str(uuid.uuid4())
     elif not scenario.app_api_enabled:
@@ -1115,7 +1145,8 @@ def _url(route: Route, world: World, scenario: Scenario) -> str:
     ids = {
         "app_id": app_id,
         "workspace_id": world.workspace_id,
-        "session_id": str(uuid.uuid4()),
+        # The caller's own session: `CheckSessionOwnership` 404s any other id.
+        "session_id": world.session_ids.get(bearer, str(uuid.uuid4())) if bearer else str(uuid.uuid4()),
         "member_id": str(uuid.uuid4()),
         "import_id": str(uuid.uuid4()),
         "task_id": str(uuid.uuid4()),
@@ -1199,7 +1230,7 @@ def _run_case(
         stack.enter_context(patch.object(AccountService, "get_account_by_email", return_value=_webapp_account()))
         client = app.test_client()
         return contextvars.copy_context().run(
-            lambda: client.open(_url(route, world, scenario), method=route.method, headers=headers)
+            lambda: client.open(_url(route, world, scenario, bearer), method=route.method, headers=headers)
         )
 
 

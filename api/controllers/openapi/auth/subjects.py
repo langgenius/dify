@@ -60,6 +60,11 @@ class Subject(ABC):
         self._auth = auth
 
     @property
+    def auth(self) -> AuthContext:
+        """The raw identity, for the checks that scope a token-store query by subject."""
+        return self._auth
+
+    @property
     def account_id(self) -> uuid.UUID | None:
         return self._auth.account_id
 

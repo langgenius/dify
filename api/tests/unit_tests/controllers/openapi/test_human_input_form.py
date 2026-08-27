@@ -1,8 +1,9 @@
 """Tests for openapi human input form endpoints.
 
 Auth is not exercised here: `@endpoint` resolves the `Context` before the handler
-runs, and the allow/deny answers live in `test_auth_matrix.py`. Body tests call
-`__handler__` — the documented seam — with a `Context` double. The 422 test goes
+runs, and the allow/deny answers live in `test_auth_matrix.py`. The recipient-surface
+refusal is `CheckFormSurface`'s, pinned in `auth/test_requirements.py`. Body tests
+call `__handler__` — the documented seam — with a `Context` double. The 422 test goes
 through `__wrapped__` instead, so `@accepts` still runs against the real request.
 """
 
@@ -19,7 +20,7 @@ from flask import Flask
 from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.common.human_input import HumanInputFormSubmitPayload
-from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
+from controllers.openapi._errors import HumanInputFormNotFound
 from controllers.openapi._models import FormSubmitResponse
 from controllers.openapi.auth.data import CallerKind
 from controllers.openapi.human_input_form import (
@@ -143,19 +144,6 @@ class TestOpenApiHumanInputFormGet:
         api = OpenApiWorkflowHumanInputFormApi()
         with app.test_request_context("/openapi/v1/apps/app-1/human-input-forms/tok-1"):
             with pytest.raises(HumanInputFormNotFound):
-                api.get.__handler__(
-                    api,
-                    _context(_make_account(), CallerKind.ACCOUNT),
-                    app_id="app-1",
-                    form_token="tok-1",
-                )
-
-    def test_get_form_wrong_surface(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
-        _mock_service(monkeypatch, _make_form(recipient_type=RecipientType.CONSOLE))
-
-        api = OpenApiWorkflowHumanInputFormApi()
-        with app.test_request_context("/openapi/v1/apps/app-1/human-input-forms/tok-1"):
-            with pytest.raises(RecipientSurfaceMismatch):
                 api.get.__handler__(
                     api,
                     _context(_make_account(), CallerKind.ACCOUNT),
