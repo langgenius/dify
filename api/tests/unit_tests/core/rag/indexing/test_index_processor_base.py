@@ -207,6 +207,27 @@ class TestBaseIndexProcessor:
 
         assert files == []
 
+    def test_get_content_files_skips_invalid_remote_image_references(
+        self, processor: _ForwardingBaseIndexProcessor, unbound_session: Session
+    ) -> None:
+        document = Document(page_content="ignored", metadata={"document_id": "doc-1", "dataset_id": "ds-1"})
+        images = [
+            "document_images/image.png",
+            "//example.com/image.png",
+            "data:image/png;base64,AAAA",
+            "ftp://example.com/image.png",
+            "http://[invalid",
+        ]
+
+        with (
+            patch.object(processor, "_extract_markdown_images", return_value=images),
+            patch.object(processor, "_download_image") as mock_image_download,
+        ):
+            files = processor._get_content_files(document, current_user=Mock(), session=unbound_session)
+
+        assert files == []
+        mock_image_download.assert_not_called()
+
     def test_get_content_files_ignores_missing_upload_records(
         self, processor: _ForwardingBaseIndexProcessor, sqlite_session: Session
     ) -> None:
