@@ -48,7 +48,7 @@ class WorkflowAgentWorkspaceRetirementLayer(Layer):
         if not isinstance(event, self._TERMINAL_EVENTS):
             return
         workflow_run_id = get_system_text(
-            self.graph_runtime_state.variable_pool,
+            self.runtime_state.variable_pool,
             SystemVariableKey.WORKFLOW_EXECUTION_ID,
         )
         if not workflow_run_id:

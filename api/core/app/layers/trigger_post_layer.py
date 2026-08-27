@@ -65,16 +65,16 @@ class TriggerPostLayer(Layer):
                 elapsed_time = (datetime.now(UTC) - self.start_time).total_seconds()
 
                 # Extract relevant data from result
-                outputs = self.graph_runtime_state.outputs
+                outputs = self.runtime_state.outputs
 
                 # BASICLY, workflow_execution_id is the same as workflow_run_id
                 workflow_run_id = get_system_text(
-                    self.graph_runtime_state.variable_pool,
+                    self.runtime_state.variable_pool,
                     SystemVariableKey.WORKFLOW_EXECUTION_ID,
                 )
                 assert workflow_run_id, "Workflow run id is not set"
 
-                total_tokens = self.graph_runtime_state.total_tokens
+                total_tokens = self.runtime_state.total_tokens
 
                 # Update trigger log with success
                 trigger_log.status = self._STATUS_MAP[type(event)]

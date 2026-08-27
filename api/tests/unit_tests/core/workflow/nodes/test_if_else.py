@@ -22,12 +22,12 @@ def _build_if_else_node(
     *,
     node_data: IfElseNodeData | dict[str, object],
     init_params,
-    graph_runtime_state,
+    runtime_state,
 ) -> IfElseNode:
     return IfElseNode(
         node_id=str(uuid.uuid4()),
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=runtime_state,
         data=node_data if isinstance(node_data, IfElseNodeData) else IfElseNodeData.model_validate(node_data),
     )
 
@@ -72,8 +72,8 @@ def test_execute_if_else_result_true():
 
     graph_runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=pool, start_at=time.perf_counter())
     node_factory = DifyNodeFactory(
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
     )
     graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
@@ -120,7 +120,7 @@ def test_execute_if_else_result_true():
             ],
         },
         init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        runtime_state=graph_runtime_state,
     )
 
     # execute node
@@ -157,8 +157,8 @@ def test_execute_if_else_result_false():
 
     graph_runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=pool, start_at=time.perf_counter())
     node_factory = DifyNodeFactory(
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
     )
     graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
@@ -181,7 +181,7 @@ def test_execute_if_else_result_false():
             ],
         },
         init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        runtime_state=graph_runtime_state,
     )
 
     # execute node
@@ -235,9 +235,9 @@ def test_array_file_contains_file_name():
         }
     }
 
-    node = _build_if_else_node(node_data=node_data, init_params=graph_init_params, graph_runtime_state=Mock())
+    node = _build_if_else_node(node_data=node_data, init_params=graph_init_params, runtime_state=Mock())
 
-    node.graph_runtime_state.variable_pool.get.return_value = ArrayFileSegment(
+    node.runtime_state.variable_pool.get.return_value = ArrayFileSegment(
         value=[
             File(
                 file_type=FileType.IMAGE,
@@ -311,8 +311,8 @@ def test_execute_if_else_boolean_conditions(condition: Condition):
 
     graph_runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=pool, start_at=time.perf_counter())
     node_factory = DifyNodeFactory(
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
     )
     graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
@@ -325,7 +325,7 @@ def test_execute_if_else_boolean_conditions(condition: Condition):
     node = _build_if_else_node(
         node_data=node_data,
         init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        runtime_state=graph_runtime_state,
     )
 
     # execute node
@@ -361,8 +361,8 @@ def test_execute_if_else_boolean_false_conditions():
 
     graph_runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=pool, start_at=time.perf_counter())
     node_factory = DifyNodeFactory(
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
     )
     graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
@@ -387,7 +387,7 @@ def test_execute_if_else_boolean_false_conditions():
     node = _build_if_else_node(
         node_data=node_data,
         init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        runtime_state=graph_runtime_state,
     )
 
     # execute node
@@ -422,8 +422,8 @@ def test_execute_if_else_boolean_cases_structure():
 
     graph_runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=pool, start_at=time.perf_counter())
     node_factory = DifyNodeFactory(
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
     )
     graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
@@ -452,7 +452,7 @@ def test_execute_if_else_boolean_cases_structure():
     node = _build_if_else_node(
         node_data=node_data,
         init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        runtime_state=graph_runtime_state,
     )
 
     # execute node

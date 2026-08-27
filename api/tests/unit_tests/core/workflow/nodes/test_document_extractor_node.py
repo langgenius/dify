@@ -6,7 +6,6 @@ import pytest
 from docx.oxml.text.paragraph import CT_P
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from graphon.entities import InitParams
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod
 from graphon.node_events import NodeRunResult
@@ -20,6 +19,7 @@ from graphon.nodes.document_extractor.node import (
     _extract_text_from_plain_text,
     _normalize_docx_zip,
 )
+from graphon.runtime import InitParams
 from graphon.variables import ArrayFileSegment, FileSegment
 from graphon.variables.segments import ArrayStringSegment
 from graphon.variables.variables import StringVariable
@@ -50,8 +50,8 @@ def document_extractor_node(graph_init_params):
     node = DocumentExtractorNode(
         node_id="test_node_id",
         data=node_data,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=Mock(),
+        init_params=graph_init_params,
+        runtime_state=Mock(),
         http_client=http_client,
     )
     return node
@@ -63,7 +63,7 @@ def mock_graph_runtime_state():
 
 
 def test_run_variable_not_found(document_extractor_node, mock_graph_runtime_state):
-    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+    document_extractor_node.runtime_state = mock_graph_runtime_state
     mock_graph_runtime_state.variable_pool.get.return_value = None
 
     result = document_extractor_node._run()
@@ -75,7 +75,7 @@ def test_run_variable_not_found(document_extractor_node, mock_graph_runtime_stat
 
 
 def test_run_invalid_variable_type(document_extractor_node, mock_graph_runtime_state):
-    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+    document_extractor_node.runtime_state = mock_graph_runtime_state
     mock_graph_runtime_state.variable_pool.get.return_value = StringVariable(
         value="Not an ArrayFileSegment", name="test"
     )
@@ -90,7 +90,7 @@ def test_run_invalid_variable_type(document_extractor_node, mock_graph_runtime_s
 
 def test_run_empty_file_list_returns_succeeded(document_extractor_node, mock_graph_runtime_state):
     """Empty file list should return SUCCEEDED with empty documents and ArrayStringSegment([])."""
-    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+    document_extractor_node.runtime_state = mock_graph_runtime_state
 
     # Provide an actual ArrayFileSegment with an empty list
     mock_graph_runtime_state.variable_pool.get.return_value = ArrayFileSegment(value=[])
@@ -105,7 +105,7 @@ def test_run_empty_file_list_returns_succeeded(document_extractor_node, mock_gra
 
 def test_run_none_only_file_list_returns_succeeded(document_extractor_node, mock_graph_runtime_state):
     """A file list containing only None (e.g., [None]) should be filtered to [] and succeed."""
-    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+    document_extractor_node.runtime_state = mock_graph_runtime_state
 
     # Use a Mock to bypass type validation for None entries in the list
     afs = Mock(spec=ArrayFileSegment)
@@ -163,7 +163,7 @@ def test_run_extract_text(
     extension,
     monkeypatch,
 ):
-    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+    document_extractor_node.runtime_state = mock_graph_runtime_state
 
     mock_file = Mock(spec=File)
     mock_file.mime_type = mime_type
@@ -547,7 +547,7 @@ def test_extract_text_from_file_rejects_missing_extension_and_mime_type(document
 
 
 def test_run_list_file_extraction_error_returns_failed(document_extractor_node, mock_graph_runtime_state):
-    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+    document_extractor_node.runtime_state = mock_graph_runtime_state
     file_list = Mock(spec=ArrayFileSegment)
     file_list.value = [Mock(spec=File)]
     mock_graph_runtime_state.variable_pool.get.return_value = file_list
@@ -563,7 +563,7 @@ def test_run_list_file_extraction_error_returns_failed(document_extractor_node, 
 
 
 def test_run_single_file_segment_extraction_error_returns_failed(document_extractor_node, mock_graph_runtime_state):
-    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+    document_extractor_node.runtime_state = mock_graph_runtime_state
     file_segment = Mock(spec=FileSegment)
     file_segment.value = Mock(spec=File)
     mock_graph_runtime_state.variable_pool.get.return_value = file_segment
@@ -579,7 +579,7 @@ def test_run_single_file_segment_extraction_error_returns_failed(document_extrac
 
 
 def test_run_single_file_segment_returns_string_output(document_extractor_node, mock_graph_runtime_state):
-    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+    document_extractor_node.runtime_state = mock_graph_runtime_state
     file_segment = Mock(spec=FileSegment)
     file_segment.value = Mock(spec=File)
     mock_graph_runtime_state.variable_pool.get.return_value = file_segment

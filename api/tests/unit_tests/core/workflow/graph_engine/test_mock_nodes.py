@@ -32,8 +32,7 @@ from graphon.nodes.tool import ToolNode
 from graphon.template_rendering import Jinja2TemplateRenderer, TemplateRenderError
 
 if TYPE_CHECKING:
-    from graphon.entities import InitParams
-    from graphon.runtime import RuntimeState
+    from graphon.runtime import InitParams, RuntimeState
 
     from .test_mock_config import MockConfig
 
@@ -58,8 +57,8 @@ class MockNodeMixin:
         node_id: str,
         data: Any,
         *,
-        graph_init_params: "InitParams",
-        graph_runtime_state: "RuntimeState",
+        init_params: "InitParams",
+        runtime_state: "RuntimeState",
         mock_config: Optional["MockConfig"] = None,
         **kwargs: Any,
     ) -> None:
@@ -86,7 +85,7 @@ class MockNodeMixin:
 
         if isinstance(self, _ToolNode):
             kwargs.setdefault("tool_file_manager", MagicMock(spec=ToolFileManagerProtocol))
-            kwargs.setdefault("runtime", DifyToolNodeRuntime(graph_init_params.run_context))
+            kwargs.setdefault("runtime", DifyToolNodeRuntime(init_params.run_context))
 
         if isinstance(self, AgentNode):
             presentation_provider = MagicMock()
@@ -99,8 +98,8 @@ class MockNodeMixin:
         super().__init__(
             node_id=node_id,
             data=data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=init_params,
+            runtime_state=runtime_state,
             **kwargs,
         )
         self.mock_config = mock_config
@@ -653,7 +652,7 @@ class MockTemplateTransformNode(MockNodeMixin, TemplateTransformNode):
         if hasattr(self._node_data, "variables"):
             for variable_selector in self._node_data.variables:
                 variable_name = variable_selector.variable
-                value = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
+                value = self.runtime_state.variable_pool.get(variable_selector.value_selector)
                 variables[variable_name] = value.to_object() if value else None
 
         # Check if we have custom mock outputs configured

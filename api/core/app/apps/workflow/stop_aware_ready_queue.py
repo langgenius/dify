@@ -15,7 +15,7 @@ from graphon.runtime.ready_queue import ReadyQueue
 class StopAwareReadyQueue:
     """Reject newly ready nodes once the run has been stopped.
 
-    GraphEngine drain still enqueues successors after abort. Drop those puts so
+    Graph execution still enqueues successors after abort. Drop those puts so
     later nodes do not start; the in-flight node can finish.
     """
 
@@ -47,8 +47,8 @@ class StopAwareReadyQueue:
     def qsize(self) -> int:
         return self._inner.qsize()
 
-    def drain(self) -> list[ReadyTask]:
-        return self._inner.drain()
+    def take_all(self) -> list[ReadyTask]:
+        return self._inner.take_all()
 
     def dumps(self) -> str:
         return self._inner.dumps()

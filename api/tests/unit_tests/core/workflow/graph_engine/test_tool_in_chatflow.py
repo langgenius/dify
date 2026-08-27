@@ -26,7 +26,7 @@ def test_tool_in_chatflow():
     # Create and run the engine
     engine = Engine(
         graph=graph,
-        graph_runtime_state=graph_runtime_state,
+        runtime_state=graph_runtime_state,
         command_channel=InMemoryChannel(),
     )
 
@@ -78,7 +78,7 @@ def test_answer_can_render_llm_structured_output_in_chatflow():
 
     engine = Engine(
         graph=graph,
-        graph_runtime_state=graph_runtime_state,
+        runtime_state=graph_runtime_state,
         command_channel=InMemoryChannel(),
     )
 

@@ -4,9 +4,8 @@ from core.workflow.nodes.agent.entities import AgentNodeData
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel
 from graphon.engine_events import GraphRunSucceededEvent, NodeEvent
-from graphon.entities import InitParams
 from graphon.graph import Graph
-from graphon.runtime import RuntimeState, VariablePool
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 
 
 def test_agent_node_data_unconfigured_defaults() -> None:
@@ -46,7 +45,7 @@ def test_unconfigured_disconnected_agent_does_not_block_workflow() -> None:
     )
     engine = Engine(
         graph=graph,
-        graph_runtime_state=graph_runtime_state,
+        runtime_state=graph_runtime_state,
         command_channel=InMemoryChannel(),
         workers=1,
     )

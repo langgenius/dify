@@ -11,7 +11,7 @@ This test suite covers complete integration scenarios including:
 - Workflow status transitions in database
 - Error handling with real database constraints
 - Multiple pause events in sequence
-- Integration with real ReadOnlyGraphRuntimeState implementations
+- Integration with real ReadOnlyRuntimeState implementations
 
 These tests use TestContainers to spin up real services for integration testing,
 providing more reliable and realistic test scenarios than mocks.
@@ -39,7 +39,7 @@ from graphon.engine_events import GraphRunPausedEvent
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import WorkflowExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMUsage
-from graphon.runtime import ReadOnlyGraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, RuntimeState, VariablePool
+from graphon.runtime import ReadOnlyRuntimeState, ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models import WorkflowPause as WorkflowPauseModel
@@ -228,7 +228,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         node_run_steps: int = 0,
         variables: dict[tuple[str, str], object] | None = None,
         workflow_run_id: str | None = None,
-    ) -> ReadOnlyGraphRuntimeState:
+    ) -> ReadOnlyRuntimeState:
         """Create a real RuntimeState for testing."""
         start_at = time()
 
@@ -256,7 +256,7 @@ class TestPauseStatePersistenceLayerTestContainers:
             node_run_steps=node_run_steps,
         )
 
-        return ReadOnlyGraphRuntimeStateWrapper(graph_runtime_state)
+        return ReadOnlyRuntimeStateWrapper(graph_runtime_state)
 
     def _create_generate_entity(
         self,
@@ -590,7 +590,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         """Test that layer requires proper initialization before handling events."""
         # Arrange
         layer = self._create_pause_state_persistence_layer()
-        # Don't initialize - graph_runtime_state should be uninitialized
+        # Don't initialize - runtime_state should be uninitialized
 
         event = GraphRunPausedEvent(reasons=[SchedulingPause(message="test pause")])
 

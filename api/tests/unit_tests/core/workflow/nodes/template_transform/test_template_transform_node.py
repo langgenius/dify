@@ -45,8 +45,8 @@ def test_node_uses_default_max_output_length_when_not_overridden(graph_init_para
             variables=[],
             template="hello",
         ),
-        graph_init_params=graph_init_params,
-        graph_runtime_state=mock_graph_runtime_state,
+        init_params=graph_init_params,
+        runtime_state=mock_graph_runtime_state,
         jinja2_template_renderer=MagicMock(),
     )
 

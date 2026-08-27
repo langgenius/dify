@@ -137,13 +137,13 @@ class PauseStatePersistenceLayer(Layer):
             entity_wrapper = _AdvancedChatAppGenerateEntityWrapper(entity=self._generate_entity)
 
         state = WorkflowResumptionContext(
-            serialized_graph_runtime_state=self.graph_runtime_state.dumps(),
+            serialized_graph_runtime_state=self.runtime_state.dumps(),
             generate_entity=entity_wrapper,
             serialized_response_stream_filter_state=self._response_stream_filter.dumps(),
         )
 
         workflow_run_id = get_system_text(
-            self.graph_runtime_state.variable_pool,
+            self.runtime_state.variable_pool,
             SystemVariableKey.WORKFLOW_EXECUTION_ID,
         )
         assert workflow_run_id is not None
@@ -153,7 +153,7 @@ class PauseStatePersistenceLayer(Layer):
         pause_reasons = enrich_graph_pause_reasons(
             reasons=event.reasons,
             form_repository=HumanInputFormSubmissionRepository(),
-            variable_pool=self.graph_runtime_state.variable_pool,
+            variable_pool=self.runtime_state.variable_pool,
         )
         repo = self._get_repo()
         repo.create_workflow_pause(
