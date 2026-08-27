@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import CreatorsFilter from '../creators-filter'
@@ -33,11 +33,7 @@ describe('CreatorsFilter', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /app\.studio\.filters\.creators/i }))
 
-    const options = screen
-      .getAllByRole('button')
-      .filter((button) =>
-        ['Alice', 'Bob', 'Zoe'].some((name) => button.textContent?.includes(name)),
-      )
+    const options = screen.getAllByRole('checkbox')
 
     expect(options.map((option) => option.textContent)).toEqual([
       expect.stringContaining('Alice'),
@@ -56,8 +52,8 @@ describe('CreatorsFilter', () => {
       target: { value: 'zo' },
     })
 
-    expect(screen.getByRole('button', { name: /Zoe/ })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Bob/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: /Zoe/ })).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: /Bob/ })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
@@ -65,7 +61,7 @@ describe('CreatorsFilter', () => {
     expect(searchInput).toHaveValue('')
     expect(searchInput).toHaveFocus()
 
-    fireEvent.click(screen.getByRole('button', { name: /Bob/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /Bob/ }))
 
     expect(mockOnChange).toHaveBeenCalledWith(['member-3'])
   })
@@ -76,7 +72,11 @@ describe('CreatorsFilter', () => {
     )
 
     const trigger = screen.getByRole('button', { name: /app\.studio\.filters\.creators/i })
-    fireEvent.click(within(trigger).getByRole('button', { name: 'app.studio.filters.reset' }))
+    const triggerReset = screen.getByRole('button', { name: 'app.studio.filters.reset' })
+
+    expect(trigger).not.toContainElement(triggerReset)
+
+    fireEvent.click(triggerReset)
 
     expect(mockOnChange).toHaveBeenCalledWith([])
 
@@ -92,8 +92,21 @@ describe('CreatorsFilter', () => {
     render(<CreatorsFilter value={['member-2', 'member-3']} onChange={mockOnChange} />)
 
     fireEvent.click(screen.getByRole('button', { name: /app\.studio\.filters\.creators/i }))
-    fireEvent.click(screen.getByRole('button', { name: /Alice/ }))
+    const aliceCheckbox = screen.getByRole('checkbox', { name: /Alice/ })
+    expect(aliceCheckbox).toHaveAttribute('aria-checked', 'true')
+
+    fireEvent.click(aliceCheckbox)
 
     expect(mockOnChange).toHaveBeenCalledWith(['member-3'])
+  })
+
+  it('should expose the creator picker as a named dialog with checkbox options', () => {
+    render(<CreatorsFilter value={[]} onChange={mockOnChange} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /app\.studio\.filters\.creators/i }))
+
+    expect(screen.getByRole('dialog', { name: 'app.studio.filters.creators' })).toBeInTheDocument()
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: /Alice/ })).toHaveAttribute('aria-checked', 'false')
   })
 })

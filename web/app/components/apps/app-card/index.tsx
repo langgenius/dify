@@ -116,7 +116,9 @@ export const AppCard = memo(
         .filter((user) => Boolean(user.id))
     }, [app.id, onlineUsers])
     const appNameId = useId()
+    const appModeId = useId()
     const appDescriptionId = useId()
+    const appMetadataId = useId()
     const appIconType = zIconType.safeParse(app.icon_type).data ?? null
     const appHref = getRedirectionPath(app, maintainerPermissionOptions)
     const appCardClassName = cn(
@@ -128,6 +130,7 @@ export const AppCard = memo(
     const showPreviewOnlyAccessWarning = useCallback(() => {
       toast.warning(t(($) => $.noAccessResourcePermission, { ns: 'app' }))
     }, [t])
+    const appAccessibleNameIds = `${appNameId} ${appModeId} ${appMetadataId}`
     const appCardContent = (
       <>
         <div className="flex shrink-0 items-center gap-3 pt-4 pr-4 pb-2 pl-4">
@@ -138,6 +141,7 @@ export const AppCard = memo(
               icon={app.icon ?? undefined}
               background={app.icon_background}
               imageUrl={app.icon_url}
+              imageAlt=""
             />
             <AppTypeIcon
               type={app.mode}
@@ -151,7 +155,7 @@ export const AppCard = memo(
                 {app.name}
               </div>
             </div>
-            <div className="truncate system-2xs-medium-uppercase text-text-tertiary">
+            <div id={appModeId} className="truncate system-2xs-medium-uppercase text-text-tertiary">
               {appModeLabel}
             </div>
           </div>
@@ -173,7 +177,10 @@ export const AppCard = memo(
         </div>
         <div className="flex h-6.5 shrink-0 items-start px-3" />
         <div className="flex min-w-0 shrink-0 items-center overflow-hidden pt-2 pr-4 pb-3 pl-4 system-xs-regular text-text-tertiary">
-          <div className="flex min-w-0 flex-1 items-center gap-1 whitespace-nowrap">
+          <div
+            id={appMetadataId}
+            className="flex min-w-0 flex-1 items-center gap-1 whitespace-nowrap"
+          >
             {app.author_name && (
               <>
                 <div className="min-w-0 truncate">{app.author_name}</div>
@@ -187,11 +194,11 @@ export const AppCard = memo(
     )
 
     return (
-      <div className="group relative col-span-1 h-41.5">
+      <div role="listitem" aria-labelledby={appNameId} className="group relative col-span-1 h-41.5">
         {isPreviewOnly ? (
           <button
             type="button"
-            aria-labelledby={appNameId}
+            aria-labelledby={appAccessibleNameIds}
             aria-describedby={app.description ? appDescriptionId : undefined}
             data-step-by-step-tour-target={stepByStepTourCardTarget}
             data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
@@ -203,7 +210,7 @@ export const AppCard = memo(
         ) : (
           <Link
             href={appHref}
-            aria-labelledby={appNameId}
+            aria-labelledby={appAccessibleNameIds}
             aria-describedby={app.description ? appDescriptionId : undefined}
             data-step-by-step-tour-target={stepByStepTourCardTarget}
             data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
@@ -222,6 +229,7 @@ export const AppCard = memo(
         <div className="absolute top-26 right-3 left-3 flex h-6.5 min-w-0 items-start">
           <AppCardTags
             appId={app.id}
+            appName={app.name}
             tags={app.tags ?? []}
             canBindOrUnbindTags={canBindOrUnbindTags}
             onOpenTagManagement={onOpenTagManagement}

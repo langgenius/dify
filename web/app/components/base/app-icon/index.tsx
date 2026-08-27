@@ -28,6 +28,7 @@ type AppIconProps = {
   icon?: string
   background?: string | null
   imageUrl?: string | null
+  imageAlt?: string
   className?: string
   innerIcon?: React.ReactNode
   coverElement?: React.ReactNode
@@ -103,6 +104,7 @@ const AppIcon: FC<AppIconProps> = ({
   icon,
   background,
   imageUrl,
+  imageAlt = 'app icon',
   className,
   innerIcon,
   coverElement,
@@ -135,7 +137,7 @@ const AppIcon: FC<AppIconProps> = ({
       tabIndex={onClick ? 0 : undefined}
     >
       {isValidImageIcon ? (
-        <img src={imageUrl} className="size-full" alt="app icon" />
+        <img src={imageUrl} className="size-full" alt={imageAlt} />
       ) : (
         innerIcon || Icon
       )}

@@ -64,6 +64,8 @@ export const StarredAppCard = memo(
       toast.warning(t(($) => $.noAccessResourcePermission, { ns: 'app' }))
     }, [t])
     const appNameId = useId()
+    const appMetadataId = useId()
+    const appAccessibleNameIds = `${appNameId} ${appMetadataId}`
     const cardContent = (
       <>
         <div className="relative shrink-0">
@@ -73,6 +75,7 @@ export const StarredAppCard = memo(
             icon={app.icon ?? undefined}
             background={app.icon_background}
             imageUrl={app.icon_url}
+            imageAlt=""
           />
           <AppTypeIcon
             type={app.mode}
@@ -84,7 +87,10 @@ export const StarredAppCard = memo(
           <div id={appNameId} className="truncate system-md-semibold text-text-secondary">
             {app.name}
           </div>
-          <div className="flex min-w-0 items-center gap-1 system-xs-regular text-text-tertiary">
+          <div
+            id={appMetadataId}
+            className="flex min-w-0 items-center gap-1 system-xs-regular text-text-tertiary"
+          >
             {app.author_name && <span className="shrink-0 truncate">{app.author_name}</span>}
             {app.author_name && editTimeText && <span className="shrink-0">·</span>}
             {editTimeText && <span className="min-w-0 truncate">{editTimeText}</span>}
@@ -94,11 +100,11 @@ export const StarredAppCard = memo(
     )
 
     return (
-      <div className="group relative">
+      <div role="listitem" aria-labelledby={appNameId} className="group relative">
         {isPreviewOnly ? (
           <button
             type="button"
-            aria-labelledby={appNameId}
+            aria-labelledby={appAccessibleNameIds}
             data-step-by-step-tour-target={stepByStepTourCardTarget}
             data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
             className={cn(cardClassName, 'text-left')}
@@ -109,6 +115,7 @@ export const StarredAppCard = memo(
         ) : (
           <Link
             href={href}
+            aria-labelledby={appAccessibleNameIds}
             data-step-by-step-tour-target={stepByStepTourCardTarget}
             data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
             className={cardClassName}

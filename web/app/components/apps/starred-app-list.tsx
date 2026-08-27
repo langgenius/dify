@@ -12,11 +12,16 @@ type StarredAppListProps = {
   stepByStepTourHighlightedCardCount?: number
 }
 
-function SectionDivider({ label }: { label: string }) {
+export const STARRED_APPS_HEADING_ID = 'starred-apps-heading'
+export const ALL_APPS_HEADING_ID = 'all-apps-heading'
+
+export function AppListSectionHeading({ id, label }: { id: string; label: string }) {
   return (
     <div className="flex h-7 flex-col items-start px-8 pt-3">
       <div className="flex h-4 w-full items-center">
-        <div className="system-xs-medium-uppercase text-text-tertiary uppercase">{label}</div>
+        <h2 id={id} className="system-xs-medium-uppercase text-text-tertiary uppercase">
+          {label}
+        </h2>
       </div>
     </div>
   )
@@ -34,8 +39,15 @@ export function StarredAppList({
 
   return (
     <>
-      <SectionDivider label={t(($) => $['studio.starred'], { ns: 'app' })} />
-      <div className={APP_LIST_GRID_CLASS_NAME}>
+      <AppListSectionHeading
+        id={STARRED_APPS_HEADING_ID}
+        label={t(($) => $['studio.starred'], { ns: 'app' })}
+      />
+      <div
+        role="list"
+        aria-labelledby={STARRED_APPS_HEADING_ID}
+        className={APP_LIST_GRID_CLASS_NAME}
+      >
         {apps.map((app, index) => (
           <StarredAppCard
             key={app.id}
@@ -49,7 +61,6 @@ export function StarredAppList({
           />
         ))}
       </div>
-      <SectionDivider label={t(($) => $['studio.allApps'], { ns: 'app' })} />
     </>
   )
 }

@@ -689,14 +689,15 @@ describe('List', () => {
 
       renderList()
 
-      const starredLabel = screen.getByText('Starred')
+      const starredLabel = screen.getByRole('heading', { level: 2, name: 'Starred' })
       const starredCard = screen.getByRole('link', { name: /Starred App/ })
-      const allAppsLabel = screen.getByText('All Apps')
+      const allAppsLabel = screen.getByRole('heading', { level: 2, name: 'All Apps' })
       const firstAppCard = screen.getByTestId('app-card-app-1')
       const actionBar = screen.getByRole('button', { name: 'Actions for Starred App' })
 
       expect(starredCard).toBeInTheDocument()
       expect(actionBar).toBeInTheDocument()
+      expect(screen.getAllByRole('list')).toHaveLength(2)
       expect(
         starredLabel.compareDocumentPosition(starredCard) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy()
@@ -1144,7 +1145,7 @@ describe('List', () => {
       renderList()
 
       fireEvent.click(screen.getByRole('button', { name: 'Creators' }))
-      fireEvent.click(screen.getByRole('button', { name: /Bob/ }))
+      fireEvent.click(screen.getByRole('checkbox', { name: /Bob/ }))
 
       expect(screen.getByRole('button', { name: /Creators.*\+1/ })).toBeInTheDocument()
     })

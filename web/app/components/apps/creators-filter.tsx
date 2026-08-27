@@ -3,12 +3,8 @@
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { Input } from '@langgenius/dify-ui/input'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -97,150 +93,153 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
   const isSelected = selectedCount > 0
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <button
-            type="button"
-            className={cn(
-              baseChipClassName,
-              isSelected
-                ? 'border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs hover:bg-state-base-hover'
-                : 'border-transparent bg-components-input-bg-normal text-text-tertiary hover:bg-components-input-bg-hover',
-            )}
-          />
-        }
-      >
-        {!isSelected && (
-          <>
-            <span className="px-1 text-text-tertiary">
-              {t(($) => $['studio.filters.creators'], { ns: 'app' })}
-            </span>
+    <div className="relative inline-flex">
+      <Popover>
+        <PopoverTrigger
+          render={
+            <button
+              type="button"
+              className={cn(
+                baseChipClassName,
+                isSelected
+                  ? 'border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs hover:bg-state-base-hover'
+                  : 'border-transparent bg-components-input-bg-normal text-text-tertiary hover:bg-components-input-bg-hover',
+              )}
+            />
+          }
+        >
+          <span className="px-1 text-text-tertiary">
+            {t(($) => $['studio.filters.creators'], { ns: 'app' })}
+          </span>
+          {isSelected ? (
+            <>
+              <span className="flex items-center pr-1">
+                {selectedAvatarCreators.map((creator, index) => (
+                  <Avatar
+                    key={creator.id}
+                    avatar={creator.avatarUrl}
+                    name={creator.name}
+                    size="xs"
+                    className={cn('border border-components-panel-bg', index > 0 && '-ml-1')}
+                  />
+                ))}
+              </span>
+              <span className="text-xs leading-4 font-medium text-text-tertiary">{`+${selectedCount}`}</span>
+              <span aria-hidden className="ml-1 size-4 shrink-0" />
+            </>
+          ) : (
             <span
               aria-hidden
               className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary"
             />
-          </>
-        )}
-        {isSelected && (
-          <>
-            <span className="px-1 text-text-tertiary">
-              {t(($) => $['studio.filters.creators'], { ns: 'app' })}
-            </span>
-            <span className="flex items-center pr-1">
-              {selectedAvatarCreators.map((creator, index) => (
-                <Avatar
-                  key={creator.id}
-                  avatar={creator.avatarUrl}
-                  name={creator.name}
-                  size="xs"
-                  className={cn('border border-components-panel-bg', index > 0 && '-ml-1')}
-                />
-              ))}
-            </span>
-            <span className="text-xs leading-4 font-medium text-text-tertiary">{`+${selectedCount}`}</span>
-            <span
-              role="button"
-              tabIndex={0}
-              aria-label={t(($) => $['studio.filters.reset'], { ns: 'app' })}
-              className="ml-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-xs text-text-quaternary outline-hidden hover:text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-              onClick={(event) => {
-                event.stopPropagation()
-                resetCreators()
-              }}
-              onKeyDown={(event) => {
-                if (event.key !== 'Enter' && event.key !== ' ') return
-
-                event.preventDefault()
-                event.stopPropagation()
-                resetCreators()
-              }}
-            >
-              <span aria-hidden className="i-ri-close-circle-fill h-3.5 w-3.5" />
-            </span>
-          </>
-        )}
-      </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-start" className="w-[280px] p-0">
-        <div className="flex items-center gap-1 p-2 pb-1">
-          <div className="relative min-w-0 grow">
-            <span
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder"
-            />
-            <Input
-              ref={searchInputRef}
-              type="search"
-              name="creator-query"
-              autoComplete="off"
-              enterKeyHint="search"
-              aria-label={t(($) => $['studio.filters.searchCreators'], { ns: 'app' })}
-              className={cn(
-                'pl-6.5 [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none',
-                keywords && 'pr-6.5',
+          )}
+        </PopoverTrigger>
+        <PopoverContent
+          placement="bottom-start"
+          sideOffset={4}
+          initialFocus={searchInputRef}
+          className="max-h-(--available-height) w-[280px] overflow-x-hidden overflow-y-auto border-components-panel-border bg-components-panel-bg-blur p-0 text-sm text-text-secondary shadow-lg outline-hidden backdrop-blur-[5px] focus:outline-hidden focus-visible:outline-hidden"
+        >
+          <PopoverTitle className="sr-only">
+            {t(($) => $['studio.filters.creators'], { ns: 'app' })}
+          </PopoverTitle>
+          <div className="flex items-center gap-1 p-2 pb-1">
+            <div className="relative min-w-0 grow">
+              <span
+                aria-hidden
+                className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder"
+              />
+              <Input
+                ref={searchInputRef}
+                type="search"
+                name="creator-query"
+                autoComplete="off"
+                enterKeyHint="search"
+                aria-label={t(($) => $['studio.filters.searchCreators'], { ns: 'app' })}
+                className={cn(
+                  'pl-6.5 [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none',
+                  keywords && 'pr-6.5',
+                )}
+                value={keywords}
+                onChange={(e) => setKeywords(e.target.value)}
+                placeholder={t(($) => $['studio.filters.searchCreators'], { ns: 'app' })}
+              />
+              {!!keywords && (
+                <button
+                  type="button"
+                  aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
+                  className="absolute top-1/2 right-2 flex size-4 -translate-y-1/2 items-center justify-center rounded-sm text-components-input-text-placeholder outline-hidden hover:text-components-input-text-filled focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                  onClick={() => {
+                    setKeywords('')
+                    searchInputRef.current?.focus()
+                  }}
+                >
+                  <span aria-hidden className="i-ri-close-circle-fill size-4" />
+                </button>
               )}
-              value={keywords}
-              onChange={(e) => setKeywords(e.target.value)}
-              placeholder={t(($) => $['studio.filters.searchCreators'], { ns: 'app' })}
-            />
-            {!!keywords && (
+            </div>
+            {isSelected && (
               <button
                 type="button"
-                aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-                className="absolute top-1/2 right-2 flex size-4 -translate-y-1/2 items-center justify-center rounded-sm text-components-input-text-placeholder outline-hidden hover:text-components-input-text-filled focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                onClick={() => {
-                  setKeywords('')
-                  searchInputRef.current?.focus()
-                }}
+                className="shrink-0 rounded-sm px-2 py-1 text-xs font-medium text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                onClick={resetCreators}
               >
-                <span aria-hidden className="i-ri-close-circle-fill size-4" />
+                {t(($) => $['studio.filters.reset'], { ns: 'app' })}
               </button>
             )}
           </div>
-          {isSelected && (
-            <button
-              type="button"
-              className="shrink-0 rounded-sm px-2 py-1 text-xs font-medium text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-              onClick={resetCreators}
-            >
-              {t(($) => $['studio.filters.reset'], { ns: 'app' })}
-            </button>
-          )}
-        </div>
-        <div className="max-h-60 overflow-y-auto px-1 pb-1">
-          {filteredCreators.map((creator) => {
-            const checked = value.includes(creator.id)
+          <div className="max-h-60 overflow-y-auto px-1 pb-1">
+            {filteredCreators.map((creator) => {
+              const checked = value.includes(creator.id)
 
-            return (
-              <button
-                key={creator.id}
-                type="button"
-                className="flex w-full items-center gap-1 rounded-md px-2 py-1.5 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                onClick={() => toggleCreator(creator.id)}
-              >
-                <Checkbox id={creator.id} checked={checked} className="shrink-0" />
-                <div className="flex min-w-0 grow items-center gap-2 px-1">
-                  <Avatar
-                    avatar={creator.avatarUrl}
-                    name={creator.name}
-                    size="xs"
-                    className="border-[0.5px] border-divider-regular"
+              return (
+                <button
+                  key={creator.id}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={checked}
+                  className="flex w-full items-center gap-1 rounded-md px-2 py-1.5 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                  onClick={() => toggleCreator(creator.id)}
+                >
+                  <Checkbox
+                    aria-hidden
+                    checked={checked}
+                    tabIndex={-1}
+                    className="pointer-events-none shrink-0"
                   />
-                  <div className="flex min-w-0 grow items-center justify-between gap-2">
-                    <span className="truncate text-sm text-text-secondary">{creator.name}</span>
-                    {creator.isYou && (
-                      <span className="shrink-0 text-sm text-text-quaternary">
-                        {t(($) => $['studio.filters.you'], { ns: 'app' })}
-                      </span>
-                    )}
+                  <div className="flex min-w-0 grow items-center gap-2 px-1">
+                    <Avatar
+                      avatar={creator.avatarUrl}
+                      name={creator.name}
+                      size="xs"
+                      className="border-[0.5px] border-divider-regular"
+                    />
+                    <div className="flex min-w-0 grow items-center justify-between gap-2">
+                      <span className="truncate text-sm text-text-secondary">{creator.name}</span>
+                      {creator.isYou && (
+                        <span className="shrink-0 text-sm text-text-quaternary">
+                          {t(($) => $['studio.filters.you'], { ns: 'app' })}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </button>
-            )
-          })}
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+                </button>
+              )
+            })}
+          </div>
+        </PopoverContent>
+      </Popover>
+      {isSelected && (
+        <button
+          type="button"
+          aria-label={t(($) => $['studio.filters.reset'], { ns: 'app' })}
+          className="absolute top-1/2 right-2 flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded-xs text-text-quaternary outline-hidden hover:text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          onClick={resetCreators}
+        >
+          <span aria-hidden className="i-ri-close-circle-fill h-3.5 w-3.5" />
+        </button>
+      )}
+    </div>
   )
 }
 

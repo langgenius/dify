@@ -221,7 +221,12 @@ const WebAppsSectionContent = () => {
                 </div>
               )}
               {!installedAppsQuery.isError && installedApps.length === 0 && (
-                <div className="px-2 py-1 system-xs-regular">
+                <div
+                  className="px-2 py-1 system-xs-regular"
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
                   {t(($) => $['mainNav.webApps.noResults'], { ns: 'common' })}
                 </div>
               )}

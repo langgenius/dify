@@ -26,7 +26,7 @@ import Empty from './empty'
 import FirstEmptyState from './first-empty-state'
 import { useAppListTour } from './hooks/use-app-list-tour'
 import { useWorkflowOnlineUsers } from './hooks/use-workflow-online-users'
-import { StarredAppList } from './starred-app-list'
+import { ALL_APPS_HEADING_ID, AppListSectionHeading, StarredAppList } from './starred-app-list'
 
 const STARRED_APP_LIMIT = 100
 const STEP_BY_STEP_TOUR_APP_ROW_CARD_COUNT = 4
@@ -163,7 +163,15 @@ function AppListCatalogContent({
               }
             />
           )}
+          {starredApps.length > 0 && (
+            <AppListSectionHeading
+              id={ALL_APPS_HEADING_ID}
+              label={t(($) => $['studio.allApps'], { ns: 'app' })}
+            />
+          )}
           <div
+            role={hasAnyApp ? 'list' : undefined}
+            aria-labelledby={hasAnyApp && starredApps.length > 0 ? ALL_APPS_HEADING_ID : undefined}
             className={cn(
               `relative grow content-start ${APP_LIST_GRID_CLASS_NAME}`,
               !hasAnyApp && 'overflow-hidden',

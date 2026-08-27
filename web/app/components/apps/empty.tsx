@@ -12,7 +12,11 @@ const Empty = ({ message, stepByStepTourTarget }: EmptyProps) => {
 
   return (
     <FilterEmptyState
-      title={message ?? t(($) => $['filterEmpty.noApps'], { ns: 'app' })}
+      title={
+        <span role="status" aria-live="polite" aria-atomic="true">
+          {message ?? t(($) => $['filterEmpty.noApps'], { ns: 'app' })}
+        </span>
+      }
       contentDataAttributes={
         stepByStepTourTarget ? { 'data-step-by-step-tour-target': stepByStepTourTarget } : undefined
       }
