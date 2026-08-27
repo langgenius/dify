@@ -10,6 +10,11 @@ This package is the Node 22+, ESM TypeScript implementation of `difyctl`. Develo
 - Preserve flags, output, and exit codes during refactors. Do not add dependencies or compatibility shims unless the task explicitly requires them.
 - `ARD.md` owns CLI code structure. Keep wire behavior aligned with typed API clients and the real mock-server behavior tests.
 
+## Version and Channel
+
+- `cli/package.json` `version` is an inert placeholder pinned to `0.0.0-private`. Do not bump it; `scripts/release-naming.mjs validate` fails the manifest gate if it changes.
+- The real difyctl version derives from the Dify GitHub release tag its binaries attach to (`release-naming.mjs derive-version <difyTag>`), and reaches the build only via `CLI_VERSION` — required env for `scripts/release-build.sh` and `scripts/release-write-checksums.sh`. Build locally with `pnpm build:bin:local`.
+
 ## Commands
 
 Run package scripts from `cli/`:

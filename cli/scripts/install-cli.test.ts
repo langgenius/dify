@@ -149,6 +149,31 @@ describe('install-cli pick_asset', () => {
   })
 })
 
+// A manual-dispatch rebuild against an already-released tag is published as
+// 1.16.1+r2. pick_asset takes the highest name by `sort -V | tail -1`, and '+'
+// (0x2B) sorts before '-' (0x2D), so alongside the original 1.16.1 the rebuild
+// loses. Characterization, not a wish — the expected name is what BSD sort -V
+// actually returns, asserted without platform branching so a GNU/BSD divergence
+// fails CI loudly instead of passing quietly.
+//
+// What keeps this from ever biting a user is the CLI Release workflow's "Prune
+// stale difyctl assets" step, which deletes the superseded set and leaves exactly
+// one match. That step is load-bearing; removing it should trip this block.
+describe('install-cli pick_asset with a +r2 rebuild alongside the original', () => {
+  const BOTH = JSON.stringify({
+    assets: [{ name: 'difyctl-v1.16.1-linux-x64' }, { name: 'difyctl-v1.16.1+r2-linux-x64' }],
+  })
+
+  it('picks the superseded plain asset, not the rebuild', () => {
+    expect(pickAsset('linux-x64', BOTH)).toBe('difyctl-v1.16.1-linux-x64')
+  })
+
+  it('picks the rebuild once pruning leaves it as the only match', () => {
+    const pruned = JSON.stringify({ assets: [{ name: 'difyctl-v1.16.1+r2-linux-x64' }] })
+    expect(pickAsset('linux-x64', pruned)).toBe('difyctl-v1.16.1+r2-linux-x64')
+  })
+})
+
 describe('install-cli asset_version', () => {
   it('extracts the version from a posix asset name', () => {
     expect(assetVersion('difyctl-v0.2.0-linux-x64', 'linux-x64')).toBe('0.2.0')

@@ -11,8 +11,10 @@
 #     install that first populates node_modules so pnpm fetches every
 #     foreign-arch prebuild (the CLI Release workflow does this).
 #
-# Env (all optional; defaults derived from cli/package.json + git):
-#   CLI_VERSION        — package.json `version`
+# Env:
+#   CLI_VERSION        — REQUIRED; derives from the Dify release tag (see the CLI
+#                        Release workflow). `pnpm build:bin:local` sets it locally.
+# Optional (defaults derived from cli/package.json + git):
 #   DIFYCTL_CHANNEL    — package.json `difyctl.channel`
 #   DIFYCTL_MIN_DIFY   — package.json `difyctl.compat.minDify`
 #   DIFYCTL_MAX_DIFY   — package.json `difyctl.compat.maxDify`
@@ -36,14 +38,13 @@ out_dir="${cli_root}/dist/bin"
 read_pkg() { node -p "require('${cli_root}/package.json').$1" 2>/dev/null; }
 naming() { node "${_dir}/release-naming.mjs" "$@"; }
 
-CLI_VERSION="${CLI_VERSION:-$(read_pkg version)}"
+: "${CLI_VERSION:?required — set by the release workflow (see .github/workflows/cli-release.yml)}"
+
 DIFYCTL_CHANNEL="${DIFYCTL_CHANNEL:-$(read_pkg difyctl.channel)}"
 DIFYCTL_MIN_DIFY="${DIFYCTL_MIN_DIFY:-$(read_pkg difyctl.compat.minDify)}"
 DIFYCTL_MAX_DIFY="${DIFYCTL_MAX_DIFY:-$(read_pkg difyctl.compat.maxDify)}"
 DIFYCTL_COMMIT="${DIFYCTL_COMMIT:-$(git -C "$cli_root" rev-parse HEAD 2>/dev/null || echo unknown)}"
 DIFYCTL_BUILD_DATE="${DIFYCTL_BUILD_DATE:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
-
-[[ "$CLI_VERSION" != "undefined" ]] || die "CLI_VERSION could not be derived from package.json"
 
 [[ -f "$entry" ]] || die "entry not found: $entry"
 

@@ -1,5 +1,16 @@
-import { describe, expect, it } from 'vite-plus/test'
-import { resolveBuildInfo } from '../../scripts/lib/resolve-buildinfo.js'
+import { execFileSync } from 'node:child_process'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { afterAll, describe, expect, it } from 'vite-plus/test'
+import { BUILD_CHANNELS, resolveBuildInfo } from '../../scripts/lib/resolve-buildinfo.js'
+import { ENV_CACHE_DIR, ENV_CONFIG_DIR } from '../../src/store/dir.js'
+
+const CLI_ROOT = new URL('../../', import.meta.url)
+const RELEASE_NAMING = fileURLToPath(new URL('scripts/release-naming.mjs', CLI_ROOT))
+const VERSION_INFO_SRC = fileURLToPath(new URL('src/version/info.ts', CLI_ROOT))
+const DEV_ENTRY = fileURLToPath(new URL('bin/dev.js', CLI_ROOT))
 
 const FIXED_DATE = new Date('2026-05-09T12:00:00.000Z')
 const fixedNow = () => FIXED_DATE
@@ -78,6 +89,16 @@ describe('resolveBuildInfo', () => {
         pkg: noPkg,
       }),
     ).toThrow(/invalid DIFYCTL_CHANNEL: nightly/)
+  })
+
+  it('accepts alpha channel', () => {
+    const info = resolveBuildInfo({
+      env: { DIFYCTL_CHANNEL: 'alpha' },
+      git: noGit,
+      now: fixedNow,
+      pkg: noPkg,
+    })
+    expect(info.channel).toBe('alpha')
   })
 
   it('accepts rc channel', () => {
@@ -159,5 +180,96 @@ describe('resolveBuildInfo', () => {
     expect(info.minDify).toBe('2.0.0')
     expect(info.maxDify).toBe('2.1.0')
     expect(info.channel).toBe('stable')
+  })
+})
+
+// `export type Channel = 'a' | 'b'`, single line or with `|`-led continuations.
+const CHANNEL_UNION_RE = /export type Channel\s*=\s*([^\n]*(?:\n[ \t]*\|[^\n]*)*)/
+const QUOTED_MEMBER_RE = /'([^']+)'/g
+
+function channelUnionMembers(): string[] {
+  const declaration = CHANNEL_UNION_RE.exec(readFileSync(VERSION_INFO_SRC, 'utf8'))?.[1]
+  if (declaration === undefined)
+    throw new Error(`no "export type Channel" declaration found in ${VERSION_INFO_SRC}`)
+  const members = [...declaration.matchAll(QUOTED_MEMBER_RE)].map(([, name]) => name ?? '')
+  if (members.length === 0)
+    throw new Error(`parsed no members out of the Channel union in ${VERSION_INFO_SRC}`)
+  return members
+}
+
+// Spawned rather than imported: release-naming.mjs carries a shebang that breaks
+// the Windows test runner.
+function releaseNamingChannels(): string[] {
+  return execFileSync('node', [RELEASE_NAMING, 'channels'], { encoding: 'utf8' })
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+}
+
+const sorted = (names: readonly string[]) => [...names].sort()
+
+// Three hand-maintained channel lists in three runtimes that cannot share an
+// import — a bare string array here, a compile-time union in src/version/info.ts,
+// and objects carrying release data in release-naming.mjs.
+//
+// The asymmetry is deliberate, not an oversight to paper over: `dev` is a local
+// build channel that is never released, so it belongs in the two build-side
+// lists and must stay out of release-naming.mjs's CHANNELS.
+describe('channel list parity', () => {
+  const LOCAL_ONLY_CHANNEL = 'dev'
+
+  it('BUILD_CHANNELS matches the Channel union in src/version/info.ts exactly', () => {
+    expect(sorted(channelUnionMembers())).toStrictEqual(sorted(BUILD_CHANNELS))
+  })
+
+  it('released channels are the build channels minus the local-only one', () => {
+    expect(sorted(releaseNamingChannels())).toStrictEqual(
+      sorted(BUILD_CHANNELS.filter((name) => name !== LOCAL_ONLY_CHANNEL)),
+    )
+  })
+
+  it('keeps dev buildable but unreleasable', () => {
+    expect(BUILD_CHANNELS).toContain(LOCAL_ONLY_CHANNEL)
+    expect(releaseNamingChannels()).not.toContain(LOCAL_ONLY_CHANNEL)
+  })
+})
+
+type ClientVersionReport = { client: { channel: string } }
+
+// Spawning bun is safe in this suite: `pnpm test`'s pretest step already runs
+// `bun scripts/generate-command-tree.ts`, so the suite cannot run without it.
+// `version --client` skips the server probe, so this needs no network, and the
+// temp config/cache dirs keep it off the developer's real difyctl state.
+describe('bin/dev.js pins the local build channel', () => {
+  const ENV_CHANNEL = 'DIFYCTL_CHANNEL'
+  const stateDir = mkdtempSync(join(tmpdir(), 'difyctl-dev-channel-'))
+  afterAll(() => rmSync(stateDir, { recursive: true, force: true }))
+
+  function reportedChannel(channelOverride?: string): string {
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      [ENV_CONFIG_DIR]: stateDir,
+      [ENV_CACHE_DIR]: stateDir,
+    }
+    if (channelOverride === undefined) delete env[ENV_CHANNEL]
+    else env[ENV_CHANNEL] = channelOverride
+    const stdout = execFileSync('bun', [DEV_ENTRY, 'version', '--client', '--output', 'json'], {
+      cwd: fileURLToPath(CLI_ROOT),
+      encoding: 'utf8',
+      env,
+    })
+    return (JSON.parse(stdout) as ClientVersionReport).client.channel
+  }
+
+  // The `?? 'dev'` fallback in resolveBuildInfo was dead code before this pin —
+  // the manifest channel always won. With the manifest now reading `stable`, an
+  // unpinned local build would self-report `stable` and drop its prerelease
+  // banner, claiming a release it is not.
+  it('reports dev when the env does not set a channel', { timeout: 30_000 }, () => {
+    expect(reportedChannel()).toBe('dev')
+  })
+
+  it('still lets the env override the pin', { timeout: 30_000 }, () => {
+    expect(reportedChannel('stable')).toBe('stable')
   })
 })

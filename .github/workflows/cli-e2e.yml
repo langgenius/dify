@@ -112,7 +112,7 @@ jobs:
   # ════════════════════════════════════════════════════════════════════════════
   suite-framework-output-error:
     name: 'Suite: framework + output + error-handling'
-    if: ${{ inputs.suite_framework_output_error != 'false' }}
+    if: ${{ inputs.suite_framework_output_error }}
     needs: provision
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -159,7 +159,7 @@ jobs:
   # ════════════════════════════════════════════════════════════════════════════
   suite-discovery:
     name: 'Suite: discovery'
-    if: ${{ inputs.suite_discovery != 'false' }}
+    if: ${{ inputs.suite_discovery }}
     needs: provision
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -207,7 +207,7 @@ jobs:
   # ════════════════════════════════════════════════════════════════════════════
   suite-run:
     name: 'Suite: run / ${{ matrix.name }}'
-    if: ${{ inputs.suite_run != 'false' }}
+    if: ${{ inputs.suite_run }}
     needs: provision
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -284,7 +284,7 @@ jobs:
   # ════════════════════════════════════════════════════════════════════════════
   suite-auth-safe:
     name: 'Suite: auth (login / status / whoami)'
-    if: ${{ inputs.suite_auth != 'false' }}
+    if: ${{ inputs.suite_auth }}
     needs: provision
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -333,7 +333,7 @@ jobs:
   suite-last:
     name: 'Suite: auth-use + devices + logout + agent (last, serial)'
     # Runs when auth is selected; also runs after all parallel jobs finish
-    if: ${{ inputs.suite_auth != 'false' || inputs.suite_agent != 'false' }}
+    if: ${{ inputs.suite_auth || inputs.suite_agent }}
     needs:
       - provision
       - suite-framework-output-error

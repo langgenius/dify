@@ -7,12 +7,30 @@ on:
         description: Dify release tag to attach difyctl assets to (blank = latest stable)
         required: false
         type: string
+      difyctl_version:
+        description: difyctl version to release (blank = derive it from the Dify release tag)
+        required: false
+        type: string
+      dry_run:
+        description: Build and checksum only — skip asset upload, stale-asset prune and provenance tag
+        required: false
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       release_tag:
         description: Dify release tag to attach difyctl assets to (blank = latest stable)
         required: false
         type: string
+      difyctl_version:
+        description: difyctl version to release (blank = derive it from the Dify release tag)
+        required: false
+        type: string
+      dry_run:
+        description: Build and checksum only — skip asset upload, stale-asset prune and provenance tag
+        required: false
+        type: boolean
+        default: false
   release:
     types: [released]
 
@@ -33,17 +51,16 @@ jobs:
         working-directory: ./cli
     outputs:
       dify_tag: ${{ steps.resolve.outputs.dify_tag }}
+      difyctl_version: ${{ steps.derive.outputs.difyctl_version }}
+      should_release: ${{ steps.derive.outputs.should_release }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Export manifest to env
-        run: node scripts/release-naming.mjs github-env >> "$GITHUB_ENV"
-
       - name: Validate manifest
-        run: scripts/release-validate-manifest.sh
+        run: node scripts/release-naming.mjs validate
 
       - name: Resolve target Dify release
         id: resolve
@@ -70,23 +87,50 @@ jobs:
           echo "dify_tag=${tag}" >> "$GITHUB_OUTPUT"
           echo "::notice::target Dify release ${tag}"
 
+      - name: Derive difyctl version
+        id: derive
+        env:
+          DIFY_TAG: ${{ steps.resolve.outputs.dify_tag }}
+          INPUT_VERSION: ${{ inputs.difyctl_version }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ -n "$INPUT_VERSION" ]; then
+              node scripts/release-naming.mjs validate-version "$INPUT_VERSION"
+              echo "should_release=true" >> "$GITHUB_OUTPUT"
+              echo "difyctl_version=${INPUT_VERSION}" >> "$GITHUB_OUTPUT"
+              echo "::notice::difyctl ${INPUT_VERSION} (version supplied by workflow input)"
+              exit 0
+          fi
+          derived="$(node scripts/release-naming.mjs derive-version "$DIFY_TAG")"
+          if [ "$(printf '%s\n' "$derived" | sed -n 's/^ok=//p')" = "true" ]; then
+              version="$(printf '%s\n' "$derived" | sed -n 's/^version=//p')"
+              echo "should_release=true" >> "$GITHUB_OUTPUT"
+              echo "difyctl_version=${version}" >> "$GITHUB_OUTPUT"
+              echo "::notice::difyctl ${version} (version derived from Dify release ${DIFY_TAG})"
+              exit 0
+          fi
+          reason="$(printf '%s\n' "$derived" | sed -n 's/^reason=//p')"
+          if [ "$EVENT_NAME" = "release" ]; then
+              echo "::notice::${reason}; skipping difyctl release"
+              echo "should_release=false" >> "$GITHUB_OUTPUT"
+              exit 0
+          fi
+          echo "::error::${reason}; re-run with difyctl_version set to attach difyctl to ${DIFY_TAG}"
+          exit 1
+
+      # Guarded, not merely ordered: derive-version exits 0 on a shape mismatch, and every
+      # real non-X.Y.Z Dify tag also sits outside the compat window — unguarded, this step
+      # would red-X exactly the runs the shape gate is meant to skip.
       - name: Compatibility check
+        if: steps.derive.outputs.should_release == 'true'
         env:
           DIFY_TAG: ${{ steps.resolve.outputs.dify_tag }}
         run: node scripts/release-naming.mjs compat-check "$DIFY_TAG"
 
-      - name: Reject duplicate difyctl version
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${difyctlTag}" >/dev/null 2>&1; then
-              echo "::error::difyctl ${version} already released (tag ${difyctlTag} exists); bump cli/package.json version"
-              exit 1
-          fi
-
   release:
     name: build + attach standalone binaries (all targets)
     needs: validate
+    if: needs.validate.outputs.should_release == 'true'
     runs-on: depot-ubuntu-24.04
     permissions:
       contents: write
@@ -96,6 +140,7 @@ jobs:
         working-directory: ./cli
     env:
       DIFY_TAG: ${{ needs.validate.outputs.dify_tag }}
+      CLI_VERSION: ${{ needs.validate.outputs.difyctl_version }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -111,7 +156,7 @@ jobs:
         uses: ./.github/actions/setup-web
 
       - name: Export manifest to env
-        run: node scripts/release-naming.mjs github-env >> "$GITHUB_ENV"
+        run: node scripts/release-naming.mjs github-env "$CLI_VERSION" >> "$GITHUB_ENV"
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
@@ -120,6 +165,7 @@ jobs:
 
       - name: Compile standalone binaries (all targets)
         run: |
+          CLI_VERSION="$CLI_VERSION" \
           DIFYCTL_COMMIT="$(git rev-parse HEAD)" \
           DIFYCTL_BUILD_DATE="$(git log -1 --format=%cI HEAD)" \
             pnpm build:bin
@@ -128,6 +174,7 @@ jobs:
         run: scripts/release-write-checksums.sh
 
       - name: Attach difyctl assets to Dify release
+        if: ${{ !inputs.dry_run }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -135,6 +182,7 @@ jobs:
               --repo "$GITHUB_REPOSITORY" --clobber
 
       - name: Prune stale difyctl assets
+        if: ${{ !inputs.dry_run }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -149,18 +197,3 @@ jobs:
                         --repo "$GITHUB_REPOSITORY" --yes
                 fi
               done
-
-      - name: Create provenance tag
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          ref="refs/tags/${difyctlTag}"
-          sha="$(git rev-parse HEAD)"
-          status="$(gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
-                -f ref="$ref" -f sha="$sha" --silent --include 2>/dev/null \
-                | awk 'NR==1 {print $2; exit}' || true)"
-          case "$status" in
-              201) echo "::notice::created ${ref}" ;;
-              422) echo "::notice::tag ${ref} already exists; skipping (immutable)" ;;
-              *)   echo "::error::provenance tag ${ref} not created (HTTP ${status:-unknown})"; exit 1 ;;
-          esac
