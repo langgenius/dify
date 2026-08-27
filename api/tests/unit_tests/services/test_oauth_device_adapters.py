@@ -1,5 +1,6 @@
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from typing import override
 
 import pytest
 
@@ -8,6 +9,7 @@ from libs import jws
 from libs.rate_limit import LIMIT_APPROVE_EXT_PER_EMAIL
 from services.oauth_device_adapters import (
     DifyConfigOAuthDeviceSettings,
+    EnterpriseDeviceSSOService,
     EnterpriseOAuthDeviceSSOGateway,
     EnvironmentOAuthDeviceTokenTTLPolicy,
     RedisExternalApprovalLimiter,
@@ -16,17 +18,20 @@ from services.oauth_device_contracts import OAuthDeviceSSOInitiationError
 
 
 @dataclass
-class _EnterpriseService:
+class _EnterpriseService(EnterpriseDeviceSSOService):
     response: Mapping[str, object] | None
     signed_states: list[str] = field(default_factory=list)
 
+    @override
     def initiate_device_flow_sso(self, signed_state: str) -> Mapping[str, object] | None:
         self.signed_states.append(signed_state)
         return self.response
 
 
-class _FailingEnterpriseService:
-    def initiate_device_flow_sso(self, _signed_state: str) -> Mapping[str, object] | None:
+class _FailingEnterpriseService(EnterpriseDeviceSSOService):
+    @override
+    def initiate_device_flow_sso(self, signed_state: str) -> Mapping[str, object] | None:
+        _ = signed_state
         raise RuntimeError("enterprise unavailable")
 
 
@@ -34,15 +39,28 @@ class _FailingEnterpriseService:
 class _NonceRedis:
     values: dict[str | bytes, object] = field(default_factory=dict)
 
-    def set(self, name, value, *, nx=False, ex=None, **_kwargs):
+    def set(
+        self,
+        name: str | bytes,
+        value: object,
+        *,
+        nx: bool = False,
+        ex: int | None = None,
+        **_kwargs: object,
+    ) -> bool:
         _ = ex
         if nx and name in self.values:
             return False
         self.values[name] = value
         return True
 
-    def register_script(self, script: str):
-        def execute(*, keys, args, client):
+    def register_script(self, script: str) -> Callable[..., int]:
+        def execute(
+            *,
+            keys: list[str | bytes],
+            args: list[object],
+            client: object | None = None,
+        ) -> int:
             _ = client
             key = keys[0]
             if "local current" in script:
@@ -61,7 +79,10 @@ class _NonceRedis:
         return execute
 
 
-def _gateway(config_overrides, enterprise_service) -> EnterpriseOAuthDeviceSSOGateway:
+def _gateway(
+    config_overrides: Callable[..., None],
+    enterprise_service: EnterpriseDeviceSSOService,
+) -> EnterpriseOAuthDeviceSSOGateway:
     config_overrides(SECRET_KEY="test-secret-key-that-is-at-least-32-bytes")
     return EnterpriseOAuthDeviceSSOGateway(
         redis=RedisClientWrapper(),
@@ -69,7 +90,7 @@ def _gateway(config_overrides, enterprise_service) -> EnterpriseOAuthDeviceSSOGa
     )
 
 
-def test_initiate_uses_injected_enterprise_operation(config_overrides) -> None:
+def test_initiate_uses_injected_enterprise_operation(config_overrides: Callable[..., None]) -> None:
     enterprise_service = _EnterpriseService(response={"url": "https://idp.example.com/authorize"})
     gateway = _gateway(config_overrides, enterprise_service)
 
@@ -91,21 +112,24 @@ def test_initiate_uses_injected_enterprise_operation(config_overrides) -> None:
 
 
 @pytest.mark.parametrize("response", [None, {}, {"url": ""}, {"url": 123}])
-def test_initiate_rejects_missing_or_invalid_redirect_url(config_overrides, response) -> None:
+def test_initiate_rejects_missing_or_invalid_redirect_url(
+    config_overrides: Callable[..., None],
+    response: Mapping[str, object] | None,
+) -> None:
     gateway = _gateway(config_overrides, _EnterpriseService(response=response))
 
     with pytest.raises(OAuthDeviceSSOInitiationError, match="sso_initiate_missing_url"):
         gateway.initiate(user_code="ABCD-1234", callback_url="https://api.example.com/callback", ttl_seconds=300)
 
 
-def test_initiate_maps_injected_enterprise_failure(config_overrides) -> None:
+def test_initiate_maps_injected_enterprise_failure(config_overrides: Callable[..., None]) -> None:
     gateway = _gateway(config_overrides, _FailingEnterpriseService())
 
     with pytest.raises(OAuthDeviceSSOInitiationError, match="sso_initiate_failed"):
         gateway.initiate(user_code="ABCD-1234", callback_url="https://api.example.com/callback", ttl_seconds=300)
 
 
-def test_settings_adapter_owns_oauth_device_configuration(config_overrides) -> None:
+def test_settings_adapter_owns_oauth_device_configuration(config_overrides: Callable[..., None]) -> None:
     config_overrides(
         inner_OPENAPI_KNOWN_CLIENT_IDS="client-a,client-b",
         CONSOLE_WEB_URL="https://console.example.com",
@@ -127,7 +151,7 @@ def test_external_approval_limiter_owns_rate_limit_policy() -> None:
     assert limiter._rate_limiter.time_window == int(LIMIT_APPROVE_EXT_PER_EMAIL.window.total_seconds())
 
 
-def test_approval_nonce_release_only_removes_matching_reservation(config_overrides) -> None:
+def test_approval_nonce_release_only_removes_matching_reservation(config_overrides: Callable[..., None]) -> None:
     config_overrides(REDIS_KEY_PREFIX="")
     raw_redis = _NonceRedis()
     redis = RedisClientWrapper()

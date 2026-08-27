@@ -165,8 +165,10 @@ def test_rollback_does_not_restore_predecessor_after_later_rotation(
 
     sqlite_session.expire_all()
     records = list(sqlite_session.scalars(select(OAuthAccessToken)).all())
-    assert [str(record.id) for record in records if record.revoked_at is None] == [third.token_id]
-    assert sqlite_session.get(OAuthAccessToken, first.token_id).revoked_at is not None
+    assert [record.id for record in records if record.revoked_at is None] == [third.token_id]
+    first_record = sqlite_session.get(OAuthAccessToken, first.token_id)
+    assert first_record is not None
+    assert first_record.revoked_at is not None
 
 
 def test_list_account_sessions_pages_only_live_owned_tokens(

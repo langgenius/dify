@@ -5,13 +5,10 @@ from libs import jws as jws_mod
 
 
 def test_verify_approval_grant_rejects_missing_claim() -> None:
-    class FakeKeyset:
-        active_kid = "key-1"
-
-        def lookup(self, _kid):
-            return b"secret"
-
-    keyset = FakeKeyset()
+    keyset = jws_mod.KeySet.from_entries(
+        {"key-1": b"test-secret-key-that-is-at-least-32-bytes"},
+        active_kid="key-1",
+    )
     incomplete = jws_mod.sign(
         keyset,
         payload={
