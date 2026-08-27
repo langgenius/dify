@@ -32,8 +32,18 @@ export function useFilterTemplateLanguages() {
  */
 export const searchModeAtom = atom<true | null>(null)
 
-export function useMarketplaceSearchMode(activePluginTypeOverride?: ActivePluginType) {
-  const [searchPluginText] = useSearchPluginText()
+export function useMarketplaceSearchMode(
+  activePluginTypeOverride?: ActivePluginType,
+  // Callers that debounce the query text MUST pass the debounced value here.
+  // Deciding "are we searching?" from the raw URL value while the request body
+  // carries the debounced one flips this hook true on keystroke #1, firing a
+  // wasted empty-query search whose generic top-plugins list renders for the
+  // debounce window before the real results replace it. '' is a meaningful
+  // override, so this is `??`, not `||`.
+  searchPluginTextOverride?: string,
+) {
+  const [searchPluginTextFromUrl] = useSearchPluginText()
+  const searchPluginText = searchPluginTextOverride ?? searchPluginTextFromUrl
   const [filterPluginTags] = useFilterPluginTags()
   const [activePluginTypeFromUrl] = useActivePluginType()
   const activePluginType = activePluginTypeOverride ?? activePluginTypeFromUrl

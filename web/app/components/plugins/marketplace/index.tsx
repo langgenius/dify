@@ -4,6 +4,7 @@ import type { MarketplaceViewProps } from './view'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { fetchPluginBanners } from './home/banners'
 import { HydrateQueryClient } from './hydration-server'
+import { withinServerBudget } from './server-budget'
 import { MarketplaceView } from './view'
 
 type MarketplaceProps = Omit<MarketplaceViewProps, 'banners'> & {
@@ -25,11 +26,18 @@ const Marketplace = async ({
   if (variant === 'home') {
     const locale = language ?? (await getLocaleOnServer())
 
-    try {
-      trendingBanners = await fetchPluginBanners(locale)
-    } catch {
-      // Keep the homepage available if Marketplace banner delivery is unavailable.
-    }
+    // Banners are decoration on a page whose point is the catalog, so the same
+    // budget that keeps the prefetch from holding the document applies here.
+    // A late resolution just misses this render; nothing waits on it.
+    await withinServerBudget(
+      fetchPluginBanners(locale)
+        .then((banners) => {
+          trendingBanners = banners
+        })
+        .catch(() => {
+          // Keep the homepage available if Marketplace banner delivery is down.
+        }),
+    )
   }
 
   return (

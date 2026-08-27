@@ -11,6 +11,7 @@ import {
   marketplaceSearchParamsParsers,
   shouldSearchMarketplacePlugins,
 } from './search-params'
+import { withinServerBudget } from './server-budget'
 import { getCollectionsParams, getMarketplaceCollectionsAndPlugins } from './utils'
 
 // The server side logic should move to marketplace's codebase so that we can get rid of Next.js
@@ -25,20 +26,24 @@ async function getDehydratedState(searchParams?: Promise<SearchParams>) {
   const queryClient = getQueryClient()
 
   if (shouldSearchMarketplacePlugins(params)) {
-    await queryClient.prefetchInfiniteQuery(
-      getMarketplacePluginsInfiniteQueryOptions(getMarketplacePluginsSearchParams(params)),
+    await withinServerBudget(
+      queryClient.prefetchInfiniteQuery(
+        getMarketplacePluginsInfiniteQueryOptions(getMarketplacePluginsSearchParams(params)),
+      ),
     )
     return dehydrate(queryClient)
   }
 
   if (!PLUGIN_CATEGORY_WITH_COLLECTIONS.has(params.category)) return
 
-  await queryClient.prefetchQuery({
-    queryKey: marketplaceQuery.collections.queryKey({
-      input: { query: getCollectionsParams(params.category) },
+  await withinServerBudget(
+    queryClient.prefetchQuery({
+      queryKey: marketplaceQuery.collections.queryKey({
+        input: { query: getCollectionsParams(params.category) },
+      }),
+      queryFn: () => getMarketplaceCollectionsAndPlugins(getCollectionsParams(params.category)),
     }),
-    queryFn: () => getMarketplaceCollectionsAndPlugins(getCollectionsParams(params.category)),
-  })
+  )
   return dehydrate(queryClient)
 }
 

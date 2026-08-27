@@ -20,7 +20,7 @@ export function useMarketplaceData(activePluginTypeOverride?: ActivePluginType) 
   const [filterPluginTags] = useFilterPluginTags()
   const [activePluginTypeFromUrl] = useActivePluginType()
   const activePluginType = activePluginTypeOverride ?? activePluginTypeFromUrl
-  const isSearchMode = useMarketplaceSearchMode(activePluginType)
+  const isSearchMode = useMarketplaceSearchMode(activePluginType, searchPluginText)
 
   const collectionsQuery = useMarketplaceCollectionsAndPlugins(
     getCollectionsParams(activePluginType),
@@ -44,19 +44,44 @@ export function useMarketplaceData(activePluginTypeOverride?: ActivePluginType) 
   const { hasNextPage, fetchNextPage, isFetching, isFetchingNextPage } = pluginsQuery
 
   const handlePageChange = useCallback(() => {
-    if (hasNextPage && !isFetching) fetchNextPage()
+    if (hasNextPage && !isFetching) void fetchNextPage()
   }, [fetchNextPage, hasNextPage, isFetching])
 
   // Scroll pagination
   useMarketplaceContainerScroll(handlePageChange)
 
+  const pages = pluginsQuery.data?.pages
+  // Meilisearch resolves ties in `install_count DESC` by internal document
+  // order, and the sync task rewrites those documents every minute, so
+  // offset-paginated pages can overlap. Without this, an overlap renders two
+  // cards with the same React key and remounts the grid.
+  const plugins = useMemo(() => {
+    if (!pages) return undefined
+    const seen = new Set<string>()
+    return pages.flatMap((page) =>
+      page.plugins.filter((plugin) => {
+        const key = `${plugin.org}/${plugin.name}`
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      }),
+    )
+  }, [pages])
+
   return {
     marketplaceCollections: collectionsQuery.data?.marketplaceCollections,
     marketplaceCollectionPluginsMap: collectionsQuery.data?.marketplaceCollectionPluginsMap,
-    plugins: pluginsQuery.data?.pages.flatMap((page) => page.plugins),
-    pluginsTotal: pluginsQuery.data?.pages[0]?.total,
-    page: pluginsQuery.data?.pages.length || 1,
+    plugins,
+    pluginsTotal: pages?.[0]?.total,
+    page: pages?.length || 1,
     isLoading: collectionsQuery.isLoading || pluginsQuery.isLoading,
+    // A superseded query keeps the previous results on screen (placeholderData)
+    // or has not been issued yet (still debouncing). Both need a quiet pending
+    // affordance; unmounting the grid instead collapses layout and jumps scroll.
+    isRefreshing:
+      pluginsQuery.isPlaceholderData || searchPluginTextOriginal.trim() !== searchPluginText.trim(),
+    isError: collectionsQuery.isError || pluginsQuery.isError,
+    refetch: isSearchMode ? pluginsQuery.refetch : collectionsQuery.refetch,
     isFetchingNextPage,
   }
 }

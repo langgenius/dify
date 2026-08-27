@@ -1,5 +1,6 @@
 'use client'
 import type { ActivePluginType } from '../constants'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from '#i18n'
@@ -36,6 +37,9 @@ const ListWrapper = ({
     marketplaceCollections,
     marketplaceCollectionPluginsMap,
     isLoading,
+    isRefreshing,
+    isError,
+    refetch,
     isFetchingNextPage,
     page,
   } = useMarketplaceData(activePluginType)
@@ -57,12 +61,12 @@ const ListWrapper = ({
   }, [searchPluginText])
 
   useEffect(() => {
-    if (isLoading || pluginsTotal === undefined)
+    if (isLoading || isError || pluginsTotal === undefined)
       return
 
     flushMarketplaceSiteSearch(pluginsTotal)
     flushMarketplaceSiteFilter(pluginsTotal)
-  }, [isLoading, pluginsTotal])
+  }, [isLoading, isError, pluginsTotal])
 
   return (
     <div
@@ -85,17 +89,37 @@ const ListWrapper = ({
             <SortDropdown />
           </div>
         )}
-        {(!isLoading || page > 1) && (
-          <List
-            marketplaceCollections={marketplaceCollections || []}
-            marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
-            plugins={plugins}
-            deferOffscreenCollections={deferOffscreenCollections}
-            showInstallButton={showInstallButton}
-            linkToMarketplaceDetail={linkToMarketplaceDetail}
-            cardSection={searchPluginText ? 'search' : 'list'}
-          />
-        )}
+        {isError && !plugins?.length
+          ? (
+              <div className="flex min-h-60 flex-col items-center justify-center gap-3 text-sm text-text-tertiary">
+                <span>{t(($) => $['marketplace.loadError'], { ns: 'plugin' })}</span>
+                <Button size="small" variant="secondary" onClick={() => void refetch()}>
+                  {t(($) => $['operation.retry'], { ns: 'common' })}
+                </Button>
+              </div>
+            )
+          : (
+              // Rendered even while a superseded query is in flight: unmounting
+              // the grid collapsed the container and jumped the scroll position
+              // on every search keystroke. `isRefreshing` dims it instead.
+              <div
+                className={cn(
+                  'flex grow flex-col transition-opacity duration-150',
+                  isRefreshing && 'opacity-60',
+                )}
+                aria-busy={isRefreshing || undefined}
+              >
+                <List
+                  marketplaceCollections={marketplaceCollections || []}
+                  marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
+                  plugins={plugins}
+                  deferOffscreenCollections={deferOffscreenCollections}
+                  showInstallButton={showInstallButton}
+                  linkToMarketplaceDetail={linkToMarketplaceDetail}
+                  cardSection={searchPluginText ? 'search' : 'list'}
+                />
+              </div>
+            )}
       </div>
       {isLoading && page === 1 && (
         <div className="absolute top-1/2 left-1/2 -translate-1/2">

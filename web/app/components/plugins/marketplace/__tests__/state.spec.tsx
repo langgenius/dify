@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { Provider as JotaiProvider } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
@@ -315,6 +315,55 @@ describe('useMarketplaceData', () => {
 
     // isFetchingNextPage should remain false
     expect(result.current.isFetchingNextPage).toBe(false)
+
+    document.body.removeChild(container)
+  })
+
+  // Regression: `isSearchMode` was derived from the raw URL value while the
+  // request body used the 500ms-debounced one. Keystroke #1 therefore flipped
+  // the hook into search mode with an empty query, firing a full search for ''
+  // whose generic top-plugins results rendered until the real ones replaced
+  // them — the wrong-results flash at the start of every search session.
+  it('should never issue an empty-query search when typing starts', async () => {
+    const { useMarketplaceData } = await import('../state')
+    const { useSearchPluginText } = await import('../atoms')
+    const { Wrapper } = createWrapper('?category=all')
+
+    const container = document.createElement('div')
+    container.id = 'marketplace-container'
+    document.body.appendChild(container)
+
+    const { result } = renderHook(
+      () => ({
+        data: useMarketplaceData(),
+        setSearch: useSearchPluginText()[1],
+      }),
+      { wrapper: Wrapper },
+    )
+
+    await waitFor(() => {
+      expect(result.current.data.isLoading).toBe(false)
+    })
+
+    await act(async () => {
+      await result.current.setSearch('openai')
+    })
+
+    await waitFor(
+      () => {
+        expect(mockSearchAdvanced).toHaveBeenCalled()
+      },
+      { timeout: 3000 },
+    )
+
+    expect(mockSearchAdvanced).not.toHaveBeenCalledWith(
+      expect.objectContaining({ body: expect.objectContaining({ query: '' }) }),
+      expect.anything(),
+    )
+    expect(mockSearchAdvanced).toHaveBeenCalledWith(
+      expect.objectContaining({ body: expect.objectContaining({ query: 'openai' }) }),
+      expect.anything(),
+    )
 
     document.body.removeChild(container)
   })

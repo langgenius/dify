@@ -12,6 +12,10 @@ export function useMarketplaceCollectionsAndPlugins(
     queryKey: marketplaceQuery.collections.queryKey({ input: { query: collectionsParams } }),
     queryFn: ({ signal }) => getMarketplaceCollectionsAndPlugins(collectionsParams, { signal }),
     enabled,
+    // Matches the plugins query: the shared client default of 3 retries holds
+    // isFetching true for ~7s of backoff, which the catalog renders as a
+    // spinner indistinguishable from a hang.
+    retry: false,
   })
 }
 

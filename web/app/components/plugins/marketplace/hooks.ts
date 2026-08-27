@@ -7,7 +7,7 @@ import type {
 import type { Plugin } from '../types'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { postMarketplace } from '@/service/base'
 import { MARKETPLACE_CONTAINER_ID, SCROLL_BOTTOM_THRESHOLD } from './constants'
 import {
@@ -209,22 +209,38 @@ export const useMarketplaceContainerScroll = (
   callback: () => void,
   scrollContainerId = MARKETPLACE_CONTAINER_ID,
 ) => {
-  const handleScroll = useCallback(
-    (e: Event) => {
-      const target = e.target as HTMLDivElement
-      const { scrollTop, scrollHeight, clientHeight } = target
-      if (scrollTop + clientHeight >= scrollHeight - SCROLL_BOTTOM_THRESHOLD && scrollTop > 0)
-        callback()
-    },
-    [callback],
-  )
+  // The callback closes over isFetching, so its identity flips on every fetch
+  // boundary. Re-subscribing on each flip dropped the scroll events in that
+  // window; a ref keeps one listener for the container's lifetime.
+  const callbackRef = useRef(callback)
+  callbackRef.current = callback
 
   useEffect(() => {
     const container = document.getElementById(scrollContainerId)
-    if (container) container.addEventListener('scroll', handleScroll)
+    if (!container) return
+
+    // scrollTop/scrollHeight/clientHeight force a synchronous layout, so
+    // measuring per scroll event janks the scroll. Worse, every threshold hit
+    // calls fetchNextPage, which defaults to cancelRefetch: true — a burst
+    // aborts and restarts the in-flight page request, and the backend counts
+    // those aborts against its search circuit breaker. One measurement per
+    // frame is both smoother and quieter on the wire.
+    let frame = 0
+    const handleScroll = () => {
+      if (frame) return
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        const { scrollTop, scrollHeight, clientHeight } = container
+        if (scrollTop > 0 && scrollTop + clientHeight >= scrollHeight - SCROLL_BOTTOM_THRESHOLD)
+          callbackRef.current()
+      })
+    }
+
+    container.addEventListener('scroll', handleScroll, { passive: true })
 
     return () => {
-      if (container) container.removeEventListener('scroll', handleScroll)
+      if (frame) cancelAnimationFrame(frame)
+      container.removeEventListener('scroll', handleScroll)
     }
-  }, [handleScroll])
+  }, [scrollContainerId])
 }

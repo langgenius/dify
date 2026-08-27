@@ -229,13 +229,14 @@ describe('getMarketplacePluginsByCollectionId', () => {
     expect(result).toHaveLength(2)
   })
 
-  it('should handle fetch error and return empty array', async () => {
+  it('should propagate fetch errors', async () => {
     mockCollectionPlugins.mockRejectedValueOnce(new Error('Network error'))
 
     const { getMarketplacePluginsByCollectionId } = await import('../utils')
-    const result = await getMarketplacePluginsByCollectionId('test-collection')
 
-    expect(result).toEqual([])
+    await expect(getMarketplacePluginsByCollectionId('test-collection')).rejects.toThrow(
+      'Network error',
+    )
   })
 
   it('should send an empty body when query is omitted', async () => {
@@ -299,14 +300,35 @@ describe('getMarketplaceCollectionsAndPlugins', () => {
     expect(result.marketplaceCollectionPluginsMap).toBeDefined()
   })
 
-  it('should handle fetch error and return empty data', async () => {
+  it('should propagate a failing collections request', async () => {
     mockCollections.mockRejectedValueOnce(new Error('Network error'))
+
+    const { getMarketplaceCollectionsAndPlugins } = await import('../utils')
+
+    // Resolving an empty catalog here made a backend outage indistinguishable
+    // from "no collections", cached as a success for the whole staleTime.
+    await expect(getMarketplaceCollectionsAndPlugins()).rejects.toThrow('Network error')
+  })
+
+  it('should keep the catalog when a single collection fails', async () => {
+    mockCollections.mockResolvedValueOnce({
+      data: {
+        collections: [
+          { name: 'ok', label: {}, description: {}, rule: '', created_at: '', updated_at: '' },
+          { name: 'broken', label: {}, description: {}, rule: '', created_at: '', updated_at: '' },
+        ],
+      },
+    })
+    mockCollectionPlugins
+      .mockResolvedValueOnce({ data: { plugins: [{ type: 'plugin', org: 'a', name: 'b' }] } })
+      .mockRejectedValueOnce(new Error('collection down'))
 
     const { getMarketplaceCollectionsAndPlugins } = await import('../utils')
     const result = await getMarketplaceCollectionsAndPlugins()
 
-    expect(result.marketplaceCollections).toEqual([])
-    expect(result.marketplaceCollectionPluginsMap).toEqual({})
+    expect(result.marketplaceCollections).toHaveLength(2)
+    expect(result.marketplaceCollectionPluginsMap.ok).toHaveLength(1)
+    expect(result.marketplaceCollectionPluginsMap.broken).toEqual([])
   })
 
   it('should append condition and type to URL when provided', async () => {
@@ -431,23 +453,15 @@ describe('getMarketplacePlugins', () => {
     expect(call![0].body.category).toBe('')
   })
 
-  it('should handle API error and return empty result', async () => {
+  it('should propagate API errors instead of synthesizing an empty page', async () => {
     mockSearchAdvanced.mockRejectedValueOnce(new Error('API error'))
 
     const { getMarketplacePlugins } = await import('../utils')
-    const result = await getMarketplacePlugins(
-      {
-        query: 'fail',
-      },
-      2,
-    )
 
-    expect(result).toEqual({
-      plugins: [],
-      total: 0,
-      page: 2,
-      page_size: 40,
-    })
+    // A synthesized `{ plugins: [], total: 0 }` resolved as a *success*: no
+    // isError, no retry, a cached empty result, and getNextPageParam saw
+    // total 0 and killed pagination for that key permanently.
+    await expect(getMarketplacePlugins({ query: 'fail' }, 2)).rejects.toThrow('API error')
   })
 
   it('should pass abort signal when provided', async () => {
