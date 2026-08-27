@@ -1,7 +1,10 @@
+import errno
+import logging
 from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+from redis.exceptions import ConnectionError as RedisConnectionError
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -15,6 +18,12 @@ class DummyQueueManager(AppQueueManager):
 
     def _publish(self, event, pub_from):
         self.published.append((event, pub_from))
+
+
+def _redis_broken_pipe_error() -> RedisConnectionError:
+    error = RedisConnectionError("Error 32 while writing to socket. Broken pipe.")
+    error.__context__ = BrokenPipeError(errno.EPIPE, "Broken pipe")
+    return error
 
 
 class TestBaseAppQueueManager:
@@ -50,6 +59,35 @@ class TestBaseAppQueueManager:
             manager = DummyQueueManager(task_id="t1", user_id="u1", invoke_from=InvokeFrom.SERVICE_API)
 
             assert manager._is_stopped() is True
+
+    @pytest.mark.parametrize(
+        "error",
+        [
+            pytest.param(BrokenPipeError(errno.EPIPE, "Broken pipe"), id="direct"),
+            pytest.param(_redis_broken_pipe_error(), id="redis-connection-error"),
+        ],
+    )
+    def test_is_stopped_ignores_broken_pipe(self, error: BaseException, caplog: pytest.LogCaptureFixture):
+        with patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis:
+            mock_redis.setex.return_value = True
+            mock_redis.get.side_effect = error
+            manager = DummyQueueManager(task_id="t1", user_id="u1", invoke_from=InvokeFrom.SERVICE_API)
+
+            with caplog.at_level(logging.WARNING, logger="core.app.apps.base_app_queue_manager"):
+                assert manager._is_stopped() is False
+
+        assert "Ignoring broken pipe while checking task stop flag" in caplog.text
+        assert "task=t1" in caplog.text
+        assert "key=generate_task_stopped:t1" in caplog.text
+
+    def test_is_stopped_propagates_other_redis_connection_errors(self):
+        with patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis:
+            mock_redis.setex.return_value = True
+            mock_redis.get.side_effect = RedisConnectionError("Connection refused")
+            manager = DummyQueueManager(task_id="t1", user_id="u1", invoke_from=InvokeFrom.SERVICE_API)
+
+            with pytest.raises(RedisConnectionError, match="Connection refused"):
+                manager._is_stopped()
 
     def test_check_for_sqlalchemy_models_raises(self):
         with patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis:
