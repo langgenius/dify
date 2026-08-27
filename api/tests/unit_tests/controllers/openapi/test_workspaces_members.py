@@ -2,7 +2,7 @@
 
 Coverage:
 - Route registration (5 endpoints across 3 URL patterns)
-- Payload validation lands at 422 (unified via @accepts)
+- Payload validation lands at 422 on the wire (unified via @accepts)
 - Domain exception → HTTP code mapping is preserved with the service's
   original message (so CLI users see what the console user sees)
 - Response shape matches the Pydantic models
@@ -10,15 +10,15 @@ Coverage:
 
 Auth is not exercised here: `@endpoint` resolves the `Context` before the
 handler runs, and the allow/deny answers live in `test_auth_matrix.py`. Body
-tests call `__handler__` — the documented seam — with a real `Context` over
-the test database. The 422 tests go through `__wrapped__` instead, so
-`@accepts` still runs against the real request.
+tests call `__handler__` — the one seam — with a real `Context` over the test
+database. The 422 tests cannot use it, because `@accepts` sits inside the guard
+and `__handler__` is below it; they go over the wire through `admitted_bearer`
+instead, and assert the canonical `ErrorBody` a client actually receives.
 """
 
 from __future__ import annotations
 
 import builtins
-import json
 import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -30,11 +30,17 @@ from flask.views import MethodView
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import BadRequest, NotFound, UnprocessableEntity
+from werkzeug.exceptions import BadRequest, NotFound
+from werkzeug.test import TestResponse
 
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi import workspaces as workspaces_module
-from controllers.openapi._errors import MemberLicenseExceeded, MemberLimitExceeded
+from controllers.openapi._errors import (
+    ErrorBody,
+    MemberLicenseExceeded,
+    MemberLimitExceeded,
+    OpenApiErrorCode,
+)
 from controllers.openapi._models import MemberInvitePayload, MemberListQuery, MemberRoleUpdatePayload
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import AccountSubject
@@ -56,6 +62,7 @@ from services.errors.account import (
     NoPermissionError,
     RoleAlreadyAssignedError,
 )
+from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -182,8 +189,17 @@ def test_member_by_id_route_registered(openapi_app: Flask):
 
 
 # ---------------------------------------------------------------------------
-# Payload validation lands at 422 (unified via @accepts)
+# Payload validation lands at 422 on the wire (unified via @accepts)
 # ---------------------------------------------------------------------------
+
+
+def _assert_validation_422(resp: TestResponse) -> None:
+    """The wire contract for a rejected payload: 422 carrying the canonical body."""
+    assert resp.status_code == 422, resp.get_json()
+    wire = resp.get_json()
+    ErrorBody.model_validate(wire)
+    assert wire["code"] == OpenApiErrorCode.INVALID_PARAM
+    assert wire["details"]
 
 
 def test_invite_payload_rejects_unknown_role():
@@ -211,44 +227,36 @@ def test_role_payload_rejects_extra_field():
         MemberRoleUpdatePayload.model_validate({"role": "normal", "extra": "x"})
 
 
-def test_invite_rejects_invalid_body_with_422(app: Flask):
-    """Invalid invite body → 422 via @accepts, before the handler is reached."""
-    ws_id = str(uuid.uuid4())
-    api = WorkspaceMembersApi()
+def test_invite_rejects_invalid_body_with_422(admitted_bearer: AdmittedWorld):
+    """Invalid invite body → 422 on the wire, from `@accepts` inside the guard."""
+    resp = admitted_bearer.client.post(
+        f"/openapi/v1/workspaces/{admitted_bearer.workspace_id}/members",
+        json={"email": "u@example.com", "role": "owner"},  # owner is not invite-assignable
+        headers=admitted_bearer.headers,
+    )
 
-    with app.test_request_context(
-        f"/openapi/v1/workspaces/{ws_id}/members",
-        method="POST",
-        data=json.dumps({"email": "u@example.com", "role": "owner"}),  # owner is not invite-assignable
-        content_type="application/json",
-    ):
-        with pytest.raises(UnprocessableEntity):
-            api.post.__wrapped__(api, ctx=None, workspace_id=ws_id)
+    _assert_validation_422(resp)
 
 
-def test_update_role_rejects_invalid_body_with_422(app: Flask):
+def test_update_role_rejects_invalid_body_with_422(admitted_bearer: AdmittedWorld):
     """Invalid role-update body surfaces as 422 through @accepts."""
-    ws_id, member_id = str(uuid.uuid4()), str(uuid.uuid4())
-    api = WorkspaceMemberApi()
+    resp = admitted_bearer.client.patch(
+        f"/openapi/v1/workspaces/{admitted_bearer.workspace_id}/members/{admitted_bearer.member_id}",
+        json={"role": "owner"},  # closed enum rejects owner
+        headers=admitted_bearer.headers,
+    )
 
-    with app.test_request_context(
-        f"/openapi/v1/workspaces/{ws_id}/members/{member_id}",
-        method="PATCH",
-        data=json.dumps({"role": "owner"}),  # closed enum rejects owner
-        content_type="application/json",
-    ):
-        with pytest.raises(UnprocessableEntity):
-            api.patch.__wrapped__(api, ctx=None, workspace_id=ws_id, member_id=member_id)
+    _assert_validation_422(resp)
 
 
-def test_members_list_rejects_unknown_query_param(app: Flask):
+def test_members_list_rejects_unknown_query_param(admitted_bearer: AdmittedWorld):
     """Strict (`extra='forbid'`) — typos like `?pg=2` surface as 422."""
-    ws_id = str(uuid.uuid4())
-    api = WorkspaceMembersApi()
+    resp = admitted_bearer.client.get(
+        f"/openapi/v1/workspaces/{admitted_bearer.workspace_id}/members?pg=2",
+        headers=admitted_bearer.headers,
+    )
 
-    with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/members?pg=2"):
-        with pytest.raises(UnprocessableEntity):
-            api.get.__wrapped__(api, ctx=None, workspace_id=ws_id)
+    _assert_validation_422(resp)
 
 
 # ---------------------------------------------------------------------------
