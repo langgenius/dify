@@ -2177,10 +2177,7 @@ class KnowledgeFSSourceUpdatePayload(BaseModel):
     def validate_update_present(self) -> KnowledgeFSSourceUpdatePayload:
         if self.metadata is not None and "parameters" in self.metadata:
             raise ValueError("Use providerParameters to update provider parameters")
-        if all(
-            value is None
-            for value in (self.metadata, self.name, self.provider_parameters, self.status, self.uri)
-        ):
+        if all(value is None for value in (self.metadata, self.name, self.provider_parameters, self.status, self.uri)):
             raise ValueError("At least one source update is required")
         return self
 
