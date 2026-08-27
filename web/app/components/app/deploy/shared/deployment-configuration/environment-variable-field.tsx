@@ -5,6 +5,7 @@ import type {
   EnvVarValueSource,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { EnvironmentVariableSelection } from './use-deployment-configuration-values'
+import type { LLMEnvironmentVariableValue } from '@/app/components/workflow/types'
 import {
   EnvVarValueSource as EnvVarValueSourceEnum,
   EnvVarValueType,
@@ -20,7 +21,24 @@ import {
 } from '@langgenius/dify-ui/select'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { isLLMEnvironmentVariableValue } from '@/app/components/workflow/llm-environment-variable'
+import dynamic from '@/next/dynamic'
 import { resolveEnvironmentVariableSelection } from './utils/workflow-deployment-input'
+
+const LLMEnvironmentVariableValueField = dynamic(
+  () =>
+    import('@/app/components/workflow/llm-environment-variable-value-field').then(
+      (module) => module.LLMEnvironmentVariableValueField,
+    ),
+  {
+    loading: () => (
+      <div
+        aria-hidden
+        className="h-8 w-full animate-pulse rounded-lg bg-components-input-bg-normal"
+      />
+    ),
+  },
+)
 
 function displayEnvironmentVariableValue(value: unknown) {
   if (value === undefined) return undefined
@@ -46,10 +64,12 @@ export const EnvironmentVariableField = memo(
     onChange: (workflowId: string, key: string, value: EnvironmentVariableSelection) => void
   }) => {
     const { t } = useTranslation('deployments')
+    const { t: tWorkflow } = useTranslation('workflow')
     const [selection, setSelection] = useState(() =>
       resolveEnvironmentVariableSelection(slot, getInitialSelection(workflowId, slot.key)),
     )
     const { customValue, source } = selection
+    const isLLM = slot.value_type === EnvVarValueType.ENV_VAR_VALUE_TYPE_LLM
     const sourceLabels: Partial<Record<EnvVarValueSource, string>> = {
       [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CONFIGURED]: t(($) => $['studio.versionValue']),
       [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM]: t(
@@ -66,13 +86,15 @@ export const EnvironmentVariableField = memo(
       ...(slot.has_configured_value ? [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CONFIGURED] : []),
       EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM,
     ]
-    const valueTypeLabel =
-      slot.value_type === EnvVarValueType.ENV_VAR_VALUE_TYPE_NUMBER
+    const valueTypeLabel = isLLM
+      ? tWorkflow(($) => $['blocks.llm'])
+      : slot.value_type === EnvVarValueType.ENV_VAR_VALUE_TYPE_NUMBER
         ? t(($) => $['deployDrawer.envVarType.number'])
         : slot.value_type === EnvVarValueType.ENV_VAR_VALUE_TYPE_SECRET
           ? t(($) => $['deployDrawer.envVarType.secret'])
           : t(($) => $['deployDrawer.envVarType.string'])
     const inputId = `deployment-env-${encodeURIComponent(workflowId)}-${encodeURIComponent(slot.key)}`
+    const labelId = `${inputId}-label`
     const editable = source === EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM
     const inputType =
       editable && slot.value_type === EnvVarValueType.ENV_VAR_VALUE_TYPE_SECRET
@@ -91,6 +113,27 @@ export const EnvironmentVariableField = memo(
       ),
     }
     const placeholder = editable ? undefined : (sourceValues[source] ?? sourceLabel)
+    const configuredLLMValue = isLLMEnvironmentVariableValue(slot.configured_value)
+      ? slot.configured_value
+      : undefined
+    const lastDeployedLLMValue = isLLMEnvironmentVariableValue(slot.last_deployed_value)
+      ? slot.last_deployed_value
+      : undefined
+    const llmSourceValues: Partial<Record<EnvVarValueSource, LLMEnvironmentVariableValue>> = {
+      [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CONFIGURED]: configuredLLMValue,
+      [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED]: lastDeployedLLMValue,
+    }
+    const displayedLLMValue = editable
+      ? isLLMEnvironmentVariableValue(customValue)
+        ? customValue
+        : undefined
+      : llmSourceValues[source]
+    const requiredLLMMode = configuredLLMValue?.mode ?? lastDeployedLLMValue?.mode
+
+    const updateSelection = (nextSelection: EnvironmentVariableSelection) => {
+      setSelection(nextSelection)
+      onChange(workflowId, slot.key, nextSelection)
+    }
 
     return (
       <div className="flex flex-col gap-1">
@@ -100,9 +143,15 @@ export const EnvironmentVariableField = memo(
               aria-hidden
               className="i-custom-vender-line-others-env size-4 shrink-0 text-util-colors-violet-violet-600"
             />
-            <label htmlFor={inputId} className="truncate system-sm-medium text-text-primary">
-              {slot.key}
-            </label>
+            {isLLM ? (
+              <span id={labelId} className="truncate system-sm-medium text-text-primary">
+                {slot.key}
+              </span>
+            ) : (
+              <label htmlFor={inputId} className="truncate system-sm-medium text-text-primary">
+                {slot.key}
+              </label>
+            )}
             <span className="shrink-0 system-xs-regular text-text-tertiary">{valueTypeLabel}</span>
             {slot.value_type === EnvVarValueType.ENV_VAR_VALUE_TYPE_SECRET && (
               <span aria-hidden className="i-ri-lock-2-line size-3 shrink-0 text-text-tertiary" />
@@ -117,8 +166,7 @@ export const EnvironmentVariableField = memo(
                 ...selection,
                 source: nextSource,
               }
-              setSelection(nextSelection)
-              onChange(workflowId, slot.key, nextSelection)
+              updateSelection(nextSelection)
             }}
           >
             <SelectTrigger
@@ -140,22 +188,36 @@ export const EnvironmentVariableField = memo(
             </SelectContent>
           </Select>
         </div>
-        <Input
-          id={inputId}
-          type={inputType}
-          value={editable ? customValue : ''}
-          placeholder={placeholder}
-          disabled={!editable}
-          autoComplete="off"
-          onChange={(event) => {
-            const nextSelection = {
-              ...selection,
-              customValue: event.target.value,
+        {isLLM ? (
+          <div role="group" aria-labelledby={labelId} className="flex w-full min-w-0">
+            <LLMEnvironmentVariableValueField
+              disabled={!editable}
+              requiredMode={requiredLLMMode}
+              value={displayedLLMValue}
+              onChange={(nextCustomValue) =>
+                updateSelection({
+                  ...selection,
+                  customValue: nextCustomValue,
+                })
+              }
+            />
+          </div>
+        ) : (
+          <Input
+            id={inputId}
+            type={inputType}
+            value={editable && typeof customValue === 'string' ? customValue : ''}
+            placeholder={placeholder}
+            disabled={!editable}
+            autoComplete="off"
+            onChange={(event) =>
+              updateSelection({
+                ...selection,
+                customValue: event.target.value,
+              })
             }
-            setSelection(nextSelection)
-            onChange(workflowId, slot.key, nextSelection)
-          }}
-        />
+          />
+        )}
         {slot.description && (
           <p className="system-xs-regular text-text-tertiary">{slot.description}</p>
         )}

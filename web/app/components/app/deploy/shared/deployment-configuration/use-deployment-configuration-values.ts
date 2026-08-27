@@ -1,10 +1,11 @@
 'use client'
 
 import type { EnvVarValueSource } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { LLMEnvironmentVariableValue } from '@/app/components/workflow/types'
 import { useCallback, useRef, useState } from 'react'
 
 export type EnvironmentVariableSelection = {
-  customValue: string
+  customValue: string | LLMEnvironmentVariableValue
   source: EnvVarValueSource
 }
 

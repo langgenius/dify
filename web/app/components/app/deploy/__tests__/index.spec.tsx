@@ -1314,7 +1314,7 @@ describe('AppDeploy', () => {
     ).toBeInTheDocument()
   })
 
-  it('reconciles an environment variable source removed by refreshed deployment options', async () => {
+  it('requires a value after refreshed deployment options reconcile the source to custom', async () => {
     const user = userEvent.setup()
     const deploymentRequests: Request[] = []
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -1381,8 +1381,16 @@ describe('AppDeploy', () => {
         'deployments.deployDrawer.envVarSource.literal',
       )
     })
-    expect(rootVariables.getByRole('spinbutton', { name: 'PORT' })).toBeEnabled()
+    const customPortInput = rootVariables.getByRole('spinbutton', { name: 'PORT' })
+    expect(customPortInput).toBeEnabled()
 
+    await user.click(
+      within(configurationDialog).getByRole('button', { name: 'common.appMenus.deploy' }),
+    )
+    expect(deploymentRequests).toHaveLength(0)
+    expect(toast.error).toHaveBeenCalledWith('workflow.env.modal.valueRequired')
+
+    await user.type(customPortInput, '3000')
     await user.click(
       within(configurationDialog).getByRole('button', { name: 'common.appMenus.deploy' }),
     )
@@ -1391,7 +1399,7 @@ describe('AppDeploy', () => {
     const body = await deploymentRequests[0]!.json()
     expect(body.environment_variable_groups[0].environment_variables).toContainEqual({
       key: 'PORT',
-      value: '',
+      value: '3000',
       value_source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_CUSTOM,
     })
   })

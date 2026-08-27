@@ -6,14 +6,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { DialogClose, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
-import { useDeployWorkflow } from '../../hooks/use-deploy-workflow'
 import { DeploymentConfigurationContent } from './content'
+import { useDeploymentConfigurationForm } from './use-deployment-configuration-form'
 import { useDeploymentConfigurationQueries } from './use-deployment-configuration-queries'
 import { useDeploymentConfigurationValues } from './use-deployment-configuration-values'
-import {
-  hasRequiredDeploymentCredentials,
-  workflowDeploymentInput,
-} from './utils/workflow-deployment-input'
 
 export function DeploymentConfiguration({
   appId,
@@ -44,50 +40,20 @@ export function DeploymentConfiguration({
     environmentId: request.environmentId,
     workflowId: version.id,
   })
-  const hasRequiredCredentials = queryState.deploymentOptions
-    ? hasRequiredDeploymentCredentials(
-        queryState.deploymentOptions,
-        configurationValues.credentials,
-      )
-    : false
-  const deployMutation = useDeployWorkflow({
+  const { canDeploy, handleSubmit, isDeploying } = useDeploymentConfigurationForm({
     appId,
+    configurationValues,
+    disabled,
+    environmentId: request.environmentId,
     invalidateAppEnvironmentsOnSuccess,
-    onSuccess: (response) => {
-      onDeploymentStarted?.(response.operation.id)
-      onClose()
-    },
+    queryState,
+    workflowId: version.id,
+    onClose,
+    onDeploymentStarted,
   })
-  const canDeploy =
-    Boolean(appId) &&
-    !disabled &&
-    queryState.canDeploy &&
-    hasRequiredCredentials &&
-    !deployMutation.isPending
 
   return (
-    <form
-      className="flex min-h-0 flex-1 flex-col"
-      onSubmit={(event) => {
-        event.preventDefault()
-        if (!appId || !canDeploy || !queryState.deploymentOptions) return
-
-        const deploymentInput = workflowDeploymentInput(
-          queryState.deploymentOptions,
-          configurationValues.getValues(),
-        )
-        if (!deploymentInput) return
-
-        deployMutation.mutate({
-          body: deploymentInput,
-          params: {
-            app_id: appId,
-            environment_id: request.environmentId,
-            workflow_id: version.id,
-          },
-        })
-      }}
-    >
+    <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
       {!embedded && (
         <DialogClose
           render={
@@ -143,12 +109,7 @@ export function DeploymentConfiguration({
         <Button type="button" variant="secondary" onClick={onClose}>
           {tCommon(($) => $['operation.cancel'])}
         </Button>
-        <Button
-          type="submit"
-          variant="primary"
-          disabled={!canDeploy}
-          loading={deployMutation.isPending}
-        >
+        <Button type="submit" variant="primary" disabled={!canDeploy} loading={isDeploying}>
           {tCommon(($) => $['appMenus.deploy'])}
         </Button>
       </footer>

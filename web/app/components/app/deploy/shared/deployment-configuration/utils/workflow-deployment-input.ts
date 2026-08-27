@@ -5,7 +5,11 @@ import type {
   WorkflowDeploymentInput,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { DeploymentConfigurationValues } from '../use-deployment-configuration-values'
-import { EnvVarValueSource as EnvVarValueSourceEnum } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import {
+  EnvVarValueSource as EnvVarValueSourceEnum,
+  EnvVarValueType,
+} from '@dify/contracts/enterprise-app-deploy/types.gen'
+import { isLLMEnvironmentVariableValue } from '@/app/components/workflow/llm-environment-variable'
 import { environmentVariableSelectionKey } from '../use-deployment-configuration-values'
 
 export function credentialSlotKey(slot: CredentialSlot) {
@@ -85,10 +89,39 @@ export function hasRequiredDeploymentCredentials(
   )
 }
 
+export function hasValidDeploymentEnvironmentVariables(
+  deploymentOptions: GetWorkflowDeploymentOptionsResponse,
+  values: DeploymentConfigurationValues,
+) {
+  for (const group of deploymentOptions.environment_variable_groups) {
+    const owner = group.from_app ?? group.from_workflow_as_tool
+    if (!owner) return false
+
+    for (const slot of group.environment_variable_slots) {
+      const selection = resolveEnvironmentVariableSelection(
+        slot,
+        values.environmentVariables[environmentVariableSelectionKey(owner.workflow_id, slot.key)],
+      )
+      if (selection.source !== EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM) continue
+
+      if (slot.value_type === EnvVarValueType.ENV_VAR_VALUE_TYPE_LLM) {
+        if (!isLLMEnvironmentVariableValue(selection.customValue)) return false
+        continue
+      }
+
+      if (typeof selection.customValue !== 'string' || selection.customValue === '') return false
+    }
+  }
+
+  return true
+}
+
 export function workflowDeploymentInput(
   deploymentOptions: GetWorkflowDeploymentOptionsResponse,
   values: DeploymentConfigurationValues,
 ): WorkflowDeploymentInput | undefined {
+  if (!hasValidDeploymentEnvironmentVariables(deploymentOptions, values)) return
+
   const credentials: NonNullable<WorkflowDeploymentInput['credentials']> = []
 
   for (const slot of deploymentOptions.credential_slots) {

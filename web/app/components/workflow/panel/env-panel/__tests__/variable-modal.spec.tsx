@@ -145,6 +145,16 @@ describe('VariableModal', () => {
     latestModelParameterModalProps = undefined
   })
 
+  it('closes from an accessible icon button', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    renderWithProviders(<VariableModal onClose={onClose} onSave={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
   it('creates a secret environment variable and normalizes spaces in its name', async () => {
     const user = userEvent.setup()
     const onSave = vi.fn()
