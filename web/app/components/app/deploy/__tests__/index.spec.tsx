@@ -1388,7 +1388,7 @@ describe('AppDeploy', () => {
       within(configurationDialog).getByRole('button', { name: 'common.appMenus.deploy' }),
     )
     expect(deploymentRequests).toHaveLength(0)
-    expect(toast.error).toHaveBeenCalledWith('workflow.env.modal.valueRequired')
+    expect(toast.error).toHaveBeenCalledWith('Finance APP · PORT: workflow.env.modal.valueRequired')
 
     await user.type(customPortInput, '3000')
     await user.click(
@@ -1402,6 +1402,60 @@ describe('AppDeploy', () => {
       value: '3000',
       value_source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_CUSTOM,
     })
+  })
+
+  it('shows a toast instead of submitting when a credential is missing', async () => {
+    const user = userEvent.setup()
+    const deploymentRequests: Request[] = []
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init)
+      if (!request.url.includes('/deployment:deploy'))
+        throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+
+      deploymentRequests.push(request.clone())
+      return new Response(JSON.stringify({ message: 'Stop after capturing the request' }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 502,
+      })
+    })
+    const view = render(<AppDeploy />)
+    const deploymentOptionsQuery = workflowDeploymentOptionsQueryOptions(
+      'workflow-version-6',
+      'dev',
+    )
+    act(() => {
+      view.queryClient.setQueryData(deploymentOptionsQuery.queryKey, {
+        ...WORKFLOW_DEPLOYMENT_OPTIONS,
+        credential_slots: WORKFLOW_DEPLOYMENT_OPTIONS.credential_slots.map((slot) =>
+          slot.provider_id === 'moonshot'
+            ? { ...slot, last_deployed_credential_id: undefined }
+            : slot,
+        ),
+      })
+    })
+
+    await user.click(screen.getByRole('button', { name: 'common.appMenus.deploy' }))
+    await user.click(screen.getByRole('menuitem', { name: /Dev/ }))
+    const versionDialog = await screen.findByRole('dialog', {
+      name: 'deployments.versions.deployTo:{"name":"Dev"}',
+    })
+    await user.click(within(versionDialog).getByRole('button', { name: /Release 6/ }))
+
+    const configurationDialog = await screen.findByRole('dialog', {
+      name: 'deployments.studio.deployConfiguration',
+    })
+    const deployButton = within(configurationDialog).getByRole('button', {
+      name: 'common.appMenus.deploy',
+    })
+    expect(
+      within(configurationDialog).getByRole('combobox', { name: 'Moonshot' }),
+    ).toHaveTextContent('deployments.deployDrawer.selectCredential')
+    expect(deployButton).toBeEnabled()
+
+    await user.click(deployButton)
+
+    expect(deploymentRequests).toHaveLength(0)
+    expect(toast.error).toHaveBeenCalledWith('Moonshot: deployments.deployDrawer.selectCredential')
   })
 
   it('deploys the selected workflow configuration and refreshes the deployment list', async () => {

@@ -7,7 +7,9 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useTranslation } from 'react-i18next'
 import { useDeployWorkflow } from '../../hooks/use-deploy-workflow'
 import {
-  hasRequiredDeploymentCredentials,
+  credentialProviderName,
+  findInvalidDeploymentCredential,
+  findInvalidDeploymentEnvironmentVariable,
   hasValidDeploymentEnvironmentVariables,
   workflowDeploymentInput,
 } from './utils/workflow-deployment-input'
@@ -33,13 +35,9 @@ export function useDeploymentConfigurationForm({
   onClose: () => void
   onDeploymentStarted?: (operationId: string) => void
 }) {
-  const { t } = useTranslation('workflow')
-  const hasRequiredCredentials = queryState.deploymentOptions
-    ? hasRequiredDeploymentCredentials(
-        queryState.deploymentOptions,
-        configurationValues.credentials,
-      )
-    : false
+  const { t: tCommon } = useTranslation('common')
+  const { t: tDeployments } = useTranslation('deployments')
+  const { t: tWorkflow } = useTranslation('workflow')
   const deployMutation = useDeployWorkflow({
     appId,
     invalidateAppEnvironmentsOnSuccess,
@@ -48,25 +46,51 @@ export function useDeploymentConfigurationForm({
       onClose()
     },
   })
-  const canDeploy =
-    Boolean(appId) &&
-    !disabled &&
-    queryState.canDeploy &&
-    hasRequiredCredentials &&
-    !deployMutation.isPending
+  const canDeploy = Boolean(appId) && !disabled && queryState.canDeploy && !deployMutation.isPending
 
   const handleSubmit: FormEventHandler<HTMLFormElement> = (event) => {
     event.preventDefault()
     if (!appId || !canDeploy || !queryState.deploymentOptions) return
 
     const values = configurationValues.getValues()
+    const invalidCredential = findInvalidDeploymentCredential(
+      queryState.deploymentOptions,
+      values.credentials,
+    )
+    if (invalidCredential) {
+      toast.error(
+        `${credentialProviderName(invalidCredential.provider_id)}: ${
+          invalidCredential.candidates.length === 0
+            ? tDeployments(($) => $['deployDrawer.noCredentialCandidates'])
+            : tDeployments(($) => $['deployDrawer.selectCredential'])
+        }`,
+      )
+      return
+    }
+
+    const invalidEnvironmentVariable = findInvalidDeploymentEnvironmentVariable(
+      queryState.deploymentOptions,
+      values,
+    )
+    if (invalidEnvironmentVariable) {
+      toast.error(
+        `${invalidEnvironmentVariable.owner.name} · ${invalidEnvironmentVariable.slot.key}: ${tWorkflow(
+          ($) => $['env.modal.valueRequired'],
+        )}`,
+      )
+      return
+    }
+
     if (!hasValidDeploymentEnvironmentVariables(queryState.deploymentOptions, values)) {
-      toast.error(t(($) => $['env.modal.valueRequired']))
+      toast.error(tCommon(($) => $.error))
       return
     }
 
     const deploymentInput = workflowDeploymentInput(queryState.deploymentOptions, values)
-    if (!deploymentInput) return
+    if (!deploymentInput) {
+      toast.error(tCommon(($) => $.error))
+      return
+    }
 
     deployMutation.mutate({
       body: deploymentInput,

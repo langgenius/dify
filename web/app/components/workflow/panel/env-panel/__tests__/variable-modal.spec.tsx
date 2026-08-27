@@ -291,6 +291,26 @@ describe('VariableModal', () => {
     })
   })
 
+  it('rejects an LLM environment variable with an empty model selection', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+    const env = createEnv({
+      value: { mode: '', name: '', provider: '' },
+      value_type: 'llm',
+    })
+
+    renderWithProviders(<VariableModal env={env} onClose={vi.fn()} onSave={onSave} />, {
+      storeState: {
+        environmentVariables: [env],
+      },
+    })
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    expect(mockToastError).toHaveBeenCalledWith('workflow.env.modal.valueRequired')
+    expect(onSave).not.toHaveBeenCalled()
+  })
+
   it('keeps an edited LLM environment variable within its existing model mode', async () => {
     const user = userEvent.setup()
     const onSave = vi.fn()

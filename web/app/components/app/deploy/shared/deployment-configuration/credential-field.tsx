@@ -14,17 +14,8 @@ import { useTranslation } from 'react-i18next'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
+import { credentialProviderName } from './utils/workflow-deployment-input'
 import { WorkflowDependencyPreview } from './workflow-source-popover'
-
-function providerName(providerId: string) {
-  const name = providerId.split('/').filter(Boolean).at(-1) ?? providerId
-
-  return name
-    .split(/[-_]/)
-    .filter(Boolean)
-    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
-    .join(' ')
-}
 
 export function CredentialField({
   slot,
@@ -42,7 +33,7 @@ export function CredentialField({
   const { getIconUrl } = useGetIcon()
   const { theme } = useTheme()
   const selectedOption = slot.candidates.find((candidate) => candidate.credential_id === value)
-  const name = providerName(slot.provider_id)
+  const name = credentialProviderName(slot.provider_id)
   const iconFileName =
     theme === Theme.dark ? slot.icon_dark || slot.icon : slot.icon || slot.icon_dark
   const iconSrc = iconFileName ? getIconUrl(iconFileName) : undefined

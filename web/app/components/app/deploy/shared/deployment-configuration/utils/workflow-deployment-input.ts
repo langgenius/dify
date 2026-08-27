@@ -16,6 +16,16 @@ export function credentialSlotKey(slot: CredentialSlot) {
   return `${slot.provider_id}:${slot.category}`
 }
 
+export function credentialProviderName(providerId: string) {
+  const name = providerId.split('/').filter(Boolean).at(-1) ?? providerId
+
+  return name
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(' ')
+}
+
 export function defaultCredentialId(slot: CredentialSlot) {
   if (
     slot.last_deployed_credential_id &&
@@ -27,6 +37,18 @@ export function defaultCredentialId(slot: CredentialSlot) {
   }
 
   return slot.candidates.length === 1 ? slot.candidates[0]?.credential_id : undefined
+}
+
+function selectedCredentialId(
+  slot: CredentialSlot,
+  credentials: DeploymentConfigurationValues['credentials'],
+) {
+  const credentialId = credentials[credentialSlotKey(slot)] ?? defaultCredentialId(slot)
+  if (!credentialId) return undefined
+
+  return slot.candidates.some((candidate) => candidate.credential_id === credentialId)
+    ? credentialId
+    : undefined
 }
 
 function defaultEnvironmentVariableSelection(
@@ -84,36 +106,95 @@ export function hasRequiredDeploymentCredentials(
   deploymentOptions: GetWorkflowDeploymentOptionsResponse,
   credentials: DeploymentConfigurationValues['credentials'],
 ) {
-  return deploymentOptions.credential_slots.every((slot) =>
-    Boolean(credentials[credentialSlotKey(slot)] ?? defaultCredentialId(slot)),
-  )
+  return !findInvalidDeploymentCredential(deploymentOptions, credentials)
+}
+
+export function findInvalidDeploymentCredential(
+  deploymentOptions: GetWorkflowDeploymentOptionsResponse,
+  credentials: DeploymentConfigurationValues['credentials'],
+) {
+  return deploymentOptions.credential_slots.find((slot) => !selectedCredentialId(slot, credentials))
+}
+
+function selectedEnvironmentVariableValue(
+  slot: EnvironmentVariableSlot,
+  selection: DeploymentConfigurationValues['environmentVariables'][string],
+) {
+  switch (selection.source) {
+    case EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CONFIGURED:
+      return slot.configured_value
+    case EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED:
+      return slot.last_deployed_value
+    case EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM:
+      return selection.customValue
+    default:
+      return undefined
+  }
+}
+
+function hasValidEnvironmentVariableValue(slot: EnvironmentVariableSlot, value: unknown) {
+  switch (slot.value_type) {
+    case EnvVarValueType.ENV_VAR_VALUE_TYPE_LLM:
+      return isLLMEnvironmentVariableValue(value)
+    case EnvVarValueType.ENV_VAR_VALUE_TYPE_NUMBER:
+      return (
+        (typeof value === 'number' && Number.isFinite(value)) ||
+        (typeof value === 'string' && value !== '' && Number.isFinite(Number(value)))
+      )
+    case EnvVarValueType.ENV_VAR_VALUE_TYPE_SECRET:
+    case EnvVarValueType.ENV_VAR_VALUE_TYPE_STRING:
+      return typeof value === 'string' && value !== ''
+    default:
+      return false
+  }
 }
 
 export function hasValidDeploymentEnvironmentVariables(
   deploymentOptions: GetWorkflowDeploymentOptionsResponse,
   values: DeploymentConfigurationValues,
 ) {
+  if (
+    deploymentOptions.environment_variable_groups.some(
+      (group) => !group.from_app && !group.from_workflow_as_tool,
+    )
+  )
+    return false
+
+  return !findInvalidDeploymentEnvironmentVariable(deploymentOptions, values)
+}
+
+export function findInvalidDeploymentEnvironmentVariable(
+  deploymentOptions: GetWorkflowDeploymentOptionsResponse,
+  values: DeploymentConfigurationValues,
+) {
   for (const group of deploymentOptions.environment_variable_groups) {
     const owner = group.from_app ?? group.from_workflow_as_tool
-    if (!owner) return false
+    if (!owner) continue
 
     for (const slot of group.environment_variable_slots) {
       const selection = resolveEnvironmentVariableSelection(
         slot,
         values.environmentVariables[environmentVariableSelectionKey(owner.workflow_id, slot.key)],
       )
-      if (selection.source !== EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM) continue
+      const selectedValue = selectedEnvironmentVariableValue(slot, selection)
+      if (!hasValidEnvironmentVariableValue(slot, selectedValue)) return { owner, slot }
 
-      if (slot.value_type === EnvVarValueType.ENV_VAR_VALUE_TYPE_LLM) {
-        if (!isLLMEnvironmentVariableValue(selection.customValue)) return false
-        continue
+      if (
+        selection.source === EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM &&
+        slot.value_type === EnvVarValueType.ENV_VAR_VALUE_TYPE_LLM &&
+        isLLMEnvironmentVariableValue(selectedValue)
+      ) {
+        const requiredMode = isLLMEnvironmentVariableValue(slot.configured_value)
+          ? slot.configured_value.mode
+          : isLLMEnvironmentVariableValue(slot.last_deployed_value)
+            ? slot.last_deployed_value.mode
+            : undefined
+        if (requiredMode && selectedValue.mode !== requiredMode) return { owner, slot }
       }
-
-      if (typeof selection.customValue !== 'string' || selection.customValue === '') return false
     }
   }
 
-  return true
+  return undefined
 }
 
 export function workflowDeploymentInput(
@@ -125,7 +206,7 @@ export function workflowDeploymentInput(
   const credentials: NonNullable<WorkflowDeploymentInput['credentials']> = []
 
   for (const slot of deploymentOptions.credential_slots) {
-    const credentialId = values.credentials[credentialSlotKey(slot)] ?? defaultCredentialId(slot)
+    const credentialId = selectedCredentialId(slot, values.credentials)
     if (!credentialId) return
 
     credentials.push({
