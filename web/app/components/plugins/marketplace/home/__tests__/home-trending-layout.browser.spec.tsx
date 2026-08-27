@@ -61,6 +61,23 @@ describe('Marketplace home trending layout', () => {
     expect(adSlide.getBoundingClientRect().height).toBe(blogSlide.getBoundingClientRect().height)
   })
 
+  it('keeps the ad artwork left-aligned so responsive cropping stays on the right', async () => {
+    await page.viewport(600, 900)
+    const screen = await render(
+      <div data-marketplace-standalone className="w-[560px]">
+        <HomeBannerSlide banner={adBanner} isMarketplacePlatform page="plugins" />
+      </div>,
+    )
+
+    const artwork = screen
+      .getByRole('link', { name: 'Partner campaign' })
+      .element()
+      .querySelector('img')
+
+    expect(artwork).not.toBeNull()
+    expect(getComputedStyle(artwork!).objectPosition).toBe('0% 50%')
+  })
+
   it('keeps the blog artwork left corners rounded when its image is cropped', async () => {
     const screen = await render(
       <div className="w-[600px]">
