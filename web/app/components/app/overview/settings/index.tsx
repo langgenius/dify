@@ -413,7 +413,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               </div>
             )}
             {/* form body */}
-            <ScrollArea className="relative row-start-2 min-h-0 overflow-hidden">
+            <ScrollArea className="row-start-2 min-h-0 overflow-hidden">
               <ScrollAreaViewport className="max-h-full overflow-y-auto overscroll-contain">
                 <ScrollAreaContent className="flex min-w-0 flex-col gap-y-5 px-6 py-3">
                   {/* name & icon */}

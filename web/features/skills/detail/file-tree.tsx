@@ -1361,7 +1361,7 @@ export function FileTree({
               }}
             />
           </div>
-          <ScrollArea className="relative min-h-0 flex-1 overflow-hidden">
+          <ScrollArea className="min-h-0 flex-1 overflow-hidden">
             <ScrollAreaViewport tabIndex={-1}>
               <ScrollAreaContent
                 className={cn(

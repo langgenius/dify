@@ -40,7 +40,7 @@ type ModelSelectorScrollBodyProps = {
 
 export function ModelSelectorScrollBody({ children, label }: ModelSelectorScrollBodyProps) {
   return (
-    <ScrollArea className="relative min-h-0 overflow-hidden">
+    <ScrollArea className="min-h-0 overflow-hidden">
       <ScrollAreaViewport
         aria-label={label}
         style={{ overflowX: 'hidden' }}

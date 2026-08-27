@@ -488,7 +488,7 @@ const InsideScrollingContentDemo = () => {
               title="Release notes"
               description="Highlights from the latest workspace update."
             />
-            <ScrollArea className="relative flex min-h-0 flex-auto overflow-hidden">
+            <ScrollArea className="flex min-h-0 flex-auto overflow-hidden">
               <ScrollAreaViewport
                 aria-label="Release note improvements"
                 role="region"
