@@ -55,7 +55,11 @@ function tempDir(prefix: string): string {
 // `cliVersion` left undefined deletes the key from a copy of the parent env, rather
 // than trusting the parent not to carry one. Empty string is a separate case on
 // purpose: `${VAR:?}` rejects both, but a future `${VAR?}` would accept empty.
-function runScript(script: string, cliVersion?: string): Run {
+function runScript(
+  script: string,
+  cliVersion?: string,
+  extraEnv: Record<string, string | undefined> = {},
+): Run {
   const stubDir = tempDir('difyctl-stub-bun-')
   writeFileSync(`${stubDir}/bun`, STUB_BUN)
   chmodSync(`${stubDir}/bun`, 0o755)
@@ -64,6 +68,7 @@ function runScript(script: string, cliVersion?: string): Run {
       ...process.env,
       PATH: `${stubDir}:${process.env.PATH ?? ''}`,
       CLI_VERSION: cliVersion,
+      ...extraEnv,
     }
     const childEnv: Record<string, string> = {}
     for (const [key, value] of Object.entries(merged)) {
@@ -118,7 +123,13 @@ for (const scriptName of [BUILD_SH, CHECKSUMS_SH]) {
 // Proven by running against a fake root where the next step along is missing, so the
 // script reaches a later, different error — no compile, and nothing real touched.
 describe('release scripts accept a supplied CLI_VERSION', () => {
-  it('release-build.sh reaches the entry check', () => {
+  // Skipped on Windows, not because the guard differs but because nothing past it
+  // can run there: `read_pkg` embeds an absolute path inside a node require()
+  // string, and under Git bash that is an MSYS path (/d/a/...) node cannot resolve.
+  // The assignment then fails under `set -e` with stderr empty — read_pkg discards
+  // node's stderr — so the script dies before any assertion here is reachable.
+  // release-build.sh is a POSIX release builder that only ever runs on Linux.
+  it.skipIf(process.platform === 'win32')('release-build.sh reaches the entry check', () => {
     const root = fakeCliRoot(BUILD_SH)
     try {
       const r = runScript(`${root}/scripts/${BUILD_SH}`, '2.4.0')
@@ -163,6 +174,51 @@ describe('release-build.sh guard ordering', () => {
       const r = runScript(`${root}/scripts/${BUILD_SH}`)
       expect(r.code).not.toBe(0)
       expect(r.stderr).toContain('CLI_VERSION')
+      expect(existsSync(sentinel)).toBe(true)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+})
+
+// A missing package.json field makes `node -p` print the literal string "undefined",
+// which the build would otherwise bake in as a --define. At runtime that parses to
+// undefined, evaluateCompat returns "unknown", and enforce.ts only hard-fails on
+// "too_old" — so the version gate silently switches off on every published binary,
+// visible only as `dify >=undefined` in `difyctl version`. Fail closed instead.
+//
+// Windows-skipped for the same reason as the entry-check test above: DIFYCTL_CHANNEL
+// still resolves through read_pkg, so the script dies there before reaching a bound.
+describe.skipIf(process.platform === 'win32')('release-build.sh compat bounds', () => {
+  for (const bound of ['DIFYCTL_MIN_DIFY', 'DIFYCTL_MAX_DIFY']) {
+    it.each(['undefined', '1.x', '1.16'])(`rejects ${bound}=%s`, (bad) => {
+      const r = runScript(`${SCRIPTS_DIR}/${BUILD_SH}`, '2.4.0', { [bound]: bad })
+      expect(r.code).not.toBe(0)
+      expect(r.stderr).toContain(bound)
+    })
+
+    // Unlike CLI_VERSION, these are optional overrides: `${VAR:-default}` treats empty
+    // as unset, so an empty value falls back to the manifest bound and is expected to
+    // build. Asserted so the two behaviours stay deliberately different.
+    it(`falls back to the manifest when ${bound} is empty`, () => {
+      const r = runScript(`${SCRIPTS_DIR}/${BUILD_SH}`, '2.4.0', { [bound]: '' })
+      expect(r.stderr).not.toContain(bound)
+    })
+  }
+
+  it('does not wipe dist/bin when a bound guard fires', () => {
+    const root = fakeCliRoot(BUILD_SH)
+    const sentinel = `${root}/dist/bin/prior-build`
+    try {
+      mkdirSync(`${root}/dist/bin`, { recursive: true })
+      writeFileSync(sentinel, 'output from an earlier build')
+      mkdirSync(`${root}/bin`, { recursive: true })
+      writeFileSync(`${root}/bin/run.ts`, 'export {}\n')
+
+      const r = runScript(`${root}/scripts/${BUILD_SH}`, '2.4.0', {
+        DIFYCTL_MIN_DIFY: 'undefined',
+      })
+      expect(r.code).not.toBe(0)
       expect(existsSync(sentinel)).toBe(true)
     } finally {
       rmSync(root, { recursive: true, force: true })

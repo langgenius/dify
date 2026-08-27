@@ -16,8 +16,8 @@
 #                        Release workflow). `pnpm build:bin:local` sets it locally.
 # Optional (defaults derived from cli/package.json + git):
 #   DIFYCTL_CHANNEL    — package.json `difyctl.channel`
-#   DIFYCTL_MIN_DIFY   — package.json `difyctl.compat.minDify`
-#   DIFYCTL_MAX_DIFY   — package.json `difyctl.compat.maxDify`
+#   DIFYCTL_MIN_DIFY   — package.json `difyctl.compat.minDify`; must be X.Y.Z
+#   DIFYCTL_MAX_DIFY   — package.json `difyctl.compat.maxDify`; must be X.Y.Z
 #   DIFYCTL_COMMIT     — `git rev-parse HEAD` (or "unknown")
 #   DIFYCTL_BUILD_DATE — current UTC time
 #
@@ -43,6 +43,18 @@ naming() { node "${_dir}/release-naming.mjs" "$@"; }
 DIFYCTL_CHANNEL="${DIFYCTL_CHANNEL:-$(read_pkg difyctl.channel)}"
 DIFYCTL_MIN_DIFY="${DIFYCTL_MIN_DIFY:-$(read_pkg difyctl.compat.minDify)}"
 DIFYCTL_MAX_DIFY="${DIFYCTL_MAX_DIFY:-$(read_pkg difyctl.compat.maxDify)}"
+
+# `node -p` prints the string "undefined" for a missing field, so an unset bound
+# reaches the binary as a define rather than as an error. It then parses to
+# undefined at runtime, evaluateCompat returns "unknown", and enforce.ts only
+# hard-fails on "too_old" — so a typo here silently disables the version gate on
+# every published binary, visible only as `dify >=undefined` in `difyctl version`.
+require_bound() {
+    [[ "$2" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+        || die "$1 must be a plain X.Y.Z version, got '$2'"
+}
+require_bound DIFYCTL_MIN_DIFY "$DIFYCTL_MIN_DIFY"
+require_bound DIFYCTL_MAX_DIFY "$DIFYCTL_MAX_DIFY"
 DIFYCTL_COMMIT="${DIFYCTL_COMMIT:-$(git -C "$cli_root" rev-parse HEAD 2>/dev/null || echo unknown)}"
 DIFYCTL_BUILD_DATE="${DIFYCTL_BUILD_DATE:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
 
