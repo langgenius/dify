@@ -177,7 +177,6 @@
     "@vitejs/plugin-rsc": "catalog:",
     "@vitest/browser-playwright": "catalog:",
     "@vitest/coverage-v8": "catalog:",
-    "agentation": "catalog:",
     "code-inspector-plugin": "catalog:",
     "happy-dom": "catalog:",
     "playwright": "catalog:",
