@@ -25,6 +25,7 @@ from .plugin import (
 from .rbac import (
     migrate_dataset_permissions_to_rbac,
     migrate_member_roles_to_rbac,
+    migrate_only_me_resource_whitelist_scopes_to_automatic_include,
     migrate_resource_whitelist_scopes_to_automatic_include,
 )
 from .retention import (
@@ -85,6 +86,7 @@ __all__ = [
     "migrate_dataset_permissions_to_rbac",
     "migrate_knowledge_vector_database",
     "migrate_member_roles_to_rbac",
+    "migrate_only_me_resource_whitelist_scopes_to_automatic_include",
     "migrate_oss",
     "migrate_resource_whitelist_scopes_to_automatic_include",
     "migration_data_wizard",
