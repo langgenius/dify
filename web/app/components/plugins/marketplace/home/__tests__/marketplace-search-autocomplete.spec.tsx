@@ -363,13 +363,16 @@ describe('MarketplaceSearchAutocomplete', () => {
       const [value, setValue] = useState('')
 
       return (
-        <MarketplaceSearchAutocomplete
-          locale="en-US"
-          onValueChange={setValue}
-          placeholder="Search plugins"
-          scope="plugins"
-          value={value}
-        />
+        <>
+          <MarketplaceSearchAutocomplete
+            locale="en-US"
+            onValueChange={setValue}
+            placeholder="Search plugins"
+            scope="plugins"
+            value={value}
+          />
+          <button type="button">Outside search</button>
+        </>
       )
     }
 
@@ -378,10 +381,10 @@ describe('MarketplaceSearchAutocomplete', () => {
     await user.type(screen.getByRole('combobox'), 'google')
     expect(screen.getByText(/Loading/)).toBeInTheDocument()
 
-    // Base UI marks the rest of the document inert while the popup is open,
-    // so the outside-press target is its Dismiss control — not a sibling button.
-    await user.click(screen.getAllByRole('button', { name: 'Dismiss' })[0]!)
-    expect(screen.queryByText(/Loading/)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Outside search' }))
+    await waitFor(() => {
+      expect(screen.getByText(/Loading/)).not.toBeVisible()
+    })
 
     resolvePluginSearch(pluginResponse)
 

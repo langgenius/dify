@@ -11,7 +11,6 @@ import {
   AutocompleteItemIndicator,
   AutocompleteItemText,
   AutocompleteList,
-  AutocompletePopup,
   AutocompletePortal,
   AutocompletePositioner,
   AutocompleteStatus,
@@ -19,7 +18,7 @@ import {
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from '#i18n'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import { renderI18nObject } from '@/i18n-config/index'
@@ -96,6 +95,8 @@ export function MarketplaceSearchAutocomplete({
 }: MarketplaceSearchAutocompleteProps) {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
+  const searchRootRef = useRef<HTMLDivElement>(null)
+  const resultsPanelRef = useRef<HTMLDivElement>(null)
   const debouncedSearch = useDebounce(value.trim(), { wait: 300 })
   const hasQuery = Boolean(debouncedSearch)
   const searchesPlugins = scope === 'all' || scope === 'plugins'
@@ -170,110 +171,131 @@ export function MarketplaceSearchAutocomplete({
       ? t(($) => $['newApp.noTemplateFound'], { ns: 'app' })
       : t(($) => $['marketplace.noPluginFound'], { ns: 'plugin' })
 
+  useEffect(() => {
+    if (!isPopupOpen) return
+
+    const handleOutsidePress = (event: MouseEvent) => {
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (searchRootRef.current?.contains(target) || resultsPanelRef.current?.contains(target))
+        return
+      setIsOpen(false)
+    }
+
+    document.addEventListener('click', handleOutsidePress)
+    return () => document.removeEventListener('click', handleOutsidePress)
+  }, [isPopupOpen])
+
   return (
-    <Autocomplete
-      filter={null}
-      itemToStringValue={(item) => item.label}
-      items={suggestions}
-      mode="list"
-      name={inputName}
-      onOpenChange={setIsOpen}
-      onValueChange={(nextValue) => {
-        onValueChange(nextValue)
-        setIsOpen(Boolean(nextValue.trim()))
-      }}
-      open={isPopupOpen}
-      openOnInputClick
-      submitOnItemClick={Boolean(inputName)}
-      value={value}
-    >
-      <AutocompleteInputGroup size="large">
-        <span
-          aria-hidden
-          className="ml-3 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
-        />
-        <AutocompleteInput
-          aria-label={placeholder}
-          className="px-2 text-sm"
-          placeholder={placeholder}
-          size="large"
-          type="text"
-        />
-        {!!value && (
-          <AutocompleteClear
-            aria-label={t(($) => $.clearSearch, { ns: 'plugin', label: placeholder })}
-            size="large"
+    <div ref={searchRootRef} className="relative">
+      <Autocomplete
+        filter={null}
+        itemToStringValue={(item) => item.label}
+        items={suggestions}
+        mode="list"
+        name={inputName}
+        onOpenChange={setIsOpen}
+        onValueChange={(nextValue) => {
+          onValueChange(nextValue)
+          setIsOpen(Boolean(nextValue.trim()))
+        }}
+        open={isPopupOpen}
+        openOnInputClick
+        submitOnItemClick={Boolean(inputName)}
+        value={value}
+      >
+        <AutocompleteInputGroup size="large">
+          <span
+            aria-hidden
+            className="ml-3 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
           />
-        )}
-      </AutocompleteInputGroup>
-      <AutocompletePortal hidden={!isPopupOpen}>
-        <AutocompletePositioner sideOffset={8}>
-          <AutocompletePopup className="max-w-[420px]" aria-busy={isSearching || undefined}>
-            <AutocompleteList<MarketplaceSuggestion>>
-              {(item) => (
-                <AutocompleteItem
-                  key={item.id}
-                  value={item}
-                  className="items-start py-2"
-                  onClick={
-                    onSuggestionSelect
-                      ? () => {
-                          onSuggestionSelect(item.selection)
-                          queueMicrotask(() => {
-                            onValueChange('')
-                            setIsOpen(false)
-                          })
-                        }
-                      : undefined
-                  }
-                >
-                  {item.iconUrl ? (
-                    <img
-                      alt=""
-                      className="mt-0.5 size-6 shrink-0 rounded-md object-contain"
-                      src={item.iconUrl}
-                      onError={({ currentTarget }) => {
-                        currentTarget.style.display = 'none'
-                      }}
-                    />
-                  ) : (
-                    <span
-                      aria-hidden
-                      className={cn(
-                        'mt-0.5 size-4 shrink-0 text-text-tertiary',
-                        item.kind === 'template' ? 'i-ri-layout-grid-line' : 'i-ri-puzzle-2-line',
+          <AutocompleteInput
+            aria-label={placeholder}
+            className="px-2 text-sm"
+            placeholder={placeholder}
+            size="large"
+            type="text"
+          />
+          {!!value && (
+            <AutocompleteClear
+              aria-label={t(($) => $.clearSearch, { ns: 'plugin', label: placeholder })}
+              size="large"
+            />
+          )}
+        </AutocompleteInputGroup>
+        <AutocompletePortal hidden={!isPopupOpen}>
+          <AutocompletePositioner sideOffset={8}>
+            <div
+              ref={resultsPanelRef}
+              className="w-(--anchor-width) max-w-[420px] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden"
+              aria-busy={isSearching || undefined}
+            >
+              <AutocompleteList<MarketplaceSuggestion>>
+                {(item) => (
+                  <AutocompleteItem
+                    key={item.id}
+                    value={item}
+                    className="items-start py-2"
+                    onClick={
+                      onSuggestionSelect
+                        ? () => {
+                            onSuggestionSelect(item.selection)
+                            queueMicrotask(() => {
+                              onValueChange('')
+                              setIsOpen(false)
+                            })
+                          }
+                        : undefined
+                    }
+                  >
+                    {item.iconUrl ? (
+                      <img
+                        alt=""
+                        className="mt-0.5 size-6 shrink-0 rounded-md object-contain"
+                        src={item.iconUrl}
+                        onError={({ currentTarget }) => {
+                          currentTarget.style.display = 'none'
+                        }}
+                      />
+                    ) : (
+                      <span
+                        aria-hidden
+                        className={cn(
+                          'mt-0.5 size-4 shrink-0 text-text-tertiary',
+                          item.kind === 'template' ? 'i-ri-layout-grid-line' : 'i-ri-puzzle-2-line',
+                        )}
+                      />
+                    )}
+                    <span className="flex min-w-0 grow flex-col gap-0.5">
+                      <AutocompleteItemText className="px-0 text-text-primary">
+                        {item.label}
+                      </AutocompleteItemText>
+                      {!!item.description && (
+                        <span className="line-clamp-2 system-xs-regular text-text-tertiary">
+                          {item.description}
+                        </span>
                       )}
-                    />
-                  )}
-                  <span className="flex min-w-0 grow flex-col gap-0.5">
-                    <AutocompleteItemText className="px-0 text-text-primary">
-                      {item.label}
-                    </AutocompleteItemText>
-                    {!!item.description && (
-                      <span className="line-clamp-2 system-xs-regular text-text-tertiary">
-                        {item.description}
-                      </span>
-                    )}
-                    {!!item.meta && (
-                      <span className="truncate system-xs-regular text-text-quaternary">
-                        {item.meta}
-                      </span>
-                    )}
-                  </span>
-                  <AutocompleteItemIndicator />
-                </AutocompleteItem>
-              )}
-            </AutocompleteList>
-            <AutocompleteEmpty>
-              {!isSearching && suggestions.length === 0 ? emptyText : null}
-            </AutocompleteEmpty>
-            <AutocompleteStatus>
-              {isSearching ? t(($) => $.loading, { ns: 'common' }) : null}
-            </AutocompleteStatus>
-          </AutocompletePopup>
-        </AutocompletePositioner>
-      </AutocompletePortal>
-    </Autocomplete>
+                      {!!item.meta && (
+                        <span className="truncate system-xs-regular text-text-quaternary">
+                          {item.meta}
+                        </span>
+                      )}
+                    </span>
+                    <AutocompleteItemIndicator />
+                  </AutocompleteItem>
+                )}
+              </AutocompleteList>
+              <AutocompleteEmpty>
+                {!isSearching && suggestions.length === 0 ? emptyText : null}
+              </AutocompleteEmpty>
+              <AutocompleteStatus>
+                {isSearching ? t(($) => $.loading, { ns: 'common' }) : null}
+              </AutocompleteStatus>
+            </div>
+          </AutocompletePositioner>
+        </AutocompletePortal>
+      </Autocomplete>
+    </div>
   )
 }
 
