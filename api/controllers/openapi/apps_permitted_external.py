@@ -8,12 +8,9 @@ EE blueprint chain so this module is unreachable there.
 from __future__ import annotations
 
 from flask_restx import Resource
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
 
-from controllers.common.session import with_session
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import accepts, returns
+from controllers.openapi._contract import endpoint
 from controllers.openapi._models import (
     AppDescribeQuery,
     AppDescribeResponse,
@@ -22,28 +19,34 @@ from controllers.openapi._models import (
     PermittedExternalAppsListResponse,
 )
 from controllers.openapi.apps import build_app_describe_response
-from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData
+from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.requirements import RequireWebappAccess, SubjectCheck, TokenScope
+from controllers.openapi.auth.subjects import ExternalSsoSubject
 from enums import DeploymentEdition
-from libs.oauth_bearer import Scope, TokenType
+from libs.oauth_bearer import Scope
 from models import App
 from models.enums import AppStatus
 from services.account_service import TenantService
 from services.app_service import AppService
 from services.enterprise.app_permitted_service import list_permitted_apps
 
+_EXTERNAL_SUBJECT = SubjectCheck(allowed=(ExternalSsoSubject,))
+_ENTERPRISE_ONLY = frozenset({DeploymentEdition.ENTERPRISE})
+
 
 @openapi_ns.route("/permitted-external-apps")
 class PermittedExternalAppsListApi(Resource):
-    @auth_router.guard(
-        scope=Scope.APPS_READ_PERMITTED_EXTERNAL,
-        allowed_token_types=frozenset({TokenType.OAUTH_EXTERNAL_SSO}),
-        edition=frozenset({DeploymentEdition.ENTERPRISE}),
+    @endpoint(
+        requirements=(
+            _EXTERNAL_SUBJECT,
+            TokenScope(Scope.APPS_READ_PERMITTED_EXTERNAL),
+        ),
+        query=PermittedExternalAppsListQuery,
+        returns=(200, PermittedExternalAppsListResponse, "Permitted external apps list"),
+        edition=_ENTERPRISE_ONLY,
+        write=False,
     )
-    @returns(200, PermittedExternalAppsListResponse, description="Permitted external apps list")
-    @accepts(query=PermittedExternalAppsListQuery)
-    @with_session(write=False)
-    def get(self, session: Session, *, auth_data: AuthData, query: PermittedExternalAppsListQuery):
+    def get(self, ctx: Context, *, query: PermittedExternalAppsListQuery):
         page_result = list_permitted_apps(
             page=query.page,
             limit=query.limit,
@@ -58,10 +61,10 @@ class PermittedExternalAppsListApi(Resource):
             return env
 
         apps_by_id: dict[str, App] = {
-            str(a.id): a for a in AppService.find_visible_apps_by_ids(page_result.app_ids, session)
+            str(a.id): a for a in AppService.find_visible_apps_by_ids(page_result.app_ids, ctx.session)
         }
         tenant_ids = list({str(a.tenant_id) for a in apps_by_id.values()})
-        tenants_by_id = {str(t.id): t for t in TenantService.get_tenants_by_ids(tenant_ids, session=session)}
+        tenants_by_id = {str(t.id): t for t in TenantService.get_tenants_by_ids(tenant_ids, session=ctx.session)}
 
         items: list[AppListRow] = []
         for app_id in page_result.app_ids:
@@ -92,17 +95,17 @@ class PermittedExternalAppsListApi(Resource):
 
 @openapi_ns.route("/permitted-external-apps/<string:app_id>")
 class PermittedExternalAppDescribeApi(Resource):
-    @auth_router.guard(
-        scope=Scope.APPS_READ_PERMITTED_EXTERNAL,
-        allowed_token_types=frozenset({TokenType.OAUTH_EXTERNAL_SSO}),
-        edition=frozenset({DeploymentEdition.ENTERPRISE}),
+    @endpoint(
+        requirements=(
+            _EXTERNAL_SUBJECT,
+            TokenScope(Scope.APPS_READ_PERMITTED_EXTERNAL),
+            RequireWebappAccess(),
+        ),
+        query=AppDescribeQuery,
+        returns=(200, AppDescribeResponse, "Permitted external app description"),
+        edition=_ENTERPRISE_ONLY,
+        write=False,
     )
-    @returns(200, AppDescribeResponse, description="Permitted external app description")
-    @accepts(query=AppDescribeQuery)
-    @with_session(write=False)
-    def get(self, session: Session, app_id: str, *, auth_data: AuthData, query: AppDescribeQuery):
-        # App already loaded and ACL-checked by the external_sso pipeline; project it.
-        app = auth_data.app
-        if app is None:
-            raise NotFound("app not found")
-        return build_app_describe_response(app, query.fields, session=session)
+    def get(self, ctx: Context, app_id: str, *, query: AppDescribeQuery):
+        # The pipeline has already loaded and ACL-checked the app; project it.
+        return build_app_describe_response(ctx.app, query.fields, session=ctx.session)
