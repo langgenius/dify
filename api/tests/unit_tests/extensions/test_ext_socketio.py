@@ -3,6 +3,7 @@ import ssl
 import pytest
 import socketio
 
+from configs import dify_config
 from extensions import ext_socketio
 
 
@@ -44,3 +45,7 @@ def test_build_redis_options_omits_socket_timeout(monkeypatch: pytest.MonkeyPatc
 
     assert "socket_timeout" not in options
     assert "socket_connect_timeout" in options
+
+
+def test_socketio_server_uses_configured_max_http_buffer_size() -> None:
+    assert ext_socketio.sio.eio.max_http_buffer_size == dify_config.WEBSOCKET_MAX_HTTP_BUFFER_SIZE
