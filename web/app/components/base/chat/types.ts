@@ -1,3 +1,4 @@
+import type { MessageStatus } from '@dify/contracts/api/web/types.gen'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { WorkflowRunningStatus } from '@/app/components/workflow/types'
@@ -43,6 +44,7 @@ export type WorkflowProcess = {
 
 export type ChatItem = IChatItem & {
   isError?: boolean
+  status?: MessageStatus
   workflowProcess?: WorkflowProcess
   conversationId?: string
   allFiles?: FileEntity[]
@@ -77,3 +79,8 @@ export type Feedback = {
 }
 
 export type OnFeedback = (messageId: string, feedback: Feedback) => Promise<void>
+
+export type ChatInstance = {
+  handleStop: () => void
+  handleDetach: () => void
+}

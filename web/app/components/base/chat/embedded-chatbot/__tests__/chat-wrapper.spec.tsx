@@ -1,6 +1,6 @@
 import type { RefObject } from 'react'
 import type { HumanInputFieldValue } from '../../chat/answer/human-input-content/field-renderer'
-import type { ChatConfig, ChatItem, ChatItemInTree } from '../../types'
+import type { ChatConfig, ChatInstance, ChatItem, ChatItemInTree } from '../../types'
 import type { EmbeddedChatbotContextValue } from '../context'
 import type { ConversationItem } from '@/models/share'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -189,7 +189,7 @@ const createContextValue = (
   appId: 'app-1',
   disableFeedback: false,
   handleFeedback: vi.fn(),
-  currentChatInstanceRef: { current: { handleStop: vi.fn() } },
+  currentChatInstanceRef: { current: { handleStop: vi.fn(), handleDetach: vi.fn() } },
   theme: undefined,
   clearChatList: false,
   setClearChatList: vi.fn(),
@@ -209,6 +209,7 @@ const createUseChatReturn = (overrides: Partial<UseChatReturn> = {}): UseChatRet
   handleResume: vi.fn(),
   setIsResponding: vi.fn() as UseChatReturn['setIsResponding'],
   handleStop: vi.fn(),
+  handleDetach: vi.fn(),
   handleSwitchSibling: vi.fn(),
   prepareHumanInputSubmission: vi.fn().mockResolvedValue(true),
   isResponding: false,
@@ -890,9 +891,7 @@ describe('EmbeddedChatbot chat-wrapper', () => {
     it('should handle null/undefined refs and config fallbacks', () => {
       vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
         createContextValue({
-          currentChatInstanceRef: { current: null } as unknown as RefObject<{
-            handleStop: () => void
-          }>,
+          currentChatInstanceRef: { current: null } as unknown as RefObject<ChatInstance>,
           appParams: null,
           appMeta: null,
         }),

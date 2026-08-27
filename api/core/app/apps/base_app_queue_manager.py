@@ -94,7 +94,9 @@ class AppQueueManager(ABC):
                 finally:
                     elapsed_time = time.monotonic() - start_time
                     manually_stopped = self._is_stopped()
-                    if manually_stopped and self._execution_coordinator.request_abort("App task was stopped"):
+                    if manually_stopped and self._execution_coordinator.request_abort(
+                        QueueStopEvent.StopBy.USER_MANUAL
+                    ):
                         # publish two messages to make sure the client can receive the stop signal
                         # and stop listening after the stop signal processed
                         self.publish(

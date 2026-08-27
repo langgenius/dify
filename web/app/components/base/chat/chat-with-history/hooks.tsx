@@ -1,6 +1,6 @@
 import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { ExtraContent } from '../chat/type'
-import type { Callback, ChatConfig, ChatItem, OnFeedback } from '../types'
+import type { Callback, ChatConfig, ChatInstance, ChatItem, OnFeedback } from '../types'
 import type { AppData, ConversationItem } from '@/models/share'
 import type { HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -39,6 +39,7 @@ import {
   getProcessedSystemVariablesFromUrlParams,
   getRawInputsFromUrlParams,
   getRawUserVariablesFromUrlParams,
+  toMessageStatus,
 } from '../utils'
 
 function getFormattedChatList(messages: any[]) {
@@ -123,6 +124,7 @@ function getFormattedChatList(messages: any[]) {
       humanInputFormDataList,
       humanInputFilledFormDataList,
       workflow_run_id: workflowRunId,
+      status: toMessageStatus(item.status),
       more,
     })
   })
@@ -457,12 +459,10 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     },
     [setShowNewConversationItemInList, checkInputsRequired],
   )
-  const currentChatInstanceRef = useRef<{
-    handleStop: () => void
-  }>({ handleStop: noop })
+  const currentChatInstanceRef = useRef<ChatInstance>({ handleStop: noop, handleDetach: noop })
   const handleChangeConversation = useCallback(
     (conversationId: string) => {
-      currentChatInstanceRef.current.handleStop()
+      currentChatInstanceRef.current.handleDetach()
       setNewConversationId('')
       handleConversationIdInfoChange(conversationId)
       if (conversationId) setClearChatList(false)
@@ -470,7 +470,6 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     [handleConversationIdInfoChange, setClearChatList],
   )
   const handleNewConversation = useCallback(async () => {
-    currentChatInstanceRef.current.handleStop()
     setShowNewConversationItemInList(true)
     handleChangeConversation('')
     const conversationInputs: Record<string, any> = {}
@@ -517,7 +516,10 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       } finally {
         setConversationDeleting(false)
       }
-      if (conversationId === currentConversationId) handleNewConversation()
+      if (conversationId === currentConversationId) {
+        currentChatInstanceRef.current.handleStop()
+        handleNewConversation()
+      }
       handleUpdateConversationList()
     },
     [

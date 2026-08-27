@@ -1,4 +1,4 @@
-import type { ChatConfig, ChatItem, OnFeedback } from '../types'
+import type { ChatConfig, ChatInstance, ChatItem, OnFeedback } from '../types'
 /* oxlint-disable typescript/no-explicit-any */
 import type { InputValueTypes } from '@/app/components/share/text-generation/types'
 import type { Locale } from '@/i18n-config'
@@ -28,6 +28,7 @@ import {
   getProcessedInputsFromUrlParams,
   getProcessedSystemVariablesFromUrlParams,
   getProcessedUserVariablesFromUrlParams,
+  toMessageStatus,
 } from '../utils'
 
 function getFormattedChatList(messages: any[]) {
@@ -62,6 +63,7 @@ function getFormattedChatList(messages: any[]) {
         answerFiles.map((item: any) => ({ ...item, related_id: item.id })),
       ),
       parentMessageId: `question-${item.id}`,
+      status: toMessageStatus(item.status),
     })
   })
   return newChatList
@@ -368,12 +370,10 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     },
     [setShowNewConversationItemInList, checkInputsRequired],
   )
-  const currentChatInstanceRef = useRef<{
-    handleStop: () => void
-  }>({ handleStop: noop })
+  const currentChatInstanceRef = useRef<ChatInstance>({ handleStop: noop, handleDetach: noop })
   const handleChangeConversation = useCallback(
     (conversationId: string) => {
-      currentChatInstanceRef.current.handleStop()
+      currentChatInstanceRef.current.handleDetach()
       setNewConversationId('')
       handleConversationIdInfoChange(conversationId)
       if (conversationId) setClearChatList(false)
@@ -385,7 +385,6 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       setClearChatList(true)
       return
     }
-    currentChatInstanceRef.current.handleStop()
     setShowNewConversationItemInList(true)
     handleChangeConversation('')
     handleNewConversationInputsChange(await getProcessedInputsFromUrlParams())

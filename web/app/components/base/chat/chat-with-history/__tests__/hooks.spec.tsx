@@ -1,6 +1,6 @@
 import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { ReactNode } from 'react'
-import type { ChatConfig } from '../../types'
+import type { ChatConfig, ChatInstance } from '../../types'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import { ToastHost } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -791,6 +791,50 @@ describe('useChatWithHistory', () => {
         expect(result!.current.newConversationId).toBe('')
       })
       expect(result!.current.clearChatList).toBe(false)
+    })
+  })
+
+  describe('Running generation on navigation', () => {
+    const trackChatInstance = (result: {
+      current: { currentChatInstanceRef: { current: ChatInstance } }
+    }) => {
+      const handleStop = vi.fn()
+      const handleDetach = vi.fn()
+      result.current.currentChatInstanceRef.current = { handleStop, handleDetach }
+      return { handleStop, handleDetach }
+    }
+
+    beforeEach(() => {
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      mockFetchChatList.mockResolvedValue({ data: [] })
+    })
+
+    it('should detach without stopping when switching to another conversation', async () => {
+      const { result } = await renderWithClient(() => useChatWithHistory())
+      const { handleStop, handleDetach } = trackChatInstance(result!)
+
+      act(() => {
+        result!.current.handleChangeConversation('conversation-1')
+      })
+
+      expect(handleDetach).toHaveBeenCalledTimes(1)
+      expect(handleStop).not.toHaveBeenCalled()
+    })
+
+    it('should stop the run when deleting the conversation it belongs to', async () => {
+      mockDelConversation.mockResolvedValue(undefined)
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      await waitFor(() => {
+        expect(result!.current.currentConversationId).toBe('conversation-1')
+      })
+      const { handleStop } = trackChatInstance(result!)
+
+      await act(async () => {
+        await result!.current.handleDeleteConversation('conversation-1', { onSuccess: vi.fn() })
+      })
+
+      expect(handleStop).toHaveBeenCalledTimes(1)
     })
   })
 

@@ -2323,6 +2323,7 @@ export const zStatusCount = z.object({
   failed: z.int(),
   partial_success: z.int(),
   paused: z.int(),
+  stopped: z.int(),
   success: z.int(),
 })
 

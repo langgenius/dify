@@ -1,4 +1,5 @@
 {
+  "chat.answerInterrupted": "Răspuns întrerupt",
   "chat.chatFormTip": "Setările chat-ului nu pot fi modificate după ce chat-ul a început.",
   "chat.chatSettingsTitle": "Nouă configurare a chatului",
   "chat.collapse": "Restrânge",

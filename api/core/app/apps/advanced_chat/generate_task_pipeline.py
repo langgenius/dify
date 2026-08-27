@@ -738,8 +738,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         with self._database_session() as session:
             self._save_message(session=session, graph_runtime_state=resolved_state)
             message = self._get_message(session=session)
-            if message is not None:
-                message.status = MessageStatus.PAUSED
+            message.status = MessageStatus.PAUSED
             self._message_saved_on_pause = True
         self._base_task_pipeline.queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
 
@@ -797,6 +796,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             with self._database_session() as session:
                 # Save message
                 self._save_message(session=session, graph_runtime_state=resolved_state)
+                message = self._get_message(session=session)
+                message.status = MessageStatus.STOPPED
             self._emit_message_trace()
 
             yield workflow_finish_resp

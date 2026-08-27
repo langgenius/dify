@@ -581,7 +581,7 @@ describe('ConversationList', () => {
             from_account_name: 'user-a',
             read_at: 1710000001,
             message_count: 3,
-            status_count: { paused: 1, success: 0, failed: 0, partial_success: 0 },
+            status_count: { paused: 1, success: 0, failed: 0, partial_success: 0, stopped: 0 },
             user_feedback_stats: { like: 2, dislike: 0 },
             admin_feedback_stats: { like: 0, dislike: 1 },
             updated_at: 1710000000,
@@ -593,7 +593,7 @@ describe('ConversationList', () => {
             from_account_name: 'user-b',
             read_at: 1710000001,
             message_count: 4,
-            status_count: { paused: 0, success: 4, failed: 0, partial_success: 0 },
+            status_count: { paused: 0, success: 4, failed: 0, partial_success: 0, stopped: 0 },
             user_feedback_stats: { like: 0, dislike: 0 },
             admin_feedback_stats: { like: 0, dislike: 0 },
             updated_at: 1710000000,
@@ -605,7 +605,19 @@ describe('ConversationList', () => {
             from_account_name: 'user-c',
             read_at: 1710000001,
             message_count: 5,
-            status_count: { paused: 0, success: 3, failed: 0, partial_success: 1 },
+            status_count: { paused: 0, success: 3, failed: 0, partial_success: 1, stopped: 0 },
+            user_feedback_stats: { like: 0, dislike: 0 },
+            admin_feedback_stats: { like: 0, dislike: 0 },
+            updated_at: 1710000000,
+            created_at: 1710000000,
+          },
+          {
+            id: 'conversation-stopped',
+            name: 'Stopped row',
+            from_account_name: 'user-e',
+            read_at: 1710000001,
+            message_count: 7,
+            status_count: { paused: 0, success: 1, failed: 0, partial_success: 0, stopped: 1 },
             user_feedback_stats: { like: 0, dislike: 0 },
             admin_feedback_stats: { like: 0, dislike: 0 },
             updated_at: 1710000000,
@@ -617,7 +629,7 @@ describe('ConversationList', () => {
             from_account_name: 'user-d',
             read_at: 1710000001,
             message_count: 1,
-            status_count: { paused: 0, success: 0, failed: 2, partial_success: 0 },
+            status_count: { paused: 0, success: 0, failed: 2, partial_success: 0, stopped: 0 },
             user_feedback_stats: { like: 0, dislike: 0 },
             admin_feedback_stats: { like: 0, dislike: 0 },
             updated_at: 1710000000,
@@ -630,6 +642,7 @@ describe('ConversationList', () => {
     expect(screen.getByText('Pending')).toBeInTheDocument()
     expect(screen.getByText('Success')).toBeInTheDocument()
     expect(screen.getByText('Partial Success')).toBeInTheDocument()
+    expect(screen.getByText('Stopped')).toBeInTheDocument()
     expect(screen.getByText('2 Failures')).toBeInTheDocument()
     expect(screen.getByText('2')).toBeInTheDocument()
     expect(screen.getAllByText('1').length).toBeGreaterThan(0)

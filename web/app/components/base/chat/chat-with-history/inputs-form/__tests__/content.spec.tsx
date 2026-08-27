@@ -1,3 +1,4 @@
+import type { ChatInstance } from '../../../types'
 import type { ChatWithHistoryContextValue } from '../../context'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -124,9 +125,9 @@ const createMockContext = (
     isMobile: false,
     isInstalledApp: false,
     handleFeedback: vi.fn(),
-    currentChatInstanceRef: { current: { handleStop: vi.fn() } } as React.RefObject<{
-      handleStop: () => void
-    }>,
+    currentChatInstanceRef: {
+      current: { handleStop: vi.fn(), handleDetach: vi.fn() },
+    } as React.RefObject<ChatInstance>,
     sidebarCollapseState: false,
     handleSidebarCollapse: vi.fn(),
     setClearChatList: vi.fn(),

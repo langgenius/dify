@@ -12,6 +12,7 @@ from fields.base import ResponseModel
 from fields.conversation_fields import AgentThought, JSONValue, MessageFile
 from graphon.file import File
 from libs.helper import to_timestamp
+from models.enums import MessageStatus
 
 type JSONValueType = JSONValue
 UUIDString = Annotated[str, WithJsonSchema({"format": "uuid", "type": "string"})]
@@ -65,7 +66,7 @@ class MessageListItem(ResponseModel):
     provider_response_latency: FloatNumber = 0
     total_price: Decimal | None = None
     currency: str | None = None
-    status: str
+    status: MessageStatus
     error: str | None = None
     extra_contents: list[ExecutionExtraContentDomainModel]
 

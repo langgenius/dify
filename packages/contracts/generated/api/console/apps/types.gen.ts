@@ -2141,6 +2141,7 @@ export type StatusCount = {
   failed: number
   partial_success: number
   paused: number
+  stopped: number
   success: number
 }
 

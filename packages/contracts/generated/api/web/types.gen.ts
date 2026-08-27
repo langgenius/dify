@@ -356,6 +356,8 @@ export type MessageMoreLikeThisQuery = {
   response_mode: 'blocking' | 'streaming'
 }
 
+export type MessageStatus = 'error' | 'normal' | 'paused' | 'stopped'
+
 export type ParagraphInputConfig = {
   default?: StringSource | null
   output_variable_name: string
@@ -925,7 +927,7 @@ export type WebMessageListItem = {
   provider_response_latency?: number
   query: string
   retriever_resources: Array<RetrieverResource>
-  status: string
+  status: MessageStatus
   total_price?: string | null
   readonly total_tokens: number
 }
@@ -1028,7 +1030,7 @@ export type WebMessageListItemWritable = {
   provider_response_latency?: number
   query: string
   retriever_resources: Array<RetrieverResource>
-  status: string
+  status: MessageStatus
   total_price?: string | null
 }
 

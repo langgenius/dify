@@ -3,6 +3,7 @@ from unittest.mock import patch
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.queue_entities import QueueStopEvent
 from models.model import AppMode
 from services.app_task_service import AppTaskService
 
@@ -46,7 +47,9 @@ class TestAppTaskService:
         mock_app_queue_manager.set_stop_flag.assert_called_once_with(task_id, invoke_from, user_id)
         if should_call_graph_engine:
             mock_graph_engine_manager.assert_called_once()
-            mock_graph_engine_manager.return_value.send_stop_command.assert_called_once_with(task_id)
+            mock_graph_engine_manager.return_value.send_stop_command.assert_called_once_with(
+                task_id, reason=QueueStopEvent.StopBy.USER_MANUAL.value
+            )
         else:
             mock_graph_engine_manager.assert_not_called()
 
@@ -79,7 +82,9 @@ class TestAppTaskService:
         # Assert
         mock_app_queue_manager.set_stop_flag.assert_called_once_with(task_id, invoke_from, user_id)
         mock_graph_engine_manager.assert_called_once()
-        mock_graph_engine_manager.return_value.send_stop_command.assert_called_once_with(task_id)
+        mock_graph_engine_manager.return_value.send_stop_command.assert_called_once_with(
+            task_id, reason=QueueStopEvent.StopBy.USER_MANUAL.value
+        )
 
     @patch("services.app_task_service.GraphEngineManager")
     @patch("services.app_task_service.AppQueueManager")

@@ -1,5 +1,6 @@
 import type { IChatItem } from '../chat/type'
 import type { ChatItem, ChatItemInTree } from '../types'
+import { zMessageStatus } from '@dify/contracts/api/web/zod.gen'
 import { get } from 'es-toolkit/compat'
 import { UUID_NIL } from '../constants'
 import {
@@ -12,6 +13,7 @@ import {
   getRawUserVariablesFromUrlParams,
   getThreadMessages,
   isValidGeneratedAnswer,
+  toMessageStatus,
 } from '../utils'
 import branchedTestMessages from './branchedTestMessages.json'
 import legacyTestMessages from './legacyTestMessages.json'
@@ -688,5 +690,13 @@ describe('chat utils - url params and answer helpers', () => {
       expect(thread.map((t) => t.id)).toEqual(['q1', 'a1', 'q3', 'a3'])
       expect(thread[3]!.prevSibling).toBe('a2')
     })
+  })
+})
+
+describe('toMessageStatus', () => {
+  it('yields undefined for a status this build does not recognise', () => {
+    expect(toMessageStatus('stopped')).toBe(zMessageStatus.enum.stopped)
+    expect(toMessageStatus('cancelled_by_operator')).toBeUndefined()
+    expect(toMessageStatus(undefined)).toBeUndefined()
   })
 })

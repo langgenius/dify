@@ -7,6 +7,7 @@ new GraphEngine command channel mechanism.
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.queue_entities import QueueStopEvent
 from extensions.ext_redis import redis_client
 from graphon.graph_engine.manager import GraphEngineManager
 from models.model import AppMode
@@ -43,4 +44,4 @@ class AppTaskService:
         # New mechanism: Send stop command via GraphEngine for workflow-based apps
         # This ensures proper workflow status recording in the persistence layer
         if app_mode in (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW):
-            GraphEngineManager(redis_client).send_stop_command(task_id)
+            GraphEngineManager(redis_client).send_stop_command(task_id, reason=QueueStopEvent.StopBy.USER_MANUAL.value)

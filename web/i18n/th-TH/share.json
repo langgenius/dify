@@ -1,4 +1,5 @@
 {
+  "chat.answerInterrupted": "การตอบกลับถูกขัดจังหวะ",
   "chat.chatFormTip": "การตั้งค่าแชทไม่สามารถเปลี่ยนแปลงได้หลังจากที่แชทเริ่มต้นขึ้นแล้ว.",
   "chat.chatSettingsTitle": "การตั้งค่าการสนทนาใหม่",
   "chat.collapse": "ย่อ",

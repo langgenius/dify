@@ -14,9 +14,13 @@ class TestQueueEntities:
         assert event.get_stop_reason() == "Workflow execution timed out"
 
     def test_get_stop_reason_for_unknown_stop_by(self):
-        event = QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL)
-        event.stopped_by = "unknown"
+        event = QueueStopEvent(stopped_by=QueueStopEvent.StopBy.UNKNOWN)
         assert event.get_stop_reason() == "Stopped by unknown reason."
+
+    def test_stop_by_from_value_degrades_unrecognized_causes(self):
+        assert QueueStopEvent.StopBy.from_value(QueueStopEvent.StopBy.TIMEOUT.value) is QueueStopEvent.StopBy.TIMEOUT
+        assert QueueStopEvent.StopBy.from_value("stopped_by_a_newer_peer") is QueueStopEvent.StopBy.UNKNOWN
+        assert QueueStopEvent.StopBy.from_value(None) is QueueStopEvent.StopBy.UNKNOWN
 
     def test_reasoning_chunk_event_defaults(self):
         event = QueueReasoningChunkEvent(reasoning="thinking", from_node_id="llm")

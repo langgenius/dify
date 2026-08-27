@@ -1,4 +1,5 @@
 'use client'
+import type { StatusCount } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import type { ChatItemInTree } from '../../base/chat/types'
 import type {
@@ -93,13 +94,6 @@ type IConversationList = {
 
 const defaultValue = 'N/A'
 
-type StatusCount = {
-  paused: number
-  success: number
-  failed: number
-  partial_success: number
-}
-
 /**
  * Icon component with numbers
  */
@@ -127,6 +121,13 @@ const statusTdRender = (statusCount: StatusCount) => {
       <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
         <StatusDot status="warning" />
         <span className="text-util-colors-warning-warning-600">Pending</span>
+      </div>
+    )
+  } else if (statusCount.partial_success + statusCount.failed === 0 && statusCount.stopped > 0) {
+    return (
+      <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
+        <StatusDot status="warning" />
+        <span className="text-util-colors-warning-warning-600">Stopped</span>
       </div>
     )
   } else if (statusCount.partial_success + statusCount.failed === 0) {

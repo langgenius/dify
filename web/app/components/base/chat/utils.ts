@@ -1,5 +1,7 @@
+import type { MessageStatus } from '@dify/contracts/api/web/types.gen'
 import type { IChatItem } from './chat/type'
 import type { ChatItem, ChatItemInTree } from './types'
+import { zMessageStatus } from '@dify/contracts/api/web/zod.gen'
 import { UUID_NIL } from './constants'
 
 async function decodeBase64AndDecompress(base64String: string) {
@@ -257,6 +259,11 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
   return ret
 }
 
+function toMessageStatus(value: unknown): MessageStatus | undefined {
+  const parsed = zMessageStatus.safeParse(value)
+  return parsed.success ? parsed.data : undefined
+}
+
 export {
   buildChatItemTree,
   getLastAnswer,
@@ -267,4 +274,5 @@ export {
   getRawUserVariablesFromUrlParams,
   getThreadMessages,
   isValidGeneratedAnswer,
+  toMessageStatus,
 }

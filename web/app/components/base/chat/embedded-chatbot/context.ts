@@ -1,7 +1,7 @@
 'use client'
 
 import type { RefObject } from 'react'
-import type { ChatConfig, ChatItem, OnFeedback } from '../types'
+import type { ChatConfig, ChatInstance, ChatItem, OnFeedback } from '../types'
 import type { Theme } from './theme/theme'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import { noop } from 'es-toolkit/function'
@@ -34,7 +34,7 @@ export type EmbeddedChatbotContextValue = {
   appId?: string
   disableFeedback?: boolean
   handleFeedback: OnFeedback
-  currentChatInstanceRef: RefObject<{ handleStop: () => void }>
+  currentChatInstanceRef: RefObject<ChatInstance>
   theme?: Theme
   clearChatList?: boolean
   setClearChatList: (state: boolean) => void
@@ -72,7 +72,7 @@ export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>
   isInstalledApp: false,
   allowResetChat: true,
   handleFeedback: () => Promise.resolve(),
-  currentChatInstanceRef: { current: { handleStop: noop } },
+  currentChatInstanceRef: { current: { handleStop: noop, handleDetach: noop } },
   clearChatList: false,
   setClearChatList: noop,
   isResponding: false,

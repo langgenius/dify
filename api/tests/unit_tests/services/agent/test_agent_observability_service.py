@@ -249,12 +249,19 @@ def test_apply_status_filter_accepts_multiple_statuses() -> None:
 
     stmt = FakeStmt()
 
-    result = AgentObservabilityService._apply_status_filter(stmt, ("success", "failed", "paused"))
+    result = AgentObservabilityService._apply_status_filter(stmt, ("success", "failed", "paused", "stopped"))
 
     assert result is stmt
     assert len(stmt.conditions) == 1
     with pytest.raises(ValueError, match="Unsupported status"):
         AgentObservabilityService._apply_status_filter(FakeStmt(), ("unknown",))
+
+
+def test_interrupted_run_is_not_reported_as_success() -> None:
+    stopped = SimpleNamespace(error=None, status=MessageStatus.STOPPED)
+    assert AgentObservabilityService._message_status(stopped) == "stopped"
+    assert AgentObservabilityService._conversation_status(paused_count=0, failed_count=0, stopped_count=1) == "stopped"
+    assert AgentObservabilityService._conversation_status(paused_count=0, failed_count=1, stopped_count=1) == "failed"
 
 
 def test_list_logs_sorts_by_requested_field(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -322,6 +329,7 @@ def test_list_webapp_conversation_logs_includes_feedback_rates(monkeypatch: pyte
         message_count = 2
         paused_count = 0
         failed_count = 0
+        stopped_count = 0
         created_at = timestamp
         updated_at = timestamp
 

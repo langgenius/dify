@@ -269,7 +269,7 @@ def test_conversation_response_source_uses_caller_session(sqlite_session: Sessio
     assert source.message_count == 1
     assert source.user_feedback_stats == {"like": 1, "dislike": 1}
     assert source.admin_feedback_stats == {"like": 1, "dislike": 0}
-    assert source.status_count == {"success": 1, "failed": 0, "partial_success": 0, "paused": 0}
+    assert source.status_count == {"success": 1, "failed": 0, "partial_success": 0, "paused": 0, "stopped": 0}
     assert source.first_message is not None
     assert source.from_end_user_session_id == "end-user-session"
     assert source.from_account_name == "Account"

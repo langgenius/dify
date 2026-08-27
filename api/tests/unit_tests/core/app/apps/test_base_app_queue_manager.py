@@ -9,7 +9,7 @@ from redis.exceptions import ConnectionError as RedisConnectionError
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.execution_coordinator import AppExecutionState
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.entities.queue_entities import QueueErrorEvent
+from core.app.entities.queue_entities import QueueErrorEvent, QueueStopEvent
 from models import Tenant
 
 
@@ -129,9 +129,9 @@ class TestBaseAppQueueManager:
             graph_engine_manager.return_value.send_stop_command.side_effect = RuntimeError("redis unavailable")
             manager = DummyQueueManager(task_id="t1", user_id="u1", invoke_from=InvokeFrom.SERVICE_API)
 
-            assert manager._execution_coordinator.request_abort("stream closed") is True
-            assert manager._execution_coordinator.request_abort("duplicate") is False
+            assert manager._execution_coordinator.request_abort(QueueStopEvent.StopBy.USER_MANUAL) is True
+            assert manager._execution_coordinator.request_abort(QueueStopEvent.StopBy.TIMEOUT) is False
 
         execution_redis.setex.assert_called_once_with("generate_task_stopped:t1", 600, 1)
-        graph_engine_manager.return_value.send_stop_command.assert_called_once_with("t1", reason="stream closed")
+        graph_engine_manager.return_value.send_stop_command.assert_called_once_with("t1", reason="user_manual")
         assert "Failed to send stop command for app execution task=t1" in caplog.text

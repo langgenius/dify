@@ -10,6 +10,7 @@ from core.app.apps.execution_coordinator import (
     clear_app_task_cancellation_signals,
     is_app_task_stop_flag_set,
 )
+from core.app.entities.queue_entities import QueueStopEvent
 
 
 def test_listener_close_does_not_abort_running_attempt() -> None:
@@ -62,7 +63,7 @@ def test_watchdog_aborts_and_notifies_response_pipeline() -> None:
     redis_client.setex.assert_called_once_with("generate_task_stopped:task", 600, 1)
     graph_engine_manager.return_value.send_stop_command.assert_called_once_with(
         "task",
-        reason="App execution exceeded 0 seconds",
+        reason="timeout",
     )
     on_timeout.assert_called_once_with("App execution exceeded 0 seconds")
 
@@ -138,11 +139,11 @@ def test_stop_flag_failure_does_not_block_graph_stop(caplog: pytest.LogCaptureFi
         redis_client.setex.side_effect = RuntimeError("redis write failed")
         coordinator = AppExecutionCoordinator(task_id="task", on_timeout=on_timeout, timeout_seconds=1200)
 
-        coordinator.request_abort("test abort")
+        coordinator.request_abort(QueueStopEvent.StopBy.USER_MANUAL)
 
     graph_engine_manager.return_value.send_stop_command.assert_called_once_with(
         "task",
-        reason="test abort",
+        reason="user_manual",
     )
     assert "Failed to set stop flag for app execution task=task" in caplog.text
 

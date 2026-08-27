@@ -1,4 +1,5 @@
 {
+  "chat.answerInterrupted": "Ответ прерван",
   "chat.chatFormTip": "Настройки чата не могут быть изменены после его начала.",
   "chat.chatSettingsTitle": "Новая настройка чата",
   "chat.collapse": "Свернуть",

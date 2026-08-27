@@ -1,4 +1,5 @@
 {
+  "chat.answerInterrupted": "応答が中断されました",
   "chat.chatFormTip": "チャット開始後は設定を変更できません",
   "chat.chatSettingsTitle": "チャット設定",
   "chat.collapse": "縮小",

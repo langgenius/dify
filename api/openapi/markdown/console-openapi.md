@@ -18102,7 +18102,7 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | provider_response_latency | float |  | No |
 | query | string |  | Yes |
 | retriever_resources | [ [RetrieverResource](#retrieverresource) ] |  | Yes |
-| status | string |  | Yes |
+| status | [MessageStatus](#messagestatus) |  | Yes |
 | total_price | string |  | No |
 | total_tokens | integer |  | Yes |
 
@@ -19253,6 +19253,14 @@ Enum class for large language model mode.
 | conversation_id | string | Conversation ID. | Yes |
 | first_id | string | The ID of the first chat record on the current page. Omit this value to fetch the latest messages; for subsequent pages, use the first message ID from the current list to fetch older messages. | No |
 | limit | integer, <br>**Default:** 20 | Number of chat history messages to return per request. | No |
+
+#### MessageStatus
+
+Message Status Enum
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| MessageStatus | string | Message Status Enum |  |
 
 #### Meta
 
@@ -22447,6 +22455,7 @@ Query parameters for listing snippet published workflows.
 | failed | integer |  | Yes |
 | partial_success | integer |  | Yes |
 | paused | integer |  | Yes |
+| stopped | integer |  | Yes |
 | success | integer |  | Yes |
 
 #### StepByStepTourStatePatchPayload

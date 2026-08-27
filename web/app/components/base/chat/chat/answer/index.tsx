@@ -20,6 +20,7 @@ import HumanInputFormList from './human-input-form-list'
 import More from './more'
 import Operation from './operation'
 import ReasoningPanel from './reasoning-panel'
+import StoppedNotice from './stopped-notice'
 import SuggestedQuestions from './suggested-questions'
 import WorkflowProcessItem from './workflow-process'
 
@@ -270,6 +271,7 @@ const Answer: FC<AnswerProps> = ({
               )}
               {!contentIsEmpty && !hasAgentContent && <BasicContent item={item} />}
               {hasAgentContent && agentContentNode}
+              {!responding && <StoppedNotice status={item.status} />}
               {!!allFiles?.length && (
                 <FileList
                   className="my-1"
@@ -358,6 +360,7 @@ const Answer: FC<AnswerProps> = ({
               )}
               {!contentIsEmpty && !hasAgentContent && <BasicContent item={item} />}
               {hasAgentContent && agentContentNode}
+              {!responding && <StoppedNotice status={item.status} />}
               {!!allFiles?.length && (
                 <FileList
                   className="my-1"

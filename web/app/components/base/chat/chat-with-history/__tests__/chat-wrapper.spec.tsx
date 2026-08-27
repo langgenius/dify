@@ -110,7 +110,7 @@ const defaultContextValue: ChatWithHistoryContextValue = {
   inputsForms: [],
   isInstalledApp: false,
   currentChatInstanceRef: {
-    current: { handleStop: vi.fn() },
+    current: { handleStop: vi.fn(), handleDetach: vi.fn() },
   } as ChatWithHistoryContextValue['currentChatInstanceRef'],
   setIsResponding: vi.fn(),
   setClearChatList: vi.fn(),
@@ -1225,7 +1225,7 @@ describe('ChatWrapper', () => {
   it('should set handleStop on currentChatInstanceRef', () => {
     const handleStop = vi.fn()
     const currentChatInstanceRef = {
-      current: { handleStop: vi.fn() },
+      current: { handleStop: vi.fn(), handleDetach: vi.fn() },
     } as ChatWithHistoryContextValue['currentChatInstanceRef']
 
     vi.mocked(useChatWithHistoryContext).mockReturnValue({

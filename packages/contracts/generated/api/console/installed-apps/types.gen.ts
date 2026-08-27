@@ -558,7 +558,7 @@ export type ExploreMessageListItem = {
   provider_response_latency?: number
   query: string
   retriever_resources: Array<RetrieverResource>
-  status: string
+  status: MessageStatus
   total_price?: string | null
   readonly total_tokens: number
 }
@@ -655,6 +655,8 @@ export type RetrieverResource = {
   summary?: string | null
   word_count?: number | null
 }
+
+export type MessageStatus = 'error' | 'normal' | 'paused' | 'stopped'
 
 export type HumanInputFormDefinition = {
   actions?: Array<UserActionConfig>
@@ -809,7 +811,7 @@ export type ExploreMessageListItemWritable = {
   provider_response_latency?: number
   query: string
   retriever_resources: Array<RetrieverResource>
-  status: string
+  status: MessageStatus
   total_price?: string | null
 }
 

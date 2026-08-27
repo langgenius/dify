@@ -101,7 +101,7 @@ class TestWorkflowAppQueueManager:
             execution_redis.setex.assert_called_once_with("generate_task_stopped:task", 600, 1)
             graph_engine_manager.return_value.send_stop_command.assert_called_once_with(
                 "task",
-                reason="App execution exceeded 0 seconds",
+                reason="timeout",
             )
 
     def test_terminal_event_does_not_abort_completed_execution(self):
