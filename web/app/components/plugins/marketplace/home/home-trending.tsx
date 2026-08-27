@@ -1,15 +1,18 @@
 'use client'
 
 import type { PluginBanner } from '@dify/contracts/marketplace'
+import type { TransitionEvent } from 'react'
 import type { MarketplaceBannerPage } from './banners'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from '#i18n'
 import { trackEvent } from '@/app/components/base/amplitude'
 import TrendingNavigation from './home-trending-navigation'
 import { HomeBannerSlide } from './home-trending-slides'
 import styles from './home-trending.module.css'
 import { useBannerViewability } from './use-banner-viewability'
+
+type LoopPhase = 'idle' | 'resetting' | 'wrapping'
 
 function TrackedBannerSlide({
   banner,
@@ -69,12 +72,51 @@ function HomeTrending({
   const { t } = useTranslation('plugin')
   const carouselRootRef = useRef<HTMLDivElement>(null)
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [trackIndex, setTrackIndex] = useState(0)
+  const [loopPhase, setLoopPhase] = useState<LoopPhase>('idle')
   const [isRotationPaused, setIsRotationPaused] = useState(false)
-  const selectSlide = useCallback((index: number) => setSelectedIndex(index), [])
-  const selectNextSlide = useCallback(
-    () => setSelectedIndex((currentIndex) => (currentIndex + 1) % banners.length),
-    [banners.length],
+  const selectSlide = useCallback((index: number) => {
+    setLoopPhase('idle')
+    setTrackIndex(index)
+    setSelectedIndex(index)
+  }, [])
+  const selectNextSlide = useCallback(() => {
+    if (selectedIndex < banners.length - 1) {
+      const nextIndex = selectedIndex + 1
+      setTrackIndex(nextIndex)
+      setSelectedIndex(nextIndex)
+      return
+    }
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setTrackIndex(0)
+      setSelectedIndex(0)
+      return
+    }
+
+    // Move forwards to a visual clone of the first slide. Once that
+    // transition completes, the track can snap back to the real first slide.
+    setLoopPhase('wrapping')
+    setTrackIndex(banners.length)
+  }, [banners.length, selectedIndex])
+
+  const handleTrackTransitionEnd = useCallback(
+    (event: TransitionEvent<HTMLDivElement>) => {
+      if (loopPhase !== 'wrapping' || event.target !== event.currentTarget) return
+
+      setLoopPhase('resetting')
+      setTrackIndex(0)
+      setSelectedIndex(0)
+    },
+    [loopPhase],
   )
+
+  useEffect(() => {
+    if (loopPhase !== 'resetting') return
+
+    const frame = window.requestAnimationFrame(() => setLoopPhase('idle'))
+    return () => window.cancelAnimationFrame(frame)
+  }, [loopPhase])
 
   if (banners.length === 0) return null
 
@@ -108,14 +150,23 @@ function HomeTrending({
           data-home-trending-carousel-root
         >
           <div
-            className={cn('h-full overflow-hidden rounded-2xl', isMarketplacePlatform && styles.slideViewport)}
+            className={cn(
+              'h-full overflow-hidden rounded-2xl',
+              isMarketplacePlatform && styles.slideViewport,
+            )}
           >
             <div
               // Keep automatic rotation silent for screen readers; announce
               // the current slide only once rotation is paused or user-driven.
               aria-live={isRotationPaused ? 'polite' : 'off'}
               className={cn(styles.contentTrack, 'flex h-full')}
-              style={{ transform: `translate3d(-${selectedIndex * 100}%, 0, 0)` }}
+              data-carousel-track
+              data-carousel-loop-phase={loopPhase}
+              onTransitionEnd={handleTrackTransitionEnd}
+              style={{
+                transform: `translate3d(-${trackIndex * 100}%, 0, 0)`,
+                transition: loopPhase === 'resetting' ? 'none' : undefined,
+              }}
             >
               {banners.map((banner, index) => (
                 <TrackedBannerSlide
@@ -126,6 +177,23 @@ function HomeTrending({
                   page={page}
                 />
               ))}
+              {loopPhase !== 'idle' && banners[0] && (
+                <div
+                  aria-hidden
+                  inert
+                  data-carousel-loop-clone
+                  className={cn(
+                    'h-full min-w-0 shrink-0 grow-0 basis-full',
+                    isMarketplacePlatform && styles.slide,
+                  )}
+                >
+                  <HomeBannerSlide
+                    banner={banners[0]}
+                    isMarketplacePlatform={isMarketplacePlatform}
+                    page={page}
+                  />
+                </div>
+              )}
             </div>
           </div>
           {/* A single banner has nothing to rotate through, so skip the

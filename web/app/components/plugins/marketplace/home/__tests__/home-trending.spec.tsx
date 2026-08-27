@@ -161,8 +161,12 @@ describe('HomeTrending', () => {
     render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
 
     const recommendSlide = screen.getByRole('group', { name: 'Trending' })
-    const blogSlide = document.querySelector('[aria-roledescription="slide"][aria-label="Dify Updates"]')
-    const eventSlide = document.querySelector('[aria-roledescription="slide"][aria-label="Duck Duck Go"]')
+    const blogSlide = document.querySelector(
+      '[aria-roledescription="slide"][aria-label="Dify Updates"]',
+    )
+    const eventSlide = document.querySelector(
+      '[aria-roledescription="slide"][aria-label="Duck Duck Go"]',
+    )
     const eventLink = document.querySelector('a[aria-label="DuckDuckGo plugin"]')
 
     expect(recommendSlide.className).toMatch(/slide/)
@@ -233,6 +237,58 @@ describe('HomeTrending', () => {
       'aria-hidden',
       'false',
     )
+  })
+
+  it('loops from the last banner to a visual clone before resetting to the first banner', () => {
+    const animations: Array<{
+      cancel: ReturnType<typeof vi.fn>
+      onfinish: (() => void) | null
+      pause: ReturnType<typeof vi.fn>
+      play: ReturnType<typeof vi.fn>
+    }> = []
+    const originalAnimate = Element.prototype.animate
+    Object.defineProperty(Element.prototype, 'animate', {
+      configurable: true,
+      value: vi.fn(() => {
+        const animation = {
+          cancel: vi.fn(),
+          onfinish: null,
+          pause: vi.fn(),
+          play: vi.fn(),
+        }
+        animations.push(animation)
+        return animation as unknown as Animation
+      }),
+    })
+
+    try {
+      render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Duck Duck Go' }))
+      const track = document.querySelector('[data-carousel-track]')!
+
+      act(() => animations.at(-1)?.onfinish?.())
+
+      expect(screen.getByRole('button', { name: 'Duck Duck Go' })).toHaveAttribute(
+        'aria-current',
+        'true',
+      )
+      expect(track).toHaveStyle({ transform: 'translate3d(-300%, 0, 0)' })
+      expect(track.querySelector('[data-carousel-loop-clone]')).toBeInTheDocument()
+
+      fireEvent.transitionEnd(track, { propertyName: 'transform' })
+
+      expect(screen.getByRole('button', { name: 'Trending' })).toHaveAttribute(
+        'aria-current',
+        'true',
+      )
+      expect(track).toHaveStyle({ transform: 'translate3d(-0%, 0, 0)', transition: 'none' })
+    } finally {
+      Object.defineProperty(Element.prototype, 'animate', {
+        configurable: true,
+        value: originalAnimate,
+      })
+    }
   })
 
   it('toggles the carousel between paused and playing states', async () => {
