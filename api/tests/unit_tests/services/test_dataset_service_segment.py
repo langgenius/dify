@@ -1141,3 +1141,71 @@ class TestSegmentServiceAdditionalRegenerationBranches:
         assert segment.status == "error"
         assert segment.error == "The knowledge base index technique is not high quality!"
         vector_service.update_multimodel_vector.assert_not_called()
+
+    def test_update_qa_segment_omitted_answer_preserves_existing_answer(self, account_context):
+        session = MagicMock()
+        segment = _make_segment(content="old question", word_count=len("old questionold answer"))
+        segment.answer = "old answer"
+        document = _make_document(
+            doc_form=IndexStructureType.QA_INDEX,
+            word_count=len("old questionold answer"),
+        )
+        dataset = _make_dataset(indexing_technique="economy")
+        refreshed_segment = SimpleNamespace(id=segment.id)
+
+        with (
+            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.dataset_service.VectorService") as vector_service,
+            patch("services.dataset_service.naive_utc_now", return_value="now"),
+        ):
+            mock_redis.get.return_value = None
+            session.get.return_value = refreshed_segment
+
+            result = SegmentService.update_segment(
+                SegmentUpdateArgs(content="old question", keywords=["kw1"]),
+                segment,
+                document,
+                dataset,
+                session,
+            )
+
+        assert result is refreshed_segment
+        assert segment.answer == "old answer"
+
+    def test_update_qa_segment_content_change_omitted_answer_preserves_answer_in_embedding(self, account_context):
+        session = MagicMock()
+        segment = _make_segment(content="old question", word_count=len("old questionold answer"))
+        segment.answer = "old answer"
+        document = _make_document(
+            doc_form=IndexStructureType.QA_INDEX,
+            word_count=len("old questionold answer"),
+        )
+        dataset = _make_dataset(indexing_technique="high_quality")
+        dataset.embedding_model_provider = "openai"
+        dataset.embedding_model = "text-embedding-3-small"
+        refreshed_segment = SimpleNamespace(id=segment.id)
+        embedding_model_instance = MagicMock()
+        embedding_model_instance.get_text_embedding_num_tokens.return_value = [15]
+
+        with (
+            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.dataset_service.ModelManager") as model_manager_cls,
+            patch("services.dataset_service.VectorService") as vector_service,
+            patch("services.dataset_service.helper.generate_text_hash", return_value="hash-qa"),
+            patch("services.dataset_service.naive_utc_now", return_value="now"),
+        ):
+            mock_redis.get.return_value = None
+            model_manager_cls.for_tenant.return_value.get_model_instance.return_value = embedding_model_instance
+            session.get.return_value = refreshed_segment
+
+            result = SegmentService.update_segment(
+                SegmentUpdateArgs(content="new question"),
+                segment,
+                document,
+                dataset,
+                session,
+            )
+
+        assert result is refreshed_segment
+        assert segment.answer == "old answer"
+        embedding_model_instance.get_text_embedding_num_tokens.assert_called_once_with(texts=["new questionold answer"])
