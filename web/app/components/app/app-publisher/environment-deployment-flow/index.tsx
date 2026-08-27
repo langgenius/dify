@@ -24,6 +24,7 @@ type PublisherEnvironmentFlowProps = {
   isDeploymentError: boolean
   isDeploymentLoading: boolean
   latestVersion?: DeploymentVersion | null
+  onConfigurationOpenChange?: (open: boolean) => void
   onGoToPublish: () => void
 }
 
@@ -37,6 +38,7 @@ export function PublisherEnvironmentFlow({
   isDeploymentError,
   isDeploymentLoading,
   latestVersion,
+  onConfigurationOpenChange,
   onGoToPublish,
 }: PublisherEnvironmentFlowProps) {
   const { t } = useTranslation()
@@ -68,6 +70,7 @@ export function PublisherEnvironmentFlow({
       disabled={deploymentPolling?.environmentId === environmentId}
       environmentId={environmentId}
       environmentName={environmentName}
+      onConfigurationOpenChange={onConfigurationOpenChange}
       onDeploymentStarted={(operationId) => {
         startDeploymentPolling({ environmentId, operationId })
       }}

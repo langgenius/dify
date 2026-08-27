@@ -3,7 +3,7 @@
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { ReactNode } from 'react'
 import type { DeploymentVersion } from '../../utils/version'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AppDeployStateBoundary } from '../../state'
 import { shouldPollEnvironmentDeployment } from '../../utils/environment-deployment'
 import { DeploymentConfiguration } from '../deployment-configuration'
@@ -24,6 +24,7 @@ type EnvironmentDeploymentFlowProps = {
   disabled?: boolean
   environmentId: string
   environmentName: string
+  onConfigurationOpenChange?: (open: boolean) => void
   onDeploymentStarted: (operationId: string) => void
 }
 
@@ -34,6 +35,7 @@ function EnvironmentDeploymentFlowContent({
   disabled = false,
   environmentId,
   environmentName,
+  onConfigurationOpenChange,
   onDeploymentStarted,
 }: EnvironmentDeploymentFlowProps) {
   const [view, setView] = useState<EnvironmentDeploymentFlowView>('overview')
@@ -47,15 +49,27 @@ function EnvironmentDeploymentFlowContent({
     kind: 'deploy' as const,
   }
 
+  useEffect(
+    () => () => {
+      onConfigurationOpenChange?.(false)
+    },
+    [onConfigurationOpenChange],
+  )
+
+  const changeView = (nextView: EnvironmentDeploymentFlowView) => {
+    setView(nextView)
+    onConfigurationOpenChange?.(nextView === 'configuration')
+  }
+
   const showVersionSelection = () => {
     if (deploymentActionsDisabled) return
-    setView('versions')
+    changeView('versions')
   }
 
   const deployVersion = (version: DeploymentVersion) => {
     if (deploymentActionsDisabled) return
     setSelectedVersion(version)
-    setView('configuration')
+    changeView('configuration')
   }
 
   if (view === 'configuration' && selectedVersion) {
@@ -68,7 +82,7 @@ function EnvironmentDeploymentFlowContent({
         request={request}
         version={selectedVersion}
         onBack={showVersionSelection}
-        onClose={() => setView('overview')}
+        onClose={() => changeView('overview')}
         onDeploymentStarted={onDeploymentStarted}
       />
     )
@@ -79,7 +93,7 @@ function EnvironmentDeploymentFlowContent({
       <EmbeddedVersionSelection
         disabled={deploymentActionsDisabled}
         request={request}
-        onBack={() => setView('overview')}
+        onBack={() => changeView('overview')}
         onSelect={deployVersion}
       />
     )

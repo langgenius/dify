@@ -288,7 +288,13 @@ function seedPublishedWorkflowQueries(queryClient: QueryClient) {
 
 function renderFlow(
   deployment = createDeployment(),
-  { isDeploymentError = false }: { isDeploymentError?: boolean } = {},
+  {
+    isDeploymentError = false,
+    onConfigurationOpenChange = vi.fn(),
+  }: {
+    isDeploymentError?: boolean
+    onConfigurationOpenChange?: (open: boolean) => void
+  } = {},
 ) {
   const queryClient = createFlowQueryClient(deployment.environment.id)
 
@@ -303,6 +309,7 @@ function renderFlow(
       isDeploymentError={isDeploymentError}
       isDeploymentLoading={false}
       latestVersion={latestVersion}
+      onConfigurationOpenChange={onConfigurationOpenChange}
       onGoToPublish={vi.fn()}
     />,
     { queryClient },
@@ -662,6 +669,29 @@ describe('PublisherEnvironmentFlow', () => {
     await user.click(screen.getByRole('button', { name: 'Back' }))
 
     expect(screen.getByRole('heading', { name: 'Deploy to Staging' })).toBeInTheDocument()
+  })
+
+  it('reports whether deployment configuration is active', async () => {
+    const user = userEvent.setup()
+    const onConfigurationOpenChange = vi.fn()
+    const view = renderFlow(createDeployment(), { onConfigurationOpenChange })
+
+    await user.click(screen.getByRole('button', { name: 'Deploy latest' }))
+    expect(onConfigurationOpenChange).toHaveBeenLastCalledWith(true)
+
+    await user.click(screen.getByRole('button', { name: 'Back' }))
+    expect(onConfigurationOpenChange).toHaveBeenLastCalledWith(false)
+
+    await user.click(screen.getByRole('button', { name: /Release 6/ }))
+    expect(onConfigurationOpenChange).toHaveBeenLastCalledWith(true)
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(onConfigurationOpenChange).toHaveBeenLastCalledWith(false)
+
+    await user.click(screen.getByRole('button', { name: 'Deploy latest' }))
+    expect(onConfigurationOpenChange).toHaveBeenLastCalledWith(true)
+    view.unmount()
+    expect(onConfigurationOpenChange).toHaveBeenLastCalledWith(false)
   })
 
   it('hides the environment variables section when deployment options have no slots', async () => {
