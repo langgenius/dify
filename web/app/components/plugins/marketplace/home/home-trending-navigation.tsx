@@ -18,12 +18,20 @@ const PAGINATION_ACTIVE_SHIFT = PAGINATION_ACTIVE_WIDTH - PAGINATION_DOT_SIZE
 const getPaginationItemOffset = (index: number, selectedIndex: number) =>
   index * PAGINATION_STEP + (index > selectedIndex ? PAGINATION_ACTIVE_SHIFT : 0)
 
-type AutoplayPauseReason = 'focus' | 'hover' | 'reduced-motion' | 'user' | 'viewport' | 'visibility'
+type AutoplayPauseReason =
+  | 'focus'
+  | 'hover'
+  | 'interaction'
+  | 'reduced-motion'
+  | 'user'
+  | 'viewport'
+  | 'visibility'
 
 function TrendingNavigation({
   banners,
   selectedIndex,
   carouselRootRef,
+  interactionPaused,
   pauseWhenOffscreen,
   onSelect,
   onNext,
@@ -32,6 +40,7 @@ function TrendingNavigation({
   banners: PluginBanner[]
   selectedIndex: number
   carouselRootRef: RefObject<HTMLDivElement | null>
+  interactionPaused: boolean
   pauseWhenOffscreen: boolean
   onSelect: (index: number) => void
   onNext: () => void
@@ -65,6 +74,10 @@ function TrendingNavigation({
     },
     [onPausedChange],
   )
+
+  useEffect(() => {
+    setPauseReason('interaction', interactionPaused)
+  }, [interactionPaused, setPauseReason])
 
   useEffect(() => {
     const progressElement = progressRef.current

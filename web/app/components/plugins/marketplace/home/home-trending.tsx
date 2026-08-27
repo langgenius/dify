@@ -1,7 +1,11 @@
 'use client'
 
 import type { PluginBanner } from '@dify/contracts/marketplace'
-import type { TransitionEvent } from 'react'
+import type {
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
+  TransitionEvent,
+} from 'react'
 import type { MarketplaceBannerPage } from './banners'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -13,15 +17,31 @@ import styles from './home-trending.module.css'
 import { useBannerViewability } from './use-banner-viewability'
 
 type LoopPhase = 'idle' | 'resetting' | 'wrapping'
+type GestureAxis = 'horizontal' | 'pending' | 'vertical'
+
+type SwipeGesture = {
+  axis: GestureAxis
+  pointerId: number
+  selectedIndex: number
+  startX: number
+  startY: number
+}
+
+const MOBILE_VIEWPORT_QUERY = '(max-width: 879px)'
+const GESTURE_AXIS_THRESHOLD = 8
+const MIN_SWIPE_THRESHOLD = 40
+const MAX_SWIPE_THRESHOLD = 64
 
 function TrackedBannerSlide({
   banner,
   isActive,
+  isDragging,
   isMarketplacePlatform,
   page,
 }: {
   banner: PluginBanner
   isActive: boolean
+  isDragging: boolean
   isMarketplacePlatform: boolean
   page: MarketplaceBannerPage
 }) {
@@ -52,7 +72,7 @@ function TrackedBannerSlide({
       className={cn(
         'h-full min-w-0 shrink-0 grow-0 basis-full',
         isMarketplacePlatform && styles.slide,
-        isMarketplacePlatform && !isActive && styles.slideInactive,
+        isMarketplacePlatform && !isActive && !isDragging && styles.slideInactive,
       )}
     >
       <HomeBannerSlide banner={banner} isMarketplacePlatform={isMarketplacePlatform} page={page} />
@@ -71,9 +91,15 @@ function HomeTrending({
 }) {
   const { t } = useTranslation('plugin')
   const carouselRootRef = useRef<HTMLDivElement>(null)
+  const swipeGestureRef = useRef<SwipeGesture | null>(null)
+  const suppressClickRef = useRef(false)
+  const suppressClickTimerRef = useRef<number | null>(null)
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [trackIndex, setTrackIndex] = useState(0)
   const [loopPhase, setLoopPhase] = useState<LoopPhase>('idle')
+  const [dragOffset, setDragOffset] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const [isGestureActive, setIsGestureActive] = useState(false)
   const [isRotationPaused, setIsRotationPaused] = useState(false)
   const selectSlide = useCallback((index: number) => {
     setLoopPhase('idle')
@@ -118,6 +144,135 @@ function HomeTrending({
     return () => window.cancelAnimationFrame(frame)
   }, [loopPhase])
 
+  useEffect(
+    () => () => {
+      if (suppressClickTimerRef.current !== null) window.clearTimeout(suppressClickTimerRef.current)
+    },
+    [],
+  )
+
+  const canStartSwipe = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) =>
+      isMarketplacePlatform &&
+      banners.length > 1 &&
+      loopPhase === 'idle' &&
+      event.isPrimary &&
+      event.pointerType === 'touch' &&
+      window.matchMedia(MOBILE_VIEWPORT_QUERY).matches,
+    [banners.length, isMarketplacePlatform, loopPhase],
+  )
+
+  const handlePointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!canStartSwipe(event)) return
+
+      if (suppressClickTimerRef.current !== null) {
+        window.clearTimeout(suppressClickTimerRef.current)
+        suppressClickTimerRef.current = null
+      }
+      suppressClickRef.current = false
+      swipeGestureRef.current = {
+        axis: 'pending',
+        pointerId: event.pointerId,
+        selectedIndex,
+        startX: event.clientX,
+        startY: event.clientY,
+      }
+      setIsGestureActive(true)
+    },
+    [canStartSwipe, selectedIndex],
+  )
+
+  const handlePointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const gesture = swipeGestureRef.current
+      if (!gesture || gesture.pointerId !== event.pointerId) return
+
+      const deltaX = event.clientX - gesture.startX
+      const deltaY = event.clientY - gesture.startY
+
+      if (gesture.axis === 'pending') {
+        if (Math.max(Math.abs(deltaX), Math.abs(deltaY)) < GESTURE_AXIS_THRESHOLD) return
+
+        if (Math.abs(deltaY) > Math.abs(deltaX)) {
+          gesture.axis = 'vertical'
+          setIsGestureActive(false)
+          return
+        }
+
+        gesture.axis = 'horizontal'
+        setIsDragging(true)
+        try {
+          event.currentTarget.setPointerCapture(event.pointerId)
+        } catch {
+          // Touch pointers are implicitly captured; explicit capture is only a
+          // safeguard for browsers that retarget during a horizontal drag.
+        }
+      }
+
+      if (gesture.axis !== 'horizontal') return
+
+      const viewportWidth = event.currentTarget.getBoundingClientRect().width
+      const boundedOffset = Math.max(-viewportWidth, Math.min(viewportWidth, deltaX))
+      const isPastStart = gesture.selectedIndex === 0 && boundedOffset > 0
+      const isPastEnd = gesture.selectedIndex === banners.length - 1 && boundedOffset < 0
+      setDragOffset(isPastStart || isPastEnd ? boundedOffset * 0.35 : boundedOffset)
+    },
+    [banners.length],
+  )
+
+  const finishSwipe = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>, wasCanceled = false) => {
+      const gesture = swipeGestureRef.current
+      if (!gesture || gesture.pointerId !== event.pointerId) return
+
+      const deltaX = event.clientX - gesture.startX
+      const wasHorizontal = gesture.axis === 'horizontal'
+      swipeGestureRef.current = null
+      setDragOffset(0)
+      setIsDragging(false)
+      setIsGestureActive(false)
+
+      if (event.currentTarget.hasPointerCapture?.(event.pointerId))
+        event.currentTarget.releasePointerCapture(event.pointerId)
+
+      if (!wasHorizontal) return
+
+      // Once the gesture locks to the horizontal axis, suppress the browser's
+      // trailing click even if the finger returns near its starting point.
+      suppressClickRef.current = true
+      suppressClickTimerRef.current = window.setTimeout(() => {
+        suppressClickRef.current = false
+        suppressClickTimerRef.current = null
+      }, 0)
+
+      if (wasCanceled) return
+
+      const swipeThreshold = Math.min(
+        MAX_SWIPE_THRESHOLD,
+        Math.max(MIN_SWIPE_THRESHOLD, event.currentTarget.getBoundingClientRect().width * 0.12),
+      )
+      if (Math.abs(deltaX) < swipeThreshold) return
+
+      if (deltaX < 0 && gesture.selectedIndex < banners.length - 1)
+        selectSlide(gesture.selectedIndex + 1)
+      else if (deltaX > 0 && gesture.selectedIndex > 0) selectSlide(gesture.selectedIndex - 1)
+    },
+    [banners.length, selectSlide],
+  )
+
+  const handleClickCapture = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!suppressClickRef.current) return
+
+    event.preventDefault()
+    event.stopPropagation()
+    suppressClickRef.current = false
+    if (suppressClickTimerRef.current !== null) {
+      window.clearTimeout(suppressClickTimerRef.current)
+      suppressClickTimerRef.current = null
+    }
+  }, [])
+
   if (banners.length === 0) return null
 
   return (
@@ -154,6 +309,11 @@ function HomeTrending({
               'h-full overflow-hidden rounded-2xl',
               isMarketplacePlatform && styles.slideViewport,
             )}
+            onClickCapture={handleClickCapture}
+            onPointerCancel={(event) => finishSwipe(event, true)}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={finishSwipe}
           >
             <div
               // Keep automatic rotation silent for screen readers; announce
@@ -164,8 +324,11 @@ function HomeTrending({
               data-carousel-loop-phase={loopPhase}
               onTransitionEnd={handleTrackTransitionEnd}
               style={{
-                transform: `translate3d(-${trackIndex * 100}%, 0, 0)`,
-                transition: loopPhase === 'resetting' ? 'none' : undefined,
+                transform:
+                  dragOffset === 0
+                    ? `translate3d(-${trackIndex * 100}%, 0, 0)`
+                    : `translate3d(calc(-${trackIndex * 100}% + ${dragOffset}px), 0, 0)`,
+                transition: loopPhase === 'resetting' || isDragging ? 'none' : undefined,
               }}
             >
               {banners.map((banner, index) => (
@@ -173,6 +336,7 @@ function HomeTrending({
                   key={banner.id}
                   banner={banner}
                   isActive={index === selectedIndex}
+                  isDragging={isDragging}
                   isMarketplacePlatform={isMarketplacePlatform}
                   page={page}
                 />
@@ -207,6 +371,7 @@ function HomeTrending({
               onSelect={selectSlide}
               onNext={selectNextSlide}
               onPausedChange={setIsRotationPaused}
+              interactionPaused={isGestureActive}
             />
           )}
         </div>

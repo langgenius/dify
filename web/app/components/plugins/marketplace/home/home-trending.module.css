@@ -188,6 +188,7 @@
 
   :global([data-marketplace-standalone]) .slideViewport {
     height: auto;
+    touch-action: pan-y pinch-zoom;
   }
 
   :global([data-marketplace-standalone]) .contentTrack {
