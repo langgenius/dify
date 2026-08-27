@@ -19,10 +19,19 @@ const formatFindings = (findings: AxeResults['violations']) =>
     )
     .join('\n\n')
 
-const checkCurrentPage = async (world: DifyWorld, level: WcagLevel) => {
-  const results = await new AxeBuilder({ page: world.getPage() })
-    .withTags(wcagTagsByLevel[level])
-    .analyze()
+const checkCurrentPage = async (
+  world: DifyWorld,
+  level: WcagLevel,
+  excludedRuleIds: string[] = [],
+) => {
+  const builder = new AxeBuilder({ page: world.getPage() }).withTags(wcagTagsByLevel[level])
+
+  if (excludedRuleIds.length > 0) {
+    builder.disableRules(excludedRuleIds)
+    world.attach(`Excluded axe rules: ${excludedRuleIds.join(', ')}`, 'text/plain')
+  }
+
+  const results = await builder.analyze()
   const formattedViolations = formatFindings(results.violations)
   const formattedIncomplete = formatFindings(results.incomplete)
 
@@ -65,5 +74,15 @@ Then(
       throw new Error(`Unsupported WCAG level "${level}". Expected A or AA.`)
 
     await checkCurrentPage(this, level as WcagLevel)
+  },
+)
+
+Then(
+  'the current page should have no automatically detectable WCAG Level {word} violations except the {string} rule',
+  async function (this: DifyWorld, level: string, excludedRuleId: string) {
+    if (!Object.hasOwn(wcagTagsByLevel, level))
+      throw new Error(`Unsupported WCAG level "${level}". Expected A or AA.`)
+
+    await checkCurrentPage(this, level as WcagLevel, [excludedRuleId])
   },
 )
