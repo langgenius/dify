@@ -4,14 +4,14 @@ import logging
 import os
 import queue
 import threading
-import time
 from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any, TypedDict, override
 from uuid import UUID, uuid4
 
 from cachetools import LRUCache
-from flask import current_app
+from flask import Flask, current_app
 from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -772,7 +772,6 @@ class TraceTask:
         self.user_id = user_id
         self.timer = timer
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
-        self.app_id = None
         self.trace_id = None
         self.kwargs = kwargs
         if user_id is not None and "user_id" not in self.kwargs:
@@ -1503,96 +1502,98 @@ class TraceTask:
             return {}
 
 
-trace_manager_timer: threading.Timer | None = None
-trace_manager_queue: queue.Queue = queue.Queue()
-trace_manager_interval = int(os.getenv("TRACE_QUEUE_MANAGER_INTERVAL", 5))
-trace_manager_batch_size = int(os.getenv("TRACE_QUEUE_MANAGER_BATCH_SIZE", 100))
+# ponytail: tracing stays process-local and bounded; add an outbox only if restart loss becomes unacceptable.
+_TRACE_QUEUE_MAX_SIZE = 2048
 
 
-class TraceQueueManager:
-    def __init__(self, app_id=None, user_id=None):
-        global trace_manager_timer
+@dataclass(frozen=True, slots=True)
+class _TraceWorkItem:
+    storage_id: str
+    task: TraceTask
 
-        self.app_id = app_id
-        self.user_id = user_id
-        self.trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
-        self.flask_app = current_app._get_current_object()  # type: ignore
 
-        from core.telemetry.gateway import is_enterprise_telemetry_enabled
+class _TraceDispatcher:
+    """Process-scoped, tenant-neutral dispatcher for best-effort trace work items."""
 
-        self._enterprise_telemetry_enabled = is_enterprise_telemetry_enabled()
-        if trace_manager_timer is None:
-            self.start_timer()
+    def __init__(
+        self,
+        flask_app: Flask,
+        *,
+        max_queue_size: int = _TRACE_QUEUE_MAX_SIZE,
+    ) -> None:
+        if max_queue_size < 1:
+            raise ValueError("max_queue_size must be positive")
 
-    def add_trace_task(self, trace_task: TraceTask):
-        global trace_manager_timer, trace_manager_queue
+        self._flask_app = flask_app
+        self._queue: queue.Queue[_TraceWorkItem] = queue.Queue(maxsize=max_queue_size)
+        self._start_lock = threading.Lock()
+        self._worker: threading.Thread | None = None
+        self._dropped_tasks = 0
+
+    def submit(self, item: _TraceWorkItem) -> bool:
+        self._ensure_worker()
         try:
-            if self._enterprise_telemetry_enabled or self.trace_instance:
-                trace_task.app_id = self.app_id
-                trace_manager_queue.put(trace_task)
+            self._queue.put_nowait(item)
+        except queue.Full:
+            self._dropped_tasks += 1
+            logger.warning(
+                "Dropping trace because the dispatcher queue is full, storage_id=%s, trace_type=%s, total_dropped=%s",
+                item.storage_id,
+                item.task.trace_type,
+                self._dropped_tasks,
+            )
+            return False
+
+        return True
+
+    def _ensure_worker(self) -> None:
+        worker = self._worker
+        if worker is not None and worker.is_alive():
+            return
+
+        with self._start_lock:
+            worker = self._worker
+            if worker is not None and worker.is_alive():
+                return
+            worker = threading.Thread(target=self._run, name="ops-trace-dispatcher", daemon=True)
+            self._worker = worker
+            worker.start()
+
+    def _run(self) -> None:
+        while True:
+            self._process_item(self._queue.get())
+
+    def _process_item(self, item: _TraceWorkItem) -> None:
+        try:
+            with self._flask_app.app_context():
+                file_info = self._persist_trace_task(item)
+                self._enqueue_persisted_trace(file_info)
         except Exception:
-            logger.exception("Error adding trace task, trace_type %s", trace_task.trace_type)
+            logger.exception(
+                "Failed to dispatch trace, storage_id=%s, trace_type=%s",
+                item.storage_id,
+                item.task.trace_type,
+            )
         finally:
-            self.start_timer()
+            self._queue.task_done()
 
-    def collect_tasks(self):
-        global trace_manager_queue
-        tasks: list[TraceTask] = []
-        while len(tasks) < trace_manager_batch_size and not trace_manager_queue.empty():
-            task = trace_manager_queue.get_nowait()
-            tasks.append(task)
-            trace_manager_queue.task_done()
-        return tasks
-
-    def run(self):
-        try:
-            tasks = self.collect_tasks()
-            if tasks:
-                self.send_to_celery(tasks)
-        except Exception:
-            logger.exception("Error processing trace tasks")
-
-    def start_timer(self):
-        global trace_manager_timer
-        if trace_manager_timer is None or not trace_manager_timer.is_alive():
-            trace_manager_timer = threading.Timer(trace_manager_interval, self.run)
-            trace_manager_timer.name = f"trace_manager_timer_{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}"
-            trace_manager_timer.daemon = False
-            trace_manager_timer.start()
-
-    def _resolve_storage_id(self, task: TraceTask) -> str | None:
-        storage_id = task.app_id
-        if storage_id is not None:
-            return storage_id
-
-        tenant_id = task.kwargs.get("tenant_id")
-        if tenant_id:
-            return f"tenant-{tenant_id}"
-
-        logger.warning("Skipping trace without app_id or tenant_id, trace_type: %s", task.trace_type)
-        return None
-
-    def persist_trace_task(self, task: TraceTask, *, file_id: str | None = None) -> dict[str, str] | None:
-        storage_id = self._resolve_storage_id(task)
-        if storage_id is None:
-            return None
-
+    def _persist_trace_task(self, item: _TraceWorkItem, *, file_id: str | None = None) -> dict[str, str]:
         resolved_file_id = file_id or uuid4().hex
-        trace_info = task.execute()
+        trace_info = item.task.execute()
         if isinstance(trace_info, BaseTraceInfo) and trace_info.operation_id is None:
             trace_info = trace_info.model_copy(update={"operation_id": str(uuid4())})
         task_data = TaskData(
-            app_id=storage_id,
+            app_id=item.storage_id,
             trace_info_type=type(trace_info).__name__,
             trace_info=trace_info.model_dump() if trace_info else None,
         )
         storage.save(
-            ops_trace_payload_path(storage_id, resolved_file_id),
+            ops_trace_payload_path(item.storage_id, resolved_file_id),
             task_data.model_dump_json().encode("utf-8"),
         )
-        return {"file_id": resolved_file_id, "app_id": storage_id}
+        return {"file_id": resolved_file_id, "app_id": item.storage_id}
 
-    def enqueue_persisted_trace(self, file_info: dict[str, str]) -> None:
+    def _enqueue_persisted_trace(self, file_info: dict[str, str]) -> None:
         process_trace_tasks.apply_async(
             args=(file_info,),
             retry=True,
@@ -1604,9 +1605,56 @@ class TraceQueueManager:
             },
         )
 
-    def send_to_celery(self, tasks: list[TraceTask]):
-        with self.flask_app.app_context():
-            for task in tasks:
-                file_info = self.persist_trace_task(task)
-                if file_info is not None:
-                    self.enqueue_persisted_trace(file_info)
+
+_trace_dispatcher: _TraceDispatcher | None = None
+_trace_dispatcher_lock = threading.Lock()
+
+
+def _get_trace_dispatcher() -> _TraceDispatcher:
+    global _trace_dispatcher
+
+    dispatcher = _trace_dispatcher
+    if dispatcher is not None:
+        return dispatcher
+
+    flask_app = current_app._get_current_object()  # type: ignore
+    with _trace_dispatcher_lock:
+        if _trace_dispatcher is None:
+            _trace_dispatcher = _TraceDispatcher(flask_app)
+        return _trace_dispatcher
+
+
+class TraceQueueManager:
+    """Request-scoped trace producer that submits tenant-owned work to the shared dispatcher."""
+
+    def __init__(self, app_id=None, user_id=None):
+        self.app_id = str(app_id) if app_id is not None else None
+        self.user_id = user_id
+
+        from core.telemetry.gateway import is_enterprise_telemetry_enabled
+
+        self._enabled = (
+            is_enterprise_telemetry_enabled() or OpsTraceManager.get_ops_trace_instance(self.app_id) is not None
+        )
+
+    def add_trace_task(self, trace_task: TraceTask) -> None:
+        try:
+            if not self._enabled:
+                return
+
+            storage_id = self._resolve_storage_id(trace_task)
+            if storage_id is not None:
+                _get_trace_dispatcher().submit(_TraceWorkItem(storage_id=storage_id, task=trace_task))
+        except Exception:
+            logger.exception("Error adding trace task, trace_type %s", trace_task.trace_type)
+
+    def _resolve_storage_id(self, task: TraceTask) -> str | None:
+        if self.app_id is not None:
+            return self.app_id
+
+        tenant_id = task.kwargs.get("tenant_id")
+        if tenant_id:
+            return f"tenant-{tenant_id}"
+
+        logger.warning("Skipping trace without app_id or tenant_id, trace_type: %s", task.trace_type)
+        return None
