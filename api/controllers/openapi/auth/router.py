@@ -21,7 +21,7 @@ from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import subject_from_auth
 from core.db.session_factory import session_factory
 from enums import DeploymentEdition
-from libs.oauth_bearer import SubjectType, extract_bearer, get_authenticator
+from libs.oauth_bearer import InvalidBearerError, SubjectType, extract_bearer, get_authenticator
 
 
 class AuthRouter:
@@ -53,7 +53,13 @@ class AuthRouter:
         if not token:
             raise Unauthorized("bearer required")
 
-        auth = get_authenticator().authenticate(token)
+        try:
+            auth = get_authenticator().authenticate(token)
+        except InvalidBearerError:
+            # One answer for every rejection reason - unknown prefix, no live row,
+            # expired - so a caller cannot probe which one it hit. Same reasoning as
+            # the 404-not-403 elsewhere on this surface.
+            raise Unauthorized("invalid bearer")
         subject = subject_from_auth(auth)
 
         pipeline = self._pipelines.get(subject.subject_type)

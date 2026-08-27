@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import NoReturn
+from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask, request
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
+import libs.rate_limit as rate_limit_module
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.pipelines import AccountPipeline
 from controllers.openapi.auth.requirements import Requirement, SubjectCheck
@@ -17,11 +20,21 @@ from controllers.openapi.auth.router import AuthRouter, subject_router
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import AccountSubject
 from enums import DeploymentEdition
-from libs.oauth_bearer import AuthContext, SubjectType, TokenType
+from libs.oauth_bearer import (
+    AuthContext,
+    BearerAuthenticator,
+    OAuthAccessTokenResolver,
+    Resolver,
+    SubjectType,
+    TokenKind,
+    TokenKindRegistry,
+    TokenType,
+)
 from models import Account, App
 from models.account import AccountStatus
 from models.enums import AppStatus
 from models.model import AppMode, IconType
+from models.oauth import OAuthAccessToken
 from services.entities.feature_entities import (
     LicenseStatus,
     LicenseStatusModel,
@@ -160,6 +173,173 @@ def test_a_missing_bearer_401s(app: Flask) -> None:
     with app.test_request_context("/openapi/v1/account"):
         with pytest.raises(Unauthorized, match="bearer required"):
             view()
+
+
+INVALID_BEARER = "invalid bearer"
+"""The one answer the router gives a bearer it will not accept.
+
+`InvalidBearerError` is a plain `Exception`, so uncaught at this seam it reaches
+`errorhandler(Exception)` and answers 500 — telling a caller whose token expired
+that the server broke, when difyctl maps only 401/403 to re-authenticate. Every
+rejection reason shares this one message: a caller that can tell them apart can
+probe which tokens ever existed, the same reasoning as the 404-not-403 elsewhere
+on this surface.
+"""
+
+
+def _resolver_never_asked() -> MagicMock:
+    """An unknown prefix is refused by the registry, before any resolver runs."""
+    resolver = MagicMock()
+    resolver.resolve.side_effect = AssertionError("an unknown prefix must not reach a resolver")
+    return resolver
+
+
+def _resolver_with_no_live_row() -> MagicMock:
+    """`None` is what the shipped resolver answers for a token with no usable row —
+    never minted, revoked, or minted under the other variant's prefix.
+    """
+    resolver = MagicMock()
+    resolver.resolve.return_value = None
+    return resolver
+
+
+class _FakeRedis:
+    def __init__(self) -> None:
+        self.store: dict[str, object] = {}
+
+    def get(self, key: str) -> object | None:
+        return self.store.get(key)
+
+    def setex(self, key: str, _ttl: int, value: object) -> None:
+        self.store[key] = value
+
+    def delete(self, key: str) -> None:
+        self.store.pop(key, None)
+
+
+class _OneRowSession:
+    """Enough `Session` for `_VariantResolver` to read one row and expire it.
+
+    SQLite hands `expires_at` back naive while the resolver compares it against
+    an aware `now`, so the expiry branch cannot be driven through the real
+    sqlite fixture — same reason `test_auth_matrix._MemoryResolver` exists.
+    """
+
+    def __init__(self, row: OAuthAccessToken) -> None:
+        self._row = row
+        self.updates: list[object] = []
+
+    def query(self, _model: object) -> _OneRowSession:
+        return self
+
+    def filter(self, *_criteria: object) -> _OneRowSession:
+        return self
+
+    def one_or_none(self) -> OAuthAccessToken:
+        return self._row
+
+    def execute(self, statement: object) -> SimpleNamespace:
+        self.updates.append(statement)
+        return SimpleNamespace(rowcount=1)
+
+    def commit(self) -> None:
+        return None
+
+
+def _expired_row() -> OAuthAccessToken:
+    """Live in every respect but its expiry, so expiry is the only refusal."""
+    row = OAuthAccessToken(
+        subject_email="account@example.com",
+        client_id="openapi-client",
+        device_label="laptop",
+        prefix=SubjectType.ACCOUNT.prefix,
+        expires_at=datetime.now(UTC) - timedelta(seconds=1),
+        subject_issuer="dify:account",
+        account_id=ACCOUNT_ID,
+        token_hash="deadbeef",
+    )
+    row.id = TOKEN_ID
+    return row
+
+
+def _expired_resolver() -> tuple[Resolver, _OneRowSession]:
+    session = _OneRowSession(_expired_row())
+    resolver = OAuthAccessTokenResolver(lambda: session, _FakeRedis())
+    return resolver.for_account(), session
+
+
+def _resolver_for_an_expired_row() -> Resolver:
+    """The shipped resolver, over a row whose expiry has passed."""
+    resolver, _ = _expired_resolver()
+    return resolver
+
+
+def _authenticates_for_real(monkeypatch: pytest.MonkeyPatch, resolver: Resolver) -> None:
+    """The real `BearerAuthenticator`, so the refusals are its own, not a stub's."""
+    monkeypatch.setattr(
+        rate_limit_module,
+        "LIMIT_BEARER_PER_TOKEN",
+        rate_limit_module.RateLimit(
+            0,
+            rate_limit_module.LIMIT_BEARER_PER_TOKEN.window,
+            rate_limit_module.LIMIT_BEARER_PER_TOKEN.scopes,
+        ),
+    )
+    registry = TokenKindRegistry(
+        [
+            TokenKind(
+                prefix=SubjectType.ACCOUNT.prefix,
+                subject_type=SubjectType.ACCOUNT,
+                scopes=SubjectType.ACCOUNT.scopes,
+                token_type=TokenType.OAUTH_ACCOUNT,
+                resolver=resolver,
+            )
+        ]
+    )
+    authenticator = BearerAuthenticator(registry)
+    monkeypatch.setattr(f"{ROUTER}.get_authenticator", lambda: authenticator)
+
+
+def _refuse(app: Flask, token: str) -> Unauthorized:
+    view = _guard(_nothing)
+    with app.test_request_context("/openapi/v1/account", headers={"Authorization": f"Bearer {token}"}):
+        with pytest.raises(Unauthorized) as raised:
+            view()
+    return raised.value
+
+
+@pytest.mark.parametrize(
+    ("resolver_factory", "token"),
+    [
+        (_resolver_never_asked, "zzz_notatokenkind"),
+        (_resolver_with_no_live_row, f"{SubjectType.ACCOUNT.prefix}revoked"),
+        (_resolver_for_an_expired_row, f"{SubjectType.ACCOUNT.prefix}stale"),
+    ],
+    ids=["unknown prefix", "no live row", "expired"],
+)
+def test_every_way_authenticate_rejects_a_bearer_answers_the_same_401(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    resolver_factory: Callable[[], Resolver],
+    token: str,
+) -> None:
+    _authenticates_for_real(monkeypatch, resolver_factory())
+
+    refusal = _refuse(app, token)
+
+    assert (refusal.code, refusal.description) == (401, INVALID_BEARER)
+
+
+def test_the_expired_branch_hard_expires_the_row_before_refusing(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Pins that the `expired` row above really took the expiry branch, rather
+    than reaching the same answer as a token that was never minted.
+    """
+    resolver, session = _expired_resolver()
+    _authenticates_for_real(monkeypatch, resolver)
+
+    _refuse(app, f"{SubjectType.ACCOUNT.prefix}stale")
+
+    assert len(session.updates) == 1
 
 
 def test_a_subject_with_no_pipeline_403s(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
