@@ -135,7 +135,7 @@ describe('HomeCatalogNavigation', () => {
     expect(screen.queryByTestId('plugin-type-switch')).not.toBeInTheDocument()
   })
 
-  it('renders a leading tag filter before categories and a trailing slot after them', () => {
+  it('uses a short divider between the leading tag filter and categories', () => {
     render(
       <HomeStickyStateProvider>
         <HomeCatalogNavigation
@@ -149,7 +149,22 @@ describe('HomeCatalogNavigation', () => {
     // Categories sit in the flex-1 scroller; the row is one level up.
     const row = screen.getByRole('navigation', { name: 'Plugin categories' }).parentElement
       ?.parentElement
-    expect(row?.textContent).toMatch(/Tags[^\n\r\xb7\u2028\u2029]*\xb7.*Categories.*Languages/)
+    const divider = row?.children.item(1)
+
+    expect(row?.children.item(0)).toHaveTextContent('Tags')
+    expect(divider).toHaveAttribute('aria-hidden', 'true')
+    expect(divider).toHaveClass(
+      'mx-1',
+      'h-3.5',
+      'w-px',
+      'shrink-0',
+      'bg-divider-regular',
+      styles.catalogLeadingDivider!,
+    )
+    expect(divider).toBeEmptyDOMElement()
+    expect(row?.children.item(2)).toHaveTextContent('Categories')
+    expect(row?.children.item(3)).toHaveTextContent('Languages')
+    expect(row).not.toHaveTextContent('·')
   })
 
   it('keeps Dify catalog navigation on the current origin', () => {

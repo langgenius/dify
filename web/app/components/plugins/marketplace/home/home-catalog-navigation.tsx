@@ -85,12 +85,10 @@ function HomeCatalogNavigation({
                 <div
                   aria-hidden
                   className={cn(
-                    'shrink-0 px-1 system-md-regular text-text-tertiary',
+                    'mx-1 h-3.5 w-px shrink-0 bg-divider-regular',
                     styles.catalogLeadingDivider,
                   )}
-                >
-                  ·
-                </div>
+                />
               </>
             )}
             <div className="min-w-0 flex-1 scrollbar-none overflow-x-auto">
