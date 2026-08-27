@@ -107,6 +107,9 @@
 /api/services/async_workflow_service.py @Mairuis
 /api/tasks/async_workflow_tasks.py @Mairuis
 
+# Backend - Workflow Nodes
+/api/core/workflow/nodes/ @loulanyue
+
 # Backend - Billing
 /api/services/billing_service.py @hj24 @zyssyz123
 /api/controllers/console/billing/ @hj24 @zyssyz123
@@ -122,7 +125,8 @@
 /api/migrations/ @snakevash @laipz8200 @MRZHUH
 
 # Backend - Vector DB Middleware
-/api/configs/middleware/vdb/* @JohnJyong
+/api/configs/middleware/vdb/* @JohnJyong @loulanyue
+/api/core/rag/datasource/vdb/ @JohnJyong @loulanyue
 
 # Frontend
 /web/ @iamjoel
