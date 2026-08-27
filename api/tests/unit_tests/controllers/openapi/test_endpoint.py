@@ -183,6 +183,8 @@ def test_multiple_returns_reproduce_todays_stacked_responses():
     )
     def composed(self, ctx): ...
 
-    hand_responses = getattr(hand_stacked, "__apidoc__", {}).get("responses", {})
-    composed_responses = getattr(composed, "__apidoc__", {}).get("responses", {})
+    hand_apidoc = hand_stacked.__apidoc__ if hasattr(hand_stacked, "__apidoc__") else {}
+    composed_apidoc = composed.__apidoc__ if hasattr(composed, "__apidoc__") else {}
+    hand_responses = hand_apidoc.get("responses", {})
+    composed_responses = composed_apidoc.get("responses", {})
     assert set(composed_responses) == set(hand_responses) == {"200", "202", "400", "default"}
