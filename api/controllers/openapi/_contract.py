@@ -8,9 +8,9 @@ failures map to a single shape: 422.
 ``@endpoint`` is the third export: it composes both under ``subject_router.guard``
 in the one order that matters — auth, then ``accepts``, then ``returns`` — so a
 route no longer has to get the stacking right by hand, and ``view.__handler__``
-is the one documented test seam. A route not yet migrated onto it must still
-stack ``@auth_router.guard`` above ``@accepts``/``@returns`` itself; the two
-don't interact, so either order between them works.
+is the one documented test seam. Every guarded route goes through it; ``returns``
+is still used bare by the unauthenticated ``index.py`` probes, which have no
+auth layer to compose with.
 """
 
 from __future__ import annotations

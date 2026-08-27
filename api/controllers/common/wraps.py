@@ -29,8 +29,7 @@ def enforce_rbac_access(
 
     This is the flask-login-independent core of the RBAC gate so it can run
     inside request-handling layers that resolve the caller themselves (e.g. the
-    openapi auth pipeline, which has the account on ``AuthData`` before
-    flask-login is mounted).
+    openapi auth pipeline, whose requirements run before flask-login is mounted).
 
     No-op when ``RBAC_ENABLED`` is ``False``. For resource-scoped checks the
     resource ID is taken from ``path_args`` merged with ``request.view_args``;

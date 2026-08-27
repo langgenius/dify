@@ -90,10 +90,9 @@ def test_transaction_boundary_matches_the_pre_migration_decorator(view, write: b
 
 
 def test_describe_requires_webapp_access():
-    """SSO-only and app-scoped, but not run-scoped — and the external-SSO pipeline
-    gates `check_acl` on `PATH_HAS_APP_ID` and `check_private_app_permission` on the
-    loaded access mode, neither on the run scope. Omitting `RequireWebappAccess`
-    here would silently drop both.
+    """SSO-only and app-scoped, but not run-scoped — and the web-app ACL and the
+    private-app check are gated on the app and its access mode, neither on the run
+    scope. Omitting `RequireWebappAccess` here would silently drop both.
     """
     requirements = PermittedExternalAppDescribeApi.get.__spec__.requirements
     assert any(isinstance(requirement, RequireWebappAccess) for requirement in requirements)

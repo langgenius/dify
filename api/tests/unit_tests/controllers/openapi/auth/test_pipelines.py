@@ -190,7 +190,7 @@ def test_equal_ranks_keep_declared_order(sqlite_session: Session) -> None:
 
 
 def test_fixed_requirements_reproduce_the_two_pipelines() -> None:
-    """`composition.py`'s two pipelines, minus their endpoint-declared steps.
+    """What every route of each subject gets, whatever it declares itself.
     Tuples, not lists: `fixed` is a ClassVar on a process-lifetime object.
     """
     assert [type(requirement) for requirement in AccountPipeline.fixed] == [
@@ -237,9 +237,9 @@ def test_a_subject_that_mounts_no_caller_leaves_the_context_untouched(
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """`resolve_external_user` is `When(PATH_HAS_APP_ID)` today, so an SSO
-    request on an app-less route resolves no caller at all. Reading
-    `ctx.caller` here would both change that and defeat the lazy context.
+    """`ExternalSsoSubject.mounts_caller` is false without an `app_id`, so an SSO
+    request on an app-less route resolves no caller at all. Reading `ctx.caller`
+    here would both change that and defeat the lazy context.
     """
     monkeypatch.setattr(MOUNT, _boom)
     subject = _sso_subject()
