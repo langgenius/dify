@@ -47,6 +47,7 @@ from models.account import (
 )
 from models.dataset import Dataset
 from models.model import App, DifySetup
+from services.account_email import normalize_email
 from services.account_forgot_password_service import (
     FORGOT_PASSWORD_SEND_RATE_LIMIT_MAX_ATTEMPTS,
     FORGOT_PASSWORD_SEND_RATE_LIMIT_PREFIX,
@@ -54,7 +55,6 @@ from services.account_forgot_password_service import (
     FORGOT_PASSWORD_VERIFICATION_FAILURE_LIMIT,
     FORGOT_PASSWORD_VERIFICATION_KEY_PREFIX,
 )
-from services.account_email import normalize_email
 from services.billing_service import BillingService
 from services.email_code_login_challenge import (
     EmailCodeLoginChallengeResult,
