@@ -142,7 +142,6 @@ catalog:
   '@vitest/browser-playwright': 4.1.11
   '@vitest/coverage-v8': 4.1.11
   abcjs: 6.7.0
-  agentation: 3.0.2
   ahooks: 3.9.7
   c12: 4.0.0-beta.5
   chokidar: 5.0.0

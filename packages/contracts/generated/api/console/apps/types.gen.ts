@@ -753,14 +753,6 @@ export type WorkflowAppLogPaginationResponse = {
   total: number
 }
 
-export type WorkflowArchivedLogPaginationResponse = {
-  data: Array<WorkflowArchivedLogPartialResponse>
-  has_more: boolean
-  limit: number
-  page: number
-  total: number
-}
-
 export type WorkflowRunPaginationResponse = {
   data: Array<WorkflowRunForListResponse>
   has_more: boolean
@@ -1685,15 +1677,6 @@ export type WorkflowAppLogPartialResponse = {
   workflow_run?: WorkflowRunForLogResponse | null
 }
 
-export type WorkflowArchivedLogPartialResponse = {
-  created_at?: number | null
-  created_by_account?: SimpleAccountResponse | null
-  created_by_end_user?: SimpleEndUser | null
-  id: string
-  trigger_metadata?: unknown
-  workflow_run?: WorkflowRunForArchivedLogResponse | null
-}
-
 export type WorkflowRunForListResponse = {
   created_at?: number | null
   created_by_account?: SimpleAccountResponse | null
@@ -2218,14 +2201,6 @@ export type WorkflowRunForLogResponse = {
   total_tokens?: number | null
   triggered_from?: string | null
   version?: string | null
-}
-
-export type WorkflowRunForArchivedLogResponse = {
-  elapsed_time?: number | null
-  id: string
-  status?: string | null
-  total_tokens?: number | null
-  triggered_from?: string | null
 }
 
 export type WorkflowFileUploadPayload = {
@@ -5164,39 +5139,6 @@ export type GetAppsByAppIdWorkflowAppLogsResponses = {
 
 export type GetAppsByAppIdWorkflowAppLogsResponse =
   GetAppsByAppIdWorkflowAppLogsResponses[keyof GetAppsByAppIdWorkflowAppLogsResponses]
-
-export type GetAppsByAppIdWorkflowArchivedLogsData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query?: {
-    created_at__after?: string
-    created_at__before?: string
-    created_by_account?: string
-    created_by_end_user_session_id?: string
-    detail?: boolean
-    keyword?: string
-    limit?: number
-    page?: number
-    status?:
-      | 'failed'
-      | 'partial-succeeded'
-      | 'paused'
-      | 'running'
-      | 'scheduled'
-      | 'stopped'
-      | 'succeeded'
-  }
-  url: '/apps/{app_id}/workflow-archived-logs'
-}
-
-export type GetAppsByAppIdWorkflowArchivedLogsResponses = {
-  200: WorkflowArchivedLogPaginationResponse
-}
-
-export type GetAppsByAppIdWorkflowArchivedLogsResponse =
-  GetAppsByAppIdWorkflowArchivedLogsResponses[keyof GetAppsByAppIdWorkflowArchivedLogsResponses]
 
 export type GetAppsByAppIdWorkflowRunsData = {
   body?: never
