@@ -6,6 +6,7 @@ import type { Annotation } from '@/models/log'
 import type { IOnDataMoreInfo, IOtherOptions } from '@/service/base'
 import type { VisionFile } from '@/types/app'
 import type { FileResponse, ReasoningChunkResponse } from '@/types/workflow'
+import { zMessageStatus } from '@dify/contracts/api/web/zod.gen'
 import { toast } from '@langgenius/dify-ui/toast'
 import { uniqBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
@@ -26,7 +27,7 @@ import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
 import { TransferMethod } from '@/types/app'
-import { getThreadMessages } from '../utils'
+import { getThreadMessages, isValidGeneratedAnswer } from '../utils'
 import { getProcessedInputs, processOpeningStatement } from './utils'
 
 type GetAbortController = (abortController: AbortController) => void
@@ -236,6 +237,7 @@ export const useChat = (
 
   const [chatTree, setChatTree] = useState<ChatItemInTree[]>(prevChatTree || [])
   const chatTreeRef = useRef<ChatItemInTree[]>(chatTree)
+  const respondingItemRef = useRef<ChatItemInTree | null>(null)
   const [targetMessageId, setTargetMessageId] = useState<string>()
   const threadMessages = useMemo(
     () => getThreadMessages(chatTree, targetMessageId),
@@ -527,6 +529,7 @@ export const useChat = (
   const handleDetach = useCallback(() => {
     hasStopRespondedRef.current = true
     taskIdRef.current = ''
+    respondingItemRef.current = null
     handleResponding(false)
     if (conversationMessagesAbortControllerRef.current)
       conversationMessagesAbortControllerRef.current.abort()
@@ -538,8 +541,11 @@ export const useChat = (
 
   const handleStop = useCallback(() => {
     if (stopChat && taskIdRef.current && !pausedStateRef.current) stopChat(taskIdRef.current)
+    const respondingItem = respondingItemRef.current
+    if (isRespondingRef.current && respondingItem && isValidGeneratedAnswer(respondingItem))
+      updateChatTreeNode(respondingItem.id, { status: zMessageStatus.enum.stopped })
     handleDetach()
-  }, [stopChat, handleDetach])
+  }, [stopChat, handleDetach, updateChatTreeNode])
 
   const handleRestart = useCallback(
     (cb?: any) => {
@@ -1153,6 +1159,7 @@ export const useChat = (
         parentMessageId: questionItem.id,
         siblingIndex: parentMessage?.children?.length ?? chatTree.length,
       }
+      respondingItemRef.current = responseItem
 
       handleResponding(true)
       hasStopRespondedRef.current = false
