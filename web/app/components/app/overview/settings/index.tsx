@@ -414,8 +414,11 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             )}
             {/* form body */}
             <ScrollArea className="row-start-2 min-h-0 overflow-hidden">
-              <ScrollAreaViewport className="max-h-full overflow-y-auto overscroll-contain">
-                <ScrollAreaContent className="flex min-w-0 flex-col gap-y-5 px-6 py-3">
+              <ScrollAreaViewport className="overscroll-contain">
+                <ScrollAreaContent
+                  className="flex flex-col gap-y-5 px-6 py-3"
+                  style={{ minWidth: 0 }}
+                >
                   {/* name & icon */}
                   <div className="flex gap-4">
                     <Field name="title" className="grow">

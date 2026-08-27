@@ -113,7 +113,7 @@ export const Anatomy: Story = {
         <ScrollAreaViewport
           aria-labelledby="scroll-area-anatomy-title"
           role="region"
-          className="h-full max-h-full max-w-full border-[0.5px] border-divider-subtle bg-components-panel-bg"
+          className="border-[0.5px] border-divider-subtle bg-components-panel-bg"
         >
           <VerticalContent className="flex flex-col gap-4 py-2 pr-5 pl-3 system-sm-regular leading-6 text-text-secondary">
             {articleParagraphs.map((paragraph) => (
@@ -140,7 +140,7 @@ export const Vertical: Story = {
         <ScrollAreaViewport
           aria-label="Long form content"
           role="region"
-          className="h-full max-h-full max-w-full border-[0.5px] border-divider-subtle bg-components-panel-bg"
+          className="border-[0.5px] border-divider-subtle bg-components-panel-bg"
         >
           <VerticalContent className="flex flex-col gap-4 p-4 pr-6 system-sm-regular leading-6 text-text-secondary">
             <div className="space-y-1">
@@ -173,7 +173,7 @@ export const VerticalTruncation: Story = {
         <ScrollAreaViewport
           aria-label="Vertical file list"
           role="region"
-          className="h-full max-h-full max-w-full border-[0.5px] border-divider-subtle bg-components-panel-bg"
+          className="border-[0.5px] border-divider-subtle bg-components-panel-bg"
         >
           <VerticalContent className="flex flex-col gap-0.5 p-2">
             {fileRows.map((file) => (
@@ -209,7 +209,7 @@ export const ScrollFade: Story = {
           aria-label="Scroll fade article"
           role="region"
           className={cn(
-            'h-full max-h-full max-w-full bg-components-panel-bg',
+            'bg-components-panel-bg',
             'mask-linear-[to_bottom,transparent_0,black_min(40px,var(--scroll-area-overflow-y-start)),black_calc(100%-min(40px,var(--scroll-area-overflow-y-end,40px))),transparent_100%] mask-no-repeat',
           )}
         >
@@ -241,7 +241,7 @@ export const Horizontal: Story = {
         <ScrollAreaViewport
           aria-label="Horizontal numbered row"
           role="region"
-          className="h-full max-h-full max-w-full border-[0.5px] border-divider-subtle bg-components-panel-bg"
+          className="border-[0.5px] border-divider-subtle bg-components-panel-bg"
         >
           <ScrollAreaContent className="min-h-full min-w-max p-4 pb-6">
             <div className="grid grid-cols-[repeat(18,6.25rem)] gap-3">
@@ -275,7 +275,7 @@ export const BothAxes: Story = {
         <ScrollAreaViewport
           aria-label="Numbered grid"
           role="region"
-          className="h-full max-h-full max-w-full border-[0.5px] border-divider-subtle bg-components-panel-bg"
+          className="border-[0.5px] border-divider-subtle bg-components-panel-bg"
         >
           <ScrollAreaContent className="pt-3 pr-6 pb-6 pl-3">
             <div className="grid grid-cols-[repeat(10,6.25rem)] grid-rows-[repeat(10,6.25rem)] gap-3">

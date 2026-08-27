@@ -1365,10 +1365,11 @@ export function FileTree({
             <ScrollAreaViewport tabIndex={-1}>
               <ScrollAreaContent
                 className={cn(
-                  'relative flex min-h-full min-w-0 flex-col rounded-lg px-1 pt-1 pb-3',
+                  'relative flex min-h-full flex-col rounded-lg px-1 pt-1 pb-3',
                   dropTarget?.path === '' &&
                     'bg-components-dropzone-bg-accent before:pointer-events-none before:absolute before:inset-0.5 before:z-10 before:rounded-lg before:border-[1.5px] before:border-dashed before:border-components-dropzone-border-accent',
                 )}
+                style={{ minWidth: 0 }}
                 onDragLeave={handleRootDragLeave}
                 onDragOver={handleRootDragOver}
                 onDrop={handleRootDrop}
