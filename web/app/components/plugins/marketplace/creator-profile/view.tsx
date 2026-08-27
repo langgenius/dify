@@ -27,7 +27,7 @@ export default function CreatorProfileView({
   const { t } = useTranslation()
 
   return (
-    <div className="flex min-h-full flex-col bg-background-default">
+    <div className="flex min-h-full shrink-0 flex-col bg-background-default">
       {header}
       <main
         className={cn(
