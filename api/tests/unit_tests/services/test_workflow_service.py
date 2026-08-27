@@ -1273,6 +1273,9 @@ class TestWorkflowService:
         with (
             patch("services.workflow_service.app_published_workflow_was_updated"),
             patch("services.workflow_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
+            patch(
+                "services.workflow_service.register_new_agent_beta_workflow_publish_after_commit"
+            ) as register_workflow_publish,
         ):
             result = workflow_service.publish_workflow(
                 session=sqlite_session,
@@ -1287,6 +1290,42 @@ class TestWorkflowService:
         assert result.version != Workflow.VERSION_DRAFT
         assert result.marked_name == "Version 1"
         assert result.marked_comment == "Initial release"
+        register_workflow_publish.assert_not_called()
+
+    def test_publish_workflow_registers_inline_agent_after_commit(
+        self, workflow_service: WorkflowService, sqlite_session: Session
+    ) -> None:
+        app = TestWorkflowAssociatedDataFactory.create_app()
+        account = TestWorkflowAssociatedDataFactory.create_account()
+        draft = TestWorkflowAssociatedDataFactory.create_workflow(
+            version=Workflow.VERSION_DRAFT,
+            graph=TestWorkflowAssociatedDataFactory.create_valid_workflow_graph(),
+        )
+        sqlite_session.add(draft)
+        sqlite_session.commit()
+
+        with (
+            patch("services.workflow_service.app_published_workflow_was_updated"),
+            patch("services.workflow_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
+            patch(
+                "services.agent.workflow_publish_service.WorkflowAgentPublishService.copy_agent_node_bindings_to_published",
+                return_value=True,
+            ),
+            patch(
+                "services.workflow_service.register_new_agent_beta_workflow_publish_after_commit"
+            ) as register_workflow_publish,
+        ):
+            published = workflow_service.publish_workflow(
+                session=sqlite_session,
+                app_model=app,
+                account=account,
+            )
+
+        register_workflow_publish.assert_called_once_with(
+            session=sqlite_session,
+            published_workflow_id=published.id,
+            published_at=published.created_at,
+        )
 
     def test_publish_workflow_numbers_versions_from_one(
         self, workflow_service: WorkflowService, sqlite_session: Session

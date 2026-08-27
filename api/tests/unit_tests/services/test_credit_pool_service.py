@@ -9,6 +9,8 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
+from core.credit_usage import CreditUsageAppType
 from core.errors.error import QuotaExceededError
 from enums import DeploymentEdition
 from models import TenantCreditPool
@@ -301,7 +303,11 @@ def test_reserve_credits_commits_billing_reservation_once() -> None:
         bucket="trial",
         request_id="request-1",
         amount=3,
-        meta={"source": "test"},
+        meta={
+            "source": "test",
+            "created_by": CreditUsageCreatedBy.UNKNOWN.value,
+            "app_type": CreditUsageAppType.UNKNOWN.value,
+        },
     )
     quota_commit.assert_called_once_with(
         tenant_id="tenant-1",
@@ -309,7 +315,12 @@ def test_reserve_credits_commits_billing_reservation_once() -> None:
         bucket="trial",
         reservation_id="reservation-1",
         actual_amount=3,
-        meta={"source": "test", "request_id": "request-1"},
+        meta={
+            "source": "test",
+            "created_by": CreditUsageCreatedBy.UNKNOWN.value,
+            "app_type": CreditUsageAppType.UNKNOWN.value,
+            "request_id": "request-1",
+        },
     )
     quota_release.assert_not_called()
 
@@ -381,7 +392,11 @@ def test_check_and_deduct_credits_uses_billing_reserve_and_commit_when_enabled()
         bucket="trial",
         request_id=ANY,
         amount=3,
-        meta={"source": "credit_pool.check_and_deduct"},
+        meta={
+            "source": "credit_pool.check_and_deduct",
+            "created_by": CreditUsageCreatedBy.UNKNOWN.value,
+            "app_type": CreditUsageAppType.UNKNOWN.value,
+        },
     )
     quota_commit.assert_called_once_with(
         tenant_id=tenant_id,
@@ -389,7 +404,11 @@ def test_check_and_deduct_credits_uses_billing_reserve_and_commit_when_enabled()
         bucket="trial",
         reservation_id="reservation-1",
         actual_amount=3,
-        meta={"source": "credit_pool.check_and_deduct"},
+        meta={
+            "source": "credit_pool.check_and_deduct",
+            "created_by": CreditUsageCreatedBy.UNKNOWN.value,
+            "app_type": CreditUsageAppType.UNKNOWN.value,
+        },
     )
     quota_release.assert_not_called()
 
@@ -413,6 +432,8 @@ def test_check_and_deduct_credits_forwards_deterministic_billing_identity() -> N
     assert result == 3
     expected_metadata = {
         "source": "credit_pool.check_and_deduct",
+        "created_by": CreditUsageCreatedBy.UNKNOWN.value,
+        "app_type": CreditUsageAppType.UNKNOWN.value,
         "agent_run_id": "run-1",
     }
     quota_reserve.assert_called_once_with(
@@ -509,6 +530,13 @@ def test_deduct_credits_capped_uses_billing_consume_capped_when_enabled() -> Non
             tenant_id=tenant_id,
             credits_required=5,
             pool_type=ProviderQuotaType.PAID,
+            request_id="message-1",
+            metadata={
+                "provider": "openai",
+                "model": "gpt-4o",
+                "app_type": CreditUsageAppType.CHATBOT,
+                "created_by": CreditUsageCreatedBy.APP,
+            },
         )
 
     assert result == 2
@@ -516,9 +544,15 @@ def test_deduct_credits_capped_uses_billing_consume_capped_when_enabled() -> Non
         tenant_id=tenant_id,
         feature_key=FEATURE_KEY_CREDIT_POOL,
         bucket="paid",
-        request_id=ANY,
+        request_id="message-1",
         amount=5,
-        meta={"source": "credit_pool.deduct_capped"},
+        meta={
+            "source": "credit_pool.deduct_capped",
+            "provider": "openai",
+            "model": "gpt-4o",
+            "app_type": CreditUsageAppType.CHATBOT.value,
+            "created_by": CreditUsageCreatedBy.APP.value,
+        },
     )
 
 

@@ -54,6 +54,10 @@ class TriggerSubscriptionBuilderCreatePayload(BaseModel):
 
 
 class TriggerSubscriptionBuilderVerifyPayload(BaseModel):
+    credentials: dict[str, Any] | None = None
+
+
+class TriggerSubscriptionVerifyPayload(BaseModel):
     credentials: dict[str, Any]
 
 
@@ -120,6 +124,7 @@ register_schema_models(
     TriggerSubscriptionBuilderCreatePayload,
     TriggerSubscriptionBuilderVerifyPayload,
     TriggerSubscriptionBuilderUpdatePayload,
+    TriggerSubscriptionVerifyPayload,
     TriggerOAuthClientPayload,
 )
 register_response_schema_models(
@@ -812,7 +817,7 @@ class TriggerOAuthClientManageApi(Resource):
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/verify/<path:subscription_id>",
 )
 class TriggerSubscriptionVerifyApi(Resource):
-    @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderVerifyPayload.__name__])
+    @console_ns.expect(console_ns.models[TriggerSubscriptionVerifyPayload.__name__])
     @console_ns.response(
         200,
         "Trigger subscription verified successfully",
@@ -825,10 +830,10 @@ class TriggerSubscriptionVerifyApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @model_validate(TriggerSubscriptionBuilderVerifyPayload)
+    @model_validate(TriggerSubscriptionVerifyPayload)
     def post(
         self,
-        req_data: TriggerSubscriptionBuilderVerifyPayload,
+        req_data: TriggerSubscriptionVerifyPayload,
         tenant_id: str,
         user: Account,
         provider: str,

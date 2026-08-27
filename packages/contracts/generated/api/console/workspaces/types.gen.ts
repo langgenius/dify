@@ -570,7 +570,7 @@ export type AppAccessMatrix = {
 
 export type ResourceUserAccessPoliciesResponse = {
   data?: Array<ResourceUserAccessPolicies>
-  scope: RbacResourceWhitelistScope
+  pagination?: Pagination | null
 }
 
 export type ReplaceUserAccessPolicies = {
@@ -587,7 +587,11 @@ export type ResourceWhitelist = {
 }
 
 export type ResourceAccessScopeRequest = {
-  scope: RbacResourceWhitelistScope
+  automatic_include_workspace_members: boolean
+}
+
+export type ResourceWhitelistConfig = {
+  automatic_include_workspace_members: boolean
 }
 
 export type DatasetAccessMatrix = {
@@ -1191,9 +1195,9 @@ export type SubscriptionBuilderApiEntity = {
 }
 
 export type TriggerSubscriptionBuilderVerifyPayload = {
-  credentials: {
+  credentials?: {
     [key: string]: unknown
-  }
+  } | null
 }
 
 export type TriggerVerificationResponse = {
@@ -1210,6 +1214,12 @@ export type TriggerOAuthAuthorizeResponse = {
   authorization_url: string
   subscription_builder: SubscriptionBuilderApiEntity
   subscription_builder_id: string
+}
+
+export type TriggerSubscriptionVerifyPayload = {
+  credentials: {
+    [key: string]: unknown
+  }
 }
 
 export type TriggerProviderListResponse = Array<TriggerProviderApiEntity>
@@ -1714,8 +1724,6 @@ export type ResourceUserAccessPolicies = {
   account: RbacRoleAccount
   roles?: Array<RbacRole>
 }
-
-export type RbacResourceWhitelistScope = 'all' | 'only_me' | 'specific'
 
 export type ResourcePermissionSnapshot = {
   default_permission_keys?: Array<string>
@@ -4557,6 +4565,9 @@ export type GetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesData = {
   }
   query?: {
     language?: 'en' | 'ja' | 'zh'
+    limit?: number
+    page?: number
+    reverse?: boolean
   }
   url: '/workspaces/current/rbac/apps/{app_id}/user-access-policies'
 }
@@ -4616,6 +4627,22 @@ export type PutWorkspacesCurrentRbacAppsByAppIdWhitelistResponses = {
 
 export type PutWorkspacesCurrentRbacAppsByAppIdWhitelistResponse =
   PutWorkspacesCurrentRbacAppsByAppIdWhitelistResponses[keyof PutWorkspacesCurrentRbacAppsByAppIdWhitelistResponses]
+
+export type GetWorkspacesCurrentRbacAppsByAppIdWhitelistConfigData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/apps/{app_id}/whitelist_config'
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdWhitelistConfigResponses = {
+  200: ResourceWhitelistConfig
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdWhitelistConfigResponse =
+  GetWorkspacesCurrentRbacAppsByAppIdWhitelistConfigResponses[keyof GetWorkspacesCurrentRbacAppsByAppIdWhitelistConfigResponses]
 
 export type DeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsData =
   {
@@ -4698,6 +4725,9 @@ export type GetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesData = 
   }
   query?: {
     language?: 'en' | 'ja' | 'zh'
+    limit?: number
+    page?: number
+    reverse?: boolean
   }
   url: '/workspaces/current/rbac/datasets/{dataset_id}/user-access-policies'
 }
@@ -4758,6 +4788,22 @@ export type PutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponses = {
 
 export type PutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponse =
   PutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponses[keyof PutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponses]
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistConfigData = {
+  body?: never
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/datasets/{dataset_id}/whitelist_config'
+}
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistConfigResponses = {
+  200: ResourceWhitelistConfig
+}
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistConfigResponse =
+  GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistConfigResponses[keyof GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistConfigResponses]
 
 export type GetWorkspacesCurrentRbacMembersByMemberIdRbacRolesData = {
   body?: never
@@ -6314,7 +6360,7 @@ export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAutho
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdData =
   {
-    body: TriggerSubscriptionBuilderVerifyPayload
+    body: TriggerSubscriptionVerifyPayload
     path: {
       provider: string
       subscription_id: string

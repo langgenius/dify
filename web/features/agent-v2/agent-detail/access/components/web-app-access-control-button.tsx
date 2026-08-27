@@ -45,12 +45,7 @@ export function WebAppAccessControlButton({ agent }: { agent?: AgentAppDetailWit
 
   return (
     <>
-      <Button
-        variant="secondary"
-        size="medium"
-        className="px-3"
-        onClick={() => setShowAccessControl(true)}
-      >
+      <Button variant="secondary" size="medium" onClick={() => setShowAccessControl(true)}>
         <span aria-hidden className="i-ri-lock-2-line size-4" />
         {t(($) => $['agentDetail.access.webApp.actions.accessControl'])}
       </Button>
