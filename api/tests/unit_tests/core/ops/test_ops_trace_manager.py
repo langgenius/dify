@@ -7,7 +7,7 @@ from collections.abc import Iterator
 from datetime import datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import PropertyMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 from uuid import UUID
 
 import pytest
@@ -689,12 +689,59 @@ def _generate_name_task(name: str = "name") -> TraceTask:
     )
 
 
-def _dispatcher(*, max_queue_size: int = 2048):
-    return module._TraceDispatcher(current_app._get_current_object(), max_queue_size=max_queue_size)
+def _dispatcher(*, max_queue_size: int = 2048) -> module._TraceDispatcher:
+    return module._TraceDispatcher(current_app._get_current_object(), max_queue_size=max_queue_size)  # type: ignore
 
 
 def _process_next(dispatcher: module._TraceDispatcher) -> None:
     dispatcher._process_item(dispatcher._queue.get_nowait())
+
+
+def test_trace_dispatcher_rejects_non_positive_capacity(trace_environment: None) -> None:
+    with pytest.raises(ValueError, match="max_queue_size must be positive"):
+        _dispatcher(max_queue_size=0)
+
+
+def test_trace_dispatcher_double_checks_worker_under_lock(trace_environment: None) -> None:
+    trace_dispatcher = _dispatcher()
+    worker = MagicMock()
+    worker.is_alive.side_effect = [False, True]
+    trace_dispatcher._worker = worker
+
+    trace_dispatcher._ensure_worker()
+
+    assert worker.is_alive.call_count == 2
+    worker.start.assert_not_called()
+
+
+def test_trace_dispatcher_run_delegates_queued_item(monkeypatch: pytest.MonkeyPatch, trace_environment: None) -> None:
+    trace_dispatcher = _dispatcher()
+    item = module._TraceWorkItem(storage_id="app-id", task=_generate_name_task())
+    trace_dispatcher._queue.put_nowait(item)
+    process_item = MagicMock(side_effect=RuntimeError("stop test worker"))
+    monkeypatch.setattr(trace_dispatcher, "_process_item", process_item)
+
+    with pytest.raises(RuntimeError, match="stop test worker"):
+        trace_dispatcher._run()
+
+    process_item.assert_called_once_with(item)
+
+
+def test_get_trace_dispatcher_creates_and_reuses_singleton(trace_environment: None) -> None:
+    trace_dispatcher = module._get_trace_dispatcher()
+
+    assert module._get_trace_dispatcher() is trace_dispatcher
+
+
+def test_get_trace_dispatcher_uses_instance_created_while_waiting_for_lock(
+    monkeypatch: pytest.MonkeyPatch, trace_environment: None
+) -> None:
+    expected = _dispatcher()
+    lock = MagicMock()
+    lock.__enter__.side_effect = lambda: setattr(module, "_trace_dispatcher", expected)
+    monkeypatch.setattr(module, "_trace_dispatcher_lock", lock)
+
+    assert module._get_trace_dispatcher() is expected
 
 
 def test_trace_queue_snapshots_source_app_before_dispatch(

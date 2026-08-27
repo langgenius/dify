@@ -80,3 +80,17 @@ def test_trace_manager_skips_task_without_routing_identity() -> None:
         TraceQueueManager().add_trace_task(task)
 
     dispatcher.submit.assert_not_called()
+
+
+def test_trace_manager_contains_dispatcher_errors() -> None:
+    task = TraceTask(trace_type=TraceTaskName.WORKFLOW_TRACE)
+
+    with (
+        patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True),
+        patch.object(OpsTraceManager, "get_ops_trace_instance", return_value=None),
+        patch("core.ops.ops_trace_manager._get_trace_dispatcher", side_effect=RuntimeError("dispatcher failed")),
+        patch("core.ops.ops_trace_manager.logger.exception") as log_exception,
+    ):
+        TraceQueueManager(app_id="app-id").add_trace_task(task)
+
+    log_exception.assert_called_once_with("Error adding trace task, trace_type %s", task.trace_type)
