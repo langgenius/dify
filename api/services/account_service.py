@@ -1375,8 +1375,8 @@ class TenantService:
     @staticmethod
     def account_belongs_to_tenant(account_id: uuid.UUID | str | None, tenant_id: str, *, session: Session) -> bool:
         """Existence check for ``TenantAccountJoin(account_id, tenant_id)``.
-        Backs the CE-deployment membership fallback in
-        ``controllers.openapi.auth.strategies.MembershipStrategy``.
+        Membership without the role: where the openapi auth layer needs the role
+        itself it reads ``Context.workspace_role`` instead.
 
         ``None``/empty ``account_id`` short-circuits to ``False`` so SSO
         bearers (no account) and missing identity collapse cleanly.

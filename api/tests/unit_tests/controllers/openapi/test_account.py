@@ -17,6 +17,7 @@ from controllers.openapi.account import (
     AccountSessionsApi,
     AccountSessionsSelfApi,
 )
+from controllers.openapi.auth.requirements import CheckSessionOwnership, Rank
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -84,6 +85,32 @@ def test_session_by_id_dispatches_to_correct_class(openapi_app: Flask):
     rule = _rule(openapi_app, "/openapi/v1/account/sessions/<string:session_id>")
     assert openapi_app.view_functions[rule.endpoint].view_class is AccountSessionByIdApi
     assert "DELETE" in rule.methods
+
+
+def test_revoke_by_id_declares_session_ownership():
+    """The route wiring, not the requirement's own logic: `CheckSessionOwnership`
+    is what stops a caller revoking a session id belonging to another subject, and
+    it is only reachable if this route declares it. Nothing else pins that — the
+    allow/deny matrix addresses the caller's own session, so removing the
+    declaration changes no row there.
+    """
+    requirements = AccountSessionByIdApi.delete.__spec__.requirements
+    assert any(isinstance(requirement, CheckSessionOwnership) for requirement in requirements)
+
+
+def test_session_ownership_authorises_at_permission_rank():
+    """`Rank.ACCESS` would put it behind any `RequireWebappAccess` this route grew;
+    anything below `MEMBERSHIP` would run it before the caller is known to belong.
+    """
+    assert CheckSessionOwnership.rank is Rank.PERMISSION
+
+
+def test_the_other_session_routes_do_not_declare_it():
+    """`revoke_self` and the listing scope themselves by subject, so a per-session
+    ownership check would have nothing to name.
+    """
+    for view in (AccountSessionsSelfApi.delete, AccountSessionsApi.get):
+        assert not any(isinstance(requirement, CheckSessionOwnership) for requirement in view.__spec__.requirements)
 
 
 def test_subject_match_for_account_filters_by_account_id():
