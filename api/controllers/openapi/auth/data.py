@@ -1,3 +1,7 @@
+"""The two value types the subject layer publishes: what kind of caller a
+subject speaks for, and the identity an external one carries.
+"""
+
 from __future__ import annotations
 
 from enum import StrEnum
