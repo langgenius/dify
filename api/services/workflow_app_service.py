@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, TypedDict
 
 from sqlalchemy import and_, func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 
 from core.plugin.plugin_service import PluginService
 from graphon.enums import WorkflowExecutionStatus
@@ -26,9 +26,19 @@ class LogView:
     - Proxies all other attributes to the underlying `WorkflowAppLog`
     """
 
-    def __init__(self, log: WorkflowAppLog, details: LogViewDetails | None):
+    def __init__(
+        self,
+        log: WorkflowAppLog,
+        details: LogViewDetails | None,
+        workflow_run: WorkflowRun | None = None,
+        created_by_account: Account | None = None,
+        created_by_end_user: EndUser | None = None,
+    ):
         self.log = log
         self.details_ = details
+        self.workflow_run = workflow_run
+        self.created_by_account = created_by_account
+        self.created_by_end_user = created_by_end_user
 
     @property
     def details(self) -> LogViewDetails | None:
@@ -168,14 +178,76 @@ class WorkflowAppService:
         # wrapper moved to module scope as `LogView`
 
         # Execute query and get items
+        logs: list[WorkflowAppLog]
+        details_by_log_id: dict[str, LogViewDetails]
         if detail:
             rows = session.execute(offset_stmt).all()
-            items = [
-                LogView(log, {"trigger_metadata": self.handle_trigger_metadata(app_model.tenant_id, meta_val)})
+            logs = [log for log, _meta_val in rows]
+            details_by_log_id = {
+                log.id: {"trigger_metadata": self.handle_trigger_metadata(app_model.tenant_id, meta_val)}
                 for log, meta_val in rows
-            ]
+            }
         else:
-            items = [LogView(log, None) for log in session.scalars(offset_stmt).all()]
+            logs = list(session.scalars(offset_stmt).all())
+            details_by_log_id = {}
+
+        workflow_run_ids = {log.workflow_run_id for log in logs if log.workflow_run_id}
+        workflow_runs_by_id: dict[str, WorkflowRun] = {}
+        if workflow_run_ids:
+            workflow_runs_by_id = {
+                workflow_run.id: workflow_run
+                for workflow_run in session.scalars(
+                    select(WorkflowRun)
+                    .options(
+                        load_only(
+                            WorkflowRun.id,
+                            WorkflowRun.version,
+                            WorkflowRun.status,
+                            WorkflowRun.triggered_from,
+                            WorkflowRun.error,
+                            WorkflowRun.elapsed_time,
+                            WorkflowRun.total_tokens,
+                            WorkflowRun.total_steps,
+                            WorkflowRun.created_at,
+                            WorkflowRun.finished_at,
+                            WorkflowRun.exceptions_count,
+                        )
+                    )
+                    .where(WorkflowRun.id.in_(workflow_run_ids))
+                ).all()
+            }
+
+        account_ids = {
+            log.created_by for log in logs if CreatorUserRole(log.created_by_role) == CreatorUserRole.ACCOUNT
+        }
+        end_user_ids = {
+            log.created_by for log in logs if CreatorUserRole(log.created_by_role) == CreatorUserRole.END_USER
+        }
+
+        accounts_by_id: dict[str, Account] = {}
+        if account_ids:
+            accounts_by_id = {
+                account.id: account
+                for account in session.scalars(select(Account).where(Account.id.in_(account_ids))).all()
+            }
+
+        end_users_by_id: dict[str, EndUser] = {}
+        if end_user_ids:
+            end_users_by_id = {
+                end_user.id: end_user
+                for end_user in session.scalars(select(EndUser).where(EndUser.id.in_(end_user_ids))).all()
+            }
+
+        items = [
+            LogView(
+                log,
+                details_by_log_id.get(log.id),
+                workflow_run=workflow_runs_by_id.get(log.workflow_run_id),
+                created_by_account=accounts_by_id.get(log.created_by),
+                created_by_end_user=end_users_by_id.get(log.created_by),
+            )
+            for log in logs
+        ]
         return {
             "page": page,
             "limit": limit,

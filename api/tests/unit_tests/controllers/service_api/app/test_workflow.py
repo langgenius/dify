@@ -23,6 +23,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound
@@ -382,6 +383,40 @@ class TestWorkflowAppService:
         assert result["total"] == 1
         assert result["has_more"] is False
         assert [item.id for item in result["data"]] == [log.id]
+
+    @pytest.mark.parametrize("sqlite_session", [(WorkflowAppLog, WorkflowRun)], indirect=True)
+    def test_get_paginate_workflow_app_logs_preloads_lightweight_workflow_runs(
+        self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    ):
+        """Log list rows should not resolve workflow runs through the per-row model property."""
+        workflow_run = _make_workflow_run(run_id="log-run-1")
+        log = _make_workflow_app_log(workflow_run_id=workflow_run.id)
+        sqlite_session.add_all([workflow_run, log])
+        sqlite_session.commit()
+        sqlite_session.expunge_all()
+
+        def fail_workflow_run_property(_self):
+            raise AssertionError("WorkflowAppLog.workflow_run property should not be used for log list rows")
+
+        monkeypatch.setattr(WorkflowAppLog, "workflow_run", property(fail_workflow_run_property))
+
+        service = WorkflowAppService()
+        result = service.get_paginate_workflow_app_logs(
+            session=sqlite_session,
+            app_model=_make_app_model(),
+            keyword=None,
+            status=None,
+            created_at_before=None,
+            created_at_after=None,
+            page=1,
+            limit=20,
+            created_by_end_user_session_id=None,
+            created_by_account=None,
+        )
+
+        item = result["data"][0]
+        assert item.workflow_run.id == "log-run-1"
+        assert {"graph", "inputs", "outputs"}.issubset(sa_inspect(item.workflow_run).unloaded)
 
 
 class TestWorkflowExecutionStatus:
