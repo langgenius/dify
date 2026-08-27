@@ -59,11 +59,6 @@
       "count": 3
     }
   },
-  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/field.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/provider-panel.tsx": {
     "eslint-react/static-components": {
       "count": 2
