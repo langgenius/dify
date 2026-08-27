@@ -468,6 +468,33 @@ def test_live_archive_subset_rejects_content_mismatch() -> None:
         )
 
 
+def test_live_archive_subset_accepts_null_live_field_missing_from_archive() -> None:
+    archive_records = _sample_archive_records()
+    manifest = _bundle_reference(_catalog_entry(), table_records=archive_records).manifest
+    live_records = {table_name: [dict(record) for record in records] for table_name, records in archive_records.items()}
+    live_records["workflow_node_executions"][0]["agent_workspace_binding_id"] = None
+
+    WorkflowRunBundleArchiveMaintenance._validate_live_archive_subset(
+        manifest,
+        archive_records,
+        live_records,
+    )
+
+
+def test_live_archive_subset_rejects_non_null_live_field_missing_from_archive() -> None:
+    archive_records = _sample_archive_records()
+    manifest = _bundle_reference(_catalog_entry(), table_records=archive_records).manifest
+    live_records = {table_name: [dict(record) for record in records] for table_name, records in archive_records.items()}
+    live_records["workflow_node_executions"][0]["agent_workspace_binding_id"] = "binding-1"
+
+    with pytest.raises(ValueError, match="subset content checksum mismatch for workflow_node_executions"):
+        WorkflowRunBundleArchiveMaintenance._validate_live_archive_subset(
+            manifest,
+            archive_records,
+            live_records,
+        )
+
+
 def test_live_bundle_scope_includes_archived_ids_and_indirect_children(
     unbound_session: Session, unbound_session_factory: sessionmaker[Session]
 ) -> None:

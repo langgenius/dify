@@ -871,7 +871,7 @@ class WorkflowRunBundleArchiveMaintenance:
         table_records: dict[str, list[dict[str, Any]]],
         live_records: dict[str, list[dict[str, Any]]],
     ) -> None:
-        """Require every live row in the bundle scope to exist unchanged in the validated archive."""
+        """Require every live row to match its archive row, except for null live-only fields."""
         manifest_run_ids = {str(run_id) for run_id in manifest["run_ids"]}
         if len(manifest_run_ids) != len(manifest["run_ids"]):
             raise ValueError("archive manifest contains duplicate workflow run IDs")
@@ -899,7 +899,16 @@ class WorkflowRunBundleArchiveMaintenance:
                 )
 
             archive_subset = [archive_by_id[row_id] for row_id in live_ids]
-            live_checksum = cls._records_checksum(live_records[table_name])
+            live_subset = []
+            for live_record, archive_record in zip(live_records[table_name], archive_subset, strict=True):
+                live_only_fields = live_record.keys() - archive_record.keys()
+                if live_only_fields and all(live_record[field] is None for field in live_only_fields):
+                    live_record = {
+                        field: value for field, value in live_record.items() if field not in live_only_fields
+                    }
+                live_subset.append(live_record)
+
+            live_checksum = cls._records_checksum(live_subset)
             archive_checksum = cls._records_checksum(archive_subset)
             if live_checksum != archive_checksum:
                 raise ValueError(
