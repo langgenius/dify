@@ -12,6 +12,8 @@
   "apps.viewMore": "بیشتر ببینید",
   "banner.carouselLabel": "محتوای ویژه",
   "banner.greeting": "خوش آمدید، {{name}} 👋",
+  "banner.startRotation": "شروع چرخش اسلایدها",
+  "banner.stopRotation": "توقف چرخش اسلایدها",
   "banner.tagline": "چه می‌شد اگر… ایدهٔ بعدی شما از همین‌جا آغاز می‌شد.",
   "banner.viewMore": "مشاهده بیشتر",
   "category.Agent": "عامل",

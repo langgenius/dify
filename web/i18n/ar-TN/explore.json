@@ -12,6 +12,8 @@
   "apps.viewMore": "عرض المزيد",
   "banner.carouselLabel": "محتوى مميّز",
   "banner.greeting": "مرحبًا بعودتك، {{name}} 👋",
+  "banner.startRotation": "بدء تدوير الشرائح",
+  "banner.stopRotation": "إيقاف تدوير الشرائح",
   "banner.tagline": "ماذا لو… كانت فكرتك التالية تبدأ من هنا.",
   "banner.viewMore": "عرض المزيد",
   "category.Agent": "وكيل",

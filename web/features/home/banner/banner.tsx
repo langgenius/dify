@@ -1,5 +1,9 @@
 import type { BannerResponse } from '@dify/contracts/api/console/explore/types.gen'
-import type { ComponentProps, PointerEvent as ReactPointerEvent } from 'react'
+import type {
+  ComponentProps,
+  FocusEvent as ReactFocusEvent,
+  PointerEvent as ReactPointerEvent,
+} from 'react'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useId, useRef, useState } from 'react'
@@ -111,10 +115,11 @@ function BannerCarouselContent({
       >
         <IconButton
           size="md"
-          aria-label={t(($) => $[isRotationEnabled ? 'operation.pause' : 'operation.play'], {
-            ns: 'common',
-          })}
-          className="order-2 shrink-0"
+          aria-label={t(
+            ($) => $[isRotationEnabled ? 'banner.stopRotation' : 'banner.startRotation'],
+            { ns: 'explore' },
+          )}
+          className="shrink-0"
           onClick={onToggleRotation}
         >
           <span
@@ -127,7 +132,7 @@ function BannerCarouselContent({
         <div
           role="group"
           aria-label={t(($) => $['pagination.pageNumber'], { ns: 'common' })}
-          className="order-1 flex items-center gap-0.5"
+          className="flex items-center gap-0.5"
         >
           {banners.map((banner, index) => (
             <IndicatorButton
@@ -142,7 +147,7 @@ function BannerCarouselContent({
             />
           ))}
         </div>
-        <div className="order-3 hidden h-px flex-1 bg-divider-regular @min-[1068px]/banner:block" />
+        <div className="hidden h-px flex-1 bg-divider-regular @min-[1068px]/banner:block" />
       </div>
     ) : null
   const hasFooter = Boolean(activeBanner?.link || controls)
@@ -216,7 +221,7 @@ export function Banner({ banners }: BannerProps) {
       delay: AUTOPLAY_DELAY,
       playOnInit: false,
       stopOnFocusIn: false,
-      stopOnInteraction: false,
+      stopOnInteraction: true,
       stopOnMouseEnter: false,
     }),
   ])
@@ -229,7 +234,9 @@ export function Banner({ banners }: BannerProps) {
     setAutoplayPlaying(api, nextRotationEnabled && !isPointerInsideRef.current)
   }
 
-  const stopRotationForFocus = () => {
+  const stopRotationForFocus = (event: ReactFocusEvent<HTMLDivElement>) => {
+    if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget))
+      return
     if (isPointerActivationRef.current) return
 
     hasExplicitRotationPreferenceRef.current = true

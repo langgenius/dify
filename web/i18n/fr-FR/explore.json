@@ -12,6 +12,8 @@
   "apps.viewMore": "Voir plus",
   "banner.carouselLabel": "Contenu à la une",
   "banner.greeting": "Bon retour, {{name}} 👋",
+  "banner.startRotation": "Démarrer la rotation des diapositives",
+  "banner.stopRotation": "Arrêter la rotation des diapositives",
   "banner.tagline": "Et si… c’était ici que votre prochaine idée commençait.",
   "banner.viewMore": "VOIR PLUS",
   "category.Agent": "Agent",

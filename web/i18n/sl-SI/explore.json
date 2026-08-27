@@ -12,6 +12,8 @@
   "apps.viewMore": "Oglejte si več",
   "banner.carouselLabel": "Izpostavljena vsebina",
   "banner.greeting": "Dobrodošli nazaj, {{name}} 👋",
+  "banner.startRotation": "Začni vrtenje diapozitivov",
+  "banner.stopRotation": "Ustavi vrtenje diapozitivov",
   "banner.tagline": "Kaj pa, če… se prav tukaj začne vaša naslednja ideja.",
   "banner.viewMore": "POGLEJ VEČ",
   "category.Agent": "Agent",

@@ -245,7 +245,7 @@ describe('Banner', () => {
     )
 
     expect(screen.getAllByRole('button')).toHaveLength(3)
-    expect(screen.getAllByRole('button')[0]).toHaveAccessibleName('operation.pause')
+    expect(screen.getAllByRole('button')[0]).toHaveAccessibleName('banner.stopRotation')
     const secondBannerButton = screen.getByRole('button', { name: '02 Second banner' })
     secondBannerButton.focus()
     fireEvent.click(secondBannerButton)
@@ -339,13 +339,13 @@ describe('Banner', () => {
     fireEvent.pointerOver(screen.getByTestId('carousel'))
 
     expect(mockAutoplay.stop).toHaveBeenCalledOnce()
-    expect(screen.getByRole('button', { name: 'operation.pause' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'operation.play' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'banner.stopRotation' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'banner.startRotation' })).not.toBeInTheDocument()
 
     fireEvent.pointerOut(screen.getByTestId('carousel'))
 
     expect(mockAutoplay.play).toHaveBeenCalledOnce()
-    expect(screen.getByRole('button', { name: 'operation.pause' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'banner.stopRotation' })).toBeInTheDocument()
   })
 
   it('keeps an explicit pause until the user starts rotation again', async () => {
@@ -359,10 +359,10 @@ describe('Banner', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'operation.pause' }))
+    await user.click(screen.getByRole('button', { name: 'banner.stopRotation' }))
 
     expect(mockAutoplay.stop).toHaveBeenCalledOnce()
-    expect(screen.getByRole('button', { name: 'operation.play' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'banner.startRotation' })).toBeInTheDocument()
     expect(screen.getByTestId('carousel-content')).toHaveAttribute('aria-live', 'polite')
 
     const secondBannerButton = screen.getByRole('button', { name: '02 Second banner' })
@@ -370,10 +370,10 @@ describe('Banner', () => {
     fireEvent.blur(secondBannerButton)
     expect(mockAutoplay.play).not.toHaveBeenCalled()
 
-    await user.click(screen.getByRole('button', { name: 'operation.play' }))
+    await user.click(screen.getByRole('button', { name: 'banner.startRotation' }))
 
     expect(mockAutoplay.play).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: 'operation.pause' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'banner.stopRotation' })).toBeInTheDocument()
     expect(screen.getByTestId('carousel-content')).toHaveAttribute('aria-live', 'polite')
 
     await user.unhover(screen.getByTestId('carousel'))
@@ -395,7 +395,7 @@ describe('Banner', () => {
     const secondBannerButton = screen.getByRole('button', { name: '02 Second banner' })
     fireEvent.focus(secondBannerButton)
     expect(mockAutoplay.stop).toHaveBeenCalledOnce()
-    expect(screen.getByRole('button', { name: 'operation.play' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'banner.startRotation' })).toBeInTheDocument()
 
     fireEvent.blur(secondBannerButton)
     expect(mockAutoplay.play).not.toHaveBeenCalled()
@@ -412,7 +412,7 @@ describe('Banner', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'operation.pause' }))
+    await user.click(screen.getByRole('button', { name: 'banner.stopRotation' }))
     mockAutoplay.play.mockClear()
     act(() => {
       mockAutoplayPlaying = false
@@ -420,7 +420,7 @@ describe('Banner', () => {
     })
 
     expect(mockAutoplay.play).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: 'operation.play' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'banner.startRotation' })).toBeInTheDocument()
   })
 
   it('does not resume an autoplay plugin that was already inactive before focus', () => {

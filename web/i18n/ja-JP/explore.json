@@ -12,6 +12,8 @@
   "apps.viewMore": "もっと見る",
   "banner.carouselLabel": "注目のコンテンツ",
   "banner.greeting": "おかえりなさい、{{name}} 👋",
+  "banner.startRotation": "スライドの自動切り替えを開始",
+  "banner.stopRotation": "スライドの自動切り替えを停止",
   "banner.tagline": "もしかしたら……次のアイデアは、ここから始まるかもしれません。",
   "banner.viewMore": "もっと見る",
   "category.Agent": "エージェント",

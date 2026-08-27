@@ -12,6 +12,8 @@
   "apps.viewMore": "Mehr anzeigen",
   "banner.carouselLabel": "Hervorgehobene Inhalte",
   "banner.greeting": "Willkommen zurück, {{name}} 👋",
+  "banner.startRotation": "Folienrotation starten",
+  "banner.stopRotation": "Folienrotation stoppen",
   "banner.tagline": "Was wäre, wenn … hier deine nächste Idee beginnt.",
   "banner.viewMore": "MEHR ANZEIGEN",
   "category.Agent": "Agent",

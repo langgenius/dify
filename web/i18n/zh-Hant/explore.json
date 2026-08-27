@@ -12,6 +12,8 @@
   "apps.viewMore": "查看更多",
   "banner.carouselLabel": "精選內容",
   "banner.greeting": "歡迎回來，{{name}} 👋",
+  "banner.startRotation": "開始投影片輪播",
+  "banner.stopRotation": "停止投影片輪播",
   "banner.tagline": "也許……下一個好點子，就從這裡開始。",
   "banner.viewMore": "查看更多",
   "category.Agent": "代理",

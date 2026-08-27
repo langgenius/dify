@@ -12,6 +12,8 @@
   "apps.viewMore": "Lihat lebih banyak",
   "banner.carouselLabel": "Konten unggulan",
   "banner.greeting": "Selamat datang kembali, {{name}} 👋",
+  "banner.startRotation": "Mulai rotasi slide",
+  "banner.stopRotation": "Hentikan rotasi slide",
   "banner.tagline": "Bagaimana jika… di sinilah ide berikutnya dimulai.",
   "banner.viewMore": "LIHAT LEBIH BANYAK",
   "category.Agent": "Agen",

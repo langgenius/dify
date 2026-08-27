@@ -12,6 +12,8 @@
   "apps.viewMore": "Дивитись більше",
   "banner.carouselLabel": "Рекомендовані матеріали",
   "banner.greeting": "З поверненням, {{name}} 👋",
+  "banner.startRotation": "Запустити зміну слайдів",
+  "banner.stopRotation": "Зупинити зміну слайдів",
   "banner.tagline": "А що, якщо… саме тут почнеться ваша наступна ідея.",
   "banner.viewMore": "ПЕРЕГЛЯНУТИ БІЛЬШЕ",
   "category.Agent": "Агент",

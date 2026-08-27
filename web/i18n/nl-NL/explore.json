@@ -12,6 +12,8 @@
   "apps.viewMore": "View more",
   "banner.carouselLabel": "Uitgelichte inhoud",
   "banner.greeting": "Welkom terug, {{name}} 👋",
+  "banner.startRotation": "Diarotatie starten",
+  "banner.stopRotation": "Diarotatie stoppen",
   "banner.tagline": "Wat als… je volgende idee hier begint.",
   "banner.viewMore": "VIEW MORE",
   "category.Agent": "Agent",

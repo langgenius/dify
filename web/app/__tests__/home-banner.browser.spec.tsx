@@ -58,7 +58,7 @@ async function renderBanner() {
   return render(
     <>
       <button type="button">Before carousel</button>
-      <div data-testid="banner-host" style={{ width: 300 }}>
+      <div style={{ width: 300 }}>
         <Banner banners={banners} />
       </div>
       <button type="button">After carousel</button>
@@ -78,23 +78,35 @@ describe('Home banner browser interactions', () => {
   })
 
   it('puts the rotation control first in the native tab order and keeps focus-triggered pauses', async () => {
-    // Chromium owns native tab order and focus transitions; happy-dom cannot prove either contract.
+    // Chromium owns native tab order, layout geometry, and focus transitions; happy-dom cannot prove these contracts.
     const screen = await renderBanner()
-    const pauseControl = screen.getByRole('button', { name: 'common.operation.pause' })
-    await expect.element(pauseControl).toBeVisible()
-    const pauseControlElement = pauseControl.element()
+    const stopRotationControl = screen.getByRole('button', {
+      name: 'explore.banner.stopRotation',
+    })
+    const firstPicker = screen.getByRole('button', { name: '01 First banner' })
+    await expect.element(stopRotationControl).toBeVisible()
+    const rotationControlElement = stopRotationControl.element()
+    expect(rotationControlElement.getBoundingClientRect().left).toBeLessThan(
+      firstPicker.element().getBoundingClientRect().left,
+    )
 
     await screen.getByRole('button', { name: 'Before carousel' }).click()
     await userEvent.tab()
 
-    expect(pauseControlElement).toHaveFocus()
+    expect(rotationControlElement).toHaveFocus()
     await expect
-      .element(screen.getByRole('button', { name: 'common.operation.play' }))
+      .element(screen.getByRole('button', { name: 'explore.banner.startRotation' }))
       .toBeVisible()
 
-    await screen.getByRole('button', { name: 'After carousel' }).click()
+    await userEvent.keyboard('{Space}')
     await expect
-      .element(screen.getByRole('button', { name: 'common.operation.play' }))
+      .element(screen.getByRole('button', { name: 'explore.banner.stopRotation' }))
+      .toBeVisible()
+
+    await userEvent.tab()
+    expect(firstPicker.element()).toHaveFocus()
+    await expect
+      .element(screen.getByRole('button', { name: 'explore.banner.stopRotation' }))
       .toBeVisible()
   })
 
@@ -102,7 +114,7 @@ describe('Home banner browser interactions', () => {
     // Chromium hit testing is required to prove that moving onto the overlaid control stays in one hover boundary.
     const screen = await renderBanner()
     const carousel = screen.getByRole('region', { name: 'explore.banner.carouselLabel' })
-    const pauseControl = screen.getByRole('button', { name: 'common.operation.pause' })
+    const pauseControl = screen.getByRole('button', { name: 'explore.banner.stopRotation' })
     const slidesContainer = getSlidesContainer(carousel.element())
     await expect.element(pauseControl).toBeVisible()
 
@@ -117,50 +129,42 @@ describe('Home banner browser interactions', () => {
     await expect.poll(() => slidesContainer.getAttribute('aria-live')).toBe('off')
   })
 
-  it('resumes after a real pointer drag without desynchronizing the pause action', async () => {
-    // Embla's pointer lifecycle depends on browser mouse events and cannot be reproduced faithfully in happy-dom.
+  it('keeps an explicit pause after a real pointer drag released inside the carousel', async () => {
+    // Embla's pointer lifecycle and owner-window timer depend on browser behavior that happy-dom cannot reproduce faithfully.
     const screen = await renderBanner()
     const carousel = screen.getByRole('region', { name: 'explore.banner.carouselLabel' })
-    const pauseControl = screen.getByRole('button', { name: 'common.operation.pause' })
+    const stopRotationControl = screen.getByRole('button', {
+      name: 'explore.banner.stopRotation',
+    })
     const slidesContainer = getSlidesContainer(carousel.element())
-    await expect.element(pauseControl).toBeVisible()
-
-    await userEvent.dragAndDrop(
-      slidesContainer,
-      screen.getByRole('button', { name: 'After carousel' }),
-    )
-
-    await expect.poll(() => slidesContainer.getAttribute('aria-live')).toBe('off')
-    await expect.element(pauseControl).toBeVisible()
-  })
-
-  it('preserves an explicit pause after ResizeObserver reinitializes Embla', async () => {
-    // A real ResizeObserver-driven Embla reInit is a browser lifecycle that happy-dom does not implement.
-    const screen = await renderBanner()
-    const carousel = screen.getByRole('region', { name: 'explore.banner.carouselLabel' })
-    const slidesContainer = getSlidesContainer(carousel.element())
-    const host = screen.getByTestId('banner-host').element()
-    await screen.getByRole('button', { name: 'common.operation.pause' }).click()
+    const slidesRect = slidesContainer.getBoundingClientRect()
+    const firstSlide = screen.getByRole('group', { name: 'First banner' })
+    const firstSlideElement = firstSlide.element()
+    await stopRotationControl.click()
     await userEvent.unhover(carousel)
     await expect
-      .element(screen.getByRole('button', { name: 'common.operation.play' }))
+      .element(screen.getByRole('button', { name: 'explore.banner.startRotation' }))
       .toBeVisible()
 
-    const resized = new Promise<void>((resolve) => {
-      const observer = new ResizeObserver(([entry]) => {
-        if (!entry || entry.contentRect.width >= 260) return
-        observer.disconnect()
-        resolve()
+    vi.useFakeTimers()
+    try {
+      await userEvent.dragAndDrop(slidesContainer, slidesContainer, {
+        sourcePosition: { x: slidesRect.width / 2 - 4, y: slidesRect.height / 2 },
+        targetPosition: { x: slidesRect.width / 2 + 4, y: slidesRect.height / 2 },
+        steps: 2,
       })
-      observer.observe(carousel.element())
-    })
-    host.style.width = '240px'
-    await resized
+      await vi.advanceTimersByTimeAsync(1000)
+      const firstSlideStateAfterDrag = firstSlideElement.getAttribute('aria-hidden')
+      await vi.advanceTimersByTimeAsync(5001)
+      expect(firstSlideElement.getAttribute('aria-hidden')).toBe(firstSlideStateAfterDrag)
+    } finally {
+      vi.useRealTimers()
+    }
 
-    await expect
-      .element(screen.getByRole('button', { name: 'common.operation.play' }))
-      .toBeVisible()
     expect(slidesContainer).toHaveAttribute('aria-live', 'polite')
+    await expect
+      .element(screen.getByRole('button', { name: 'explore.banner.startRotation' }))
+      .toBeVisible()
   })
 
   it('keeps autoplay initialized but stopped for reduced motion so Play remains safe', async () => {
@@ -185,12 +189,12 @@ describe('Home banner browser interactions', () => {
     const screen = await renderBanner()
     const carousel = screen.getByRole('region', { name: 'explore.banner.carouselLabel' })
     const slidesContainer = getSlidesContainer(carousel.element())
-    const playControl = screen.getByRole('button', { name: 'common.operation.play' })
+    const playControl = screen.getByRole('button', { name: 'explore.banner.startRotation' })
     await expect.element(playControl).toBeVisible()
 
     await playControl.click()
     await expect
-      .element(screen.getByRole('button', { name: 'common.operation.pause' }))
+      .element(screen.getByRole('button', { name: 'explore.banner.stopRotation' }))
       .toBeVisible()
     await userEvent.unhover(carousel)
 

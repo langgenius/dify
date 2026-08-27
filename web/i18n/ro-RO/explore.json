@@ -12,6 +12,8 @@
   "apps.viewMore": "Vezi mai mult",
   "banner.carouselLabel": "Conținut recomandat",
   "banner.greeting": "Bine ai revenit, {{name}} 👋",
+  "banner.startRotation": "Pornește rotirea diapozitivelor",
+  "banner.stopRotation": "Oprește rotirea diapozitivelor",
   "banner.tagline": "Dacă… aici începe următoarea ta idee.",
   "banner.viewMore": "VEDEȚI MAI MULTE",
   "category.Agent": "Agent",

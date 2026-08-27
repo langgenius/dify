@@ -12,6 +12,8 @@
   "apps.viewMore": "查看更多",
   "banner.carouselLabel": "精选内容",
   "banner.greeting": "欢迎回来，{{name}} 👋",
+  "banner.startRotation": "开始幻灯片轮播",
+  "banner.stopRotation": "停止幻灯片轮播",
   "banner.tagline": "也许……下一个好点子，就从这里开始。",
   "banner.viewMore": "查看更多",
   "category.Agent": "Agent",
