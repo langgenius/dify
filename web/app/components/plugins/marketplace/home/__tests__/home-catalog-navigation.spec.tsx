@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import HomeCatalogNavigation from '../home-catalog-navigation'
 import HomeCatalogTabs from '../home-catalog-tabs'
 import { HomeStickyCatalogTabs, HomeStickyStateProvider } from '../home-sticky-state-provider'
@@ -22,6 +22,10 @@ vi.mock('../../plugin-type-switch', () => ({
   ),
 }))
 
+afterEach(() => {
+  document.querySelectorAll('#marketplace-container').forEach(element => element.remove())
+})
+
 describe('HomeCatalogNavigation', () => {
   const renderNavigation = (isMarketplacePlatform: boolean) => {
     return render(
@@ -30,6 +34,7 @@ describe('HomeCatalogNavigation', () => {
           <div data-testid="header-catalog-tabs" />
         </HomeStickyCatalogTabs>
         <HomeCatalogNavigation
+          isMarketplacePlatform={isMarketplacePlatform}
           catalogTabs={<HomeCatalogTabs isMarketplacePlatform={isMarketplacePlatform} />}
         />
       </HomeStickyStateProvider>,
@@ -125,6 +130,7 @@ describe('HomeCatalogNavigation', () => {
     render(
       <HomeStickyStateProvider>
         <HomeCatalogNavigation
+          isMarketplacePlatform
           catalogTabs={<HomeCatalogTabs activeTab="templates" isMarketplacePlatform />}
           catalogCategories={<nav aria-label="Template categories">Template categories</nav>}
         />
@@ -139,6 +145,7 @@ describe('HomeCatalogNavigation', () => {
     render(
       <HomeStickyStateProvider>
         <HomeCatalogNavigation
+          isMarketplacePlatform
           catalogTabs={<HomeCatalogTabs isMarketplacePlatform />}
           catalogLeading={<div>Tags</div>}
           catalogTrailing={<div>Languages</div>}
@@ -179,6 +186,44 @@ describe('HomeCatalogNavigation', () => {
     ).toHaveAttribute('href', '/templates')
   })
 
+  it('keeps both tab copies mounted while exposing only the active copy', () => {
+    const scrollContainer = document.createElement('div')
+    scrollContainer.id = 'marketplace-container'
+    document.body.appendChild(scrollContainer)
+    const containerRect = vi
+      .spyOn(scrollContainer, 'getBoundingClientRect')
+      .mockReturnValue(new DOMRect(0, -100, 100, 100))
+
+    renderNavigation(true)
+
+    const navigationSection = screen.getByRole('region', { name: 'common.mainNav.marketplace' })
+    const pinTrigger = navigationSection.previousElementSibling as HTMLElement
+    const contentTabs = screen.getByRole('navigation', { name: 'common.mainNav.marketplace' })
+      .parentElement!
+    const headerTabs = screen.getByTestId('header-catalog-tabs')
+    const headerTabsSlot = headerTabs.parentElement!
+    const triggerRect = vi
+      .spyOn(pinTrigger, 'getBoundingClientRect')
+      .mockReturnValue(new DOMRect(0, 49, 100, 100))
+
+    expect(headerTabsSlot).toHaveAttribute('aria-hidden', 'true')
+    expect(headerTabsSlot).toHaveAttribute('inert')
+    expect(contentTabs).not.toHaveAttribute('aria-hidden')
+    expect(contentTabs).not.toHaveAttribute('inert')
+
+    containerRect.mockReturnValue(new DOMRect(0, 0, 100, 100))
+    triggerRect.mockReturnValue(new DOMRect(0, 48, 100, 100))
+    fireEvent.scroll(scrollContainer)
+
+    expect(headerTabs).toBeInTheDocument()
+    expect(headerTabsSlot).not.toHaveAttribute('aria-hidden')
+    expect(headerTabsSlot).not.toHaveAttribute('inert')
+    expect(contentTabs).toHaveAttribute('aria-hidden', 'true')
+    expect(contentTabs).toHaveAttribute('inert')
+
+    scrollContainer.remove()
+  })
+
   it('shows the compact navigation and header tabs after reaching the sticky header', () => {
     const scrollContainer = document.createElement('div')
     scrollContainer.id = 'marketplace-container'
@@ -188,31 +233,40 @@ describe('HomeCatalogNavigation', () => {
 
     const navigationSection = screen.getByRole('region', { name: 'common.mainNav.marketplace' })
     const pinTrigger = navigationSection.previousElementSibling as HTMLElement
+    const contentTabsSlot = navigationSection.querySelector('nav')!.parentElement!
+    const headerTabs = screen.getByTestId('header-catalog-tabs')
+    const headerTabsSlot = headerTabs.parentElement!
     vi.spyOn(scrollContainer, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 100, 100))
     const triggerRect = vi
       .spyOn(pinTrigger, 'getBoundingClientRect')
       .mockReturnValue(new DOMRect(0, 49, 100, 100))
 
     fireEvent.scroll(scrollContainer)
-    expect(screen.queryByTestId('header-catalog-tabs')).not.toBeInTheDocument()
+    expect(headerTabs).toBeInTheDocument()
+    expect(headerTabsSlot).toHaveAttribute('aria-hidden', 'true')
+    expect(headerTabsSlot).toHaveAttribute('inert')
+    expect(contentTabsSlot).not.toHaveAttribute('aria-hidden')
+    expect(contentTabsSlot).not.toHaveAttribute('inert')
 
     triggerRect.mockReturnValue(new DOMRect(0, 48, 100, 100))
     fireEvent.scroll(scrollContainer)
 
     expect(navigationSection).toHaveClass(styles.catalogNavigationPinned!)
-    expect(
-      screen.getByRole('navigation', { name: 'common.mainNav.marketplace' }).parentElement,
-    ).toHaveClass(styles.catalogTabsPinned!)
-    expect(screen.getByTestId('plugin-type-switch').parentElement?.parentElement).toHaveClass(
-      styles.categoriesPinned!,
-    )
-    expect(screen.getByTestId('header-catalog-tabs')).toBeInTheDocument()
+    expect(contentTabsSlot).toHaveClass(styles.catalogTabsPinned!)
+    expect(headerTabsSlot).not.toHaveAttribute('aria-hidden')
+    expect(headerTabsSlot).not.toHaveAttribute('inert')
+    expect(contentTabsSlot).toHaveAttribute('aria-hidden', 'true')
+    expect(contentTabsSlot).toHaveAttribute('inert')
 
     triggerRect.mockReturnValue(new DOMRect(0, 49, 100, 100))
     fireEvent.scroll(scrollContainer)
 
     expect(navigationSection).not.toHaveClass(styles.catalogNavigationPinned!)
-    expect(screen.queryByTestId('header-catalog-tabs')).not.toBeInTheDocument()
+    expect(headerTabs).toBeInTheDocument()
+    expect(headerTabsSlot).toHaveAttribute('aria-hidden', 'true')
+    expect(headerTabsSlot).toHaveAttribute('inert')
+    expect(contentTabsSlot).not.toHaveAttribute('aria-hidden')
+    expect(contentTabsSlot).not.toHaveAttribute('inert')
 
     scrollContainer.remove()
   })
@@ -235,19 +289,21 @@ describe('HomeCatalogNavigation', () => {
     fireEvent.scroll(scrollContainer)
 
     expect(navigationSection).toHaveClass(styles.catalogNavigationPinned!)
-    expect(screen.getByTestId('header-catalog-tabs')).toBeInTheDocument()
+    expect(screen.getByTestId('header-catalog-tabs').parentElement).not.toHaveAttribute(
+      'aria-hidden',
+    )
 
     scrollContainer.remove()
   })
 
-  it('prevents scroll anchoring from reversing the sticky threshold', () => {
+  it('leaves browser scroll anchoring enabled because the handoff preserves geometry', () => {
     const scrollContainer = document.createElement('div')
     scrollContainer.id = 'marketplace-container'
     document.body.appendChild(scrollContainer)
 
     const { unmount } = renderNavigation(true)
 
-    expect(scrollContainer.style.overflowAnchor).toBe('none')
+    expect(scrollContainer.style.overflowAnchor).toBe('')
 
     unmount()
     expect(scrollContainer.style.overflowAnchor).toBe('')

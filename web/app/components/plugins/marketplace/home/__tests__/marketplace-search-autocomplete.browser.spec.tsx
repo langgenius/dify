@@ -129,6 +129,7 @@ describe('Marketplace search autocomplete layout', () => {
               <StickyTemplateSearch />
             </HomeSearch>
             <HomeCatalogNavigation
+              isMarketplacePlatform
               catalogCategories={<div role="group" aria-label="Template categories" />}
               catalogTabs={<div role="tablist" aria-label="Catalog tabs" />}
             />

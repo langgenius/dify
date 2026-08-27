@@ -3,10 +3,11 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useTranslation } from '#i18n'
 import { MARKETPLACE_CONTAINER_ID } from '../constants'
 import PluginTypeSwitch from '../plugin-type-switch'
+import { focusCatalogTab, getFocusedCatalogTabHref } from './home-catalog-focus'
 import { HOME_HEADER_HEIGHT_PX } from './home-constants'
 import { homeCatalogPinnedAtom } from './home-sticky-state'
 import styles from './home-sticky.module.css'
@@ -16,6 +17,7 @@ type HomeCatalogNavigationProps = {
   catalogLeading?: ReactNode
   catalogTabs: ReactNode
   catalogTrailing?: ReactNode
+  isMarketplacePlatform: boolean
 }
 
 function HomeCatalogNavigation({
@@ -23,20 +25,31 @@ function HomeCatalogNavigation({
   catalogLeading,
   catalogTabs,
   catalogTrailing,
+  isMarketplacePlatform,
 }: HomeCatalogNavigationProps) {
   const { t } = useTranslation()
   const isPinned = useAtomValue(homeCatalogPinnedAtom)
   const setIsPinned = useSetAtom(homeCatalogPinnedAtom)
+  const isPinnedRef = useRef(isPinned)
+  const pendingFocusedTabHrefRef = useRef<string | null>(null)
   const pinTriggerRef = useRef<HTMLSpanElement>(null)
+
+  useLayoutEffect(() => {
+    isPinnedRef.current = isPinned
+    const focusedTabHref = pendingFocusedTabHrefRef.current
+    if (!focusedTabHref) return
+
+    pendingFocusedTabHrefRef.current = null
+    focusCatalogTab(isPinned ? 'header' : 'content', focusedTabHref)
+  }, [isPinned])
 
   useEffect(() => {
     const scrollContainer = document.getElementById(MARKETPLACE_CONTAINER_ID)
     if (!scrollContainer) return
-
-    const previousOverflowAnchor = scrollContainer.style.overflowAnchor
-    // The sticky section becomes shorter when its tabs move into the header.
-    // Prevent browser scroll anchoring from moving it back across the pin threshold.
-    scrollContainer.style.overflowAnchor = 'none'
+    const desktopHeaderSlotQuery =
+      isMarketplacePlatform && typeof window.matchMedia === 'function'
+        ? window.matchMedia('(min-width: 880px)')
+        : null
 
     const updatePinnedState = () => {
       const pinTrigger = pinTriggerRef.current
@@ -44,19 +57,29 @@ function HomeCatalogNavigation({
 
       const containerTop = scrollContainer.getBoundingClientRect().top
       const triggerTop = pinTrigger.getBoundingClientRect().top
-      setIsPinned(triggerTop <= containerTop + HOME_HEADER_HEIGHT_PX)
+      const canUseHeaderSlot =
+        !isMarketplacePlatform || !desktopHeaderSlotQuery || desktopHeaderSlotQuery.matches
+      const nextIsPinned = canUseHeaderSlot && triggerTop <= containerTop + HOME_HEADER_HEIGHT_PX
+      if (nextIsPinned === isPinnedRef.current) return
+
+      pendingFocusedTabHrefRef.current = getFocusedCatalogTabHref(
+        nextIsPinned ? 'content' : 'header',
+      )
+      isPinnedRef.current = nextIsPinned
+      setIsPinned(nextIsPinned)
     }
 
     updatePinnedState()
     scrollContainer.addEventListener('scroll', updatePinnedState, { passive: true })
+    desktopHeaderSlotQuery?.addEventListener('change', updatePinnedState)
     window.addEventListener('resize', updatePinnedState)
 
     return () => {
       scrollContainer.removeEventListener('scroll', updatePinnedState)
+      desktopHeaderSlotQuery?.removeEventListener('change', updatePinnedState)
       window.removeEventListener('resize', updatePinnedState)
-      scrollContainer.style.overflowAnchor = previousOverflowAnchor
     }
-  }, [setIsPinned])
+  }, [isMarketplacePlatform, setIsPinned])
 
   return (
     <>
@@ -72,13 +95,15 @@ function HomeCatalogNavigation({
         style={{ top: HOME_HEADER_HEIGHT_PX }}
       >
         <div className="w-full">
-          <div className={cn(isPinned && styles.catalogTabsPinned)}>{catalogTabs}</div>
           <div
-            className={cn(
-              'mt-4 flex w-full items-center gap-2',
-              isPinned && styles.categoriesPinned,
-            )}
+            aria-hidden={isPinned ? true : undefined}
+            className={cn(styles.catalogTabs, isPinned && styles.catalogTabsPinned)}
+            data-home-catalog-tabs-slot="content"
+            inert={isPinned ? true : undefined}
           >
+            {catalogTabs}
+          </div>
+          <div className="mt-4 flex w-full items-center gap-2">
             {catalogLeading && (
               <>
                 <div className={cn('shrink-0', styles.catalogLeading)}>{catalogLeading}</div>

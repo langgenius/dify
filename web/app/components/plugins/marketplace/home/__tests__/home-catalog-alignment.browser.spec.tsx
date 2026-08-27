@@ -10,6 +10,7 @@ describe('Marketplace home catalog alignment', () => {
       <HomeStickyStateProvider>
         <div className="w-[1200px]" data-marketplace-standalone>
           <HomeCatalogNavigation
+            isMarketplacePlatform
             catalogCategories={
               <div data-testid="catalog-filter" role="group" aria-label="Categories" />
             }

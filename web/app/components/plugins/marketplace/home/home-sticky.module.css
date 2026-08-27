@@ -6,6 +6,28 @@
   display: flex;
 }
 
+.headerCatalogSlot,
+.catalogTabs {
+  transition-property: opacity, transform;
+  transition-duration: 140ms;
+  transition-timing-function: ease-out;
+  will-change: opacity, transform;
+}
+
+.headerCatalogSlot {
+  display: flex;
+  flex-shrink: 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+}
+
+.headerCatalogSlotPinned {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
 .marketplaceLogoLight {
   display: block;
 }
@@ -47,17 +69,18 @@
 }
 
 .catalogNavigationPinned {
-  padding-top: 16px;
-  padding-bottom: 16px;
   background-color: var(--color-background-default);
 }
 
-.catalogTabsPinned {
-  display: none;
+.catalogTabs {
+  opacity: 1;
+  transform: translateY(0);
 }
 
-.categoriesPinned {
-  margin-top: 0;
+.catalogTabsPinned {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
 }
 
 .catalogContent {
@@ -109,5 +132,12 @@
 
   :global([data-marketplace-standalone]) .bannerSpacer {
     height: 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .headerCatalogSlot,
+  .catalogTabs {
+    transition-duration: 0ms;
   }
 }

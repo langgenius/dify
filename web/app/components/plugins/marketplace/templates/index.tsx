@@ -234,6 +234,7 @@ export async function EmbeddedTemplatesMarketplace({
       }
       navigation={
         <HomeCatalogNavigation
+          isMarketplacePlatform={false}
           catalogTabs={
             <HomeCatalogTabs
               activeTab="templates"

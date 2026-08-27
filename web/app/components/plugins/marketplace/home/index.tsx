@@ -55,6 +55,7 @@ const MarketplaceHome = ({
         <HomeCatalogNavigation
           catalogCategories={catalogCategories}
           catalogLeading={<CatalogTagsFilter />}
+          isMarketplacePlatform={isMarketplacePlatform}
           catalogTabs={
             <HomeCatalogTabs
               isMarketplacePlatform={isMarketplacePlatform}
