@@ -1,9 +1,9 @@
 'use client'
 import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
-import { useState } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import ItemOperation from '@/app/components/explore/item-operation'
+import { usePrefetchOnIntent } from '@/hooks/use-prefetch-on-intent'
 import Link from '@/next/link'
 
 type IAppNavItemProps = {
@@ -21,7 +21,7 @@ export default function AppNavItem({
   onTogglePin,
   onDelete,
 }: IAppNavItemProps) {
-  const [isPrefetchEnabled, setIsPrefetchEnabled] = useState(false)
+  const prefetchOnIntent = usePrefetchOnIntent()
   const {
     id,
     is_pinned: isPinned,
@@ -36,10 +36,8 @@ export default function AppNavItem({
       className="group flex h-8 items-center justify-between gap-2 rounded-lg py-0.5 pr-0.5 pl-2 transition-colors not-has-[>a[aria-current=page]]:hover:bg-state-base-hover has-[>a:focus-visible]:inset-ring-2 has-[>a:focus-visible]:inset-ring-state-accent-solid has-[>a[aria-current=page]]:bg-state-base-active"
     >
       <Link
+        {...prefetchOnIntent}
         href={url}
-        prefetch={isPrefetchEnabled ? null : false}
-        onMouseEnter={() => setIsPrefetchEnabled(true)}
-        onFocus={() => setIsPrefetchEnabled(true)}
         aria-current={isSelected ? 'page' : undefined}
         aria-label={ariaLabel}
         title={name}

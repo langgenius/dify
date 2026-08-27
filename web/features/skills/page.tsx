@@ -42,6 +42,7 @@ import { SkillCardTags } from '@/features/tag-management/components/skill-card-t
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { usePrefetchOnIntent } from '@/hooks/use-prefetch-on-intent'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
@@ -382,6 +383,7 @@ function SkillCard({
 }) {
   const { t } = useTranslation('skill')
   const { t: tCommon } = useTranslation('common')
+  const prefetchOnIntent = usePrefetchOnIntent()
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
   const nameId = useId()
@@ -438,6 +440,7 @@ function SkillCard({
     >
       <div className="flex h-full min-w-0 flex-col">
         <Link
+          {...prefetchOnIntent}
           href={`/skills/${skill.id}`}
           aria-labelledby={nameId}
           className="block min-w-0 shrink-0 cursor-pointer outline-hidden"

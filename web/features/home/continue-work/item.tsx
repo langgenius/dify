@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useId, useState } from 'react'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
@@ -13,6 +13,7 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { usePrefetchOnIntent } from '@/hooks/use-prefetch-on-intent'
 import Link from '@/next/link'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { hasOnlyAppPreviewPermission } from '@/utils/permission'
@@ -41,7 +42,7 @@ export function ContinueWorkItem({ app }: ContinueWorkItemProps) {
   const appNameId = useId()
   const appModeId = useId()
   const appMetadataId = useId()
-  const [isPrefetchEnabled, setIsPrefetchEnabled] = useState(false)
+  const prefetchOnIntent = usePrefetchOnIntent()
   const isRbacEnabled = systemFeatures.rbac_enabled
   const updatedAt = app.updated_at * 1000
   const appModeLabel = t(($) => $[appModeLabelKeys[app.mode]], { ns: 'app' })
@@ -125,10 +126,8 @@ export function ContinueWorkItem({ app }: ContinueWorkItemProps) {
   return (
     <div className={cardClassName}>
       <Link
+        {...prefetchOnIntent}
         href={href}
-        prefetch={isPrefetchEnabled ? null : false}
-        onMouseEnter={() => setIsPrefetchEnabled(true)}
-        onFocus={() => setIsPrefetchEnabled(true)}
         aria-labelledby={`${appNameId} ${appModeId}`}
         aria-describedby={appMetadataId}
         className="absolute inset-0 z-10 touch-manipulation rounded-xl outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"

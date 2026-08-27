@@ -16,6 +16,7 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AppCardTags } from '@/features/tag-management/components/app-card-tags'
+import { usePrefetchOnIntent } from '@/hooks/use-prefetch-on-intent'
 import Link from '@/next/link'
 import { AppModeEnum } from '@/types/app'
 import { getRedirectionPath } from '@/utils/app-redirection'
@@ -50,6 +51,7 @@ export const AppCard = memo(
     stepByStepTourActionMenuHighlightPart,
   }: AppCardProps) => {
     const { t } = useTranslation()
+    const prefetchOnIntent = usePrefetchOnIntent()
     const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
     const { data: currentUserId } = useSuspenseQuery({
       ...userProfileQueryOptions(),
@@ -202,6 +204,7 @@ export const AppCard = memo(
           </button>
         ) : (
           <Link
+            {...prefetchOnIntent}
             href={appHref}
             aria-labelledby={appNameId}
             aria-describedby={app.description ? appDescriptionId : undefined}

@@ -29,6 +29,7 @@ import {
 } from '@/app/components/snippets/utils/permission'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { TagSelector } from '@/features/tag-management/components/tag-selector'
+import { usePrefetchOnIntent } from '@/hooks/use-prefetch-on-intent'
 import Link from '@/next/link'
 import { useMembers } from '@/service/use-common'
 import {
@@ -53,6 +54,7 @@ const SnippetCard = ({
   onTagsChange,
 }: Props) => {
   const { t } = useTranslation('snippet')
+  const prefetchOnIntent = usePrefetchOnIntent()
   const { t: tCommon } = useTranslation()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: membersData } = useMembers()
@@ -149,7 +151,11 @@ const SnippetCard = ({
   return (
     <>
       <article className="group relative col-span-1 inline-flex h-40 w-full cursor-pointer flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-sm transition-shadow duration-200 ease-in-out hover:shadow-lg">
-        <Link href={`/snippets/${snippet.id}/orchestrate`} className="flex min-h-0 flex-1 flex-col">
+        <Link
+          {...prefetchOnIntent}
+          href={`/snippets/${snippet.id}/orchestrate`}
+          className="flex min-h-0 flex-1 flex-col"
+        >
           <div className="flex h-16.5 shrink-0 grow-0 flex-col justify-center px-3.5 pt-3.5 pb-3">
             <div className="flex items-center text-sm/5 font-semibold text-text-secondary">
               <div className="truncate" title={snippet.name}>

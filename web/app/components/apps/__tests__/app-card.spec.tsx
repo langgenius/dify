@@ -26,13 +26,14 @@ const mockWorkflowAppDslExport = vi.hoisted(() => ({
   isExporting: false,
 }))
 const mockCopyApp = vi.hoisted(() =>
-  vi.fn((_variables: unknown): Promise<unknown> =>
-    Promise.resolve({
-      id: 'new-app-id',
-      mode: 'chat',
-      maintainer: 'user-1',
-      permission_keys: [],
-    }),
+  vi.fn(
+    (_variables: unknown): Promise<unknown> =>
+      Promise.resolve({
+        id: 'new-app-id',
+        mode: 'chat',
+        maintainer: 'user-1',
+        permission_keys: [],
+      }),
   ),
 )
 const mockUpdateAppMutation = vi.hoisted(() =>
@@ -47,6 +48,23 @@ const mockStarAppMutation = vi.hoisted(() =>
 const mockUnstarAppMutation = vi.hoisted(() =>
   vi.fn((_variables: unknown): Promise<unknown> => Promise.resolve()),
 )
+
+vi.mock('@/next/link', () => ({
+  default: ({
+    children,
+    href,
+    prefetch,
+    ...rest
+  }: {
+    children?: React.ReactNode
+    href: string
+    prefetch?: boolean | 'auto' | null
+  } & Record<string, unknown>) => (
+    <a href={href} data-prefetch={String(prefetch)} {...rest}>
+      {children}
+    </a>
+  ),
+}))
 
 vi.mock('@/service/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/client')>()
@@ -670,6 +688,22 @@ describe('AppCard', () => {
       const cardLink = screen.getByRole('link', { name: 'Test App' })
 
       expect(cardLink).toHaveAttribute('href', '/app/test-app-id/configuration')
+    })
+
+    it('should not prefetch the app route until the card shows intent', async () => {
+      const user = userEvent.setup()
+      render(<AppCard app={mockApp} />)
+      const cardLink = screen.getByRole('link', { name: 'Test App' })
+
+      // App Router prefetches every link in the viewport by default, so a grid of
+      // cards would prefetch one route per visible card and pay a server render for
+      // each. `false` suppresses that, including the hover prefetch.
+      expect(cardLink).toHaveAttribute('data-prefetch', 'false')
+
+      await user.hover(cardLink)
+
+      // `null` is the default again, so the route a user is heading to still warms up.
+      expect(cardLink).toHaveAttribute('data-prefetch', 'null')
     })
 
     it('should expose a visible focus ring on the card link', () => {
