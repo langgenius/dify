@@ -257,17 +257,23 @@ class DatasetService:
         include_all=False,
         accessible_dataset_ids: list[str] | None = None,
         include_own_datasets: bool = False,
+        visibility_scope: Literal["account", "workspace"] = "account",
     ):
-        """Return visible datasets for a tenant, using the injected session for auxiliary permission lookups."""
+        """Return datasets for a tenant under either account or workspace visibility.
+
+        Workspace-scoped callers, such as the Dataset Service API, are authorized by
+        the tenant rather than an individual account. They therefore skip account and
+        RBAC resource filters while retaining the tenant boundary.
+        """
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
 
-        if dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
+        if visibility_scope == "account" and dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
             accessible_filter: ColumnElement[bool] = Dataset.id.in_(accessible_dataset_ids)
             if include_own_datasets and user:
                 accessible_filter = sa.or_(Dataset.maintainer == user.id, accessible_filter)
             query = query.where(accessible_filter)
 
-        if user:
+        if visibility_scope == "account" and user:
             # get permitted dataset ids
             dataset_permission = session.scalars(
                 select(DatasetPermission).where(
@@ -322,7 +328,7 @@ class DatasetService:
                                     ),
                                 )
                             )
-        else:
+        elif visibility_scope == "account":
             if dify_config.RBAC_ENABLED:
                 # Without an account we cannot resolve RBAC resource visibility.
                 query = query.where(sa.false())

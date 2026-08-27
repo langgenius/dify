@@ -316,6 +316,38 @@ class TestDatasetServiceRetrieval:
         assert total == 1
         assert [dataset.id for dataset in datasets] == [shared.id]
 
+    def test_get_datasets_workspace_scope_returns_all_tenant_rows(self, sqlite_session: Session) -> None:
+        user = _account(role=TenantAccountRole.NORMAL)
+        shared = _dataset(dataset_id="shared", name="Shared", permission=DatasetPermissionEnum.ALL_TEAM)
+        private = _dataset(
+            dataset_id="private",
+            name="Private",
+            maintainer="other",
+            permission=DatasetPermissionEnum.ONLY_ME,
+        )
+        partial = _dataset(
+            dataset_id="partial",
+            name="Partial",
+            maintainer="other",
+            permission=DatasetPermissionEnum.PARTIAL_TEAM,
+        )
+        foreign = _dataset(dataset_id="foreign", tenant_id="tenant-2", name="Foreign")
+        sqlite_session.add_all([shared, private, partial, foreign])
+        sqlite_session.commit()
+
+        with patch("services.dataset_service.dify_config.RBAC_ENABLED", False):
+            datasets, total = DatasetService.get_datasets(
+                page=1,
+                per_page=20,
+                session=sqlite_session,
+                tenant_id="tenant-1",
+                user=user,
+                visibility_scope="workspace",
+            )
+
+        assert total == 3
+        assert {dataset.id for dataset in datasets} == {shared.id, private.id, partial.id}
+
     def test_get_datasets_by_ids_intersects_requested_and_accessible_ids(self, sqlite_session: Session) -> None:
         user = _account(role=TenantAccountRole.NORMAL)
         accessible = _dataset(dataset_id="accessible", name="Accessible", maintainer="other")
