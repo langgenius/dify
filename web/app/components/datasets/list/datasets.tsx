@@ -1,13 +1,20 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import type { useDatasetList } from '@/service/knowledge/use-dataset'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
+import { VirtualizedCardGrid } from '@/app/components/base/virtualized-card-grid'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import DatasetCard from './dataset-card'
 import DatasetCardSkeleton from './dataset-card-skeleton'
+
+const DATASET_LIST_GRID_COLUMNS_CLASS_NAME =
+  'grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-3'
+/** Mirrors the `h-41.5` height DatasetCard renders at. */
+const DATASET_CARD_HEIGHT = 166
 
 type Props = Readonly<{
   datasetList: ReturnType<typeof useDatasetList>['data'] | null
@@ -17,6 +24,7 @@ type Props = Readonly<{
   isFetchingNextPage: ReturnType<typeof useDatasetList>['isFetchingNextPage']
   isLoading: ReturnType<typeof useDatasetList>['isLoading']
   isPlaceholderData: ReturnType<typeof useDatasetList>['isPlaceholderData']
+  scrollContainerRef: RefObject<Element | null>
   emptyElement?: ReactNode
   onOpenTagManagement?: () => void
   stepByStepTourActionMenuHighlightPart?: string
@@ -32,6 +40,7 @@ const Datasets = ({
   isFetchingNextPage,
   isLoading,
   isPlaceholderData,
+  scrollContainerRef,
   emptyElement,
   onOpenTagManagement = () => {},
   stepByStepTourActionMenuHighlightPart,
@@ -69,25 +78,36 @@ const Datasets = ({
 
   return (
     <>
-      <nav className="relative grid grow grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-3 px-8 pt-2">
+      <nav className="relative grow px-8 pt-2">
         {showDatasetSkeleton ? (
-          <DatasetCardSkeleton label={t(($) => $.loading, { ns: 'common' })} />
+          <div className={DATASET_LIST_GRID_COLUMNS_CLASS_NAME}>
+            <DatasetCardSkeleton label={t(($) => $.loading, { ns: 'common' })} />
+          </div>
         ) : (
-          datasets.map((dataset, index) => (
-            <DatasetCard
-              key={dataset.id}
-              dataset={dataset}
-              onSuccess={invalidDatasetList}
-              onOpenTagManagement={onOpenTagManagement}
-              stepByStepTourActionMenuHighlightPart={
-                index === 0 && stepByStepTourActionMenuOpen
-                  ? stepByStepTourActionMenuHighlightPart
-                  : undefined
-              }
-              stepByStepTourActionMenuOpen={index === 0 ? stepByStepTourActionMenuOpen : undefined}
-              stepByStepTourCardTarget={index === 0 ? stepByStepTourCardTarget : undefined}
-            />
-          ))
+          <VirtualizedCardGrid
+            className={cn('content-start', DATASET_LIST_GRID_COLUMNS_CLASS_NAME)}
+            getItemKey={(dataset) => dataset.id}
+            items={datasets}
+            renderItem={(dataset, index) => (
+              <DatasetCard
+                key={dataset.id}
+                dataset={dataset}
+                onSuccess={invalidDatasetList}
+                onOpenTagManagement={onOpenTagManagement}
+                stepByStepTourActionMenuHighlightPart={
+                  index === 0 && stepByStepTourActionMenuOpen
+                    ? stepByStepTourActionMenuHighlightPart
+                    : undefined
+                }
+                stepByStepTourActionMenuOpen={
+                  index === 0 ? stepByStepTourActionMenuOpen : undefined
+                }
+                stepByStepTourCardTarget={index === 0 ? stepByStepTourCardTarget : undefined}
+              />
+            )}
+            rowHeight={DATASET_CARD_HEIGHT}
+            scrollContainerRef={scrollContainerRef}
+          />
         )}
         {!showDatasetSkeleton && !hasAnyDataset && emptyElement}
         {isFetchingNextPage && <Loading />}

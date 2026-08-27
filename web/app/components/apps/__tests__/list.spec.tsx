@@ -18,6 +18,8 @@ import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 import { List } from '../list'
 
+vi.mock('@tanstack/react-virtual')
+
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
   return createReactI18nextMock({
@@ -654,6 +656,16 @@ describe('List', () => {
 
       expect(screen.getByTestId('app-card-app-1'))!.toBeInTheDocument()
       expect(screen.getByTestId('app-card-app-2'))!.toBeInTheDocument()
+    })
+
+    it('should render app cards through the virtualized grid', () => {
+      renderList()
+
+      // Cards sit in absolutely positioned rows inside a container sized to the whole
+      // list, so cards outside the viewport are never mounted.
+      const row = screen.getByTestId('app-card-app-1').closest('div.absolute')
+      expect(row).not.toBeNull()
+      expect(row!.parentElement).toHaveStyle({ height: '332px' })
     })
 
     it('should hide starred section when there are no starred apps', () => {

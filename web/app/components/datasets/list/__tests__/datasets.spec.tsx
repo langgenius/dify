@@ -1,12 +1,15 @@
 import type { DataSet, DataSetListResponse } from '@/models/datasets'
 import type { useDatasetList } from '@/service/knowledge/use-dataset'
 import { render, screen } from '@testing-library/react'
+import { createRef } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 import Datasets from '../datasets'
+
+vi.mock('@tanstack/react-virtual')
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -180,6 +183,7 @@ describe('Datasets', () => {
     isFetchingNextPage: false,
     isLoading: false,
     isPlaceholderData: false,
+    scrollContainerRef: createRef<HTMLDivElement>(),
   }
 
   beforeEach(() => {
@@ -410,18 +414,20 @@ describe('Datasets', () => {
   })
 
   describe('Styles', () => {
-    it('should have correct grid styling', () => {
+    it('should keep the padding on the nav and the grid tracks on the virtualized rows', () => {
       render(<Datasets {...defaultProps} />)
+
       const nav = screen.getByRole('navigation')
-      expect(nav).toHaveClass(
-        'relative',
+      expect(nav).toHaveClass('relative', 'grow', 'px-8', 'pt-2')
+
+      // The tracks moved onto the virtualized grid so each rendered row can lay its
+      // own cards out; the nav only owns the surrounding padding now.
+      const grid = nav.querySelector('div.grid')
+      expect(grid).toHaveClass(
         'grid',
-        'grow',
         'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
         'content-start',
         'gap-3',
-        'px-8',
-        'pt-2',
       )
     })
   })

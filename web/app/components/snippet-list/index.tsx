@@ -8,6 +8,7 @@ import { useAtomValue } from 'jotai'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
+import { VirtualizedCardGrid } from '@/app/components/base/virtualized-card-grid'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
@@ -34,6 +35,10 @@ const TagManagementModal = dynamic(
     ssr: false,
   },
 )
+
+const SNIPPET_GRID_COLUMNS_CLASS_NAME = 'grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-4'
+/** Mirrors the `h-40` height SnippetCard renders at. */
+const SNIPPET_CARD_HEIGHT = 160
 
 const SNIPPET_CARD_SKELETON_KEYS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth']
 
@@ -194,28 +199,38 @@ const SnippetList = () => {
           <SnippetCreateButton />
         </div>
       </StudioListHeader>
-      <div
-        className={cn(
-          'relative grid grow grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-4 px-8 pt-2',
-          !hasAnySnippet && 'overflow-hidden',
-        )}
-      >
+      <div className={cn('relative grow px-8 pt-2', !hasAnySnippet && 'overflow-hidden')}>
         {showSkeleton ? (
-          <SnippetCardSkeleton count={6} />
+          <div className={SNIPPET_GRID_COLUMNS_CLASS_NAME}>
+            <SnippetCardSkeleton count={6} />
+          </div>
         ) : hasAnySnippet ? (
-          snippets.map((snippet) => (
-            <SnippetCard
-              key={snippet.id}
-              snippet={snippet}
-              onOpenTagManagement={() => setShowTagManagementModal(true)}
-              onRefresh={refetch}
-              onTagsChange={refetch}
-            />
-          ))
+          <VirtualizedCardGrid
+            className={cn('content-start', SNIPPET_GRID_COLUMNS_CLASS_NAME)}
+            getItemKey={(snippet) => snippet.id}
+            items={snippets}
+            renderItem={(snippet) => (
+              <SnippetCard
+                key={snippet.id}
+                snippet={snippet}
+                onOpenTagManagement={() => setShowTagManagementModal(true)}
+                onRefresh={refetch}
+                onTagsChange={refetch}
+              />
+            )}
+            rowHeight={SNIPPET_CARD_HEIGHT}
+            scrollContainerRef={containerRef}
+          />
         ) : (
-          <Empty message={t(($) => $['tabs.noSnippetsFound'], { ns: 'workflow' })} />
+          <div className={SNIPPET_GRID_COLUMNS_CLASS_NAME}>
+            <Empty message={t(($) => $['tabs.noSnippetsFound'], { ns: 'workflow' })} />
+          </div>
         )}
-        {isFetchingNextPage && <SnippetCardSkeleton count={3} />}
+        {isFetchingNextPage && (
+          <div className={SNIPPET_GRID_COLUMNS_CLASS_NAME}>
+            <SnippetCardSkeleton count={3} />
+          </div>
+        )}
       </div>
       <div ref={anchorRef} className="h-0">
         {' '}

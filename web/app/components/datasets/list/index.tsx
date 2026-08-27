@@ -7,7 +7,7 @@ import { useBoolean } from 'ahooks'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   activeStepByStepTourGuideGroupAtom,
@@ -49,6 +49,7 @@ function LegacyList({
   const { t } = useTranslation()
   const { push } = useRouter()
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const [showExternalApiPanel, setShowExternalApiPanel] = useState(false)
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
@@ -123,7 +124,10 @@ function LegacyList({
   ])
 
   return (
-    <div className="relative flex grow flex-col overflow-y-auto bg-background-body">
+    <div
+      ref={scrollContainerRef}
+      className="relative flex grow flex-col overflow-y-auto bg-background-body"
+    >
       <DatasetListHeader
         apiBaseUrl={apiBaseInfo?.api_base_url ?? ''}
         canConnectExternalDataset={canConnectExternalDataset}
@@ -157,6 +161,7 @@ function LegacyList({
       ) : (
         <Datasets
           datasetList={datasetListQuery.data}
+          scrollContainerRef={scrollContainerRef}
           emptyElement={
             showFilteredEmptyState ? (
               <FilterEmptyState title={t(($) => $['filterEmpty.noKnowledge'], { ns: 'dataset' })} />

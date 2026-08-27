@@ -45,6 +45,8 @@ const mocks = vi.hoisted(() => ({
   tagsQueryOptions: vi.fn((_options: unknown) => ({})),
 }))
 
+vi.mock('@tanstack/react-virtual')
+
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: vi.fn(),
