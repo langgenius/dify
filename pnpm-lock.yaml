@@ -243,9 +243,6 @@ catalogs:
     abcjs:
       specifier: 6.7.0
       version: 6.7.0
-    agentation:
-      specifier: 3.0.2
-      version: 3.0.2
     ahooks:
       specifier: 3.9.7
       version: 3.9.7
@@ -632,11 +629,11 @@ overrides:
   solid-js: 1.9.15
   string-width: ~8.2.2
   tar@<=7.5.15: ^7.5.16
+  vite@*: npm:@voidzero-dev/vite-plus-core@0.3.0
+  vitest@*: 4.1.11
   ws@>=8.0.0 <8.20.1: ^8.21.3
   yaml@>=2.0.0 <2.8.3: 2.9.0
   yauzl@<3.2.1: 3.2.1
-  vite@*: npm:@voidzero-dev/vite-plus-core@0.3.0
-  vitest@*: 4.1.11
 
 importers:
 
@@ -1565,9 +1562,6 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.11(@vitest/browser@4.1.11)(vitest@4.1.11)
-      agentation:
-        specifier: 'catalog:'
-        version: 3.0.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       code-inspector-plugin:
         specifier: 'catalog:'
         version: 1.6.6(supports-color@11.0.0)
@@ -5089,17 +5083,6 @@ packages:
     resolution: {integrity: sha512-xRQbDb9BnwDafYNn6Vwl839DYVjqXYb1XVGtWAZ1kcDc6iwAL4hg3B1dZlRiuENFeO2H53gFG3in621AdERVAg==}
     engines: {node: '>=0.4.0'}
     hasBin: true
-
-  agentation@3.0.2:
-    resolution: {integrity: sha512-iGzBxFVTuZEIKzLY6AExSLAQH6i6SwxV4pAu7v7m3X6bInZ7qlZXAwrEqyc4+EfP4gM7z2RXBF6SF4DeH0f2lA==}
-    peerDependencies:
-      react: '>=18.0.0'
-      react-dom: '>=18.0.0'
-    peerDependenciesMeta:
-      react:
-        optional: true
-      react-dom:
-        optional: true
 
   ahooks@3.9.7:
     resolution: {integrity: sha512-S0lvzhbdlhK36RFBkGv+RbOM/dbbweym+BIHM/bwwuWVSVN5TuVErHPMWo4w0t1NDYg5KPp2iEf7Y7E5LASYiw==}
@@ -12350,11 +12333,6 @@ snapshots:
 
   acorn@8.17.0: {}
 
-  agentation@3.0.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
-    optionalDependencies:
-      react: 19.2.8
-      react-dom: 19.2.8(react@19.2.8)
-
   ahooks@3.9.7(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
     dependencies:
       '@babel/runtime': 7.29.7
@@ -16979,7 +16957,6 @@ time:
   '@vitest/coverage-v8@4.1.11': '2026-08-18T14:22:18.896Z'
   '@voidzero-dev/vite-plus-core@0.3.0': '2026-08-24T04:06:39.867Z'
   abcjs@6.7.0: '2026-08-07T18:50:14.156Z'
-  agentation@3.0.2: '2026-03-25T16:24:19.682Z'
   ahooks@3.9.7: '2026-03-23T15:49:13.605Z'
   c12@4.0.0-beta.5: '2026-05-06T17:28:34.367Z'
   chokidar@5.0.0: '2025-11-25T23:28:06.854Z'

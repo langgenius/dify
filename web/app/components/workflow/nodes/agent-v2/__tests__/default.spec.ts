@@ -113,7 +113,7 @@ describe('agent/default', () => {
   })
 
   it('links directly to the New Agent section of the shared agent node document', () => {
-    expect(nodeDefault.metaData.helpLinkUri).toBe('agent#choose-an-agent')
+    expect(nodeDefault.metaData.helpLinkUri).toBe('agent#new-agent')
   })
 
   it('identifies version 2 agent data as Agent v2', () => {
