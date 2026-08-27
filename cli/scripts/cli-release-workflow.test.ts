@@ -3,31 +3,21 @@ import { fileURLToPath } from 'node:url'
 import { load } from 'js-yaml'
 import { describe, expect, it } from 'vite-plus/test'
 
-// cli-release.yml is the only part of the release path with no other test
-// harness, and its two failure modes (a build step that stops passing
-// CLI_VERSION, a compat gate that stops being conditional) both review clean
-// while doing the wrong thing — they only surface on a live Dify release.
 const WORKFLOW_PATH = fileURLToPath(
   new URL('../../.github/workflows/cli-release.yml', import.meta.url),
 )
 
-const JOB_VALIDATE = 'validate'
 const JOB_RELEASE = 'release'
 
-const STEP_DERIVE = 'Derive difyctl version'
-const STEP_COMPAT = 'Compatibility check'
 const STEP_COMPILE = 'Compile standalone binaries (all targets)'
 const STEP_CHECKSUMS = 'Generate sha256 checksum file'
 
-// The steps that touch the outside world, and the only ones dry_run skips.
 const DRY_RUN_GUARDED_STEPS = [
   'Attach difyctl assets to Dify release',
   'Prune stale difyctl assets',
 ]
 
-const SHOULD_RELEASE = 'should_release'
-const VALIDATE_OUTPUTS = [SHOULD_RELEASE, 'difyctl_version', 'dify_tag']
-const TRIGGER_INPUTS = ['release_tag', 'difyctl_version', 'dry_run']
+const TRIGGER_INPUTS = ['release_tag', 'dry_run']
 
 type WorkflowInput = {
   description?: string
@@ -65,10 +55,6 @@ type Workflow = {
   jobs: Record<string, Job>
 }
 
-// A YAML 1.1 loader resolves the bare key `on` to boolean true and keys the
-// trigger block under `true`; js-yaml 5 is YAML 1.2 and keys it under 'on'.
-// Accept either and throw when neither is present, so a loader swap cannot
-// turn every trigger assertion into a vacuous pass on an undefined lookup.
 function parseWorkflow(): Workflow {
   const raw: unknown = load(readFileSync(WORKFLOW_PATH, 'utf8'))
   if (raw === null || typeof raw !== 'object')
@@ -97,73 +83,26 @@ function stepsOf(jobName: string): Step[] {
   return steps
 }
 
-function findStep(steps: readonly Step[], name: string): { index: number; step: Step } {
-  const index = steps.findIndex((s) => s.name === name)
-  const step = steps[index]
+function findStep(steps: readonly Step[], name: string): Step {
+  const step = steps.find((s) => s.name === name)
   if (step === undefined) {
     const have = steps.map((s) => s.name ?? '(unnamed)').join(' | ')
     throw new Error(`no step named "${name}" (have: ${have})`)
   }
-  return { index, step }
+  return step
 }
 
 const allSteps = (): Step[] => Object.keys(workflow.jobs).flatMap((name) => stepsOf(name))
 
 describe('cli-release.yml build step passes CLI_VERSION', () => {
   it('passes CLI_VERSION into the compile step run body', () => {
-    // Trap 1: this step used to pass no CLI_VERSION at all and relied on a
-    // package.json fallback inside release-build.sh. That fallback is deleted
-    // and CLI_VERSION is now required, so dropping the assignment breaks the
-    // release — on a live Dify release, with nothing else exercising it.
-    const { step } = findStep(stepsOf(JOB_RELEASE), STEP_COMPILE)
+    const step = findStep(stepsOf(JOB_RELEASE), STEP_COMPILE)
     expect(step.run ?? '').toContain('CLI_VERSION=')
-  })
-
-  it('wires the job-level CLI_VERSION to the derived version', () => {
-    expect(job(JOB_RELEASE).env?.CLI_VERSION ?? '').toContain(
-      `needs.${JOB_VALIDATE}.outputs.difyctl_version`,
-    )
-  })
-})
-
-describe('cli-release.yml compat gate is conditional', () => {
-  it('guards the compat check on the derive step should_release output', () => {
-    // Trap 2: Actions steps run regardless of an earlier step's outputs, and
-    // derive-version exits 0 on a shape mismatch. Every real non-X.Y.Z Dify tag
-    // also sits outside the one-minor-wide compat window, so without this `if:`
-    // the skip behaviour never fires for any real tag — the shape gate would be
-    // present in the file and the red X would happen anyway.
-    const steps = stepsOf(JOB_VALIDATE)
-    const derive = findStep(steps, STEP_DERIVE)
-    const compat = findStep(steps, STEP_COMPAT)
-    expect(derive.step.id).toBeTypeOf('string')
-    expect(compat.step.if ?? '').toContain(`steps.${derive.step.id}.outputs.${SHOULD_RELEASE}`)
-  })
-
-  it('places the compat check after the derive step', () => {
-    const steps = stepsOf(JOB_VALIDATE)
-    expect(findStep(steps, STEP_COMPAT).index).toBeGreaterThan(findStep(steps, STEP_DERIVE).index)
-  })
-})
-
-describe('cli-release.yml skip wiring', () => {
-  it('gates the release job on the validate should_release output', () => {
-    const release = job(JOB_RELEASE)
-    expect(release.needs).toContain(JOB_VALIDATE)
-    expect(release.if ?? '').toContain(`needs.${JOB_VALIDATE}.outputs.${SHOULD_RELEASE} == 'true'`)
-  })
-
-  it('exposes every output the release job consumes', () => {
-    const outputs = job(JOB_VALIDATE).outputs ?? {}
-    for (const name of VALIDATE_OUTPUTS) {
-      expect(Object.keys(outputs)).toContain(name)
-      expect(outputs[name]).toBeTruthy()
-    }
   })
 })
 
 describe('cli-release.yml dry_run guards', () => {
-  it('guards exactly the three steps that touch the outside world', () => {
+  it('guards exactly the steps that touch the outside world', () => {
     const guarded = allSteps()
       .filter((s) => s.if?.includes('dry_run') === true)
       .map((s) => s.name)
@@ -171,12 +110,9 @@ describe('cli-release.yml dry_run guards', () => {
   })
 
   it('leaves the build and checksum steps unguarded', () => {
-    // The whole point of dry_run is that the cross-compile and the checksum file
-    // still run: four of the five things that can only fail in anger are cheap
-    // to exercise without touching a release.
     const steps = stepsOf(JOB_RELEASE)
-    expect(findStep(steps, STEP_COMPILE).step.if).toBeUndefined()
-    expect(findStep(steps, STEP_CHECKSUMS).step.if).toBeUndefined()
+    expect(findStep(steps, STEP_COMPILE).if).toBeUndefined()
+    expect(findStep(steps, STEP_CHECKSUMS).if).toBeUndefined()
   })
 })
 
@@ -188,11 +124,6 @@ describe('cli-release.yml duplicate-version gate stays deleted', () => {
   })
 })
 
-// The step this guards against looked harmless and ran green for four releases while
-// never once working: repository ruleset 1715221 blocks `creation` on `~ALL` tags with
-// no bypass actor, so every POST was rejected and the handler misread the rejection as
-// "tag already exists". Verified 2026-08-26 — zero difyctl-v* tags exist. Re-adding tag
-// creation needs a ruleset bypass first, or it silently does nothing again.
 describe('cli-release.yml creates no git tag', () => {
   it('has no provenance-tag step', () => {
     const names = allSteps().map((s) => s.name ?? '')

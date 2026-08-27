@@ -12,7 +12,8 @@ source "${_dir}/lib/common.sh"
 
 naming() { node "${_dir}/release-naming.mjs" "$@"; }
 
-: "${CLI_VERSION:?required — set by the release workflow (see .github/workflows/cli-release.yml)}"
+CLI_VERSION="${CLI_VERSION:-$(node -p "require('$(cli::root)/package.json').version")}"
+[[ -n "$CLI_VERSION" && "$CLI_VERSION" != "undefined" ]] || die "CLI_VERSION could not be derived from package.json"
 
 cd "$(cli::root)/dist/bin"
 

@@ -12,8 +12,8 @@ This package is the Node 22+, ESM TypeScript implementation of `difyctl`. Develo
 
 ## Version and Channel
 
-- `cli/package.json` `version` is an inert placeholder pinned to `0.0.0-private`. Do not bump it; `scripts/release-naming.mjs validate` fails the manifest gate if it changes.
-- The real difyctl version derives from the Dify GitHub release tag its binaries attach to (`release-naming.mjs derive-version <difyTag>`), and reaches the build only via `CLI_VERSION` — required env for `scripts/release-build.sh` and `scripts/release-write-checksums.sh`. Build locally with `pnpm build:bin:local`.
+- `cli/package.json` `version` is bumped by hand before a release. It must match the form of `difyctl.channel` — `scripts/release-naming.mjs validate` fails the manifest gate otherwise, so moving to a prerelease version means moving the channel with it.
+- Build locally with `pnpm build:bin:local`, which pins `DIFYCTL_CHANNEL=dev` so a local binary does not self-report the release channel.
 
 ## Commands
 

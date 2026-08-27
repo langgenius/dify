@@ -13,11 +13,10 @@ const PKG_PATH_ENV = 'DIFYCTL_PKG_PATH'
 // assertions can name exact windows without tracking the live release.
 
 // Deliberately far from any real Dify version, and min != max so "inside the
-// window" is a case distinct from either bound. maxDify is also the edge base.
+// window" is a case distinct from either bound.
 export const FIXTURE_COMPAT = { minDify: '2.0.0', maxDify: '2.5.0' }
 
-// Mirrors the real manifest: an inert placeholder no release path may read.
-export const FIXTURE_VERSION = '0.0.0-private'
+export const FIXTURE_VERSION = '7.7.7'
 export const FIXTURE_CHANNEL = 'stable'
 export const FIXTURE_TAG_PREFIX = 'difyctl-v'
 

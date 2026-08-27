@@ -183,7 +183,6 @@ describe('resolveBuildInfo', () => {
   })
 })
 
-// `export type Channel = 'a' | 'b'`, single line or with `|`-led continuations.
 const CHANNEL_UNION_RE = /export type Channel\s*=\s*([^\n]*(?:\n[ \t]*\|[^\n]*)*)/
 const QUOTED_MEMBER_RE = /'([^']+)'/g
 
@@ -197,8 +196,6 @@ function channelUnionMembers(): string[] {
   return members
 }
 
-// Spawned rather than imported: release-naming.mjs carries a shebang that breaks
-// the Windows test runner.
 function releaseNamingChannels(): string[] {
   return execFileSync('node', [RELEASE_NAMING, 'channels'], { encoding: 'utf8' })
     .split('\n')
@@ -208,13 +205,6 @@ function releaseNamingChannels(): string[] {
 
 const sorted = (names: readonly string[]) => [...names].sort()
 
-// Three hand-maintained channel lists in three runtimes that cannot share an
-// import — a bare string array here, a compile-time union in src/version/info.ts,
-// and objects carrying release data in release-naming.mjs.
-//
-// The asymmetry is deliberate, not an oversight to paper over: `dev` is a local
-// build channel that is never released, so it belongs in the two build-side
-// lists and must stay out of release-naming.mjs's CHANNELS.
 describe('channel list parity', () => {
   const LOCAL_ONLY_CHANNEL = 'dev'
 
@@ -236,10 +226,6 @@ describe('channel list parity', () => {
 
 type ClientVersionReport = { client: { channel: string } }
 
-// Spawning bun is safe in this suite: `pnpm test`'s pretest step already runs
-// `bun scripts/generate-command-tree.ts`, so the suite cannot run without it.
-// `version --client` skips the server probe, so this needs no network, and the
-// temp config/cache dirs keep it off the developer's real difyctl state.
 describe('bin/dev.js pins the local build channel', () => {
   const ENV_CHANNEL = 'DIFYCTL_CHANNEL'
   const stateDir = mkdtempSync(join(tmpdir(), 'difyctl-dev-channel-'))
@@ -261,10 +247,6 @@ describe('bin/dev.js pins the local build channel', () => {
     return (JSON.parse(stdout) as ClientVersionReport).client.channel
   }
 
-  // The `?? 'dev'` fallback in resolveBuildInfo was dead code before this pin —
-  // the manifest channel always won. With the manifest now reading `stable`, an
-  // unpinned local build would self-report `stable` and drop its prerelease
-  // banner, claiming a release it is not.
   it('reports dev when the env does not set a channel', { timeout: 30_000 }, () => {
     expect(reportedChannel()).toBe('dev')
   })

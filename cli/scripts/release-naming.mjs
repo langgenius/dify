@@ -1,29 +1,25 @@
 #!/usr/bin/env node
 // release-naming.mjs — single source of truth for difyctl release artifact
 // names and version/channel rules. Reads DATA from cli/package.json
-// `difyctl.release` (plus `difyctl.channel` and `difyctl.compat`) and owns the
-// name FORMAT and the per-channel version form. Producer scripts call this;
+// `difyctl.release` (plus `version` and `difyctl.channel`) and owns the name
+// FORMAT and the per-channel version form. Producer scripts call this;
 // `validate` is the release gate.
 //
 // Subcommands:
-//   tag <version>            -> <tagPrefix><version>
-//   asset <version> <id>     -> <tagPrefix><version>-<id>[.exe]
-//   checksums <version>      -> <tagPrefix><version><checksumsSuffix>
-//   tag-prefix               -> <tagPrefix>
-//   targets                  -> one line per target: "<bunTarget>\t<id>\t<0|1 exe>"
-//   channels                 -> one channel name per line
-//   prerelease <channel>     -> "true" | "false"
-//   derive-version <difyTag> -> key=value lines: "ok=true" + "version=<X.Y.Z>", or
-//                               "ok=false" + "reason=<why>". Exit 0 either way; a
-//                               missing tag argument is an error, not a skip.
-//   github-env <version>     -> key=value lines (all fields CI needs) for $GITHUB_ENV
-//   edge-version <sha>       -> <compat.maxDify core>-edge.<sha>
-//   validate                 -> exit 1 if difyctl.release, difyctl.channel, or the
-//                               inert version placeholder is malformed
-//   validate-version <version> [channel]
-//                            -> exit 1 unless version matches the channel's form
-//                               (channel defaults to difyctl.channel)
-//   compat-check <difyVer>   -> exit 1 if difyVer outside compat.minDify..maxDify
+//   tag <version>          -> <tagPrefix><version>
+//   asset <version> <id>   -> <tagPrefix><version>-<id>[.exe]
+//   checksums <version>    -> <tagPrefix><version><checksumsSuffix>
+//   tag-prefix             -> <tagPrefix>
+//   targets                -> one line per target: "<bunTarget>\t<id>\t<0|1 exe>"
+//   channels               -> one channel name per line
+//   prerelease <channel>   -> "true" | "false"
+//   github-env             -> key=value lines (all fields CI needs) for $GITHUB_ENV
+//   edge-version <sha>     -> <package version core>-edge.<sha>
+//   validate               -> exit 1 if difyctl.release, version, channel, or
+//                             difyctl.compat is malformed
+//   validate-version <version> <channel>
+//                          -> exit 1 unless version matches the channel's form
+//   compat-check <difyVer> -> exit 1 if difyVer outside compat.minDify..maxDify
 
 import { readFileSync, realpathSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -32,8 +28,6 @@ const BUN_TARGET_RE = /^bun-(linux|darwin|windows)-(x64|arm64)$/
 const SEMVER_CORE_LEN = 3
 const SEMVER_CORE_RE = /^\d+\.\d+\.\d+$/
 const COMPAT_BOUNDS = ['minDify', 'maxDify']
-
-const PLACEHOLDER_VERSION = '0.0.0-private'
 
 // Add channels here: { name, prerelease, versionForm }.
 const CHANNELS = [
@@ -61,26 +55,15 @@ function versionCore(v) {
 function edgeVersion(sha) {
   if (!/^[0-9a-f]{7,40}$/.test(sha ?? ''))
     die('edge-version requires a git short sha (7-40 hex chars)')
-  const { compat } = loadPkg()
-  const core = versionCore(compat.maxDify ?? '')
-  if (!SEMVER_CORE_RE.test(core))
-    die(`cannot derive edge base from difyctl.compat.maxDify: ${compat.maxDify ?? '(missing)'}`)
+  const { version } = loadPkg()
+  const core = versionCore(version)
+  if (!SEMVER_CORE_RE.test(core)) die(`cannot derive edge base from version: ${version}`)
   return `${core}-edge.${sha}`
 }
 
-// The difyctl version is the Dify release tag it ships on. A tag that is not a
-// plain X.Y.Z release is not one difyctl attaches to — reported as ok=false so
-// the caller can skip cleanly, which is not the same as an error.
-function deriveVersion(difyTag) {
-  const normalized = difyTag.replace(/^v/, '')
-  if (SEMVER_CORE_RE.test(normalized)) return `ok=true\nversion=${normalized}`
-  // key=value stays one line per key; argv can carry newlines.
-  const tag = difyTag.replace(/\s+/g, ' ').trim()
-  return `ok=false\nreason=Dify tag ${tag} is not a plain X.Y.Z release`
-}
-
 // Returns a problem string if `version` cannot be resolved under `channel`, else
-// null.
+// null. Shared by validateVersionForChannel (die-now) and validateVersionChannel
+// (collect for the `validate` gate).
 function channelVersionProblem(version, channel) {
   if (typeof version !== 'string' || version.length === 0)
     return 'version must be a non-empty string'
@@ -148,17 +131,16 @@ function loadPkg() {
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'))
   if (!pkg.difyctl?.release) die('cli/package.json missing difyctl.release')
   return {
-    placeholderVersion: pkg.version,
+    version: pkg.version,
     channel: pkg.difyctl.channel,
     compat: pkg.difyctl.compat ?? {},
     release: pkg.difyctl.release,
   }
 }
 
-// Emits key=value lines for $GITHUB_ENV. The version is derived from the Dify
-// release tag by the caller, never read from the manifest.
-function githubEnv(version) {
-  const { channel, compat, release } = loadPkg()
+// Emits key=value lines for $GITHUB_ENV.
+function githubEnv() {
+  const { version, channel, compat, release } = loadPkg()
   const fields = {
     version,
     channel,
@@ -210,9 +192,11 @@ function validateRelease(release) {
   return problems
 }
 
-// Compat bounds are plain X.Y.Z releases. A prerelease bound has no meaning for a
-// support window, and rejecting the form outright is why no separate wildcard guard
-// is needed — `1.x` and `1.*` are simply not X.Y.Z.
+function validateVersionChannel(version, channel) {
+  const problem = channelVersionProblem(version, channel)
+  return problem ? [problem] : []
+}
+
 function validateCompat(compat) {
   const problems = COMPAT_BOUNDS.filter((b) => !SEMVER_CORE_RE.test(compat[b] ?? '')).map(
     (b) => `difyctl.compat.${b} must be a plain X.Y.Z version, found ${compat[b] ?? '(missing)'}`,
@@ -245,10 +229,8 @@ function main(argv) {
         .join('\n')
     case 'channels':
       return CHANNELS.map((c) => c.name).join('\n')
-    case 'derive-version':
-      return deriveVersion(rest[0] || die('dify tag argument is required'))
     case 'github-env':
-      return githubEnv(requireVersion(rest[0]))
+      return githubEnv()
     case 'compat-check': {
       const { compat } = loadPkg()
       const difyVersion = requireVersion(rest[0])
@@ -269,22 +251,23 @@ function main(argv) {
       return String(ch.prerelease)
     }
     case 'validate': {
-      const { placeholderVersion, channel, compat, release } = loadPkg()
-      const problems = [...validateRelease(release), ...validateCompat(compat)]
-      if (!channelByName(channel))
-        problems.push(`unknown channel: ${channel} (expected one of: ${channelNames()})`)
-      if (placeholderVersion !== PLACEHOLDER_VERSION)
-        problems.push(
-          `version must be the inert placeholder ${PLACEHOLDER_VERSION}, found ${placeholderVersion}`,
-        )
+      const { version, channel, compat, release } = loadPkg()
+      const problems = [
+        ...validateRelease(release),
+        ...validateCompat(compat),
+        ...validateVersionChannel(version, channel),
+      ]
       if (problems.length > 0)
         die(`invalid difyctl release config:\n  - ${problems.join('\n  - ')}`)
-      return `difyctl release valid: channel=${channel} compat=${compat.minDify}..${compat.maxDify} targets=${release.targets.length}`
+      return `difyctl release valid: version=${version} channel=${channel} compat=${compat.minDify}..${compat.maxDify} targets=${release.targets.length}`
     }
     case 'edge-version':
       return edgeVersion(rest[0])
     case 'validate-version':
-      return validateVersionForChannel(requireVersion(rest[0]), rest[1] ?? loadPkg().channel)
+      return validateVersionForChannel(
+        requireVersion(rest[0]),
+        rest[1] ?? die('channel argument is required'),
+      )
     default:
       die(`unknown subcommand: ${cmd ?? '(none)'}`)
   }
