@@ -64,7 +64,6 @@ ignore_imports =
     core.app.task_pipeline.message_cycle_manager -> services.annotation_service
     core.app.workflow.layers.persistence -> services.workflow.inspector_events
     core.datasource.datasource_manager -> services.datasource_provider_service
-    core.helper.creators -> services.oauth_server
     core.helper.credential_utils -> services.enterprise.plugin_manager_service
     core.helper.credential_utils -> services.feature_service
     core.indexing_runner -> services.vector_space_admission_service
@@ -116,8 +115,6 @@ ignore_imports =
     libs.login -> models.model
     libs.oauth -> core.helper.http_client_pooling
     libs.oauth_bearer -> models
-    libs.oauth_data_source -> core.db.session_factory
-    libs.oauth_data_source -> core.helper.http_client_pooling
     libs.rsa -> extensions.ext_storage
     libs.workspace_permission -> services.enterprise.enterprise_service
     libs.workspace_permission -> services.feature_service
@@ -303,6 +300,40 @@ forbidden_modules =
     controllers
     extensions
     flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:data-source-oauth-service-boundary]
+name = Data source OAuth application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.data_source_oauth_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    httpx
+    libs
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:oauth-server-application-service-boundary]
+name = OAuth server application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.oauth_server_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    httpx
+    libs
     models
     repositories
     sqlalchemy

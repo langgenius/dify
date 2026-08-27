@@ -5045,11 +5045,6 @@
       "count": 1
     }
   },
-  "web/app/signup/check-code/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/signup/layout.tsx": {
     "typescript/no-explicit-any": {
       "count": 1

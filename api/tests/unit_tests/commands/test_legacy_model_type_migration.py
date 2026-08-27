@@ -19,7 +19,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
 from graphon.model_runtime.entities.model_entities import ModelType
-from models import Dataset, DatasetPermission, DatasetPermissionEnum
+from models import Dataset, DatasetPermission, DatasetPermissionEnum, TenantAccountJoin, TenantAccountRole
 from models.account import Tenant
 from models.base import TypeBase
 from models.enums import CredentialSourceType
@@ -69,7 +69,7 @@ def rbac_session(sqlite_engine: sa.Engine, monkeypatch: pytest.MonkeyPatch) -> I
 
     TypeBase.metadata.create_all(
         sqlite_engine,
-        tables=[Dataset.__table__, DatasetPermission.__table__],
+        tables=[Dataset.__table__, DatasetPermission.__table__, TenantAccountJoin.__table__],
     )
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     monkeypatch.setattr("commands.rbac.session_factory.create_session", factory)
@@ -84,6 +84,7 @@ def _persist_dataset(
     tenant_id: str = "tenant-1",
     permission: DatasetPermissionEnum = DatasetPermissionEnum.ONLY_ME,
     created_by: str = "creator-account-1",
+    maintainer: str | None = None,
 ) -> Dataset:
     dataset = Dataset(
         id=dataset_id,
@@ -91,6 +92,7 @@ def _persist_dataset(
         name=f"Dataset {dataset_id}",
         permission=permission,
         created_by=created_by,
+        maintainer=maintainer,
     )
     session.add(dataset)
     session.commit()
@@ -372,6 +374,12 @@ def test_data_migrate_group_registers_dataset_permission_rbac_migration(command_
     assert "operator_account_id" not in {param.name for param in command.params}
 
 
+def test_data_migrate_group_registers_resource_whitelist_scope_migration(command_module) -> None:
+    command = command_module.data_migrate.commands["rbac-migrate-resource-whitelist-scopes"]
+
+    assert command is command_module.migrate_resource_whitelist_scopes_to_automatic_include
+
+
 def test_dataset_permission_rbac_migration_help_mentions_binding_clear_side_effect(command_module) -> None:
     result = CliRunner().invoke(
         command_module.data_migrate,
@@ -488,6 +496,104 @@ def test_dataset_permission_rbac_migration_dry_run_outputs_structured_proposed_c
     assert events[1]["target_account_id"] == "member-account-1"
     assert events[1]["after"] == {"rbac_user_access_policy_ids": ["default"]}
     assert events[1]["call"]["kwargs"]["payload"] == {"access_policy_ids": ["default"]}
+
+
+def test_resource_whitelist_scope_migration_specific_preserves_existing_members(
+    command_module,
+    rbac_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rbac_module = importlib.import_module("commands.rbac")
+    _persist_dataset(rbac_session, maintainer="maintainer-account-1")
+    replace_whitelist_calls: list[dict[str, object]] = []
+    replace_policy_calls: list[dict[str, object]] = []
+
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
+        "legacy_whitelist_config",
+        lambda **kwargs: SimpleNamespace(
+            rbac_whitelist_scope="specific",
+            account_ids=["member-account-2", "member-account-1", "member-account-1"],
+        ),
+    )
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
+        "replace_whitelist",
+        lambda **kwargs: replace_whitelist_calls.append(kwargs),
+    )
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
+        "replace_user_access_policies",
+        lambda **kwargs: replace_policy_calls.append(kwargs),
+    )
+
+    command_module.migrate_resource_whitelist_scopes_to_automatic_include.callback(
+        tenant_id=None,
+        resource_type="dataset",
+        resource_id=None,
+        batch_size=500,
+        member_batch_size=500,
+        dry_run=False,
+    )
+
+    assert replace_whitelist_calls[0]["payload"].automatic_include_workspace_members is False
+    assert replace_policy_calls[0]["payload"].access_policy_ids == ["default"]
+    assert replace_policy_calls[0]["payload"].account_ids == ["member-account-1", "member-account-2"]
+
+
+def test_resource_whitelist_scope_migration_all_syncs_workspace_members(
+    command_module,
+    rbac_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rbac_module = importlib.import_module("commands.rbac")
+    _persist_dataset(rbac_session, maintainer="maintainer-account-1")
+    rbac_session.add_all(
+        [
+            TenantAccountJoin(
+                tenant_id="tenant-1",
+                account_id="maintainer-account-1",
+                role=TenantAccountRole.OWNER,
+            ),
+            TenantAccountJoin(
+                tenant_id="tenant-1",
+                account_id="member-account-1",
+                role=TenantAccountRole.NORMAL,
+            ),
+        ]
+    )
+    rbac_session.commit()
+    replace_whitelist_calls: list[dict[str, object]] = []
+    replace_policy_calls: list[dict[str, object]] = []
+
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
+        "legacy_whitelist_config",
+        lambda **kwargs: SimpleNamespace(rbac_whitelist_scope="all", account_ids=[]),
+    )
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
+        "replace_whitelist",
+        lambda **kwargs: replace_whitelist_calls.append(kwargs),
+    )
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
+        "replace_user_access_policies",
+        lambda **kwargs: replace_policy_calls.append(kwargs),
+    )
+
+    command_module.migrate_resource_whitelist_scopes_to_automatic_include.callback(
+        tenant_id=None,
+        resource_type="dataset",
+        resource_id=None,
+        batch_size=500,
+        member_batch_size=500,
+        dry_run=False,
+    )
+
+    assert replace_whitelist_calls[0]["payload"].automatic_include_workspace_members is True
+    assert replace_policy_calls[0]["payload"].access_policy_ids == ["default"]
+    assert set(replace_policy_calls[0]["payload"].account_ids) == {"maintainer-account-1", "member-account-1"}
 
 
 def test_data_migrate_command_defaults_output_to_stdout_stream(
