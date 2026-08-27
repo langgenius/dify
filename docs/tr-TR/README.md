@@ -102,7 +102,7 @@ Dify'ın tüm özellikleri ilgili API'lerle birlikte gelir, böylece Dify'ı ken
 
 GitHub'da Dify'a yıldız verin ve yeni sürümlerden anında haberdar olun.
 
-![bizi-yıldızlayın](https://github.com/langgenius/dify/assets/13230914/b823edc1-6388-4e25-ad45-2f6b187adbb4)
+<img width="1344" height="720" alt="star" src="https://github.com/user-attachments/assets/dcd086d1-af0f-471b-ae52-1ad2fa040595" />
 
 ## Hızlı başlangıç
 
@@ -126,81 +126,31 @@ docker compose up -d
 
 ## Sonraki adımlar
 
-Yapılandırmayı özelleştirmeniz gerekiyorsa, lütfen [.env.example](../../docker/.env.example) dosyamızdaki yorumlara bakın ve `.env` dosyanızdaki ilgili değerleri güncelleyin. Ayrıca, spesifik dağıtım ortamınıza ve gereksinimlerinize bağlı olarak `docker-compose.yaml` dosyasının kendisinde de, imaj sürümlerini, port eşlemelerini veya hacim bağlantılarını değiştirmek gibi ayarlamalar yapmanız gerekebilir. Herhangi bir değişiklik yaptıktan sonra, lütfen `docker-compose up -d` komutunu tekrar çalıştırın. Kullanılabilir tüm ortam değişkenlerinin tam listesini [burada](https://docs.dify.ai/getting-started/install-self-hosted/environments) bulabilirsiniz.
-
-### Grafana ile Metrik İzleme
-
-Uygulamalar, kiracılar, mesajlar ve daha fazlasının granularitesinde metrikleri izlemek için Dify'nin PostgreSQL veritabanını veri kaynağı olarak kullanarak panoyu Grafana'ya aktarın.
-
-- [@bowenliang123 tarafından Grafana Panosu](https://github.com/bowenliang123/dify-grafana-dashboard)
-
-### Kubernetes ile Dağıtım
-
-Yüksek kullanılabilirliğe sahip bir kurulum yapılandırmak isterseniz, Dify'ın Kubernetes üzerine dağıtılmasına olanak tanıyan topluluk katkılı [Helm Charts](https://helm.sh/) ve YAML dosyaları mevcuttur.
-
-- [@LeoQuote tarafından Helm Chart](https://github.com/douban/charts/tree/master/charts/dify)
-- [@BorisPolonsky tarafından Helm Chart](https://github.com/BorisPolonsky/dify-helm)
-- [@Winson-030 tarafından YAML dosyası](https://github.com/Winson-030/dify-kubernetes)
-- [@wyy-holding tarafından YAML dosyası](https://github.com/wyy-holding/dify-k8s)
-- [🚀 YENİ! YAML dosyaları (Dify v1.6.0 destekli) @Zhoneym tarafından](https://github.com/Zhoneym/DifyAI-Kubernetes)
-
-#### Dağıtım için Terraform Kullanımı
-
-Dify'ı bulut platformuna tek tıklamayla dağıtın [terraform](https://www.terraform.io/) kullanarak
-
-##### Azure Global
-
-- [Azure Terraform tarafından @nikawang](https://github.com/nikawang/dify-azure-terraform)
-
-##### Google Cloud
-
-- [Google Cloud Terraform tarafından @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
-
-#### AWS CDK ile Dağıtım
-
-[CDK](https://aws.amazon.com/cdk/) kullanarak Dify'ı AWS'ye dağıtın
-
-##### AWS
-
-- [AWS CDK tarafından @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
-- [AWS CDK tarafından @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
-
-#### Alibaba Cloud
-
-[Alibaba Cloud Computing Nest](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88)
-
-#### Alibaba Cloud Data Management
-
-[Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/) kullanarak Dify'ı tek tıkla Alibaba Cloud'a dağıtın
-
-#### AKS'ye Dağıtım için Azure Devops Pipeline Kullanımı
-
-[Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) kullanarak Dify'ı tek tıkla AKS'ye dağıtın
-
-#### Sealos ile Dağıtım
-
-[Sealos App Store](https://sealos.io/products/app-store/dify/) kullanarak Dify'ı tek tıkla dağıtın
+Özel yapılandırma, gözlemlenebilirlik ve dağıtım seçenekleri için [Gelişmiş Kurulum](ADVANCED_SETUP.md) belgesine bakın.
 
 ## Katkıda Bulunma
 
-Kod katkısında bulunmak isteyenler için [Katkı Kılavuzumuza](./CONTRIBUTING.md) bakabilirsiniz.
-Aynı zamanda, lütfen Dify'ı sosyal medyada, etkinliklerde ve konferanslarda paylaşarak desteklemeyi düşünün.
+Dify her türlü katkıyı memnuniyetle karşılar:
 
-> Dify'ı Mandarin veya İngilizce dışındaki dillere çevirmemize yardımcı olacak katkıda bulunanlara ihtiyacımız var. Yardımcı olmakla ilgileniyorsanız, lütfen daha fazla bilgi için [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) dosyasına bakın ve [Discord Topluluk Sunucumuzdaki](https://discord.gg/8Tpq4AcN9c) `global-users` kanalında bize bir yorum bırakın.
+- **Kod**: [Katkı Kılavuzu'nu](./CONTRIBUTING.md) okuyun, ardından [yeni katkıda bulunanlara uygun sorunlara](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22) göz atın.
+- **Fikirler ve geri bildirim**: Bir [GitHub tartışması](https://github.com/langgenius/dify/discussions) başlatın veya mevcut bir tartışmaya katılın.
+- **Çeviriler**: Bir dil eklemek veya güncellemek için [uluslararasılaştırma kılavuzunu](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) izleyin.
+- **Topluluk**: Oluşturduğunuz uygulamaları paylaşın, diğer kullanıcılara yardımcı olun ve Dify'ı duyurun.
 
-**Katkıda Bulunanlar**
+### Katkıda bulunanlar
 
 <a href="https://github.com/langgenius/dify/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=langgenius/dify" />
+  <img alt="Dify contributors" src="https://contrib.rocks/image?repo=langgenius/dify" />
 </a>
 
-## Topluluk & iletişim
+## Topluluk ve iletişim
 
-- [GitHub Tartışmaları](https://github.com/langgenius/dify/discussions). En uygun: geri bildirim paylaşmak ve soru sormak için.
-- [GitHub Sorunları](https://github.com/langgenius/dify/issues). En uygun: Dify.AI kullanırken karşılaştığınız hatalar ve özellik önerileri için. [Katkı Kılavuzumuza](./CONTRIBUTING.md) bakın.
-- [Discord](https://discord.gg/FngNHpbcY7). En uygun: uygulamalarınızı paylaşmak ve toplulukla vakit geçirmek için.
-- [X(Twitter)](https://twitter.com/dify_ai). En uygun: uygulamalarınızı paylaşmak ve toplulukla vakit geçirmek için.
+Sorunuza en uygun kanalı seçin:
 
+- [GitHub Discussions](https://github.com/langgenius/dify/discussions): Yardım alın, geri bildirim paylaşın ve fikir önerin.
+- [GitHub Issues](https://github.com/langgenius/dify/issues): Tekrarlanabilir hataları bildirin ve mühendislik çalışmalarını takip edin. Bir sorun açmadan önce [Katkı Kılavuzu'nu](./CONTRIBUTING.md) okuyun.
+- [Discord](https://discord.gg/FngNHpbcY7): Gerçek zamanlı sohbet edin, uygulamalarınızı paylaşın ve diğer Dify kullanıcılarıyla bağlantı kurun.
+- [X](https://x.com/dify_ai): Sürüm haberleri ve proje güncellemeleri için Dify'ı takip edin.
 ## Star history
 
 [![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)

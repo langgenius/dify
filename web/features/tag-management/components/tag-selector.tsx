@@ -29,10 +29,11 @@ import { isCreateTagOption } from './tag-combobox-item'
 import { TagSearchContent } from './tag-search-content'
 import { TagTriggerContent } from './tag-trigger-content'
 
+const normalizeTagName = (name: string) => name.trim().toLocaleLowerCase()
 const TAG_COMBOBOX_FILTER: NonNullable<ComboboxProps<TagComboboxItem, true>['filter']> = (
   tag,
   query,
-) => tag.name.includes(query)
+) => normalizeTagName(tag.name).includes(normalizeTagName(query))
 const tagToString = (tag: TagComboboxItem) => tag.name
 const isSameTag = (item: TagComboboxItem, value: TagComboboxItem) => item.id === value.id
 
@@ -144,6 +145,7 @@ export const TagSelector = ({
   const items = useMemo<TagComboboxItem[]>(() => {
     const tagIds = new Set<string>()
     const nextItems: TagComboboxItem[] = []
+    const normalizedInputValue = normalizeTagName(inputValue)
 
     for (const tag of tagList) {
       if (tag.type !== type) continue
@@ -156,10 +158,15 @@ export const TagSelector = ({
       if (tag.type === type && !tagIds.has(tag.id)) nextItems.push(tag)
     }
 
-    if (canManageTags && inputValue && nextItems.every((tag) => tag.name !== inputValue)) {
+    if (
+      canManageTags &&
+      normalizedInputValue &&
+      nextItems.every((tag) => normalizeTagName(tag.name) !== normalizedInputValue)
+    ) {
+      const trimmedInputValue = inputValue.trim()
       nextItems.push({
-        id: `__create_tag__:${inputValue}`,
-        name: inputValue,
+        id: `__create_tag__:${trimmedInputValue}`,
+        name: trimmedInputValue,
         type,
         binding_count: '0',
         isCreateOption: true,

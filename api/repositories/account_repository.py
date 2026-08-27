@@ -6,6 +6,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Account, AccountIntegrate, AccountStatus, InvitationCode, InvitationCodeStatus
+from services.account_email import normalize_email
 from services.account_ports import AccountRepository
 from services.entities.account_entities import (
     AccountCredentials,
@@ -137,6 +138,7 @@ class SQLAlchemyAccountRepository(AccountRepository):
                 return AccountEmailResetResult(status=AccountEmailResetStatus.EMAIL_IN_USE)
 
             account.email = new_email
+            account.normalized_email = normalize_email(new_email)
             session.execute(delete(AccountIntegrate).where(AccountIntegrate.account_id == account_id))
             session.flush()
             return AccountEmailResetResult(

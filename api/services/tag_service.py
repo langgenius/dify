@@ -3,16 +3,18 @@ from typing import cast
 
 import sqlalchemy as sa
 from flask_login import current_user
+from flask_sqlalchemy.session import Session as FlaskSession
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 from sqlalchemy.engine import CursorResult
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session
 from werkzeug.exceptions import NotFound
 
 from models.dataset import Dataset
 from models.enums import TagType
 from models.knowledge_fs import KnowledgeFSSpaceTagBinding
 from models.model import App, Tag, TagBinding
+from models.skill import Skill
 from models.snippet import CustomizedSnippet
 
 type _TagTypeLike = TagType | str
@@ -40,6 +42,11 @@ class TagBindingDeletePayload(BaseModel):
 
 
 class TagService:
+    @staticmethod
+    def get_tag_type(tag_id: str, tenant_id: str, session: Session | scoped_session[FlaskSession]) -> TagType | None:
+        tag_type = session.scalar(select(Tag.type).where(Tag.id == tag_id, Tag.tenant_id == tenant_id).limit(1))
+        return tag_type
+
     @staticmethod
     def get_tags(tag_type: _TagTypeLike, current_tenant_id: str, keyword: str | None = None, *, session: Session):
         binding_count: sa.ColumnElement[int] = func.count(TagBinding.id)
@@ -305,5 +312,11 @@ class TagService:
             )
             if not snippet:
                 raise NotFound("Snippet not found")
+        elif type == "skill":
+            skill = session.scalar(
+                select(Skill).where(Skill.tenant_id == current_user.current_tenant_id, Skill.id == target_id).limit(1)
+            )
+            if not skill:
+                raise NotFound("Skill not found")
         else:
             raise NotFound("Invalid binding type")

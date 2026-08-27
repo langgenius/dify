@@ -6,7 +6,10 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from core.base.tts.audio_mime import get_model_audio_mime_type, inspect_audio_stream
+from core.credit_usage import CreditUsageCreatedBy
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
+from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelManager
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from core.plugin.entities.request import (
@@ -59,6 +62,7 @@ def _json_compatible(value: Any) -> Any:
 
 class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
     @staticmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.PLUGIN_API)
     def _get_bound_model_instance(
         *,
         tenant_id: str,
@@ -321,12 +325,11 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             model=payload.model,
         )
 
-        # invoke model
-        response = model_instance.invoke_tts(content_text=payload.content_text, voice=payload.voice)
-
         def handle() -> Generator[dict[str, Any], None, None]:
-            for chunk in response:
-                yield {"result": hexlify(chunk).decode("utf-8")}
+            response = model_instance.invoke_tts(content_text=payload.content_text, voice=payload.voice)
+            audio_stream, mime_type = inspect_audio_stream(response, get_model_audio_mime_type(model_instance))
+            for chunk in audio_stream:
+                yield {"result": hexlify(chunk).decode("utf-8"), "mime_type": mime_type}
 
         return handle()
 

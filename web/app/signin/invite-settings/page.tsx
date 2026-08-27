@@ -1,6 +1,7 @@
 'use client'
 import type { Locale } from '@/i18n-config'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
@@ -197,9 +198,12 @@ export default function InviteSettingsPage() {
           </h1>
         </div>
         <div className="mx-auto mt-6 w-full">
-          <Button variant="primary" className="w-full text-sm!">
-            <a href="https://dify.ai">{t(($) => $.explore, { ns: 'login' })}</a>
-          </Button>
+          <a
+            href="https://dify.ai"
+            className={cn(buttonVariants({ variant: 'primary' }), 'w-full text-sm!')}
+          >
+            {t(($) => $.explore, { ns: 'login' })}
+          </a>
         </div>
       </div>
     )

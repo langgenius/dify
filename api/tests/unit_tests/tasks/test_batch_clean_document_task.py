@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 import tasks.batch_clean_document_task as task_module
 from extensions.storage.storage_type import StorageType
-from models.dataset import Dataset, DocumentSegment
+from models.dataset import Dataset, DocumentSegment, SegmentAttachmentBinding
 from models.enums import CreatorUserRole, DataSourceType
 from models.knowledge_fs import KnowledgeFSUpgradeFileLease, KnowledgeFSUpgradeJob
 from models.model import UploadFile
@@ -164,3 +164,51 @@ def test_batch_cleanup_keeps_only_the_leased_legacy_source_file(
     assert sqlite_session.get(UploadFile, leased_file_id) is not None
     assert sqlite_session.get(UploadFile, deletable_file_id) is None
     storage.delete.assert_called_once_with(deletable_file_key)
+
+
+def test_cleans_segment_attachment_bindings_and_files(cleanup_rows: tuple[str, str, str], sqlite_session: Session):
+    dataset_id, document_id, tenant_id = cleanup_rows
+    segment = sqlite_session.query(DocumentSegment).filter_by(document_id=document_id).one()
+    attachment = UploadFile(
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key="attachments/image.png",
+        name="image.png",
+        size=10,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=segment.created_by,
+        created_at=datetime.now(UTC),
+        used=True,
+    )
+    binding = SegmentAttachmentBinding(
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_id=document_id,
+        segment_id=segment.id,
+        attachment_id=attachment.id,
+    )
+    sqlite_session.add_all([attachment, binding])
+    sqlite_session.commit()
+    attachment_id = attachment.id
+    attachment_key = attachment.key
+    binding_id = binding.id
+
+    with (
+        patch("tasks.batch_clean_document_task.get_image_upload_file_ids", return_value=[]),
+        patch("tasks.batch_clean_document_task.IndexProcessorFactory"),
+        patch("tasks.batch_clean_document_task.schedule_billing_vector_space_refresh"),
+        patch("tasks.batch_clean_document_task.storage.delete") as storage_delete,
+    ):
+        batch_clean_document_task(
+            document_ids=[document_id],
+            dataset_id=dataset_id,
+            doc_form="paragraph",
+            file_ids=[],
+        )
+
+    sqlite_session.expire_all()
+    assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is None
+    assert sqlite_session.get(UploadFile, attachment_id) is None
+    storage_delete.assert_called_once_with(attachment_key)

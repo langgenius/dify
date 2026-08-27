@@ -7,14 +7,19 @@ import pytest
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
+    CreditUsageCreatedBy,
+    DifyRunContext,
     InvokeFrom,
     WorkflowAppGenerateEntity,
+    get_credit_usage_app_type,
+    get_credit_usage_created_by,
 )
 from core.app.layers.pause_state_persist_layer import (
     WorkflowResumptionContext,
     _AdvancedChatAppGenerateEntityWrapper,
     _WorkflowGenerateEntityWrapper,
 )
+from core.credit_usage import CreditUsageAppType
 from core.ops.ops_trace_manager import TraceQueueManager
 from models.model import AppMode
 
@@ -97,6 +102,60 @@ def test_advanced_chat_generate_entity_roundtrip_excludes_trace_manager():
 
     assert restored.model_dump() == entity.model_dump()
     assert restored.trace_manager is None
+
+
+@pytest.mark.parametrize(
+    ("app_mode", "created_by"),
+    [
+        (AppMode.CHAT, CreditUsageCreatedBy.APP),
+        (AppMode.ADVANCED_CHAT, CreditUsageCreatedBy.APP),
+        (AppMode.WORKFLOW, CreditUsageCreatedBy.APP),
+        (AppMode.AGENT_CHAT, CreditUsageCreatedBy.APP),
+        (AppMode.AGENT, CreditUsageCreatedBy.APP),
+        (AppMode.COMPLETION, CreditUsageCreatedBy.APP),
+        (AppMode.RAG_PIPELINE, CreditUsageCreatedBy.APP),
+    ],
+)
+def test_get_credit_usage_created_by_maps_app_mode(
+    app_mode: AppMode,
+    created_by: CreditUsageCreatedBy,
+) -> None:
+    assert get_credit_usage_created_by(app_mode) == created_by
+
+
+def test_get_credit_usage_created_by_defaults_to_unknown() -> None:
+    assert get_credit_usage_created_by(None) == CreditUsageCreatedBy.UNKNOWN
+
+
+@pytest.mark.parametrize(
+    ("app_mode", "app_type"),
+    [
+        (AppMode.CHAT, CreditUsageAppType.CHATBOT),
+        (AppMode.ADVANCED_CHAT, CreditUsageAppType.CHATFLOW),
+        (AppMode.WORKFLOW, CreditUsageAppType.WORKFLOW),
+        (AppMode.AGENT_CHAT, CreditUsageAppType.AGENT),
+        (AppMode.AGENT, CreditUsageAppType.AGENT_V2),
+        (AppMode.COMPLETION, CreditUsageAppType.COMPLETION),
+        (AppMode.RAG_PIPELINE, CreditUsageAppType.RAG_PIPELINE),
+    ],
+)
+def test_get_credit_usage_app_type_maps_app_mode(app_mode: AppMode, app_type: CreditUsageAppType) -> None:
+    assert get_credit_usage_app_type(app_mode) == app_type
+
+
+def test_dify_run_context_normalizes_unknown_created_by_values() -> None:
+    context = DifyRunContext(
+        tenant_id="tenant-id",
+        app_id="app-id",
+        user_id="user-id",
+        user_from="account",
+        invoke_from=InvokeFrom.DEBUGGER,
+        app_type="legacy-app-type",
+        created_by="legacy-created-by",
+    )
+
+    assert context.app_type == CreditUsageAppType.UNKNOWN
+    assert context.created_by == CreditUsageCreatedBy.UNKNOWN
 
 
 @dataclass(frozen=True)

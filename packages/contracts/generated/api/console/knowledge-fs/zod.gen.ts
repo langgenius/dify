@@ -28,27 +28,6 @@ export const zKnowledgeFsBulkJobResponse = z.object({
 })
 
 /**
- * KnowledgeFSCredentialCreatePayload
- */
-export const zKnowledgeFsCredentialCreatePayload = z.object({
-  allowed_actions: z.array(z.string()).min(1).max(100),
-  expires_at: z.iso.datetime().nullish(),
-})
-
-/**
- * KnowledgeFSCredentialCreateResponse
- */
-export const zKnowledgeFsCredentialCreateResponse = z.object({
-  allowed_actions: z.array(z.string()),
-  credential: z.string(),
-  credential_last4: z.string(),
-  credential_prefix: z.string(),
-  expires_at: z.iso.datetime().nullable(),
-  id: z.string(),
-  principal: z.string(),
-})
-
-/**
  * KnowledgeFSDocumentStagedUploadPayload
  */
 export const zKnowledgeFsDocumentStagedUploadPayload = z.object({
@@ -832,7 +811,6 @@ export const zKnowledgeFsSpaceCreateResponse = z.object({
  */
 export const zKnowledgeFsProductPermission = z.enum([
   'knowledge_space_access_config',
-  'knowledge_space_api_key_manage',
   'knowledge_space_create',
   'knowledge_space_delete',
   'knowledge_space_document_write',
@@ -1286,28 +1264,6 @@ export const zKnowledgeFsBackgroundTaskResponse = z.object({
 export const zKnowledgeFsBackgroundTaskListResponse = z.object({
   data: z.array(zKnowledgeFsBackgroundTaskResponse),
   next_cursor: z.string().nullish(),
-})
-
-/**
- * KnowledgeFSCredentialItemResponse
- */
-export const zKnowledgeFsCredentialItemResponse = z.object({
-  allowed_actions: z.array(z.string()),
-  credential_last4: z.string(),
-  credential_prefix: z.string(),
-  expires_at: z.iso.datetime().nullable(),
-  id: z.string(),
-  last_used_at: z.iso.datetime().nullable(),
-  principal: z.string(),
-  revision: z.int(),
-  status: z.string(),
-})
-
-/**
- * KnowledgeFSCredentialListResponse
- */
-export const zKnowledgeFsCredentialListResponse = z.object({
-  data: z.array(zKnowledgeFsCredentialItemResponse),
 })
 
 /**
@@ -3021,7 +2977,7 @@ export const zPostKnowledgeFsQueryStreamBody = zKnowledgeFsAdmittedQueryRequest
 /**
  * KnowledgeFS query event stream
  */
-export const zPostKnowledgeFsQueryStreamResponse = z.record(z.string(), z.unknown())
+export const zPostKnowledgeFsQueryStreamResponse = z.string()
 
 export const zGetKnowledgeFsResearchTasksByTaskIdEventsPath = z.object({
   task_id: z.string(),
@@ -3036,7 +2992,7 @@ export const zGetKnowledgeFsResearchTasksByTaskIdEventsQuery = z.object({
 /**
  * KnowledgeFS research task event stream
  */
-export const zGetKnowledgeFsResearchTasksByTaskIdEventsResponse = z.record(z.string(), z.unknown())
+export const zGetKnowledgeFsResearchTasksByTaskIdEventsResponse = z.string()
 
 export const zPostKnowledgeFsSourceProviderPreviewBody = zKnowledgeFsInitialSourcePreviewPayload
 
@@ -3209,39 +3165,6 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdPath = z.object
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdResponse =
   zKnowledgeFsBulkJobResponse
-
-export const zGetKnowledgeFsSpacesByControlSpaceIdCredentialsPath = z.object({
-  control_space_id: z.string(),
-})
-
-/**
- * KnowledgeFS credentials
- */
-export const zGetKnowledgeFsSpacesByControlSpaceIdCredentialsResponse =
-  zKnowledgeFsCredentialListResponse
-
-export const zPostKnowledgeFsSpacesByControlSpaceIdCredentialsBody =
-  zKnowledgeFsCredentialCreatePayload
-
-export const zPostKnowledgeFsSpacesByControlSpaceIdCredentialsPath = z.object({
-  control_space_id: z.string(),
-})
-
-/**
- * KnowledgeFS credential created
- */
-export const zPostKnowledgeFsSpacesByControlSpaceIdCredentialsResponse =
-  zKnowledgeFsCredentialCreateResponse
-
-export const zDeleteKnowledgeFsSpacesByControlSpaceIdCredentialsByCredentialIdPath = z.object({
-  control_space_id: z.string(),
-  credential_id: z.string(),
-})
-
-/**
- * KnowledgeFS credential revoked
- */
-export const zDeleteKnowledgeFsSpacesByControlSpaceIdCredentialsByCredentialIdResponse = z.void()
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsPath = z.object({
   control_space_id: z.string(),
