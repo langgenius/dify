@@ -47,6 +47,11 @@ class Scope(StrEnum):
 
 
 class SubjectType(StrEnum):
+    # Annotation-only names are not enum members; they declare what `__new__`
+    # attaches, so a static checker can see `.prefix` / `.scopes`.
+    prefix: str
+    scopes: frozenset[Scope]
+
     ACCOUNT = ("account", "dfoa_", frozenset({Scope.FULL}))
     EXTERNAL_SSO = (
         "external_sso",
