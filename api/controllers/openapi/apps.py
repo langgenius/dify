@@ -45,17 +45,6 @@ from services.app_service import AppListParams, AppService
 
 _ACCOUNT_SUBJECT = SubjectCheck(allowed=(AccountSubject,))
 
-_APP_DESCRIBE = (
-    _ACCOUNT_SUBJECT,
-    TokenScope(Scope.APPS_READ),
-    RBACCheck(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_VIEW_LAYOUT),
-)
-_APP_LIST = (
-    _ACCOUNT_SUBJECT,
-    TokenScope(Scope.APPS_READ),
-    RequireWorkspaceMembership(),
-)
-
 
 def _is_listable(app: App) -> bool:
     """Whether the openapi app face exposes this app (curated, listable types only)."""
@@ -150,7 +139,11 @@ def build_app_describe_response(app: App, fields: set[str] | None, *, session: S
 @openapi_ns.route("/apps/<string:app_id>")
 class AppDescribeApi(AppReadResource):
     @endpoint(
-        requirements=_APP_DESCRIBE,
+        requirements=(
+            _ACCOUNT_SUBJECT,
+            TokenScope(Scope.APPS_READ),
+            RBACCheck(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_VIEW_LAYOUT),
+        ),
         query=AppDescribeQuery,
         returns=(200, AppDescribeResponse, "App description"),
         write=False,
@@ -164,7 +157,11 @@ class AppDescribeApi(AppReadResource):
 @openapi_ns.route("/apps")
 class AppListApi(Resource):
     @endpoint(
-        requirements=_APP_LIST,
+        requirements=(
+            _ACCOUNT_SUBJECT,
+            TokenScope(Scope.APPS_READ),
+            RequireWorkspaceMembership(),
+        ),
         query=AppListQuery,
         returns=(200, AppListResponse, "App list"),
         write=False,
