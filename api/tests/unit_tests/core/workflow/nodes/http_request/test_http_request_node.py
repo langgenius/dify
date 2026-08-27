@@ -120,8 +120,8 @@ def _build_http_node(
     return HttpRequestNode(
         node_id="http-node",
         data=HttpRequestNodeData.model_validate(node_data),
-        graph_init_params=graph_init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=graph_init_params,
+        runtime_state=graph_runtime_state,
         http_request_config=HTTP_REQUEST_CONFIG,
         http_client=ssrf_proxy,
         tool_file_manager_factory=ToolFileManager,

@@ -90,8 +90,8 @@ def test_datasource_node_delegates_to_manager_stream(mocker: MockerFixture):
             plugin_id="plug",
             datasource_name="ds",
         ),
-        graph_init_params=gp,
-        graph_runtime_state=gs,
+        init_params=gp,
+        runtime_state=gs,
     )
 
     evts = list(node._run())

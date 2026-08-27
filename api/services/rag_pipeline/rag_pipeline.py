@@ -1047,7 +1047,7 @@ class RagPipelineService:
             workflow_node_execution.status = WorkflowNodeExecutionStatus.FAILED
             workflow_node_execution.error = error
             # update document status
-            variable_pool = node_instance.graph_runtime_state.variable_pool
+            variable_pool = node_instance.runtime_state.variable_pool
             invoke_from = get_system_segment(variable_pool, SystemVariableKey.INVOKE_FROM)
             if invoke_from:
                 if invoke_from.value == InvokeFrom.PUBLISHED_PIPELINE:

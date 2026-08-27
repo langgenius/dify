@@ -321,7 +321,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
         node_factory = DifyNodeFactory.from_graph_init_context(
             graph_init_context=graph_init_context,
-            graph_runtime_state=graph_runtime_state,
+            runtime_state=graph_runtime_state,
         )
         if start_node_id is None:
             start_node_id = get_default_root_node_id(graph_config)

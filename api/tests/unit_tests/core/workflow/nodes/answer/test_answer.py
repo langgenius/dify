@@ -48,8 +48,8 @@ def _build_answer_node(*, answer: str, variable_pool: VariablePool) -> AnswerNod
     )
     return AnswerNode(
         node_id=str(uuid.uuid4()),
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
         data=AnswerNodeData(
             title="Answer",
             type="answer",

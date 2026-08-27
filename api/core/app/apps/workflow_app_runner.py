@@ -195,7 +195,7 @@ class WorkflowBasedAppRunner:
 
         node_factory = DifyNodeFactory.from_graph_init_context(
             graph_init_context=graph_init_context,
-            graph_runtime_state=graph_runtime_state,
+            runtime_state=graph_runtime_state,
         )
 
         if root_node_id is None:
@@ -376,7 +376,7 @@ class WorkflowBasedAppRunner:
 
         node_factory = DifyNodeFactory.from_graph_init_context(
             graph_init_context=graph_init_context,
-            graph_runtime_state=graph_runtime_state,
+            runtime_state=graph_runtime_state,
         )
 
         target_node_config = None
@@ -523,7 +523,7 @@ class WorkflowBasedAppRunner:
                     )
                 )
             case GraphRunPausedEvent():
-                runtime_state = workflow_entry.graph_engine.graph_runtime_state
+                runtime_state = workflow_entry.graph_engine.runtime_state
                 paused_nodes = list(
                     dict.fromkeys(reason.node_id for reason in event.reasons if isinstance(reason, HitlRequired))
                 )
@@ -737,7 +737,7 @@ class WorkflowBasedAppRunner:
                         node_type=event.node_type,
                         node_title=event.node_title,
                         start_at=event.start_at,
-                        node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
+                        node_run_index=workflow_entry.graph_engine.runtime_state.node_run_steps,
                         inputs=event.inputs,
                         metadata=event.metadata,
                     )
@@ -750,7 +750,7 @@ class WorkflowBasedAppRunner:
                         node_type=event.node_type,
                         node_title=event.node_title,
                         index=event.index,
-                        node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
+                        node_run_index=workflow_entry.graph_engine.runtime_state.node_run_steps,
                         output=event.pre_iteration_output,
                     )
                 )
@@ -762,7 +762,7 @@ class WorkflowBasedAppRunner:
                         node_type=event.node_type,
                         node_title=event.node_title,
                         start_at=event.start_at,
-                        node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
+                        node_run_index=workflow_entry.graph_engine.runtime_state.node_run_steps,
                         inputs=event.inputs,
                         outputs=event.outputs,
                         metadata=event.metadata,
@@ -778,7 +778,7 @@ class WorkflowBasedAppRunner:
                         node_type=event.node_type,
                         node_title=event.node_title,
                         start_at=event.start_at,
-                        node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
+                        node_run_index=workflow_entry.graph_engine.runtime_state.node_run_steps,
                         inputs=event.inputs,
                         metadata=event.metadata,
                     )
@@ -791,7 +791,7 @@ class WorkflowBasedAppRunner:
                         node_type=event.node_type,
                         node_title=event.node_title,
                         index=event.index,
-                        node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
+                        node_run_index=workflow_entry.graph_engine.runtime_state.node_run_steps,
                         output=event.pre_loop_output,
                     )
                 )
@@ -803,7 +803,7 @@ class WorkflowBasedAppRunner:
                         node_type=event.node_type,
                         node_title=event.node_title,
                         start_at=event.start_at,
-                        node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
+                        node_run_index=workflow_entry.graph_engine.runtime_state.node_run_steps,
                         inputs=event.inputs,
                         outputs=event.outputs,
                         metadata=event.metadata,

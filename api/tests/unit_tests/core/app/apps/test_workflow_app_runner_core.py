@@ -122,6 +122,7 @@ class TestWorkflowBasedAppRunner:
             graph_init_context = kwargs["graph_init_context"]
             captured["run_context"] = graph_init_context.run_context
             captured["call_depth"] = graph_init_context.call_depth
+            captured["runtime_state"] = kwargs["runtime_state"]
             return SimpleNamespace()
 
         monkeypatch.setattr(
@@ -142,6 +143,7 @@ class TestWorkflowBasedAppRunner:
 
         assert captured["run_context"][DIFY_RUN_CONTEXT_KEY].trace_session_id == "session-1"
         assert captured["call_depth"] == 3
+        assert captured["runtime_state"] is runtime_state
 
     def test_init_graph_normalizes_reactflow_direct_container_ownership(self, monkeypatch: pytest.MonkeyPatch) -> None:
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
@@ -290,6 +292,7 @@ class TestWorkflowBasedAppRunner:
 
         def fake_from_graph_init_context(**kwargs):
             captured["run_context"] = kwargs["graph_init_context"].run_context
+            captured["runtime_state"] = kwargs["runtime_state"]
             return SimpleNamespace()
 
         class _NodeCls:
@@ -323,6 +326,7 @@ class TestWorkflowBasedAppRunner:
         )
 
         assert captured["run_context"][DIFY_RUN_CONTEXT_KEY].trace_session_id == "session-1"
+        assert captured["runtime_state"] is graph_runtime_state
 
     def test_get_graph_and_variable_pool_preloads_constructor_variables_before_graph_init(
         self, monkeypatch: pytest.MonkeyPatch
@@ -429,7 +433,7 @@ class TestWorkflowBasedAppRunner:
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
             start_at=0.0,
         )
-        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))
+        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(runtime_state=graph_runtime_state))
 
         emails: list[dict] = []
 
@@ -499,7 +503,7 @@ class TestWorkflowBasedAppRunner:
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
             start_at=0.0,
         )
-        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))
+        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(runtime_state=graph_runtime_state))
 
         runner._handle_event(
             workflow_entry,
@@ -651,7 +655,7 @@ class TestWorkflowBasedAppRunner:
             ),
             start_at=0.0,
         )
-        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))
+        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(runtime_state=graph_runtime_state))
 
         runner._handle_event(
             workflow_entry,
@@ -797,7 +801,7 @@ class TestWorkflowBasedAppRunner:
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
             start_at=0.0,
         )
-        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))
+        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(runtime_state=graph_runtime_state))
         started_at = datetime.now(UTC)
         finished_at = datetime.now(UTC)
         result = NodeRunResult(

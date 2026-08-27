@@ -5,11 +5,10 @@ import pytest
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.node_runtime import resolve_dify_run_context
 from core.workflow.system_variables import build_system_variables
-from graphon.entities import InitParams
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
-from graphon.runtime import RuntimeState, VariablePool
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -67,8 +66,8 @@ def test_node_hydrates_data_during_initialization():
     node = _SampleNode(
         node_id="node-1",
         data=_build_node_data(),
-        graph_init_params=init_params,
-        graph_runtime_state=runtime_state,
+        init_params=init_params,
+        runtime_state=runtime_state,
     )
 
     assert node.node_data.foo == "bar"
@@ -97,8 +96,8 @@ def test_node_accepts_invoke_from_enum():
     node = _SampleNode(
         node_id="node-1",
         data=_build_node_data(),
-        graph_init_params=init_params,
-        graph_runtime_state=runtime_state,
+        init_params=init_params,
+        runtime_state=runtime_state,
     )
 
     dify_ctx = resolve_dify_run_context(node.run_context)
@@ -149,8 +148,8 @@ def test_node_hydration_preserves_compatibility_extra_fields():
     node = _SampleNode(
         node_id="node-1",
         data=node_config["data"],
-        graph_init_params=init_params,
-        graph_runtime_state=runtime_state,
+        init_params=init_params,
+        runtime_state=runtime_state,
     )
 
     assert node.node_data.foo == "bar"

@@ -64,7 +64,7 @@ from graphon.engine_events import (
     GraphEdgeSkippedEvent,
     GraphEdgeTakenEvent,
 )
-from graphon.entities import InitParams, WorkflowStartReason
+from graphon.entities import WorkflowStartReason
 from graphon.enums import BuiltinNodeTypes
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.graph import Graph
@@ -76,7 +76,7 @@ from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.protocols import FileReferenceFactoryProtocol
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
-from graphon.runtime import ReadOnlyGraphRuntimeStateWrapper, RuntimeState, VariablePool
+from graphon.runtime import InitParams, ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
 from graphon.variables.segments import StringSegment
 from libs.datetime_utils import naive_utc_now
 from libs.helper import compact_generate_response
@@ -111,8 +111,8 @@ class _TestFileReferenceFactory(FileReferenceFactoryProtocol):
 def _create_human_input_node(
     *,
     config: dict,
-    graph_init_params: InitParams,
-    graph_runtime_state: RuntimeState,
+    init_params: InitParams,
+    runtime_state: RuntimeState,
     repo: _FakeFormRepository,
 ) -> HumanInputNode:
     node_data = (
@@ -128,8 +128,8 @@ def _create_human_input_node(
     node = HumanInputNode(
         node_id=config["id"],
         data=node_data,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=runtime_state,
         hitl_callback=callback,
     )
     node.bind_execution_id("00000000-0000-4000-8000-000000000001")
@@ -229,8 +229,8 @@ def _build_node(
     repo = _FakeFormRepository(fake_form)
     return _create_human_input_node(
         config=config,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=graph_init_params,
+        runtime_state=graph_runtime_state,
         repo=repo,
     )
 
@@ -291,8 +291,8 @@ def _build_timeout_node(
     repo = _FakeFormRepository(fake_form)
     return _create_human_input_node(
         config=config,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=graph_init_params,
+        runtime_state=graph_runtime_state,
         repo=repo,
     )
 
@@ -307,7 +307,7 @@ def _filter_human_input_events(events: Iterable[EngineEvent], *, node: HumanInpu
         events,
         context=EngineEventFilterContext(
             graph=Graph(root_node=node),
-            runtime_state=ReadOnlyGraphRuntimeStateWrapper(node.graph_runtime_state),
+            runtime_state=ReadOnlyRuntimeStateWrapper(node.runtime_state),
         ),
         filters=[HumanInputFormEventFilter(form_repository=HumanInputFormSubmissionRepository())],
     )
@@ -543,28 +543,28 @@ def test_human_input_completion_and_referenced_answer_reach_response_stream(
         if timed_out
         else _build_node("Approve?", with_inputs=False, node_id="human")
     )
-    runtime_state = node.graph_runtime_state
+    runtime_state = node.runtime_state
     runtime_state.variable_pool.add(["sys", "workflow_execution_id"], StringSegment(value="run-1"))
     init_params = InitParams(workflow_id="workflow", graph_config={}, run_context={}, call_depth=0)
     start = StartNode(
         node_id="start",
         data=StartNodeData(title="Start", variables=[]),
-        graph_init_params=init_params,
-        graph_runtime_state=runtime_state,
+        init_params=init_params,
+        runtime_state=runtime_state,
     )
     if terminal == "answer":
         terminal_node = AnswerNode(
             node_id="answer",
             data=AnswerNodeData(title="Answer", answer="Action: {{#human.__action_id#}}"),
-            graph_init_params=init_params,
-            graph_runtime_state=runtime_state,
+            init_params=init_params,
+            runtime_state=runtime_state,
         )
     else:
         terminal_node = EndNode(
             node_id="end",
             data=EndNodeData(title="End", outputs=[]),
-            graph_init_params=init_params,
-            graph_runtime_state=runtime_state,
+            init_params=init_params,
+            runtime_state=runtime_state,
         )
     graph = (
         Graph.new()
@@ -575,7 +575,7 @@ def test_human_input_completion_and_referenced_answer_reach_response_stream(
     )
     engine = Engine(
         graph=graph,
-        graph_runtime_state=runtime_state,
+        runtime_state=runtime_state,
         command_channel=InMemoryChannel(),
         workers=1,
     )

@@ -105,8 +105,8 @@ def _build_graph(
     start_node = StartNode(
         node_id="start",
         data=start_data,
-        graph_init_params=params,
-        graph_runtime_state=runtime_state,
+        init_params=params,
+        runtime_state=runtime_state,
     )
 
     human_data = HumanInputNodeData(
@@ -124,8 +124,8 @@ def _build_graph(
     human_node = HumanInputNode(
         node_id="human",
         data=human_data,
-        graph_init_params=params,
-        graph_runtime_state=runtime_state,
+        init_params=params,
+        runtime_state=runtime_state,
         hitl_callback=hitl_callback,
     )
 
@@ -137,8 +137,8 @@ def _build_graph(
     end_node = EndNode(
         node_id="end",
         data=end_data,
-        graph_init_params=params,
-        graph_runtime_state=runtime_state,
+        init_params=params,
+        runtime_state=runtime_state,
     )
 
     return (
@@ -294,7 +294,7 @@ class TestHumanInputResumeNodeExecutionIntegration:
     def _run_graph(self, graph: Graph, runtime_state: RuntimeState, execution_id: str) -> None:
         engine = Engine(
             graph=graph,
-            graph_runtime_state=runtime_state,
+            runtime_state=runtime_state,
             command_channel=InMemoryChannel(),
         )
         engine.add_layer(self._build_persistence_layer(execution_id))

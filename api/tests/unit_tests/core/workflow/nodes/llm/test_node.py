@@ -18,7 +18,6 @@ from core.entities.provider_entities import CustomConfiguration, SystemConfigura
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.workflow.system_variables import default_system_variables
-from graphon.entities import InitParams
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.llm_entities import (
@@ -84,7 +83,7 @@ from graphon.nodes.llm.node import LLMNode
 from graphon.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from graphon.nodes.llm.reasoning import split_reasoning
 from graphon.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
-from graphon.runtime import RuntimeState, VariablePool
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.template_rendering import TemplateRenderError
 from graphon.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
 from models.provider import ProviderType
@@ -215,8 +214,8 @@ def llm_node(llm_node_data: LLMNodeData, graph_init_params: InitParams, graph_ru
     node = LLMNode(
         node_id="1",
         data=llm_node_data,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=graph_init_params,
+        runtime_state=graph_runtime_state,
         credentials_provider=mock_credentials_provider,
         model_factory=mock_model_factory,
         model_instance=_build_prepared_llm_mock(),
@@ -584,7 +583,7 @@ def test_fetch_files_with_non_existent_variable():
 #     memory_config=None,
 #     vision_enabled=False,
 #     vision_detail=fake_vision_detail,
-#     variable_pool=llm_node.graph_runtime_state.variable_pool,
+#     variable_pool=llm_node.runtime_state.variable_pool,
 #     jinja2_variables=[],
 # )
 
@@ -760,7 +759,7 @@ def test_fetch_files_with_non_existent_variable():
 
 #     for k, v in scenario.file_variables.items():
 #         selector = k.split(".")
-#         llm_node.graph_runtime_state.variable_pool.add(selector, v)
+#         llm_node.runtime_state.variable_pool.add(selector, v)
 
 #     # Call the method under test
 #     prompt_messages, _ = llm_node._fetch_prompt_messages(
@@ -773,7 +772,7 @@ def test_fetch_files_with_non_existent_variable():
 #         memory_config=memory_config,
 #         vision_enabled=scenario.vision_enabled,
 #         vision_detail=scenario.vision_detail,
-#         variable_pool=llm_node.graph_runtime_state.variable_pool,
+#         variable_pool=llm_node.runtime_state.variable_pool,
 #         jinja2_variables=[],
 #     )
 
@@ -794,7 +793,7 @@ def test_handle_list_messages_basic(llm_node):
     ]
     context = "world"
     jinja2_variables = []
-    variable_pool = llm_node.graph_runtime_state.variable_pool
+    variable_pool = llm_node.runtime_state.variable_pool
     vision_detail_config = ImagePromptMessageContent.DETAIL.HIGH
 
     result = handle_list_messages(
@@ -824,7 +823,7 @@ def test_handle_list_messages_replaces_double_brace_context_placeholder(llm_node
         messages=messages,
         context=context,
         jinja2_variables=[],
-        variable_pool=llm_node.graph_runtime_state.variable_pool,
+        variable_pool=llm_node.runtime_state.variable_pool,
         vision_detail_config=ImagePromptMessageContent.DETAIL.HIGH,
     )
 
@@ -838,7 +837,7 @@ def test_handle_list_messages_replaces_double_brace_context_placeholder(llm_node
 
 
 def test_handle_list_messages_renders_jinja2_messages(llm_node):
-    llm_node.graph_runtime_state.variable_pool.add(["input", "name"], "Dify")
+    llm_node.runtime_state.variable_pool.add(["input", "name"], "Dify")
     renderer = mock.MagicMock()
     renderer.render_template.return_value = "Hello Dify"
 
@@ -853,7 +852,7 @@ def test_handle_list_messages_renders_jinja2_messages(llm_node):
         ],
         context="",
         jinja2_variables=[VariableSelector(variable="name", value_selector=["input", "name"])],
-        variable_pool=llm_node.graph_runtime_state.variable_pool,
+        variable_pool=llm_node.runtime_state.variable_pool,
         vision_detail_config=ImagePromptMessageContent.DETAIL.HIGH,
         jinja2_template_renderer=renderer,
     )
@@ -893,15 +892,15 @@ def test_transform_chat_messages_prefers_jinja2_text(llm_node):
 
 
 def test_fetch_jinja_inputs_serializes_supported_segment_types(llm_node):
-    llm_node.graph_runtime_state.variable_pool.add(
+    llm_node.runtime_state.variable_pool.add(
         ["input", "items"],
         ["alpha", {"metadata": {"_source": "knowledge"}, "content": "beta"}, 3],
     )
-    llm_node.graph_runtime_state.variable_pool.add(
+    llm_node.runtime_state.variable_pool.add(
         ["input", "context_doc"],
         {"metadata": {"_source": "knowledge"}, "content": "context body"},
     )
-    llm_node.graph_runtime_state.variable_pool.add(["input", "payload"], {"a": 1})
+    llm_node.runtime_state.variable_pool.add(["input", "payload"], {"a": 1})
 
     node_data = llm_node.node_data.model_copy(
         update={
@@ -936,8 +935,8 @@ def test_fetch_jinja_inputs_raises_for_missing_variable(llm_node):
 
 
 def test_fetch_inputs_collects_prompt_and_memory_variables(llm_node):
-    llm_node.graph_runtime_state.variable_pool.add(["input", "name"], "Dify")
-    llm_node.graph_runtime_state.variable_pool.add(["input", "payload"], {"active": True})
+    llm_node.runtime_state.variable_pool.add(["input", "name"], "Dify")
+    llm_node.runtime_state.variable_pool.add(["input", "payload"], {"active": True})
 
     node_data = llm_node.node_data.model_copy(
         update={
@@ -963,7 +962,7 @@ def test_fetch_inputs_collects_prompt_and_memory_variables(llm_node):
 
 
 def test_fetch_context_emits_string_context_event(llm_node):
-    llm_node.graph_runtime_state.variable_pool.add(["context", "value"], "retrieved context")
+    llm_node.runtime_state.variable_pool.add(["context", "value"], "retrieved context")
     node_data = llm_node.node_data.model_copy(
         update={"context": ContextConfig(enabled=True, variable_selector=["context", "value"])}
     )
@@ -984,7 +983,7 @@ def test_fetch_context_collects_retriever_resources_and_attachments(llm_node):
     llm_node._retriever_attachment_loader = mock.MagicMock()
     llm_node._retriever_attachment_loader.load.return_value = [attachment]
 
-    llm_node.graph_runtime_state.variable_pool.add(
+    llm_node.runtime_state.variable_pool.add(
         ["context", "value"],
         [
             {
@@ -1037,7 +1036,7 @@ def test_fetch_context_collects_retriever_resources_and_attachments(llm_node):
 
 
 def test_fetch_context_rejects_invalid_context_structure(llm_node):
-    llm_node.graph_runtime_state.variable_pool.add(["context", "value"], [{"summary": "missing content"}])
+    llm_node.runtime_state.variable_pool.add(["context", "value"], [{"summary": "missing content"}])
     node_data = llm_node.node_data.model_copy(
         update={"context": ContextConfig(enabled=True, variable_selector=["context", "value"])}
     )
@@ -1206,7 +1205,7 @@ def test_handle_completion_template_replaces_double_brace_context_placeholder(ll
         ),
         context="## Overview\nSends a JSON request.",
         jinja2_variables=[],
-        variable_pool=llm_node.graph_runtime_state.variable_pool,
+        variable_pool=llm_node.runtime_state.variable_pool,
         jinja2_template_renderer=None,
     )
 
@@ -1264,8 +1263,8 @@ def llm_node_for_multimodal(llm_node_data, graph_init_params, graph_runtime_stat
     node = LLMNode(
         node_id="1",
         data=llm_node_data,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=graph_init_params,
+        runtime_state=graph_runtime_state,
         credentials_provider=mock_credentials_provider,
         model_factory=mock_model_factory,
         model_instance=_build_prepared_llm_mock(),

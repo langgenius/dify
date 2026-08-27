@@ -11,7 +11,7 @@ from core.workflow.nodes.human_input.pause_reason import (
     HumanInputRequired,
     PauseReason,
 )
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables import ArrayStringSegment
 from models.human_input import ApprovalChannel, RecipientType
 

@@ -54,7 +54,7 @@ class DifyWorkflowToolNode(ToolNode):
         try:
             variable_pool = None
             if self.node_data.version != "1" or self.node_data.tool_node_version is not None:
-                variable_pool = self.graph_runtime_state.variable_pool
+                variable_pool = self.runtime_state.variable_pool
             tool_runtime = self._get_tool_runtime(
                 variable_pool=variable_pool,
                 node_execution_id=self.execution_id,
@@ -71,12 +71,12 @@ class DifyWorkflowToolNode(ToolNode):
         runtime_parameters = self._runtime.get_runtime_parameters(tool_runtime=tool_runtime)
         parameters = self._generate_parameters(
             tool_parameters=runtime_parameters,
-            variable_pool=self.graph_runtime_state.variable_pool,
+            variable_pool=self.runtime_state.variable_pool,
             node_data=self.node_data,
         )
         parameters_for_log = self._generate_parameters(
             tool_parameters=runtime_parameters,
-            variable_pool=self.graph_runtime_state.variable_pool,
+            variable_pool=self.runtime_state.variable_pool,
             node_data=self.node_data,
             for_log=True,
         )
@@ -109,7 +109,7 @@ class DifyWorkflowToolNode(ToolNode):
             raise TypeError(f"Unsupported Workflow Tool container result {type(result).__name__}")
 
         for _ in range(result.steps):
-            self.graph_runtime_state.increment_node_run_steps()
+            self.runtime_state.increment_node_run_steps()
         node_run_result = result.node_run_result.to_node_run_result()
         node_run_result.metadata = self._build_completion_metadata(
             tool_info=self._tool_info(),

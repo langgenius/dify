@@ -100,8 +100,8 @@ def _build_node(
     *,
     node_id: str,
     node_data: KnowledgeIndexNodeData | dict[str, object],
-    graph_init_params,
-    graph_runtime_state,
+    init_params,
+    runtime_state,
 ) -> KnowledgeIndexNode:
     return KnowledgeIndexNode(
         node_id=node_id,
@@ -110,8 +110,8 @@ def _build_node(
             if isinstance(node_data, KnowledgeIndexNodeData)
             else KnowledgeIndexNodeData.model_validate(node_data)
         ),
-        graph_init_params=graph_init_params,
-        graph_runtime_state=graph_runtime_state,
+        init_params=init_params,
+        runtime_state=runtime_state,
     )
 
 
@@ -140,8 +140,8 @@ class TestKnowledgeIndexNode:
         node = _build_node(
             node_id=node_id,
             node_data=config["data"],
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=mock_graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         # Assert
@@ -168,8 +168,8 @@ class TestKnowledgeIndexNode:
         node = _build_node(
             node_id=node_id,
             node_data=config["data"],
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=mock_graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         # Act & Assert
@@ -201,8 +201,8 @@ class TestKnowledgeIndexNode:
         node = _build_node(
             node_id=node_id,
             node_data=config["data"],
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=mock_graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         # Act & Assert
@@ -237,8 +237,8 @@ class TestKnowledgeIndexNode:
         node = _build_node(
             node_id=node_id,
             node_data=config["data"],
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=mock_graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         # Act
@@ -293,8 +293,8 @@ class TestKnowledgeIndexNode:
         node = _build_node(
             node_id=node_id,
             node_data=config["data"],
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=mock_graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         # Act
@@ -356,8 +356,8 @@ class TestKnowledgeIndexNode:
         node = _build_node(
             node_id=node_id,
             node_data=config["data"],
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=mock_graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         # Act
@@ -407,8 +407,8 @@ class TestKnowledgeIndexNode:
         node = _build_node(
             node_id=node_id,
             node_data=config["data"],
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=mock_graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         # Act
@@ -464,8 +464,8 @@ class TestKnowledgeIndexNode:
         node = _build_node(
             node_id=node_id,
             node_data=config["data"],
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=mock_graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         # Act
@@ -522,8 +522,8 @@ class TestKnowledgeIndexNode:
         node = _build_node(
             node_id=node_id,
             node_data=config["data"],
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=mock_graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         # Act
@@ -561,8 +561,8 @@ class TestKnowledgeIndexNode:
         node = _build_node(
             node_id=node_id,
             node_data=config["data"],
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=mock_graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         # Act
@@ -613,8 +613,8 @@ class TestKnowledgeIndexNode:
         node = _build_node(
             node_id=node_id,
             node_data=config["data"],
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=mock_graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         # Act
@@ -654,8 +654,8 @@ class TestInvokeKnowledgeIndex:
         node = _build_node(
             node_id=node_id,
             node_data=config["data"],
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
+            init_params=mock_graph_init_params,
+            runtime_state=mock_graph_runtime_state,
         )
 
         # Act

@@ -38,7 +38,7 @@ class ConversationVariablePersistenceLayer(Layer):
             logger.warning("Conversation variable selector invalid. selector=%s", selector)
             return
 
-        conversation_id = get_system_text(self.graph_runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
+        conversation_id = get_system_text(self.runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
         if conversation_id is None:
             return
 

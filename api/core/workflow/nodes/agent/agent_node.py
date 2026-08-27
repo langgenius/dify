@@ -23,8 +23,7 @@ from .runtime_support import AgentRuntimeSupport
 from .strategy_protocols import AgentStrategyPresentationProvider, AgentStrategyResolver
 
 if TYPE_CHECKING:
-    from graphon.entities import InitParams
-    from graphon.runtime import RuntimeState
+    from graphon.runtime import InitParams, RuntimeState
 
 
 class AgentNode(Node[AgentNodeData]):
@@ -40,8 +39,8 @@ class AgentNode(Node[AgentNodeData]):
         node_id: str,
         data: AgentNodeData,
         *,
-        graph_init_params: InitParams,
-        graph_runtime_state: RuntimeState,
+        init_params: InitParams,
+        runtime_state: RuntimeState,
         strategy_resolver: AgentStrategyResolver,
         presentation_provider: AgentStrategyPresentationProvider,
         runtime_support: AgentRuntimeSupport,
@@ -50,8 +49,8 @@ class AgentNode(Node[AgentNodeData]):
         super().__init__(
             node_id=node_id,
             data=data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=init_params,
+            runtime_state=runtime_state,
         )
         self._strategy_resolver = strategy_resolver
         self._presentation_provider = presentation_provider
@@ -123,7 +122,7 @@ class AgentNode(Node[AgentNodeData]):
 
         parameters = self._runtime_support.build_parameters(
             agent_parameters=agent_parameters,
-            variable_pool=self.graph_runtime_state.variable_pool,
+            variable_pool=self.runtime_state.variable_pool,
             node_data=self.node_data,
             strategy=strategy,
             tenant_id=dify_ctx.tenant_id,
@@ -133,7 +132,7 @@ class AgentNode(Node[AgentNodeData]):
         )
         parameters_for_log = self._runtime_support.build_parameters(
             agent_parameters=agent_parameters,
-            variable_pool=self.graph_runtime_state.variable_pool,
+            variable_pool=self.runtime_state.variable_pool,
             node_data=self.node_data,
             strategy=strategy,
             tenant_id=dify_ctx.tenant_id,
@@ -144,7 +143,7 @@ class AgentNode(Node[AgentNodeData]):
         )
         credentials = self._runtime_support.build_credentials(parameters=parameters)
 
-        conversation_id = get_system_text(self.graph_runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
+        conversation_id = get_system_text(self.runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
 
         try:
             message_stream = strategy.invoke(

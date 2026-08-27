@@ -31,7 +31,7 @@ from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInput
 from factories.file_factory import build_from_mapping, build_from_mappings
 from graphon.file import FileUploadConfig
 from graphon.runtime import RuntimeState
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.exception import BaseHTTPException
 from models.human_input import RecipientType
