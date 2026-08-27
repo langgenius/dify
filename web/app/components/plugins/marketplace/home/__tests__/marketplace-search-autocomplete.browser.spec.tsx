@@ -161,4 +161,77 @@ describe('Marketplace search autocomplete layout', () => {
     expect(input.element().getBoundingClientRect().top).toBeCloseTo(inputTopBefore)
     expect(catalogNavigation.getBoundingClientRect().top).toBeCloseTo(navigationTopBefore)
   })
+
+  it('uses the specified panel, list, and item spacing without a bottom strip', async () => {
+    await page.viewport(1280, 720)
+    mockTemplateSearch.mockResolvedValue({
+      data: {
+        templates: [
+          {
+            id: 'template-1',
+            template_name: 'Legal Research Agent',
+            overview: 'Research legal questions with cited sources.',
+            publisher_handle: 'dify',
+            usage_count: 120,
+            categories: ['knowledge'],
+            icon: '📄',
+            icon_background: '#FFFFFF',
+            icon_file_key: '',
+          },
+          {
+            id: 'template-2',
+            template_name: 'Contract Reviewer',
+            overview: 'Review contracts and identify risks.',
+            publisher_handle: 'dify',
+            usage_count: 80,
+            categories: ['knowledge'],
+            icon: '📄',
+            icon_background: '#FFFFFF',
+            icon_file_key: '',
+          },
+        ],
+        total: 2,
+      },
+    })
+
+    const screen = await render(
+      <Wrapper>
+        <div className="w-[420px]">
+          <StickyTemplateSearch />
+        </div>
+      </Wrapper>,
+    )
+
+    await screen.getByRole('combobox', { name: 'Search templates' }).fill('legal')
+    await expect.element(screen.getByText('Legal Research Agent')).toBeVisible()
+
+    const list = screen.getByRole('listbox').element()
+    const panel = list.parentElement!
+    const firstItem = screen.getByRole('option', { name: /Legal Research Agent/ }).element()
+    const lastItem = screen.getByRole('option', { name: /Contract Reviewer/ }).element()
+    const panelStyle = getComputedStyle(panel)
+    const listStyle = getComputedStyle(list)
+    const firstItemStyle = getComputedStyle(firstItem)
+    const statusRoots = screen.getByRole('status').all()
+    const trailingStatus = statusRoots.at(-1)!.element()
+
+    expect(panelStyle.paddingTop).toBe('8px')
+    expect(panelStyle.paddingRight).toBe('8px')
+    expect(panelStyle.paddingBottom).toBe('8px')
+    expect(panelStyle.paddingLeft).toBe('8px')
+    expect(listStyle.rowGap).toBe('4px')
+    expect(listStyle.paddingTop).toBe('0px')
+    expect(firstItemStyle.paddingTop).toBe('12px')
+    expect(firstItemStyle.paddingRight).toBe('12px')
+    expect(firstItemStyle.paddingBottom).toBe('12px')
+    expect(firstItemStyle.paddingLeft).toBe('12px')
+    expect(firstItemStyle.borderRadius).toBe('12px')
+    expect(firstItemStyle.marginLeft).toBe('0px')
+    expect(firstItemStyle.marginRight).toBe('0px')
+    expect(trailingStatus.getBoundingClientRect().height).toBe(0)
+    expect(firstItem.getBoundingClientRect().top - panel.getBoundingClientRect().top).toBeCloseTo(9)
+    expect(
+      panel.getBoundingClientRect().bottom - lastItem.getBoundingClientRect().bottom,
+    ).toBeCloseTo(9)
+  })
 })

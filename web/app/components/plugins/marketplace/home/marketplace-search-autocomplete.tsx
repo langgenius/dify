@@ -227,15 +227,15 @@ export function MarketplaceSearchAutocomplete({
           <AutocompletePositioner sideOffset={8}>
             <div
               ref={resultsPanelRef}
-              className="w-(--anchor-width) max-w-[420px] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden"
+              className="w-(--anchor-width) max-w-[420px] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-2 shadow-lg outline-hidden"
               aria-busy={isSearching || undefined}
             >
-              <AutocompleteList<MarketplaceSuggestion>>
+              <AutocompleteList<MarketplaceSuggestion> className="flex flex-col gap-1 p-0 data-empty:p-0">
                 {(item) => (
                   <AutocompleteItem
                     key={item.id}
                     value={item}
-                    className="items-start py-2"
+                    className="mx-0 items-start rounded-xl p-3"
                     onClick={
                       onSuggestionSelect
                         ? () => {
@@ -288,7 +288,7 @@ export function MarketplaceSearchAutocomplete({
               <AutocompleteEmpty>
                 {!isSearching && suggestions.length === 0 ? emptyText : null}
               </AutocompleteEmpty>
-              <AutocompleteStatus>
+              <AutocompleteStatus className="empty:h-0 empty:p-0">
                 {isSearching ? t(($) => $.loading, { ns: 'common' }) : null}
               </AutocompleteStatus>
             </div>
