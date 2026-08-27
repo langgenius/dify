@@ -1058,6 +1058,179 @@ describe("knowledge-space profile handler behavior", () => {
     });
   });
 
+  it("continues embedding settings after a failed migration left its candidate pending", async () => {
+    const manifests = createInMemoryKnowledgeSpaceManifestRepository({
+      maxListLimit: 10,
+      maxManifests: 10,
+    });
+    const profiles = profileRepository();
+    const replacement: KnowledgeSpaceModelSelection = {
+      model: "embed-v3",
+      pluginId: "embedding-plugin",
+      provider: "plugin-daemon",
+    };
+    const failedCandidate = { id: undefined as string | undefined };
+    const request = vi.fn(
+      async (input: { readonly candidateRevision: number }) =>
+        ({
+          changedKind: "embedding",
+          checkpoint: "queued",
+          createdAt: NOW,
+          id: `migration-embedding-${input.candidateRevision}`,
+          knowledgeSpaceId: SPACE_ID,
+          rebuildScope: "full-vector-space",
+          runState: "queued",
+          updatedAt: NOW,
+        }) as never,
+    );
+    const findByCandidate = vi.fn(async (input: { readonly candidateProfileId: string }) => {
+      if (input.candidateProfileId !== failedCandidate.id) return null;
+      return {
+        changedKind: "embedding",
+        checkpoint: "queued",
+        completedAt: NOW,
+        createdAt: NOW,
+        id: "migration-embedding-2",
+        knowledgeSpaceId: SPACE_ID,
+        lastErrorCode: "GENERATION_SCOPED_INDEX_PROJECTION_LIFECYCLE_CONFLICT",
+        rebuildScope: "full-vector-space",
+        runState: "failed",
+        updatedAt: NOW,
+      } as never;
+    });
+    const app = publishedProfileApp(manifests, profiles, {
+      cancel: async () => null,
+      findByCandidate,
+      get: async () => null,
+      request,
+      requiresMigration: async () => true,
+      retry: async () => null,
+    });
+    await createSpace(app);
+    await seedActiveManifest(manifests);
+
+    const first = await app.request(`/knowledge-spaces/${SPACE_ID}/embedding-profile`, {
+      body: JSON.stringify(EMBEDDING_V2),
+      headers: headers(),
+      method: "PUT",
+    });
+    expect(first.status).toBe(202);
+    failedCandidate.id = (
+      await profiles.getRevision({
+        kind: "embedding",
+        knowledgeSpaceId: SPACE_ID,
+        revision: 2,
+        tenantId: "tenant-1",
+      })
+    )?.id;
+
+    const next = await app.request(`/knowledge-spaces/${SPACE_ID}/embedding-profile`, {
+      body: JSON.stringify(replacement),
+      headers: headers(),
+      method: "PUT",
+    });
+    const nextBody = await next.json();
+
+    expect(next.status, JSON.stringify(nextBody)).toBe(202);
+    expect(nextBody).toMatchObject({ id: "migration-embedding-3", runState: "queued" });
+    expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({ candidateRevision: 3 }));
+    await expect(
+      profiles.getRevision({
+        kind: "embedding",
+        knowledgeSpaceId: SPACE_ID,
+        revision: 2,
+        tenantId: "tenant-1",
+      }),
+    ).resolves.toMatchObject({
+      failureCode: "PROFILE_SETTINGS_CANDIDATE_SUPERSEDED",
+      state: "failed",
+    });
+    await expect(
+      profiles.getRevision({
+        kind: "embedding",
+        knowledgeSpaceId: SPACE_ID,
+        revision: 3,
+        tenantId: "tenant-1",
+      }),
+    ).resolves.toMatchObject({
+      snapshot: expect.objectContaining(replacement),
+      state: "candidate",
+    });
+  });
+
+  it("retries a nonterminal failed embedding migration when settings are saved again", async () => {
+    const manifests = createInMemoryKnowledgeSpaceManifestRepository({
+      maxListLimit: 10,
+      maxManifests: 10,
+    });
+    const profiles = profileRepository();
+    const candidate = { id: undefined as string | undefined };
+    const failedMigration = {
+      changedKind: "embedding",
+      checkpoint: "queued",
+      completedAt: NOW,
+      createdAt: NOW,
+      id: "migration-embedding-retry",
+      knowledgeSpaceId: SPACE_ID,
+      lastErrorCode: "GENERATION_SCOPED_INDEX_PROJECTION_LIFECYCLE_CONFLICT",
+      rebuildScope: "full-vector-space",
+      runState: "failed",
+      updatedAt: NOW,
+    } as const;
+    const request = vi.fn(async () => failedMigration as never);
+    const retry = vi.fn(
+      async () =>
+        ({
+          ...failedMigration,
+          completedAt: null,
+          lastErrorCode: null,
+          runState: "queued",
+        }) as never,
+    );
+    const app = publishedProfileApp(manifests, profiles, {
+      cancel: async () => null,
+      findByCandidate: async (input) =>
+        input.candidateProfileId === candidate.id ? (failedMigration as never) : null,
+      get: async () => null,
+      request,
+      requiresMigration: async () => true,
+      retry,
+    });
+    await createSpace(app);
+    await seedActiveManifest(manifests);
+
+    const first = await app.request(`/knowledge-spaces/${SPACE_ID}/embedding-profile`, {
+      body: JSON.stringify(EMBEDDING_V2),
+      headers: headers(),
+      method: "PUT",
+    });
+    expect(first.status).toBe(202);
+    candidate.id = (
+      await profiles.getRevision({
+        kind: "embedding",
+        knowledgeSpaceId: SPACE_ID,
+        revision: 2,
+        tenantId: "tenant-1",
+      })
+    )?.id;
+
+    const replay = await app.request(`/knowledge-spaces/${SPACE_ID}/embedding-profile`, {
+      body: JSON.stringify(EMBEDDING_V2),
+      headers: headers(),
+      method: "PUT",
+    });
+
+    expect(replay.status).toBe(202);
+    await expect(replay.json()).resolves.toMatchObject({
+      id: "migration-embedding-retry",
+      runState: "queued",
+    });
+    expect(request).toHaveBeenCalledOnce();
+    expect(retry).toHaveBeenCalledWith(
+      expect.objectContaining({ knowledgeSpaceId: SPACE_ID, runId: "migration-embedding-retry" }),
+    );
+  });
+
   it("retries a nonterminal failed retrieval migration when settings are saved again", async () => {
     const manifests = createInMemoryKnowledgeSpaceManifestRepository({
       maxListLimit: 10,

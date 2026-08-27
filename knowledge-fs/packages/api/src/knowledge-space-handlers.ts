@@ -12,6 +12,7 @@ import {
   type KnowledgeSpaceStagedCommit,
   type PlatformAdapter,
   buildKnowledgeSpaceVectorSpaceId,
+  createKnowledgeSpaceEmbeddingProfile,
   createKnowledgeSpaceRetrievalProfile,
   hasRequiredKnowledgeSpaceRetrievalModels,
   updateKnowledgeSpaceEmbeddingProfile,
@@ -825,18 +826,15 @@ export function registerKnowledgeSpaceHandlers({
           knowledgeSpaceId,
           tenantId: subject.tenantId,
         });
+        const activeSnapshot = activeHead
+          ? (activeHead.profile.snapshot as KnowledgeSpaceEmbeddingProfile)
+          : current;
         const candidateBase = await updateKnowledgeSpaceEmbeddingProfile(
-          activeHead ? (activeHead.profile.snapshot as typeof current) : current,
+          activeSnapshot,
           selection,
           embeddingVectorSpaceIdentityFromSnapshot(capabilitySnapshot),
         );
-        if (!candidateBase) {
-          throw new Error("Embedding candidate profile could not be created");
-        }
-        const candidateSnapshot = {
-          ...candidateBase,
-          dimension: capabilitySnapshot.dimension,
-        };
+        const candidateSnapshot = { ...candidateBase, dimension: capabilitySnapshot.dimension };
         if (
           activeHead &&
           knowledgeSpaceProfileSnapshotDigest(candidateSnapshot) ===
@@ -844,37 +842,74 @@ export function registerKnowledgeSpaceHandlers({
         ) {
           return context.json(candidateSnapshot, 200);
         }
-        const createdAt = now();
-        let candidate: KnowledgeSpaceProfileRevision;
+        const authenticatedApiKey = context.get("authenticatedApiKey");
+        const capabilityGrantId = context.get("capabilityV2Grant")?.grantId;
+        const migrationPrincipal = {
+          ...(authenticatedApiKey ? { apiKey: authenticatedApiKey } : {}),
+          ...(capabilityGrantId ? { capabilityGrantId } : {}),
+          callerKind: context.get("callerKind") ?? "interactive",
+          knowledgeSpaceId,
+          subject,
+        } as const;
         try {
-          candidate = await getOrCreateSettingsProfileCandidate(profiles, {
+          const candidate = await getOrSupersedeEmbeddingSettingsCandidate({
+            activeRevision: activeHead?.activeRevision ?? 0,
             capabilitySnapshot,
             createdBySubjectId: subject.subjectId,
-            kind: "embedding",
-            knowledgeSpaceId,
-            now: createdAt,
-            snapshot: candidateSnapshot,
-            tenantId: subject.tenantId,
+            migrationPrincipal,
+            migrations: profileMigrations,
+            now,
+            profiles,
+            selection,
           });
+          let migration = await profileMigrations.findByCandidate({
+            ...migrationPrincipal,
+            candidateProfileId: candidate.id,
+          });
+          migration ??= await profileMigrations.request({
+            ...migrationPrincipal,
+            candidateRevision: candidate.revision,
+            changedKind: "embedding",
+            idempotencyKey: `settings-embedding-${candidate.snapshotDigest}`,
+          });
+          if (
+            migration.runState === "failed" &&
+            !isTerminalKnowledgeSpaceProfileMigrationError(migration.lastErrorCode)
+          ) {
+            const retried = await profileMigrations.retry({
+              ...migrationPrincipal,
+              runId: migration.id,
+            });
+            if (!retried) {
+              return context.json(
+                {
+                  code: "PROFILE_MIGRATION_RETRY_CONFLICT",
+                  error: "Failed profile migration could not be retried",
+                },
+                409,
+              );
+            }
+            migration = retried;
+          }
+          return context.json(toPublicKnowledgeSpaceProfileMigration(migration), 202);
         } catch (error) {
           if (error instanceof SettingsProfileCandidateConflictError) {
             return context.json({ code: error.code, error: error.message }, 409);
           }
+          if (error instanceof KnowledgeSpaceProfileMigrationConflictError) {
+            return context.json({ code: error.code, error: error.message }, 409);
+          }
+          if (error instanceof KnowledgeSpaceProfileMigrationServiceError) {
+            if (error.code === "PROFILE_MIGRATION_FORBIDDEN") {
+              return context.json({ code: error.code, error: error.message }, 403);
+            }
+            if (error.code.endsWith("NOT_FOUND") || error.code.endsWith("MISSING")) {
+              return context.json({ code: error.code, error: error.message }, 404);
+            }
+            return context.json({ code: error.code, error: error.message }, 409);
+          }
           throw error;
         }
-        const authenticatedApiKey = context.get("authenticatedApiKey");
-        const capabilityGrantId = context.get("capabilityV2Grant")?.grantId;
-        const migration = await profileMigrations.request({
-          ...(authenticatedApiKey ? { apiKey: authenticatedApiKey } : {}),
-          ...(capabilityGrantId ? { capabilityGrantId } : {}),
-          callerKind: context.get("callerKind") ?? "interactive",
-          candidateRevision: candidate.revision,
-          changedKind: "embedding",
-          idempotencyKey: `settings-embedding-${candidate.snapshotDigest}`,
-          knowledgeSpaceId,
-          subject,
-        });
-        return context.json(toPublicKnowledgeSpaceProfileMigration(migration), 202);
       }
     }
     if (hasPublishedProfileTuple) {
@@ -2604,6 +2639,129 @@ class SettingsProfileCandidateConflictError extends Error {
   constructor() {
     super("Another settings update already owns the next immutable profile revision");
     this.name = "SettingsProfileCandidateConflictError";
+  }
+}
+
+async function getOrSupersedeEmbeddingSettingsCandidate(input: {
+  readonly activeRevision: number;
+  readonly capabilitySnapshot: ModelCapabilitySnapshot;
+  readonly createdBySubjectId: string;
+  readonly migrationPrincipal: KnowledgeSpaceProfileMigrationPrincipal & {
+    readonly knowledgeSpaceId: string;
+  };
+  readonly migrations: KnowledgeSpaceProfileMigrationService;
+  readonly now: () => string;
+  readonly profiles: KnowledgeSpaceProfileRepository;
+  readonly selection: KnowledgeSpaceEmbeddingSelection;
+}): Promise<KnowledgeSpaceProfileRevision> {
+  for (;;) {
+    const candidateRevision = await nextPublishedEmbeddingCandidateRevision(input.profiles, {
+      activeRevision: input.activeRevision,
+      knowledgeSpaceId: input.migrationPrincipal.knowledgeSpaceId,
+      tenantId: input.migrationPrincipal.subject.tenantId,
+    });
+    const snapshot = {
+      ...(await createKnowledgeSpaceEmbeddingProfile(
+        input.selection,
+        candidateRevision,
+        embeddingVectorSpaceIdentityFromSnapshot(input.capabilitySnapshot),
+      )),
+      dimension: input.capabilitySnapshot.dimension,
+    };
+    const candidateInput = {
+      capabilitySnapshot: input.capabilitySnapshot,
+      createdBySubjectId: input.createdBySubjectId,
+      kind: "embedding" as const,
+      knowledgeSpaceId: input.migrationPrincipal.knowledgeSpaceId,
+      now: input.now(),
+      snapshot,
+      tenantId: input.migrationPrincipal.subject.tenantId,
+    };
+    try {
+      return await getOrCreateSettingsProfileCandidate(input.profiles, candidateInput);
+    } catch (error) {
+      if (!(error instanceof SettingsProfileCandidateConflictError)) throw error;
+      const existing = await input.profiles.getRevision({
+        kind: "embedding",
+        knowledgeSpaceId: input.migrationPrincipal.knowledgeSpaceId,
+        revision: candidateRevision,
+        tenantId: input.migrationPrincipal.subject.tenantId,
+      });
+      if (
+        !existing ||
+        existing.state !== "candidate" ||
+        existing.createdBySubjectId !== input.createdBySubjectId ||
+        existing.snapshotDigest === knowledgeSpaceProfileSnapshotDigest(snapshot)
+      ) {
+        throw error;
+      }
+
+      const previousMigration = await input.migrations.findByCandidate({
+        ...input.migrationPrincipal,
+        candidateProfileId: existing.id,
+      });
+      if (previousMigration?.runState === "queued" || previousMigration?.runState === "running") {
+        const canceled = await input.migrations.cancel({
+          ...input.migrationPrincipal,
+          reason: "Superseded by a newer embedding settings update",
+          runId: previousMigration.id,
+        });
+        if (!canceled || canceled.runState !== "canceled") throw error;
+      } else {
+        if (previousMigration?.runState === "succeeded") throw error;
+        try {
+          await input.profiles.failCandidate({
+            errorCode: "PROFILE_SETTINGS_CANDIDATE_SUPERSEDED",
+            errorMessage: "Superseded by a newer embedding settings update",
+            kind: "embedding",
+            knowledgeSpaceId: input.migrationPrincipal.knowledgeSpaceId,
+            now: input.now(),
+            revision: existing.revision,
+            tenantId: input.migrationPrincipal.subject.tenantId,
+          });
+        } catch (retirementError) {
+          if (retirementError instanceof KnowledgeSpaceProfileTransitionError) throw error;
+          throw retirementError;
+        }
+      }
+
+      const retired = await input.profiles.getRevision({
+        kind: "embedding",
+        knowledgeSpaceId: input.migrationPrincipal.knowledgeSpaceId,
+        revision: existing.revision,
+        tenantId: input.migrationPrincipal.subject.tenantId,
+      });
+      if (!retired || retired.state === "candidate") throw error;
+    }
+  }
+}
+
+async function nextPublishedEmbeddingCandidateRevision(
+  profiles: KnowledgeSpaceProfileRepository,
+  input: {
+    readonly activeRevision: number;
+    readonly knowledgeSpaceId: string;
+    readonly tenantId: string;
+  },
+): Promise<number> {
+  let nextRevision = input.activeRevision + 1;
+  let afterRevision: number | undefined = input.activeRevision;
+  for (;;) {
+    const page = await profiles.listRevisions({
+      ...(afterRevision === undefined ? {} : { afterRevision }),
+      kind: "embedding",
+      knowledgeSpaceId: input.knowledgeSpaceId,
+      limit: 10,
+      tenantId: input.tenantId,
+    });
+    for (const revision of page.items) {
+      if (revision.revision > nextRevision) return nextRevision;
+      if (revision.revision !== nextRevision) continue;
+      if (revision.state === "candidate") return nextRevision;
+      nextRevision += 1;
+    }
+    if (page.nextRevision === undefined) return nextRevision;
+    afterRevision = page.nextRevision;
   }
 }
 
