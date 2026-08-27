@@ -9,7 +9,9 @@ When('I open the default console entry', async function (this: DifyWorld) {
 })
 
 When('I open the apps console', async function (this: DifyWorld) {
-  await this.getPage().goto('/apps')
+  const page = this.getPage()
+  await page.goto('/apps')
+  await waitForAppsConsole(page, 30_000)
 })
 
 When('I refresh the current page', async function (this: DifyWorld) {
