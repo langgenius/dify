@@ -59,6 +59,7 @@ export default function AppNavItem({
       </Link>
       <div className="h-6 shrink-0">
         <ItemOperation
+          itemName={name}
           isPinned={isPinned}
           togglePin={() => onTogglePin(id, !isPinned)}
           isShowDelete={!uninstallable && !isSelected}

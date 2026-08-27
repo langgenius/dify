@@ -98,6 +98,9 @@ describe('useAvailableNodesMetaData', () => {
     expect(nodeTypes).not.toContain(BlockEnum.Agent)
     expect(result.current.nodesMap?.[BlockEnum.AgentV2]).toBeDefined()
     expect(result.current.nodesMap?.[BlockEnum.Agent]).toBeUndefined()
+    expect(result.current.nodesMap?.[BlockEnum.AgentV2]?.metaData.helpLinkUri).toBe(
+      '/docs/use-dify/nodes/agent#choose-an-agent',
+    )
   })
 
   it('should expose legacy Agent instead of Agent v2 when Agent v2 is disabled', () => {
@@ -111,5 +114,8 @@ describe('useAvailableNodesMetaData', () => {
     expect(nodeTypes).not.toContain(BlockEnum.AgentV2)
     expect(result.current.nodesMap?.[BlockEnum.Agent]).toBeDefined()
     expect(result.current.nodesMap?.[BlockEnum.AgentV2]).toBeUndefined()
+    expect(result.current.nodesMap?.[BlockEnum.Agent]?.metaData.helpLinkUri).toBe(
+      '/docs/use-dify/nodes/agent',
+    )
   })
 })
