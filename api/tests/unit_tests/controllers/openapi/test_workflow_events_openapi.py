@@ -16,12 +16,11 @@ from unittest.mock import Mock
 
 import pytest
 from flask import Flask
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
 from controllers.openapi.auth.data import CallerKind
 from controllers.openapi.workflow_events import OpenApiWorkflowEventsApi
+from core.db.session_factory import session_factory
 from graphon.enums import WorkflowExecutionStatus
 from models.account import Account
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
@@ -110,20 +109,15 @@ def _make_end_user() -> EndUser:
 
 
 def test_transaction_boundary_matches_the_pre_migration_decorator():
-    """`stream` carried no `@with_session`: it opens its own repository session
-    factory off `db.engine`, and a router commit would outlive the request anyway
-    because the response body is still being generated. The allow/deny matrix
-    cannot see this — it observes admission before the view body runs.
+    """`stream` carried no `@with_session`: its repository opens sessions of its
+    own, and a router commit would outlive the request anyway because the response
+    body is still being generated. The allow/deny matrix cannot see this — it
+    observes admission before the view body runs.
     """
     assert OpenApiWorkflowEventsApi.get.__spec__.write is False
 
 
 class TestOpenApiWorkflowEventsApi:
-    @pytest.fixture(autouse=True)
-    def _bind_sqlite_engine(self, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
-        module = sys.modules["controllers.openapi.workflow_events"]
-        monkeypatch.setattr(module, "db", SimpleNamespace(engine=sqlite_engine))
-
     def _bind_repo(self, monkeypatch: pytest.MonkeyPatch, workflow_run: WorkflowRun | None) -> Mock:
         module = sys.modules["controllers.openapi.workflow_events"]
         repo_mock = Mock()
@@ -143,7 +137,6 @@ class TestOpenApiWorkflowEventsApi:
         monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)
 
     def test_not_found_when_run_missing(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
-        module = sys.modules["controllers.openapi.workflow_events"]
         factory_mock = self._bind_repo(monkeypatch, None)
 
         api = OpenApiWorkflowEventsApi()
@@ -156,9 +149,10 @@ class TestOpenApiWorkflowEventsApi:
                     task_id="wf-run-1",
                 )
 
+        # The stream outlives the guard's session, so the repository gets the guard's
+        # own maker rather than a fresh one bound straight to the engine.
         session_maker = factory_mock.create_api_workflow_run_repository.call_args.args[0]
-        assert isinstance(session_maker, sessionmaker)
-        assert session_maker.kw["bind"] is module.db.engine
+        assert session_maker is session_factory.get_session_maker()
 
     def test_not_found_when_run_belongs_to_different_app(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         self._bind_repo(monkeypatch, _make_workflow_run(app_id="other-app"))

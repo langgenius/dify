@@ -42,16 +42,16 @@ _SCAN_TREES = (
 # Sites per file, pinned exactly. Per file rather than per tree because a tree total lets
 # one file's coverage being deleted net out against sites added in another.
 _EXPECTED_SITES: dict[str, int] = {
-    "unit_tests/controllers/openapi/test_account.py": 2,
+    "unit_tests/controllers/openapi/test_account.py": 3,
     "unit_tests/controllers/openapi/test_app_dsl.py": 1,
     "unit_tests/controllers/openapi/test_app_run_streaming.py": 2,
     "unit_tests/controllers/openapi/test_apps_permitted_external_query.py": 1,
     "unit_tests/controllers/openapi/test_endpoint.py": 1,
-    "unit_tests/controllers/openapi/test_human_input_form.py": 7,
+    "unit_tests/controllers/openapi/test_human_input_form.py": 6,
     "unit_tests/controllers/openapi/test_workflow_events_openapi.py": 8,
     "unit_tests/controllers/openapi/test_workspaces_members.py": 16,
     "test_containers_integration_tests/controllers/openapi/test_account.py": 2,
-    "test_containers_integration_tests/controllers/openapi/test_account_sessions.py": 6,
+    "test_containers_integration_tests/controllers/openapi/test_account_sessions.py": 5,
     "test_containers_integration_tests/controllers/openapi/test_app_dsl.py": 7,
     "test_containers_integration_tests/controllers/openapi/test_app_run.py": 1,
     "test_containers_integration_tests/controllers/openapi/test_apps.py": 6,

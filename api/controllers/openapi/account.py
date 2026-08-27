@@ -19,7 +19,7 @@ from controllers.openapi._models import (
     WorkspacePayload,
 )
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.requirements import SubjectCheck, TokenScope
+from controllers.openapi.auth.requirements import CheckSessionOwnership, SubjectCheck, TokenScope
 from controllers.openapi.auth.subjects import AccountSubject
 from core.logging.context import get_request_id, get_trace_id
 from extensions.ext_application_services import application_services
@@ -86,7 +86,10 @@ class AccountSessionsApi(Resource):
 
 @openapi_ns.route("/account/sessions/<string:session_id>")
 class AccountSessionByIdApi(Resource):
-    @endpoint(requirements=_ACCOUNT_REQUIREMENTS, returns=(200, RevokeResponse, "Session revoked"))
+    @endpoint(
+        requirements=(*_ACCOUNT_REQUIREMENTS, CheckSessionOwnership()),
+        returns=(200, RevokeResponse, "Session revoked"),
+    )
     def delete(self, ctx: Context, session_id: str):
         try:
             token_id = str(UUID(session_id))
