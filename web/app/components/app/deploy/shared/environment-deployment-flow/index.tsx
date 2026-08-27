@@ -2,11 +2,12 @@
 
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { ReactNode } from 'react'
-import type { DeploymentVersion } from '../version'
+import type { DeploymentVersion } from '../../utils/version'
 import { useState } from 'react'
-import { DeploymentConfiguration } from '../deployment-dialog/deployment-configuration'
-import { EmbeddedVersionSelection } from '../deployment-dialog/version-selection'
-import { AppDeployStateBoundary, shouldPollEnvironmentDeployment } from '../state'
+import { AppDeployStateBoundary } from '../../state'
+import { shouldPollEnvironmentDeployment } from '../../utils/environment-deployment'
+import { DeploymentConfiguration } from '../deployment-configuration'
+import { EmbeddedVersionSelection } from '../version-selection'
 
 type EnvironmentDeploymentFlowView = 'configuration' | 'overview' | 'versions'
 

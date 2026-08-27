@@ -47,8 +47,6 @@ export function useInfiniteScroll<
   const loadingLockRef = useRef(false)
   const latestQueryRef = useRef(query)
 
-  latestQueryRef.current = query
-
   const disconnectObserver = useCallback(() => {
     observerRef.current?.disconnect()
     observerRef.current = null
@@ -58,9 +56,10 @@ export function useInfiniteScroll<
   const connectObserver = useCallback(() => {
     const root = rootRef.current
     const sentinel = sentinelRef.current
+    const latestQuery = latestQueryRef.current
 
     if (
-      !canFetchNextPage(query) ||
+      !canFetchNextPage(latestQuery) ||
       !root ||
       !sentinel ||
       typeof IntersectionObserver === 'undefined'
@@ -111,7 +110,7 @@ export function useInfiniteScroll<
     observer.observe(sentinel)
     observerRef.current = observer
     observedTargetRef.current = { root, sentinel }
-  }, [disconnectObserver, query])
+  }, [disconnectObserver])
 
   const setRootRef = useCallback(
     (node: TRoot | null) => {
@@ -130,10 +129,13 @@ export function useInfiniteScroll<
   )
 
   useEffect(() => {
+    latestQueryRef.current = query
     connectObserver()
+  }, [connectObserver, query])
 
+  useEffect(() => {
     return disconnectObserver
-  }, [connectObserver, disconnectObserver])
+  }, [disconnectObserver])
 
   return {
     rootRef: setRootRef,

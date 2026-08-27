@@ -1,12 +1,12 @@
 'use client'
 
-import type { DeploymentVersion } from '../version'
-import type { DeploymentDialogRequest } from './types'
+import type { DeploymentDialogRequest } from '../types'
+import type { DeploymentVersion } from '../utils/version'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { useState } from 'react'
-import { DeploymentConfiguration } from './deployment-configuration'
-import { VersionSelection } from './version-selection'
+import { DeploymentConfiguration } from '../shared/deployment-configuration'
+import { VersionSelection } from '../shared/version-selection'
 
 type DeploymentDialogProps = {
   appId: string

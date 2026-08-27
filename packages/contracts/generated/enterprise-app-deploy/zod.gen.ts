@@ -36,13 +36,6 @@ export const zPluginCategory = z.enum([
   'PLUGIN_CATEGORY_TOOL',
 ])
 
-export const zEnvVarValueSource = z.enum([
-  'ENV_VAR_VALUE_SOURCE_UNSPECIFIED',
-  'ENV_VAR_VALUE_SOURCE_CONFIGURED',
-  'ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED',
-  'ENV_VAR_VALUE_SOURCE_CUSTOM',
-])
-
 export const zDeploymentOperationType = z.enum([
   'DEPLOYMENT_OPERATION_TYPE_UNSPECIFIED',
   'DEPLOYMENT_OPERATION_TYPE_DEPLOY',
@@ -109,6 +102,13 @@ export const zDeploymentStatus = z.enum([
   'DEPLOYMENT_STATUS_SUSPENDED',
   'DEPLOYMENT_STATUS_ERROR',
   'DEPLOYMENT_STATUS_UNKNOWN',
+])
+
+export const zEnvVarValueSource = z.enum([
+  'ENV_VAR_VALUE_SOURCE_UNSPECIFIED',
+  'ENV_VAR_VALUE_SOURCE_CONFIGURED',
+  'ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED',
+  'ENV_VAR_VALUE_SOURCE_CUSTOM',
 ])
 
 export const zEnvVarValueType = z.enum([
@@ -215,12 +215,6 @@ export const zDeploymentEnvironment = z.object({
   description: z.string(),
 })
 
-export const zDeploymentEnvironmentVariableInput = z.object({
-  key: z.string(),
-  value_source: zEnvVarValueSource,
-  value: zGoogleProtobufValue.optional(),
-})
-
 export const zDeploymentOperationReceipt = z.object({
   id: z.string(),
   type: zDeploymentOperationType,
@@ -304,26 +298,20 @@ export const zEnvironmentSiteUpdate = z.object({
 
 export const zEnvironmentTrigger = z.record(z.string(), z.unknown())
 
-/**
- * Deprecated: use DeploymentEnvironmentVariableInput.
- */
 export const zEnvironmentVariableInput = z.object({
   key: z.string(),
   value_source: zEnvVarValueSource,
-  value: z.string().optional(),
+  value: zGoogleProtobufValue.optional(),
 })
 
-/**
- * Deprecated: use WorkflowEnvironmentVariableSlot.
- */
 export const zEnvironmentVariableSlot = z.object({
   key: z.string(),
   value_type: zEnvVarValueType,
   description: z.string(),
   has_configured_value: z.boolean(),
   has_last_deployed_value: z.boolean(),
-  configured_value: z.string().optional(),
-  last_deployed_value: z.string().optional(),
+  configured_value: zGoogleProtobufValue.optional(),
+  last_deployed_value: zGoogleProtobufValue.optional(),
 })
 
 export const zEnvironmentWebAppSubjectAccountData = z.object({
@@ -836,29 +824,36 @@ export const zUpdateServiceApiConversationVariableRequest = z.object({
 
 export const zWorkflowEnvironmentVariableInputGroup = z.object({
   workflow_id: z.string(),
-  environment_variables: z.array(zDeploymentEnvironmentVariableInput),
+  environment_variables: z.array(zEnvironmentVariableInput),
 })
 
 export const zWorkflowDeploymentInput = z.object({
-  environment_variables: z.array(zEnvironmentVariableInput).optional(),
-  credentials: z.array(zCredentialSelectionInput).optional(),
   environment_variable_groups: z.array(zWorkflowEnvironmentVariableInputGroup),
-})
-
-export const zWorkflowEnvironmentVariableSlot = z.object({
-  key: z.string(),
-  value_type: zEnvVarValueType,
-  description: z.string(),
-  has_configured_value: z.boolean(),
-  has_last_deployed_value: z.boolean(),
-  configured_value: zGoogleProtobufValue.optional(),
-  last_deployed_value: zGoogleProtobufValue.optional(),
+  credentials: z.array(zCredentialSelectionInput).optional(),
 })
 
 export const zWorkflowReference = z.object({
   app_id: z.string(),
   workflow_id: z.string(),
   name: z.string(),
+  icon: z.string(),
+  icon_background: z.string(),
+  icon_type: z.string(),
+  icon_url: z.string().optional(),
+})
+
+export const zEnvironmentVariableGroup = z.object({
+  from_app: zWorkflowReference.optional(),
+  from_workflow_as_tool: zWorkflowReference.optional(),
+  environment_variable_slots: z.array(zEnvironmentVariableSlot),
+})
+
+export const zWorkflowPath = z.object({
+  workflows: z.array(zWorkflowReference),
+})
+
+export const zWorkflowAsToolDependency = z.object({
+  paths: z.array(zWorkflowPath),
 })
 
 export const zCredentialSlot = z.object({
@@ -868,20 +863,12 @@ export const zCredentialSlot = z.object({
   last_deployed_credential_id: z.string().optional(),
   icon: z.string().optional(),
   icon_dark: z.string().optional(),
-  from_app: zWorkflowReference.optional(),
-  from_subworkflows: z.array(zWorkflowReference),
-})
-
-export const zEnvironmentVariableGroup = z.object({
-  from_app: zWorkflowReference.optional(),
-  from_subworkflow: zWorkflowReference.optional(),
-  environment_variable_slots: z.array(zWorkflowEnvironmentVariableSlot),
+  workflow_as_tool_dependency: zWorkflowAsToolDependency.optional(),
 })
 
 export const zGetWorkflowDeploymentOptionsResponse = z.object({
-  environment_variable_slots: z.array(zEnvironmentVariableSlot).optional(),
-  credential_slots: z.array(zCredentialSlot),
   environment_variable_groups: z.array(zEnvironmentVariableGroup),
+  credential_slots: z.array(zCredentialSlot),
 })
 
 export const zUnsupportedNode = z.object({
@@ -889,8 +876,7 @@ export const zUnsupportedNode = z.object({
   type: z.string(),
   title: z.string(),
   provider: zUnsupportedNodeProvider.optional(),
-  from_app: zWorkflowReference.optional(),
-  from_subworkflow: zWorkflowReference.optional(),
+  workflow_as_tool_dependency: zWorkflowAsToolDependency.optional(),
 })
 
 export const zPrecheckWorkflowDeploymentResponse = z.object({

@@ -1,6 +1,6 @@
 'use client'
-import type { DeploymentVersion } from '../../version'
-import type { DeploymentDialogRequest } from '../types'
+import type { DeploymentDialogRequest } from '../../types'
+import type { DeploymentVersion } from '../../utils/version'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogClose, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -13,7 +13,7 @@ import { useDeploymentConfigurationValues } from './use-deployment-configuration
 import {
   hasRequiredDeploymentCredentials,
   workflowDeploymentInput,
-} from './workflow-deployment-input'
+} from './utils/workflow-deployment-input'
 
 export function DeploymentConfiguration({
   appId,

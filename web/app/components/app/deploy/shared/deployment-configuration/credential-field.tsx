@@ -1,4 +1,4 @@
-import type { CredentialSlot } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { CredentialSlot, WorkflowPath } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { PluginCategory } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import {
   Select,
@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
+import { WorkflowDependencyPreview } from './workflow-source-popover'
 
 function providerName(providerId: string) {
   const name = providerId.split('/').filter(Boolean).at(-1) ?? providerId
@@ -27,10 +28,12 @@ function providerName(providerId: string) {
 
 export function CredentialField({
   slot,
+  paths = [],
   value,
   onChange,
 }: {
   slot: CredentialSlot
+  paths?: WorkflowPath[]
   value?: string
   onChange: (value: string) => void
 }) {
@@ -52,19 +55,24 @@ export function CredentialField({
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-1">
-        <span className="size-5 shrink-0 overflow-hidden rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
-          {iconSrc ? (
-            <img alt="" src={iconSrc} className="size-full object-contain" />
-          ) : (
-            <span
-              aria-hidden
-              className="i-ri-plug-2-line flex size-full items-center justify-center text-text-tertiary"
-            />
+      <div className="flex min-w-0 items-center justify-between gap-2 py-0.5">
+        <div className="flex min-w-0 flex-1 items-center gap-1">
+          <span className="size-5 shrink-0 overflow-hidden rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
+            {iconSrc ? (
+              <img alt="" src={iconSrc} className="size-full object-contain" />
+            ) : (
+              <span
+                aria-hidden
+                className="i-ri-plug-2-line flex size-full items-center justify-center text-text-tertiary"
+              />
+            )}
+          </span>
+          <span className="truncate system-sm-medium text-text-primary">{name}</span>
+          {category && (
+            <span className="shrink-0 system-xs-regular text-text-tertiary">{category}</span>
           )}
-        </span>
-        <span className="system-sm-medium text-text-primary">{name}</span>
-        {category && <span className="system-xs-regular text-text-tertiary">{category}</span>}
+        </div>
+        <WorkflowDependencyPreview subjectName={name} paths={paths} />
       </div>
       <Select
         value={value ?? null}

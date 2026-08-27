@@ -1,6 +1,6 @@
 import type { AppEnvironment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { ReactNode } from 'react'
-import type { AccessPoint as AccessPointType } from '@/app/components/app/deploy/access-point'
+import type { AccessPoint as AccessPointType } from '@/app/components/app/deploy/utils/access-point'
 import { EnvironmentStatus } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'

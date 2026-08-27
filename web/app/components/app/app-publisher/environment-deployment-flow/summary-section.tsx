@@ -1,6 +1,6 @@
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { ReactNode } from 'react'
-import type { DeploymentVersion } from '@/app/components/app/deploy/version'
+import type { DeploymentVersion } from '@/app/components/app/deploy/utils/version'
 import {
   DeploymentOperationStatus,
   DeploymentOperationType,

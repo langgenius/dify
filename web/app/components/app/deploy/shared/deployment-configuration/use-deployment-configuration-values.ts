@@ -15,10 +15,21 @@ export type DeploymentConfigurationValues = {
 
 export type DeploymentConfigurationValuesController = {
   credentials: DeploymentConfigurationValues['credentials']
-  getEnvironmentVariableSelection: (key: string) => EnvironmentVariableSelection | undefined
+  getEnvironmentVariableSelection: (
+    workflowId: string,
+    key: string,
+  ) => EnvironmentVariableSelection | undefined
   getValues: () => DeploymentConfigurationValues
   setCredential: (key: string, value: string) => void
-  setEnvironmentVariableSelection: (key: string, value: EnvironmentVariableSelection) => void
+  setEnvironmentVariableSelection: (
+    workflowId: string,
+    key: string,
+    value: EnvironmentVariableSelection,
+  ) => void
+}
+
+export function environmentVariableSelectionKey(workflowId: string, key: string) {
+  return JSON.stringify([workflowId, key])
 }
 
 export function useDeploymentConfigurationValues() {
@@ -29,7 +40,8 @@ export function useDeploymentConfigurationValues() {
   const [credentials, setCredentials] = useState<DeploymentConfigurationValues['credentials']>({})
 
   const getEnvironmentVariableSelection = useCallback(
-    (key: string) => valuesRef.current.environmentVariables[key],
+    (workflowId: string, key: string) =>
+      valuesRef.current.environmentVariables[environmentVariableSelectionKey(workflowId, key)],
     [],
   )
   const getValues = useCallback(() => valuesRef.current, [])
@@ -48,8 +60,15 @@ export function useDeploymentConfigurationValues() {
     setCredentials(nextCredentials)
   }, [])
   const setEnvironmentVariableSelection = useCallback(
-    (key: string, value: EnvironmentVariableSelection) => {
-      valuesRef.current.environmentVariables[key] = value
+    (workflowId: string, key: string, value: EnvironmentVariableSelection) => {
+      const current = valuesRef.current
+      valuesRef.current = {
+        ...current,
+        environmentVariables: {
+          ...current.environmentVariables,
+          [environmentVariableSelectionKey(workflowId, key)]: value,
+        },
+      }
     },
     [],
   )

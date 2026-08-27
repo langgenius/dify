@@ -219,7 +219,7 @@ function createFlowQueryClient(environmentId: string, environmentInUse = false) 
     queryClient.setQueryDefaults(deploymentOptionsQuery.queryKey, { staleTime: Infinity })
     queryClient.setQueryData(deploymentOptionsQuery.queryKey, {
       credential_slots: [],
-      environment_variable_slots: [],
+      environment_variable_groups: [],
     })
   })
 
@@ -456,7 +456,7 @@ async function expectDeploymentRequest(
   )
   expect(await deployRequest.json()).toEqual({
     credentials: [],
-    environment_variables: [],
+    environment_variable_groups: [],
   })
 }
 
@@ -692,14 +692,26 @@ describe('PublisherEnvironmentFlow', () => {
       )
     view.queryClient.setQueryData(deploymentOptionsQuery.queryKey, {
       credential_slots: [],
-      environment_variable_slots: [
+      environment_variable_groups: [
         {
-          configured_value: 'production',
-          description: '',
-          has_configured_value: true,
-          has_last_deployed_value: false,
-          key: 'ENVIRONMENT',
-          value_type: EnvVarValueType.ENV_VAR_VALUE_TYPE_STRING,
+          environment_variable_slots: [
+            {
+              configured_value: 'production',
+              description: '',
+              has_configured_value: true,
+              has_last_deployed_value: false,
+              key: 'ENVIRONMENT',
+              value_type: EnvVarValueType.ENV_VAR_VALUE_TYPE_STRING,
+            },
+          ],
+          from_app: {
+            app_id: 'app-1',
+            icon: '💰',
+            icon_background: '#FDF2FA',
+            icon_type: 'emoji',
+            name: 'Finance APP',
+            workflow_id: latestVersion.id,
+          },
         },
       ],
     })

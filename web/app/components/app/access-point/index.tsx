@@ -12,7 +12,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { parseAsString, parseAsStringLiteral, useQueryStates } from 'nuqs'
 import { useTranslation } from 'react-i18next'
-import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/access-point'
+import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/utils/access-point'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -156,7 +156,9 @@ export default function AccessPoint({ appId }: AccessPointProps) {
     resourceMaintainer: appDetail?.maintainer,
     workspacePermissionKeys,
   })
-  const showEnvironmentTabs = (appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.ADVANCED_CHAT) && capabilities.canDeploy
+  const showEnvironmentTabs =
+    (appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.ADVANCED_CHAT) &&
+    capabilities.canDeploy
 
   return (
     <AccessPointStateBoundary appId={appId} environmentQueryEnabled={showEnvironmentTabs}>

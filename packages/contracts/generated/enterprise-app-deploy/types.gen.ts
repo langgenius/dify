@@ -45,15 +45,6 @@ export const PluginCategory = {
 
 export type PluginCategory = (typeof PluginCategory)[keyof typeof PluginCategory]
 
-export const EnvVarValueSource = {
-  ENV_VAR_VALUE_SOURCE_UNSPECIFIED: 'ENV_VAR_VALUE_SOURCE_UNSPECIFIED',
-  ENV_VAR_VALUE_SOURCE_CONFIGURED: 'ENV_VAR_VALUE_SOURCE_CONFIGURED',
-  ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED: 'ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED',
-  ENV_VAR_VALUE_SOURCE_CUSTOM: 'ENV_VAR_VALUE_SOURCE_CUSTOM',
-} as const
-
-export type EnvVarValueSource = (typeof EnvVarValueSource)[keyof typeof EnvVarValueSource]
-
 export const DeploymentOperationType = {
   DEPLOYMENT_OPERATION_TYPE_UNSPECIFIED: 'DEPLOYMENT_OPERATION_TYPE_UNSPECIFIED',
   DEPLOYMENT_OPERATION_TYPE_DEPLOY: 'DEPLOYMENT_OPERATION_TYPE_DEPLOY',
@@ -159,6 +150,15 @@ export const DeploymentStatus = {
 } as const
 
 export type DeploymentStatus = (typeof DeploymentStatus)[keyof typeof DeploymentStatus]
+
+export const EnvVarValueSource = {
+  ENV_VAR_VALUE_SOURCE_UNSPECIFIED: 'ENV_VAR_VALUE_SOURCE_UNSPECIFIED',
+  ENV_VAR_VALUE_SOURCE_CONFIGURED: 'ENV_VAR_VALUE_SOURCE_CONFIGURED',
+  ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED: 'ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED',
+  ENV_VAR_VALUE_SOURCE_CUSTOM: 'ENV_VAR_VALUE_SOURCE_CUSTOM',
+} as const
+
+export type EnvVarValueSource = (typeof EnvVarValueSource)[keyof typeof EnvVarValueSource]
 
 export const EnvVarValueType = {
   ENV_VAR_VALUE_TYPE_UNSPECIFIED: 'ENV_VAR_VALUE_TYPE_UNSPECIFIED',
@@ -289,8 +289,7 @@ export type CredentialSlot = {
   last_deployed_credential_id?: string
   icon?: string
   icon_dark?: string
-  from_app?: WorkflowReference
-  from_subworkflows: Array<WorkflowReference>
+  workflow_as_tool_dependency?: WorkflowAsToolDependency
 }
 
 export type DeleteEnvironmentApiKeyResponse = {
@@ -319,12 +318,6 @@ export type DeploymentEnvironment = {
   display_name: string
   status: EnvironmentStatus
   description: string
-}
-
-export type DeploymentEnvironmentVariableInput = {
-  key: string
-  value_source: EnvVarValueSource
-  value?: GoogleProtobufValue
 }
 
 export type DeploymentOperation = {
@@ -480,14 +473,14 @@ export type EnvironmentTrigger = {
 
 export type EnvironmentVariableGroup = {
   from_app?: WorkflowReference
-  from_subworkflow?: WorkflowReference
-  environment_variable_slots: Array<WorkflowEnvironmentVariableSlot>
+  from_workflow_as_tool?: WorkflowReference
+  environment_variable_slots: Array<EnvironmentVariableSlot>
 }
 
 export type EnvironmentVariableInput = {
   key: string
   value_source: EnvVarValueSource
-  value?: string
+  value?: GoogleProtobufValue
 }
 
 export type EnvironmentVariableSlot = {
@@ -496,8 +489,8 @@ export type EnvironmentVariableSlot = {
   description: string
   has_configured_value: boolean
   has_last_deployed_value: boolean
-  configured_value?: string
-  last_deployed_value?: string
+  configured_value?: GoogleProtobufValue
+  last_deployed_value?: GoogleProtobufValue
 }
 
 export type EnvironmentWebAppAccessModeUpdate = {
@@ -694,9 +687,8 @@ export type GetWebAppPermissionResponse = {
 }
 
 export type GetWorkflowDeploymentOptionsResponse = {
-  environment_variable_slots?: Array<EnvironmentVariableSlot>
-  credential_slots: Array<CredentialSlot>
   environment_variable_groups: Array<EnvironmentVariableGroup>
+  credential_slots: Array<CredentialSlot>
 }
 
 export type ListAppEnvironmentsResponse = {
@@ -893,8 +885,7 @@ export type UnsupportedNode = {
   type: string
   title: string
   provider?: UnsupportedNodeProvider
-  from_app?: WorkflowReference
-  from_subworkflow?: WorkflowReference
+  workflow_as_tool_dependency?: WorkflowAsToolDependency
 }
 
 export type UnsupportedNodeProvider = {
@@ -938,31 +929,32 @@ export type UpdateServiceApiConversationVariableRequest = {
   value: GoogleProtobufValue
 }
 
+export type WorkflowAsToolDependency = {
+  paths: Array<WorkflowPath>
+}
+
 export type WorkflowDeploymentInput = {
-  environment_variables?: Array<EnvironmentVariableInput>
-  credentials?: Array<CredentialSelectionInput>
   environment_variable_groups: Array<WorkflowEnvironmentVariableInputGroup>
+  credentials?: Array<CredentialSelectionInput>
 }
 
 export type WorkflowEnvironmentVariableInputGroup = {
   workflow_id: string
-  environment_variables: Array<DeploymentEnvironmentVariableInput>
+  environment_variables: Array<EnvironmentVariableInput>
 }
 
-export type WorkflowEnvironmentVariableSlot = {
-  key: string
-  value_type: EnvVarValueType
-  description: string
-  has_configured_value: boolean
-  has_last_deployed_value: boolean
-  configured_value?: GoogleProtobufValue
-  last_deployed_value?: GoogleProtobufValue
+export type WorkflowPath = {
+  workflows: Array<WorkflowReference>
 }
 
 export type WorkflowReference = {
   app_id: string
   workflow_id: string
   name: string
+  icon: string
+  icon_background: string
+  icon_type: string
+  icon_url?: string
 }
 
 export type WorkflowVersion = {

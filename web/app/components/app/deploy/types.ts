@@ -1,4 +1,4 @@
-import type { DeploymentVersion } from '../version'
+import type { DeploymentVersion } from './utils/version'
 
 type VersionSelectionRequest = {
   currentVersionId?: string

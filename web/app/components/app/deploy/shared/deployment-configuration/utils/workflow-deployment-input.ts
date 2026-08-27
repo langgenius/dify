@@ -4,8 +4,9 @@ import type {
   GetWorkflowDeploymentOptionsResponse,
   WorkflowDeploymentInput,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import type { DeploymentConfigurationValues } from './use-deployment-configuration-values'
+import type { DeploymentConfigurationValues } from '../use-deployment-configuration-values'
 import { EnvVarValueSource as EnvVarValueSourceEnum } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import { environmentVariableSelectionKey } from '../use-deployment-configuration-values'
 
 export function credentialSlotKey(slot: CredentialSlot) {
   return `${slot.provider_id}:${slot.category}`
@@ -101,21 +102,33 @@ export function workflowDeploymentInput(
     })
   }
 
+  const environmentVariableGroups: WorkflowDeploymentInput['environment_variable_groups'] = []
+
+  for (const group of deploymentOptions.environment_variable_groups) {
+    const owner = group.from_app ?? group.from_workflow_as_tool
+    if (!owner) return
+
+    environmentVariableGroups.push({
+      workflow_id: owner.workflow_id,
+      environment_variables: group.environment_variable_slots.map((slot) => {
+        const selection = resolveEnvironmentVariableSelection(
+          slot,
+          values.environmentVariables[environmentVariableSelectionKey(owner.workflow_id, slot.key)],
+        )
+
+        return {
+          key: slot.key,
+          value_source: selection.source,
+          ...(selection.source === EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM
+            ? { value: selection.customValue }
+            : {}),
+        }
+      }),
+    })
+  }
+
   return {
     credentials,
-    environment_variables: deploymentOptions.environment_variable_slots.map((slot) => {
-      const selection = resolveEnvironmentVariableSelection(
-        slot,
-        values.environmentVariables[slot.key],
-      )
-
-      return {
-        key: slot.key,
-        value_source: selection.source,
-        ...(selection.source === EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM
-          ? { value: selection.customValue }
-          : {}),
-      }
-    }),
+    environment_variable_groups: environmentVariableGroups,
   }
 }

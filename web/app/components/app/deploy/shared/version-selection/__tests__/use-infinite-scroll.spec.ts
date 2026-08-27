@@ -1,6 +1,6 @@
 import type { InfiniteScrollQuery } from '../use-infinite-scroll'
 import { act, render } from '@testing-library/react'
-import { createElement } from 'react'
+import { createElement, useCallback } from 'react'
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useInfiniteScroll } from '../use-infinite-scroll'
 
@@ -10,6 +10,7 @@ let scrollRoot: HTMLDivElement | null = null
 let scrollSentinel: HTMLDivElement | null = null
 const observe = vi.fn()
 const disconnect = vi.fn()
+const observerConstructed = vi.fn()
 const originalIntersectionObserver = globalThis.IntersectionObserver
 
 class MockIntersectionObserver implements IntersectionObserver {
@@ -19,6 +20,7 @@ class MockIntersectionObserver implements IntersectionObserver {
   readonly thresholds: ReadonlyArray<number>
 
   constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+    observerConstructed()
     intersectionCallback = callback
     intersectionOptions = options
     this.root = options?.root ?? null
@@ -36,20 +38,28 @@ class MockIntersectionObserver implements IntersectionObserver {
 
 function TestInfiniteScroll({ query }: { query: InfiniteScrollQuery }) {
   const { rootRef, sentinelRef } = useInfiniteScroll(query)
+  const setRootRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      scrollRoot = node
+      rootRef(node)
+    },
+    [rootRef],
+  )
+  const setSentinelRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      scrollSentinel = node
+      sentinelRef(node)
+    },
+    [sentinelRef],
+  )
 
   return createElement(
     'div',
     {
-      ref: (node: HTMLDivElement | null) => {
-        scrollRoot = node
-        rootRef(node)
-      },
+      ref: setRootRef,
     },
     createElement('div', {
-      ref: (node: HTMLDivElement | null) => {
-        scrollSentinel = node
-        sentinelRef(node)
-      },
+      ref: setSentinelRef,
     }),
   )
 }
@@ -112,6 +122,20 @@ describe('deploy useInfiniteScroll', () => {
 
     expect(query.fetchNextPage).toHaveBeenCalledOnce()
     expect(query.fetchNextPage).toHaveBeenCalledWith({ cancelRefetch: false })
+  })
+
+  it('should keep the observer when only the query snapshot changes', () => {
+    const initialQuery = createQuery()
+    const nextQuery = createQuery()
+    const view = render(createElement(TestInfiniteScroll, { query: initialQuery }))
+
+    expect(observerConstructed).toHaveBeenCalledOnce()
+
+    view.rerender(createElement(TestInfiniteScroll, { query: nextQuery }))
+    triggerIntersection(true)
+
+    expect(observerConstructed).toHaveBeenCalledOnce()
+    expect(nextQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
   it.each([

@@ -4,7 +4,7 @@ import type { ListEnvironmentDeploymentsResponse } from '@dify/contracts/enterpr
 import { hashKey, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { consoleQuery } from '@/service/client'
-import { hasDeploymentsRequiringPolling } from '../state'
+import { hasDeploymentsRequiringPolling } from '../utils/environment-deployment'
 
 export function useRefreshAppEnvironmentsAfterDeploymentPolling(appId: string) {
   const queryClient = useQueryClient()

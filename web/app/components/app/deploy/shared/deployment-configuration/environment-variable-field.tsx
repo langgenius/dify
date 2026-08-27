@@ -20,21 +20,34 @@ import {
 } from '@langgenius/dify-ui/select'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { resolveEnvironmentVariableSelection } from './workflow-deployment-input'
+import { resolveEnvironmentVariableSelection } from './utils/workflow-deployment-input'
+
+function displayEnvironmentVariableValue(value: unknown) {
+  if (value === undefined) return undefined
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+
+  return JSON.stringify(value)
+}
 
 export const EnvironmentVariableField = memo(
   ({
     slot,
+    workflowId,
     getInitialSelection,
     onChange,
   }: {
     slot: EnvironmentVariableSlot
-    getInitialSelection: (key: string) => EnvironmentVariableSelection | undefined
-    onChange: (key: string, value: EnvironmentVariableSelection) => void
+    workflowId: string
+    getInitialSelection: (
+      workflowId: string,
+      key: string,
+    ) => EnvironmentVariableSelection | undefined
+    onChange: (workflowId: string, key: string, value: EnvironmentVariableSelection) => void
   }) => {
     const { t } = useTranslation('deployments')
     const [selection, setSelection] = useState(() =>
-      resolveEnvironmentVariableSelection(slot, getInitialSelection(slot.key)),
+      resolveEnvironmentVariableSelection(slot, getInitialSelection(workflowId, slot.key)),
     )
     const { customValue, source } = selection
     const sourceLabels: Partial<Record<EnvVarValueSource, string>> = {
@@ -59,7 +72,7 @@ export const EnvironmentVariableField = memo(
         : slot.value_type === EnvVarValueType.ENV_VAR_VALUE_TYPE_SECRET
           ? t(($) => $['deployDrawer.envVarType.secret'])
           : t(($) => $['deployDrawer.envVarType.string'])
-    const inputId = `deployment-env-${slot.key}`
+    const inputId = `deployment-env-${encodeURIComponent(workflowId)}-${encodeURIComponent(slot.key)}`
     const editable = source === EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM
     const inputType =
       editable && slot.value_type === EnvVarValueType.ENV_VAR_VALUE_TYPE_SECRET
@@ -70,8 +83,12 @@ export const EnvironmentVariableField = memo(
     const sourceLabel = sourceLabels[source] ?? t(($) => $['deployDrawer.envVarSource.literal'])
     // Secret values arrive masked, so these are safe to show as-is.
     const sourceValues: Partial<Record<EnvVarValueSource, string>> = {
-      [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CONFIGURED]: slot.configured_value,
-      [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED]: slot.last_deployed_value,
+      [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CONFIGURED]: displayEnvironmentVariableValue(
+        slot.configured_value,
+      ),
+      [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED]: displayEnvironmentVariableValue(
+        slot.last_deployed_value,
+      ),
     }
     const placeholder = editable ? undefined : (sourceValues[source] ?? sourceLabel)
 
@@ -101,7 +118,7 @@ export const EnvironmentVariableField = memo(
                 source: nextSource,
               }
               setSelection(nextSelection)
-              onChange(slot.key, nextSelection)
+              onChange(workflowId, slot.key, nextSelection)
             }}
           >
             <SelectTrigger
@@ -136,7 +153,7 @@ export const EnvironmentVariableField = memo(
               customValue: event.target.value,
             }
             setSelection(nextSelection)
-            onChange(slot.key, nextSelection)
+            onChange(workflowId, slot.key, nextSelection)
           }}
         />
         {slot.description && (

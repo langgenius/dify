@@ -1,6 +1,6 @@
 'use client'
 
-import type { AccessPoint } from '@/app/components/app/deploy/access-point'
+import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
 import { useTranslation } from 'react-i18next'
 import { AccessPointCard, AccessPointEmptyContent } from '@/app/components/base/access-point/card'
 import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'

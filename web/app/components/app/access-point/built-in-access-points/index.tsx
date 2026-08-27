@@ -1,6 +1,6 @@
 'use client'
 
-import type { AccessPoint } from '@/app/components/app/deploy/access-point'
+import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
