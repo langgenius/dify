@@ -109,6 +109,7 @@ class LangFuseDataTrace(BaseTraceInstance):
 
     @override
     def trace(self, trace_info: BaseTraceInfo):
+        return
         match trace_info:
             case WorkflowTraceInfo():
                 self.workflow_trace(trace_info)
