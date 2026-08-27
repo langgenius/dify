@@ -95,13 +95,21 @@ class EditionCheck(Requirement):
             raise Forbidden("external_sso_requires_ee")
 
 
+def assert_license_valid() -> None:
+    """Shared with the router's endpoint-level gate, which has to answer
+    before `extract_bearer` and so cannot be a requirement. One function, so
+    the requirement and that gate cannot drift apart.
+    """
+    if FeatureService.get_system_features().license.status in _DEAD_LICENSE_STATUSES:
+        raise Forbidden("license_invalid")
+
+
 class LicenseCheck(Requirement):
     rank = Rank.SUBJECT
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        if FeatureService.get_system_features().license.status in _DEAD_LICENSE_STATUSES:
-            raise Forbidden("license_invalid")
+        assert_license_valid()
 
 
 class CheckAppApiEnabled(Requirement):
