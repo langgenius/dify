@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next'
 import { useGetPricingPageLanguage } from '@/context/i18n'
 import { PricingContent } from './content'
 
-function Pricing({ onCancel }: { onCancel: () => void }) {
+export function Pricing({ onCancel }: { onCancel: () => void }) {
   const { t } = useTranslation()
   const pricingPageLanguage = useGetPricingPageLanguage()
   const pricingPageURL = pricingPageLanguage
@@ -59,5 +59,3 @@ function Pricing({ onCancel }: { onCancel: () => void }) {
     </Dialog>
   )
 }
-
-export default Pricing

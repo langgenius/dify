@@ -13,7 +13,7 @@ import { cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { ALL_PLANS } from '@/app/components/billing/config'
-import Pricing from '@/app/components/billing/pricing'
+import { Pricing } from '@/app/components/billing/pricing'
 import { createConsoleQueryWrapper, seedFeatures } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 
