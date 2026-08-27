@@ -78,6 +78,8 @@
   "studio.noCredentialsYet": "ຍັງບໍ່ມີຂໍ້ມູນການເຂົ້າລະບົບ",
   "studio.noCredentialsYetDescription": "ເພີ່ມຂໍ້ມູນການເຂົ້າລະບົບໃນ Integrations ຫຼື ການຕັ້ງຄ່າໂນດ",
   "studio.precheck.description": "ມັນມີປະເພດໂນດທີ່ຍັງບໍ່ຮອງຮັບ:",
+  "studio.precheck.from": "ຈາກ",
+  "studio.precheck.nodeCount_other": "{{count}} ໂນດ",
   "studio.precheck.supportMessage": "ຈະຮອງຮັບປະເພດໂນດເຫຼົ່ານີ້ໃນລຸ້ນທີ່ຈະມາເຖິງ.",
   "studio.precheck.title": "ບໍ່ສາມາດນຳເວີຊັນນີ້ໄປປັບໃຊ້ໃນສະພາບແວດລ້ອມນີ້ໄດ້",
   "studio.publisher.deployingVersion": "ກຳລັງຕິດຕັ້ງ: {{version}}",

@@ -4,6 +4,8 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}` | (string & {})
 }
 
+export type GoogleProtobufValue = unknown
+
 export const EnvironmentStatus = {
   ENVIRONMENT_STATUS_UNSPECIFIED: 'ENVIRONMENT_STATUS_UNSPECIFIED',
   ENVIRONMENT_STATUS_PENDING: 'ENVIRONMENT_STATUS_PENDING',
@@ -42,6 +44,15 @@ export const PluginCategory = {
 } as const
 
 export type PluginCategory = (typeof PluginCategory)[keyof typeof PluginCategory]
+
+export const EnvVarValueSource = {
+  ENV_VAR_VALUE_SOURCE_UNSPECIFIED: 'ENV_VAR_VALUE_SOURCE_UNSPECIFIED',
+  ENV_VAR_VALUE_SOURCE_CONFIGURED: 'ENV_VAR_VALUE_SOURCE_CONFIGURED',
+  ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED: 'ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED',
+  ENV_VAR_VALUE_SOURCE_CUSTOM: 'ENV_VAR_VALUE_SOURCE_CUSTOM',
+} as const
+
+export type EnvVarValueSource = (typeof EnvVarValueSource)[keyof typeof EnvVarValueSource]
 
 export const DeploymentOperationType = {
   DEPLOYMENT_OPERATION_TYPE_UNSPECIFIED: 'DEPLOYMENT_OPERATION_TYPE_UNSPECIFIED',
@@ -149,20 +160,12 @@ export const DeploymentStatus = {
 
 export type DeploymentStatus = (typeof DeploymentStatus)[keyof typeof DeploymentStatus]
 
-export const EnvVarValueSource = {
-  ENV_VAR_VALUE_SOURCE_UNSPECIFIED: 'ENV_VAR_VALUE_SOURCE_UNSPECIFIED',
-  ENV_VAR_VALUE_SOURCE_CONFIGURED: 'ENV_VAR_VALUE_SOURCE_CONFIGURED',
-  ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED: 'ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED',
-  ENV_VAR_VALUE_SOURCE_CUSTOM: 'ENV_VAR_VALUE_SOURCE_CUSTOM',
-} as const
-
-export type EnvVarValueSource = (typeof EnvVarValueSource)[keyof typeof EnvVarValueSource]
-
 export const EnvVarValueType = {
   ENV_VAR_VALUE_TYPE_UNSPECIFIED: 'ENV_VAR_VALUE_TYPE_UNSPECIFIED',
   ENV_VAR_VALUE_TYPE_STRING: 'ENV_VAR_VALUE_TYPE_STRING',
   ENV_VAR_VALUE_TYPE_NUMBER: 'ENV_VAR_VALUE_TYPE_NUMBER',
   ENV_VAR_VALUE_TYPE_SECRET: 'ENV_VAR_VALUE_TYPE_SECRET',
+  ENV_VAR_VALUE_TYPE_LLM: 'ENV_VAR_VALUE_TYPE_LLM',
 } as const
 
 export type EnvVarValueType = (typeof EnvVarValueType)[keyof typeof EnvVarValueType]
@@ -286,6 +289,8 @@ export type CredentialSlot = {
   last_deployed_credential_id?: string
   icon?: string
   icon_dark?: string
+  from_app?: WorkflowReference
+  from_subworkflows: Array<WorkflowReference>
 }
 
 export type DeleteEnvironmentApiKeyResponse = {
@@ -293,6 +298,15 @@ export type DeleteEnvironmentApiKeyResponse = {
 }
 
 export type DeleteEnvironmentResponse = {
+  [key: string]: unknown
+}
+
+export type DeleteServiceApiConversationRequest = {
+  conversationId: string
+  user: string
+}
+
+export type DeleteServiceApiConversationResponse = {
   [key: string]: unknown
 }
 
@@ -305,6 +319,12 @@ export type DeploymentEnvironment = {
   display_name: string
   status: EnvironmentStatus
   description: string
+}
+
+export type DeploymentEnvironmentVariableInput = {
+  key: string
+  value_source: EnvVarValueSource
+  value?: GoogleProtobufValue
 }
 
 export type DeploymentOperation = {
@@ -456,6 +476,12 @@ export type EnvironmentSiteUpdate = {
 
 export type EnvironmentTrigger = {
   [key: string]: unknown
+}
+
+export type EnvironmentVariableGroup = {
+  from_app?: WorkflowReference
+  from_subworkflow?: WorkflowReference
+  environment_variable_slots: Array<WorkflowEnvironmentVariableSlot>
 }
 
 export type EnvironmentVariableInput = {
@@ -668,8 +694,9 @@ export type GetWebAppPermissionResponse = {
 }
 
 export type GetWorkflowDeploymentOptionsResponse = {
-  environment_variable_slots: Array<EnvironmentVariableSlot>
+  environment_variable_slots?: Array<EnvironmentVariableSlot>
   credential_slots: Array<CredentialSlot>
+  environment_variable_groups: Array<EnvironmentVariableGroup>
 }
 
 export type ListAppEnvironmentsResponse = {
@@ -751,6 +778,13 @@ export type PrepareAppDeletionRequest = {
   appId?: string
 }
 
+export type RenameServiceApiConversationRequest = {
+  conversationId: string
+  user: string
+  name?: string
+  autoGenerate?: boolean
+}
+
 export type RenameWebAppConversationRequest = {
   appCode: string
   conversationId: string
@@ -773,7 +807,7 @@ export type ResolveApiTokenRouteResponse = {
   servingRevisionId?: string
   targetKind?: RouteTargetKind
   directUpstream?: string
-  deploymentGeneration?: string
+  assignmentGeneration?: string
   decision?: string
 }
 
@@ -794,7 +828,7 @@ export type ResolveWebAppRouteResponse = {
   servingRevisionId?: string
   targetKind?: RouteTargetKind
   directUpstream?: string
-  deploymentGeneration?: string
+  assignmentGeneration?: string
   userId?: string
   userFrom?: string
   userAuthType?: string
@@ -859,6 +893,8 @@ export type UnsupportedNode = {
   type: string
   title: string
   provider?: UnsupportedNodeProvider
+  from_app?: WorkflowReference
+  from_subworkflow?: WorkflowReference
 }
 
 export type UnsupportedNodeProvider = {
@@ -895,9 +931,38 @@ export type UpdateEnvironmentResponse = {
   environment: Environment
 }
 
+export type UpdateServiceApiConversationVariableRequest = {
+  conversationId: string
+  variableId: string
+  user: string
+  value: GoogleProtobufValue
+}
+
 export type WorkflowDeploymentInput = {
   environment_variables?: Array<EnvironmentVariableInput>
   credentials?: Array<CredentialSelectionInput>
+  environment_variable_groups: Array<WorkflowEnvironmentVariableInputGroup>
+}
+
+export type WorkflowEnvironmentVariableInputGroup = {
+  workflow_id: string
+  environment_variables: Array<DeploymentEnvironmentVariableInput>
+}
+
+export type WorkflowEnvironmentVariableSlot = {
+  key: string
+  value_type: EnvVarValueType
+  description: string
+  has_configured_value: boolean
+  has_last_deployed_value: boolean
+  configured_value?: GoogleProtobufValue
+  last_deployed_value?: GoogleProtobufValue
+}
+
+export type WorkflowReference = {
+  app_id: string
+  workflow_id: string
+  name: string
 }
 
 export type WorkflowVersion = {
@@ -927,6 +992,10 @@ export type DeleteEnvironmentApiKeyResponseWritable = {
 }
 
 export type DeleteEnvironmentResponseWritable = {
+  [key: string]: unknown
+}
+
+export type DeleteServiceApiConversationResponseWritable = {
   [key: string]: unknown
 }
 

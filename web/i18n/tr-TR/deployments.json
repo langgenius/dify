@@ -78,6 +78,8 @@
   "studio.noCredentialsYet": "Henüz kimlik bilgisi yok",
   "studio.noCredentialsYetDescription": "Entegrasyonlar veya düğüm ayarlarından kimlik bilgisi ekleyin",
   "studio.precheck.description": "Henüz desteklenmeyen düğüm türleri içeriyor:",
+  "studio.precheck.from": "Kaynak",
+  "studio.precheck.nodeCount_other": "{{count}} düğüm",
   "studio.precheck.supportMessage": "Bu düğüm türleri gelecek bir sürümde desteklenecektir.",
   "studio.precheck.title": "Bu sürüm bu ortama dağıtılamaz",
   "studio.publisher.deployingVersion": "Dağıtılıyor: {{version}}",

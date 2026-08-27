@@ -78,6 +78,8 @@
   "studio.noCredentialsYet": "Brak poświadczeń",
   "studio.noCredentialsYetDescription": "Dodaj poświadczenia w Integracjach lub ustawieniach węzła",
   "studio.precheck.description": "Zawiera ona typy węzłów, które nie są jeszcze obsługiwane:",
+  "studio.precheck.from": "Z",
+  "studio.precheck.nodeCount_other": "{{count}} węzłów",
   "studio.precheck.supportMessage": "Obsługa tych typów węzłów pojawi się w przyszłej wersji.",
   "studio.precheck.title": "Nie można wdrożyć tej wersji w tym środowisku",
   "studio.publisher.deployingVersion": "Wdrażanie: {{version}}",

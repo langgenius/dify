@@ -78,6 +78,8 @@
   "studio.noCredentialsYet": "Nog geen inloggegevens",
   "studio.noCredentialsYetDescription": "Voeg inloggegevens toe in Integraties of de knooppuntinstellingen",
   "studio.precheck.description": "Deze versie bevat knooppunttypen die nog niet worden ondersteund:",
+  "studio.precheck.from": "Van",
+  "studio.precheck.nodeCount_other": "{{count}} knooppunten",
   "studio.precheck.supportMessage": "Ondersteuning voor deze knooppunttypen komt in een toekomstige release.",
   "studio.precheck.title": "Deze versie kan niet in deze omgeving worden geïmplementeerd",
   "studio.publisher.deployingVersion": "Implementeren: {{version}}",

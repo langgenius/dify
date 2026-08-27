@@ -78,6 +78,8 @@
   "studio.noCredentialsYet": "Aucun identifiant pour le moment",
   "studio.noCredentialsYetDescription": "Ajoutez des identifiants dans Intégrations ou dans les paramètres du nœud",
   "studio.precheck.description": "Elle contient des types de nœuds qui ne sont pas encore pris en charge :",
+  "studio.precheck.from": "De",
+  "studio.precheck.nodeCount_other": "{{count}} nœuds",
   "studio.precheck.supportMessage": "La prise en charge de ces types de nœuds sera disponible dans une prochaine version.",
   "studio.precheck.title": "Cette version ne peut pas être déployée dans cet environnement",
   "studio.publisher.deployingVersion": "Déploiement en cours : {{version}}",

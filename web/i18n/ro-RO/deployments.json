@@ -78,6 +78,8 @@
   "studio.noCredentialsYet": "Încă nu există acreditări",
   "studio.noCredentialsYetDescription": "Adăugați acreditări în Integrări sau în setările nodului",
   "studio.precheck.description": "Conține tipuri de noduri care nu sunt încă acceptate:",
+  "studio.precheck.from": "Din",
+  "studio.precheck.nodeCount_other": "{{count}} noduri",
   "studio.precheck.supportMessage": "Suportul pentru aceste tipuri de noduri va fi disponibil într-o versiune viitoare.",
   "studio.precheck.title": "Această versiune nu poate fi implementată în acest mediu",
   "studio.publisher.deployingVersion": "Se implementează: {{version}}",

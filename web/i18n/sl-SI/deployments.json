@@ -78,6 +78,8 @@
   "studio.noCredentialsYet": "Poverilnic še ni",
   "studio.noCredentialsYetDescription": "Dodajte poverilnice v Integracijah ali nastavitvah vozlišča",
   "studio.precheck.description": "Vsebuje vrste vozlišč, ki še niso podprte:",
+  "studio.precheck.from": "Iz",
+  "studio.precheck.nodeCount_other": "{{count}} vozlišč",
   "studio.precheck.supportMessage": "Podpora za te vrste vozlišč bo na voljo v prihodnji izdaji.",
   "studio.precheck.title": "Te različice ni mogoče uvesti v to okolje",
   "studio.publisher.deployingVersion": "Uvajanje: {{version}}",

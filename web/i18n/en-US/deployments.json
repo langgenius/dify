@@ -78,6 +78,8 @@
   "studio.noCredentialsYet": "No credentials yet",
   "studio.noCredentialsYetDescription": "Add credentials in Integrations or node settings",
   "studio.precheck.description": "It contains node types that are not yet supported:",
+  "studio.precheck.from": "From",
+  "studio.precheck.nodeCount_other": "{{count}} nodes",
   "studio.precheck.supportMessage": "Support for these node types is coming in a future release.",
   "studio.precheck.title": "This version can't be deployed to this environment",
   "studio.publisher.deployingVersion": "Deploying: {{version}}",

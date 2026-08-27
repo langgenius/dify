@@ -78,6 +78,8 @@
   "studio.noCredentialsYet": "अभी तक कोई क्रेडेंशियल नहीं",
   "studio.noCredentialsYetDescription": "इंटीग्रेशन या नोड सेटिंग में क्रेडेंशियल जोड़ें",
   "studio.precheck.description": "इसमें ऐसे नोड प्रकार हैं जो अभी समर्थित नहीं हैं:",
+  "studio.precheck.from": "से",
+  "studio.precheck.nodeCount_other": "{{count}} नोड",
   "studio.precheck.supportMessage": "इन नोड प्रकारों के लिए समर्थन भविष्य के रिलीज़ में उपलब्ध होगा।",
   "studio.precheck.title": "इस संस्करण को इस परिवेश में डिप्लॉय नहीं किया जा सकता",
   "studio.publisher.deployingVersion": "डिप्लॉय हो रहा है: {{version}}",

@@ -78,6 +78,8 @@
   "studio.noCredentialsYet": "لا توجد بيانات اعتماد بعد",
   "studio.noCredentialsYetDescription": "أضف بيانات اعتماد في عمليات التكامل أو إعدادات العقدة",
   "studio.precheck.description": "يحتوي على أنواع عقد غير مدعومة بعد:",
+  "studio.precheck.from": "من",
+  "studio.precheck.nodeCount_other": "{{count}} عقد",
   "studio.precheck.supportMessage": "سيتوفر دعم أنواع العقد هذه في إصدار مستقبلي.",
   "studio.precheck.title": "لا يمكن نشر هذا الإصدار في هذه البيئة",
   "studio.publisher.deployingVersion": "جاري النشر: {{version}}",

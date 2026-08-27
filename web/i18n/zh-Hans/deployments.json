@@ -78,6 +78,8 @@
   "studio.noCredentialsYet": "暂无凭据",
   "studio.noCredentialsYetDescription": "在集成或节点设置中添加凭据",
   "studio.precheck.description": "它包含尚不支持的节点类型：",
+  "studio.precheck.from": "来自",
+  "studio.precheck.nodeCount_other": "{{count}} 个节点",
   "studio.precheck.supportMessage": "未来版本将支持这些节点类型。",
   "studio.precheck.title": "此版本无法部署到该环境",
   "studio.publisher.deployingVersion": "部署中：{{version}}",
