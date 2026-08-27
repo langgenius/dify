@@ -11,7 +11,9 @@ against ``inspect.signature`` of the live handler.
 The bookkeeping below is the point of the guard, not decoration. A checker that skips the
 call sites it cannot resolve reads as coverage while covering nothing, so every textual
 ``__handler__`` occurrence must land in exactly one accounted bucket, and anything the
-checker cannot bind fails with ``file:line`` instead of being passed over.
+checker cannot bind fails with ``file:line`` instead of being passed over. The other half
+of that bargain is not failing correct code: a guard that cries wolf is a guard someone
+weakens, so ambiguity is resolved by refusing to guess, never by inventing a fallback.
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ import importlib
 import inspect
 import io
 import itertools
+import operator
 import tokenize
 from collections import Counter
 from collections.abc import Callable, Iterator, Sequence
@@ -31,11 +34,29 @@ import pytest
 
 _TESTS_ROOT = Path(__file__).resolve().parents[3]
 
-# The trees to scan, each with the site count below which the scan is no longer trustworthy:
-# a file renamed out of the glob fails loudly instead of quietly dropping coverage to zero.
-_SCAN_TREES = {
-    "unit_tests/controllers/openapi": 38,
-    "test_containers_integration_tests/controllers/openapi": 30,
+_SCAN_TREES = (
+    "unit_tests/controllers/openapi",
+    "test_containers_integration_tests/controllers/openapi",
+)
+
+# Sites per file, pinned exactly. Per file rather than per tree because a tree total lets
+# one file's coverage being deleted net out against sites added in another.
+_EXPECTED_SITES: dict[str, int] = {
+    "unit_tests/controllers/openapi/test_account.py": 2,
+    "unit_tests/controllers/openapi/test_app_dsl.py": 1,
+    "unit_tests/controllers/openapi/test_app_run_streaming.py": 2,
+    "unit_tests/controllers/openapi/test_apps_permitted_external_query.py": 1,
+    "unit_tests/controllers/openapi/test_endpoint.py": 1,
+    "unit_tests/controllers/openapi/test_human_input_form.py": 7,
+    "unit_tests/controllers/openapi/test_workflow_events_openapi.py": 8,
+    "unit_tests/controllers/openapi/test_workspaces_members.py": 16,
+    "test_containers_integration_tests/controllers/openapi/test_account.py": 2,
+    "test_containers_integration_tests/controllers/openapi/test_account_sessions.py": 6,
+    "test_containers_integration_tests/controllers/openapi/test_app_dsl.py": 7,
+    "test_containers_integration_tests/controllers/openapi/test_app_run.py": 1,
+    "test_containers_integration_tests/controllers/openapi/test_apps.py": 6,
+    "test_containers_integration_tests/controllers/openapi/test_files.py": 1,
+    "test_containers_integration_tests/controllers/openapi/test_workspaces.py": 7,
 }
 
 _SEAM = "__handler__"
@@ -44,20 +65,34 @@ _SENTINEL = object()
 _REASON_STAR_ARGS = "`*args` at the call site hides the real arity"
 _REASON_STAR_KWARGS = "`**kwargs` at the call site hides the real arity"
 _REASON_NOT_A_CALL = f"`{_SEAM}` is read, not called"
+_REASON_DYNAMIC = f"reached dynamically — write it as `<var>.<method>.{_SEAM}(...)` so the call can be bound"
+_REASON_SHADOWED = "is rebound by a statement that does not name a class"
 
-# The only way a seam occurrence escapes the bind check, pinned exactly: an extra
-# unreachable occurrence fails, a stale entry fails, and a count change fails. Anything
-# absent from this table and unbindable is a reported failure, never a silent skip.
-_EXEMPT_SITES: dict[tuple[str, str, str], int] = {
-    ("unit_tests/controllers/openapi/test_endpoint.py", "view", _REASON_NOT_A_CALL): 1,
+# `getattr(view, "__handler__")` would otherwise be bucketed as a string, so the
+# conservation sum balances while the call site itself disappears.
+_ATTRIBUTE_BUILTINS = frozenset({"getattr", "setattr", "hasattr"})
+
+# The only way a seam occurrence escapes the bind check, keyed on
+# (file, receiver, reason, enclosing statement) and pinned by count. The statement anchor
+# is what stops the slot being consumed by a different shape at the same receiver — an
+# alias-then-call would keep file, receiver and reason identical. Anything absent from
+# this table and unbindable is a reported failure, never a silent skip.
+_EXEMPT_SITES: dict[tuple[str, str, str, str], int] = {
+    (
+        "unit_tests/controllers/openapi/test_endpoint.py",
+        "view",
+        _REASON_NOT_A_CALL,
+        "assert view.__handler__ is not None",
+    ): 1,
 }
 
 _STRING_TOKENS = frozenset({tokenize.STRING, tokenize.COMMENT, tokenize.FSTRING_MIDDLE})
 
 # {argname: value node} for one @pytest.mark.parametrize case; empty for an unparametrized call.
 Case = dict[str, ast.expr]
-# ("function" | "class", defining node, {name: [(lineno, class name), ...]})
-Scope = tuple[str, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef, dict[str, list[tuple[int, str]]]]
+# (scope kind, defining node, {name: [(first line the binding is in effect, class name or
+# None when the binding form does not name one)]})
+Scope = tuple[str, ast.AST, dict[str, list[tuple[int, str | None]]]]
 
 
 class _UnresolvableError(Exception):
@@ -70,8 +105,9 @@ class Report:
     textual: int = 0
     in_strings: int = 0
     bound: int = 0
-    exempt: Counter[tuple[str, str, str]] = field(default_factory=Counter)
+    exempt: Counter[tuple[str, str, str, str]] = field(default_factory=Counter)
     failures: list[str] = field(default_factory=list)
+    per_file: Counter[str] = field(default_factory=Counter)
 
     @property
     def unresolved(self) -> int:
@@ -82,8 +118,14 @@ class Report:
         return self.bound + sum(self.exempt.values()) + self.unresolved
 
 
+def _instantiated_class(value: ast.expr | None) -> str | None:
+    if isinstance(value, ast.Call) and isinstance(value.func, ast.Name):
+        return value.func.id
+    return None
+
+
 class _Scan(ast.NodeVisitor):
-    """Collects every ``__handler__`` attribute node together with the chain of scopes
+    """Collects every ``__handler__`` attribute node with the scopes and the statement
     enclosing it.
 
     Bindings are recorded per function rather than per module because a module-wide name
@@ -91,16 +133,41 @@ class _Scan(ast.NodeVisitor):
     file, so a module-wide map resolves a handful of sites and mis-resolves the rest.
     Class bodies are recorded but never consulted from a nested method — class-level names
     are not in a method's lookup chain.
+
+    Every form that binds a name is recorded, not just ``=``. A `for`, `with`, walrus or
+    comprehension target the walker did not know about would let a lookup reach *past* the
+    real binder to an earlier ``api = SomeApi()`` and bind the call against the wrong
+    handler. Those forms are recorded with no class name, which poisons the lookup instead.
     """
 
     def __init__(self) -> None:
         self.scopes: list[Scope] = []
-        self.sites: list[tuple[ast.Attribute, list[Scope]]] = []
+        self.statement: ast.stmt | None = None
+        self.sites: list[tuple[ast.Attribute, list[Scope], ast.stmt | None]] = []
 
-    def _in_scope(self, kind: str, node: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef) -> None:
+    def visit(self, node: ast.AST) -> None:
+        if not isinstance(node, ast.stmt):
+            super().visit(node)
+            return
+        previous, self.statement = self.statement, node
+        super().visit(node)
+        self.statement = previous
+
+    def _in_scope(self, kind: str, node: ast.AST) -> None:
         self.scopes.append((kind, node, {}))
         self.generic_visit(node)
         self.scopes.pop()
+
+    def _bind(self, target: ast.expr | None, in_effect_from: int, class_name: str | None) -> None:
+        if not self.scopes:
+            return
+        if isinstance(target, ast.Name):
+            self.scopes[-1][2].setdefault(target.id, []).append((in_effect_from, class_name))
+        elif isinstance(target, ast.Tuple | ast.List):
+            for element in target.elts:
+                self._bind(element, in_effect_from, None)
+        elif isinstance(target, ast.Starred):
+            self._bind(target.value, in_effect_from, None)
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         self._in_scope("function", node)
@@ -111,16 +178,53 @@ class _Scan(ast.NodeVisitor):
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
         self._in_scope("class", node)
 
-    def visit_Assign(self, node: ast.Assign) -> None:
-        if self.scopes and isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name):
-            for target in node.targets:
-                if isinstance(target, ast.Name):
-                    self.scopes[-1][2].setdefault(target.id, []).append((node.lineno, node.value.func.id))
+    def visit_ListComp(self, node: ast.ListComp) -> None:
+        # A comprehension target binds only inside the comprehension, so it gets its own
+        # scope; it is in effect from the comprehension's own first line.
+        self.scopes.append(("comprehension", node, {}))
+        for generator in node.generators:
+            self._bind(generator.target, node.lineno, None)
         self.generic_visit(node)
+        self.scopes.pop()
+
+    visit_SetComp = visit_ListComp
+    visit_DictComp = visit_ListComp
+    visit_GeneratorExp = visit_ListComp
+
+    def visit_Assign(self, node: ast.Assign) -> None:
+        for target in node.targets:
+            self._bind(target, node.lineno + 1, _instantiated_class(node.value))
+        self.generic_visit(node)
+
+    def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
+        self._bind(node.target, node.lineno + 1, _instantiated_class(node.value))
+        self.generic_visit(node)
+
+    def visit_AugAssign(self, node: ast.AugAssign) -> None:
+        self._bind(node.target, node.lineno + 1, None)
+        self.generic_visit(node)
+
+    def visit_NamedExpr(self, node: ast.NamedExpr) -> None:
+        # A walrus binds inside its own expression, so it is in effect on its own line.
+        self._bind(node.target, node.lineno, None)
+        self.generic_visit(node)
+
+    def visit_For(self, node: ast.For) -> None:
+        self._bind(node.target, node.lineno, None)
+        self.generic_visit(node)
+
+    visit_AsyncFor = visit_For
+
+    def visit_With(self, node: ast.With) -> None:
+        for item in node.items:
+            self._bind(item.optional_vars, node.lineno, None)
+        self.generic_visit(node)
+
+    visit_AsyncWith = visit_With
 
     def visit_Attribute(self, node: ast.Attribute) -> None:
         if node.attr == _SEAM:
-            self.sites.append((node, list(self.scopes)))
+            self.sites.append((node, list(self.scopes), self.statement))
         self.generic_visit(node)
 
 
@@ -165,6 +269,16 @@ def _literal_names(node: ast.expr) -> list[str]:
     raise _UnresolvableError(f"parametrize argnames `{ast.unparse(node)}` are not literal")
 
 
+def _case_values(row: ast.expr, arity: int) -> list[ast.expr]:
+    """One parametrize row's values. ``pytest.param(v1, v2, id=...)`` carries them as its
+    own positional arguments, so it is unwrapped rather than declared unreadable."""
+    if isinstance(row, ast.Call) and ast.unparse(row.func).endswith("param"):
+        return list(row.args)
+    if arity > 1 and isinstance(row, ast.Tuple | ast.List):
+        return list(row.elts)
+    return [row]
+
+
 def _parametrize_cases(function: ast.FunctionDef | ast.AsyncFunctionDef) -> list[Case]:
     """Each ``@pytest.mark.parametrize`` case as ``{argname: value node}``.
 
@@ -183,7 +297,7 @@ def _parametrize_cases(function: ast.FunctionDef | ast.AsyncFunctionDef) -> list
             raise _UnresolvableError(f"parametrize argvalues `{ast.unparse(argvalues)}` are not a literal sequence")
         cases: list[Case] = []
         for row in argvalues.elts:
-            values = row.elts if len(names) > 1 and isinstance(row, ast.Tuple | ast.List) else [row]
+            values = _case_values(row, len(names))
             if len(values) != len(names):
                 raise _UnresolvableError(f"parametrize case `{ast.unparse(row)}` does not match {names}")
             cases.append(dict(zip(names, values, strict=True)))
@@ -204,15 +318,25 @@ def _cases(scopes: Sequence[Scope]) -> list[Case]:
     return [{}]
 
 
-def _resolve_class_name(name: str, lineno: int, scopes: Sequence[Scope], case: Case) -> str:
-    """The nearest preceding ``name = SomeApi()`` in the innermost enclosing function
-    scope that has one — never a later binding, never a sibling function's."""
+def _bound_class_name(name: str, lineno: int, scopes: Sequence[Scope]) -> str | None:
+    """The binding of ``name`` in effect at ``lineno``, searched from the innermost
+    enclosing function or comprehension scope outward — never a sibling function's, never
+    module scope. ``None`` means no binding at all; a binding whose form does not name a
+    class raises rather than letting the lookup reach past it to an earlier one."""
     for kind, _node, bindings in reversed(scopes):
         if kind == "class":
             continue
-        preceding = [entry for entry in bindings.get(name, ()) if entry[0] < lineno]
-        if preceding:
-            return max(preceding)[1]
+        in_effect = [entry for entry in bindings.get(name, ()) if entry[0] <= lineno]
+        if in_effect:
+            # Ties go to the last binding recorded, which is the last one in source order.
+            class_name = max(reversed(in_effect), key=operator.itemgetter(0))[1]
+            if class_name is None:
+                raise _UnresolvableError(f"`{name}` {_REASON_SHADOWED}")
+            return class_name
+    return None
+
+
+def _case_class_name(name: str, case: Case) -> str:
     value = case.get(name)
     if isinstance(value, ast.Call) and isinstance(value.func, ast.Name):
         return value.func.id
@@ -263,8 +387,13 @@ def _bind_site(
     if not (isinstance(receiver, ast.Attribute) and isinstance(receiver.value, ast.Name)):
         raise _UnresolvableError(f"receiver `{ast.unparse(receiver)}` is not `<var>.<method>`")
 
-    for case in _cases(scopes):
-        class_name = _resolve_class_name(receiver.value.id, node.lineno, scopes, case)
+    name = receiver.value.id
+    bound = _bound_class_name(name, node.lineno, scopes)
+    # Parametrize expansion runs only where the site actually depends on it, so argvalues
+    # the checker cannot read never fail a site that resolves perfectly well on its own.
+    needs_cases = bound is None or any(keyword.arg is None for keyword in call.keywords)
+    for case in _cases(scopes) if needs_cases else [{}]:
+        class_name = bound if bound is not None else _case_class_name(name, case)
         handler = _load_handler(class_name, receiver.attr, imports)
         positional, keywords = _call_shape(call, case)
         signature = inspect.signature(handler)
@@ -274,10 +403,28 @@ def _bind_site(
             raise _UnresolvableError(f"{class_name}.{receiver.attr}{signature} rejects this call: {exc}") from exc
 
 
+def _dynamic_literals(tree: ast.Module) -> list[ast.Constant]:
+    """``"__handler__"`` handed to getattr/setattr/hasattr. Left alone it counts as a
+    string, so the conservation sum balances while the call site itself disappears."""
+    return [
+        argument
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in _ATTRIBUTE_BUILTINS
+        for argument in node.args
+        if isinstance(argument, ast.Constant) and isinstance(argument.value, str) and _SEAM in argument.value
+    ]
+
+
 def scan_source(path: Path, source: str, report: Report) -> None:
+    label = _label(path)
+    before = report.sites
     report.textual += source.count(_SEAM)
-    report.in_strings += _count_in_strings(source)
     tree = ast.parse(source, filename=str(path))
+
+    dynamic = _dynamic_literals(tree)
+    report.in_strings += _count_in_strings(source) - sum(literal.value.count(_SEAM) for literal in dynamic)
+    report.failures += [f"{label}:{literal.lineno}: `{_SEAM}` {_REASON_DYNAMIC}" for literal in dynamic]
+
     imports = _module_imports(tree)
     calls = {
         id(node.func): node
@@ -286,18 +433,18 @@ def scan_source(path: Path, source: str, report: Report) -> None:
     }
     scan = _Scan()
     scan.visit(tree)
-    label = _label(path)
-    for node, scopes in scan.sites:
+    for node, scopes, statement in scan.sites:
         try:
             _bind_site(node, calls.get(id(node)), imports, scopes)
         except _UnresolvableError as exc:
-            key = (label, ast.unparse(node.value), str(exc))
+            key = (label, ast.unparse(node.value), str(exc), ast.unparse(statement) if statement else "")
             if report.exempt[key] < _EXEMPT_SITES.get(key, 0):
                 report.exempt[key] += 1
             else:
                 report.failures.append(f"{label}:{node.lineno}: {ast.unparse(node.value)}.{_SEAM} — {exc}")
         else:
             report.bound += 1
+    report.per_file[label] += report.sites - before
 
 
 def _python_files(root: Path) -> Iterator[Path]:
@@ -334,33 +481,41 @@ def test_seam_occurrences_are_conserved(reports: dict[str, Report]) -> None:
         )
 
 
-def test_expected_minimum_site_count(reports: dict[str, Report]) -> None:
-    for tree, expected in _SCAN_TREES.items():
-        assert reports[tree].sites >= expected, (
-            f"{tree}: {reports[tree].sites} seam call sites, expected at least {expected} — "
-            "a test file was renamed out of the scan or deleted"
-        )
+def test_expected_site_count(reports: dict[str, Report]) -> None:
+    found = {label: count for report in reports.values() for label, count in report.per_file.items() if count}
+    assert found == _EXPECTED_SITES, (
+        "seam sites moved — a file was renamed out of the scan, or sites were added or deleted; "
+        "update _EXPECTED_SITES deliberately"
+    )
 
 
 def test_every_exemption_is_still_needed(reports: dict[str, Report]) -> None:
-    seen: Counter[tuple[str, str, str]] = Counter()
+    seen: Counter[tuple[str, str, str, str]] = Counter()
     for report in reports.values():
         seen.update(report.exempt)
     assert dict(seen) == _EXEMPT_SITES, "the pinned exemption table no longer matches what the scan found"
 
 
-def _mutant(tmp_path: Path, body: str, name: str = "test_mutant.py") -> tuple[Path, Report]:
-    source = (
-        "from controllers.openapi.workspaces import WorkspaceMembersApi\n\n"
-        "def test_mutant(ctx, q):\n"
-        "    api = WorkspaceMembersApi()\n"
-        f"{body}"
-    )
-    path = tmp_path / name
-    path.write_text(source, encoding="utf-8")
+def _scan_as(path: Path, source: str) -> Report:
+    """Scan `source` under `path`'s label without touching the file at that path."""
     report = Report()
     scan_source(path, source, report)
-    return path, report
+    return report
+
+
+def _scan(path: Path, source: str) -> Report:
+    path.write_text(source, encoding="utf-8")
+    return _scan_as(path, source)
+
+
+_PROLOGUE = "from controllers.openapi.workspaces import WorkspaceMembersApi, WorkspaceSwitchApi\n\n"
+
+
+def _mutant(tmp_path: Path, body: str) -> tuple[Path, Report]:
+    """A one-test module whose line 4 binds `api` and whose `body` starts at line 5."""
+    path = tmp_path / "test_mutant.py"
+    source = f"{_PROLOGUE}def test_mutant(ctx, q):\n    api = WorkspaceMembersApi()\n{body}"
+    return path, _scan(path, source)
 
 
 _MIS_CALLS = [
@@ -394,20 +549,49 @@ def test_checker_reports_a_view_that_lost_the_seam(tmp_path: Path) -> None:
     assert f"exposes no {_SEAM}" in report.failures[0].replace("`", "")
 
 
+def test_checker_reports_a_seam_reached_through_getattr(tmp_path: Path) -> None:
+    """A `"__handler__"` string handed to getattr would otherwise be bucketed as a string,
+    so the conservation sum balances while the call site itself disappears."""
+    call = 'getattr(api.get, "__handler__")(api, ctx, "ws", "surplus", "extra", bogus=1)'
+    path, report = _mutant(tmp_path, f"    {call}\n")
+
+    assert report.in_strings == 0
+    assert len(report.failures) == 1
+    assert f"{path.as_posix()}:5:" in report.failures[0]
+    assert report.bound + report.unresolved + report.in_strings == report.textual
+
+
+_SHADOWING = [
+    '    for api in (WorkspaceSwitchApi(),):\n        api.get.__handler__(api, ctx, "ws", query=q)\n',
+    '    [api.get.__handler__(api, ctx, "ws", query=q) for api in (WorkspaceSwitchApi(),)]\n',
+    '    with WorkspaceSwitchApi() as api:\n        api.get.__handler__(api, ctx, "ws", query=q)\n',
+    '    (api := WorkspaceSwitchApi()) and api.get.__handler__(api, ctx, "ws", query=q)\n',
+]
+
+
+@pytest.mark.parametrize("body", _SHADOWING)
+def test_checker_refuses_a_shadowed_receiver(tmp_path: Path, body: str) -> None:
+    """A binding form the walker did not record would let the lookup reach past it to the
+    `api = WorkspaceMembersApi()` on line 4 and bind against the wrong handler."""
+    _path, report = _mutant(tmp_path, body)
+
+    assert report.bound == 0
+    assert len(report.failures) == 1
+    assert _REASON_SHADOWED in report.failures[0]
+
+
 def test_checker_refuses_a_receiver_bound_in_a_sibling_function(tmp_path: Path) -> None:
     """The precise bug this guard exists to prevent: a module-wide name map would resolve
     `api` here from the sibling test above and report a pass."""
-    source = (
-        "from controllers.openapi.workspaces import WorkspaceMembersApi\n\n"
+    path = tmp_path / "test_sibling.py"
+    report = _scan(
+        path,
+        f"{_PROLOGUE}"
         "def test_one(ctx, q):\n"
         "    api = WorkspaceMembersApi()\n\n"
         "def test_two(ctx, q):\n"
-        '    api.get.__handler__(api, ctx, "ws", query=q)\n'
+        '    api.get.__handler__(api, ctx, "ws", query=q)\n',
     )
-    path = tmp_path / "test_sibling.py"
-    path.write_text(source, encoding="utf-8")
-    report = Report()
-    scan_source(path, source, report)
 
     assert len(report.failures) == 1
     assert "no preceding" in report.failures[0]
@@ -417,21 +601,64 @@ def test_checker_refuses_a_receiver_bound_in_a_sibling_function(tmp_path: Path) 
 def test_checker_binds_every_parametrized_case(tmp_path: Path) -> None:
     """A parametrized receiver plus `**kwargs` is still fully checkable — and the bad case
     must be the one reported."""
-    source = (
+    report = _scan(
+        tmp_path / "test_parametrized.py",
         "import pytest\n"
         "from controllers.openapi.app_dsl import AppDslImportApi, AppDslImportConfirmApi\n\n"
         '@pytest.mark.parametrize(("api", "kwargs"), [\n'
         '    (AppDslImportApi(), {"workspace_id": "w", "body": None}),\n'
-        '    (AppDslImportConfirmApi(), {"workspace_id": "w", "import_id": "i", "bogus": None}),\n'
+        '    pytest.param(AppDslImportConfirmApi(), {"workspace_id": "w", "import_id": "i", "bogus": None}, id="x"),\n'
         "])\n"
         "def test_both(ctx, api, kwargs):\n"
-        "    api.post.__handler__(api, ctx, **kwargs)\n"
+        "    api.post.__handler__(api, ctx, **kwargs)\n",
     )
-    path = tmp_path / "test_parametrized.py"
-    path.write_text(source, encoding="utf-8")
-    report = Report()
-    scan_source(path, source, report)
 
     assert len(report.failures) == 1
     assert "AppDslImportConfirmApi.post" in report.failures[0]
     assert "got an unexpected keyword argument 'bogus'" in report.failures[0]
+
+
+_UNREADABLE_PARAMETRIZE = [
+    '@pytest.mark.parametrize("flag", [pytest.param(True, id="on")])',
+    '@pytest.mark.parametrize("flag", _FLAGS)',
+]
+
+
+@pytest.mark.parametrize("decorator", _UNREADABLE_PARAMETRIZE)
+def test_checker_ignores_parametrize_a_site_does_not_depend_on(tmp_path: Path, decorator: str) -> None:
+    """Failing correct code is how a guard gets weakened or deleted. A receiver that
+    resolves from a plain local binding must never be held hostage to argvalues the
+    checker cannot read."""
+    report = _scan(
+        tmp_path / "test_unreadable_parametrize.py",
+        "import pytest\n"
+        "from controllers.openapi.workspaces import WorkspaceMembersApi\n\n"
+        "_FLAGS = [True]\n\n"
+        f"{decorator}\n"
+        "def test_mutant(ctx, q, flag):\n"
+        "    api = WorkspaceMembersApi()\n"
+        '    api.get.__handler__(api, ctx, "ws", query=q)\n',
+    )
+
+    assert (report.bound, report.failures) == (1, [])
+
+
+_EXEMPT_FILE = _TESTS_ROOT / "unit_tests" / "controllers" / "openapi" / "test_endpoint.py"
+_EXEMPT_READ = "def test_handler_seam_is_exposed():\n    assert view.__handler__ is not None\n"
+_RESHAPED_READ = (
+    "def test_handler_seam_is_exposed():\n"
+    "    handler = view.__handler__\n"
+    '    handler("self", "ctx", "surplus", bogus=1)\n'
+)
+
+
+def test_exemption_slot_is_anchored_to_the_statement() -> None:
+    """Both are scanned under the exempted file's own label and receiver, so only the
+    statement anchor separates them. Re-shaping the read into an alias-then-call must not
+    consume the slot and leave the call unchecked."""
+    exempted = _scan_as(_EXEMPT_FILE, _EXEMPT_READ)
+    assert (sum(exempted.exempt.values()), exempted.failures) == (1, [])
+
+    reshaped = _scan_as(_EXEMPT_FILE, _RESHAPED_READ)
+    assert sum(reshaped.exempt.values()) == 0
+    assert len(reshaped.failures) == 1
