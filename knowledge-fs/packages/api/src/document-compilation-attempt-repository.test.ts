@@ -821,6 +821,10 @@ describe("database document compilation attempt repository", () => {
     ]);
     expect(fake.calls.every((call) => call.lane === "transaction")).toBe(true);
     expect(fake.calls[0]?.sql).toContain("FOR UPDATE");
+    expect(fake.calls[1]?.params).toEqual([tenantId, knowledgeSpaceId, documentAssetId]);
+    expect(fake.calls[1]?.sql).toContain("'knowledge_space'");
+    expect(fake.calls[1]?.sql).toContain("'document_asset'");
+    expect(fake.calls[1]?.sql).toContain("document_revisions");
     expect(fake.calls[6]?.sql).toContain("ON CONFLICT");
     expect(fake.calls[7]?.sql).toContain("::jsonb");
     expect(fake.calls[7]?.params).toContain(JSON.stringify({ attemptId }));

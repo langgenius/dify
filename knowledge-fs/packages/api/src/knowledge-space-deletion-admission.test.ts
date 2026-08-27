@@ -10,8 +10,12 @@ import {
   KnowledgeFsSessionDeletionFenceActiveError,
   createDatabaseKnowledgeFsSessionRepository,
 } from "./knowledge-fs-session-repository";
+import { lockKnowledgeSpaceForDocumentWriteAdmission } from "./knowledge-space-deletion-admission";
 
 const spaceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
+const documentId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d01";
+const assetId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d11";
+const sourceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2e01";
 
 describe.each(["postgres", "tidb"] as const)(
   "knowledge-space deletion admission serialization (%s)",
@@ -113,6 +117,77 @@ describe.each(["postgres", "tidb"] as const)(
         sessions.create({ ...sessionInput(), id: "018f0d60-7a49-7cc2-9c1b-5b36f18f3b02" }),
       ).rejects.toBeInstanceOf(KnowledgeFsSessionDeletionFenceActiveError);
       expect(inserted).toBe(1);
+    });
+  },
+);
+
+describe.each(["postgres", "tidb"] as const)(
+  "document-scoped deletion admission (%s)",
+  (dialect) => {
+    it("checks only space and matching document hierarchy deletions", async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const database = createSchemaDatabaseAdapter({
+        executor: async (input) => {
+          calls.push(input);
+          if (input.tableName === "knowledge_spaces") {
+            return {
+              rows: [{ deletion_job_id: null, id: spaceId, lifecycle_state: "active" }],
+              rowsAffected: 0,
+            };
+          }
+          return { rows: [], rowsAffected: 0 };
+        },
+        kind: dialect,
+      });
+
+      await expect(
+        lockKnowledgeSpaceForDocumentWriteAdmission(database, database, {
+          documentAssetId: assetId,
+          documentId,
+          knowledgeSpaceId: spaceId,
+          sourceId,
+          tenantId: "tenant-1",
+        }),
+      ).resolves.toBe(true);
+
+      const deletionRead = calls.find((call) => call.tableName === "deletion_jobs");
+      expect(deletionRead?.params).toEqual(["tenant-1", spaceId, sourceId, documentId, assetId]);
+      expect(deletionRead?.sql).toContain("target_type");
+      expect(deletionRead?.sql).toContain("'knowledge_space'");
+      expect(deletionRead?.sql).toContain("'source'");
+      expect(deletionRead?.sql).toContain("'logical_document'");
+      expect(deletionRead?.sql).toContain("'document_asset'");
+      expect(deletionRead?.sql).toContain("logical_documents");
+      expect(deletionRead?.sql).toContain("document_revisions");
+      expect(deletionRead?.sql).toContain("document_assets");
+      expect(deletionRead?.sql).not.toContain("<> 'source'");
+      expect(deletionRead?.sql).toContain("FOR UPDATE");
+    });
+
+    it("keeps a space deletion as a hard blocker", async () => {
+      const database = createSchemaDatabaseAdapter({
+        executor: async (input) => {
+          if (input.tableName === "knowledge_spaces") {
+            return {
+              rows: [{ deletion_job_id: null, id: spaceId, lifecycle_state: "active" }],
+              rowsAffected: 0,
+            };
+          }
+          if (input.tableName === "deletion_jobs") {
+            return { rows: [{ id: "space-deletion" }], rowsAffected: 0 };
+          }
+          return { rows: [], rowsAffected: 0 };
+        },
+        kind: dialect,
+      });
+
+      await expect(
+        lockKnowledgeSpaceForDocumentWriteAdmission(database, database, {
+          documentAssetId: assetId,
+          knowledgeSpaceId: spaceId,
+          tenantId: "tenant-1",
+        }),
+      ).resolves.toBe(false);
     });
   },
 );

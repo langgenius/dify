@@ -20,7 +20,7 @@ import { databasePlaceholder, quoteDatabaseIdentifier } from "./database-sql-uti
 import { jsonObjectColumn } from "./json-utils";
 import { assertDatabaseKnowledgeSpacePermissionFence } from "./knowledge-space-access-control";
 import type { KnowledgeSpaceDurablePermissionReference } from "./knowledge-space-authorization";
-import { lockKnowledgeSpaceForDeletionAdmission } from "./knowledge-space-deletion-admission";
+import { lockKnowledgeSpaceForDocumentWriteAdmission } from "./knowledge-space-deletion-admission";
 
 export const DocumentCompilationCheckpoints = [
   "queued",
@@ -2654,7 +2654,13 @@ async function requireDatabaseCompilationScope(
   transaction: DatabaseExecutor,
   input: ParsedStartDocumentCompilationAttemptInput,
 ): Promise<void> {
-  if (!(await lockKnowledgeSpaceForDeletionAdmission(database, transaction, input))) {
+  if (
+    !(await lockKnowledgeSpaceForDocumentWriteAdmission(database, transaction, {
+      documentAssetId: input.documentAssetId,
+      knowledgeSpaceId: input.knowledgeSpaceId,
+      tenantId: input.tenantId,
+    }))
+  ) {
     throw new Error("Document compilation knowledge space is missing, deleting, or not writable");
   }
 
@@ -2759,7 +2765,13 @@ async function databaseLockCompilationControlAttemptAfterSpace(
   observed: DocumentCompilationAttempt,
   accepts: (attempt: DocumentCompilationAttempt) => boolean,
 ): Promise<DocumentCompilationAttempt | null> {
-  if (!(await lockKnowledgeSpaceForDeletionAdmission(database, transaction, observed))) {
+  if (
+    !(await lockKnowledgeSpaceForDocumentWriteAdmission(database, transaction, {
+      documentAssetId: observed.documentAssetId,
+      knowledgeSpaceId: observed.knowledgeSpaceId,
+      tenantId: observed.tenantId,
+    }))
+  ) {
     throw new DocumentCompilationAttemptTransitionError(
       "Document compilation knowledge space is deleting or not writable",
     );

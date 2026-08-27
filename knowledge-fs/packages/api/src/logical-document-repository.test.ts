@@ -428,6 +428,16 @@ describe("logical document repository", () => {
           (call) => call.operation === "insert" && call.tableName === "document_revisions",
         ),
       ).toBe(true);
+      const deletionFence = fixture.calls.find((call) => call.tableName === "deletion_jobs");
+      expect(deletionFence?.params).toEqual([
+        tenantId,
+        knowledgeSpaceId,
+        documentId,
+        secondAssetId,
+      ]);
+      expect(deletionFence?.sql).toContain("'knowledge_space'");
+      expect(deletionFence?.sql).toContain("'logical_document'");
+      expect(deletionFence?.sql).toContain("'document_asset'");
     });
 
     it(`conceals an explicit target outside the partial member's candidate scope before CAS (${dialect})`, async () => {

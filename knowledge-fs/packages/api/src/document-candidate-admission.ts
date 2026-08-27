@@ -19,7 +19,7 @@ import type {
   KnowledgeSpaceAccessChannel,
   KnowledgeSpacePermissionSnapshot,
 } from "./knowledge-space-access-control";
-import { lockKnowledgeSpaceForDeletionAdmission } from "./knowledge-space-deletion-admission";
+import { lockKnowledgeSpaceForDocumentWriteAdmission } from "./knowledge-space-deletion-admission";
 
 import type { DatabaseAdapter, DatabaseExecutor } from "@knowledge/core";
 
@@ -56,7 +56,14 @@ export async function assertDatabaseDocumentCandidateAdmission(input: {
   readonly admission: DatabaseDocumentCandidateAdmissionInput;
 }): Promise<KnowledgeSpacePermissionSnapshot | null> {
   const { admission, database, executor } = input;
-  if (!(await lockKnowledgeSpaceForDeletionAdmission(database, executor, admission))) denied();
+  if (
+    !(await lockKnowledgeSpaceForDocumentWriteAdmission(database, executor, {
+      documentId: admission.documentId,
+      knowledgeSpaceId: admission.knowledgeSpaceId,
+      tenantId: admission.tenantId,
+    }))
+  )
+    denied();
 
   const attemptResult = await executor.execute({
     maxRows: 1,

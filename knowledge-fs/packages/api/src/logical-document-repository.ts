@@ -21,7 +21,7 @@ import {
   assertDatabaseKnowledgeSpacePermissionFence,
 } from "./knowledge-space-access-control";
 import type { KnowledgeSpacePermissionSnapshot } from "./knowledge-space-access-control";
-import { lockKnowledgeSpaceForDeletionAdmission } from "./knowledge-space-deletion-admission";
+import { lockKnowledgeSpaceForDocumentWriteAdmission } from "./knowledge-space-deletion-admission";
 import type { KnowledgeSpaceMetadataDocumentLifecycle } from "./knowledge-space-metadata-repository";
 import { deterministicKnowledgeSpaceActivityId } from "./knowledge-space-overview";
 import { appendKnowledgeSpaceActivityWithExecutor } from "./knowledge-space-overview-database-repository";
@@ -2018,9 +2018,13 @@ function assertDocumentCas(document: LogicalDocument, input: ActivateDocumentRev
 async function requireWritableSpace(
   database: DatabaseAdapter,
   executor: DatabaseExecutor,
-  input: LogicalDocumentScope,
+  input: LogicalDocumentScope & {
+    readonly documentAssetId?: string | undefined;
+    readonly documentId?: string | undefined;
+    readonly sourceId?: string | undefined;
+  },
 ): Promise<void> {
-  if (!(await lockKnowledgeSpaceForDeletionAdmission(database, executor, input))) {
+  if (!(await lockKnowledgeSpaceForDocumentWriteAdmission(database, executor, input))) {
     throw new LogicalDocumentNotFoundError("Knowledge space is missing or not writable");
   }
 }

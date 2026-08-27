@@ -116,6 +116,10 @@ describe("database document candidate admission", () => {
         "deletion_jobs",
         "document_compilation_attempts",
       ]);
+      expect(lockingReads[1]?.params).toEqual([tenantId, knowledgeSpaceId, documentId]);
+      expect(lockingReads[1]?.sql).toContain("'knowledge_space'");
+      expect(lockingReads[1]?.sql).toContain("'logical_document'");
+      expect(lockingReads[1]?.sql).toContain("document_revisions");
     });
   }
 });

@@ -63,8 +63,8 @@ describe.each(["postgres", "tidb"] as const)(
       expect(deletionAdmission?.params).toEqual([tenantId, knowledgeSpaceId, sourceId]);
       expect(deletionAdmission?.sql).toContain(
         dialect === "postgres"
-          ? `"target_type" <> 'source' OR "target_id" = $3`
-          : "`target_type` <> 'source' OR `target_id` = ?",
+          ? `active_deletion."target_type" <> 'source' OR active_deletion."target_id" = $3`
+          : "active_deletion.`target_type` <> 'source' OR active_deletion.`target_id` = ?",
       );
 
       calls.length = 0;
