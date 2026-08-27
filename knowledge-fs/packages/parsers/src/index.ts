@@ -224,7 +224,7 @@ export function createNativeMarkdownParser(options: NativeParserOptions = {}): P
     kind: "native-markdown",
     parse: async (input) => {
       const isMdx = isMdxInput(input);
-      const parserVersion = options.parserVersion ?? (isMdx ? "native-mdx@1" : "native-markdown@1");
+      const parserVersion = options.parserVersion ?? (isMdx ? "native-mdx@2" : "native-markdown@2");
       assertInputBounds(input.body, options.maxInputBytes ?? defaultMaxInputBytes);
       const text = decodeUtf8(input.body);
       const tokens = marked.lexer(text, { gfm: true });
@@ -245,7 +245,7 @@ export function createNativeHtmlParser(options: NativeParserOptions = {}): Parse
   return {
     kind: "native-html",
     parse: async (input) => {
-      const parserVersion = options.parserVersion ?? "native-html@2";
+      const parserVersion = options.parserVersion ?? "native-html@3";
       assertInputBounds(input.body, options.maxInputBytes ?? defaultMaxInputBytes);
       const text = decodeUtf8(input.body);
       const document = parseDocument(text, {
@@ -274,7 +274,7 @@ export function createNativeStructuredDataParser(
   return {
     kind: "native-structured",
     parse: async (input) => {
-      const parserVersion = options.parserVersion ?? "native-structured@1";
+      const parserVersion = options.parserVersion ?? "native-structured@2";
       assertInputBounds(input.body, options.maxInputBytes ?? defaultMaxInputBytes);
       const text = decodeUtf8(input.body);
       const format = structuredDataFormat(input);
@@ -318,7 +318,7 @@ export function createUnstructuredParserClient({
       requestGate.run(async () => {
         const deadline = createUnstructuredRequestDeadline(input.signal, requestTimeoutMs);
         try {
-          const parserVersion = options.parserVersion ?? "unstructured@6";
+          const parserVersion = options.parserVersion ?? "unstructured@7";
           const partitionStrategy = unstructuredPartitionStrategy(input);
           const providerImageBlockTypes = unstructuredProviderImageBlockTypes(input);
           assertInputBounds(input.body, options.maxInputBytes ?? defaultMaxInputBytes);
@@ -1012,10 +1012,12 @@ function rowsToTableElements(
   }
 
   const columns = uniqueStrings(rows.flatMap((row) => Object.keys(row)));
-  const tableRows = [
-    columns.join(" | "),
-    ...rows.map((row) => columns.map((column) => structuredCell(row[column])).join(" | ")),
-  ];
+  const headerRowCount = format === "csv" ? 1 : 0;
+  const projection = projectTableRecords({
+    columns,
+    headerRowCount,
+    rows: rows.map((row) => columns.map((column) => structuredCell(row[column]))),
+  });
 
   return [
     {
@@ -1023,12 +1025,106 @@ function rowsToTableElements(
         columns,
         format,
         rowCount: rows.length,
+        table: projection.metadata,
       },
       sectionPath: [],
-      text: tableRows.join("\n"),
+      text: projection.text,
       type: "table",
     },
   ];
+}
+
+type TableSemanticMode = "matrix" | "record-list" | "single-record" | "unknown";
+
+interface TableProjection {
+  readonly metadata: {
+    readonly columns: readonly string[];
+    readonly headerRowCount: number;
+    readonly mode: TableSemanticMode;
+    readonly recordCount: number;
+    readonly semanticVersion: 1;
+    readonly sourceRowCount: number;
+  };
+  readonly text: string;
+}
+
+function projectTableRecords({
+  columns: rawColumns,
+  headerRowCount,
+  mode,
+  rows,
+  sourceRowCount,
+}: {
+  readonly columns: readonly string[];
+  readonly headerRowCount: number;
+  readonly mode?: TableSemanticMode | undefined;
+  readonly rows: readonly (readonly string[])[];
+  readonly sourceRowCount?: number | undefined;
+}): TableProjection {
+  let width = Math.max(rawColumns.length, 1);
+  for (const row of rows) width = Math.max(width, row.length);
+  const columnCounts = new Map<string, number>();
+  const columns = Array.from({ length: width }, (_, index) => {
+    const value = normalizeTableCell(rawColumns[index] ?? "");
+    const base = value || `column_${index + 1}`;
+    const count = (columnCounts.get(base) ?? 0) + 1;
+    columnCounts.set(base, count);
+    return count === 1 ? base : `${base}_${count}`;
+  });
+  const lines: string[] = [];
+  let matrixCellCount = 0;
+  let numericCellCount = 0;
+  for (const row of rows) {
+    const cells: string[] = [];
+    for (let index = 0; index < columns.length; index += 1) {
+      const value = normalizeTableCell(row[index] ?? "");
+      cells.push(value);
+      if (index === 0 || !value) continue;
+      matrixCellCount += 1;
+      if (tableCellValueKind(value) === "number") numericCellCount += 1;
+    }
+    lines.push(columns.map((column, index) => `${column}: ${cells[index]}`).join(" | "));
+  }
+  const resolvedMode =
+    mode ??
+    classifyTableSemanticMode({
+      columnCount: columns.length,
+      matrixCellCount,
+      numericCellCount,
+      rowCount: rows.length,
+    });
+  const text = lines.join("\n");
+
+  return {
+    metadata: {
+      columns,
+      headerRowCount,
+      mode: resolvedMode,
+      recordCount: rows.length,
+      semanticVersion: 1,
+      sourceRowCount: sourceRowCount ?? headerRowCount + rows.length,
+    },
+    text: text || columns.join(" | "),
+  };
+}
+
+function classifyTableSemanticMode({
+  columnCount,
+  matrixCellCount,
+  numericCellCount,
+  rowCount,
+}: {
+  readonly columnCount: number;
+  readonly matrixCellCount: number;
+  readonly numericCellCount: number;
+  readonly rowCount: number;
+}): TableSemanticMode {
+  if (rowCount === 0) return "unknown";
+  if (rowCount === 1) return "single-record";
+  if (columnCount >= 3 && matrixCellCount > 0 && numericCellCount / matrixCellCount >= 0.7) {
+    return "matrix";
+  }
+  return "record-list";
 }
 
 function structuredCell(value: unknown): string {
@@ -1131,7 +1227,10 @@ function markdownTokensToElements(
 
     if (token.type === "table") {
       const table = token as Tokens.Table;
-      pushTextElement(elements, "table", markdownTableText(table), sectionPath);
+      const projection = markdownTableProjection(table);
+      pushTextElement(elements, "table", projection.text, sectionPath, {
+        table: projection.metadata,
+      });
     }
   }
 
@@ -1244,7 +1343,10 @@ function visitHtmlNode(node: HtmlNode, elements: ParseElementInput[], sectionPat
   }
 
   if (name === "table") {
-    pushTextElement(elements, "table", htmlTableText(node), sectionPath);
+    const projection = htmlTableProjection(node);
+    pushTextElement(elements, "table", projection.text, sectionPath, {
+      table: projection.metadata,
+    });
     return;
   }
 
@@ -1279,8 +1381,10 @@ function unstructuredElementsToElements(
   const headingPathsByElementId = new Map<string, string[]>();
 
   for (const sourceElement of sourceElements) {
-    const text = normalizeText(sourceElement.text ?? "");
     const type = unstructuredType(sourceElement.type);
+    const tableProjection =
+      type === "table" ? unstructuredTableProjection(sourceElement.metadata) : undefined;
+    const text = tableProjection?.text ?? normalizeText(sourceElement.text ?? "");
 
     if (!text && !hasUnstructuredVisualMetadata(sourceElement.metadata, type)) {
       continue;
@@ -1307,6 +1411,7 @@ function unstructuredElementsToElements(
     elements.push({
       metadata: unstructuredParseElementMetadata({
         metadata: sourceElement.metadata,
+        tableProjection,
         text,
         type,
         unstructuredType: sourceElement.type,
@@ -1672,11 +1777,13 @@ function hasUnstructuredVisualMetadata(
 
 function unstructuredParseElementMetadata({
   metadata,
+  tableProjection,
   text,
   type,
   unstructuredType,
 }: {
   readonly metadata: Readonly<Record<string, unknown>>;
+  readonly tableProjection?: TableProjection | undefined;
   readonly text: string;
   readonly type: ParseElement["type"];
   readonly unstructuredType: string | undefined;
@@ -1704,7 +1811,14 @@ function unstructuredParseElementMetadata({
     ...(caption ? { caption } : {}),
     ...(type === "image" && text ? { ocrText: text } : {}),
     ...(textAsHtml ? { textAsHtml } : {}),
-    ...(type === "table" && textAsHtml ? { table: { html: textAsHtml } } : {}),
+    ...(type === "table" && (textAsHtml || tableProjection)
+      ? {
+          table: {
+            ...(tableProjection?.metadata ?? {}),
+            ...(textAsHtml ? { html: textAsHtml } : {}),
+          },
+        }
+      : {}),
     ...(title ? { title } : {}),
   };
 
@@ -1715,6 +1829,21 @@ function unstructuredParseElementMetadata({
       ? { unstructuredType }
       : {}),
   };
+}
+
+function unstructuredTableProjection(
+  metadata: Readonly<Record<string, unknown>>,
+): TableProjection | undefined {
+  const textAsHtml = metadataString(metadata, "text_as_html");
+  if (!textAsHtml) return undefined;
+  const document = parseDocument(textAsHtml, {
+    lowerCaseAttributeNames: true,
+    lowerCaseTags: true,
+  });
+  const table = (document.children as HtmlNode[]).flatMap((node) =>
+    node.name?.toLowerCase() === "table" ? [node] : findHtmlElements(node, "table"),
+  )[0];
+  return table ? htmlTableProjection(table) : undefined;
 }
 
 function unstructuredAssetRef(
@@ -1885,11 +2014,12 @@ function compactSectionPath(sectionPath: readonly (string | undefined)[]): strin
   return sectionPath.filter((segment): segment is string => typeof segment === "string");
 }
 
-function markdownTableText(table: Tokens.Table): string {
-  const header = table.header.map((cell) => normalizeText(cell.text)).join(" | ");
-  const rows = table.rows.map((row) => row.map((cell) => normalizeText(cell.text)).join(" | "));
-
-  return [header, ...rows].filter(Boolean).join("\n");
+function markdownTableProjection(table: Tokens.Table): TableProjection {
+  return projectTableRecords({
+    columns: table.header.map((cell) => normalizeText(cell.text)),
+    headerRowCount: 1,
+    rows: table.rows.map((row) => row.map((cell) => normalizeText(cell.text))),
+  });
 }
 
 function htmlListText(node: HtmlNode): string {
@@ -1900,17 +2030,198 @@ function htmlListText(node: HtmlNode): string {
     .join("\n");
 }
 
-function htmlTableText(node: HtmlNode): string {
-  const rows = findHtmlElements(node, "tr")
-    .map((row) =>
-      (row.children ?? [])
-        .filter((cell) => ["td", "th"].includes(cell.name?.toLowerCase() ?? ""))
-        .map((cell) => normalizeText(htmlText(cell)))
-        .join(" | "),
-    )
-    .filter(Boolean);
+function htmlTableProjection(node: HtmlNode): TableProjection {
+  const rows = htmlTableRows(node);
+  if (rows.length === 0) {
+    return {
+      metadata: {
+        columns: [],
+        headerRowCount: 0,
+        mode: "unknown",
+        recordCount: 0,
+        semanticVersion: 1,
+        sourceRowCount: 0,
+      },
+      text: "",
+    };
+  }
+  const firstRow = rows[0] as {
+    readonly cells: readonly string[];
+    readonly hasHeaderCell: boolean;
+    readonly inHeaderGroup: boolean;
+  };
+  if (firstRow.hasHeaderCell || firstRow.inHeaderGroup) {
+    const headerRowCount = rows.findIndex((row) => !row.hasHeaderCell && !row.inHeaderGroup);
+    const resolvedHeaderRowCount = headerRowCount === -1 ? rows.length : headerRowCount;
+    return projectTableRecords({
+      columns: flattenHtmlTableHeaders(rows.slice(0, resolvedHeaderRowCount)),
+      headerRowCount: resolvedHeaderRowCount,
+      rows: rows.slice(resolvedHeaderRowCount).map((row) => row.cells),
+      sourceRowCount: rows.length,
+    });
+  }
+  return projectHeaderlessTableRows(rows.map((row) => row.cells));
+}
 
-  return rows.join("\n");
+function htmlTableRows(node: HtmlNode): Array<{
+  readonly cells: readonly string[];
+  readonly hasHeaderCell: boolean;
+  readonly inHeaderGroup: boolean;
+}> {
+  const headerRows = new Set(
+    findHtmlElements(node, "thead").flatMap((header) => findHtmlElements(header, "tr")),
+  );
+  let activeRowspans = new Map<number, { readonly remaining: number; readonly value: string }>();
+  return findHtmlElements(node, "tr")
+    .map((row) => {
+      const sourceCells = (row.children ?? []).filter((cell) =>
+        ["td", "th"].includes(cell.name?.toLowerCase() ?? ""),
+      );
+      const cells: string[] = [];
+      const nextRowspans = new Map<
+        number,
+        { readonly remaining: number; readonly value: string }
+      >();
+      let column = 0;
+      const consumeRowspan = () => {
+        const carried = activeRowspans.get(column);
+        if (!carried) return false;
+        cells[column] = carried.value;
+        if (carried.remaining > 1) {
+          nextRowspans.set(column, { remaining: carried.remaining - 1, value: carried.value });
+        }
+        activeRowspans.delete(column);
+        column += 1;
+        return true;
+      };
+      for (const cell of sourceCells) {
+        while (consumeRowspan()) {
+          // A rowspan reserves this column before the next source cell.
+        }
+        const value = normalizeText(htmlText(cell));
+        const columnSpan = htmlTableCellSpan(cell, "colspan");
+        const rowSpan = htmlTableCellSpan(cell, "rowspan");
+        for (let offset = 0; offset < columnSpan; offset += 1) {
+          while (consumeRowspan()) {
+            // A colspan only occupies columns not already reserved by a rowspan.
+          }
+          cells[column] = value;
+          if (rowSpan > 1) {
+            nextRowspans.set(column, { remaining: rowSpan - 1, value });
+          }
+          column += 1;
+        }
+      }
+      while (activeRowspans.size > 0) {
+        if (!consumeRowspan()) column += 1;
+      }
+      activeRowspans = nextRowspans;
+      return {
+        cells,
+        hasHeaderCell: sourceCells.some((cell) => cell.name?.toLowerCase() === "th"),
+        inHeaderGroup: headerRows.has(row),
+      };
+    })
+    .filter((row) => row.cells.some(Boolean));
+}
+
+function flattenHtmlTableHeaders(rows: readonly { readonly cells: readonly string[] }[]): string[] {
+  const width = Math.max(...rows.map((row) => row.cells.length), 1);
+  return Array.from({ length: width }, (_, column) => {
+    const labels: string[] = [];
+    for (const row of rows) {
+      const label = row.cells[column]?.trim();
+      if (label && labels.at(-1) !== label) labels.push(label);
+    }
+    return labels.join(" / ");
+  });
+}
+
+function htmlTableCellSpan(cell: HtmlNode, attribute: "colspan" | "rowspan"): number {
+  const parsed = Number.parseInt(cell.attribs?.[attribute] ?? "1", 10);
+  return Number.isSafeInteger(parsed) && parsed >= 1 && parsed <= 256 ? parsed : 1;
+}
+
+function projectHeaderlessTableRows(rows: readonly (readonly string[])[]): TableProjection {
+  if (rows.length === 1) {
+    return projectTableRecords({ columns: [], headerRowCount: 0, rows });
+  }
+  const firstRow = rows[0] ?? [];
+  if (looksLikeTableHeader(firstRow, rows.slice(1))) {
+    return projectTableRecords({
+      columns: firstRow,
+      headerRowCount: 1,
+      rows: rows.slice(1),
+    });
+  }
+  if (looksLikeKeyValueTable(rows)) {
+    return projectTableRecords({
+      columns: rows.map((row) => row[0] ?? ""),
+      headerRowCount: 0,
+      mode: "single-record",
+      rows: [rows.map((row) => row[1] ?? "")],
+      sourceRowCount: rows.length,
+    });
+  }
+  return projectTableRecords({
+    columns: Array.from(
+      { length: Math.max(...rows.map((row) => row.length), 1) },
+      (_, index) => `column_${index + 1}`,
+    ),
+    headerRowCount: 0,
+    mode: "record-list",
+    rows,
+  });
+}
+
+const TABLE_HEADER_LABEL_PATTERN =
+  /(?:^|[_\s-])(id|key|name|title|date|time|status|type|category|description|detail|score|count|amount|price|value|result)(?:$|[_\s-])|(?:编号|号码|代码|名称|姓名|标题|日期|时间|状态|类型|类别|问题|描述|详情|等级|是否|结果|分数|数量|金额|价格|解决|办法|地区|季度|备注)/iu;
+
+function looksLikeTableHeader(
+  firstRow: readonly string[],
+  remainingRows: readonly (readonly string[])[],
+): boolean {
+  if (firstRow.length < 2) return false;
+  const populated = firstRow.filter((cell) => cell.trim());
+  const labelCount = populated.filter((cell) =>
+    TABLE_HEADER_LABEL_PATTERN.test(cell.trim()),
+  ).length;
+  if (labelCount >= Math.min(2, populated.length)) return true;
+
+  let typedColumns = 0;
+  for (let index = 0; index < firstRow.length; index += 1) {
+    const header = firstRow[index]?.trim() ?? "";
+    if (!header || tableCellValueKind(header) !== "text") continue;
+    const values = remainingRows
+      .map((row) => row[index]?.trim() ?? "")
+      .filter(Boolean)
+      .map(tableCellValueKind);
+    if (
+      values.length > 0 &&
+      values.filter((kind) => kind !== "text").length / values.length >= 0.7
+    ) {
+      typedColumns += 1;
+    }
+  }
+  return typedColumns > 0;
+}
+
+function looksLikeKeyValueTable(rows: readonly (readonly string[])[]): boolean {
+  if (!rows.every((row) => row.length === 2)) return false;
+  const labels = rows.map((row) => row[0]?.trim() ?? "");
+  if (labels.some((label) => !label) || new Set(labels).size !== labels.length) return false;
+  const recognized = labels.filter((label) => TABLE_HEADER_LABEL_PATTERN.test(label)).length;
+  return recognized / labels.length >= 0.6;
+}
+
+function tableCellValueKind(value: string): "boolean" | "date" | "number" | "text" {
+  const normalized = value.trim();
+  if (/^(?:true|false|yes|no|是|否)$/iu.test(normalized)) return "boolean";
+  if (/^\d{4}[-/.年]\d{1,2}(?:[-/.月]\d{1,2}日?)?(?:\s|$)/u.test(normalized)) return "date";
+  if (Number.isFinite(Number(normalized.replaceAll(",", "").replace(/[%￥¥$]/gu, "")))) {
+    return "number";
+  }
+  return "text";
 }
 
 function markdownImagesFromToken(token: Token): MarkdownImageRef[] {
@@ -2079,6 +2390,10 @@ function normalizeText(text: string): string {
     .map((line) => line.replace(/[ \t\f\v]+/g, " ").trim())
     .filter(Boolean)
     .join("\n");
+}
+
+function normalizeTableCell(text: string): string {
+  return normalizeText(text).replace(/\n+/gu, " ");
 }
 
 function metadataString(

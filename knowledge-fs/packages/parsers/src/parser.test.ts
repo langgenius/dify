@@ -108,7 +108,7 @@ describe("parser adapters", () => {
       metadata: {
         filename: "architecture.md",
         mimeType: "text/markdown",
-        parserVersion: "native-markdown@1",
+        parserVersion: "native-markdown@2",
       },
       parser: "native-markdown",
       version: 1,
@@ -152,9 +152,18 @@ describe("parser adapters", () => {
       },
       {
         id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c45:element-6",
-        metadata: {},
+        metadata: {
+          table: {
+            columns: ["A", "B"],
+            headerRowCount: 1,
+            mode: "single-record",
+            recordCount: 1,
+            semanticVersion: 1,
+            sourceRowCount: 2,
+          },
+        },
         sectionPath: ["Overview"],
-        text: "A | B\n1 | 2",
+        text: "A: 1 | B: 2",
         type: "table",
       },
     ]);
@@ -188,11 +197,11 @@ describe("parser adapters", () => {
         "Overview",
         "MDX keeps this searchable.\nNested detail",
       ]);
-      expect(artifact.metadata.parserVersion).toBe("native-mdx@1");
+      expect(artifact.metadata.parserVersion).toBe("native-mdx@2");
     },
   );
 
-  it("keeps plain Markdown raw HTML behavior and parser version unchanged", async () => {
+  it("keeps plain Markdown raw HTML behavior while using the table-aware parser version", async () => {
     const parser = createNativeMarkdownParser({
       generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c96",
       now: () => createdAt,
@@ -207,7 +216,38 @@ describe("parser adapters", () => {
     );
 
     expect(artifact.elements).toEqual([]);
-    expect(artifact.metadata.parserVersion).toBe("native-markdown@1");
+    expect(artifact.metadata.parserVersion).toBe("native-markdown@2");
+  });
+
+  it("preserves the schema of a Markdown table that has no data records", async () => {
+    const parser = createNativeMarkdownParser({
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2ca5",
+      now: () => createdAt,
+    });
+    const artifact = await parser.parse(
+      createParseInput({
+        body: "| Name | Status |\n| --- | --- |",
+        filename: "empty-table.md",
+        mimeType: "text/markdown",
+      }),
+    );
+
+    expect(artifact.elements).toEqual([
+      expect.objectContaining({
+        metadata: {
+          table: {
+            columns: ["Name", "Status"],
+            headerRowCount: 1,
+            mode: "unknown",
+            recordCount: 0,
+            semanticVersion: 1,
+            sourceRowCount: 1,
+          },
+        },
+        text: "Name | Status",
+        type: "table",
+      }),
+    ]);
   });
 
   it("normalizes Markdown image references into image parse elements", async () => {
@@ -276,7 +316,7 @@ describe("parser adapters", () => {
 
     expect(artifact.parser).toBe("native-html");
     expect(artifact.metadata.documentTitle).toBe("Ignored Title");
-    expect(artifact.metadata.parserVersion).toBe("native-html@2");
+    expect(artifact.metadata.parserVersion).toBe("native-html@3");
     expect(artifact.elements.map((element) => element.type)).toEqual([
       "heading",
       "paragraph",
@@ -289,8 +329,18 @@ describe("parser adapters", () => {
       "Read the docs.",
       "Install\nRun",
       "pnpm check",
-      "A | B\n1 | 2",
+      "A: 1 | B: 2",
     ]);
+    expect(artifact.elements.at(-1)?.metadata).toEqual({
+      table: {
+        columns: ["A", "B"],
+        headerRowCount: 1,
+        mode: "single-record",
+        recordCount: 1,
+        semanticVersion: 1,
+        sourceRowCount: 2,
+      },
+    });
     expect(artifact.elements.map((element) => element.sectionPath)).toEqual([
       ["Guide"],
       ["Guide"],
@@ -298,6 +348,190 @@ describe("parser adapters", () => {
       ["Guide"],
       ["Guide"],
     ]);
+  });
+
+  it("distinguishes record lists, matrices, and key-value tables without changing table kind", async () => {
+    const parser = createNativeHtmlParser({
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2ca1",
+      now: () => createdAt,
+    });
+    const artifact = await parser.parse(
+      createParseInput({
+        body: [
+          "<table><tr><td>姓名</td><td>得分</td></tr><tr><td>Ada</td><td>10</td></tr><tr><td>Lin</td><td>9</td></tr></table>",
+          "<table><tr><th>地区</th><th>Q1</th><th>Q2</th></tr><tr><td>华东</td><td>10</td><td>20</td></tr><tr><td>华南</td><td>12</td><td>18</td></tr></table>",
+          "<table><tr><td>发票号码</td><td>26322001</td></tr><tr><td>开票日期</td><td>2026-08-26</td></tr><tr><td>价税合计</td><td>566.00</td></tr></table>",
+        ].join(""),
+        filename: "tables.html",
+        mimeType: "text/html",
+      }),
+    );
+
+    expect(artifact.elements).toEqual([
+      expect.objectContaining({
+        metadata: {
+          table: expect.objectContaining({
+            columns: ["姓名", "得分"],
+            mode: "record-list",
+            recordCount: 2,
+            sourceRowCount: 3,
+          }),
+        },
+        text: "姓名: Ada | 得分: 10\n姓名: Lin | 得分: 9",
+        type: "table",
+      }),
+      expect.objectContaining({
+        metadata: {
+          table: expect.objectContaining({
+            columns: ["地区", "Q1", "Q2"],
+            mode: "matrix",
+            recordCount: 2,
+            sourceRowCount: 3,
+          }),
+        },
+        text: "地区: 华东 | Q1: 10 | Q2: 20\n地区: 华南 | Q1: 12 | Q2: 18",
+        type: "table",
+      }),
+      expect.objectContaining({
+        metadata: {
+          table: expect.objectContaining({
+            columns: ["发票号码", "开票日期", "价税合计"],
+            mode: "single-record",
+            recordCount: 1,
+            sourceRowCount: 3,
+          }),
+        },
+        text: "发票号码: 26322001 | 开票日期: 2026-08-26 | 价税合计: 566.00",
+        type: "table",
+      }),
+    ]);
+  });
+
+  it("handles empty, header-group, inferred, duplicate, and genuinely headerless tables", async () => {
+    const parser = createNativeHtmlParser({
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2ca3",
+      now: () => createdAt,
+    });
+    const artifact = await parser.parse(
+      createParseInput({
+        body: [
+          "<table></table>",
+          "<table><tr><td>orphan</td></tr></table>",
+          "<table><thead><tr><td>Alpha</td><td>Beta</td></tr></thead><tbody><tr><td>Ada</td><td>ready</td></tr></tbody></table>",
+          "<table><tr><td>Alpha</td><td>Beta</td></tr><tr><td>1</td><td>true</td></tr><tr><td>2</td><td>false</td></tr></table>",
+          "<table><tr><td>Ada</td><td>red</td></tr><tr><td>Lin</td><td>blue</td></tr></table>",
+          "<table><tr><th>Name</th><th>Name</th><th></th></tr><tr><td>Ada</td><td>Alias</td></tr></table>",
+        ].join(""),
+        filename: "edge-tables.html",
+        mimeType: "text/html",
+      }),
+    );
+
+    expect(artifact.elements.map((element) => element.text)).toEqual([
+      "column_1: orphan",
+      "Alpha: Ada | Beta: ready",
+      "Alpha: 1 | Beta: true\nAlpha: 2 | Beta: false",
+      "column_1: Ada | column_2: red\ncolumn_1: Lin | column_2: blue",
+      "Name: Ada | Name_2: Alias | column_3:",
+    ]);
+    expect(
+      artifact.elements.map(
+        (element) =>
+          (element.metadata.table as { mode?: string; sourceRowCount?: number } | undefined)?.mode,
+      ),
+    ).toEqual(["single-record", "single-record", "record-list", "record-list", "single-record"]);
+    expect(
+      (artifact.elements.at(-1)?.metadata.table as { columns?: string[] } | undefined)?.columns,
+    ).toEqual(["Name", "Name_2", "column_3"]);
+  });
+
+  it("keeps ambiguous headerless rows instead of dropping the first record", async () => {
+    const parser = createNativeHtmlParser({
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2ca4",
+      now: () => createdAt,
+    });
+    const artifact = await parser.parse(
+      createParseInput({
+        body: [
+          "<table><tr><td>Ada</td></tr><tr><td>Lin</td></tr></table>",
+          "<table><tr><td>Status</td><td>open</td></tr><tr><td>Status</td><td>closed</td></tr></table>",
+          "<table><tr><td></td><td>open</td></tr><tr><td>other</td><td>closed</td></tr></table>",
+          "<table><tr><td>Alpha</td><td>Beta</td></tr><tr><td>2026-01-01</td><td>2026-02-01</td></tr><tr><td>2026-03-01</td><td>2026-04-01</td></tr></table>",
+        ].join(""),
+        filename: "ambiguous-tables.html",
+        mimeType: "text/html",
+      }),
+    );
+
+    expect(artifact.elements.map((element) => element.text)).toEqual([
+      "column_1: Ada\ncolumn_1: Lin",
+      "column_1: Status | column_2: open\ncolumn_1: Status | column_2: closed",
+      "column_1: | column_2: open\ncolumn_1: other | column_2: closed",
+      "Alpha: 2026-01-01 | Beta: 2026-02-01\nAlpha: 2026-03-01 | Beta: 2026-04-01",
+    ]);
+    expect(
+      artifact.elements.map(
+        (element) => (element.metadata.table as { mode?: string } | undefined)?.mode,
+      ),
+    ).toEqual(["record-list", "record-list", "record-list", "record-list"]);
+  });
+
+  it("flattens multi-row headers and HTML cell spans into a stable matrix schema", async () => {
+    const parser = createNativeHtmlParser({
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2ca6",
+      now: () => createdAt,
+    });
+    const artifact = await parser.parse(
+      createParseInput({
+        body: [
+          "<table>",
+          '<tr><th rowspan="2">地区</th><th colspan="2">收入</th></tr>',
+          "<tr><th>Q1</th><th>Q2</th></tr>",
+          "<tr><td>华东</td><td>10</td><td>20</td></tr>",
+          "<tr><td>华南</td><td>12</td><td>18</td></tr>",
+          "</table>",
+        ].join(""),
+        filename: "matrix.html",
+        mimeType: "text/html",
+      }),
+    );
+
+    expect(artifact.elements).toEqual([
+      expect.objectContaining({
+        metadata: {
+          table: {
+            columns: ["地区", "收入 / Q1", "收入 / Q2"],
+            headerRowCount: 2,
+            mode: "matrix",
+            recordCount: 2,
+            semanticVersion: 1,
+            sourceRowCount: 4,
+          },
+        },
+        text: "地区: 华东 | 收入 / Q1: 10 | 收入 / Q2: 20\n地区: 华南 | 收入 / Q1: 12 | 收入 / Q2: 18",
+        type: "table",
+      }),
+    ]);
+  });
+
+  it("bounds invalid HTML row and column spans instead of expanding them", async () => {
+    const parser = createNativeHtmlParser({
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2ca8",
+      now: () => createdAt,
+    });
+    const artifact = await parser.parse(
+      createParseInput({
+        body: '<table><tr><th colspan="0" rowspan="999">Value</th></tr><tr><td>A</td></tr></table>',
+        filename: "bounded-spans.html",
+        mimeType: "text/html",
+      }),
+    );
+
+    expect(artifact.elements[0]).toMatchObject({
+      metadata: { table: { columns: ["Value"], recordCount: 1 } },
+      text: "Value: A",
+      type: "table",
+    });
   });
 
   it("bounds an HTML metadata title without adding it to body elements", async () => {
@@ -742,15 +976,26 @@ describe("parser adapters", () => {
       contentType: "structured",
       elements: [
         {
-          metadata: { columns: ["name", "score"], format: "csv", rowCount: 2 },
-          text: "name | score\nAda | 10\nLin | 9",
+          metadata: {
+            columns: ["name", "score"],
+            format: "csv",
+            rowCount: 2,
+            table: {
+              columns: ["name", "score"],
+              headerRowCount: 1,
+              mode: "record-list",
+              recordCount: 2,
+              semanticVersion: 1,
+            },
+          },
+          text: "name: Ada | score: 10\nname: Lin | score: 9",
           type: "table",
         },
       ],
       metadata: {
         filename: "scores.csv",
         mimeType: "text/csv",
-        parserVersion: "native-structured@1",
+        parserVersion: "native-structured@2",
       },
       parser: "native-structured",
     });
@@ -782,8 +1027,20 @@ describe("parser adapters", () => {
     ).resolves.toMatchObject({
       elements: [
         {
-          metadata: { columns: ["name"], format: "jsonl", rowCount: 2 },
-          text: "name\nAda\nLin",
+          metadata: {
+            columns: ["name"],
+            format: "jsonl",
+            rowCount: 2,
+            table: {
+              columns: ["name"],
+              headerRowCount: 0,
+              mode: "record-list",
+              recordCount: 2,
+              semanticVersion: 1,
+              sourceRowCount: 2,
+            },
+          },
+          text: "name: Ada\nname: Lin",
           type: "table",
         },
       ],
@@ -841,8 +1098,20 @@ describe("parser adapters", () => {
     ).resolves.toMatchObject({
       elements: [
         {
-          metadata: { columns: ["name"], format: "jsonl", rowCount: 2 },
-          text: "name\nAda\nLin",
+          metadata: {
+            columns: ["name"],
+            format: "jsonl",
+            rowCount: 2,
+            table: {
+              columns: ["name"],
+              headerRowCount: 0,
+              mode: "record-list",
+              recordCount: 2,
+              semanticVersion: 1,
+              sourceRowCount: 2,
+            },
+          },
+          text: "name: Ada\nname: Lin",
           type: "table",
         },
       ],
@@ -1049,7 +1318,7 @@ describe("parser adapters", () => {
       metadata: {
         filename: "report.pdf",
         mimeType: "application/pdf",
-        parserVersion: "unstructured@6",
+        parserVersion: "unstructured@7",
       },
       parser: "unstructured",
       version: 1,
@@ -1097,16 +1366,124 @@ describe("parser adapters", () => {
       {
         id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c50:element-4",
         metadata: {
-          table: { html: "<table><tr><td>ARR</td></tr></table>" },
+          table: {
+            columns: ["column_1"],
+            headerRowCount: 0,
+            html: "<table><tr><td>ARR</td></tr></table>",
+            mode: "single-record",
+            recordCount: 1,
+            semanticVersion: 1,
+            sourceRowCount: 1,
+          },
           textAsHtml: "<table><tr><td>ARR</td></tr></table>",
           unstructuredType: "Table",
         },
         pageNumber: 3,
         sectionPath: ["Executive Summary"],
-        text: "ARR",
+        text: "column_1: ARR",
         type: "table",
       },
     ]);
+  });
+
+  it("projects an Unstructured spreadsheet table into independently retrievable records", async () => {
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async () =>
+        new Response(
+          JSON.stringify([
+            {
+              metadata: {
+                page_name: "问题收集",
+                text_as_html:
+                  "<table><tr><td>时间</td><td>问题描述</td><td>报错详情（截图等）</td><td>问题严重等级</td><td>是否解决</td><td>解决时间</td><td>解决办法</td></tr><tr><td>2026-07-01</td><td>复制按钮无法点击</td><td>Web 地址</td><td>P3</td><td>是</td><td>2026-07-02</td><td>升级版本</td></tr><tr><td>2026-07-08</td><td>服务器日期不对</td><td></td><td>P3</td><td>是</td><td>2026-07-09</td><td>调整时区</td></tr></table>",
+              },
+              text: "flattened provider text is not used",
+              type: "Table",
+            },
+          ]),
+          { headers: { "content-type": "application/json" }, status: 200 },
+        ),
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2ca2",
+      now: () => createdAt,
+    });
+
+    const artifact = await parser.parse({
+      body: new Uint8Array([1, 2, 3]),
+      documentAssetId,
+      filename: "issues.xlsx",
+      mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      version: 1,
+    });
+
+    expect(artifact.elements).toHaveLength(1);
+    expect(artifact.elements[0]).toMatchObject({
+      metadata: {
+        page_name: "问题收集",
+        table: {
+          columns: [
+            "时间",
+            "问题描述",
+            "报错详情（截图等）",
+            "问题严重等级",
+            "是否解决",
+            "解决时间",
+            "解决办法",
+          ],
+          headerRowCount: 1,
+          mode: "record-list",
+          recordCount: 2,
+          semanticVersion: 1,
+          sourceRowCount: 3,
+        },
+      },
+      text: expect.stringContaining("时间: 2026-07-01 | 问题描述: 复制按钮无法点击"),
+      type: "table",
+    });
+    expect(artifact.elements[0]?.text?.split("\n")).toHaveLength(2);
+  });
+
+  it("keeps worksheets as separate table elements with their own record schemas", async () => {
+    const table = (sheet: string, value: string) => ({
+      metadata: {
+        page_name: sheet,
+        text_as_html: `<table><tr><th>sheet</th><th>value</th></tr><tr><td>${sheet}</td><td>${value}</td></tr></table>`,
+      },
+      text: `${sheet} ${value}`,
+      type: "Table",
+    });
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async () =>
+        new Response(JSON.stringify([table("问题收集", "7"), table("归档", "12")]), {
+          headers: { "content-type": "application/json" },
+          status: 200,
+        }),
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2ca7",
+      now: () => createdAt,
+    });
+    const artifact = await parser.parse({
+      body: new Uint8Array([1, 2, 3]),
+      documentAssetId,
+      filename: "multi-sheet.xlsx",
+      mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      version: 1,
+    });
+
+    expect(artifact.elements.map((element) => element.metadata.page_name)).toEqual([
+      "问题收集",
+      "归档",
+    ]);
+    expect(artifact.elements.map((element) => element.text)).toEqual([
+      "sheet: 问题收集 | value: 7",
+      "sheet: 归档 | value: 12",
+    ]);
+    expect(
+      artifact.elements.every(
+        (element) =>
+          (element.metadata.table as { recordCount?: number } | undefined)?.recordCount === 1,
+      ),
+    ).toBe(true);
   });
 
   it.each(["application/pdf", " Application/PDF; charset=binary "])(
@@ -1138,7 +1515,7 @@ describe("parser adapters", () => {
           version: 1,
         }),
       ).resolves.toMatchObject({
-        metadata: { parserVersion: "unstructured@6" },
+        metadata: { parserVersion: "unstructured@7" },
         parser: "unstructured",
       });
     },
@@ -2426,8 +2803,42 @@ describe("structured data parser coverage", () => {
 
     const table = artifact.elements[0];
     expect(table?.type).toBe("table");
-    expect(table?.text).toContain("name | count | flag | nested | empty | extra");
-    expect(table?.text).toContain('a | 1 | true | {"x":1} |  | ');
+    expect(table?.metadata).toMatchObject({
+      table: {
+        columns: ["name", "count", "flag", "nested", "empty", "extra"],
+        headerRowCount: 0,
+        mode: "record-list",
+        recordCount: 2,
+        semanticVersion: 1,
+      },
+    });
+    expect(table?.text).toContain(
+      'name: a | count: 1 | flag: true | nested: {"x":1} | empty:  | extra: ',
+    );
+    expect(table?.text).toContain("name: b | count:  | flag:  | nested:  | empty:  | extra: y");
+  });
+
+  it("keeps quoted CSV newlines and delimiters inside their logical record", async () => {
+    const artifact = await structured().parse(
+      createParseInput({
+        body: 'id,description\n1,"first line\nsecond line"\n2,"contains, comma"',
+        filename: "quoted.csv",
+        mimeType: "text/csv",
+      }),
+    );
+
+    expect(artifact.elements[0]).toMatchObject({
+      metadata: {
+        table: {
+          columns: ["id", "description"],
+          mode: "record-list",
+          recordCount: 2,
+          sourceRowCount: 3,
+        },
+      },
+      text: "id: 1 | description: first line second line\nid: 2 | description: contains, comma",
+      type: "table",
+    });
   });
 
   it("renders non-tabular JSON as a code element with root type metadata", async () => {

@@ -275,6 +275,10 @@ test("Dify compose starts the integrated KnowledgeFS API by default and keeps it
     }
   }
   assert.match(difyApiEnv, /^KNOWLEDGE_FS_ENABLED=\$\{KNOWLEDGE_FS_ENABLED:-false\}$/m);
+  assert.match(
+    difyApiEnv,
+    /^KNOWLEDGE_FS_COMMUNITY_DEV_ENABLED=\$\{KNOWLEDGE_FS_COMMUNITY_DEV_ENABLED:-false\}$/m,
+  );
 });
 
 test("Dify Compose whitelists root PDF overrides without shadowing service values when unset", () => {

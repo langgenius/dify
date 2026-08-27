@@ -5,7 +5,12 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from configs.extra.knowledge_fs_config import KnowledgeFSConfig
+from configs.extra.knowledge_fs_config import KnowledgeFSConfig as _KnowledgeFSConfig
+from tests.unit_tests.configs._isolated_settings import InitSettingsOnly
+
+
+class KnowledgeFSConfig(InitSettingsOnly, _KnowledgeFSConfig):
+    """KnowledgeFS settings isolated from the developer's local environment."""
 
 
 class _DeployedKnowledgeFSConfig(KnowledgeFSConfig):
@@ -15,6 +20,7 @@ class _DeployedKnowledgeFSConfig(KnowledgeFSConfig):
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
 _KNOWLEDGE_FS_DOCKER_VARIABLES = (
     "KNOWLEDGE_FS_ENABLED",
+    "KNOWLEDGE_FS_COMMUNITY_DEV_ENABLED",
     "KNOWLEDGE_FS_BASE_URL",
     "KNOWLEDGE_FS_LIFECYCLE_WORKER_ENABLED",
     "KNOWLEDGE_FS_INTEGRATED_PROVISION_READY",
@@ -63,6 +69,7 @@ def test_knowledge_fs_config_treats_blank_connection_as_disabled() -> None:
 def test_knowledge_fs_lifecycle_worker_is_disabled_by_default() -> None:
     config = KnowledgeFSConfig()
 
+    assert config.KNOWLEDGE_FS_COMMUNITY_DEV_ENABLED is False
     assert config.KNOWLEDGE_FS_LIFECYCLE_WORKER_ENABLED is False
     assert config.KNOWLEDGE_FS_INTEGRATED_PROVISION_READY is False
     assert config.KNOWLEDGE_FS_LEGACY_ACL_FREEZE_READY is False

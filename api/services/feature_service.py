@@ -182,7 +182,10 @@ class FeatureService:
         system_features.enable_step_by_step_tour = dify_config.ENABLE_STEP_BY_STEP_TOUR
         knowledge_fs_enabled = bool(
             dify_config.KNOWLEDGE_FS_ENABLED
-            and dify_config.DEPLOYMENT_EDITION in {DeploymentEdition.CLOUD, DeploymentEdition.ENTERPRISE}
+            and (
+                dify_config.DEPLOYMENT_EDITION in {DeploymentEdition.CLOUD, DeploymentEdition.ENTERPRISE}
+                or dify_config.KNOWLEDGE_FS_COMMUNITY_DEV_ENABLED
+            )
         )
         system_features.knowledge_fs_enabled = knowledge_fs_enabled
         system_features.knowledge_fs_upload_enabled = bool(
