@@ -1,4 +1,4 @@
-[data-dify-scroll-area-root]::after {
+[data-dify-scroll-area]::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -8,7 +8,7 @@
   pointer-events: none;
 }
 
-[data-dify-scroll-area-root]:has(> [data-dify-scroll-area-viewport]:focus-visible)::after {
+[data-dify-scroll-area]:has(> [data-dify-scroll-area-viewport]:focus-visible)::after {
   border-width: 2px;
   border-color: var(--color-state-accent-solid);
 }

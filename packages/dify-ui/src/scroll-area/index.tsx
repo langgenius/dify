@@ -9,11 +9,7 @@ type ScrollAreaProps = Omit<BaseScrollArea.Root.Props, 'className'> & {
 
 function ScrollArea({ className, ...props }: ScrollAreaProps) {
   return (
-    <BaseScrollArea.Root
-      {...props}
-      data-dify-scroll-area-root=""
-      className={cn('isolate', className)}
-    />
+    <BaseScrollArea.Root {...props} data-dify-scroll-area="" className={cn('isolate', className)} />
   )
 }
 

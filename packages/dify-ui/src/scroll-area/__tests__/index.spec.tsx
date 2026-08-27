@@ -88,7 +88,7 @@ describe('scroll area', () => {
       await expect.element(screen.getByTestId('scroll-area-viewport')).toBeInTheDocument()
       await expect
         .element(screen.getByTestId('scroll-area-root'))
-        .toHaveAttribute('data-dify-scroll-area-root')
+        .toHaveAttribute('data-dify-scroll-area')
       await expect
         .element(screen.getByTestId('scroll-area-viewport'))
         .toHaveAttribute('data-dify-scroll-area-viewport')
