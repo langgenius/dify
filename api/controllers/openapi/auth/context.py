@@ -1,8 +1,7 @@
 """The lazy per-request auth context.
 
-`Context` replaces the `AuthData` bag's two-phase prepare/auth dance: each
-fetching accessor is a `cached_property`, so first access resolves and caches,
-later access is free, and nothing is fetched until something asks for it.
+Every fetching accessor is a `cached_property`, so first access resolves and
+caches, later access is free, and nothing is fetched until something asks for it.
 Accessors raise on failure instead of leaving an `Optional` for a caller to
 misread as "not yet loaded".
 
