@@ -46,7 +46,7 @@ from libs.device_flow_security import (
     mint_approval_grant,
     verify_approval_grant,
 )
-from libs.oauth_bearer import MINTABLE_PROFILES, SubjectType
+from libs.oauth_bearer import SubjectType
 from libs.rate_limit import (
     LIMIT_APPROVE_EXT_PER_EMAIL,
     LIMIT_SSO_INITIATE_PER_IP,
@@ -281,12 +281,11 @@ def approve_external():
     if not consume_approval_grant_nonce(redis_client, claims.nonce):
         raise Unauthorized("session_already_consumed")
 
-    profile = MINTABLE_PROFILES[SubjectType.EXTERNAL_SSO]
     try:
         validate_mint_policy(
-            subject_type=profile.subject_type,
-            prefix=profile.prefix,
-            scopes=profile.scopes,
+            subject_type=SubjectType.EXTERNAL_SSO,
+            prefix=SubjectType.EXTERNAL_SSO.prefix,
+            scopes=SubjectType.EXTERNAL_SSO.scopes,
         )
     except MintPolicyViolation as e:
         raise BadRequest(description=str(e)) from None
@@ -299,7 +298,7 @@ def approve_external():
         account_id=None,
         client_id=state.client_id,
         device_label=state.device_label,
-        prefix=profile.prefix,
+        prefix=SubjectType.EXTERNAL_SSO.prefix,
         ttl_days=ttl_days,
         session=db.session(),
     )
