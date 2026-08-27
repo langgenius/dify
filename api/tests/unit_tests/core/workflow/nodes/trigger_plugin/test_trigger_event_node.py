@@ -4,9 +4,8 @@ from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from core.workflow.nodes.trigger_plugin.trigger_event_node import TriggerEventNode
 from core.workflow.system_variables import build_system_variables
-from graphon.entities import InitParams
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from graphon.runtime import RuntimeState
+from graphon.runtime import InitParams, RuntimeState
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
 
 
@@ -46,8 +45,8 @@ def test_trigger_event_node_run_populates_trigger_info_metadata() -> None:
     node = TriggerEventNode(
         node_id="node-1",
         data=_build_node_data(),
-        graph_init_params=init_params,
-        graph_runtime_state=runtime_state,
+        init_params=init_params,
+        runtime_state=runtime_state,
     )
 
     result = node._run()

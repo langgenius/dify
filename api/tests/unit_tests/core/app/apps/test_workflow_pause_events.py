@@ -132,7 +132,7 @@ def test_graph_run_paused_event_emits_queue_pause_event(monkeypatch: pytest.Monk
     )
     event = GraphRunPausedEvent(reasons=[graph_reason], outputs={"foo": "bar"})
     workflow_entry = SimpleNamespace(
-        graph_engine=SimpleNamespace(graph_runtime_state=_FakeRuntimeState()),
+        graph_engine=SimpleNamespace(runtime_state=_FakeRuntimeState()),
     )
 
     enriched_reason = HumanInputRequired(

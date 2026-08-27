@@ -441,7 +441,7 @@ class WorkflowPersistenceLayer(Layer):
     def _populate_completion_statistics(self, execution: WorkflowExecution, *, update_finished: bool = True) -> None:
         if update_finished:
             execution.finished_at = naive_utc_now()
-        runtime_state = self.graph_runtime_state
+        runtime_state = self.runtime_state
         execution.total_tokens = runtime_state.total_tokens
         execution.total_steps = runtime_state.node_run_steps
         execution.outputs = execution.outputs or runtime_state.outputs
@@ -527,5 +527,5 @@ class WorkflowPersistenceLayer(Layer):
         self._trace_manager.add_trace_task(trace_task)
 
     def _system_variables(self) -> Mapping[str, Any]:
-        runtime_state = self.graph_runtime_state
+        runtime_state = self.runtime_state
         return runtime_state.variable_pool.get_by_prefix(SYSTEM_VARIABLE_NODE_ID)

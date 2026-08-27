@@ -175,8 +175,8 @@ def _build_graph(runtime_state: RuntimeState, repo: HumanInputFormRepository) ->
     start_node = StartNode(
         node_id=start_config["id"],
         data=StartNodeData(title="Start", variables=[]),
-        graph_init_params=graph_init_params,
-        graph_runtime_state=runtime_state,
+        init_params=graph_init_params,
+        runtime_state=runtime_state,
     )
 
     human_data = HumanInputNodeData(
@@ -204,8 +204,8 @@ def _build_graph(runtime_state: RuntimeState, repo: HumanInputFormRepository) ->
     human_a = HumanInputNode(
         node_id=human_a_config["id"],
         data=human_data,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=runtime_state,
+        init_params=graph_init_params,
+        runtime_state=runtime_state,
         hitl_callback=human_a_callback,
     )
 
@@ -220,8 +220,8 @@ def _build_graph(runtime_state: RuntimeState, repo: HumanInputFormRepository) ->
     human_b = HumanInputNode(
         node_id=human_b_config["id"],
         data=human_data,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=runtime_state,
+        init_params=graph_init_params,
+        runtime_state=runtime_state,
         hitl_callback=human_b_callback,
     )
 
@@ -241,8 +241,8 @@ def _build_graph(runtime_state: RuntimeState, repo: HumanInputFormRepository) ->
     end_node = EndNode(
         node_id=end_config["id"],
         data=end_data,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=runtime_state,
+        init_params=graph_init_params,
+        runtime_state=runtime_state,
     )
 
     builder = (
@@ -258,7 +258,7 @@ def _build_graph(runtime_state: RuntimeState, repo: HumanInputFormRepository) ->
 def _run_graph(graph: Graph, runtime_state: RuntimeState) -> list[object]:
     engine = Engine(
         graph=graph,
-        graph_runtime_state=runtime_state,
+        runtime_state=runtime_state,
         command_channel=InMemoryChannel(),
         workers=2,
     )
