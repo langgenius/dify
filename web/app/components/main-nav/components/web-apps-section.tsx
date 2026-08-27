@@ -29,7 +29,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { keepPreviousData, useInfiniteQuery, useMutation } from '@tanstack/react-query'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useAtomValue } from 'jotai'
-import { Fragment, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
@@ -47,9 +47,6 @@ const emptyInstalledApps: InstalledAppResponse[] = []
 const appNavItemHeight = 32
 const appNavItemGap = 2
 const appNavSeparatorHeight = 17
-// Below this many rows the list is cheap enough to render in full, and plain flow
-// layout keeps the markup simpler than absolutely positioned virtual rows.
-const virtualizationThreshold = 50
 
 const getPreloadDistance = (scrollContainer: Element) =>
   Math.max(160, Math.min(scrollContainer.clientHeight * 0.25, 320))
@@ -114,7 +111,6 @@ const WebAppsSectionContent = () => {
       return rows
     })
   }, [installedApps])
-  const shouldVirtualize = webAppRows.length > virtualizationThreshold
 
   const rowVirtualizer = useVirtualizer({
     count: webAppRows.length,
@@ -273,14 +269,7 @@ const WebAppsSectionContent = () => {
                   {t(($) => $['mainNav.webApps.noResults'], { ns: 'common' })}
                 </div>
               )}
-              {webAppRows.length > 0 && !shouldVirtualize && (
-                <div className="space-y-0.5 pb-2">
-                  {webAppRows.map((row) => (
-                    <Fragment key={row.key}>{renderRow(row)}</Fragment>
-                  ))}
-                </div>
-              )}
-              {shouldVirtualize && (
+              {webAppRows.length > 0 && (
                 <div
                   className="relative w-full"
                   style={{ height: `${rowVirtualizer.getTotalSize()}px` }}

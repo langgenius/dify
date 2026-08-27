@@ -1373,25 +1373,17 @@ describe('MainNav', () => {
     expect(screen.queryByText('common.mainNav.workspace.inviteMembers')).not.toBeInTheDocument()
   })
 
-  const createInstalledAppList = (count: number) =>
+  const createInstalledAppList = (count: number, pinnedCount = 0) =>
     Array.from({ length: count }, (_, index) =>
       createInstalledApp({
         id: `installed-${index}`,
+        is_pinned: index < pinnedCount,
         app: { ...createInstalledApp().app, id: `app-${index}`, name: `App ${index}` },
       }),
     )
 
-  it('renders the installed web app list in flow layout below the virtualization threshold', async () => {
-    mockInstalledApps = createInstalledAppList(50)
-
-    renderMainNav()
-
-    const firstRow = await screen.findByText('App 0')
-    expect(firstRow.closest('div.absolute')).toBeNull()
-  })
-
-  it('virtualizes the installed web app list above the virtualization threshold', async () => {
-    mockInstalledApps = createInstalledAppList(51)
+  it('virtualizes the installed web app list', async () => {
+    mockInstalledApps = createInstalledAppList(3)
 
     renderMainNav()
 
@@ -1399,10 +1391,21 @@ describe('MainNav', () => {
     const virtualRow = firstRow.closest('div.absolute')
     expect(virtualRow).not.toBeNull()
 
-    // Rows are absolutely positioned inside a container sized to the full list, so
-    // off-screen entries stay out of the layout and paint path.
-    const virtualContainer = virtualRow!.parentElement
-    expect(virtualContainer).toHaveStyle({ height: '1632px' })
+    // Rows are absolutely positioned inside a container sized to the whole list, so
+    // entries outside the viewport stay out of the layout and paint path.
+    expect(virtualRow!.parentElement).toHaveStyle({ height: '96px' })
+  })
+
+  it('measures the pinned separator as its own virtual row', async () => {
+    mockInstalledApps = createInstalledAppList(4, 2)
+
+    renderMainNav()
+
+    const firstRow = await screen.findByText('App 0')
+    expect(screen.getByTestId('divider')).toBeInTheDocument()
+
+    // Four app rows at 32px plus one 17px separator row.
+    expect(firstRow.closest('div.absolute')!.parentElement).toHaveStyle({ height: '145px' })
   })
 
   it('searches installed web apps and renders the matching navigation link', async () => {
