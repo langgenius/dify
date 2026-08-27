@@ -226,6 +226,47 @@ describe('MarketplaceSearchAutocomplete', () => {
     expect(handleSubmit).toHaveBeenCalledOnce()
   })
 
+  it('keeps keyboard selection working for the highlighted suggestion', async () => {
+    mockPluginSearch.mockResolvedValue({
+      data: {
+        plugins: [
+          {
+            type: 'plugin',
+            org: 'langgenius',
+            name: 'google-search',
+            label: { en_US: 'Google Search' },
+            brief: { en_US: 'Search the web from your workflow.' },
+            category: 'tool',
+          },
+        ],
+        total: 1,
+      },
+    })
+    const user = userEvent.setup()
+    const handleSubmit = vi.fn((event: Event) => {
+      event.preventDefault()
+    })
+
+    const { container } = render(
+      <MarketplaceSearchForm
+        action="/plugins"
+        locale="en-US"
+        placeholder="Search plugins"
+        query=""
+        scope="plugins"
+      />,
+      { wrapper: Wrapper },
+    )
+
+    container.querySelector('form')?.addEventListener('submit', handleSubmit)
+
+    await user.type(screen.getByRole('combobox'), 'google')
+    expect(await screen.findByText('Google Search')).toBeInTheDocument()
+    await user.keyboard('{ArrowDown}{Enter}')
+
+    expect(handleSubmit).toHaveBeenCalledOnce()
+  })
+
   it('hands the selected plugin back to a creator-profile owner without submitting', async () => {
     mockPluginSearch.mockResolvedValue({
       data: {

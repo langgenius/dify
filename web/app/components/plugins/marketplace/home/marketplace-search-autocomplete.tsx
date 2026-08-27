@@ -8,7 +8,6 @@ import {
   AutocompleteInput,
   AutocompleteInputGroup,
   AutocompleteItem,
-  AutocompleteItemIndicator,
   AutocompleteItemText,
   AutocompleteList,
   AutocompletePortal,
@@ -281,7 +280,6 @@ export function MarketplaceSearchAutocomplete({
                         </span>
                       )}
                     </span>
-                    <AutocompleteItemIndicator />
                   </AutocompleteItem>
                 )}
               </AutocompleteList>

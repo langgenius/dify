@@ -234,4 +234,60 @@ describe('Marketplace search autocomplete layout', () => {
       panel.getBoundingClientRect().bottom - lastItem.getBoundingClientRect().bottom,
     ).toBeCloseTo(9)
   })
+
+  it('keeps result rows fully clickable without a persistent trailing arrow', async () => {
+    await page.viewport(390, 844)
+    mockTemplateSearch.mockResolvedValue({
+      data: {
+        templates: [
+          {
+            id: 'template-1',
+            template_name: 'Legal Research Agent',
+            overview: 'Research legal questions with cited sources.',
+            publisher_handle: 'dify',
+            usage_count: 120,
+            categories: ['knowledge'],
+            icon: '📄',
+            icon_background: '#FFFFFF',
+            icon_file_key: '',
+          },
+        ],
+        total: 1,
+      },
+    })
+
+    const screen = await render(
+      <Wrapper>
+        <div className="w-full px-4">
+          <StickyTemplateSearch />
+        </div>
+      </Wrapper>,
+    )
+
+    await screen.getByRole('combobox', { name: 'Search templates' }).fill('legal')
+    const result = screen.getByRole('option', { name: /Legal Research Agent/ })
+    await expect.element(result).toBeVisible()
+
+    const resultElement = result.element()
+    const resultRect = resultElement.getBoundingClientRect()
+    const label = screen.getByText('Legal Research Agent').element()
+    const labelRectBeforeHover = label.getBoundingClientRect()
+    const trailingVisuals = Array.from(
+      resultElement.querySelectorAll<HTMLElement>('[aria-hidden="true"]'),
+    ).filter((element) => {
+      const rect = element.getBoundingClientRect()
+      return rect.width > 0 && rect.left >= resultRect.right - 40
+    })
+
+    expect(trailingVisuals).toHaveLength(0)
+    expect(getComputedStyle(resultElement).cursor).toBe('pointer')
+
+    const backgroundBeforeHover = getComputedStyle(resultElement).backgroundColor
+    await result.hover()
+    const labelRectAfterHover = label.getBoundingClientRect()
+
+    expect(getComputedStyle(resultElement).backgroundColor).not.toBe(backgroundBeforeHover)
+    expect(labelRectAfterHover.left).toBeCloseTo(labelRectBeforeHover.left)
+    expect(labelRectAfterHover.width).toBeCloseTo(labelRectBeforeHover.width)
+  })
 })
