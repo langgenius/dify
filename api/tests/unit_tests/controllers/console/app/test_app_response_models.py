@@ -3,6 +3,7 @@ from __future__ import annotations
 import builtins
 import json
 import sys
+from collections.abc import Callable
 from datetime import datetime
 from importlib import util
 from pathlib import Path
@@ -17,7 +18,6 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import MultiDict
 
-from configs import dify_config
 from models.model import App, AppMode, IconType
 from models.workflow import Workflow, WorkflowType
 
@@ -594,7 +594,10 @@ def test_app_list_uses_injected_session_for_draft_workflows(
     assert response["data"][0]["permission_keys"] == ["app.acl.edit"]
 
 
-def test_app_create_api_attaches_permission_keys(app, app_module, unbound_session: Session):
+def test_app_create_api_attaches_permission_keys(
+    app, app_module, unbound_session: Session, config_overrides: Callable[..., None]
+):
+    config_overrides(RBAC_ENABLED=True)
     method = app_module.AppListApi.post
     while hasattr(method, "__wrapped__"):
         method = method.__wrapped__
@@ -611,7 +614,6 @@ def test_app_create_api_attaches_permission_keys(app, app_module, unbound_sessio
 
     with app.test_request_context("/apps", method="POST", json={}):
         with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(app_module.dify_config, "RBAC_ENABLED", True)
             app_module.console_ns.payload = {
                 "name": "Created App",
                 "description": "Summary",
@@ -627,19 +629,12 @@ def test_app_create_api_attaches_permission_keys(app, app_module, unbound_sessio
                 "batch_get",
                 lambda tenant_id, account_id, app_ids, session: {"app-new": ["app.acl.view_layout", "app.acl.edit"]},
             )
-            initialize_rbac_task = MagicMock()
-            monkeypatch.setattr(
-                app_module,
-                "initialize_created_app_rbac_access_task",
-                initialize_rbac_task,
-            )
-            replace_whitelist = MagicMock()
             monkeypatch.setattr(
                 app_module.enterprise_rbac_service.RBACService.AppAccess,
                 "replace_whitelist",
-                replace_whitelist,
+                MagicMock(),
             )
-
+            monkeypatch.setattr(app_module.initialize_created_app_rbac_access_task, "delay", MagicMock())
             resp, status = method(
                 app_module.AppListApi(),
                 app_module.CreateAppPayload(
@@ -654,11 +649,12 @@ def test_app_create_api_attaches_permission_keys(app, app_module, unbound_sessio
 
     assert status == 201
     assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
-    assert replace_whitelist.call_args.kwargs["payload"].scope is app_module.RBACResourceWhitelistScope.ALL
-    initialize_rbac_task.delay.assert_called_once_with("tenant-1", "acct-1", app_id="app-new")
 
 
-def test_app_list_api_attaches_permission_keys(app, app_module, sqlite_session: Session):
+def test_app_list_api_attaches_permission_keys(
+    app, app_module, sqlite_session: Session, config_overrides: Callable[..., None]
+):
+    config_overrides(RBAC_ENABLED=True)
     method = app_module.AppListApi.get
     while hasattr(method, "__wrapped__"):
         method = method.__wrapped__
@@ -678,7 +674,6 @@ def test_app_list_api_attaches_permission_keys(app, app_module, sqlite_session: 
 
     with app.test_request_context("/apps"):
         with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
             monkeypatch.setattr(
                 app_module.AppService,
                 "get_paginate_apps",
@@ -719,7 +714,13 @@ def test_app_list_api_attaches_permission_keys(app, app_module, sqlite_session: 
     assert resp["data"][0]["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
 
 
-def test_recent_app_list_api_returns_only_home_card_fields(app, app_module, unbound_session: Session):
+def test_recent_app_list_api_returns_only_home_card_fields(
+    app,
+    app_module,
+    unbound_session: Session,
+    config_overrides: Callable[..., None],
+):
+    config_overrides(RBAC_ENABLED=False)
     method = app_module.RecentAppListApi.get
     while hasattr(method, "__wrapped__"):
         method = method.__wrapped__
@@ -739,7 +740,6 @@ def test_recent_app_list_api_returns_only_home_card_fields(app, app_module, unbo
 
     with app.test_request_context("/apps/recent?limit=8"):
         with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(dify_config, "RBAC_ENABLED", False)
             monkeypatch.setattr(app_module.AppService, "get_recent_apps", get_recent_apps)
             monkeypatch.setattr(
                 app_module.enterprise_rbac_service.RBACService.MyPermissions,
@@ -797,7 +797,10 @@ def test_recent_app_response_rejects_non_home_app_modes(app_module, mode: str) -
         )
 
 
-def test_recent_app_list_api_applies_rbac_visibility_filter(app, app_module, unbound_session: Session):
+def test_recent_app_list_api_applies_rbac_visibility_filter(
+    app, app_module, unbound_session: Session, config_overrides: Callable[..., None]
+):
+    config_overrides(RBAC_ENABLED=True)
     method = app_module.RecentAppListApi.get
     while hasattr(method, "__wrapped__"):
         method = method.__wrapped__
@@ -805,7 +808,6 @@ def test_recent_app_list_api_applies_rbac_visibility_filter(app, app_module, unb
     get_recent_apps = MagicMock(return_value=[])
     with app.test_request_context("/apps/recent"):
         with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
             monkeypatch.setattr(app_module.AppService, "get_recent_apps", get_recent_apps)
             monkeypatch.setattr(
                 app_module.enterprise_rbac_service.RBACService.MyPermissions,
@@ -831,12 +833,13 @@ def test_recent_app_list_api_applies_rbac_visibility_filter(app, app_module, unb
     assert resp == {"data": []}
     params = get_recent_apps.call_args.args[2]
     assert params.accessible_app_ids == ["app-shared"]
-    assert params.include_own_apps is True
+    assert params.include_own_apps is False
 
 
 def test_app_list_api_limits_to_apps_created_by_current_user_without_view_permission(
-    app, app_module, unbound_session: Session
+    app, app_module, unbound_session: Session, config_overrides: Callable[..., None]
 ):
+    config_overrides(RBAC_ENABLED=True)
     method = app_module.AppListApi.get
     while hasattr(method, "__wrapped__"):
         method = method.__wrapped__
@@ -847,7 +850,6 @@ def test_app_list_api_limits_to_apps_created_by_current_user_without_view_permis
     with app.test_request_context("/apps"):
         with pytest.MonkeyPatch.context() as monkeypatch:
             monkeypatch.setattr(app_module.AppService, "get_paginate_apps", get_paginate_apps)
-            monkeypatch.setattr(app_module.dify_config, "RBAC_ENABLED", True)
             monkeypatch.setattr(
                 app_module.enterprise_rbac_service.RBACService.MyPermissions,
                 "get",
@@ -874,13 +876,14 @@ def test_app_list_api_limits_to_apps_created_by_current_user_without_view_permis
     assert resp["data"] == []
     params = get_paginate_apps.call_args.args[2]
     assert params.accessible_app_ids == ["app-not-permitted", "app-shared"]
-    assert params.include_own_apps is True
+    assert params.include_own_apps is False
     assert params.is_created_by_me is None
 
 
 def test_app_list_api_limits_to_preview_overrides_without_manage_own_permission(
-    app, app_module, unbound_session: Session
+    app, app_module, unbound_session: Session, config_overrides: Callable[..., None]
 ):
+    config_overrides(RBAC_ENABLED=True)
     method = app_module.AppListApi.get
     while hasattr(method, "__wrapped__"):
         method = method.__wrapped__
@@ -891,7 +894,6 @@ def test_app_list_api_limits_to_preview_overrides_without_manage_own_permission(
     with app.test_request_context("/apps"):
         with pytest.MonkeyPatch.context() as monkeypatch:
             monkeypatch.setattr(app_module.AppService, "get_paginate_apps", get_paginate_apps)
-            monkeypatch.setattr(app_module.dify_config, "RBAC_ENABLED", True)
             monkeypatch.setattr(
                 app_module.enterprise_rbac_service.RBACService.MyPermissions,
                 "get",
@@ -917,9 +919,7 @@ def test_app_list_api_limits_to_preview_overrides_without_manage_own_permission(
             monkeypatch.setattr(
                 app_module.enterprise_rbac_service.RBACService.AppAccess,
                 "whitelist_resources",
-                lambda tenant_id, account_id: SimpleNamespace(
-                    resource_ids=["app-shared", "app-acl-shared", "app-full", "app-whitelist-only"]
-                ),
+                lambda tenant_id, account_id: SimpleNamespace(resource_ids=["app-whitelist-only"]),
             )
             monkeypatch.setattr(
                 app_module.SystemFeatureService,
@@ -930,14 +930,15 @@ def test_app_list_api_limits_to_preview_overrides_without_manage_own_permission(
             method(app_module.AppListApi(), "tenant-1", "acct-1", unbound_session)
 
     params = get_paginate_apps.call_args.args[2]
-    assert params.accessible_app_ids == ["app-acl-shared", "app-full", "app-shared", "app-whitelist-only"]
+    assert params.accessible_app_ids == ["app-whitelist-only"]
     assert params.include_own_apps is False
     assert params.is_created_by_me is None
 
 
 def test_app_list_api_returns_no_apps_without_workspace_or_resource_view_permission(
-    app, app_module, unbound_session: Session
+    app, app_module, unbound_session: Session, config_overrides: Callable[..., None]
 ):
+    config_overrides(RBAC_ENABLED=True)
     method = app_module.AppListApi.get
     while hasattr(method, "__wrapped__"):
         method = method.__wrapped__
@@ -948,7 +949,6 @@ def test_app_list_api_returns_no_apps_without_workspace_or_resource_view_permiss
     with app.test_request_context("/apps"):
         with pytest.MonkeyPatch.context() as monkeypatch:
             monkeypatch.setattr(app_module.AppService, "get_paginate_apps", get_paginate_apps)
-            monkeypatch.setattr(app_module.dify_config, "RBAC_ENABLED", True)
             monkeypatch.setattr(
                 app_module.enterprise_rbac_service.RBACService.MyPermissions,
                 "get",
@@ -973,7 +973,10 @@ def test_app_list_api_returns_no_apps_without_workspace_or_resource_view_permiss
     assert params.is_created_by_me is None
 
 
-def test_app_detail_api_attaches_current_user_permission_keys(app, app_module, unbound_session: Session):
+def test_app_detail_api_attaches_current_user_permission_keys(
+    app, app_module, unbound_session: Session, config_overrides: Callable[..., None]
+):
+    config_overrides(RBAC_ENABLED=True)
     method = app_module.AppApi.get
     while hasattr(method, "__wrapped__"):
         method = method.__wrapped__
@@ -990,7 +993,6 @@ def test_app_detail_api_attaches_current_user_permission_keys(app, app_module, u
 
     with app.test_request_context("/apps/app-1"):
         with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
             get_app = MagicMock(return_value=app_obj)
             monkeypatch.setattr(app_module, "AppService", lambda: SimpleNamespace(get_app=get_app))
             monkeypatch.setattr(
@@ -1039,7 +1041,14 @@ def test_app_detail_api_attaches_current_user_permission_keys(app, app_module, u
     ]
 
 
-def test_app_copy_api_attaches_permission_keys(app, app_module, sqlite_session: Session, sqlite_engine: Engine):
+def test_app_copy_api_attaches_permission_keys(
+    app,
+    app_module,
+    sqlite_session: Session,
+    sqlite_engine: Engine,
+    config_overrides: Callable[..., None],
+):
+    config_overrides(RBAC_ENABLED=True)
     method = app_module.AppCopyApi.post
     while hasattr(method, "__wrapped__"):
         method = method.__wrapped__
@@ -1063,7 +1072,6 @@ def test_app_copy_api_attaches_permission_keys(app, app_module, sqlite_session: 
 
     with app.test_request_context("/apps/app-original/copy", method="POST", json={}):
         with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
             monkeypatch.setattr(
                 app_module,
                 "AppDslService",

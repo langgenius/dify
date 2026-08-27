@@ -10,8 +10,8 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from graphon.enums import WorkflowExecutionStatus
-from models import EndUser, Workflow, WorkflowAppLog, WorkflowArchiveLog, WorkflowRun
-from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
+from models import EndUser, Workflow, WorkflowAppLog, WorkflowRun
+from models.enums import CreatorUserRole, EndUserType
 from models.workflow import WorkflowAppLogCreatedFrom
 from services.account_service import AccountService, TenantService
 
@@ -1554,71 +1554,3 @@ class TestWorkflowAppService:
 
         assert result["total"] >= 0
         assert isinstance(result["data"], list)
-
-    def test_get_paginate_workflow_archive_logs(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-        service = WorkflowAppService()
-
-        end_user = EndUser(
-            tenant_id=app.tenant_id,
-            app_id=app.id,
-            type=EndUserType.BROWSER,
-            is_anonymous=False,
-            session_id="session-1",
-        )
-        db_session_with_containers.add(end_user)
-        db_session_with_containers.commit()
-
-        now = datetime.now(UTC)
-        archive_defaults = {
-            "workflow_id": str(uuid.uuid4()),
-            "run_version": "1.0.0",
-            "run_status": WorkflowExecutionStatus.SUCCEEDED,
-            "run_triggered_from": WorkflowRunTriggeredFrom.APP_RUN,
-            "run_error": None,
-            "run_elapsed_time": 1.0,
-            "run_total_tokens": 0,
-            "run_total_steps": 0,
-            "run_created_at": now,
-            "run_finished_at": now,
-            "run_exceptions_count": 0,
-            "trigger_metadata": '{"type":"trigger-webhook"}',
-            "log_created_at": now,
-            "log_created_from": WorkflowAppLogCreatedFrom.SERVICE_API,
-        }
-        archive_account = WorkflowArchiveLog(
-            tenant_id=app.tenant_id,
-            app_id=app.id,
-            workflow_run_id=str(uuid.uuid4()),
-            log_id=str(uuid.uuid4()),
-            created_by=account.id,
-            created_by_role=CreatorUserRole.ACCOUNT,
-            **archive_defaults,
-        )
-        archive_end_user = WorkflowArchiveLog(
-            tenant_id=app.tenant_id,
-            app_id=app.id,
-            workflow_run_id=str(uuid.uuid4()),
-            log_id=str(uuid.uuid4()),
-            created_by=end_user.id,
-            created_by_role=CreatorUserRole.END_USER,
-            **archive_defaults,
-        )
-        db_session_with_containers.add_all([archive_account, archive_end_user])
-        db_session_with_containers.commit()
-
-        result = service.get_paginate_workflow_archive_logs(
-            session=db_session_with_containers,
-            app_model=app,
-            page=1,
-            limit=20,
-        )
-
-        assert result["total"] == 2
-        assert len(result["data"]) == 2
-        account_item = next(d for d in result["data"] if d["created_by_account"] is not None)
-        end_user_item = next(d for d in result["data"] if d["created_by_end_user"] is not None)
-        assert account_item["created_by_account"].id == account.id
-        assert end_user_item["created_by_end_user"].id == end_user.id

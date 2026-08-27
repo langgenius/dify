@@ -1,6 +1,7 @@
 'use client'
 
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 import { CopyFeedback } from '@/app/components/base/copy-feedback'
@@ -111,11 +112,10 @@ export function AccessPointUrl({
               href={openUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className={buttonVariants({
-                variant: 'secondary',
-                size: 'small',
-                className: 'h-6 gap-1 px-1.5',
-              })}
+              className={cn(
+                buttonVariants({ variant: 'secondary', size: 'small' }),
+                'h-6 gap-1 px-1.5',
+              )}
             >
               <span aria-hidden className="i-ri-external-link-line size-3.5" />
               {openLabel}

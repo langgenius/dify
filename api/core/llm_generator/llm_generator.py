@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import ModelConfig
+from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.output_parser.rule_config_generator import RuleConfigGeneratorOutputParser
 from core.llm_generator.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
@@ -22,6 +23,7 @@ from core.llm_generator.prompts import (
     SYSTEM_STRUCTURED_OUTPUT_GENERATE,
     WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
 )
+from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelManager
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
@@ -187,6 +189,7 @@ class LLMGenerator:
             logger.debug("Failed to emit prompt_generation telemetry", exc_info=True)
 
     @classmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.CONVERSATION_NAME)
     def generate_conversation_name(
         cls,
         tenant_id: str,
@@ -255,6 +258,7 @@ class LLMGenerator:
         return name
 
     @classmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.SUGGESTED_QUESTIONS)
     def generate_suggested_questions_after_answer(
         cls,
         tenant_id: str,
@@ -342,6 +346,7 @@ class LLMGenerator:
         return questions
 
     @classmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.WORKFLOW_INSTRUCTION_SUGGESTIONS)
     def generate_workflow_instruction_suggestions(
         cls,
         tenant_id: str,
@@ -457,6 +462,7 @@ class LLMGenerator:
         return "\n\n".join(sections) + "\n\n"
 
     @classmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.RULE_CONFIG)
     def generate_rule_config(cls, tenant_id: str, args: RuleGeneratePayload, *, app_id: str | None = None):
         output_parser = RuleConfigGeneratorOutputParser()
 
@@ -624,6 +630,7 @@ class LLMGenerator:
         return rule_config
 
     @classmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.CODE_GENERATION)
     def generate_code(
         cls,
         tenant_id: str,
@@ -692,6 +699,7 @@ class LLMGenerator:
         return {"code": generated_code, "language": args.code_language, "error": ""}
 
     @classmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.QA_DOCUMENT)
     def generate_qa_document(cls, tenant_id: str, query, document_language: str):
         prompt = GENERATOR_QA_PROMPT.format(language=document_language)
 
@@ -719,6 +727,7 @@ class LLMGenerator:
         return answer.strip()
 
     @classmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.STRUCTURED_OUTPUT)
     def generate_structured_output(
         cls, tenant_id: str, args: RuleStructuredOutputPayload, *, app_id: str | None = None
     ) -> StructuredOutputResultDict:
@@ -776,6 +785,7 @@ class LLMGenerator:
         return {"output": generated_output, "error": ""}
 
     @staticmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.INSTRUCTION_MODIFICATION)
     def instruction_modify_legacy(
         tenant_id: str,
         flow_id: str,
@@ -821,6 +831,7 @@ class LLMGenerator:
         )
 
     @staticmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.INSTRUCTION_MODIFICATION)
     def instruction_modify_workflow(
         tenant_id: str,
         flow_id: str,

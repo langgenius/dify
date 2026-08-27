@@ -71,6 +71,7 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
     @service_api_ns.doc(
         responses={
             201: "Metadata created successfully",
+            400: "Bad request - invalid or duplicate metadata name",
             401: "Unauthorized - invalid API token",
             404: "Dataset not found",
         }
@@ -145,6 +146,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
     @service_api_ns.doc(
         responses={
             200: "Metadata updated successfully",
+            400: "Bad request - invalid or duplicate metadata name",
             401: "Unauthorized - invalid API token",
             404: "Dataset or metadata not found",
         }
@@ -217,6 +219,7 @@ class DatasetMetadataBuiltInFieldServiceApi(DatasetApiResource):
         tags=["Metadata"],
         responses={
             200: "Built-in metadata fields.",
+            404: "`not_found` : Knowledge base not found.",
         },
     )
     @service_api_ns.doc("get_built_in_fields")
@@ -300,6 +303,7 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
     @service_api_ns.doc(
         responses={
             200: "Documents metadata updated successfully",
+            400: "Bad request - invalid or conflicting document metadata operation",
             401: "Unauthorized - invalid API token",
             404: "Dataset, document, or metadata not found",
         }

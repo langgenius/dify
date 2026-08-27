@@ -512,6 +512,7 @@ class AgentComposerApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
     @with_current_tenant_id
     @with_session
     def get(self, session: Session, tenant_id: str, agent_id: UUID):

@@ -103,7 +103,13 @@ def test_update_environment_variables():
     # Create some EnvironmentVariable instances
     variable1 = StringVariable(name="var1", value="value1", id=str(uuid4()), selector=["env", "var1"])
     variable2 = IntegerVariable(name="var2", value=123, id=str(uuid4()), selector=["env", "var2"])
-    variable3 = SecretVariable(name="var3", value="secret", id=str(uuid4()), selector=["env", "var3"])
+    variable3 = SecretVariable(
+        name="var3",
+        value="secret",
+        id=str(uuid4()),
+        selector=["env", "var3"],
+        description="old description",
+    )
     variable4 = FloatVariable(name="var4", value=3.14, id=str(uuid4()), selector=["env", "var4"])
 
     with (
@@ -116,16 +122,18 @@ def test_update_environment_variables():
         workflow.environment_variables = variables
         assert workflow.environment_variables == [variable1, variable2, variable3, variable4]
 
-        # Update the name of variable3 and keep the value as it is
+        # Update the name and description of variable3 and keep the value as it is
         variables[2] = variable3.model_copy(
             update={
                 "name": "new name",
+                "description": "new description",
                 "value": HIDDEN_VALUE,
             }
         )
 
         workflow.environment_variables = variables
         assert workflow.environment_variables[2].name == "new name"
+        assert workflow.environment_variables[2].description == "new description"
         assert workflow.environment_variables[2].value == variable3.value
 
 

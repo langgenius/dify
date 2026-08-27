@@ -1,7 +1,7 @@
 'use client'
 import type { MeterTone } from '@langgenius/dify-ui/meter'
 import type { FC } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
+import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Meter, MeterIndicator, MeterTrack } from '@langgenius/dify-ui/meter'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -61,19 +61,18 @@ const AppsFull: FC<{ loc: string; className?: string }> = ({ loc, className }) =
           <UpgradeBtn isShort loc={loc} />
         )}
         {plan.type !== 'sandbox' && plan.type !== 'professional' && (
-          <Button variant="secondary-accent">
-            <a
-              target="_blank"
-              rel="noopener noreferrer"
-              href={mailToSupport(
-                accountProfile.email,
-                plan.type,
-                accountProfile.currentVersion ?? '',
-              )}
-            >
-              {t(($) => $['apps.contactUs'], { ns: 'billing' })}
-            </a>
-          </Button>
+          <a
+            target="_blank"
+            rel="noopener noreferrer"
+            href={mailToSupport(
+              accountProfile.email,
+              plan.type,
+              accountProfile.currentVersion ?? '',
+            )}
+            className={buttonVariants({ variant: 'secondary-accent' })}
+          >
+            {t(($) => $['apps.contactUs'], { ns: 'billing' })}
+          </a>
         )}
       </div>
       <div className="flex flex-col gap-2">

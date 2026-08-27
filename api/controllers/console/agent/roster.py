@@ -632,6 +632,7 @@ class AgentAppApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
     @enterprise_license_required
     @with_current_user
     @with_current_tenant_id

@@ -576,18 +576,19 @@ class WorkflowAgentPublishService:
         session: Session,
         draft_workflow: Workflow,
         published_workflow: Workflow,
-    ) -> None:
+    ) -> bool:
         """Copy all draft Roster and inline bindings to a published version.
 
         Only copied inline bindings add owners for workflow-only Agents.
         Publishing does not release existing draft or historical inline owners,
-        produces no retirement candidates, and returns ``None``.
+        produces no retirement candidates. The return value reports whether
+        the published Workflow contains an inline Agent binding.
         """
         node_ids = {
             node_id for node_id, _node_data in WorkflowAgentNodeValidator.iter_agent_v2_nodes(draft_workflow.graph_dict)
         }
         if not node_ids:
-            return
+            return False
 
         bindings = session.scalars(
             select(WorkflowAgentNodeBinding).where(
@@ -599,9 +600,15 @@ class WorkflowAgentPublishService:
             )
         ).all()
         if not bindings:
-            return
+            return False
 
+        has_inline_agent = False
         for binding in bindings:
+            has_inline_agent = has_inline_agent or (
+                binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT
+                and binding.agent_id is not None
+                and binding.current_snapshot_id is not None
+            )
             current_snapshot_id = binding.current_snapshot_id
             if binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT and binding.agent_id:
                 _, current_snapshot_id = cls._resolve_roster_agent_graph_binding(
@@ -624,6 +631,7 @@ class WorkflowAgentPublishService:
                 updated_by=binding.updated_by,
             )
             session.add(copied)
+        return has_inline_agent
 
     @classmethod
     def restore_agent_node_bindings_to_draft(
