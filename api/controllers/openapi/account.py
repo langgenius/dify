@@ -34,7 +34,7 @@ _ACCOUNT_REQUIREMENTS = (SubjectCheck(allowed=(AccountSubject,)), TokenScope(Sco
 
 @openapi_ns.route("/account")
 class AccountApi(Resource):
-    @endpoint(requirements=_ACCOUNT_REQUIREMENTS, returns=(200, AccountResponse, "Account info"))
+    @endpoint(requirements=_ACCOUNT_REQUIREMENTS, returns=(200, AccountResponse, "Account info"), write=False)
     def get(self, ctx: Context):
         account_id_str = str(ctx.subject.account_id)
         enforce(LIMIT_ME_PER_ACCOUNT, key=f"account:{account_id_str}")
@@ -65,6 +65,7 @@ class AccountSessionsApi(Resource):
         requirements=_ACCOUNT_REQUIREMENTS,
         query=SessionListQuery,
         returns=(200, SessionListResponse, "Session list"),
+        write=False,
     )
     def get(self, ctx: Context, *, query: SessionListQuery):
         auth_ctx = get_auth_ctx()

@@ -7,7 +7,7 @@ from typing import NoReturn
 
 import pytest
 from flask import Flask, request
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from controllers.openapi.auth.context import Context
@@ -106,9 +106,10 @@ def _guard(
     *,
     requirements: tuple[Requirement, ...] = (),
     edition: frozenset[DeploymentEdition] | None = None,
+    write: bool = True,
     router: AuthRouter = subject_router,
 ) -> Callable[..., object]:
-    return router.guard(EndpointSpec(requirements=requirements, edition=edition))(view)
+    return router.guard(EndpointSpec(requirements=requirements, edition=edition, write=write))(view)
 
 
 def _nothing(**_kwargs: object) -> None:
@@ -246,3 +247,44 @@ def test_the_endpoint_subject_check_answers_before_the_pipeline_edition_check(
     with app.test_request_context("/openapi/v1/account", headers={"Authorization": "Bearer tok"}):
         with pytest.raises(Forbidden, match="unsupported_token_type"):
             view()
+
+
+def _rename_handler(*, ctx: Context) -> str:
+    ctx.caller.name = "renamed"
+    return "ok"
+
+
+def test_write_true_by_default_commits_a_mutation_on_success(
+    app: Flask,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _persist(sqlite_session, _account())
+    _authenticates(monkeypatch, _auth(SubjectType.ACCOUNT))
+    monkeypatch.setattr(MOUNT, lambda _user: None)
+    view = _guard(_rename_handler)
+
+    with app.test_request_context("/openapi/v1/account", headers={"Authorization": "Bearer tok"}):
+        view()
+
+    with sqlite_session_factory() as verify:
+        assert verify.get(Account, ACCOUNT_ID).name == "renamed"
+
+
+def test_write_false_does_not_persist_a_mutation(
+    app: Flask,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _persist(sqlite_session, _account())
+    _authenticates(monkeypatch, _auth(SubjectType.ACCOUNT))
+    monkeypatch.setattr(MOUNT, lambda _user: None)
+    view = _guard(_rename_handler, write=False)
+
+    with app.test_request_context("/openapi/v1/account", headers={"Authorization": "Bearer tok"}):
+        view()
+
+    with sqlite_session_factory() as verify:
+        assert verify.get(Account, ACCOUNT_ID).name == "OpenAPI account"

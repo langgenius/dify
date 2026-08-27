@@ -62,14 +62,22 @@ class AuthRouter:
 
         with session_factory.create_session() as session:
             ctx = Context(subject, session, dict(request.view_args or {}))
-            return pipeline.run(
-                subject=subject,
-                auth=auth,
-                spec=spec,
-                ctx=ctx,
-                session=session,
-                call=call,
-            )
+            try:
+                result = pipeline.run(
+                    subject=subject,
+                    auth=auth,
+                    spec=spec,
+                    ctx=ctx,
+                    session=session,
+                    call=call,
+                )
+            except Exception:
+                if spec.write:
+                    session.rollback()  # guard-ignore: no-new-controller-sqlalchemy -- spec.write owns the rollback
+                raise
+            if spec.write:
+                session.commit()
+            return result
 
 
 subject_router = AuthRouter(
