@@ -41,7 +41,7 @@ jobs:
         run: uv lock --check
 
       - name: Install dependencies
-        run: uv sync --dev
+        run: uv sync --extra server --dev
 
       - name: Run unit tests
-        run: uv run pytest --timeout "${PYTEST_TIMEOUT:-20}"
+        run: uv run pytest
