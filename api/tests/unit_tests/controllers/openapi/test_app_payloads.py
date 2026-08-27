@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 
 from controllers.openapi.apps import (  # pyright: ignore[reportPrivateUsage]
     _EMPTY_PARAMETERS,
+    AppDescribeApi,
+    AppListApi,
     _is_listable,
     parameters_payload,
 )
@@ -68,3 +70,16 @@ def test_is_listable_accepts_supported_app_types(mode):
 @pytest.mark.parametrize("mode", [AppMode.AGENT, AppMode.CHANNEL, AppMode.RAG_PIPELINE])
 def test_is_listable_hides_non_app_modes(mode):
     assert _is_listable(_app(mode=mode)) is False
+
+
+@pytest.mark.parametrize(
+    ("view", "write"),
+    [(AppDescribeApi.get, False), (AppListApi.get, False)],
+    ids=["describe", "list"],
+)
+def test_transaction_boundary_matches_the_pre_migration_decorator(view, write: bool):
+    """Both reads carried `@with_session(write=False)` before they moved onto
+    `@endpoint`. The allow/deny matrix cannot see this — it observes admission
+    before the view body runs.
+    """
+    assert view.__spec__.write is write

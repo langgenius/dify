@@ -50,14 +50,15 @@ current code does rather than what a route's decorator suggests:
   request, and the day a narrower token kind is minted it is the only thing
   standing between that token and every route it was not scoped for.
 
-Nine rows carry an `accepted_delta`: the `foreign_workspace_query` answer on the
-app-scoped routes that run the account pipeline. That 422 comes from
+Nine rows are eligible for an `accepted_delta`: the `foreign_workspace_query` answer
+on the app-scoped routes that run the account pipeline. That 422 comes from
 `check_workspace_mismatch`, which the replacement layer deliberately does not have
-(spec 2.9, accepted behaviour exception 1). They still assert today's exact status
-and message; the migration task that moves each route flips its own row in its own
-commit. `test_accepted_behaviour_deltas_are_bounded_and_still_exact` stops that set
-from growing quietly, and stops a flipped row from being left loose enough to pass
-either way.
+(spec 2.9, accepted behaviour exception 1). A row still on the old layer asserts
+today's exact status and message; the migration task that moves each route flips its
+own row in its own commit, to the plain admission the route gives once the query
+param is ignored. `test_accepted_behaviour_deltas_are_bounded_and_still_exact` stops
+that set from growing quietly, and stops a flipped row from being left loose enough
+to pass either way.
 """
 
 from __future__ import annotations
@@ -614,7 +615,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.LOW_ROLE: ADMIT,
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
-        Case.FOREIGN_WORKSPACE_QUERY: ACCEPTED_DELTA_FOREIGN_WORKSPACE,
+        Case.FOREIGN_WORKSPACE_QUERY: ADMIT,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
