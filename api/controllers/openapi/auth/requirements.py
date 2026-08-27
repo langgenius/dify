@@ -9,6 +9,11 @@ Requirements are process-lifetime singletons: built once at import, shared by
 every request and every thread. Config belongs in `__init__`, and `run` must
 neither cache nor mutate — a cache here would outlive the fact it recorded.
 Per-request caching belongs on `Context`.
+
+What lives here is what every subject's routes can need. A requirement that
+authorises one feature belongs beside that feature, subclassing `Requirement`
+there, so the auth layer never has to import a feature's domain — see
+`human_input_form.CheckFormSurface`.
 """
 
 from __future__ import annotations
@@ -25,20 +30,16 @@ from werkzeug.exceptions import Forbidden, NotFound
 from configs import dify_config
 from controllers.common.wraps import enforce_rbac_access
 from controllers.openapi._audit import emit_wrong_surface
-from controllers.openapi._errors import RecipientSurfaceMismatch
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.data import CallerKind
 from controllers.openapi.auth.subjects import Subject
-from core.db.session_factory import session_factory
 from core.rbac import RBACPermission, RBACResourceScope
-from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from enums import DeploymentEdition
 from libs.oauth_bearer import Scope
 from models.account import TenantAccountRole
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode
 from services.entities.feature_entities import LicenseStatus
 from services.feature_service import FeatureService
-from services.human_input_service import HumanInputService
 from services.oauth_device_flow import token_belongs_to_subject
 
 _DEAD_LICENSE_STATUSES = frozenset({LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST})
@@ -237,29 +238,6 @@ class CheckSessionOwnership(Requirement):
         session_id = (request.view_args or {})["session_id"]
         if not token_belongs_to_subject(session_id, subject.auth, session=session):
             raise NotFound("session not found")
-
-
-class CheckFormSurface(Requirement):
-    """Whether this surface may see the form at all.
-
-    `/openapi/v1` is allowed only the recipient types `human_input_policy` lists
-    for it, so a console-bound form is refused before any handler body runs.
-
-    A form the caller could not have found anyway — missing, or belonging to
-    another app — is left to the handler's own 404: answering 403 here would tell
-    an outsider the form token exists.
-    """
-
-    rank = Rank.ACCESS
-
-    @override
-    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        form_token = (request.view_args or {})["form_token"]
-        form = HumanInputService(session_factory.get_session_maker()).get_form_by_token(form_token)
-        if form is None or form.app_id != ctx.app.id or form.tenant_id != ctx.app.tenant_id:
-            return
-        if not is_recipient_type_allowed_for_surface(form.recipient_type, HumanInputSurface.OPENAPI):
-            raise RecipientSurfaceMismatch()
 
 
 class RequireWebappAccess(Requirement):
