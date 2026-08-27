@@ -685,8 +685,9 @@ describe('AppCard', () => {
 
       expect(cardLink).toHaveAttribute('href', '/app/test-app-id/configuration')
       expect(cardLink).toHaveAccessibleName(
-        'Test App app.types.chatbot Test Author · datasetDocuments.segment.editedAt Jan 1, 2024',
+        'Test App app.types.chatbot Test app description Test Author · datasetDocuments.segment.editedAt Jan 1, 2024',
       )
+      expect(cardLink).not.toHaveAttribute('aria-describedby')
       expect(screen.getByRole('listitem', { name: 'Test App' })).toContainElement(cardLink)
     })
 

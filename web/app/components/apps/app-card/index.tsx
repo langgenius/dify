@@ -130,7 +130,7 @@ export const AppCard = memo(
     const showPreviewOnlyAccessWarning = useCallback(() => {
       toast.warning(t(($) => $.noAccessResourcePermission, { ns: 'app' }))
     }, [t])
-    const appAccessibleNameIds = `${appNameId} ${appModeId} ${appMetadataId}`
+    const appAccessibleNameIds = `${appNameId} ${appModeId} ${appDescriptionId} ${appMetadataId}`
     const appCardContent = (
       <>
         <div className="flex shrink-0 items-center gap-3 pt-4 pr-4 pb-2 pl-4">
@@ -199,7 +199,6 @@ export const AppCard = memo(
           <button
             type="button"
             aria-labelledby={appAccessibleNameIds}
-            aria-describedby={app.description ? appDescriptionId : undefined}
             data-step-by-step-tour-target={stepByStepTourCardTarget}
             data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
             className={cn(appCardClassName, 'text-left')}
@@ -211,7 +210,6 @@ export const AppCard = memo(
           <Link
             href={appHref}
             aria-labelledby={appAccessibleNameIds}
-            aria-describedby={app.description ? appDescriptionId : undefined}
             data-step-by-step-tour-target={stepByStepTourCardTarget}
             data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
             className={appCardClassName}

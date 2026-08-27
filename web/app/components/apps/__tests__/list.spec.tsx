@@ -635,6 +635,7 @@ describe('List', () => {
       const createButton = screen.getByRole('button', { name: 'common.operation.create' })
 
       expect(snippetsLink).toHaveAttribute('href', '/snippets')
+      expect(sortButton).toHaveTextContent('Sort by Last modified')
       expect(
         creatorsButton.compareDocumentPosition(sortButton) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy()
