@@ -100,11 +100,24 @@ function syncPolicyValueLabel(t: TFunction<'dataset'>, language: string, value: 
   const seconds = clampedIntervalSeconds(
     value.customIntervalSeconds ?? DEFAULT_CUSTOM_SYNC_INTERVAL_SECONDS,
   )
-  const interval = new Intl.NumberFormat(language, {
+  const formatter = new Intl.NumberFormat(language, {
     style: 'unit',
     unit: seconds % DAY_SECONDS === 0 ? 'day' : 'hour',
     unitDisplay: 'long',
-  }).format(seconds % DAY_SECONDS === 0 ? seconds / DAY_SECONDS : seconds / HOUR_SECONDS)
+  })
+  const interval = formatter
+    .formatToParts(seconds % DAY_SECONDS === 0 ? seconds / DAY_SECONDS : seconds / HOUR_SECONDS)
+    .map((part, index, parts) => {
+      const previousPart = parts[index - 1]
+      if (
+        language.toLowerCase().startsWith('zh') &&
+        part.type === 'unit' &&
+        previousPart?.type !== 'literal'
+      )
+        return ` ${part.value}`
+      return part.value
+    })
+    .join('')
   return t(($) => $['newKnowledge.syncPolicyEveryValue'], { interval })
 }
 
@@ -276,12 +289,6 @@ export function SyncPolicyField({
           {syncPolicyValueLabel(t, i18n.resolvedLanguage ?? i18n.language, value)}
         </SelectTrigger>
         <SelectContent>
-          {availableModes.includes('provider') && (
-            <SelectItem value="provider">
-              <SelectItemText>{t(($) => $['newKnowledge.syncPolicyProvider'])}</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-          )}
           {availableModes.includes('manual') && (
             <SelectItem value="manual">
               <SelectItemText>{t(($) => $['newKnowledge.syncPolicyManual'])}</SelectItemText>

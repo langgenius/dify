@@ -6,8 +6,10 @@ import { render } from '@/test/console/render'
 import { createReactI18nextMock } from '@/test/i18n-mock'
 import { SyncPolicyField } from '../sync-policy-field'
 
-vi.mock('react-i18next', () =>
-  createReactI18nextMock({
+const i18nLanguage = vi.hoisted(() => ({ current: 'en-US' }))
+
+vi.mock('react-i18next', () => {
+  const mock = createReactI18nextMock({
     'common.operation.cancel': 'Cancel',
     'dataset.newKnowledge.syncPolicy': 'Sync policy',
     'dataset.newKnowledge.syncPolicyApply': 'Apply',
@@ -23,8 +25,22 @@ vi.mock('react-i18next', () =>
     'dataset.newKnowledge.syncPolicyManual': 'Manual sync',
     'dataset.newKnowledge.syncPolicyUnit.days': 'days',
     'dataset.newKnowledge.syncPolicyUnit.hours': 'hours',
-  }),
-)
+  })
+  return {
+    ...mock,
+    useTranslation: ((...args: Parameters<typeof mock.useTranslation>) => {
+      const result = mock.useTranslation(...args)
+      return {
+        ...result,
+        i18n: {
+          ...result.i18n,
+          language: i18nLanguage.current,
+          resolvedLanguage: i18nLanguage.current,
+        },
+      }
+    }) as typeof mock.useTranslation,
+  }
+})
 
 function SyncPolicyFieldHarness() {
   const [value, setValue] = useState<SyncPolicyValue>({ mode: 'interval' })
@@ -41,6 +57,21 @@ function SyncPolicyFieldHarness() {
 }
 
 describe('SyncPolicyField', () => {
+  beforeEach(() => {
+    i18nLanguage.current = 'en-US'
+  })
+
+  it('separates numbers from units in Simplified Chinese interval labels', async () => {
+    i18nLanguage.current = 'zh-Hans'
+    const user = userEvent.setup()
+    render(<SyncPolicyFieldHarness />)
+
+    await user.click(screen.getByRole('combobox', { name: 'Sync policy' }))
+
+    expect(screen.getByRole('option', { name: 'Every 6 小时' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Every 3 天' })).toBeInTheDocument()
+  })
+
   it('offers the designed presets and applies a custom day interval explicitly', async () => {
     const user = userEvent.setup()
     render(<SyncPolicyFieldHarness />)
