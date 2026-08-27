@@ -156,13 +156,19 @@ function LoadedDocumentRevisionContent({
       ].sort((left, right) => left.ordinal - right.ordinal || left.id.localeCompare(right.id)),
     [chunksQuery.data],
   )
+  const multimodalItems = useMemo(() => {
+    const manifest = multimodalQuery.data
+    if (!manifest || manifest.version !== documentAsset?.documentAssetVersion) return []
+    return manifest.items ?? []
+  }, [documentAsset?.documentAssetVersion, multimodalQuery.data])
   const detailModel = useMemo(() => {
     const outline = outlineQuery.data
     return buildDocumentDetailModel(
       chunks,
       outline && outline.version === documentAsset?.documentAssetVersion ? outline.nodes : [],
+      multimodalItems,
     )
-  }, [chunks, documentAsset?.documentAssetVersion, outlineQuery.data])
+  }, [chunks, documentAsset?.documentAssetVersion, multimodalItems, outlineQuery.data])
   const targetedBlock = selectedChunkId
     ? detailModel.contentBlocksByChunkId.get(selectedChunkId)
     : undefined
@@ -227,11 +233,7 @@ function LoadedDocumentRevisionContent({
         document={document}
         isLoadingMore={chunksQuery.isFetchingNextPage}
         locale={locale}
-        multimodalItems={
-          multimodalQuery.data?.version === documentAsset?.documentAssetVersion
-            ? (multimodalQuery.data?.items ?? [])
-            : []
-        }
+        multimodalItems={multimodalItems}
         revision={revision}
         selectedChunkId={selectedBlock?.chunk.id}
         indexChunks={detailModel.indexChunks}

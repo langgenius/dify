@@ -194,6 +194,8 @@ describe("createDocumentMultimodalManifestBuilder", () => {
                 objectKey: "tenant-dev/spaces/space/artifacts/image-1.png",
                 sha256: "d".repeat(64),
               },
+              endOffset: 6,
+              startOffset: 0,
             },
             sectionPath: ["前言"],
             type: "image",
@@ -219,10 +221,10 @@ describe("createDocumentMultimodalManifestBuilder", () => {
 
     expect(manifest.items).toEqual([
       expect.objectContaining({
-        endOffset: 7,
+        endOffset: 6,
         modality: "image",
         parseElementId: "image-1",
-        startOffset: 7,
+        startOffset: 0,
       }),
       expect.objectContaining({
         endOffset: 15,

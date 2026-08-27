@@ -1539,6 +1539,7 @@ export type KnowledgeFsDocumentMultimodalItemResponse = {
   modality: 'code' | 'image' | 'page' | 'table'
   ocr_text?: string | null
   page_number?: number | null
+  parse_element_id: string
   section_path?: Array<string>
   start_offset?: number | null
   text_preview?: string | null

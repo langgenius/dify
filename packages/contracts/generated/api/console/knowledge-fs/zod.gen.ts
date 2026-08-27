@@ -1366,6 +1366,7 @@ export const zKnowledgeFsDocumentMultimodalItemResponse = z.object({
   modality: z.enum(['code', 'image', 'page', 'table']),
   ocr_text: z.string().nullish(),
   page_number: z.int().gte(1).nullish(),
+  parse_element_id: z.string().min(1).max(512),
   section_path: z.array(z.string()).optional(),
   start_offset: z.int().gte(0).nullish(),
   text_preview: z.string().nullish(),

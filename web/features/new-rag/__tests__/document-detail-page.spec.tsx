@@ -1157,6 +1157,7 @@ describe('DocumentDetailPage', () => {
           caption: 'Screenshot of the source configuration',
           id: 'image-1',
           modality: 'image',
+          parse_element_id: 'parse-image-1',
           section_path: ['Images'],
           start_offset: 20,
           thumbnail_url: '/console/api/knowledge-fs/image-1?variant=thumbnail',
@@ -1196,6 +1197,67 @@ describe('DocumentDetailPage', () => {
     expect(screen.getByText('The image caption follows.')).toBeInTheDocument()
   })
 
+  it('renders spreadsheet images beside their records without duplicate image index chunks', async () => {
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:spreadsheet-image')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    chunksQuery.data = {
+      pages: [
+        {
+          items: [
+            chunk({
+              endOffset: 80,
+              id: 'spreadsheet-record',
+              kind: 'table',
+              ordinal: 0,
+              startOffset: 0,
+              text: 'Issue: Copy button is unavailable',
+              userMetadata: { elementIds: ['parse-table-1'] },
+            }),
+            chunk({
+              endOffset: 100,
+              id: 'image-index-node',
+              kind: 'image',
+              ordinal: 1,
+              startOffset: 81,
+              text: 'image1.jpeg',
+              userMetadata: { elementIds: ['parse-image-1'] },
+            }),
+          ],
+        },
+      ],
+    }
+    multimodalQuery.data = {
+      artifact_hash: 'artifact-hash',
+      created_at: '2026-08-07T10:00:00Z',
+      document_asset_id: 'asset-1',
+      id: 'manifest-1',
+      items: [
+        {
+          asset_url: '/console/api/knowledge-fs/spreadsheet-image-1',
+          caption: 'Screenshot for the copy button issue',
+          id: 'spreadsheet-image-1',
+          modality: 'image',
+          parse_element_id: 'parse-image-1',
+          section_path: [],
+          start_offset: 0,
+        },
+      ],
+      manifest_version: 'document-multimodal-manifest-v1',
+      version: 1,
+    }
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    expect(screen.getAllByText('Issue: Copy button is unavailable')).not.toHaveLength(0)
+    expect(
+      await screen.findByRole('img', { name: 'Screenshot for the copy button issue' }),
+    ).toHaveAttribute('src', 'blob:spreadsheet-image')
+    expect(screen.queryByText('image1.jpeg')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'dataset.newKnowledge.documentImages' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('shows images without location metadata after the document chunks', () => {
     chunksQuery.data = {
       pages: [
@@ -1222,6 +1284,7 @@ describe('DocumentDetailPage', () => {
           caption: 'Screenshot without location metadata',
           id: 'image-without-location',
           modality: 'image',
+          parse_element_id: 'parse-image-without-location',
           section_path: [],
         },
       ],

@@ -20,6 +20,30 @@ function textBytes(text: string): Uint8Array {
   return new TextEncoder().encode(text);
 }
 
+function utf8Length(text: string): number {
+  return textBytes(text).byteLength;
+}
+
+function spreadsheetImageAnchorXml({
+  column,
+  kind = "twoCellAnchor",
+  relationshipId,
+  row,
+}: {
+  readonly column: number;
+  readonly kind?: "oneCellAnchor" | "twoCellAnchor";
+  readonly relationshipId: string;
+  readonly row: number;
+}): string {
+  return [
+    `<xdr:${kind}>`,
+    `<xdr:from><xdr:col>${column}</xdr:col><xdr:row>${row}</xdr:row></xdr:from>`,
+    `<xdr:pic><xdr:blipFill><a:blip r:embed="${relationshipId}"/></xdr:blipFill></xdr:pic>`,
+    "<xdr:clientData/>",
+    `</xdr:${kind}>`,
+  ].join("");
+}
+
 function createParseInput({
   body,
   filename,
@@ -1318,7 +1342,7 @@ describe("parser adapters", () => {
       metadata: {
         filename: "report.pdf",
         mimeType: "application/pdf",
-        parserVersion: "unstructured@7",
+        parserVersion: "unstructured@8",
       },
       parser: "unstructured",
       version: 1,
@@ -1515,7 +1539,7 @@ describe("parser adapters", () => {
           version: 1,
         }),
       ).resolves.toMatchObject({
-        metadata: { parserVersion: "unstructured@7" },
+        metadata: { parserVersion: "unstructured@8" },
         parser: "unstructured",
       });
     },
@@ -1731,6 +1755,380 @@ describe("parser adapters", () => {
       );
     },
   );
+
+  it("keeps spreadsheet images attached to their original worksheet records", async () => {
+    const body = zipSync(
+      {
+        "xl/_rels/workbook.xml.rels": textBytes(
+          [
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+            '<Relationship Id="rId1" Target="worksheets/sheet1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/>',
+            "</Relationships>",
+          ].join(""),
+        ),
+        "xl/drawings/_rels/drawing1.xml.rels": textBytes(
+          [
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+            '<Relationship Id="rIdImage1" Target="../media/image1.png" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>',
+            '<Relationship Id="rIdImage2" Target="../media/image2.png" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>',
+            '<Relationship Id="rIdImage3" Target="../media/image3.png" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>',
+            "</Relationships>",
+          ].join(""),
+        ),
+        "xl/drawings/drawing1.xml": textBytes(
+          [
+            '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
+            spreadsheetImageAnchorXml({ column: 2, relationshipId: "rIdImage1", row: 1 }),
+            spreadsheetImageAnchorXml({ column: 2, relationshipId: "rIdImage2", row: 3 }),
+            spreadsheetImageAnchorXml({ column: 7, relationshipId: "rIdImage3", row: 3 }),
+            "</xdr:wsDr>",
+          ].join(""),
+        ),
+        "xl/media/image1.png": new Uint8Array([1, 2, 3, 4]),
+        "xl/media/image2.png": new Uint8Array([5, 6, 7, 8]),
+        "xl/media/image3.png": new Uint8Array([9, 10, 11, 12]),
+        "xl/media/unplaced.png": new Uint8Array([13, 14, 15, 16]),
+        "xl/workbook.xml": textBytes(
+          [
+            '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
+            '<sheets><sheet name="Issues" sheetId="1" r:id="rId1"/></sheets>',
+            "</workbook>",
+          ].join(""),
+        ),
+        "xl/worksheets/_rels/sheet1.xml.rels": textBytes(
+          [
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+            '<Relationship Id="rIdDrawing" Target="../drawings/drawing1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing"/>',
+            "</Relationships>",
+          ].join(""),
+        ),
+        "xl/worksheets/sheet1.xml": textBytes(
+          [
+            '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
+            [
+              '<sheetData><row r="1"><c r="A1"><v>header</v></c></row>',
+              '<row r="2"><c r="A2"><v>first</v></c></row>',
+              '<row r="4"><c r="A4"><v>second</v></c></row>',
+              '<row r="5"><c r="A5"><v>third</v></c></row></sheetData>',
+              '<drawing r:id="rIdDrawing"/>',
+            ].join(""),
+            "</worksheet>",
+          ].join(""),
+        ),
+      },
+      { level: 0 },
+    );
+    const tableText = [
+      "Date: 2026-08-01 | Issue: First issue",
+      "Date: 2026-08-02 | Issue: Second issue",
+      "Date: 2026-08-03 | Issue: Third issue",
+    ].join("\n");
+    const secondRecordStart = utf8Length(`${tableText.split("\n")[0]}\n`);
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async () =>
+        new Response(
+          JSON.stringify([
+            {
+              metadata: {
+                page_name: "Issues",
+                text_as_html: [
+                  "<table><thead><tr><th>Date</th><th>Issue</th></tr></thead><tbody>",
+                  "<tr><td>2026-08-01</td><td>First issue</td></tr>",
+                  "<tr><td>2026-08-02</td><td>Second issue</td></tr>",
+                  "<tr><td>2026-08-03</td><td>Third issue</td></tr>",
+                  "</tbody></table>",
+                ].join(""),
+              },
+              type: "Table",
+            },
+          ]),
+          { headers: { "content-type": "application/json" }, status: 200 },
+        ),
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c61",
+      now: () => createdAt,
+    });
+
+    const artifact = await parser.parse({
+      body,
+      documentAssetId,
+      filename: "issues.xlsx",
+      mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      parserHints: { requiresImages: true, requiresTables: true },
+      version: 1,
+    });
+    const images = artifact.elements.filter((element) => element.type === "image");
+
+    expect(artifact.elements[0]?.text).toBe(tableText);
+    expect(images).toHaveLength(4);
+    expect(images.slice(0, 3)).toEqual([
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          archivePath: "xl/media/image1.png",
+          endOffset: utf8Length(tableText.split("\n")[0] as string),
+          spreadsheetAnchor: {
+            sourceColumn: 3,
+            sourceRow: 2,
+            sheetIndex: 0,
+            sheetName: "Issues",
+          },
+          startOffset: 0,
+        }),
+        sectionPath: [],
+      }),
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          archivePath: "xl/media/image2.png",
+          endOffset: secondRecordStart + utf8Length(tableText.split("\n")[1] as string),
+          spreadsheetAnchor: {
+            sourceColumn: 3,
+            sourceRow: 4,
+            sheetIndex: 0,
+            sheetName: "Issues",
+          },
+          startOffset: secondRecordStart,
+        }),
+        sectionPath: [],
+      }),
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          archivePath: "xl/media/image3.png",
+          spreadsheetAnchor: expect.objectContaining({ sourceColumn: 8, sourceRow: 4 }),
+          startOffset: secondRecordStart,
+        }),
+      }),
+    ]);
+    expect(images[3]).toMatchObject({
+      metadata: {
+        archivePath: "xl/media/unplaced.png",
+        positionUnknown: true,
+      },
+      sectionPath: [],
+    });
+  });
+
+  it("matches worksheet anchors without trusting malformed or external OOXML relationships", async () => {
+    const body = zipSync(
+      {
+        "xl/_rels/workbook.xml.rels": textBytes(
+          [
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+            '<Relationship Id="rIdIssues" Target="worksheets/sheet1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/>',
+            '<Relationship Id="rIdNotes" Target="/xl/worksheets/sheet2.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/>',
+            '<Relationship Id="rIdWrong" Target="media/image1.png" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>',
+            '<Relationship Target="worksheets/missing-id.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/>',
+            '<Relationship Id="missing-target" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/>',
+            '<Relationship Id="external" Target="https://example.com/sheet.xml" TargetMode="External" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/>',
+            '<Relationship Id="query" Target="worksheets/sheet.xml?version=1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/>',
+            '<Relationship Id="dot" Target="./worksheets/sheet2.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/>',
+            '<Relationship Id="escape" Target="../../../outside.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/>',
+            '<Relationship Id="no-type" Target="worksheets/sheet2.xml"/>',
+            "</Relationships>",
+          ].join(""),
+        ),
+        "xl/drawings/_rels/drawing1.xml.rels": textBytes(
+          [
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+            '<Relationship Id="rIdImage" Target="..\\media\\image1.png" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>',
+            '<Relationship Id="rIdBlank" Target="../media/blank.png" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>',
+            '<Relationship Id="rIdWrong" Target="../media/image1.png" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing"/>',
+            '<Relationship Id="rIdText" Target="../media/not-an-image.txt" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>',
+            "</Relationships>",
+          ].join(""),
+        ),
+        "xl/drawings/drawing1.xml": textBytes(
+          [
+            '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
+            spreadsheetImageAnchorXml({
+              column: 2,
+              kind: "oneCellAnchor",
+              relationshipId: "rIdImage",
+              row: 1,
+            }),
+            spreadsheetImageAnchorXml({ column: 3, relationshipId: "rIdBlank", row: 2 }),
+            spreadsheetImageAnchorXml({
+              column: 2,
+              kind: "oneCellAnchor",
+              relationshipId: "rIdImage",
+              row: 1,
+            }),
+            spreadsheetImageAnchorXml({ column: -1, relationshipId: "rIdImage", row: 1 }),
+            spreadsheetImageAnchorXml({ column: 2, relationshipId: "missing", row: 1 }),
+            spreadsheetImageAnchorXml({ column: 2, relationshipId: "rIdWrong", row: 1 }),
+            spreadsheetImageAnchorXml({ column: 2, relationshipId: "rIdText", row: 1 }),
+            "<xdr:twoCellAnchor><xdr:from><xdr:col>2</xdr:col><xdr:row>1</xdr:row></xdr:from></xdr:twoCellAnchor>",
+            "</xdr:wsDr>",
+          ].join(""),
+        ),
+        "xl/media/image1.png": new Uint8Array([1, 2, 3, 4]),
+        "xl/media/blank.png": new Uint8Array([5, 6, 7, 8]),
+        "xl/media/orphan.png": new Uint8Array([9, 10, 11, 12]),
+        "xl/workbook.xml": textBytes(
+          [
+            '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
+            '<sheets><sheet name="Issues" sheetId="1" r:id="rIdIssues"/>',
+            '<sheet name="Notes" sheetId="2" r:id="rIdNotes"/>',
+            '<sheet name="Missing relationship" sheetId="3"/>',
+            '<sheet sheetId="4" r:id="rIdIssues"/>',
+            '<sheet name="Wrong type" sheetId="5" r:id="rIdWrong"/>',
+            '<sheet name="No type" sheetId="6" r:id="no-type"/></sheets>',
+            "</workbook>",
+          ].join(""),
+        ),
+        "xl/worksheets/_rels/sheet1.xml.rels": textBytes(
+          [
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+            '<Relationship Id="rIdDrawing" Target="../drawings/drawing1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing"/>',
+            '<Relationship Id="rIdWrong" Target="../media/image1.png" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>',
+            "</Relationships>",
+          ].join(""),
+        ),
+        "xl/worksheets/sheet1.xml": textBytes(
+          [
+            '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
+            '<sheetData><row r="1"><c r="A1"><v>header</v></c></row>',
+            '<row r="2"><c r="A2"><is><t>record</t></is></c></row>',
+            '<row r="3"><c r="A3"/></row><row r="0"><c r="A0"><v>invalid</v></c></row></sheetData>',
+            '<drawing r:id="rIdDrawing"/><drawing/><drawing r:id="rIdWrong"/>',
+            "</worksheet>",
+          ].join(""),
+        ),
+        "xl/worksheets/sheet2.xml": textBytes(
+          [
+            '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+            '<sheetData><row r="1"><c r="A1"><v>header</v></c></row>',
+            '<row r="2"><c r="A2"><v>note</v></c></row></sheetData>',
+            "</worksheet>",
+          ].join(""),
+        ),
+      },
+      { level: 0 },
+    );
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async () =>
+        new Response(
+          JSON.stringify([
+            {
+              metadata: {
+                page_number: 1,
+                page_name: "Issues",
+                text_as_html:
+                  "<table><thead><tr><th>Issue</th></tr></thead><tbody><tr><td>First issue</td></tr></tbody></table>",
+              },
+              type: "Table",
+            },
+            {
+              metadata: {
+                sheet_name: "Notes",
+                text_as_html:
+                  "<table><thead><tr><th>Note</th></tr></thead><tbody><tr><td>First note</td></tr></tbody></table>",
+              },
+              type: "Table",
+            },
+            {
+              metadata: {
+                text_as_html:
+                  "<table><thead><tr><th>Other</th></tr></thead><tbody><tr><td>Other record</td></tr></tbody></table>",
+              },
+              type: "Table",
+            },
+          ]),
+          { headers: { "content-type": "application/json" }, status: 200 },
+        ),
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c62",
+      now: () => createdAt,
+    });
+
+    const artifact = await parser.parse({
+      body,
+      documentAssetId,
+      filename: "multiple-sheets.xlsx",
+      mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      parserHints: { requiresImages: true, requiresTables: true },
+      version: 1,
+    });
+    const images = artifact.elements.filter((element) => element.type === "image");
+    const imageByArchivePath = new Map(
+      images.map((image) => [image.metadata.archivePath, image] as const),
+    );
+
+    expect(images).toHaveLength(3);
+    expect(imageByArchivePath.get("xl/media/image1.png")).toMatchObject({
+      metadata: {
+        archivePath: "xl/media/image1.png",
+        endOffset: utf8Length("Issue: First issue"),
+        spreadsheetAnchor: {
+          sheetIndex: 0,
+          sheetName: "Issues",
+          sourceColumn: 3,
+          sourceRow: 2,
+        },
+        startOffset: 0,
+      },
+    });
+    expect(imageByArchivePath.get("xl/media/blank.png")).toMatchObject({
+      metadata: {
+        archivePath: "xl/media/blank.png",
+        positionUnknown: true,
+        spreadsheetAnchor: {
+          sheetIndex: 0,
+          sheetName: "Issues",
+          sourceColumn: 4,
+          sourceRow: 3,
+        },
+      },
+    });
+    expect(imageByArchivePath.get("xl/media/orphan.png")).toMatchObject({
+      metadata: {
+        archivePath: "xl/media/orphan.png",
+        positionUnknown: true,
+      },
+    });
+  });
+
+  it("keeps parser text usable when optional spreadsheet media metadata is malformed", async () => {
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async () =>
+        new Response(JSON.stringify([{ text: "Provider text", type: "NarrativeText" }]), {
+          headers: { "content-type": "application/json" },
+          status: 200,
+        }),
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c63",
+      now: () => createdAt,
+    });
+    const parse = (body: Uint8Array) =>
+      parser.parse({
+        body,
+        documentAssetId,
+        filename: "malformed.xlsx",
+        mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        parserHints: { requiresImages: true, requiresTables: true },
+        version: 1,
+      });
+
+    const malformedZip = await parse(new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x01]));
+    expect(malformedZip.elements).toHaveLength(1);
+
+    const malformedRelationships = await parse(
+      zipSync(
+        {
+          "xl/media/image1.png": new Uint8Array([1, 2, 3, 4]),
+          "xl/workbook.xml": textBytes("<workbook><"),
+        },
+        { level: 0 },
+      ),
+    );
+    expect(malformedRelationships.elements).toHaveLength(2);
+    expect(malformedRelationships.elements[1]).toMatchObject({
+      metadata: {
+        archivePath: "xl/media/image1.png",
+        positionUnknown: true,
+      },
+      type: "image",
+    });
+  });
 
   it("deduplicates provider images while filling archive images that the provider omitted", async () => {
     const body = zipSync(

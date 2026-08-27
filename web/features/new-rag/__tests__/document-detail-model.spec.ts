@@ -131,6 +131,7 @@ describe('document detail model', () => {
         asset_url: '/image-1',
         id: 'image-1',
         modality: 'image',
+        parse_element_id: 'parse-image-1',
         section_path: ['Guide'],
         start_offset: 10,
       },
@@ -138,16 +139,19 @@ describe('document detail model', () => {
         asset_url: '/image-2',
         id: 'image-2',
         modality: 'image',
+        parse_element_id: 'parse-image-2',
         section_path: ['Appendix'],
       },
       {
         asset_url: '/table-1',
         id: 'table-1',
         modality: 'table',
+        parse_element_id: 'parse-table-1',
       },
       {
         id: 'image-unplaced',
         modality: 'image',
+        parse_element_id: 'parse-image-unplaced',
       },
     ]
     const placement = placeDocumentMultimodalItems(
@@ -168,6 +172,51 @@ describe('document detail model', () => {
     expect(placement.byChunkId.get('guide-2')?.map((item) => item.id)).toEqual(['image-1'])
     expect(placement.byChunkId.get('appendix')?.map((item) => item.id)).toEqual(['image-2'])
     expect(placement.unplaced.map((item) => item.id)).toEqual(['image-unplaced'])
+  })
+
+  it('keeps image index nodes out of the reading view when their asset is rendered in place', () => {
+    const items = [
+      {
+        asset_url: '/image-1',
+        id: 'manifest-image-1',
+        modality: 'image' as const,
+        parse_element_id: 'parse-image-1',
+        start_offset: 10,
+      },
+    ]
+    const model = buildDocumentDetailModel(
+      [
+        chunk({
+          endOffset: 40,
+          id: 'spreadsheet-record',
+          kind: 'table',
+          ordinal: 0,
+          startOffset: 0,
+          text: 'Issue: Copy button is unavailable',
+          userMetadata: { elementIds: ['parse-table-1'] },
+        }),
+        chunk({
+          endOffset: 60,
+          id: 'image-index-node',
+          kind: 'image',
+          ordinal: 1,
+          startOffset: 41,
+          text: 'image1.jpeg',
+          userMetadata: { elementIds: ['parse-image-1'] },
+        }),
+      ],
+      [],
+      items,
+    )
+
+    expect(model.sourceChunks.map((item) => item.id)).toEqual([
+      'spreadsheet-record',
+      'image-index-node',
+    ])
+    expect(model.contentBlocks.map((block) => block.chunk.id)).toEqual(['spreadsheet-record'])
+    expect(model.indexChunks.map((item) => item.id)).toEqual(['spreadsheet-record'])
+    expect(model.tree.roots.map((node) => node.targetChunkId)).toEqual(['spreadsheet-record'])
+    expect(placeDocumentMultimodalItems(model.indexChunks, items).unplaced).toEqual([])
   })
 
   it('builds the chapter hierarchy from structured section paths instead of chunk text', () => {

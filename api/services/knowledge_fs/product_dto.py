@@ -1472,6 +1472,11 @@ class KnowledgeFSDocumentMultimodalItem(BaseModel):
     modality: Literal["code", "image", "page", "table"]
     ocr_text: str | None = Field(default=None, validation_alias=AliasChoices("ocr_text", "ocrText"))
     page_number: int | None = Field(default=None, ge=1, validation_alias=AliasChoices("page_number", "pageNumber"))
+    parse_element_id: str = Field(
+        min_length=1,
+        max_length=512,
+        validation_alias=AliasChoices("parse_element_id", "parseElementId"),
+    )
     section_path: list[str] = Field(default_factory=list, validation_alias=AliasChoices("section_path", "sectionPath"))
     start_offset: int | None = Field(default=None, ge=0, validation_alias=AliasChoices("start_offset", "startOffset"))
     text_preview: str | None = Field(default=None, validation_alias=AliasChoices("text_preview", "textPreview"))
@@ -1498,6 +1503,7 @@ class KnowledgeFSDocumentMultimodalItemResponse(ResponseModel):
     modality: Literal["code", "image", "page", "table"]
     ocr_text: str | None = None
     page_number: int | None = Field(default=None, ge=1)
+    parse_element_id: str = Field(min_length=1, max_length=512)
     section_path: list[str] = Field(default_factory=list)
     start_offset: int | None = Field(default=None, ge=0)
     text_preview: str | None = None

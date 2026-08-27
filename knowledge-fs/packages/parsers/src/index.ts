@@ -180,7 +180,12 @@ const defaultMaxDocumentTitleChars = 2_000;
 const defaultMaxArchiveImageBytes = 10 * 1024 * 1024;
 const defaultMaxArchiveImageCount = 1_000;
 const defaultMaxArchiveImageTotalBytes = 32 * 1024 * 1024;
+const defaultMaxArchiveMetadataBytes = 2 * 1024 * 1024;
+const defaultMaxArchiveMetadataCount = 512;
+const defaultMaxArchiveMetadataTotalBytes = 16 * 1024 * 1024;
 const archivePathCollator = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
+const canonicalTextEncoder = new TextEncoder();
+const canonicalTextEdgeWhitespace = /^\p{White_Space}+|\p{White_Space}+$/gu;
 // Image blocks are returned as base64 in the partition JSON. Keep the response bounded while
 // leaving enough headroom for the encoded images of ordinary PDF, Office, and presentation files.
 const defaultMaxResponseBytes = 32 * 1024 * 1024;
@@ -318,7 +323,7 @@ export function createUnstructuredParserClient({
       requestGate.run(async () => {
         const deadline = createUnstructuredRequestDeadline(input.signal, requestTimeoutMs);
         try {
-          const parserVersion = options.parserVersion ?? "unstructured@7";
+          const parserVersion = options.parserVersion ?? "unstructured@8";
           const partitionStrategy = unstructuredPartitionStrategy(input);
           const providerImageBlockTypes = unstructuredProviderImageBlockTypes(input);
           assertInputBounds(input.body, options.maxInputBytes ?? defaultMaxInputBytes);
@@ -520,10 +525,25 @@ function appendArchiveMediaFallbackElements(
     0,
   );
   let selectedCount = providerImageUris.length;
+  let selectedMetadataBytes = 0;
+  let selectedMetadataCount = 0;
 
   try {
     const archive = unzipSync(input.body, {
       filter: (file) => {
+        if (
+          spreadsheetArchiveMetadataPath(input, file.name) &&
+          selectedMetadataCount < defaultMaxArchiveMetadataCount &&
+          file.originalSize >= 0 &&
+          file.originalSize <= defaultMaxArchiveMetadataBytes &&
+          selectedMetadataBytes + file.originalSize <= defaultMaxArchiveMetadataTotalBytes &&
+          archivePathIsSafe(file.name)
+        ) {
+          selectedMetadataBytes += file.originalSize;
+          selectedMetadataCount += 1;
+          return true;
+        }
+
         if (
           selectedCount >= defaultMaxArchiveImageCount ||
           file.originalSize < 1 ||
@@ -541,6 +561,8 @@ function appendArchiveMediaFallbackElements(
         return true;
       },
     });
+    const spreadsheetAnchors = spreadsheetImageAnchors(input, archive);
+    const spreadsheetTables = spreadsheetTableTextIndex(elements);
     const fallbackElements = Object.entries(archive)
       .sort(([left], [right]) => archivePathCollator.compare(left, right))
       .flatMap(([archivePath, body]): ParseElementInput[] => {
@@ -560,23 +582,37 @@ function appendArchiveMediaFallbackElements(
         }
 
         const title = archivePath.split("/").at(-1);
+        const anchors = spreadsheetAnchors.get(archivePath) ?? [];
+        const placements = anchors.length > 0 ? anchors : [undefined];
 
-        return [
-          {
+        return placements.map((anchor): ParseElementInput => {
+          const placement = anchor
+            ? spreadsheetImageTextPlacement(anchor, spreadsheetTables)
+            : undefined;
+          return {
             metadata: {
               archivePath,
               assetRef: {
                 contentType,
                 uri,
               },
-              positionUnknown: true,
+              ...(placement && anchor
+                ? {
+                    endOffset: placement.endOffset,
+                    spreadsheetAnchor: spreadsheetAnchorMetadata(anchor),
+                    startOffset: placement.startOffset,
+                  }
+                : {
+                    positionUnknown: true,
+                    ...(anchor ? { spreadsheetAnchor: spreadsheetAnchorMetadata(anchor) } : {}),
+                  }),
               source: "archive-media-fallback",
               ...(title ? { title } : {}),
             },
-            sectionPath: [],
+            sectionPath: placement?.sectionPath ?? [],
             type: "image",
-          },
-        ];
+          };
+        });
       });
 
     return [...elements, ...fallbackElements];
@@ -585,6 +621,431 @@ function appendArchiveMediaFallbackElements(
     // fallback cannot inspect a malformed or unsupported ZIP container.
     return [...elements];
   }
+}
+
+interface SpreadsheetImageAnchor {
+  readonly column: number;
+  readonly contentRows: readonly number[];
+  readonly row: number;
+  readonly sheetIndex: number;
+  readonly sheetName: string;
+}
+
+interface SpreadsheetTableTextIndexEntry {
+  readonly endOffset: number;
+  readonly headerRowCount: number;
+  readonly pageNumber?: number | undefined;
+  readonly recordOffsets: readonly {
+    readonly endOffset: number;
+    readonly startOffset: number;
+  }[];
+  readonly sectionPath: readonly string[];
+  readonly sheetName?: string | undefined;
+  readonly sourceRowCount: number;
+  readonly startOffset: number;
+}
+
+interface SpreadsheetRelationship {
+  readonly target: string;
+  readonly type?: string | undefined;
+}
+
+const spreadsheetXmlParser = new XMLParser({
+  attributeNamePrefix: "",
+  ignoreAttributes: false,
+  parseAttributeValue: false,
+  parseTagValue: false,
+  removeNSPrefix: true,
+});
+
+function spreadsheetArchiveMetadataPath(input: ParseDocumentInput, path: string): boolean {
+  if (!spreadsheetArchive(input)) return false;
+
+  return (
+    path === "xl/workbook.xml" ||
+    path === "xl/_rels/workbook.xml.rels" ||
+    /^xl\/(?:drawings|worksheets)\/[^/]+\.xml$/u.test(path) ||
+    /^xl\/(?:drawings|worksheets)\/_rels\/[^/]+\.xml\.rels$/u.test(path)
+  );
+}
+
+function spreadsheetArchive(input: ParseDocumentInput): boolean {
+  return archiveMediaRoots(input)?.includes("xl/media/") === true;
+}
+
+function spreadsheetImageAnchors(
+  input: ParseDocumentInput,
+  archive: Readonly<Record<string, Uint8Array>>,
+): Map<string, SpreadsheetImageAnchor[]> {
+  const byArchivePath = new Map<string, SpreadsheetImageAnchor[]>();
+  if (!spreadsheetArchive(input)) return byArchivePath;
+
+  try {
+    const workbook = xmlRecordProperty(parseSpreadsheetXml(archive, "xl/workbook.xml"), "workbook");
+    const sheetContainer = xmlRecordProperty(workbook, "sheets");
+    const sheets = xmlRecords(sheetContainer.sheet);
+    const workbookRelationships = spreadsheetRelationships(archive, "xl/workbook.xml");
+
+    for (const [sheetIndex, sheet] of sheets.entries()) {
+      const sheetName = xmlString(sheet, "name");
+      const relationshipId = xmlString(sheet, "id");
+      const worksheetRelationship = relationshipId
+        ? workbookRelationships.get(relationshipId)
+        : undefined;
+      if (
+        !sheetName ||
+        !worksheetRelationship ||
+        !relationshipTypeIs(worksheetRelationship, "worksheet")
+      ) {
+        continue;
+      }
+
+      const worksheetPath = worksheetRelationship.target;
+      const worksheet = xmlRecordProperty(parseSpreadsheetXml(archive, worksheetPath), "worksheet");
+      const contentRows = spreadsheetWorksheetContentRows(worksheet);
+      const worksheetRelationships = spreadsheetRelationships(archive, worksheetPath);
+      const drawings = xmlRecords(worksheet.drawing);
+
+      for (const drawing of drawings) {
+        const drawingRelationshipId = xmlString(drawing, "id");
+        const drawingRelationship = drawingRelationshipId
+          ? worksheetRelationships.get(drawingRelationshipId)
+          : undefined;
+        if (!drawingRelationship || !relationshipTypeIs(drawingRelationship, "drawing")) {
+          continue;
+        }
+
+        const drawingPath = drawingRelationship.target;
+        const drawingRoot = xmlRecordProperty(parseSpreadsheetXml(archive, drawingPath), "wsDr");
+        const drawingRelationships = spreadsheetRelationships(archive, drawingPath);
+        const anchors = [
+          ...xmlRecords(drawingRoot.twoCellAnchor),
+          ...xmlRecords(drawingRoot.oneCellAnchor),
+        ];
+
+        for (const anchor of anchors) {
+          const from = xmlRecordProperty(anchor, "from");
+          const row = xmlNonNegativeInteger(from.row, 1_048_575);
+          const column = xmlNonNegativeInteger(from.col, 16_383);
+          const imageRelationshipId = firstXmlString(anchor, "embed");
+          const imageRelationship = imageRelationshipId
+            ? drawingRelationships.get(imageRelationshipId)
+            : undefined;
+          if (
+            row === undefined ||
+            column === undefined ||
+            !imageRelationship ||
+            !relationshipTypeIs(imageRelationship, "image") ||
+            !archiveImageContentType(imageRelationship.target)
+          ) {
+            continue;
+          }
+
+          const current = byArchivePath.get(imageRelationship.target) ?? [];
+          if (
+            !current.some(
+              (candidate) =>
+                candidate.sheetIndex === sheetIndex &&
+                candidate.row === row &&
+                candidate.column === column,
+            )
+          ) {
+            current.push({ column, contentRows, row, sheetIndex, sheetName });
+            current.sort(
+              (left, right) =>
+                left.sheetIndex - right.sheetIndex ||
+                left.row - right.row ||
+                left.column - right.column,
+            );
+            byArchivePath.set(imageRelationship.target, current);
+          }
+        }
+      }
+    }
+  } catch {
+    // Spreadsheet drawing metadata is optional. Keep the media itself and fall back to an
+    // unpositioned image when a malformed or unsupported OOXML relationship cannot be decoded.
+    return new Map();
+  }
+
+  return byArchivePath;
+}
+
+function parseSpreadsheetXml(
+  archive: Readonly<Record<string, Uint8Array>>,
+  path: string,
+): Record<string, unknown> {
+  const body = archive[path];
+  if (!body || body.byteLength > defaultMaxArchiveMetadataBytes) return {};
+  const parsed = spreadsheetXmlParser.parse(decodeUtf8(body)) as unknown;
+  return isPlainRecord(parsed) ? parsed : {};
+}
+
+function spreadsheetRelationships(
+  archive: Readonly<Record<string, Uint8Array>>,
+  sourcePath: string,
+): Map<string, SpreadsheetRelationship> {
+  const relationships = new Map<string, SpreadsheetRelationship>();
+  const relationshipPath = spreadsheetRelationshipPartPath(sourcePath);
+  const root = xmlRecordProperty(parseSpreadsheetXml(archive, relationshipPath), "Relationships");
+
+  for (const relationship of xmlRecords(root.Relationship)) {
+    const id = xmlString(relationship, "Id");
+    const target = xmlString(relationship, "Target");
+    const targetMode = xmlString(relationship, "TargetMode")?.toLowerCase();
+    const resolvedTarget = target ? resolveSpreadsheetRelationshipTarget(sourcePath, target) : null;
+    if (!id || !resolvedTarget || targetMode === "external") continue;
+    const type = xmlString(relationship, "Type");
+    relationships.set(id, {
+      target: resolvedTarget,
+      ...(type ? { type } : {}),
+    });
+  }
+
+  return relationships;
+}
+
+function spreadsheetRelationshipPartPath(sourcePath: string): string {
+  const separator = sourcePath.lastIndexOf("/");
+  const directory = sourcePath.slice(0, separator + 1);
+  const filename = sourcePath.slice(separator + 1);
+  return `${directory}_rels/${filename}.rels`;
+}
+
+function resolveSpreadsheetRelationshipTarget(sourcePath: string, target: string): string | null {
+  const normalizedTarget = target.trim().replaceAll("\\", "/");
+  if (
+    !normalizedTarget ||
+    normalizedTarget.includes("\0") ||
+    normalizedTarget.includes("?") ||
+    normalizedTarget.includes("#") ||
+    /^[a-z][a-z0-9+.-]*:/iu.test(normalizedTarget)
+  ) {
+    return null;
+  }
+
+  const sourceDirectory = sourcePath.slice(0, Math.max(0, sourcePath.lastIndexOf("/") + 1));
+  const segments = normalizedTarget.startsWith("/")
+    ? []
+    : sourceDirectory.split("/").filter(Boolean);
+  for (const segment of normalizedTarget.replace(/^\/+/, "").split("/")) {
+    if (!segment || segment === ".") continue;
+    if (segment === "..") {
+      if (segments.length === 0) return null;
+      segments.pop();
+      continue;
+    }
+    segments.push(segment);
+  }
+  const resolved = segments.join("/");
+  return resolved && archivePathIsSafe(resolved) ? resolved : null;
+}
+
+function relationshipTypeIs(
+  relationship: SpreadsheetRelationship,
+  expected: "drawing" | "image" | "worksheet",
+): boolean {
+  return relationship.type?.toLowerCase().endsWith(`/relationships/${expected}`) ?? false;
+}
+
+function spreadsheetWorksheetContentRows(worksheet: Record<string, unknown>): number[] {
+  const sheetData = xmlRecordProperty(worksheet, "sheetData");
+  return xmlRecords(sheetData.row)
+    .flatMap((row) => {
+      const sourceRow = xmlPositiveInteger(row.r, 1_048_576);
+      const hasValue = xmlRecords(row.c).some((cell) =>
+        ["f", "t", "v"].some((key) => firstXmlString(cell, key) !== undefined),
+      );
+      return sourceRow !== undefined && hasValue ? [sourceRow] : [];
+    })
+    .sort((left, right) => left - right);
+}
+
+function firstXmlString(value: unknown, key: string, depth = 0): string | undefined {
+  if (depth > 24) return undefined;
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const match = firstXmlString(item, key, depth + 1);
+      if (match !== undefined) return match;
+    }
+    return undefined;
+  }
+  if (!isPlainRecord(value)) return undefined;
+  const direct = xmlScalarString(value[key]);
+  if (direct !== undefined) return direct;
+  for (const nested of Object.values(value)) {
+    const match = firstXmlString(nested, key, depth + 1);
+    if (match !== undefined) return match;
+  }
+  return undefined;
+}
+
+function xmlRecords(value: unknown): Record<string, unknown>[] {
+  if (Array.isArray(value)) return value.filter(isPlainRecord);
+  return isPlainRecord(value) ? [value] : [];
+}
+
+function xmlRecordProperty(value: unknown, key: string): Record<string, unknown> {
+  return isPlainRecord(value) && isPlainRecord(value[key]) ? value[key] : {};
+}
+
+function xmlString(value: Readonly<Record<string, unknown>>, key: string): string | undefined {
+  return xmlScalarString(value[key]);
+}
+
+function xmlScalarString(value: unknown): string | undefined {
+  if (typeof value === "string" && value.trim()) return value.trim();
+  return undefined;
+}
+
+function xmlNonNegativeInteger(value: unknown, maximum: number): number | undefined {
+  const parsed = Number.parseInt(xmlScalarString(value) ?? "", 10);
+  return Number.isSafeInteger(parsed) && parsed >= 0 && parsed <= maximum ? parsed : undefined;
+}
+
+function xmlPositiveInteger(value: unknown, maximum: number): number | undefined {
+  const parsed = xmlNonNegativeInteger(value, maximum);
+  return parsed !== undefined && parsed >= 1 ? parsed : undefined;
+}
+
+function spreadsheetAnchorMetadata(anchor: SpreadsheetImageAnchor): Record<string, unknown> {
+  return {
+    sheetIndex: anchor.sheetIndex,
+    sheetName: anchor.sheetName,
+    sourceColumn: anchor.column + 1,
+    sourceRow: anchor.row + 1,
+  };
+}
+
+function spreadsheetTableTextIndex(
+  elements: readonly ParseElementInput[],
+): SpreadsheetTableTextIndexEntry[] {
+  const entries: SpreadsheetTableTextIndexEntry[] = [];
+  let nextOffset = 0;
+
+  for (const element of elements) {
+    const text = canonicalParserText(element.text);
+    if (!text) continue;
+    const startOffset = nextOffset;
+    const endOffset = startOffset + canonicalTextEncoder.encode(text).byteLength;
+    nextOffset = endOffset + 1;
+    if (element.type !== "table") continue;
+    const table = isPlainRecord(element.metadata.table) ? element.metadata.table : undefined;
+    const semanticVersion = numericValue(table?.semanticVersion);
+    const recordCount = numericValue(table?.recordCount);
+    const headerRowCount = numericValue(table?.headerRowCount);
+    const sourceRowCount = numericValue(table?.sourceRowCount);
+    const recordOffsets = canonicalNonEmptyLineOffsets(text, startOffset);
+    if (
+      semanticVersion !== 1 ||
+      !Number.isSafeInteger(recordCount) ||
+      recordCount !== recordOffsets.length ||
+      !Number.isSafeInteger(headerRowCount) ||
+      headerRowCount === undefined ||
+      headerRowCount < 0 ||
+      !Number.isSafeInteger(sourceRowCount) ||
+      sourceRowCount === undefined ||
+      sourceRowCount < headerRowCount + recordOffsets.length
+    ) {
+      continue;
+    }
+    const sheetName = spreadsheetElementSheetName(element);
+    entries.push({
+      endOffset,
+      headerRowCount,
+      ...(element.pageNumber ? { pageNumber: element.pageNumber } : {}),
+      recordOffsets,
+      sectionPath: [...(element.sectionPath ?? [])],
+      ...(sheetName ? { sheetName } : {}),
+      sourceRowCount,
+      startOffset,
+    });
+  }
+
+  return entries;
+}
+
+function canonicalParserText(text: string | undefined): string {
+  return text?.replace(canonicalTextEdgeWhitespace, "") ?? "";
+}
+
+function canonicalNonEmptyLineOffsets(
+  text: string,
+  elementStartOffset: number,
+): Array<{ readonly endOffset: number; readonly startOffset: number }> {
+  const offsets: Array<{ readonly endOffset: number; readonly startOffset: number }> = [];
+  let codeUnitStart = 0;
+  let precedingBytes = 0;
+  while (codeUnitStart <= text.length) {
+    const newline = text.indexOf("\n", codeUnitStart);
+    const codeUnitEnd = newline === -1 ? text.length : newline;
+    const line = text.slice(codeUnitStart, codeUnitEnd);
+    const lineBytes = canonicalTextEncoder.encode(line).byteLength;
+    if (line.trim()) {
+      offsets.push({
+        endOffset: elementStartOffset + precedingBytes + lineBytes,
+        startOffset: elementStartOffset + precedingBytes,
+      });
+    }
+    if (newline === -1) break;
+    precedingBytes += lineBytes + 1;
+    codeUnitStart = codeUnitEnd + 1;
+  }
+  return offsets;
+}
+
+function spreadsheetElementSheetName(element: ParseElementInput): string | undefined {
+  const candidates = ["page_name", "sheet_name", "sheetName", "worksheet", "worksheet_name"];
+  for (const key of candidates) {
+    const value = metadataString(element.metadata, key);
+    if (value) return value;
+  }
+  const table = isPlainRecord(element.metadata.table) ? element.metadata.table : undefined;
+  for (const key of candidates) {
+    const value = table ? metadataString(table, key) : undefined;
+    if (value) return value;
+  }
+  return undefined;
+}
+
+function spreadsheetImageTextPlacement(
+  anchor: SpreadsheetImageAnchor,
+  tables: readonly SpreadsheetTableTextIndexEntry[],
+):
+  | {
+      readonly endOffset: number;
+      readonly sectionPath: string[];
+      readonly startOffset: number;
+    }
+  | undefined {
+  const normalizedSheetName = comparableSpreadsheetSheetName(anchor.sheetName);
+  const named = tables.filter(
+    (table) =>
+      table.sheetName !== undefined &&
+      comparableSpreadsheetSheetName(table.sheetName) === normalizedSheetName,
+  );
+  const paged = tables.filter((table) => table.pageNumber === anchor.sheetIndex + 1);
+  const candidates = named.length > 0 ? named : paged.length > 0 ? paged : tables;
+  if (candidates.length !== 1) return undefined;
+  const table = candidates[0] as SpreadsheetTableTextIndexEntry;
+  const sourceRow = anchor.row + 1;
+  const contentRowIndex = anchor.contentRows.indexOf(sourceRow);
+  if (anchor.contentRows.length > 0 && contentRowIndex === -1) return undefined;
+  const tableSourceRow = contentRowIndex === -1 ? sourceRow : contentRowIndex + 1;
+  if (tableSourceRow > table.sourceRowCount) return undefined;
+  const recordIndex = tableSourceRow - table.headerRowCount - 1;
+  const record = table.recordOffsets[recordIndex];
+  if (!record) return undefined;
+
+  return {
+    endOffset: record.endOffset,
+    sectionPath: [...table.sectionPath],
+    startOffset: record.startOffset,
+  };
+}
+
+function comparableSpreadsheetSheetName(value: string): string {
+  return value.normalize("NFKC").trim().toLocaleLowerCase();
 }
 
 function parseElementEmbeddedImageUri(element: ParseElementInput): string | null {

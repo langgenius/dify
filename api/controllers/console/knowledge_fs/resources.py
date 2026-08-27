@@ -586,6 +586,7 @@ def _public_multimodal_manifest(
                 modality=item.modality,
                 ocr_text=item.ocr_text,
                 page_number=item.page_number,
+                parse_element_id=item.parse_element_id,
                 section_path=item.section_path,
                 start_offset=item.start_offset,
                 text_preview=item.text_preview,

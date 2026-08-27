@@ -475,6 +475,7 @@ def _document_multimodal_manifest(*, object_key: str | None = None) -> Knowledge
                     "modality": "image",
                     "ocrText": "Service A to Service B",
                     "pageNumber": 2,
+                    "parseElementId": "parse-element-1",
                     "sectionPath": ["Architecture"],
                     "startOffset": 42,
                     "title": "System diagram",
@@ -516,6 +517,7 @@ def test_document_multimodal_manifest_console_bff_exposes_only_authorized_asset_
         f"/console/api/knowledge-fs/spaces/control-1/documents/{document_id}/multimodal/figure%3A1/asset"
     )
     assert item["thumbnail_url"] == f"{item['asset_url']}?variant=thumbnail"
+    assert item["parse_element_id"] == "parse-element-1"
     assert "objectKey" not in str(response)
     assert "sha256" not in str(response)
     facade.get_document_multimodal_manifest.assert_called_once_with(

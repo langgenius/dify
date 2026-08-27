@@ -153,20 +153,44 @@ function cyclicChunkIds(chunksById: Map<string, DocumentRevisionChunk>) {
 export function buildDocumentDetailModel(
   chunks: DocumentRevisionChunk[],
   outlineNodes: KnowledgeFsDocumentOutlineNodeResponse[] = [],
+  multimodalItems: KnowledgeFsDocumentMultimodalItemResponse[] = [],
 ): DocumentDetailModel {
   const sortedChunks = [...chunks].sort(compareChunks)
+  const renderedImageElementIds = new Set(
+    multimodalItems.flatMap((item) =>
+      item.modality === 'image' && item.parse_element_id ? [item.parse_element_id] : [],
+    ),
+  )
+  const contentChunks = sortedChunks.filter(
+    (chunk) => !isRenderedMultimodalIndexChunk(chunk, renderedImageElementIds),
+  )
   if (outlineNodes.length) {
-    const outlineModel = buildOutlineBackedDocumentModel(sortedChunks, outlineNodes)
+    const outlineModel = buildOutlineBackedDocumentModel(sortedChunks, contentChunks, outlineNodes)
     if (outlineModel.tree.roots.length) return outlineModel
   }
-  return buildChunkDerivedDocumentModel(sortedChunks)
+  return buildChunkDerivedDocumentModel(sortedChunks, contentChunks)
 }
 
 function buildChunkDerivedDocumentModel(
-  sortedChunks: DocumentRevisionChunk[],
+  sourceChunks: DocumentRevisionChunk[],
+  contentChunks: DocumentRevisionChunk[],
 ): DocumentDetailModel {
-  const tree = buildChunkDerivedTree(sortedChunks)
-  return createDocumentDetailModel(sortedChunks, sortedChunks, tree)
+  const tree = buildChunkDerivedTree(contentChunks)
+  return createDocumentDetailModel(sourceChunks, contentChunks, tree)
+}
+
+function isRenderedMultimodalIndexChunk(
+  chunk: DocumentRevisionChunk,
+  renderedImageElementIds: ReadonlySet<string>,
+) {
+  if (chunk.kind !== 'image') return false
+  const elementIds = Array.isArray(chunk.userMetadata.elementIds)
+    ? chunk.userMetadata.elementIds.filter(
+        (value): value is string => typeof value === 'string' && Boolean(value.trim()),
+      )
+    : []
+  if (!elementIds.length) return false
+  return elementIds.some((elementId) => renderedImageElementIds.has(elementId))
 }
 
 function buildChunkDerivedTree(sortedChunks: DocumentRevisionChunk[]): DocumentChunkTree {
@@ -238,14 +262,15 @@ function buildChunkDerivedTree(sortedChunks: DocumentRevisionChunk[]): DocumentC
 }
 
 function buildOutlineBackedDocumentModel(
-  sortedChunks: DocumentRevisionChunk[],
+  sourceChunks: DocumentRevisionChunk[],
+  visibleChunks: DocumentRevisionChunk[],
   sourceRoots: KnowledgeFsDocumentOutlineNodeResponse[],
 ): DocumentDetailModel {
   const outlineRoots = coalesceDuplicateOutlineRoots(sourceRoots)
   const allOutlineNodes = flattenOutlineNodes(sourceRoots)
   const outlineTitleKeys = new Set(allOutlineNodes.map((node) => comparableTitle(node.title)))
-  const firstOrdinal = sortedChunks[0]?.ordinal
-  const contentChunks = sortedChunks.filter(
+  const firstOrdinal = visibleChunks[0]?.ordinal
+  const contentChunks = visibleChunks.filter(
     (chunk) => !isLegacyDocumentTitleChunk(chunk, firstOrdinal, outlineTitleKeys),
   )
   const contentChunksById = new Map(contentChunks.map((chunk) => [chunk.id, chunk]))
@@ -318,7 +343,7 @@ function buildOutlineBackedDocumentModel(
   }
 
   return createDocumentDetailModel(
-    sortedChunks,
+    sourceChunks,
     contentChunks,
     { byId, roots },
     {
