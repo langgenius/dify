@@ -16,7 +16,15 @@ Requests run through the real Flask blueprint with the real router, the real
 pipeline and real database rows. The only substitutions are at process seams the
 router already treats as pluggable: the bound `BearerAuthenticator` (so a token's
 subject kind and scope set are chosen per row), the enterprise HTTP clients, and
-the flask-login mount.
+the flask-login mount. The RBAC backend and the enterprise web-app service are
+stubbed per row, so those rows pin how *this* code handles each answer they can
+give — never what the real services decide.
+
+Cases are never gated on whether a route declares a check. A row that asserts
+`ADMIT` where RBAC, a role floor or a licence gate does not fire is pinning the
+check's *absence*: losing a check is caught by the deny rows, and gaining one is
+caught by these. `files.upload` is the route the design says must never acquire an
+RBAC scene, and `files.upload-rbac_on_denied` is the row that says so.
 
 Admission is observed as HTTP 418: a `user_logged_in` receiver raises `ImATeapot`
 at the moment the pipeline mounts the caller, which is after every requirement has
@@ -97,13 +105,20 @@ ADMITTED = 418
 
 
 class Trait(StrEnum):
-    """Structural facts about a route, used only to decide which cases can reach it."""
+    """Structural facts about a route, used only to decide which cases can reach it.
+
+    Every member here is a fact about the *shape* of the request — is there an
+    `app_id` in the path, can a `dfoe_` token address this route at all. None is
+    read off a guard's `allowed_roles=` or `rbac=` kwarg, deliberately: gating a
+    case on a declared check means a route that *gains* that check during migration
+    simply loses the row, and gaining a check is the hazard this plan cares about
+    most. Cases like `RBAC_ON_DENIED` therefore run on every route an account
+    caller can reach, and assert `ADMIT` where the check does not exist today.
+    """
 
     APP_SCOPED = auto()
     ACCOUNT_PRIMARY = auto()
     EXTERNAL_REACHABLE = auto()
-    ROLE_FLOOR = auto()
-    RBAC_DECLARED = auto()
     ENTERPRISE_ONLY = auto()
 
 
@@ -217,6 +232,22 @@ DENY_PRIVATE_APP = Expect(403, "user_not_allowed_for_private_app")
 DENY_EDITION = Expect(404, note="endpoint-level edition gate, raised before the bearer is read")
 DENY_LICENSE = Expect(403, "license_invalid")
 DENY_RBAC = Expect(403, note="bare werkzeug Forbidden from enforce_rbac_access")
+ADMIT_NO_RBAC_SCENE = Expect(
+    ADMITTED,
+    note=(
+        "pins a check this route does NOT have: RBAC is on and denying, and the route still "
+        "admits because it declares no scene. Attaching one during migration turns this 403. "
+        "files.upload is the route the design says must never gain a scene"
+    ),
+)
+ADMIT_NO_ROLE_FLOOR = Expect(
+    ADMITTED,
+    note="pins a check this route does NOT have: RBAC is on and a NORMAL member is still admitted",
+)
+ADMIT_NO_LICENCE_GATE = Expect(
+    ADMITTED,
+    note="pins a check this route does NOT have: the licence is dead and the route still admits",
+)
 ADMIT_NO_MOUNT = Expect(
     200,
     note="external subject mounts no caller on an app-less route, so admission shows as the view's own 200",
@@ -237,7 +268,7 @@ ROUTES: tuple[Route, ...] = (
         "apps.describe",
         "GET",
         "/apps/{app_id}",
-        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.RBAC_DECLARED}),
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
     ),
     Route("apps.list", "GET", "/apps", frozenset({Trait.ACCOUNT_PRIMARY}), query="workspace_id={workspace_id}"),
     Route("workspaces.list", "GET", "/workspaces", frozenset({Trait.ACCOUNT_PRIMARY})),
@@ -248,55 +279,55 @@ ROUTES: tuple[Route, ...] = (
         "workspaces.members.invite",
         "POST",
         "/workspaces/{workspace_id}/members",
-        frozenset({Trait.ACCOUNT_PRIMARY, Trait.ROLE_FLOOR}),
+        frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
     Route(
         "workspaces.members.remove",
         "DELETE",
         "/workspaces/{workspace_id}/members/{member_id}",
-        frozenset({Trait.ACCOUNT_PRIMARY, Trait.ROLE_FLOOR}),
+        frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
     Route(
         "workspaces.members.update_role",
         "PATCH",
         "/workspaces/{workspace_id}/members/{member_id}",
-        frozenset({Trait.ACCOUNT_PRIMARY, Trait.ROLE_FLOOR}),
+        frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
     Route(
         "app_dsl.import",
         "POST",
         "/workspaces/{workspace_id}/apps/imports",
-        frozenset({Trait.ACCOUNT_PRIMARY, Trait.ROLE_FLOOR, Trait.RBAC_DECLARED}),
+        frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
     Route(
         "app_dsl.import_confirm",
         "POST",
         "/workspaces/{workspace_id}/apps/imports/{import_id}:confirm",
-        frozenset({Trait.ACCOUNT_PRIMARY, Trait.ROLE_FLOOR, Trait.RBAC_DECLARED}),
+        frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
     Route(
         "app_dsl.export",
         "GET",
         "/apps/{app_id}/dsl",
-        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.ROLE_FLOOR, Trait.RBAC_DECLARED}),
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
     ),
     Route(
         "app_dsl.check_dependencies",
         "GET",
         "/apps/{app_id}/dependencies:check",
-        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.ROLE_FLOOR, Trait.RBAC_DECLARED}),
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
     ),
     Route(
         "app_run.run",
         "POST",
         "/apps/{app_id}:run",
-        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE, Trait.RBAC_DECLARED}),
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
     ),
     Route(
         "app_run.stop",
         "POST",
         "/apps/{app_id}/tasks/{task_id}:stop",
-        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE, Trait.RBAC_DECLARED}),
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
     ),
     Route(
         "files.upload",
@@ -308,19 +339,19 @@ ROUTES: tuple[Route, ...] = (
         "human_input_form.get",
         "GET",
         "/apps/{app_id}/human-input-forms/{form_token}",
-        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE, Trait.RBAC_DECLARED}),
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
     ),
     Route(
         "human_input_form.submit",
         "POST",
         "/apps/{app_id}/human-input-forms/{form_token}:submit",
-        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE, Trait.RBAC_DECLARED}),
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
     ),
     Route(
         "workflow_events.stream",
         "GET",
         "/apps/{app_id}/tasks/{task_id}/events",
-        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE, Trait.RBAC_DECLARED}),
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
     ),
     Route(
         "permitted_external.list",
@@ -348,7 +379,7 @@ CASE_REQUIRES: dict[Case, frozenset[Trait]] = {
     Case.UNKNOWN_APP: frozenset({Trait.APP_SCOPED}),
     Case.FOREIGN_WORKSPACE_QUERY: frozenset({Trait.APP_SCOPED}),
     Case.EDITION_NOT_ENTERPRISE: frozenset({Trait.ENTERPRISE_ONLY}),
-    Case.LICENSE_INVALID: frozenset({Trait.ENTERPRISE_ONLY}),
+    Case.LICENSE_INVALID: frozenset(),
     Case.EE_ACCOUNT_PUBLIC: frozenset({Trait.APP_SCOPED, Trait.ACCOUNT_PRIMARY}),
     Case.EE_ACCOUNT_SSO_VERIFIED: frozenset({Trait.APP_SCOPED, Trait.ACCOUNT_PRIMARY}),
     Case.EE_ACCOUNT_PRIVATE_ALL: frozenset({Trait.APP_SCOPED, Trait.ACCOUNT_PRIMARY}),
@@ -362,8 +393,8 @@ CASE_REQUIRES: dict[Case, frozenset[Trait]] = {
     Case.EE_EXTERNAL_PRIVATE: frozenset({Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
     Case.EE_EXTERNAL_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: frozenset({Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
     Case.EE_EXTERNAL_MODE_UNRESOLVED: frozenset({Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
-    Case.RBAC_ON_LOW_ROLE: frozenset({Trait.ROLE_FLOOR}),
-    Case.RBAC_ON_DENIED: frozenset({Trait.RBAC_DECLARED}),
+    Case.RBAC_ON_LOW_ROLE: frozenset({Trait.ACCOUNT_PRIMARY}),
+    Case.RBAC_ON_DENIED: frozenset({Trait.ACCOUNT_PRIMARY}),
 }
 
 
@@ -473,6 +504,9 @@ _ACCOUNT_ONLY_NO_WORKSPACE: dict[Case, Expect] = {
     Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
     Case.NON_MEMBER: ADMIT,
     Case.LOW_ROLE: ADMIT,
+    Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+    Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
+    Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_SCENE,
 }
 
 
@@ -490,6 +524,9 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
         Case.NON_MEMBER: DENY_NON_MEMBER,
         Case.LOW_ROLE: ADMIT,
+        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
+        Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_SCENE,
     },
     "workspaces.switch": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -498,6 +535,9 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
         Case.NON_MEMBER: DENY_NON_MEMBER,
         Case.LOW_ROLE: ADMIT,
+        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
+        Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_SCENE,
     },
     "workspaces.members.list": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -506,6 +546,9 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
         Case.NON_MEMBER: DENY_NON_MEMBER,
         Case.LOW_ROLE: ADMIT,
+        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
+        Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_SCENE,
     },
     "workspaces.members.invite": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -515,6 +558,8 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.NON_MEMBER: DENY_NON_MEMBER,
         Case.LOW_ROLE: DENY_ROLE,
         Case.RBAC_ON_LOW_ROLE: DENY_ROLE,
+        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+        Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_SCENE,
     },
     "workspaces.members.remove": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -524,6 +569,8 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.NON_MEMBER: DENY_NON_MEMBER,
         Case.LOW_ROLE: DENY_ROLE,
         Case.RBAC_ON_LOW_ROLE: DENY_ROLE,
+        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+        Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_SCENE,
     },
     "workspaces.members.update_role": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -533,6 +580,8 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.NON_MEMBER: DENY_NON_MEMBER,
         Case.LOW_ROLE: DENY_ROLE,
         Case.RBAC_ON_LOW_ROLE: DENY_ROLE,
+        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
+        Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_SCENE,
     },
     "app_dsl.import": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -543,6 +592,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.LOW_ROLE: DENY_ROLE,
         Case.RBAC_ON_LOW_ROLE: ADMIT,
         Case.RBAC_ON_DENIED: DENY_RBAC,
+        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
     },
     "app_dsl.import_confirm": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -553,6 +603,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.LOW_ROLE: DENY_ROLE,
         Case.RBAC_ON_LOW_ROLE: ADMIT,
         Case.RBAC_ON_DENIED: DENY_RBAC,
+        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
     },
     "apps.describe": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -564,6 +615,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
         Case.FOREIGN_WORKSPACE_QUERY: ACCEPTED_DELTA_FOREIGN_WORKSPACE,
+        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -572,6 +624,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.EE_ACCOUNT_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: ADMIT,
         Case.EE_ACCOUNT_MODE_UNRESOLVED: ADMIT,
         Case.RBAC_ON_DENIED: DENY_RBAC,
+        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
     },
     "app_dsl.export": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -583,6 +636,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
         Case.FOREIGN_WORKSPACE_QUERY: ACCEPTED_DELTA_FOREIGN_WORKSPACE,
+        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -603,6 +657,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
         Case.FOREIGN_WORKSPACE_QUERY: ACCEPTED_DELTA_FOREIGN_WORKSPACE,
+        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -623,6 +678,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
         Case.FOREIGN_WORKSPACE_QUERY: ACCEPTED_DELTA_FOREIGN_WORKSPACE,
+        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -637,6 +693,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.EE_EXTERNAL_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
         Case.EE_EXTERNAL_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
         Case.RBAC_ON_DENIED: DENY_RBAC,
+        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
     },
     "app_run.stop": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -648,6 +705,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
         Case.FOREIGN_WORKSPACE_QUERY: ACCEPTED_DELTA_FOREIGN_WORKSPACE,
+        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -662,6 +720,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.EE_EXTERNAL_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
         Case.EE_EXTERNAL_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
         Case.RBAC_ON_DENIED: DENY_RBAC,
+        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
     },
     "files.upload": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -673,6 +732,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
         Case.FOREIGN_WORKSPACE_QUERY: ACCEPTED_DELTA_FOREIGN_WORKSPACE,
+        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -686,6 +746,8 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.EE_EXTERNAL_PRIVATE: DENY_ACCESS_MODE,
         Case.EE_EXTERNAL_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
         Case.EE_EXTERNAL_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
+        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
+        Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_SCENE,
     },
     "human_input_form.get": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -697,6 +759,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
         Case.FOREIGN_WORKSPACE_QUERY: ACCEPTED_DELTA_FOREIGN_WORKSPACE,
+        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -711,6 +774,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.EE_EXTERNAL_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
         Case.EE_EXTERNAL_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
         Case.RBAC_ON_DENIED: DENY_RBAC,
+        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
     },
     "human_input_form.submit": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -722,6 +786,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
         Case.FOREIGN_WORKSPACE_QUERY: ACCEPTED_DELTA_FOREIGN_WORKSPACE,
+        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -736,6 +801,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.EE_EXTERNAL_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
         Case.EE_EXTERNAL_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
         Case.RBAC_ON_DENIED: DENY_RBAC,
+        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
     },
     "workflow_events.stream": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -747,6 +813,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
         Case.FOREIGN_WORKSPACE_QUERY: ACCEPTED_DELTA_FOREIGN_WORKSPACE,
+        Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -761,6 +828,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.EE_EXTERNAL_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: DENY_PRIVATE_APP,
         Case.EE_EXTERNAL_MODE_UNRESOLVED: DENY_MODE_UNRESOLVED,
         Case.RBAC_ON_DENIED: DENY_RBAC,
+        Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
     },
     "permitted_external.list": {
         Case.NO_BEARER: DENY_NO_BEARER,
@@ -1274,6 +1342,18 @@ this PR moves, and must therefore keep their exact response sets. Tolerating a
 migration happened, which is a snapshot of nothing.
 """
 
+ERROR_DEFAULT_RESPONSE: dict[str, object] = {
+    "description": "Error",
+    "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorBody"}}},
+}
+"""Exactly what `@returns` registers as `("default", "Error", ErrorBody)`.
+
+The normalisation below drops this entry from the three migrating sites before
+hashing, so the digest cannot see it. Without checking the popped value against
+this, a hand-written `default` pointing at some other schema would survive both
+the code-set comparison (which only looks at codes) and the digest.
+"""
+
 EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/_health"): frozenset({"200", "default"}),
     ("get", "/_version"): frozenset({"200", "default"}),
@@ -1367,8 +1447,11 @@ def test_openapi_document_is_otherwise_byte_stable(openapi_document: dict[str, o
     for key, operation in _operations(normalised):
         if key in OPERATIONS_MIGRATING_ONTO_RETURNS:
             responses = operation.get("responses")
-            if isinstance(responses, dict):
-                responses.pop("default", None)
+            if isinstance(responses, dict) and "default" in responses:
+                assert responses.pop("default") == ERROR_DEFAULT_RESPONSE, (
+                    f"{key} gained a `default` response that is not the one @returns emits; "
+                    "the digest below cannot see this entry, so it is checked here"
+                )
     canonical = json.dumps(normalised, sort_keys=True, separators=(",", ":"))
     digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
     assert digest == OPENAPI_DOCUMENT_DIGEST, (
@@ -1386,7 +1469,4 @@ def test_error_default_response_shape_is_what_returns_registers(openapi_document
     stop = dict(_operations(openapi_document))[("post", "/apps/{app_id}/tasks/{task_id}:stop")]
     responses = stop["responses"]
     assert isinstance(responses, dict)
-    assert responses["default"] == {
-        "description": "Error",
-        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorBody"}}},
-    }
+    assert responses["default"] == ERROR_DEFAULT_RESPONSE
