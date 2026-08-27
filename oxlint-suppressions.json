@@ -2373,16 +2373,6 @@
       "count": 2
     }
   },
-  "web/app/components/datasets/metadata/metadata-dataset/create-content.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/metadata/metadata-dataset/dataset-metadata-drawer.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/metadata/metadata-document/info-group.tsx": {
     "no-restricted-globals": {
       "count": 1
