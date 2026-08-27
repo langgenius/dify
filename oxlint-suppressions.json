@@ -59,11 +59,6 @@
       "count": 3
     }
   },
-  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/field.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/provider-panel.tsx": {
     "eslint-react/static-components": {
       "count": 2
@@ -2373,16 +2368,6 @@
       "count": 2
     }
   },
-  "web/app/components/datasets/metadata/metadata-dataset/create-content.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/metadata/metadata-dataset/dataset-metadata-drawer.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/metadata/metadata-document/info-group.tsx": {
     "no-restricted-globals": {
       "count": 1
@@ -3607,11 +3592,6 @@
       "count": 31
     }
   },
-  "web/app/components/workflow/nodes/_base/components/variable/var-list.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/_base/components/variable/var-reference-picker.trigger.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 3
@@ -4217,12 +4197,6 @@
     }
   },
   "web/app/components/workflow/nodes/loop/components/loop-variables/item.tsx": {
-    "jsx-a11y/no-autofocus": {
-      "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 4
     }
@@ -4262,9 +4236,6 @@
     }
   },
   "web/app/components/workflow/nodes/parameter-extractor/components/extract-parameter/update.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 1
     }

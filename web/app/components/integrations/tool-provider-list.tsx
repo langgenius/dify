@@ -34,12 +34,7 @@ import ProviderDetail from '@/app/components/tools/provider/detail'
 import { ToolProviderGrid } from '@/app/components/tools/tool-provider-grid'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import {
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllToolProviders,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
+import { useAllCustomTools, useAllToolProviders, useAllWorkflowTools } from '@/service/use-tools'
 import { useToolProviderCategory } from './hooks/use-tool-provider-category'
 import ToolProviderCreateAction from './tool-provider-create-action'
 import { ToolProviderToolbar } from './tool-provider-toolbar'
@@ -90,19 +85,19 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
   const handleCreatedMCPProviderHandled = useCallback(() => {
     setCreatedMCPProviderId(undefined)
   }, [])
-  const allToolProvidersQuery = useAllToolProviders(activeTab === 'builtin')
+  const allToolProvidersQuery = useAllToolProviders(
+    activeTab === 'builtin' || activeTab === 'mcp',
+    activeTab === 'mcp' ? 'mcp' : undefined,
+  )
   const customToolsQuery = useAllCustomTools(activeTab === 'api')
   const workflowToolsQuery = useAllWorkflowTools(activeTab === 'workflow')
-  const mcpToolsQuery = useAllMCPTools(activeTab === 'mcp')
-  const { refetch: refetchMcpTools } = mcpToolsQuery
+  const { refetch: refetchMcpTools } = allToolProvidersQuery
   const activeToolsQuery =
     activeTab === 'api'
       ? customToolsQuery
       : activeTab === 'workflow'
         ? workflowToolsQuery
-        : activeTab === 'mcp'
-          ? mcpToolsQuery
-          : allToolProvidersQuery
+        : allToolProvidersQuery
   const collectionList = activeToolsQuery.data ?? EMPTY_COLLECTIONS
   const isCollectionListLoading = activeToolsQuery.isLoading
   const refetch = activeToolsQuery.refetch
@@ -235,8 +230,8 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
               )}
               {activeTab === 'mcp' && (
                 <MCPList
-                  providers={mcpToolsQuery.data ?? []}
-                  isLoading={mcpToolsQuery.isLoading}
+                  providers={activeTabCollectionList}
+                  isLoading={allToolProvidersQuery.isLoading}
                   searchText={keywords}
                   contentInset={contentInset}
                   createdProviderId={createdMCPProviderId}
