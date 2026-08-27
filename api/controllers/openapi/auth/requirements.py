@@ -20,7 +20,7 @@ from typing import ClassVar, override
 
 from flask import request
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.common.wraps import enforce_rbac_access
@@ -31,8 +31,7 @@ from controllers.openapi.auth.subjects import Subject
 from core.rbac import RBACPermission, RBACResourceScope
 from enums import DeploymentEdition
 from libs.oauth_bearer import Scope
-from models.account import Account, AccountStatus, TenantAccountRole
-from services.account_service import TenantService
+from models.account import TenantAccountRole
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode
 from services.entities.feature_entities import LicenseStatus
 from services.feature_service import FeatureService
@@ -123,30 +122,11 @@ class CheckAppApiEnabled(Requirement):
             raise Forbidden("service_api_disabled")
 
 
-def _member_role(subject: Subject, ctx: Context, session: Session) -> TenantAccountRole:
-    """The caller's role in the resolved workspace.
-
-    Non-membership answers 404, never 403, so workspace ids cannot be probed
-    across tenants, and an account that is not `ACTIVE` is a non-member even
-    when it still holds a role.
-
-    `ctx.workspace` is read before `ctx.caller`: an account binds its current
-    tenant only once the workspace has been resolved.
-    """
-    workspace = ctx.workspace
-    caller = ctx.caller
-    if not isinstance(caller, Account) or caller.status != AccountStatus.ACTIVE:
-        raise NotFound("workspace not found")
-    role = TenantService.get_account_role_in_tenant(str(subject.account_id), str(workspace.id), session=session)
-    if role is None:
-        raise NotFound("workspace not found")
-    return role
-
-
-def _assert_member(subject: Subject, ctx: Context, session: Session) -> None:
+def _assert_member(subject: Subject, ctx: Context) -> None:
+    """Resolving the role *is* the check: `Context.workspace_role` 404s a non-member."""
     if subject.caller_kind is not CallerKind.ACCOUNT:
         return
-    _member_role(subject, ctx, session)
+    _ = ctx.workspace_role
 
 
 class CheckAppWorkspaceMembership(Requirement):
@@ -156,7 +136,7 @@ class CheckAppWorkspaceMembership(Requirement):
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         if not ctx.has_app:
             return
-        _assert_member(subject, ctx, session)
+        _assert_member(subject, ctx)
 
 
 class RequireWorkspaceMembership(Requirement):
@@ -169,7 +149,7 @@ class RequireWorkspaceMembership(Requirement):
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        _assert_member(subject, ctx, session)
+        _assert_member(subject, ctx)
 
 
 class TokenScope(Requirement):
@@ -227,12 +207,12 @@ class RBACCheck(Requirement):
                 path_args=dict(request.view_args or {}),
             )
             return
-        self._enforce_role_floor(subject, ctx, session)
+        self._enforce_role_floor(ctx)
 
-    def _enforce_role_floor(self, subject: Subject, ctx: Context, session: Session) -> None:
+    def _enforce_role_floor(self, ctx: Context) -> None:
         if self.roles is None:
             return
-        if _member_role(subject, ctx, session) not in self.roles:
+        if ctx.workspace_role not in self.roles:
             raise Forbidden("insufficient workspace role")
 
 

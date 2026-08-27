@@ -9,15 +9,17 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import Subject
-from models import App, Tenant
-from models.account import TenantStatus
+from models import Account, App, Tenant, TenantAccountJoin
+from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from models.enums import AppStatus
 from models.model import AppMode, IconType
+from services.account_service import TenantService
 from services.app_service import AppService
 
 APP_ID = "00000000-0000-0000-0000-000000000001"
 TENANT_ID = "00000000-0000-0000-0000-000000000002"
 OTHER_TENANT_ID = "00000000-0000-0000-0000-000000000003"
+ACCOUNT_ID = "00000000-0000-0000-0000-000000000004"
 
 
 def _boom(*_args: object, **_kwargs: object) -> NoReturn:
@@ -25,21 +27,23 @@ def _boom(*_args: object, **_kwargs: object) -> NoReturn:
 
 
 class _StubSubject:
-    def __init__(self) -> None:
+    def __init__(self, caller: object | None = None, account_id: str = ACCOUNT_ID) -> None:
         self.calls: list[tuple[object, Session]] = []
-        self.caller = object()
+        self.caller = caller if caller is not None else object()
+        self.account_id = account_id
 
     def resolve_caller(self, ctx: object, session: Session) -> object:
         self.calls.append((ctx, session))
         return self.caller
 
 
-def _subject() -> Subject:
+def _subject(caller: object | None = None) -> Subject:
     """`_StubSubject` stands in for `Subject` structurally — `Context` only
-    ever calls `resolve_caller` on it. Cast once here rather than annotating
-    every `Context(...)` call site against the concrete stub type.
+    ever calls `resolve_caller` on it and reads `account_id`. Cast once here
+    rather than annotating every `Context(...)` call site against the concrete
+    stub type.
     """
-    return cast(Subject, _StubSubject())
+    return cast(Subject, _StubSubject(caller))
 
 
 def _app(*, app_id: str = APP_ID, tenant_id: str = TENANT_ID) -> App:
@@ -63,6 +67,16 @@ def _tenant(*, tenant_id: str = TENANT_ID, status: TenantStatus = TenantStatus.N
     tenant = Tenant(name="OpenAPI tenant", status=status)
     tenant.id = tenant_id
     return tenant
+
+
+def _account(*, status: AccountStatus = AccountStatus.ACTIVE) -> Account:
+    account = Account(name="OpenAPI account", email="account@example.com", status=status)
+    account.id = ACCOUNT_ID
+    return account
+
+
+def _membership(role: TenantAccountRole = TenantAccountRole.NORMAL) -> TenantAccountJoin:
+    return TenantAccountJoin(tenant_id=TENANT_ID, account_id=ACCOUNT_ID, current=True, role=role)
 
 
 def _persist(session: Session, *models: object) -> None:
@@ -204,3 +218,75 @@ class TestCaller:
         assert ctx.caller is ctx.caller
         assert ctx.caller is subject.caller
         assert subject.calls == [(ctx, sqlite_session)]
+
+
+class TestWorkspaceRole:
+    def test_role_is_read_once_per_request(self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Membership and the RBAC role floor both read this; the request pays
+        for one SELECT, not one each.
+        """
+        _persist(sqlite_session, _app(), _tenant(), _account(), _membership(TenantAccountRole.ADMIN))
+        calls: list[int] = []
+
+        def _counted(*_args: object, **_kwargs: object) -> TenantAccountRole:
+            calls.append(1)
+            return TenantAccountRole.ADMIN
+
+        monkeypatch.setattr(TenantService, "get_account_role_in_tenant", _counted)
+        ctx = Context(_subject(_account()), sqlite_session, {"app_id": APP_ID})
+
+        assert ctx.workspace_role is ctx.workspace_role is TenantAccountRole.ADMIN
+        assert len(calls) == 1
+
+    def test_reads_the_persisted_role(self, sqlite_session: Session) -> None:
+        _persist(sqlite_session, _app(), _tenant(), _account(), _membership(TenantAccountRole.EDITOR))
+        ctx = Context(_subject(_account()), sqlite_session, {"app_id": APP_ID})
+
+        assert ctx.workspace_role == TenantAccountRole.EDITOR
+
+    def test_404s_a_non_member(self, sqlite_session: Session) -> None:
+        _persist(sqlite_session, _app(), _tenant(), _account())
+        ctx = Context(_subject(_account()), sqlite_session, {"app_id": APP_ID})
+
+        with pytest.raises(NotFound, match="workspace not found"):
+            _ = ctx.workspace_role
+
+    def test_404s_an_inactive_account_that_still_holds_a_role(
+        self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A banned admin is a non-member, and the role is never even read."""
+        _persist(sqlite_session, _app(), _tenant(), _membership(TenantAccountRole.ADMIN))
+        monkeypatch.setattr(TenantService, "get_account_role_in_tenant", _boom)
+        ctx = Context(_subject(_account(status=AccountStatus.BANNED)), sqlite_session, {"app_id": APP_ID})
+
+        with pytest.raises(NotFound, match="workspace not found"):
+            _ = ctx.workspace_role
+
+    def test_404s_a_caller_that_is_not_an_account(
+        self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _persist(sqlite_session, _app(), _tenant(), _membership(TenantAccountRole.ADMIN))
+        monkeypatch.setattr(TenantService, "get_account_role_in_tenant", _boom)
+        ctx = Context(_subject(), sqlite_session, {"app_id": APP_ID})
+
+        with pytest.raises(NotFound, match="workspace not found"):
+            _ = ctx.workspace_role
+
+    def test_resolves_the_workspace_before_the_caller(self, sqlite_session: Session) -> None:
+        """A subject binds the account's current tenant while resolving it, so
+        the workspace has to be there already — reading the caller first would
+        leave the account mounted with no current tenant, silently.
+        """
+        _persist(sqlite_session, _app(), _tenant(), _account(), _membership())
+        resolved_when_called: list[bool] = []
+
+        class _Recording(_StubSubject):
+            def resolve_caller(self, ctx: object, session: Session) -> object:
+                resolved_when_called.append(cast(Context, ctx).workspace_resolved)
+                return super().resolve_caller(ctx, session)
+
+        ctx = Context(cast(Subject, _Recording(_account())), sqlite_session, {"app_id": APP_ID})
+
+        _ = ctx.workspace_role
+
+        assert resolved_when_called == [True]
