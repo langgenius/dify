@@ -157,10 +157,6 @@ class InvalidBearerError(Exception):
     """Token missing, unknown prefix, or no live row."""
 
 
-class TokenExpiredError(Exception):
-    """Hard-expire bookkeeping is the resolver's job before raising."""
-
-
 # ============================================================================
 # Registry
 # ============================================================================
