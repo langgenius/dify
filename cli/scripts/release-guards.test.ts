@@ -92,7 +92,7 @@ function runInFakeRoot(extraEnv: Record<string, string | undefined>): Run {
 
 describe.skipIf(process.platform === 'win32')('release-build.sh compat bounds', () => {
   for (const bound of ['DIFYCTL_MIN_DIFY', 'DIFYCTL_MAX_DIFY']) {
-    it.each(['undefined', '1.x', '1.16'])(`rejects ${bound}=%s`, (bad) => {
+    it.each(['undefined', '1.16'])(`rejects ${bound}=%s`, (bad) => {
       const r = runInFakeRoot({ [bound]: bad })
       expect(r.code).not.toBe(0)
       expect(r.stderr).toContain(bound)

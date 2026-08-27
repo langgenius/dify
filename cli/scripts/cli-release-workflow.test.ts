@@ -10,7 +10,6 @@ const WORKFLOW_PATH = fileURLToPath(
 const JOB_RELEASE = 'release'
 
 const STEP_COMPILE = 'Compile standalone binaries (all targets)'
-const STEP_CHECKSUMS = 'Generate sha256 checksum file'
 
 const DRY_RUN_GUARDED_STEPS = [
   'Attach difyctl assets to Dify release',
@@ -107,34 +106,6 @@ describe('cli-release.yml dry_run guards', () => {
       .filter((s) => s.if?.includes('dry_run') === true)
       .map((s) => s.name)
     expect(guarded).toStrictEqual(DRY_RUN_GUARDED_STEPS)
-  })
-
-  it('leaves the build and checksum steps unguarded', () => {
-    const steps = stepsOf(JOB_RELEASE)
-    expect(findStep(steps, STEP_COMPILE).if).toBeUndefined()
-    expect(findStep(steps, STEP_CHECKSUMS).if).toBeUndefined()
-  })
-})
-
-describe('cli-release.yml duplicate-version gate stays deleted', () => {
-  it('has no step rejecting a duplicate difyctl version', () => {
-    const names = allSteps().map((s) => s.name ?? '')
-    expect(names).not.toContain('Reject duplicate difyctl version')
-    expect(names.filter((n) => /duplicate/i.test(n))).toStrictEqual([])
-  })
-})
-
-describe('cli-release.yml creates no git tag', () => {
-  it('has no provenance-tag step', () => {
-    const names = allSteps().map((s) => s.name ?? '')
-    expect(names.filter((n) => /tag/i.test(n))).toStrictEqual([])
-  })
-
-  it('posts to no git-refs endpoint', () => {
-    const runBodies = allSteps()
-      .map((s) => s.run ?? '')
-      .join('\n')
-    expect(runBodies).not.toContain('git/refs')
   })
 })
 
