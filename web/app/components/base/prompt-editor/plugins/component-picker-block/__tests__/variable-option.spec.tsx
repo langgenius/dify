@@ -73,6 +73,18 @@ describe('VariableMenuItem', () => {
       const titleContainer = screen.getByTitle('Variable')
       expect(titleContainer.querySelector('.text-text-accent')?.textContent).toBe('')
     })
+
+    it('should treat regex metacharacters in queryString as literal text', () => {
+      render(
+        <VariableMenuItem
+          {...defaultProps}
+          title="source_url})"
+          queryString="source_url})"
+        />,
+      )
+
+      expect(screen.getByText('source_url})')).toHaveClass('text-text-accent')
+    })
   })
 
   describe('Events', () => {

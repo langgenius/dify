@@ -26,7 +26,8 @@ export const VariableMenuItem = memo(
     let after = ''
 
     if (queryString) {
-      const regex = new RegExp(queryString, 'i')
+      const escapedQueryString = queryString.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const regex = new RegExp(escapedQueryString, 'i')
       const match = regex.exec(title)
 
       if (match) {
