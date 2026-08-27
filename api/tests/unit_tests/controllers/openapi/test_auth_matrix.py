@@ -37,7 +37,19 @@ current code does rather than what a route's decorator suggests:
   is admitted there and answered 422 on every account-pipeline app route.
 * No token the shipped registry mints can fail `check_scope` — `dfoa_` carries
   `Scope.FULL` and `dfoe_` carries exactly the two scopes its routes ask for — so
-  the scope rows mint from a deliberately narrowed registry.
+  the scope rows mint from a deliberately narrowed registry. Those rows are not
+  dead weight and must not be simplified away: `check_scope` is live code on every
+  request, and the day a narrower token kind is minted it is the only thing
+  standing between that token and every route it was not scoped for.
+
+Nine rows carry an `accepted_delta`: the `foreign_workspace_query` answer on the
+app-scoped routes that run the account pipeline. That 422 comes from
+`check_workspace_mismatch`, which the replacement layer deliberately does not have
+(spec 2.9, accepted behaviour exception 1). They still assert today's exact status
+and message; the migration task that moves each route flips its own row in its own
+commit. `test_accepted_behaviour_deltas_are_bounded_and_still_exact` stops that set
+from growing quietly, and stops a flipped row from being left loose enough to pass
+either way.
 """
 
 from __future__ import annotations
@@ -145,11 +157,19 @@ class Route:
 
 @dataclass(frozen=True, slots=True)
 class Expect:
-    """`message` is the canonical ErrorBody message; `None` means it is not pinned."""
+    """`message` is the canonical ErrorBody message; `None` means it is not pinned.
+
+    `accepted_delta` names a behaviour this PR has already agreed to change. A row
+    carrying one still asserts today's exact status and message — it is not slack.
+    The migration task that moves the route flips that one row, in that one commit,
+    under review. `test_accepted_behaviour_deltas_are_bounded_and_still_exact`
+    keeps the set from growing quietly.
+    """
 
     status: int
     message: str | None = None
     note: str = ""
+    accepted_delta: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -179,7 +199,18 @@ DENY_NON_MEMBER = Expect(404, "workspace not found")
 DENY_ROLE = Expect(403, "insufficient workspace role")
 DENY_API_DISABLED = Expect(403, "service_api_disabled")
 DENY_UNKNOWN_APP = Expect(404, "app not found")
-DENY_FOREIGN_WORKSPACE = Expect(422, "workspace_id does not match app's workspace")
+ACCEPTED_DELTA_FOREIGN_WORKSPACE = Expect(
+    422,
+    "workspace_id does not match app's workspace",
+    note="check_workspace_mismatch, from When(PATH_HAS_APP_ID) in the account pipeline",
+    accepted_delta=(
+        "spec 2.9 / accepted behaviour exception 1: the replacement layer has no "
+        "check_workspace_mismatch, so a foreign ?workspace_id= is ignored rather than "
+        "refused. No app route declares the query param and difyctl never sends it on an "
+        "app-scoped path, so only a raw HTTP caller can reach it. Flip this row in the "
+        "migration commit that moves this route, not before."
+    ),
+)
 DENY_ACCESS_MODE = Expect(403, "subject_not_allowed_for_access_mode")
 DENY_MODE_UNRESOLVED = Expect(403, "app or access mode not loaded")
 DENY_PRIVATE_APP = Expect(403, "user_not_allowed_for_private_app")
@@ -532,7 +563,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.LOW_ROLE: ADMIT,
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
-        Case.FOREIGN_WORKSPACE_QUERY: DENY_FOREIGN_WORKSPACE,
+        Case.FOREIGN_WORKSPACE_QUERY: ACCEPTED_DELTA_FOREIGN_WORKSPACE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -551,7 +582,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.LOW_ROLE: DENY_ROLE,
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
-        Case.FOREIGN_WORKSPACE_QUERY: DENY_FOREIGN_WORKSPACE,
+        Case.FOREIGN_WORKSPACE_QUERY: ACCEPTED_DELTA_FOREIGN_WORKSPACE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -571,7 +602,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.LOW_ROLE: DENY_ROLE,
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
-        Case.FOREIGN_WORKSPACE_QUERY: DENY_FOREIGN_WORKSPACE,
+        Case.FOREIGN_WORKSPACE_QUERY: ACCEPTED_DELTA_FOREIGN_WORKSPACE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -591,7 +622,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.LOW_ROLE: ADMIT,
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
-        Case.FOREIGN_WORKSPACE_QUERY: DENY_FOREIGN_WORKSPACE,
+        Case.FOREIGN_WORKSPACE_QUERY: ACCEPTED_DELTA_FOREIGN_WORKSPACE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -616,7 +647,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.LOW_ROLE: ADMIT,
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
-        Case.FOREIGN_WORKSPACE_QUERY: DENY_FOREIGN_WORKSPACE,
+        Case.FOREIGN_WORKSPACE_QUERY: ACCEPTED_DELTA_FOREIGN_WORKSPACE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -641,7 +672,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.LOW_ROLE: ADMIT,
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
-        Case.FOREIGN_WORKSPACE_QUERY: DENY_FOREIGN_WORKSPACE,
+        Case.FOREIGN_WORKSPACE_QUERY: ACCEPTED_DELTA_FOREIGN_WORKSPACE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -665,7 +696,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.LOW_ROLE: ADMIT,
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
-        Case.FOREIGN_WORKSPACE_QUERY: DENY_FOREIGN_WORKSPACE,
+        Case.FOREIGN_WORKSPACE_QUERY: ACCEPTED_DELTA_FOREIGN_WORKSPACE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -690,7 +721,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.LOW_ROLE: ADMIT,
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
-        Case.FOREIGN_WORKSPACE_QUERY: DENY_FOREIGN_WORKSPACE,
+        Case.FOREIGN_WORKSPACE_QUERY: ACCEPTED_DELTA_FOREIGN_WORKSPACE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -715,7 +746,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.LOW_ROLE: ADMIT,
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
-        Case.FOREIGN_WORKSPACE_QUERY: DENY_FOREIGN_WORKSPACE,
+        Case.FOREIGN_WORKSPACE_QUERY: ACCEPTED_DELTA_FOREIGN_WORKSPACE,
         Case.EE_ACCOUNT_PUBLIC: ADMIT,
         Case.EE_ACCOUNT_SSO_VERIFIED: ADMIT,
         Case.EE_ACCOUNT_PRIVATE_ALL: ADMIT,
@@ -811,8 +842,11 @@ def _registry(rows: dict[str, ResolvedRow], *, narrow_scopes: bool) -> TokenKind
     """`narrow_scopes` mints tokens carrying no scope at all.
 
     The shipped registry gives `dfoa_` `Scope.FULL` and `dfoe_` exactly the two
-    scopes its routes ask for, so no shipped token can fail `check_scope`. The
-    check is still contract, and a narrower kind is the only way to reach it.
+    scopes its routes ask for, so no shipped token can fail `check_scope`. That is
+    a property of today's two token kinds, not of the check: `check_scope` runs on
+    every request, and a narrower kind is the only way to reach its refusal. Do not
+    delete the scope rows on the grounds that no real token trips them — they are
+    what will catch a third token kind being routed somewhere it was not scoped for.
     """
     return TokenKindRegistry(
         [
@@ -1138,6 +1172,40 @@ def test_matrix_covers_every_route_and_case() -> None:
         assert declared == reachable, route.id
 
 
+def test_accepted_behaviour_deltas_are_bounded_and_still_exact() -> None:
+    """Each of the nine delta rows has exactly two legal states, and no third.
+
+    Before its route migrates: marked, asserting 422 and the mismatch message.
+    After: unmarked, asserting the admission the route gives once the query param is
+    ignored. Nothing in between — a row that is marked *and* no longer asserts 422,
+    or unmarked *and* not asserting the post-migration answer, fails here. That is
+    what stops a per-route flip from being landed as a row loose enough to pass
+    either way.
+
+    The eligible set is rebuilt from route structure — every app-scoped route that
+    runs the account pipeline — rather than read back out of the table, so a marker
+    on any other row fails too. The set shrinks to empty over Tasks 8-11 as each
+    route is moved in its own reviewed commit.
+    """
+    eligible = {
+        (route.id, Case.FOREIGN_WORKSPACE_QUERY)
+        for route in ROUTES
+        if {Trait.APP_SCOPED, Trait.ACCOUNT_PRIMARY} <= route.traits
+    }
+    assert len(eligible) == 9
+
+    marked = {(route.id, case) for route, case, expect in ROWS if expect.accepted_delta}
+    assert marked <= eligible, sorted(marked - eligible)
+
+    for route, case, expect in ROWS:
+        if (route.id, case) not in eligible:
+            continue
+        if expect.accepted_delta:
+            assert (expect.status, expect.message) == (422, "workspace_id does not match app's workspace"), route.id
+        else:
+            assert (expect.status, expect.message) == (ADMITTED, None), route.id
+
+
 def test_registered_openapi_routes_match_the_matrix(matrix_app: Flask) -> None:
     """Every guarded /openapi/v1 route is in the table, and nothing else is."""
     unguarded = {
@@ -1174,11 +1242,23 @@ def test_registered_openapi_routes_match_the_matrix(matrix_app: Flask) -> None:
 
 OPENAPI_DOCUMENT_DIGEST = "7d381ec1cc2fff4fccfe4554c5be6962c84fd928719277eef4711a2ce66ebe0c"
 
-OPERATIONS_ALLOWED_TO_GAIN_DEFAULT_RESPONSE: frozenset[tuple[str, str]] = frozenset(
+OPERATIONS_MIGRATING_ONTO_RETURNS: frozenset[tuple[str, str]] = frozenset(
     {
         ("post", "/apps/{app_id}:run"),
         ("get", "/apps/{app_id}/human-input-forms/{form_token}"),
         ("get", "/apps/{app_id}/tasks/{task_id}/events"),
+    }
+)
+"""The three raw `openapi_ns.response` sites inside the nine files this PR migrates.
+
+`app_run.py`, `human_input_form.py` and `workflow_events.py` document their 200 by
+hand today; routing them through `@returns` adds `("default", "Error", ErrorBody)`.
+Nothing changes on the wire — all three return a Flask `Response` or a bare dict
+tuple, never a `BaseModel`.
+"""
+
+DEVICE_FLOW_OPERATIONS_OUTSIDE_THIS_PR: frozenset[tuple[str, str]] = frozenset(
+    {
         ("post", "/oauth/device/code"),
         ("post", "/oauth/device/token"),
         ("get", "/oauth/device/lookup"),
@@ -1186,6 +1266,13 @@ OPERATIONS_ALLOWED_TO_GAIN_DEFAULT_RESPONSE: frozenset[tuple[str, str]] = frozen
         ("post", "/oauth/device/deny"),
     }
 )
+"""The other five raw sites — device-flow routes that carry no `auth_router.guard`.
+
+They authenticate through `bearer_feature_required`, are not among the 25 handlers
+this PR moves, and must therefore keep their exact response sets. Tolerating a
+`default` entry on these too would make the snapshot pass whether or not the
+migration happened, which is a snapshot of nothing.
+"""
 
 EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/_health"): frozenset({"200", "default"}),
@@ -1248,39 +1335,54 @@ def _operations(document: dict[str, object]) -> Iterator[tuple[tuple[str, str], 
 
 
 def test_openapi_document_operations_and_response_codes(openapi_document: dict[str, object]) -> None:
-    """Response codes are pinned; only the eight raw sites may gain a `default` entry."""
+    """Response codes are pinned; only the three migrating sites may gain `default`.
+
+    The five device-flow sites are asserted exactly, so a snapshot that would pass
+    whether or not the migration happened fails instead.
+    """
     seen = dict(_operations(openapi_document))
     assert set(seen) == set(EXPECTED_RESPONSE_CODES)
+    assert not OPERATIONS_MIGRATING_ONTO_RETURNS & DEVICE_FLOW_OPERATIONS_OUTSIDE_THIS_PR
+    for key in DEVICE_FLOW_OPERATIONS_OUTSIDE_THIS_PR:
+        assert "default" not in EXPECTED_RESPONSE_CODES[key]
     for key, operation in seen.items():
         responses = operation.get("responses", {})
         assert isinstance(responses, dict)
         codes = frozenset(responses)
         pinned = EXPECTED_RESPONSE_CODES[key]
-        allowed = {pinned, pinned | {"default"}} if key in OPERATIONS_ALLOWED_TO_GAIN_DEFAULT_RESPONSE else {pinned}
-        assert codes in allowed, key
+        allowed = {pinned, pinned | {"default"}} if key in OPERATIONS_MIGRATING_ONTO_RETURNS else {pinned}
+        assert codes in allowed, f"{key}: {sorted(codes)} is none of {[sorted(entry) for entry in allowed]}"
 
 
 def test_openapi_document_is_otherwise_byte_stable(openapi_document: dict[str, object]) -> None:
     """The whole document, with the one tolerated delta normalised away, is pinned.
 
-    `@returns` also registers `("default", "Error", ErrorBody)`, which the eight
-    raw `openapi_ns.response` sites lack today and gain on migration. Dropping
-    that entry from exactly those eight makes the document identical before and
-    after, so any *other* drift — a renamed model, a changed description, a new
-    parameter — moves the digest and fails here.
+    `@returns` also registers `("default", "Error", ErrorBody)`, which the three
+    sites in `OPERATIONS_MIGRATING_ONTO_RETURNS` lack today and gain on migration.
+    Dropping that entry from exactly those three makes the document identical
+    before and after, so any *other* drift — a renamed model, a changed
+    description, a new parameter — moves the digest and fails here.
     """
     normalised = json.loads(json.dumps(openapi_document))
     for key, operation in _operations(normalised):
-        if key in OPERATIONS_ALLOWED_TO_GAIN_DEFAULT_RESPONSE:
+        if key in OPERATIONS_MIGRATING_ONTO_RETURNS:
             responses = operation.get("responses")
             if isinstance(responses, dict):
                 responses.pop("default", None)
     canonical = json.dumps(normalised, sort_keys=True, separators=(",", ":"))
-    assert hashlib.sha256(canonical.encode("utf-8")).hexdigest() == OPENAPI_DOCUMENT_DIGEST
+    digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    assert digest == OPENAPI_DOCUMENT_DIGEST, (
+        "The generated /openapi/v1/openapi.json changed in a way this PR does not expect. "
+        "difyctl generates its client contract from this document, so do not re-pin "
+        "OPENAPI_DOCUMENT_DIGEST until you have diffed the document and confirmed the change "
+        "is intended. Adding `default` to the three OPERATIONS_MIGRATING_ONTO_RETURNS sites is "
+        "already normalised away and cannot be the cause. "
+        f"Re-pin to {digest} only after that check."
+    )
 
 
 def test_error_default_response_shape_is_what_returns_registers(openapi_document: dict[str, object]) -> None:
-    """Pins the entry the eight sites will gain, so the delta above is a known shape."""
+    """Pins the entry the three migrating sites will gain, so the delta is a known shape."""
     stop = dict(_operations(openapi_document))[("post", "/apps/{app_id}/tasks/{task_id}:stop")]
     responses = stop["responses"]
     assert isinstance(responses, dict)
