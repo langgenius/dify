@@ -6,13 +6,10 @@ from flask_restx import Resource
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
-from controllers.common.wraps import RBACPermission, RBACResourceScope
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import accepts, endpoint, returns
+from controllers.openapi._contract import endpoint
 from controllers.openapi._models import AppDslExportQuery, AppDslExportResponse, AppDslImportPayload
-from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.data import AuthData, RBACRequirement
 from controllers.openapi.auth.requirements import (
     RBACCheck,
     RequireWorkspaceMembership,
@@ -20,9 +17,10 @@ from controllers.openapi.auth.requirements import (
     TokenScope,
 )
 from controllers.openapi.auth.subjects import AccountSubject
+from core.rbac import RBACPermission, RBACResourceScope
 from extensions.ext_database import db
-from libs.oauth_bearer import Scope, TokenType
-from models import Account, App
+from libs.oauth_bearer import Scope
+from models import Account
 from models.account import TenantAccountRole
 from services.app_dsl_service import AppDslService, Import
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
@@ -38,6 +36,16 @@ _DSL_IMPORT_REQUIREMENTS = (
         scene=RBACPermission.APP_IMPORT_EXPORT_DSL,
         roles=frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
         resource_required=False,
+    ),
+)
+
+_DSL_APP_REQUIREMENTS = (
+    SubjectCheck(allowed=(AccountSubject,)),
+    TokenScope(Scope.APPS_READ),
+    RBACCheck(
+        resource_type=RBACResourceScope.APP,
+        scene=RBACPermission.APP_IMPORT_EXPORT_DSL,
+        roles=frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
     ),
 )
 
@@ -149,19 +157,16 @@ class AppDslExportApi(Resource):
     receive a 403; enable the API in the console first if needed.
     """
 
-    @auth_router.guard(
-        scope=Scope.APPS_READ,
-        allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
-        allowed_roles=frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
-        rbac=RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_IMPORT_EXPORT_DSL),
+    @endpoint(
+        requirements=_DSL_APP_REQUIREMENTS,
+        query=AppDslExportQuery,
+        returns=(200, AppDslExportResponse, "Export successful"),
+        write=False,
     )
-    @accepts(query=AppDslExportQuery)
-    @returns(200, AppDslExportResponse, "Export successful")
-    def get(self, app_id: str, *, auth_data: AuthData, query: AppDslExportQuery):
-        app = cast(App, auth_data.app)
+    def get(self, ctx: Context, app_id: str, *, query: AppDslExportQuery):
         try:
             data = AppDslService.export_dsl(
-                app_model=app,
+                app_model=ctx.app,
                 session=db.session(),
                 include_secret=query.include_secret,
                 workflow_id=query.workflow_id,
@@ -181,18 +186,14 @@ class AppDslCheckDependenciesApi(Resource):
     dependencies are satisfied.
     """
 
-    @auth_router.guard(
-        scope=Scope.APPS_READ,
-        allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
-        allowed_roles=frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
-        rbac=RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_IMPORT_EXPORT_DSL),
+    @endpoint(
+        requirements=_DSL_APP_REQUIREMENTS,
+        returns=(200, CheckDependenciesResult, "Dependencies checked"),
+        write=False,
     )
-    @returns(200, CheckDependenciesResult, "Dependencies checked")
-    def get(self, app_id: str, *, auth_data: AuthData):
-        app = cast(App, auth_data.app)
-
+    def get(self, ctx: Context, app_id: str):
         with Session(db.engine, expire_on_commit=False) as session:
             service = AppDslService(session)
-            result = service.check_dependencies(app_model=app)
+            result = service.check_dependencies(app_model=ctx.app)
 
         return result, 200
