@@ -35,12 +35,12 @@ export type AnnotationCreatePayload = {
 export type AnnotationJobStatusDetailResponse = {
   error_msg?: string
   job_id: string
-  job_status: 'completed' | 'error' | 'processing' | 'waiting' | string
+  job_status: string
 }
 
 export type AnnotationJobStatusResponse = {
   job_id: string
-  job_status: 'completed' | 'error' | 'processing' | 'waiting' | string
+  job_status: string
 }
 
 export type AnnotationList = {
@@ -91,7 +91,7 @@ export type AppInfoResponse = {
 
 export type AppMetaResponse = {
   tool_icons?: {
-    [key: string]: unknown
+    [key: string]: string | ToolIcon
   }
 }
 
@@ -103,17 +103,157 @@ export type AudioTranscriptResponse = {
 
 export type BinaryFileResponse = Blob | File
 
+export type BlockingMetadataResponse = {
+  retriever_resources?: Array<BlockingRetrieverResourceResponse> | null
+  usage?: BlockingUsageResponse | null
+  [key: string]: unknown
+}
+
+export type BlockingRetrieverResourceResponse = {
+  content?: string | null
+  created_at?: number | null
+  data_source_type?: string | null
+  dataset_id?: string | null
+  dataset_name?: string | null
+  document_id?: string | null
+  document_name?: string | null
+  hit_count?: number | null
+  id?: string | null
+  index_node_hash?: string | null
+  message_id?: string | null
+  position: number
+  score?: number | null
+  segment_id?: string | null
+  segment_position?: number | null
+  summary?: string | null
+  word_count?: number | null
+  [key: string]: unknown
+}
+
+export type BlockingUsageResponse = {
+  completion_price?: string | null
+  completion_price_unit?: string | null
+  completion_tokens?: number | null
+  completion_unit_price?: string | null
+  currency?: string | null
+  latency?: number | null
+  prompt_price?: string | null
+  prompt_price_unit?: string | null
+  prompt_tokens?: number | null
+  prompt_unit_price?: string | null
+  total_price?: string | null
+  total_tokens?: number | null
+  [key: string]: unknown
+}
+
 export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
+
+export type ChatBlockingResponse =
+  | ({
+      event: 'message'
+    } & ChatMessageBlockingResponse)
+  | ({
+      event: 'workflow_paused'
+    } & ChatPausedBlockingResponse)
+
+export type ChatMessageBlockingResponse = {
+  answer: string
+  conversation_id: string
+  created_at: number
+  event: 'message'
+  id: string
+  message_id: string
+  metadata: BlockingMetadataResponse
+  mode: string
+  task_id: string
+  [key: string]: unknown
+}
+
+export type ChatPauseReasonResponse = {
+  TYPE: string
+  actions?: Array<JsonObject>
+  approval_channels?: Array<string>
+  display_in_ui?: boolean | null
+  expiration_time?: number | null
+  form_content?: string | null
+  form_id?: string | null
+  form_token?: string | null
+  inputs?: Array<JsonObject>
+  message?: string | null
+  node_id?: string | null
+  node_title?: string | null
+  resolved_default_values?: {
+    [key: string]: unknown
+  }
+  [key: string]: unknown
+}
+
+export type ChatPausedBlockingDataResponse = {
+  answer: string
+  conversation_id: string
+  created_at: number
+  elapsed_time: number
+  id: string
+  message_id: string
+  metadata: BlockingMetadataResponse
+  mode: string
+  paused_nodes: Array<string>
+  reasons: Array<ChatPauseReasonResponse>
+  status: 'paused'
+  total_steps: number
+  total_tokens: number
+  workflow_run_id: string
+  [key: string]: unknown
+}
+
+export type ChatPausedBlockingResponse = {
+  answer: string
+  conversation_id: string
+  created_at: number
+  data: ChatPausedBlockingDataResponse
+  event: 'workflow_paused'
+  id: string
+  message_id: string
+  metadata: BlockingMetadataResponse
+  mode: string
+  task_id: string
+  workflow_run_id: string
+  [key: string]: unknown
+}
 
 export type ChatRequestPayload = {
   auto_generate_name?: boolean
   conversation_id?: string | null
-  files?: Array<{
-    transfer_method: 'local_file' | 'remote_url'
-    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
-    upload_file_id?: string
-    url?: string
-  }> | null
+  files?: Array<
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url: string
+      }
+    | {
+        remote_url: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'local_file'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+  > | null
   inputs: {
     [key: string]: unknown
   }
@@ -125,12 +265,36 @@ export type ChatRequestPayload = {
 export type ChatRequestPayloadWithUser = {
   auto_generate_name?: boolean
   conversation_id?: string | null
-  files?: Array<{
-    transfer_method: 'local_file' | 'remote_url'
-    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
-    upload_file_id?: string
-    url?: string
-  }> | null
+  files?: Array<
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url: string
+      }
+    | {
+        remote_url: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'local_file'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+  > | null
   inputs: {
     [key: string]: unknown
   }
@@ -177,13 +341,49 @@ export type ChildChunkUpdatePayload = {
   content: string
 }
 
+export type CompletionBlockingResponse = {
+  answer: string
+  created_at: number
+  event: string
+  id: string
+  message_id: string
+  metadata: BlockingMetadataResponse
+  mode: string
+  task_id: string
+  [key: string]: unknown
+}
+
 export type CompletionRequestPayload = {
-  files?: Array<{
-    transfer_method: 'local_file' | 'remote_url'
-    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
-    upload_file_id?: string
-    url?: string
-  }> | null
+  files?: Array<
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url: string
+      }
+    | {
+        remote_url: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'local_file'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+  > | null
   inputs: {
     [key: string]: unknown
   }
@@ -192,12 +392,36 @@ export type CompletionRequestPayload = {
 }
 
 export type CompletionRequestPayloadWithUser = {
-  files?: Array<{
-    transfer_method: 'local_file' | 'remote_url'
-    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
-    upload_file_id?: string
-    url?: string
-  }> | null
+  files?: Array<
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url: string
+      }
+    | {
+        remote_url: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'local_file'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+  > | null
   inputs: {
     [key: string]: unknown
   }
@@ -687,8 +911,12 @@ export type DocumentResponse = {
   created_at?: number | null
   created_by?: string | null
   created_from?: string | null
-  data_source_detail_dict?: unknown
-  data_source_info?: unknown
+  data_source_detail_dict: {
+    [key: string]: unknown
+  }
+  data_source_info?: {
+    [key: string]: unknown
+  } | null
   data_source_type?: string | null
   dataset_process_rule_id?: string | null
   disabled_at?: number | null
@@ -855,8 +1083,6 @@ export type FormInputConfig =
       type: 'file-list'
     } & FileListInputConfig)
 
-export type GeneratedAppResponse = JsonValue
-
 export type HitTestingChildChunk = {
   content: string
   id: string
@@ -962,15 +1188,11 @@ export type HumanInputFormDefinition = {
 export type HumanInputFormDefinitionResponse = {
   expiration_time?: number | null
   form_content: string
-  inputs?: Array<{
-    [key: string]: unknown
-  }>
+  inputs: Array<FormInputConfig>
   resolved_default_values: {
     [key: string]: string
   }
-  user_actions?: Array<{
-    [key: string]: unknown
-  }>
+  user_actions: Array<UserActionConfig>
 }
 
 export type HumanInputFormSubmissionData = {
@@ -1018,16 +1240,7 @@ export type JsonObject = {
   [key: string]: unknown
 }
 
-export type JsonValue =
-  | string
-  | number
-  | number
-  | boolean
-  | {
-      [key: string]: unknown
-    }
-  | Array<unknown>
-  | null
+export type JsonValue = unknown
 
 export type JsonValueType = unknown
 
@@ -2283,21 +2496,350 @@ export type ParagraphInputConfig = {
 }
 
 export type Parameters = {
-  annotation_reply: JsonObject
-  file_upload: JsonObject
-  more_like_this: JsonObject
+  annotation_reply: {
+    enabled?: boolean
+  }
+  file_upload: {
+    allowed_file_extensions?: Array<string>
+    allowed_file_types?: Array<'audio' | 'custom' | 'document' | 'image' | 'video'>
+    allowed_file_upload_methods?: Array<'local_file' | 'remote_url'>
+    enabled?: boolean
+    image?: {
+      detail?: string
+      enabled?: boolean
+      number_limits?: number
+      transfer_methods?: Array<string>
+    }
+    number_limits?: number
+  }
+  more_like_this: {
+    enabled?: boolean
+  }
   opening_statement?: string | null
-  retriever_resource: JsonObject
-  sensitive_word_avoidance: JsonObject
-  speech_to_text: JsonObject
+  retriever_resource: {
+    enabled?: boolean
+  }
+  sensitive_word_avoidance: {
+    enabled?: boolean
+  }
+  speech_to_text: {
+    enabled?: boolean
+  }
   suggested_questions: Array<string>
-  suggested_questions_after_answer: JsonObject
+  suggested_questions_after_answer: {
+    enabled?: boolean
+  }
   system_parameters: SystemParameters
-  text_to_speech: JsonObject
-  user_input_form: Array<JsonObject>
+  text_to_speech: {
+    autoPlay?: string
+    enabled?: boolean
+    language?: string
+    voice?: string
+  }
+  user_input_form: Array<
+    | {
+        'text-input': {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        select: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        paragraph: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        number: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        external_data_tool: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        file: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        'file-list': {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        checkbox: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        json_object: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+  >
 }
 
 export type PermissionEnum = 'all_team_members' | 'only_me' | 'partial_members'
+
+export type PipelineDataset = {
+  chunk_structure: string
+  description?: string
+  id: string
+  name: string
+}
+
+export type PipelineDocument = {
+  data_source_info?: {
+    [key: string]: unknown
+  } | null
+  data_source_type: string
+  enabled: boolean
+  error?: string | null
+  id: string
+  indexing_status: string
+  name: string
+  position: number
+}
 
 export type PipelineRunApiEntity = {
   datasource_info_list: Array<
@@ -2333,6 +2875,8 @@ export type PipelineRunApiEntity = {
   response_mode: 'blocking' | 'streaming'
   start_node_id: string
 }
+
+export type PipelineRunJsonResponse = PublishedPipelineRunResponse | WorkflowBlockingResponse
 
 export type PipelineUploadFileResponse = {
   created_at?: string | null
@@ -2385,8 +2929,10 @@ export type ProviderWithModelsResponse = {
   tenant_id: string
 }
 
-export type RequiredServiceApiUserPayload = {
-  user: string
+export type PublishedPipelineRunResponse = {
+  batch: string
+  dataset: PipelineDataset
+  documents: Array<PipelineDocument>
 }
 
 export type RerankingModel = {
@@ -2441,6 +2987,10 @@ export type Rule = {
   pre_processing_rules?: Array<PreProcessingRule> | null
   segmentation?: Segmentation | null
   subchunk_segmentation?: Segmentation | null
+}
+
+export type ScopedTaskStopPayload = {
+  user: string
 }
 
 export type SegmentAttachmentResponse = {
@@ -2641,7 +3191,7 @@ export type TagUnbindingPayload =
       target_id: string
     }
   | {
-      tag_id?: string
+      tag_id?: string | null
       tag_ids: Array<string>
       target_id: string
     }
@@ -2664,6 +3214,11 @@ export type TextToAudioPayloadWithUser = {
   text?: string | null
   user?: string
   voice?: string | null
+}
+
+export type ToolIcon = {
+  background: string
+  content: string
 }
 
 export type UrlResponse = {
@@ -2722,10 +3277,37 @@ export type WorkflowAppLogPartialResponse = {
   workflow_run?: WorkflowRunForLogResponse | null
 }
 
+export type WorkflowBlockingResponse =
+  | WorkflowFinishedBlockingResponse
+  | WorkflowPausedBlockingResponse
+
 export type WorkflowEventsQuery = {
   continue_on_pause?: boolean
   include_state_snapshot?: boolean
   user: string
+}
+
+export type WorkflowFinishedBlockingDataResponse = {
+  created_at: number
+  elapsed_time: number
+  error: string | null
+  finished_at: number | null
+  id: string
+  outputs: {
+    [key: string]: unknown
+  } | null
+  status: 'failed' | 'partial-succeeded' | 'stopped' | 'succeeded'
+  total_steps: number
+  total_tokens: number
+  workflow_id: string
+  [key: string]: unknown
+}
+
+export type WorkflowFinishedBlockingResponse = {
+  data: WorkflowFinishedBlockingDataResponse
+  task_id: string
+  workflow_run_id: string
+  [key: string]: unknown
 }
 
 export type WorkflowLogQuery = {
@@ -2737,6 +3319,50 @@ export type WorkflowLogQuery = {
   limit?: number
   page?: number
   status?: 'failed' | 'stopped' | 'succeeded' | null
+}
+
+export type WorkflowPauseReasonResponse = {
+  TYPE: string
+  actions?: Array<JsonObject>
+  approval_channels?: Array<string>
+  display_in_ui?: boolean | null
+  expiration_time?: number | null
+  form_content?: string | null
+  form_id?: string | null
+  form_token?: string | null
+  inputs?: Array<JsonObject>
+  message?: string | null
+  node_id?: string | null
+  node_title?: string | null
+  resolved_default_values?: {
+    [key: string]: unknown
+  }
+  [key: string]: unknown
+}
+
+export type WorkflowPausedBlockingDataResponse = {
+  created_at: number
+  elapsed_time: number
+  error: string | null
+  finished_at: number | null
+  id: string
+  outputs: {
+    [key: string]: unknown
+  } | null
+  paused_nodes: Array<string>
+  reasons: Array<WorkflowPauseReasonResponse>
+  status: 'paused'
+  total_steps: number
+  total_tokens: number
+  workflow_id: string
+  [key: string]: unknown
+}
+
+export type WorkflowPausedBlockingResponse = {
+  data: WorkflowPausedBlockingDataResponse
+  task_id: string
+  workflow_run_id: string
+  [key: string]: unknown
 }
 
 export type WorkflowRunForLogResponse = {
@@ -2754,12 +3380,36 @@ export type WorkflowRunForLogResponse = {
 }
 
 export type WorkflowRunPayload = {
-  files?: Array<{
-    transfer_method: 'local_file' | 'remote_url'
-    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
-    upload_file_id?: string
-    url?: string
-  }> | null
+  files?: Array<
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url: string
+      }
+    | {
+        remote_url: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'local_file'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+  > | null
   inputs: {
     [key: string]: unknown
   }
@@ -2767,12 +3417,36 @@ export type WorkflowRunPayload = {
 }
 
 export type WorkflowRunPayloadWithUser = {
-  files?: Array<{
-    transfer_method: 'local_file' | 'remote_url'
-    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
-    upload_file_id?: string
-    url?: string
-  }> | null
+  files?: Array<
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url: string
+      }
+    | {
+        remote_url: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id?: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'remote_url'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+    | {
+        remote_url?: string
+        transfer_method: 'local_file'
+        type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+        upload_file_id: string
+        url?: string
+      }
+  > | null
   inputs: {
     [key: string]: unknown
   }
@@ -2805,7 +3479,9 @@ export type WorkflowRunResponse = {
   workflow_id: string
 }
 
-export type GeneratedAppResponseWritable = JsonValue
+export type WorkflowTaskStopPayload = {
+  user: string
+}
 
 export type HumanInputFormSubmitResponseWritable = {
   [key: string]: never
@@ -3065,15 +3741,13 @@ export type PostChatMessagesErrors = {
 }
 
 export type PostChatMessagesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ChatBlockingResponse | string
 }
 
 export type PostChatMessagesResponse = PostChatMessagesResponses[keyof PostChatMessagesResponses]
 
 export type PostChatMessagesByTaskIdStopData = {
-  body: RequiredServiceApiUserPayload
+  body: ScopedTaskStopPayload
   path: {
     task_id: string
   }
@@ -3085,7 +3759,6 @@ export type PostChatMessagesByTaskIdStopErrors = {
   400: unknown
   401: unknown
   403: unknown
-  404: unknown
 }
 
 export type PostChatMessagesByTaskIdStopResponses = {
@@ -3112,16 +3785,14 @@ export type PostCompletionMessagesErrors = {
 }
 
 export type PostCompletionMessagesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: CompletionBlockingResponse | string
 }
 
 export type PostCompletionMessagesResponse =
   PostCompletionMessagesResponses[keyof PostCompletionMessagesResponses]
 
 export type PostCompletionMessagesByTaskIdStopData = {
-  body: RequiredServiceApiUserPayload
+  body: ScopedTaskStopPayload
   path: {
     task_id: string
   }
@@ -3133,7 +3804,6 @@ export type PostCompletionMessagesByTaskIdStopErrors = {
   400: unknown
   401: unknown
   403: unknown
-  404: unknown
 }
 
 export type PostCompletionMessagesByTaskIdStopResponses = {
@@ -3168,56 +3838,56 @@ export type GetConversationsResponses = {
 
 export type GetConversationsResponse = GetConversationsResponses[keyof GetConversationsResponses]
 
-export type DeleteConversationsByCIdData = {
+export type DeleteConversationsByConversationIdData = {
   body: OptionalServiceApiUserPayload
   path: {
-    c_id: string
+    conversation_id: string
   }
   query?: never
-  url: '/conversations/{c_id}'
+  url: '/conversations/{conversation_id}'
 }
 
-export type DeleteConversationsByCIdErrors = {
+export type DeleteConversationsByConversationIdErrors = {
   400: unknown
   401: unknown
   403: unknown
   404: unknown
 }
 
-export type DeleteConversationsByCIdResponses = {
+export type DeleteConversationsByConversationIdResponses = {
   204: void
 }
 
-export type DeleteConversationsByCIdResponse =
-  DeleteConversationsByCIdResponses[keyof DeleteConversationsByCIdResponses]
+export type DeleteConversationsByConversationIdResponse =
+  DeleteConversationsByConversationIdResponses[keyof DeleteConversationsByConversationIdResponses]
 
-export type PostConversationsByCIdNameData = {
+export type PostConversationsByConversationIdNameData = {
   body: ConversationRenamePayloadWithUser
   path: {
-    c_id: string
+    conversation_id: string
   }
   query?: never
-  url: '/conversations/{c_id}/name'
+  url: '/conversations/{conversation_id}/name'
 }
 
-export type PostConversationsByCIdNameErrors = {
+export type PostConversationsByConversationIdNameErrors = {
   400: unknown
   401: unknown
   403: unknown
   404: unknown
 }
 
-export type PostConversationsByCIdNameResponses = {
+export type PostConversationsByConversationIdNameResponses = {
   200: SimpleConversation
 }
 
-export type PostConversationsByCIdNameResponse =
-  PostConversationsByCIdNameResponses[keyof PostConversationsByCIdNameResponses]
+export type PostConversationsByConversationIdNameResponse =
+  PostConversationsByConversationIdNameResponses[keyof PostConversationsByConversationIdNameResponses]
 
-export type GetConversationsByCIdVariablesData = {
+export type GetConversationsByConversationIdVariablesData = {
   body?: never
   path: {
-    c_id: string
+    conversation_id: string
   }
   query?: {
     last_id?: string
@@ -3225,46 +3895,46 @@ export type GetConversationsByCIdVariablesData = {
     user?: string
     variable_name?: string
   }
-  url: '/conversations/{c_id}/variables'
+  url: '/conversations/{conversation_id}/variables'
 }
 
-export type GetConversationsByCIdVariablesErrors = {
+export type GetConversationsByConversationIdVariablesErrors = {
   400: unknown
   401: unknown
   403: unknown
   404: unknown
 }
 
-export type GetConversationsByCIdVariablesResponses = {
+export type GetConversationsByConversationIdVariablesResponses = {
   200: ConversationVariableInfiniteScrollPaginationResponse
 }
 
-export type GetConversationsByCIdVariablesResponse =
-  GetConversationsByCIdVariablesResponses[keyof GetConversationsByCIdVariablesResponses]
+export type GetConversationsByConversationIdVariablesResponse =
+  GetConversationsByConversationIdVariablesResponses[keyof GetConversationsByConversationIdVariablesResponses]
 
-export type PutConversationsByCIdVariablesByVariableIdData = {
+export type PutConversationsByConversationIdVariablesByVariableIdData = {
   body: ConversationVariableUpdatePayloadWithUser
   path: {
-    c_id: string
+    conversation_id: string
     variable_id: string
   }
   query?: never
-  url: '/conversations/{c_id}/variables/{variable_id}'
+  url: '/conversations/{conversation_id}/variables/{variable_id}'
 }
 
-export type PutConversationsByCIdVariablesByVariableIdErrors = {
+export type PutConversationsByConversationIdVariablesByVariableIdErrors = {
   400: unknown
   401: unknown
   403: unknown
   404: unknown
 }
 
-export type PutConversationsByCIdVariablesByVariableIdResponses = {
+export type PutConversationsByConversationIdVariablesByVariableIdResponses = {
   200: ConversationVariableResponse
 }
 
-export type PutConversationsByCIdVariablesByVariableIdResponse =
-  PutConversationsByCIdVariablesByVariableIdResponses[keyof PutConversationsByCIdVariablesByVariableIdResponses]
+export type PutConversationsByConversationIdVariablesByVariableIdResponse =
+  PutConversationsByConversationIdVariablesByVariableIdResponses[keyof PutConversationsByConversationIdVariablesByVariableIdResponses]
 
 export type GetDatasetsData = {
   body?: never
@@ -3344,6 +4014,7 @@ export type DeleteDatasetsTagsData = {
 export type DeleteDatasetsTagsErrors = {
   401: unknown
   403: unknown
+  404: unknown
 }
 
 export type DeleteDatasetsTagsResponses = {
@@ -3379,8 +4050,10 @@ export type PatchDatasetsTagsData = {
 }
 
 export type PatchDatasetsTagsErrors = {
+  400: unknown
   401: unknown
   403: unknown
+  404: unknown
 }
 
 export type PatchDatasetsTagsResponses = {
@@ -3397,6 +4070,7 @@ export type PostDatasetsTagsData = {
 }
 
 export type PostDatasetsTagsErrors = {
+  400: unknown
   401: unknown
   403: unknown
 }
@@ -3417,6 +4091,7 @@ export type PostDatasetsTagsBindingData = {
 export type PostDatasetsTagsBindingErrors = {
   401: unknown
   403: unknown
+  404: unknown
 }
 
 export type PostDatasetsTagsBindingResponses = {
@@ -3436,6 +4111,7 @@ export type PostDatasetsTagsUnbindingData = {
 export type PostDatasetsTagsUnbindingErrors = {
   401: unknown
   403: unknown
+  404: unknown
 }
 
 export type PostDatasetsTagsUnbindingResponses = {
@@ -3500,6 +4176,7 @@ export type PatchDatasetsByDatasetIdData = {
 }
 
 export type PatchDatasetsByDatasetIdErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -3528,7 +4205,9 @@ export type PostDatasetsByDatasetIdDocumentCreateByFileErrors = {
   400: unknown
   401: unknown
   403: unknown
+  404: unknown
   413: unknown
+  503: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByFileResponses = {
@@ -3551,6 +4230,8 @@ export type PostDatasetsByDatasetIdDocumentCreateByTextErrors = {
   400: unknown
   401: unknown
   403: unknown
+  404: unknown
+  503: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByTextResponses = {
@@ -3576,7 +4257,9 @@ export type PostDatasetsByDatasetIdDocumentCreateByFile2Errors = {
   400: unknown
   401: unknown
   403: unknown
+  404: unknown
   413: unknown
+  503: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByFile2Responses = {
@@ -3599,6 +4282,8 @@ export type PostDatasetsByDatasetIdDocumentCreateByText2Errors = {
   400: unknown
   401: unknown
   403: unknown
+  404: unknown
+  503: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByText2Responses = {
@@ -3645,13 +4330,10 @@ export type PostDatasetsByDatasetIdDocumentsDownloadZipData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsDownloadZipErrors = {
-  401: Blob | File
-  403: Blob | File
-  404: Blob | File
+  401: unknown
+  403: unknown
+  404: unknown
 }
-
-export type PostDatasetsByDatasetIdDocumentsDownloadZipError =
-  PostDatasetsByDatasetIdDocumentsDownloadZipErrors[keyof PostDatasetsByDatasetIdDocumentsDownloadZipErrors]
 
 export type PostDatasetsByDatasetIdDocumentsDownloadZipResponses = {
   200: Blob | File
@@ -3670,6 +4352,7 @@ export type PostDatasetsByDatasetIdDocumentsMetadataData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsMetadataErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -3798,6 +4481,8 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
   403: unknown
   404: unknown
   413: unknown
+  415: unknown
+  503: unknown
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
@@ -3846,6 +4531,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -3873,6 +4559,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors = {
   401: unknown
   403: unknown
   404: unknown
+  503: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses = {
@@ -3894,6 +4581,7 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdDat
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -3918,6 +4606,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData =
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -3942,9 +4631,11 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData 
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
+  503: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses = {
@@ -3998,6 +4689,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChild
   401: unknown
   403: unknown
   404: unknown
+  503: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses = {
@@ -4055,6 +4747,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
     401: unknown
     403: unknown
     404: unknown
+    503: unknown
   }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses =
@@ -4084,6 +4777,8 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileErrors = {
   403: unknown
   404: unknown
   413: unknown
+  415: unknown
+  503: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponses = {
@@ -4108,6 +4803,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors = {
   401: unknown
   403: unknown
   404: unknown
+  503: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses = {
@@ -4136,6 +4832,8 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Errors = {
   403: unknown
   404: unknown
   413: unknown
+  415: unknown
+  503: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Responses = {
@@ -4159,6 +4857,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Errors = {
   401: unknown
   403: unknown
   404: unknown
+  503: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Responses = {
@@ -4224,6 +4923,7 @@ export type PostDatasetsByDatasetIdMetadataData = {
 }
 
 export type PostDatasetsByDatasetIdMetadataErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -4248,6 +4948,7 @@ export type GetDatasetsByDatasetIdMetadataBuiltInData = {
 export type GetDatasetsByDatasetIdMetadataBuiltInErrors = {
   401: unknown
   403: unknown
+  404: unknown
 }
 
 export type GetDatasetsByDatasetIdMetadataBuiltInResponses = {
@@ -4314,6 +5015,7 @@ export type PatchDatasetsByDatasetIdMetadataByMetadataIdData = {
 }
 
 export type PatchDatasetsByDatasetIdMetadataByMetadataIdErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -4338,6 +5040,7 @@ export type GetDatasetsByDatasetIdPipelineDatasourcePluginsData = {
 }
 
 export type GetDatasetsByDatasetIdPipelineDatasourcePluginsErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -4361,15 +5064,14 @@ export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunData = {
 }
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
 }
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: string
 }
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse =
@@ -4385,6 +5087,7 @@ export type PostDatasetsByDatasetIdPipelineRunData = {
 }
 
 export type PostDatasetsByDatasetIdPipelineRunErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -4392,7 +5095,7 @@ export type PostDatasetsByDatasetIdPipelineRunErrors = {
 }
 
 export type PostDatasetsByDatasetIdPipelineRunResponses = {
-  200: GeneratedAppResponse
+  200: PipelineRunJsonResponse | string
 }
 
 export type PostDatasetsByDatasetIdPipelineRunResponse =
@@ -4434,6 +5137,7 @@ export type GetDatasetsByDatasetIdTagsData = {
 export type GetDatasetsByDatasetIdTagsErrors = {
   401: unknown
   403: unknown
+  404: unknown
 }
 
 export type GetDatasetsByDatasetIdTagsResponses = {
@@ -4502,13 +5206,10 @@ export type GetFilesByFileIdPreviewData = {
 }
 
 export type GetFilesByFileIdPreviewErrors = {
-  401: Blob | File
-  403: Blob | File
-  404: Blob | File
+  401: unknown
+  403: unknown
+  404: unknown
 }
-
-export type GetFilesByFileIdPreviewError =
-  GetFilesByFileIdPreviewErrors[keyof GetFilesByFileIdPreviewErrors]
 
 export type GetFilesByFileIdPreviewResponses = {
   200: Blob | File
@@ -4591,9 +5292,7 @@ export type PostKnowledgeFsQueryStreamData = {
 }
 
 export type PostKnowledgeFsQueryStreamResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: string
 }
 
 export type PostKnowledgeFsQueryStreamResponse =
@@ -5359,6 +6058,7 @@ export type PostMessagesByMessageIdFeedbacksData = {
 }
 
 export type PostMessagesByMessageIdFeedbacksErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -5462,13 +6162,11 @@ export type PostTextToAudioData = {
 }
 
 export type PostTextToAudioErrors = {
-  400: Blob | File
-  401: Blob | File
-  403: Blob | File
-  500: Blob | File
+  400: unknown
+  401: unknown
+  403: unknown
+  500: unknown
 }
-
-export type PostTextToAudioError = PostTextToAudioErrors[keyof PostTextToAudioErrors]
 
 export type PostTextToAudioResponses = {
   200: Blob | File
@@ -5476,32 +6174,32 @@ export type PostTextToAudioResponses = {
 
 export type PostTextToAudioResponse = PostTextToAudioResponses[keyof PostTextToAudioResponses]
 
-export type GetWorkflowByTaskIdEventsData = {
+export type GetWorkflowByWorkflowRunIdEventsData = {
   body?: never
   path: {
-    task_id: string
+    workflow_run_id: string
   }
   query: {
     continue_on_pause?: boolean
     include_state_snapshot?: boolean
     user: string
   }
-  url: '/workflow/{task_id}/events'
+  url: '/workflow/{workflow_run_id}/events'
 }
 
-export type GetWorkflowByTaskIdEventsErrors = {
+export type GetWorkflowByWorkflowRunIdEventsErrors = {
   400: unknown
   401: unknown
   403: unknown
   404: unknown
 }
 
-export type GetWorkflowByTaskIdEventsResponses = {
-  200: EventStreamResponse
+export type GetWorkflowByWorkflowRunIdEventsResponses = {
+  200: string
 }
 
-export type GetWorkflowByTaskIdEventsResponse =
-  GetWorkflowByTaskIdEventsResponses[keyof GetWorkflowByTaskIdEventsResponses]
+export type GetWorkflowByWorkflowRunIdEventsResponse =
+  GetWorkflowByWorkflowRunIdEventsResponses[keyof GetWorkflowByWorkflowRunIdEventsResponses]
 
 export type GetWorkflowsLogsData = {
   body?: never
@@ -5520,6 +6218,7 @@ export type GetWorkflowsLogsData = {
 }
 
 export type GetWorkflowsLogsErrors = {
+  400: unknown
   401: unknown
   403: unknown
 }
@@ -5547,7 +6246,7 @@ export type PostWorkflowsRunErrors = {
 }
 
 export type PostWorkflowsRunResponses = {
-  200: GeneratedAppResponse
+  200: WorkflowBlockingResponse | string
 }
 
 export type PostWorkflowsRunResponse = PostWorkflowsRunResponses[keyof PostWorkflowsRunResponses]
@@ -5576,7 +6275,7 @@ export type GetWorkflowsRunByWorkflowRunIdResponse =
   GetWorkflowsRunByWorkflowRunIdResponses[keyof GetWorkflowsRunByWorkflowRunIdResponses]
 
 export type PostWorkflowsTasksByTaskIdStopData = {
-  body: RequiredServiceApiUserPayload
+  body: WorkflowTaskStopPayload
   path: {
     task_id: string
   }
@@ -5588,7 +6287,6 @@ export type PostWorkflowsTasksByTaskIdStopErrors = {
   400: unknown
   401: unknown
   403: unknown
-  404: unknown
 }
 
 export type PostWorkflowsTasksByTaskIdStopResponses = {
@@ -5617,7 +6315,7 @@ export type PostWorkflowsByWorkflowIdRunErrors = {
 }
 
 export type PostWorkflowsByWorkflowIdRunResponses = {
-  200: GeneratedAppResponse
+  200: WorkflowBlockingResponse | string
 }
 
 export type PostWorkflowsByWorkflowIdRunResponse =

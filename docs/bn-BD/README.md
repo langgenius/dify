@@ -133,87 +133,35 @@ LLM ফাংশন কলিং বা ReAct উপর ভিত্তি ক�
 
 GitHub-এ ডিফাইকে স্টার দিয়ে রাখুন এবং নতুন রিলিজের খবর তাৎক্ষণিকভাবে পান।
 
-![star-us](https://github.com/langgenius/dify/assets/13230914/b823edc1-6388-4e25-ad45-2f6b187adbb4)
+<img width="1344" height="720" alt="star" src="https://github.com/user-attachments/assets/dcd086d1-af0f-471b-ae52-1ad2fa040595" />
 
 ## Advanced Setup
 
-যদি আপনার কনফিগারেশনটি কাস্টমাইজ করার প্রয়োজন হয়, তাহলে অনুগ্রহ করে আমাদের [.env.example](../../docker/.env.example) ফাইল দেখুন এবং আপনার `.env` ফাইলে সংশ্লিষ্ট মানগুলি আপডেট করুন। এছাড়াও, আপনার নির্দিষ্ট এনভায়রনমেন্ট এবং প্রয়োজনীয়তার উপর ভিত্তি করে আপনাকে `docker-compose.yaml` ফাইলে সমন্বয় করতে হতে পারে, যেমন ইমেজ ভার্সন পরিবর্তন করা, পোর্ট ম্যাপিং করা, অথবা ভলিউম মাউন্ট করা।
-যেকোনো পরিবর্তন করার পর, অনুগ্রহ করে `docker-compose up -d` পুনরায় চালান। ভেরিয়েবলের সম্পূর্ণ তালিকা [এখানে] (https://docs.dify.ai/getting-started/install-self-hosted/environments) খুঁজে পেতে পারেন।
+কাস্টম কনফিগারেশন, পর্যবেক্ষণ এবং ডেপ্লয়মেন্ট বিকল্পের জন্য, [উন্নত সেটআপ](ADVANCED_SETUP.md) দেখুন।
 
-### Grafana দিয়ে মেট্রিক্স মনিটরিং
+## অবদান
 
-Dify-এর PostgreSQL ডাটাবেসকে ডেটা সোর্স হিসাবে ব্যবহার করে, অ্যাপ, টেন্যান্ট, মেসেজ ইত্যাদির গ্র্যানুলারিটিতে মেট্রিক্স মনিটর করার জন্য Grafana-তে ড্যাশবোর্ড ইম্পোর্ট করুন।
+Dify সব ধরনের অবদানকে স্বাগত জানায়:
 
-- [@bowenliang123 কর্তৃক Grafana ড্যাশবোর্ড](https://github.com/bowenliang123/dify-grafana-dashboard)
+- **কোড**: [অবদান নির্দেশিকা](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) পড়ুন, তারপর [নতুন অবদানকারীদের উপযোগী সমস্যাগুলো](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22) দেখুন।
+- **ধারণা ও প্রতিক্রিয়া**: একটি [GitHub আলোচনা](https://github.com/langgenius/dify/discussions) শুরু করুন বা বিদ্যমান আলোচনায় যোগ দিন।
+- **অনুবাদ**: কোনো লোকেল যোগ বা হালনাগাদ করতে [আন্তর্জাতিকীকরণ নির্দেশিকা](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) অনুসরণ করুন।
+- **কমিউনিটি**: আপনার তৈরি অ্যাপ শেয়ার করুন, অন্য ব্যবহারকারীদের সাহায্য করুন এবং Dify সম্পর্কে সবাইকে জানান।
 
-### Kubernetes এর সাথে ডেপ্লয়মেন্ট
+### অবদানকারীরা
 
-যদি আপনি একটি হাইলি এভেইলেবল সেটআপ কনফিগার করতে চান, তাহলে কমিউনিটি [Helm Charts](https://helm.sh/) এবং YAML ফাইল রয়েছে যা Dify কে Kubernetes-এ ডিপ্লয় করার প্রক্রিয়া বর্ণনা করে।
-
-- [Helm Chart by @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
-- [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
-- [Helm Chart by @magicsong](https://github.com/magicsong/ai-charts)
-- [YAML file by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
-- [YAML file by @wyy-holding](https://github.com/wyy-holding/dify-k8s)
-- [🚀 নতুন! YAML ফাইলসমূহ (Dify v1.6.0 সমর্থিত) তৈরি করেছেন @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
-
-#### টেরাফর্ম ব্যবহার করে ডিপ্লয়
-
-[terraform](https://www.terraform.io/) ব্যবহার করে এক ক্লিকেই ক্লাউড প্ল্যাটফর্মে Dify ডিপ্লয় করুন।
-
-##### অ্যাজুর গ্লোবাল
-
-- [Azure Terraform by @nikawang](https://github.com/nikawang/dify-azure-terraform)
-
-##### গুগল ক্লাউড
-
-- [Google Cloud Terraform by @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
-
-#### AWS CDK ব্যবহার করে ডিপ্লয়
-
-[CDK](https://aws.amazon.com/cdk/) দিয়ে AWS-এ Dify ডিপ্লয় করুন
-
-##### AWS
-
-- [AWS CDK by @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
-- [AWS CDK by @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
-
-#### Alibaba Cloud ব্যবহার করে ডিপ্লয়
-
-[Alibaba Cloud Computing Nest](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88)
-
-#### Alibaba Cloud Data Management ব্যবহার করে ডিপ্লয়
-
-[Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/)
-
-#### AKS-এ ডিপ্লয় করার জন্য Azure Devops Pipeline ব্যবহার
-
-[Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) ব্যবহার করে Dify কে AKS-এ এক ক্লিকে ডিপ্লয় করুন
-
-#### Sealos ব্যবহার করে ডিপ্লয়
-
-[Sealos App Store](https://sealos.io/products/app-store/dify/) ব্যবহার করে Dify-কে এক ক্লিকে ডিপ্লয় করুন
-
-## Contributing
-
-যারা কোড অবদান রাখতে চান, তাদের জন্য আমাদের [অবদান নির্দেশিকা](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) দেখুন।
-একই সাথে, সোশ্যাল মিডিয়া এবং ইভেন্ট এবং কনফারেন্সে এটি শেয়ার করে Dify কে সমর্থন করুন।
-
-> আমরা ম্যান্ডারিন বা ইংরেজি ছাড়া অন্য ভাষায় Dify অনুবাদ করতে সাহায্য করার জন্য অবদানকারীদের খুঁজছি। আপনি যদি সাহায্য করতে আগ্রহী হন, তাহলে আরও তথ্যের জন্য [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) দেখুন এবং আমাদের [ডিসকর্ড কমিউনিটি সার্ভার](https://discord.gg/8Tpq4AcN9c) এর `গ্লোবাল-ইউজারস` চ্যানেলে আমাদের একটি মন্তব্য করুন।
+<a href="https://github.com/langgenius/dify/graphs/contributors">
+  <img alt="Dify contributors" src="https://contrib.rocks/image?repo=langgenius/dify" />
+</a>
 
 ## কমিউনিটি এবং যোগাযোগ
 
-- [GitHub Discussion](https://github.com/langgenius/dify/discussions) ফিডব্যাক এবং প্রতিক্রিয়া জানানোর মাধ্যম।
-- [GitHub Issues](https://github.com/langgenius/dify/issues). Dify.AI ব্যবহার করে আপনি যেসব বাগের সম্মুখীন হন এবং ফিচার প্রস্তাবনা। আমাদের [অবদান নির্দেশিকা](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) দেখুন।
-- [Discord](https://discord.gg/FngNHpbcY7) আপনার এপ্লিকেশন শেয়ার এবং কমিউনিটি আড্ডার মাধ্যম।
-- [X(Twitter)](https://twitter.com/dify_ai) আপনার এপ্লিকেশন শেয়ার এবং কমিউনিটি আড্ডার মাধ্যম।
+আপনার প্রশ্নের জন্য সবচেয়ে উপযুক্ত মাধ্যমটি বেছে নিন:
 
-**অবদানকারীদের তালিকা**
-
-<a href="https://github.com/langgenius/dify/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=langgenius/dify" />
-</a>
-
+- [GitHub Discussions](https://github.com/langgenius/dify/discussions): সাহায্য নিন, প্রতিক্রিয়া জানান এবং ধারণা প্রস্তাব করুন।
+- [GitHub Issues](https://github.com/langgenius/dify/issues): পুনরুৎপাদনযোগ্য বাগ রিপোর্ট করুন এবং ইঞ্জিনিয়ারিং কাজ অনুসরণ করুন। নতুন ইস্যু খোলার আগে [অবদান নির্দেশিকা](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) পড়ুন।
+- [Discord](https://discord.gg/FngNHpbcY7): সরাসরি আলোচনা করুন, আপনার অ্যাপ শেয়ার করুন এবং অন্যান্য Dify ব্যবহারকারীর সঙ্গে যুক্ত হন।
+- [X](https://x.com/dify_ai): রিলিজের খবর এবং প্রকল্পের হালনাগাদ পেতে Dify অনুসরণ করুন।
 ## স্টার হিস্ট্রি
 
 [![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)

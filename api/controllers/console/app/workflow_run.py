@@ -37,7 +37,7 @@ from fields.workflow_run_fields import (
 from graphon.enums import WorkflowExecutionStatus
 from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
 from libs.custom_inputs import time_duration
-from libs.helper import uuid_value
+from libs.helper import dump_response, uuid_value
 from libs.login import login_required
 from models import Account, App, AppMode, WorkflowArchiveLog, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun
@@ -232,14 +232,17 @@ class WorkflowRunExportApi(Resource):
             expires_in=EXPORT_SIGNED_URL_EXPIRE_SECONDS,
         )
         expires_at = datetime.now(UTC) + timedelta(seconds=EXPORT_SIGNED_URL_EXPIRE_SECONDS)
-        response = WorkflowRunExportResponse.model_validate(
-            {
-                "status": "success",
-                "presigned_url": presigned_url,
-                "presigned_url_expires_at": expires_at.isoformat(),
-            }
+        return (
+            dump_response(
+                WorkflowRunExportResponse,
+                {
+                    "status": "success",
+                    "presigned_url": presigned_url,
+                    "presigned_url_expires_at": expires_at.isoformat(),
+                },
+            ),
+            200,
         )
-        return response.model_dump(mode="json"), 200
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflow-runs/count")

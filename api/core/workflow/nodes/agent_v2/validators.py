@@ -66,6 +66,7 @@ class WorkflowAgentNodeValidator:
             session=session,
             workflow=workflow,
             require_binding=False,
+            require_agent_model=False,
             validate_previous_node_topology=False,
         )
 
@@ -75,6 +76,7 @@ class WorkflowAgentNodeValidator:
             session=session,
             workflow=workflow,
             require_binding=True,
+            require_agent_model=True,
             validate_previous_node_topology=True,
         )
 
@@ -85,6 +87,7 @@ class WorkflowAgentNodeValidator:
         session: Session,
         workflow: Workflow,
         require_binding: bool,
+        require_agent_model: bool,
         validate_previous_node_topology: bool,
     ) -> None:
         graph = workflow.graph_dict
@@ -104,7 +107,12 @@ class WorkflowAgentNodeValidator:
                         f"Workflow Agent node {node_id} requires a binding before publishing."
                     )
                 continue
-            cls.validate_binding(session=session, binding=binding, topology=topology)
+            cls.validate_binding(
+                session=session,
+                binding=binding,
+                topology=topology,
+                require_agent_model=require_agent_model,
+            )
 
         if require_binding:
             for node_id, node_data in cls.iter_tool_nodes(graph):
@@ -117,6 +125,7 @@ class WorkflowAgentNodeValidator:
         session: Session,
         binding: WorkflowAgentNodeBinding,
         topology: _WorkflowGraphTopology | None = None,
+        require_agent_model: bool = True,
     ) -> None:
         if binding.agent_id is None:
             raise WorkflowAgentNodeValidationError(f"Workflow Agent node {binding.node_id} is missing agent binding.")
@@ -159,7 +168,7 @@ class WorkflowAgentNodeValidator:
             )
 
         agent_soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
-        if agent_soul.model is None:
+        if require_agent_model and agent_soul.model is None:
             raise WorkflowAgentNodeValidationError(
                 f"Workflow Agent node {binding.node_id} requires Agent Soul model config."
             )

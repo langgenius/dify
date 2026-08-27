@@ -31,6 +31,8 @@ from controllers.console.auth.error import (
 from controllers.console.error import (
     AccountInFreezeError,
     AccountNotFound,
+    EducationActivateLimitError,
+    EducationVerifyLimitError,
     EmailDomainSuspendedError,
     EmailSendIpLimitError,
 )
@@ -239,6 +241,10 @@ class EducationVerifyResponse(ResponseModel):
     token: str | None = None
 
 
+class EducationActivateResponse(ResponseModel):
+    message: str
+
+
 class EducationStatusResponse(ResponseModel):
     result: bool | None = None
     is_student: bool | None = None
@@ -263,6 +269,7 @@ register_response_schema_models(
     AccountIntegrateResponse,
     AccountIntegrateListResponse,
     AvatarUrlResponse,
+    EducationActivateResponse,
     EducationVerifyResponse,
     EducationStatusResponse,
     EducationAutocompleteResponse,
@@ -528,29 +535,33 @@ class EducationVerifyApi(Resource):
     def get(self, request_context: RequestContext):
         try:
             verification = application_services().accounts.education.verify(request_context)
-        except account_errors.AccountNotFoundError:
-            raise AccountNotFound() from None
+        except account_errors.AccountNotFoundError as error:
+            raise AccountNotFound() from error
+        except account_errors.EducationRateLimitExceededError as error:
+            raise EducationVerifyLimitError() from error
         return dump_response(EducationVerifyResponse, verification)
 
 
 @console_ns.route("/account/education")
 class EducationApi(Resource):
     @console_ns.expect(console_ns.models[EducationActivatePayload.__name__])
-    # response-contract:ignore billing-service activation payload; TODO: model education activation result.
-    @console_ns.response(HTTPStatus.OK, "Success")
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationActivateResponse.__name__])
     @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
     def post(self, request_context: RequestContext):
         payload = console_ns.payload or {}
         args = EducationActivatePayload.model_validate(payload)
         try:
-            return application_services().accounts.education.activate(
+            activation = application_services().accounts.education.activate(
                 request_context,
                 token=args.token,
                 institution=args.institution,
                 role=args.role,
             )
-        except account_errors.AccountNotFoundError:
-            raise AccountNotFound() from None
+        except account_errors.AccountNotFoundError as error:
+            raise AccountNotFound() from error
+        except account_errors.EducationRateLimitExceededError as error:
+            raise EducationActivateLimitError() from error
+        return dump_response(EducationActivateResponse, activation)
 
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationStatusResponse.__name__])
     @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))

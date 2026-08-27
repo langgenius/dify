@@ -3,7 +3,8 @@
 import type { ComponentProps } from 'react'
 import type { AccessPointStatus } from './access-point-status'
 import type { AppModeEnum } from '@/types/app'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
@@ -56,23 +57,24 @@ export function ServiceApiCardView({
       actions={
         <>
           <ApiSecretKeyButton {...apiKeyButtonProps} />
-          <Button
-            variant="secondary"
-            disabled={!available || !apiReferenceUrl}
-            nativeButton={false}
-            render={
-              apiReferenceUrl ? (
-                <Link href={apiReferenceUrl} target="_blank" rel="noopener noreferrer" />
-              ) : (
-                <span />
-              )
-            }
-            className="flex items-center gap-1"
-          >
-            <span aria-hidden className="i-ri-book-open-line size-4" />
-            {t(($) => $['overview.apiInfo.doc'], { ns: 'appOverview' })}
-            <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
-          </Button>
+          {available && apiReferenceUrl ? (
+            <Link
+              href={apiReferenceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(buttonVariants({ variant: 'secondary' }), 'flex items-center gap-1')}
+            >
+              <span aria-hidden className="i-ri-book-open-line size-4" />
+              {t(($) => $['overview.apiInfo.doc'], { ns: 'appOverview' })}
+              <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
+            </Link>
+          ) : (
+            <Button variant="secondary" disabled className="flex items-center gap-1">
+              <span aria-hidden className="i-ri-book-open-line size-4" />
+              {t(($) => $['overview.apiInfo.doc'], { ns: 'appOverview' })}
+              <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
+            </Button>
+          )}
         </>
       }
     >

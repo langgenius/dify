@@ -1,6 +1,6 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { ENVIRONMENT_TAB_LABEL_MAX_WIDTH } from './layout'
+import { ENVIRONMENT_TAB_LABEL_MAX_WIDTH } from './layout-calculations'
 
 export function EnvironmentButton({
   active,

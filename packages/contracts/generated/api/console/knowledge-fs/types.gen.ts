@@ -192,25 +192,6 @@ export type KnowledgeFsBulkJobResponse = {
   updated_at: string
 }
 
-export type KnowledgeFsCredentialListResponse = {
-  data: Array<KnowledgeFsCredentialItemResponse>
-}
-
-export type KnowledgeFsCredentialCreatePayload = {
-  allowed_actions: Array<string>
-  expires_at?: string | null
-}
-
-export type KnowledgeFsCredentialCreateResponse = {
-  allowed_actions: Array<string>
-  credential: string
-  credential_last4: string
-  credential_prefix: string
-  expires_at: string | null
-  id: string
-  principal: string
-}
-
 export type KnowledgeFsDocumentListResponse = {
   data: Array<KnowledgeFsDocumentResponse>
   next_cursor?: string | null
@@ -1353,7 +1334,6 @@ export type KnowledgeFsControlSpaceState =
 
 export type KnowledgeFsProductPermission =
   | 'knowledge_space_access_config'
-  | 'knowledge_space_api_key_manage'
   | 'knowledge_space_create'
   | 'knowledge_space_delete'
   | 'knowledge_space_document_write'
@@ -1484,18 +1464,6 @@ export type KnowledgeFsBackgroundTaskFailureResponse = {
   error_message: string
   failure: KnowledgeFsPublicFailureResponse
   job_id?: string | null
-}
-
-export type KnowledgeFsCredentialItemResponse = {
-  allowed_actions: Array<string>
-  credential_last4: string
-  credential_prefix: string
-  expires_at: string | null
-  id: string
-  last_used_at: string | null
-  principal: string
-  revision: number
-  status: string
 }
 
 export type KnowledgeFsBulkDocumentDeleteItemPayload = {
@@ -2320,9 +2288,7 @@ export type PostKnowledgeFsQueryStreamData = {
 }
 
 export type PostKnowledgeFsQueryStreamResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: string
 }
 
 export type PostKnowledgeFsQueryStreamResponse =
@@ -2342,9 +2308,7 @@ export type GetKnowledgeFsResearchTasksByTaskIdEventsData = {
 }
 
 export type GetKnowledgeFsResearchTasksByTaskIdEventsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: string
 }
 
 export type GetKnowledgeFsResearchTasksByTaskIdEventsResponse =
@@ -2614,55 +2578,6 @@ export type GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdResponses = {
 
 export type GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdResponse =
   GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdResponses]
-
-export type GetKnowledgeFsSpacesByControlSpaceIdCredentialsData = {
-  body?: never
-  path: {
-    control_space_id: string
-  }
-  query?: never
-  url: '/knowledge-fs/spaces/{control_space_id}/credentials'
-}
-
-export type GetKnowledgeFsSpacesByControlSpaceIdCredentialsResponses = {
-  200: KnowledgeFsCredentialListResponse
-}
-
-export type GetKnowledgeFsSpacesByControlSpaceIdCredentialsResponse =
-  GetKnowledgeFsSpacesByControlSpaceIdCredentialsResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdCredentialsResponses]
-
-export type PostKnowledgeFsSpacesByControlSpaceIdCredentialsData = {
-  body: KnowledgeFsCredentialCreatePayload
-  path: {
-    control_space_id: string
-  }
-  query?: never
-  url: '/knowledge-fs/spaces/{control_space_id}/credentials'
-}
-
-export type PostKnowledgeFsSpacesByControlSpaceIdCredentialsResponses = {
-  201: KnowledgeFsCredentialCreateResponse
-}
-
-export type PostKnowledgeFsSpacesByControlSpaceIdCredentialsResponse =
-  PostKnowledgeFsSpacesByControlSpaceIdCredentialsResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdCredentialsResponses]
-
-export type DeleteKnowledgeFsSpacesByControlSpaceIdCredentialsByCredentialIdData = {
-  body?: never
-  path: {
-    control_space_id: string
-    credential_id: string
-  }
-  query?: never
-  url: '/knowledge-fs/spaces/{control_space_id}/credentials/{credential_id}'
-}
-
-export type DeleteKnowledgeFsSpacesByControlSpaceIdCredentialsByCredentialIdResponses = {
-  204: void
-}
-
-export type DeleteKnowledgeFsSpacesByControlSpaceIdCredentialsByCredentialIdResponse =
-  DeleteKnowledgeFsSpacesByControlSpaceIdCredentialsByCredentialIdResponses[keyof DeleteKnowledgeFsSpacesByControlSpaceIdCredentialsByCredentialIdResponses]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsData = {
   body?: never

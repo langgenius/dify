@@ -208,9 +208,13 @@ def to_timestamp(value: datetime | int | None) -> int | None:
     return value
 
 
-def dump_response(model: type[BaseModel], data: Any) -> dict[str, Any]:
-    """Serialize a Pydantic response model to JSON-compatible dict output."""
-    return model.model_validate(data, from_attributes=True).model_dump(mode="json")
+def dump_response(model: type[BaseModel], data: Any, **dump_kwargs: Any) -> dict[str, Any]:
+    """Serialize a Pydantic response model to JSON-compatible dict output.
+
+    Extra keyword arguments are forwarded to ``model_dump`` (e.g. ``include=...``,
+    ``exclude=...``, ``exclude_unset=True``).
+    """
+    return model.model_validate(data, from_attributes=True).model_dump(mode="json", **dump_kwargs)
 
 
 def current_timestamp() -> int:

@@ -992,7 +992,7 @@ future server adds a code. Formatter tests pin emitted values to the enum.
 | created_by | string |  | No |
 | extension | string |  | No |
 | file_key | string |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | mime_type | string |  | No |
 | name | string |  | Yes |
 | original_url | string |  | No |
@@ -1473,7 +1473,7 @@ Pagination for GET /account/sessions. Strict (extra='forbid').
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| result | string |  | Yes |
+| result | string | Operation result. | Yes |
 
 #### SupportedAppType
 

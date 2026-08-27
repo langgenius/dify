@@ -2,7 +2,7 @@ import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { IndexingStatusResponse } from '@/models/datasets'
 import type { InitialDocumentDetail } from '@/models/pipeline'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import { Button } from '@langgenius/dify-ui/button'
+import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
@@ -26,7 +26,6 @@ import { useProviderContext } from '@/context/provider-context'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import { DatasourceType } from '@/models/pipeline'
 import Link from '@/next/link'
-import { useRouter } from '@/next/navigation'
 import { useIndexingStatusBatch, useProcessRule } from '@/service/knowledge/use-dataset'
 import { useInvalidDocumentList } from '@/service/knowledge/use-document'
 import RuleDetail from './rule-detail'
@@ -47,7 +46,6 @@ const EmbeddingProcess = ({
   retrievalMethod,
 }: EmbeddingProcessProps) => {
   const { t } = useTranslation()
-  const router = useRouter()
   const { enableBilling, plan } = useProviderContext()
   const [indexingStatusBatchDetail, setIndexingStatusDetail] = useState<IndexingStatusResponse[]>(
     [],
@@ -86,10 +84,7 @@ const EmbeddingProcess = ({
   const { data: ruleDetail } = useProcessRule(firstDocument!.id)
 
   const invalidDocumentList = useInvalidDocumentList()
-  const navToDocumentList = () => {
-    invalidDocumentList()
-    router.push(`/datasets/${datasetId}/documents`)
-  }
+  const documentsHref = `/datasets/${datasetId}/documents`
   const apiReferenceUrl = useDatasetApiAccessUrl()
 
   const isEmbeddingWaiting = useMemo(() => {
@@ -255,16 +250,23 @@ const EmbeddingProcess = ({
         />
       </div>
       <div className="mt-6 flex items-center gap-x-2 py-2">
-        <Link href={apiReferenceUrl} target="_blank" rel="noopener noreferrer">
-          <Button className="w-fit">
-            <RiTerminalBoxLine className="size-4" />
-            <span>Access the API</span>
-          </Button>
+        <Link
+          href={apiReferenceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(buttonVariants(), 'w-fit')}
+        >
+          <RiTerminalBoxLine className="size-4" />
+          <span>Access the API</span>
         </Link>
-        <Button className="w-fit" variant="primary" onClick={navToDocumentList}>
+        <Link
+          href={documentsHref}
+          className={cn(buttonVariants({ variant: 'primary' }), 'w-fit')}
+          onClick={invalidDocumentList}
+        >
           <span>{t(($) => $['stepThree.navTo'], { ns: 'datasetCreation' })}</span>
           <RiArrowRightLine className="size-4 stroke-current stroke-1" />
-        </Button>
+        </Link>
       </div>
     </>
   )

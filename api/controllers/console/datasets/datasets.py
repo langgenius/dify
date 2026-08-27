@@ -65,7 +65,6 @@ from services.dataset_knowledge_fs_upgrade_service import (
 from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.enterprise import rbac_service as enterprise_rbac_service
-from services.enterprise.rbac_service import RBACResourceWhitelistScope, ReplaceMemberBindings
 from services.knowledge_fs.product_dto import (
     KnowledgeFSIdempotencyHeader,
     KnowledgeFSUpgradeDiscoveryResponse,
@@ -114,16 +113,16 @@ def _dataset_list_access_scope(
             for override in permissions.dataset.overrides
             if _has_dataset_list_permission(override.permission_keys)
         }
+    include_own_datasets = False
     if getattr(whitelist_scope, "unrestricted", False):
         filtered_dataset_ids = permission_dataset_ids
+        include_own_datasets = "dataset.create_and_management" in permissions.workspace.permission_keys
     else:
+        # A restricted dataset whitelist is the highest-priority visibility gate:
+        # default readonly, per-dataset permission overrides, and own-dataset
+        # management must not expose datasets outside this set.
         filtered_dataset_ids = set(whitelist_scope.resource_ids)
-        if permission_dataset_ids is not None:
-            filtered_dataset_ids |= permission_dataset_ids
-        elif has_default_readonly:
-            filtered_dataset_ids = None
     accessible_dataset_ids = sorted(filtered_dataset_ids) if filtered_dataset_ids is not None else None
-    include_own_datasets = "dataset.create_and_management" in permissions.workspace.permission_keys
     return accessible_dataset_ids, include_own_datasets
 
 
@@ -542,7 +541,6 @@ class DatasetListApi(Resource):
         accessible_dataset_ids, include_own_datasets = _dataset_list_access_scope(
             tenant_id=str(current_tenant_id), user=current_user, session=session, permissions=permissions
         )
-
         if query.ids:
             datasets, total = DatasetService.get_datasets_by_ids(
                 query.ids,
@@ -677,23 +675,6 @@ class DatasetListApi(Resource):
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
-        if dify_config.RBAC_ENABLED:
-            if permission == DatasetPermissionEnum.ALL_TEAM:
-                enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
-                    current_tenant_id,
-                    current_user.id,
-                    dataset.id,
-                    ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
-                )
-                initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, dataset_id=dataset.id)
-            else:
-                enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
-                    current_tenant_id,
-                    current_user.id,
-                    dataset.id,
-                    ReplaceMemberBindings(scope=RBACResourceWhitelistScope.SPECIFIC),
-                )
-
         permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
             current_tenant_id,
             current_user.id,
@@ -705,6 +686,16 @@ class DatasetListApi(Resource):
             dataset_detail_response_source(dataset, session=session), from_attributes=True
         ).model_dump(mode="json")
         item["permission_keys"] = permission_keys_map.get(dataset.id, [])
+
+        if dify_config.RBAC_ENABLED:
+            enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
+                current_tenant_id,
+                current_user.id,
+                dataset.id,
+                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+            )
+            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, dataset_id=dataset.id)
+
         return item, 201
 
 
