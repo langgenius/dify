@@ -1,6 +1,7 @@
 import uuid
 from collections.abc import Generator
 from contextlib import contextmanager
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -8,8 +9,10 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
+from extensions.storage.storage_type import StorageType
+from models.dataset import Dataset, Document, DocumentSegment, SegmentAttachmentBinding
+from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
+from models.model import UploadFile
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 from tasks.disable_segment_from_index_task import disable_segment_from_index_task
 from tasks.disable_segments_from_index_task import disable_segments_from_index_task
@@ -152,3 +155,97 @@ def test_delete_segment_commits_index_cleanup_without_attachments(
         delete_segment_from_index_task.run(["node-1"], dataset.id, document.id, [segment.id])
 
     assert phase_events == ["clean", "commit"]
+
+
+def test_delete_segment_removes_attachment_blobs_from_storage(
+    indexed_segment: tuple[Dataset, Document, DocumentSegment],
+    sqlite_session: Session,
+) -> None:
+    dataset, document, segment = indexed_segment
+    dataset.is_multimodal = True
+    attachment = UploadFile(
+        tenant_id=dataset.tenant_id,
+        storage_type=StorageType.LOCAL,
+        key="attachments/segment-image.png",
+        name="segment-image.png",
+        size=10,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=segment.created_by,
+        created_at=datetime.now(UTC),
+        used=True,
+    )
+    binding = SegmentAttachmentBinding(
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        document_id=document.id,
+        segment_id=segment.id,
+        attachment_id=attachment.id,
+    )
+    sqlite_session.add_all([dataset, attachment, binding])
+    sqlite_session.commit()
+    attachment_id = attachment.id
+    attachment_key = attachment.key
+    binding_id = binding.id
+
+    with (
+        patch("tasks.delete_segment_from_index_task.IndexProcessorFactory") as processor_factory,
+        patch("tasks.delete_segment_from_index_task.storage.delete") as storage_delete,
+    ):
+        delete_segment_from_index_task.run(["node-1"], dataset.id, document.id, [segment.id])
+
+    storage_delete.assert_called_once_with(attachment_key)
+    sqlite_session.expire_all()
+    assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is None
+    assert sqlite_session.get(UploadFile, attachment_id) is None
+
+
+def test_delete_segment_keeps_database_cleanup_when_attachment_storage_delete_fails(
+    indexed_segment: tuple[Dataset, Document, DocumentSegment],
+    sqlite_session: Session,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    dataset, document, segment = indexed_segment
+    dataset.is_multimodal = True
+    attachment = UploadFile(
+        tenant_id=dataset.tenant_id,
+        storage_type=StorageType.LOCAL,
+        key="attachments/failing-segment-image.png",
+        name="failing-segment-image.png",
+        size=10,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=segment.created_by,
+        created_at=datetime.now(UTC),
+        used=True,
+    )
+    binding = SegmentAttachmentBinding(
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        document_id=document.id,
+        segment_id=segment.id,
+        attachment_id=attachment.id,
+    )
+    sqlite_session.add_all([dataset, attachment, binding])
+    sqlite_session.commit()
+    attachment_id = attachment.id
+    attachment_key = attachment.key
+    binding_id = binding.id
+
+    with (
+        patch("tasks.delete_segment_from_index_task.IndexProcessorFactory") as processor_factory,
+        patch(
+            "tasks.delete_segment_from_index_task.storage.delete",
+            side_effect=RuntimeError("storage unavailable"),
+        ) as storage_delete,
+        caplog.at_level("ERROR", logger="tasks.delete_segment_from_index_task"),
+    ):
+        delete_segment_from_index_task.run(["node-1"], dataset.id, document.id, [segment.id])
+
+    storage_delete.assert_called_once_with(attachment_key)
+    assert "Failed to delete segment attachment from storage" in caplog.text
+    sqlite_session.expire_all()
+    assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is None
+    assert sqlite_session.get(UploadFile, attachment_id) is None
