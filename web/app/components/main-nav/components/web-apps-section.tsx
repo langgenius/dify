@@ -29,7 +29,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { keepPreviousData, useInfiniteQuery, useMutation } from '@tanstack/react-query'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useAtomValue } from 'jotai'
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
@@ -46,7 +46,7 @@ const emptyInstalledApps: InstalledAppResponse[] = []
 
 const appNavItemHeight = 32
 const appNavItemGap = 2
-const appNavSeparatorHeight = 17
+const appNavSeparatorHeight = 16.5
 
 const getPreloadDistance = (scrollContainer: Element) =>
   Math.max(160, Math.min(scrollContainer.clientHeight * 0.25, 320))
@@ -111,13 +111,17 @@ const WebAppsSectionContent = () => {
       return rows
     })
   }, [installedApps])
+  const getWebAppRowKey = useCallback(
+    (index: number) => webAppRows[index]?.key ?? index,
+    [webAppRows],
+  )
 
   const rowVirtualizer = useVirtualizer({
     count: webAppRows.length,
     estimateSize: (index) =>
       webAppRows[index]?.kind === 'separator' ? appNavSeparatorHeight : appNavItemHeight,
     gap: appNavItemGap,
-    getItemKey: (index) => webAppRows[index]?.key ?? index,
+    getItemKey: getWebAppRowKey,
     getScrollElement: () => scrollRef.current,
     overscan: 6,
     paddingEnd: 8,
@@ -171,7 +175,6 @@ const WebAppsSectionContent = () => {
 
   const renderAppNavItem = (installedApp: (typeof installedApps)[number]) => (
     <AppNavItem
-      key={installedApp.id}
       app={installedApp}
       ariaLabel={t(($) => $['mainNav.webApps.openApp'], {
         ns: 'common',
