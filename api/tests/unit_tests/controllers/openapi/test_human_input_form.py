@@ -3,8 +3,9 @@
 Auth is not exercised here: `@endpoint` resolves the `Context` before the handler
 runs, and the allow/deny answers live in `test_auth_matrix.py`. The recipient-surface
 refusal is `CheckFormSurface`'s, pinned in `auth/test_requirements.py`. Body tests
-call `__handler__` — the documented seam — with a `Context` double. The 422 test goes
-through `__wrapped__` instead, so `@accepts` still runs against the real request.
+call `__handler__` — the one seam — with a `Context` double. The 422 test cannot use
+it, because `@accepts` sits inside the guard and `__handler__` is below it; it goes
+over the wire through `admitted_bearer` and asserts the canonical `ErrorBody`.
 """
 
 from __future__ import annotations
@@ -17,10 +18,9 @@ from unittest.mock import Mock
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.common.human_input import HumanInputFormSubmitPayload
-from controllers.openapi._errors import HumanInputFormNotFound
+from controllers.openapi._errors import ErrorBody, HumanInputFormNotFound, OpenApiErrorCode
 from controllers.openapi._models import FormSubmitResponse
 from controllers.openapi.auth.data import CallerKind
 from controllers.openapi.human_input_form import (
@@ -31,6 +31,7 @@ from models.account import Account
 from models.enums import EndUserType
 from models.human_input import RecipientType
 from models.model import App, AppMode, EndUser
+from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 
 _MODULE = "controllers.openapi.human_input_form"
 
@@ -227,14 +228,16 @@ class TestOpenApiHumanInputFormPost:
         service_mock.submit_form_by_token.assert_called_once()
         assert result == FormSubmitResponse()
 
-    def test_post_rejects_invalid_body_with_422(self, app: Flask):
-        """Malformed body → 422 via @accepts, before the handler is reached."""
-        api = OpenApiWorkflowHumanInputFormSubmitApi()
-
-        with app.test_request_context(
-            "/openapi/v1/apps/app-1/human-input-forms/tok-1:submit",
-            method="POST",
+    def test_post_rejects_invalid_body_with_422(self, admitted_bearer: AdmittedWorld):
+        """Malformed body → 422 on the wire, from `@accepts` inside the guard."""
+        resp = admitted_bearer.client.post(
+            f"/openapi/v1/apps/{admitted_bearer.app_id}/human-input-forms/tok-1:submit",
             json={"inputs": {"field1": "val"}},  # missing required "action"
-        ):
-            with pytest.raises(UnprocessableEntity):
-                api.post.__wrapped__(api, ctx=None, app_id="app-1", form_token="tok-1")
+            headers=admitted_bearer.headers,
+        )
+
+        assert resp.status_code == 422, resp.get_json()
+        wire = resp.get_json()
+        ErrorBody.model_validate(wire)
+        assert wire["code"] == OpenApiErrorCode.INVALID_PARAM
+        assert wire["details"]
