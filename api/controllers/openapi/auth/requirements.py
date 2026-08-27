@@ -19,22 +19,28 @@ from enum import IntEnum
 from typing import ClassVar, override
 
 from flask import request
+from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
 from controllers.common.wraps import enforce_rbac_access
 from controllers.openapi._audit import emit_wrong_surface
+from controllers.openapi._errors import RecipientSurfaceMismatch
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.data import CallerKind
 from controllers.openapi.auth.subjects import Subject
+from core.db.session_factory import session_factory
 from core.rbac import RBACPermission, RBACResourceScope
+from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from enums import DeploymentEdition
 from libs.oauth_bearer import Scope
 from models.account import TenantAccountRole
+from models.oauth import OAuthAccessToken
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode
 from services.entities.feature_entities import LicenseStatus
 from services.feature_service import FeatureService
+from services.human_input_service import HumanInputService
 
 _DEAD_LICENSE_STATUSES = frozenset({LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST})
 
@@ -214,6 +220,52 @@ class RBACCheck(Requirement):
             return
         if ctx.workspace_role not in self.roles:
             raise Forbidden("insufficient workspace role")
+
+
+class CheckSessionOwnership(Requirement):
+    """Authorises a named session against the caller's own tokens.
+
+    A token id belonging to another subject answers 404, not 403, exactly like a
+    token id that does not exist — a 403 would confirm the id, letting a caller
+    enumerate session ids across subjects.
+    """
+
+    rank = Rank.PERMISSION
+
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        session_id = (request.view_args or {})["session_id"]
+        owned = session.scalar(
+            select(OAuthAccessToken.id).where(
+                OAuthAccessToken.id == session_id,
+                OAuthAccessToken.account_id == str(subject.account_id),
+            )
+        )
+        if owned is None:
+            raise NotFound("session not found")
+
+
+class CheckFormSurface(Requirement):
+    """Whether this surface may see the form at all.
+
+    `/openapi/v1` is allowed only the recipient types `human_input_policy` lists
+    for it, so a console-bound form is refused before any handler body runs.
+
+    A form the caller could not have found anyway — missing, or belonging to
+    another app — is left to the handler's own 404: answering 403 here would tell
+    an outsider the form token exists.
+    """
+
+    rank = Rank.ACCESS
+
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        form_token = (request.view_args or {})["form_token"]
+        form = HumanInputService(session_factory.get_session_maker()).get_form_by_token(form_token)
+        if form is None or form.app_id != ctx.app.id or form.tenant_id != ctx.app.tenant_id:
+            return
+        if not is_recipient_type_allowed_for_surface(form.recipient_type, HumanInputSurface.OPENAPI):
+            raise RecipientSurfaceMismatch()
 
 
 class RequireWebappAccess(Requirement):
