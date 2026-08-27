@@ -19,9 +19,7 @@ def test_subject_type_owns_prefix_and_scopes():
     assert SubjectType.ACCOUNT.prefix == "dfoa_"
     assert SubjectType.ACCOUNT.scopes == frozenset({Scope.FULL})
     assert SubjectType.EXTERNAL_SSO.prefix == "dfoe_"
-    assert SubjectType.EXTERNAL_SSO.scopes == frozenset(
-        {Scope.APPS_RUN, Scope.APPS_READ_PERMITTED_EXTERNAL}
-    )
+    assert SubjectType.EXTERNAL_SSO.scopes == frozenset({Scope.APPS_RUN, Scope.APPS_READ_PERMITTED_EXTERNAL})
 
 
 def test_canonical_account_profile_passes():
