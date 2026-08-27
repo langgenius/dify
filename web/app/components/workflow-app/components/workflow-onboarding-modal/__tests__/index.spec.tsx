@@ -30,7 +30,7 @@ describe('WorkflowOnboardingModal', () => {
     const onClose = vi.fn()
     render(<WorkflowOnboardingModal isShow onClose={onClose} onSelectStartNode={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: 'Close' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(onClose).toHaveBeenCalledTimes(1)
   })

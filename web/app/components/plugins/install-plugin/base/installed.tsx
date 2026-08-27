@@ -1,7 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../../types'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
@@ -125,21 +126,22 @@ const Installed: FC<Props> = ({
       </div>
       {/* Action Buttons */}
       <div className="flex items-center justify-end gap-2 self-stretch p-6 pt-5">
-        <Button
-          variant="primary"
-          className="min-w-18"
-          render={categoryTarget ? <Link href={categoryTarget.path} /> : undefined}
-          onClick={handleClose}
-        >
-          {categoryTarget ? (
+        {categoryTarget ? (
+          <Link
+            href={categoryTarget.path}
+            className={cn(buttonVariants({ variant: 'primary' }), 'min-w-18')}
+            onClick={handleClose}
+          >
             <>
               <span>{t(($) => $['installModal.viewDetails'], { ns: 'plugin' })}</span>
               <span className="i-ri-arrow-right-up-line size-4 shrink-0" aria-hidden="true" />
             </>
-          ) : (
-            t(($) => $['operation.close'], { ns: 'common' })
-          )}
-        </Button>
+          </Link>
+        ) : (
+          <Button variant="primary" className="min-w-18" onClick={handleClose}>
+            {t(($) => $['operation.close'], { ns: 'common' })}
+          </Button>
+        )}
       </div>
     </>
   )

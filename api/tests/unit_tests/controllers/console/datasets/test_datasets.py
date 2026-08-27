@@ -255,7 +255,7 @@ class TestDatasetList:
         assert status == 200
         assert resp["data"][0]["permission_keys"] == ["dataset.acl.readonly", "dataset.acl.edit"]
 
-    def test_get_limits_to_own_datasets_without_default_read_permission(self, app: Flask):
+    def test_get_restricted_whitelist_blocks_own_dataset_fallback(self, app: Flask):
         api = DatasetListApi()
         method = unwrap(api.get)
         current_user = self._mock_user()
@@ -280,9 +280,9 @@ class TestDatasetList:
             ):
                 method(api, MagicMock(), "tenant-1", current_user)
         assert get_datasets.call_args.kwargs["accessible_dataset_ids"] == []
-        assert get_datasets.call_args.kwargs["include_own_datasets"] is True
+        assert get_datasets.call_args.kwargs["include_own_datasets"] is False
 
-    def test_get_workspace_owner_bypasses_dataset_whitelist(self, app: Flask):
+    def test_get_default_read_is_unrestricted_when_whitelist_unrestricted(self, app: Flask):
         api = DatasetListApi()
         method = unwrap(api.get)
         current_user = self._mock_user()
@@ -306,7 +306,32 @@ class TestDatasetList:
                 method(api, MagicMock(), "tenant-1", current_user)
         assert get_datasets.call_args.kwargs["accessible_dataset_ids"] is None
 
-    def test_get_limits_to_dataset_read_overrides(self, app: Flask):
+    def test_get_restricted_whitelist_overrides_default_read_permission(self, app: Flask):
+        api = DatasetListApi()
+        method = unwrap(api.get)
+        current_user = self._mock_user()
+        permissions = enterprise_rbac_service.MyPermissionsResponse(
+            dataset=enterprise_rbac_service.ResourcePermissionSnapshot(default_permission_keys=["dataset.preview"])
+        )
+        with app.test_request_context("/datasets"):
+            with (
+                patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
+                patch.object(DatasetService, "get_datasets", return_value=([], 0)) as get_datasets,
+                patch(
+                    "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
+                    return_value=permissions,
+                ),
+                patch(
+                    "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.DatasetAccess.whitelist_resources",
+                    return_value=SimpleNamespace(resource_ids=["dataset-whitelist-only"]),
+                ),
+                patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
+            ):
+                method(api, MagicMock(), "tenant-1", current_user)
+        assert get_datasets.call_args.kwargs["accessible_dataset_ids"] == ["dataset-whitelist-only"]
+        assert get_datasets.call_args.kwargs["include_own_datasets"] is False
+
+    def test_get_restricted_whitelist_ignores_dataset_read_overrides(self, app: Flask):
         api = DatasetListApi()
         method = unwrap(api.get)
         current_user = self._mock_user()
@@ -336,17 +361,12 @@ class TestDatasetList:
                 ),
                 patch(
                     "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.DatasetAccess.whitelist_resources",
-                    return_value=SimpleNamespace(
-                        resource_ids=["dataset-shared", "dataset-acl-shared", "dataset-full", "dataset-whitelist-only"]
-                    ),
+                    return_value=SimpleNamespace(resource_ids=["dataset-whitelist-only"]),
                 ),
                 patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
             ):
                 method(api, MagicMock(), "tenant-1", current_user)
         assert get_datasets.call_args.kwargs["accessible_dataset_ids"] == [
-            "dataset-acl-shared",
-            "dataset-full",
-            "dataset-shared",
             "dataset-whitelist-only",
         ]
         assert get_datasets.call_args.kwargs["include_own_datasets"] is False

@@ -1,13 +1,6 @@
 'use client'
 
-import type { ResourceOpenScope } from '@/models/access-control'
-import {
-  ScrollArea,
-  ScrollAreaContent,
-  ScrollAreaScrollbar,
-  ScrollAreaThumb,
-  ScrollAreaViewport,
-} from '@langgenius/dify-ui/scroll-area'
+import type { AccessPolicyMemberBindingRemoval } from '@/app/components/access-rules-editor'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
@@ -19,11 +12,14 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
+import { RESOURCE_ACCESS_SETTINGS_PAGE_SIZE } from '@/service/access-control/constants'
 import {
   useAppAccessRules,
+  useAppResourceWhitelist,
+  useAppResourceWhitelistConfig,
   useAppUserAccessSettings,
   useRemoveAppAccessPolicyMemberBindings,
-  useUpdateAppOpenScope,
+  useUpdateAppAutomaticIncludeWorkspaceMembers,
   useUpdateAppUserAccessSettings,
 } from '@/service/access-control/use-app-access-config'
 import { getAppACLCapabilities } from '@/utils/permission'
@@ -41,35 +37,59 @@ const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentP
   const { t } = useTranslation()
   const locale = useLocale()
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState<number>(RESOURCE_ACCESS_SETTINGS_PAGE_SIZE)
   const { data: appAccessRulesResponse, isLoading: isLoadingAppAccessRules } = useAppAccessRules(
     appId,
     language,
   )
-  const { data: appUserAccessSettingsResponse, isLoading: isLoadingAppUserAccessSettings } =
-    useAppUserAccessSettings(appId, language)
-  const { mutate: updateAppOpenScope, isPending: isUpdatingAppOpenScope } =
-    useUpdateAppOpenScope(appId)
+  const {
+    data: appUserAccessSettingsResponse,
+    isLoading: isLoadingAppUserAccessSettings,
+    isPlaceholderData: isChangingAppUserAccessSettingsPage,
+  } = useAppUserAccessSettings(appId, language, currentPage, pageSize)
+  const { data: appResourceWhitelist } = useAppResourceWhitelist(appId)
+  const { data: appResourceWhitelistConfig } = useAppResourceWhitelistConfig(appId)
+  const {
+    mutate: updateAppAutomaticIncludeWorkspaceMembers,
+    isPending: isUpdatingAppAutomaticIncludeWorkspaceMembers,
+  } = useUpdateAppAutomaticIncludeWorkspaceMembers(appId)
   const { mutate: updateAppUserAccessSettings } = useUpdateAppUserAccessSettings(appId)
-  const { mutate: removeAppAccessPolicyMemberBindings } =
-    useRemoveAppAccessPolicyMemberBindings(appId)
-  const [optimisticOpenScope, setOptimisticOpenScope] = useState<ResourceOpenScope | null>(null)
+  const {
+    mutate: removeAppAccessPolicyMemberBindings,
+    mutateAsync: removeAppAccessPolicyMemberBindingsAsync,
+  } = useRemoveAppAccessPolicyMemberBindings(appId)
+  const [
+    optimisticAutomaticIncludeWorkspaceMembers,
+    setOptimisticAutomaticIncludeWorkspaceMembers,
+  ] = useState<boolean | null>(null)
   const [updatingAccountId, setUpdatingAccountId] = useState<string | null>(null)
 
   const appAccessRules = appAccessRulesResponse?.items || []
-  const appUserAccessSettings = appUserAccessSettingsResponse?.data || []
-  const openScope = optimisticOpenScope || appUserAccessSettingsResponse?.scope
+  const appUserAccessSettings = appUserAccessSettingsResponse?.data ?? []
+  const appUserAccessSettingsPagination = appUserAccessSettingsResponse?.pagination
+  const isLoadingEmptyPage =
+    appUserAccessSettings.length === 0 &&
+    (isChangingAppUserAccessSettingsPage ||
+      (currentPage > 1 &&
+        appUserAccessSettingsPagination !== undefined &&
+        currentPage > appUserAccessSettingsPagination.total_pages))
+  const automaticIncludeWorkspaceMembers =
+    optimisticAutomaticIncludeWorkspaceMembers ??
+    appResourceWhitelistConfig?.automatic_include_workspace_members
 
-  const handleOpenScopeChange = useCallback(
-    (nextOpenScope: ResourceOpenScope) => {
-      if (nextOpenScope === openScope) return
+  const handleAutomaticIncludeWorkspaceMembersChange = useCallback(
+    (nextValue: boolean) => {
+      if (nextValue === automaticIncludeWorkspaceMembers) return
 
-      const previousOptimisticOpenScope = optimisticOpenScope
-      setOptimisticOpenScope(nextOpenScope)
-      updateAppOpenScope(nextOpenScope, {
-        onError: () => setOptimisticOpenScope(previousOptimisticOpenScope),
+      if (!nextValue) setCurrentPage(1)
+      setOptimisticAutomaticIncludeWorkspaceMembers(nextValue)
+      updateAppAutomaticIncludeWorkspaceMembers(nextValue, {
+        onError: () => setOptimisticAutomaticIncludeWorkspaceMembers(null),
+        onSuccess: () => setOptimisticAutomaticIncludeWorkspaceMembers(null),
       })
     },
-    [openScope, optimisticOpenScope, updateAppOpenScope],
+    [automaticIncludeWorkspaceMembers, updateAppAutomaticIncludeWorkspaceMembers],
   )
 
   const handleUserAccessPoliciesChange = useCallback(
@@ -83,52 +103,131 @@ const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentP
     [updateAppUserAccessSettings],
   )
 
-  const handleRemoveAccessPolicyMemberBinding = useCallback(
-    (accountId: string, accessPolicyId: string) => {
+  const handleAddAccessSubject = useCallback(
+    (accountId: string, accessPolicyIds: string[]) => {
+      if (automaticIncludeWorkspaceMembers) return
+
+      const existingAccountCount =
+        appUserAccessSettingsPagination?.total_count ??
+        appResourceWhitelist?.account_ids?.length ??
+        0
+      const lastPageAfterAdd = Math.max(Math.ceil((existingAccountCount + 1) / pageSize), 1)
+
       setUpdatingAccountId(accountId)
-      removeAppAccessPolicyMemberBindings(
-        { accessPolicyId, accountIds: [accountId] },
-        { onSettled: () => setUpdatingAccountId(null) },
+      updateAppUserAccessSettings(
+        { accountId, accessPolicyIds },
+        {
+          onSuccess: () => setCurrentPage(lastPageAfterAdd),
+          onSettled: () => setUpdatingAccountId(null),
+        },
       )
     },
-    [removeAppAccessPolicyMemberBindings],
+    [
+      appResourceWhitelist?.account_ids?.length,
+      appUserAccessSettingsPagination?.total_count,
+      automaticIncludeWorkspaceMembers,
+      pageSize,
+      updateAppUserAccessSettings,
+    ],
+  )
+
+  const handlePageSizeChange = useCallback((nextPageSize: number) => {
+    setCurrentPage(1)
+    setPageSize(nextPageSize)
+  }, [])
+
+  const handleRemoveAccessPolicyMemberBinding = useCallback(
+    (accountId: string, accessPolicyId: string) => {
+      if (automaticIncludeWorkspaceMembers) return
+
+      const shouldReturnToPreviousPage =
+        currentPage > 1 &&
+        currentPage === appUserAccessSettingsPagination?.total_pages &&
+        appUserAccessSettings.length === 1
+
+      setUpdatingAccountId(accountId)
+      removeAppAccessPolicyMemberBindings([{ accessPolicyId, accountIds: [accountId] }], {
+        onSuccess: () => {
+          if (shouldReturnToPreviousPage) {
+            setCurrentPage((page) => (page === currentPage ? page - 1 : page))
+          }
+        },
+        onSettled: () => setUpdatingAccountId(null),
+      })
+    },
+    [
+      appUserAccessSettings.length,
+      appUserAccessSettingsPagination?.total_pages,
+      automaticIncludeWorkspaceMembers,
+      currentPage,
+      removeAppAccessPolicyMemberBindings,
+    ],
+  )
+
+  const handleBatchRemoveAccessPolicyMemberBindings = useCallback(
+    async (removals: AccessPolicyMemberBindingRemoval[]) => {
+      if (automaticIncludeWorkspaceMembers) return
+
+      const removedAccountCount = removals.reduce(
+        (count, removal) => count + removal.accountIds.length,
+        0,
+      )
+      const shouldReturnToPreviousPage =
+        currentPage > 1 &&
+        currentPage === appUserAccessSettingsPagination?.total_pages &&
+        removedAccountCount >= appUserAccessSettings.length
+
+      await removeAppAccessPolicyMemberBindingsAsync(removals)
+      if (shouldReturnToPreviousPage) {
+        setCurrentPage((page) => (page === currentPage ? page - 1 : page))
+      }
+    },
+    [
+      appUserAccessSettings.length,
+      appUserAccessSettingsPagination?.total_pages,
+      automaticIncludeWorkspaceMembers,
+      currentPage,
+      removeAppAccessPolicyMemberBindingsAsync,
+    ],
   )
 
   return (
-    <ScrollArea className="h-full bg-background-default-subtle">
-      <ScrollAreaViewport className="overscroll-contain">
-        <ScrollAreaContent>
-          <header className="flex min-h-15.5 flex-col justify-center px-6 py-3">
-            <h1 className="system-xl-semibold text-text-primary">
-              {t(($) => $['settings.resourceAccess'], { ns: 'common' })}
-            </h1>
-            <p className="mt-0.5 system-sm-regular text-text-tertiary">
-              {t(($) => $['accessRule.appDescription'], { ns: 'permission' })}
-            </p>
-          </header>
-          <main className="w-full px-6 pt-8 pb-10">
-            <AccessRulesEditor
-              className="w-full max-w-200"
-              rules={appAccessRules}
-              userAccessSettings={appUserAccessSettings}
-              isLoadingRules={isLoadingAppAccessRules}
-              isLoadingUserAccessSettings={isLoadingAppUserAccessSettings}
-              openScope={openScope}
-              isUpdatingOpenScope={isLoadingAppUserAccessSettings || isUpdatingAppOpenScope}
-              updatingAccountId={updatingAccountId}
-              maintainerId={maintainerId}
-              onOpenScopeChange={handleOpenScopeChange}
-              onUserAccessPoliciesChange={handleUserAccessPoliciesChange}
-              onRemoveAccessPolicyMemberBinding={handleRemoveAccessPolicyMemberBinding}
-              onAddAccessSubject={handleUserAccessPoliciesChange}
-            />
-          </main>
-        </ScrollAreaContent>
-      </ScrollAreaViewport>
-      <ScrollAreaScrollbar>
-        <ScrollAreaThumb />
-      </ScrollAreaScrollbar>
-    </ScrollArea>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background-default-subtle">
+      <header className="flex min-h-15.5 shrink-0 flex-col justify-center px-6 py-3">
+        <h1 className="system-xl-semibold text-text-primary">
+          {t(($) => $['settings.resourceAccess'], { ns: 'common' })}
+        </h1>
+        <p className="mt-0.5 system-sm-regular text-text-tertiary">
+          {t(($) => $['accessRule.appDescription'], { ns: 'permission' })}
+        </p>
+      </header>
+      <main className="flex min-h-0 w-full max-w-240 flex-1 flex-col px-6 pt-8 pb-10 sm:pr-20 sm:pl-12.5">
+        <AccessRulesEditor
+          className="min-h-0 w-full flex-1"
+          rules={appAccessRules}
+          userAccessSettings={appUserAccessSettings}
+          isLoadingRules={isLoadingAppAccessRules}
+          isLoadingUserAccessSettings={isLoadingAppUserAccessSettings || isLoadingEmptyPage}
+          automaticIncludeWorkspaceMembers={automaticIncludeWorkspaceMembers}
+          isUpdatingAutomaticIncludeWorkspaceMembers={isUpdatingAppAutomaticIncludeWorkspaceMembers}
+          existingAccountIds={appResourceWhitelist?.account_ids}
+          currentPage={appUserAccessSettingsPagination?.current_page ?? currentPage}
+          pageSize={pageSize}
+          totalCount={appUserAccessSettingsPagination?.total_count}
+          totalPages={appUserAccessSettingsPagination?.total_pages ?? 0}
+          isChangingPage={isChangingAppUserAccessSettingsPage}
+          updatingAccountId={updatingAccountId}
+          maintainerId={maintainerId}
+          onAutomaticIncludeWorkspaceMembersChange={handleAutomaticIncludeWorkspaceMembersChange}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={handlePageSizeChange}
+          onUserAccessPoliciesChange={handleUserAccessPoliciesChange}
+          onRemoveAccessPolicyMemberBinding={handleRemoveAccessPolicyMemberBinding}
+          onBatchRemoveAccessPolicyMemberBindings={handleBatchRemoveAccessPolicyMemberBindings}
+          onAddAccessSubject={handleAddAccessSubject}
+        />
+      </main>
+    </div>
   )
 }
 

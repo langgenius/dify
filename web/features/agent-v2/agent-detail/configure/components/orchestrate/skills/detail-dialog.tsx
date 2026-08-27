@@ -1,15 +1,15 @@
 'use client'
-
 import type { ReactNode } from 'react'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { FileTreeFile } from '@langgenius/dify-ui/file-tree'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -350,8 +350,7 @@ export function AgentSkillDetailDialog({
 
   return (
     <DialogContent
-      backdropProps={{ forceRender: true }}
-      backdropClassName="fixed"
+      backdropProps={{ forceRender: true, className: 'fixed' }}
       className="flex h-[min(720px,calc(100dvh-2rem))] max-h-none w-[min(960px,calc(100vw-2rem))] flex-row overflow-hidden rounded-2xl p-0"
     >
       <div
@@ -413,7 +412,17 @@ export function AgentSkillDetailDialog({
                 />
               </button>
             )}
-            <DialogCloseButton className="static size-7 shrink-0 rounded-md" />
+            <DialogClose
+              render={
+                <IconButton
+                  aria-label={tCommon(($) => $['operation.close'])}
+                  size="sm"
+                  className="static size-7 shrink-0 rounded-md"
+                >
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
           </div>
         </div>
         <ScrollArea className="relative min-h-0 flex-1 overflow-hidden has-[>_:first-child:focus-visible]:outline-2 has-[>_:first-child:focus-visible]:outline-offset-0 has-[>_:first-child:focus-visible]:outline-state-accent-solid">

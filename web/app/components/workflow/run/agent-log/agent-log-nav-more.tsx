@@ -35,7 +35,7 @@ const AgentLogNavMore = ({ options, onShowAgentOrToolLog }: AgentLogNavMoreProps
         placement="bottom-start"
         sideOffset={2}
         alignOffset={-54}
-        popupClassName="w-[136px] p-1"
+        className="w-[136px] p-1"
       >
         {options.map((option) => (
           <DropdownMenuItem

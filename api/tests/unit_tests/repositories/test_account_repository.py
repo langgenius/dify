@@ -188,4 +188,5 @@ def test_account_repository_updates_email_and_removes_integrations_atomically(
     persisted = sqlite_session.get(Account, "account-1")
     assert persisted is not None
     assert persisted.email == "new@example.com"
+    assert persisted.normalized_email == "new@example.com"
     assert sqlite_session.get(AccountIntegrate, integration_id) is None

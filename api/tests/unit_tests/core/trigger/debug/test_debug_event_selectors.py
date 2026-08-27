@@ -7,6 +7,7 @@ and select_trigger_debug_events orchestrator.
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -27,7 +28,9 @@ from core.trigger.debug.event_selectors import (
     select_trigger_debug_events,
 )
 from core.trigger.debug.events import PluginTriggerDebugEvent, WebhookDebugEvent
-from graphon.enums import BuiltinNodeTypes, NodeType
+from graphon.enums import BuiltinNodeTypes, NodeType, WorkflowType
+from models.model import App, AppMode
+from models.workflow import Workflow
 from tests.unit_tests.core.trigger.conftest import VALID_PROVIDER_ID
 
 
@@ -53,6 +56,35 @@ def _plugin_node_config(provider_id: str = VALID_PROVIDER_ID) -> dict:
             "plugin_unique_identifier": "uid-1",
         }
     }
+
+
+def _workflow_with_node(node_type: NodeType | None) -> Workflow:
+    nodes = [] if node_type is None else [{"id": "n1", "data": {"type": node_type, "title": "Trigger"}}]
+    return Workflow.new(
+        tenant_id="t1",
+        app_id="a1",
+        type=WorkflowType.WORKFLOW.value,
+        version=Workflow.VERSION_DRAFT,
+        graph=json.dumps({"nodes": nodes, "edges": []}),
+        features="{}",
+        created_by="u1",
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
+
+
+def _app() -> App:
+    return App(
+        id="a1",
+        tenant_id="t1",
+        name="Trigger App",
+        description="",
+        mode=AppMode.WORKFLOW,
+        enable_site=True,
+        enable_api=True,
+        max_active_requests=0,
+    )
 
 
 class TestPluginTriggerDebugEventPoller:
@@ -214,51 +246,41 @@ class TestScheduleTriggerDebugEventPoller:
 
 
 class TestCreateEventPoller:
-    def _workflow_with_node(self, node_type: NodeType):
-        wf = MagicMock()
-        wf.get_node_config_by_id.return_value = {"data": {}}
-        wf.get_node_type_from_node_config.return_value = node_type
-        return wf
-
     def test_creates_plugin_poller(self):
-        wf = self._workflow_with_node(TRIGGER_PLUGIN_NODE_TYPE)
+        wf = _workflow_with_node(TRIGGER_PLUGIN_NODE_TYPE)
         poller = create_event_poller(wf, "t1", "u1", "a1", "n1")
         assert isinstance(poller, PluginTriggerDebugEventPoller)
 
     def test_creates_webhook_poller(self):
-        wf = self._workflow_with_node(TRIGGER_WEBHOOK_NODE_TYPE)
+        wf = _workflow_with_node(TRIGGER_WEBHOOK_NODE_TYPE)
         poller = create_event_poller(wf, "t1", "u1", "a1", "n1")
         assert isinstance(poller, WebhookTriggerDebugEventPoller)
 
     def test_creates_schedule_poller(self):
-        wf = self._workflow_with_node(TRIGGER_SCHEDULE_NODE_TYPE)
+        wf = _workflow_with_node(TRIGGER_SCHEDULE_NODE_TYPE)
         poller = create_event_poller(wf, "t1", "u1", "a1", "n1")
         assert isinstance(poller, ScheduleTriggerDebugEventPoller)
 
     def test_raises_for_unknown_type(self):
-        wf = MagicMock()
-        wf.get_node_config_by_id.return_value = {"data": {}}
-        wf.get_node_type_from_node_config.return_value = BuiltinNodeTypes.START
+        wf = _workflow_with_node(BuiltinNodeTypes.START)
 
         with pytest.raises(ValueError):
             create_event_poller(wf, "t1", "u1", "a1", "n1")
 
     def test_raises_when_node_config_missing(self):
-        wf = MagicMock()
-        wf.get_node_config_by_id.return_value = None
+        wf = _workflow_with_node(None)
 
-        with pytest.raises(ValueError):
+        with (
+            patch.object(Workflow, "get_node_config_by_id", return_value=None),
+            pytest.raises(ValueError),
+        ):
             create_event_poller(wf, "t1", "u1", "a1", "n1")
 
 
 class TestSelectTriggerDebugEvents:
     def test_returns_first_non_none_event(self):
-        wf = MagicMock()
-        wf.get_node_config_by_id.return_value = {"data": {}}
-        wf.get_node_type_from_node_config.return_value = TRIGGER_WEBHOOK_NODE_TYPE
-        app_model = MagicMock()
-        app_model.tenant_id = "t1"
-        app_model.id = "a1"
+        wf = _workflow_with_node(TRIGGER_WEBHOOK_NODE_TYPE)
+        app_model = _app()
 
         with patch.object(WebhookTriggerDebugEventPoller, "poll") as mock_poll:
             expected = MagicMock()
@@ -269,12 +291,8 @@ class TestSelectTriggerDebugEvents:
             assert result is expected
 
     def test_returns_none_when_no_events(self):
-        wf = MagicMock()
-        wf.get_node_config_by_id.return_value = {"data": {}}
-        wf.get_node_type_from_node_config.return_value = TRIGGER_WEBHOOK_NODE_TYPE
-        app_model = MagicMock()
-        app_model.tenant_id = "t1"
-        app_model.id = "a1"
+        wf = _workflow_with_node(TRIGGER_WEBHOOK_NODE_TYPE)
+        app_model = _app()
 
         with patch.object(WebhookTriggerDebugEventPoller, "poll", return_value=None):
             result = select_trigger_debug_events(wf, app_model, "u1", ["n1"])

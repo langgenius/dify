@@ -155,8 +155,8 @@ export const zAnnotationReplyPayload = z.object({
  * AnnotationJobStatusResponse
  */
 export const zAnnotationJobStatusResponse = z.object({
-  job_id: z.string(),
-  job_status: z.union([z.enum(['completed', 'error', 'processing', 'waiting']), z.string()]),
+  job_id: z.uuid(),
+  job_status: z.string(),
 })
 
 /**
@@ -164,8 +164,8 @@ export const zAnnotationJobStatusResponse = z.object({
  */
 export const zAnnotationJobStatusDetailResponse = z.object({
   error_msg: z.string().optional().default(''),
-  job_id: z.string(),
-  job_status: z.union([z.enum(['completed', 'error', 'processing', 'waiting']), z.string()]),
+  job_id: z.uuid(),
+  job_status: z.string(),
 })
 
 /**
@@ -193,7 +193,7 @@ export const zAnnotation = z.object({
   answer: z.string().nullish(),
   created_at: z.int().nullish(),
   hit_count: z.int().nullish(),
-  id: z.string(),
+  id: z.uuid(),
   question: z.string().nullish(),
 })
 
@@ -501,15 +501,6 @@ export const zWorkflowTriggerResponse = z.object({
  */
 export const zWorkflowTriggerListResponse = z.object({
   data: z.array(zWorkflowTriggerResponse),
-})
-
-/**
- * WorkflowRunExportResponse
- */
-export const zWorkflowRunExportResponse = z.object({
-  presigned_url: z.string().nullish(),
-  presigned_url_expires_at: z.string().nullish(),
-  status: z.string(),
 })
 
 /**
@@ -1317,12 +1308,12 @@ export const zAgentThought = z.object({
 export const zMessageFile = z.object({
   belongs_to: z.string().nullish(),
   filename: z.string(),
-  id: z.string(),
+  id: z.uuid(),
   mime_type: z.string().nullish(),
   size: z.int().nullish(),
   transfer_method: z.string(),
   type: z.string(),
-  upload_file_id: z.string().nullish(),
+  upload_file_id: z.uuid().nullish(),
   url: z.string().nullish(),
 })
 
@@ -3320,7 +3311,10 @@ export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
  */
 export const zUserActionConfig = z.object({
   button_style: zButtonStyle.optional().default('default'),
-  id: z.string().max(20),
+  id: z
+    .string()
+    .max(20)
+    .regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
   title: z.string().max(100),
 })
 
@@ -5567,16 +5561,6 @@ export const zGetAppsByAppIdWorkflowRunsByRunIdPath = z.object({
  * Workflow run detail retrieved successfully
  */
 export const zGetAppsByAppIdWorkflowRunsByRunIdResponse = zWorkflowRunDetailResponse
-
-export const zGetAppsByAppIdWorkflowRunsByRunIdExportPath = z.object({
-  app_id: z.uuid(),
-  run_id: z.uuid(),
-})
-
-/**
- * Export URL generated
- */
-export const zGetAppsByAppIdWorkflowRunsByRunIdExportResponse = zWorkflowRunExportResponse
 
 export const zGetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsPath = z.object({
   app_id: z.uuid(),

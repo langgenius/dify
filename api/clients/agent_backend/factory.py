@@ -13,6 +13,7 @@ def create_agent_backend_client(
     base_url: str,
     api_token: str | None = None,
     stream_timeout: float = 30,
+    timeout: float = 30.0,
     binding_file_download_timeout: float = 240,
 ) -> Client:
     api_token = api_token.strip() if api_token else None
@@ -20,6 +21,7 @@ def create_agent_backend_client(
     return Client(
         base_url=base_url,
         stream_timeout=stream_timeout,
+        timeout=timeout,
         binding_file_download_timeout=binding_file_download_timeout,
         headers=headers,
     )
