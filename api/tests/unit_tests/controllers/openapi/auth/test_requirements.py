@@ -27,6 +27,7 @@ from controllers.openapi.auth.requirements import (
     TokenScope,
 )
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, Subject
+from controllers.openapi.human_input_form import CheckFormSurface
 from core.rbac import RBACPermission, RBACResourceScope
 from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType
@@ -202,13 +203,43 @@ def test_both_membership_requirements_decide_the_same_thing() -> None:
     assert RequireWorkspaceMembership.rank == CheckAppWorkspaceMembership.rank == Rank.MEMBERSHIP
 
 
+def _shipped_requirements() -> frozenset[type[Requirement]]:
+    """Every `Requirement` the app can put in a pipeline, walked off the class
+    tree rather than listed.
+
+    Recursive, so an intermediate base cannot hide a subclass, and narrowed to
+    `controllers.` so the test doubles in `test_pipelines.py` — which are
+    `Requirement` subclasses too, and present or absent depending on what else
+    the session imported — cannot pad or destabilise the set.
+    """
+    found: set[type[Requirement]] = set()
+    pending = list(Requirement.__subclasses__())
+    while pending:
+        requirement = pending.pop()
+        if requirement in found:
+            continue
+        found.add(requirement)
+        pending.extend(requirement.__subclasses__())
+    return frozenset(cls for cls in found if cls.__module__.startswith("controllers."))
+
+
 def test_every_requirement_names_its_rank() -> None:
-    """`Requirement.rank` has no default, so a new requirement that forgets to
-    name one fails loudly instead of landing in the middle of the pipeline.
+    """`Requirement.rank` has no default, and nothing checks it before a request
+    arrives: a requirement that forgets to name one raises in `Pipeline.run`'s
+    sort key, so the route 500s on its first live call instead of failing here.
+
+    Derived, not listed — a hand-written list is exactly what a new requirement
+    would not be added to.
     """
     assert "rank" not in vars(Requirement)
-    for requirement in (EditionCheck, LicenseCheck, RequireWorkspaceMembership):
-        assert isinstance(requirement.rank, Rank)
+    shipped = _shipped_requirements()
+    # Importing `CheckFormSurface` loads the `controllers.openapi` package, and its
+    # `__init__` imports every route module — so requirements a feature declares
+    # beside itself are in the walk, not just the ones in `auth/requirements.py`.
+    assert CheckFormSurface in shipped
+    for requirement in shipped:
+        assert hasattr(requirement, "rank"), f"{requirement.__name__} names no rank"
+        assert isinstance(requirement.rank, Rank), f"{requirement.__name__}'s rank is not a Rank"
 
 
 def test_subject_check_emits_the_wrong_surface_audit(app: Flask, sqlite_session: Session) -> None:
