@@ -12,10 +12,8 @@ from werkzeug.exceptions import Conflict, NotFound, UnprocessableEntity
 from configs import dify_config
 from controllers.common.app_access import AppAccessFilter, resolve_app_access_filter
 from controllers.common.fields import Parameters
-from controllers.common.session import with_session
-from controllers.common.wraps import RBACPermission, RBACResourceScope
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import accepts, returns
+from controllers.openapi._contract import endpoint
 from controllers.openapi._input_schema import EMPTY_INPUT_SCHEMA, build_input_schema, resolve_app_config
 from controllers.openapi._models import (
     SUPPORTED_APP_TYPES,
@@ -26,16 +24,37 @@ from controllers.openapi._models import (
     AppListResponse,
     AppListRow,
 )
-from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData, CallerKind, RBACRequirement
+from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.data import CallerKind
+from controllers.openapi.auth.requirements import (
+    RBACCheck,
+    RequireWorkspaceMembership,
+    SubjectCheck,
+    TokenScope,
+)
+from controllers.openapi.auth.subjects import AccountSubject
 from controllers.service_api.app.error import AppUnavailableError
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
-from libs.oauth_bearer import Scope, TokenType
+from core.rbac import RBACPermission, RBACResourceScope
+from libs.oauth_bearer import Scope
 from models import App
 from models.enums import AppStatus
 from models.model import AppMode
 from services.account_service import TenantService
 from services.app_service import AppListParams, AppService
+
+_ACCOUNT_SUBJECT = SubjectCheck(allowed=(AccountSubject,))
+
+_APP_DESCRIBE = (
+    _ACCOUNT_SUBJECT,
+    TokenScope(Scope.APPS_READ),
+    RBACCheck(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_VIEW_LAYOUT),
+)
+_APP_LIST = (
+    _ACCOUNT_SUBJECT,
+    TokenScope(Scope.APPS_READ),
+    RequireWorkspaceMembership(),
+)
 
 
 def _is_listable(app: App) -> bool:
@@ -130,28 +149,29 @@ def build_app_describe_response(app: App, fields: set[str] | None, *, session: S
 
 @openapi_ns.route("/apps/<string:app_id>")
 class AppDescribeApi(AppReadResource):
-    @auth_router.guard(
-        scope=Scope.APPS_READ,
-        allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
-        rbac=RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_VIEW_LAYOUT),
+    @endpoint(
+        requirements=_APP_DESCRIBE,
+        query=AppDescribeQuery,
+        returns=(200, AppDescribeResponse, "App description"),
+        write=False,
     )
-    @returns(200, AppDescribeResponse, description="App description")
-    @accepts(query=AppDescribeQuery)
-    @with_session(write=False)
-    def get(self, session: Session, app_id: str, *, auth_data: AuthData, query: AppDescribeQuery):
+    def get(self, ctx: Context, app_id: str, *, query: AppDescribeQuery):
         # describe is UUID-only (workspace_id query param dropped in #37212).
-        app = self._load(session, app_id)
-        return build_app_describe_response(app, query.fields, session=session)
+        app = self._load(ctx.session, app_id)
+        return build_app_describe_response(app, query.fields, session=ctx.session)
 
 
 @openapi_ns.route("/apps")
 class AppListApi(Resource):
-    @auth_router.guard_workspace(scope=Scope.APPS_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
-    @returns(200, AppListResponse, description="App list")
-    @accepts(query=AppListQuery)
-    @with_session(write=False)
-    def get(self, session: Session, *, auth_data: AuthData, query: AppListQuery):
+    @endpoint(
+        requirements=_APP_LIST,
+        query=AppListQuery,
+        returns=(200, AppListResponse, "App list"),
+        write=False,
+    )
+    def get(self, ctx: Context, *, query: AppListQuery):
         workspace_id = query.workspace_id
+        account_id = str(ctx.subject.account_id)
 
         empty = AppListResponse(page=query.page, limit=query.limit, total=0, has_more=False, data=[])
 
@@ -169,20 +189,20 @@ class AppListApi(Resource):
         # End-users bypass RBAC here — their access is controlled by scope upstream.
         apply_rbac_filter = (
             dify_config.RBAC_ENABLED
-            and auth_data.caller_kind != CallerKind.END_USER
-            and auth_data.account_id is not None
+            and ctx.subject.caller_kind is not CallerKind.END_USER
+            and ctx.subject.account_id is not None
         )
         access_filter = AppAccessFilter.unrestricted()
         if apply_rbac_filter:
             access_filter = resolve_app_access_filter(
                 workspace_id,
-                str(auth_data.account_id),
-                session=session,
+                account_id,
+                session=ctx.session,
             )
 
         tenant_name: str | None = None
         if parsed_uuid is not None:
-            app: App | None = AppService.get_visible_app_by_id(str(parsed_uuid), session)
+            app: App | None = AppService.get_visible_app_by_id(str(parsed_uuid), ctx.session)
             if app is None or str(app.tenant_id) != workspace_id:
                 return empty
             if not _is_listable(app):
@@ -190,10 +210,10 @@ class AppListApi(Resource):
             # Apply RBAC visibility to the UUID fast-path the same way the service
             # layer does for paginated queries (id in accessible set OR own app).
             if apply_rbac_filter and not access_filter.is_app_accessible(
-                str(app.id), str(app.maintainer) if app.maintainer else None, str(auth_data.account_id)
+                str(app.id), str(app.maintainer) if app.maintainer else None, account_id
             ):
                 return empty
-            tenant_name = TenantService.get_tenant_name(workspace_id, session=session)
+            tenant_name = TenantService.get_tenant_name(workspace_id, session=ctx.session)
             item = AppListRow(
                 id=str(app.id),
                 name=app.name,
@@ -220,13 +240,13 @@ class AppListApi(Resource):
         if apply_rbac_filter:
             access_filter.apply_to_params(params)
 
-        pagination = AppService().get_paginate_apps(str(auth_data.account_id), workspace_id, params, session)
+        pagination = AppService().get_paginate_apps(account_id, workspace_id, params, ctx.session)
         if pagination is None:
             return empty
 
         tenant_name = None
         if pagination.items:
-            tenant_name = TenantService.get_tenant_name(workspace_id, session=session)
+            tenant_name = TenantService.get_tenant_name(workspace_id, session=ctx.session)
 
         items = [
             AppListRow(
