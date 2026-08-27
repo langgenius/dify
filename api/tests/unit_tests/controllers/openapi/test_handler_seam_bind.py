@@ -359,13 +359,13 @@ def _load_handler(class_name: str, method: str, imports: dict[str, tuple[str, st
         module = importlib.import_module(module_name)
     except ImportError as exc:
         raise _UnresolvableError(f"`{module_name}` is not importable: {exc}") from exc
-    owner = getattr(module, attribute, None)
+    owner = getattr(module, attribute, None)  # guard-ignore: no-new-getattr -- class name parsed from an import binding
     if owner is None:
         raise _UnresolvableError(f"`{module_name}` has no `{attribute}`")
-    view = getattr(owner, method, None)
+    view = getattr(owner, method, None)  # guard-ignore: no-new-getattr -- method name parsed from the call site text
     if view is None:
         raise _UnresolvableError(f"`{class_name}` has no `{method}`")
-    handler = getattr(view, _SEAM, None)
+    handler = view.__handler__ if hasattr(view, _SEAM) else None
     if handler is None:
         raise _UnresolvableError(f"`{class_name}.{method}` exposes no `{_SEAM}` — lost `@endpoint`?")
     return handler
