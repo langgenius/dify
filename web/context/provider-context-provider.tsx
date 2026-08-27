@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import { defaultPlan } from '@/app/components/billing/config'
 import { parseCurrentPlan } from '@/app/components/billing/utils'
@@ -37,7 +37,15 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
   const { data: textGenerationModelList } = useModelListByType(ModelTypeEnum.textGeneration)
   const { data: supportRetrievalMethods } = useSupportRetrievalMethods()
 
-  const features = featuresQuery.data
+  // Every flag below falls back to a disabled default, so a moment without data
+  // reads as "the feature is off" rather than "not known yet" and anything gated on
+  // one of them disappears until the query resolves again. Hold on to the last
+  // answer instead, so a known feature never silently un-knows itself.
+  const [lastKnownFeatures, setLastKnownFeatures] = useState(featuresQuery.data)
+  if (featuresQuery.data && featuresQuery.data !== lastKnownFeatures)
+    setLastKnownFeatures(featuresQuery.data)
+
+  const features = featuresQuery.data ?? lastKnownFeatures
   const enableBilling = features?.billing.enabled ?? false
   const plan = enableBilling && features ? parseCurrentPlan(features) : defaultPlan
   const isFetchedPlan = featuresQuery.isSuccess && enableBilling
