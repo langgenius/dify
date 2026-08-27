@@ -42,6 +42,7 @@
   "accessRule.summary_one": "{{count}} permission set",
   "accessRule.summary_other": "{{count}} permission sets",
   "accessRule.updated": "Access rule updated successfully",
+  "accessRule.workspaceOwner": "Workspace Owner",
   "common.duplicateAction": "Duplicate",
   "group.app": "Applications",
   "group.app_acl": "App access permissions",
