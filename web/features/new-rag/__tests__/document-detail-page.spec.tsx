@@ -217,6 +217,7 @@ const chunkApiResponse = vi.hoisted(() => (item: DocumentRevisionChunk) => ({
   knowledge_space_id: item.knowledgeSpaceId,
   ordinal: item.ordinal,
   parent_chunk_id: item.parentChunkId ?? null,
+  parse_element_ids: item.parseElementIds,
   section_path: item.sectionPath,
   start_offset: item.startOffset ?? null,
   text: item.text,
@@ -636,6 +637,7 @@ const chunk = (overrides: Partial<DocumentRevisionChunk>): DocumentRevisionChunk
     kind: 'chunk',
     knowledgeSpaceId: 'space-1',
     ordinal: 1,
+    parseElementIds: [],
     sectionPath: [text.split(/\r?\n/, 1)[0] ?? text],
     text,
     tokenCount: 10,
@@ -1209,18 +1211,20 @@ describe('DocumentDetailPage', () => {
               id: 'spreadsheet-record',
               kind: 'table',
               ordinal: 0,
+              sectionPath: [],
               startOffset: 0,
               text: 'Issue: Copy button is unavailable',
-              userMetadata: { elementIds: ['parse-table-1'] },
+              parseElementIds: ['parse-table-1'],
             }),
             chunk({
               endOffset: 100,
               id: 'image-index-node',
               kind: 'image',
               ordinal: 1,
+              sectionPath: [],
               startOffset: 81,
               text: 'image1.jpeg',
-              userMetadata: { elementIds: ['parse-image-1'] },
+              parseElementIds: ['parse-image-1'],
             }),
           ],
         },
@@ -1256,6 +1260,9 @@ describe('DocumentDetailPage', () => {
     expect(
       screen.queryByRole('heading', { name: 'dataset.newKnowledge.documentImages' }),
     ).not.toBeInTheDocument()
+    const chunkCountRow = screen.getByText('dataset.newKnowledge.chunkCount').closest('div')
+    expect(chunkCountRow).not.toBeNull()
+    await waitFor(() => expect(within(chunkCountRow!).getByText('2')).toBeInTheDocument())
   })
 
   it('shows images without location metadata after the document chunks', () => {

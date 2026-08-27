@@ -28,6 +28,7 @@ const chunk = (overrides: Partial<DocumentRevisionChunk>): DocumentRevisionChunk
   kind: 'chunk',
   knowledgeSpaceId: 'space-1',
   ordinal: 1,
+  parseElementIds: [],
   sectionPath: [],
   text: 'Chunk content',
   tokenCount: 2,
@@ -89,7 +90,7 @@ const outlineNode = (
 })
 
 describe('document detail model', () => {
-  it('maps structured chunk metadata and remains compatible with legacy responses', () => {
+  it('maps structured chunk metadata and preserves required parse element ids', () => {
     const base = {
       created_at: '2026-07-21T10:00:00Z',
       document_id: 'document-1',
@@ -97,6 +98,7 @@ describe('document detail model', () => {
       enabled: true,
       knowledge_space_id: 'space-1',
       ordinal: 1,
+      parse_element_ids: [],
       text: 'Chunk content',
       token_count: 2,
       user_metadata: {},
@@ -109,6 +111,7 @@ describe('document detail model', () => {
           id: 'structured',
           end_offset: 42,
           kind: 'table',
+          parse_element_ids: ['parse-element-1', 'parse-element-2'],
           section_path: ['Invoices', 'Tax breakdown'],
           start_offset: 21,
         },
@@ -119,10 +122,11 @@ describe('document detail model', () => {
     expect(result.items[0]).toMatchObject({
       kind: 'table',
       endOffset: 42,
+      parseElementIds: ['parse-element-1', 'parse-element-2'],
       sectionPath: ['Invoices', 'Tax breakdown'],
       startOffset: 21,
     })
-    expect(result.items[1]).toMatchObject({ kind: 'chunk', sectionPath: [] })
+    expect(result.items[1]).toMatchObject({ kind: 'chunk', parseElementIds: [], sectionPath: [] })
   })
 
   it('places extracted images by canonical offsets and falls back to section paths', () => {
@@ -193,7 +197,7 @@ describe('document detail model', () => {
           ordinal: 0,
           startOffset: 0,
           text: 'Issue: Copy button is unavailable',
-          userMetadata: { elementIds: ['parse-table-1'] },
+          parseElementIds: ['parse-table-1'],
         }),
         chunk({
           endOffset: 60,
@@ -202,7 +206,7 @@ describe('document detail model', () => {
           ordinal: 1,
           startOffset: 41,
           text: 'image1.jpeg',
-          userMetadata: { elementIds: ['parse-image-1'] },
+          parseElementIds: ['parse-image-1'],
         }),
       ],
       [],
@@ -214,9 +218,11 @@ describe('document detail model', () => {
       'image-index-node',
     ])
     expect(model.contentBlocks.map((block) => block.chunk.id)).toEqual(['spreadsheet-record'])
-    expect(model.indexChunks.map((item) => item.id)).toEqual(['spreadsheet-record'])
+    expect(model.indexChunks.map((item) => item.id)).toEqual([
+      'spreadsheet-record',
+      'image-index-node',
+    ])
     expect(model.tree.roots.map((node) => node.targetChunkId)).toEqual(['spreadsheet-record'])
-    expect(placeDocumentMultimodalItems(model.indexChunks, items).unplaced).toEqual([])
   })
 
   it('builds the chapter hierarchy from structured section paths instead of chunk text', () => {

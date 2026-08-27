@@ -1511,6 +1511,7 @@ export const zKnowledgeFsDocumentChunkResponse = z.object({
   knowledge_space_id: z.string(),
   ordinal: z.int().gte(0),
   parent_chunk_id: z.string().nullish(),
+  parse_element_ids: z.array(z.string()),
   section_path: z.array(z.string()).optional(),
   start_offset: z.int().gte(0).nullish(),
   text: z.string(),

@@ -62,7 +62,10 @@ import {
   rollbackDocumentRevisionRoute,
   streamDocumentProcessingTaskRoute,
 } from "./logical-document-routes";
-import { DocumentRevisionChunkKindSchema } from "./logical-document-schemas";
+import {
+  DocumentRevisionChunkKindSchema,
+  DocumentRevisionChunkParseElementIdsSchema,
+} from "./logical-document-schemas";
 
 export interface DocumentRevisionRollbackCoordinator {
   request(input: {
@@ -1170,6 +1173,7 @@ function toPublicChunk(chunk: Awaited<ReturnType<DocumentChunkRepository["get"]>
   if (!chunk) throw new Error("Chunk is required");
   const { systemMetadata: _systemMetadata, tenantId: _tenantId, ...publicChunk } = chunk;
   const kind = DocumentRevisionChunkKindSchema.safeParse(chunk.systemMetadata.kind);
+  const parseElementIds = publicChunkParseElementIds(chunk.systemMetadata);
   const sourceLocation = SourceLocationSchema.safeParse(chunk.systemMetadata.sourceLocation);
   return {
     ...publicChunk,
@@ -1177,11 +1181,21 @@ function toPublicChunk(chunk: Awaited<ReturnType<DocumentChunkRepository["get"]>
       ? { endOffset: sourceLocation.data.endOffset }
       : {}),
     kind: kind.success ? kind.data : "chunk",
+    parseElementIds,
     sectionPath: sourceLocation.success ? [...sourceLocation.data.sectionPath] : [],
     ...(sourceLocation.success && sourceLocation.data.startOffset !== undefined
       ? { startOffset: sourceLocation.data.startOffset }
       : {}),
   };
+}
+
+function publicChunkParseElementIds(systemMetadata: Readonly<Record<string, unknown>>): string[] {
+  const nodeMetadata = systemMetadata.nodeMetadata;
+  if (!nodeMetadata || typeof nodeMetadata !== "object" || Array.isArray(nodeMetadata)) return [];
+  const parsed = DocumentRevisionChunkParseElementIdsSchema.safeParse(
+    Reflect.get(nodeMetadata, "elementIds"),
+  );
+  return parsed.success ? [...parsed.data] : [];
 }
 
 function toPublicSettingsHead(head: DocumentSettingsHead) {

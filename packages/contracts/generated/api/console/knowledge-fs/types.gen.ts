@@ -334,6 +334,7 @@ export type KnowledgeFsDocumentChunkResponse = {
   knowledge_space_id: string
   ordinal: number
   parent_chunk_id?: string | null
+  parse_element_ids: Array<string>
   section_path?: Array<string>
   start_offset?: number | null
   text: string

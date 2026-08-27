@@ -61,6 +61,7 @@ export type DocumentRevisionChunk = {
   knowledgeSpaceId: string
   ordinal: number
   parentChunkId?: string
+  parseElementIds: string[]
   sectionPath: string[]
   startOffset?: number
   text: string
@@ -213,6 +214,7 @@ function documentChunkFromApi(chunk: KnowledgeFsDocumentChunkResponse): Document
     knowledgeSpaceId: chunk.knowledge_space_id,
     ordinal: chunk.ordinal,
     parentChunkId: chunk.parent_chunk_id ?? undefined,
+    parseElementIds: chunk.parse_element_ids,
     sectionPath: chunk.section_path ?? [],
     startOffset: chunk.start_offset ?? undefined,
     text: chunk.text,

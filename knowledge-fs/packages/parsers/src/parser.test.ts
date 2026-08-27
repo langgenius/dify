@@ -1342,7 +1342,7 @@ describe("parser adapters", () => {
       metadata: {
         filename: "report.pdf",
         mimeType: "application/pdf",
-        parserVersion: "unstructured@8",
+        parserVersion: "unstructured@9",
       },
       parser: "unstructured",
       version: 1,
@@ -1539,7 +1539,7 @@ describe("parser adapters", () => {
           version: 1,
         }),
       ).resolves.toMatchObject({
-        metadata: { parserVersion: "unstructured@8" },
+        metadata: { parserVersion: "unstructured@9" },
         parser: "unstructured",
       });
     },
@@ -1755,6 +1755,257 @@ describe("parser adapters", () => {
       );
     },
   );
+
+  it("keeps DOCX archive images attached to their Word paragraphs", async () => {
+    const body = zipSync(
+      {
+        "word/_rels/document.xml.rels": textBytes(
+          [
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+            '<Relationship Id="rIdImage1" Target="media/image1.png" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>',
+            '<Relationship Id="rIdImage2" Target="media/image2.png" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>',
+            '<Relationship Id="rIdExternal" Target="https://example.com/external.png" TargetMode="External" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>',
+            '<Relationship Id="rIdWrong" Target="media/orphan.png" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"/>',
+            "</Relationships>",
+          ].join(""),
+        ),
+        "word/document.xml": textBytes(
+          [
+            '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>',
+            "<w:p><w:r><w:t>Alpha</w:t></w:r></w:p>",
+            "<w:p><w:r><w:t>流程图</w:t></w:r></w:p>",
+            '<w:p><w:r><w:drawing><a:blip r:embed="rIdImage1"/></w:drawing></w:r></w:p>',
+            "<w:p><w:r><w:t>Beta</w:t></w:r></w:p>",
+            "<w:p><w:r><w:t>流程图</w:t></w:r></w:p>",
+            '<w:p><w:r><w:drawing><a:blip r:embed="rIdImage2"/></w:drawing></w:r></w:p>',
+            '<w:p><w:r><w:drawing><a:blip r:embed="rIdImage2"/></w:drawing></w:r></w:p>',
+            '<w:p><w:r><w:drawing><a:blip r:embed="rIdExternal"/></w:drawing></w:r></w:p>',
+            '<w:p><w:r><w:drawing><a:blip r:embed="rIdWrong"/></w:drawing></w:r></w:p>',
+            "</w:body></w:document>",
+          ].join(""),
+        ),
+        "word/media/image1.png": new Uint8Array([1, 2, 3, 4]),
+        "word/media/image2.png": new Uint8Array([5, 6, 7, 8]),
+        "word/media/orphan.png": new Uint8Array([9, 10, 11, 12]),
+      },
+      { level: 0 },
+    );
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async () =>
+        new Response(
+          JSON.stringify([
+            { element_id: "alpha", text: "Alpha", type: "Title" },
+            { text: "流程图", type: "NarrativeText" },
+            { element_id: "beta", text: "Beta", type: "Title" },
+            { text: "流程图", type: "NarrativeText" },
+          ]),
+          { headers: { "content-type": "application/json" }, status: 200 },
+        ),
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c64",
+      now: () => createdAt,
+    });
+
+    const artifact = await parser.parse({
+      body,
+      documentAssetId,
+      filename: "flows.docx",
+      mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      parserHints: { requiresImages: true },
+      version: 1,
+    });
+    const images = artifact.elements.filter((element) => element.type === "image");
+
+    expect(images).toHaveLength(4);
+    expect(images).toEqual([
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          archivePath: "word/media/image1.png",
+          endOffset: utf8Length("Alpha\n流程图"),
+          startOffset: utf8Length("Alpha\n"),
+          wordAnchor: { paragraphIndex: 3 },
+        }),
+        sectionPath: ["Alpha"],
+      }),
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          archivePath: "word/media/image2.png",
+          endOffset: utf8Length("Alpha\n流程图\nBeta\n流程图"),
+          startOffset: utf8Length("Alpha\n流程图\nBeta\n"),
+          wordAnchor: { paragraphIndex: 6 },
+        }),
+        sectionPath: ["Beta"],
+      }),
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          archivePath: "word/media/image2.png",
+          wordAnchor: { paragraphIndex: 7 },
+        }),
+        sectionPath: ["Beta"],
+      }),
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          archivePath: "word/media/orphan.png",
+          positionUnknown: true,
+        }),
+        sectionPath: [],
+      }),
+    ]);
+  });
+
+  it.each([
+    {
+      expectedArchivePath: "word/media/fallback.png",
+      fallback: true,
+      requires: "w14",
+      scenario: "falls back from an unsupported namespace",
+    },
+    {
+      expectedArchivePath: "word/media/choice.png",
+      fallback: true,
+      requires: "a",
+      scenario: "selects a supported namespace",
+    },
+    {
+      expectedArchivePath: "word/media/fallback.png",
+      fallback: true,
+      requires: "a w14",
+      scenario: "requires every namespace in a Choice",
+    },
+    {
+      expectedArchivePath: "word/media/fallback.png",
+      fallback: true,
+      requires: undefined,
+      scenario: "falls back when Choice omits Requires",
+    },
+    {
+      expectedArchivePath: undefined,
+      fallback: false,
+      requires: "w14",
+      scenario: "suppresses an unsupported Choice without a Fallback",
+    },
+  ])("$scenario in DOCX AlternateContent", async ({ expectedArchivePath, fallback, requires }) => {
+    const body = zipSync(
+      {
+        "word/_rels/document.xml.rels": textBytes(
+          [
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+            '<Relationship Id="rIdChoice" Target="media/choice.png" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>',
+            '<Relationship Id="rIdFallback" Target="media/fallback.png" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>',
+            "</Relationships>",
+          ].join(""),
+        ),
+        "word/document.xml": textBytes(
+          [
+            '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml"><w:body>',
+            "<w:p><w:r><w:t>Alpha</w:t></w:r></w:p>",
+            "<w:p><w:r><w:t>流程图</w:t></w:r></w:p>",
+            `<w:p><w:r><mc:AlternateContent><mc:Choice${requires ? ` Requires="${requires}"` : ""}><w:drawing><a:blip r:embed="rIdChoice"/></w:drawing></mc:Choice>${fallback ? '<mc:Fallback><w:pict><v:imagedata r:id="rIdFallback"/></w:pict></mc:Fallback>' : ""}</mc:AlternateContent></w:r></w:p>`,
+            "</w:body></w:document>",
+          ].join(""),
+        ),
+        "word/media/choice.png": new Uint8Array([1, 2, 3, 4]),
+        ...(fallback ? { "word/media/fallback.png": new Uint8Array([5, 6, 7, 8]) } : {}),
+      },
+      { level: 0 },
+    );
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async () =>
+        new Response(
+          JSON.stringify([
+            { element_id: "alpha", text: "Alpha", type: "Title" },
+            { text: "流程图", type: "NarrativeText" },
+          ]),
+          { headers: { "content-type": "application/json" }, status: 200 },
+        ),
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c66",
+      now: () => createdAt,
+    });
+
+    const artifact = await parser.parse({
+      body,
+      documentAssetId,
+      filename: "alternate-content.docx",
+      mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      parserHints: { requiresImages: true },
+      version: 1,
+    });
+    const images = artifact.elements.filter((element) => element.type === "image");
+
+    expect(images).toHaveLength(expectedArchivePath ? 1 : 0);
+    if (!expectedArchivePath) return;
+    expect(images[0]).toMatchObject({
+      metadata: {
+        archivePath: expectedArchivePath,
+        endOffset: utf8Length("Alpha\n流程图"),
+        startOffset: utf8Length("Alpha\n"),
+        wordAnchor: { paragraphIndex: 3 },
+      },
+      sectionPath: ["Alpha"],
+    });
+  });
+
+  it("keeps repeated DOCX paragraph images unpositioned when the provider omits an occurrence", async () => {
+    const body = zipSync(
+      {
+        "word/_rels/document.xml.rels": textBytes(
+          [
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+            '<Relationship Id="rIdImage1" Target="media/image1.png" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>',
+            '<Relationship Id="rIdImage2" Target="media/image2.png" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"/>',
+            "</Relationships>",
+          ].join(""),
+        ),
+        "word/document.xml": textBytes(
+          [
+            '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>',
+            "<w:p><w:r><w:t>Alpha</w:t></w:r></w:p>",
+            "<w:p><w:r><w:t>流程图</w:t></w:r></w:p>",
+            '<w:p><w:r><w:drawing><a:blip r:embed="rIdImage1"/></w:drawing></w:r></w:p>',
+            "<w:p><w:r><w:t>Beta</w:t></w:r></w:p>",
+            "<w:p><w:r><w:t>流程图</w:t></w:r></w:p>",
+            '<w:p><w:r><w:drawing><a:blip r:embed="rIdImage2"/></w:drawing></w:r></w:p>',
+            "</w:body></w:document>",
+          ].join(""),
+        ),
+        "word/media/image1.png": new Uint8Array([1, 2, 3, 4]),
+        "word/media/image2.png": new Uint8Array([5, 6, 7, 8]),
+      },
+      { level: 0 },
+    );
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async () =>
+        new Response(
+          JSON.stringify([
+            { element_id: "alpha", text: "Alpha", type: "Title" },
+            { element_id: "beta", text: "Beta", type: "Title" },
+            { text: "流程图", type: "NarrativeText" },
+          ]),
+          { headers: { "content-type": "application/json" }, status: 200 },
+        ),
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c65",
+      now: () => createdAt,
+    });
+
+    const artifact = await parser.parse({
+      body,
+      documentAssetId,
+      filename: "ambiguous-flows.docx",
+      mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      parserHints: { requiresImages: true },
+      version: 1,
+    });
+    const images = artifact.elements.filter((element) => element.type === "image");
+
+    expect(images).toHaveLength(2);
+    for (const image of images) {
+      expect(image.metadata).toMatchObject({ positionUnknown: true });
+      expect(image.metadata).not.toHaveProperty("startOffset");
+      expect(image.metadata).not.toHaveProperty("endOffset");
+    }
+  });
 
   it("keeps spreadsheet images attached to their original worksheet records", async () => {
     const body = zipSync(

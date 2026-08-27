@@ -161,22 +161,31 @@ export function buildDocumentDetailModel(
       item.modality === 'image' && item.parse_element_id ? [item.parse_element_id] : [],
     ),
   )
-  const contentChunks = sortedChunks.filter(
-    (chunk) => !isRenderedMultimodalIndexChunk(chunk, renderedImageElementIds),
+  const indexOnlyChunkIds = new Set(
+    sortedChunks
+      .filter((chunk) => isRenderedMultimodalIndexChunk(chunk, renderedImageElementIds))
+      .map((chunk) => chunk.id),
   )
+  const contentChunks = sortedChunks.filter((chunk) => !indexOnlyChunkIds.has(chunk.id))
   if (outlineNodes.length) {
-    const outlineModel = buildOutlineBackedDocumentModel(sortedChunks, contentChunks, outlineNodes)
+    const outlineModel = buildOutlineBackedDocumentModel(
+      sortedChunks,
+      contentChunks,
+      outlineNodes,
+      indexOnlyChunkIds,
+    )
     if (outlineModel.tree.roots.length) return outlineModel
   }
-  return buildChunkDerivedDocumentModel(sortedChunks, contentChunks)
+  return buildChunkDerivedDocumentModel(sortedChunks, contentChunks, indexOnlyChunkIds)
 }
 
 function buildChunkDerivedDocumentModel(
   sourceChunks: DocumentRevisionChunk[],
   contentChunks: DocumentRevisionChunk[],
+  indexOnlyChunkIds: ReadonlySet<string>,
 ): DocumentDetailModel {
   const tree = buildChunkDerivedTree(contentChunks)
-  return createDocumentDetailModel(sourceChunks, contentChunks, tree)
+  return createDocumentDetailModel(sourceChunks, contentChunks, tree, { indexOnlyChunkIds })
 }
 
 function isRenderedMultimodalIndexChunk(
@@ -184,13 +193,7 @@ function isRenderedMultimodalIndexChunk(
   renderedImageElementIds: ReadonlySet<string>,
 ) {
   if (chunk.kind !== 'image') return false
-  const elementIds = Array.isArray(chunk.userMetadata.elementIds)
-    ? chunk.userMetadata.elementIds.filter(
-        (value): value is string => typeof value === 'string' && Boolean(value.trim()),
-      )
-    : []
-  if (!elementIds.length) return false
-  return elementIds.some((elementId) => renderedImageElementIds.has(elementId))
+  return chunk.parseElementIds.some((elementId) => renderedImageElementIds.has(elementId))
 }
 
 function buildChunkDerivedTree(sortedChunks: DocumentRevisionChunk[]): DocumentChunkTree {
@@ -265,6 +268,7 @@ function buildOutlineBackedDocumentModel(
   sourceChunks: DocumentRevisionChunk[],
   visibleChunks: DocumentRevisionChunk[],
   sourceRoots: KnowledgeFsDocumentOutlineNodeResponse[],
+  indexOnlyChunkIds: ReadonlySet<string>,
 ): DocumentDetailModel {
   const outlineRoots = coalesceDuplicateOutlineRoots(sourceRoots)
   const allOutlineNodes = flattenOutlineNodes(sourceRoots)
@@ -347,6 +351,7 @@ function buildOutlineBackedDocumentModel(
     contentChunks,
     { byId, roots },
     {
+      indexOnlyChunkIds,
       outlineNodesByChunkId,
       summariesByChunkId,
     },
@@ -412,10 +417,11 @@ function createDocumentDetailModel(
   sourceChunks: DocumentRevisionChunk[],
   contentChunks: DocumentRevisionChunk[],
   tree: DocumentChunkTree,
-  outline: {
+  options: {
+    indexOnlyChunkIds: ReadonlySet<string>
     outlineNodesByChunkId?: ReadonlyMap<string, KnowledgeFsDocumentOutlineNodeResponse>
     summariesByChunkId?: ReadonlyMap<string, string>
-  } = {},
+  },
 ): DocumentDetailModel {
   const firstChunkIdBySection = new Map<string, string>()
   for (const chunk of contentChunks) {
@@ -430,7 +436,7 @@ function createDocumentDetailModel(
     const sectionPath = normalizedSectionPath(chunk.sectionPath)
     const ownsSectionHeading =
       !sectionPath.length || firstChunkIdBySection.get(sectionPathKey(sectionPath)) === chunk.id
-    const outlineNode = outline.outlineNodesByChunkId?.get(chunk.id)
+    const outlineNode = options.outlineNodesByChunkId?.get(chunk.id)
     const headingText = outlineNode?.title.trim() || content.heading || undefined
     return {
       body: content.body,
@@ -443,8 +449,8 @@ function createDocumentDetailModel(
             },
           }
         : {}),
-      ...(outline.summariesByChunkId?.get(chunk.id)
-        ? { summary: outline.summariesByChunkId.get(chunk.id) }
+      ...(options.summariesByChunkId?.get(chunk.id)
+        ? { summary: options.summariesByChunkId.get(chunk.id) }
         : {}),
     } satisfies DocumentContentBlock
   })
@@ -452,9 +458,13 @@ function createDocumentDetailModel(
   const parentChunkIds = new Set(
     contentChunks.flatMap((chunk) => (chunk.parentChunkId ? [chunk.parentChunkId] : [])),
   )
-  const indexChunks = contentBlocks
-    .filter((block) => block.body || !block.chunk.text)
-    .map((block) => block.chunk)
+  const contentChunkIds = new Set(contentChunks.map((chunk) => chunk.id))
+  const indexChunks = sourceChunks.filter((chunk) => {
+    if (options.indexOnlyChunkIds.has(chunk.id)) return true
+    if (!contentChunkIds.has(chunk.id)) return false
+    const content = chunkContentParts(chunk)
+    return content.body || !chunk.text
+  })
   const indexChunkIds = new Set(indexChunks.map((chunk) => chunk.id))
   const positionsByParent = new Map<string, number>()
   for (const block of contentBlocks) {

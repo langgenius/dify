@@ -1671,6 +1671,7 @@ class KnowledgeFSDocumentChunkResponse(ResponseModel):
     knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
     ordinal: int = Field(ge=0)
     parent_chunk_id: str | None = Field(default=None, validation_alias=AliasChoices("parent_chunk_id", "parentChunkId"))
+    parse_element_ids: list[str] = Field(validation_alias=AliasChoices("parse_element_ids", "parseElementIds"))
     section_path: list[str] = Field(default_factory=list, validation_alias=AliasChoices("section_path", "sectionPath"))
     start_offset: int | None = Field(default=None, ge=0, validation_alias=AliasChoices("start_offset", "startOffset"))
     text: str

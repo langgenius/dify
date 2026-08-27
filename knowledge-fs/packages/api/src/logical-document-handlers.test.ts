@@ -503,9 +503,26 @@ describe("logical document handlers", () => {
     expect(legacyResponse.status, await legacyResponse.clone().text()).toBe(200);
     const legacyPayload = await legacyResponse.json();
     expect(legacyPayload).toMatchObject({
-      items: [{ kind: "chunk", sectionPath: [] }],
+      items: [{ kind: "chunk", parseElementIds: [], sectionPath: [] }],
     });
     expect(JSON.stringify(legacyPayload)).not.toContain("private");
+
+    const malformedNodeMetadata = [null, "private", [], { elementIds: [""] }];
+    const malformedApp = handlerApp({
+      chunks: chunkRepository({
+        list: vi.fn(async () => ({
+          items: malformedNodeMetadata.map((nodeMetadata) => ({
+            ...chunk,
+            systemMetadata: { nodeMetadata },
+          })),
+        })),
+      }),
+    });
+    const malformedResponse = await malformedApp.request(collectionPath);
+    expect(malformedResponse.status, await malformedResponse.clone().text()).toBe(200);
+    await expect(malformedResponse.json()).resolves.toMatchObject({
+      items: malformedNodeMetadata.map(() => ({ parseElementIds: [] })),
+    });
 
     await expectStatus(handlerApp().request(collectionPath), 404);
     const hidden = handlerApp({
@@ -1100,6 +1117,10 @@ function chunkFixture(): DocumentRevisionChunk {
     parentChunkId: assetId,
     systemMetadata: {
       kind: "chunk",
+      nodeMetadata: {
+        elementIds: ["parse-element-1", "parse-element-2"],
+        privateEmbeddingInput: "must-not-leak",
+      },
       private: true,
       sourceLocation: {
         endOffset: 12,
@@ -1121,6 +1142,7 @@ function publicChunkFixture() {
     ...chunk,
     endOffset: 12,
     kind: "chunk",
+    parseElementIds: ["parse-element-1", "parse-element-2"],
     sectionPath: ["Setup", "Requirements"],
     startOffset: 0,
   };

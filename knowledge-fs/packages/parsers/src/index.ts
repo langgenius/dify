@@ -323,7 +323,7 @@ export function createUnstructuredParserClient({
       requestGate.run(async () => {
         const deadline = createUnstructuredRequestDeadline(input.signal, requestTimeoutMs);
         try {
-          const parserVersion = options.parserVersion ?? "unstructured@8";
+          const parserVersion = options.parserVersion ?? "unstructured@9";
           const partitionStrategy = unstructuredPartitionStrategy(input);
           const providerImageBlockTypes = unstructuredProviderImageBlockTypes(input);
           assertInputBounds(input.body, options.maxInputBytes ?? defaultMaxInputBytes);
@@ -532,7 +532,7 @@ function appendArchiveMediaFallbackElements(
     const archive = unzipSync(input.body, {
       filter: (file) => {
         if (
-          spreadsheetArchiveMetadataPath(input, file.name) &&
+          officeArchiveMetadataPath(input, file.name) &&
           selectedMetadataCount < defaultMaxArchiveMetadataCount &&
           file.originalSize >= 0 &&
           file.originalSize <= defaultMaxArchiveMetadataBytes &&
@@ -563,6 +563,7 @@ function appendArchiveMediaFallbackElements(
     });
     const spreadsheetAnchors = spreadsheetImageAnchors(input, archive);
     const spreadsheetTables = spreadsheetTableTextIndex(elements);
+    const wordAnchors = wordImageAnchors(input, archive, elements);
     const fallbackElements = Object.entries(archive)
       .sort(([left], [right]) => archivePathCollator.compare(left, right))
       .flatMap(([archivePath, body]): ParseElementInput[] => {
@@ -582,13 +583,33 @@ function appendArchiveMediaFallbackElements(
         }
 
         const title = archivePath.split("/").at(-1);
-        const anchors = spreadsheetAnchors.get(archivePath) ?? [];
+        const anchors = [
+          ...(spreadsheetAnchors.get(archivePath) ?? []).map(
+            (anchor): ArchiveImageAnchor => ({ kind: "spreadsheet", value: anchor }),
+          ),
+          ...(wordAnchors.byArchivePath.get(archivePath) ?? []).map(
+            (anchor): ArchiveImageAnchor => ({ kind: "word", value: anchor }),
+          ),
+        ];
+        if (
+          anchors.length === 0 &&
+          wordAnchors.alternateContentExcludedArchivePaths.has(archivePath)
+        ) {
+          return [];
+        }
         const placements = anchors.length > 0 ? anchors : [undefined];
 
         return placements.map((anchor): ParseElementInput => {
-          const placement = anchor
-            ? spreadsheetImageTextPlacement(anchor, spreadsheetTables)
-            : undefined;
+          const placement =
+            anchor?.kind === "spreadsheet"
+              ? spreadsheetImageTextPlacement(anchor.value, spreadsheetTables)
+              : anchor?.value.placement;
+          const anchorMetadata =
+            anchor?.kind === "spreadsheet"
+              ? { spreadsheetAnchor: spreadsheetAnchorMetadata(anchor.value) }
+              : anchor?.kind === "word"
+                ? { wordAnchor: { paragraphIndex: anchor.value.paragraphIndex } }
+                : {};
           return {
             metadata: {
               archivePath,
@@ -599,12 +620,12 @@ function appendArchiveMediaFallbackElements(
               ...(placement && anchor
                 ? {
                     endOffset: placement.endOffset,
-                    spreadsheetAnchor: spreadsheetAnchorMetadata(anchor),
+                    ...anchorMetadata,
                     startOffset: placement.startOffset,
                   }
                 : {
                     positionUnknown: true,
-                    ...(anchor ? { spreadsheetAnchor: spreadsheetAnchorMetadata(anchor) } : {}),
+                    ...anchorMetadata,
                   }),
               source: "archive-media-fallback",
               ...(title ? { title } : {}),
@@ -630,6 +651,21 @@ interface SpreadsheetImageAnchor {
   readonly sheetIndex: number;
   readonly sheetName: string;
 }
+
+interface WordImageAnchor {
+  readonly paragraphIndex: number;
+  readonly placement?:
+    | {
+        readonly endOffset: number;
+        readonly sectionPath: string[];
+        readonly startOffset: number;
+      }
+    | undefined;
+}
+
+type ArchiveImageAnchor =
+  | { readonly kind: "spreadsheet"; readonly value: SpreadsheetImageAnchor }
+  | { readonly kind: "word"; readonly value: WordImageAnchor };
 
 interface SpreadsheetTableTextIndexEntry {
   readonly endOffset: number;
@@ -658,6 +694,45 @@ const spreadsheetXmlParser = new XMLParser({
   removeNSPrefix: true,
 });
 
+const wordXmlParser = new XMLParser({
+  attributeNamePrefix: "",
+  ignoreAttributes: false,
+  parseAttributeValue: false,
+  parseTagValue: false,
+  preserveOrder: true,
+  removeNSPrefix: false,
+  updateTag(tagName, _jPath, attributes) {
+    for (const attributeName of Object.keys(attributes)) {
+      if (attributeName.startsWith("xmlns:")) continue;
+      const normalizedName = wordXmlLocalName(attributeName);
+      if (normalizedName === attributeName) continue;
+      const attributeValue = attributes[attributeName];
+      if (attributeValue === undefined) continue;
+      attributes[normalizedName] = attributeValue;
+      delete attributes[attributeName];
+    }
+    return wordXmlLocalName(tagName);
+  },
+});
+
+function wordXmlLocalName(name: string): string {
+  return name.slice(name.lastIndexOf(":") + 1);
+}
+
+const wordAlternateContentSupportedNamespaces = new Set([
+  "http://purl.oclc.org/ooxml/drawingml/main",
+  "http://purl.oclc.org/ooxml/drawingml/wordprocessingDrawing",
+  "http://purl.oclc.org/ooxml/wordprocessingml/main",
+  "http://schemas.openxmlformats.org/drawingml/2006/main",
+  "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
+  "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+  "urn:schemas-microsoft-com:vml",
+]);
+
+function officeArchiveMetadataPath(input: ParseDocumentInput, path: string): boolean {
+  return spreadsheetArchiveMetadataPath(input, path) || wordArchiveMetadataPath(input, path);
+}
+
 function spreadsheetArchiveMetadataPath(input: ParseDocumentInput, path: string): boolean {
   if (!spreadsheetArchive(input)) return false;
 
@@ -671,6 +746,393 @@ function spreadsheetArchiveMetadataPath(input: ParseDocumentInput, path: string)
 
 function spreadsheetArchive(input: ParseDocumentInput): boolean {
   return archiveMediaRoots(input)?.includes("xl/media/") === true;
+}
+
+function wordArchiveMetadataPath(input: ParseDocumentInput, path: string): boolean {
+  return (
+    wordArchive(input) && (path === "word/document.xml" || path === "word/_rels/document.xml.rels")
+  );
+}
+
+function wordArchive(input: ParseDocumentInput): boolean {
+  return archiveMediaRoots(input)?.includes("word/media/") === true;
+}
+
+function wordImageAnchors(
+  input: ParseDocumentInput,
+  archive: Readonly<Record<string, Uint8Array>>,
+  elements: readonly ParseElementInput[],
+): WordImageAnchorIndex {
+  const byArchivePath = new Map<string, WordImageAnchor[]>();
+  const alternateContentExcludedArchivePaths = new Set<string>();
+  if (!wordArchive(input)) return { alternateContentExcludedArchivePaths, byArchivePath };
+
+  try {
+    const documentBody = archive["word/document.xml"];
+    if (!documentBody || documentBody.byteLength > defaultMaxArchiveMetadataBytes) {
+      return { alternateContentExcludedArchivePaths, byArchivePath };
+    }
+    const documentXml = decodeUtf8(documentBody);
+    const parsed = wordXmlParser.parse(documentXml) as unknown;
+    const namespaceDeclarations = wordNamespaceDeclarations(parsed);
+    const paragraphs = wordParagraphs(parsed, namespaceDeclarations);
+    const relationships = spreadsheetRelationships(archive, "word/document.xml");
+    const textIndex = wordParserTextIndex(elements);
+    const paragraphPlacements = unambiguousWordParagraphPlacements(paragraphs, textIndex);
+    let placement: WordImageAnchor["placement"];
+
+    for (const paragraph of paragraphs) {
+      const text = comparableWordText(paragraph.text);
+      if (text) {
+        placement = paragraphPlacements.get(paragraph.paragraphIndex);
+      }
+
+      for (const relationshipId of paragraph.alternateContentExcludedRelationshipIds) {
+        const relationship = relationships.get(relationshipId);
+        if (
+          relationship &&
+          relationshipTypeIs(relationship, "image") &&
+          archiveImageContentType(relationship.target)
+        ) {
+          alternateContentExcludedArchivePaths.add(relationship.target);
+        }
+      }
+
+      for (const relationshipId of paragraph.relationshipIds) {
+        const relationship = relationships.get(relationshipId);
+        if (
+          !relationship ||
+          !relationshipTypeIs(relationship, "image") ||
+          !archiveImageContentType(relationship.target)
+        ) {
+          continue;
+        }
+        const current = byArchivePath.get(relationship.target) ?? [];
+        current.push({
+          paragraphIndex: paragraph.paragraphIndex,
+          ...(placement ? { placement } : {}),
+        });
+        byArchivePath.set(relationship.target, current);
+      }
+    }
+  } catch {
+    // Word paragraph metadata is optional. Keep the media itself unpositioned if document XML or
+    // its relationship part cannot be decoded safely.
+    return {
+      alternateContentExcludedArchivePaths: new Set(),
+      byArchivePath: new Map(),
+    };
+  }
+
+  return { alternateContentExcludedArchivePaths, byArchivePath };
+}
+
+interface WordImageAnchorIndex {
+  readonly alternateContentExcludedArchivePaths: ReadonlySet<string>;
+  readonly byArchivePath: ReadonlyMap<string, readonly WordImageAnchor[]>;
+}
+
+interface WordParagraph {
+  readonly alternateContentExcludedRelationshipIds: readonly string[];
+  readonly paragraphIndex: number;
+  readonly relationshipIds: readonly string[];
+  readonly text: string;
+}
+
+interface WordParagraphContent {
+  readonly alternateContentExcludedRelationshipIds: string[];
+  readonly relationshipIds: string[];
+  readonly text: string;
+}
+
+function wordParagraphs(
+  value: unknown,
+  namespaceDeclarations: ReadonlyMap<string, string>,
+): WordParagraph[] {
+  const paragraphs: WordParagraph[] = [];
+
+  const visit = (nodes: unknown): void => {
+    if (!Array.isArray(nodes)) return;
+    for (const node of nodes) {
+      if (!isPlainRecord(node)) continue;
+      if (Array.isArray(node.p)) {
+        const content = wordParagraphContent(node.p, namespaceDeclarations);
+        paragraphs.push({
+          alternateContentExcludedRelationshipIds: content.alternateContentExcludedRelationshipIds,
+          paragraphIndex: paragraphs.length + 1,
+          relationshipIds: content.relationshipIds,
+          text: content.text,
+        });
+        continue;
+      }
+      for (const [key, nested] of Object.entries(node)) {
+        if (key !== ":@") visit(nested);
+      }
+    }
+  };
+
+  visit(value);
+  return paragraphs;
+}
+
+function wordParagraphContent(
+  value: unknown,
+  namespaceDeclarations: ReadonlyMap<string, string>,
+): WordParagraphContent {
+  const collect = (nodes: unknown): WordParagraphContent => {
+    const alternateContentExcludedRelationshipIds: string[] = [];
+    const relationshipIds: string[] = [];
+    const text: string[] = [];
+    if (!Array.isArray(nodes)) {
+      return { alternateContentExcludedRelationshipIds, relationshipIds, text: "" };
+    }
+    for (const node of nodes) {
+      if (!isPlainRecord(node)) continue;
+      if (Array.isArray(node.AlternateContent)) {
+        const selected = selectWordAlternateContent(
+          node.AlternateContent,
+          namespaceDeclarations,
+          collect,
+        );
+        alternateContentExcludedRelationshipIds.push(
+          ...selected.alternateContentExcludedRelationshipIds,
+        );
+        relationshipIds.push(...selected.relationshipIds);
+        if (selected.text) text.push(selected.text);
+        continue;
+      }
+      if (Array.isArray(node.t)) {
+        for (const textNode of node.t) {
+          if (isPlainRecord(textNode) && typeof textNode["#text"] === "string") {
+            text.push(textNode["#text"]);
+          }
+        }
+      }
+      const attributes = isPlainRecord(node[":@"]) ? node[":@"] : undefined;
+      const relationshipId =
+        Array.isArray(node.blip) && attributes
+          ? xmlScalarString(attributes.embed)
+          : Array.isArray(node.imagedata) && attributes
+            ? xmlScalarString(attributes.id)
+            : undefined;
+      if (relationshipId) relationshipIds.push(relationshipId);
+      for (const [key, nested] of Object.entries(node)) {
+        if (key !== ":@" && key !== "t" && key !== "blip" && key !== "imagedata") {
+          const content = collect(nested);
+          alternateContentExcludedRelationshipIds.push(
+            ...content.alternateContentExcludedRelationshipIds,
+          );
+          relationshipIds.push(...content.relationshipIds);
+          if (content.text) text.push(content.text);
+        }
+      }
+    }
+    return {
+      alternateContentExcludedRelationshipIds,
+      relationshipIds,
+      text: text.join(""),
+    };
+  };
+
+  return collect(value);
+}
+
+function selectWordAlternateContent(
+  value: unknown,
+  namespaceDeclarations: ReadonlyMap<string, string>,
+  collect: (nodes: unknown) => WordParagraphContent,
+): WordParagraphContent {
+  if (!Array.isArray(value)) {
+    return { alternateContentExcludedRelationshipIds: [], relationshipIds: [], text: "" };
+  }
+  const branches: Array<{
+    readonly content: WordParagraphContent;
+    readonly selected: boolean;
+  }> = [];
+  let supportedChoiceFound = false;
+  for (const node of value) {
+    if (!isPlainRecord(node)) continue;
+    if (Array.isArray(node.Choice)) {
+      const selected: boolean =
+        !supportedChoiceFound && wordAlternateContentChoiceIsSupported(node, namespaceDeclarations);
+      supportedChoiceFound ||= selected;
+      branches.push({ content: collect(node.Choice), selected });
+    }
+    if (Array.isArray(node.Fallback)) {
+      branches.push({ content: collect(node.Fallback), selected: !supportedChoiceFound });
+    }
+  }
+  const selectedBranch = branches.find((branch) => branch.selected);
+  return {
+    alternateContentExcludedRelationshipIds: branches.flatMap((branch) =>
+      branch === selectedBranch
+        ? branch.content.alternateContentExcludedRelationshipIds
+        : [
+            ...branch.content.relationshipIds,
+            ...branch.content.alternateContentExcludedRelationshipIds,
+          ],
+    ),
+    relationshipIds: selectedBranch?.content.relationshipIds ?? [],
+    text: selectedBranch?.content.text ?? "",
+  };
+}
+
+function wordAlternateContentChoiceIsSupported(
+  choice: Readonly<Record<string, unknown>>,
+  namespaceDeclarations: ReadonlyMap<string, string>,
+): boolean {
+  const attributes = isPlainRecord(choice[":@"]) ? choice[":@"] : undefined;
+  const requiredPrefixes = xmlScalarString(attributes?.Requires)?.split(/\s+/u) ?? [];
+  return (
+    requiredPrefixes.length > 0 &&
+    requiredPrefixes.every((prefix) => {
+      const namespace = namespaceDeclarations.get(prefix);
+      return namespace !== undefined && wordAlternateContentSupportedNamespaces.has(namespace);
+    })
+  );
+}
+
+function wordNamespaceDeclarations(value: unknown): ReadonlyMap<string, string> {
+  const declarations = new Map<string, string>();
+  const conflictingPrefixes = new Set<string>();
+
+  const visit = (nodes: unknown): void => {
+    if (!Array.isArray(nodes)) return;
+    for (const node of nodes) {
+      if (!isPlainRecord(node)) continue;
+      const attributes = isPlainRecord(node[":@"]) ? node[":@"] : undefined;
+      if (attributes) {
+        for (const [name, rawNamespace] of Object.entries(attributes)) {
+          if (!name.startsWith("xmlns:")) continue;
+          const prefix = name.slice("xmlns:".length);
+          const namespace = xmlScalarString(rawNamespace);
+          if (!prefix || !namespace || conflictingPrefixes.has(prefix)) continue;
+          const existing = declarations.get(prefix);
+          if (existing !== undefined && existing !== namespace) {
+            declarations.delete(prefix);
+            conflictingPrefixes.add(prefix);
+          } else {
+            declarations.set(prefix, namespace);
+          }
+        }
+      }
+      for (const [key, nested] of Object.entries(node)) {
+        if (key !== ":@") visit(nested);
+      }
+    }
+  };
+
+  visit(value);
+  return declarations;
+}
+
+interface WordParserTextIndexEntry {
+  readonly comparableText: string;
+  readonly endOffset: number;
+  readonly sectionPath: readonly string[];
+  readonly startOffset: number;
+}
+
+function wordParserTextIndex(elements: readonly ParseElementInput[]): WordParserTextIndexEntry[] {
+  const entries: WordParserTextIndexEntry[] = [];
+  let nextOffset = 0;
+  for (const element of elements) {
+    const text = canonicalParserText(element.text);
+    if (!text) continue;
+    const startOffset = nextOffset;
+    const endOffset = startOffset + canonicalTextEncoder.encode(text).byteLength;
+    nextOffset = endOffset + 1;
+    entries.push({
+      comparableText: comparableWordText(text),
+      endOffset,
+      sectionPath: [...(element.sectionPath ?? [])],
+      startOffset,
+    });
+  }
+  return entries;
+}
+
+function comparableWordText(value: string): string {
+  return normalizeText(value).normalize("NFKC");
+}
+
+function unambiguousWordParagraphPlacements(
+  paragraphs: readonly WordParagraph[],
+  textIndex: readonly WordParserTextIndexEntry[],
+): Map<number, NonNullable<WordImageAnchor["placement"]>> {
+  const paragraphOccurrences = new Map<string, number[]>();
+  for (const paragraph of paragraphs) {
+    const text = comparableWordText(paragraph.text);
+    if (!text) continue;
+    const occurrences = paragraphOccurrences.get(text) ?? [];
+    occurrences.push(paragraph.paragraphIndex);
+    paragraphOccurrences.set(text, occurrences);
+  }
+
+  const providerOccurrences = new Map<
+    string,
+    Array<{ readonly index: number; readonly placement: NonNullable<WordImageAnchor["placement"]> }>
+  >();
+  for (const [index, entry] of textIndex.entries()) {
+    const occurrences = providerOccurrences.get(entry.comparableText) ?? [];
+    occurrences.push({
+      index,
+      placement: {
+        endOffset: entry.endOffset,
+        sectionPath: [...entry.sectionPath],
+        startOffset: entry.startOffset,
+      },
+    });
+    providerOccurrences.set(entry.comparableText, occurrences);
+  }
+
+  const candidates: Array<{
+    readonly paragraphIndex: number;
+    readonly placement: NonNullable<WordImageAnchor["placement"]>;
+    readonly providerIndex: number;
+  }> = [];
+  for (const [text, paragraphIndexes] of paragraphOccurrences) {
+    const providerEntries = providerOccurrences.get(text);
+    if (!providerEntries || providerEntries.length !== paragraphIndexes.length) continue;
+    for (const [occurrenceIndex, paragraphIndex] of paragraphIndexes.entries()) {
+      const providerEntry = providerEntries[occurrenceIndex];
+      if (!providerEntry) continue;
+      candidates.push({
+        paragraphIndex,
+        placement: providerEntry.placement,
+        providerIndex: providerEntry.index,
+      });
+    }
+  }
+  candidates.sort((left, right) => left.paragraphIndex - right.paragraphIndex);
+
+  const greatestProviderIndexBefore: number[] = [];
+  let greatestProviderIndex = -1;
+  for (const candidate of candidates) {
+    greatestProviderIndexBefore.push(greatestProviderIndex);
+    greatestProviderIndex = Math.max(greatestProviderIndex, candidate.providerIndex);
+  }
+  const leastProviderIndexAfter: number[] = Array.from(
+    { length: candidates.length },
+    () => Number.POSITIVE_INFINITY,
+  );
+  let leastProviderIndex = Number.POSITIVE_INFINITY;
+  for (let index = candidates.length - 1; index >= 0; index -= 1) {
+    leastProviderIndexAfter[index] = leastProviderIndex;
+    const candidate = candidates[index];
+    if (candidate) leastProviderIndex = Math.min(leastProviderIndex, candidate.providerIndex);
+  }
+
+  const placements = new Map<number, NonNullable<WordImageAnchor["placement"]>>();
+  for (const [index, candidate] of candidates.entries()) {
+    if (
+      candidate.providerIndex > (greatestProviderIndexBefore[index] ?? -1) &&
+      candidate.providerIndex < (leastProviderIndexAfter[index] ?? Number.POSITIVE_INFINITY)
+    ) {
+      placements.set(candidate.paragraphIndex, candidate.placement);
+    }
+  }
+  return placements;
 }
 
 function spreadsheetImageAnchors(

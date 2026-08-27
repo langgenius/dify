@@ -777,6 +777,7 @@ def test_document_chunk_preserves_structured_section_metadata() -> None:
             "kind": "table",
             "knowledgeSpaceId": "space-1",
             "ordinal": 1,
+            "parseElementIds": ["parse-element-1", "parse-element-2"],
             "sectionPath": ["Invoices", "Tax breakdown"],
             "text": "Tax table content",
             "tokenCount": 3,
@@ -785,24 +786,25 @@ def test_document_chunk_preserves_structured_section_metadata() -> None:
     )
 
     assert response.model_dump(mode="json")["kind"] == "table"
+    assert response.model_dump(mode="json")["parse_element_ids"] == ["parse-element-1", "parse-element-2"]
     assert response.model_dump(mode="json")["section_path"] == ["Invoices", "Tax breakdown"]
+    assert "parse_element_ids" in KnowledgeFSDocumentChunkResponse.model_json_schema()["required"]
 
-    legacy_response = KnowledgeFSDocumentChunkResponse.model_validate(
-        {
-            "createdAt": "2026-07-21T10:00:00Z",
-            "documentId": "document-1",
-            "documentRevision": 3,
-            "enabled": True,
-            "id": "chunk-1",
-            "knowledgeSpaceId": "space-1",
-            "ordinal": 1,
-            "text": "Legacy chunk",
-            "tokenCount": 2,
-            "userMetadata": {},
-        }
-    )
-    assert legacy_response.kind == "chunk"
-    assert legacy_response.section_path == []
+    with pytest.raises(ValidationError):
+        KnowledgeFSDocumentChunkResponse.model_validate(
+            {
+                "createdAt": "2026-07-21T10:00:00Z",
+                "documentId": "document-1",
+                "documentRevision": 3,
+                "enabled": True,
+                "id": "chunk-1",
+                "knowledgeSpaceId": "space-1",
+                "ordinal": 1,
+                "text": "Legacy chunk",
+                "tokenCount": 2,
+                "userMetadata": {},
+            }
+        )
 
 
 def test_document_outline_preserves_recursive_nodes_and_serializes_nested_aliases() -> None:

@@ -5375,6 +5375,13 @@ Initialize dataset with documents
 | 200 | Dataset initialized successfully | **application/json**: [DatasetAndDocumentResponse](#datasetanddocumentresponse)<br> |
 | 400 | Invalid request parameters |  |
 
+### [GET] /datasets/knowledge-fs-upgrade-jobs
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Recoverable KnowledgeFS Dataset upgrade jobs | **application/json**: [KnowledgeFSUpgradeJobListResponse](#knowledgefsupgradejoblistresponse)<br> |
+
 ### [GET] /datasets/metadata/built-in
 #### Responses
 
@@ -6249,6 +6256,61 @@ Get dataset indexing status
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Indexing status retrieved successfully | **application/json**: [DocumentStatusListResponse](#documentstatuslistresponse)<br> |
+
+### [GET] /datasets/{dataset_id}/knowledge-fs-upgrades
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS Dataset upgrade discovery | **application/json**: [KnowledgeFSUpgradeDiscoveryResponse](#knowledgefsupgradediscoveryresponse)<br> |
+
+### [POST] /datasets/{dataset_id}/knowledge-fs-upgrades
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header | Stable key used to make the Dataset upgrade safe to retry | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | KnowledgeFS Dataset upgrade accepted | **application/json**: [KnowledgeFSUpgradeJobResponse](#knowledgefsupgradejobresponse)<br> |
+
+### [GET] /datasets/{dataset_id}/knowledge-fs-upgrades/{job_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS Dataset upgrade status | **application/json**: [KnowledgeFSUpgradeJobResponse](#knowledgefsupgradejobresponse)<br> |
+
+### [POST] /datasets/{dataset_id}/knowledge-fs-upgrades/{job_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | KnowledgeFS Dataset upgrade retry accepted | **application/json**: [KnowledgeFSUpgradeRetryResponse](#knowledgefsupgraderetryresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/metadata
 #### Parameters
@@ -7211,9 +7273,9 @@ Get instruction generation template
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | KnowledgeFS query event stream |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS query event stream | **text/event-stream**: string<br> |
 
 ### [GET] /knowledge-fs/research-tasks/{task_id}/events
 #### Parameters
@@ -7227,9 +7289,9 @@ Get instruction generation template
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | KnowledgeFS research task event stream |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS research task event stream | **text/event-stream**: string<br> |
 
 ### [POST] /knowledge-fs/source-provider-preview
 #### Request Body
@@ -7292,6 +7354,7 @@ Get instruction generation template
 | limit | query |  | No | integer, <br>**Default:** 20 |
 | page | query |  | No | integer, <br>**Default:** 1 |
 | query | query |  | No | string |
+| tag_ids | query | Filter by knowledge tag IDs using match-any semantics | No | [ string ] |
 
 #### Responses
 
@@ -7591,6 +7654,36 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | KnowledgeFS document metadata updated | **application/json**: [KnowledgeFSLogicalDocumentResponse](#knowledgefslogicaldocumentresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/multimodal
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS document multimodal manifest | **application/json**: [KnowledgeFSDocumentMultimodalManifestResponse](#knowledgefsdocumentmultimodalmanifestresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/multimodal/{item_id}/asset
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| variant | query |  | No | string |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+| item_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS document multimodal asset | **application/octet-stream**: [BinaryFileResponse](#binaryfileresponse)<br>**image/gif**: [BinaryFileResponse](#binaryfileresponse)<br>**image/jpeg**: [BinaryFileResponse](#binaryfileresponse)<br>**image/png**: [BinaryFileResponse](#binaryfileresponse)<br>**image/webp**: [BinaryFileResponse](#binaryfileresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/outline
 #### Parameters
@@ -8249,6 +8342,23 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | ---- | ----------- | ------ |
 | 200 | KnowledgeFS bad case trace reference | **application/json**: [KnowledgeFSBadCaseTraceReferenceResponse](#knowledgefsbadcasetracereferenceresponse)<br> |
 
+### [GET] /knowledge-fs/spaces/{control_space_id}/quality/replay-runs
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| mode | query |  | No | string, <br>**Available values:** "deep", "fast", "research" |
+| state | query |  | No | string, <br>**Available values:** "canceled", "failed", "passed", "queued", "running" |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS quality replay history | **application/json**: [KnowledgeFSQualityReplayListResponse](#knowledgefsqualityreplaylistresponse)<br> |
+
 ### [POST] /knowledge-fs/spaces/{control_space_id}/quality/replay-runs
 #### Parameters
 
@@ -8268,6 +8378,21 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | KnowledgeFS quality replay queued | **application/json**: [KnowledgeFSQualityReplayResponse](#knowledgefsqualityreplayresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/quality/replay-runs/{run_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evidence_item_id | query |  | No | string (uuid) |
+| control_space_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS quality replay run | **application/json**: [KnowledgeFSQualityReplayResponse](#knowledgefsqualityreplayresponse)<br> |
 
 ### ~~[POST] /knowledge-fs/spaces/{control_space_id}/queries~~
 
@@ -8710,6 +8835,27 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | ---- | ----------- | ------ |
 | 200 | KnowledgeFS source updated | **application/json**: [KnowledgeFSSourceResponse](#knowledgefssourceresponse)<br> |
 
+### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/async-import
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header | Stable key used to make the mutation safe to retry | Yes | string |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSAsyncSourceImportPayload](#knowledgefsasyncsourceimportpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | KnowledgeFS Source import accepted for asynchronous reconciliation | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+
 ### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/crawl-import
 #### Parameters
 
@@ -8903,6 +9049,38 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | KnowledgeFS durable provider import accepted | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/tags
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS space tags | **application/json**: [KnowledgeFSSpaceTagListResponse](#knowledgefsspacetaglistresponse)<br> |
+
+### [PUT] /knowledge-fs/spaces/{control_space_id}/tags
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSpaceTagsReplacePayload](#knowledgefsspacetagsreplacepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS space tags replaced | **application/json**: [KnowledgeFSSpaceTagListResponse](#knowledgefsspacetaglistresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/traces
 #### Parameters
@@ -18916,6 +19094,7 @@ Model class for provider custom model configuration.
 | indexing_technique | string |  | Yes |
 | is_multimodal | boolean |  | Yes |
 | is_published | boolean |  | Yes |
+| knowledge_fs_upgrade | [KnowledgeFSUpgradeDiscoveryResponse](#knowledgefsupgradediscoveryresponse) |  | Yes |
 | maintainer | string |  | No |
 | name | string |  | Yes |
 | partial_member_list | [ string ] |  | Yes |
@@ -20841,6 +21020,13 @@ Input field definition for snippet parameters.
 | retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked in this knowledge base. | No |
 | summary_index_setting | object | Summary index configuration. | No |
 
+#### KnowledgeFSActiveProfileRevisions
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding | integer |  | No |
+| retrieval | integer |  | No |
+
 #### KnowledgeFSAdmittedQueryRequest
 
 | Name | Type | Description | Required |
@@ -20910,6 +21096,37 @@ Input field definition for snippet parameters.
 | ---- | ---- | ----------- | -------- |
 | KnowledgeFSAppSpaceJoinType | string |  |  |
 
+#### KnowledgeFSAsyncCrawlPreviewImportPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| kind | string |  | Yes |
+| pageIds | [ string ] |  | Yes |
+| previewWorkflowId | string |  | Yes |
+| syncPolicy | [KnowledgeFSDeferredSyncPolicyPayload](#knowledgefsdeferredsyncpolicypayload) |  | Yes |
+
+#### KnowledgeFSAsyncOnlineDocumentImportPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [KnowledgeFSOnlineDocumentWorkflowImportItemPayload](#knowledgefsonlinedocumentworkflowimportitempayload) ] |  | Yes |
+| kind | string |  | Yes |
+| syncPolicy | [KnowledgeFSDeferredSyncPolicyPayload](#knowledgefsdeferredsyncpolicypayload) |  | Yes |
+
+#### KnowledgeFSAsyncOnlineDriveImportPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [KnowledgeFSOnlineDriveWorkflowImportItemPayload](#knowledgefsonlinedriveworkflowimportitempayload) ] |  | Yes |
+| kind | string |  | Yes |
+| syncPolicy | [KnowledgeFSDeferredSyncPolicyPayload](#knowledgefsdeferredsyncpolicypayload) |  | Yes |
+
+#### KnowledgeFSAsyncSourceImportPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFSAsyncSourceImportPayload | [KnowledgeFSAsyncCrawlPreviewImportPayload](#knowledgefsasynccrawlpreviewimportpayload)<br>[KnowledgeFSAsyncOnlineDocumentImportPayload](#knowledgefsasynconlinedocumentimportpayload)<br>[KnowledgeFSAsyncOnlineDriveImportPayload](#knowledgefsasynconlinedriveimportpayload) |  |  |
+
 #### KnowledgeFSBackgroundTaskFailureResponse
 
 | Name | Type | Description | Required |
@@ -20918,6 +21135,7 @@ Input field definition for snippet parameters.
 | document_title | string |  | No |
 | error_code | string |  | Yes |
 | error_message | string |  | Yes |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | Yes |
 | job_id | string |  | No |
 
 #### KnowledgeFSBackgroundTaskListQuery
@@ -20946,6 +21164,7 @@ Input field definition for snippet parameters.
 | document_revision | integer |  | No |
 | error_code | string |  | No |
 | error_message | string |  | No |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
 | failures | [ [KnowledgeFSBackgroundTaskFailureResponse](#knowledgefsbackgroundtaskfailureresponse) ] |  | No |
 | id | string |  | Yes |
 | knowledge_space_id | string |  | Yes |
@@ -21159,6 +21378,14 @@ Input field definition for snippet parameters.
 | ---- | ---- | ----------- | -------- |
 | cursor | string |  | No |
 
+#### KnowledgeFSDeferredSyncPolicyPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| customIntervalSeconds | integer |  | No |
+| enabled | boolean |  | Yes |
+| mode | string, <br>**Available values:** "custom", "interval", "manual", "provider" | *Enum:* `"custom"`, `"interval"`, `"manual"`, `"provider"` | Yes |
+
 #### KnowledgeFSDocumentAvailabilityPayload
 
 | Name | Type | Description | Required |
@@ -21194,12 +21421,15 @@ Input field definition for snippet parameters.
 | document_id | string |  | Yes |
 | document_revision | integer |  | Yes |
 | enabled | boolean |  | Yes |
+| end_offset | integer |  | No |
 | id | string |  | Yes |
 | kind | string, <br>**Available values:** "chunk", "image", "section", "summary", "table", <br>**Default:** chunk | *Enum:* `"chunk"`, `"image"`, `"section"`, `"summary"`, `"table"` | No |
 | knowledge_space_id | string |  | Yes |
 | ordinal | integer |  | Yes |
 | parent_chunk_id | string |  | No |
+| parse_element_ids | [ string ] |  | Yes |
 | section_path | [ string ] |  | No |
+| start_offset | integer |  | No |
 | text | string |  | Yes |
 | token_count | integer |  | Yes |
 | user_metadata | object |  | Yes |
@@ -21243,6 +21473,43 @@ Input field definition for snippet parameters.
 | ---- | ---- | ----------- | -------- |
 | expectedRowVersion | integer |  | Yes |
 | patch | object |  | Yes |
+
+#### KnowledgeFSDocumentMultimodalAssetQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| variant | string |  | No |
+
+#### KnowledgeFSDocumentMultimodalItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| asset_url | string |  | No |
+| caption | string |  | No |
+| end_offset | integer |  | No |
+| id | string |  | Yes |
+| modality | string, <br>**Available values:** "code", "image", "page", "table" | *Enum:* `"code"`, `"image"`, `"page"`, `"table"` | Yes |
+| ocr_text | string |  | No |
+| page_number | integer |  | No |
+| parse_element_id | string |  | Yes |
+| section_path | [ string ] |  | No |
+| start_offset | integer |  | No |
+| text_preview | string |  | No |
+| thumbnail_url | string |  | No |
+| title | string |  | No |
+
+#### KnowledgeFSDocumentMultimodalManifestResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| artifact_hash | string |  | Yes |
+| created_at | dateTime |  | Yes |
+| document_asset_id | string |  | Yes |
+| id | string |  | Yes |
+| items | [ [KnowledgeFSDocumentMultimodalItemResponse](#knowledgefsdocumentmultimodalitemresponse) ] |  | Yes |
+| manifest_version | string |  | Yes |
+| updated_at | string |  | No |
+| version | integer |  | Yes |
 
 #### KnowledgeFSDocumentOutlineNodeResponse
 
@@ -21501,8 +21768,8 @@ Input field definition for snippet parameters.
 | document_asset_id | string |  | Yes |
 | node_id | string |  | Yes |
 | page_number | integer |  | No |
-| projection_id | string |  | Yes |
-| score | number |  | Yes |
+| projection_id | string |  | No |
+| score | number |  | No |
 | section_path | [ string ] |  | Yes |
 | text | string |  | Yes |
 
@@ -21510,8 +21777,9 @@ Input field definition for snippet parameters.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| evidence | string |  | Yes |
+| evidence | string |  | No |
 | minimum_similarity | number, <br>**Default:** 0.7 |  | No |
+| node_ids | [ string ] |  | No |
 | top_k | integer, <br>**Default:** 5 |  | No |
 
 #### KnowledgeFSGoldenQuestionEvidenceMatchResponse
@@ -21533,7 +21801,7 @@ Input field definition for snippet parameters.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| annotation | string |  | Yes |
+| annotation | string |  | No |
 | evidence_text | string |  | No |
 | expected_evidence_ids | [ string ] |  | No |
 | match_policy | string, <br>**Available values:** "all", "any", <br>**Default:** all | *Enum:* `"all"`, `"any"` | No |
@@ -21561,6 +21829,7 @@ Input field definition for snippet parameters.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | credentialId | string |  | Yes |
+| custom_interval_seconds | integer |  | No |
 | datasource | string |  | Yes |
 | kind | string |  | Yes |
 | name | string |  | Yes |
@@ -21569,13 +21838,14 @@ Input field definition for snippet parameters.
 | provider | string |  | Yes |
 | providerDisplayName | string |  | No |
 | selection | [ [KnowledgeFSOnlineDocumentWorkflowImportItemPayload](#knowledgefsonlinedocumentworkflowimportitempayload) ] |  | Yes |
-| sync_policy | string, <br>**Available values:** "daily", "manual", "provider", <br>**Default:** provider | *Enum:* `"daily"`, `"manual"`, `"provider"` | No |
+| sync_policy | string, <br>**Available values:** "custom", "daily", "manual", "provider", <br>**Default:** provider | *Enum:* `"custom"`, `"daily"`, `"manual"`, `"provider"` | No |
 
 #### KnowledgeFSInitialOnlineDriveSourcePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | credentialId | string |  | Yes |
+| custom_interval_seconds | integer |  | No |
 | datasource | string |  | Yes |
 | kind | string |  | Yes |
 | name | string |  | Yes |
@@ -21584,7 +21854,7 @@ Input field definition for snippet parameters.
 | provider | string |  | Yes |
 | providerDisplayName | string |  | No |
 | selection | [ [KnowledgeFSOnlineDriveWorkflowImportItemPayload](#knowledgefsonlinedriveworkflowimportitempayload) ] |  | Yes |
-| sync_policy | string, <br>**Available values:** "daily", "manual", "provider", <br>**Default:** provider | *Enum:* `"daily"`, `"manual"`, `"provider"` | No |
+| sync_policy | string, <br>**Available values:** "custom", "daily", "manual", "provider", <br>**Default:** provider | *Enum:* `"custom"`, `"daily"`, `"manual"`, `"provider"` | No |
 
 #### KnowledgeFSInitialSourcePreviewDocumentResponse
 
@@ -21649,6 +21919,7 @@ Input field definition for snippet parameters.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| configuration_fingerprint | string |  | No |
 | documents | [ [KnowledgeFSInitialSourcePreviewDocumentResponse](#knowledgefsinitialsourcepreviewdocumentresponse) ] |  | No |
 | files | [ [KnowledgeFSInitialSourcePreviewFileResponse](#knowledgefsinitialsourcepreviewfileresponse) ] |  | No |
 | kind | string, <br>**Available values:** "online_document", "online_drive", "website_crawl" | *Enum:* `"online_document"`, `"online_drive"`, `"website_crawl"` | Yes |
@@ -21666,6 +21937,7 @@ Input field definition for snippet parameters.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| canonical_url | string |  | No |
 | source_url | string |  | Yes |
 | title | string |  | No |
 
@@ -21675,16 +21947,18 @@ Input field definition for snippet parameters.
 | ---- | ---- | ----------- | -------- |
 | crawl_options | [KnowledgeFSInitialWebsiteCrawlOptionsPayload](#knowledgefsinitialwebsitecrawloptionspayload) |  | Yes |
 | credentialId | string |  | No |
+| custom_interval_seconds | integer |  | No |
 | datasource | string, <br>**Default:** crawl |  | No |
 | kind | string |  | Yes |
 | name | string |  | Yes |
 | parameters | object |  | No |
 | pluginId | string |  | No |
+| previewConfigurationFingerprint | string |  | No |
 | provider | string |  | Yes |
 | providerDisplayName | string |  | No |
 | root_url | string |  | Yes |
 | selection | [ [KnowledgeFSInitialWebsiteSelectionPayload](#knowledgefsinitialwebsiteselectionpayload) ] |  | Yes |
-| sync_policy | string, <br>**Available values:** "daily", "manual", "provider", <br>**Default:** provider | *Enum:* `"daily"`, `"manual"`, `"provider"` | No |
+| sync_policy | string, <br>**Available values:** "custom", "daily", "manual", "provider", <br>**Default:** provider | *Enum:* `"custom"`, `"daily"`, `"manual"`, `"provider"` | No |
 
 #### KnowledgeFSInitialWebsiteSourcePreviewPayload
 
@@ -22152,6 +22426,19 @@ Input field definition for snippet parameters.
 | pluginId | string |  | Yes |
 | provider | string |  | Yes |
 
+#### KnowledgeFSPublicFailureResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | string |  | No |
+| category | string, <br>**Available values:** "authorization", "canceled", "configuration", "conflict", "dependency", "internal", "not_found", "rate_limit", "timeout", "validation" | *Enum:* `"authorization"`, `"canceled"`, `"configuration"`, `"conflict"`, `"dependency"`, `"internal"`, `"not_found"`, `"rate_limit"`, `"timeout"`, `"validation"` | Yes |
+| code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_UNAVAILABLE", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_OPERATION_FAILED", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH" | *Enum:* `"DOCUMENT_COMPILATION_FAILED"`, `"DOCUMENT_COMPILATION_RETRYABLE"`, `"DOCUMENT_DISABLED"`, `"DOCUMENT_PARSER_INPUT_INVALID"`, `"DOCUMENT_PARSER_NOT_CONFIGURED"`, `"DOCUMENT_PARSER_RATE_LIMITED"`, `"DOCUMENT_PARSER_RESPONSE_INVALID"`, `"DOCUMENT_PARSER_UNAVAILABLE"`, `"EMBEDDING_DIMENSION_INVALID"`, `"EMBEDDING_DIMENSION_UNSUPPORTED"`, `"EXECUTION_ATTEMPTS_EXHAUSTED"`, `"KNOWLEDGE_FS_ACCESS_DENIED"`, `"KNOWLEDGE_FS_CONFLICT"`, `"KNOWLEDGE_FS_INTERNAL_ERROR"`, `"KNOWLEDGE_FS_INVALID_REQUEST"`, `"KNOWLEDGE_FS_NOT_FOUND"`, `"KNOWLEDGE_FS_RATE_LIMITED"`, `"KNOWLEDGE_FS_TIMEOUT"`, `"KNOWLEDGE_FS_UNAVAILABLE"`, `"KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND"`, `"KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED"`, `"MODEL_CAPABILITY_MISMATCH"`, `"MODEL_CONFIGURATION_STALE"`, `"MODEL_CREDENTIAL_INVALID"`, `"MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE"`, `"MODEL_IDENTITY_MISMATCH"`, `"MODEL_PREFLIGHT_CANCELED"`, `"MODEL_PREFLIGHT_FAILED"`, `"MODEL_PREFLIGHT_TIMEOUT"`, `"MODEL_PREFLIGHT_UNAVAILABLE"`, `"MODEL_PROFILE_ACTIVATION_INCOMPLETE"`, `"MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED"`, `"MODEL_RUNTIME_FAILED"`, `"MODEL_RUNTIME_TIMEOUT"`, `"MODEL_RUNTIME_UNAVAILABLE"`, `"MODEL_SELECTION_NOT_FOUND"`, `"RESEARCH_TASK_CAPABILITY_REVOKED"`, `"RESEARCH_TASK_DISPATCH_DEAD"`, `"RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED"`, `"RESEARCH_TASK_FAILED"`, `"RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID"`, `"RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID"`, `"SOURCE_BULK_ACTION_FAILED"`, `"SOURCE_CREDENTIAL_CONFIG_INVALID"`, `"SOURCE_CREDENTIAL_MUTATION_FAILED"`, `"SOURCE_CREDENTIAL_TEST_FAILED"`, `"SOURCE_CREDENTIAL_UNAVAILABLE"`, `"SOURCE_DOCUMENT_MATERIALIZATION_FAILED"`, `"SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED"`, `"SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID"`, `"SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED"`, `"SOURCE_ONLINE_DRIVE_CONFIG_INVALID"`, `"SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED"`, `"SOURCE_ONLINE_DRIVE_IMPORT_FAILED"`, `"SOURCE_ONLINE_DRIVE_REQUEST_FAILED"`, `"SOURCE_OPERATION_FAILED"`, `"SOURCE_SECRET_INTEGRITY_FAILED"`, `"SOURCE_SECRET_REF_CONFLICT"`, `"SOURCE_SYNC_FAILED"`, `"SOURCE_WEBSITE_CRAWL_CONFIG_INVALID"`, `"SOURCE_WEBSITE_CRAWL_FAILED"`, `"SOURCE_WORKFLOW_FAILED"`, `"UPLOAD_INITIALIZATION_FAILED"`, `"UPLOAD_INTEGRITY_MISMATCH"` | Yes |
+| message | string |  | Yes |
+| parameters | object |  | No |
+| retryPolicy | string, <br>**Available values:** "after_configuration", "automatic", "manual", "never" | *Enum:* `"after_configuration"`, `"automatic"`, `"manual"`, `"never"` | Yes |
+| stage | string |  | No |
+| traceId | string |  | No |
+
 #### KnowledgeFSQualityListQuery
 
 | Name | Type | Description | Required |
@@ -22159,20 +22446,149 @@ Input field definition for snippet parameters.
 | cursor | string |  | No |
 | limit | integer, <br>**Default:** 50 |  | No |
 
+#### KnowledgeFSQualityReplayDetailQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| evidence_item_id | string |  | No |
+
+#### KnowledgeFSQualityReplayEmbeddingProvenance
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| dimension | integer |  | Yes |
+| model | string |  | Yes |
+| vector_space_id | string |  | Yes |
+
+#### KnowledgeFSQualityReplayEvidenceDiff
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| evidence_items | [ [KnowledgeFSQualityReplayEvidenceItem](#knowledgefsqualityreplayevidenceitem) ] |  | No |
+| expected_count | integer |  | Yes |
+| matched_count | integer |  | Yes |
+| missing_count | integer |  | Yes |
+| retrieved_count | integer |  | Yes |
+
+#### KnowledgeFSQualityReplayEvidenceItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available | boolean |  | Yes |
+| document_name | string |  | No |
+| matched | boolean |  | Yes |
+| ordinal | integer |  | Yes |
+| page_number | integer |  | No |
+| section_path | [ string ] |  | No |
+| text | string |  | No |
+
+#### KnowledgeFSQualityReplayItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| golden_question_id | string |  | Yes |
+| id | string |  | Yes |
+| match_policy | string, <br>**Available values:** "all", "any" | *Enum:* `"all"`, `"any"` | Yes |
+| ordinal | integer |  | Yes |
+| question | string |  | Yes |
+| result | [KnowledgeFSQualityReplayItemResult](#knowledgefsqualityreplayitemresult) |  | No |
+| state | string, <br>**Available values:** "canceled", "failed", "passed", "queued", "running" | *Enum:* `"canceled"`, `"failed"`, `"passed"`, `"queued"`, `"running"` | Yes |
+
+#### KnowledgeFSQualityReplayItemResult
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| evidence_diff | [KnowledgeFSQualityReplayEvidenceDiff](#knowledgefsqualityreplayevidencediff) |  | Yes |
+| metrics | [KnowledgeFSQualityReplayMetrics](#knowledgefsqualityreplaymetrics) |  | Yes |
+| passed | boolean |  | Yes |
+
+#### KnowledgeFSQualityReplayListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+| mode | string |  | No |
+| state | string |  | No |
+
+#### KnowledgeFSQualityReplayListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSQualityReplayResponse](#knowledgefsqualityreplayresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSQualityReplayMetrics
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| dense_candidates | integer |  | No |
+| fts_candidates | integer |  | No |
+| fused_candidates | integer |  | No |
+| graph_expansion_candidates | integer |  | No |
+| page_index_matched_nodes | integer |  | No |
+| permission_filtered_candidates | integer |  | No |
+| rerank_candidates | integer |  | No |
+| score_threshold_filtered_candidates | integer |  | No |
+| summary_candidates | integer |  | No |
+| total_ms | number |  | No |
+
 #### KnowledgeFSQualityReplayPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| golden_question_ids | [ string ] |  | Yes |
+| golden_question_ids | [ string ] |  | No |
 | mode | string |  | No |
+| selection | string |  | No |
+
+#### KnowledgeFSQualityReplayProjectionProvenance
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| projection_version | integer |  | Yes |
+
+#### KnowledgeFSQualityReplayProvenance
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding | [KnowledgeFSQualityReplayEmbeddingProvenance](#knowledgefsqualityreplayembeddingprovenance) |  | No |
+| projection | [KnowledgeFSQualityReplayProjectionProvenance](#knowledgefsqualityreplayprojectionprovenance) |  | Yes |
+| retrieval | [KnowledgeFSQualityReplayRetrievalProvenance](#knowledgefsqualityreplayretrievalprovenance) |  | Yes |
 
 #### KnowledgeFSQualityReplayResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| attempt | integer |  | Yes |
+| created_at | dateTime |  | Yes |
+| error | string |  | No |
 | id | string |  | Yes |
+| items | [ [KnowledgeFSQualityReplayItem](#knowledgefsqualityreplayitem) ] |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| mode | string, <br>**Available values:** "deep", "fast", "research" | *Enum:* `"deep"`, `"fast"`, `"research"` | Yes |
+| provenance | [KnowledgeFSQualityReplayProvenance](#knowledgefsqualityreplayprovenance) |  | Yes |
 | revision | integer |  | Yes |
 | state | string, <br>**Available values:** "canceled", "failed", "passed", "queued", "running" | *Enum:* `"canceled"`, `"failed"`, `"passed"`, `"queued"`, `"running"` | Yes |
+| summary | [KnowledgeFSQualityReplaySummary](#knowledgefsqualityreplaysummary) |  | Yes |
+| updated_at | dateTime |  | Yes |
+
+#### KnowledgeFSQualityReplayRetrievalProvenance
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| profile_revision | integer |  | Yes |
+| reasoning_model | string |  | Yes |
+| rerank_model | string |  | No |
+
+#### KnowledgeFSQualityReplaySummary
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completed | integer |  | Yes |
+| failed | integer |  | Yes |
+| hit_rate | number |  | Yes |
+| passed | integer |  | Yes |
+| total | integer |  | Yes |
 
 #### KnowledgeFSQueryAdmissionResponse
 
@@ -22218,6 +22634,25 @@ Input field definition for snippet parameters.
 | operation_id | string |  | Yes |
 | token | string |  | Yes |
 | url | string |  | Yes |
+
+#### KnowledgeFSReadinessCapabilities
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| deep | boolean |  | Yes |
+| index | boolean |  | Yes |
+| ingest | boolean |  | Yes |
+| query | boolean |  | Yes |
+| research | boolean |  | Yes |
+| source_sync | boolean |  | Yes |
+
+#### KnowledgeFSReadinessIssue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string, <br>**Available values:** "binding_missing", "incompatible", "missing", "unavailable", "validation_failed" | *Enum:* `"binding_missing"`, `"incompatible"`, `"missing"`, `"unavailable"`, `"validation_failed"` | Yes |
+| field | string, <br>**Available values:** "embedding", "publication", "reasoning", "rerank" | *Enum:* `"embedding"`, `"publication"`, `"reasoning"`, `"rerank"` | Yes |
+| retryable | boolean |  | Yes |
 
 #### KnowledgeFSRerankIntent
 
@@ -22318,6 +22753,7 @@ Input field definition for snippet parameters.
 | cost | object |  | Yes |
 | created_at | number |  | Yes |
 | error | string |  | No |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
 | id | string |  | Yes |
 | knowledge_space_id | string |  | Yes |
 | limits | [KnowledgeFSResearchTaskLimits](#knowledgefsresearchtasklimits) |  | No |
@@ -22392,8 +22828,12 @@ Input field definition for snippet parameters.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| active_profile_available | boolean |  | Yes |
+| active_profile_revisions | [KnowledgeFSActiveProfileRevisions](#knowledgefsactiveprofilerevisions) |  | Yes |
+| capabilities | [KnowledgeFSReadinessCapabilities](#knowledgefsreadinesscapabilities) |  | Yes |
 | configuration_state | string, <br>**Available values:** "active", "pending-validation", "setup-required", "validation-failed" | *Enum:* `"active"`, `"pending-validation"`, `"setup-required"`, `"validation-failed"` | Yes |
 | embedding | [KnowledgeFSEmbeddingSettingsResponse](#knowledgefsembeddingsettingsresponse) |  | Yes |
+| issues | [ [KnowledgeFSReadinessIssue](#knowledgefsreadinessissue) ] |  | Yes |
 | retrieval | [KnowledgeFSRetrievalSettingsResponse](#knowledgefsretrievalsettingsresponse) |  | Yes |
 | revision | integer |  | Yes |
 
@@ -22490,6 +22930,7 @@ Input field definition for snippet parameters.
 | ---- | ---- | ----------- | -------- |
 | code | string |  | No |
 | error | string |  | No |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
 | valid | boolean |  | Yes |
 
 #### KnowledgeFSSourceDeletePayload
@@ -22541,8 +22982,9 @@ Input field definition for snippet parameters.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| code | string |  | Yes |
+| code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_UNAVAILABLE", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_OPERATION_FAILED", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH" | *Enum:* `"DOCUMENT_COMPILATION_FAILED"`, `"DOCUMENT_COMPILATION_RETRYABLE"`, `"DOCUMENT_DISABLED"`, `"DOCUMENT_PARSER_INPUT_INVALID"`, `"DOCUMENT_PARSER_NOT_CONFIGURED"`, `"DOCUMENT_PARSER_RATE_LIMITED"`, `"DOCUMENT_PARSER_RESPONSE_INVALID"`, `"DOCUMENT_PARSER_UNAVAILABLE"`, `"EMBEDDING_DIMENSION_INVALID"`, `"EMBEDDING_DIMENSION_UNSUPPORTED"`, `"EXECUTION_ATTEMPTS_EXHAUSTED"`, `"KNOWLEDGE_FS_ACCESS_DENIED"`, `"KNOWLEDGE_FS_CONFLICT"`, `"KNOWLEDGE_FS_INTERNAL_ERROR"`, `"KNOWLEDGE_FS_INVALID_REQUEST"`, `"KNOWLEDGE_FS_NOT_FOUND"`, `"KNOWLEDGE_FS_RATE_LIMITED"`, `"KNOWLEDGE_FS_TIMEOUT"`, `"KNOWLEDGE_FS_UNAVAILABLE"`, `"KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND"`, `"KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED"`, `"MODEL_CAPABILITY_MISMATCH"`, `"MODEL_CONFIGURATION_STALE"`, `"MODEL_CREDENTIAL_INVALID"`, `"MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE"`, `"MODEL_IDENTITY_MISMATCH"`, `"MODEL_PREFLIGHT_CANCELED"`, `"MODEL_PREFLIGHT_FAILED"`, `"MODEL_PREFLIGHT_TIMEOUT"`, `"MODEL_PREFLIGHT_UNAVAILABLE"`, `"MODEL_PROFILE_ACTIVATION_INCOMPLETE"`, `"MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED"`, `"MODEL_RUNTIME_FAILED"`, `"MODEL_RUNTIME_TIMEOUT"`, `"MODEL_RUNTIME_UNAVAILABLE"`, `"MODEL_SELECTION_NOT_FOUND"`, `"RESEARCH_TASK_CAPABILITY_REVOKED"`, `"RESEARCH_TASK_DISPATCH_DEAD"`, `"RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED"`, `"RESEARCH_TASK_FAILED"`, `"RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID"`, `"RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID"`, `"SOURCE_BULK_ACTION_FAILED"`, `"SOURCE_CREDENTIAL_CONFIG_INVALID"`, `"SOURCE_CREDENTIAL_MUTATION_FAILED"`, `"SOURCE_CREDENTIAL_TEST_FAILED"`, `"SOURCE_CREDENTIAL_UNAVAILABLE"`, `"SOURCE_DOCUMENT_MATERIALIZATION_FAILED"`, `"SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED"`, `"SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID"`, `"SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED"`, `"SOURCE_ONLINE_DRIVE_CONFIG_INVALID"`, `"SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED"`, `"SOURCE_ONLINE_DRIVE_IMPORT_FAILED"`, `"SOURCE_ONLINE_DRIVE_REQUEST_FAILED"`, `"SOURCE_OPERATION_FAILED"`, `"SOURCE_SECRET_INTEGRITY_FAILED"`, `"SOURCE_SECRET_REF_CONFLICT"`, `"SOURCE_SYNC_FAILED"`, `"SOURCE_WEBSITE_CRAWL_CONFIG_INVALID"`, `"SOURCE_WEBSITE_CRAWL_FAILED"`, `"SOURCE_WORKFLOW_FAILED"`, `"UPLOAD_INITIALIZATION_FAILED"`, `"UPLOAD_INTEGRITY_MISMATCH"` | Yes |
 | error | string |  | Yes |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
 | filename | string |  | Yes |
 
 #### KnowledgeFSSourceImportFilePayload
@@ -22729,11 +23171,11 @@ Input field definition for snippet parameters.
 | created_at | dateTime |  | Yes |
 | cursor | string |  | No |
 | execution_attempts | integer |  | Yes |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
 | id | string |  | Yes |
 | kind | string |  | Yes |
 | knowledge_space_id | string |  | Yes |
 | last_error_code | string |  | No |
-| last_error_message | string |  | No |
 | max_execution_attempts | integer |  | Yes |
 | progress_completed | integer |  | Yes |
 | progress_failed | integer |  | Yes |
@@ -22803,6 +23245,7 @@ Input field definition for snippet parameters.
 | permission_keys | [ [KnowledgeFSProductPermission](#knowledgefsproductpermission) ] |  | Yes |
 | resource_version | integer |  | Yes |
 | state | [KnowledgeFSControlSpaceState](#knowledgefscontrolspacestate) |  | Yes |
+| tags | [ [KnowledgeFSSpaceTagResponse](#knowledgefsspacetagresponse) ] |  | No |
 | technical_status | string, <br>**Available values:** "available", "not_ready", "unavailable" | *Enum:* `"available"`, `"not_ready"`, `"unavailable"` | Yes |
 | technical_summary | [KnowledgeFSTechnicalSummary](#knowledgefstechnicalsummary) |  | No |
 | updated_at | dateTime |  | Yes |
@@ -22816,6 +23259,7 @@ Input field definition for snippet parameters.
 | limit | integer, <br>**Default:** 20 |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
 | query | string |  | No |
+| tag_ids | [ string ] | Filter by knowledge tag IDs using match-any semantics | No |
 
 #### KnowledgeFSSpaceListResponse
 
@@ -22826,12 +23270,33 @@ Input field definition for snippet parameters.
 | limit | integer |  | Yes |
 | page | integer |  | Yes |
 
+#### KnowledgeFSSpaceTagListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSSpaceTagResponse](#knowledgefsspacetagresponse) ] |  | Yes |
+
+#### KnowledgeFSSpaceTagResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| type | string, <br>**Default:** knowledge |  | No |
+
+#### KnowledgeFSSpaceTagsReplacePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| tag_ids | [ string ] |  | No |
+
 #### KnowledgeFSSpaceUpdatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string |  | No |
 | icon | string |  | No |
+| icon_background | string |  | No |
 | name | string |  | No |
 | visibility | [KnowledgeFSControlSpaceVisibility](#knowledgefscontrolspacevisibility) |  | No |
 
@@ -22868,6 +23333,7 @@ Input field definition for snippet parameters.
 | description | string |  | No |
 | document_count | integer |  | No |
 | icon | string |  | No |
+| icon_background | string |  | No |
 | index_state | string |  | No |
 | knowledge_space_id | string |  | Yes |
 | last_job_state | string |  | No |
@@ -22958,6 +23424,64 @@ Input field definition for snippet parameters.
 | candidate_count | integer |  | No |
 | name | string |  | Yes |
 | status | string, <br>**Available values:** "error", "ok", "skipped" | *Enum:* `"error"`, `"ok"`, `"skipped"` | Yes |
+
+#### KnowledgeFSUpgradeBlockReason
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFSUpgradeBlockReason | string |  |  |
+
+#### KnowledgeFSUpgradeDiscoveryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| block_reason | [KnowledgeFSUpgradeBlockReason](#knowledgefsupgradeblockreason) |  | No |
+| can_retry | boolean |  | Yes |
+| can_upgrade | boolean |  | Yes |
+| job | [KnowledgeFSUpgradeJobResponse](#knowledgefsupgradejobresponse) |  | No |
+
+#### KnowledgeFSUpgradeJobListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSUpgradeJobResponse](#knowledgefsupgradejobresponse) ] |  | Yes |
+
+#### KnowledgeFSUpgradeJobResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completed_at | string |  | No |
+| completed_documents | integer |  | Yes |
+| completed_sources | integer |  | Yes |
+| id | string |  | Yes |
+| last_error_code | string |  | No |
+| last_error_message | string |  | No |
+| new_control_space_id | string |  | No |
+| old_dataset_id | string |  | Yes |
+| snapshot_at | dateTime |  | Yes |
+| stage | [KnowledgeFSUpgradeStage](#knowledgefsupgradestage) |  | Yes |
+| status | [KnowledgeFSUpgradeJobStatus](#knowledgefsupgradejobstatus) |  | Yes |
+| total_documents | integer |  | Yes |
+| total_sources | integer |  | Yes |
+
+#### KnowledgeFSUpgradeJobStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFSUpgradeJobStatus | string |  |  |
+
+#### KnowledgeFSUpgradeRetryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| status | string, <br>**Default:** queued |  | No |
+
+#### KnowledgeFSUpgradeStage
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFSUpgradeStage | string |  |  |
 
 #### KnowledgeFSUploadPartPresignPayload
 
@@ -23906,6 +24430,7 @@ Coarse node-level status used by Inspector to pick a banner.
 | ---- | ---- | ----------- | -------- |
 | avatar | string |  | No |
 | email | string |  | Yes |
+| id | string |  | Yes |
 | interface_language | string |  | Yes |
 | name | string |  | Yes |
 | timezone | string |  | Yes |

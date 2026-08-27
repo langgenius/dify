@@ -148,6 +148,8 @@ export const DocumentRevisionChunkKindSchema = z.enum([
   "summary",
 ]);
 
+export const DocumentRevisionChunkParseElementIdsSchema = z.array(z.string().min(1)).max(20_000);
+
 export const DocumentRevisionChunkSchema = z
   .object({
     createdAt: z.string(),
@@ -160,6 +162,7 @@ export const DocumentRevisionChunkSchema = z
     knowledgeSpaceId: z.string().uuid(),
     ordinal: z.number().int().nonnegative(),
     parentChunkId: z.string().uuid().optional(),
+    parseElementIds: DocumentRevisionChunkParseElementIdsSchema,
     sectionPath: z.array(z.string().min(1)),
     startOffset: z.number().int().nonnegative().optional(),
     text: z.string(),
