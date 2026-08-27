@@ -110,6 +110,26 @@ describe('Home banner browser interactions', () => {
       .toBeVisible()
   })
 
+  it('keeps rotation stopped when pointer focus switches to keyboard navigation', async () => {
+    // Chromium owns the pointer-focus ordering and the subsequent native Tab transition.
+    const screen = await renderBanner()
+    const carousel = screen.getByRole('region', { name: 'explore.banner.carouselLabel' })
+    const slidesContainer = getSlidesContainer(carousel.element())
+    const firstPicker = screen.getByRole('button', { name: '01 First banner' })
+    const secondPicker = screen.getByRole('button', { name: '02 Second banner' })
+
+    await secondPicker.click()
+    expect(secondPicker.element()).toHaveFocus()
+    await userEvent.unhover(carousel)
+    await userEvent.tab({ shift: true })
+
+    expect(firstPicker.element()).toHaveFocus()
+    await expect
+      .element(screen.getByRole('button', { name: 'explore.banner.startRotation' }))
+      .toBeVisible()
+    await expect.poll(() => slidesContainer.getAttribute('aria-live')).toBe('polite')
+  })
+
   it('keeps the whole carousel paused while the pointer moves between slides and controls', async () => {
     // Chromium hit testing is required to prove that moving onto the overlaid control stays in one hover boundary.
     const screen = await renderBanner()

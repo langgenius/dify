@@ -33,6 +33,7 @@ type BannerCarouselContentProps = {
   isPlaying: boolean
   isRotationEnabled: boolean
   onToggleRotation: () => void
+  onRotationControlPointerDown: () => void
   onApiChange: (api: NonNullable<CarouselApi>) => void
 }
 
@@ -72,6 +73,7 @@ function BannerCarouselContent({
   isPlaying,
   isRotationEnabled,
   onToggleRotation,
+  onRotationControlPointerDown,
   onApiChange,
 }: BannerCarouselContentProps) {
   const { t } = useTranslation()
@@ -120,6 +122,7 @@ function BannerCarouselContent({
             { ns: 'explore' },
           )}
           className="shrink-0"
+          onPointerDownCapture={onRotationControlPointerDown}
           onClick={onToggleRotation}
         >
           <span
@@ -334,7 +337,6 @@ export function Banner({ banners }: BannerProps) {
         onFocusCapture={stopRotationForFocus}
         onPointerOver={pauseRotationForPointer}
         onPointerOut={resumeRotationAfterPointer}
-        onPointerDownCapture={markPointerActivation}
         onPointerUpCapture={clearPointerActivation}
         onPointerCancelCapture={clearPointerActivation}
       >
@@ -345,6 +347,7 @@ export function Banner({ banners }: BannerProps) {
           isPlaying={isPlaying}
           isRotationEnabled={isRotationEnabled}
           onToggleRotation={toggleRotation}
+          onRotationControlPointerDown={markPointerActivation}
           onApiChange={setApi}
         />
       </Carousel>

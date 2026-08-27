@@ -401,8 +401,7 @@ describe('Banner', () => {
     expect(mockAutoplay.play).not.toHaveBeenCalled()
   })
 
-  it('keeps an explicit pause through an Embla reinitialization', async () => {
-    const user = userEvent.setup()
+  it('restores enabled rotation after an Embla reinitialization', () => {
     render(
       <Banner
         banners={[
@@ -412,15 +411,15 @@ describe('Banner', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'banner.stopRotation' }))
     mockAutoplay.play.mockClear()
     act(() => {
       mockAutoplayPlaying = false
       mockAutoplayListeners.reInit.forEach((listener) => listener())
     })
 
-    expect(mockAutoplay.play).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: 'banner.startRotation' })).toBeInTheDocument()
+    expect(mockAutoplay.play).toHaveBeenCalledOnce()
+    expect(screen.getByRole('button', { name: 'banner.stopRotation' })).toBeInTheDocument()
+    expect(screen.getByTestId('carousel-content')).toHaveAttribute('aria-live', 'off')
   })
 
   it('does not resume an autoplay plugin that was already inactive before focus', () => {
