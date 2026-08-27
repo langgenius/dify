@@ -65,10 +65,10 @@ class CheckFormSurface(Requirement):
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         form_token = (request.view_args or {})["form_token"]
-        # `session` is unused on purpose: `HumanInputService` takes an engine or a
-        # maker, never a `Session`, and the handlers below read the form through
-        # the same service. Handing it the guard's session would move this route's
-        # form read into the guard's transaction, which this refactor preserves.
+        # `session` is unused on purpose: `HumanInputService` never accepts a
+        # `Session` — only an engine or a session maker, and it opens its own. This
+        # read and the handlers' (which build the service off `db.engine`) are
+        # separate transactions, as they were when this check lived in a handler body.
         form = HumanInputService(session_factory.get_session_maker()).get_form_by_token(form_token)
         if form is None or form.app_id != ctx.app.id or form.tenant_id != ctx.app.tenant_id:
             return
