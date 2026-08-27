@@ -1,6 +1,7 @@
 'use client'
 
 import type {
+  WorkflowAsToolSource,
   WorkflowPath,
   WorkflowReference,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
@@ -10,7 +11,7 @@ import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Link from '@/next/link'
-import { workflowPathKey } from './utils/workflow-path'
+import { uniqueWorkflowPaths, workflowPathKey } from './utils/workflow-path'
 
 function workflowReferenceIconType(reference: WorkflowReference): AppIconType | undefined {
   if (reference.icon_type === 'emoji') return 'emoji'
@@ -102,13 +103,7 @@ export function WorkflowDependencyPreview({
   subjectName: string
 }) {
   const { t } = useTranslation('deployments')
-  const validPaths = [
-    ...new Map(
-      paths
-        .filter((path) => path.workflows.length > 0)
-        .map((path) => [workflowPathKey(path), path] as const),
-    ).values(),
-  ]
+  const validPaths = uniqueWorkflowPaths(paths)
   const firstLeafWorkflow = validPaths[0]?.workflows.at(-1)
 
   if (!firstLeafWorkflow) return null
@@ -144,7 +139,18 @@ export function WorkflowDependencyPreview({
   )
 }
 
-export function SubworkflowSourceTitle({ source }: { source: WorkflowReference }) {
+export function SubworkflowSourceTitle({ source }: { source: WorkflowAsToolSource }) {
+  const { workflow } = source
+  const paths = uniqueWorkflowPaths(source.paths)
+
+  if (paths.length === 0) {
+    return (
+      <span className="min-w-0 flex-1 truncate system-sm-semibold text-text-primary">
+        {workflow.name}
+      </span>
+    )
+  }
+
   return (
     <Popover>
       <PopoverTrigger
@@ -156,11 +162,11 @@ export function SubworkflowSourceTitle({ source }: { source: WorkflowReference }
             type="button"
             className="group/source max-w-full min-w-0 cursor-help truncate rounded-sm border-b border-dotted border-text-quaternary text-start system-sm-semibold text-text-primary outline-hidden hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-state-accent-solid data-popup-open:text-text-secondary"
           >
-            {source.name}
+            {workflow.name}
           </button>
         }
       />
-      <WorkflowSourceContent paths={[{ workflows: [source] }]} title={source.name} />
+      <WorkflowSourceContent paths={paths} title={workflow.name} />
     </Popover>
   )
 }

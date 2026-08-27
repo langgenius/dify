@@ -120,16 +120,28 @@ function selectedEnvironmentVariableValue(
   slot: EnvironmentVariableSlot,
   selection: DeploymentConfigurationValues['environmentVariables'][string],
 ) {
+  let value: unknown
+
   switch (selection.source) {
     case EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CONFIGURED:
-      return slot.configured_value
+      value = slot.configured_value
+      break
     case EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED:
-      return slot.last_deployed_value
+      value = slot.last_deployed_value
+      break
     case EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM:
-      return selection.customValue
+      value = selection.customValue
+      break
     default:
       return undefined
   }
+
+  if (slot.value_type !== EnvVarValueType.ENV_VAR_VALUE_TYPE_NUMBER) return value
+  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined
+  if (typeof value !== 'string' || value.trim() === '') return undefined
+
+  const numberValue = Number(value)
+  return Number.isFinite(numberValue) ? numberValue : undefined
 }
 
 function hasValidEnvironmentVariableValue(slot: EnvironmentVariableSlot, value: unknown) {
@@ -137,10 +149,7 @@ function hasValidEnvironmentVariableValue(slot: EnvironmentVariableSlot, value: 
     case EnvVarValueType.ENV_VAR_VALUE_TYPE_LLM:
       return isLLMEnvironmentVariableValue(value)
     case EnvVarValueType.ENV_VAR_VALUE_TYPE_NUMBER:
-      return (
-        (typeof value === 'number' && Number.isFinite(value)) ||
-        (typeof value === 'string' && value !== '' && Number.isFinite(Number(value)))
-      )
+      return typeof value === 'number' && Number.isFinite(value)
     case EnvVarValueType.ENV_VAR_VALUE_TYPE_SECRET:
     case EnvVarValueType.ENV_VAR_VALUE_TYPE_STRING:
       return typeof value === 'string' && value !== ''
@@ -168,7 +177,7 @@ export function findInvalidDeploymentEnvironmentVariable(
   values: DeploymentConfigurationValues,
 ) {
   for (const group of deploymentOptions.environment_variable_groups) {
-    const owner = group.from_app ?? group.from_workflow_as_tool
+    const owner = group.from_app ?? group.from_workflow_as_tool?.workflow
     if (!owner) continue
 
     for (const slot of group.environment_variable_slots) {
@@ -219,7 +228,7 @@ export function workflowDeploymentInput(
   const environmentVariableGroups: WorkflowDeploymentInput['environment_variable_groups'] = []
 
   for (const group of deploymentOptions.environment_variable_groups) {
-    const owner = group.from_app ?? group.from_workflow_as_tool
+    const owner = group.from_app ?? group.from_workflow_as_tool?.workflow
     if (!owner) return
 
     environmentVariableGroups.push({
@@ -229,12 +238,13 @@ export function workflowDeploymentInput(
           slot,
           values.environmentVariables[environmentVariableSelectionKey(owner.workflow_id, slot.key)],
         )
+        const value = selectedEnvironmentVariableValue(slot, selection)
 
         return {
           key: slot.key,
           value_source: selection.source,
           ...(selection.source === EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM
-            ? { value: selection.customValue }
+            ? { value }
             : {}),
         }
       }),

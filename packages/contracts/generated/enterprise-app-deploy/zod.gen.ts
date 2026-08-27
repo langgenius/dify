@@ -842,12 +842,6 @@ export const zWorkflowReference = z.object({
   icon_url: z.string().optional(),
 })
 
-export const zEnvironmentVariableGroup = z.object({
-  from_app: zWorkflowReference.optional(),
-  from_workflow_as_tool: zWorkflowReference.optional(),
-  environment_variable_slots: z.array(zEnvironmentVariableSlot),
-})
-
 export const zWorkflowPath = z.object({
   workflows: z.array(zWorkflowReference),
 })
@@ -866,11 +860,6 @@ export const zCredentialSlot = z.object({
   workflow_as_tool_dependency: zWorkflowAsToolDependency.optional(),
 })
 
-export const zGetWorkflowDeploymentOptionsResponse = z.object({
-  environment_variable_groups: z.array(zEnvironmentVariableGroup),
-  credential_slots: z.array(zCredentialSlot),
-})
-
 export const zUnsupportedNode = z.object({
   id: z.string(),
   type: z.string(),
@@ -881,6 +870,22 @@ export const zUnsupportedNode = z.object({
 
 export const zPrecheckWorkflowDeploymentResponse = z.object({
   unsupported_nodes: z.array(zUnsupportedNode),
+})
+
+export const zWorkflowAsToolSource = z.object({
+  workflow: zWorkflowReference,
+  paths: z.array(zWorkflowPath),
+})
+
+export const zEnvironmentVariableGroup = z.object({
+  from_app: zWorkflowReference.optional(),
+  from_workflow_as_tool: zWorkflowAsToolSource.optional(),
+  environment_variable_slots: z.array(zEnvironmentVariableSlot),
+})
+
+export const zGetWorkflowDeploymentOptionsResponse = z.object({
+  environment_variable_groups: z.array(zEnvironmentVariableGroup),
+  credential_slots: z.array(zCredentialSlot),
 })
 
 export const zWorkflowVersion = z.object({

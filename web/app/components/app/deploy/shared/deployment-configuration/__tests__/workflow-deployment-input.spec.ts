@@ -119,6 +119,74 @@ describe('workflowDeploymentInput', () => {
     expect(workflowDeploymentInput(options, values)).toBeUndefined()
   })
 
+  it.each([' ', 'not-a-number', 'Infinity'])(
+    'rejects an invalid custom Number value: %j',
+    (customValue) => {
+      const options: GetWorkflowDeploymentOptionsResponse = {
+        ...deploymentOptions,
+        environment_variable_groups: deploymentOptions.environment_variable_groups.map((group) => ({
+          ...group,
+          environment_variable_slots: group.environment_variable_slots.map((slot) => ({
+            ...slot,
+            key: 'PORT',
+            value_type: EnvVarValueType.ENV_VAR_VALUE_TYPE_NUMBER,
+          })),
+        })),
+      }
+      const values: DeploymentConfigurationValues = {
+        credentials: {},
+        environmentVariables: {
+          [environmentVariableSelectionKey('workflow-1', 'PORT')]: {
+            customValue,
+            source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_CUSTOM,
+          },
+        },
+      }
+
+      expect(hasValidDeploymentEnvironmentVariables(options, values)).toBe(false)
+      expect(workflowDeploymentInput(options, values)).toBeUndefined()
+    },
+  )
+
+  it('normalizes a valid custom Number value before building the deployment payload', () => {
+    const options: GetWorkflowDeploymentOptionsResponse = {
+      ...deploymentOptions,
+      environment_variable_groups: deploymentOptions.environment_variable_groups.map((group) => ({
+        ...group,
+        environment_variable_slots: group.environment_variable_slots.map((slot) => ({
+          ...slot,
+          key: 'PORT',
+          value_type: EnvVarValueType.ENV_VAR_VALUE_TYPE_NUMBER,
+        })),
+      })),
+    }
+    const values: DeploymentConfigurationValues = {
+      credentials: {},
+      environmentVariables: {
+        [environmentVariableSelectionKey('workflow-1', 'PORT')]: {
+          customValue: '3000.5',
+          source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_CUSTOM,
+        },
+      },
+    }
+
+    expect(workflowDeploymentInput(options, values)).toEqual({
+      credentials: [],
+      environment_variable_groups: [
+        {
+          environment_variables: [
+            {
+              key: 'PORT',
+              value: 3000.5,
+              value_source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_CUSTOM,
+            },
+          ],
+          workflow_id: 'workflow-1',
+        },
+      ],
+    })
+  })
+
   it.each([
     ['configured', true, false, { configured_value: '' }],
     ['last deployed', false, true, { last_deployed_value: '' }],

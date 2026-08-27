@@ -229,7 +229,10 @@ const WORKFLOW_DEPLOYMENT_OPTIONS: GetWorkflowDeploymentOptionsResponse = {
           value_type: EnvVarValueType.ENV_VAR_VALUE_TYPE_SECRET,
         },
       ],
-      from_workflow_as_tool: SUBWORKFLOW_REFERENCE,
+      from_workflow_as_tool: {
+        paths: [{ workflows: [ROOT_WORKFLOW_REFERENCE, SUBWORKFLOW_REFERENCE] }],
+        workflow: SUBWORKFLOW_REFERENCE,
+      },
     },
   ],
 }
@@ -1275,10 +1278,9 @@ describe('AppDeploy', () => {
 
     await user.hover(subworkflowVariables.getByRole('button', { name: 'Workflow as Tool' }))
     const sourcePreview = await screen.findByRole('dialog', { name: 'Workflow as Tool' })
-    expect(within(sourcePreview).getByRole('link', { name: 'Workflow as Tool' })).toHaveAttribute(
-      'href',
-      '/app/app-workflow-tool/workflow',
-    )
+    expect(
+      within(sourcePreview).getByRole('link', { name: /Finance APP.*Workflow as Tool/ }),
+    ).toHaveAttribute('href', '/app/app-workflow-tool/workflow')
 
     await user.click(portSource)
     expect(
@@ -1399,7 +1401,7 @@ describe('AppDeploy', () => {
     const body = await deploymentRequests[0]!.json()
     expect(body.environment_variable_groups[0].environment_variables).toContainEqual({
       key: 'PORT',
-      value: '3000',
+      value: 3000,
       value_source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_CUSTOM,
     })
   })
@@ -1588,7 +1590,7 @@ describe('AppDeploy', () => {
           environment_variables: [
             {
               key: 'PORT',
-              value: '3000',
+              value: 3000,
               value_source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_CUSTOM,
             },
             {

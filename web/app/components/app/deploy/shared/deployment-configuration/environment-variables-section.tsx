@@ -16,7 +16,7 @@ function EnvironmentVariableGroupFields({
   getEnvironmentVariableSelection: DeploymentConfigurationValuesController['getEnvironmentVariableSelection']
   setEnvironmentVariableSelection: DeploymentConfigurationValuesController['setEnvironmentVariableSelection']
 }) {
-  const owner = group.from_app ?? group.from_workflow_as_tool
+  const owner = group.from_app ?? group.from_workflow_as_tool?.workflow
   if (!owner) return null
 
   return (
@@ -85,7 +85,7 @@ export const EnvironmentVariablesSection = memo(
           description={t(($) => $['studio.environmentVariablesDescription'])}
         />
         {visibleGroups.map((group) => {
-          const owner = group.from_app ?? group.from_workflow_as_tool
+          const owner = group.from_app ?? group.from_workflow_as_tool?.workflow
           if (!owner) return null
 
           return (

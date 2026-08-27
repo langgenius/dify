@@ -473,7 +473,7 @@ export type EnvironmentTrigger = {
 
 export type EnvironmentVariableGroup = {
   from_app?: WorkflowReference
-  from_workflow_as_tool?: WorkflowReference
+  from_workflow_as_tool?: WorkflowAsToolSource
   environment_variable_slots: Array<EnvironmentVariableSlot>
 }
 
@@ -930,6 +930,11 @@ export type UpdateServiceApiConversationVariableRequest = {
 }
 
 export type WorkflowAsToolDependency = {
+  paths: Array<WorkflowPath>
+}
+
+export type WorkflowAsToolSource = {
+  workflow: WorkflowReference
   paths: Array<WorkflowPath>
 }
 
