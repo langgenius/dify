@@ -70,15 +70,6 @@ vi.mock('@/app/components/explore/create-app-modal', () => ({
   },
 }))
 
-vi.mock('../../try-app', () => ({
-  default: ({ onCreate, onClose }: { onCreate: () => void, onClose: () => void }) => (
-    <div data-testid="try-app-panel">
-      <button data-testid="try-app-create" onClick={onCreate}>create</button>
-      <button data-testid="try-app-close" onClick={onClose}>close</button>
-    </div>
-  ),
-}))
-
 vi.mock('../../banner/banner', () => ({
   default: () => <div data-testid="explore-banner">banner</div>,
 }))
@@ -365,9 +356,8 @@ describe('AppList', () => {
     })
   })
 
-  describe('TryApp Panel', () => {
-    it('should open create modal from try app panel', async () => {
-      vi.useRealTimers()
+  describe('Card Actions', () => {
+    it('should not render details action', () => {
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -375,29 +365,7 @@ describe('AppList', () => {
 
       renderAppList(true)
 
-      fireEvent.click(screen.getByText('explore.appCard.try'))
-      expect(screen.getByTestId('try-app-panel')).toBeInTheDocument()
-
-      fireEvent.click(screen.getByTestId('try-app-create'))
-
-      await waitFor(() => {
-        expect(screen.getByTestId('create-app-modal')).toBeInTheDocument()
-      })
-    })
-
-    it('should close try app panel when close is clicked', () => {
-      mockExploreData = {
-        categories: ['Writing'],
-        allList: [createApp()],
-      }
-
-      renderAppList(true)
-
-      fireEvent.click(screen.getByText('explore.appCard.try'))
-      expect(screen.getByTestId('try-app-panel')).toBeInTheDocument()
-
-      fireEvent.click(screen.getByTestId('try-app-close'))
-      expect(screen.queryByTestId('try-app-panel')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'explore.appCard.try' })).not.toBeInTheDocument()
     })
   })
 

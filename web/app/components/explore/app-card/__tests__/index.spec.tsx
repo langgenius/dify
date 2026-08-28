@@ -40,14 +40,12 @@ const createApp = (overrides?: Partial<App>): App => ({
 
 describe('AppCard', () => {
   const onCreate = vi.fn()
-  const onTry = vi.fn()
 
   const renderComponent = (props?: Partial<AppCardProps>) => {
     const mergedProps: AppCardProps = {
       app: createApp(),
       canCreate: false,
       onCreate,
-      onTry,
       isExplore: false,
       ...props,
     }
@@ -95,16 +93,16 @@ describe('AppCard', () => {
         isExplore: true,
       })
 
-      const button = screen.getByText('explore.appCard.addToWorkspace')
+      const button = screen.getByRole('button', { name: 'explore.appCard.addToWorkspace' })
       expect(button).toBeInTheDocument()
       fireEvent.click(button)
       expect(onCreate).toHaveBeenCalledTimes(1)
     })
 
-    it('should render try button in explore mode', () => {
+    it('should not render details button in explore mode', () => {
       renderComponent({ canCreate: true, isExplore: true })
 
-      expect(screen.getByText('explore.appCard.try')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'explore.appCard.try' })).not.toBeInTheDocument()
     })
   })
 
@@ -112,14 +110,13 @@ describe('AppCard', () => {
     it('should hide action buttons when not in explore mode', () => {
       renderComponent({ canCreate: true, isExplore: false })
 
-      expect(screen.queryByText('explore.appCard.addToWorkspace')).not.toBeInTheDocument()
-      expect(screen.queryByText('explore.appCard.try')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'explore.appCard.addToWorkspace' })).not.toBeInTheDocument()
     })
 
     it('should hide create button when canCreate is false', () => {
       renderComponent({ canCreate: false, isExplore: true })
 
-      expect(screen.queryByText('explore.appCard.addToWorkspace')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'explore.appCard.addToWorkspace' })).not.toBeInTheDocument()
     })
   })
 
@@ -137,16 +134,6 @@ describe('AppCard', () => {
       renderComponent({ app: createApp({ description: '' }) })
 
       expect(screen.getByText('Sample App')).toBeInTheDocument()
-    })
-
-    it('should call onTry when try button is clicked', () => {
-      const app = createApp()
-
-      renderComponent({ app, canCreate: true, isExplore: true })
-
-      fireEvent.click(screen.getByText('explore.appCard.try'))
-
-      expect(onTry).toHaveBeenCalledWith({ appId: 'app-id', app })
     })
   })
 })
