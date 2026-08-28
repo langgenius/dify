@@ -4,17 +4,24 @@ from services.dify_builder.agent import llm
 
 
 class _Msg:
-    def __init__(self, text): self._t = text
-    def get_text_content(self): return self._t
+    def __init__(self, text):
+        self._t = text
+
+    def get_text_content(self):
+        return self._t
 
 
 class _Result:
-    def __init__(self, text): self.message = _Msg(text)
+    def __init__(self, text):
+        self.message = _Msg(text)
 
 
 class _FakeInstance:
-    def __init__(self, replies): self._replies = list(replies); self.calls = []
-    def invoke_llm(self, *, prompt_messages, model_parameters=None, stop=None, stream=True, **kw):
+    def __init__(self, replies):
+        self._replies = list(replies)
+        self.calls = []
+
+    def invoke_llm(self, *, prompt_messages, model_parameters=None, stop=None, stream=True, **kw):  # noqa: ARG002
         self.calls.append(prompt_messages)
         return _Result(self._replies.pop(0))
 
