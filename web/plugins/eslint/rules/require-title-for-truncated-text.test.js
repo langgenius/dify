@@ -4,6 +4,7 @@ import tsParser from '@typescript-eslint/parser'
 import { Linter } from 'eslint'
 import { it } from 'vitest'
 import rule from './require-title-for-truncated-text.js'
+import './fixtures/truncation.module.css'
 
 const plugin = {
   rules: {

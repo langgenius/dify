@@ -85,7 +85,7 @@ function stringContainsTruncationClass(value) {
   return value.split(/\s+/u).some((token) => token && isTruncationClassToken(token))
 }
 
-export function getTruncatingCssModuleClassNames(cssText) {
+function getTruncatingCssModuleClassNames(cssText) {
   const classNames = new Set()
   const classBlockPattern = /\.([A-Z_a-z][\w-]*)\s*\{([^{}]*)\}/gu
 
