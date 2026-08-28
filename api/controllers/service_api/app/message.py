@@ -11,6 +11,7 @@ import services
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
 from controllers.common.fields import SimpleResultStringListResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.schema import expect_with_user
@@ -160,14 +161,13 @@ class MessageFeedbackApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser, message_id: UUID):
+    @model_validate(MessageFeedbackPayload)
+    def post(self, payload: MessageFeedbackPayload, app_model: App, end_user: EndUser, message_id: UUID):
         """Submit feedback for a message.
 
         Allows users to rate messages as like/dislike and provide optional feedback content.
         """
         message_id_str = str(message_id)
-
-        payload = MessageFeedbackPayload.model_validate(service_api_ns.payload or {})
 
         try:
             MessageService.create_feedback(

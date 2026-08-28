@@ -21,7 +21,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
-from flask import Flask
+from flask import Flask, request
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
@@ -476,8 +476,9 @@ class TestMessageFeedbackApi:
             method="POST",
             json={"rating": "like", "content": "ok"},
         ):
+            payload = MessageFeedbackPayload.model_validate(request.get_json() or {})
             with pytest.raises(NotFound):
-                handler(api, app_model=app_model, end_user=end_user, message_id="m1")
+                handler(api, payload, app_model=app_model, end_user=end_user, message_id="m1")
 
 
 class TestAppGetFeedbacksApi:
