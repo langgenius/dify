@@ -43,6 +43,7 @@ from controllers.openapi._errors import (
 )
 from controllers.openapi._models import MemberInvitePayload, MemberListQuery, MemberRoleUpdatePayload
 from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.loaders import load_caller, load_workspace
 from controllers.openapi.auth.subjects import AccountSubject
 from controllers.openapi.workspaces import (
     WorkspaceMemberApi,
@@ -105,11 +106,14 @@ def _auth_ctx(account_id: uuid.UUID | None = None) -> AuthContext:
 
 
 def _context(session: Session, account_id: uuid.UUID, workspace_id: str) -> Context:
-    """What the router hands the handler: the caller's subject, the request's
-    session and its path params. `workspace` and `caller` resolve lazily off
-    the same rows the requirements would have used.
+    """The context a handler is given *after* the pipeline ran: the caller's
+    subject, the request's session and its path params, plus the workspace and
+    caller these routes' requirements load off the same rows.
     """
-    return Context(AccountSubject(_auth_ctx(account_id)), session, {"workspace_id": workspace_id})
+    ctx = Context(AccountSubject(_auth_ctx(account_id)), session, {"workspace_id": workspace_id})
+    load_workspace(ctx, session)
+    load_caller(ctx, session)
+    return ctx
 
 
 def _account(account_id: str = "acct-1", email: str = "u@example.com") -> Account:
@@ -147,6 +151,15 @@ def _persist_workspace(
         session.add_all([account, membership])
     session.commit()
     return tenant, accounts
+
+
+def _persist_caller(session: Session, account_id: uuid.UUID) -> None:
+    """These routes all declare `RequireWorkspaceMembership`, which resolves the
+    caller, so a handler reached through `__handler__` needs the caller's row
+    even when its own body only reads the workspace.
+    """
+    session.add(_account(account_id=str(account_id), email="caller@example.com"))
+    session.commit()
 
 
 def _tenant_service(**overrides) -> SimpleNamespace:
@@ -334,6 +347,7 @@ def test_members_list_returns_normalized_rows(database_session: Session):
         [(member_id, "mia@example.com", TenantAccountRole.ADMIN, False)],
     )
     members[0].name = "Mia"
+    _persist_caller(database_session, acct_id)
 
     result = api.get.__handler__(
         api,
@@ -360,6 +374,7 @@ def test_members_list_paginates_with_query_params(database_session: Session):
     member_ids = [str(uuid.uuid4()) for _ in range(5)]
     memberships = [(member_ids[i], f"u{i}@example.com", TenantAccountRole.NORMAL, False) for i in range(5)]
     _persist_workspace(database_session, ws_id, memberships)
+    _persist_caller(database_session, acct_id)
 
     result = api.get.__handler__(
         api,
@@ -377,7 +392,7 @@ def test_members_list_paginates_with_query_params(database_session: Session):
 
 def test_members_list_404s_on_an_archived_workspace(database_session: Session):
     """Member management against an archived workspace → 404. The check moved
-    from the view's own tenant load onto `Context.workspace`.
+    from the view's own tenant load onto `load_workspace`.
     """
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()

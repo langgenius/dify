@@ -24,6 +24,7 @@ from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurface
 from controllers.openapi._models import FormSubmitResponse, HumanInputFormDefinitionResponse
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.data import CallerKind
+from controllers.openapi.auth.loaders import load_app
 from controllers.openapi.auth.requirements import (
     RBACCheck,
     Requirement,
@@ -62,12 +63,13 @@ class CheckFormSurface(Requirement):
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         form_token = (request.view_args or {})["form_token"]
-        # `session` is unused on purpose: `HumanInputService` never accepts a
-        # `Session` — only an engine or a session maker, and it opens its own. This
-        # read and the handlers' (which build the service off `db.engine`) are
-        # separate transactions, as they were when this check lived in a handler body.
+        app = load_app(ctx, session)
+        # `HumanInputService` never accepts a `Session` — only an engine or a session
+        # maker, and it opens its own. This read and the handlers' (which build the
+        # service off `db.engine`) are separate transactions, as they were when this
+        # check lived in a handler body.
         form = HumanInputService(session_factory.get_session_maker()).get_form_by_token(form_token)
-        if form is None or form.app_id != ctx.app.id or form.tenant_id != ctx.app.tenant_id:
+        if form is None or form.app_id != app.id or form.tenant_id != app.tenant_id:
             return
         if not is_recipient_type_allowed_for_surface(form.recipient_type, HumanInputSurface.OPENAPI):
             raise RecipientSurfaceMismatch()

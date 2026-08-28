@@ -32,6 +32,7 @@ from controllers.common.wraps import enforce_rbac_access
 from controllers.openapi._audit import emit_wrong_surface
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.data import CallerKind
+from controllers.openapi.auth.loaders import load_app, load_caller, load_workspace, load_workspace_role
 from controllers.openapi.auth.subjects import Subject
 from core.rbac import RBACPermission, RBACResourceScope
 from enums import DeploymentEdition
@@ -118,15 +119,15 @@ class CheckAppApiEnabled(Requirement):
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         if not ctx.has_app:
             return
-        if not ctx.app.enable_api:
+        if not load_app(ctx, session).enable_api:
             raise Forbidden("service_api_disabled")
 
 
-def _assert_member(subject: Subject, ctx: Context) -> None:
-    """Resolving the role *is* the check: `Context.workspace_role` 404s a non-member."""
+def _assert_member(subject: Subject, ctx: Context, session: Session) -> None:
+    """Resolving the role *is* the check: `load_workspace_role` 404s a non-member."""
     if subject.caller_kind is not CallerKind.ACCOUNT:
         return
-    _ = ctx.workspace_role
+    load_workspace_role(ctx, session)
 
 
 class CheckAppWorkspaceMembership(Requirement):
@@ -136,7 +137,7 @@ class CheckAppWorkspaceMembership(Requirement):
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         if not ctx.has_app:
             return
-        _assert_member(subject, ctx)
+        _assert_member(subject, ctx, session)
 
 
 class RequireWorkspaceMembership(Requirement):
@@ -149,7 +150,7 @@ class RequireWorkspaceMembership(Requirement):
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        _assert_member(subject, ctx)
+        _assert_member(subject, ctx, session)
 
 
 class TokenScope(Requirement):
@@ -195,7 +196,7 @@ class RBACCheck(Requirement):
             return
         if dify_config.RBAC_ENABLED and self.scene is not None and self.resource_type is not None:
             enforce_rbac_access(
-                tenant_id=str(ctx.workspace.id),
+                tenant_id=str(load_workspace(ctx, session).id),
                 account_id=str(subject.account_id),
                 resource_type=self.resource_type,
                 scene=self.scene,
@@ -203,12 +204,12 @@ class RBACCheck(Requirement):
                 path_args=dict(request.view_args or {}),
             )
             return
-        self._enforce_role_floor(ctx)
+        self._enforce_role_floor(ctx, session)
 
-    def _enforce_role_floor(self, ctx: Context) -> None:
+    def _enforce_role_floor(self, ctx: Context, session: Session) -> None:
         if self.roles is None:
             return
-        if ctx.workspace_role not in self.roles:
+        if load_workspace_role(ctx, session) not in self.roles:
             raise Forbidden("insufficient workspace role")
 
 
@@ -242,7 +243,7 @@ class RequireWebappAccess(Requirement):
             return
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
             return
-        access_mode = self._access_mode(str(ctx.app.id))
+        access_mode = self._access_mode(str(load_app(ctx, session).id))
         if FeatureService.get_system_features().webapp_auth.enabled:
             self._assert_mode_allowed(subject, access_mode)
         if access_mode == WebAppAccessMode.PRIVATE:
@@ -267,5 +268,28 @@ class RequireWebappAccess(Requirement):
         user_id = subject.webapp_user_id(session)
         if user_id is None:
             raise Forbidden("cannot resolve user for private app check")
-        if not EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id=user_id, app_id=ctx.app.id):
+        app_id = load_app(ctx, session).id
+        if not EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id=user_id, app_id=app_id):
             raise Forbidden("user_not_allowed_for_private_app")
+
+
+class ResolveCaller(Requirement):
+    """Resolve the caller this subject mounts, and everything resolving it reads.
+
+    Written last in each pipeline's `fixed` and taking the default rank, so it
+    runs after every other requirement — the point at which the caller used to
+    resolve, lazily, at mount.
+
+    `ExternalSsoSubject.resolve_caller` reads the workspace, and its pipeline
+    carries no membership check, so nothing else on an SSO app route would load
+    one. Loading it here is what keeps that route working.
+    """
+
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        if not subject.mounts_caller(ctx):
+            return
+        if ctx.has_app:
+            load_app(ctx, session)
+            load_workspace(ctx, session)
+        load_caller(ctx, session)
