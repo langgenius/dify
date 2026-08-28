@@ -32,7 +32,10 @@ def _subject() -> Subject:
     return cast(Subject, object())
 
 
-def make_ctx(session: Session, **view_args: str) -> Context:
+def bare_ctx(session: Session, **view_args: str) -> Context:
+    """Deliberately not `_world.make_ctx`: the store has to be exercised with no
+    real subject behind it, so the name differs from the shared builder's.
+    """
     return Context(_subject(), session, dict(view_args))
 
 
@@ -72,7 +75,7 @@ DATA = [
 
 @pytest.mark.parametrize("datum", DATA, ids=[datum.name for datum in DATA])
 def test_a_datum_is_stored_once_and_read_back_unchanged(sqlite_session: Session, datum: _Datum) -> None:
-    ctx = make_ctx(sqlite_session, app_id=APP_ID, workspace_id=TENANT_ID)
+    ctx = bare_ctx(sqlite_session, app_id=APP_ID, workspace_id=TENANT_ID)
 
     assert datum.loaded(ctx) is False
     datum.store(ctx, datum.value)
@@ -86,19 +89,19 @@ def test_reading_a_datum_nothing_loaded_names_the_datum(sqlite_session: Session,
     """A programming error, not an HTTP status: no route should be able to reach
     a reader whose datum no requirement loads, so this is never a caller's answer.
     """
-    ctx = make_ctx(sqlite_session, app_id=APP_ID, workspace_id=TENANT_ID)
+    ctx = bare_ctx(sqlite_session, app_id=APP_ID, workspace_id=TENANT_ID)
 
     with pytest.raises(LookupError, match=datum.name):
         datum.read(ctx)
 
 
 def test_the_view_args_derived_facts_need_no_loading(sqlite_session: Session) -> None:
-    assert make_ctx(sqlite_session, app_id=APP_ID).has_app is True
-    assert make_ctx(sqlite_session, workspace_id=TENANT_ID).has_app is False
+    assert bare_ctx(sqlite_session, app_id=APP_ID).has_app is True
+    assert bare_ctx(sqlite_session, workspace_id=TENANT_ID).has_app is False
 
 
 def test_the_session_and_path_params_are_handed_over_at_construction(sqlite_session: Session) -> None:
-    ctx = make_ctx(sqlite_session, app_id=APP_ID)
+    ctx = bare_ctx(sqlite_session, app_id=APP_ID)
 
     assert ctx.session is sqlite_session
     assert dict(ctx.view_args) == {"app_id": APP_ID}
