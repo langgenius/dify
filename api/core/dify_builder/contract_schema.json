@@ -256,6 +256,22 @@
       ],
       "additionalProperties": false
     },
+    "SessionModel": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider",
+        "name"
+      ],
+      "additionalProperties": false
+    },
     "ConflictPolicyOption": {
       "type": "object",
       "properties": {
@@ -1421,6 +1437,16 @@
           "anyOf": [
             {
               "$ref": "#/$defs/RecoveryRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "model": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SessionModel"
             },
             {
               "type": "null"
