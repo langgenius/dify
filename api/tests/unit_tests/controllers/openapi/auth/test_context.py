@@ -3,7 +3,7 @@ from __future__ import annotations
 import ast
 import inspect
 from collections.abc import Callable
-from typing import NamedTuple, cast
+from typing import NamedTuple, cast, get_args, get_type_hints
 
 import pytest
 from sqlalchemy.orm import Session
@@ -141,3 +141,15 @@ def test_the_store_reaches_no_service() -> None:
 
     assert not [module for module in imported if module.split(".")[0] == "services"]
     assert "controllers.openapi.auth.loaders" not in imported
+
+
+def test_no_reader_can_hand_a_handler_an_optional() -> None:
+    """A `None` from a reader would reach a handler as a value it cannot tell
+    from a real one. Readers answer with the concrete type or raise.
+    """
+    for datum in DATA:
+        reader = vars(Context)[datum.name]
+        assert isinstance(reader, property)
+        assert reader.fget is not None
+        returns = get_type_hints(reader.fget)["return"]
+        assert type(None) not in get_args(returns)

@@ -4,6 +4,7 @@ import uuid
 from collections.abc import Callable
 from functools import partial
 from typing import NoReturn, cast, override
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy.orm import Session
@@ -19,15 +20,25 @@ from controllers.openapi.auth.requirements import (
     Rank,
     Requirement,
     ResolveCaller,
+    TokenScope,
 )
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, Subject
 from enums import DeploymentEdition
-from libs.oauth_bearer import AuthContext, SubjectType, TokenType, try_get_auth_ctx
-from models import Account, App, Tenant, TenantAccountJoin
+from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType, try_get_auth_ctx
+from models import Account, App, EndUser, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
-from models.enums import AppStatus
+from models.enums import AppStatus, EndUserType
 from models.model import AppMode, IconType
+from services.account_service import AccountService, TenantService
+from services.app_service import AppService
+from services.end_user_service import EndUserService
+from services.entities.feature_entities import (
+    LicenseStatus,
+    LicenseStatusModel,
+    SystemFeatureModel,
+    WebAppAuthModel,
+)
 
 APP_ID = "00000000-0000-0000-0000-000000000001"
 TENANT_ID = "00000000-0000-0000-0000-000000000002"
@@ -36,6 +47,7 @@ TOKEN_ID = "00000000-0000-0000-0000-000000000004"
 SSO_EMAIL = "user@sso.com"
 
 MOUNT = "controllers.openapi.auth.pipelines._mount_flask_login"
+FEATURES = "controllers.openapi.auth.requirements.FeatureService.get_system_features"
 
 
 def _auth(subject_type: SubjectType) -> AuthContext:
@@ -94,6 +106,14 @@ def _membership() -> TenantAccountJoin:
 def _persist(session: Session, *models: object) -> None:
     session.add_all(models)
     session.commit()
+
+
+def _active_licence() -> SystemFeatureModel:
+    return SystemFeatureModel(
+        deployment_edition=DeploymentEdition.ENTERPRISE,
+        license=LicenseStatusModel(status=LicenseStatus.ACTIVE),
+        webapp_auth=WebAppAuthModel(enabled=False),
+    )
 
 
 def _boom(*_args: object, **_kwargs: object) -> NoReturn:
@@ -319,3 +339,99 @@ def test_the_view_keeps_its_own_arguments_and_gains_the_context(sqlite_session: 
 
     assert result == "answered"
     assert received == {"resource": "self", "body": "payload", "ctx": ctx}
+
+
+def test_the_requirements_that_share_a_datum_fetch_it_once(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Three requirements on this route need the app — the endpoint's own
+    `CheckAppApiEnabled`, the pipeline's, and `ResolveCaller` — and two of them
+    need the workspace and the caller. Each is fetched once.
+    """
+    _persist(sqlite_session, _app(), _tenant(), _account(), _membership())
+    monkeypatch.setattr(MOUNT, lambda _user: None)
+    subject = _account_subject()
+
+    with (
+        patch.object(AppService, "get_app_by_id", wraps=AppService.get_app_by_id) as app_fetch,
+        patch.object(TenantService, "get_tenant_by_id", wraps=TenantService.get_tenant_by_id) as workspace_fetch,
+        patch.object(AccountService, "get_account_by_id", wraps=AccountService.get_account_by_id) as caller_fetch,
+    ):
+        _run(
+            AccountPipeline(),
+            subject,
+            _ctx(sqlite_session, subject, app_id=APP_ID),
+            sqlite_session,
+            requirements=(CheckAppApiEnabled(),),
+        )
+
+    assert (app_fetch.call_count, workspace_fetch.call_count, caller_fetch.call_count) == (1, 1, 1)
+
+
+def test_a_route_whose_requirements_need_no_app_never_fetches_one(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`app_id` in the path says the app *can* be resolved, never that it is.
+    Nothing fetches a datum no requirement asked for.
+    """
+    monkeypatch.setattr(AppService, "get_app_by_id", _boom)
+    subject = _sso_subject()
+    ctx = _ctx(sqlite_session, subject, app_id=APP_ID)
+
+    _run(_NoFixed(), subject, ctx, sqlite_session, requirements=(TokenScope(Scope.APPS_RUN),))
+
+    assert ctx.app_loaded is False
+
+
+def test_an_external_sso_app_route_resolves_its_end_user(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    """`ExternalSsoSubject.resolve_caller` reads the workspace, and
+    `ExternalSsoPipeline` carries no membership check — so `ResolveCaller`
+    loading it is the only reason this route works.
+    """
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+    _persist(sqlite_session, _app(), _tenant())
+    mounted_users: list[object] = []
+    monkeypatch.setattr(MOUNT, mounted_users.append)
+    end_user = EndUser(
+        tenant_id=TENANT_ID,
+        app_id=APP_ID,
+        type=EndUserType.OPENAPI,
+        is_anonymous=False,
+        session_id=SSO_EMAIL,
+    )
+    monkeypatch.setattr(EndUserService, "get_or_create_end_user_by_type", lambda *_a, **_k: end_user)
+    subject = _sso_subject()
+    ctx = _ctx(sqlite_session, subject, app_id=APP_ID)
+
+    with patch(FEATURES, return_value=_active_licence()):
+        _run(ExternalSsoPipeline(), subject, ctx, sqlite_session)
+
+    assert ctx.workspace_loaded is True
+    assert ctx.caller is end_user
+    assert mounted_users == [end_user]
+
+
+def test_an_account_route_with_neither_app_nor_workspace_binds_no_tenant(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`/account` resolves a caller and nothing else: no path param names a
+    workspace, so the account mounts with no current tenant.
+    """
+    _persist(sqlite_session, _account(), _tenant(), _membership())
+    monkeypatch.setattr(MOUNT, lambda _user: None)
+    subject = _account_subject()
+    ctx = _ctx(sqlite_session, subject)
+
+    _run(AccountPipeline(), subject, ctx, sqlite_session)
+
+    caller = ctx.caller
+    assert isinstance(caller, Account)
+    assert caller.current_tenant_id is None
+    assert (ctx.app_loaded, ctx.workspace_loaded) == (False, False)
