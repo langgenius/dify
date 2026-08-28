@@ -174,6 +174,8 @@ const mockProviderContextState = vi.hoisted(() => ({
   } as Partial<ProviderContextState>,
 }))
 
+vi.mock('@tanstack/react-virtual')
+
 vi.mock('@/features/agent-v2/feature-flag', () => ({
   isAgentV2Enabled: () => mockIsAgentV2Enabled(),
 }))
@@ -463,6 +465,7 @@ const ownerWorkspacePermissionKeys = [
   'tool.manage',
   'mcp.manage',
   'agent.manage',
+  'skill.view',
 ]
 
 const datasetOperatorWorkspacePermissionKeys = [
@@ -775,6 +778,17 @@ describe('MainNav', () => {
   it('hides the skills entry when skill is disabled', () => {
     mockProviderContextState.current = {
       enableSkill: false,
+    }
+
+    renderMainNav()
+
+    expect(screen.queryByRole('link', { name: /common.mainNav.skills/ })).not.toBeInTheDocument()
+  })
+
+  it('hides the skills entry when the user lacks skill.view', () => {
+    mockConsoleState.current = {
+      ...consoleState,
+      workspacePermissionKeys: ownerWorkspacePermissionKeys.filter((key) => key !== 'skill.view'),
     }
 
     renderMainNav()

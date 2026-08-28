@@ -42,6 +42,7 @@
   "accessRule.summary_one": "ชุดสิทธิ์ {{count}} ชุด",
   "accessRule.summary_other": "ชุดสิทธิ์ {{count}} ชุด",
   "accessRule.updated": "อัปเดตกฎการเข้าถึงสําเร็จ",
+  "accessRule.workspaceOwner": "เจ้าของเวิร์กสเปซ",
   "common.duplicateAction": "ทําซ้ํา",
   "group.app": "แอปพลิเคชัน",
   "group.app_acl": "สิทธิ์การเข้าถึงแอป",

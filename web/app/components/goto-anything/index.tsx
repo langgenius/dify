@@ -551,7 +551,7 @@ function GotoAnythingDialog() {
 
               <AutocompleteStatus className="sr-only">{autocompleteStatus}</AutocompleteStatus>
 
-              <ScrollArea className="relative h-88 min-h-0 overflow-hidden">
+              <ScrollArea className="h-88 min-h-0 overflow-hidden">
                 <ScrollAreaViewport
                   aria-busy={isLoading || undefined}
                   className="scroll-py-1 overscroll-contain"

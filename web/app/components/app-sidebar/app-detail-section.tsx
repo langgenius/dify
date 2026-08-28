@@ -100,6 +100,7 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
       appDetail.mode === AppModeEnum.WORKFLOW || appDetail.mode === AppModeEnum.ADVANCED_CHAT
     const supportsAnnotations =
       appDetail.mode !== AppModeEnum.WORKFLOW && appDetail.mode !== AppModeEnum.COMPLETION
+    const supportsResourceAccess = appDetail.mode !== AppModeEnum.AGENT
     const appACLCapabilities = getAppACLCapabilities(appDetail.permission_keys, {
       currentUserId,
       resourceMaintainer: appDetail.maintainer,
@@ -164,7 +165,7 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
             },
           ]
         : []),
-      ...(appACLCapabilities.canAccessConfig
+      ...(supportsResourceAccess && appACLCapabilities.canAccessConfig
         ? [
             {
               name: t(($) => $['settings.resourceAccess'], { ns: 'common' }),
