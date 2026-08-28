@@ -34,6 +34,7 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
   })
   const { data: membersData } = useMembers()
   const [keywords, setKeywords] = useState('')
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const creatorOptions = useMemo<CreatorOption[]>(() => {
@@ -88,6 +89,16 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
     setKeywords('')
   }, [onChange])
 
+  const resetCreatorsFromTrigger = useCallback(() => {
+    triggerRef.current?.focus()
+    resetCreators()
+  }, [resetCreators])
+
+  const resetCreatorsFromPopover = useCallback(() => {
+    searchInputRef.current?.focus()
+    resetCreators()
+  }, [resetCreators])
+
   const selectedCount = value.length
   const selectedAvatarCreators = selectedCreators.slice(0, 3)
   const isSelected = selectedCount > 0
@@ -96,6 +107,7 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
     <div className="relative inline-flex">
       <Popover>
         <PopoverTrigger
+          ref={triggerRef}
           render={
             <button
               type="button"
@@ -182,7 +194,7 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
               <button
                 type="button"
                 className="shrink-0 rounded-sm px-2 py-1 text-xs font-medium text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                onClick={resetCreators}
+                onClick={resetCreatorsFromPopover}
               >
                 {t(($) => $['studio.filters.reset'], { ns: 'app' })}
               </button>
@@ -234,7 +246,7 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
           type="button"
           aria-label={t(($) => $['studio.filters.reset'], { ns: 'app' })}
           className="absolute top-1/2 right-2 flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded-xs text-text-quaternary outline-hidden hover:text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          onClick={resetCreators}
+          onClick={resetCreatorsFromTrigger}
         >
           <span aria-hidden className="i-ri-close-circle-fill h-3.5 w-3.5" />
         </button>

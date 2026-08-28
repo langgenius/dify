@@ -724,6 +724,10 @@ describe('AppCard', () => {
       const starToggle = screen.getByRole('button', { name: 'app.studio.starApp: Test App' })
       expect(starToggle).toHaveAttribute('aria-pressed', 'true')
 
+      await user.hover(starToggle)
+
+      expect(await screen.findByText('app.studio.starApp')).toBeInTheDocument()
+
       await user.click(starToggle)
 
       await waitFor(() => {

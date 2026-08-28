@@ -1,4 +1,6 @@
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import CreatorsFilter from '../creators-filter'
@@ -9,6 +11,11 @@ const render = (ui: Parameters<typeof renderWithConsoleState>[0]) =>
   renderWithConsoleState(ui, {
     wrapper: createConsoleQueryWrapper({ accountProfile: { id: 'member-2' } }).wrapper,
   })
+
+const StatefulCreatorsFilter = ({ initialValue }: { initialValue: string[] }) => {
+  const [value, setValue] = useState(initialValue)
+  return <CreatorsFilter value={value} onChange={setValue} />
+}
 
 vi.mock('@/service/use-common', () => ({
   useMembers: () => ({
@@ -66,26 +73,37 @@ describe('CreatorsFilter', () => {
     expect(mockOnChange).toHaveBeenCalledWith(['member-3'])
   })
 
-  it('should remove selected creators from the trigger reset and menu reset controls', () => {
-    const { rerender } = render(
-      <CreatorsFilter value={['member-2', 'member-3']} onChange={mockOnChange} />,
-    )
+  it('should return focus to the trigger after clearing creators from the filter chip', async () => {
+    const user = userEvent.setup()
+    render(<StatefulCreatorsFilter initialValue={['member-2', 'member-3']} />)
 
     const trigger = screen.getByRole('button', { name: /app\.studio\.filters\.creators/i })
     const triggerReset = screen.getByRole('button', { name: 'app.studio.filters.reset' })
 
     expect(trigger).not.toContainElement(triggerReset)
 
-    fireEvent.click(triggerReset)
+    await user.click(triggerReset)
 
-    expect(mockOnChange).toHaveBeenCalledWith([])
+    expect(trigger).toHaveFocus()
+    expect(
+      screen.queryByRole('button', { name: 'app.studio.filters.reset' }),
+    ).not.toBeInTheDocument()
+  })
 
-    rerender(<CreatorsFilter value={['member-2', 'member-3']} onChange={mockOnChange} />)
+  it('should return focus to the search input after clearing creators from the popover', async () => {
+    const user = userEvent.setup()
+    render(<StatefulCreatorsFilter initialValue={['member-2', 'member-3']} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /app\.studio\.filters\.creators/i }))
-    fireEvent.click(screen.getAllByRole('button', { name: 'app.studio.filters.reset' }).at(-1)!)
+    await user.click(screen.getByRole('button', { name: /app\.studio\.filters\.creators/i }))
+    const searchInput = screen.getByRole('searchbox', {
+      name: 'app.studio.filters.searchCreators',
+    })
+    const popover = screen.getByRole('dialog', { name: 'app.studio.filters.creators' })
 
-    expect(mockOnChange).toHaveBeenCalledWith([])
+    await user.click(within(popover).getByRole('button', { name: 'app.studio.filters.reset' }))
+
+    expect(searchInput).toHaveFocus()
+    expect(popover).not.toHaveTextContent('app.studio.filters.reset')
   })
 
   it('should remove a selected creator when toggled from the menu', () => {
