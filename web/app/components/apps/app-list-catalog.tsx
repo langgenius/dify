@@ -56,6 +56,7 @@ type AppListCatalogContentProps = Omit<AppListCatalogProps, 'appListQuery'> &
     appListPages: AppPagination[]
     hasNextPage: boolean
     isFetchNextPageError: boolean
+    isError: boolean
     isFetching: boolean
     isFetchingNextPage: boolean
     isPlaceholderData: boolean
@@ -85,6 +86,7 @@ function AppListCatalogContent({
   hasActiveFilters,
   hasNextPage,
   isFetchNextPageError,
+  isError,
   isFetching,
   isFetchingNextPage,
   isPlaceholderData,
@@ -118,6 +120,11 @@ function AppListCatalogContent({
 
   const hasResolvedFirstPage = appListPages.length > 0
   const hasAnyApp = (appListPages[0]?.total ?? 0) > 0
+  const emptyMessage = t(($) => $['filterEmpty.noApps'], { ns: 'app' })
+  const resultStatusMessage =
+    !isError && !isFetching && !isPlaceholderData && hasResolvedFirstPage && !hasAnyApp
+      ? emptyMessage
+      : ''
   const showFirstEmptyState =
     !isPlaceholderData && !hasAnyApp && canCreateApp && hasResolvedFirstPage && !hasActiveFilters
   const showNoCreateEmptyState =
@@ -134,6 +141,9 @@ function AppListCatalogContent({
 
   return (
     <>
+      <span className="sr-only" role="status">
+        {resultStatusMessage}
+      </span>
       {showFirstEmptyState ? (
         <FirstEmptyState
           onCreateBlank={onCreateBlank}
@@ -171,6 +181,7 @@ function AppListCatalogContent({
           )}
           <div
             role={hasAnyApp ? 'list' : undefined}
+            aria-busy={isFetching}
             aria-labelledby={hasAnyApp && starredApps.length > 0 ? ALL_APPS_HEADING_ID : undefined}
             className={cn(
               `relative grow content-start ${APP_LIST_GRID_CLASS_NAME}`,
@@ -210,6 +221,7 @@ function AppListCatalogContent({
               ))
             ) : (
               <Empty
+                message={emptyMessage}
                 stepByStepTourTarget={
                   showNoCreateEmptyState ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateEmpty : undefined
                 }
@@ -326,6 +338,7 @@ export function AppListCatalog(props: AppListCatalogProps) {
       hasActiveFilters={hasActiveFilters}
       hasNextPage={appList.hasNextPage}
       isFetchNextPageError={appList.isFetchNextPageError}
+      isError={appList.isError}
       isFetching={appList.isFetching}
       isFetchingNextPage={appList.isFetchingNextPage}
       isPlaceholderData={appList.isPlaceholderData}

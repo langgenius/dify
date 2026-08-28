@@ -85,6 +85,12 @@ const WebAppsSectionContent = () => {
 
   const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
   const canLoadMore = !installedAppsQuery.isFetching && !installedAppsQuery.error
+  const noResultsMessage = t(($) => $['mainNav.webApps.noResults'], { ns: 'common' })
+  const showNoResults =
+    !installedAppsQuery.isError &&
+    !installedAppsQuery.isFetching &&
+    !installedAppsQuery.isPlaceholderData &&
+    installedApps.length === 0
 
   const handleSearchTextChange = (value: string) => {
     scrollRef.current?.scrollTo({ top: 0 })
@@ -196,13 +202,16 @@ const WebAppsSectionContent = () => {
         <ScrollArea className="relative min-h-0 flex-1 overflow-hidden">
           <ScrollAreaViewport
             ref={scrollRef}
-            aria-busy={installedAppsQuery.isFetchingNextPage}
+            aria-busy={installedAppsQuery.isFetching}
             aria-label={t(($) => $['sidebar.webApps'], { ns: 'explore' })}
             style={{ overflowX: 'hidden' }}
             className="overscroll-contain"
             role="region"
           >
             <ScrollAreaContent style={{ minWidth: 0 }} className="w-full max-w-full px-2">
+              <div className="sr-only" role="status">
+                {showNoResults ? noResultsMessage : ''}
+              </div>
               {installedAppsQuery.isError && !installedAppsQuery.isFetchNextPageError && (
                 <div
                   className="flex flex-col items-start gap-1 px-2 py-2 system-xs-regular text-text-tertiary"
@@ -220,15 +229,8 @@ const WebAppsSectionContent = () => {
                   </Button>
                 </div>
               )}
-              {!installedAppsQuery.isError && installedApps.length === 0 && (
-                <div
-                  className="px-2 py-1 system-xs-regular"
-                  role="status"
-                  aria-live="polite"
-                  aria-atomic="true"
-                >
-                  {t(($) => $['mainNav.webApps.noResults'], { ns: 'common' })}
-                </div>
+              {showNoResults && (
+                <div className="px-2 py-1 system-xs-regular">{noResultsMessage}</div>
               )}
               {installedApps.length > 0 && (
                 <div className="space-y-0.5 pb-2">

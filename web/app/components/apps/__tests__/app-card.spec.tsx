@@ -473,9 +473,10 @@ describe('AppCard', () => {
 
       render(<AppCard app={previewOnlyApp} />)
 
-      const card = screen.getByRole('button', { name: /^Preview Only App / })
+      const card = screen.getByRole('button', { name: 'Preview Only App' })
       expect(card).toHaveClass('opacity-60')
-      expect(screen.getByRole('listitem', { name: 'Preview Only App' })).toBeInTheDocument()
+      expect(screen.getByRole('listitem')).toContainElement(card)
+      expect(card).toHaveAccessibleDescription('Only visible metadata')
       expect(card).not.toHaveAttribute('aria-disabled')
       expect(screen.getByText('Only visible metadata')).toBeInTheDocument()
       expect(screen.getByText('Readonly Author')).toBeInTheDocument()
@@ -513,7 +514,7 @@ describe('AppCard', () => {
 
       render(<StarredAppCard app={previewOnlyApp} />)
 
-      const card = screen.getByRole('button', { name: /^Preview Only Starred App / })
+      const card = screen.getByRole('button', { name: 'Preview Only Starred App' })
       expect(card).toHaveClass('opacity-60')
       expect(card).not.toHaveAttribute('aria-disabled')
       expect(screen.getByText('Readonly Author')).toBeInTheDocument()
@@ -583,7 +584,7 @@ describe('AppCard', () => {
     it('should handle different app modes', () => {
       const workflowApp = { ...mockApp, mode: AppModeEnum.WORKFLOW }
       render(<AppCard app={workflowApp} />)
-      expect(screen.getByRole('link', { name: /^Test App / })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Test App' })).toBeInTheDocument()
     })
 
     it('should handle app with tags', () => {
@@ -681,19 +682,18 @@ describe('AppCard', () => {
   describe('Card Interaction', () => {
     it('should render card navigation as a link', () => {
       render(<AppCard app={mockApp} />)
-      const cardLink = screen.getByRole('link', { name: /^Test App / })
+      const cardLink = screen.getByRole('link', { name: 'Test App' })
 
       expect(cardLink).toHaveAttribute('href', '/app/test-app-id/configuration')
-      expect(cardLink).toHaveAccessibleName(
-        'Test App app.types.chatbot Test app description Test Author · datasetDocuments.segment.editedAt Jan 1, 2024',
-      )
-      expect(cardLink).not.toHaveAttribute('aria-describedby')
-      expect(screen.getByRole('listitem', { name: 'Test App' })).toContainElement(cardLink)
+      expect(cardLink).toHaveAccessibleName('Test App')
+      expect(cardLink).toHaveAccessibleDescription('Test app description')
+      expect(cardLink).toHaveAttribute('aria-describedby')
+      expect(screen.getByRole('listitem')).toContainElement(cardLink)
     })
 
     it('should expose a visible focus ring on the card link', () => {
       render(<AppCard app={mockApp} />)
-      const cardLink = screen.getByRole('link', { name: /^Test App / })
+      const cardLink = screen.getByRole('link', { name: 'Test App' })
 
       expect(cardLink).toHaveClass('focus-visible:ring-2')
       expect(cardLink).toHaveClass('focus-visible:ring-state-accent-solid')
@@ -1604,7 +1604,7 @@ describe('AppCard', () => {
     it('should handle non-editor workspace users', () => {
       // This tests the isCurrentWorkspaceEditor=true branch (default mock)
       render(<AppCard app={mockApp} />)
-      expect(screen.getByRole('link', { name: /^Test App / })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Test App' })).toBeInTheDocument()
     })
   })
 

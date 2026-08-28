@@ -116,9 +116,7 @@ export const AppCard = memo(
         .filter((user) => Boolean(user.id))
     }, [app.id, onlineUsers])
     const appNameId = useId()
-    const appModeId = useId()
     const appDescriptionId = useId()
-    const appMetadataId = useId()
     const appIconType = zIconType.safeParse(app.icon_type).data ?? null
     const appHref = getRedirectionPath(app, maintainerPermissionOptions)
     const appCardClassName = cn(
@@ -130,7 +128,6 @@ export const AppCard = memo(
     const showPreviewOnlyAccessWarning = useCallback(() => {
       toast.warning(t(($) => $.noAccessResourcePermission, { ns: 'app' }))
     }, [t])
-    const appAccessibleNameIds = `${appNameId} ${appModeId} ${appDescriptionId} ${appMetadataId}`
     const appCardContent = (
       <>
         <div className="flex shrink-0 items-center gap-3 pt-4 pr-4 pb-2 pl-4">
@@ -155,7 +152,7 @@ export const AppCard = memo(
                 {app.name}
               </div>
             </div>
-            <div id={appModeId} className="truncate system-2xs-medium-uppercase text-text-tertiary">
+            <div className="truncate system-2xs-medium-uppercase text-text-tertiary">
               {appModeLabel}
             </div>
           </div>
@@ -177,10 +174,7 @@ export const AppCard = memo(
         </div>
         <div className="flex h-6.5 shrink-0 items-start px-3" />
         <div className="flex min-w-0 shrink-0 items-center overflow-hidden pt-2 pr-4 pb-3 pl-4 system-xs-regular text-text-tertiary">
-          <div
-            id={appMetadataId}
-            className="flex min-w-0 flex-1 items-center gap-1 whitespace-nowrap"
-          >
+          <div className="flex min-w-0 flex-1 items-center gap-1 whitespace-nowrap">
             {app.author_name && (
               <>
                 <div className="min-w-0 truncate">{app.author_name}</div>
@@ -194,11 +188,12 @@ export const AppCard = memo(
     )
 
     return (
-      <div role="listitem" aria-labelledby={appNameId} className="group relative col-span-1 h-41.5">
+      <div role="listitem" className="group relative col-span-1 h-41.5">
         {isPreviewOnly ? (
           <button
             type="button"
-            aria-labelledby={appAccessibleNameIds}
+            aria-labelledby={appNameId}
+            aria-describedby={app.description ? appDescriptionId : undefined}
             data-step-by-step-tour-target={stepByStepTourCardTarget}
             data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
             className={cn(appCardClassName, 'text-left')}
@@ -209,7 +204,8 @@ export const AppCard = memo(
         ) : (
           <Link
             href={appHref}
-            aria-labelledby={appAccessibleNameIds}
+            aria-labelledby={appNameId}
+            aria-describedby={app.description ? appDescriptionId : undefined}
             data-step-by-step-tour-target={stepByStepTourCardTarget}
             data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
             className={appCardClassName}

@@ -92,8 +92,10 @@ const ImportFromMarketplaceTemplateModal = ({
 
         <div className="px-6 py-4" aria-busy={isLoading}>
           {isLoading && (
-            <div className="flex items-center justify-center py-8" role="status" aria-live="polite">
-              <div className="system-md-regular text-text-tertiary">Loading...</div>
+            <div className="flex items-center justify-center py-8" role="status">
+              <div className="system-md-regular text-text-tertiary">
+                {t(($) => $.loading, { ns: 'common' })}
+              </div>
             </div>
           )}
 

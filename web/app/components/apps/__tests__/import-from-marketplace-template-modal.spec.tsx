@@ -77,7 +77,7 @@ describe('ImportFromMarketplaceTemplateModal', () => {
       />,
     )
 
-    expect(screen.getByRole('status')).toHaveTextContent('Loading...')
+    expect(screen.getByRole('status')).toHaveTextContent('common.loading')
 
     mockUseMarketplaceTemplateDetail.mockReturnValue({
       data: undefined,
