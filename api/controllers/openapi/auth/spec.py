@@ -1,6 +1,4 @@
-"""What an endpoint declares about its own auth.
-
-`@endpoint` builds one at decoration time and attaches it as `view.__spec__`;
+"""`@endpoint` builds one at decoration time and attaches it as `view.__spec__`;
 the router reads nothing else off the view. It lives in `auth/` so the
 dependency runs `_contract.py` -> `auth/` and never back.
 """
