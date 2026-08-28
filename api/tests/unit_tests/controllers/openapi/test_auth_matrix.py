@@ -53,6 +53,15 @@ ignored rather than refused. Each was flipped in the commit that moved its route
 and the set is empty; `test_accepted_behaviour_deltas_are_bounded_and_still_exact`
 rebuilds the eligible set from route structure, so it keeps pinning the flipped
 answer exactly and would catch a marker reappearing on any row.
+
+`Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE` pins deviation D5 (accepted 2026-08-26):
+`INSUFFICIENT_SCOPE` and `NON_MEMBER` never combine a real membership failure with a
+real scope failure on the same request, so neither proves anything about which one a
+doubly-broken request hears. This case does, on every route with a live membership
+check for an account bearer — `test_d5_rows_are_marked_and_bounded` derives that set
+from the actual `__spec__`, the same way `test_registered_openapi_routes_match_the_matrix`
+does. Its `accepted_delta` is permanent, unlike the nine above: pre-PR the order was
+scope-then-membership, and nothing here migrates back.
 """
 
 from __future__ import annotations
@@ -79,6 +88,7 @@ from werkzeug.test import TestResponse
 import libs.oauth_bearer as oauth_bearer_module
 import libs.rate_limit as rate_limit_module
 from controllers.openapi import bp as openapi_bp
+from controllers.openapi.auth.requirements import RequireWorkspaceMembership
 from controllers.openapi.auth.spec import EndpointSpec
 from enums import DeploymentEdition, WebAppAccessMode
 from libs.oauth_bearer import (
@@ -127,6 +137,7 @@ class Case(StrEnum):
     WRONG_SUBJECT = auto()
     INSUFFICIENT_SCOPE = auto()
     NON_MEMBER = auto()
+    NON_MEMBER_AND_INSUFFICIENT_SCOPE = auto()
     LOW_ROLE = auto()
     APP_API_DISABLED = auto()
     UNKNOWN_APP = auto()
@@ -219,6 +230,12 @@ DENY_PRIVATE_APP = Expect(403, "user_not_allowed_for_private_app")
 DENY_EDITION = Expect(404, note="endpoint-level edition gate, raised before the bearer is read")
 DENY_LICENSE = Expect(403, "license_invalid")
 DENY_RBAC = Expect(403, note="bare werkzeug Forbidden from enforce_rbac_access")
+DENY_NON_MEMBER_D5 = Expect(
+    DENY_NON_MEMBER.status,
+    DENY_NON_MEMBER.message,
+    note="D5: EARLY membership now pre-empts NORMAL scope on a request failing both",
+    accepted_delta="D5 — pre-PR order was scope-then-membership, so this answered insufficient_scope",
+)
 ADMIT_NO_RBAC_SCENE = Expect(
     ADMITTED,
     note=(
@@ -361,6 +378,9 @@ CASE_REQUIRES: dict[Case, frozenset[Trait]] = {
     Case.WRONG_SUBJECT: frozenset(),
     Case.INSUFFICIENT_SCOPE: frozenset(),
     Case.NON_MEMBER: frozenset({Trait.ACCOUNT_PRIMARY}),
+    # frozenset() rather than {ACCOUNT_PRIMARY}: this one also has to reach the
+    # SSO-only routes, to pin that they answer on the subject axis, not this one.
+    Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: frozenset(),
     Case.LOW_ROLE: frozenset({Trait.ACCOUNT_PRIMARY}),
     Case.APP_API_DISABLED: frozenset({Trait.APP_SCOPED}),
     Case.UNKNOWN_APP: frozenset({Trait.APP_SCOPED}),
@@ -391,6 +411,7 @@ SCENARIOS: dict[Case, Scenario] = {
     Case.WRONG_SUBJECT: Scenario(bearer=Bearer.OTHER_SUBJECT),
     Case.INSUFFICIENT_SCOPE: Scenario(bearer=Bearer.PRIMARY, narrow_scopes=True),
     Case.NON_MEMBER: Scenario(bearer=Bearer.ACCOUNT_OUTSIDER),
+    Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: Scenario(bearer=Bearer.ACCOUNT_OUTSIDER, narrow_scopes=True),
     Case.LOW_ROLE: Scenario(bearer=Bearer.ACCOUNT_LOW_ROLE),
     Case.APP_API_DISABLED: Scenario(bearer=Bearer.PRIMARY, app_api_enabled=False),
     Case.UNKNOWN_APP: Scenario(bearer=Bearer.PRIMARY, unknown_app=True),
@@ -490,6 +511,9 @@ _ACCOUNT_ONLY_NO_WORKSPACE: dict[Case, Expect] = {
     Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
     Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
     Case.NON_MEMBER: ADMIT,
+    # No live membership check on this route, so the outsider's only failure is
+    # scope — same answer pre- and post-PR.
+    Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_SCOPE,
     Case.LOW_ROLE: ADMIT,
     Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
     Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
@@ -510,6 +534,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
         Case.NON_MEMBER: DENY_NON_MEMBER,
+        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER_D5,
         Case.LOW_ROLE: ADMIT,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
@@ -521,6 +546,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
         Case.NON_MEMBER: DENY_NON_MEMBER,
+        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER_D5,
         Case.LOW_ROLE: ADMIT,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
@@ -532,6 +558,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
         Case.NON_MEMBER: DENY_NON_MEMBER,
+        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER_D5,
         Case.LOW_ROLE: ADMIT,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
         Case.RBAC_ON_LOW_ROLE: ADMIT_NO_ROLE_FLOOR,
@@ -543,6 +570,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
         Case.NON_MEMBER: DENY_NON_MEMBER,
+        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER_D5,
         Case.LOW_ROLE: DENY_ROLE,
         Case.RBAC_ON_LOW_ROLE: DENY_ROLE,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
@@ -554,6 +582,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
         Case.NON_MEMBER: DENY_NON_MEMBER,
+        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER_D5,
         Case.LOW_ROLE: DENY_ROLE,
         Case.RBAC_ON_LOW_ROLE: DENY_ROLE,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
@@ -565,6 +594,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
         Case.NON_MEMBER: DENY_NON_MEMBER,
+        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER_D5,
         Case.LOW_ROLE: DENY_ROLE,
         Case.RBAC_ON_LOW_ROLE: DENY_ROLE,
         Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
@@ -576,6 +606,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
         Case.NON_MEMBER: DENY_NON_MEMBER,
+        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER_D5,
         Case.LOW_ROLE: DENY_ROLE,
         Case.RBAC_ON_LOW_ROLE: ADMIT,
         Case.RBAC_ON_DENIED: DENY_RBAC,
@@ -587,6 +618,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
         Case.NON_MEMBER: DENY_NON_MEMBER,
+        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER_D5,
         Case.LOW_ROLE: DENY_ROLE,
         Case.RBAC_ON_LOW_ROLE: ADMIT,
         Case.RBAC_ON_DENIED: DENY_RBAC,
@@ -598,6 +630,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
         Case.NON_MEMBER: DENY_NON_MEMBER,
+        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER_D5,
         Case.LOW_ROLE: ADMIT,
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
@@ -619,6 +652,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
         Case.NON_MEMBER: DENY_NON_MEMBER,
+        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER_D5,
         Case.LOW_ROLE: DENY_ROLE,
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
@@ -640,6 +674,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
         Case.NON_MEMBER: DENY_NON_MEMBER,
+        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER_D5,
         Case.LOW_ROLE: DENY_ROLE,
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
@@ -661,6 +696,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.WRONG_SUBJECT: DENY_SSO_NEEDS_EE,
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
         Case.NON_MEMBER: DENY_NON_MEMBER,
+        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER_D5,
         Case.LOW_ROLE: ADMIT,
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
@@ -688,6 +724,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.WRONG_SUBJECT: DENY_SSO_NEEDS_EE,
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
         Case.NON_MEMBER: DENY_NON_MEMBER,
+        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER_D5,
         Case.LOW_ROLE: ADMIT,
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
@@ -715,6 +752,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.WRONG_SUBJECT: DENY_SSO_NEEDS_EE,
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
         Case.NON_MEMBER: DENY_NON_MEMBER,
+        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER_D5,
         Case.LOW_ROLE: ADMIT,
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
@@ -742,6 +780,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.WRONG_SUBJECT: DENY_SSO_NEEDS_EE,
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
         Case.NON_MEMBER: DENY_NON_MEMBER,
+        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER_D5,
         Case.LOW_ROLE: ADMIT,
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
@@ -769,6 +808,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.WRONG_SUBJECT: DENY_SSO_NEEDS_EE,
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
         Case.NON_MEMBER: DENY_NON_MEMBER,
+        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER_D5,
         Case.LOW_ROLE: ADMIT,
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
@@ -796,6 +836,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.WRONG_SUBJECT: DENY_SSO_NEEDS_EE,
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
         Case.NON_MEMBER: DENY_NON_MEMBER,
+        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_NON_MEMBER_D5,
         Case.LOW_ROLE: ADMIT,
         Case.APP_API_DISABLED: DENY_API_DISABLED,
         Case.UNKNOWN_APP: DENY_UNKNOWN_APP,
@@ -822,6 +863,9 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.MEMBER: ADMIT_NO_MOUNT,
         Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
+        # An account bearer answers on the subject axis here, before scope or
+        # membership: this route's SubjectCheck allows only ExternalSsoSubject.
+        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_WRONG_SUBJECT,
         Case.EDITION_NOT_ENTERPRISE: DENY_EDITION,
         Case.LICENSE_INVALID: DENY_LICENSE,
     },
@@ -830,6 +874,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
         Case.MEMBER: ADMIT,
         Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
         Case.INSUFFICIENT_SCOPE: DENY_SCOPE,
+        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_WRONG_SUBJECT,
         Case.EDITION_NOT_ENTERPRISE: DENY_EDITION,
         Case.LICENSE_INVALID: DENY_LICENSE,
         Case.APP_API_DISABLED: DENY_API_DISABLED,
@@ -1278,7 +1323,11 @@ def test_accepted_behaviour_deltas_are_bounded_and_still_exact() -> None:
     }
     assert len(eligible) == 9
 
-    marked = {(route.id, case) for route, case, expect in ROWS if expect.accepted_delta}
+    marked = {
+        (route.id, case)
+        for route, case, expect in ROWS
+        if case is Case.FOREIGN_WORKSPACE_QUERY and expect.accepted_delta
+    }
     assert marked <= eligible, sorted(marked - eligible)
 
     for route, case, expect in ROWS:
@@ -1332,6 +1381,49 @@ def test_registered_openapi_routes_match_the_matrix(matrix_app: Flask) -> None:
     # rather than enumerated: a list of exemptions rots silently — the one this
     # replaced still named `swagger.json`, a route that is not registered at all.
     assert len(unguarded) == 13
+
+
+def _spec_for(app: Flask, route: Route) -> EndpointSpec:
+    pattern = "/openapi/v1" + route.path.replace("{", "<string:").replace("}", ">")
+    for rule in app.url_map.iter_rules():
+        if str(rule) == pattern and route.method in (rule.methods or set()):
+            spec = _endpoint_spec(app, rule, route.method)
+            assert spec is not None, route.id
+            return spec
+    raise AssertionError(f"no matching rule for {route.id}")
+
+
+def test_d5_rows_are_marked_and_bounded(matrix_app: Flask) -> None:
+    """Every `NON_MEMBER_AND_INSUFFICIENT_SCOPE` row on a route with a live
+    membership check for an account bearer carries `accepted_delta` and answers
+    `DENY_NON_MEMBER`; every other row carries none. "Live" is derived from the
+    real `__spec__` plus `Trait.APP_SCOPED` (`CheckAppWorkspaceMembership` is a
+    no-op only where there's no app in the path) — not read back out of this
+    table — so a route that gains or loses a membership check moves itself into
+    or out of the eligible set automatically.
+    """
+    eligible = {
+        route.id
+        for route in ROUTES
+        # `ACCOUNT_PRIMARY` first: `permitted_external.describe` is `APP_SCOPED`
+        # too, but its `SubjectCheck` (rank FIRST) rejects an account bearer
+        # before `CheckAppWorkspaceMembership` (rank EARLY) ever runs.
+        if Trait.ACCOUNT_PRIMARY in route.traits
+        and (
+            Trait.APP_SCOPED in route.traits
+            or any(isinstance(r, RequireWorkspaceMembership) for r in _spec_for(matrix_app, route).requirements)
+        )
+    }
+    assert len(eligible) == 17
+
+    for route, case, expect in ROWS:
+        if case is not Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE:
+            continue
+        if route.id in eligible:
+            assert expect.accepted_delta, route.id
+            assert (expect.status, expect.message) == (DENY_NON_MEMBER.status, DENY_NON_MEMBER.message), route.id
+        else:
+            assert not expect.accepted_delta, route.id
 
 
 OPENAPI_DOCUMENT_DIGEST = "fd38e44b042c800b7a4d677724c4d83be9cf1da90f4cf131dc624480ac09409f"

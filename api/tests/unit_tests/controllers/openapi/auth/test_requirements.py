@@ -180,27 +180,16 @@ def test_subject_only_requirement_outcomes(
                 requirement.run(subject, ctx, sqlite_session)
 
 
-def test_ranks_reproduce_the_account_pipeline_order() -> None:
-    """The account pipeline's order as an executable assertion: strictly
-    increasing, so every pair is pinned — membership's 404 before RBAC's 403
-    included.
+def test_membership_runs_before_permission() -> None:
+    """The executable form of the 404-before-403 rule: a non-member must be
+    refused before RBAC can confirm the workspace exists. `EARLY < NORMAL`
+    makes it structural, independent of any call site's declared order.
     """
-    ordered = (
-        SubjectCheck,
-        CheckAppApiEnabled,
-        TokenScope,
-        CheckAppWorkspaceMembership,
-        RBACCheck,
-        RequireWebappAccess,
-    )
-    ranks = [requirement.rank for requirement in ordered]
-
-    assert ranks == sorted(ranks)
-    assert len(set(ranks)) == len(ranks)
+    assert SubjectCheck.rank < CheckAppWorkspaceMembership.rank < RBACCheck.rank
 
 
 def test_both_membership_requirements_decide_the_same_thing() -> None:
-    assert RequireWorkspaceMembership.rank == CheckAppWorkspaceMembership.rank == Rank.MEMBERSHIP
+    assert RequireWorkspaceMembership.rank == CheckAppWorkspaceMembership.rank == Rank.EARLY
 
 
 def _shipped_requirements() -> frozenset[type[Requirement]]:
@@ -223,22 +212,24 @@ def _shipped_requirements() -> frozenset[type[Requirement]]:
     return frozenset(cls for cls in found if cls.__module__.startswith("controllers."))
 
 
-def test_every_requirement_names_its_rank() -> None:
-    """`Requirement.rank` has no default, and nothing checks it before a request
-    arrives: a requirement that forgets to name one raises in `Pipeline.run`'s
-    sort key, so the route 500s on its first live call instead of failing here.
+def test_requirement_default_rank_is_normal() -> None:
+    """The definitional guard on the base class's default. What that default
+    means for sort order is pinned positionally by `test_pipelines.py`'s
+    ordering tests, not here.
+    """
+    assert Requirement.rank is Rank.NORMAL
 
-    Derived, not listed — a hand-written list is exactly what a new requirement
+
+def test_every_requirement_has_a_valid_rank() -> None:
+    """Derived, not listed — a hand-written list is exactly what a new requirement
     would not be added to.
     """
-    assert "rank" not in vars(Requirement)
     shipped = _shipped_requirements()
     # Importing `CheckFormSurface` loads the `controllers.openapi` package, and its
     # `__init__` imports every route module — so requirements a feature declares
     # beside itself are in the walk, not just the ones in `auth/requirements.py`.
     assert CheckFormSurface in shipped
     for requirement in shipped:
-        assert hasattr(requirement, "rank"), f"{requirement.__name__} names no rank"
         assert isinstance(requirement.rank, Rank), f"{requirement.__name__}'s rank is not a Rank"
 
 
