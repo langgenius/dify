@@ -49,7 +49,7 @@ export function StartMode({
         className={cn(
           'relative flex w-full items-center gap-3 px-4 text-left outline-hidden',
           value === 'empty' || !selected ? 'min-h-15.5 py-3' : 'min-h-16 py-3.5',
-          'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
+          'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
           'data-disabled:cursor-not-allowed data-disabled:opacity-50 data-disabled:hover:bg-transparent',
         )}
       >
