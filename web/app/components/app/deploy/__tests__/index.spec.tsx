@@ -1914,6 +1914,45 @@ describe('AppDeploy', () => {
     ).toBeInTheDocument()
   })
 
+  it('keeps deployment configuration and entered values open after an outside press', async () => {
+    const user = userEvent.setup()
+    render(<AppDeploy />)
+
+    const preReleaseRow = within(screen.getByRole('row', { name: /Pre-release/ }))
+    await user.click(
+      preReleaseRow.getByRole('button', {
+        name: 'deployments.studio.deployLatest',
+      }),
+    )
+
+    const configurationDialog = await screen.findByRole('dialog', {
+      name: 'deployments.studio.deployConfiguration',
+    })
+    const rootVariables = within(
+      within(configurationDialog).getByRole('group', { name: 'Finance APP' }),
+    )
+    await user.click(rootVariables.getByRole('combobox', { name: /PORT/ }))
+    await user.click(
+      await screen.findByRole('option', {
+        name: 'deployments.deployDrawer.envVarSource.literal',
+      }),
+    )
+    const customPortInput = rootVariables.getByRole('spinbutton', { name: 'PORT' })
+    await user.type(customPortInput, '3000')
+
+    await user.click(document.body)
+
+    expect(configurationDialog).toBeInTheDocument()
+    expect(customPortInput).toHaveValue(3000)
+
+    await user.click(within(configurationDialog).getByRole('button', { name: 'Cancel' }))
+    expect(
+      screen.queryByRole('dialog', {
+        name: 'deployments.studio.deployConfiguration',
+      }),
+    ).not.toBeInTheDocument()
+  })
+
   it('opens the failed version configuration for retry without a version-selection step', async () => {
     const user = userEvent.setup()
     render(<AppDeploy />)

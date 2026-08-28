@@ -52,7 +52,11 @@ function DeploymentDialogSession({
 
 export function DeploymentDialog({ appId, request, onClose }: DeploymentDialogProps) {
   return (
-    <Dialog open={Boolean(request)} onOpenChange={(open) => !open && onClose()}>
+    <Dialog
+      open={Boolean(request)}
+      disablePointerDismissal
+      onOpenChange={(open) => !open && onClose()}
+    >
       {request && (
         <DeploymentDialogSession
           appId={appId}
