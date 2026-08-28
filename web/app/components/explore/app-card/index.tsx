@@ -1,11 +1,8 @@
 'use client'
 import type { App } from '@/models/explore'
-import type { TryAppSelection } from '@/types/try-app'
 import { PlusIcon } from '@heroicons/react/20/solid'
-import { RiInformation2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
 import { AppTypeIcon } from '../../app/type-selector'
@@ -15,7 +12,6 @@ export type AppCardProps = {
   app: App
   canCreate: boolean
   onCreate: () => void
-  onTry: (params: TryAppSelection) => void
   isExplore?: boolean
 }
 
@@ -23,16 +19,10 @@ const AppCard = ({
   app,
   canCreate,
   onCreate,
-  onTry,
   isExplore = true,
 }: AppCardProps) => {
   const { t } = useTranslation()
   const { app: appBasicInfo } = app
-  const { systemFeatures } = useGlobalPublicStore()
-  const isTrialApp = app.can_trial && systemFeatures.enable_trial_app
-  const handleTryApp = () => {
-    onTry({ appId: app.app_id, app })
-  }
 
   return (
     <div className={cn('group relative col-span-1 flex cursor-pointer flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-2 shadow-sm transition-all duration-200 ease-in-out hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-lg')}>
@@ -69,20 +59,12 @@ const AppCard = ({
           {app.description}
         </div>
       </div>
-      {isExplore && (canCreate || isTrialApp) && (
+      {isExplore && canCreate && (
         <div className={cn('absolute bottom-0 left-0 right-0 hidden bg-gradient-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex')}>
-          <div className={cn('grid h-8 w-full grid-cols-1 space-x-2', canCreate && 'grid-cols-2')}>
-            {
-              canCreate && (
-                <Button variant="primary" className="h-7" onClick={() => onCreate()}>
-                  <PlusIcon className="mr-1 h-4 w-4" />
-                  <span className="text-xs">{t('appCard.addToWorkspace', { ns: 'explore' })}</span>
-                </Button>
-              )
-            }
-            <Button className="h-7" onClick={handleTryApp}>
-              <RiInformation2Line className="mr-1 size-4" />
-              <span>{t('appCard.try', { ns: 'explore' })}</span>
+          <div className="grid h-8 w-full grid-cols-1">
+            <Button variant="primary" className="h-7" onClick={onCreate}>
+              <PlusIcon className="mr-1 h-4 w-4" />
+              <span className="text-xs">{t('appCard.addToWorkspace', { ns: 'explore' })}</span>
             </Button>
           </div>
         </div>

@@ -2,7 +2,6 @@
 
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { App } from '@/models/explore'
-import type { TryAppSelection } from '@/types/try-app'
 import { useDebounceFn } from 'ahooks'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
@@ -26,7 +25,6 @@ import { fetchAppDetail } from '@/service/explore'
 import { useMembers } from '@/service/use-common'
 import { useExploreAppList } from '@/service/use-explore'
 import { cn } from '@/utils/classnames'
-import TryApp from '../try-app'
 import s from './style.module.css'
 
 type AppsProps = {
@@ -100,19 +98,6 @@ const Apps = ({
   } = useImportDSL()
   const [showDSLConfirmModal, setShowDSLConfirmModal] = useState(false)
 
-  const [currentTryApp, setCurrentTryApp] = useState<TryAppSelection | undefined>(undefined)
-  const isShowTryAppPanel = !!currentTryApp
-  const hideTryAppPanel = useCallback(() => {
-    setCurrentTryApp(undefined)
-  }, [])
-  const handleTryApp = useCallback((params: TryAppSelection) => {
-    setCurrentTryApp(params)
-  }, [])
-  const handleShowFromTryApp = useCallback(() => {
-    setCurrApp(currentTryApp?.app || null)
-    setIsShowCreateModal(true)
-  }, [currentTryApp?.app])
-
   const onCreate: CreateAppModalProps['onConfirm'] = async ({
     name,
     icon_type,
@@ -120,8 +105,6 @@ const Apps = ({
     icon_background,
     description,
   }) => {
-    hideTryAppPanel()
-
     const { export_data } = await fetchAppDetail(
       currApp?.app.id as string,
     )
@@ -228,7 +211,6 @@ const Apps = ({
                   setCurrApp(app)
                   setIsShowCreateModal(true)
                 }}
-                onTry={handleTryApp}
               />
             ))}
           </nav>
@@ -258,16 +240,6 @@ const Apps = ({
           />
         )
       }
-
-      {isShowTryAppPanel && (
-        <TryApp
-          appId={currentTryApp?.appId || ''}
-          app={currentTryApp?.app}
-          category={currentTryApp?.app?.category}
-          onClose={hideTryAppPanel}
-          onCreate={handleShowFromTryApp}
-        />
-      )}
     </div>
   )
 }
