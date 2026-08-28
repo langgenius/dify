@@ -31,22 +31,38 @@ def _as_dict(text: str) -> dict[str, Any] | None:
     return value if isinstance(value, dict) else None
 
 
-def invoke_text(model_instance, *, system: str, user: str, model_parameters: dict[str, Any] | None = None,
-                stop: list[str] | None = None) -> str:
+def invoke_text(
+    model_instance,
+    *,
+    system: str,
+    user: str,
+    model_parameters: dict[str, Any] | None = None,
+    stop: list[str] | None = None,
+) -> str:
     messages = [SystemPromptMessage(content=system), UserPromptMessage(content=user)]
     return _complete(model_instance, messages, model_parameters, stop)
 
 
-def invoke_json(model_instance, *, system: str, user: str, model_parameters: dict[str, Any] | None = None,
-                stop: list[str] | None = None) -> dict[str, Any]:
+def invoke_json(
+    model_instance,
+    *,
+    system: str,
+    user: str,
+    model_parameters: dict[str, Any] | None = None,
+    stop: list[str] | None = None,
+) -> dict[str, Any]:
     messages = [SystemPromptMessage(content=system), UserPromptMessage(content=user)]
     text = _complete(model_instance, messages, model_parameters, stop)
     parsed = _as_dict(text)
     if parsed is not None:
         return parsed
-    messages.append(UserPromptMessage(
-        content=f"Your previous reply was not valid JSON:\n{text}\nReply with ONLY a valid JSON object, nothing else."
-    ))
+    messages.append(
+        UserPromptMessage(
+            content=(
+                f"Your previous reply was not valid JSON:\n{text}\nReply with ONLY a valid JSON object, nothing else."
+            )
+        )
+    )
     retry_text = _complete(model_instance, messages, model_parameters, stop)
     parsed = _as_dict(retry_text)
     if parsed is not None:
