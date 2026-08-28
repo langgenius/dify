@@ -14,13 +14,16 @@ import controllers.openapi.auth.subjects as subjects_module
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import Subject
 from models import Account, App, Tenant
-from models.account import AccountStatus, TenantAccountRole, TenantStatus
-from models.enums import AppStatus
-from models.model import AppMode, IconType
+from models.account import TenantAccountRole
 
-APP_ID = "00000000-0000-0000-0000-000000000001"
-TENANT_ID = "00000000-0000-0000-0000-000000000002"
-ACCOUNT_ID = "00000000-0000-0000-0000-000000000004"
+from ._world import (
+    APP_ID,
+    TENANT_ID,
+    make_account,
+    make_app,
+    make_tenant,
+)
+
 LOADERS = "controllers.openapi.auth.loaders"
 
 
@@ -29,36 +32,7 @@ def _subject() -> Subject:
     return cast(Subject, object())
 
 
-def _app() -> App:
-    return App(
-        id=APP_ID,
-        tenant_id=TENANT_ID,
-        name="OpenAPI app",
-        description="",
-        mode=AppMode.CHAT,
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
-        status=AppStatus.NORMAL,
-        enable_site=True,
-        enable_api=True,
-        max_active_requests=None,
-    )
-
-
-def _tenant() -> Tenant:
-    tenant = Tenant(name="OpenAPI tenant", status=TenantStatus.NORMAL)
-    tenant.id = TENANT_ID
-    return tenant
-
-
-def _account() -> Account:
-    account = Account(name="OpenAPI account", email="account@example.com", status=AccountStatus.ACTIVE)
-    account.id = ACCOUNT_ID
-    return account
-
-
-def _ctx(session: Session, **view_args: str) -> Context:
+def make_ctx(session: Session, **view_args: str) -> Context:
     return Context(_subject(), session, dict(view_args))
 
 
@@ -71,13 +45,13 @@ class _Datum(NamedTuple):
 
 
 DATA = [
-    _Datum("app", lambda c: c.app, lambda c: c.app_loaded, lambda c, v: c.set_app(cast(App, v)), _app()),
+    _Datum("app", lambda c: c.app, lambda c: c.app_loaded, lambda c, v: c.set_app(cast(App, v)), make_app()),
     _Datum(
         "workspace",
         lambda c: c.workspace,
         lambda c: c.workspace_loaded,
         lambda c, v: c.set_workspace(cast(Tenant, v)),
-        _tenant(),
+        make_tenant(),
     ),
     _Datum(
         "workspace_role",
@@ -87,14 +61,18 @@ DATA = [
         TenantAccountRole.ADMIN,
     ),
     _Datum(
-        "caller", lambda c: c.caller, lambda c: c.caller_loaded, lambda c, v: c.set_caller(cast(Account, v)), _account()
+        "caller",
+        lambda c: c.caller,
+        lambda c: c.caller_loaded,
+        lambda c, v: c.set_caller(cast(Account, v)),
+        make_account(),
     ),
 ]
 
 
 @pytest.mark.parametrize("datum", DATA, ids=[datum.name for datum in DATA])
 def test_a_datum_is_stored_once_and_read_back_unchanged(sqlite_session: Session, datum: _Datum) -> None:
-    ctx = _ctx(sqlite_session, app_id=APP_ID, workspace_id=TENANT_ID)
+    ctx = make_ctx(sqlite_session, app_id=APP_ID, workspace_id=TENANT_ID)
 
     assert datum.loaded(ctx) is False
     datum.store(ctx, datum.value)
@@ -108,26 +86,19 @@ def test_reading_a_datum_nothing_loaded_names_the_datum(sqlite_session: Session,
     """A programming error, not an HTTP status: no route should be able to reach
     a reader whose datum no requirement loads, so this is never a caller's answer.
     """
-    ctx = _ctx(sqlite_session, app_id=APP_ID, workspace_id=TENANT_ID)
+    ctx = make_ctx(sqlite_session, app_id=APP_ID, workspace_id=TENANT_ID)
 
     with pytest.raises(LookupError, match=datum.name):
         datum.read(ctx)
 
 
 def test_the_view_args_derived_facts_need_no_loading(sqlite_session: Session) -> None:
-    assert _ctx(sqlite_session, app_id=APP_ID).has_app is True
-    assert _ctx(sqlite_session, workspace_id=TENANT_ID).has_app is False
-
-
-def test_loaded_is_not_a_view_args_test(sqlite_session: Session) -> None:
-    """A path param says a datum *can* be resolved, never that it was."""
-    ctx = _ctx(sqlite_session, app_id=APP_ID, workspace_id=TENANT_ID)
-
-    assert (ctx.app_loaded, ctx.workspace_loaded) == (False, False)
+    assert make_ctx(sqlite_session, app_id=APP_ID).has_app is True
+    assert make_ctx(sqlite_session, workspace_id=TENANT_ID).has_app is False
 
 
 def test_the_session_and_path_params_are_handed_over_at_construction(sqlite_session: Session) -> None:
-    ctx = _ctx(sqlite_session, app_id=APP_ID)
+    ctx = make_ctx(sqlite_session, app_id=APP_ID)
 
     assert ctx.session is sqlite_session
     assert dict(ctx.view_args) == {"app_id": APP_ID}

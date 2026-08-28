@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
@@ -30,23 +29,22 @@ from libs.oauth_bearer import (
     TokenKindRegistry,
     TokenType,
 )
-from models import Account, App
-from models.account import AccountStatus
-from models.enums import AppStatus
-from models.model import AppMode, IconType
+from models import Account
 from models.oauth import OAuthAccessToken
 from services.entities.feature_entities import (
     LicenseStatus,
-    LicenseStatusModel,
-    SystemFeatureModel,
-    WebAppAuthModel,
 )
 
-APP_ID = "00000000-0000-0000-0000-000000000001"
-TENANT_ID = "00000000-0000-0000-0000-000000000002"
-ACCOUNT_ID = "00000000-0000-0000-0000-000000000003"
-TOKEN_ID = "00000000-0000-0000-0000-000000000004"
-SSO_EMAIL = "user@sso.com"
+from ._world import (
+    ACCOUNT_ID,
+    APP_ID,
+    TOKEN_ID,
+    make_account,
+    make_app,
+    make_auth,
+    persist,
+    system_features,
+)
 
 ROUTER = "controllers.openapi.auth.router"
 FEATURES = "controllers.openapi.auth.requirements.FeatureService.get_system_features"
@@ -54,58 +52,7 @@ MOUNT = "controllers.openapi.auth.pipelines._mount_flask_login"
 ENTERPRISE_ONLY = frozenset({DeploymentEdition.ENTERPRISE})
 
 
-def _auth(subject_type: SubjectType) -> AuthContext:
-    is_account = subject_type is SubjectType.ACCOUNT
-    return AuthContext(
-        subject_type=subject_type,
-        subject_email=None if is_account else SSO_EMAIL,
-        subject_issuer=None if is_account else "https://idp.example",
-        account_id=uuid.UUID(ACCOUNT_ID) if is_account else None,
-        client_id="openapi-client",
-        scopes=subject_type.scopes,
-        token_id=uuid.UUID(TOKEN_ID),
-        token_type=TokenType.OAUTH_ACCOUNT if is_account else TokenType.OAUTH_EXTERNAL_SSO,
-        expires_at=None,
-    )
-
-
-def _app(*, enable_api: bool = True) -> App:
-    return App(
-        id=APP_ID,
-        tenant_id=TENANT_ID,
-        name="OpenAPI app",
-        description="",
-        mode=AppMode.CHAT,
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
-        status=AppStatus.NORMAL,
-        enable_site=True,
-        enable_api=enable_api,
-        max_active_requests=None,
-    )
-
-
-def _account() -> Account:
-    account = Account(name="OpenAPI account", email="account@example.com", status=AccountStatus.ACTIVE)
-    account.id = ACCOUNT_ID
-    return account
-
-
-def _persist(session: Session, *models: object) -> None:
-    session.add_all(models)
-    session.commit()
-
-
-def _features(license_status: LicenseStatus) -> SystemFeatureModel:
-    return SystemFeatureModel(
-        deployment_edition=DeploymentEdition.ENTERPRISE,
-        license=LicenseStatusModel(status=license_status),
-        webapp_auth=WebAppAuthModel(enabled=False),
-    )
-
-
-def _boom(*_args: object, **_kwargs: object) -> NoReturn:
+def never_reached(*_args: object, **_kwargs: object) -> NoReturn:
     raise AssertionError("reached a step the router should have answered before")
 
 
@@ -142,7 +89,7 @@ def test_endpoint_edition_gate_404s_before_the_bearer_is_read(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-    monkeypatch.setattr(f"{ROUTER}.extract_bearer", _boom)
+    monkeypatch.setattr(f"{ROUTER}.extract_bearer", never_reached)
     view = _guard(_nothing, edition=ENTERPRISE_ONLY)
 
     with app.test_request_context("/openapi/v1/permitted-external-apps"):
@@ -159,7 +106,7 @@ def test_a_dead_licence_403s_an_unauthenticated_caller_on_an_ee_endpoint(
     with no bearer at all sees 403, not 401.
     """
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-    monkeypatch.setattr(FEATURES, lambda: _features(LicenseStatus.EXPIRED))
+    monkeypatch.setattr(FEATURES, lambda: system_features(license_status=LicenseStatus.EXPIRED))
     view = _guard(_nothing, edition=ENTERPRISE_ONLY)
 
     with app.test_request_context("/openapi/v1/permitted-external-apps"):
@@ -343,7 +290,7 @@ def test_the_expired_branch_hard_expires_the_row_before_refusing(app: Flask, mon
 
 
 def test_a_subject_with_no_pipeline_403s(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    _authenticates(monkeypatch, _auth(SubjectType.EXTERNAL_SSO))
+    _authenticates(monkeypatch, make_auth(SubjectType.EXTERNAL_SSO))
     account_only = AuthRouter({SubjectType.ACCOUNT: AccountPipeline()})
     view = _guard(_nothing, router=account_only)
 
@@ -357,8 +304,8 @@ def test_an_account_token_reaches_the_view_with_a_resolved_context(
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _persist(sqlite_session, _account())
-    _authenticates(monkeypatch, _auth(SubjectType.ACCOUNT))
+    persist(sqlite_session, make_account())
+    _authenticates(monkeypatch, make_auth(SubjectType.ACCOUNT))
     mounted: list[object] = []
     monkeypatch.setattr(MOUNT, mounted.append)
     seen: dict[str, object] = {}
@@ -387,8 +334,8 @@ def test_path_params_reach_the_context(
     """`CheckAppApiEnabled` is fixed on the account pipeline, so it only fires
     when the router has put the route's `app_id` on the context.
     """
-    _persist(sqlite_session, _app(enable_api=False))
-    _authenticates(monkeypatch, _auth(SubjectType.ACCOUNT))
+    persist(sqlite_session, make_app(enable_api=False))
+    _authenticates(monkeypatch, make_auth(SubjectType.ACCOUNT))
     view = _guard(_nothing)
 
     with app.test_request_context(f"/openapi/v1/apps/{APP_ID}", headers={"Authorization": "Bearer tok"}):
@@ -403,7 +350,7 @@ def test_an_sso_token_is_refused_on_a_community_deployment(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-    _authenticates(monkeypatch, _auth(SubjectType.EXTERNAL_SSO))
+    _authenticates(monkeypatch, make_auth(SubjectType.EXTERNAL_SSO))
     view = _guard(_nothing)
 
     with app.test_request_context("/openapi/v1/account", headers={"Authorization": "Bearer tok"}):
@@ -421,7 +368,7 @@ def test_the_endpoint_subject_check_answers_before_the_pipeline_edition_check(
     deployment where the SSO pipeline itself is unavailable.
     """
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-    _authenticates(monkeypatch, _auth(SubjectType.EXTERNAL_SSO))
+    _authenticates(monkeypatch, make_auth(SubjectType.EXTERNAL_SSO))
     view = _guard(_nothing, requirements=(SubjectCheck(allowed=[AccountSubject]),))
 
     with app.test_request_context("/openapi/v1/account", headers={"Authorization": "Bearer tok"}):
@@ -440,8 +387,8 @@ def test_write_true_by_default_commits_a_mutation_on_success(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _persist(sqlite_session, _account())
-    _authenticates(monkeypatch, _auth(SubjectType.ACCOUNT))
+    persist(sqlite_session, make_account())
+    _authenticates(monkeypatch, make_auth(SubjectType.ACCOUNT))
     monkeypatch.setattr(MOUNT, lambda _user: None)
     view = _guard(_rename_handler)
 
@@ -458,8 +405,8 @@ def test_write_false_does_not_persist_a_mutation(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _persist(sqlite_session, _account())
-    _authenticates(monkeypatch, _auth(SubjectType.ACCOUNT))
+    persist(sqlite_session, make_account())
+    _authenticates(monkeypatch, make_auth(SubjectType.ACCOUNT))
     monkeypatch.setattr(MOUNT, lambda _user: None)
     view = _guard(_rename_handler, write=False)
 
