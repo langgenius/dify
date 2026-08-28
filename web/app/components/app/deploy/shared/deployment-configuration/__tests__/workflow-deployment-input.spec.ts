@@ -8,7 +8,6 @@ import {
 import { environmentVariableSelectionKey } from '../use-deployment-configuration-values'
 import {
   credentialSlotKey,
-  hasRequiredDeploymentCredentials,
   hasValidDeploymentEnvironmentVariables,
   workflowDeploymentInput,
 } from '../utils/workflow-deployment-input'
@@ -301,7 +300,6 @@ describe('workflowDeploymentInput', () => {
         environmentVariables: {},
       }
 
-      expect(hasRequiredDeploymentCredentials(options, values.credentials)).toBe(false)
       expect(workflowDeploymentInput(options, values)).toBeUndefined()
     },
   )

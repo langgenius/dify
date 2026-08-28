@@ -102,13 +102,6 @@ export function resolveEnvironmentVariableSelection(
   }
 }
 
-export function hasRequiredDeploymentCredentials(
-  deploymentOptions: GetWorkflowDeploymentOptionsResponse,
-  credentials: DeploymentConfigurationValues['credentials'],
-) {
-  return !findInvalidDeploymentCredential(deploymentOptions, credentials)
-}
-
 export function findInvalidDeploymentCredential(
   deploymentOptions: GetWorkflowDeploymentOptionsResponse,
   credentials: DeploymentConfigurationValues['credentials'],

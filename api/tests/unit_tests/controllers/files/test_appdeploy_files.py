@@ -1,10 +1,11 @@
 """Tests for the file endpoints reached with an AppDeploy file grant."""
 
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from datetime import datetime
 from io import BytesIO
 from types import SimpleNamespace
+from typing import IO, cast
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
@@ -12,6 +13,7 @@ import httpx
 import jwt
 import pytest
 from flask import Flask
+from sqlalchemy import update
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
@@ -101,7 +103,7 @@ def granted_config(config_overrides: Callable[..., None]) -> None:
 
 
 @pytest.fixture
-def sqlite_db(sqlite_engine: Engine):
+def sqlite_db(sqlite_engine: Engine) -> Iterator[None]:
     with patch(f"{SERVICE_MODULE}.db", MagicMock(engine=sqlite_engine)):
         yield
 
@@ -555,7 +557,7 @@ def test_produced_stops_reading_an_oversized_body_at_the_per_extension_limit(one
                 tenant_id=TENANT_ID,
                 end_user_id="99999999-9999-4999-8999-999999999999",
                 filename="chart.png",
-                stream=stream,
+                stream=cast(IO[bytes], stream),
                 mimetype="image/png",
             )
 
@@ -657,7 +659,7 @@ def test_resolve_returns_an_empty_batch_unchanged(app: Flask, end_user: EndUser)
 
 
 @pytest.fixture
-def stored_bytes():
+def stored_bytes() -> Iterator[MagicMock]:
     with patch(f"{SERVICE_MODULE}.storage") as storage:
         storage.load.return_value = iter([b"file-bytes"])
         yield storage
@@ -708,7 +710,7 @@ def test_content_disposition_follows_the_inline_whitelist(
 @pytest.mark.usefixtures("sqlite_db", "stored_bytes")
 def test_content_downloads_a_file_with_no_recorded_mime_type(app: Flask, sqlite_session: Session) -> None:
     upload_file = _persist_upload_file(sqlite_session, owner_id="anyone")
-    upload_file.mime_type = None
+    sqlite_session.execute(update(UploadFile).where(UploadFile.id == upload_file.id).values(mime_type=None))
     sqlite_session.commit()
     token = _content_token(file_id=upload_file.id, kind=FileKind.UPLOAD)
 
