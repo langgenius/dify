@@ -440,8 +440,6 @@ function AgentVersionRestoreBar({
           version.created_at,
           t(($) => $['roster.dateTimeFormat']),
         )
-  const metadataLabel = [createdAt, version.created_by].filter(Boolean).join(' · ')
-
   return (
     <div className="pointer-events-auto flex max-w-full min-w-0 items-center gap-2 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-2 pr-2.5 pl-2 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
       <div className="flex min-w-0 flex-col justify-center gap-0.5 pr-4 pl-2">
@@ -454,10 +452,7 @@ function AgentVersionRestoreBar({
           </span>
         </div>
         {(createdAt || version.created_by) && (
-          <p
-            className="min-w-0 truncate system-xs-regular text-text-tertiary"
-            title={metadataLabel}
-          >
+          <p className="min-w-0 truncate system-xs-regular text-text-tertiary">
             {createdAt}
             {createdAt && version.created_by && ' · '}
             {version.created_by}

@@ -41,11 +41,6 @@ function LabelSelector({ value, onChange }: LabelSelectorProps) {
               'grow truncate text-[13px] leading-4.5 text-text-secondary',
               !value.length && 'text-text-quaternary!',
             )}
-            title={
-              value.length
-                ? selectedLabels
-                : t(($) => $['createTool.toolInput.labelPlaceholder'], { ns: 'tools' })
-            }
           >
             {!value.length && t(($) => $['createTool.toolInput.labelPlaceholder'], { ns: 'tools' })}
             {!!value.length && selectedLabels}

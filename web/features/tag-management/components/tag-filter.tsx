@@ -125,10 +125,7 @@ export const TagFilter = ({
                   />
                 </span>
               )}
-              <span
-                className="min-w-0 grow truncate text-[13px] leading-4.5 text-text-tertiary"
-                title={triggerLabel}
-              >
+              <span className="min-w-0 grow truncate text-[13px] leading-4.5 text-text-tertiary">
                 {!value.length && placeholderLabel}
                 {!!value.length && currentTagName}
               </span>

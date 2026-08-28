@@ -163,10 +163,7 @@ export function KnowledgeSpaceShell({
                 >
                   {knowledgeSpaceQuery.data.name}
                 </h1>
-                <p
-                  className="mt-0.5 truncate system-2xs-medium-uppercase text-text-tertiary"
-                  title={`${t(($) => $['chunkingMode.parentChild'])} · ${t(($) => $['indexingTechnique.high_quality'])} · ${t(($) => $['retrieval.semantic_search.title'])}`}
-                >
+                <p className="mt-0.5 truncate system-2xs-medium-uppercase text-text-tertiary">
                   {t(($) => $['chunkingMode.parentChild'])} ·{' '}
                   {t(($) => $['indexingTechnique.high_quality'])} ·{' '}
                   {t(($) => $['retrieval.semantic_search.title'])}

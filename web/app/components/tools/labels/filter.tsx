@@ -46,10 +46,7 @@ const LabelFilter: FC<LabelFilterProps> = ({ value, onChange }) => {
           )}
         >
           <div className="flex min-w-0 items-center p-1">
-            <div
-              className="min-w-0 truncate text-[13px] leading-4 text-text-tertiary"
-              title={value.length ? currentLabel?.label : t(($) => $['tag.tags'], { ns: 'common' })}
-            >
+            <div className="min-w-0 truncate text-[13px] leading-4 text-text-tertiary">
               {!value.length && t(($) => $['tag.tags'], { ns: 'common' })}
               {!!value.length && currentLabel?.label}
             </div>

@@ -514,9 +514,6 @@ export function ProcessingTasksDrawer({
                       const taskTimeLabel = Number.isNaN(timestamp)
                         ? null
                         : formatTimeFromNow(timestamp)
-                      const taskMetadataLabel = [taskStateLabel, taskTimeLabel]
-                        .filter(Boolean)
-                        .join(' · ')
                       const taskError = task.errorMessage ?? task.errorCode
                       const actionTarget = `${documentTitles.get(task.documentId) ?? task.documentId} · ${task.id}`
                       return (
@@ -540,10 +537,7 @@ export function ProcessingTasksDrawer({
                             >
                               {t(($) => $['newKnowledge.processDocument'], { name: title })}
                             </p>
-                            <p
-                              className="mt-0.5 truncate system-2xs-regular text-text-tertiary"
-                              title={taskMetadataLabel}
-                            >
+                            <p className="mt-0.5 truncate system-2xs-regular text-text-tertiary">
                               {taskStateLabel}
                               {taskTimeLabel && (
                                 <>

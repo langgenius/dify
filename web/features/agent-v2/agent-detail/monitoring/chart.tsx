@@ -74,10 +74,7 @@ export function AgentMonitoringChart({
           </div>
         )}
         {chartType === 'tokenUsage' && (
-          <div
-            className="mt-0.5 truncate system-sm-regular text-text-secondary"
-            title={`${t(($) => $['agentDetail.monitoring.tokenUsageConsumed'])} (~${tokenSummary})`}
-          >
+          <div className="mt-0.5 truncate system-sm-regular text-text-secondary">
             {t(($) => $['agentDetail.monitoring.tokenUsageConsumed'])}{' '}
             <span className="text-util-colors-orange-orange-600">
               (~

@@ -176,10 +176,7 @@ const EndpointCard = ({ pluginDetail, data, handleChange }: Props) => {
               <div className="w-12 shrink-0 system-xs-regular text-text-tertiary">
                 {endpoint.method}
               </div>
-              <div
-                className="group/item flex grow items-center truncate system-xs-regular text-text-secondary"
-                title={`${data.url}${endpoint.path}`}
-              >
+              <div className="group/item flex grow items-center truncate system-xs-regular text-text-secondary">
                 <div
                   className="truncate"
                   title={`${data.url}${endpoint.path}`}

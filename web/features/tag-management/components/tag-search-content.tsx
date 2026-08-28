@@ -95,10 +95,7 @@ export const TagSearchContentView = ({
                       aria-hidden="true"
                       className="i-ri-add-line size-4 shrink-0 text-text-tertiary"
                     />
-                    <span
-                      className="min-w-0 grow truncate px-1 system-md-regular text-text-secondary"
-                      title={`${t(($) => $['tag.create'], { ns: 'common' })} '${tag.name}'`}
-                    >
+                    <span className="min-w-0 grow truncate px-1 system-md-regular text-text-secondary">
                       {`${t(($) => $['tag.create'], { ns: 'common' })} `}
                       <span className="system-md-medium">{`'${tag.name}'`}</span>
                     </span>

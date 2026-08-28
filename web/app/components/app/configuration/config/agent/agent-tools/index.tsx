@@ -230,7 +230,6 @@ const AgentTools: FC = () => {
                     'ml-1.5 flex w-0 grow items-center truncate system-xs-regular',
                     item.isDeleted || item.notAuthor || !item.enabled ? 'opacity-50' : '',
                   )}
-                  title={`${getProviderShowName(item)} ${item.tool_label}`}
                 >
                   <span className="pr-1.5 system-xs-medium text-text-secondary">
                     {getProviderShowName(item)}

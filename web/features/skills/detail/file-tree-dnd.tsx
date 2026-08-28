@@ -23,7 +23,6 @@ export function SkillDropDestinationHint({ target }: { target: SkillDropTarget |
         <span
           aria-label={label}
           className="max-w-full truncate px-0.5 system-xs-regular text-text-secondary"
-          title={label}
         >
           {action} to <strong className="font-medium">{destination}</strong>
         </span>

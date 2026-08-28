@@ -86,10 +86,7 @@ function AppPickerOption({ app }: { app: AppPartial }) {
           background={app.icon_background}
           imageUrl={app.icon_url}
         />
-        <span
-          className="min-w-0 grow truncate system-sm-medium text-components-input-text-filled"
-          title={`${app.name} (${app.id.slice(0, 8)})`}
-        >
+        <span className="min-w-0 grow truncate system-sm-medium text-components-input-text-filled">
           <span className="mr-1">{app.name}</span>
           <span className="text-text-tertiary">({app.id.slice(0, 8)})</span>
         </span>

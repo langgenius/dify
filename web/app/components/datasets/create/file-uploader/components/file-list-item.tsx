@@ -57,10 +57,7 @@ const FileListItem = ({ fileItem, onPreview, onRemove }: FileListItemProps) => {
             {fileItem.file.name}
           </div>
         </div>
-        <div
-          className="w-full truncate leading-3 text-text-tertiary"
-          title={`${getFileExtension(fileItem.file.name)} · ${formatFileSize(fileItem.file.size)}`}
-        >
+        <div className="w-full truncate leading-3 text-text-tertiary">
           <span className="uppercase">{getFileExtension(fileItem.file.name)}</span>
           <span className="px-1 text-text-quaternary">·</span>
           <span>{formatFileSize(fileItem.file.size)}</span>

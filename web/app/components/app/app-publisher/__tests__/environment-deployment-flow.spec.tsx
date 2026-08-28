@@ -529,7 +529,6 @@ describe('PublisherEnvironmentFlow', () => {
     const latestVersionRow = latestLabel.parentElement
     expect(latestLabel).toHaveClass('capitalize')
     expect(latestVersionRow).toHaveTextContent(`Latest: ${latestVersion.name}`)
-    expect(latestVersionRow).toHaveAttribute('title', `Latest: ${latestVersion.name}`)
 
     await user.click(screen.getByRole('button', { name: 'All versions' }))
     expect(screen.getByRole('heading', { name: 'Deploy to Development' })).toBeInTheDocument()
@@ -619,7 +618,6 @@ describe('PublisherEnvironmentFlow', () => {
     const latestVersionRow = latestLabel.parentElement
     expect(latestLabel).toHaveClass('capitalize')
     expect(latestVersionRow).toHaveTextContent(`Latest: ${latestVersion.name}`)
-    expect(latestVersionRow).toHaveAttribute('title', `Latest: ${latestVersion.name}`)
     expect(screen.getByRole('button', { name: 'Deploy latest' })).toBeEnabled()
     expect(screen.queryByText('Deploying...')).not.toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()

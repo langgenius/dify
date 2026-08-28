@@ -13,7 +13,7 @@ const plugin = {
 }
 
 function verifyAndFix(code, filename = 'test.tsx') {
-  const linter = new Linter()
+  const linter = new Linter({ cwd: resolve('..') })
   return linter.verifyAndFix(
     code,
     [
@@ -115,6 +115,42 @@ it('uses a single nested text child or a text-bearing prop', () => {
   assert.equal(result.messages.length, 0)
   assert.match(result.output, /className="truncate" title=\{name\}/u)
   assert.match(result.output, /content=\{content\} title=\{content\}/u)
+})
+
+it('checks Dify UI single text but ignores multiple text children', () => {
+  const filename = resolve('../packages/dify-ui/src/example.tsx')
+  const result = verifyAndFix(
+    `
+      export const Example = ({ primary, secondary }) => <>
+        <span className="truncate">{primary}</span>
+        <span className="truncate">{primary}{secondary}</span>
+        <div className="line-clamp-2">
+          <span>{primary}</span>
+          <span>{secondary}</span>
+        </div>
+      </>
+    `,
+    filename,
+  )
+
+  assert.equal(result.fixed, true)
+  assert.equal(result.messages.length, 0)
+  assert.equal(result.output.match(/title=\{primary\}/gu)?.length, 1)
+})
+
+it('does not count non-text conditional children as additional text', () => {
+  const result = verifyAndFix(`
+    export const Example = ({ primary, showOverlay }) => (
+      <span className="truncate">
+        {primary}
+        {showOverlay && <span aria-hidden />}
+      </span>
+    )
+  `)
+
+  assert.equal(result.fixed, false)
+  assert.equal(result.messages.length, 1)
+  assert.equal(result.messages[0].messageId, 'missingTitle')
 })
 
 it('resolves truncation classes imported from CSS modules', () => {

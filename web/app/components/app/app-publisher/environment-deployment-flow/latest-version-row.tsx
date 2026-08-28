@@ -39,7 +39,6 @@ export function PublisherLatestVersionRow({
             ? 'system-xs-medium text-text-accent'
             : 'system-xs-regular text-text-tertiary',
         )}
-        title={latestVersionLabel}
       >
         {isDeploying ? (
           latestVersionLabel

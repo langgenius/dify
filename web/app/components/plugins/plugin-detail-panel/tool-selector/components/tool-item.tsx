@@ -131,7 +131,6 @@ export function ToolItem({
           isTransparent && 'opacity-50',
           isShowCanNotChooseMCPTip && 'opacity-30',
         )}
-        title={`${providerNameText} ${toolLabel}`}
       >
         <div className="system-2xs-medium-uppercase text-text-tertiary">{providerNameText}</div>
         <div className="system-xs-medium text-text-secondary">{toolLabel}</div>

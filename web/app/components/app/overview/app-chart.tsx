@@ -116,10 +116,7 @@ const Chart: React.FC<IChartProps> = ({
           {summaryValue}
         </div>
         {showTokenSummary && (
-          <div
-            className="min-w-0 truncate system-sm-medium text-text-tertiary"
-            title={`${t(($) => $['analysis.tokenUsage.consumed'], { ns: 'appOverview' })} Tokens (~${tokenSummary})`}
-          >
+          <div className="min-w-0 truncate system-sm-medium text-text-tertiary">
             {t(($) => $['analysis.tokenUsage.consumed'], { ns: 'appOverview' })} Tokens{' '}
             <span>(</span>
             <span className="text-orange-400">~{tokenSummary}</span>

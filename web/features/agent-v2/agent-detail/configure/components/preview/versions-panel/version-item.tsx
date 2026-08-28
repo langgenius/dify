@@ -16,10 +16,8 @@ function VersionMetadata({ version }: { version: AgentConfigSnapshotSummaryRespo
           version.created_at,
           t(($) => $['roster.dateTimeFormat']),
         )
-  const metadataLabel = [createdAt, version.created_by].filter(Boolean).join(' · ')
-
   return (
-    <p className="truncate system-xs-regular text-text-tertiary" title={metadataLabel}>
+    <p className="truncate system-xs-regular text-text-tertiary">
       {createdAt}
       {createdAt && version.created_by && ' · '}
       {version.created_by}

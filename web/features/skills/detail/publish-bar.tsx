@@ -111,10 +111,7 @@ export function SkillPublishBar({
         <span className="flex size-4 shrink-0 items-center justify-center">
           <StatusDot size="small" status={currentState.dotStatus} />
         </span>
-        <span
-          className="min-w-0 truncate leading-4"
-          title={`${currentState.statusLabel} · ${metaLabel}`}
-        >
+        <span className="min-w-0 truncate leading-4">
           <span>{currentState.statusLabel}</span>
           <span aria-hidden> · </span>
           <span>{metaLabel}</span>

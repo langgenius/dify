@@ -18,10 +18,7 @@ const PanelWrap: FC<Props> = ({ nodeName, onHide, children }) => {
     <div className="absolute inset-0 z-10 rounded-2xl bg-background-overlay-alt">
       <div className="flex h-full flex-col rounded-2xl bg-components-panel-bg">
         <div className="flex h-8 shrink-0 items-center justify-between pt-3 pr-3 pl-4">
-          <div
-            className="truncate text-base font-semibold text-text-primary"
-            title={`${t(($) => $[`${i18nPrefix}.testRun`], { ns: 'workflow' })} ${nodeName}`}
-          >
+          <div className="truncate text-base font-semibold text-text-primary">
             {t(($) => $[`${i18nPrefix}.testRun`], { ns: 'workflow' })} {nodeName}
           </div>
           <div

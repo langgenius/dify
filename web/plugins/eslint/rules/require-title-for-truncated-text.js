@@ -436,6 +436,66 @@ function getSingleTextChild(element) {
   return child
 }
 
+function getExpressionTextChildCount(node) {
+  const current = unwrapExpression(node)
+  if (!current) return 0
+
+  if (current.type === 'JSXElement' || current.type === 'JSXFragment')
+    return getTextChildCount(current)
+  if (current.type === 'ConditionalExpression')
+    return Math.max(
+      getExpressionTextChildCount(current.consequent),
+      getExpressionTextChildCount(current.alternate),
+    )
+  if (current.type === 'LogicalExpression') {
+    if (current.operator === '&&') return getExpressionTextChildCount(current.right)
+    return Math.max(
+      getExpressionTextChildCount(current.left),
+      getExpressionTextChildCount(current.right),
+    )
+  }
+  if (current.type === 'ArrayExpression') {
+    let count = 0
+    for (const element of current.elements) {
+      if (!element) continue
+      count += getExpressionTextChildCount(
+        element.type === 'SpreadElement' ? element.argument : element,
+      )
+      if (count > 1) return count
+    }
+    return count
+  }
+  if (current.type === 'Literal') {
+    if (current.value === null || typeof current.value === 'boolean') return 0
+    if (typeof current.value === 'string') return current.value.trim() === '' ? 0 : 1
+  }
+  if (current.type === 'TemplateLiteral' && current.expressions.length === 0)
+    return (current.quasis[0]?.value.cooked ?? '').trim() === '' ? 0 : 1
+  if (current.type === 'Identifier' && current.name === 'undefined') return 0
+  return isRenderableTitleExpression(current) ? 1 : 0
+}
+
+function getTextChildCount(element) {
+  let count = 0
+
+  for (const child of getMeaningfulChildren(element)) {
+    if (child.type === 'JSXText') count++
+    else if (child.type === 'JSXElement' || child.type === 'JSXFragment')
+      count += getTextChildCount(child)
+    else if (child.type === 'JSXExpressionContainer')
+      count += getExpressionTextChildCount(child.expression)
+
+    if (count > 1) return count
+  }
+
+  return count
+}
+
+function hasMultipleTextChildren(openingElement) {
+  const element = openingElement.parent
+  return element?.type === 'JSXElement' && getTextChildCount(element) > 1
+}
+
 function getTitleFixTextFromAttribute(attribute, sourceCode) {
   if (!attribute?.value) return null
   if (attribute.value.type === 'Literal') {
@@ -620,6 +680,7 @@ export default {
           const owningVariableName = getOwningVariableName(openingElement)
           if (owningVariableName && renderIdentifiers.has(owningVariableName)) continue
 
+          if (hasMultipleTextChildren(openingElement)) continue
           if (hasTitledSingleChild(openingElement)) continue
 
           const titleAttribute = getAttribute(openingElement, 'title')
