@@ -26,7 +26,7 @@ import Empty from './empty'
 import FirstEmptyState from './first-empty-state'
 import { useAppListTour } from './hooks/use-app-list-tour'
 import { useWorkflowOnlineUsers } from './hooks/use-workflow-online-users'
-import { StarredAppList } from './starred-app-list'
+import { ALL_APPS_HEADING_ID, AppListSectionHeading, StarredAppList } from './starred-app-list'
 
 const STARRED_APP_LIMIT = 100
 const STEP_BY_STEP_TOUR_APP_ROW_CARD_COUNT = 4
@@ -56,6 +56,7 @@ type AppListCatalogContentProps = Omit<AppListCatalogProps, 'appListQuery'> &
     appListPages: AppPagination[]
     hasNextPage: boolean
     isFetchNextPageError: boolean
+    isError: boolean
     isFetching: boolean
     isFetchingNextPage: boolean
     isPlaceholderData: boolean
@@ -85,6 +86,7 @@ function AppListCatalogContent({
   hasActiveFilters,
   hasNextPage,
   isFetchNextPageError,
+  isError,
   isFetching,
   isFetchingNextPage,
   isPlaceholderData,
@@ -118,6 +120,9 @@ function AppListCatalogContent({
 
   const hasResolvedFirstPage = appListPages.length > 0
   const hasAnyApp = (appListPages[0]?.total ?? 0) > 0
+  const emptyMessage = t(($) => $['filterEmpty.noApps'], { ns: 'app' })
+  const resultStatusMessage =
+    !isError && !isPlaceholderData && hasResolvedFirstPage && !hasAnyApp ? emptyMessage : ''
   const showFirstEmptyState =
     !isPlaceholderData && !hasAnyApp && canCreateApp && hasResolvedFirstPage && !hasActiveFilters
   const showNoCreateEmptyState =
@@ -134,6 +139,9 @@ function AppListCatalogContent({
 
   return (
     <>
+      <span className="sr-only" role="status">
+        {resultStatusMessage}
+      </span>
       {showFirstEmptyState ? (
         <FirstEmptyState
           onCreateBlank={onCreateBlank}
@@ -163,7 +171,16 @@ function AppListCatalogContent({
               }
             />
           )}
+          {starredApps.length > 0 && (
+            <AppListSectionHeading
+              id={ALL_APPS_HEADING_ID}
+              label={t(($) => $['studio.allApps'], { ns: 'app' })}
+            />
+          )}
           <div
+            role={hasAnyApp ? 'list' : undefined}
+            aria-busy={isFetching}
+            aria-labelledby={hasAnyApp && starredApps.length > 0 ? ALL_APPS_HEADING_ID : undefined}
             className={cn(
               `relative grow content-start ${APP_LIST_GRID_CLASS_NAME}`,
               !hasAnyApp && 'overflow-hidden',
@@ -202,6 +219,7 @@ function AppListCatalogContent({
               ))
             ) : (
               <Empty
+                message={emptyMessage}
                 stepByStepTourTarget={
                   showNoCreateEmptyState ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateEmpty : undefined
                 }
@@ -244,8 +262,6 @@ function AppListCatalogContent({
       {canCreateApp && !showFirstEmptyState && (
         <div
           className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}
-          role="region"
-          aria-label={t(($) => $['newApp.dropDSLToCreateApp'], { ns: 'app' })}
         >
           <span className="i-ri-drag-drop-line size-4" />
           <span className="system-xs-regular">
@@ -318,6 +334,7 @@ export function AppListCatalog(props: AppListCatalogProps) {
       hasActiveFilters={hasActiveFilters}
       hasNextPage={appList.hasNextPage}
       isFetchNextPageError={appList.isFetchNextPageError}
+      isError={appList.isError}
       isFetching={appList.isFetching}
       isFetchingNextPage={appList.isFetchingNextPage}
       isPlaceholderData={appList.isPlaceholderData}

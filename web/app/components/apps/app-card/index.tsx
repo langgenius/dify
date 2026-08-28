@@ -138,6 +138,7 @@ export const AppCard = memo(
               icon={app.icon ?? undefined}
               background={app.icon_background}
               imageUrl={app.icon_url}
+              decorative
             />
             <AppTypeIcon
               type={app.mode}
@@ -187,7 +188,7 @@ export const AppCard = memo(
     )
 
     return (
-      <div className="group relative col-span-1 h-41.5">
+      <div role="listitem" className="group relative col-span-1 h-41.5">
         {isPreviewOnly ? (
           <button
             type="button"
@@ -222,6 +223,7 @@ export const AppCard = memo(
         <div className="absolute top-26 right-3 left-3 flex h-6.5 min-w-0 items-start">
           <AppCardTags
             appId={app.id}
+            appName={app.name}
             tags={app.tags ?? []}
             canBindOrUnbindTags={canBindOrUnbindTags}
             onOpenTagManagement={onOpenTagManagement}

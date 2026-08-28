@@ -73,6 +73,7 @@ export const StarredAppCard = memo(
             icon={app.icon ?? undefined}
             background={app.icon_background}
             imageUrl={app.icon_url}
+            decorative
           />
           <AppTypeIcon
             type={app.mode}
@@ -94,7 +95,7 @@ export const StarredAppCard = memo(
     )
 
     return (
-      <div className="group relative">
+      <div role="listitem" className="group relative">
         {isPreviewOnly ? (
           <button
             type="button"
@@ -109,6 +110,7 @@ export const StarredAppCard = memo(
         ) : (
           <Link
             href={href}
+            aria-labelledby={appNameId}
             data-step-by-step-tour-target={stepByStepTourCardTarget}
             data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
             className={cardClassName}
