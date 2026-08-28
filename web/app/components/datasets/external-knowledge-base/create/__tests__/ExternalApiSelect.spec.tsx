@@ -131,28 +131,38 @@ describe('ExternalApiSelect', () => {
   describe('accessibility', () => {
     it('should render the trigger as a button with listbox semantics', () => {
       render(<ExternalApiSelect items={items} onSelect={onSelect} />)
-      const trigger = screen.getByRole('button', { name: 'dataset.selectExternalKnowledgeAPI.placeholder' })
+      const trigger = screen.getByRole('button', {
+        name: 'dataset.selectExternalKnowledgeAPI.placeholder',
+      })
       expect(trigger).toHaveAttribute('aria-haspopup', 'listbox')
       expect(trigger).toHaveAttribute('aria-expanded', 'false')
     })
 
     it('should reflect the expanded state on the trigger', () => {
       render(<ExternalApiSelect items={items} onSelect={onSelect} />)
-      const trigger = screen.getByRole('button', { name: 'dataset.selectExternalKnowledgeAPI.placeholder' })
+      const trigger = screen.getByRole('button', {
+        name: 'dataset.selectExternalKnowledgeAPI.placeholder',
+      })
       fireEvent.click(trigger)
       expect(trigger).toHaveAttribute('aria-expanded', 'true')
     })
 
     it('should render dropdown items and the add action as buttons', () => {
       render(<ExternalApiSelect items={items} onSelect={onSelect} />)
-      fireEvent.click(screen.getByRole('button', { name: 'dataset.selectExternalKnowledgeAPI.placeholder' }))
+      fireEvent.click(
+        screen.getByRole('button', { name: 'dataset.selectExternalKnowledgeAPI.placeholder' }),
+      )
       expect(screen.getByRole('button', { name: /API Two/ })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'dataset.createNewExternalAPI' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'dataset.createNewExternalAPI' }),
+      ).toBeInTheDocument()
     })
 
     it('should select an item when its button is clicked', () => {
       render(<ExternalApiSelect items={items} onSelect={onSelect} />)
-      fireEvent.click(screen.getByRole('button', { name: 'dataset.selectExternalKnowledgeAPI.placeholder' }))
+      fireEvent.click(
+        screen.getByRole('button', { name: 'dataset.selectExternalKnowledgeAPI.placeholder' }),
+      )
       fireEvent.click(screen.getByRole('button', { name: /API Two/ }))
       expect(onSelect).toHaveBeenCalledWith(items[1])
     })
