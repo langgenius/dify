@@ -67,9 +67,18 @@ def _persist_app(session: Session, *, tenant_id: str, name: str = "Visible App")
     return app
 
 
-def _persist_agent_app(session: Session, *, app_name: str = "Old", agent_name: str = "Old") -> tuple[App, Agent]:
-    tenant_id = str(uuid4())
-    creator_id = str(uuid4())
+def _persist_agent_app(
+    session: Session,
+    *,
+    app_name: str = "Old",
+    agent_name: str = "Old",
+    tenant_id: str | None = None,
+    creator_id: str | None = None,
+    active_config_snapshot_id: str | None = None,
+    active_config_is_published: bool = False,
+) -> tuple[App, Agent]:
+    tenant_id = tenant_id or str(uuid4())
+    creator_id = creator_id or str(uuid4())
     app = App(
         id=str(uuid4()),
         tenant_id=tenant_id,
@@ -95,6 +104,8 @@ def _persist_agent_app(session: Session, *, app_name: str = "Old", agent_name: s
         icon="robot",
         icon_background="#fff",
         app_id=app.id,
+        active_config_snapshot_id=active_config_snapshot_id,
+        active_config_is_published=active_config_is_published,
         created_by=creator_id,
     )
     session.add_all([app, agent])
@@ -492,6 +503,78 @@ class TestAgentAppType:
 
         params = CreateAppParams(name="Iris", mode="agent")
         assert params.mode == "agent"
+
+    def test_list_filter_and_counts_use_server_owned_publication_state(self, sqlite_session: Session):
+        tenant_id = str(uuid4())
+        creator_id = str(uuid4())
+        published_app, _ = _persist_agent_app(
+            sqlite_session,
+            app_name="Published",
+            agent_name="Published Agent",
+            tenant_id=tenant_id,
+            creator_id=creator_id,
+            active_config_snapshot_id=str(uuid4()),
+            active_config_is_published=True,
+        )
+        draft_app, _ = _persist_agent_app(
+            sqlite_session,
+            app_name="Draft",
+            agent_name="Draft Agent",
+            tenant_id=tenant_id,
+            creator_id=creator_id,
+            active_config_snapshot_id=str(uuid4()),
+        )
+        unpublished_app, _ = _persist_agent_app(
+            sqlite_session,
+            app_name="Unpublished",
+            agent_name="Unpublished Agent",
+            tenant_id=tenant_id,
+            creator_id=creator_id,
+        )
+        _persist_agent_app(
+            sqlite_session,
+            app_name="Other tenant",
+            agent_name="Other Agent",
+            active_config_snapshot_id=str(uuid4()),
+            active_config_is_published=True,
+        )
+
+        service = AppService()
+        published_page = service.get_paginate_apps(
+            creator_id,
+            tenant_id,
+            AppListParams(mode="agent", status="normal", agent_is_published=True),
+            sqlite_session,
+        )
+        draft_page = service.get_paginate_apps(
+            creator_id,
+            tenant_id,
+            AppListParams(mode="agent", status="normal", agent_is_published=False),
+            sqlite_session,
+        )
+        counts = service.get_agent_publication_counts(
+            creator_id,
+            tenant_id,
+            AppListParams(mode="agent", status="normal", agent_is_published=True),
+            sqlite_session,
+        )
+        searched_counts = service.get_agent_publication_counts(
+            creator_id,
+            tenant_id,
+            AppListParams(mode="agent", status="normal", name="Draft", agent_is_published=True),
+            sqlite_session,
+        )
+
+        assert published_page is not None
+        assert {app.id for app in published_page.items} == {published_app.id}
+        assert published_page.total == 1
+        assert draft_page is not None
+        assert {app.id for app in draft_page.items} == {draft_app.id, unpublished_app.id}
+        assert draft_page.total == 2
+        assert counts.published == 1
+        assert counts.drafts == 2
+        assert searched_counts.published == 0
+        assert searched_counts.drafts == 1
 
     def test_bound_agent_id_is_none_for_non_agent_app(self):
         """Non-agent apps short-circuit without touching the DB."""
