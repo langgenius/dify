@@ -42,6 +42,7 @@
   "accessRule.summary_one": "{{count}} izin kümesi",
   "accessRule.summary_other": "{{count}} izin kümesi",
   "accessRule.updated": "Erişim kuralı başarıyla güncellendi",
+  "accessRule.workspaceOwner": "Çalışma alanı sahibi",
   "common.duplicateAction": "Çoğalt",
   "group.app": "Uygulamalar",
   "group.app_acl": "Uygulama erişim izinleri",
