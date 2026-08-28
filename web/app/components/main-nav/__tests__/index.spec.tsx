@@ -465,6 +465,7 @@ const ownerWorkspacePermissionKeys = [
   'tool.manage',
   'mcp.manage',
   'agent.manage',
+  'skill.view',
 ]
 
 const datasetOperatorWorkspacePermissionKeys = [
@@ -777,6 +778,17 @@ describe('MainNav', () => {
   it('hides the skills entry when skill is disabled', () => {
     mockProviderContextState.current = {
       enableSkill: false,
+    }
+
+    renderMainNav()
+
+    expect(screen.queryByRole('link', { name: /common.mainNav.skills/ })).not.toBeInTheDocument()
+  })
+
+  it('hides the skills entry when the user lacks skill.view', () => {
+    mockConsoleState.current = {
+      ...consoleState,
+      workspacePermissionKeys: ownerWorkspacePermissionKeys.filter((key) => key !== 'skill.view'),
     }
 
     renderMainNav()
