@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 def delete_segment_from_index_task(
     index_node_ids: list, dataset_id: str, document_id: str, segment_ids: list, child_node_ids: list | None = None
 ):
-    """
-    Async Remove segment from index
+    """Remove segment index data and durable attachment records asynchronously.
+
     :param index_node_ids:
     :param dataset_id:
     :param document_id:
@@ -38,48 +38,65 @@ def delete_segment_from_index_task(
             if not dataset_document:
                 return
 
-            if (
-                not dataset_document.enabled
-                or dataset_document.archived
-                or dataset_document.indexing_status != "completed"
-            ):
-                logging.info("Document not in valid state for index operations, skipping")
-                return
-            doc_form = dataset_document.doc_form
-
-            # Proceed with index cleanup using the index_node_ids directly
-            # For actual deletion, we should delete summaries (not just disable them)
-            index_processor = IndexProcessorFactory(doc_form).init_index_processor()
-            index_processor.clean(
-                dataset,
-                index_node_ids,
-                with_keywords=True,
-                delete_child_chunks=True,
-                precomputed_child_node_ids=child_node_ids,
-                delete_summaries=True,  # Actually delete summaries when segment is deleted,
-                session=session,
+            document_allows_index_cleanup = (
+                dataset_document.enabled
+                and not dataset_document.archived
+                and dataset_document.indexing_status == "completed"
             )
-            session.commit()
+            index_processor = None
+            if document_allows_index_cleanup:
+                doc_form = dataset_document.doc_form
+
+                # Proceed with index cleanup using the index_node_ids directly.
+                # For actual deletion, delete summaries instead of only disabling them.
+                index_processor = IndexProcessorFactory(doc_form).init_index_processor()
+                index_processor.clean(
+                    dataset,
+                    index_node_ids,
+                    with_keywords=True,
+                    delete_child_chunks=True,
+                    precomputed_child_node_ids=child_node_ids,
+                    delete_summaries=True,
+                    session=session,
+                )
+                session.commit()
+            else:
+                logging.info("Document not in valid state for index operations, skipping index cleanup")
+
             if dataset.is_multimodal:
                 # delete segment attachment binding
                 segment_attachment_bindings = session.scalars(
-                    select(SegmentAttachmentBinding).where(SegmentAttachmentBinding.segment_id.in_(segment_ids))
+                    select(SegmentAttachmentBinding).where(
+                        SegmentAttachmentBinding.tenant_id == dataset.tenant_id,
+                        SegmentAttachmentBinding.dataset_id == dataset.id,
+                        SegmentAttachmentBinding.document_id == document_id,
+                        SegmentAttachmentBinding.segment_id.in_(segment_ids),
+                    )
                 ).all()
                 if segment_attachment_bindings:
                     attachment_ids = [binding.attachment_id for binding in segment_attachment_bindings]
-                    index_processor.clean(
-                        session=session, dataset=dataset, node_ids=attachment_ids, with_keywords=False
-                    )
+                    if index_processor is not None:
+                        index_processor.clean(
+                            session=session, dataset=dataset, node_ids=attachment_ids, with_keywords=False
+                        )
                     segment_attachment_bind_ids = [i.id for i in segment_attachment_bindings]
 
                     for i in range(0, len(segment_attachment_bind_ids), 1000):
                         segment_attachment_bind_delete_stmt = delete(SegmentAttachmentBinding).where(
-                            SegmentAttachmentBinding.id.in_(segment_attachment_bind_ids[i : i + 1000])
+                            SegmentAttachmentBinding.tenant_id == dataset.tenant_id,
+                            SegmentAttachmentBinding.dataset_id == dataset.id,
+                            SegmentAttachmentBinding.document_id == document_id,
+                            SegmentAttachmentBinding.id.in_(segment_attachment_bind_ids[i : i + 1000]),
                         )
                         session.execute(segment_attachment_bind_delete_stmt)
 
                     # delete upload file
-                    session.execute(delete(UploadFile).where(UploadFile.id.in_(attachment_ids)))
+                    session.execute(
+                        delete(UploadFile).where(
+                            UploadFile.tenant_id == dataset.tenant_id,
+                            UploadFile.id.in_(attachment_ids),
+                        )
+                    )
                     session.commit()
 
             end_at = time.perf_counter()
