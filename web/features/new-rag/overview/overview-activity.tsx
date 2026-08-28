@@ -266,7 +266,7 @@ function RecentActivity({
               role="row"
               className="grid grid-cols-[100px_minmax(280px,1fr)_200px] items-center gap-3 pb-2 system-2xs-medium-uppercase text-text-tertiary"
             >
-              <span role="columnheader">
+              <span role="columnheader" className="relative">
                 <span className="sr-only">{t(($) => $['newKnowledge.overview.when'])}</span>
               </span>
               <span role="columnheader">{t(($) => $['newKnowledge.overview.activity'])}</span>
