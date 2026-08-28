@@ -5,7 +5,7 @@ from unittest.mock import ANY, MagicMock
 
 import pytest
 from flask import Flask
-from pydantic import ValidationError
+from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.console import wraps as console_wraps
 from controllers.console.app import workflow as workflow_module
@@ -241,5 +241,5 @@ def test_human_input_preview_rejects_non_mapping(app: Flask, monkeypatch: pytest
         method="POST",
         json={"inputs": ["not-a-dict"]},
     ):
-        with pytest.raises(ValidationError):
+        with pytest.raises(UnprocessableEntity):
             workflow_module.AdvancedChatDraftHumanInputFormPreviewApi().post(app_id=app_model.id, node_id="node-1")
