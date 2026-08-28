@@ -405,9 +405,11 @@ def test_squid_block_raises_actionable_tool_ssrf_error(mock_get_client) -> None:
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_squid_401_via_header_also_triggers_actionable_error(mock_get_client) -> None:
-    """Squid can return 401 with only the Via header set (no Server header)
-    on some configurations. The detection must work for both."""
+def test_squid_401_via_header_alone_does_not_trigger_ssrf_error(mock_get_client) -> None:
+    """Squid adds its Via header to ALL proxied responses, not just ACL
+    denials. A 401 with only Via: squid (no Server: squid) is a forwarded
+    upstream response, not a Squid-generated SSRF block. Regression test
+    for #41434."""
     mock_client = MagicMock()
     response = MagicMock()
     response.status_code = 401
@@ -416,10 +418,9 @@ def test_squid_401_via_header_also_triggers_actionable_error(mock_get_client) ->
     mock_client.send.return_value = response
     mock_get_client.return_value = mock_client
 
-    with pytest.raises(ToolSSRFError) as exc_info:
-        make_request("GET", "http://10.0.0.1/internal")
-
-    assert "SSRF_PROXY_ALLOW_PRIVATE_IPS" in str(exc_info.value)
+    # Should return the response, not raise.
+    returned = make_request("GET", "http://10.0.0.1/internal")
+    assert returned.status_code == 401
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
@@ -438,6 +439,40 @@ def test_non_squid_403_is_not_treated_as_ssrf_block(mock_get_client) -> None:
 
     # Should return the response, not raise.
     returned = make_request("GET", "http://public.example.com/admin")
+    assert returned.status_code == 403
+
+
+@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
+def test_squid_forwarded_401_is_not_treated_as_ssrf_block(mock_get_client) -> None:
+    """When Squid *forwards* a 401 from the upstream server (rather than
+    generating its own ACL-denied error), the response carries the upstream's
+    Server header and Squid's Via header. The Via header alone must not
+    trigger ToolSSRFError — only Squid-generated error responses (Server:
+    squid/x.y) indicate an SSRF block. Regression test for #41434."""
+    mock_client = MagicMock()
+    response = MagicMock()
+    response.status_code = 401
+    response.headers = {"server": "nginx/1.24", "via": "1.1 proxy (squid/6.13)"}
+    mock_client.send.return_value = response
+    mock_get_client.return_value = mock_client
+
+    # Should return the response, not raise.
+    returned = make_request("GET", "http://internal.example.com/api/health")
+    assert returned.status_code == 401
+
+
+@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
+def test_squid_forwarded_403_is_not_treated_as_ssrf_block(mock_get_client) -> None:
+    """Same as above but for 403: a Squid-forwarded 403 from the upstream
+    must not be re-raised as ToolSSRFError. Regression test for #41434."""
+    mock_client = MagicMock()
+    response = MagicMock()
+    response.status_code = 403
+    response.headers = {"server": "nginx/1.24", "via": "1.1 proxy (squid/6.13)"}
+    mock_client.send.return_value = response
+    mock_get_client.return_value = mock_client
+
+    returned = make_request("GET", "http://internal.example.com/admin")
     assert returned.status_code == 403
 
 
