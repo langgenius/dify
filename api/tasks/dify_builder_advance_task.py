@@ -59,7 +59,11 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
     try:
         repo = _build_repo()
         dify = WorkflowServiceDifyPort()
-        agent = build_dify_builder_agent()
+        actor = Actor(**actor_dict)
+        # The per-session model choice lives on the context (stable for the session).
+        # Read the head so the real agent is constructed with the user's chosen model.
+        _s, _fc = repo.get_session(session_id)
+        agent = build_dify_builder_agent(tenant_id=actor.tenant_id, model_config=_fc.model_config)
 
         def emit(ne: NodeEvent) -> None:
             progress_bus.publish(
@@ -70,7 +74,6 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
         def emit_canvas(event: dict) -> None:
             progress_bus.publish(session_id, {"kind": "canvas", **event})
 
-        actor = Actor(**actor_dict)
         env = Env(dify=dify, agent=agent, repo=repo, now=naive_utc_now, emit=emit, emit_canvas=emit_canvas)
         runner = Runner(env, fix_registry() | build_registry() | edit_registry())
         runner.advance(session_id, Turn(action=Action(**action_dict), actor=actor))
