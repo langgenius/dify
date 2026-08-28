@@ -1,10 +1,3 @@
-"""Per-subject auth pipelines.
-
-A pipeline owns everything after the router has resolved a subject: the fixed
-requirements every route of that subject gets, the merge with the endpoint's
-own, and the mount. The whole abstraction is one tuple and a stable sort.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Callable, Generator

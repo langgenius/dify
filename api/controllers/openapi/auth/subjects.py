@@ -1,6 +1,4 @@
-"""Bearer subjects — who the token speaks for, and how that caller is resolved.
-
-`SubjectType` in `libs/oauth_bearer` owns the mint-time facts (prefix, scopes);
+"""`SubjectType` in `libs/oauth_bearer` owns the mint-time facts (prefix, scopes);
 a `Subject` owns the request-time behaviour, so `libs/` never has to import the
 auth layer.
 """
@@ -25,9 +23,7 @@ from services.enterprise.enterprise_service import WebAppAccessMode
 
 
 class CallerContext(Protocol):
-    """The slice of the request context a subject needs to resolve its caller.
-
-    Structural on purpose: the concrete `Context` holds a `Subject`, so a
+    """Structural on purpose: the concrete `Context` holds a `Subject`, so a
     concrete import in either direction would be a cycle.
     """
 
@@ -61,7 +57,6 @@ class Subject(ABC):
 
     @property
     def auth(self) -> AuthContext:
-        """The raw identity, for the checks that scope a token-store query by subject."""
         return self._auth
 
     @property

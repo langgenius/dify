@@ -1,6 +1,4 @@
-"""Check-then-fetch for the four data a request can need.
-
-One loader per datum, owning both the fetch and the "already there?" test, so
+"""One loader per datum, owning both the fetch and the "already there?" test, so
 no requirement carries its own copy. Several requirements on one route call
 the same loader; only the first pays for the query.
 

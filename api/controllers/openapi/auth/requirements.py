@@ -1,19 +1,9 @@
 """Self-contained authorization requirements.
 
-Each requirement owns its config and its applicability guard; rank is either
-named or left at `Requirement`'s default — there is no central ordering table
-to keep in step. `Pipeline` sorts by rank; declared order only breaks ties
-between requirements that decide the same thing.
-
 Requirements are process-lifetime singletons: built once at import, shared by
 every request and every thread. Config belongs in `__init__`, and `run` must
 neither cache nor mutate — a cache here would outlive the fact it recorded.
 Per-request caching belongs on `Context`.
-
-What lives here is what every subject's routes can need. A requirement that
-authorises one feature belongs beside that feature, subclassing `Requirement`
-there, so the auth layer never has to import a feature's domain — see
-`human_input_form.CheckFormSurface`.
 """
 
 from __future__ import annotations
@@ -169,8 +159,7 @@ class RBACCheck(Requirement):
 
     They cannot be separate: the role floor stands down as soon as RBAC is
     enabled for a declared scene, so two requirements would double-enforce and
-    deny requests that pass today. A declaration may carry a scene, a role
-    floor, or both — `workspaces.py`'s member routes carry only the floor.
+    deny requests that pass today.
     """
 
     def __init__(
@@ -230,12 +219,7 @@ class CheckSessionOwnership(Requirement):
 
 
 class RequireWebappAccess(Requirement):
-    """The web-app ACL and the private-app permission check.
-
-    The two share an edition gate and nothing else: the ACL is gated on
-    `webapp_auth.enabled`, the private-app check is not. Run-scope comes from
-    the declaration site, so it is not re-checked here.
-    """
+    """Run-scope comes from the declaration site, so it is not re-checked here."""
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
@@ -274,9 +258,7 @@ class RequireWebappAccess(Requirement):
 
 
 class ResolveCaller(Requirement):
-    """Resolve the caller this subject mounts, and everything resolving it reads.
-
-    Written last in each pipeline's `fixed` and taking the default rank, so it
+    """Written last in each pipeline's `fixed` and taking the default rank, so it
     runs after every other requirement — the point at which the caller used to
     resolve, lazily, at mount.
 

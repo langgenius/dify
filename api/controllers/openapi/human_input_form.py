@@ -1,10 +1,3 @@
-"""
-OpenAPI bearer-authed human input form endpoints.
-
-GET  /apps/<app_id>/human-input-forms/<form_token>         — fetch paused form definition
-POST /apps/<app_id>/human-input-forms/<form_token>:submit  — submit form response
-"""
-
 from __future__ import annotations
 
 import json
@@ -48,9 +41,7 @@ register_schema_models(openapi_ns, HumanInputFormSubmitPayload)
 
 
 class CheckFormSurface(Requirement):
-    """Whether this surface may see the form at all.
-
-    `/openapi/v1` is allowed only the recipient types `human_input_policy` lists
+    """`/openapi/v1` is allowed only the recipient types `human_input_policy` lists
     for it, so a console-bound form is refused before any handler body runs. It
     lives here rather than in `auth/requirements.py` so the auth layer never has
     to import this feature's domain.
