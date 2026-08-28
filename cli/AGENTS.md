@@ -10,11 +10,6 @@ This package is the Node 22+, ESM TypeScript implementation of `difyctl`. Develo
 - Preserve flags, output, and exit codes during refactors. Do not add dependencies or compatibility shims unless the task explicitly requires them.
 - `ARD.md` owns CLI code structure. Keep wire behavior aligned with typed API clients and the real mock-server behavior tests.
 
-## Version and Channel
-
-- `cli/package.json` `version` is bumped by hand before a release. It must match the form of `difyctl.channel` — `scripts/release-naming.mjs validate` fails the manifest gate otherwise, so moving to a prerelease version means moving the channel with it.
-- Build locally with `pnpm build:bin:local`, which pins `DIFYCTL_CHANNEL=dev` so a local binary does not self-report the release channel.
-
 ## Commands
 
 Run package scripts from `cli/`:
@@ -22,6 +17,7 @@ Run package scripts from `cli/`:
 - Source CLI: `pnpm dev <command> [args...]`
 - Tests: `pnpm test`
 - Build: `pnpm build`
+- Build a local binary: `pnpm build:bin:local` (pins `DIFYCTL_CHANNEL=dev` so it does not self-report the release channel)
 - Regenerate and verify the registry: `pnpm tree:gen` and `pnpm tree:check`
 
 Run the scoped static check from the repository root with `vp check cli`.

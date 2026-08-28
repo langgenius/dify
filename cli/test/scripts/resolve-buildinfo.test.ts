@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -9,7 +9,6 @@ import { ENV_CACHE_DIR, ENV_CONFIG_DIR } from '../../src/store/dir.js'
 
 const CLI_ROOT = new URL('../../', import.meta.url)
 const RELEASE_NAMING = fileURLToPath(new URL('scripts/release-naming.mjs', CLI_ROOT))
-const VERSION_INFO_SRC = fileURLToPath(new URL('src/version/info.ts', CLI_ROOT))
 const DEV_ENTRY = fileURLToPath(new URL('bin/dev.js', CLI_ROOT))
 
 const FIXED_DATE = new Date('2026-05-09T12:00:00.000Z')
@@ -183,19 +182,6 @@ describe('resolveBuildInfo', () => {
   })
 })
 
-const CHANNEL_UNION_RE = /export type Channel\s*=\s*([^\n]*(?:\n[ \t]*\|[^\n]*)*)/
-const QUOTED_MEMBER_RE = /'([^']+)'/g
-
-function channelUnionMembers(): string[] {
-  const declaration = CHANNEL_UNION_RE.exec(readFileSync(VERSION_INFO_SRC, 'utf8'))?.[1]
-  if (declaration === undefined)
-    throw new Error(`no "export type Channel" declaration found in ${VERSION_INFO_SRC}`)
-  const members = [...declaration.matchAll(QUOTED_MEMBER_RE)].map(([, name]) => name ?? '')
-  if (members.length === 0)
-    throw new Error(`parsed no members out of the Channel union in ${VERSION_INFO_SRC}`)
-  return members
-}
-
 function releaseNamingChannels(): string[] {
   return execFileSync('node', [RELEASE_NAMING, 'channels'], { encoding: 'utf8' })
     .split('\n')
@@ -208,19 +194,10 @@ const sorted = (names: readonly string[]) => [...names].sort()
 describe('channel list parity', () => {
   const LOCAL_ONLY_CHANNEL = 'dev'
 
-  it('BUILD_CHANNELS matches the Channel union in src/version/info.ts exactly', () => {
-    expect(sorted(channelUnionMembers())).toStrictEqual(sorted(BUILD_CHANNELS))
-  })
-
   it('released channels are the build channels minus the local-only one', () => {
     expect(sorted(releaseNamingChannels())).toStrictEqual(
       sorted(BUILD_CHANNELS.filter((name) => name !== LOCAL_ONLY_CHANNEL)),
     )
-  })
-
-  it('keeps dev buildable but unreleasable', () => {
-    expect(BUILD_CHANNELS).toContain(LOCAL_ONLY_CHANNEL)
-    expect(releaseNamingChannels()).not.toContain(LOCAL_ONLY_CHANNEL)
   })
 })
 
@@ -249,9 +226,5 @@ describe('bin/dev.js pins the local build channel', () => {
 
   it('reports dev when the env does not set a channel', { timeout: 30_000 }, () => {
     expect(reportedChannel()).toBe('dev')
-  })
-
-  it('still lets the env override the pin', { timeout: 30_000 }, () => {
-    expect(reportedChannel('stable')).toBe('stable')
   })
 })

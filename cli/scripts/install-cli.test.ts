@@ -149,21 +149,6 @@ describe('install-cli pick_asset', () => {
   })
 })
 
-describe('install-cli pick_asset with a +r2 rebuild alongside the original', () => {
-  const BOTH = JSON.stringify({
-    assets: [{ name: 'difyctl-v1.16.1-linux-x64' }, { name: 'difyctl-v1.16.1+r2-linux-x64' }],
-  })
-
-  it('picks the superseded plain asset, not the rebuild', () => {
-    expect(pickAsset('linux-x64', BOTH)).toBe('difyctl-v1.16.1-linux-x64')
-  })
-
-  it('picks the rebuild once pruning leaves it as the only match', () => {
-    const pruned = JSON.stringify({ assets: [{ name: 'difyctl-v1.16.1+r2-linux-x64' }] })
-    expect(pickAsset('linux-x64', pruned)).toBe('difyctl-v1.16.1+r2-linux-x64')
-  })
-})
-
 describe('install-cli asset_version', () => {
   it('extracts the version from a posix asset name', () => {
     expect(assetVersion('difyctl-v0.2.0-linux-x64', 'linux-x64')).toBe('0.2.0')

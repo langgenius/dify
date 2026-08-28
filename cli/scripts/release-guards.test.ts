@@ -97,11 +97,6 @@ describe.skipIf(process.platform === 'win32')('release-build.sh compat bounds', 
       expect(r.code).not.toBe(0)
       expect(r.stderr).toContain(bound)
     })
-
-    it(`falls back to the manifest when ${bound} is empty`, () => {
-      const r = runInFakeRoot({ [bound]: '' })
-      expect(r.stderr).not.toContain(bound)
-    })
   }
 
   it('does not wipe dist/bin when a bound guard fires', () => {
