@@ -932,8 +932,7 @@ class WorkflowConfig(BaseSettings):
 
     DIFY_BUILDER_MAX_ADVANCE_SECONDS: PositiveInt = Field(
         description=(
-            "Max wall-clock seconds for one dify_builder advance; "
-            "also the advance-lock TTL and Celery soft_time_limit."
+            "Max wall-clock seconds for one dify_builder advance; also the advance-lock TTL and Celery soft_time_limit."
         ),
         default=600,
     )
@@ -946,6 +945,14 @@ class WorkflowConfig(BaseSettings):
     DIFY_BUILDER_SKILL_LEARNING_POLICY: str = Field(
         description="Dify Builder governance tail policy: ask | automatic | disabled.",
         default="ask",
+    )
+
+    DIFY_BUILDER_AGENT_MODE: str = Field(
+        description=(
+            "Dify Builder agent cognition source: placeholder (canned, deterministic) "
+            "| llm (real agent shell / real cognition)."
+        ),
+        default="placeholder",
     )
 
 
