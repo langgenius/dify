@@ -91,6 +91,7 @@
 @media (max-width: 879px) {
   .search {
     position: relative;
+    z-index: 0;
     top: auto;
     padding-right: 16px;
     padding-left: 16px;
