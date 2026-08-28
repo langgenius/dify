@@ -7,6 +7,7 @@ from sqlalchemy import delete, select
 
 from core.db.session_factory import session_factory
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from extensions.ext_storage import storage
 from models.dataset import Dataset, Document, SegmentAttachmentBinding
 from models.model import UploadFile
 
@@ -67,6 +68,10 @@ def delete_segment_from_index_task(
                 ).all()
                 if segment_attachment_bindings:
                     attachment_ids = [binding.attachment_id for binding in segment_attachment_bindings]
+                    attachment_files = session.scalars(
+                        select(UploadFile).where(UploadFile.id.in_(attachment_ids))
+                    ).all()
+                    attachment_file_keys = [attachment_file.key for attachment_file in attachment_files]
                     index_processor.clean(
                         session=session, dataset=dataset, node_ids=attachment_ids, with_keywords=False
                     )
@@ -81,6 +86,15 @@ def delete_segment_from_index_task(
                     # delete upload file
                     session.execute(delete(UploadFile).where(UploadFile.id.in_(attachment_ids)))
                     session.commit()
+
+                    for attachment_file_key in attachment_file_keys:
+                        try:
+                            storage.delete(attachment_file_key)
+                        except Exception:
+                            logger.exception(
+                                "Delete attachment_file failed when storage deleted, attachment_file_key: %s",
+                                attachment_file_key,
+                            )
 
             end_at = time.perf_counter()
             logger.info(click.style(f"Segment deleted from index latency: {end_at - start_at}", fg="green"))
