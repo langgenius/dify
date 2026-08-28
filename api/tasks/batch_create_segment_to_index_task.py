@@ -10,7 +10,9 @@ import pandas as pd
 from celery import shared_task
 from sqlalchemy import func, select
 
+from core.credit_usage import CreditUsageCreatedBy
 from core.db.session_factory import session_factory
+from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelManager
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.ext_redis import redis_client
@@ -27,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
+@with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
 def batch_create_segment_to_index_task(
     job_id: str,
     upload_file_id: str,

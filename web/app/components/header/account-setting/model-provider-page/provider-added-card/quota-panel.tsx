@@ -52,7 +52,7 @@ const QuotaInfotip: FC<QuotaInfotipProps> = ({ tipText }) => {
         closeDelay={200}
         aria-label={tipText}
         onClick={handleClick}
-        className="ml-0.5 inline-flex size-3 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
+        className="ml-0.5 inline-flex size-3 shrink-0 cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent p-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
       >
         <span
           aria-hidden

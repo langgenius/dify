@@ -39,6 +39,7 @@ from sqlalchemy.orm import Session, object_session
 from yaml.error import MarkedYAMLError
 
 from configs import dify_config
+from core.credit_usage import CreditUsageCreatedBy
 from core.db.session_factory import session_factory
 from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelManager
@@ -849,7 +850,10 @@ class SkillManagementService:
             context = self._build_assistant_context(skill=skill, files=files)
 
         try:
-            model_instance = ModelManager.for_tenant(tenant_id=tenant_id).get_default_model_instance(
+            model_instance = ModelManager.for_tenant(
+                tenant_id=tenant_id,
+                request_metadata={"created_by": CreditUsageCreatedBy.SKILL_BUILDER},
+            ).get_default_model_instance(
                 tenant_id=tenant_id,
                 model_type=ModelType.LLM,
             )
@@ -1398,7 +1402,10 @@ class SkillManagementService:
         tenant_id: str,
         model_payload: SkillAssistModelPayload | None,
     ) -> tuple[Any, dict[str, Any]]:
-        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
+        model_manager = ModelManager.for_tenant(
+            tenant_id=tenant_id,
+            request_metadata={"created_by": CreditUsageCreatedBy.SKILL_BUILDER},
+        )
         if model_payload is None:
             try:
                 model_instance = model_manager.get_default_model_instance(

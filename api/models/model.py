@@ -1662,16 +1662,28 @@ class Message(Base):
         if not self.answer:
             return self.answer
 
-        pattern = r"\[!?.*?\]\((((http|https):\/\/.+)?\/files\/(tools\/)?[\w-]+.*?timestamp=.*&nonce=.*&sign=.*)\)"
-        matches = re.findall(pattern, self.answer)
-
-        if not matches:
-            return self.answer
-
-        urls = [match[0] for match in matches]
-
-        # remove duplicate urls
-        urls = list(set(urls))
+        # Match file URLs in three shapes the agent runtime may produce:
+        #   - Markdown link:        [text](https://.../files/tools/.../timestamp=&nonce=&sign=)
+        #   - Backticked link:      `https://.../files/tools/.../timestamp=&nonce=&sign=`
+        #   - Bare URL:             https://.../files/tools/.../timestamp=&nonce=&sign=
+        # The original implementation only matched the markdown form, so
+        # bare and backticked tool file URLs kept the long-lived
+        # INTERNAL_FILES_URL host and 5xx-ed at serve time. Refs #40788.
+        # The host prefix is optional so relative `/files/...` URLs that
+        # the agent returns without a host are also covered. The
+        # `(?=[)\s`]|$)` at the end of the bare-URL pattern (and the
+        # closing backtick / paren on the wrapped forms) stops the
+        # greedy `.*?=.*?` after `&sign=` from running off the end of
+        # the answer.
+        url_core = r"(?:https?:\/\/.+?)?\/files\/(tools\/)?[\w-]+.*?timestamp=[^)\s]*?&nonce=[^)\s]*?&sign=[^)\s]*?"
+        patterns = [
+            r"\[!?.*?\]\((" + url_core + r")\)",  # [text](url)
+            r"`(" + url_core + r")`",  # `url`
+            r"(?:^|\s|\()(" + url_core + r")(?:[\s)\].,;]|$)",  # bare url
+        ]
+        urls: set[str] = set()
+        for pattern in patterns:
+            urls.update(m.group(1) for m in re.finditer(pattern, self.answer))
 
         if not urls:
             return self.answer
@@ -1718,6 +1730,7 @@ class Message(Base):
                 result = re.search(upload_file_id_pattern, url)
                 if not result:
                     continue
+
                 upload_file_id = result.group(1)
                 if not upload_file_id:
                     continue

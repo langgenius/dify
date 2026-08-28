@@ -18,8 +18,10 @@ export type MainNavRouteConfig = {
 export type MainNavRouteVisibilityOptions = {
   agentV2Enabled: boolean
   canManageAgents: boolean
+  canViewSkills: boolean
   isCurrentWorkspaceDatasetOperator: boolean
   marketplaceEnabled: boolean
+  skillEnabled: boolean
 }
 
 export type DetailSidebarVisibilityOptions = Pick<
@@ -29,8 +31,8 @@ export type DetailSidebarVisibilityOptions = Pick<
 
 const VISIBLE_TO_ALL: MainNavRouteVisibility = () => true
 const CAN_MANAGE_AGENTS: MainNavRouteVisibility = (options) => options.canManageAgents
-const NOT_DATASET_OPERATOR: MainNavRouteVisibility = (options) =>
-  !options.isCurrentWorkspaceDatasetOperator
+const SKILL_ENABLED_FOR_WORKSPACE: MainNavRouteVisibility = (options) =>
+  options.skillEnabled && options.canViewSkills && !options.isCurrentWorkspaceDatasetOperator
 
 function isPathUnderRoute(pathname: string, route: string) {
   return pathname === route || pathname.startsWith(`${route}/`)
@@ -42,8 +44,8 @@ export const MAIN_NAV_ROUTES = [
     href: '/',
     labelKey: 'mainNav.home',
     active: (path: string) => path === '/',
-    icon: 'i-custom-vender-main-nav-home',
-    activeIcon: 'i-custom-vender-main-nav-home-active',
+    icon: 'i-custom-vender-main-nav-home-v2',
+    activeIcon: 'i-custom-vender-main-nav-home-v2-active',
     visibility: VISIBLE_TO_ALL,
   },
   {
@@ -54,8 +56,8 @@ export const MAIN_NAV_ROUTES = [
       isPathUnderRoute(path, '/apps') ||
       isPathUnderRoute(path, '/app') ||
       isPathUnderRoute(path, '/snippets'),
-    icon: 'i-custom-vender-main-nav-studio',
-    activeIcon: 'i-custom-vender-main-nav-studio-active',
+    icon: 'i-custom-vender-main-nav-studio-v2',
+    activeIcon: 'i-custom-vender-main-nav-studio-v2-active',
     visibility: VISIBLE_TO_ALL,
   },
   {
@@ -63,10 +65,19 @@ export const MAIN_NAV_ROUTES = [
     href: '/agents',
     label: 'Agents',
     active: (path: string) => isPathUnderRoute(path, '/agents'),
-    icon: 'i-custom-vender-main-nav-roster',
-    activeIcon: 'i-custom-vender-main-nav-roster-active',
+    icon: 'i-custom-vender-main-nav-agent',
+    activeIcon: 'i-custom-vender-main-nav-agent-active',
     visibility: CAN_MANAGE_AGENTS,
     feature: 'agentV2',
+  },
+  {
+    key: 'datasets',
+    href: '/datasets',
+    labelKey: 'menus.datasets',
+    active: (path: string) => isPathUnderRoute(path, '/datasets'),
+    icon: 'i-custom-vender-main-nav-knowledge-v2',
+    activeIcon: 'i-custom-vender-main-nav-knowledge-v2-active',
+    visibility: VISIBLE_TO_ALL,
   },
   {
     key: 'skills',
@@ -75,16 +86,7 @@ export const MAIN_NAV_ROUTES = [
     active: (path: string) => isPathUnderRoute(path, '/skills'),
     icon: 'i-custom-vender-main-nav-skill',
     activeIcon: 'i-custom-vender-main-nav-skill-active',
-    visibility: NOT_DATASET_OPERATOR,
-  },
-  {
-    key: 'datasets',
-    href: '/datasets',
-    labelKey: 'menus.datasets',
-    active: (path: string) => isPathUnderRoute(path, '/datasets'),
-    icon: 'i-custom-vender-main-nav-knowledge',
-    activeIcon: 'i-custom-vender-main-nav-knowledge-active',
-    visibility: VISIBLE_TO_ALL,
+    visibility: SKILL_ENABLED_FOR_WORKSPACE,
   },
   {
     key: 'integrations',
@@ -92,8 +94,8 @@ export const MAIN_NAV_ROUTES = [
     labelKey: 'mainNav.integrations',
     active: (path: string) =>
       isPathUnderRoute(path, '/integrations') || isPathUnderRoute(path, '/tools'),
-    icon: 'i-custom-vender-main-nav-integrations',
-    activeIcon: 'i-custom-vender-main-nav-integrations-active',
+    icon: 'i-custom-vender-main-nav-integrations-v2',
+    activeIcon: 'i-custom-vender-main-nav-integrations-v2-active',
     visibility: VISIBLE_TO_ALL,
   },
   {
@@ -102,8 +104,8 @@ export const MAIN_NAV_ROUTES = [
     labelKey: 'mainNav.marketplace',
     active: (path: string) =>
       isPathUnderRoute(path, '/marketplace') || isPathUnderRoute(path, '/plugins'),
-    icon: 'i-custom-vender-main-nav-marketplace',
-    activeIcon: 'i-custom-vender-main-nav-marketplace-active',
+    icon: 'i-custom-vender-main-nav-marketplace-v2',
+    activeIcon: 'i-custom-vender-main-nav-marketplace-v2-active',
     visibility: VISIBLE_TO_ALL,
     feature: 'marketplace',
   },

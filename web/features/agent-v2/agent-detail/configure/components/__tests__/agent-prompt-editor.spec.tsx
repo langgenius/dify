@@ -189,7 +189,7 @@ vi.mock('foxact/use-clipboard', () => ({
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en_US',
-  useDocLink: () => 'https://docs.example.com',
+  useDocLink: () => () => 'https://docs.example.com',
 }))
 
 vi.mock('@/context/workspace-state', async () => {
@@ -198,6 +198,11 @@ vi.mock('@/context/workspace-state', async () => {
     currentWorkspace: { id: 'workspace-123' },
   }))
 })
+
+vi.mock('@/context/provider-context', () => ({
+  useProviderContextSelector: (selector: (state: { enableSkill: boolean }) => unknown) =>
+    selector({ enableSkill: true }),
+}))
 
 vi.mock('@/service/use-tools', () => ({
   useAllBuiltInTools: () => ({ data: mockBuiltInTools }),

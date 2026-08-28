@@ -13,6 +13,7 @@ from controllers.console.auth.error import (
     EmailRegisterLimitError,
     InvalidEmailError,
     InvalidTokenError,
+    NormalizedEmailAlreadyInUseError,
     PasswordMismatchError,
 )
 from enums import DeploymentEdition
@@ -25,6 +26,7 @@ from models import Account
 from services.account_service import AccountService
 from services.billing_service import BillingService
 from services.errors.account import (
+    AccountNormalizedEmailAlreadyInUseError,
     AccountRegisterError,
     SeatsLimitExceededError,
 )
@@ -221,11 +223,14 @@ class EmailRegisterResetApi(Resource):
                 interface_language=get_valid_language(language),
                 timezone=timezone,
                 ip_address=ip_address,
+                check_normalized_email=True,
                 session=db.session(),
             )
         except SeatsLimitExceededError:
             raise SeatsLimitExceeded()
         except EmailDomainSuspendedRegistrationError as exc:
             raise EmailDomainSuspendedError() from exc
+        except AccountNormalizedEmailAlreadyInUseError as exc:
+            raise NormalizedEmailAlreadyInUseError() from exc
         except AccountRegisterError as exc:
             raise AccountInFreezeError() from exc

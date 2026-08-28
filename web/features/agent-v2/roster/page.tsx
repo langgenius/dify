@@ -108,7 +108,7 @@ export default function RosterPage() {
       </div>
 
       <div className="min-h-0 flex-1">
-        <ScrollArea className="relative h-full min-h-0 min-w-0 overflow-hidden">
+        <ScrollArea className="h-full min-h-0 min-w-0 overflow-hidden">
           <ScrollAreaViewport tabIndex={-1} className="overscroll-contain">
             <ScrollAreaContent className="min-h-full px-8 pt-2 pb-8">
               <AgentRosterList

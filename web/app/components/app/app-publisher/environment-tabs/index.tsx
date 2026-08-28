@@ -21,7 +21,7 @@ import {
   estimateFallbackTextWidth,
   getEnvironmentTabLayout,
   SELECTED_OVERFLOW_LABEL_MAX_WIDTH,
-} from './layout'
+} from './layout-calculations'
 import { EnvironmentTabsMeasurementProbe } from './measurement-probe'
 import { useEnvironmentTabMeasurements } from './use-measurements'
 
