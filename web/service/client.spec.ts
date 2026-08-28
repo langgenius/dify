@@ -1772,7 +1772,7 @@ describe('consoleQuery App Deploy mutation defaults', () => {
       consoleQuery.enterprise.appDeploy.deploymentService.deployWorkflow.mutationOptions()
     await deployOptions.onSuccess?.(
       response,
-      { body: {}, params },
+      { body: { environment_variable_groups: [] }, params },
       undefined,
       createMutationContext(queryClient),
     )

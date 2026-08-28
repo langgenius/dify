@@ -172,16 +172,6 @@ export const deleteApp = (appID: string): Promise<CommonResponse> => {
   return del<CommonResponse>(`apps/${appID}`)
 }
 
-export const updateAppSiteStatus = ({
-  url,
-  body,
-}: {
-  url: string
-  body: Record<string, any>
-}): Promise<AppDetailResponse> => {
-  return post<AppDetailResponse>(url, { body })
-}
-
 export const updateAppSiteAccessToken = ({
   url,
 }: {

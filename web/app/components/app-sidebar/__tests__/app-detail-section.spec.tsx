@@ -203,18 +203,18 @@ describe('AppDetailSection', () => {
     it.each(['workflow', 'advanced-chat'])(
       'should render deploy navigation for a %s app with app deploy ACL regardless of the legacy workspace role',
       (mode) => {
-      // Arrange
-      mockAppMode = mode
-      mockAppPermissionKeys = [AppACLPermission.Deploy]
+        // Arrange
+        mockAppMode = mode
+        mockAppPermissionKeys = [AppACLPermission.Deploy]
 
-      // Act
-      render(<AppDetailSection />)
+        // Act
+        render(<AppDetailSection />)
 
-      // Assert
-      expect(screen.getByRole('link', { name: 'common.appMenus.deploy' })).toHaveAttribute(
-        'href',
-        '/app/app-1/deploy',
-      )
+        // Assert
+        expect(screen.getByRole('link', { name: 'common.appMenus.deploy' })).toHaveAttribute(
+          'href',
+          '/app/app-1/deploy',
+        )
       },
     )
 

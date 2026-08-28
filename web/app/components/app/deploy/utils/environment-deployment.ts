@@ -17,7 +17,7 @@ export type EnvironmentDeploymentAction = {
   kind: EnvironmentDeploymentActionKind
 }
 
-export function isDeploymentOperationInProgress(deployment?: EnvironmentDeployment) {
+function isDeploymentOperationInProgress(deployment?: EnvironmentDeployment) {
   return (
     deployment?.deployment?.latest_operation?.status ===
     DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS

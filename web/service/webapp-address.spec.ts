@@ -31,8 +31,12 @@ describe('WebAppAddress', () => {
 
   it('builds the environment upload and workflow URLs', () => {
     const address = parseWebAppAddress('/environment/workflow/workflow-app')
-    expect(getWebAppApiPath(address, '/files/upload')).toBe('/environment/workflow-app/files/upload')
-    expect(getWebAppApiPath(address, '/workflows/run')).toBe('/environment/workflow-app/workflows/run')
+    expect(getWebAppApiPath(address, '/files/upload')).toBe(
+      '/environment/workflow-app/files/upload',
+    )
+    expect(getWebAppApiPath(address, '/workflows/run')).toBe(
+      '/environment/workflow-app/workflows/run',
+    )
     expect(getWebAppApiPath(address, '/workflows/tasks/task-1/stop')).toBe(
       '/environment/workflow-app/workflows/tasks/task-1/stop',
     )

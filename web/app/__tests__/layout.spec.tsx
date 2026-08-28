@@ -1,7 +1,6 @@
 import { QueryClient } from '@tanstack/react-query'
 
 let queryClient: QueryClient
-const brandedFavicon = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"/>'
 
 const mocks = vi.hoisted(() => ({
   getSystemFeatures: vi.fn(),
@@ -51,7 +50,6 @@ describe('Root layout System Features bootstrap', () => {
       branding: {
         application_title: 'Acme AI',
         enabled: true,
-        favicon: brandedFavicon,
       },
       deployment_edition: 'CLOUD',
     })
@@ -63,11 +61,6 @@ describe('Root layout System Features bootstrap', () => {
         default: 'Acme AI',
         template: '%s - Acme AI',
       },
-      icons: {
-        apple: brandedFavicon,
-        icon: brandedFavicon,
-        shortcut: brandedFavicon,
-      },
     })
 
     expect(mocks.getSystemFeatures).toHaveBeenCalledTimes(1)
@@ -75,7 +68,6 @@ describe('Root layout System Features bootstrap', () => {
       branding: {
         application_title: 'Acme AI',
         enabled: true,
-        favicon: brandedFavicon,
       },
       deployment_edition: 'CLOUD',
     })
@@ -129,45 +121,13 @@ describe('Root layout System Features bootstrap', () => {
     const { default: RootLayout, generateMetadata } = await import('../layout')
 
     await expect(RootLayout({ children: <div>App</div> })).resolves.toBeDefined()
-    const metadata = await generateMetadata()
-
-    expect(metadata).toMatchObject({
+    await expect(generateMetadata()).resolves.toMatchObject({
       title: {
         default: 'Dify',
         template: '%s - Dify',
       },
     })
-    expect(metadata.icons).toBeUndefined()
 
     expect(queryClient.getQueryData(['console', 'system-features'])).toBeUndefined()
-  })
-
-  it.each([
-    {
-      branding: {
-        application_title: 'Dify',
-        enabled: false,
-        favicon: brandedFavicon,
-      },
-      name: 'branding is disabled',
-    },
-    {
-      branding: {
-        application_title: 'Acme AI',
-        enabled: true,
-        favicon: '',
-      },
-      name: 'the branded favicon is empty',
-    },
-  ])('keeps the static favicon fallback when $name', async ({ branding }) => {
-    mocks.getSystemFeatures.mockResolvedValue({
-      branding,
-      deployment_edition: 'CLOUD',
-    })
-    const { generateMetadata } = await import('../layout')
-
-    const metadata = await generateMetadata()
-
-    expect(metadata.icons).toBeUndefined()
   })
 })

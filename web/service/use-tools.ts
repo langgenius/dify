@@ -330,21 +330,6 @@ export const useInvalidateAppTriggers = () => {
   }
 }
 
-export const useUpdateTriggerStatus = () => {
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'update-trigger-status'],
-    mutationFn: (payload: { appId: string; triggerId: string; enableTrigger: boolean }) => {
-      const { appId, triggerId, enableTrigger } = payload
-      return post<AppTrigger>(`/apps/${appId}/trigger-enable`, {
-        body: {
-          trigger_id: triggerId,
-          enable_trigger: enableTrigger,
-        },
-      })
-    },
-  })
-}
-
 const workflowToolDetailByAppIDKey = (appId: string) => [
   NAME_SPACE,
   'workflowToolDetailByAppID',
