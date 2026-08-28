@@ -18,7 +18,9 @@ def normalize_completion_params(completion_params: dict[str, Any]) -> tuple[dict
     """Split ``stop`` out of completion_params (invoke_llm takes it separately)."""
     params = dict(completion_params or {})
     stop = params.pop("stop", None)
-    if stop is not None and not isinstance(stop, list):
+    if isinstance(stop, str):
+        stop = [stop]
+    elif stop is not None and not isinstance(stop, list):
         stop = list(stop)
     return params, stop
 
