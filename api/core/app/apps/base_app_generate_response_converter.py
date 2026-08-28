@@ -125,6 +125,15 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
                 "message": str(e),
             }
 
+        error_code = getattr(e, "error_code", None)
+        status_code = getattr(e, "status_code", None)
+        if isinstance(error_code, str) and isinstance(status_code, int):
+            return {
+                "code": error_code,
+                "status": status_code,
+                "message": str(e),
+            }
+
         error_responses: dict[type[Exception], dict[str, JsonValue]] = {
             ValueError: {"code": "invalid_param", "status": 400},
             ProviderTokenNotInitError: {"code": "provider_not_initialize", "status": 400},
