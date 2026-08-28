@@ -243,6 +243,7 @@ class TestDatasetListApiGet:
                 mock_dataset_svc.get_datasets.call_args.args
             )
             assert user is account
+            assert mock_dataset_svc.get_datasets.call_args.kwargs == {"visibility_scope": "workspace"}
 
         assert status == 200
         assert response["total"] == 1

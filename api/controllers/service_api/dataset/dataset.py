@@ -440,6 +440,7 @@ class DatasetListApi(DatasetApiResource):
             query.keyword,
             query.tag_ids,
             query.include_all,
+            visibility_scope="workspace",
         )
         # check embedding setting
         assert isinstance(current_user, Account)
