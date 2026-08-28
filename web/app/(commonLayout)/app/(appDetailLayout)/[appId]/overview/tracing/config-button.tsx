@@ -22,7 +22,10 @@ const ConfigBtn: FC<Props> = ({ className, hasConfigured, children, ...popupProp
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={<div className={cn('select-none', className)}>{children}</div>} />
+      <PopoverTrigger
+        data-testid="tracing-config-trigger"
+        render={<div className={cn('select-none', className)}>{children}</div>}
+      />
       <PopoverContent
         placement="bottom-end"
         sideOffset={12}

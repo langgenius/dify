@@ -158,6 +158,7 @@ const ConfigPopup: FC<PopupProps> = ({
 
   const switchContent = (
     <Switch
+      aria-label={t(($) => $[`${I18N_PREFIX}.tracing`], { ns: 'app' })}
       className="ml-3"
       checked={enabled}
       onCheckedChange={onStatusChange}

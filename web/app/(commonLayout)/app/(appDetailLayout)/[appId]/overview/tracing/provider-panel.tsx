@@ -88,6 +88,7 @@ const ProviderPanel: FC<Props> = ({
   )
   return (
     <div
+      data-testid={`tracing-provider-${type}`}
       className={cn(
         'rounded-xl border-[1.5px] bg-background-section-burn px-4 py-3',
         isChosen
