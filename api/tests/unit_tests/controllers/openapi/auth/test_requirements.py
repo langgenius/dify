@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.loaders import load_caller
 from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
     CheckAppWorkspaceMembership,
@@ -58,7 +59,7 @@ WEBAPP_AUTH = "controllers.openapi.auth.requirements.EnterpriseService.WebAppAut
 ACCESS_MODE = f"{WEBAPP_AUTH}.get_app_access_mode_by_id"
 WEBAPP_PERMISSION = f"{WEBAPP_AUTH}.is_user_allowed_to_access_webapp"
 ENFORCE_RBAC = "controllers.openapi.auth.requirements.enforce_rbac_access"
-APP_FETCH = "controllers.openapi.auth.context.AppService.get_app_by_id"
+APP_FETCH = "controllers.openapi.auth.loaders.AppService.get_app_by_id"
 
 
 def _auth(subject_type: SubjectType, **overrides: object) -> AuthContext:
@@ -320,7 +321,7 @@ class TestMembership:
             CheckAppWorkspaceMembership().run(subject, ctx, sqlite_session)
 
     def test_404s_an_inactive_account_that_still_holds_a_role(self, sqlite_session: Session) -> None:
-        """`Context.workspace_role` treats a non-active caller as a non-member,
+        """`load_workspace_role` treats a non-active caller as a non-member,
         which is a 404 here.
         """
         _persist(
@@ -376,7 +377,7 @@ class TestMembership:
         with app.test_request_context(f"/openapi/v1/apps?workspace_id={TENANT_ID}"):
             RequireWorkspaceMembership().run(subject, ctx, sqlite_session)
 
-        caller = ctx.caller
+        caller = load_caller(ctx, sqlite_session)
         assert isinstance(caller, Account)
         assert caller.current_tenant_id == TENANT_ID
 
@@ -387,7 +388,7 @@ class TestMembership:
         config_overrides: Callable[..., None],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Both requirements run on a role-gated route. Reading the role off
+        """Both requirements run on a role-gated route. Storing the role on
         `Context` is what keeps that one SELECT rather than two.
         """
         config_overrides(RBAC_ENABLED=False)
@@ -533,7 +534,7 @@ class TestRBACCheck:
     def test_the_role_floor_404s_an_inactive_account_that_still_holds_a_role(
         self, app: Flask, sqlite_session: Session, config_overrides: Callable[..., None]
     ) -> None:
-        """`Context.workspace_role` treats a non-active caller as a non-member,
+        """`load_workspace_role` treats a non-active caller as a non-member,
         so the floor 404s a banned admin whether or not a membership requirement
         ran first on this request.
         """

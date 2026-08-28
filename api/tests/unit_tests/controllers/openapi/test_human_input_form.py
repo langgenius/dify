@@ -54,7 +54,12 @@ def _context(caller: Account | EndUser, caller_kind: CallerKind) -> SimpleNamesp
         enable_site=True,
         enable_api=True,
     )
-    return SimpleNamespace(app=app_model, caller=caller, subject=SimpleNamespace(caller_kind=caller_kind))
+    return SimpleNamespace(
+        app=app_model,
+        app_loaded=True,
+        caller=caller,
+        subject=SimpleNamespace(caller_kind=caller_kind),
+    )
 
 
 def _mock_service(monkeypatch: pytest.MonkeyPatch, form) -> Mock:

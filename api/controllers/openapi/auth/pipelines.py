@@ -22,6 +22,7 @@ from controllers.openapi.auth.requirements import (
     EditionCheck,
     LicenseCheck,
     Requirement,
+    ResolveCaller,
 )
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import Subject
@@ -50,12 +51,12 @@ class Pipeline:
         """
         for requirement in sorted(spec.requirements + self.fixed, key=lambda item: item.rank):
             requirement.run(subject, ctx, session)
-        with mounted(subject, auth, ctx):
+        with mounted(auth, ctx):
             return call(ctx=ctx)
 
 
 class AccountPipeline(Pipeline):
-    fixed = (CheckAppApiEnabled(), CheckAppWorkspaceMembership())
+    fixed = (CheckAppApiEnabled(), CheckAppWorkspaceMembership(), ResolveCaller())
 
 
 class ExternalSsoPipeline(Pipeline):
@@ -63,21 +64,22 @@ class ExternalSsoPipeline(Pipeline):
         EditionCheck(frozenset({DeploymentEdition.ENTERPRISE})),
         LicenseCheck(),
         CheckAppApiEnabled(),
+        ResolveCaller(),
     )
 
 
 @contextmanager
-def mounted(subject: Subject, auth: AuthContext, ctx: Context) -> Generator[None]:
+def mounted(auth: AuthContext, ctx: Context) -> Generator[None]:
     """Effects, not policy: the identity ContextVar is published for every
-    subject, but flask-login is mounted only for a subject that resolves a
-    caller on this route. Forcing `ctx.caller` instead would resolve an end
-    user that an app-less SSO route has never resolved.
+    subject, but flask-login is mounted only for a subject `ResolveCaller`
+    resolved a caller for — the `mounts_caller` policy is consulted there, once.
 
-    The caller is resolved *before* `set_auth_ctx`, because resolution raises
-    on a token that outlived its account. Raising after the ContextVar is set
-    would strand the identity there, and `libs/rate_limit` buckets on it.
+    `ResolveCaller` is a requirement, so the caller is resolved *before*
+    `set_auth_ctx`, because resolution raises on a token that outlived its
+    account. Raising after the ContextVar is set would strand the identity
+    there, and `libs/rate_limit` buckets on it.
     """
-    user = ctx.caller if subject.mounts_caller(ctx) else None
+    user = ctx.caller if ctx.caller_loaded else None
     reset_token = set_auth_ctx(auth)
     try:
         if user is not None:

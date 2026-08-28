@@ -1,55 +1,35 @@
 from __future__ import annotations
 
-from typing import NoReturn, cast
+import ast
+import inspect
+from collections.abc import Callable
+from typing import NamedTuple, cast
 
 import pytest
-from flask import Flask
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, NotFound
 
+import controllers.openapi.auth.context as context_module
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import Subject
-from models import Account, App, Tenant, TenantAccountJoin
+from models import Account, App, Tenant
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from models.enums import AppStatus
 from models.model import AppMode, IconType
-from services.account_service import TenantService
-from services.app_service import AppService
 
 APP_ID = "00000000-0000-0000-0000-000000000001"
 TENANT_ID = "00000000-0000-0000-0000-000000000002"
-OTHER_TENANT_ID = "00000000-0000-0000-0000-000000000003"
 ACCOUNT_ID = "00000000-0000-0000-0000-000000000004"
 
 
-def _boom(*_args: object, **_kwargs: object) -> NoReturn:
-    raise AssertionError("fetched when nothing should have asked")
+def _subject() -> Subject:
+    """`Context` stores a `Subject` and never calls it; a bare object stands in."""
+    return cast(Subject, object())
 
 
-class _StubSubject:
-    def __init__(self, caller: object | None = None, account_id: str = ACCOUNT_ID) -> None:
-        self.calls: list[tuple[object, Session]] = []
-        self.caller = caller if caller is not None else object()
-        self.account_id = account_id
-
-    def resolve_caller(self, ctx: object, session: Session) -> object:
-        self.calls.append((ctx, session))
-        return self.caller
-
-
-def _subject(caller: object | None = None) -> Subject:
-    """`_StubSubject` stands in for `Subject` structurally — `Context` only
-    ever calls `resolve_caller` on it and reads `account_id`. Cast once here
-    rather than annotating every `Context(...)` call site against the concrete
-    stub type.
-    """
-    return cast(Subject, _StubSubject(caller))
-
-
-def _app(*, app_id: str = APP_ID, tenant_id: str = TENANT_ID) -> App:
+def _app() -> App:
     return App(
-        id=app_id,
-        tenant_id=tenant_id,
+        id=APP_ID,
+        tenant_id=TENANT_ID,
         name="OpenAPI app",
         description="",
         mode=AppMode.CHAT,
@@ -63,230 +43,101 @@ def _app(*, app_id: str = APP_ID, tenant_id: str = TENANT_ID) -> App:
     )
 
 
-def _tenant(*, tenant_id: str = TENANT_ID, status: TenantStatus = TenantStatus.NORMAL) -> Tenant:
-    tenant = Tenant(name="OpenAPI tenant", status=status)
-    tenant.id = tenant_id
+def _tenant() -> Tenant:
+    tenant = Tenant(name="OpenAPI tenant", status=TenantStatus.NORMAL)
+    tenant.id = TENANT_ID
     return tenant
 
 
-def _account(*, status: AccountStatus = AccountStatus.ACTIVE) -> Account:
-    account = Account(name="OpenAPI account", email="account@example.com", status=status)
+def _account() -> Account:
+    account = Account(name="OpenAPI account", email="account@example.com", status=AccountStatus.ACTIVE)
     account.id = ACCOUNT_ID
     return account
 
 
-def _membership(role: TenantAccountRole = TenantAccountRole.NORMAL) -> TenantAccountJoin:
-    return TenantAccountJoin(tenant_id=TENANT_ID, account_id=ACCOUNT_ID, current=True, role=role)
+def _ctx(session: Session, **view_args: str) -> Context:
+    return Context(_subject(), session, dict(view_args))
 
 
-def _persist(session: Session, *models: object) -> None:
-    session.add_all(models)
-    session.commit()
+class _Datum(NamedTuple):
+    name: str
+    read: Callable[[Context], object]
+    loaded: Callable[[Context], bool]
+    store: Callable[[Context, object], None]
+    value: object
 
 
-class TestApp:
-    def test_app_is_fetched_once(self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
-        calls: list[int] = []
-        app_row = _app()
-
-        def _fake_get_app_by_id(*_args: object, **_kwargs: object) -> App:
-            calls.append(1)
-            return app_row
-
-        monkeypatch.setattr(AppService, "get_app_by_id", _fake_get_app_by_id)
-        ctx = Context(_subject(), sqlite_session, {"app_id": APP_ID})
-
-        assert ctx.app is ctx.app
-        assert len(calls) == 1
-
-    def test_app_404s_on_malformed_uuid(self, sqlite_session: Session) -> None:
-        ctx = Context(_subject(), sqlite_session, {"app_id": "not-a-uuid"})
-        with pytest.raises(NotFound, match="app not found"):
-            _ = ctx.app
-
-    def test_app_404s_when_missing_or_not_normal(
-        self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(AppService, "get_app_by_id", lambda *_a, **_k: None)
-        ctx = Context(_subject(), sqlite_session, {"app_id": APP_ID})
-        with pytest.raises(NotFound, match="app not found"):
-            _ = ctx.app
-
-        archived = _app()
-        archived.status = "archived"  # type: ignore[assignment]
-        monkeypatch.setattr(AppService, "get_app_by_id", lambda *_a, **_k: archived)
-        ctx = Context(_subject(), sqlite_session, {"app_id": APP_ID})
-        with pytest.raises(NotFound, match="app not found"):
-            _ = ctx.app
-
-    def test_nothing_is_fetched_until_asked(self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(AppService, "get_app_by_id", _boom)
-
-        Context(_subject(), sqlite_session, {"app_id": "x"})
+DATA = [
+    _Datum("app", lambda c: c.app, lambda c: c.app_loaded, lambda c, v: c.set_app(cast(App, v)), _app()),
+    _Datum(
+        "workspace",
+        lambda c: c.workspace,
+        lambda c: c.workspace_loaded,
+        lambda c, v: c.set_workspace(cast(Tenant, v)),
+        _tenant(),
+    ),
+    _Datum(
+        "workspace_role",
+        lambda c: c.workspace_role,
+        lambda c: c.workspace_role_loaded,
+        lambda c, v: c.set_workspace_role(cast(TenantAccountRole, v)),
+        TenantAccountRole.ADMIN,
+    ),
+    _Datum(
+        "caller", lambda c: c.caller, lambda c: c.caller_loaded, lambda c, v: c.set_caller(cast(Account, v)), _account()
+    ),
+]
 
 
-class TestWorkspaceFromApp:
-    def test_derives_workspace_from_the_apps_tenant_when_app_id_is_present(self, sqlite_session: Session) -> None:
-        _persist(sqlite_session, _app(), _tenant())
+@pytest.mark.parametrize("datum", DATA, ids=[datum.name for datum in DATA])
+def test_a_datum_is_stored_once_and_read_back_unchanged(sqlite_session: Session, datum: _Datum) -> None:
+    ctx = _ctx(sqlite_session, app_id=APP_ID, workspace_id=TENANT_ID)
 
-        ctx = Context(_subject(), sqlite_session, {"app_id": APP_ID})
+    assert datum.loaded(ctx) is False
+    datum.store(ctx, datum.value)
 
-        assert ctx.workspace.id == TENANT_ID
-        assert ctx.workspace_resolved is True
-
-    @pytest.mark.parametrize("persist_archived", [True, False])
-    def test_forbidden_when_the_apps_tenant_is_missing_or_archived(
-        self, sqlite_session: Session, persist_archived: bool
-    ) -> None:
-        models: list[object] = [_app()]
-        if persist_archived:
-            models.append(_tenant(status=TenantStatus.ARCHIVE))
-        _persist(sqlite_session, *models)
-        ctx = Context(_subject(), sqlite_session, {"app_id": APP_ID})
-
-        with pytest.raises(Forbidden, match="workspace unavailable"):
-            _ = ctx.workspace
+    assert datum.loaded(ctx) is True
+    assert datum.read(ctx) is datum.read(ctx) is datum.value
 
 
-class TestWorkspaceFromRequest:
-    def test_reads_workspace_id_from_view_args_then_from_the_query_string(
-        self, app: Flask, sqlite_session: Session
-    ) -> None:
-        _persist(sqlite_session, _tenant())
+@pytest.mark.parametrize("datum", DATA, ids=[datum.name for datum in DATA])
+def test_reading_a_datum_nothing_loaded_names_the_datum(sqlite_session: Session, datum: _Datum) -> None:
+    """A programming error, not an HTTP status: no route should be able to reach
+    a reader whose datum no requirement loads, so this is never a caller's answer.
+    """
+    ctx = _ctx(sqlite_session, app_id=APP_ID, workspace_id=TENANT_ID)
 
-        with app.test_request_context("/test"):
-            ctx = Context(_subject(), sqlite_session, {"workspace_id": TENANT_ID})
-            assert ctx.workspace.id == TENANT_ID
-
-        with app.test_request_context(f"/test?workspace_id={TENANT_ID}"):
-            ctx = Context(_subject(), sqlite_session, {})
-            assert ctx.workspace.id == TENANT_ID
-
-    def test_not_found_when_workspace_id_is_missing_or_malformed(self, app: Flask, sqlite_session: Session) -> None:
-        for view_args in ({}, {"workspace_id": "not-a-uuid"}):
-            ctx = Context(_subject(), sqlite_session, view_args)
-            with app.test_request_context("/test"), pytest.raises(NotFound, match="workspace not found"):
-                _ = ctx.workspace
-
-    @pytest.mark.parametrize("persist_archived", [True, False])
-    def test_not_found_when_the_requested_tenant_is_missing_or_archived(
-        self, app: Flask, sqlite_session: Session, persist_archived: bool
-    ) -> None:
-        if persist_archived:
-            _persist(sqlite_session, _tenant(status=TenantStatus.ARCHIVE))
-        ctx = Context(_subject(), sqlite_session, {"workspace_id": TENANT_ID})
-
-        with app.test_request_context("/test"), pytest.raises(NotFound, match="workspace not found"):
-            _ = ctx.workspace
+    with pytest.raises(LookupError, match=datum.name):
+        datum.read(ctx)
 
 
-class TestWorkspaceRuleSelection:
-    def test_app_id_wins_the_tie_when_both_app_id_and_workspace_id_are_present(
-        self, app: Flask, sqlite_session: Session
-    ) -> None:
-        """Both a nonexistent app tenant and an existing workspace_id tenant are
-        present; `has_app` must select the app-derived rule (and its `Forbidden`
-        status), never fall through to the request-derived `NotFound` rule.
-        """
-        _persist(sqlite_session, _app(), _tenant(tenant_id=OTHER_TENANT_ID))
-        ctx = Context(_subject(), sqlite_session, {"app_id": APP_ID, "workspace_id": OTHER_TENANT_ID})
-
-        with app.test_request_context("/test"), pytest.raises(Forbidden, match="workspace unavailable"):
-            _ = ctx.workspace
+def test_the_view_args_derived_facts_need_no_loading(sqlite_session: Session) -> None:
+    assert _ctx(sqlite_session, app_id=APP_ID).has_app is True
+    assert _ctx(sqlite_session, workspace_id=TENANT_ID).has_app is False
 
 
-class TestWorkspaceResolved:
-    def test_false_until_the_workspace_is_computed_then_true(self, sqlite_session: Session) -> None:
-        _persist(sqlite_session, _app(), _tenant())
-        ctx = Context(_subject(), sqlite_session, {"app_id": APP_ID})
+def test_loaded_is_not_a_view_args_test(sqlite_session: Session) -> None:
+    """A path param says a datum *can* be resolved, never that it was."""
+    ctx = _ctx(sqlite_session, app_id=APP_ID, workspace_id=TENANT_ID)
 
-        assert ctx.workspace_resolved is False
-        _ = ctx.workspace
-        assert ctx.workspace_resolved is True
-
-    def test_is_not_a_view_args_test(self, sqlite_session: Session) -> None:
-        ctx = Context(_subject(), sqlite_session, {"workspace_id": TENANT_ID})
-
-        assert ctx.workspace_resolved is False
+    assert (ctx.app_loaded, ctx.workspace_loaded) == (False, False)
 
 
-class TestCaller:
-    def test_delegates_to_subject_resolve_caller_and_caches_it(self, sqlite_session: Session) -> None:
-        subject = _StubSubject()
-        ctx = Context(cast(Subject, subject), sqlite_session, {})
+def test_the_session_and_path_params_are_handed_over_at_construction(sqlite_session: Session) -> None:
+    ctx = _ctx(sqlite_session, app_id=APP_ID)
 
-        assert ctx.caller is ctx.caller
-        assert ctx.caller is subject.caller
-        assert subject.calls == [(ctx, sqlite_session)]
+    assert ctx.session is sqlite_session
+    assert dict(ctx.view_args) == {"app_id": APP_ID}
 
 
-class TestWorkspaceRole:
-    def test_role_is_read_once_per_request(self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Membership and the RBAC role floor both read this; the request pays
-        for one SELECT, not one each.
-        """
-        _persist(sqlite_session, _app(), _tenant(), _account(), _membership(TenantAccountRole.ADMIN))
-        calls: list[int] = []
+def test_the_store_reaches_no_service() -> None:
+    """The store's whole contract. It also keeps the import graph acyclic:
+    `context` -> `subjects`, and the loaders sit above both.
+    """
+    tree = ast.parse(inspect.getsource(context_module))
+    imported = {
+        node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) and node.module is not None
+    } | {alias.name for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names}
 
-        def _counted(*_args: object, **_kwargs: object) -> TenantAccountRole:
-            calls.append(1)
-            return TenantAccountRole.ADMIN
-
-        monkeypatch.setattr(TenantService, "get_account_role_in_tenant", _counted)
-        ctx = Context(_subject(_account()), sqlite_session, {"app_id": APP_ID})
-
-        assert ctx.workspace_role is ctx.workspace_role is TenantAccountRole.ADMIN
-        assert len(calls) == 1
-
-    def test_reads_the_persisted_role(self, sqlite_session: Session) -> None:
-        _persist(sqlite_session, _app(), _tenant(), _account(), _membership(TenantAccountRole.EDITOR))
-        ctx = Context(_subject(_account()), sqlite_session, {"app_id": APP_ID})
-
-        assert ctx.workspace_role == TenantAccountRole.EDITOR
-
-    def test_404s_a_non_member(self, sqlite_session: Session) -> None:
-        _persist(sqlite_session, _app(), _tenant(), _account())
-        ctx = Context(_subject(_account()), sqlite_session, {"app_id": APP_ID})
-
-        with pytest.raises(NotFound, match="workspace not found"):
-            _ = ctx.workspace_role
-
-    def test_404s_an_inactive_account_that_still_holds_a_role(
-        self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """A banned admin is a non-member, and the role is never even read."""
-        _persist(sqlite_session, _app(), _tenant(), _membership(TenantAccountRole.ADMIN))
-        monkeypatch.setattr(TenantService, "get_account_role_in_tenant", _boom)
-        ctx = Context(_subject(_account(status=AccountStatus.BANNED)), sqlite_session, {"app_id": APP_ID})
-
-        with pytest.raises(NotFound, match="workspace not found"):
-            _ = ctx.workspace_role
-
-    def test_404s_a_caller_that_is_not_an_account(
-        self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        _persist(sqlite_session, _app(), _tenant(), _membership(TenantAccountRole.ADMIN))
-        monkeypatch.setattr(TenantService, "get_account_role_in_tenant", _boom)
-        ctx = Context(_subject(), sqlite_session, {"app_id": APP_ID})
-
-        with pytest.raises(NotFound, match="workspace not found"):
-            _ = ctx.workspace_role
-
-    def test_resolves_the_workspace_before_the_caller(self, sqlite_session: Session) -> None:
-        """A subject binds the account's current tenant while resolving it, so
-        the workspace has to be there already — reading the caller first would
-        leave the account mounted with no current tenant, silently.
-        """
-        _persist(sqlite_session, _app(), _tenant(), _account(), _membership())
-        resolved_when_called: list[bool] = []
-
-        class _Recording(_StubSubject):
-            def resolve_caller(self, ctx: object, session: Session) -> object:
-                resolved_when_called.append(cast(Context, ctx).workspace_resolved)
-                return super().resolve_caller(ctx, session)
-
-        ctx = Context(cast(Subject, _Recording(_account())), sqlite_session, {"app_id": APP_ID})
-
-        _ = ctx.workspace_role
-
-        assert resolved_when_called == [True]
+    assert not [module for module in imported if module.split(".")[0] == "services"]
+    assert "controllers.openapi.auth.loaders" not in imported
