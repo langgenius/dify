@@ -95,9 +95,6 @@ export function KnowledgeSpaceShell({
   const canManageAccess = (knowledgeSpaceQuery.data?.permission_keys ?? []).includes(
     'knowledge_space_access_config',
   )
-  const canManageCredentials = (knowledgeSpaceQuery.data?.permission_keys ?? []).includes(
-    'knowledge_space_api_key_manage',
-  )
   const externalAccessQuery = useQuery({
     ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.externalAccess.get.queryOptions({
       input: { params: { control_space_id: knowledgeSpaceId } },
@@ -110,8 +107,7 @@ export function KnowledgeSpaceShell({
       ? 'loading'
       : externalAccessQuery.isError || !externalAccessQuery.data
         ? 'unavailable'
-        : externalAccessQuery.data.service_api_enabled === true &&
-            externalAccessQuery.data.agent_enabled === true
+        : externalAccessQuery.data.service_api_enabled === true
           ? 'active'
           : 'inactive'
   const knowledgeSpaceName =
@@ -423,7 +419,6 @@ export function KnowledgeSpaceShell({
         </section>
       </div>
       <KnowledgeFsApiAccessDialog
-        canManageCredentials={canManageCredentials}
         status={apiAccessStatus}
         knowledgeSpaceId={knowledgeSpaceId}
         open={apiAccessDialogOpen}
