@@ -1,25 +1,15 @@
 import type { Mock } from 'vite-plus/test'
-import type { UsagePlanInfo } from '../../type'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useGetPricingPageLanguage } from '@/context/i18n'
-import { useProviderContext } from '@/context/provider-context'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
-import Pricing from '../index'
+import { Pricing } from '../index'
 
 let mockConsoleState: Record<string, unknown> = {}
 
-vi.mock('../plan-switcher', () => ({
-  default: () => <div>plan-switcher</div>,
-}))
-
-vi.mock('../plans', () => ({
-  default: () => <div>plans</div>,
-}))
-
-vi.mock('../footer', () => ({
-  default: () => <div>footer</div>,
+vi.mock('../content', () => ({
+  PricingContent: () => <div>pricing-content</div>,
 }))
 
 vi.mock('@/context/workspace-state', async () => {
@@ -27,23 +17,9 @@ vi.mock('@/context/workspace-state', async () => {
   return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
-}))
-
 vi.mock('@/context/i18n', () => ({
   useGetPricingPageLanguage: vi.fn(),
 }))
-
-const buildUsage = (): UsagePlanInfo => ({
-  buildApps: 0,
-  teamMembers: 0,
-  annotatedResponse: 0,
-  documentsUploadQuota: 0,
-  apiRateLimit: 0,
-  triggerEvents: 0,
-  vectorSpace: 0,
-})
 
 describe('Pricing dialog lifecycle', () => {
   beforeEach(() => {
@@ -51,14 +27,6 @@ describe('Pricing dialog lifecycle', () => {
     mockConsoleState = {
       isCurrentWorkspaceManager: true,
     }
-    ;(useProviderContext as Mock).mockReturnValue({
-      enableEducationPlan: false,
-      plan: {
-        type: 'sandbox',
-        usage: buildUsage(),
-        total: buildUsage(),
-      },
-    })
     ;(useGetPricingPageLanguage as Mock).mockReturnValue('en')
   })
 
