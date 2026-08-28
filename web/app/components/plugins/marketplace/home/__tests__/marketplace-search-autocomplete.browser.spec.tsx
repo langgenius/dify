@@ -34,7 +34,10 @@ vi.mock('react-i18next', async (importOriginal) => {
       clearSearch: 'Clear search',
       loading: 'Loading',
       'marketplace.loadError': 'Failed to load. Please try again.',
+      'marketplace.home.plugins': 'Plugins',
+      'marketplace.home.templates': 'Templates',
       'marketplace.noPluginFound': 'No integration found',
+      'marketplace.viewMore': 'View more',
       'newApp.noTemplateFound': 'No templates found',
     }),
   }
@@ -163,7 +166,7 @@ describe('Marketplace search autocomplete layout', () => {
     expect(catalogNavigation.getBoundingClientRect().top).toBeCloseTo(navigationTopBefore)
   })
 
-  it('uses the specified panel, list, and item spacing without a bottom strip', async () => {
+  it('matches the reference grouped panel and compact result spacing', async () => {
     await page.viewport(1280, 720)
     mockTemplateSearch.mockResolvedValue({
       data: {
@@ -208,32 +211,38 @@ describe('Marketplace search autocomplete layout', () => {
 
     const list = screen.getByRole('listbox').element()
     const panel = list.parentElement!
+    const templateGroup = screen.getByRole('group', { name: 'Templates' }).element()
     const firstItem = screen.getByRole('option', { name: /Legal Research Agent/ }).element()
     const lastItem = screen.getByRole('option', { name: /Contract Reviewer/ }).element()
     const panelStyle = getComputedStyle(panel)
     const listStyle = getComputedStyle(list)
+    const templateGroupStyle = getComputedStyle(templateGroup)
     const firstItemStyle = getComputedStyle(firstItem)
     const statusRoots = screen.getByRole('status').all()
     const trailingStatus = statusRoots.at(-1)!.element()
 
-    expect(panelStyle.paddingTop).toBe('8px')
-    expect(panelStyle.paddingRight).toBe('8px')
-    expect(panelStyle.paddingBottom).toBe('8px')
-    expect(panelStyle.paddingLeft).toBe('8px')
-    expect(listStyle.rowGap).toBe('4px')
+    expect(panelStyle.width).toBe('472px')
+    expect(panelStyle.paddingTop).toBe('0px')
+    expect(panelStyle.paddingRight).toBe('0px')
+    expect(panelStyle.paddingBottom).toBe('0px')
+    expect(panelStyle.paddingLeft).toBe('0px')
+    expect(panelStyle.borderRadius).toBe('12px')
     expect(listStyle.paddingTop).toBe('0px')
-    expect(firstItemStyle.paddingTop).toBe('12px')
-    expect(firstItemStyle.paddingRight).toBe('12px')
-    expect(firstItemStyle.paddingBottom).toBe('12px')
+    expect(templateGroupStyle.paddingTop).toBe('4px')
+    expect(templateGroupStyle.paddingRight).toBe('4px')
+    expect(templateGroupStyle.paddingBottom).toBe('4px')
+    expect(templateGroupStyle.paddingLeft).toBe('4px')
+    expect(firstItemStyle.paddingTop).toBe('4px')
+    expect(firstItemStyle.paddingRight).toBe('4px')
+    expect(firstItemStyle.paddingBottom).toBe('4px')
     expect(firstItemStyle.paddingLeft).toBe('12px')
-    expect(firstItemStyle.borderRadius).toBe('12px')
+    expect(firstItemStyle.borderRadius).toBe('8px')
     expect(firstItemStyle.marginLeft).toBe('0px')
     expect(firstItemStyle.marginRight).toBe('0px')
     expect(trailingStatus.getBoundingClientRect().height).toBe(0)
-    expect(firstItem.getBoundingClientRect().top - panel.getBoundingClientRect().top).toBeCloseTo(9)
     expect(
       panel.getBoundingClientRect().bottom - lastItem.getBoundingClientRect().bottom,
-    ).toBeCloseTo(9)
+    ).toBeCloseTo(5)
   })
 
   it('keeps result rows fully clickable without a persistent trailing arrow', async () => {

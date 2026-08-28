@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -35,7 +35,10 @@ vi.mock('react-i18next', async () => {
     clearSearch: 'Clear search',
     loading: 'Loading',
     'marketplace.loadError': 'Failed to load. Please try again.',
+    'marketplace.home.plugins': 'Plugins',
+    'marketplace.home.templates': 'Templates',
     'marketplace.noPluginFound': 'No integration found',
+    'marketplace.viewMore': 'View more',
     'newApp.noTemplateFound': 'No templates found',
   })
 })
@@ -184,6 +187,70 @@ describe('MarketplaceSearchAutocomplete', () => {
     )
     expect(onValueChange).toHaveBeenLastCalledWith('google')
     expect(mockTemplateSearch).not.toHaveBeenCalled()
+  })
+
+  it('groups mixed suggestions and submits the complete search from the popup', async () => {
+    mockTemplateSearch.mockResolvedValue({
+      data: {
+        templates: [
+          {
+            id: 'template-1',
+            template_name: 'Legal Research Agent',
+            overview: 'Research legal questions with cited sources.',
+            publisher_handle: 'dify',
+            usage_count: 120,
+            categories: ['knowledge'],
+            icon: '📄',
+            icon_background: '#FFFFFF',
+            icon_file_key: '',
+          },
+        ],
+        total: 1,
+      },
+    })
+    mockPluginSearch.mockResolvedValue({
+      data: {
+        plugins: [
+          {
+            type: 'plugin',
+            org: 'langgenius',
+            name: 'google-search',
+            label: { en_US: 'Google Search' },
+            brief: { en_US: 'Search the web from your workflow.' },
+            category: 'tool',
+          },
+        ],
+        total: 1,
+      },
+    })
+    const user = userEvent.setup()
+    const handleSubmit = vi.fn((event: Event) => {
+      event.preventDefault()
+    })
+
+    const { container } = render(
+      <MarketplaceSearchForm
+        action="/"
+        locale="en-US"
+        placeholder="Search plugins or templates"
+        query=""
+        scope="all"
+      />,
+      { wrapper: Wrapper },
+    )
+
+    container.querySelector('form')?.addEventListener('submit', handleSubmit)
+
+    await user.type(screen.getByRole('combobox'), 'search')
+
+    const templateGroup = await screen.findByRole('group', { name: 'Templates' })
+    const pluginGroup = screen.getByRole('group', { name: 'Plugins' })
+    expect(within(templateGroup).getByText('Legal Research Agent')).toBeInTheDocument()
+    expect(within(pluginGroup).getByText('Google Search')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'View more' }))
+
+    expect(handleSubmit).toHaveBeenCalledOnce()
   })
 
   it('submits the route search form when a suggestion is chosen', async () => {
