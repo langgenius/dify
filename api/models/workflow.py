@@ -1393,17 +1393,15 @@ class WorkflowAppLog(TypeBase):
 
         return None
 
-    @property
-    def created_by_account(self):
+    def created_by_account(self, session: orm.Session) -> Account | None:
         created_by_role = CreatorUserRole(self.created_by_role)
-        return db.session.get(Account, self.created_by) if created_by_role == CreatorUserRole.ACCOUNT else None
+        return session.get(Account, self.created_by) if created_by_role == CreatorUserRole.ACCOUNT else None
 
-    @property
-    def created_by_end_user(self):
+    def created_by_end_user(self, session: orm.Session):
         from .model import EndUser
 
         created_by_role = CreatorUserRole(self.created_by_role)
-        return db.session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
+        return session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
 
     def to_dict(self) -> WorkflowAppLogDict:
         result: WorkflowAppLogDict = {

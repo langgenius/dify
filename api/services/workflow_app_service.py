@@ -23,16 +23,26 @@ class LogView:
     """Lightweight wrapper for WorkflowAppLog with computed details.
 
     - Exposes `details_` for marshalling to `details` in API response
+    - Resolves the account/end-user accessors through the session it was built with
     - Proxies all other attributes to the underlying `WorkflowAppLog`
     """
 
-    def __init__(self, log: WorkflowAppLog, details: LogViewDetails | None):
+    def __init__(self, log: WorkflowAppLog, details: LogViewDetails | None, session: Session):
         self.log = log
         self.details_ = details
+        self._session = session
 
     @property
     def details(self) -> LogViewDetails | None:
         return self.details_
+
+    @property
+    def created_by_account(self) -> Account | None:
+        return self.log.created_by_account(self._session)
+
+    @property
+    def created_by_end_user(self) -> EndUser | None:
+        return self.log.created_by_end_user(self._session)
 
     def __getattr__(self, name):
         return getattr(self.log, name)
@@ -171,11 +181,11 @@ class WorkflowAppService:
         if detail:
             rows = session.execute(offset_stmt).all()
             items = [
-                LogView(log, {"trigger_metadata": self.handle_trigger_metadata(app_model.tenant_id, meta_val)})
+                LogView(log, {"trigger_metadata": self.handle_trigger_metadata(app_model.tenant_id, meta_val)}, session)
                 for log, meta_val in rows
             ]
         else:
-            items = [LogView(log, None) for log in session.scalars(offset_stmt).all()]
+            items = [LogView(log, None, session) for log in session.scalars(offset_stmt).all()]
         return {
             "page": page,
             "limit": limit,
