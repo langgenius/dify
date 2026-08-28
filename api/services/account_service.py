@@ -47,6 +47,7 @@ from models.account import (
 )
 from models.dataset import Dataset
 from models.model import App, DifySetup
+from services.account_email import normalize_email
 from services.billing_service import BillingService
 from services.email_code_login_challenge import (
     EmailCodeLoginChallengeResult,
@@ -62,6 +63,7 @@ from services.entities.auth_entities import (
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountLoginError,
+    AccountNormalizedEmailAlreadyInUseError,
     AccountNotLinkTenantError,
     AccountPasswordError,
     AccountRegisterError,
@@ -111,6 +113,14 @@ _invitation_adapter: TypeAdapter[InvitationData] = TypeAdapter(InvitationData)
 logger = logging.getLogger(__name__)
 
 _change_email_token_adapter: TypeAdapter[ChangeEmailTokenData] = TypeAdapter(ChangeEmailTokenData)
+
+
+class EnterpriseWorkspaceMemberAccountNotFoundError(Exception):
+    pass
+
+
+class EnterpriseWorkspaceMemberWorkspaceNotFoundError(Exception):
+    pass
 
 
 class InvitationDetailDict(TypedDict):
@@ -302,6 +312,18 @@ class AccountService:
         return row is not None
 
     @staticmethod
+    def has_account_with_normalized_email(email: str, *, session: Session) -> bool:
+        """Check the normalized identity through its indexed column."""
+        normalized_email = normalize_email(email)
+        row = session.scalar(select(Account.id).where(Account.normalized_email == normalized_email).limit(1))
+        return row is not None
+
+    @staticmethod
+    def ensure_registration_email_available(email: str, *, session: Session) -> None:
+        if AccountService.has_account_with_normalized_email(email, session=session):
+            raise AccountNormalizedEmailAlreadyInUseError("An account with an equivalent email already exists.")
+
+    @staticmethod
     def get_account_by_id(account_id: str, *, session: Session) -> Account | None:
         """Plain ``Account`` getter — no banned check, no tenant rotation,
         no ``last_active_at`` write. Use this from read-only identity
@@ -423,6 +445,7 @@ class AccountService:
         is_setup: bool | None = False,
         timezone: str | None = None,
         ip_address: str | None = None,
+        check_normalized_email: bool = False,
         *,
         session: Session,
     ) -> Account:
@@ -431,6 +454,9 @@ class AccountService:
             from controllers.console.error import AccountNotFound
 
             raise AccountNotFound()
+
+        if check_normalized_email:
+            AccountService.ensure_registration_email_available(email, session=session)
 
         # A licensed seat is one Account row, deployment-wide; joining an existing
         # account into another workspace does not pass through here and costs no seat.
@@ -473,6 +499,7 @@ class AccountService:
         account = Account(
             name=name,
             email=email,
+            normalized_email=normalize_email(email),
             password=password_to_set,
             password_salt=salt_to_set,
             interface_language=interface_language,
@@ -493,6 +520,7 @@ class AccountService:
         password: str | None = None,
         timezone: str | None = None,
         ip_address: str | None = None,
+        check_normalized_email: bool = False,
         *,
         session: Session,
     ) -> Account:
@@ -504,6 +532,7 @@ class AccountService:
             password=password,
             timezone=timezone,
             ip_address=ip_address,
+            check_normalized_email=check_normalized_email,
             session=session,
         )
 
@@ -551,6 +580,7 @@ class AccountService:
     def update_account_email(account: Account, email: str, session: Session) -> Account:
         """Update account email"""
         account.email = email
+        account.normalized_email = normalize_email(email)
         account_integrate = session.scalar(
             select(AccountIntegrate).where(AccountIntegrate.account_id == account.id).limit(1)
         )
@@ -1297,7 +1327,12 @@ class TenantService:
 
     @staticmethod
     def create_tenant_member(
-        tenant: Tenant, account: Account, session: Session, role: str = "normal"
+        tenant: Tenant,
+        account: Account,
+        session: Session,
+        role: str = "normal",
+        *,
+        operator_account_id: str | None = None,
     ) -> TenantAccountJoin:
         """Create tenant member"""
         if role == TenantAccountRole.OWNER:
@@ -1312,14 +1347,66 @@ class TenantService:
         )
         if ta:
             ta.role = TenantAccountRole(role)
+            membership_created = False
         else:
             ta = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole(role))
             session.add(ta)
+            membership_created = True
 
         session.commit()
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             BillingService.clean_billing_info_cache(tenant.id)
+        if (
+            membership_created
+            and dify_config.RBAC_ENABLED
+            and TenantAccountRole(role) != TenantAccountRole.OWNER
+            and account.status != AccountStatus.PENDING
+        ):
+            from tasks.initialize_created_app_rbac_access_task import sync_joined_workspace_member_rbac_access_task
+
+            sync_joined_workspace_member_rbac_access_task.delay(
+                str(tenant.id),
+                str(account.id),
+                operator_account_id=operator_account_id,
+            )
         return ta
+
+    @staticmethod
+    def join_enterprise_workspace_member(
+        *,
+        workspace_id: str,
+        account_id: str,
+        email: str,
+        role: TenantAccountRole,
+        operator_account_id: str | None,
+        session: Session | None = None,
+    ) -> TenantAccountJoin:
+        session = session or db.session()
+        tenant = session.scalar(
+            select(Tenant).where(
+                Tenant.id == workspace_id,
+                Tenant.status == TenantStatus.NORMAL,
+            )
+        )
+        if tenant is None:
+            raise EnterpriseWorkspaceMemberWorkspaceNotFoundError
+
+        account = session.scalar(
+            select(Account).where(
+                Account.id == account_id,
+                Account.email == email,
+            )
+        )
+        if account is None:
+            raise EnterpriseWorkspaceMemberAccountNotFoundError
+
+        return TenantService.create_tenant_member(
+            tenant,
+            account,
+            session=session,
+            role=role.value,
+            operator_account_id=operator_account_id,
+        )
 
     @staticmethod
     def get_join_tenants(account: Account, *, session: Session) -> list[Tenant]:
@@ -1899,6 +1986,7 @@ class RegisterService:
         create_workspace_required: bool | None = True,
         timezone: str | None = None,
         ip_address: str | None = None,
+        check_normalized_email: bool = True,
         *,
         session: Session,
     ) -> Account:
@@ -1914,6 +2002,7 @@ class RegisterService:
                 is_setup=is_setup,
                 timezone=timezone,
                 ip_address=ip_address,
+                check_normalized_email=check_normalized_email,
                 session=session,
             )
             account.status = status or AccountStatus.ACTIVE
@@ -1991,9 +2080,16 @@ class RegisterService:
                 language=language,
                 status=AccountStatus.PENDING,
                 is_setup=True,
+                check_normalized_email=True,
                 session=session,
             )
-            TenantService.create_tenant_member(tenant, account, session, tenant_join_role)
+            TenantService.create_tenant_member(
+                tenant,
+                account,
+                session,
+                tenant_join_role,
+                operator_account_id=inviter.id,
+            )
             TenantService.switch_tenant(account, tenant.id, session=session)
             requires_setup = True
         else:
@@ -2006,7 +2102,13 @@ class RegisterService:
             requires_setup = account.status == AccountStatus.PENDING
 
             if not ta and (account.status == AccountStatus.PENDING or dify_config.RBAC_ENABLED):
-                TenantService.create_tenant_member(tenant, account, session, tenant_join_role)
+                TenantService.create_tenant_member(
+                    tenant,
+                    account,
+                    session,
+                    tenant_join_role,
+                    operator_account_id=inviter.id,
+                )
 
             # Support resend invitation email when the account is pending status
             if account.status != AccountStatus.PENDING:

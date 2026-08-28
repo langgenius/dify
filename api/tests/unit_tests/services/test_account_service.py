@@ -21,10 +21,17 @@ from models.account import (
     TenantStatus,
 )
 from models.model import DifySetup
-from services.account_service import AccountService, RegisterService, TenantService
+from services.account_service import (
+    AccountService,
+    EnterpriseWorkspaceMemberAccountNotFoundError,
+    EnterpriseWorkspaceMemberWorkspaceNotFoundError,
+    RegisterService,
+    TenantService,
+)
 from services.enterprise.rbac_service import MembersInRole, Paginated
 from services.errors.account import (
     AccountAlreadyInTenantError,
+    AccountEmailAlreadyInUseError,
     AccountLoginError,
     AccountPasswordError,
     AccountRegisterError,
@@ -135,6 +142,27 @@ class TestAccountService:
 
         assert result is account
 
+    def test_authenticate_keeps_using_the_stored_email(
+        self,
+        sqlite_session: Session,
+        mock_password_dependencies: _MockDependencies,
+    ) -> None:
+        account = Account(
+            name="Gmail User",
+            email="u.ser+tag@gmail.com",
+            normalized_email="user@gmail.com",
+            password="hashed_password",
+            password_salt="salt",
+        )
+        sqlite_session.add(account)
+        sqlite_session.commit()
+
+        mock_password_dependencies["compare_password"].return_value = True
+
+        result = AccountService.authenticate("u.ser+tag@gmail.com", "password", session=sqlite_session)
+
+        assert result is account
+
     def test_authenticate_account_not_found(self, sqlite_session: Session) -> None:
         """Test authentication when account does not exist."""
         with pytest.raises(AccountPasswordError):
@@ -230,6 +258,7 @@ class TestAccountService:
             account_id = result.id
 
             assert result.email == "test@example.com"
+            assert result.normalized_email == "test@example.com"
             assert result.name == "Test User"
             assert result.interface_language == "en-US"
             assert result.interface_theme == "light"
@@ -242,6 +271,7 @@ class TestAccountService:
             persisted_account = assertion_session.get(Account, account_id)
             assert persisted_account is not None
             assert persisted_account.email == "test@example.com"
+            assert persisted_account.normalized_email == "test@example.com"
             assert persisted_account.name == "Test User"
             assert persisted_account.interface_language == "en-US"
             assert persisted_account.interface_theme == "light"
@@ -249,6 +279,40 @@ class TestAccountService:
             assert persisted_account.password_salt is not None
             assert persisted_account.timezone == "America/New_York"
             assert persisted_account.last_login_ip == "203.0.113.10"
+
+    def test_create_account_rejects_normalized_email_only_when_requested(
+        self,
+        sqlite_session: Session,
+        mock_external_service_dependencies: _MockDependencies,
+    ) -> None:
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        sqlite_session.add(
+            Account(
+                name="Existing User",
+                email="u.ser+existing@gmail.com",
+                normalized_email="user@gmail.com",
+            )
+        )
+        sqlite_session.commit()
+
+        with pytest.raises(AccountEmailAlreadyInUseError):
+            AccountService.create_account(
+                email="user@googlemail.com",
+                name="New User",
+                interface_language="en-US",
+                check_normalized_email=True,
+                session=sqlite_session,
+            )
+
+        duplicate = AccountService.create_account(
+            email="user@googlemail.com",
+            name="New User",
+            interface_language="en-US",
+            session=sqlite_session,
+        )
+        assert duplicate.normalized_email == "user@gmail.com"
 
     def test_create_account_uses_explicit_timezone(
         self,
@@ -886,6 +950,150 @@ class TestTenantService:
             assert persisted_tenant_account_join.tenant_id == tenant_id
             assert persisted_tenant_account_join.account_id == account_id
             assert persisted_tenant_account_join.role == TenantAccountRole.NORMAL
+
+    def test_create_tenant_member_queues_joined_member_rbac_sync(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        """New regular members are synced into auto-included RBAC resource whitelists."""
+        import tasks.initialize_created_app_rbac_access_task as rbac_task_module
+
+        delay = MagicMock()
+        with sqlite_session_factory() as service_session:
+            tenant = Tenant(name="Test Workspace")
+            account = Account(name="Test User", email="test@example.com")
+            service_session.add_all([tenant, account])
+            service_session.flush()
+            tenant_id = tenant.id
+            account_id = account.id
+            service_session.commit()
+
+            with (
+                patch("services.account_service.dify_config.RBAC_ENABLED", True),
+                patch.object(rbac_task_module.sync_joined_workspace_member_rbac_access_task, "delay", delay),
+            ):
+                TenantService.create_tenant_member(
+                    tenant,
+                    account,
+                    service_session,
+                    "normal",
+                    operator_account_id="operator-1",
+                )
+
+        delay.assert_called_once_with(
+            tenant_id,
+            account_id,
+            operator_account_id="operator-1",
+        )
+
+    def test_create_tenant_member_does_not_queue_pending_member_rbac_sync(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        """Pending invited members are synced after activation, not at invitation time."""
+        import tasks.initialize_created_app_rbac_access_task as rbac_task_module
+
+        delay = MagicMock()
+        with sqlite_session_factory() as service_session:
+            tenant = Tenant(name="Test Workspace")
+            account = Account(name="Test User", email="test@example.com", status=AccountStatus.PENDING)
+            service_session.add_all([tenant, account])
+            service_session.flush()
+            service_session.commit()
+
+            with (
+                patch("services.account_service.dify_config.RBAC_ENABLED", True),
+                patch.object(rbac_task_module.sync_joined_workspace_member_rbac_access_task, "delay", delay),
+            ):
+                TenantService.create_tenant_member(
+                    tenant,
+                    account,
+                    service_session,
+                    "normal",
+                    operator_account_id="operator-1",
+                )
+
+        delay.assert_not_called()
+
+    def test_join_enterprise_workspace_member_success(self, sqlite_session_factory: sessionmaker[Session]) -> None:
+        with sqlite_session_factory() as service_session:
+            tenant = Tenant(name="Test Workspace", status=TenantStatus.NORMAL)
+            account = Account(name="Test User", email="test@example.com")
+            service_session.add_all([tenant, account])
+            service_session.flush()
+            tenant_id = tenant.id
+            account_id = account.id
+            service_session.commit()
+
+            with patch("services.account_service.TenantService.create_tenant_member") as create_tenant_member:
+                membership = TenantAccountJoin(
+                    tenant_id=tenant_id,
+                    account_id=account_id,
+                    role=TenantAccountRole.NORMAL,
+                )
+                create_tenant_member.return_value = membership
+
+                result = TenantService.join_enterprise_workspace_member(
+                    workspace_id=tenant_id,
+                    account_id=account_id,
+                    email="test@example.com",
+                    role=TenantAccountRole.NORMAL,
+                    operator_account_id="operator-1",
+                    session=service_session,
+                )
+
+                assert result is membership
+                create_tenant_member.assert_called_once()
+                call_args = create_tenant_member.call_args
+                assert call_args.args[0].id == tenant_id
+                assert call_args.args[1].id == account_id
+                assert call_args.kwargs == {
+                    "session": service_session,
+                    "role": "normal",
+                    "operator_account_id": "operator-1",
+                }
+
+    def test_join_enterprise_workspace_member_raises_when_workspace_missing(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        with sqlite_session_factory() as service_session:
+            account = Account(name="Test User", email="test@example.com")
+            service_session.add(account)
+            service_session.flush()
+            account_id = account.id
+            service_session.commit()
+
+            with pytest.raises(EnterpriseWorkspaceMemberWorkspaceNotFoundError):
+                TenantService.join_enterprise_workspace_member(
+                    workspace_id="missing-workspace",
+                    account_id=account_id,
+                    email="test@example.com",
+                    role=TenantAccountRole.NORMAL,
+                    operator_account_id=None,
+                    session=service_session,
+                )
+
+    def test_join_enterprise_workspace_member_raises_when_account_missing(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        with sqlite_session_factory() as service_session:
+            tenant = Tenant(name="Test Workspace", status=TenantStatus.NORMAL)
+            service_session.add(tenant)
+            service_session.flush()
+            tenant_id = tenant.id
+            service_session.commit()
+
+            with pytest.raises(EnterpriseWorkspaceMemberAccountNotFoundError):
+                TenantService.join_enterprise_workspace_member(
+                    workspace_id=tenant_id,
+                    account_id="missing-account",
+                    email="test@example.com",
+                    role=TenantAccountRole.NORMAL,
+                    operator_account_id=None,
+                    session=service_session,
+                )
 
     # ==================== Member Removal Tests ====================
 
@@ -1547,6 +1755,7 @@ class TestRegisterService:
                 password=None,
                 timezone=None,
                 ip_address="203.0.113.10",
+                check_normalized_email=False,
                 session=sqlite_session,
             )
             mock_create_workspace.assert_called_once_with(account=mock_account, session=sqlite_session)
@@ -1664,9 +1873,34 @@ class TestRegisterService:
                     is_setup=False,
                     timezone=None,
                     ip_address="203.0.113.10",
+                    check_normalized_email=True,
                     session=sqlite_session,
                 )
                 mock_create_owner_tenant.assert_called_once_with(mock_account, session=sqlite_session)
+
+    def test_register_rejects_existing_normalized_email(
+        self,
+        sqlite_session: Session,
+        mock_external_service_dependencies: _MockDependencies,
+    ) -> None:
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        sqlite_session.add(
+            Account(
+                name="Existing User",
+                email="u.ser+existing@gmail.com",
+                normalized_email="user@gmail.com",
+            )
+        )
+        sqlite_session.commit()
+
+        with pytest.raises(AccountEmailAlreadyInUseError):
+            RegisterService.register(
+                email="user@googlemail.com",
+                name="New User",
+                language="en-US",
+                create_workspace_required=False,
+                session=sqlite_session,
+            )
 
     def test_register_calls_default_workspace_join_for_enterprise_edition(
         self,
@@ -2027,6 +2261,7 @@ class TestRegisterService:
                         language="en-US",
                         status=AccountStatus.PENDING,
                         is_setup=True,
+                        check_normalized_email=True,
                         session=sqlite_session,
                     )
                     mock_lookup.assert_called_once_with("newuser@example.com", session=sqlite_session)
@@ -2073,6 +2308,7 @@ class TestRegisterService:
                         language="en-US",
                         status=AccountStatus.PENDING,
                         is_setup=True,
+                        check_normalized_email=True,
                         session=sqlite_session,
                     )
                     mock_lookup.assert_called_once_with(mixed_email, session=sqlite_session)
@@ -2083,7 +2319,13 @@ class TestRegisterService:
                         "add",
                         session=sqlite_session,
                     )
-                    mock_create_member.assert_called_once_with(mock_tenant, mock_new_account, sqlite_session, "normal")
+                    mock_create_member.assert_called_once_with(
+                        mock_tenant,
+                        mock_new_account,
+                        sqlite_session,
+                        "normal",
+                        operator_account_id=mock_inviter.id,
+                    )
                     mock_switch_tenant.assert_called_once_with(mock_new_account, mock_tenant.id, session=sqlite_session)
                     mock_generate_token.assert_called_once_with(
                         mock_tenant, mock_new_account, "normal", requires_setup=True
@@ -2128,7 +2370,13 @@ class TestRegisterService:
 
                 # Verify results
                 assert result == "invite-token-123"
-                mock_create_member.assert_called_once_with(mock_tenant, mock_existing_account, sqlite_session, "normal")
+                mock_create_member.assert_called_once_with(
+                    mock_tenant,
+                    mock_existing_account,
+                    sqlite_session,
+                    "normal",
+                    operator_account_id=mock_inviter.id,
+                )
                 mock_generate_token.assert_called_once_with(
                     mock_tenant, mock_existing_account, "normal", requires_setup=True
                 )
@@ -2274,7 +2522,11 @@ class TestRegisterService:
 
                 assert result == "rbac-token"
                 mock_create_member.assert_called_once_with(
-                    mock_tenant, mock_new_account, sqlite_session, TenantAccountRole.NORMAL.value
+                    mock_tenant,
+                    mock_new_account,
+                    sqlite_session,
+                    TenantAccountRole.NORMAL.value,
+                    operator_account_id=mock_inviter.id,
                 )
                 mock_rbac_service.MemberRoles.replace.assert_called_once_with(
                     tenant_id=mock_tenant.id,
@@ -2323,6 +2575,7 @@ class TestRegisterService:
                     mock_existing_account,
                     sqlite_session,
                     TenantAccountRole.NORMAL.value,
+                    operator_account_id=mock_inviter.id,
                 )
                 mock_rbac_service.MemberRoles.replace.assert_called_once_with(
                     tenant_id=mock_tenant.id,
@@ -2372,6 +2625,7 @@ class TestRegisterService:
                     mock_existing_account,
                     sqlite_session,
                     TenantAccountRole.NORMAL.value,
+                    operator_account_id=mock_inviter.id,
                 )
                 mock_rbac_service.MemberRoles.replace.assert_called_once_with(
                     tenant_id=mock_tenant.id,
@@ -2420,7 +2674,13 @@ class TestRegisterService:
                 )
 
                 assert result == "legacy-token"
-                mock_create_member.assert_called_once_with(mock_tenant, mock_new_account, sqlite_session, "editor")
+                mock_create_member.assert_called_once_with(
+                    mock_tenant,
+                    mock_new_account,
+                    sqlite_session,
+                    "editor",
+                    operator_account_id=mock_inviter.id,
+                )
                 mock_rbac_service.MemberRoles.replace.assert_not_called()
 
     # ==================== Token Management Tests ====================

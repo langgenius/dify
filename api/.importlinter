@@ -64,7 +64,6 @@ ignore_imports =
     core.app.task_pipeline.message_cycle_manager -> services.annotation_service
     core.app.workflow.layers.persistence -> services.workflow.inspector_events
     core.datasource.datasource_manager -> services.datasource_provider_service
-    core.helper.creators -> services.oauth_server
     core.helper.credential_utils -> services.enterprise.plugin_manager_service
     core.helper.credential_utils -> services.feature_service
     core.indexing_runner -> services.vector_space_admission_service
@@ -116,15 +115,12 @@ ignore_imports =
     libs.login -> models.model
     libs.oauth -> core.helper.http_client_pooling
     libs.oauth_bearer -> models
-    libs.oauth_data_source -> core.db.session_factory
-    libs.oauth_data_source -> core.helper.http_client_pooling
     libs.rsa -> extensions.ext_storage
     libs.workspace_permission -> services.enterprise.enterprise_service
     libs.workspace_permission -> services.feature_service
     services.account_service -> controllers
     services.account_service -> controllers.console.error
     services.app_generate_service -> controllers.console.app.workflow
-    services.billing_service -> controllers.console.error
 
 [importlinter:contract:no-direct-rsa-imports]
 # Note: `libs` itself is deliberately excluded from source_modules -- import-linter's
@@ -245,6 +241,21 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:app-site-service-boundary]
+name = App site application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.app_site_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
 [importlinter:contract:webapp-access-query-service-boundary]
 name = Web app access query application service is framework and persistence neutral
 type = forbidden
@@ -289,6 +300,40 @@ forbidden_modules =
     controllers
     extensions
     flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:data-source-oauth-service-boundary]
+name = Data source OAuth application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.data_source_oauth_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    httpx
+    libs
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:oauth-server-application-service-boundary]
+name = OAuth server application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.oauth_server_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    httpx
+    libs
     models
     repositories
     sqlalchemy
@@ -402,6 +447,7 @@ name = Billing application services and ports are framework and infrastructure n
 type = forbidden
 source_modules =
     services.billing_portal_service
+    services.compliance_download_service
     services.partner_tenant_binding_service
 forbidden_modules =
     configs
@@ -412,4 +458,21 @@ forbidden_modules =
     repositories
     services.billing_service
     sqlalchemy
+    werkzeug
+
+[importlinter:contract:workflow-run-archive-application-boundary]
+name = Workflow run archive application service and task domain are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.retention.workflow_run.archive_download_task
+    services.retention.workflow_run.archive_log_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
     werkzeug

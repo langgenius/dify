@@ -18,8 +18,10 @@ export type MainNavRouteConfig = {
 export type MainNavRouteVisibilityOptions = {
   agentV2Enabled: boolean
   canManageAgents: boolean
+  canViewSkills: boolean
   isCurrentWorkspaceDatasetOperator: boolean
   marketplaceEnabled: boolean
+  skillEnabled: boolean
 }
 
 export type DetailSidebarVisibilityOptions = Pick<
@@ -29,8 +31,8 @@ export type DetailSidebarVisibilityOptions = Pick<
 
 const VISIBLE_TO_ALL: MainNavRouteVisibility = () => true
 const CAN_MANAGE_AGENTS: MainNavRouteVisibility = (options) => options.canManageAgents
-const NOT_DATASET_OPERATOR: MainNavRouteVisibility = (options) =>
-  !options.isCurrentWorkspaceDatasetOperator
+const SKILL_ENABLED_FOR_WORKSPACE: MainNavRouteVisibility = (options) =>
+  options.skillEnabled && options.canViewSkills && !options.isCurrentWorkspaceDatasetOperator
 
 function isPathUnderRoute(pathname: string, route: string) {
   return pathname === route || pathname.startsWith(`${route}/`)
@@ -84,7 +86,7 @@ export const MAIN_NAV_ROUTES = [
     active: (path: string) => isPathUnderRoute(path, '/skills'),
     icon: 'i-custom-vender-main-nav-skill',
     activeIcon: 'i-custom-vender-main-nav-skill-active',
-    visibility: NOT_DATASET_OPERATOR,
+    visibility: SKILL_ENABLED_FOR_WORKSPACE,
   },
   {
     key: 'integrations',

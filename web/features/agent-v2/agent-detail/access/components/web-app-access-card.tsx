@@ -4,7 +4,7 @@ import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/t
 import type { AppSiteUpdatePayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { ConfigParams, SettingsAppInfo } from '@/app/components/app/overview/settings'
 import type { AppIconType } from '@/types/app'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -17,8 +17,59 @@ import ShareQRCode from '@/app/components/base/qrcode'
 import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
-import { accessSurfaceActionClassName, AccessSurfaceCard } from './access-surface-card'
+import { AccessSurfaceCard } from './access-surface-card'
 import { WebAppAccessControlButton } from './web-app-access-control-button'
+
+function WebAppLaunchAction({
+  href,
+  label,
+  disabledReason,
+}: {
+  href?: string
+  label: string
+  disabledReason?: string
+}) {
+  const content = (
+    <>
+      <span aria-hidden className="i-ri-external-link-line size-4" />
+      {label}
+    </>
+  )
+
+  if (href) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        aria-label={label}
+        className={buttonVariants({ variant: 'secondary', size: 'medium' })}
+      >
+        {content}
+      </a>
+    )
+  }
+
+  const disabledButton = (
+    <Button
+      variant="secondary"
+      size="medium"
+      disabled
+      focusableWhenDisabled={Boolean(disabledReason)}
+    >
+      {content}
+    </Button>
+  )
+
+  if (!disabledReason) return disabledButton
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={disabledButton} />
+      <TooltipContent role="tooltip">{disabledReason}</TooltipContent>
+    </Tooltip>
+  )
+}
 
 export function WebAppAccessCard({
   agent,
@@ -39,7 +90,6 @@ export function WebAppAccessCard({
   const appBaseUrl =
     site?.app_base_url || (typeof window === 'undefined' ? '' : window.location.origin)
   const webAppUrl = getAgentWebAppUrl(agent)
-  const isEnabled = Boolean(agent?.enable_site)
   const accessReady = Boolean(agent?.access_ready)
   const canManageWebApp = Boolean(appId && accessReady)
   const embeddedConfig =
@@ -71,18 +121,22 @@ export function WebAppAccessCard({
   })
   const toggleSiteMutation = useMutation(
     consoleQuery.apps.byAppId.siteEnable.post.mutationOptions({
-      onSuccess: (_updatedApp, variables) => {
+      scope: {
+        id: `agent-web-app-toggle:${agentId}`,
+      },
+      onSuccess: (updatedApp) => {
         queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
           agentDetailQueryKey,
           (agentDetail) =>
             agentDetail
               ? {
                   ...agentDetail,
-                  enable_site: variables.body.enable_site,
+                  enable_site: updatedApp.enable_site,
+                  updated_at: updatedApp.updated_at,
+                  updated_by: updatedApp.updated_by,
                 }
               : agentDetail,
         )
-        toast.success(tCommon(($) => $['actionMsg.modifiedSuccessfully']))
       },
       onError: () => {
         toast.error(tCommon(($) => $['actionMsg.modifiedUnsuccessfully']))
@@ -115,24 +169,15 @@ export function WebAppAccessCard({
     }),
   )
   const updateSiteMutation = useMutation(consoleQuery.apps.byAppId.site.post.mutationOptions())
-  const isBusy =
-    toggleSiteMutation.isPending ||
-    resetAccessTokenMutation.isPending ||
-    updateSiteMutation.isPending
+  const pendingEnabled = toggleSiteMutation.variables?.body.enable_site
+  const optimisticEnabled =
+    toggleSiteMutation.isPending && pendingEnabled !== undefined
+      ? pendingEnabled
+      : Boolean(agent?.enable_site)
+  const launchHref =
+    webAppUrl && agent?.enable_site && !toggleSiteMutation.isPending ? webAppUrl : undefined
   const publishRequiredMessage = t(($) => $['agentDetail.access.publishRequired'])
   const showPublishRequiredMessage = !isLoading && !accessReady
-  const disabledLaunchButton = (
-    <Button
-      variant="secondary"
-      size="medium"
-      className="px-3"
-      disabled
-      focusableWhenDisabled={showPublishRequiredMessage}
-    >
-      <span aria-hidden className="i-ri-external-link-line size-4" />
-      {t(($) => $['agentDetail.access.webApp.actions.launch'])}
-    </Button>
-  )
 
   function handleEnabledChange(enabled: boolean) {
     if (!appId) return
@@ -211,7 +256,7 @@ export function WebAppAccessCard({
       iconClassName="bg-state-accent-solid text-text-primary-on-surface"
       endpointLabel={t(($) => $['agentDetail.access.webApp.accessUrl'])}
       endpoint={webAppUrl}
-      enabled={isEnabled}
+      enabled={optimisticEnabled}
       onEnabledChange={handleEnabledChange}
       copyLabel={t(($) => $['agentDetail.access.copyAccessUrl'])}
       badge={showSsoBadge ? <SsoBadge /> : undefined}
@@ -225,7 +270,7 @@ export function WebAppAccessCard({
               size="small"
               className="size-6 shrink-0 px-0 text-text-tertiary hover:text-text-secondary"
               aria-label={t(($) => $['agentDetail.access.webApp.refreshUrl'])}
-              disabled={!canManageWebApp || isBusy}
+              disabled={!canManageWebApp || resetAccessTokenMutation.isPending}
               onClick={handleRefreshUrl}
             >
               <span aria-hidden className="i-ri-refresh-line size-4" />
@@ -235,31 +280,15 @@ export function WebAppAccessCard({
       }
       disabled={isLoading || !canManageWebApp}
       disabledReason={showPublishRequiredMessage ? publishRequiredMessage : undefined}
-      busy={isBusy}
     >
-      {webAppUrl && isEnabled ? (
-        <a
-          href={webAppUrl}
-          target="_blank"
-          rel="noreferrer"
-          aria-label={t(($) => $['agentDetail.access.webApp.actions.launch'])}
-          className={accessSurfaceActionClassName}
-        >
-          <span aria-hidden className="i-ri-external-link-line size-4" />
-          {t(($) => $['agentDetail.access.webApp.actions.launch'])}
-        </a>
-      ) : showPublishRequiredMessage ? (
-        <Tooltip>
-          <TooltipTrigger render={disabledLaunchButton} />
-          <TooltipContent role="tooltip">{publishRequiredMessage}</TooltipContent>
-        </Tooltip>
-      ) : (
-        disabledLaunchButton
-      )}
+      <WebAppLaunchAction
+        href={launchHref}
+        label={t(($) => $['agentDetail.access.webApp.actions.launch'])}
+        disabledReason={showPublishRequiredMessage ? publishRequiredMessage : undefined}
+      />
       <Button
         variant="secondary"
         size="medium"
-        className="px-3"
         disabled={!embeddedConfig}
         onClick={() => setShowEmbeddedModal(true)}
       >
@@ -269,7 +298,6 @@ export function WebAppAccessCard({
       <Button
         variant="secondary"
         size="medium"
-        className="px-3"
         disabled={!customizeConfig}
         onClick={() => setShowCustomizeModal(true)}
       >
@@ -279,7 +307,6 @@ export function WebAppAccessCard({
       <Button
         variant="secondary"
         size="medium"
-        className="px-3"
         disabled={!settingsAppInfo || updateSiteMutation.isPending}
         onClick={() => setShowSettingsModal(true)}
       >

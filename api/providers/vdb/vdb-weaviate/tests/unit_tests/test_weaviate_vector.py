@@ -18,8 +18,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 from dify_vdb_weaviate import weaviate_vector as weaviate_vector_module
 from dify_vdb_weaviate.weaviate_vector import WeaviateConfig, WeaviateVector
+from sqlalchemy.orm import Session
 
 from core.rag.models.document import Document
+from models.dataset import Dataset
 
 
 class TestWeaviateVector(unittest.TestCase):
@@ -164,13 +166,13 @@ class TestWeaviateVector(unittest.TestCase):
         }
 
     def test_get_collection_name_uses_existing_class_prefix_and_appends_suffix(self):
-        dataset = SimpleNamespace(index_struct_dict={"vector_store": {"class_prefix": "ExistingCollection"}}, id="ds-1")
+        dataset = Dataset(id="ds-1", index_struct=json.dumps({"vector_store": {"class_prefix": "ExistingCollection"}}))
         wv = WeaviateVector.__new__(WeaviateVector)
 
         assert wv.get_collection_name(dataset) == "ExistingCollection_Node"
 
     def test_get_collection_name_generates_name_from_dataset_id(self):
-        dataset = SimpleNamespace(index_struct_dict=None, id="ds-2")
+        dataset = Dataset(id="ds-2")
         wv = WeaviateVector.__new__(WeaviateVector)
 
         with patch.object(weaviate_vector_module.Dataset, "gen_collection_name_by_id", return_value="Generated_Node"):
@@ -851,32 +853,35 @@ class TestWeaviateVector(unittest.TestCase):
         assert wv._json_serializable("plain") == "plain"
 
 
-class TestVectorDefaultAttributes(unittest.TestCase):
+@pytest.mark.parametrize("sqlite3_session", [(Dataset,)], indirect=True)
+class TestVectorDefaultAttributes:
     """Tests for Vector class default attributes list."""
 
     @patch("core.rag.datasource.vdb.vector_factory.Vector._get_embeddings")
     @patch("core.rag.datasource.vdb.vector_factory.Vector._init_vector")
-    def test_default_attributes_include_doc_type(self, mock_init_vector, mock_get_embeddings):
+    def test_default_attributes_include_doc_type(
+        self,
+        mock_init_vector,
+        mock_get_embeddings,
+        sqlite3_session: Session,
+    ):
         """Test that Vector class default attributes include doc_type."""
         from core.rag.datasource.vdb.vector_factory import Vector
 
         mock_get_embeddings.return_value = MagicMock()
         mock_init_vector.return_value = MagicMock()
 
-        mock_dataset = MagicMock()
-        mock_dataset.index_struct_dict = None
+        mock_dataset = Dataset(id="dataset-default")
 
-        vector = Vector(dataset=mock_dataset, session=MagicMock())
+        vector = Vector(dataset=mock_dataset, session=sqlite3_session)
 
         assert "doc_type" in vector._attributes, f"doc_type should be in default attributes, got: {vector._attributes}"
 
 
 class TestWeaviateVectorFactory(unittest.TestCase):
     def test_init_vector_uses_existing_dataset_index_struct(self):
-        dataset = SimpleNamespace(
-            id="dataset-1",
-            index_struct_dict={"vector_store": {"class_prefix": "ExistingCollection_Node"}},
-            index_struct=None,
+        dataset = Dataset(
+            id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "ExistingCollection_Node"}})
         )
         attributes = ["doc_id"]
 
@@ -898,10 +903,10 @@ class TestWeaviateVectorFactory(unittest.TestCase):
         assert config.grpc_endpoint == "localhost:50051"
         assert config.api_key == "api-key"
         assert config.batch_size == 88
-        assert dataset.index_struct is None
+        assert json.loads(dataset.index_struct) == {"vector_store": {"class_prefix": "ExistingCollection_Node"}}
 
     def test_init_vector_generates_collection_and_updates_index_struct(self):
-        dataset = SimpleNamespace(id="dataset-2", index_struct_dict=None, index_struct=None)
+        dataset = Dataset(id="dataset-2")
         attributes = ["doc_id", "doc_type"]
 
         with (

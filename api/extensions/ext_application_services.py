@@ -1,6 +1,7 @@
 """Composition root for application services used by transport adapters."""
 
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import cast
 
@@ -12,6 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import get_session_maker
+from core.helper.ssrf_proxy import ssrf_proxy
 from core.schemas.schema_manager import SchemaManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_redis import RedisClientWrapper, redis_client
@@ -21,20 +23,26 @@ from repositories.account_activation_repository import SQLAlchemyAccountActivati
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
+from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
+from repositories.data_source_oauth_binding_repository import SQLAlchemyDataSourceOAuthBindingRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
+from repositories.factory import DifyAPIRepositoryFactory
 from repositories.installation_state_repository import InstallationStateRepository
+from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
 from repositories.tag_repository import TagRepository
 from repositories.trial_app_query_repository import TrialAppQueryRepository
 from repositories.trial_app_usage_repository import TrialAppUsageRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
+from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
 from services.account_activation_adapters import (
     BillingAccountActivationEligibility,
     BillingWorkspaceMembershipCache,
     DeploymentWorkspaceInvitePolicy,
+    RBACWorkspaceMemberAccessSync,
     RegisterServiceInvitationTokenStore,
 )
 from services.account_activation_service import AccountActivationService
@@ -68,6 +76,7 @@ from services.account_password_hasher import LegacyAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
 from services.app_definition_query_service import AppDefinitionQueryService
+from services.app_site_service import AppSiteService
 from services.auth.data_source_api_key_auth_gateways import (
     ProviderApiKeyAuthCredentialValidator,
     TenantApiKeyAuthCredentialEncryptor,
@@ -75,6 +84,8 @@ from services.auth.data_source_api_key_auth_gateways import (
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
+from services.compliance_download_service import ComplianceDownloadService
+from services.data_source_oauth_service import DataSourceOAuthService, InvalidDataSourceOAuthProviderError
 from services.enterprise.enterprise_service import EnterpriseService
 from services.errors.enterprise import EnterpriseServiceError
 from services.explore_banner_query_service import ExploreBannerQueryService
@@ -83,6 +94,8 @@ from services.feature_service import FeatureService
 from services.feature_service_gateway import FeatureServiceGateway
 from services.file_service import FileService
 from services.init_validation_service import InitValidationService
+from services.notion_data_source_gateway import NotionDataSourceGateway
+from services.oauth_server_service import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthServerService
 from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.recommended_app_catalog_gateway import (
     BuiltinRecommendedAppCatalogGateway,
@@ -90,6 +103,12 @@ from services.recommended_app_catalog_gateway import (
     RemoteRecommendedAppCatalogGateway,
 )
 from services.recommended_app_query_service import RecommendedAppQueryService
+from services.retention.workflow_run.archive_download_adapters import (
+    dispatch_workflow_run_archive_download_task,
+    sign_workflow_run_archive_download_url,
+)
+from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
+from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock, RegisterServiceAccountProvisioner
 from services.setup_service import SetupService
@@ -100,6 +119,7 @@ from services.webapp_access_query_service import (
     WebAppAccessQueryService,
     WebAppAccessUnavailableError,
 )
+from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from services.workspace_member_query_service import WorkspaceMemberQueryService
 from services.workspace_member_role_resolver import DeploymentWorkspaceMemberRoleResolver
 from services.workspace_plan_gateway import DeploymentWorkspacePlanGateway
@@ -144,21 +164,67 @@ class ApplicationServices:
     accounts: AccountServices
     account_activation: AccountActivationService
     app_definitions: AppDefinitionQueryService
+    app_sites: AppSiteService
     billing_portal: BillingPortalService
+    compliance_downloads: ComplianceDownloadService
     data_source_api_key_auth: DataSourceApiKeyAuthService
+    data_source_oauth: Mapping[str, DataSourceOAuthService]
     webapp_access: WebAppAccessQueryService
     web_app_runtime: WebAppRuntimeQueryService
     explore_banner_queries: ExploreBannerQueryService
     schema_definitions: SchemaDefinitionService
     setup: SetupService
     feature_queries: FeatureQueryService
+    oauth_server: OAuthServerService
     init_validation: InitValidationService
     partner_tenant_bindings: PartnerTenantBindingService
     recommended_app_queries: RecommendedAppQueryService
     trial_app_usage: TrialAppUsageRecorder
+    workflow_run_archives: WorkflowRunArchiveService
     workspace_queries: WorkspaceQueryService
     workspace_member_queries: WorkspaceMemberQueryService
     tags: TagApplicationService
+    workflow_statistics: WorkflowStatisticQueryService
+
+    def resolve_data_source_oauth(self, provider: str) -> DataSourceOAuthService:
+        service = self.data_source_oauth.get(provider)
+        if service is None:
+            raise InvalidDataSourceOAuthProviderError("Invalid provider")
+        return service
+
+
+def _build_data_source_oauth_services(
+    *,
+    database_client: sessionmaker[Session],
+) -> Mapping[str, DataSourceOAuthService]:
+    notion_data_source = NotionDataSourceGateway(
+        client_id=dify_config.NOTION_CLIENT_ID or "",
+        client_secret=dify_config.NOTION_CLIENT_SECRET or "",
+        redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/data-source/callback/notion",
+        http_client=ssrf_proxy,
+    )
+    bindings = SQLAlchemyDataSourceOAuthBindingRepository(session_factory=database_client)
+    return {
+        "notion": DataSourceOAuthService(
+            provider_name="notion",
+            provider_gateway=notion_data_source,
+            bindings=bindings,
+            is_internal_provider=dify_config.NOTION_INTEGRATION_TYPE == "internal",
+            internal_access_token=dify_config.NOTION_INTERNAL_SECRET,
+        )
+    }
+
+
+def _build_oauth_server_service(
+    *,
+    database_client: sessionmaker[Session],
+    redis: RedisClientWrapper,
+) -> OAuthServerService:
+    return OAuthServerService(
+        repository=SQLAlchemyOAuthServerRepository(session_factory=database_client),
+        tokens=RedisOAuthServerTokenRepository(redis=redis),
+        access_token_expires_in=OAUTH_ACCESS_TOKEN_EXPIRES_IN,
+    )
 
 
 def build_application_services(
@@ -268,6 +334,9 @@ def build_application_services(
             membership_cache=BillingWorkspaceMembershipCache(
                 enabled=deployment_edition == DeploymentEdition.CLOUD,
             ),
+            member_access_sync=RBACWorkspaceMemberAccessSync(
+                enabled=dify_config.RBAC_ENABLED,
+            ),
         ),
         app_definitions=AppDefinitionQueryService(
             definitions=app_definition_repository,
@@ -275,16 +344,29 @@ def build_application_services(
                 dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
             ),
         ),
+        app_sites=AppSiteService(
+            sites=AppSiteCommandRepository(session_factory=database_client),
+        ),
         billing_portal=BillingPortalService(
             accounts=accounts,
             get_subscription=BillingService.get_subscription,
             get_invoices=BillingService.get_invoices,
+        ),
+        compliance_downloads=ComplianceDownloadService(
+            fetch_link=BillingService.get_compliance_download_link,
+            rate_limiter=RateLimiter(
+                prefix="compliance_download_rate_limiter",
+                max_attempts=4,
+                time_window=60,
+                redis_client=redis,
+            ),
         ),
         data_source_api_key_auth=DataSourceApiKeyAuthService(
             bindings=data_source_api_key_auth_bindings,
             validator=ProviderApiKeyAuthCredentialValidator(),
             encryptor=TenantApiKeyAuthCredentialEncryptor(),
         ),
+        data_source_oauth=_build_data_source_oauth_services(database_client=database_client),
         webapp_access=WebAppAccessQueryService(
             access=WebAppAccessQueryRepository(session_factory=database_client),
             webapp_auth_enabled=FeatureService.is_webapp_auth_enabled(),
@@ -312,6 +394,7 @@ def build_application_services(
             features=feature_gateway,
             app_dsl_version=CURRENT_APP_DSL_VERSION,
         ),
+        oauth_server=_build_oauth_server_service(database_client=database_client, redis=redis),
         init_validation=InitValidationService(
             state=installation_state,
             validation_required=(deployment_edition != DeploymentEdition.CLOUD and bool(initialization_password)),
@@ -326,6 +409,12 @@ def build_application_services(
             trial_enabled=trial_app_enabled,
         ),
         trial_app_usage=TrialAppUsageRepository(session_factory=database_client),
+        workflow_run_archives=WorkflowRunArchiveService(
+            bundles=WorkflowRunArchiveBundleQueryRepository(session_factory=database_client),
+            tasks=WorkflowRunArchiveDownloadTaskCache(redis=redis),
+            dispatcher=dispatch_workflow_run_archive_download_task,
+            sign_download_url=sign_workflow_run_archive_download_url,
+        ),
         workspace_queries=WorkspaceQueryService(
             workspaces=workspace_query_repository,
             plans=DeploymentWorkspacePlanGateway(),
@@ -338,6 +427,11 @@ def build_application_services(
         ),
         tags=TagApplicationService(
             tags=TagRepository(session_factory=database_client),
+        ),
+        workflow_statistics=WorkflowStatisticQueryService(
+            workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(
+                session_maker=database_client,
+            ),
         ),
     )
 

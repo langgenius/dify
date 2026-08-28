@@ -593,6 +593,16 @@ class HttpConfig(BaseSettings):
     def CONSOLE_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_CONSOLE_CORS_ALLOW_ORIGINS.split(",")
 
+    WEBSOCKET_MAX_HTTP_BUFFER_SIZE: PositiveInt = Field(
+        description=(
+            "Maximum Socket.IO / Engine.IO HTTP buffer size in bytes. "
+            "Large workflow collaboration payloads (sync_request graph snapshots) "
+            "exceed the Engine.IO default of 1 MiB and get rejected, which "
+            "disconnects the editor WebSocket. Default is 10 MiB."
+        ),
+        default=10 * 1024 * 1024,
+    )
+
     inner_WEB_API_CORS_ALLOW_ORIGINS: str = Field(
         description="",
         validation_alias=AliasChoices("WEB_API_CORS_ALLOW_ORIGINS"),
@@ -1291,6 +1301,13 @@ class DataSetConfig(BaseSettings):
     )
 
 
+class SkillConfig(BaseSettings):
+    ENABLE_SKILL: bool = Field(
+        description="Enable or disable Skill feature entry points",
+        default=True,
+    )
+
+
 class WorkspaceConfig(BaseSettings):
     """
     Configuration for workspace management
@@ -1685,6 +1702,7 @@ class FeatureConfig(
     RepositoryConfig,
     SandboxExpiredRecordsCleanConfig,
     SecurityConfig,
+    SkillConfig,
     TenantIsolatedTaskQueueConfig,
     ToolConfig,
     UpdateConfig,
