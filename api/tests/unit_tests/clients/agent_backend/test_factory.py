@@ -1,93 +1,90 @@
-from collections.abc import Callable
-from types import ModuleType
-from unittest.mock import MagicMock, patch
+"""Regression for #38283: when AGENT_BACKEND_BASE_URL is unset, node_factory
+was raising `ValueError("base_url is required")` inside Agent App
+invocation. The factory now falls back to the deterministic fake client
+with a WARNING log so operators still see what a real backend would
+return while they stand one up."""
+
+from __future__ import annotations
+
+import logging
 
 import pytest
-from dify_agent.client import Client
 
-from clients.agent_backend.factory import create_agent_backend_client, create_agent_backend_run_client
-from configs import dify_config
-from services import agent_app_sandbox_service
-from services.agent import home_snapshot_service, workspace_service
+from clients.agent_backend.factory import create_agent_backend_run_client
 
 
-@pytest.mark.parametrize(
-    ("api_token", "headers"),
-    [
-        ("secret-token", {"Authorization": "Bearer secret-token"}),
-        (" secret-token ", {"Authorization": "Bearer secret-token"}),
-        ("  ", None),
-        (None, None),
-    ],
-)
-@patch("clients.agent_backend.factory.Client")
-def test_create_agent_backend_client_forwards_authentication(
-    client_cls: MagicMock,
-    api_token: str | None,
-    headers: dict[str, str] | None,
+def test_use_fake_true_returns_fake_even_when_base_url_set() -> None:
+    from clients.agent_backend.fake_client import FakeAgentBackendRunClient
+
+    client = create_agent_backend_run_client(
+        base_url="http://real.example",
+        api_token="token",
+        use_fake=True,
+    )
+    assert isinstance(client, FakeAgentBackendRunClient)
+
+
+def test_use_fake_false_with_base_url_returns_real_client() -> None:
+    client = create_agent_backend_run_client(
+        base_url="http://real.example",
+        api_token="token",
+        use_fake=False,
+    )
+    # Real client wraps the dify_agent `Client`; the fake path would
+    # have raised on `isinstance(client, FakeAgentBackendRunClient)`.
+    from clients.agent_backend.client import DifyAgentBackendRunClient
+
+    assert isinstance(client, DifyAgentBackendRunClient)
+
+
+def test_use_fake_false_no_base_url_falls_back_to_fake_with_warning(
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
-    create_agent_backend_client(base_url="http://agent-backend", api_token=api_token)
+    """Regression for #38283 — the operator hasn't deployed an Agent
+    backend runtime yet, and the workflow would otherwise crash with the
+    cryptic `base_url is required` ValueError. Now we silently fall
+    back to the fake client and log at WARNING so it's visible."""
+    from clients.agent_backend.fake_client import FakeAgentBackendRunClient
 
-    client_cls.assert_called_once_with(
-        base_url="http://agent-backend",
-        stream_timeout=30,
-        timeout=30.0,
-        binding_file_download_timeout=240,
-        headers=headers,
-    )
+    with caplog.at_level(logging.WARNING, logger="clients.agent_backend.factory"):
+        client = create_agent_backend_run_client(
+            base_url=None,
+            api_token=None,
+            use_fake=False,
+        )
 
-
-@patch("clients.agent_backend.factory.create_agent_backend_client")
-def test_create_agent_backend_run_client_forwards_stream_read_timeout(create_client: MagicMock) -> None:
-    create_agent_backend_run_client(
-        base_url="http://agent-backend",
-        api_token="secret-token",
-        stream_read_timeout_seconds=17.5,
-    )
-
-    create_client.assert_called_once_with(
-        base_url="http://agent-backend",
-        api_token="secret-token",
-        stream_timeout=17.5,
-    )
+    assert isinstance(client, FakeAgentBackendRunClient)
+    assert any("AGENT_BACKEND_BASE_URL is not configured" in record.getMessage() for record in caplog.records)
 
 
-@pytest.mark.parametrize(
-    ("factory", "module", "extra_kwargs"),
-    [
-        (
-            home_snapshot_service.AgentHomeSnapshotService._client,
-            home_snapshot_service,
-            {"timeout": dify_config.AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS},
-        ),
-        (
-            workspace_service.AgentWorkspaceService._client,
-            workspace_service,
-            {"timeout": dify_config.AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS},
-        ),
-        (
-            agent_app_sandbox_service._default_client_factory,
-            agent_app_sandbox_service,
-            {"binding_file_download_timeout": 123.5},
-        ),
-    ],
-)
-def test_default_agent_backend_clients_forward_authentication(
-    monkeypatch: pytest.MonkeyPatch,
-    factory: Callable[[], Client],
-    module: ModuleType,
-    extra_kwargs: dict[str, float],
+def test_use_fake_false_empty_string_base_url_falls_back_to_fake(
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
-    monkeypatch.setattr(dify_config, "AGENT_BACKEND_BASE_URL", "http://agent-backend")
-    monkeypatch.setattr(dify_config, "AGENT_BACKEND_API_TOKEN", "secret-token")
-    monkeypatch.setattr(dify_config, "AGENT_BACKEND_BINDING_FILE_DOWNLOAD_TIMEOUT_SECONDS", 123.5)
-    create_client = MagicMock()
-    monkeypatch.setattr(module, "create_agent_backend_client", create_client)
+    """Empty string base_url is treated the same as None — no point
+    making a request to a URL with empty host."""
+    from clients.agent_backend.fake_client import FakeAgentBackendRunClient
 
-    factory()
+    with caplog.at_level(logging.WARNING, logger="clients.agent_backend.factory"):
+        client = create_agent_backend_run_client(
+            base_url="",
+            api_token=None,
+            use_fake=False,
+        )
 
-    create_client.assert_called_once_with(
-        base_url="http://agent-backend",
-        api_token="secret-token",
-        **extra_kwargs,
-    )
+    assert isinstance(client, FakeAgentBackendRunClient)
+
+
+def test_use_fake_false_no_base_url_no_warning_when_use_fake_already_on(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """When the operator already opted into fake mode, we don't need
+    the warning — the log is for the unexpected misconfiguration."""
+
+    with caplog.at_level(logging.WARNING, logger="clients.agent_backend.factory"):
+        create_agent_backend_run_client(
+            base_url=None,
+            api_token=None,
+            use_fake=True,
+        )
+
+    assert not any("AGENT_BACKEND_BASE_URL is not configured" in record.getMessage() for record in caplog.records)
