@@ -40,7 +40,7 @@ export function AgentWorkflowReferencesDropdown({
 
   return (
     <DropdownMenu modal={false}>
-      <DropdownMenuTrigger className="relative z-2 -m-1 flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md p-1 outline-hidden before:pointer-events-none before:absolute before:inset-0 before:rounded-md before:content-[''] hover:before:bg-state-base-hover focus-visible:before:ring-2 focus-visible:before:ring-state-accent-solid data-popup-open:before:bg-state-base-hover">
+      <DropdownMenuTrigger className="pointer-events-auto relative -m-1 flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md p-1 outline-hidden before:pointer-events-none before:absolute before:inset-0 before:rounded-md before:content-[''] hover:before:bg-state-base-hover focus-visible:before:ring-2 focus-visible:before:ring-state-accent-solid data-popup-open:before:bg-state-base-hover">
         <span
           aria-hidden
           className="i-custom-vender-agent-v2-plan size-3 shrink-0 text-text-tertiary"

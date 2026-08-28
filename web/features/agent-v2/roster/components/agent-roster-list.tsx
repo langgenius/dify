@@ -198,15 +198,48 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
   return (
     <article
       aria-labelledby={nameId}
-      className="group relative isolate col-span-1 flex h-36.5 min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:z-3 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5 has-data-popup-open:bg-components-card-bg-alt has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid [@media(hover:none)]:bg-components-card-bg-alt"
+      className="group relative isolate col-span-1 h-36.5 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5 has-data-popup-open:bg-components-card-bg-alt has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none [@media(hover:none)]:bg-components-card-bg-alt"
     >
       <Link
         href={`/agents/${agent.id}/configure`}
         aria-labelledby={nameId}
         aria-describedby={agent.description ? descriptionId : undefined}
-        className="absolute inset-0 z-1 cursor-pointer touch-manipulation rounded-xl outline-hidden"
-      />
-      <div className="pointer-events-none absolute top-[-0.5px] right-[-0.5px] z-2 flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 [@media(hover:none)]:opacity-100">
+        className="flex h-full min-w-0 cursor-pointer touch-manipulation flex-col rounded-xl outline-hidden"
+      >
+        <div className="flex items-center gap-3 pt-3.5 pr-4 pb-2 pl-3.5">
+          <span aria-hidden className="shrink-0">
+            <AppIcon
+              size="xl"
+              rounded
+              iconType={iconType}
+              icon={agent.icon ?? undefined}
+              background={agent.icon_background}
+              imageUrl={imageUrl}
+            />
+          </span>
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
+            <h2 id={nameId} className="truncate system-md-semibold text-text-secondary">
+              {agent.name}
+            </h2>
+            <p className="truncate system-xs-regular text-text-tertiary">{agent.role}</p>
+          </div>
+        </div>
+        <div className="px-4 py-1 system-xs-regular text-text-tertiary">
+          <div id={descriptionId} className="line-clamp-2 min-h-8">
+            {agent.description}
+          </div>
+        </div>
+        <div aria-hidden className="h-9 shrink-0" />
+        {isDraft && (
+          <div className="pointer-events-none absolute top-[-0.5px] right-0 flex h-5 items-start overflow-hidden">
+            <div className="h-5 w-3 bg-background-section-burn [clip-path:polygon(0_0,100%_0,100%_100%)]" />
+            <div className="flex h-5 items-center bg-background-section-burn pr-2 pl-0.5 system-2xs-medium-uppercase text-text-tertiary">
+              {t(($) => $['roster.usageStatus.draft'])}
+            </div>
+          </div>
+        )}
+      </Link>
+      <div className="pointer-events-none absolute top-[-0.5px] right-[-0.5px] flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 [@media(hover:none)]:opacity-100">
         <div className="pointer-events-none flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs group-focus-within:pointer-events-auto group-hover:pointer-events-auto has-data-popup-open:pointer-events-auto [@media(hover:none)]:pointer-events-auto">
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger
@@ -252,30 +285,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
           </DropdownMenu>
         </div>
       </div>
-      <div className="flex items-center gap-3 pt-3.5 pr-4 pb-2 pl-3.5">
-        <span aria-hidden className="shrink-0">
-          <AppIcon
-            size="xl"
-            rounded
-            iconType={iconType}
-            icon={agent.icon ?? undefined}
-            background={agent.icon_background}
-            imageUrl={imageUrl}
-          />
-        </span>
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
-          <h2 id={nameId} className="truncate system-md-semibold text-text-secondary">
-            {agent.name}
-          </h2>
-          <p className="truncate system-xs-regular text-text-tertiary">{agent.role}</p>
-        </div>
-      </div>
-      <div className="px-4 py-1 system-xs-regular text-text-tertiary">
-        <div id={descriptionId} className="line-clamp-2 min-h-8">
-          {agent.description}
-        </div>
-      </div>
-      <div className="flex min-w-0 shrink-0 items-center pt-2 pr-3 pb-3 pl-4 system-xs-regular text-text-tertiary">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex min-w-0 items-center pt-2 pr-3 pb-3 pl-4 system-xs-regular text-text-tertiary">
         <div className="flex min-w-0 flex-1 items-center gap-1.5">
           {hasPublishedReferences ? (
             <AgentWorkflowReferencesDropdown
@@ -305,14 +315,6 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
           )}
         </div>
       </div>
-      {isDraft && (
-        <div className="absolute top-[-0.5px] right-0 flex h-5 items-start overflow-hidden">
-          <div className="h-5 w-3 bg-background-section-burn [clip-path:polygon(0_0,100%_0,100%_100%)]" />
-          <div className="flex h-5 items-center bg-background-section-burn pr-2 pl-0.5 system-2xs-medium-uppercase text-text-tertiary">
-            {t(($) => $['roster.usageStatus.draft'])}
-          </div>
-        </div>
-      )}
       <EditAgentDialog
         agent={agent}
         formKey={editSessionKey}
