@@ -12,7 +12,7 @@ type StarredAppListProps = {
   stepByStepTourHighlightedCardCount?: number
 }
 
-export const STARRED_APPS_HEADING_ID = 'starred-apps-heading'
+const STARRED_APPS_HEADING_ID = 'starred-apps-heading'
 export const ALL_APPS_HEADING_ID = 'all-apps-heading'
 
 export function AppListSectionHeading({ id, label }: { id: string; label: string }) {
