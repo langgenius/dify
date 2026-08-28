@@ -100,34 +100,34 @@ class TestLoadApp:
         monkeypatch.setattr(AppService, "get_app_by_id", _fake_get_app_by_id)
         ctx = Context(_subject(), sqlite_session, {"app_id": APP_ID})
 
-        assert load_app(ctx, sqlite_session) is load_app(ctx, sqlite_session) is app_row
+        assert load_app(ctx) is load_app(ctx) is app_row
         assert len(calls) == 1
         assert ctx.app_loaded is True
 
     def test_404s_on_a_malformed_uuid(self, sqlite_session: Session) -> None:
         ctx = Context(_subject(), sqlite_session, {"app_id": "not-a-uuid"})
         with pytest.raises(NotFound, match="app not found"):
-            load_app(ctx, sqlite_session)
+            load_app(ctx)
 
     def test_404s_when_missing_or_not_normal(self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(AppService, "get_app_by_id", lambda *_a, **_k: None)
         ctx = Context(_subject(), sqlite_session, {"app_id": APP_ID})
         with pytest.raises(NotFound, match="app not found"):
-            load_app(ctx, sqlite_session)
+            load_app(ctx)
 
         archived = _app()
         archived.status = "archived"  # type: ignore[assignment]
         monkeypatch.setattr(AppService, "get_app_by_id", lambda *_a, **_k: archived)
         ctx = Context(_subject(), sqlite_session, {"app_id": APP_ID})
         with pytest.raises(NotFound, match="app not found"):
-            load_app(ctx, sqlite_session)
+            load_app(ctx)
 
     def test_a_failed_fetch_stores_nothing(self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(AppService, "get_app_by_id", lambda *_a, **_k: None)
         ctx = Context(_subject(), sqlite_session, {"app_id": APP_ID})
 
         with pytest.raises(NotFound):
-            load_app(ctx, sqlite_session)
+            load_app(ctx)
 
         assert ctx.app_loaded is False
 
@@ -137,7 +137,7 @@ class TestWorkspaceFromApp:
         _persist(sqlite_session, _app(), _tenant())
         ctx = Context(_subject(), sqlite_session, {"app_id": APP_ID})
 
-        assert load_workspace(ctx, sqlite_session).id == TENANT_ID
+        assert load_workspace(ctx).id == TENANT_ID
         assert ctx.workspace_loaded is True
         assert ctx.app_loaded is True
 
@@ -152,7 +152,7 @@ class TestWorkspaceFromApp:
         ctx = Context(_subject(), sqlite_session, {"app_id": APP_ID})
 
         with pytest.raises(Forbidden, match="workspace unavailable"):
-            load_workspace(ctx, sqlite_session)
+            load_workspace(ctx)
 
 
 class TestWorkspaceFromRequest:
@@ -163,17 +163,17 @@ class TestWorkspaceFromRequest:
 
         with app.test_request_context("/test"):
             ctx = Context(_subject(), sqlite_session, {"workspace_id": TENANT_ID})
-            assert load_workspace(ctx, sqlite_session).id == TENANT_ID
+            assert load_workspace(ctx).id == TENANT_ID
 
         with app.test_request_context(f"/test?workspace_id={TENANT_ID}"):
             ctx = Context(_subject(), sqlite_session, {})
-            assert load_workspace(ctx, sqlite_session).id == TENANT_ID
+            assert load_workspace(ctx).id == TENANT_ID
 
     def test_not_found_when_workspace_id_is_missing_or_malformed(self, app: Flask, sqlite_session: Session) -> None:
         for view_args in ({}, {"workspace_id": "not-a-uuid"}):
             ctx = Context(_subject(), sqlite_session, view_args)
             with app.test_request_context("/test"), pytest.raises(NotFound, match="workspace not found"):
-                load_workspace(ctx, sqlite_session)
+                load_workspace(ctx)
 
     @pytest.mark.parametrize("persist_archived", [True, False])
     def test_not_found_when_the_requested_tenant_is_missing_or_archived(
@@ -184,7 +184,7 @@ class TestWorkspaceFromRequest:
         ctx = Context(_subject(), sqlite_session, {"workspace_id": TENANT_ID})
 
         with app.test_request_context("/test"), pytest.raises(NotFound, match="workspace not found"):
-            load_workspace(ctx, sqlite_session)
+            load_workspace(ctx)
 
 
 class TestWorkspaceRuleSelection:
@@ -199,7 +199,7 @@ class TestWorkspaceRuleSelection:
         ctx = Context(_subject(), sqlite_session, {"app_id": APP_ID, "workspace_id": OTHER_TENANT_ID})
 
         with app.test_request_context("/test"), pytest.raises(Forbidden, match="workspace unavailable"):
-            load_workspace(ctx, sqlite_session)
+            load_workspace(ctx)
 
 
 class TestLoadCaller:
@@ -207,7 +207,7 @@ class TestLoadCaller:
         subject = _StubSubject()
         ctx = Context(cast(Subject, subject), sqlite_session, {})
 
-        assert load_caller(ctx, sqlite_session) is load_caller(ctx, sqlite_session) is subject.caller
+        assert load_caller(ctx) is load_caller(ctx) is subject.caller
         assert subject.calls == [(ctx, sqlite_session)]
 
 
@@ -226,22 +226,22 @@ class TestLoadWorkspaceRole:
         monkeypatch.setattr(TenantService, "get_account_role_in_tenant", _counted)
         ctx = Context(_subject(_account()), sqlite_session, {"app_id": APP_ID})
 
-        assert load_workspace_role(ctx, sqlite_session) is TenantAccountRole.ADMIN
-        assert load_workspace_role(ctx, sqlite_session) is TenantAccountRole.ADMIN
+        assert load_workspace_role(ctx) is TenantAccountRole.ADMIN
+        assert load_workspace_role(ctx) is TenantAccountRole.ADMIN
         assert len(calls) == 1
 
     def test_reads_the_persisted_role(self, sqlite_session: Session) -> None:
         _persist(sqlite_session, _app(), _tenant(), _account(), _membership(TenantAccountRole.EDITOR))
         ctx = Context(_subject(_account()), sqlite_session, {"app_id": APP_ID})
 
-        assert load_workspace_role(ctx, sqlite_session) == TenantAccountRole.EDITOR
+        assert load_workspace_role(ctx) == TenantAccountRole.EDITOR
 
     def test_404s_a_non_member(self, sqlite_session: Session) -> None:
         _persist(sqlite_session, _app(), _tenant(), _account())
         ctx = Context(_subject(_account()), sqlite_session, {"app_id": APP_ID})
 
         with pytest.raises(NotFound, match="workspace not found"):
-            load_workspace_role(ctx, sqlite_session)
+            load_workspace_role(ctx)
 
     def test_404s_an_inactive_account_that_still_holds_a_role(
         self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
@@ -252,7 +252,7 @@ class TestLoadWorkspaceRole:
         ctx = Context(_subject(_account(status=AccountStatus.BANNED)), sqlite_session, {"app_id": APP_ID})
 
         with pytest.raises(NotFound, match="workspace not found"):
-            load_workspace_role(ctx, sqlite_session)
+            load_workspace_role(ctx)
 
     def test_404s_a_caller_that_is_not_an_account(
         self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
@@ -262,7 +262,7 @@ class TestLoadWorkspaceRole:
         ctx = Context(_subject(), sqlite_session, {"app_id": APP_ID})
 
         with pytest.raises(NotFound, match="workspace not found"):
-            load_workspace_role(ctx, sqlite_session)
+            load_workspace_role(ctx)
 
     def test_loads_the_workspace_before_the_caller(self, sqlite_session: Session) -> None:
         """A subject binds the account's current tenant while resolving it, so
@@ -279,6 +279,6 @@ class TestLoadWorkspaceRole:
 
         ctx = Context(cast(Subject, _Recording(_account())), sqlite_session, {"app_id": APP_ID})
 
-        load_workspace_role(ctx, sqlite_session)
+        load_workspace_role(ctx)
 
         assert loaded_when_called == [True]

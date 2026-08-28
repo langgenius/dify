@@ -11,7 +11,7 @@ from flask import Flask
 from sqlalchemy.orm import Session
 
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.loaders import load_app, load_caller, load_workspace
+from controllers.openapi.auth.requirements import ResolveCaller
 from controllers.openapi.auth.subjects import subject_from_auth
 from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType, reset_auth_ctx, set_auth_ctx
 from models import Account, Tenant
@@ -106,15 +106,14 @@ def context_for(
     ``token_id`` only matters to the ``/account/sessions*`` family, which reads
     it back off the subject.
 
-    The loads mirror ``ResolveCaller``, the requirement every pipeline fixes
-    last, rather than the wider set a given route's own requirements would ask
-    for — so a handler sees exactly what the thinnest pipeline would give it.
+    It runs ``ResolveCaller`` itself — the requirement every pipeline fixes
+    last — rather than the wider set a route's own requirements would ask for,
+    so a handler sees exactly what the thinnest pipeline would give it. Running
+    the real requirement is what keeps this CI-only helper from drifting away
+    from the pipeline it stands in for.
     """
     ctx = Context(subject_from_auth(_account_auth(account, token_id=token_id)), session, view_args or {})
-    if ctx.has_app:
-        load_app(ctx, session)
-        load_workspace(ctx, session)
-    load_caller(ctx, session)
+    ResolveCaller().run(ctx.subject, ctx, session)
     return ctx
 
 

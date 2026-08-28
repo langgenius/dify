@@ -111,8 +111,8 @@ def _context(session: Session, account_id: uuid.UUID, workspace_id: str) -> Cont
     caller these routes' requirements load off the same rows.
     """
     ctx = Context(AccountSubject(_auth_ctx(account_id)), session, {"workspace_id": workspace_id})
-    load_workspace(ctx, session)
-    load_caller(ctx, session)
+    load_workspace(ctx)
+    load_caller(ctx)
     return ctx
 
 
@@ -391,8 +391,11 @@ def test_members_list_paginates_with_query_params(database_session: Session):
 
 
 def test_members_list_404s_on_an_archived_workspace(database_session: Session):
-    """Member management against an archived workspace → 404. The check moved
-    from the view's own tenant load onto `load_workspace`.
+    """Member management against an archived workspace → 404, raised by
+    `load_workspace` before the handler is entered — which is where the real
+    route raises it too, since `RequireWorkspaceMembership` loads the workspace
+    at `EARLY`. The handler body is no longer reached, so this no longer pins
+    anything about it.
     """
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()

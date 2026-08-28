@@ -377,7 +377,7 @@ class TestMembership:
         with app.test_request_context(f"/openapi/v1/apps?workspace_id={TENANT_ID}"):
             RequireWorkspaceMembership().run(subject, ctx, sqlite_session)
 
-        caller = load_caller(ctx, sqlite_session)
+        caller = load_caller(ctx)
         assert isinstance(caller, Account)
         assert caller.current_tenant_id == TENANT_ID
 

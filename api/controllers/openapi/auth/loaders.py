@@ -13,7 +13,6 @@ from __future__ import annotations
 import uuid
 
 from flask import request
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.openapi.auth.context import Context
@@ -24,57 +23,57 @@ from services.account_service import TenantService
 from services.app_service import AppService
 
 
-def load_app(ctx: Context, session: Session) -> App:
+def load_app(ctx: Context) -> App:
     if not ctx.app_loaded:
-        ctx.set_app(_fetch_app(ctx, session))
+        ctx.set_app(_fetch_app(ctx))
     return ctx.app
 
 
-def load_workspace(ctx: Context, session: Session) -> Tenant:
+def load_workspace(ctx: Context) -> Tenant:
     if not ctx.workspace_loaded:
-        ctx.set_workspace(_fetch_workspace(ctx, session))
+        ctx.set_workspace(_fetch_workspace(ctx))
     return ctx.workspace
 
 
-def load_caller(ctx: Context, session: Session) -> Account | EndUser:
+def load_caller(ctx: Context) -> Account | EndUser:
     if not ctx.caller_loaded:
-        ctx.set_caller(ctx.subject.resolve_caller(ctx, session))
+        ctx.set_caller(ctx.subject.resolve_caller(ctx, ctx.session))
     return ctx.caller
 
 
-def load_workspace_role(ctx: Context, session: Session) -> TenantAccountRole:
+def load_workspace_role(ctx: Context) -> TenantAccountRole:
     if not ctx.workspace_role_loaded:
-        ctx.set_workspace_role(_fetch_workspace_role(ctx, session))
+        ctx.set_workspace_role(_fetch_workspace_role(ctx))
     return ctx.workspace_role
 
 
-def _fetch_app(ctx: Context, session: Session) -> App:
+def _fetch_app(ctx: Context) -> App:
     app_id = ctx.view_args["app_id"]
     try:
         uuid.UUID(app_id)
     except ValueError:
         raise NotFound("app not found")
-    app = AppService.get_app_by_id(app_id, session)
+    app = AppService.get_app_by_id(app_id, ctx.session)
     if not app or app.status != AppStatus.NORMAL:
         raise NotFound("app not found")
     return app
 
 
-def _fetch_workspace(ctx: Context, session: Session) -> Tenant:
+def _fetch_workspace(ctx: Context) -> Tenant:
     if ctx.has_app:
-        return _workspace_from_app(ctx, session)
-    return _workspace_from_request(ctx, session)
+        return _workspace_from_app(ctx)
+    return _workspace_from_request(ctx)
 
 
-def _workspace_from_app(ctx: Context, session: Session) -> Tenant:
-    app = load_app(ctx, session)
-    tenant = TenantService.get_tenant_by_id(str(app.tenant_id), session=session)
+def _workspace_from_app(ctx: Context) -> Tenant:
+    app = load_app(ctx)
+    tenant = TenantService.get_tenant_by_id(str(app.tenant_id), session=ctx.session)
     if tenant is None or tenant.status == TenantStatus.ARCHIVE:
         raise Forbidden("workspace unavailable")
     return tenant
 
 
-def _workspace_from_request(ctx: Context, session: Session) -> Tenant:
+def _workspace_from_request(ctx: Context) -> Tenant:
     workspace_id = ctx.view_args.get("workspace_id") or request.args.get("workspace_id")
     if not workspace_id:
         raise NotFound("workspace not found")
@@ -82,13 +81,13 @@ def _workspace_from_request(ctx: Context, session: Session) -> Tenant:
         uuid.UUID(workspace_id)
     except ValueError:
         raise NotFound("workspace not found")
-    tenant = TenantService.get_tenant_by_id(workspace_id, session=session)
+    tenant = TenantService.get_tenant_by_id(workspace_id, session=ctx.session)
     if tenant is None or tenant.status == TenantStatus.ARCHIVE:
         raise NotFound("workspace not found")
     return tenant
 
 
-def _fetch_workspace_role(ctx: Context, session: Session) -> TenantAccountRole:
+def _fetch_workspace_role(ctx: Context) -> TenantAccountRole:
     """The caller's role in the loaded workspace.
 
     Non-membership answers 404, never 403, so workspace ids cannot be probed
@@ -98,11 +97,11 @@ def _fetch_workspace_role(ctx: Context, session: Session) -> TenantAccountRole:
     The workspace is loaded before the caller: an account binds its current
     tenant only once the workspace is there.
     """
-    workspace = load_workspace(ctx, session)
-    caller = load_caller(ctx, session)
+    workspace = load_workspace(ctx)
+    caller = load_caller(ctx)
     if not isinstance(caller, Account) or caller.status != AccountStatus.ACTIVE:
         raise NotFound("workspace not found")
-    role = TenantService.get_account_role_in_tenant(str(ctx.subject.account_id), str(workspace.id), session=session)
+    role = TenantService.get_account_role_in_tenant(str(ctx.subject.account_id), str(workspace.id), session=ctx.session)
     if role is None:
         raise NotFound("workspace not found")
     return role

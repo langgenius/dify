@@ -63,7 +63,7 @@ class CheckFormSurface(Requirement):
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         form_token = (request.view_args or {})["form_token"]
-        app = load_app(ctx, session)
+        app = load_app(ctx)
         # `HumanInputService` never accepts a `Session` — only an engine or a session
         # maker, and it opens its own. This read and the handlers' (which build the
         # service off `db.engine`) are separate transactions, as they were when this

@@ -119,15 +119,15 @@ class CheckAppApiEnabled(Requirement):
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         if not ctx.has_app:
             return
-        if not load_app(ctx, session).enable_api:
+        if not load_app(ctx).enable_api:
             raise Forbidden("service_api_disabled")
 
 
-def _assert_member(subject: Subject, ctx: Context, session: Session) -> None:
+def _assert_member(subject: Subject, ctx: Context) -> None:
     """Resolving the role *is* the check: `load_workspace_role` 404s a non-member."""
     if subject.caller_kind is not CallerKind.ACCOUNT:
         return
-    load_workspace_role(ctx, session)
+    load_workspace_role(ctx)
 
 
 class CheckAppWorkspaceMembership(Requirement):
@@ -137,7 +137,7 @@ class CheckAppWorkspaceMembership(Requirement):
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         if not ctx.has_app:
             return
-        _assert_member(subject, ctx, session)
+        _assert_member(subject, ctx)
 
 
 class RequireWorkspaceMembership(Requirement):
@@ -150,7 +150,7 @@ class RequireWorkspaceMembership(Requirement):
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        _assert_member(subject, ctx, session)
+        _assert_member(subject, ctx)
 
 
 class TokenScope(Requirement):
@@ -196,7 +196,7 @@ class RBACCheck(Requirement):
             return
         if dify_config.RBAC_ENABLED and self.scene is not None and self.resource_type is not None:
             enforce_rbac_access(
-                tenant_id=str(load_workspace(ctx, session).id),
+                tenant_id=str(load_workspace(ctx).id),
                 account_id=str(subject.account_id),
                 resource_type=self.resource_type,
                 scene=self.scene,
@@ -204,12 +204,12 @@ class RBACCheck(Requirement):
                 path_args=dict(request.view_args or {}),
             )
             return
-        self._enforce_role_floor(ctx, session)
+        self._enforce_role_floor(ctx)
 
-    def _enforce_role_floor(self, ctx: Context, session: Session) -> None:
+    def _enforce_role_floor(self, ctx: Context) -> None:
         if self.roles is None:
             return
-        if load_workspace_role(ctx, session) not in self.roles:
+        if load_workspace_role(ctx) not in self.roles:
             raise Forbidden("insufficient workspace role")
 
 
@@ -243,7 +243,7 @@ class RequireWebappAccess(Requirement):
             return
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
             return
-        access_mode = self._access_mode(str(load_app(ctx, session).id))
+        access_mode = self._access_mode(str(load_app(ctx).id))
         if FeatureService.get_system_features().webapp_auth.enabled:
             self._assert_mode_allowed(subject, access_mode)
         if access_mode == WebAppAccessMode.PRIVATE:
@@ -268,7 +268,7 @@ class RequireWebappAccess(Requirement):
         user_id = subject.webapp_user_id(session)
         if user_id is None:
             raise Forbidden("cannot resolve user for private app check")
-        app_id = load_app(ctx, session).id
+        app_id = load_app(ctx).id
         if not EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id=user_id, app_id=app_id):
             raise Forbidden("user_not_allowed_for_private_app")
 
@@ -290,6 +290,6 @@ class ResolveCaller(Requirement):
         if not subject.mounts_caller(ctx):
             return
         if ctx.has_app:
-            load_app(ctx, session)
-            load_workspace(ctx, session)
-        load_caller(ctx, session)
+            load_app(ctx)
+            load_workspace(ctx)
+        load_caller(ctx)

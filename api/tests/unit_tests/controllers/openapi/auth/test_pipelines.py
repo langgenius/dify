@@ -7,8 +7,9 @@ from typing import NoReturn, cast, override
 from unittest.mock import patch
 
 import pytest
+from flask import Flask
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Unauthorized
+from werkzeug.exceptions import Forbidden, Unauthorized
 
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.pipelines import AccountPipeline, ExternalSsoPipeline, Pipeline
@@ -19,7 +20,9 @@ from controllers.openapi.auth.requirements import (
     LicenseCheck,
     Rank,
     Requirement,
+    RequireWebappAccess,
     ResolveCaller,
+    SubjectCheck,
     TokenScope,
 )
 from controllers.openapi.auth.spec import EndpointSpec
@@ -33,6 +36,7 @@ from models.model import AppMode, IconType
 from services.account_service import AccountService, TenantService
 from services.app_service import AppService
 from services.end_user_service import EndUserService
+from services.enterprise.enterprise_service import WebAppAccessMode, WebAppSettings
 from services.entities.feature_entities import (
     LicenseStatus,
     LicenseStatusModel,
@@ -48,6 +52,7 @@ SSO_EMAIL = "user@sso.com"
 
 MOUNT = "controllers.openapi.auth.pipelines._mount_flask_login"
 FEATURES = "controllers.openapi.auth.requirements.FeatureService.get_system_features"
+ACCESS_MODE = "controllers.openapi.auth.requirements.EnterpriseService.WebAppAuth.get_app_access_mode_by_id"
 
 
 def _auth(subject_type: SubjectType) -> AuthContext:
@@ -65,7 +70,7 @@ def _auth(subject_type: SubjectType) -> AuthContext:
     )
 
 
-def _app() -> App:
+def _app(*, enable_api: bool = True) -> App:
     return App(
         id=APP_ID,
         tenant_id=TENANT_ID,
@@ -77,7 +82,7 @@ def _app() -> App:
         icon_background="#FFFFFF",
         status=AppStatus.NORMAL,
         enable_site=True,
-        enable_api=True,
+        enable_api=enable_api,
         max_active_requests=None,
     )
 
@@ -108,12 +113,16 @@ def _persist(session: Session, *models: object) -> None:
     session.commit()
 
 
-def _active_licence() -> SystemFeatureModel:
+def _active_licence(*, webapp_auth: bool = False) -> SystemFeatureModel:
     return SystemFeatureModel(
         deployment_edition=DeploymentEdition.ENTERPRISE,
         license=LicenseStatusModel(status=LicenseStatus.ACTIVE),
-        webapp_auth=WebAppAuthModel(enabled=False),
+        webapp_auth=WebAppAuthModel(enabled=webapp_auth),
     )
+
+
+def _settings(access_mode: str) -> WebAppSettings:
+    return WebAppSettings.model_validate({"accessMode": access_mode})
 
 
 def _boom(*_args: object, **_kwargs: object) -> NoReturn:
@@ -375,9 +384,14 @@ def test_a_route_whose_requirements_need_no_app_never_fetches_one(
 ) -> None:
     """`app_id` in the path says the app *can* be resolved, never that it is.
     Nothing fetches a datum no requirement asked for.
+
+    The subject declines the mount, which is what lets a pipeline carry no
+    `ResolveCaller` — the only shape in which an `app_id` can reach the mount
+    with the app still unfetched.
     """
     monkeypatch.setattr(AppService, "get_app_by_id", _boom)
-    subject = _sso_subject()
+    subject = _account_subject()
+    monkeypatch.setattr(subject, "mounts_caller", lambda _ctx: False)
     ctx = _ctx(sqlite_session, subject, app_id=APP_ID)
 
     _run(_NoFixed(), subject, ctx, sqlite_session, requirements=(TokenScope(Scope.APPS_RUN),))
@@ -435,3 +449,62 @@ def test_an_account_route_with_neither_app_nor_workspace_binds_no_tenant(
     assert isinstance(caller, Account)
     assert caller.current_tenant_id is None
     assert (ctx.app_loaded, ctx.workspace_loaded) == (False, False)
+
+
+def test_a_loaded_caller_is_not_mounted_when_the_subject_declines(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The mount follows `mounts_caller`, not "a caller happens to be loaded".
+    A membership check resolves one on every account app route, so a subject
+    that declines conditionally would otherwise be mounted against its own
+    policy.
+    """
+    _persist(sqlite_session, _app(), _tenant(), _account(), _membership())
+    monkeypatch.setattr(MOUNT, _boom)
+    subject = _account_subject()
+    monkeypatch.setattr(subject, "mounts_caller", lambda _ctx: False)
+    ctx = _ctx(sqlite_session, subject, app_id=APP_ID)
+
+    _run(AccountPipeline(), subject, ctx, sqlite_session)
+
+    assert ctx.caller_loaded is True
+
+
+@pytest.mark.parametrize(
+    ("requirements", "enable_api", "webapp_auth", "message"),
+    [
+        ((SubjectCheck(allowed=[AccountSubject]),), True, False, "unsupported_token_type"),
+        ((), False, False, "service_api_disabled"),
+        ((RequireWebappAccess(),), True, True, "subject_not_allowed_for_access_mode"),
+    ],
+    ids=["wrong subject (FIRST)", "api disabled (EARLY)", "webapp acl (NORMAL)"],
+)
+def test_a_refused_sso_request_never_creates_an_end_user(
+    app: Flask,
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    requirements: tuple[Requirement, ...],
+    enable_api: bool,
+    webapp_auth: bool,
+    message: str,
+) -> None:
+    """`ResolveCaller` mints an `EndUser` row, so it has to run after every
+    requirement that can refuse — one refusal per band, because a rank that
+    moved it earlier would side-effect before the gate that exists to stop it.
+    """
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+    _persist(sqlite_session, _app(enable_api=enable_api), _tenant())
+    monkeypatch.setattr(MOUNT, _boom)
+    monkeypatch.setattr(EndUserService, "get_or_create_end_user_by_type", _boom)
+    subject = _sso_subject()
+    ctx = _ctx(sqlite_session, subject, app_id=APP_ID)
+
+    with app.test_request_context(f"/openapi/v1/apps/{APP_ID}:run"):
+        with patch(FEATURES, return_value=_active_licence(webapp_auth=webapp_auth)):
+            with patch(ACCESS_MODE, return_value=_settings(WebAppAccessMode.PRIVATE_ALL.value)):
+                with pytest.raises(Forbidden, match=message):
+                    _run(ExternalSsoPipeline(), subject, ctx, sqlite_session, requirements=requirements)
+
+    assert ctx.caller_loaded is False
