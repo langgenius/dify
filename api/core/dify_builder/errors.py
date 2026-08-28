@@ -20,3 +20,10 @@ class BusyError(Exception):
 
     The per-session gate is held, so a concurrent SubmitAction is rejected.
     """
+
+
+class BadRequestError(Exception):
+    """A client-supplied value is invalid (e.g. an unresolvable model_config).
+
+    Maps to HTTP 400 in services.dify_builder.wiring.dify_builder_error_response.
+    """
