@@ -1491,9 +1491,7 @@ class PublishedAllWorkflowApi(Resource):
     @with_session(write=False)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @model_validate(WorkflowListQuery)
-    def get(
-        self, args: WorkflowListQuery, session: Session, current_user: Account, app_model: App
-    ):
+    def get(self, args: WorkflowListQuery, session: Session, current_user: Account, app_model: App):
         """
         Get published workflows
         """
