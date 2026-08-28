@@ -15,6 +15,8 @@ const mockQueryState = vi.hoisted(() => ({
   creatorIDs: [] as string[],
 }))
 
+vi.mock('@tanstack/react-virtual')
+
 vi.mock('@/service/use-snippets', () => ({
   useCreateSnippetMutation: () => ({
     mutate: vi.fn(),

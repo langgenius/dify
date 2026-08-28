@@ -28,6 +28,8 @@ const useInfiniteQueryMock = vi.hoisted(() =>
   })),
 )
 
+vi.mock('@tanstack/react-virtual')
+
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const original = await importOriginal<typeof import('@tanstack/react-query')>()
   return {

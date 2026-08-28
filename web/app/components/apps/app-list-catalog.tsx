@@ -15,13 +15,19 @@ import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-qu
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
+import { VirtualizedCardGrid } from '@/app/components/base/virtualized-card-grid'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { AppCard } from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
-import { APP_LIST_GRID_CLASS_NAME } from './constants'
+import {
+  APP_CARD_HEIGHT,
+  APP_LIST_GRID_CLASS_NAME,
+  APP_LIST_GRID_COLUMNS_CLASS_NAME,
+  APP_LIST_GRID_PADDING_CLASS_NAME,
+} from './constants'
 import Empty from './empty'
 import FirstEmptyState from './first-empty-state'
 import { useAppListTour } from './hooks/use-app-list-tour'
@@ -165,41 +171,49 @@ function AppListCatalogContent({
           )}
           <div
             className={cn(
-              `relative grow content-start ${APP_LIST_GRID_CLASS_NAME}`,
+              'relative grow',
+              APP_LIST_GRID_PADDING_CLASS_NAME,
               !hasAnyApp && 'overflow-hidden',
             )}
           >
             {hasAnyApp ? (
-              apps.map((app, index) => (
-                <AppCard
-                  key={app.id}
-                  app={app}
-                  onlineUsers={workflowOnlineUsersMap[app.id]}
-                  onOpenTagManagement={onOpenTagManagement}
-                  stepByStepTourActionMenuOpen={
-                    index === 0 ? shouldOpenFirstAppActionMenu : undefined
-                  }
-                  stepByStepTourCardTarget={
-                    index === 0
-                      ? shouldHighlightAllAppsRow
-                        ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard
-                        : canCreateApp
-                          ? STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCard
-                          : undefined
-                      : undefined
-                  }
-                  stepByStepTourCardHighlightPart={
-                    index < STEP_BY_STEP_TOUR_APP_ROW_CARD_COUNT && shouldHighlightAllAppsRow
-                      ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard
-                      : undefined
-                  }
-                  stepByStepTourActionMenuHighlightPart={
-                    index === 0 && shouldOpenFirstAppActionMenu
-                      ? STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu
-                      : undefined
-                  }
-                />
-              ))
+              <VirtualizedCardGrid
+                className={cn('content-start', APP_LIST_GRID_COLUMNS_CLASS_NAME)}
+                getItemKey={(app) => app.id}
+                items={apps}
+                renderItem={(app, index) => (
+                  <AppCard
+                    key={app.id}
+                    app={app}
+                    onlineUsers={workflowOnlineUsersMap[app.id]}
+                    onOpenTagManagement={onOpenTagManagement}
+                    stepByStepTourActionMenuOpen={
+                      index === 0 ? shouldOpenFirstAppActionMenu : undefined
+                    }
+                    stepByStepTourCardTarget={
+                      index === 0
+                        ? shouldHighlightAllAppsRow
+                          ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard
+                          : canCreateApp
+                            ? STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCard
+                            : undefined
+                        : undefined
+                    }
+                    stepByStepTourCardHighlightPart={
+                      index < STEP_BY_STEP_TOUR_APP_ROW_CARD_COUNT && shouldHighlightAllAppsRow
+                        ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard
+                        : undefined
+                    }
+                    stepByStepTourActionMenuHighlightPart={
+                      index === 0 && shouldOpenFirstAppActionMenu
+                        ? STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu
+                        : undefined
+                    }
+                  />
+                )}
+                rowHeight={APP_CARD_HEIGHT}
+                scrollContainerRef={scrollViewportRef}
+              />
             ) : (
               <Empty
                 stepByStepTourTarget={
@@ -208,7 +222,7 @@ function AppListCatalogContent({
               />
             )}
             {hasNextPage && (
-              <>
+              <div className={cn('relative', APP_LIST_GRID_COLUMNS_CLASS_NAME)}>
                 <AppCardSkeleton count={3} />
                 {isFetchNextPageError && (
                   <div
@@ -235,7 +249,7 @@ function AppListCatalogContent({
                   preloadDistance={getPreloadDistance}
                   scrollContainerRef={scrollViewportRef}
                 />
-              </>
+              </div>
             )}
           </div>
         </>

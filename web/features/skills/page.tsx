@@ -2,7 +2,7 @@
 
 import type { SkillResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
-import type { UIEvent } from 'react'
+import type { RefObject, UIEvent } from 'react'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -38,6 +38,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
+import { VirtualizedCardGrid } from '@/app/components/base/virtualized-card-grid'
 import { SkillCardTags } from '@/features/tag-management/components/skill-card-tags'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -79,6 +80,10 @@ function SkillIcon() {
     </div>
   )
 }
+
+const SKILL_GRID_COLUMNS_CLASS_NAME = 'grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-2.5'
+/** Mirrors the `h-42` height SkillCard renders at. */
+const SKILL_CARD_HEIGHT = 168
 
 function SkillCardSkeleton() {
   return (
@@ -694,6 +699,7 @@ function SkillGrid({
   onCreate,
   onImport,
   onOpenTagManagement,
+  scrollContainerRef,
   skills,
 }: {
   canDelete: boolean
@@ -708,6 +714,7 @@ function SkillGrid({
   onCreate: () => void
   onImport: () => void
   onOpenTagManagement: () => void
+  scrollContainerRef: RefObject<Element | null>
   skills: SkillResponse[]
 }) {
   const { t } = useTranslation('skill')
@@ -715,40 +722,59 @@ function SkillGrid({
   return (
     <section
       aria-label={t(($) => $['skillManagement.listLabel'])}
-      className="grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-2.5"
+      className="relative"
       aria-busy={isFetching || undefined}
     >
-      {isPending && <SkillCardSkeleton />}
+      {isPending && (
+        <div className={SKILL_GRID_COLUMNS_CLASS_NAME}>
+          <SkillCardSkeleton />
+        </div>
+      )}
       {!isPending && isError && (
-        <SkillPlaceholderState title={t(($) => $['skillManagement.loadingError'])} />
+        <div className={SKILL_GRID_COLUMNS_CLASS_NAME}>
+          <SkillPlaceholderState title={t(($) => $['skillManagement.loadingError'])} />
+        </div>
       )}
       {!isPending && !isError && skills.length === 0 && (
-        <SkillPlaceholderState
-          canEdit={canEdit}
-          creating={creating}
-          importing={importing}
-          isEmptySearch={isEmptySearch}
-          onCreate={onCreate}
-          onImport={onImport}
-          title={
-            isEmptySearch
-              ? t(($) => $['skillManagement.emptySearch'])
-              : t(($) => $['skillManagement.empty'])
-          }
+        <div className={SKILL_GRID_COLUMNS_CLASS_NAME}>
+          <SkillPlaceholderState
+            canEdit={canEdit}
+            creating={creating}
+            importing={importing}
+            isEmptySearch={isEmptySearch}
+            onCreate={onCreate}
+            onImport={onImport}
+            title={
+              isEmptySearch
+                ? t(($) => $['skillManagement.emptySearch'])
+                : t(($) => $['skillManagement.empty'])
+            }
+          />
+        </div>
+      )}
+      {!isPending && !isError && skills.length > 0 && (
+        <VirtualizedCardGrid
+          className={SKILL_GRID_COLUMNS_CLASS_NAME}
+          getItemKey={(skill) => skill.id}
+          items={skills}
+          renderItem={(skill) => (
+            <SkillCard
+              key={skill.id}
+              canDelete={canDelete}
+              canEdit={canEdit}
+              skill={skill}
+              onOpenTagManagement={onOpenTagManagement}
+            />
+          )}
+          rowHeight={SKILL_CARD_HEIGHT}
+          scrollContainerRef={scrollContainerRef}
         />
       )}
-      {!isPending &&
-        !isError &&
-        skills.map((skill) => (
-          <SkillCard
-            key={skill.id}
-            canDelete={canDelete}
-            canEdit={canEdit}
-            skill={skill}
-            onOpenTagManagement={onOpenTagManagement}
-          />
-        ))}
-      {!isPending && !isError && isFetchingNextPage && <SkillCardSkeleton />}
+      {!isPending && !isError && isFetchingNextPage && (
+        <div className={SKILL_GRID_COLUMNS_CLASS_NAME}>
+          <SkillCardSkeleton />
+        </div>
+      )}
     </section>
   )
 }
@@ -913,6 +939,7 @@ export default function SkillsPage() {
           >
             <ScrollAreaContent className="min-h-full px-8 pt-2 pb-8">
               <SkillGrid
+                scrollContainerRef={listViewportRef}
                 canDelete={canDelete}
                 canEdit={canEdit}
                 creating={createMutation.isPending}
