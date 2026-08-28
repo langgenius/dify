@@ -73,7 +73,7 @@ export const StarredAppCard = memo(
             icon={app.icon ?? undefined}
             background={app.icon_background}
             imageUrl={app.icon_url}
-            imageAlt=""
+            decorative
           />
           <AppTypeIcon
             type={app.mode}

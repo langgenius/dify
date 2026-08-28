@@ -92,7 +92,7 @@ const ImportFromMarketplaceTemplateModal = ({
 
         <div className="px-6 py-4" aria-busy={isLoading}>
           {isLoading && (
-            <div className="flex items-center justify-center py-8" role="status">
+            <div className="flex items-center justify-center py-8">
               <div className="system-md-regular text-text-tertiary">
                 {t(($) => $.loading, { ns: 'common' })}
               </div>
@@ -115,7 +115,7 @@ const ImportFromMarketplaceTemplateModal = ({
                   iconType={template.icon_file_key ? 'image' : 'emoji'}
                   icon={template.icon || 'page_facing_up'}
                   background={template.icon_file_key ? undefined : template.icon_background}
-                  imageAlt=""
+                  decorative
                   imageUrl={
                     template.icon_file_key
                       ? `${MARKETPLACE_API_PREFIX}/templates/${template.id}/icon`

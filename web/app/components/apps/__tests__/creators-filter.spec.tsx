@@ -126,6 +126,15 @@ describe('CreatorsFilter', () => {
     expect(mockOnChange).toHaveBeenCalledWith(['missing-member', 'member-3'])
   })
 
+  it('should expose the selected creator count from the closed trigger', () => {
+    render(<CreatorsFilter value={['member-2', 'member-3']} onChange={mockOnChange} />)
+
+    const trigger = screen.getByRole('combobox', { name: 'app.studio.filters.creators' })
+    const selectedCount = within(trigger).getByText('common.dynamicSelect.selected:{"count":2}')
+    expect(selectedCount).toHaveClass('sr-only')
+    expect(within(trigger).getByText('+2').parentElement).toHaveAttribute('aria-hidden', 'true')
+  })
+
   it('should expose the creator picker as a named combobox with keyboard-owned options', async () => {
     const user = userEvent.setup()
     render(<CreatorsFilter value={[]} onChange={mockOnChange} />)
@@ -143,7 +152,7 @@ describe('CreatorsFilter', () => {
       'false',
     )
 
-    searchInput.focus()
+    expect(searchInput).toHaveFocus()
     await user.keyboard('{ArrowDown}{Enter}')
 
     expect(mockOnChange).toHaveBeenCalledWith(['member-2'])

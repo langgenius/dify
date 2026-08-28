@@ -43,6 +43,7 @@ describe('ImportFromMarketplaceTemplateModal', () => {
 
     expect(screen.getByText('Human Input: Writing Assistant')).toBeInTheDocument()
     expect(screen.queryByText('technologist')).not.toBeInTheDocument()
+    expect(document.querySelector('em-emoji')?.parentElement).toHaveAttribute('aria-hidden', 'true')
     expect(
       screen.getByRole('dialog', { name: /marketplace\.template\.modalTitle/ }),
     ).toBeInTheDocument()
@@ -63,7 +64,7 @@ describe('ImportFromMarketplaceTemplateModal', () => {
     expect(onClose).toHaveBeenCalledOnce()
   })
 
-  it('announces loading and error states', () => {
+  it('exposes loading progress and announces the error state', () => {
     mockUseMarketplaceTemplateDetail.mockReturnValue({
       data: undefined,
       isLoading: true,
@@ -77,7 +78,11 @@ describe('ImportFromMarketplaceTemplateModal', () => {
       />,
     )
 
-    expect(screen.getByRole('status')).toHaveTextContent('common.loading')
+    expect(screen.getByText('common.loading').parentElement?.parentElement).toHaveAttribute(
+      'aria-busy',
+      'true',
+    )
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
 
     mockUseMarketplaceTemplateDetail.mockReturnValue({
       data: undefined,

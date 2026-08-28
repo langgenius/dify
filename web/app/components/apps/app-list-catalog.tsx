@@ -122,9 +122,7 @@ function AppListCatalogContent({
   const hasAnyApp = (appListPages[0]?.total ?? 0) > 0
   const emptyMessage = t(($) => $['filterEmpty.noApps'], { ns: 'app' })
   const resultStatusMessage =
-    !isError && !isFetching && !isPlaceholderData && hasResolvedFirstPage && !hasAnyApp
-      ? emptyMessage
-      : ''
+    !isError && !isPlaceholderData && hasResolvedFirstPage && !hasAnyApp ? emptyMessage : ''
   const showFirstEmptyState =
     !isPlaceholderData && !hasAnyApp && canCreateApp && hasResolvedFirstPage && !hasActiveFilters
   const showNoCreateEmptyState =
@@ -264,8 +262,6 @@ function AppListCatalogContent({
       {canCreateApp && !showFirstEmptyState && (
         <div
           className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}
-          role="region"
-          aria-label={t(($) => $['newApp.dropDSLToCreateApp'], { ns: 'app' })}
         >
           <span className="i-ri-drag-drop-line size-4" />
           <span className="system-xs-regular">

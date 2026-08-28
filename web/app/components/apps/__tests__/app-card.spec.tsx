@@ -557,6 +557,7 @@ describe('AppCard', () => {
       const emojiIcon = container.querySelector(`em-emoji[id="${mockApp.icon}"]`)
       const imageIcon = container.querySelector('img')
       expect(emojiIcon || imageIcon).toBeTruthy()
+      expect(emojiIcon?.parentElement).toHaveAttribute('aria-hidden', 'true')
     })
 
     it('should treat a redundant image icon as decorative', () => {

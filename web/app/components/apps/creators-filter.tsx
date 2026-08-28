@@ -14,6 +14,7 @@ import {
   ComboboxPortal,
   ComboboxPositioner,
   ComboboxTrigger,
+  ComboboxValue,
 } from '@langgenius/dify-ui/combobox'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useRef, useState } from 'react'
@@ -109,6 +110,13 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
   const selectedCount = value.length
   const selectedAvatarCreators = selectedCreators.slice(0, 3)
   const isSelected = selectedCount > 0
+  const creatorFilterLabel = t(($) => $['studio.filters.creators'], { ns: 'app' })
+  const selectedCountLabel = isSelected
+    ? t(($) => $['dynamicSelect.selected'], {
+        ns: 'common',
+        count: selectedCount,
+      })
+    : ''
 
   return (
     <div className="relative inline-flex items-stretch">
@@ -126,7 +134,7 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
         <ComboboxTrigger
           ref={triggerRef}
           icon={false}
-          aria-label={t(($) => $['studio.filters.creators'], { ns: 'app' })}
+          aria-label={creatorFilterLabel}
           className={cn(
             baseChipClassName,
             'w-auto',
@@ -135,32 +143,30 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
               : 'border-transparent bg-components-input-bg-normal text-text-tertiary hover:bg-components-input-bg-hover',
           )}
         >
-          <span className="flex min-w-0 items-center">
-            <span className="px-1 text-text-tertiary">
-              {t(($) => $['studio.filters.creators'], { ns: 'app' })}
+          <ComboboxValue<CreatorOption, true>>
+            <span aria-hidden className="flex min-w-0 items-center">
+              <span className="px-1 text-text-tertiary">{creatorFilterLabel}</span>
+              {isSelected ? (
+                <>
+                  <span className="flex items-center pr-1">
+                    {selectedAvatarCreators.map((creator, index) => (
+                      <Avatar
+                        key={creator.id}
+                        avatar={creator.avatarUrl}
+                        name={creator.name}
+                        size="xs"
+                        className={cn('border border-components-panel-bg', index > 0 && '-ml-1')}
+                      />
+                    ))}
+                  </span>
+                  <span className="text-xs leading-4 font-medium text-text-tertiary">{`+${selectedCount}`}</span>
+                </>
+              ) : (
+                <span className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary" />
+              )}
             </span>
-            {isSelected ? (
-              <>
-                <span className="flex items-center pr-1">
-                  {selectedAvatarCreators.map((creator, index) => (
-                    <Avatar
-                      key={creator.id}
-                      avatar={creator.avatarUrl}
-                      name={creator.name}
-                      size="xs"
-                      className={cn('border border-components-panel-bg', index > 0 && '-ml-1')}
-                    />
-                  ))}
-                </span>
-                <span className="text-xs leading-4 font-medium text-text-tertiary">{`+${selectedCount}`}</span>
-              </>
-            ) : (
-              <span
-                aria-hidden
-                className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary"
-              />
-            )}
-          </span>
+            <span className="sr-only">{selectedCountLabel}</span>
+          </ComboboxValue>
         </ComboboxTrigger>
         <ComboboxPortal>
           <ComboboxPositioner placement="bottom-start" sideOffset={4}>

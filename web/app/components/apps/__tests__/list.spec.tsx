@@ -863,6 +863,9 @@ describe('List', () => {
     it('should render drop DSL hint when app creation permission is available', () => {
       renderList()
       expect(screen.getByText('app.newApp.dropDSLToCreateApp'))!.toBeInTheDocument()
+      expect(
+        screen.queryByRole('region', { name: 'app.newApp.dropDSLToCreateApp' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should render first empty state when there are no apps and no active filters', () => {
@@ -950,6 +953,16 @@ describe('List', () => {
       renderList('?keywords=missing+app')
 
       expect(screen.getByRole('status')).toBeEmptyDOMElement()
+      expect(screen.getByTestId('empty-state').parentElement).toHaveAttribute('aria-busy', 'true')
+    })
+
+    it('should keep the settled empty status during a background refetch', () => {
+      mockAppData = { pages: [{ data: [], total: 0 }] }
+      mockServiceState.isFetching = true
+
+      renderList('?keywords=missing+app')
+
+      expect(screen.getByRole('status')).toHaveTextContent('app.filterEmpty.noApps')
       expect(screen.getByTestId('empty-state').parentElement).toHaveAttribute('aria-busy', 'true')
     })
 
