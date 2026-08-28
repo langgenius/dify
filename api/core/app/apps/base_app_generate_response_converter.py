@@ -7,6 +7,7 @@ from dify_agent.protocol import RunFailureType
 from pydantic import JsonValue
 
 from clients.agent_backend.errors import AgentBackendError, AgentBackendRunFailedError
+from core.app.apps.exc import AppGenerateError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import AppBlockingResponse, AppStreamResponse
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
@@ -125,12 +126,10 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
                 "message": str(e),
             }
 
-        error_code = getattr(e, "error_code", None)
-        status_code = getattr(e, "status_code", None)
-        if isinstance(error_code, str) and isinstance(status_code, int):
+        if isinstance(e, AppGenerateError):
             return {
-                "code": error_code,
-                "status": status_code,
+                "code": e.error_code,
+                "status": e.status_code,
                 "message": str(e),
             }
 
