@@ -1036,7 +1036,7 @@ describe("source product workflow service boundaries", () => {
       expectedRevision: 0,
       expectedSourceVersion: 1,
       knowledgeSpaceId,
-      mode: "provider",
+      mode: "interval",
       sourceId: source.id,
       subject: editor,
     });
@@ -1067,7 +1067,7 @@ describe("source product workflow service boundaries", () => {
         enabled: true,
         expectedRevision: 1,
         expectedSourceVersion: 1,
-        mode: "provider",
+        mode: "interval",
       }),
     ).rejects.toMatchObject({ code: "SOURCE_NOT_FOUND" });
   });
@@ -1100,7 +1100,7 @@ describe("source product workflow service boundaries", () => {
       }),
     ).resolves.toBeNull();
     await expect(
-      service.putSyncPolicy({ ...base, enabled: true, expectedSourceVersion: 2, mode: "provider" }),
+      service.putSyncPolicy({ ...base, enabled: true, expectedSourceVersion: 2, mode: "interval" }),
     ).rejects.toMatchObject({ code: "SOURCE_SYNC_POLICY_SOURCE_CONFLICT" });
 
     for (const request of [
@@ -1116,11 +1116,11 @@ describe("source product workflow service boundaries", () => {
       });
     }
 
-    const created = await service.putSyncPolicy({ ...base, enabled: true, mode: "provider" });
+    const created = await service.putSyncPolicy({ ...base, enabled: true, mode: "interval" });
     expect(created).toMatchObject({
       createdAt: "2026-02-03T00:00:00.000Z",
       enabled: true,
-      nextRunAt: "2026-02-03T01:00:00.000Z",
+      nextRunAt: "2026-02-04T00:00:00.000Z",
       revision: 1,
     });
     await expect(
@@ -1437,9 +1437,6 @@ describe("source product workflow service boundaries", () => {
   });
 
   it("computes supported policy intervals and rejects invalid scheduling anchors", () => {
-    expect(nextSyncPolicyRunAt("provider", undefined, "2026-02-06T00:00:00.000Z")).toBe(
-      "2026-02-06T01:00:00.000Z",
-    );
     expect(nextSyncPolicyRunAt("interval", undefined, "2026-02-06T00:00:00.000Z")).toBe(
       "2026-02-07T00:00:00.000Z",
     );
@@ -1449,7 +1446,7 @@ describe("source product workflow service boundaries", () => {
     expect(() => nextSyncPolicyRunAt("manual", undefined, "2026-02-06T00:00:00.000Z")).toThrow(
       SourceWorkflowError,
     );
-    expect(() => nextSyncPolicyRunAt("provider", undefined, "invalid")).toThrow(
+    expect(() => nextSyncPolicyRunAt("interval", undefined, "invalid")).toThrow(
       SourceWorkflowError,
     );
     expect(() => nextSyncPolicyRunAt("custom", undefined, "2026-02-06T00:00:00.000Z")).toThrow(

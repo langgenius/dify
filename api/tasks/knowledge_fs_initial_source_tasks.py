@@ -339,12 +339,7 @@ def _sync_policy_payload(
             expectedRevision=expected_revision,
             expectedSourceVersion=source_version,
         )
-    return KnowledgeFSSourceSyncPolicyPayload(
-        enabled=True,
-        mode="provider",
-        expectedRevision=expected_revision,
-        expectedSourceVersion=source_version,
-    )
+    raise ValueError(f"Unsupported sync policy: {payload.sync_policy}")
 
 
 def start_initial_source_import(

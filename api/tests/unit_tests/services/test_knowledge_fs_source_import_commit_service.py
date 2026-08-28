@@ -79,7 +79,7 @@ def test_commit_online_document_import_uses_same_async_reconciliation() -> None:
                     "workspaceId": "workspace-1",
                 }
             ],
-            "syncPolicy": {"enabled": True, "mode": "provider"},
+            "syncPolicy": {"enabled": True, "mode": "interval"},
         }
     ).root
 

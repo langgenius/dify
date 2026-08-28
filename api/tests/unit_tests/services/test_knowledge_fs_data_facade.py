@@ -252,7 +252,7 @@ class RecordingRemote:
                             "expectedSourceVersion": 1,
                             "id": "policy-1",
                             "knowledgeSpaceId": "space-1",
-                            "mode": "provider",
+                            "mode": "interval",
                             "revision": 1,
                             "sourceId": "source-1",
                             "updatedAt": "2030-01-01T00:00:00Z",
@@ -1089,7 +1089,7 @@ def test_basic_product_facade_resolves_control_space_then_uses_exact_kfs_routes(
     assert sources.data[0].sync_workflow.state == "syncing"
     assert sources.data[0].last_synced_at == datetime(2030, 1, 1, 1, tzinfo=UTC)
     assert sources.data[0].sync_policy is not None
-    assert sources.data[0].sync_policy.mode == "provider"
+    assert sources.data[0].sync_policy.mode == "interval"
     assert source.knowledge_space_id == "space-1"
     assert tasks.data == []
     assert traces.data == []

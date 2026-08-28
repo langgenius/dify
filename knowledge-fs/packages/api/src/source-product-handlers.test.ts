@@ -511,7 +511,7 @@ describe("source-product handlers", () => {
       `/knowledge-spaces/${spaceId}/sources/${sourceId}/sync-policy`,
     );
     expect(policy.status).toBe(200);
-    await expect(policy.json()).resolves.toMatchObject({ mode: "provider", revision: 1 });
+    await expect(policy.json()).resolves.toMatchObject({ mode: "interval", revision: 1 });
     const missingPolicy = await app.request(
       `/knowledge-spaces/${spaceId}/sources/${sourceId}/sync-policy`,
     );
@@ -891,7 +891,7 @@ describe("source-product handlers", () => {
           enabled: true,
           expectedRevision: 1,
           expectedSourceVersion: 2,
-          mode: "provider",
+          mode: "interval",
         }),
         headers: { "content-type": "application/json" },
         method: "PUT",
@@ -968,7 +968,7 @@ describe("source-product handlers", () => {
             enabled: true,
             expectedRevision: 1,
             expectedSourceVersion: 2,
-            mode: "provider",
+            mode: "interval",
           }),
           headers: { "content-type": "application/json" },
           method: "PUT",
@@ -1101,8 +1101,8 @@ function syncPolicy(patch: Record<string, unknown> = {}) {
     expectedSourceVersion: 2,
     id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c44",
     knowledgeSpaceId: spaceId,
-    mode: "provider" as const,
-    nextRunAt: "2026-07-14T13:00:00.000Z",
+    mode: "interval" as const,
+    nextRunAt: "2026-07-15T12:00:00.000Z",
     permissionSnapshotId: "permission-policy",
     permissionSnapshotRevision: 1,
     requestedBySubjectId: "editor-a",

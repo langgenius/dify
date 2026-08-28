@@ -1521,7 +1521,7 @@ describe("source handlers without optional collaborators", () => {
         expectedSourceVersion: 1,
         id: "00000000-0000-4000-8000-000000000111",
         knowledgeSpaceId: spaceId,
-        mode: "provider",
+        mode: "interval",
         permissionSnapshotId: "permission-1",
         permissionSnapshotRevision: 1,
         requestedBySubjectId: "u1",
@@ -1577,7 +1577,7 @@ describe("source handlers without optional collaborators", () => {
           status: "syncing",
           syncPolicy: {
             enabled: true,
-            mode: "provider",
+            mode: "interval",
             sourceId,
           },
         },

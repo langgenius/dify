@@ -435,7 +435,7 @@ export const putSourceSyncPolicyRoute = createRoute({
               enabled: z.boolean(),
               expectedRevision: z.number().int().min(0),
               expectedSourceVersion: z.number().int().min(1),
-              mode: z.enum(["provider", "manual", "interval", "custom"]),
+              mode: z.enum(["manual", "interval", "custom"]),
             })
             .strict(),
         },

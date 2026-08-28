@@ -1365,7 +1365,7 @@ function policyRecord(
     expectedSourceVersion: 1,
     id,
     knowledgeSpaceId,
-    mode: "provider",
+    mode: "interval",
     nextRunAt: createdAt,
     permissionSnapshotId: `permission-${id}`,
     permissionSnapshotRevision: 1,

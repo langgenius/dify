@@ -213,7 +213,7 @@ interface SourceSyncPolicyBase {
   readonly expectedSourceVersion: number;
   readonly id: string;
   readonly knowledgeSpaceId: string;
-  readonly mode: "provider" | "manual" | "interval" | "custom";
+  readonly mode: "manual" | "interval" | "custom";
   readonly nextRunAt?: string | undefined;
   readonly revision: number;
   readonly sourceId: string;
@@ -1329,7 +1329,7 @@ export function nextSyncPolicyRunAt(
   if (!Number.isFinite(timestamp) || mode === "manual") {
     throw new SourceWorkflowError("SOURCE_SYNC_POLICY_INVALID", "Sync policy anchor is invalid");
   }
-  const seconds = mode === "custom" ? customIntervalSeconds : mode === "provider" ? 3_600 : 86_400;
+  const seconds = mode === "custom" ? customIntervalSeconds : 86_400;
   if (!Number.isSafeInteger(seconds) || (seconds as number) < 1) {
     throw new SourceWorkflowError("SOURCE_SYNC_POLICY_INVALID", "Sync policy interval is invalid");
   }

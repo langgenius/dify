@@ -63,7 +63,7 @@ export const SourceSyncPolicyResponseSchema = z
     expectedSourceVersion: z.number().int().min(1),
     id: z.string().uuid(),
     knowledgeSpaceId: z.string().uuid(),
-    mode: z.enum(["provider", "manual", "interval", "custom"]),
+    mode: z.enum(["manual", "interval", "custom"]),
     nextRunAt: z.string().optional(),
     revision: z.number().int().min(1),
     sourceId: z.string().uuid(),

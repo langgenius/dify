@@ -279,7 +279,7 @@ def test_product_application_create_schedules_selected_website_import() -> None:
                     "title": "Getting started",
                 }
             ],
-            "sync_policy": "provider",
+            "sync_policy": "daily",
         },
     )
 
@@ -333,7 +333,7 @@ def test_product_application_create_schedules_selected_connector_import() -> Non
                 "workspace_id": "workspace-1",
             }
         ],
-        "sync_policy": "provider",
+        "sync_policy": "daily",
     }
 
 

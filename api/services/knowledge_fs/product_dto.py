@@ -190,7 +190,7 @@ class KnowledgeFSOnlineDriveWorkflowImportItemPayload(BaseModel):
 
 class KnowledgeFSInitialSyncPolicyPayload(BaseModel):
     custom_interval_seconds: int | None = Field(default=None, ge=3_600, le=2_592_000)
-    sync_policy: Literal["provider", "daily", "manual", "custom"] = "provider"
+    sync_policy: Literal["daily", "manual", "custom"] = "daily"
 
     model_config = ConfigDict(extra="forbid")
 
@@ -2113,7 +2113,7 @@ class KnowledgeFSSourceSyncPolicyResponse(ResponseModel):
     )
     id: str
     knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
-    mode: Literal["provider", "manual", "interval", "custom"]
+    mode: Literal["manual", "interval", "custom"]
     next_run_at: datetime | None = Field(default=None, validation_alias=AliasChoices("next_run_at", "nextRunAt"))
     revision: int = Field(ge=1)
     source_id: str = Field(validation_alias=AliasChoices("source_id", "sourceId"))
@@ -2350,7 +2350,7 @@ class KnowledgeFSSourceSyncPolicyPayload(BaseModel):
     enabled: bool
     expected_revision: int = Field(ge=0, alias="expectedRevision")
     expected_source_version: int = Field(ge=1, alias="expectedSourceVersion")
-    mode: Literal["provider", "manual", "interval", "custom"]
+    mode: Literal["manual", "interval", "custom"]
 
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
@@ -2390,7 +2390,7 @@ class KnowledgeFSCrawlPreviewSelectionPayload(BaseModel):
 class KnowledgeFSDeferredSyncPolicyPayload(BaseModel):
     custom_interval_seconds: int | None = Field(default=None, ge=3_600, le=2_592_000, alias="customIntervalSeconds")
     enabled: bool
-    mode: Literal["provider", "manual", "interval", "custom"]
+    mode: Literal["manual", "interval", "custom"]
 
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 

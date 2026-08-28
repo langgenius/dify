@@ -1363,8 +1363,8 @@ const tables = [
     checkConstraints: [
       {
         expression: {
-          postgres: "\"mode\" IN ('provider', 'manual', 'interval', 'custom')",
-          tidb: "`mode` IN ('provider', 'manual', 'interval', 'custom')",
+          postgres: "\"mode\" IN ('manual', 'interval', 'custom')",
+          tidb: "`mode` IN ('manual', 'interval', 'custom')",
         },
         name: "source_sync_policies_mode_ck",
       },
