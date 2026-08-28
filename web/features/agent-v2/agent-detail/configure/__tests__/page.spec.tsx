@@ -2965,6 +2965,61 @@ describe('AgentConfigurePage', () => {
       })
     })
 
+    it('should stop applying after finalize fails without adding a generic error toast', async () => {
+      const user = userEvent.setup()
+      mocks.finalizeBuildChat.mockRejectedValueOnce(new Error('finalize failed'))
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'old draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      mocks.queryState.buildDraft = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'build prompt',
+            },
+          },
+          draft: {},
+          variant: 'agent_app',
+        },
+        dataUpdatedAt: 1,
+        error: null,
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'apply build draft' }))
+
+      await waitFor(() => expect(mocks.finalizeBuildChat).toHaveBeenCalledTimes(1))
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'build-draft-bar' })).toHaveTextContent(
+          'applying:no',
+        )
+      })
+      expect(mocks.applyBuildDraft).not.toHaveBeenCalled()
+      expect(toastMock.error).not.toHaveBeenCalledWith('common.api.actionFailed')
+      expect(toastMock.success).not.toHaveBeenCalled()
+    })
+
     it('should keep the build draft UI while the applied normal draft is still refreshing', async () => {
       const user = userEvent.setup()
       const queryClient = new QueryClient()
