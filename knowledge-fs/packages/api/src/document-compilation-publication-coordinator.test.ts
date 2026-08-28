@@ -1154,6 +1154,7 @@ function fakeExecution(initial: DocumentCompilationAttempt): {
       throw new Error("Initial profile binding is not used by publication coordinator tests");
     }),
     heartbeat,
+    rebaseBaseHeadRevision: vi.fn(async () => current),
     signal: controller.signal,
     withLeaseSnapshot,
   };

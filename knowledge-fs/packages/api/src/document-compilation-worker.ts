@@ -951,6 +951,14 @@ export function createDocumentCompilationWorker({
         if (deletionWriteBlocked) {
           throw effectiveError;
         }
+        if (publicationGenerationId && reindexer.failGenerationProjections) {
+          await reindexer
+            .failGenerationProjections({
+              knowledgeSpaceId: input.knowledgeSpaceId,
+              publicationGenerationId,
+            })
+            .catch(() => undefined);
+        }
         if (legacyStagedProjectionPublication && stagedProjectionIds.length > 0) {
           await legacyStagedProjectionPublication
             .fail({

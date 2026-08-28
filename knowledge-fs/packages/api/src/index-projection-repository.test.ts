@@ -45,6 +45,44 @@ function projectionRow(value: IndexProjection): DatabaseRow {
 }
 
 describe("index projection repositories", () => {
+  it("fails every building projection in an unpublished generation idempotently", async () => {
+    const repository = createInMemoryIndexProjectionRepository({
+      maxBatchSize: 10,
+      maxListLimit: 10,
+      maxProjections: 20,
+    });
+    const generation = "30000000-0000-4000-8000-000000000001";
+    await repository.createMany([
+      projection(1, { publicationGenerationId: generation, status: "building" }),
+      projection(2, { publicationGenerationId: generation, status: "building" }),
+      projection(3, {
+        publicationGenerationId: "30000000-0000-4000-8000-000000000002",
+        status: "building",
+      }),
+    ]);
+
+    await expect(
+      repository.failByGeneration?.({
+        knowledgeSpaceId: "10000000-0000-4000-8000-000000000001",
+        publicationGenerationId: generation,
+      }),
+    ).resolves.toBe(2);
+    await expect(
+      repository.failByGeneration?.({
+        knowledgeSpaceId: "10000000-0000-4000-8000-000000000001",
+        publicationGenerationId: generation,
+      }),
+    ).resolves.toBe(0);
+    await expect(
+      repository.summarizeVersion({
+        knowledgeSpaceId: "10000000-0000-4000-8000-000000000001",
+        projectionVersion: 1,
+        publicationGenerationId: generation,
+        type: "dense-vector",
+      }),
+    ).resolves.toEqual({ building: 0, failed: 2, ready: 0, stale: 0, total: 2 });
+  });
+
   it("keeps identical logical projections isolated by publication generation", async () => {
     const repository = createInMemoryIndexProjectionRepository({
       maxBatchSize: 2,

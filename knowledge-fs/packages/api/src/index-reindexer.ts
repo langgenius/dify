@@ -114,6 +114,10 @@ export interface UpdateIncrementalReindexProjectionStatusInput {
 export interface IncrementalReindexer {
   canonicalizeArtifact?(artifact: ParseArtifact): Promise<MaterializeParseArtifactResult>;
   failProjections?(input: UpdateIncrementalReindexProjectionStatusInput): Promise<number>;
+  failGenerationProjections?(input: {
+    readonly knowledgeSpaceId: string;
+    readonly publicationGenerationId: string;
+  }): Promise<number>;
   getCanonicalArtifact?(input: ParseArtifactLookupInput): Promise<ParseArtifact | null>;
   publishProjections?(input: UpdateIncrementalReindexProjectionStatusInput): Promise<number>;
   reindex(input: IncrementalReindexInput): Promise<IncrementalReindexResult>;
@@ -165,6 +169,7 @@ export function createIncrementalReindexer({
   }
 
   const canUpdateProjectionStatuses = projections?.updateStatusByIds !== undefined;
+  const failByGeneration = projections?.failByGeneration;
 
   const updateProjectionStatus = async ({
     fromStatus,
@@ -225,6 +230,14 @@ export function createIncrementalReindexer({
           },
           publishProjections: (input: UpdateIncrementalReindexProjectionStatusInput) =>
             updateProjectionStatus({ fromStatus: "building", input, status: "ready" }),
+        }
+      : {}),
+    ...(failByGeneration
+      ? {
+          failGenerationProjections: (input: {
+            readonly knowledgeSpaceId: string;
+            readonly publicationGenerationId: string;
+          }) => failByGeneration(input),
         }
       : {}),
     reindex: async (input) => {

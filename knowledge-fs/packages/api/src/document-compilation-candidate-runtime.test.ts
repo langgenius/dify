@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { DocumentCompilationAttempt } from "./document-compilation-attempt-repository";
 import {
+  DocumentCompilationCandidateSnapshotError,
   createDocumentCompilationWorkerAttemptProcessor,
   createRepositoryDocumentCompilationCandidateEvaluator,
   createRepositoryDocumentCompilationFingerprintMaterialResolver,
@@ -521,6 +522,51 @@ describe("document compilation candidate runtime factories", () => {
       "worker stopped at checkpoint=nodes_generated before candidate composition",
     );
   });
+
+  it("rebases candidate composition locally before consuming a durable execution retry", async () => {
+    const execution = executionContext();
+    const resolve = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new DocumentCompilationCandidateSnapshotError(
+          "publication head changed: expected=3 actual=4",
+          4,
+        ),
+      )
+      .mockRejectedValueOnce(
+        new DocumentCompilationCandidateSnapshotError(
+          "publication head changed: expected=4 actual=5",
+          5,
+        ),
+      )
+      .mockResolvedValue({ material: { schemaVersion: 1 }, projectionVersion: 2 });
+    const composeCandidate = vi.fn(async () => undefined);
+    const processor = createDocumentCompilationWorkerAttemptProcessor({
+      coordinator: { composeCandidate } as never,
+      createWorker: ({ candidateComposer, jobs }) =>
+        ({
+          process: vi.fn(async () => {
+            await candidateComposer.compose({
+              componentReceipt: ownerReceipt(),
+              documentAssetId: ownerId,
+              documentVersion: 2,
+              knowledgeSpaceId: spaceId,
+              publicationGenerationId: ownerGeneration,
+              tenantId,
+            });
+            await jobs.advance(attempt().id, "projection_built");
+          }),
+        }) as never,
+      fingerprintMaterial: { resolve } as never,
+    });
+
+    await expect(processor(execution)).resolves.toBeUndefined();
+    expect(resolve).toHaveBeenCalledTimes(3);
+    expect(execution.rebaseBaseHeadRevision).toHaveBeenNthCalledWith(1, 4);
+    expect(execution.rebaseBaseHeadRevision).toHaveBeenNthCalledWith(2, 5);
+    expect(composeCandidate).toHaveBeenCalledOnce();
+    expect(execution.attempt.baseHeadRevision).toBe(5);
+  });
 });
 
 function resolverDependencies() {
@@ -650,6 +696,10 @@ function executionContext(): DocumentCompilationExecutionContext {
     },
     bindInitialProfiles: vi.fn(async () => current),
     heartbeat: vi.fn(async () => current),
+    rebaseBaseHeadRevision: vi.fn(async (baseHeadRevision) => {
+      current = { ...current, baseHeadRevision, rowVersion: current.rowVersion + 1 };
+      return current;
+    }),
     signal: new AbortController().signal,
     withLeaseSnapshot: vi.fn(async (operation) => operation(current)),
   };

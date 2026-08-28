@@ -6,6 +6,7 @@ import {
   type DocumentCompilationAttemptRepository,
   createInMemoryDocumentCompilationAttemptRepository,
 } from "./document-compilation-attempt-repository";
+import { DocumentCompilationCandidateSnapshotError } from "./document-compilation-candidate-runtime";
 import {
   type DocumentCompilationExecutionContext,
   DocumentCompilationProcessingError,
@@ -116,6 +117,21 @@ describe("createDocumentCompilationRuntime", () => {
       message:
         "The document could not be processed. Try again, or contact an administrator with the error reference.",
       retryable: false,
+    });
+  });
+
+  it("classifies candidate snapshot conflicts as retryable publication-head refreshes", () => {
+    expect(
+      defaultDocumentCompilationErrorClassifier(
+        new DocumentCompilationCandidateSnapshotError(
+          "publication head changed: expected=0 actual=1",
+        ),
+      ),
+    ).toEqual({
+      code: "DOCUMENT_COMPILATION_RETRYABLE",
+      message: "Document processing was interrupted by a temporary service failure.",
+      refreshBaseHeadRevision: true,
+      retryable: true,
     });
   });
 
@@ -349,6 +365,34 @@ describe("createDocumentCompilationRuntime", () => {
       executionAttempts: 2,
       runState: "succeeded",
     });
+  });
+
+  it("refreshes the unbound publication base before scheduling a snapshot-conflict retry", async () => {
+    const currentTime = startedAt;
+    const attempts = createInMemoryDocumentCompilationAttemptRepository();
+    const queue = createQueue(() => currentTime);
+    await startAttempt(attempts);
+    await dispatchPendingAttempts(attempts, queue, currentTime);
+    const resolveRetryBaseHeadRevision = vi.fn(async () => 9);
+    const runtime = createRuntime({
+      attempts,
+      now: () => currentTime,
+      processor: async () => {
+        throw new DocumentCompilationCandidateSnapshotError(
+          "publication head changed: expected=7 actual=9",
+        );
+      },
+      queue,
+      resolveRetryBaseHeadRevision,
+    });
+
+    await expect(runtime.tick()).resolves.toMatchObject({ failed: 0, retryScheduled: 1 });
+    await expect(attempts.get(attemptId)).resolves.toMatchObject({
+      baseHeadRevision: 9,
+      executionAttempts: 1,
+      runState: "retry_wait",
+    });
+    expect(resolveRetryBaseHeadRevision).toHaveBeenCalledOnce();
   });
 
   it("automatically retries a retryable Dify model runtime timeout", async () => {
@@ -767,6 +811,7 @@ function createRuntime({
   onError,
   processor,
   queue,
+  resolveRetryBaseHeadRevision,
 }: {
   readonly attempts: DocumentCompilationAttemptRepository;
   readonly classifyError?: Parameters<typeof createDocumentCompilationRuntime>[0]["classifyError"];
@@ -778,6 +823,9 @@ function createRuntime({
   readonly onError?: Parameters<typeof createDocumentCompilationRuntime>[0]["onError"];
   readonly processor: Parameters<typeof createDocumentCompilationRuntime>[0]["processor"];
   readonly queue: JobQueueAdapter;
+  readonly resolveRetryBaseHeadRevision?: Parameters<
+    typeof createDocumentCompilationRuntime
+  >[0]["resolveRetryBaseHeadRevision"];
 }) {
   return createDocumentCompilationRuntime({
     attempts,
@@ -793,6 +841,7 @@ function createRuntime({
     now,
     ...(onError ? { onError } : {}),
     processor,
+    ...(resolveRetryBaseHeadRevision ? { resolveRetryBaseHeadRevision } : {}),
     workerId: "runtime-1",
   });
 }

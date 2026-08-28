@@ -203,12 +203,21 @@ export interface BindInitialDocumentCompilationProfilesInput {
 
 export interface ScheduleDocumentCompilationRetryInput {
   readonly attemptId: string;
+  readonly baseHeadRevision?: number | undefined;
   readonly errorCode?: string | undefined;
   readonly errorMessage?: string | undefined;
   readonly expectedRowVersion: number;
   readonly leaseToken: string;
   readonly now: string;
   readonly retryAt: string;
+}
+
+export interface RebaseRunningDocumentCompilationAttemptInput {
+  readonly attemptId: string;
+  readonly baseHeadRevision: number;
+  readonly expectedRowVersion: number;
+  readonly leaseToken: string;
+  readonly now: string;
 }
 
 export interface CompleteDocumentCompilationAttemptInput {
@@ -333,6 +342,9 @@ export interface DocumentCompilationAttemptRepository {
   ): Promise<DocumentCompilationOutboxEvent | null>;
   releaseDeferredDispatch?(
     input: ReleaseDeferredDocumentCompilationDispatchInput,
+  ): Promise<DocumentCompilationAttempt | null>;
+  rebaseRunning(
+    input: RebaseRunningDocumentCompilationAttemptInput,
   ): Promise<DocumentCompilationAttempt | null>;
   retryTerminal(
     input: RetryTerminalDocumentCompilationAttemptInput,
@@ -787,6 +799,25 @@ export function createInMemoryDocumentCompilationAttemptRepository(
       attempts.set(nextAttempt.id, nextAttempt);
       return cloneAttempt(nextAttempt);
     },
+    rebaseRunning: async (input) => {
+      const current = fencedMemoryAttempt(attempts, input);
+      const now = canonicalDateTime(input.now, "now");
+      if (
+        !current ||
+        !hasLiveLease(current, input.leaseToken, now) ||
+        hasBoundCompilationCandidate(current)
+      ) {
+        return null;
+      }
+      const nextAttempt = parseAttempt({
+        ...current,
+        baseHeadRevision: nonnegativeInteger(input.baseHeadRevision, "baseHeadRevision"),
+        rowVersion: current.rowVersion + 1,
+        updatedAt: now,
+      });
+      attempts.set(nextAttempt.id, nextAttempt);
+      return cloneAttempt(nextAttempt);
+    },
     scheduleRetry: async (input) => {
       const current = fencedMemoryAttempt(attempts, input);
       const now = canonicalDateTime(input.now, "now");
@@ -798,8 +829,13 @@ export function createInMemoryDocumentCompilationAttemptRepository(
         return null;
       }
       const event = requiredMemoryOutbox(outbox, current.id);
+      const baseHeadRevision =
+        input.baseHeadRevision === undefined || hasBoundCompilationCandidate(current)
+          ? current.baseHeadRevision
+          : nonnegativeInteger(input.baseHeadRevision, "baseHeadRevision");
       const nextAttempt = parseAttempt({
         ...current,
+        baseHeadRevision,
         externalJobId: undefined,
         heartbeatAt: undefined,
         lastErrorCode: optionalString(input.errorCode, "errorCode", 64),
@@ -1422,6 +1458,31 @@ export function createDatabaseDocumentCompilationAttemptRepository({
           current.rowVersion,
         );
       }),
+    rebaseRunning: async (input) =>
+      database.transaction(async (transaction) => {
+        const current = await databaseGetAttempt(database, transaction, input.attemptId, true);
+        const now = canonicalDateTime(input.now, "now");
+        if (
+          !current ||
+          current.rowVersion !==
+            nonnegativeInteger(input.expectedRowVersion, "expectedRowVersion") ||
+          !hasLiveLease(current, input.leaseToken, now) ||
+          hasBoundCompilationCandidate(current)
+        ) {
+          return null;
+        }
+        return databasePersistAttempt(
+          database,
+          transaction,
+          {
+            ...current,
+            baseHeadRevision: nonnegativeInteger(input.baseHeadRevision, "baseHeadRevision"),
+            rowVersion: current.rowVersion + 1,
+            updatedAt: now,
+          },
+          current.rowVersion,
+        );
+      }),
     scheduleRetry: async (input) =>
       database.transaction(async (transaction) => {
         const current = await databaseGetAttempt(database, transaction, input.attemptId, true);
@@ -1447,6 +1508,10 @@ export function createDatabaseDocumentCompilationAttemptRepository({
           transaction,
           {
             ...current,
+            baseHeadRevision:
+              input.baseHeadRevision === undefined || hasBoundCompilationCandidate(current)
+                ? current.baseHeadRevision
+                : nonnegativeInteger(input.baseHeadRevision, "baseHeadRevision"),
             externalJobId: undefined,
             heartbeatAt: undefined,
             lastErrorCode: optionalString(input.errorCode, "errorCode", 64),

@@ -113,6 +113,11 @@ export interface UpdateIndexProjectionStatusByIdsInput {
   readonly status: IndexProjection["status"];
 }
 
+export interface FailIndexProjectionsByGenerationInput {
+  readonly knowledgeSpaceId: string;
+  readonly publicationGenerationId: string;
+}
+
 export interface IndexProjectionRepository {
   createMany(projections: readonly IndexProjection[]): Promise<IndexProjection[]>;
   deleteByNodeIds(input: DeleteIndexProjectionsByNodeIdsInput): Promise<number>;
@@ -125,6 +130,7 @@ export interface IndexProjectionRepository {
     input: IndexProjectionVersionInput,
   ): Promise<RollbackIndexProjectionVersionResult>;
   summarizeVersion(input: IndexProjectionVersionInput): Promise<IndexProjectionVersionSummary>;
+  failByGeneration?(input: FailIndexProjectionsByGenerationInput): Promise<number>;
   updateStatusByIds?(input: UpdateIndexProjectionStatusByIdsInput): Promise<number>;
 }
 
@@ -416,6 +422,26 @@ export function createInMemoryIndexProjectionRepository({
       }
 
       return summary;
+    },
+    failByGeneration: async ({ knowledgeSpaceId, publicationGenerationId }) => {
+      await assertInMemoryGenerationNotPublished({
+        componentType: "index-projection",
+        guard: publishedGenerationGuard,
+        knowledgeSpaceId,
+        publicationGenerationId,
+      });
+      let failed = 0;
+      for (const projection of projections.values()) {
+        if (
+          projection.knowledgeSpaceId === knowledgeSpaceId &&
+          projection.publicationGenerationId === publicationGenerationId &&
+          projection.status === "building"
+        ) {
+          projection.status = "failed";
+          failed += 1;
+        }
+      }
+      return failed;
     },
     updateStatusByIds: async ({ fromStatus, knowledgeSpaceId, projectionIds, status }) => {
       validateKnowledgeNodeBatchIds(projectionIds, maxBatchSize);
@@ -982,6 +1008,36 @@ export function createDatabaseIndexProjectionRepository({
 
       return summary;
     },
+    failByGeneration: async ({ knowledgeSpaceId, publicationGenerationId }) =>
+      database.transaction(async (transaction) => {
+        await assertDatabaseGenerationNotPublished({
+          componentType: "index-projection",
+          database,
+          executor: transaction,
+          knowledgeSpaceId,
+          publicationGenerationId,
+        });
+        const result = await transaction.execute({
+          maxRows: Number.MAX_SAFE_INTEGER,
+          operation: "update",
+          params: ["failed", knowledgeSpaceId, publicationGenerationId, "building"],
+          sql: `UPDATE ${quoteDatabaseIdentifier(database, tableName)} SET ${quoteDatabaseIdentifier(
+            database,
+            "status",
+          )} = ${databasePlaceholder(database, 1)} WHERE ${quoteDatabaseIdentifier(
+            database,
+            "knowledge_space_id",
+          )} = ${databasePlaceholder(database, 2)} AND ${quoteDatabaseIdentifier(
+            database,
+            "publication_generation_id",
+          )} = ${databasePlaceholder(database, 3)} AND ${quoteDatabaseIdentifier(
+            database,
+            "status",
+          )} = ${databasePlaceholder(database, 4)};`,
+          tableName,
+        });
+        return result.rowsAffected;
+      }),
     updateStatusByIds: async ({ fromStatus, knowledgeSpaceId, projectionIds, status }) => {
       validateKnowledgeNodeBatchIds(projectionIds, maxBatchSize);
       const uniqueProjectionIds = uniqueStrings(projectionIds);

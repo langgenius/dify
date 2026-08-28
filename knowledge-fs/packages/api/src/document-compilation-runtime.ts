@@ -27,6 +27,7 @@ export interface DocumentCompilationRuntimeOptions {
     | "failExhausted"
     | "get"
     | "heartbeat"
+    | "rebaseRunning"
     | "scheduleRetry"
   >;
   readonly classifyError?: DocumentCompilationErrorClassifier | undefined;
@@ -45,6 +46,9 @@ export interface DocumentCompilationRuntimeOptions {
     | ((input: { readonly error: unknown; readonly job?: JobRecord }) => void)
     | undefined;
   readonly processor: DocumentCompilationAttemptProcessor;
+  readonly resolveRetryBaseHeadRevision?:
+    | ((attempt: DocumentCompilationAttempt) => Promise<number>)
+    | undefined;
   readonly workerId: string;
 }
 
@@ -67,6 +71,7 @@ export interface DocumentCompilationExecutionContext {
     >,
   ): Promise<DocumentCompilationAttempt>;
   heartbeat(): Promise<DocumentCompilationAttempt>;
+  rebaseBaseHeadRevision(baseHeadRevision: number): Promise<DocumentCompilationAttempt>;
   /**
    * Runs an attempt-dependent side effect on the same serialized lane as advance/heartbeat.
    * Background heartbeats cannot change rowVersion between the supplied snapshot and completion.
@@ -88,6 +93,7 @@ export type DocumentCompilationAttemptProcessor = (
 export interface DocumentCompilationErrorClassification {
   readonly code: string;
   readonly message: string;
+  readonly refreshBaseHeadRevision?: boolean | undefined;
   readonly retryable: boolean;
 }
 
@@ -173,6 +179,7 @@ export function createDocumentCompilationRuntime({
   now = Date.now,
   onError,
   processor,
+  resolveRetryBaseHeadRevision,
   workerId,
 }: DocumentCompilationRuntimeOptions): DocumentCompilationRuntime {
   validatePositiveInteger(intervalMs, "intervalMs");
@@ -349,6 +356,9 @@ export function createDocumentCompilationRuntime({
         exponentialDelay(initialRetryDelayMs, maxRetryDelayMs, current.executionAttempts);
       const scheduled = await attempts.scheduleRetry({
         attemptId: current.id,
+        ...(classified.refreshBaseHeadRevision && resolveRetryBaseHeadRevision
+          ? { baseHeadRevision: await resolveRetryBaseHeadRevision(current) }
+          : {}),
         errorCode: classified.code,
         errorMessage: classified.message,
         expectedRowVersion: current.rowVersion,
@@ -509,7 +519,7 @@ export function createDocumentCompilationRuntime({
 interface FencedExecutionOptions {
   readonly attempts: Pick<
     DocumentCompilationAttemptRepository,
-    "advance" | "bindInitialProfiles" | "heartbeat"
+    "advance" | "bindInitialProfiles" | "heartbeat" | "rebaseRunning"
   >;
   readonly generateNow: () => number;
   readonly heartbeatIntervalMs: number;
@@ -651,6 +661,26 @@ function createFencedExecution({
     });
   }
 
+  async function rebaseBaseHeadRevision(
+    baseHeadRevision: number,
+  ): Promise<DocumentCompilationAttempt> {
+    return serialize(async () => {
+      const timestamp = validTimestamp(generateNow(), "now");
+      const updated = await attempts.rebaseRunning({
+        attemptId: current.id,
+        baseHeadRevision,
+        expectedRowVersion: current.rowVersion,
+        leaseToken,
+        now: isoTimestamp(timestamp),
+      });
+      if (!updated) {
+        throw loseLease("Document compilation publication-head rebase lost its fence");
+      }
+      current = updated;
+      return current;
+    });
+  }
+
   async function withLeaseSnapshot<T>(
     operation: (attempt: DocumentCompilationAttempt) => Promise<T>,
   ): Promise<T> {
@@ -664,6 +694,7 @@ function createFencedExecution({
     advance,
     bindInitialProfiles,
     heartbeat,
+    rebaseBaseHeadRevision,
     signal: abortController.signal,
     withLeaseSnapshot,
   };
@@ -710,6 +741,9 @@ export function defaultDocumentCompilationErrorClassifier(
     return {
       code: failure.code,
       message: failure.message,
+      ...("refreshBaseHeadRevision" in error && error.refreshBaseHeadRevision === true
+        ? { refreshBaseHeadRevision: true }
+        : {}),
       retryable: true,
     };
   }
@@ -758,7 +792,12 @@ function normalizeErrorClassification(
     throw new Error("Document compilation error classification requires code and message");
   }
   const failure = knowledgeFsFailureForCode(code);
-  return { code: failure.code, message: failure.message, retryable: classification.retryable };
+  return {
+    code: failure.code,
+    message: failure.message,
+    ...(classification.refreshBaseHeadRevision ? { refreshBaseHeadRevision: true } : {}),
+    retryable: classification.retryable,
+  };
 }
 
 function parseAttemptPayload(payload: JobPayload): { readonly attemptId: string } {

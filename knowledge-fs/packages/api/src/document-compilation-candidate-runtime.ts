@@ -80,9 +80,15 @@ export interface RepositoryDocumentCompilationFingerprintMaterialResolverOptions
 }
 
 export class DocumentCompilationCandidateSnapshotError extends Error {
-  constructor(message: string) {
+  readonly code = "DOCUMENT_COMPILATION_RETRYABLE";
+  readonly refreshBaseHeadRevision = true;
+  readonly retryable = true;
+  readonly latestBaseHeadRevision: number | undefined;
+
+  constructor(message: string, latestBaseHeadRevision?: number) {
     super(message);
     this.name = "DocumentCompilationCandidateSnapshotError";
+    this.latestBaseHeadRevision = latestBaseHeadRevision;
   }
 }
 
@@ -116,8 +122,10 @@ export function createRepositoryDocumentCompilationFingerprintMaterialResolver({
         tenantId: attempt.tenantId,
       });
       if ((current?.headRevision ?? 0) !== attempt.baseHeadRevision) {
-        throw snapshotError(
-          `publication head changed: expected=${attempt.baseHeadRevision} actual=${current?.headRevision ?? 0}`,
+        const latestBaseHeadRevision = current?.headRevision ?? 0;
+        throw new DocumentCompilationCandidateSnapshotError(
+          `publication head changed: expected=${attempt.baseHeadRevision} actual=${latestBaseHeadRevision}`,
+          latestBaseHeadRevision,
         );
       }
 
@@ -427,21 +435,35 @@ export function createDocumentCompilationWorkerAttemptProcessor({
     const candidateComposer: DocumentCompilationWorkerCandidateComposer = {
       compose: async (input) => {
         assertWorkerScope(execution.attempt, input);
-        const resolved = await fingerprintMaterial.resolve({
-          attempt: execution.attempt,
-          componentReceipt: input.componentReceipt,
-        });
-        await coordinator.composeCandidate({
-          candidateId:
-            execution.attempt.candidatePublicationId ??
-            deterministicChildId(execution.attempt.id, "projection-publication-candidate"),
-          componentReceipt: input.componentReceipt,
-          createdAt: now(),
-          execution,
-          fingerprintMaterial: resolved.material,
-          metadata: { projectionSetFingerprintMaterial: resolved.material },
-          projectionVersion: resolved.projectionVersion,
-        });
+        for (let retry = 0; retry < 3; retry += 1) {
+          try {
+            const resolved = await fingerprintMaterial.resolve({
+              attempt: execution.attempt,
+              componentReceipt: input.componentReceipt,
+            });
+            await coordinator.composeCandidate({
+              candidateId:
+                execution.attempt.candidatePublicationId ??
+                deterministicChildId(execution.attempt.id, "projection-publication-candidate"),
+              componentReceipt: input.componentReceipt,
+              createdAt: now(),
+              execution,
+              fingerprintMaterial: resolved.material,
+              metadata: { projectionSetFingerprintMaterial: resolved.material },
+              projectionVersion: resolved.projectionVersion,
+            });
+            return;
+          } catch (error) {
+            if (
+              !(error instanceof DocumentCompilationCandidateSnapshotError) ||
+              error.latestBaseHeadRevision === undefined ||
+              retry === 2
+            ) {
+              throw error;
+            }
+            await execution.rebaseBaseHeadRevision(error.latestBaseHeadRevision);
+          }
+        }
       },
     };
     const frozenProfiles = profiles

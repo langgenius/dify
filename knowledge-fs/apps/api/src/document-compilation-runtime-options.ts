@@ -295,9 +295,13 @@ export function createApiDocumentCompilationRuntime({
     throw new Error("Document compilation runtime requires model capability preflight");
   }
   const repositories = requireRuntimeRepositories(partialRepositories);
-  if (!repositories.projections.getMany || !repositories.projections.updateStatusByIds) {
+  if (
+    !repositories.projections.getMany ||
+    !repositories.projections.updateStatusByIds ||
+    !repositories.projections.failByGeneration
+  ) {
     throw new Error(
-      "Document compilation runtime requires bounded projection getMany and status updates",
+      "Document compilation runtime requires bounded projection reads and generation lifecycle updates",
     );
   }
   const multimodalMaterializationGate = createConcurrencyGate(
@@ -663,6 +667,13 @@ export function createApiDocumentCompilationRuntime({
     maxRetryDelayMs: config.retryMaxMs,
     ...(metrics ? { metrics } : {}),
     processor,
+    resolveRetryBaseHeadRevision: async (attempt) =>
+      (
+        await repositories.publications.getPublished({
+          knowledgeSpaceId: attempt.knowledgeSpaceId,
+          tenantId: attempt.tenantId,
+        })
+      )?.headRevision ?? 0,
     workerId: `document-compilation-runtime-${workerId}`,
   });
   const dispatcher = createDocumentCompilationOutboxDispatcher({
