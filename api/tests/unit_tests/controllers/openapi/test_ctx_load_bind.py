@@ -12,9 +12,9 @@ functions is a leaf that also loads what *that* function's own body reaches (so
 `RequireWorkspaceMembership` loading `workspace_role` also picks up `workspace` and `caller`,
 because `load_workspace_role` calls both internally); a call to a same-module function or a
 `self` method is unwrapped and walked the same way; anything else — a call on some other
-receiver (`subject.mounts_caller(ctx)`, `TenantService.get_x(...)`) — cannot reach a loader's
-private surface from outside it, so it is safely ignored, never expanded. There is no
-`loads = {...}` table anywhere in this file to fall out of step with those calls.
+receiver (`TenantService.get_x(...)` and the like) — cannot reach a loader's private surface
+from outside it, so it never *loads* anything and is safely ignored for that purpose. There
+is no `loads = {...}` table anywhere in this file to fall out of step with those calls.
 
 Two shapes the scan cannot place must fail loudly rather than pass silently, because a scan
 that shrugs at what it cannot resolve reads as coverage while covering nothing: a `load_*`
@@ -22,22 +22,32 @@ import reached through an alias (the literal name at the call site no longer mat
 callee the scan cannot even name (`getattr(self, action)(ctx)` and the like). Both raise
 `_UnresolvableError`, which every entry point turns into a reported failure, never a swallowed one.
 
-Static, not dynamic, and deliberately: a probe that actually ran every requirement against
-built fixtures — one per route × subject × `has_app`, plus explicit `RBAC_ENABLED`/
-`DEPLOYMENT_EDITION` worlds — would be more truthful (it would have caught the `self.roles`
-gap below for free, by executing real control flow instead of modelling it) but nowhere
-near simpler: ~21 routes × 2 subjects × `has_app`, times the config worlds each `RBACCheck`/
-`RequireWebappAccess` needs to actually exercise both its branches. A static AST walk over
-the same dozen `Requirement`/loader functions is smaller and, importantly, cheap enough to
-run on every test invocation rather than only in CI. The trade was made deliberately, not by
-omission — see task-T3-report.md's "Static vs. dynamic" section for the fuller reasoning.
+Static, not dynamic, and deliberately — with one narrow, named exception. A probe that
+actually ran every requirement against built fixtures — one per route × subject × `has_app`,
+plus explicit `RBAC_ENABLED`/`DEPLOYMENT_EDITION` worlds — would be more truthful (it would
+have caught the `self.roles` gap below for free, by executing real control flow instead of
+modelling it) but nowhere near simpler: ~21 routes × 2 subjects × `has_app`, times the config
+worlds each `RBACCheck`/`RequireWebappAccess` needs to actually exercise both its branches. A
+static AST walk over the same dozen `Requirement`/loader functions is smaller and, importantly,
+cheap enough to run on every test invocation rather than only in CI. The trade was made
+deliberately, not by omission — see task-T3-report.md's "Static vs. dynamic" section.
+
+The one exception is `subject.mounts_caller(ctx)`: unlike `self.roles` or
+`dify_config.RBAC_ENABLED`, its answer is not a business condition varying by deployment or
+constructor argument — it is a fixed property of one of exactly two known `Subject`
+implementations, reads nothing an AST couldn't already tell it (`ctx.has_app`), and this file
+already builds a stub `ctx` and a real subject instance to answer it dynamically for the
+second-coupling check below (`_mounts_caller`). Reusing that instead of modelling the two
+`mounts_caller` bodies in AST is the smaller, not the more truthful, choice — and if a future
+`Subject` reads something the stub does not provide, `_mounts_caller` raises, which is the
+same "fail loudly, do not default" rule as everywhere else here, not an exception to it.
 
 A load is credited only when it is unconditional or sits under a condition this scan decides
-precisely (`ctx.has_app`, `subject.caller_kind`) — never under one it cannot pin (a config
-flag, an untracked instance attribute like `self.roles`, an opaque method call). Getting this
-wrong in the permissive direction is exactly how a requirement conditionally guarding a load
-(`RBACCheck(scene=X, roles=None)`, which only loads `workspace_role` when `RBAC_ENABLED` and
-never when `roles` is `None`) can look like it always loads it. The one exception:
+precisely (`ctx.has_app`, `subject.caller_kind`, `subject.mounts_caller(ctx)`) — never under
+one it cannot pin (a config flag, an untracked instance attribute like `self.roles`). Getting
+this wrong in the permissive direction is exactly how a requirement conditionally guarding a
+load (`RBACCheck(scene=X, roles=None)`, which only loads `workspace_role` when `RBAC_ENABLED`
+and never when `roles` is `None`) can look like it always loads it. A separate exception:
 `if not ctx.<name>_loaded:` is a loader's own idempotent check-then-fetch, not a business
 condition — its postcondition holds on either branch — so it does not degrade credit the way
 an ordinary undecidable condition does (`_is_cache_check`). Reads stay pessimistic throughout
@@ -46,10 +56,11 @@ credits conservatively.
 
 Known, inert boundaries a future extension should check before relying on: no awareness of a
 nested `if` inside a `with`/`try` block (every scanned function body today is flat); `self.`
-method resolution only looks at the method's own class, no MRO climbing; and
-`subject.mounts_caller(ctx)`'s truth value is never modelled, so a call it gates is walked
-like any other call on a foreign receiver rather than being resolved to a subject-specific
-constant.
+method resolution only looks at the method's own class, no MRO climbing; and `_mounts_caller`'s
+stub `ctx` only answers `has_app`/`workspace_loaded` — a future `Subject.mounts_caller` reading
+`.app`/`.workspace` raises there rather than silently answering, which is correct under this
+file's own rule but means the stub needs extending before that subject's routes can be scanned
+at all.
 
 This is a sibling of `test_handler_seam_bind.py`, not an extension of it: that file scans
 *test* call sites for `__handler__` arity; this one scans *production* route wiring — real
@@ -107,33 +118,21 @@ class _Home:
 
 @dataclass(frozen=True)
 class _Facts:
-    """What this scan already knows, statically, about the request: `ctx.has_app` (from the
-    route's own URL rule — an `<app_id>` segment or none) and `subject.caller_kind` (from the
-    one `Subject` class a pipeline always runs). `None` means "not pinned for this
-    resolution" — an `if` gated on it is walked on both branches rather than guessed at, same
-    as any other undecidable condition. Without `has_app`/`caller_kind`, `if not ctx.has_app:
-    return` reads as dead weight to a scan that doesn't evaluate branches, and a fixed
-    requirement guarding on it (`CheckAppWorkspaceMembership`, `ResolveCaller`) would look
-    like it always loads its data regardless of whether that guard clause would actually
-    have returned first.
-
-    `strict` governs a separate question: whether an undecidable `if` that could stop also
-    degrades credited-ness for the statements that follow it (see `_resolve_body`).
-    Route-level resolution needs `strict=True` (the default): a route's `spec.requirements`
-    can include `RBACCheck`, whose `dify_config.RBAC_ENABLED` gate is exactly the
-    undecidable-with-a-later-test-expression shape that let `self.roles is None`
-    coincidentally credit `load_workspace_role`. `pipeline.fixed` alone never contains an
-    `RBACCheck` — only the second-coupling check (`test_every_mounting_pipeline_loads_a_
-    caller`) resolves `pipeline.fixed` in isolation, and it passes `strict=False`: without
-    that, `ResolveCaller`'s own `if not subject.mounts_caller(ctx): return` (undecidable,
-    since `mounts_caller`'s return value is deliberately never modelled) would make
-    "`ResolveCaller` present but gated" and "`ResolveCaller` missing entirely" produce the
-    identical failure — exactly the ambiguity that check exists to avoid.
+    """What this scan already knows about the request, resolved before any AST walk starts:
+    `has_app` from the route's own URL rule (an `<app_id>` segment or none), `caller_kind`
+    from the one `Subject` class a pipeline always runs, and `mounts_caller` from actually
+    calling that class's `mounts_caller` on a stub `ctx` carrying `has_app` (see
+    `_mounts_caller`) — a real, unavoidable value for a real `Subject` implementation, not
+    something to model in the AST. `None` means "not pinned for this resolution" — an `if`
+    gated on it is walked on both branches rather than guessed at, same as any other
+    undecidable condition. Without these three, a fixed requirement guarding on any of them
+    (`CheckAppWorkspaceMembership`, `ResolveCaller`) would look like it always loads its data
+    regardless of whether that guard clause would actually have returned first.
     """
 
     has_app: bool | None
     caller_kind: CallerKind | None
-    strict: bool = True
+    mounts_caller: bool | None = None
 
 
 _MODULE_AST_CACHE: dict[str, ast.Module] = {}
@@ -279,19 +278,30 @@ def _resolve_calls_in(
 
 
 def _evaluate_condition(test: ast.expr, facts: _Facts) -> bool | None:
-    """Whether `test` is statically decidable from `facts` — `ctx.has_app` (route-derived)
-    or `subject.caller_kind` (pipeline-derived) — or `None` when it turns on something this
-    scan cannot pin (a config flag, an opaque method call, an instance attribute like
-    `self.roles`), in which case the condition is undecidable: both branches are walked for
-    unresolvable-call detection, but nothing under either is credited as a load (see
-    `_resolve_body`) — a load only counts when it is unconditional or sits under a decided
-    branch here.
+    """Whether `test` is statically decidable from `facts` — `ctx.has_app` (route-derived),
+    `subject.caller_kind` (pipeline-derived), or `subject.mounts_caller(ctx)` (resolved by
+    actually calling it, see `_mounts_caller`) — or `None` when it turns on something this
+    scan cannot pin (a config flag, an instance attribute like `self.roles`), in which case
+    the condition is undecidable: both branches are walked for unresolvable-call detection,
+    but nothing under either is credited as a load (see `_resolve_body`) — a load only
+    counts when it is unconditional or sits under a decided branch here.
     """
     if isinstance(test, ast.UnaryOp) and isinstance(test.op, ast.Not):
         inner = _evaluate_condition(test.operand, facts)
         return None if inner is None else not inner
     if isinstance(test, ast.Attribute) and isinstance(test.value, ast.Name) and test.value.id == "ctx":
         return facts.has_app if test.attr == "has_app" else None
+    if (
+        isinstance(test, ast.Call)
+        and isinstance(test.func, ast.Attribute)
+        and isinstance(test.func.value, ast.Name)
+        and test.func.value.id == "subject"
+        and test.func.attr == "mounts_caller"
+        and len(test.args) == 1
+        and isinstance(test.args[0], ast.Name)
+        and test.args[0].id == "ctx"
+    ):
+        return facts.mounts_caller
     if (
         isinstance(test, ast.Compare)
         and len(test.ops) == 1
@@ -335,16 +345,15 @@ def _resolve_body(
     - `if not ctx.<name>_loaded:` (a loader's own check-then-fetch) is not a business
       condition — its postcondition holds on either branch — so it is walked with `credited`
       unchanged, not degraded.
-    - A condition decided precisely (`ctx.has_app`, `subject.caller_kind`) walks only the
-      branch actually taken, `credited` unchanged; a decided branch that stops truncates what
-      follows, or a fixed requirement guarding on `ctx.has_app` would look like it loads its
-      data on every route regardless of whether that guard would have returned first.
+    - A condition decided precisely (`ctx.has_app`, `subject.caller_kind`,
+      `subject.mounts_caller(ctx)`) walks only the branch actually taken, `credited`
+      unchanged; a decided branch that stops truncates what follows, or a fixed requirement
+      guarding on one of these would look like it loads its data regardless of whether that
+      guard would have returned first.
     - Anything else is undecidable: both branches are walked (for unresolvable-call
-      detection) with `credited=False`, so nothing inside is credited; and, when
-      `facts.strict` (the default), if either branch could stop, `credited` degrades to
-      `False` for every statement that follows too, since whether execution even reaches
-      them is no longer certain either. `facts.strict=False` skips only that last part — see
-      `_Facts` for why the second-coupling check needs it.
+      detection) with `credited=False`, so nothing inside is credited; and if either branch
+      could stop, `credited` degrades to `False` for every statement that follows too, since
+      whether execution even reaches them is no longer certain either.
     """
     loaded: set[str] = set()
     for statement in statements:
@@ -358,7 +367,7 @@ def _resolve_body(
             if decision is None:
                 loaded |= _resolve_body(statement.body, home, visited, facts, False)
                 loaded |= _resolve_body(statement.orelse, home, visited, facts, False)
-                if facts.strict and (_ends_with_stop(statement.body) or _ends_with_stop(statement.orelse)):
+                if _ends_with_stop(statement.body) or _ends_with_stop(statement.orelse):
                     credited = False
                 continue
             branch = statement.body if decision else statement.orelse
@@ -525,7 +534,8 @@ def _scan(app: Flask) -> LoadCoverageReport:
             continue
         for subject_type, pipeline in _reachable_pipelines(spec):
             subject_cls = subjects_module._SUBJECT_CLASSES[subject_type]
-            facts = _Facts(has_app=has_app, caller_kind=subject_cls.caller_kind)
+            mounts_caller = _mounts_caller(subject_cls, has_app=has_app)
+            facts = _Facts(has_app=has_app, caller_kind=subject_cls.caller_kind, mounts_caller=mounts_caller)
             try:
                 loaded = _combined_loads((*spec.requirements, *pipeline.fixed), facts)
             except _UnresolvableError as exc:
@@ -557,47 +567,8 @@ def test_no_unresolvable_ctx_or_load_sites(load_coverage: LoadCoverageReport) ->
     assert not load_coverage.unresolvable, "\n".join(["sites the scan could not resolve:", *load_coverage.unresolvable])
 
 
-# Conservative crediting (a load counts only when unconditional or under a precisely decided
-# `ctx.has_app`/`subject.caller_kind`) has one accepted, pinned cost: `ResolveCaller` gates its
-# `load_caller(ctx)` on `subject.mounts_caller(ctx)`, a call this scan does not resolve (the brief's
-# closed fact set stops at `has_app`/`caller_kind` — see the module docstring). In every real
-# execution the gate is `True` here — `AccountSubject.mounts_caller` is a hardcoded constant, and
-# the four ExternalSso routes below all carry `app_id`, so `ExternalSsoSubject.mounts_caller`
-# (which reads `ctx.has_app`) is `True` for every request they serve — but the scanner cannot see
-# that without resolving the call, which the closed fact set forbids. Pinned exactly, the same way
-# `test_handler_seam_bind.py` pins its own exemptions: a sixth route landing here unpinned is a
-# signal to look again, not to widen this constant.
-_ACCEPTED_MOUNTS_CALLER_GAPS = frozenset(
-    {
-        "GET /openapi/v1/account (AccountApi.get) reads ['caller'] under AccountPipeline, but nothing "
-        "in its requirements or fixed loads ['caller'] — declare a requirement that loads it",
-        "POST /openapi/v1/apps/<string:app_id>:run (AppRunApi.post) reads ['caller'] under "
-        "ExternalSsoPipeline, but nothing in its requirements or fixed loads ['caller'] — declare a "
-        "requirement that loads it",
-        "POST /openapi/v1/apps/<string:app_id>/files (AppFileUploadApi.post) reads ['caller'] under "
-        "ExternalSsoPipeline, but nothing in its requirements or fixed loads ['caller'] — declare a "
-        "requirement that loads it",
-        "POST /openapi/v1/apps/<string:app_id>/human-input-forms/<string:form_token>:submit "
-        "(OpenApiWorkflowHumanInputFormSubmitApi.post) reads ['caller'] under ExternalSsoPipeline, but "
-        "nothing in its requirements or fixed loads ['caller'] — declare a requirement that loads it",
-        "GET /openapi/v1/apps/<string:app_id>/tasks/<string:task_id>/events "
-        "(OpenApiWorkflowEventsApi.get) reads ['caller'] under ExternalSsoPipeline, but nothing in its "
-        "requirements or fixed loads ['caller'] — declare a requirement that loads it",
-    }
-)
-
-
 def test_every_handler_read_is_backed_by_a_load(load_coverage: LoadCoverageReport) -> None:
-    unaccepted = [message for message in load_coverage.missing if message not in _ACCEPTED_MOUNTS_CALLER_GAPS]
-    assert not unaccepted, "\n".join(["handler reads with no backing load:", *unaccepted])
-
-
-def test_accepted_mounts_caller_gaps_are_exactly_pinned(load_coverage: LoadCoverageReport) -> None:
-    """The pinned set above must match what the scan actually finds today, in both
-    directions: a new one appearing unpinned is a genuine finding (see the pinned constant's
-    comment), and a pinned one disappearing means the scan got more precise and this
-    constant is stale — either way, silence is the wrong outcome."""
-    assert frozenset(load_coverage.missing) == _ACCEPTED_MOUNTS_CALLER_GAPS
+    assert not load_coverage.missing, "\n".join(["handler reads with no backing load:", *load_coverage.missing])
 
 
 class _ProbeCallerContext:
@@ -650,20 +621,15 @@ def test_every_mounting_pipeline_loads_a_caller() -> None:
     `load_workspace_role` (which loads a caller too, transitively) stand in for a caller load
     that is only ever guaranteed on the has_app branch that gate actually takes — exactly
     coincidental coverage, the thing this whole module exists to refuse.
-
-    `strict=False`: `pipeline.fixed` never contains an `RBACCheck` (only endpoints declare
-    one), so the route-level check's reason for `strict=True` doesn't apply here, and without
-    `strict=False` this check couldn't tell `ResolveCaller` being present-but-gated-by-the-
-    unmodelled `mounts_caller` call apart from `ResolveCaller` being absent outright — both
-    would report the identical failure. See `_Facts` for the full reasoning.
     """
     failures: list[str] = []
     for subject_type, pipeline in subject_router._pipelines.items():
         subject_cls = subjects_module._SUBJECT_CLASSES[subject_type]
         for has_app in (True, False):
-            if not _mounts_caller(subject_cls, has_app=has_app):
+            mounts_caller = _mounts_caller(subject_cls, has_app=has_app)
+            if not mounts_caller:
                 continue
-            facts = _Facts(has_app=has_app, caller_kind=subject_cls.caller_kind, strict=False)
+            facts = _Facts(has_app=has_app, caller_kind=subject_cls.caller_kind, mounts_caller=mounts_caller)
             try:
                 loaded = _combined_loads(pipeline.fixed, facts)
             except _UnresolvableError as exc:
