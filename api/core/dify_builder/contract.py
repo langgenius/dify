@@ -211,6 +211,17 @@ class ResourceOption:
 
 
 @dataclass
+class SessionModel:
+    """The LLM chosen for this session, echoed for the FE model picker.
+
+    Empty on the wire (``model: null``) means the session uses the tenant default.
+    """
+
+    provider: str
+    name: str
+
+
+@dataclass
 class ConflictPolicyOption:
     """One selectable conflict-resolution policy in a ``resource_select`` card."""
 

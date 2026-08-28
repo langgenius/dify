@@ -22,6 +22,7 @@ from core.dify_builder.contract import (
     RecoveryRef,
     RunContextCard,
     RunStatus,
+    SessionModel,
     UserItem,
 )
 from core.dify_builder.errors import BusyError, ConflictError, NotFoundError
@@ -60,6 +61,7 @@ class SessionView:
     actions: list[UiAction] = field(default_factory=list)
     checkpoint: CheckpointRef | None = None
     recovery: RecoveryRef | None = None
+    model: SessionModel | None = None
 
 
 class SessionLock(Protocol):
@@ -429,6 +431,11 @@ class DifyBuilderService:
             actions=_actions_for(st),
             checkpoint=checkpoint,
             recovery=recovery_ref,
+            model=(
+                SessionModel(provider=fc.model_config.get("provider", ""), name=fc.model_config.get("name", ""))
+                if fc.model_config
+                else None
+            ),
         )
 
     def submit_action(self, session_id: str, actor: Actor, action: Action) -> SessionView:
