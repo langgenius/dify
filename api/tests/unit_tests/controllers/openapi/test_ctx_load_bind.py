@@ -22,6 +22,35 @@ import reached through an alias (the literal name at the call site no longer mat
 callee the scan cannot even name (`getattr(self, action)(ctx)` and the like). Both raise
 `_UnresolvableError`, which every entry point turns into a reported failure, never a swallowed one.
 
+Static, not dynamic, and deliberately: a probe that actually ran every requirement against
+built fixtures — one per route × subject × `has_app`, plus explicit `RBAC_ENABLED`/
+`DEPLOYMENT_EDITION` worlds — would be more truthful (it would have caught the `self.roles`
+gap below for free, by executing real control flow instead of modelling it) but nowhere
+near simpler: ~21 routes × 2 subjects × `has_app`, times the config worlds each `RBACCheck`/
+`RequireWebappAccess` needs to actually exercise both its branches. A static AST walk over
+the same dozen `Requirement`/loader functions is smaller and, importantly, cheap enough to
+run on every test invocation rather than only in CI. The trade was made deliberately, not by
+omission — see task-T3-report.md's "Static vs. dynamic" section for the fuller reasoning.
+
+A load is credited only when it is unconditional or sits under a condition this scan decides
+precisely (`ctx.has_app`, `subject.caller_kind`) — never under one it cannot pin (a config
+flag, an untracked instance attribute like `self.roles`, an opaque method call). Getting this
+wrong in the permissive direction is exactly how a requirement conditionally guarding a load
+(`RBACCheck(scene=X, roles=None)`, which only loads `workspace_role` when `RBAC_ENABLED` and
+never when `roles` is `None`) can look like it always loads it. The one exception:
+`if not ctx.<name>_loaded:` is a loader's own idempotent check-then-fetch, not a business
+condition — its postcondition holds on either branch — so it does not degrade credit the way
+an ordinary undecidable condition does (`_is_cache_check`). Reads stay pessimistic throughout
+(`_CtxUsage` collects every `ctx.<name>` access regardless of branch) — only the loads side
+credits conservatively.
+
+Known, inert boundaries a future extension should check before relying on: no awareness of a
+nested `if` inside a `with`/`try` block (every scanned function body today is flat); `self.`
+method resolution only looks at the method's own class, no MRO climbing; and
+`subject.mounts_caller(ctx)`'s truth value is never modelled, so a call it gates is walked
+like any other call on a foreign receiver rather than being resolved to a subject-specific
+constant.
+
 This is a sibling of `test_handler_seam_bind.py`, not an extension of it: that file scans
 *test* call sites for `__handler__` arity; this one scans *production* route wiring — real
 `Requirement`/`Pipeline` objects off a live Flask app, exactly like `test_auth_matrix.py`'s
@@ -78,20 +107,33 @@ class _Home:
 
 @dataclass(frozen=True)
 class _Facts:
-    """What this scan already knows, statically, about the request `ctx.has_app` and
-    `subject.caller_kind` would answer at runtime — `has_app` from the route's own URL rule
-    (an `<app_id>` segment or none), `caller_kind` from the one `Subject` class a pipeline
-    always runs. `None` means "not pinned for this resolution" — an `if` gated on it is
-    walked on both branches rather than guessed at, same as any other undecidable condition.
+    """What this scan already knows, statically, about the request: `ctx.has_app` (from the
+    route's own URL rule — an `<app_id>` segment or none) and `subject.caller_kind` (from the
+    one `Subject` class a pipeline always runs). `None` means "not pinned for this
+    resolution" — an `if` gated on it is walked on both branches rather than guessed at, same
+    as any other undecidable condition. Without `has_app`/`caller_kind`, `if not ctx.has_app:
+    return` reads as dead weight to a scan that doesn't evaluate branches, and a fixed
+    requirement guarding on it (`CheckAppWorkspaceMembership`, `ResolveCaller`) would look
+    like it always loads its data regardless of whether that guard clause would actually
+    have returned first.
 
-    Without this, `if not ctx.has_app: return` reads as dead weight to a scan that doesn't
-    evaluate branches, and a fixed requirement guarding on it (`CheckAppWorkspaceMembership`,
-    `ResolveCaller`) would look like it always loads its data — coincidentally covering every
-    route regardless of whether that guard clause would actually have returned first.
+    `strict` governs a separate question: whether an undecidable `if` that could stop also
+    degrades credited-ness for the statements that follow it (see `_resolve_body`).
+    Route-level resolution needs `strict=True` (the default): a route's `spec.requirements`
+    can include `RBACCheck`, whose `dify_config.RBAC_ENABLED` gate is exactly the
+    undecidable-with-a-later-test-expression shape that let `self.roles is None`
+    coincidentally credit `load_workspace_role`. `pipeline.fixed` alone never contains an
+    `RBACCheck` — only the second-coupling check (`test_every_mounting_pipeline_loads_a_
+    caller`) resolves `pipeline.fixed` in isolation, and it passes `strict=False`: without
+    that, `ResolveCaller`'s own `if not subject.mounts_caller(ctx): return` (undecidable,
+    since `mounts_caller`'s return value is deliberately never modelled) would make
+    "`ResolveCaller` present but gated" and "`ResolveCaller` missing entirely" produce the
+    identical failure — exactly the ambiguity that check exists to avoid.
     """
 
     has_app: bool | None
     caller_kind: CallerKind | None
+    strict: bool = True
 
 
 _MODULE_AST_CACHE: dict[str, ast.Module] = {}
@@ -136,17 +178,53 @@ def _loader_home() -> _Home:
     return _Home(module_name=loaders_module.__name__, module_ast=module_ast, owner_class=None)
 
 
-def _resolve_name_call(name: str, home: _Home, visited: set[tuple[str, str]], facts: _Facts) -> frozenset[str]:
+def _is_cache_check(test: ast.expr) -> bool:
+    """`if not ctx.<name>_loaded:` — a loader's own idempotent check-then-fetch guard.
+    Whichever branch runs, the postcondition (the datum ends up loaded) holds either way, so
+    this is not a business condition to gate crediting on the way `self.roles is None` or
+    `dify_config.RBAC_ENABLED` are — it is walked plainly, credited state unchanged.
+    """
+    return (
+        isinstance(test, ast.UnaryOp)
+        and isinstance(test.op, ast.Not)
+        and isinstance(test.operand, ast.Attribute)
+        and isinstance(test.operand.value, ast.Name)
+        and test.operand.value.id == "ctx"
+        and test.operand.attr.endswith("_loaded")
+    )
+
+
+def _memoized_expand(
+    key: tuple[str, str],
+    function: ast.FunctionDef | ast.AsyncFunctionDef,
+    home: _Home,
+    visited: dict[tuple[str, str], frozenset[str]],
+    facts: _Facts,
+) -> frozenset[str]:
+    """A function's own closure, computed once and cached under `key` regardless of how many
+    call sites reach it or under what credited state — a callee's internal branching starts
+    "reached" (`credited=True`) on its own terms; whether the caller's result counts is the
+    caller's own credited gate, applied at each call site independently (see
+    `_resolve_name_call`/`_resolve_self_call`), never baked into this cache.
+    """
+    if key in visited:
+        return visited[key]
+    visited[key] = frozenset()  # cycle guard: a real cycle resolves to "nothing further"
+    result = _resolve_loads(function, home, visited, facts, True)
+    visited[key] = result
+    return result
+
+
+def _resolve_name_call(
+    name: str, home: _Home, visited: dict[tuple[str, str], frozenset[str]], facts: _Facts, credited: bool
+) -> frozenset[str]:
     if name in _LOADER_NAMES:
         datum = _LOADER_NAMES[name]
-        key = (loaders_module.__name__, name)
-        if key in visited:
-            return frozenset({datum})
-        visited.add(key)
         function = _find_function(_loader_home().module_ast, name)
         if function is None:
             raise _UnresolvableError(f"`{name}` is not defined in {loaders_module.__name__}")
-        return frozenset({datum}) | _resolve_loads(function, _loader_home(), visited, facts)
+        inner = _memoized_expand((loaders_module.__name__, name), function, _loader_home(), visited, facts)
+        return (frozenset({datum}) | inner) if credited else frozenset()
     if name in _loader_aliases(home.module_ast):
         raise _UnresolvableError(
             f"`{name}` is a loader imported under an alias — the scan matches literal `load_*` names only"
@@ -154,55 +232,60 @@ def _resolve_name_call(name: str, home: _Home, visited: set[tuple[str, str]], fa
     function = _find_function(home.module_ast, name)
     if function is None:
         return frozenset()  # an ordinary call this module doesn't define — cannot reach a loader from here
-    key = (home.module_name, name)
-    if key in visited:
-        return frozenset()
-    visited.add(key)
-    return _resolve_loads(function, _Home(home.module_name, home.module_ast, None), visited, facts)
+    inner_home = _Home(home.module_name, home.module_ast, None)
+    inner = _memoized_expand((home.module_name, name), function, inner_home, visited, facts)
+    return inner if credited else frozenset()
 
 
-def _resolve_self_call(method_name: str, home: _Home, visited: set[tuple[str, str]], facts: _Facts) -> frozenset[str]:
+def _resolve_self_call(
+    method_name: str, home: _Home, visited: dict[tuple[str, str], frozenset[str]], facts: _Facts, credited: bool
+) -> frozenset[str]:
     if home.owner_class is None:
         raise _UnresolvableError(f"self.{method_name} used with no enclosing class in scope")
     method = _find_function(home.owner_class, method_name)
     if method is None:
         raise _UnresolvableError(f"`{home.owner_class.name}.{method_name}` is not defined on that class")
     key = (home.module_name, f"{home.owner_class.name}.{method_name}")
-    if key in visited:
-        return frozenset()
-    visited.add(key)
-    return _resolve_loads(method, home, visited, facts)
+    inner = _memoized_expand(key, method, home, visited, facts)
+    return inner if credited else frozenset()
 
 
-def _resolve_call(call: ast.Call, home: _Home, visited: set[tuple[str, str]], facts: _Facts) -> frozenset[str]:
+def _resolve_call(
+    call: ast.Call, home: _Home, visited: dict[tuple[str, str], frozenset[str]], facts: _Facts, credited: bool
+) -> frozenset[str]:
     func = call.func
     if isinstance(func, ast.Name):
-        return _resolve_name_call(func.id, home, visited, facts)
+        return _resolve_name_call(func.id, home, visited, facts, credited)
     if isinstance(func, ast.Attribute):
         if isinstance(func.value, ast.Name) and func.value.id == "self":
-            return _resolve_self_call(func.attr, home, visited, facts)
+            return _resolve_self_call(func.attr, home, visited, facts, credited)
         # A call on some other receiver (`subject.mounts_caller(ctx)`, `TenantService.get_x(...)`)
         # cannot reach `loaders.py`'s private surface from outside it — see module docstring.
         return frozenset()
     raise _UnresolvableError(f"`{ast.unparse(call)}` dispatches dynamically — the scan cannot name the callee")
 
 
-def _resolve_calls_in(node: ast.AST, home: _Home, visited: set[tuple[str, str]], facts: _Facts) -> frozenset[str]:
+def _resolve_calls_in(
+    node: ast.AST, home: _Home, visited: dict[tuple[str, str], frozenset[str]], facts: _Facts, credited: bool
+) -> frozenset[str]:
     """Every call reachable from `node` (a statement or an expression) — an `if` test is
     evaluated unconditionally on every pass through it, whichever branch is or isn't taken,
     and a non-`if` statement (`Assign`, bare `Expr`, `Return`, ...) has no branch to decide."""
     loaded: set[str] = set()
     for descendant in ast.walk(node):
         if isinstance(descendant, ast.Call):
-            loaded |= _resolve_call(descendant, home, visited, facts)
+            loaded |= _resolve_call(descendant, home, visited, facts, credited)
     return frozenset(loaded)
 
 
 def _evaluate_condition(test: ast.expr, facts: _Facts) -> bool | None:
     """Whether `test` is statically decidable from `facts` — `ctx.has_app` (route-derived)
     or `subject.caller_kind` (pipeline-derived) — or `None` when it turns on something this
-    scan cannot pin (a config flag, an opaque method call), in which case both branches of
-    the `if` it guards are walked rather than one being guessed at.
+    scan cannot pin (a config flag, an opaque method call, an instance attribute like
+    `self.roles`), in which case the condition is undecidable: both branches are walked for
+    unresolvable-call detection, but nothing under either is credited as a load (see
+    `_resolve_body`) — a load only counts when it is unconditional or sits under a decided
+    branch here.
     """
     if isinstance(test, ast.UnaryOp) and isinstance(test.op, ast.Not):
         inner = _evaluate_condition(test.operand, facts)
@@ -234,43 +317,73 @@ def _ends_with_stop(statements: list[ast.stmt]) -> bool:
 
 
 def _resolve_body(
-    statements: list[ast.stmt], home: _Home, visited: set[tuple[str, str]], facts: _Facts
+    statements: list[ast.stmt],
+    home: _Home,
+    visited: dict[tuple[str, str], frozenset[str]],
+    facts: _Facts,
+    credited: bool,
 ) -> frozenset[str]:
-    """Walks a straight-line function body, honouring the one control-flow shape this
-    surface actually uses: an `if <decidable>: return`/`raise` guard clause. A branch this
-    scan cannot decide is walked on both sides without truncating what follows — the
-    coarseness `RBACCheck`'s `dify_config.RBAC_ENABLED` gate relies on — but a decided guard
-    clause that stops must actually stop, or a fixed requirement guarding on `ctx.has_app`
-    would look like it loads its data on every route, whether or not that guard would have
-    returned first.
+    """Walks a straight-line function body, crediting a load only when it is unconditional or
+    sits under a condition decided precisely here (`ctx.has_app`, `subject.caller_kind`) —
+    never under one this scan cannot pin. Reads stay pessimistic elsewhere (`_CtxUsage`
+    collects every `ctx.<name>` access regardless of branch); this is the loads side only,
+    and it fails safe in the opposite direction: under-crediting produces a reported gap
+    (the fix is an explicit requirement on that route), over-crediting produces a guard that
+    passes when it shouldn't.
+
+    Three shapes, not two:
+    - `if not ctx.<name>_loaded:` (a loader's own check-then-fetch) is not a business
+      condition — its postcondition holds on either branch — so it is walked with `credited`
+      unchanged, not degraded.
+    - A condition decided precisely (`ctx.has_app`, `subject.caller_kind`) walks only the
+      branch actually taken, `credited` unchanged; a decided branch that stops truncates what
+      follows, or a fixed requirement guarding on `ctx.has_app` would look like it loads its
+      data on every route regardless of whether that guard would have returned first.
+    - Anything else is undecidable: both branches are walked (for unresolvable-call
+      detection) with `credited=False`, so nothing inside is credited; and, when
+      `facts.strict` (the default), if either branch could stop, `credited` degrades to
+      `False` for every statement that follows too, since whether execution even reaches
+      them is no longer certain either. `facts.strict=False` skips only that last part — see
+      `_Facts` for why the second-coupling check needs it.
     """
     loaded: set[str] = set()
     for statement in statements:
         if isinstance(statement, ast.If):
-            loaded |= _resolve_calls_in(statement.test, home, visited, facts)
+            loaded |= _resolve_calls_in(statement.test, home, visited, facts, credited)
+            if _is_cache_check(statement.test):
+                loaded |= _resolve_body(statement.body, home, visited, facts, credited)
+                loaded |= _resolve_body(statement.orelse, home, visited, facts, credited)
+                continue
             decision = _evaluate_condition(statement.test, facts)
             if decision is None:
-                loaded |= _resolve_body(statement.body, home, visited, facts)
-                loaded |= _resolve_body(statement.orelse, home, visited, facts)
+                loaded |= _resolve_body(statement.body, home, visited, facts, False)
+                loaded |= _resolve_body(statement.orelse, home, visited, facts, False)
+                if facts.strict and (_ends_with_stop(statement.body) or _ends_with_stop(statement.orelse)):
+                    credited = False
                 continue
             branch = statement.body if decision else statement.orelse
-            loaded |= _resolve_body(branch, home, visited, facts)
+            loaded |= _resolve_body(branch, home, visited, facts, credited)
             if _ends_with_stop(branch):
                 return frozenset(loaded)
             continue
-        loaded |= _resolve_calls_in(statement, home, visited, facts)  # covers Assign/Expr/Return/Raise alike
+        loaded |= _resolve_calls_in(statement, home, visited, facts, credited)  # Assign/Expr/Return/Raise alike
     return frozenset(loaded)
 
 
 def _resolve_loads(
-    function: ast.FunctionDef | ast.AsyncFunctionDef, home: _Home, visited: set[tuple[str, str]], facts: _Facts
+    function: ast.FunctionDef | ast.AsyncFunctionDef,
+    home: _Home,
+    visited: dict[tuple[str, str], frozenset[str]],
+    facts: _Facts,
+    credited: bool,
 ) -> frozenset[str]:
-    return _resolve_body(function.body, home, visited, facts)
+    return _resolve_body(function.body, home, visited, facts, credited)
 
 
 def requirement_loads(requirement: Requirement, facts: _Facts) -> frozenset[str]:
     """What `requirement` loads under `facts`, derived from its own `run` — never a
-    declared table."""
+    declared table. `run` itself is always reached once its `Requirement` is in a route's
+    merged list, so resolution starts `credited=True`."""
     cls = type(requirement)
     module = inspect.getmodule(cls)
     if module is None:
@@ -283,7 +396,7 @@ def requirement_loads(requirement: Requirement, facts: _Facts) -> frozenset[str]
     if run is None:
         raise _UnresolvableError(f"{cls.__qualname__} defines no run")
     home = _Home(module_name=module.__name__, module_ast=module_ast, owner_class=class_ast)
-    return _resolve_loads(run, home, set(), facts)
+    return _resolve_loads(run, home, {}, facts, True)
 
 
 def _combined_loads(requirements: tuple[Requirement, ...], facts: _Facts) -> frozenset[str]:
@@ -444,8 +557,47 @@ def test_no_unresolvable_ctx_or_load_sites(load_coverage: LoadCoverageReport) ->
     assert not load_coverage.unresolvable, "\n".join(["sites the scan could not resolve:", *load_coverage.unresolvable])
 
 
+# Conservative crediting (a load counts only when unconditional or under a precisely decided
+# `ctx.has_app`/`subject.caller_kind`) has one accepted, pinned cost: `ResolveCaller` gates its
+# `load_caller(ctx)` on `subject.mounts_caller(ctx)`, a call this scan does not resolve (the brief's
+# closed fact set stops at `has_app`/`caller_kind` — see the module docstring). In every real
+# execution the gate is `True` here — `AccountSubject.mounts_caller` is a hardcoded constant, and
+# the four ExternalSso routes below all carry `app_id`, so `ExternalSsoSubject.mounts_caller`
+# (which reads `ctx.has_app`) is `True` for every request they serve — but the scanner cannot see
+# that without resolving the call, which the closed fact set forbids. Pinned exactly, the same way
+# `test_handler_seam_bind.py` pins its own exemptions: a sixth route landing here unpinned is a
+# signal to look again, not to widen this constant.
+_ACCEPTED_MOUNTS_CALLER_GAPS = frozenset(
+    {
+        "GET /openapi/v1/account (AccountApi.get) reads ['caller'] under AccountPipeline, but nothing "
+        "in its requirements or fixed loads ['caller'] — declare a requirement that loads it",
+        "POST /openapi/v1/apps/<string:app_id>:run (AppRunApi.post) reads ['caller'] under "
+        "ExternalSsoPipeline, but nothing in its requirements or fixed loads ['caller'] — declare a "
+        "requirement that loads it",
+        "POST /openapi/v1/apps/<string:app_id>/files (AppFileUploadApi.post) reads ['caller'] under "
+        "ExternalSsoPipeline, but nothing in its requirements or fixed loads ['caller'] — declare a "
+        "requirement that loads it",
+        "POST /openapi/v1/apps/<string:app_id>/human-input-forms/<string:form_token>:submit "
+        "(OpenApiWorkflowHumanInputFormSubmitApi.post) reads ['caller'] under ExternalSsoPipeline, but "
+        "nothing in its requirements or fixed loads ['caller'] — declare a requirement that loads it",
+        "GET /openapi/v1/apps/<string:app_id>/tasks/<string:task_id>/events "
+        "(OpenApiWorkflowEventsApi.get) reads ['caller'] under ExternalSsoPipeline, but nothing in its "
+        "requirements or fixed loads ['caller'] — declare a requirement that loads it",
+    }
+)
+
+
 def test_every_handler_read_is_backed_by_a_load(load_coverage: LoadCoverageReport) -> None:
-    assert not load_coverage.missing, "\n".join(["handler reads with no backing load:", *load_coverage.missing])
+    unaccepted = [message for message in load_coverage.missing if message not in _ACCEPTED_MOUNTS_CALLER_GAPS]
+    assert not unaccepted, "\n".join(["handler reads with no backing load:", *unaccepted])
+
+
+def test_accepted_mounts_caller_gaps_are_exactly_pinned(load_coverage: LoadCoverageReport) -> None:
+    """The pinned set above must match what the scan actually finds today, in both
+    directions: a new one appearing unpinned is a genuine finding (see the pinned constant's
+    comment), and a pinned one disappearing means the scan got more precise and this
+    constant is stale — either way, silence is the wrong outcome."""
+    assert frozenset(load_coverage.missing) == _ACCEPTED_MOUNTS_CALLER_GAPS
 
 
 class _ProbeCallerContext:
@@ -498,6 +650,12 @@ def test_every_mounting_pipeline_loads_a_caller() -> None:
     `load_workspace_role` (which loads a caller too, transitively) stand in for a caller load
     that is only ever guaranteed on the has_app branch that gate actually takes — exactly
     coincidental coverage, the thing this whole module exists to refuse.
+
+    `strict=False`: `pipeline.fixed` never contains an `RBACCheck` (only endpoints declare
+    one), so the route-level check's reason for `strict=True` doesn't apply here, and without
+    `strict=False` this check couldn't tell `ResolveCaller` being present-but-gated-by-the-
+    unmodelled `mounts_caller` call apart from `ResolveCaller` being absent outright — both
+    would report the identical failure. See `_Facts` for the full reasoning.
     """
     failures: list[str] = []
     for subject_type, pipeline in subject_router._pipelines.items():
@@ -505,7 +663,7 @@ def test_every_mounting_pipeline_loads_a_caller() -> None:
         for has_app in (True, False):
             if not _mounts_caller(subject_cls, has_app=has_app):
                 continue
-            facts = _Facts(has_app=has_app, caller_kind=subject_cls.caller_kind)
+            facts = _Facts(has_app=has_app, caller_kind=subject_cls.caller_kind, strict=False)
             try:
                 loaded = _combined_loads(pipeline.fixed, facts)
             except _UnresolvableError as exc:
@@ -542,7 +700,7 @@ def test_resolver_follows_a_same_module_helper() -> None:
     home, run = _home_from_source(
         "def _helper(ctx):\n    load_workspace_role(ctx)\n\ndef run(subject, ctx, session):\n    _helper(ctx)\n"
     )
-    assert "workspace_role" in _resolve_loads(run, home, set(), _BLANKET)
+    assert "workspace_role" in _resolve_loads(run, home, {}, _BLANKET, True)
 
 
 def test_resolver_follows_a_self_method() -> None:
@@ -553,7 +711,7 @@ def test_resolver_follows_a_self_method() -> None:
         "    def _helper(self, ctx):\n"
         "        load_app(ctx)\n"
     )
-    assert _resolve_loads(run, home, set(), _BLANKET) == frozenset({"app"})
+    assert _resolve_loads(run, home, {}, _BLANKET, True) == frozenset({"app"})
 
 
 def test_resolver_reports_an_aliased_loader_as_unresolvable() -> None:
@@ -562,13 +720,13 @@ def test_resolver_reports_an_aliased_loader_as_unresolvable() -> None:
         "def run(subject, ctx, session):\n    _hidden(ctx)\n"
     )
     with pytest.raises(_UnresolvableError, match="alias"):
-        _resolve_loads(run, home, set(), _BLANKET)
+        _resolve_loads(run, home, {}, _BLANKET, True)
 
 
 def test_resolver_reports_dynamic_dispatch_as_unresolvable() -> None:
     home, run = _home_from_source("def run(subject, ctx, session):\n    getattr(self, 'x')(ctx)\n")
     with pytest.raises(_UnresolvableError, match="dynamically"):
-        _resolve_loads(run, home, set(), _BLANKET)
+        _resolve_loads(run, home, {}, _BLANKET, True)
 
 
 def test_resolver_ignores_a_call_on_a_foreign_receiver() -> None:
@@ -577,7 +735,7 @@ def test_resolver_ignores_a_call_on_a_foreign_receiver() -> None:
     home, run = _home_from_source(
         "def run(subject, ctx, session):\n    subject.mounts_caller(ctx)\n    load_caller(ctx)\n"
     )
-    assert _resolve_loads(run, home, set(), _BLANKET) == frozenset({"caller"})
+    assert _resolve_loads(run, home, {}, _BLANKET, True) == frozenset({"caller"})
 
 
 def test_resolver_respects_a_decided_has_app_guard_clause() -> None:
@@ -587,8 +745,8 @@ def test_resolver_respects_a_decided_has_app_guard_clause() -> None:
     home, run = _home_from_source(
         "def run(subject, ctx, session):\n    if not ctx.has_app:\n        return\n    load_app(ctx)\n"
     )
-    assert _resolve_loads(run, home, set(), _Facts(has_app=False, caller_kind=None)) == frozenset()
-    assert _resolve_loads(run, home, set(), _Facts(has_app=True, caller_kind=None)) == frozenset({"app"})
+    assert _resolve_loads(run, home, {}, _Facts(has_app=False, caller_kind=None), True) == frozenset()
+    assert _resolve_loads(run, home, {}, _Facts(has_app=True, caller_kind=None), True) == frozenset({"app"})
 
 
 def test_resolver_respects_a_decided_caller_kind_guard_clause() -> None:
@@ -599,24 +757,58 @@ def test_resolver_respects_a_decided_caller_kind_guard_clause() -> None:
         "        return\n"
         "    load_workspace_role(ctx)\n"
     )
-    assert _resolve_loads(run, home, set(), _Facts(has_app=None, caller_kind=CallerKind.END_USER)) == frozenset()
-    loaded = _resolve_loads(run, home, set(), _Facts(has_app=None, caller_kind=CallerKind.ACCOUNT))
+    assert _resolve_loads(run, home, {}, _Facts(has_app=None, caller_kind=CallerKind.END_USER), True) == frozenset()
+    loaded = _resolve_loads(run, home, {}, _Facts(has_app=None, caller_kind=CallerKind.ACCOUNT), True)
     assert "workspace_role" in loaded
 
 
-def test_resolver_walks_both_branches_of_an_undecidable_guard_without_truncating() -> None:
+def test_resolver_does_not_credit_a_load_under_an_undecidable_condition() -> None:
     """`RBACCheck`'s `dify_config.RBAC_ENABLED` gate is exactly this shape: undecidable, so
-    both arms count, and — unlike a decided guard clause — nothing after the `if` is
-    dropped just because one arm happens to return."""
+    a load under it is not credited — even though it really runs under some deployment
+    configs. Crediting it anyway is the bug this rule closes: `RBACCheck(scene=X,
+    roles=None)` would otherwise look like it loads `workspace` in every config, though at
+    runtime it loads it in none (see `test_resolver_does_not_credit_a_load_gated_by_an_
+    untracked_instance_attribute` for the real shape that bit us)."""
+    home, run = _home_from_source(
+        "def run(subject, ctx, session):\n    if some_flag:\n        load_app(ctx)\n    load_caller(ctx)\n"
+    )
+    assert _resolve_loads(run, home, {}, _BLANKET, True) == frozenset({"caller"})
+
+
+def test_resolver_stops_crediting_after_an_undecidable_branch_that_could_stop() -> None:
+    """Not just the branch itself: if either arm of an undecidable `if` could return,
+    whether execution even reaches what follows is uncertain too, so nothing after it is
+    credited either."""
+    home, run = _home_from_source(
+        "def run(subject, ctx, session):\n    if some_flag:\n        return\n    load_caller(ctx)\n"
+    )
+    assert _resolve_loads(run, home, {}, _BLANKET, True) == frozenset()
+
+
+def test_resolver_preserves_credited_through_a_loaders_own_cache_check() -> None:
+    """`if not ctx.<name>_loaded:` is a loader's own idempotent check-then-fetch guard, not
+    a business condition — its postcondition holds on either branch, so a load reached only
+    through it must still be credited, or the brief's own worked example (`load_workspace_
+    role` transitively loading `workspace`/`caller` via `loaders.py`'s internals) would stop
+    working."""
+    home, run = _home_from_source("def run(subject, ctx, session):\n    load_workspace_role(ctx)\n")
+    loaded = _resolve_loads(run, home, {}, _Facts(has_app=True, caller_kind=None), True)
+    assert {"workspace_role", "workspace", "caller", "app"} <= loaded
+
+
+def test_resolver_does_not_credit_a_load_gated_by_an_untracked_instance_attribute() -> None:
+    """The exact shape the reviewer found live in `RBACCheck._enforce_role_floor`:
+    `if self.roles is None: return` is undecidable (the scanner does not track per-instance
+    attribute values), so the `load_workspace_role` in the following `if`'s own test must
+    not be credited — even read in isolation it looks unconditional."""
     home, run = _home_from_source(
         "def run(subject, ctx, session):\n"
-        "    if some_flag:\n"
-        "        load_app(ctx)\n"
-        "    else:\n"
+        "    if self.roles is None:\n"
         "        return\n"
-        "    load_caller(ctx)\n"
+        "    if load_workspace_role(ctx) not in self.roles:\n"
+        "        raise ValueError\n"
     )
-    assert _resolve_loads(run, home, set(), _BLANKET) == frozenset({"app", "caller"})
+    assert _resolve_loads(run, home, {}, _BLANKET, True) == frozenset()
 
 
 def test_handler_scan_flags_ctx_handed_to_a_helper() -> None:
