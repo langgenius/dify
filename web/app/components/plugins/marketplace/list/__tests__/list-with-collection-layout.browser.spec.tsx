@@ -4,17 +4,24 @@ import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import ListWithCollection from '../list-with-collection'
 
+const mockState = vi.hoisted(() => ({
+  becomePartnerText: 'Become a Partner',
+}))
+
 vi.mock('#i18n', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
   const translations: Record<string, string> = {
-    'marketplace.becomePartner': 'Become a Partner',
     'marketplace.carousel.scrollPrevious': 'Previous',
   }
 
   return {
     useLocale: () => 'en-US',
     useTranslation: () => ({
-      t: withSelectorKey((key: string) => translations[key] ?? key),
+      t: withSelectorKey((key: string) =>
+        key === 'marketplace.becomePartner'
+          ? mockState.becomePartnerText
+          : (translations[key] ?? key),
+      ),
     }),
   }
 })
@@ -54,15 +61,17 @@ const partnerPlugins = Array.from({ length: 9 }, (_, index) => ({
 const renderPartnerCollection = ({
   pluginCount = 9,
   standalone = true,
+  width = 350,
 }: {
   pluginCount?: number
   standalone?: boolean
+  width?: number
 } = {}) =>
   render(
     <div
       data-testid="collection-shell"
       data-marketplace-standalone={standalone || undefined}
-      style={{ width: 350 }}
+      style={{ width }}
     >
       <ListWithCollection
         marketplaceCollections={[partnerCollection]}
@@ -71,7 +80,17 @@ const renderPartnerCollection = ({
     </div>,
   )
 
+const getTextRect = (element: Element) => {
+  const range = document.createRange()
+  range.selectNodeContents(element)
+  return range.getBoundingClientRect()
+}
+
 describe('Partner collection header layout', () => {
+  beforeEach(() => {
+    mockState.becomePartnerText = 'Become a Partner'
+  })
+
   it('keeps the mobile call to action beside the title and clear of carousel controls', async () => {
     await page.viewport(390, 844)
     const screen = await renderPartnerCollection()
@@ -82,7 +101,7 @@ describe('Partner collection header layout', () => {
     const partnerLink = screen.getByRole('link', { name: 'Become a Partner' }).element()
     const previousButton = screen.getByRole('button', { name: 'Previous' }).element()
 
-    const titleRect = title.getBoundingClientRect()
+    const titleRect = getTextRect(title)
     const descriptionRect = description.getBoundingClientRect()
     const partnerLinkRect = partnerLink.getBoundingClientRect()
     const previousButtonRect = previousButton.getBoundingClientRect()
@@ -91,27 +110,47 @@ describe('Partner collection header layout', () => {
     const partnerLinkCenter = partnerLinkRect.top + partnerLinkRect.height / 2
 
     expect(Math.abs(titleCenter - partnerLinkCenter)).toBeLessThanOrEqual(2)
-    expect(partnerLinkRect.left).toBeGreaterThan(titleRect.right)
+    expect(partnerLinkRect.left - titleRect.right).toBeCloseTo(12, 0)
     expect(previousButtonRect.left - partnerLinkRect.right).toBeGreaterThanOrEqual(8)
-    expect(previousButtonRect.left - partnerLinkRect.right).toBeLessThanOrEqual(16)
     expect(descriptionRect.top).toBeGreaterThanOrEqual(
       Math.max(titleRect.bottom, partnerLinkRect.bottom),
     )
     expect(getComputedStyle(separator).display).toBe('none')
   })
 
-  it('right-aligns the mobile action without reserving space when navigation is absent', async () => {
+  it('keeps the mobile action 12px from the title when navigation is absent', async () => {
     await page.viewport(390, 844)
     const screen = await renderPartnerCollection({ pluginCount: 2 })
 
     const shellRect = screen.getByTestId('collection-shell').element().getBoundingClientRect()
+    const titleRect = getTextRect(screen.getByText('Partners', { exact: true }).element())
     const partnerLinkRect = screen
       .getByRole('link', { name: 'Become a Partner' })
       .element()
       .getBoundingClientRect()
 
-    expect(shellRect.right - partnerLinkRect.right).toBeCloseTo(0)
+    expect(partnerLinkRect.left - titleRect.right).toBeCloseTo(12, 0)
+    expect(partnerLinkRect.right).toBeLessThanOrEqual(shellRect.right)
     expect(screen.getByRole('button', { name: 'Previous' }).query()).toBeNull()
+  })
+
+  it('keeps the mobile action clear of navigation at a 320px viewport', async () => {
+    await page.viewport(320, 844)
+    mockState.becomePartnerText = 'Torne-se um parceiro'
+    const screen = await renderPartnerCollection({ width: 280 })
+
+    const titleRect = getTextRect(screen.getByText('Partners', { exact: true }).element())
+    const partnerLinkRect = screen
+      .getByRole('link', { name: 'Torne-se um parceiro' })
+      .element()
+      .getBoundingClientRect()
+    const previousButtonRect = screen
+      .getByRole('button', { name: 'Previous' })
+      .element()
+      .getBoundingClientRect()
+
+    expect(partnerLinkRect.left - titleRect.right).toBeCloseTo(12, 0)
+    expect(previousButtonRect.left - partnerLinkRect.right).toBeGreaterThanOrEqual(8)
   })
 
   it('preserves the narrow embedded metadata row', async () => {

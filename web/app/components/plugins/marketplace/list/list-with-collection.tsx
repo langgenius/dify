@@ -227,8 +227,13 @@ const CollectionSection = ({
                     })
                   }}
                 >
-                  <span>{t(($) => $['marketplace.becomePartner'], { ns: 'plugin' })}</span>
-                  <span aria-hidden className="i-ri-external-link-line size-3" />
+                  <span className={styles.partnerActionLabel}>
+                    {t(($) => $['marketplace.becomePartner'], { ns: 'plugin' })}
+                  </span>
+                  <span
+                    aria-hidden
+                    className={cn(styles.partnerActionIcon, 'i-ri-external-link-line size-3')}
+                  />
                 </a>
               </>
             )}

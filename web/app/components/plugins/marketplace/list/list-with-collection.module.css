@@ -6,7 +6,7 @@
     grid-template-areas:
       'title action'
       'description description';
-    grid-template-columns: minmax(0, 1fr) max-content;
+    grid-template-columns: max-content minmax(0, 1fr);
     align-items: center;
     column-gap: 12px;
   }
@@ -34,7 +34,19 @@
 
   :global([data-marketplace-standalone]) .partnerAction {
     grid-area: action;
-    justify-self: end;
+    justify-self: start;
+    min-width: 0;
+    max-width: 100%;
     white-space: nowrap;
+  }
+
+  :global([data-marketplace-standalone]) .partnerActionLabel {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  :global([data-marketplace-standalone]) .partnerActionIcon {
+    flex-shrink: 0;
   }
 }
