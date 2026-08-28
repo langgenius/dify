@@ -42,6 +42,7 @@
   "accessRule.summary_one": "{{count}} nabor dovoljenj",
   "accessRule.summary_other": "{{count}} naborov dovoljenj",
   "accessRule.updated": "Pravilo za dostop uspešno posodobljeno",
+  "accessRule.workspaceOwner": "Lastnik delovnega prostora",
   "common.duplicateAction": "Podvoji",
   "group.app": "Aplikacije",
   "group.app_acl": "Dovoljenja za dostop do aplikacije",

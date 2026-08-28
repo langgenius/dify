@@ -42,6 +42,7 @@
   "accessRule.summary_one": "{{count}} مجموعة أذونات",
   "accessRule.summary_other": "{{count}} مجموعات أذونات",
   "accessRule.updated": "تم تحديث قاعدة الوصول بنجاح",
+  "accessRule.workspaceOwner": "مالك مساحة العمل",
   "common.duplicateAction": "تكرار",
   "group.app": "التطبيقات",
   "group.app_acl": "أذونات الوصول إلى التطبيق",

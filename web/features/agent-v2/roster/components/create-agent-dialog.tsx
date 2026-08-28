@@ -17,6 +17,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
+import { AgentScope } from '@/features/agent-v2/analytics'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { trackCreateApp } from '@/utils/create-app-tracking'
@@ -80,6 +81,7 @@ export function CreateAgentDialog({ open, onOpenChange }: CreateAgentDialogProps
           trackCreateApp({
             source: 'studio_blank',
             appMode: 'agent-v2',
+            agentScope: AgentScope.Global,
           })
           toast.success(t(($) => $['roster.createSuccess']))
           handleOpenChange(false)

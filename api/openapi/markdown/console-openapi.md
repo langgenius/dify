@@ -3359,32 +3359,6 @@ Get workflow application execution logs
 | ---- | ----------- | ------ |
 | 200 | Workflow app logs retrieved successfully | **application/json**: [WorkflowAppLogPaginationResponse](#workflowapplogpaginationresponse)<br> |
 
-### [GET] /apps/{app_id}/workflow-archived-logs
-**Get workflow archived logs**
-
-Get workflow archived execution logs
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| created_at__after | query | Filter logs created after this timestamp | No | dateTime |
-| created_at__before | query | Filter logs created before this timestamp | No | dateTime |
-| created_by_account | query | Filter by account | No | string |
-| created_by_end_user_session_id | query | Filter by end user session ID | No | string |
-| detail | query | Whether to return detailed logs | No | boolean |
-| keyword | query | Search keyword for filtering logs | No | string |
-| limit | query | Number of items per page (1-100) | No | integer, <br>**Default:** 20 |
-| page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
-| status | query | Execution status filter (succeeded, failed, stopped, partial-succeeded) | No | string, <br>**Available values:** "failed", "partial-succeeded", "paused", "running", "scheduled", "stopped", "succeeded" |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Workflow archived logs retrieved successfully | **application/json**: [WorkflowArchivedLogPaginationResponse](#workflowarchivedlogpaginationresponse)<br> |
-
 ### [GET] /apps/{app_id}/workflow-runs
 **Get workflow run list**
 
@@ -3458,22 +3432,6 @@ Stop running workflow task
 | ---- | ----------- | ------ |
 | 200 | Workflow run detail retrieved successfully | **application/json**: [WorkflowRunDetailResponse](#workflowrundetailresponse)<br> |
 | 404 | Workflow run not found |  |
-
-### [GET] /apps/{app_id}/workflow-runs/{run_id}/export
-Generate a download URL for an archived workflow run.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| run_id | path | Workflow run ID | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Export URL generated | **application/json**: [WorkflowRunExportResponse](#workflowrunexportresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow-runs/{run_id}/node-executions
 **Get workflow run node execution list**
@@ -28444,27 +28402,6 @@ How a workflow node is bound to an Agent.
 | page | integer, <br>**Default:** 1 | Page number (1-99999) | No |
 | status | [WorkflowExecutionStatus](#workflowexecutionstatus) | Execution status filter (succeeded, failed, stopped, partial-succeeded) | No |
 
-#### WorkflowArchivedLogPaginationResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [WorkflowArchivedLogPartialResponse](#workflowarchivedlogpartialresponse) ] |  | Yes |
-| has_more | boolean |  | Yes |
-| limit | integer |  | Yes |
-| page | integer |  | Yes |
-| total | integer |  | Yes |
-
-#### WorkflowArchivedLogPartialResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | integer |  | No |
-| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
-| created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
-| id | string |  | Yes |
-| trigger_metadata |  |  | No |
-| workflow_run | [WorkflowRunForArchivedLogResponse](#workflowrunforarchivedlogresponse) |  | No |
-
 #### WorkflowAverageAppInteractionStatisticItem
 
 | Name | Type | Description | Required |
@@ -29241,24 +29178,6 @@ Lifecycle state for an asynchronous archive download request.
 | total_steps | integer |  | No |
 | total_tokens | integer |  | No |
 | version | string |  | No |
-
-#### WorkflowRunExportResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| presigned_url | string | Pre-signed URL for download | No |
-| presigned_url_expires_at | string | Pre-signed URL expiration time | No |
-| status | string | Export status: success/failed | Yes |
-
-#### WorkflowRunForArchivedLogResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| elapsed_time | number |  | No |
-| id | string |  | Yes |
-| status | string |  | No |
-| total_tokens | integer |  | No |
-| triggered_from | string |  | No |
 
 #### WorkflowRunForListResponse
 

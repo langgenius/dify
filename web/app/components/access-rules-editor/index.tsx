@@ -82,12 +82,28 @@ function AccessRulesEditor({
       name: rule.policy.name,
     }))
   }, [rules])
+  const protectedAccountIds = useMemo(() => {
+    const accountIds = new Set<string>()
+
+    for (const setting of userAccessSettings) {
+      const accountId = setting.account.account_id
+      const isWorkspaceOwner = setting.roles.some((role) => role.role_tag === 'owner')
+      if (accountId === maintainerId || isWorkspaceOwner) accountIds.add(accountId)
+    }
+
+    return accountIds
+  }, [maintainerId, userAccessSettings])
+  const existingOrProtectedAccountIds = useMemo(() => {
+    if (existingAccountIds === undefined) return undefined
+
+    return Array.from(new Set([...existingAccountIds, ...protectedAccountIds]))
+  }, [existingAccountIds, protectedAccountIds])
   const selectableAccountIds = useMemo(
     () =>
       userAccessSettings
         .map((setting) => setting.account.account_id)
-        .filter((accountId) => accountId !== maintainerId),
-    [maintainerId, userAccessSettings],
+        .filter((accountId) => !protectedAccountIds.has(accountId)),
+    [protectedAccountIds, userAccessSettings],
   )
   const selectedAccountCount = selectableAccountIds.filter((accountId) =>
     selectedAccountIds.has(accountId),
@@ -101,7 +117,7 @@ function AccessRulesEditor({
 
     for (const setting of userAccessSettings) {
       const accountId = setting.account.account_id
-      if (!selectedAccountIds.has(accountId) || accountId === maintainerId) continue
+      if (!selectedAccountIds.has(accountId) || protectedAccountIds.has(accountId)) continue
 
       const accessPolicyId = setting.access_policies[0]?.id ?? DEFAULT_ACCESS_POLICY_ID
       const accountIds = accountIdsByAccessPolicyId.get(accessPolicyId)
@@ -113,7 +129,7 @@ function AccessRulesEditor({
       accessPolicyId,
       accountIds,
     }))
-  }, [maintainerId, selectedAccountIds, userAccessSettings])
+  }, [protectedAccountIds, selectedAccountIds, userAccessSettings])
 
   const handleSelectAllAccounts = useCallback(
     (selected: boolean) => {
@@ -205,7 +221,7 @@ function AccessRulesEditor({
         {onAddAccessSubject ? (
           <AddAccessSubjectPopover
             disabled={areMembershipChangesDisabled}
-            existingAccountIds={existingAccountIds}
+            existingAccountIds={existingOrProtectedAccountIds}
             updatingAccountId={updatingAccountId}
             onAddAccessSubject={onAddAccessSubject}
           />
@@ -299,8 +315,12 @@ function AccessRulesEditor({
                     disabled={isChangingPage || updatingAccountId === setting.account.account_id}
                     membershipChangesDisabled={areMembershipChangesDisabled}
                     selectionDisabled={!onBatchRemoveAccessPolicyMemberBindings}
+                    isProtected={protectedAccountIds.has(setting.account.account_id)}
                     isMaintainer={maintainerId === setting.account.account_id}
-                    selected={selectedAccountIds.has(setting.account.account_id)}
+                    selected={
+                      !protectedAccountIds.has(setting.account.account_id) &&
+                      selectedAccountIds.has(setting.account.account_id)
+                    }
                     className={cn(index > 0 && 'border-t border-divider-subtle')}
                     onSelectedChange={handleAccountSelectedChange}
                     onChange={onUserAccessPoliciesChange}

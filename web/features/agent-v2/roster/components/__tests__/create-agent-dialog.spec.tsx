@@ -1,5 +1,6 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { AgentScope } from '@/features/agent-v2/analytics'
 import { CreateAgentDialog } from '../create-agent-dialog'
 
 const mutationMock = vi.hoisted(() => ({
@@ -115,6 +116,7 @@ describe('CreateAgentDialog', () => {
     expect(trackCreateAppMock).toHaveBeenCalledWith({
       source: 'studio_blank',
       appMode: 'agent-v2',
+      agentScope: AgentScope.Global,
     })
     expect(routerPushMock).toHaveBeenCalledWith('/agents/agent-1/configure')
   })

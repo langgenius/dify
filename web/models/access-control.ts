@@ -219,7 +219,7 @@ type Account = {
 
 export type ResourceUserAccessSetting = {
   account: Account
-  roles: Omit<Role, 'tenant_id' | 'description' | 'role_tag'>[]
+  roles: Omit<Role, 'tenant_id' | 'description'>[]
   access_policies: Omit<AccessPolicy, 'created_at' | 'updated_at'>[]
 }
 
