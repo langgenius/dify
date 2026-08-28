@@ -89,6 +89,7 @@ def _create(body, actor: Actor) -> tuple[dict, int]:
                 app_id=body.get("app_id", ""),
                 actor=actor,
                 goal_text=body.get("goal_text", ""),
+                model_config=body.get("model_config"),
             )
         )
     elif body.get("scenario") == "edit":
@@ -96,6 +97,7 @@ def _create(body, actor: Actor) -> tuple[dict, int]:
             lambda: build_service().create_edit_session(
                 app_id=body.get("app_id", ""),
                 actor=actor,
+                model_config=body.get("model_config"),
             )
         )
     else:
@@ -105,6 +107,7 @@ def _create(body, actor: Actor) -> tuple[dict, int]:
                 actor=actor,
                 failed_run_id=body.get("failed_run_id") or None,
                 checklist_errors=body.get("checklist_errors") or None,
+                model_config=body.get("model_config"),
             )
         )
     # create returns 201 on success; map-through keeps error statuses.
