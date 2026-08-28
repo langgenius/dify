@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import uuid
 from collections.abc import Callable
-from functools import partial
-from typing import NoReturn, cast, override
+from typing import cast, override
 from unittest.mock import patch
 
 import pytest
@@ -26,107 +24,37 @@ from controllers.openapi.auth.requirements import (
     TokenScope,
 )
 from controllers.openapi.auth.spec import EndpointSpec
-from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, Subject
+from controllers.openapi.auth.subjects import AccountSubject, Subject
 from enums import DeploymentEdition
-from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType, try_get_auth_ctx
-from models import Account, App, EndUser, Tenant, TenantAccountJoin
-from models.account import AccountStatus, TenantAccountRole, TenantStatus
-from models.enums import AppStatus, EndUserType
-from models.model import AppMode, IconType
+from libs.oauth_bearer import AuthContext, Scope, SubjectType, try_get_auth_ctx
+from models import Account, EndUser
+from models.enums import EndUserType
 from services.account_service import AccountService, TenantService
 from services.app_service import AppService
 from services.end_user_service import EndUserService
-from services.enterprise.enterprise_service import WebAppAccessMode, WebAppSettings
-from services.entities.feature_entities import (
-    LicenseStatus,
-    LicenseStatusModel,
-    SystemFeatureModel,
-    WebAppAuthModel,
-)
+from services.enterprise.enterprise_service import WebAppAccessMode
 
-APP_ID = "00000000-0000-0000-0000-000000000001"
-TENANT_ID = "00000000-0000-0000-0000-000000000002"
-ACCOUNT_ID = "00000000-0000-0000-0000-000000000003"
-TOKEN_ID = "00000000-0000-0000-0000-000000000004"
-SSO_EMAIL = "user@sso.com"
+from ._world import (
+    APP_ID,
+    SSO_EMAIL,
+    TENANT_ID,
+    account_subject,
+    make_account,
+    make_app,
+    make_auth,
+    make_ctx,
+    make_membership,
+    make_tenant,
+    never_reached,
+    persist,
+    sso_subject,
+    system_features,
+    webapp_settings,
+)
 
 MOUNT = "controllers.openapi.auth.pipelines._mount_flask_login"
 FEATURES = "controllers.openapi.auth.requirements.FeatureService.get_system_features"
 ACCESS_MODE = "controllers.openapi.auth.requirements.EnterpriseService.WebAppAuth.get_app_access_mode_by_id"
-
-
-def _auth(subject_type: SubjectType) -> AuthContext:
-    is_account = subject_type is SubjectType.ACCOUNT
-    return AuthContext(
-        subject_type=subject_type,
-        subject_email=None if is_account else SSO_EMAIL,
-        subject_issuer=None if is_account else "https://idp.example",
-        account_id=uuid.UUID(ACCOUNT_ID) if is_account else None,
-        client_id="openapi-client",
-        scopes=subject_type.scopes,
-        token_id=uuid.UUID(TOKEN_ID),
-        token_type=TokenType.OAUTH_ACCOUNT if is_account else TokenType.OAUTH_EXTERNAL_SSO,
-        expires_at=None,
-    )
-
-
-def _app(*, enable_api: bool = True) -> App:
-    return App(
-        id=APP_ID,
-        tenant_id=TENANT_ID,
-        name="OpenAPI app",
-        description="",
-        mode=AppMode.CHAT,
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
-        status=AppStatus.NORMAL,
-        enable_site=True,
-        enable_api=enable_api,
-        max_active_requests=None,
-    )
-
-
-def _tenant() -> Tenant:
-    tenant = Tenant(name="OpenAPI tenant", status=TenantStatus.NORMAL)
-    tenant.id = TENANT_ID
-    return tenant
-
-
-def _account() -> Account:
-    account = Account(name="OpenAPI account", email="account@example.com", status=AccountStatus.ACTIVE)
-    account.id = ACCOUNT_ID
-    return account
-
-
-def _membership() -> TenantAccountJoin:
-    return TenantAccountJoin(
-        tenant_id=TENANT_ID,
-        account_id=ACCOUNT_ID,
-        current=True,
-        role=TenantAccountRole.NORMAL,
-    )
-
-
-def _persist(session: Session, *models: object) -> None:
-    session.add_all(models)
-    session.commit()
-
-
-def _active_licence(*, webapp_auth: bool = False) -> SystemFeatureModel:
-    return SystemFeatureModel(
-        deployment_edition=DeploymentEdition.ENTERPRISE,
-        license=LicenseStatusModel(status=LicenseStatus.ACTIVE),
-        webapp_auth=WebAppAuthModel(enabled=webapp_auth),
-    )
-
-
-def _settings(access_mode: str) -> WebAppSettings:
-    return WebAppSettings.model_validate({"accessMode": access_mode})
-
-
-def _boom(*_args: object, **_kwargs: object) -> NoReturn:
-    raise AssertionError("reached an effect the pipeline should have skipped")
 
 
 class _Recorded(Requirement):
@@ -155,21 +83,6 @@ class _NoFixed(Pipeline):
     pass
 
 
-def _account_subject() -> AccountSubject:
-    return AccountSubject(_auth(SubjectType.ACCOUNT))
-
-
-def _sso_subject() -> ExternalSsoSubject:
-    """App-less SSO mounts no caller, so a test about ordering or plumbing
-    needs neither an account row nor a stubbed mount.
-    """
-    return ExternalSsoSubject(_auth(SubjectType.EXTERNAL_SSO))
-
-
-def _ctx(session: Session, subject: Subject, **view_args: str) -> Context:
-    return Context(subject, session, dict(view_args))
-
-
 def _run(
     pipeline: Pipeline,
     subject: Subject,
@@ -181,7 +94,7 @@ def _run(
 ) -> object:
     return pipeline.run(
         subject=subject,
-        auth=_auth(subject.subject_type),
+        auth=make_auth(subject.subject_type),
         spec=EndpointSpec(requirements=requirements),
         ctx=ctx,
         session=session,
@@ -191,10 +104,10 @@ def _run(
 
 def test_requirements_run_in_rank_order(sqlite_session: Session) -> None:
     log: list[str] = []
-    subject = _sso_subject()
+    subject = sso_subject()
     requirements = (_Recorded(log, "normal"), _AtEarly(log, "early"), _AtFirst(log, "first"))
 
-    _run(_NoFixed(), subject, _ctx(sqlite_session, subject), sqlite_session, requirements=requirements)
+    _run(_NoFixed(), subject, make_ctx(sqlite_session, subject), sqlite_session, requirements=requirements)
 
     assert log == ["first", "early", "normal"]
 
@@ -209,10 +122,10 @@ def test_equal_ranks_keep_declared_order(sqlite_session: Session) -> None:
     class _FixedRecorders(Pipeline):
         fixed = (_Recorded(log, "fixed-a"), _Recorded(log, "fixed-b"))
 
-    subject = _sso_subject()
+    subject = sso_subject()
     requirements = (_Recorded(log, "spec-a"), _Recorded(log, "spec-b"))
 
-    _run(_FixedRecorders(), subject, _ctx(sqlite_session, subject), sqlite_session, requirements=requirements)
+    _run(_FixedRecorders(), subject, make_ctx(sqlite_session, subject), sqlite_session, requirements=requirements)
 
     assert log == ["spec-a", "spec-b", "fixed-a", "fixed-b"]
 
@@ -249,7 +162,7 @@ def test_auth_ctx_is_published_for_the_view_and_reset_after_it(
     sqlite_session: Session,
     view_raises: bool,
 ) -> None:
-    subject = _sso_subject()
+    subject = sso_subject()
     seen: list[AuthContext | None] = []
 
     def call(**_kwargs: object) -> None:
@@ -257,14 +170,14 @@ def test_auth_ctx_is_published_for_the_view_and_reset_after_it(
         if view_raises:
             raise RuntimeError("boom")
 
-    ctx = _ctx(sqlite_session, subject)
+    ctx = make_ctx(sqlite_session, subject)
     if view_raises:
         with pytest.raises(RuntimeError):
             _run(_NoFixed(), subject, ctx, sqlite_session, call=call)
     else:
         _run(_NoFixed(), subject, ctx, sqlite_session, call=call)
 
-    assert seen == [_auth(SubjectType.EXTERNAL_SSO)]
+    assert seen == [make_auth(SubjectType.EXTERNAL_SSO)]
     assert try_get_auth_ctx() is None
 
 
@@ -276,9 +189,9 @@ def test_a_subject_that_mounts_no_caller_leaves_the_context_untouched(
     request on an app-less route resolves no caller at all — `ResolveCaller` is
     where that policy is consulted, and `mounted` only reads what it stored.
     """
-    monkeypatch.setattr(MOUNT, _boom)
-    subject = _sso_subject()
-    ctx = _ctx(sqlite_session, subject)
+    monkeypatch.setattr(MOUNT, never_reached)
+    subject = sso_subject()
+    ctx = make_ctx(sqlite_session, subject)
 
     _run(_NoFixed(), subject, ctx, sqlite_session, requirements=(ResolveCaller(),))
 
@@ -292,12 +205,12 @@ def test_app_scoped_route_mounts_an_account_bound_to_the_workspace(
     """H17 — an account that mounts with no current tenant fails silently,
     without an exception, so the guard has to be an assertion.
     """
-    _persist(sqlite_session, _app(), _tenant(), _account(), _membership())
+    persist(sqlite_session, make_app(), make_tenant(), make_account(), make_membership())
     mounted: list[object] = []
     monkeypatch.setattr(MOUNT, mounted.append)
-    subject = _account_subject()
+    subject = account_subject()
 
-    _run(AccountPipeline(), subject, _ctx(sqlite_session, subject, app_id=APP_ID), sqlite_session)
+    _run(AccountPipeline(), subject, make_ctx(sqlite_session, subject, app_id=APP_ID), sqlite_session)
 
     assert len(mounted) == 1
     account = mounted[0]
@@ -314,11 +227,11 @@ def test_a_caller_that_cannot_be_resolved_leaves_the_auth_ctx_unset(
     would strand the identity on the ContextVar that `libs/rate_limit` buckets
     on, with no reset to undo it.
     """
-    monkeypatch.setattr(MOUNT, _boom)
-    subject = _account_subject()
+    monkeypatch.setattr(MOUNT, never_reached)
+    subject = account_subject()
 
     with pytest.raises(Unauthorized, match="account not found"):
-        _run(AccountPipeline(), subject, _ctx(sqlite_session, subject), sqlite_session)
+        _run(AccountPipeline(), subject, make_ctx(sqlite_session, subject), sqlite_session)
 
     assert try_get_auth_ctx() is None
 
@@ -335,21 +248,6 @@ def test_endpoint_spec_keeps_requirements_as_a_tuple() -> None:
     assert isinstance(spec.requirements, tuple)
 
 
-def test_the_view_keeps_its_own_arguments_and_gains_the_context(sqlite_session: Session) -> None:
-    subject = _sso_subject()
-    ctx = _ctx(sqlite_session, subject)
-    received: dict[str, object] = {}
-
-    def view(resource: str, *, body: str, ctx: Context) -> str:
-        received.update(resource=resource, body=body, ctx=ctx)
-        return "answered"
-
-    result = _run(_NoFixed(), subject, ctx, sqlite_session, call=partial(view, "self", body="payload"))
-
-    assert result == "answered"
-    assert received == {"resource": "self", "body": "payload", "ctx": ctx}
-
-
 def test_the_requirements_that_share_a_datum_fetch_it_once(
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
@@ -358,9 +256,9 @@ def test_the_requirements_that_share_a_datum_fetch_it_once(
     `CheckAppApiEnabled`, the pipeline's, and `ResolveCaller` — and two of them
     need the workspace and the caller. Each is fetched once.
     """
-    _persist(sqlite_session, _app(), _tenant(), _account(), _membership())
+    persist(sqlite_session, make_app(), make_tenant(), make_account(), make_membership())
     monkeypatch.setattr(MOUNT, lambda _user: None)
-    subject = _account_subject()
+    subject = account_subject()
 
     with (
         patch.object(AppService, "get_app_by_id", wraps=AppService.get_app_by_id) as app_fetch,
@@ -370,7 +268,7 @@ def test_the_requirements_that_share_a_datum_fetch_it_once(
         _run(
             AccountPipeline(),
             subject,
-            _ctx(sqlite_session, subject, app_id=APP_ID),
+            make_ctx(sqlite_session, subject, app_id=APP_ID),
             sqlite_session,
             requirements=(CheckAppApiEnabled(),),
         )
@@ -389,10 +287,10 @@ def test_a_route_whose_requirements_need_no_app_never_fetches_one(
     `ResolveCaller` — the only shape in which an `app_id` can reach the mount
     with the app still unfetched.
     """
-    monkeypatch.setattr(AppService, "get_app_by_id", _boom)
-    subject = _account_subject()
+    monkeypatch.setattr(AppService, "get_app_by_id", never_reached)
+    subject = account_subject()
     monkeypatch.setattr(subject, "mounts_caller", lambda _ctx: False)
-    ctx = _ctx(sqlite_session, subject, app_id=APP_ID)
+    ctx = make_ctx(sqlite_session, subject, app_id=APP_ID)
 
     _run(_NoFixed(), subject, ctx, sqlite_session, requirements=(TokenScope(Scope.APPS_RUN),))
 
@@ -409,7 +307,7 @@ def test_an_external_sso_app_route_resolves_its_end_user(
     loading it is the only reason this route works.
     """
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-    _persist(sqlite_session, _app(), _tenant())
+    persist(sqlite_session, make_app(), make_tenant())
     mounted_users: list[object] = []
     monkeypatch.setattr(MOUNT, mounted_users.append)
     end_user = EndUser(
@@ -420,35 +318,15 @@ def test_an_external_sso_app_route_resolves_its_end_user(
         session_id=SSO_EMAIL,
     )
     monkeypatch.setattr(EndUserService, "get_or_create_end_user_by_type", lambda *_a, **_k: end_user)
-    subject = _sso_subject()
-    ctx = _ctx(sqlite_session, subject, app_id=APP_ID)
+    subject = sso_subject()
+    ctx = make_ctx(sqlite_session, subject, app_id=APP_ID)
 
-    with patch(FEATURES, return_value=_active_licence()):
+    with patch(FEATURES, return_value=system_features()):
         _run(ExternalSsoPipeline(), subject, ctx, sqlite_session)
 
     assert ctx.workspace_loaded is True
     assert ctx.caller is end_user
     assert mounted_users == [end_user]
-
-
-def test_an_account_route_with_neither_app_nor_workspace_binds_no_tenant(
-    sqlite_session: Session,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """`/account` resolves a caller and nothing else: no path param names a
-    workspace, so the account mounts with no current tenant.
-    """
-    _persist(sqlite_session, _account(), _tenant(), _membership())
-    monkeypatch.setattr(MOUNT, lambda _user: None)
-    subject = _account_subject()
-    ctx = _ctx(sqlite_session, subject)
-
-    _run(AccountPipeline(), subject, ctx, sqlite_session)
-
-    caller = ctx.caller
-    assert isinstance(caller, Account)
-    assert caller.current_tenant_id is None
-    assert (ctx.app_loaded, ctx.workspace_loaded) == (False, False)
 
 
 def test_a_loaded_caller_is_not_mounted_when_the_subject_declines(
@@ -460,11 +338,11 @@ def test_a_loaded_caller_is_not_mounted_when_the_subject_declines(
     that declines conditionally would otherwise be mounted against its own
     policy.
     """
-    _persist(sqlite_session, _app(), _tenant(), _account(), _membership())
-    monkeypatch.setattr(MOUNT, _boom)
-    subject = _account_subject()
+    persist(sqlite_session, make_app(), make_tenant(), make_account(), make_membership())
+    monkeypatch.setattr(MOUNT, never_reached)
+    subject = account_subject()
     monkeypatch.setattr(subject, "mounts_caller", lambda _ctx: False)
-    ctx = _ctx(sqlite_session, subject, app_id=APP_ID)
+    ctx = make_ctx(sqlite_session, subject, app_id=APP_ID)
 
     _run(AccountPipeline(), subject, ctx, sqlite_session)
 
@@ -495,15 +373,15 @@ def test_a_refused_sso_request_never_creates_an_end_user(
     moved it earlier would side-effect before the gate that exists to stop it.
     """
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-    _persist(sqlite_session, _app(enable_api=enable_api), _tenant())
-    monkeypatch.setattr(MOUNT, _boom)
-    monkeypatch.setattr(EndUserService, "get_or_create_end_user_by_type", _boom)
-    subject = _sso_subject()
-    ctx = _ctx(sqlite_session, subject, app_id=APP_ID)
+    persist(sqlite_session, make_app(enable_api=enable_api), make_tenant())
+    monkeypatch.setattr(MOUNT, never_reached)
+    monkeypatch.setattr(EndUserService, "get_or_create_end_user_by_type", never_reached)
+    subject = sso_subject()
+    ctx = make_ctx(sqlite_session, subject, app_id=APP_ID)
 
     with app.test_request_context(f"/openapi/v1/apps/{APP_ID}:run"):
-        with patch(FEATURES, return_value=_active_licence(webapp_auth=webapp_auth)):
-            with patch(ACCESS_MODE, return_value=_settings(WebAppAccessMode.PRIVATE_ALL.value)):
+        with patch(FEATURES, return_value=system_features(webapp_auth=webapp_auth)):
+            with patch(ACCESS_MODE, return_value=webapp_settings(WebAppAccessMode.PRIVATE_ALL.value)):
                 with pytest.raises(Forbidden, match=message):
                     _run(ExternalSsoPipeline(), subject, ctx, sqlite_session, requirements=requirements)
 

@@ -43,13 +43,6 @@ def test_handler_seam_is_exposed():
     assert view.__handler__ is not None
 
 
-def test_requirements_list_is_stored_as_tuple():
-    @endpoint(requirements=[TokenScope(Scope.APPS_RUN)])
-    def view(self, ctx): ...
-
-    assert isinstance(view.__spec__.requirements, tuple)
-
-
 def test_spec_attached_to_the_view_is_the_spec_the_router_runs(monkeypatch: pytest.MonkeyPatch):
     captured: list[EndpointSpec] = []
     original_guard = subject_router.guard
