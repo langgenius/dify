@@ -1,9 +1,3 @@
-"""Layer 0 of openapi auth — detect, extract, dispatch.
-
-Everything the router does happens before there is a subject to run
-requirements against, which is why none of it is a requirement.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping

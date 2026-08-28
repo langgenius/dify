@@ -1,16 +1,10 @@
-"""Request/response contract decorators for the openapi controllers.
+"""``@accepts`` and ``@returns`` own one slice of the contract from a single model
+reference, so the advertised and enforced contracts can't drift.
 
-``@accepts`` and ``@returns`` own one slice of the contract from a single model
-reference — emitting the Swagger schema AND doing the runtime validation/
-serialisation — so the advertised and enforced contracts can't drift. Validation
-failures map to a single shape: 422.
-
-``@endpoint`` is the third export: it composes both under ``subject_router.guard``
-in the one order that matters — auth, then ``accepts``, then ``returns`` — so a
-route no longer has to get the stacking right by hand, and ``view.__handler__``
-is the one documented test seam. Every guarded route goes through it; ``returns``
-is still used bare by the unauthenticated ``index.py`` probes, which have no
-auth layer to compose with.
+``@endpoint`` composes both under ``subject_router.guard``, exposing
+``view.__handler__`` as the one documented test seam. ``returns`` is still used
+bare by the unauthenticated ``index.py`` probes, which have no auth layer to
+compose with.
 """
 
 from __future__ import annotations
@@ -34,11 +28,7 @@ from enums import DeploymentEdition
 
 
 def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | None = None) -> Callable:
-    """Validate ``query``/``body`` against the models and inject them as keyword-only kwargs.
-
-    Emits the matching Swagger schema from the same models, so doc and enforcement
-    stay in lockstep.
-    """
+    """Validate ``query``/``body`` against the models and inject them as keyword-only kwargs."""
 
     def decorator(view: Callable) -> Callable:
         @wraps(view)
@@ -120,19 +110,15 @@ def endpoint(
     write: bool = True,
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """The one seam a route attaches to for auth, request validation and response
-    serialisation. Fixes the stacking order internally — auth, then ``accepts``,
-    then ``returns`` — and exposes ``view.__handler__`` (the bare handler) and
-    ``view.__spec__`` (the exact `EndpointSpec` instance the router runs).
+    serialisation — auth, then ``accepts``, then ``returns``. Exposes
+    ``view.__handler__`` (the bare handler) and ``view.__spec__`` (the exact
+    `EndpointSpec` instance the router runs).
 
     ``returns`` takes one ``(code, model, description)`` or several; a route
     that stacked N ``@returns`` today declares them here in the same top-to-bottom
     order and gets the identical nesting back — first entry outermost, last entry
     closest to the handler — including the N-times ``"default"`` error registration
     that stacking N ``@returns`` already produces.
-
-    ``write`` matches ``with_session``'s own default: true commits the
-    router's session on a successful call and rolls it back on failure; a
-    route that only reads sets ``write=False``.
     """
     requirements = tuple(requirements)
     for requirement in requirements:

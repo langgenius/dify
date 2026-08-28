@@ -1,8 +1,5 @@
-"""The per-request auth store.
-
-Holds what the request resolved; it resolves nothing itself. `loaders.py`
-owns the check-then-fetch, and only a requirement calls a loader — so what a
-route pays for is the union of what its requirements ask for, once each.
+"""Holds what the request resolved; it resolves nothing itself — `loaders.py`
+owns the check-then-fetch.
 
 Importing a loader from here would close a cycle
 (`context` -> `subjects` -> `loaders` -> `context`), so this module knows the
