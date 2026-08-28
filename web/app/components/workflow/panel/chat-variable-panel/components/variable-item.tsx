@@ -39,7 +39,9 @@ const VariableItem = ({ item, onEdit, onDelete }: VariableItemProps) => {
           </div>
         </div>
       </div>
-      <div className="truncate system-xs-regular text-text-tertiary">{item.description}</div>
+      <div className="truncate system-xs-regular text-text-tertiary" title={item.description}>
+        {item.description}
+      </div>
     </div>
   )
 }

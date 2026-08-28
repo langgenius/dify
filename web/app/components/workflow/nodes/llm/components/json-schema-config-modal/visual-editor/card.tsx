@@ -15,7 +15,10 @@ const Card: FC<CardProps> = ({ name, type, required, description }) => {
   return (
     <div className="flex flex-col py-0.5">
       <div className="flex h-6 items-center gap-x-1 pr-0.5 pl-1">
-        <div className="truncate border border-transparent px-1 py-px system-sm-semibold text-text-primary">
+        <div
+          className="truncate border border-transparent px-1 py-px system-sm-semibold text-text-primary"
+          title={name}
+        >
           {name}
         </div>
         <div className="px-1 py-0.5 system-xs-medium text-text-tertiary">{type}</div>
@@ -27,7 +30,12 @@ const Card: FC<CardProps> = ({ name, type, required, description }) => {
       </div>
 
       {description && (
-        <div className="truncate px-2 pb-1 system-xs-regular text-text-tertiary">{description}</div>
+        <div
+          className="truncate px-2 pb-1 system-xs-regular text-text-tertiary"
+          title={description}
+        >
+          {description}
+        </div>
       )}
     </div>
   )

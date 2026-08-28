@@ -841,7 +841,13 @@ const ProviderConfigModal: FC<Props> = ({
         <AlertDialog open={isRemoveDialogOpen} onOpenChange={setIsRemoveDialogOpen}>
           <AlertDialogContent>
             <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              <AlertDialogTitle
+                className="w-full truncate title-2xl-semi-bold text-text-primary"
+                title={t(($) => $[`${I18N_PREFIX}.removeConfirmTitle`], {
+                  ns: 'app',
+                  key: t(($) => $[`tracing.${type}.title`], { ns: 'app' }),
+                })!}
+              >
                 {t(($) => $[`${I18N_PREFIX}.removeConfirmTitle`], {
                   ns: 'app',
                   key: t(($) => $[`tracing.${type}.title`], { ns: 'app' }),

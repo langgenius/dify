@@ -66,12 +66,18 @@ const MCPCard = ({ currentProvider, data, onEdit, onDelete, handleSelect }: Prop
         <div className="flex items-center gap-1 rounded-b-xl pt-1.5 pr-2.5 pb-2.5 pl-4">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             {data.tools.length > 0 && (
-              <div className="min-w-0 truncate system-xs-regular text-text-tertiary">
+              <div
+                className="min-w-0 truncate system-xs-regular text-text-tertiary"
+                title={t(($) => $['mcp.toolsCount'], { ns: 'tools', count: data.tools.length })}
+              >
                 {t(($) => $['mcp.toolsCount'], { ns: 'tools', count: data.tools.length })}
               </div>
             )}
             {!data.tools.length && (
-              <div className="min-w-0 truncate system-xs-regular text-text-tertiary">
+              <div
+                className="min-w-0 truncate system-xs-regular text-text-tertiary"
+                title={t(($) => $['mcp.noTools'], { ns: 'tools' })}
+              >
                 {t(($) => $['mcp.noTools'], { ns: 'tools' })}
               </div>
             )}

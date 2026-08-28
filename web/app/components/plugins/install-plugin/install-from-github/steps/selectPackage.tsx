@@ -94,7 +94,14 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
           </SelectLabel>
           <SelectTrigger className="h-9 text-components-input-text-filled">
             <div className="flex items-center justify-between gap-2">
-              <span className="truncate">
+              <span
+                className="truncate"
+                title={
+                  selectedVersionOption?.name ??
+                  t(($) => $[`${i18nPrefix}.selectVersionPlaceholder`], { ns: 'plugin' }) ??
+                  ''
+                }
+              >
                 {selectedVersionOption?.name ??
                   t(($) => $[`${i18nPrefix}.selectVersionPlaceholder`], { ns: 'plugin' }) ??
                   ''}

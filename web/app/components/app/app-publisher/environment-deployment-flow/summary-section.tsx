@@ -128,7 +128,13 @@ export function PublisherEnvironmentSummarySection({
         <PublisherTimelineMarker position="top" />
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex min-w-0 items-center gap-1">
-            <span className="truncate system-sm-semibold text-text-secondary">
+            <span
+              className="truncate system-sm-semibold text-text-secondary"
+              title={getWorkflowVersionName(
+                deployedVersion,
+                t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+              )}
+            >
               {getWorkflowVersionName(
                 deployedVersion,
                 t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
@@ -158,7 +164,14 @@ export function PublisherEnvironmentSummarySection({
             )}
           </div>
           {publishedAt !== undefined && publishedBy && (
-            <p className="truncate system-xs-regular text-text-tertiary">
+            <p
+              className="truncate system-xs-regular text-text-tertiary"
+              title={t(($) => $['common.publishedBy'], {
+                ns: 'workflow',
+                time: formatTimeFromNow(publishedAt),
+                author: publishedBy,
+              })}
+            >
               {t(($) => $['common.publishedBy'], {
                 ns: 'workflow',
                 time: formatTimeFromNow(publishedAt),

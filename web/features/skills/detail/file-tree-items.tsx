@@ -504,7 +504,11 @@ export function FileTreeItem({
     if (sourcePaths.length > 0) onMove(sourcePaths, node.path)
   }
 
-  const nameNode = <span className="w-0 min-w-0 flex-1 truncate">{node.name}</span>
+  const nameNode = (
+    <span className="w-0 min-w-0 flex-1 truncate" title={node.name}>
+      {node.name}
+    </span>
+  )
 
   const renderWithContextMenu = (trigger: ReactElement) => {
     if (readonly || !detail) return trigger

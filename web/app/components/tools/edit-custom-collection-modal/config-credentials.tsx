@@ -53,7 +53,9 @@ function SelectItem<Value = string>({ text, value, isChecked }: ItemProps<Value>
         )}
       >
         <Radio<Value> value={value} />
-        <div className="min-w-0 truncate system-sm-regular text-text-primary">{text}</div>
+        <div className="min-w-0 truncate system-sm-regular text-text-primary" title={text}>
+          {text}
+        </div>
       </FieldLabel>
     </FieldItem>
   )
@@ -113,7 +115,10 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
             <DrawerContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0 pb-0">
               <div className="shrink-0 border-b border-divider-regular py-4">
                 <div className="flex h-6 items-center justify-between pr-5 pl-6">
-                  <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
+                  <DrawerTitle
+                    className="min-w-0 truncate system-xl-semibold text-text-primary"
+                    title={t(($) => $['createTool.authMethod.title'], { ns: 'tools' })}
+                  >
                     {t(($) => $['createTool.authMethod.title'], { ns: 'tools' })}
                   </DrawerTitle>
                   <DrawerCloseButton

@@ -56,7 +56,9 @@ const EnvItem = ({ env, onEdit, onDelete }: EnvItemProps) => {
             </div>
           </div>
         </div>
-        <div className="truncate system-xs-regular text-text-tertiary">{displayValue}</div>
+        <div className="truncate system-xs-regular text-text-tertiary" title={String(displayValue)}>
+          {displayValue}
+        </div>
       </div>
       {env.description && (
         <>
@@ -67,7 +69,9 @@ const EnvItem = ({ env, onEdit, onDelete }: EnvItemProps) => {
               destructive && 'bg-state-destructive-hover hover:bg-state-destructive-hover',
             )}
           >
-            <div className="truncate system-xs-regular text-text-tertiary">{env.description}</div>
+            <div className="truncate system-xs-regular text-text-tertiary" title={env.description}>
+              {env.description}
+            </div>
           </div>
         </>
       )}

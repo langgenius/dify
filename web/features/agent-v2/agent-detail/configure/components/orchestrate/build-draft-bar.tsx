@@ -82,7 +82,10 @@ export function AgentBuildDraftBar({
         className="relative z-1 flex h-12.5 max-w-full min-w-0 items-center gap-2 p-2 group-data-open/build-draft:justify-end"
       >
         <div className="flex min-w-0 flex-1 items-center gap-3 pr-8 pl-2 group-data-open/build-draft:hidden">
-          <p className="min-w-0 truncate system-sm-semibold text-text-primary">
+          <p
+            className="min-w-0 truncate system-sm-semibold text-text-primary"
+            title={t(($) => $['agentDetail.configure.buildDraft.title'])}
+          >
             {t(($) => $['agentDetail.configure.buildDraft.title'])}
           </p>
           <button
@@ -92,7 +95,9 @@ export function AgentBuildDraftBar({
             className="flex min-w-0 cursor-pointer items-center gap-0.5 rounded-sm text-text-tertiary hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             onClick={() => handleOpenChange(true)}
           >
-            <span className="min-w-0 truncate system-xs-regular">{changesLabel}</span>
+            <span className="min-w-0 truncate system-xs-regular" title={changesLabel}>
+              {changesLabel}
+            </span>
             <span aria-hidden className="i-ri-arrow-right-s-line size-4 shrink-0" />
           </button>
         </div>

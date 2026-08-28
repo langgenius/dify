@@ -315,6 +315,7 @@ const ChatWrapper = () => {
                 !descExpanded && 'line-clamp-3',
                 descExpanded && 'max-h-32 overflow-y-auto',
               )}
+              title={description}
             >
               {description}
               {!descExpanded && showDescToggle && (

@@ -127,7 +127,10 @@ const PluginVersionPicker: FC<Props> = ({
                 }
               >
                 <div className="flex min-h-5 min-w-0 grow items-center gap-1 px-1">
-                  <div className="min-w-0 grow truncate system-sm-medium text-text-secondary">
+                  <div
+                    className="min-w-0 grow truncate system-sm-medium text-text-secondary"
+                    title={version.version}
+                  >
                     {version.version}
                   </div>
                   {currentVersion === version.version && (

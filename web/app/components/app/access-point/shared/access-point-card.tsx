@@ -72,10 +72,12 @@ export function AccessPointCard({
           icon
         )}
         <span className="min-w-0 flex-1">
-          <h2 id={titleId} className="truncate system-md-semibold text-text-primary">
+          <h2 id={titleId} className="truncate system-md-semibold text-text-primary" title={title}>
             {title}
           </h2>
-          <span className="block truncate system-xs-regular text-text-tertiary">{description}</span>
+          <span className="block truncate system-xs-regular text-text-tertiary" title={description}>
+            {description}
+          </span>
         </span>
         {showStatus && (
           <>
@@ -156,6 +158,7 @@ export function AccessPointEndpoint({
                 (dimmed || unavailable) && 'text-text-quaternary',
               )}
               translate="no"
+              title={value}
             >
               {value}
             </span>

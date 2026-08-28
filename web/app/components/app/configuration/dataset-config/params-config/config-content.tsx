@@ -243,7 +243,9 @@ const ConfigContent: FC<Props> = ({
                   )}
                   onClick={() => handleRerankModeChange(option.value)}
                 >
-                  <div className="truncate">{option.label}</div>
+                  <div className="truncate" title={option.label}>
+                    {option.label}
+                  </div>
                   <Infotip
                     aria-label={option.tips}
                     className="ml-0.5 size-3.5"

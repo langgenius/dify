@@ -1079,6 +1079,7 @@ export function AgentPromptEditor() {
           <h3
             id="agent-configure-prompt-label"
             className="truncate system-sm-semibold-uppercase text-text-secondary"
+            title={t(($) => $['agentDetail.configure.prompt.label'])}
           >
             {t(($) => $['agentDetail.configure.prompt.label'])}
           </h3>

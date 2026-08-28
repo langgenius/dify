@@ -34,7 +34,9 @@ export function EditInConsoleLink({
   const content = (
     <>
       <span aria-hidden className="i-ri-external-link-line size-4 shrink-0" />
-      <span className="truncate">{label}</span>
+      <span className="truncate" title={label}>
+        {label}
+      </span>
     </>
   )
 

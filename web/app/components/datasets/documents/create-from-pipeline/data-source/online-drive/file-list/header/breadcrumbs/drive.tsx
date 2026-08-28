@@ -22,6 +22,7 @@ const Drive = ({ breadcrumbs, handleBackToRoot }: DriveProps) => {
         )}
         onClick={handleBackToRoot}
         disabled={breadcrumbs.length === 0}
+        title={t(($) => $['onlineDrive.breadcrumbs.allFiles'], { ns: 'datasetPipeline' })}
       >
         {t(($) => $['onlineDrive.breadcrumbs.allFiles'], { ns: 'datasetPipeline' })}
       </button>

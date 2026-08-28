@@ -32,7 +32,7 @@ export function WebAppAccessControlEntry({
         >
           <div className="flex grow items-center gap-x-1.5 overflow-hidden pr-1">
             <span aria-hidden className={`${accessIcon} size-4 shrink-0 text-text-secondary`} />
-            <div className="grow truncate">
+            <div className="grow truncate" title={accessLabel}>
               <span className="system-sm-regular text-text-secondary">{accessLabel}</span>
             </div>
           </div>

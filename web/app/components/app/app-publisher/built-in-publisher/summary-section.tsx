@@ -72,6 +72,13 @@ export function PublisherSummarySection({
     : hasPublishedVersion
       ? t(($) => $['common.publishUpdate'], { ns: 'workflow' })
       : t(($) => $['common.publish'], { ns: 'workflow' })
+  const draftStatusLabel = published
+    ? isWorkflowApp
+      ? t(($) => $['common.published'], { ns: 'workflow' })
+      : t(($) => $['common.upToDate'], { ns: 'workflow' })
+    : isWorkflowApp && Boolean(draftUpdatedAt)
+      ? `${t(($) => $['common.autoSaved'], { ns: 'workflow' })} · ${formatTimeFromNow(draftUpdatedAt!)}`
+      : t(($) => $['common.currentDraft'], { ns: 'workflow' })
 
   return (
     <div className="flex flex-col gap-3 p-4">
@@ -85,7 +92,13 @@ export function PublisherSummarySection({
         ) : isWorkflowApp ? (
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <div className="flex min-h-4 min-w-0 items-center gap-1">
-              <span className="truncate system-sm-semibold text-text-secondary">
+              <span
+                className="truncate system-sm-semibold text-text-secondary"
+                title={getWorkflowVersionName(
+                  versionInfo,
+                  t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+                )}
+              >
                 {getWorkflowVersionName(
                   versionInfo,
                   t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
@@ -112,7 +125,10 @@ export function PublisherSummarySection({
                   onClick={onEditVersion}
                 >
                   <span aria-hidden className="i-ri-edit-line size-3.5 shrink-0" />
-                  <span className="truncate system-xs-medium">
+                  <span
+                    className="truncate system-xs-medium"
+                    title={t(($) => $['versionHistory.nameIt'], { ns: 'workflow' })}
+                  >
                     {t(($) => $['versionHistory.nameIt'], { ns: 'workflow' })}
                   </span>
                 </button>
@@ -120,7 +136,10 @@ export function PublisherSummarySection({
             </div>
             {markedComment && (
               <>
-                <p className="line-clamp-3 system-xs-regular wrap-break-word text-text-tertiary">
+                <p
+                  className="line-clamp-3 system-xs-regular wrap-break-word text-text-tertiary"
+                  title={markedComment}
+                >
                   {markedComment}
                 </p>
                 <span aria-hidden className="my-1 h-px w-4 bg-divider-regular" />
@@ -141,11 +160,25 @@ export function PublisherSummarySection({
         ) : (
           <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
             <div className="flex min-w-0 flex-col">
-              <p className="truncate system-sm-semibold text-text-secondary">
+              <p
+                className="truncate system-sm-semibold text-text-secondary"
+                title={t(($) => $['common.latestPublished'], { ns: 'workflow' })}
+              >
                 {t(($) => $['common.latestPublished'], { ns: 'workflow' })}
               </p>
               {!!publishedTimestamp && (
-                <p className="truncate system-xs-regular text-text-tertiary">
+                <p
+                  className="truncate system-xs-regular text-text-tertiary"
+                  title={
+                    publisherName
+                      ? t(($) => $['common.publishedBy'], {
+                          ns: 'workflow',
+                          time: formatTimeFromNow(publishedTimestamp),
+                          author: publisherName,
+                        })
+                      : `${t(($) => $['common.publishedAt'], { ns: 'workflow' })} ${formatTimeFromNow(publishedTimestamp)}`
+                  }
+                >
                   {publisherName
                     ? t(($) => $['common.publishedBy'], {
                         ns: 'workflow',
@@ -225,22 +258,12 @@ export function PublisherSummarySection({
       </div>
       <div className="flex items-center gap-1 py-0.5 pr-0.5 pl-1">
         <PublisherTimelineMarker position="bottom" />
-        <p role="status" className="min-w-0 flex-1 truncate system-xs-regular text-text-tertiary">
-          {published ? (
-            isWorkflowApp ? (
-              t(($) => $['common.published'], { ns: 'workflow' })
-            ) : (
-              t(($) => $['common.upToDate'], { ns: 'workflow' })
-            )
-          ) : isWorkflowApp && Boolean(draftUpdatedAt) ? (
-            <>
-              {t(($) => $['common.autoSaved'], { ns: 'workflow' })}
-              {' · '}
-              {formatTimeFromNow(draftUpdatedAt!)}
-            </>
-          ) : (
-            t(($) => $['common.currentDraft'], { ns: 'workflow' })
-          )}
+        <p
+          role="status"
+          className="min-w-0 flex-1 truncate system-xs-regular text-text-tertiary"
+          title={draftStatusLabel}
+        >
+          {draftStatusLabel}
         </p>
       </div>
     </div>

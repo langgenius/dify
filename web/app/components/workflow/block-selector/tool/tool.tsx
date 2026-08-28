@@ -120,7 +120,10 @@ function Tool({
     >
       <BlockIcon className="shrink-0" type={BlockEnum.Tool} toolIcon={providerIcon} />
       <div className="ml-2 flex w-0 grow items-center text-sm text-text-primary">
-        <span className="max-w-62.5 truncate">
+        <span
+          className="max-w-62.5 truncate"
+          title={notShowProvider ? actions[0]?.label[language] : payload.label[language]}
+        >
           {notShowProvider ? actions[0]?.label[language] : payload.label[language]}
         </span>
         {isFlatView && groupName && (

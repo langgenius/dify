@@ -95,7 +95,10 @@ const Card = ({
             <Icon src={iconSrc} installed={installed} installFailed={installFailed} />
             <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
               <div className="flex h-5 min-w-0 items-center">
-                <div className="truncate system-md-medium text-text-primary">
+                <div
+                  className="truncate system-md-medium text-text-primary"
+                  title={getLocalizedText(label)}
+                >
                   {getLocalizedText(label)}
                 </div>
                 {isPartner && (
@@ -118,7 +121,9 @@ const Card = ({
                     <span className="shrink-0 lowercase">
                       {t(($) => $.author, { ns: 'tools' })}
                     </span>
-                    <span className="truncate">{org}</span>
+                    <span className="truncate" title={org}>
+                      {org}
+                    </span>
                   </div>
                 )}
                 {org && payload.install_count !== undefined && (

@@ -130,8 +130,12 @@ const MemberDetailsModal = ({
             <div className="mt-5 flex items-center gap-3">
               <Avatar avatar={member.avatar_url} name={member.name} size="2xl" />
               <div className="min-w-0 flex-1">
-                <div className="truncate system-md-semibold text-text-primary">{member.name}</div>
-                <div className="truncate system-xs-regular text-text-tertiary">{member.email}</div>
+                <div className="truncate system-md-semibold text-text-primary" title={member.name}>
+                  {member.name}
+                </div>
+                <div className="truncate system-xs-regular text-text-tertiary" title={member.email}>
+                  {member.email}
+                </div>
               </div>
             </div>
           </div>

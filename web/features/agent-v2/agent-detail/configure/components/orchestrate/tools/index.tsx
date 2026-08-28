@@ -244,7 +244,9 @@ function AddToolMenuItem({
       />
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex min-w-0 items-center gap-1">
-          <span className="truncate system-sm-semibold text-text-secondary">{label}</span>
+          <span className="truncate system-sm-semibold text-text-secondary" title={label}>
+            {label}
+          </span>
           {badge && (
             <span className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
               {badge}

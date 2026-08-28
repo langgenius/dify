@@ -121,7 +121,10 @@ export function SkillDisplayNameEditor({
 
   if (readonly) {
     return (
-      <div className="w-full truncate rounded-md px-1 py-0.5 system-md-semibold text-text-secondary">
+      <div
+        className="w-full truncate rounded-md px-1 py-0.5 system-md-semibold text-text-secondary"
+        title={displayName}
+      >
         {displayName}
       </div>
     )
@@ -163,6 +166,7 @@ export function SkillDisplayNameEditor({
         setDraftName(displayName)
         onEditingChange(true)
       }}
+      title={displayName}
     >
       {displayName}
     </button>

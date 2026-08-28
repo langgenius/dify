@@ -281,7 +281,9 @@ function FeaturedToolUninstalledItem({
       rel="noopener noreferrer"
     >
       <BlockIcon className="shrink-0" type={BlockEnum.Tool} toolIcon={plugin.icon} />
-      <span className="ml-2 truncate system-sm-medium text-text-secondary">{label}</span>
+      <span className="ml-2 truncate system-sm-medium text-text-secondary" title={label}>
+        {label}
+      </span>
       <span
         aria-hidden
         className={cn(

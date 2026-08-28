@@ -62,7 +62,14 @@ function ToolSelectorTrigger({
             </span>
             {!!selectedTagsLength && (
               <span className="flex min-w-0 items-center gap-x-0.5 py-1 system-sm-medium">
-                <span className="truncate text-text-secondary">
+                <span
+                  className="truncate text-text-secondary"
+                  title={tags
+                    .map((tag) => tagsMap[tag]?.label)
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .join(',')}
+                >
                   {tags
                     .map((tag) => tagsMap[tag]?.label)
                     .filter(Boolean)

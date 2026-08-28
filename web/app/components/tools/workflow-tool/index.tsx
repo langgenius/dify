@@ -120,7 +120,10 @@ const WorkflowToolDrawerFrame = ({
             <DrawerContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0 pb-0">
               <div className="shrink-0 border-b border-divider-subtle py-4">
                 <div className="flex h-6 items-center justify-between pr-5 pl-6">
-                  <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
+                  <DrawerTitle
+                    className="min-w-0 truncate system-xl-semibold text-text-primary"
+                    title={title}
+                  >
                     {title}
                   </DrawerTitle>
                   <DrawerCloseButton className="size-6 rounded-md" aria-label={closeLabel} />
@@ -314,7 +317,10 @@ export function WorkflowToolDrawer({
                         <td className="max-w-39 p-2 pl-3">
                           <div className="text-[13px] leading-4.5">
                             <div className="flex">
-                              <span className="truncate font-medium text-text-primary">
+                              <span
+                                className="truncate font-medium text-text-primary"
+                                title={item.name}
+                              >
                                 {item.name}
                               </span>
                               <span className="shrink-0 pl-1 text-xs leading-4.5 text-[#ec4a0a]">
@@ -337,6 +343,9 @@ export function WorkflowToolDrawer({
                                 className={cn(
                                   'grow truncate text-[13px] leading-4.5 text-text-secondary',
                                 )}
+                                title={t(($) => $['createTool.toolInput.methodParameter'], {
+                                  ns: 'tools',
+                                })}
                               >
                                 {t(($) => $['createTool.toolInput.methodParameter'], {
                                   ns: 'tools',
@@ -396,7 +405,10 @@ export function WorkflowToolDrawer({
                         <td className="max-w-39 p-2 pl-3">
                           <div className="text-[13px] leading-4.5">
                             <div className="flex items-center">
-                              <span className="truncate font-medium text-text-primary">
+                              <span
+                                className="truncate font-medium text-text-primary"
+                                title={item.name}
+                              >
                                 {item.name}
                               </span>
                               <span className="shrink-0 pl-1 text-xs leading-4.5 text-[#ec4a0a]">

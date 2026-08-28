@@ -53,6 +53,7 @@ function MemoryConfigValue({
               value ? 'text-text-primary' : 'text-text-quaternary',
             )}
             translate={value ? 'no' : undefined}
+            title={value || t(($) => $['agentDetail.memorySettings.notConfigured'])}
           >
             {value || t(($) => $['agentDetail.memorySettings.notConfigured'])}
           </div>

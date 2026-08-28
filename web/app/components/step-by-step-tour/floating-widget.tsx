@@ -178,7 +178,9 @@ export function MinimizedTourPill({
       )}
     >
       <span aria-hidden className="i-custom-vender-line-education-lesson-open-01 size-4 shrink-0" />
-      <span className="w-26 shrink-0 truncate system-sm-medium">{title}</span>
+      <span className="w-26 shrink-0 truncate system-sm-medium" title={title}>
+        {title}
+      </span>
       <span className="flex min-w-4 shrink-0 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary tabular-nums">
         {`${progress.completed}/${progress.total}`}
       </span>

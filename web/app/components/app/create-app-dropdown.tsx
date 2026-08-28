@@ -71,7 +71,10 @@ export function CreateAppDropdown({
               aria-hidden
               className="i-ri-sticky-note-add-line size-4 shrink-0 text-text-secondary"
             />
-            <span className="min-w-0 flex-1 truncate px-1">
+            <span
+              className="min-w-0 flex-1 truncate px-1"
+              title={t(($) => $['newApp.startFromBlank'], { ns: 'app' })}
+            >
               {t(($) => $['newApp.startFromBlank'], { ns: 'app' })}
             </span>
           </DropdownMenuItem>
@@ -84,7 +87,10 @@ export function CreateAppDropdown({
                 aria-hidden
                 className="i-ri-apps-2-add-line size-4 shrink-0 text-text-secondary"
               />
-              <span className="min-w-0 flex-1 truncate px-1">
+              <span
+                className="min-w-0 flex-1 truncate px-1"
+                title={t(($) => $['newApp.startFromTemplate'], { ns: 'app' })}
+              >
                 {t(($) => $['newApp.startFromTemplate'], { ns: 'app' })}
               </span>
             </DropdownMenuItem>

@@ -167,7 +167,10 @@ function BannerCarouselContent({
                   aria-hidden="true"
                 />
               </span>
-              <span className="truncate system-sm-semibold-uppercase text-text-accent">
+              <span
+                className="truncate system-sm-semibold-uppercase text-text-accent"
+                title={t(($) => $['banner.viewMore'], { ns: 'explore' })}
+              >
                 {t(($) => $['banner.viewMore'], { ns: 'explore' })}
               </span>
             </div>

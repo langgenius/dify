@@ -25,7 +25,10 @@ const MemberItem = ({
     <>
       {leftIcon}
       <div className="min-w-0 grow">
-        <div className="truncate system-sm-medium text-text-secondary">
+        <div
+          className="truncate system-sm-medium text-text-secondary"
+          title={`${name}${isMe ? ` ${t(($) => $['form.me'], { ns: 'datasetSettings' })}` : ''}`}
+        >
           {name}
           {isMe && (
             <span className="system-xs-regular text-text-tertiary">
@@ -33,7 +36,9 @@ const MemberItem = ({
             </span>
           )}
         </div>
-        <div className="truncate system-xs-regular text-text-tertiary">{email}</div>
+        <div className="truncate system-xs-regular text-text-tertiary" title={email}>
+          {email}
+        </div>
       </div>
       {isSelected && (
         <span

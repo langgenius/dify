@@ -239,7 +239,10 @@ export default function IntegrationsPage({
         <ToolsDisclosureIcon className="h-3.5 w-3 group-hover:hidden group-focus-visible:hidden" />
         <span className="i-ri-arrow-down-s-line hidden size-4 transition-transform duration-100 ease-out group-hover:inline-block group-focus-visible:inline-block group-data-panel-open:rotate-180 motion-reduce:transition-none" />
       </span>
-      <span className="min-w-0 flex-1 truncate">
+      <span
+        className="min-w-0 flex-1 truncate"
+        title={t(($) => $['menus.tools'], { ns: 'common' })}
+      >
         {t(($) => $['menus.tools'], { ns: 'common' })}
       </span>
     </>

@@ -218,7 +218,10 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
                     aria-hidden
                     className="i-custom-vender-workflow-docs-extractor size-4 shrink-0 text-text-tertiary"
                   />
-                  <span className="min-w-0 flex-1 truncate px-1 py-0.5 system-md-regular text-text-secondary">
+                  <span
+                    className="min-w-0 flex-1 truncate px-1 py-0.5 system-md-regular text-text-secondary"
+                    title={t(($) => $['mainNav.help.learnDify'], { ns: 'common' })}
+                  >
                     {t(($) => $['mainNav.help.learnDify'], { ns: 'common' })}
                   </span>
                   <MenuSwitchIndicator checked={!learnDifyHidden} />
@@ -236,7 +239,10 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
                     aria-hidden
                     className="i-custom-vender-line-education-book-open-01 size-4 shrink-0 text-text-tertiary"
                   />
-                  <span className="min-w-0 flex-1 truncate px-1 py-0.5 system-md-regular text-text-secondary">
+                  <span
+                    className="min-w-0 flex-1 truncate px-1 py-0.5 system-md-regular text-text-secondary"
+                    title={t(($) => $['mainNav.help.stepByStepTour'], { ns: 'common' })}
+                  >
                     {t(($) => $['mainNav.help.stepByStepTour'], { ns: 'common' })}
                   </span>
                   <MenuSwitchIndicator checked={stepByStepTourEnabled} />

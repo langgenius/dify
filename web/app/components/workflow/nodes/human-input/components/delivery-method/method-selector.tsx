@@ -97,12 +97,22 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                 />
               </div>
               <div className={cn('p-1', webAppDeliveryInfo.disabled && 'opacity-50')}>
-                <div className="mb-0.5 truncate system-sm-medium text-text-primary">
+                <div
+                  className="mb-0.5 truncate system-sm-medium text-text-primary"
+                  title={t(($) => $[`${i18nPrefix}.deliveryMethod.types.webapp.title`], {
+                    ns: 'workflow',
+                  })}
+                >
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.types.webapp.title`], {
                     ns: 'workflow',
                   })}
                 </div>
-                <div className="truncate system-xs-regular text-text-tertiary">
+                <div
+                  className="truncate system-xs-regular text-text-tertiary"
+                  title={t(($) => $[`${i18nPrefix}.deliveryMethod.types.webapp.description`], {
+                    ns: 'workflow',
+                  })}
+                >
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.types.webapp.description`], {
                     ns: 'workflow',
                   })}
@@ -151,12 +161,22 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                 />
               </div>
               <div className={cn('p-1', emailDeliveryInfo.added && 'opacity-50')}>
-                <div className="mb-0.5 truncate system-sm-medium text-text-primary">
+                <div
+                  className="mb-0.5 truncate system-sm-medium text-text-primary"
+                  title={t(($) => $[`${i18nPrefix}.deliveryMethod.types.email.title`], {
+                    ns: 'workflow',
+                  })}
+                >
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.types.email.title`], {
                     ns: 'workflow',
                   })}
                 </div>
-                <div className="truncate system-xs-regular text-text-tertiary">
+                <div
+                  className="truncate system-xs-regular text-text-tertiary"
+                  title={t(($) => $[`${i18nPrefix}.deliveryMethod.types.email.description`], {
+                    ns: 'workflow',
+                  })}
+                >
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.types.email.description`], {
                     ns: 'workflow',
                   })}
@@ -187,12 +207,22 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                 />
               </div>
               <div className={cn('p-1', 'opacity-50')}>
-                <div className="mb-0.5 truncate system-sm-medium text-text-primary">
+                <div
+                  className="mb-0.5 truncate system-sm-medium text-text-primary"
+                  title={t(($) => $[`${i18nPrefix}.deliveryMethod.types.slack.title`], {
+                    ns: 'workflow',
+                  })}
+                >
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.types.slack.title`], {
                     ns: 'workflow',
                   })}
                 </div>
-                <div className="truncate system-xs-regular text-text-tertiary">
+                <div
+                  className="truncate system-xs-regular text-text-tertiary"
+                  title={t(($) => $[`${i18nPrefix}.deliveryMethod.types.slack.description`], {
+                    ns: 'workflow',
+                  })}
+                >
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.types.slack.description`], {
                     ns: 'workflow',
                   })}
@@ -221,12 +251,22 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                 />
               </div>
               <div className={cn('p-1', 'opacity-50')}>
-                <div className="mb-0.5 truncate system-sm-medium text-text-primary">
+                <div
+                  className="mb-0.5 truncate system-sm-medium text-text-primary"
+                  title={t(($) => $[`${i18nPrefix}.deliveryMethod.types.teams.title`], {
+                    ns: 'workflow',
+                  })}
+                >
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.types.teams.title`], {
                     ns: 'workflow',
                   })}
                 </div>
-                <div className="truncate system-xs-regular text-text-tertiary">
+                <div
+                  className="truncate system-xs-regular text-text-tertiary"
+                  title={t(($) => $[`${i18nPrefix}.deliveryMethod.types.teams.description`], {
+                    ns: 'workflow',
+                  })}
+                >
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.types.teams.description`], {
                     ns: 'workflow',
                   })}
@@ -255,12 +295,22 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                 />
               </div>
               <div className={cn('p-1', 'opacity-50')}>
-                <div className="mb-0.5 truncate system-sm-medium text-text-primary">
+                <div
+                  className="mb-0.5 truncate system-sm-medium text-text-primary"
+                  title={t(($) => $[`${i18nPrefix}.deliveryMethod.types.discord.title`], {
+                    ns: 'workflow',
+                  })}
+                >
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.types.discord.title`], {
                     ns: 'workflow',
                   })}
                 </div>
-                <div className="truncate system-xs-regular text-text-tertiary">
+                <div
+                  className="truncate system-xs-regular text-text-tertiary"
+                  title={t(($) => $[`${i18nPrefix}.deliveryMethod.types.discord.description`], {
+                    ns: 'workflow',
+                  })}
+                >
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.types.discord.description`], {
                     ns: 'workflow',
                   })}

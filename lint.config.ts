@@ -1118,6 +1118,24 @@ export const lintConfig = {
       },
     },
     {
+      files: ['web/**/*.{jsx,tsx}', 'packages/dify-ui/src/**/*.{jsx,tsx}'],
+      excludeFiles: [
+        'web/**/__tests__/**',
+        'web/**/*.spec.{jsx,tsx}',
+        'web/**/*.test.{jsx,tsx}',
+        'web/**/*.stories.{jsx,tsx}',
+        'web/**/*.story.{jsx,tsx}',
+        'packages/dify-ui/src/**/__tests__/**',
+        'packages/dify-ui/src/**/*.spec.{jsx,tsx}',
+        'packages/dify-ui/src/**/*.test.{jsx,tsx}',
+        'packages/dify-ui/src/**/*.stories.{jsx,tsx}',
+        'packages/dify-ui/src/**/*.story.{jsx,tsx}',
+      ],
+      rules: {
+        'dify/require-title-for-truncated-text': 'error',
+      },
+    },
+    {
       files: [
         'web/**/__tests__/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
         'web/**/*.spec.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',

@@ -7,7 +7,10 @@ export function LogSourceCell({ source }: { source?: AgentLogConversationItemRes
 
   if (!source) {
     return (
-      <div className="truncate text-text-quaternary">
+      <div
+        className="truncate text-text-quaternary"
+        title={t(($) => $['agentDetail.logs.notAvailable'])}
+      >
         {t(($) => $['agentDetail.logs.notAvailable'])}
       </div>
     )
@@ -16,7 +19,9 @@ export function LogSourceCell({ source }: { source?: AgentLogConversationItemRes
   return (
     <div className="flex min-w-0 items-center gap-2">
       <LogSourceIcon source={source} />
-      <div className="min-w-0 flex-1 truncate">{source.app_name}</div>
+      <div className="min-w-0 flex-1 truncate" title={source.app_name}>
+        {source.app_name}
+      </div>
     </div>
   )
 }

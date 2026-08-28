@@ -75,7 +75,15 @@ export function CredentialField({
         <SelectTrigger aria-label={name} className="px-2">
           <span className="flex min-w-0 items-center gap-1.5">
             <StatusDot />
-            <span className="truncate">
+            <span
+              className="truncate"
+              title={
+                selectedOption?.display_name ??
+                (slot.candidates.length === 0
+                  ? t(($) => $['deployDrawer.noCredentialCandidates'])
+                  : t(($) => $['deployDrawer.selectCredential']))
+              }
+            >
               {selectedOption?.display_name ??
                 (slot.candidates.length === 0
                   ? t(($) => $['deployDrawer.noCredentialCandidates'])

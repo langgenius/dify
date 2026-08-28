@@ -28,7 +28,9 @@ const TriggerEventCard = ({ eventInfo, providerInfo }: TriggerEventCardProps) =>
         onClick={() => setShowDetail(true)}
       >
         <div className="pb-0.5 system-md-semibold text-text-secondary">{title}</div>
-        <div className="line-clamp-2 system-xs-regular text-text-tertiary">{descriptionText}</div>
+        <div className="line-clamp-2 system-xs-regular text-text-tertiary" title={descriptionText}>
+          {descriptionText}
+        </div>
       </div>
       {showDetail && (
         <EventDetailDrawer

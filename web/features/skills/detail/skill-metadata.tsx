@@ -151,7 +151,9 @@ export function SkillTagsEditor({
       key={tag}
       className="group/tag relative flex max-w-full min-w-[18px] items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px] system-2xs-medium-uppercase text-text-tertiary"
     >
-      <span className="min-w-0 truncate">{tag}</span>
+      <span className="min-w-0 truncate" title={tag}>
+        {tag}
+      </span>
       {!readonly && (
         <button
           type="button"
@@ -512,6 +514,7 @@ function SkillReferenceItem({
             'min-w-0 truncate system-sm-regular text-text-secondary',
             compact ? 'flex-1' : 'max-w-[252px]',
           )}
+          title={title}
         >
           {title}
         </span>
@@ -548,7 +551,10 @@ function SkillReferenceItem({
           }
         />
       </span>
-      <span className="max-w-[252px] min-w-0 flex-1 truncate system-sm-regular text-text-secondary">
+      <span
+        className="max-w-[252px] min-w-0 flex-1 truncate system-sm-regular text-text-secondary"
+        title={workflowName}
+      >
         {workflowName}
       </span>
       <span

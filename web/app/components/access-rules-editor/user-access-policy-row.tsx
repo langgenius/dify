@@ -95,21 +95,32 @@ function UserAccessPolicyRow({
         />
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-1.5">
-            <span className="truncate system-md-medium text-text-secondary">
+            <span
+              className="truncate system-md-medium text-text-secondary"
+              title={setting.account.account_name}
+            >
               {setting.account.account_name}
             </span>
             {isMaintainer && (
-              <span className="max-w-32 shrink-0 truncate rounded-[5px] border border-text-accent-secondary px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
+              <span
+                className="max-w-32 shrink-0 truncate rounded-[5px] border border-text-accent-secondary px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary"
+                title={t(($) => $['accessRule.maintainer'], { ns: 'permission' })}
+              >
                 {t(($) => $['accessRule.maintainer'], { ns: 'permission' })}
               </span>
             )}
             {isWorkspaceOwner && (
-              <span className="max-w-32 shrink-0 truncate rounded-[5px] border border-text-accent-secondary px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
+              <span
+                className="max-w-32 shrink-0 truncate rounded-[5px] border border-text-accent-secondary px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary"
+                title={t(($) => $['accessRule.workspaceOwner'], { ns: 'permission' })}
+              >
                 {t(($) => $['accessRule.workspaceOwner'], { ns: 'permission' })}
               </span>
             )}
           </div>
-          <p className="truncate system-xs-regular text-text-tertiary">{accountEmail}</p>
+          <p className="truncate system-xs-regular text-text-tertiary" title={accountEmail}>
+            {accountEmail}
+          </p>
         </div>
       </td>
       <td>

@@ -203,7 +203,10 @@ function JsonSchemaConfigContent({ defaultSchema, onSave, onClose }: JsonSchemaC
     >
       {/* Header */}
       <div className="relative flex p-6 pr-14 pb-3">
-        <div className="grow truncate title-2xl-semi-bold text-text-primary">
+        <div
+          className="grow truncate title-2xl-semi-bold text-text-primary"
+          title={t(($) => $['nodes.llm.jsonSchema.title'], { ns: 'workflow' })}
+        >
           {t(($) => $['nodes.llm.jsonSchema.title'], { ns: 'workflow' })}
         </div>
         <button

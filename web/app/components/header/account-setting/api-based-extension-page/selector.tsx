@@ -58,7 +58,10 @@ export function ApiBasedExtensionSelector({ value, onChange }: ApiBasedExtension
                 <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal pr-2.5 pl-3">
                   <div className="text-sm text-text-primary">{currentItem.name}</div>
                   <div className="flex items-center">
-                    <div className="mr-1.5 w-67.5 truncate text-right text-xs text-text-quaternary">
+                    <div
+                      className="mr-1.5 w-67.5 truncate text-right text-xs text-text-quaternary"
+                      title={currentItem.api_endpoint}
+                    >
                       {currentItem.api_endpoint}
                     </div>
                     <span

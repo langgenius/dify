@@ -88,7 +88,10 @@ const AddAnnotationModal: FC<Props> = ({ isShow, onHide, onAdd }) => {
               <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
                 <div className="shrink-0 border-b border-divider-subtle py-4">
                   <div className="flex h-6 items-center justify-between pr-5 pl-6">
-                    <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
+                    <DrawerTitle
+                      className="min-w-0 truncate system-xl-semibold text-text-primary"
+                      title={t(($) => $['addModal.title'], { ns: 'appAnnotation' })}
+                    >
                       {t(($) => $['addModal.title'], { ns: 'appAnnotation' })}
                     </DrawerTitle>
                     <DrawerCloseButton

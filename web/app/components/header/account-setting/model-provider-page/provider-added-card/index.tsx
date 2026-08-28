@@ -177,7 +177,10 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
               </div>
             </div>
           </div>
-          <div className="mt-3 line-clamp-2 h-8 system-xs-regular text-text-tertiary">
+          <div
+            className="mt-3 line-clamp-2 h-8 system-xs-regular text-text-tertiary"
+            title={description}
+          >
             {description}
           </div>
           <div className="mt-3 flex min-w-0 gap-0.5 overflow-hidden">
@@ -194,7 +197,17 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
               aria-label={t(($) => $['modelProvider.showModels'], { ns: 'common' })}
               onClick={handleOpenModelList}
             >
-              <span className="truncate">
+              <span
+                className="truncate"
+                title={
+                  hasModelList
+                    ? t(($) => $['modelProvider.modelsNum'], {
+                        ns: 'common',
+                        num: modelList.length,
+                      })
+                    : t(($) => $['modelProvider.showModels'], { ns: 'common' })
+                }
+              >
                 {hasModelList
                   ? t(($) => $['modelProvider.modelsNum'], { ns: 'common', num: modelList.length })
                   : t(($) => $['modelProvider.showModels'], { ns: 'common' })}
@@ -213,7 +226,10 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
                 aria-hidden
                 className="mr-1 i-ri-information-2-fill size-4 shrink-0 text-text-accent"
               />
-              <span className="truncate system-xs-medium text-text-secondary">
+              <span
+                className="truncate system-xs-medium text-text-secondary"
+                title={t(($) => $['modelProvider.configureTip'], { ns: 'common' })}
+              >
                 {t(($) => $['modelProvider.configureTip'], { ns: 'common' })}
               </span>
             </div>

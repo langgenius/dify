@@ -507,6 +507,16 @@ export function ProcessingTasksDrawer({
                       const timestamp = Date.parse(
                         taskIsActive(task) ? task.createdAt : taskTime(task),
                       )
+                      const taskStateLabel = t(
+                        ($) => $[`newKnowledge.processingTaskState.${task.state}`],
+                        { progress: task.progressPercent },
+                      )
+                      const taskTimeLabel = Number.isNaN(timestamp)
+                        ? null
+                        : formatTimeFromNow(timestamp)
+                      const taskMetadataLabel = [taskStateLabel, taskTimeLabel]
+                        .filter(Boolean)
+                        .join(' · ')
                       const taskError = task.errorMessage ?? task.errorCode
                       const actionTarget = `${documentTitles.get(task.documentId) ?? task.documentId} · ${task.id}`
                       return (
@@ -524,17 +534,21 @@ export function ProcessingTasksDrawer({
                             }
                           />
                           <div className="min-w-0 flex-1">
-                            <p className="truncate system-xs-medium text-text-primary">
+                            <p
+                              className="truncate system-xs-medium text-text-primary"
+                              title={t(($) => $['newKnowledge.processDocument'], { name: title })}
+                            >
                               {t(($) => $['newKnowledge.processDocument'], { name: title })}
                             </p>
-                            <p className="mt-0.5 truncate system-2xs-regular text-text-tertiary">
-                              {t(($) => $[`newKnowledge.processingTaskState.${task.state}`], {
-                                progress: task.progressPercent,
-                              })}
-                              {!Number.isNaN(timestamp) && (
+                            <p
+                              className="mt-0.5 truncate system-2xs-regular text-text-tertiary"
+                              title={taskMetadataLabel}
+                            >
+                              {taskStateLabel}
+                              {taskTimeLabel && (
                                 <>
                                   <span aria-hidden> · </span>
-                                  {formatTimeFromNow(timestamp)}
+                                  {taskTimeLabel}
                                 </>
                               )}
                             </p>

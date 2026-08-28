@@ -96,7 +96,10 @@ const Chart: React.FC<IChartProps> = ({
     >
       <div className="flex h-11 shrink-0 items-center px-6 pt-6 pb-1">
         <div className="flex min-w-0 items-center">
-          <div className="min-w-0 truncate system-sm-semibold-uppercase text-text-secondary">
+          <div
+            className="min-w-0 truncate system-sm-semibold-uppercase text-text-secondary"
+            title={title}
+          >
             {title}
           </div>
           {explanation && (
@@ -113,7 +116,10 @@ const Chart: React.FC<IChartProps> = ({
           {summaryValue}
         </div>
         {showTokenSummary && (
-          <div className="min-w-0 truncate system-sm-medium text-text-tertiary">
+          <div
+            className="min-w-0 truncate system-sm-medium text-text-tertiary"
+            title={`${t(($) => $['analysis.tokenUsage.consumed'], { ns: 'appOverview' })} Tokens (~${tokenSummary})`}
+          >
             {t(($) => $['analysis.tokenUsage.consumed'], { ns: 'appOverview' })} Tokens{' '}
             <span>(</span>
             <span className="text-orange-400">~{tokenSummary}</span>

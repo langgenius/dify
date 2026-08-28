@@ -43,7 +43,9 @@ const CommentPreview: FC<CommentPreviewProps> = ({ comment, onClick }) => {
 
       <div className="mb-2 flex items-start">
         <div className="flex min-w-0 items-center gap-2">
-          <div className="truncate system-sm-medium text-text-primary">{authorName}</div>
+          <div className="truncate system-sm-medium text-text-primary" title={authorName}>
+            {authorName}
+          </div>
           <div className="shrink-0 system-2xs-regular text-text-tertiary">
             {formatTimeFromNow((comment.updated_at ?? comment.created_at ?? 0) * 1000)}
           </div>

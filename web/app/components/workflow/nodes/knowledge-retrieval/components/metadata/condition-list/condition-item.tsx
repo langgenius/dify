@@ -147,7 +147,10 @@ const ConditionItem = ({
               <div className="mr-0.5 p-px">
                 <MetadataIcon type={currentMetadata?.type} className="size-3" />
               </div>
-              <div className="mr-0.5 min-w-0 flex-1 truncate system-xs-medium text-text-secondary">
+              <div
+                className="mr-0.5 min-w-0 flex-1 truncate system-xs-medium text-text-secondary"
+                title={currentMetadata?.name}
+              >
                 {currentMetadata?.name}
               </div>
               <div className="system-xs-regular text-text-tertiary">{currentMetadata?.type}</div>

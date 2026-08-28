@@ -156,17 +156,27 @@ function AgentContentModerationSettingsContent() {
       {moderation?.enabled ? (
         <div className="flex min-w-0 items-center gap-4">
           <div className="min-w-0">
-            <div className="mb-0.5 truncate system-2xs-medium-uppercase text-text-tertiary">
+            <div
+              className="mb-0.5 truncate system-2xs-medium-uppercase text-text-tertiary"
+              title={t(($) => $['feature.moderation.modal.provider.title'], { ns: 'appDebug' })}
+            >
               {t(($) => $['feature.moderation.modal.provider.title'], { ns: 'appDebug' })}
             </div>
-            <div className="truncate system-xs-regular text-text-secondary">{providerContent}</div>
+            <div className="truncate system-xs-regular text-text-secondary" title={providerContent}>
+              {providerContent}
+            </div>
           </div>
           <div className="h-6.75 w-px shrink-0 rotate-12 bg-divider-subtle" />
           <div className="min-w-0">
-            <div className="mb-0.5 truncate system-2xs-medium-uppercase text-text-tertiary">
+            <div
+              className="mb-0.5 truncate system-2xs-medium-uppercase text-text-tertiary"
+              title={t(($) => $['feature.moderation.contentEnableLabel'], { ns: 'appDebug' })}
+            >
               {t(($) => $['feature.moderation.contentEnableLabel'], { ns: 'appDebug' })}
             </div>
-            <div className="truncate system-xs-regular text-text-secondary">{enabledContent}</div>
+            <div className="truncate system-xs-regular text-text-secondary" title={enabledContent}>
+              {enabledContent}
+            </div>
           </div>
         </div>
       ) : (

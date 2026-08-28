@@ -35,7 +35,9 @@ const UpdateSettingOptionCard = <Value extends string>({
         'data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:system-sm-medium data-checked:text-text-primary data-checked:shadow-xs',
       )}
     >
-      <span className="max-w-full min-w-0 truncate whitespace-nowrap">{label}</span>
+      <span className="max-w-full min-w-0 truncate whitespace-nowrap" title={label}>
+        {label}
+      </span>
     </RadioItem>
   )
 }

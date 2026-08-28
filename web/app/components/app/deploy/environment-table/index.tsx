@@ -63,13 +63,20 @@ export function EnvironmentTable({
           <h2
             id="deploy-environments-title"
             className="truncate system-md-semibold text-text-primary"
+            title={t(($) => $['studio.environments'])}
           >
             {t(($) => $['studio.environments'])}
           </h2>
           <span aria-hidden className="system-xs-regular text-text-quaternary">
             ·
           </span>
-          <span className="truncate system-xs-regular text-text-tertiary">
+          <span
+            className="truncate system-xs-regular text-text-tertiary"
+            title={t(($) => $['studio.environmentsInUse'], {
+              total,
+              used,
+            })}
+          >
             {t(($) => $['studio.environmentsInUse'], {
               total,
               used,

@@ -10,7 +10,10 @@ function HumanInputNode(props: NodeProps<HumanInputNodeType>) {
     <div className="space-y-0.5 px-3 py-1">
       {data.user_actions.map((userAction) => (
         <div key={userAction.id} className="relative flex h-6 flex-row-reverse items-center px-1">
-          <span className="truncate system-xs-semibold-uppercase text-text-secondary">
+          <span
+            className="truncate system-xs-semibold-uppercase text-text-secondary"
+            title={userAction.id}
+          >
             {userAction.id}
           </span>
           <NodeSourceHandle
@@ -21,7 +24,9 @@ function HumanInputNode(props: NodeProps<HumanInputNodeType>) {
         </div>
       ))}
       <div className="relative flex h-6 flex-row-reverse items-center px-1">
-        <span className="truncate system-xs-semibold-uppercase text-text-secondary">Timeout</span>
+        <span className="truncate system-xs-semibold-uppercase text-text-secondary" title="Timeout">
+          Timeout
+        </span>
         <NodeSourceHandle
           {...props}
           handleId="__timeout"

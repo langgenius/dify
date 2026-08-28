@@ -44,7 +44,9 @@ const VarPanel: FC<Props> = ({ varList, message_files }) => {
             <div key={index} className="flex py-2 system-xs-medium">
               <div className="flex w-32 shrink-0 text-text-accent">
                 <span className="shrink-0 opacity-60">{'{{'}</span>
-                <span className="truncate">{label}</span>
+                <span className="truncate" title={label}>
+                  {label}
+                </span>
                 <span className="shrink-0 opacity-60">{'}}'}</span>
               </div>
               <div className="pl-2.5 whitespace-pre-wrap text-text-secondary">{value}</div>

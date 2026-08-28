@@ -44,6 +44,7 @@ const Field: FC<Props> = ({ name, payload, depth = 1, required, rootClassName })
                 'ml-1.75 h-6 truncate system-sm-medium leading-6 text-text-secondary',
                 isRoot && rootClassName,
               )}
+              title={name}
             >
               {name}
             </div>
@@ -59,7 +60,10 @@ const Field: FC<Props> = ({ name, payload, depth = 1, required, rootClassName })
           </div>
           {payload.description && (
             <div className="ml-1.75 flex">
-              <div className="w-0 grow truncate system-xs-regular text-text-tertiary">
+              <div
+                className="w-0 grow truncate system-xs-regular text-text-tertiary"
+                title={payload.description}
+              >
                 {payload.description}
               </div>
             </div>

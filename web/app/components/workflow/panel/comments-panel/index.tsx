@@ -190,7 +190,10 @@ const CommentsPanel = () => {
                 {/* Header row: creator + time */}
                 <div className="flex items-start">
                   <div className="flex min-w-0 items-center gap-2">
-                    <div className="truncate system-sm-medium text-text-primary">
+                    <div
+                      className="truncate system-sm-medium text-text-primary"
+                      title={c.created_by_account?.name ?? ''}
+                    >
                       {c.created_by_account?.name ?? ''}
                     </div>
                     <div className="shrink-0 system-2xs-regular text-text-tertiary">
@@ -199,7 +202,10 @@ const CommentsPanel = () => {
                   </div>
                 </div>
                 {/* Content */}
-                <div className="mt-1 line-clamp-3 system-sm-regular wrap-break-word text-text-secondary">
+                <div
+                  className="mt-1 line-clamp-3 system-sm-regular wrap-break-word text-text-secondary"
+                  title={c.content}
+                >
                   {c.content}
                 </div>
                 {/* Footer */}

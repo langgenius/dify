@@ -50,7 +50,10 @@ const DocModeInfo = ({ dataset, isExternalProvider, isShowDocModeInfo }: DocMode
   return (
     <div className={docModeInfoClassName}>
       {isPipeline && (
-        <span className="max-w-full min-w-0 truncate">
+        <span
+          className="max-w-full min-w-0 truncate"
+          title={t(($) => $['cornerLabel.pipeline'], { ns: 'dataset' })}
+        >
           {t(($) => $['cornerLabel.pipeline'], { ns: 'dataset' })}
         </span>
       )}

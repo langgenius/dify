@@ -57,7 +57,10 @@ export function EnvironmentDeployMenu({
               onClick={() => onSelectEnvironment?.(environment)}
             >
               <span aria-hidden className="i-ri-instance-line size-4 shrink-0 text-text-tertiary" />
-              <span className="grow truncate system-md-regular text-text-secondary">
+              <span
+                className="grow truncate system-md-regular text-text-secondary"
+                title={environment.display_name}
+              >
                 {environment.display_name}
               </span>
             </DropdownMenuItem>

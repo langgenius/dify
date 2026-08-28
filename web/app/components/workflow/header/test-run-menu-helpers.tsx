@@ -30,7 +30,9 @@ export const OptionRow = ({
     >
       <div className="flex min-w-0 flex-1 items-center">
         <div className="flex size-6 shrink-0 items-center justify-center">{option.icon}</div>
-        <span className="ml-2 truncate">{option.name}</span>
+        <span className="ml-2 truncate" title={option.name}>
+          {option.name}
+        </span>
       </div>
       {shortcutKey && (
         <ShortcutKbd displayKey={shortcutKey} className="ml-2" textColor="secondary" />

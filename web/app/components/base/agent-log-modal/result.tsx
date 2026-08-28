@@ -66,7 +66,10 @@ const ResultPanel: FC<ResultPanelProps> = ({
           </div>
           <div className="py-1">
             <div className="flex">
-              <div className="w-26 shrink-0 truncate px-2 py-1.25 text-xs leading-4.5 text-text-tertiary">
+              <div
+                className="w-26 shrink-0 truncate px-2 py-1.25 text-xs leading-4.5 text-text-tertiary"
+                title={t(($) => $['meta.status'], { ns: 'runLog' })}
+              >
                 {t(($) => $['meta.status'], { ns: 'runLog' })}
               </div>
               <div className="grow px-2 py-1.25 text-xs leading-4.5 text-text-primary">
@@ -74,7 +77,10 @@ const ResultPanel: FC<ResultPanelProps> = ({
               </div>
             </div>
             <div className="flex">
-              <div className="w-26 shrink-0 truncate px-2 py-1.25 text-xs leading-4.5 text-text-tertiary">
+              <div
+                className="w-26 shrink-0 truncate px-2 py-1.25 text-xs leading-4.5 text-text-tertiary"
+                title={t(($) => $['meta.executor'], { ns: 'runLog' })}
+              >
                 {t(($) => $['meta.executor'], { ns: 'runLog' })}
               </div>
               <div className="grow px-2 py-1.25 text-xs leading-4.5 text-text-primary">
@@ -82,7 +88,10 @@ const ResultPanel: FC<ResultPanelProps> = ({
               </div>
             </div>
             <div className="flex">
-              <div className="w-26 shrink-0 truncate px-2 py-1.25 text-xs leading-4.5 text-text-tertiary">
+              <div
+                className="w-26 shrink-0 truncate px-2 py-1.25 text-xs leading-4.5 text-text-tertiary"
+                title={t(($) => $['meta.startTime'], { ns: 'runLog' })}
+              >
                 {t(($) => $['meta.startTime'], { ns: 'runLog' })}
               </div>
               <div className="grow px-2 py-1.25 text-xs leading-4.5 text-text-primary">
@@ -95,7 +104,10 @@ const ResultPanel: FC<ResultPanelProps> = ({
               </div>
             </div>
             <div className="flex">
-              <div className="w-26 shrink-0 truncate px-2 py-1.25 text-xs leading-4.5 text-text-tertiary">
+              <div
+                className="w-26 shrink-0 truncate px-2 py-1.25 text-xs leading-4.5 text-text-tertiary"
+                title={t(($) => $['meta.time'], { ns: 'runLog' })}
+              >
                 {t(($) => $['meta.time'], { ns: 'runLog' })}
               </div>
               <div className="grow px-2 py-1.25 text-xs leading-4.5 text-text-primary">
@@ -103,7 +115,10 @@ const ResultPanel: FC<ResultPanelProps> = ({
               </div>
             </div>
             <div className="flex">
-              <div className="w-26 shrink-0 truncate px-2 py-1.25 text-xs leading-4.5 text-text-tertiary">
+              <div
+                className="w-26 shrink-0 truncate px-2 py-1.25 text-xs leading-4.5 text-text-tertiary"
+                title={t(($) => $['meta.tokens'], { ns: 'runLog' })}
+              >
                 {t(($) => $['meta.tokens'], { ns: 'runLog' })}
               </div>
               <div className="grow px-2 py-1.25 text-xs leading-4.5 text-text-primary">
@@ -111,7 +126,10 @@ const ResultPanel: FC<ResultPanelProps> = ({
               </div>
             </div>
             <div className="flex">
-              <div className="w-26 shrink-0 truncate px-2 py-1.25 text-xs leading-4.5 text-text-tertiary">
+              <div
+                className="w-26 shrink-0 truncate px-2 py-1.25 text-xs leading-4.5 text-text-tertiary"
+                title={t(($) => $['agentLogDetail.agentMode'], { ns: 'appLog' })}
+              >
                 {t(($) => $['agentLogDetail.agentMode'], { ns: 'appLog' })}
               </div>
               <div className="grow px-2 py-1.25 text-xs leading-4.5 text-text-primary">
@@ -123,7 +141,10 @@ const ResultPanel: FC<ResultPanelProps> = ({
               </div>
             </div>
             <div className="flex">
-              <div className="w-26 shrink-0 truncate px-2 py-1.25 text-xs leading-4.5 text-text-tertiary">
+              <div
+                className="w-26 shrink-0 truncate px-2 py-1.25 text-xs leading-4.5 text-text-tertiary"
+                title={t(($) => $['agentLogDetail.toolUsed'], { ns: 'appLog' })}
+              >
                 {t(($) => $['agentLogDetail.toolUsed'], { ns: 'appLog' })}
               </div>
               <div className="grow px-2 py-1.25 text-xs leading-4.5 text-text-primary">
@@ -131,7 +152,10 @@ const ResultPanel: FC<ResultPanelProps> = ({
               </div>
             </div>
             <div className="flex">
-              <div className="w-26 shrink-0 truncate px-2 py-1.25 text-xs leading-4.5 text-text-tertiary">
+              <div
+                className="w-26 shrink-0 truncate px-2 py-1.25 text-xs leading-4.5 text-text-tertiary"
+                title={t(($) => $['agentLogDetail.iterations'], { ns: 'appLog' })}
+              >
                 {t(($) => $['agentLogDetail.iterations'], { ns: 'appLog' })}
               </div>
               <div className="grow px-2 py-1.25 text-xs leading-4.5 text-text-primary">

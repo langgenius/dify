@@ -108,7 +108,9 @@ function AgentWorkingDirectoryBreadcrumbItem({
       )}
     >
       <span aria-hidden className={cn('size-5 shrink-0', iconClassName)} />
-      <span className="min-w-0 truncate system-sm-regular">{label}</span>
+      <span className="min-w-0 truncate system-sm-regular" title={label}>
+        {label}
+      </span>
     </button>
   )
 }
@@ -169,7 +171,10 @@ export function AgentWorkingDirectoryBreadcrumb({
                               hiddenItem.iconClassName,
                             )}
                           />
-                          <span className="min-w-0 truncate px-1 system-md-regular">
+                          <span
+                            className="min-w-0 truncate px-1 system-md-regular"
+                            title={hiddenItem.label}
+                          >
                             {hiddenItem.label}
                           </span>
                         </DropdownMenuItem>

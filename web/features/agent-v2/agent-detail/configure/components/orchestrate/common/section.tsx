@@ -5,11 +5,12 @@ import type { AgentBuildDraftChangeSection } from '../build-draft-changes-contex
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { Infotip } from '@/app/components/base/infotip'
+import { getTextFromReactNode } from '@/utils/react'
 import { AgentBuildDraftChangeDot } from '../build-draft-change-dot'
 import { useIsAgentBuildDraftSectionChanged } from '../build-draft-changes-context'
 
 type ConfigureSectionBaseProps = {
-  label: ReactNode
+  label: string
   labelId: string
   children: ReactNode
   actions?: ReactNode
@@ -71,7 +72,12 @@ export function ConfigureSection({
             <Heading id={labelId} className="relative min-w-0 shrink-0">
               {isBuildDraftChanged && <AgentBuildDraftChangeDot />}
               <CollapsibleTrigger className="h-6 min-h-0 w-auto max-w-full justify-start gap-0 rounded-sm px-0 text-text-secondary hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-secondary data-panel-open:text-text-secondary">
-                <span className="min-w-0 truncate system-sm-semibold-uppercase">{label}</span>
+                <span
+                  className="min-w-0 truncate system-sm-semibold-uppercase"
+                  title={getTextFromReactNode(label)}
+                >
+                  {label}
+                </span>
               </CollapsibleTrigger>
             </Heading>
             {hasTip && (

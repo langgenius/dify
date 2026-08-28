@@ -65,7 +65,10 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
           <div className="flex items-center gap-2 self-stretch rounded-lg p-1">
             <ApiConnectionMod className="size-4 text-text-secondary" />
             <div className="flex grow items-center">
-              <span className="overflow-hidden system-sm-regular text-ellipsis text-components-input-text-filled">
+              <span
+                className="overflow-hidden system-sm-regular text-ellipsis text-components-input-text-filled"
+                title={selectedItem.name}
+              >
                 {selectedItem.name}
               </span>
             </div>
@@ -89,10 +92,16 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
             >
               <div className="flex w-full items-center gap-2 self-stretch rounded-lg p-2 hover:bg-state-base-hover">
                 <ApiConnectionMod className="size-4 text-text-secondary" />
-                <span className="grow overflow-hidden system-sm-medium text-ellipsis text-text-secondary">
+                <span
+                  className="grow overflow-hidden system-sm-medium text-ellipsis text-text-secondary"
+                  title={item.name}
+                >
                   {item.name}
                 </span>
-                <span className="overflow-hidden text-right system-xs-regular text-ellipsis text-text-tertiary">
+                <span
+                  className="overflow-hidden text-right system-xs-regular text-ellipsis text-text-tertiary"
+                  title={item.url}
+                >
                   {item.url}
                 </span>
               </div>
@@ -104,7 +113,10 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
               onClick={handleAddNewAPI}
             >
               <RiAddLine className="size-4 text-text-secondary" />
-              <span className="grow overflow-hidden system-sm-medium text-ellipsis text-text-secondary">
+              <span
+                className="grow overflow-hidden system-sm-medium text-ellipsis text-text-secondary"
+                title={t(($) => $.createNewExternalAPI, { ns: 'dataset' })}
+              >
                 {t(($) => $.createNewExternalAPI, { ns: 'dataset' })}
               </span>
             </div>

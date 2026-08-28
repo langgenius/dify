@@ -666,10 +666,15 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
                     className="shrink-0"
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-text-primary">
+                    <div
+                      className="truncate text-sm font-medium text-text-primary"
+                      title={user.name}
+                    >
                       {user.name}
                     </div>
-                    <div className="truncate text-xs text-text-tertiary">{user.email}</div>
+                    <div className="truncate text-xs text-text-tertiary" title={user.email}>
+                      {user.email}
+                    </div>
                   </div>
                 </div>
               ))}

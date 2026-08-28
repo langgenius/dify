@@ -48,7 +48,10 @@ function OutputRow({
       <div className="flex h-6 items-center gap-x-1 pr-0.5 pl-1">
         <div className="flex min-w-0 grow items-center gap-x-1">
           <span className="flex h-5 min-w-0 items-center px-1">
-            <span className="truncate code-sm-semibold leading-4 text-text-primary">
+            <span
+              className="truncate code-sm-semibold leading-4 text-text-primary"
+              title={output.name}
+            >
               {output.name}
             </span>
           </span>
@@ -99,7 +102,12 @@ function OutputRow({
         )}
       </div>
       {description && (
-        <div className="truncate px-2 pb-1 system-xs-regular text-text-tertiary">{description}</div>
+        <div
+          className="truncate px-2 pb-1 system-xs-regular text-text-tertiary"
+          title={description}
+        >
+          {description}
+        </div>
       )}
     </div>
   )

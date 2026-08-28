@@ -133,7 +133,9 @@ const RunOnce: FC<IRunOnceProps> = ({
                     <div className="mt-4 w-full" key={item.key}>
                       {item.type !== 'checkbox' && (
                         <div className="flex h-6 items-center gap-1 system-md-semibold text-text-secondary">
-                          <div className="truncate">{item.name}</div>
+                          <div className="truncate" title={item.name}>
+                            {item.name}
+                          </div>
                           {!item.required && (
                             <span className="system-xs-regular text-text-tertiary">
                               {t(($) => $['panel.optional'], { ns: 'workflow' })}

@@ -117,6 +117,14 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
               'truncate py-px system-sm-semibold',
               isSelected ? 'text-text-accent' : 'text-text-secondary',
             )}
+            title={
+              isDraft
+                ? t(($) => $['versionHistory.currentDraft'], { ns: 'workflow' })
+                : getWorkflowVersionName(
+                    item,
+                    t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+                  )
+            }
           >
             {isDraft
               ? t(($) => $['versionHistory.currentDraft'], { ns: 'workflow' })
@@ -137,7 +145,10 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
           </div>
         )}
         {!isDraft && (
-          <div className="truncate system-xs-regular text-text-tertiary">
+          <div
+            className="truncate system-xs-regular text-text-tertiary"
+            title={`${formatTime(item.created_at)} · ${item.created_by.name}`}
+          >
             {`${formatTime(item.created_at)} · ${item.created_by.name}`}
           </div>
         )}

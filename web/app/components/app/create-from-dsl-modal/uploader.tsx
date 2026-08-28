@@ -179,6 +179,7 @@ export function Uploader({
               <span
                 id={fileNameId}
                 className="font-inter max-w-[calc(100%-30px)] overflow-hidden text-[12px] leading-4 font-medium text-ellipsis whitespace-nowrap text-text-secondary"
+                title={file.name}
               >
                 {file.name}
               </span>

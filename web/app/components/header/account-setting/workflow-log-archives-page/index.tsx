@@ -381,7 +381,9 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
       )}
     >
       <div className="min-w-0 text-center">
-        <span className="truncate system-sm-semibold text-text-primary">{archiveMonth}</span>
+        <span className="truncate system-sm-semibold text-text-primary" title={archiveMonth}>
+          {archiveMonth}
+        </span>
       </div>
       <div className="text-center system-sm-medium text-text-secondary tabular-nums">
         {formatNumber(archive.workflow_run_count)}

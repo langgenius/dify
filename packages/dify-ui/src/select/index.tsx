@@ -15,6 +15,7 @@ import {
   floatingSeparatorClassName,
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
+import { getTextFromNode } from '../utils/get-text-from-node'
 
 type SelectProps<Value, Multiple extends boolean | undefined = false> = BaseSelect.Root.Props<
   Value,
@@ -90,10 +91,13 @@ type SelectTriggerProps = Omit<BaseSelect.Trigger.Props, 'className'> & {
   size?: SelectSize
 }
 
-function SelectTrigger({ className, children, size, ...props }: SelectTriggerProps) {
+function SelectTrigger({ className, children, size, title, ...props }: SelectTriggerProps) {
+  const resolvedTitle = title ?? getTextFromNode(children)
   return (
     <BaseSelect.Trigger className={cn(selectTriggerVariants({ size, className }))} {...props}>
-      <span className="min-w-0 grow truncate">{children}</span>
+      <span className="min-w-0 grow truncate" title={resolvedTitle}>
+        {children}
+      </span>
       <BaseSelect.Icon className="shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary group-data-readonly:hidden data-popup-open:text-text-secondary">
         <span className="i-ri-arrow-down-s-line h-4 w-4" aria-hidden="true" />
       </BaseSelect.Icon>
@@ -227,9 +231,16 @@ function SelectItem<Value = unknown>({ className, ...props }: SelectItemProps<Va
 
 type SelectItemTextProps = Omit<BaseSelect.ItemText.Props, 'className'> & { className?: string }
 
-function SelectItemText({ className, ...props }: SelectItemTextProps) {
+function SelectItemText({ className, children, title, ...props }: SelectItemTextProps) {
+  const resolvedTitle = title ?? getTextFromNode(children)
   return (
-    <BaseSelect.ItemText className={cn('me-1 min-w-0 grow truncate px-1', className)} {...props} />
+    <BaseSelect.ItemText
+      className={cn('me-1 min-w-0 grow truncate px-1', className)}
+      title={resolvedTitle}
+      {...props}
+    >
+      {children}
+    </BaseSelect.ItemText>
   )
 }
 

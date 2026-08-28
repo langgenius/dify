@@ -255,6 +255,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
                     }
                     className="flex grow items-center gap-0.5 self-stretch overflow-hidden rounded-lg border-components-input-border-active bg-components-input-bg-active p-2 text-ellipsis"
                     placeholder="Please enter GitHub repo URL"
+                    title={state.repoUrl}
                   />
                 </Field>
                 <div className="mt-4 flex items-center justify-end gap-2 self-stretch">

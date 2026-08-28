@@ -23,6 +23,7 @@ export function SkillDropDestinationHint({ target }: { target: SkillDropTarget |
         <span
           aria-label={label}
           className="max-w-full truncate px-0.5 system-xs-regular text-text-secondary"
+          title={label}
         >
           {action} to <strong className="font-medium">{destination}</strong>
         </span>
@@ -97,7 +98,10 @@ export function SkillUploadStatusPanel({
           />
           {failedCount > 0 && !hasActiveUpload ? (
             <div className="min-w-0 flex-1">
-              <div className="truncate system-xs-semibold text-text-primary">
+              <div
+                className="truncate system-xs-semibold text-text-primary"
+                title={t(($) => $['skillManagement.detail.uploadFailureTitle'])}
+              >
                 {t(($) => $['skillManagement.detail.uploadFailureTitle'])}
               </div>
               <div className="mt-1 border-l border-divider-subtle pl-2 system-xs-regular text-text-tertiary">
@@ -115,7 +119,17 @@ export function SkillUploadStatusPanel({
               </div>
             </div>
           ) : (
-            <span className="min-w-0 flex-1 truncate system-xs-semibold text-text-primary">
+            <span
+              className="min-w-0 flex-1 truncate system-xs-semibold text-text-primary"
+              title={
+                hasActiveUpload
+                  ? t(($) => $['skillManagement.detail.uploadFilesProgress'], {
+                      completed: completedCount,
+                      total: items.length,
+                    })
+                  : `${uploadedCount} ${uploadedCount === 1 ? 'file' : 'files'} uploaded`
+              }
+            >
               {hasActiveUpload
                 ? t(($) => $['skillManagement.detail.uploadFilesProgress'], {
                     completed: completedCount,

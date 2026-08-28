@@ -10,7 +10,10 @@ type Props = Readonly<{
 const Field: FC<Props> = ({ label, children }) => {
   return (
     <div className="flex items-start space-x-2">
-      <div className="w-32 shrink-0 items-center truncate py-1 system-xs-medium text-text-tertiary">
+      <div
+        className="w-32 shrink-0 items-center truncate py-1 system-xs-medium text-text-tertiary"
+        title={label}
+      >
         {label}
       </div>
       <div className="w-61 shrink-0">{children}</div>

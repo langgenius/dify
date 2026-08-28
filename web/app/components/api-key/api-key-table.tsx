@@ -38,14 +38,32 @@ export function ApiKeyTable({ apiKeys, canManage, onDeleteRequest }: ApiKeyTable
         <tbody>
           {apiKeys.map((apiKey) => (
             <tr className="border-b border-divider-regular last:border-b-0" key={apiKey.id}>
-              <td className="truncate px-6 py-2 font-mono">{maskToken(apiKey.token)}</td>
-              <td className="truncate px-3 py-2">
+              <td className="truncate px-6 py-2 font-mono" title={maskToken(apiKey.token)}>
+                {maskToken(apiKey.token)}
+              </td>
+              <td
+                className="truncate px-3 py-2"
+                title={formatTime(
+                  Number(apiKey.created_at),
+                  t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                )}
+              >
                 {formatTime(
                   Number(apiKey.created_at),
                   t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
                 )}
               </td>
-              <td className="truncate px-3 py-2">
+              <td
+                className="truncate px-3 py-2"
+                title={
+                  apiKey.last_used_at
+                    ? formatTime(
+                        Number(apiKey.last_used_at),
+                        t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                      )
+                    : t(($) => $.never, { ns: 'appApi' })
+                }
+              >
                 {apiKey.last_used_at
                   ? formatTime(
                       Number(apiKey.last_used_at),

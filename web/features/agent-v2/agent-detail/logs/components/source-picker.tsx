@@ -150,7 +150,9 @@ export function AgentLogSourcePicker({
                               <ComboboxItemText className="flex min-w-0 items-center gap-2 px-0 system-sm-regular">
                                 <SourceCheckbox checked={state.selected} />
                                 <LogSourceIcon source={source} />
-                                <span className="min-w-0 flex-1 truncate">{source.app_name}</span>
+                                <span className="min-w-0 flex-1 truncate" title={source.app_name}>
+                                  {source.app_name}
+                                </span>
                               </ComboboxItemText>
                             </div>
                           )}

@@ -27,6 +27,7 @@ import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import * as React from 'react'
+import { getTextFromReactNode } from '@/utils/react'
 import { AgentOutputBlock, AgentOutputBlockReplacementBlock } from './plugins/agent-output-block'
 import ComponentPickerBlock from './plugins/component-picker-block'
 import { ContextBlock, ContextBlockReplacementBlock } from './plugins/context-block'
@@ -158,6 +159,7 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
             value={placeholder}
             className={cn('truncate', placeholderClassName)}
             compact={compact}
+            title={getTextFromReactNode(placeholder)}
           />
         }
         ErrorBoundary={LexicalErrorBoundary}

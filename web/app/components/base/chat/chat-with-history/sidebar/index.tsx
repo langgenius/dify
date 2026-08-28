@@ -102,7 +102,10 @@ const Sidebar = ({ isPanel }: Props) => {
             imageUrl={appData?.site.icon_url}
           />
         </div>
-        <div className={cn('grow truncate system-md-semibold text-text-secondary')}>
+        <div
+          className={cn('grow truncate system-md-semibold text-text-secondary')}
+          title={appData?.site.title}
+        >
           {appData?.site.title}
         </div>
         {!isMobile && isSidebarCollapsed && (
@@ -193,7 +196,10 @@ const Sidebar = ({ isPanel }: Props) => {
         <AlertDialog open={!!showConfirm} onOpenChange={(open) => !open && handleCancelConfirm()}>
           <AlertDialogContent>
             <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              <AlertDialogTitle
+                className="w-full truncate title-2xl-semi-bold text-text-primary"
+                title={t(($) => $['chat.deleteConversation.title'], { ns: 'share' })}
+              >
                 {t(($) => $['chat.deleteConversation.title'], { ns: 'share' })}
               </AlertDialogTitle>
               <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">

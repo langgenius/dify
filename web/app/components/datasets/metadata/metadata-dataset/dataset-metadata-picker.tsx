@@ -118,7 +118,10 @@ export function DatasetMetadataPicker({
                 className="i-ri-add-line size-3.5 shrink-0 text-components-button-tertiary-text"
                 aria-hidden="true"
               />
-              <span className="truncate text-components-button-tertiary-text">
+              <span
+                className="truncate text-components-button-tertiary-text"
+                title={t(($) => $['metadata.addMetadata'], { ns: 'dataset' })}
+              >
                 {t(($) => $['metadata.addMetadata'], { ns: 'dataset' })}
               </span>
             </span>
@@ -233,7 +236,9 @@ function MetadataOption({ metadata }: { metadata: MetadataItem }) {
     <ComboboxItem value={metadata}>
       <ComboboxItemText className="flex items-center gap-1.5 px-0">
         <span className={cn(iconClassName, 'size-3.5 shrink-0')} aria-hidden="true" />
-        <span className="min-w-0 grow truncate">{metadata.name}</span>
+        <span className="min-w-0 grow truncate" title={metadata.name}>
+          {metadata.name}
+        </span>
       </ComboboxItemText>
       <span className="shrink-0 system-xs-regular text-text-tertiary">{metadata.type}</span>
     </ComboboxItem>
@@ -258,7 +263,10 @@ function MetadataPickerActions({
         onClick={onStartMetadataCreation}
       >
         <span className="i-ri-add-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
-        <span className="truncate system-sm-medium">
+        <span
+          className="truncate system-sm-medium"
+          title={t(($) => $[`${i18nPrefix}.newAction`], { ns: 'dataset' })}
+        >
           {t(($) => $[`${i18nPrefix}.newAction`], { ns: 'dataset' })}
         </span>
       </Button>

@@ -54,7 +54,10 @@ const FeatureCard = ({
         />
       </div>
       {description && (
-        <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
+        <div
+          className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary"
+          title={description}
+        >
           {description}
         </div>
       )}

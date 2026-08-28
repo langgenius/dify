@@ -23,10 +23,15 @@ const ToolItem: FC<Props> = ({ payload, isChecked, onCheckChange }) => {
     <div className="flex w-full items-center gap-1 rounded-lg py-1 pr-2 pl-3 select-none hover:bg-state-base-hover">
       <div className="flex min-w-0 grow items-center gap-2 pr-2">
         <Icon size="tiny" src={`${MARKETPLACE_API_PREFIX}/plugins/${plugin_id}/icon`} />
-        <div className="min-w-0 truncate system-sm-medium text-text-secondary">
+        <div
+          className="min-w-0 truncate system-sm-medium text-text-secondary"
+          title={renderI18nObject(label, language)}
+        >
           {renderI18nObject(label, language)}
         </div>
-        <div className="min-w-0 truncate system-xs-regular text-text-quaternary">{org}</div>
+        <div className="min-w-0 truncate system-xs-regular text-text-quaternary" title={org}>
+          {org}
+        </div>
       </div>
       <Checkbox
         checked={isChecked}

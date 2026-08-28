@@ -40,12 +40,15 @@ function UploadRowShell({
     <div className="flex min-h-[50px] items-center gap-2 rounded-[10px] bg-background-section px-3 py-1.5">
       <span aria-hidden className={cn('size-5 shrink-0', getUploadIconClass(name))} />
       <div className="min-w-0 flex-1">
-        <div className="truncate system-sm-medium text-text-primary">{name}</div>
+        <div className="truncate system-sm-medium text-text-primary" title={name}>
+          {name}
+        </div>
         <div
           className={cn(
             'truncate system-xs-regular',
             success ? 'text-text-success' : 'text-text-warning-secondary',
           )}
+          title={message}
         >
           {message}
         </div>

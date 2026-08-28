@@ -55,7 +55,9 @@ export default function LocaleMenu<T extends string>({
                 closeOnClick
                 className="px-3 py-2 text-sm text-text-secondary"
               >
-                <span className="grow truncate">{item.name}</span>
+                <span className="grow truncate" title={item.name}>
+                  {item.name}
+                </span>
                 <DropdownMenuRadioItemIndicator />
               </DropdownMenuRadioItem>
             ))}

@@ -61,7 +61,10 @@ export function AgentPreviewVersionsPanel({
   return (
     <aside className="flex h-full w-67 shrink-0 flex-col rounded-l-lg bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
       <div className="flex shrink-0 items-center gap-2 pt-3 pr-3 pl-4">
-        <h2 className="min-w-0 flex-1 truncate system-xl-semibold text-text-primary">
+        <h2
+          className="min-w-0 flex-1 truncate system-xl-semibold text-text-primary"
+          title={tWorkflow(($) => $['versionHistory.title'])}
+        >
           {tWorkflow(($) => $['versionHistory.title'])}
         </h2>
         <VersionFilter filterValue={filterValue} onFilterChange={setFilterValue} />

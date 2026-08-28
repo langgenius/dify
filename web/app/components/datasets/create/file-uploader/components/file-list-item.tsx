@@ -50,11 +50,17 @@ const FileListItem = ({ fileItem, onPreview, onRemove }: FileListItemProps) => {
       </div>
       <div className="flex shrink grow flex-col gap-0.5">
         <div className="flex w-full">
-          <div className="w-0 grow truncate text-sm/4 text-text-secondary">
+          <div
+            className="w-0 grow truncate text-sm/4 text-text-secondary"
+            title={fileItem.file.name}
+          >
             {fileItem.file.name}
           </div>
         </div>
-        <div className="w-full truncate leading-3 text-text-tertiary">
+        <div
+          className="w-full truncate leading-3 text-text-tertiary"
+          title={`${getFileExtension(fileItem.file.name)} · ${formatFileSize(fileItem.file.size)}`}
+        >
           <span className="uppercase">{getFileExtension(fileItem.file.name)}</span>
           <span className="px-1 text-text-quaternary">·</span>
           <span>{formatFileSize(fileItem.file.size)}</span>

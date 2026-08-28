@@ -103,7 +103,9 @@ const AccessRuleSection = ({
           render={<button type="button" className="min-w-0 flex-1 text-left" />}
         >
           <div className="flex min-w-0 items-center gap-4">
-            <span className="truncate system-sm-semibold text-text-primary">{title}</span>
+            <span className="truncate system-sm-semibold text-text-primary" title={title}>
+              {title}
+            </span>
             <span className="shrink-0 system-xs-regular text-text-tertiary">
               {t(($) => $['accessRule.summary'], { ns: 'permission', count: ruleCount })}
             </span>

@@ -85,8 +85,12 @@ function AgentNodeModel({
               </div>
             ) : (
               <>
-                <div className="truncate system-xs-regular text-text-secondary">{name}</div>
-                <div className="truncate system-2xs-regular text-text-tertiary">{role}</div>
+                <div className="truncate system-xs-regular text-text-secondary" title={name}>
+                  {name}
+                </div>
+                <div className="truncate system-2xs-regular text-text-tertiary" title={role}>
+                  {role}
+                </div>
               </>
             )}
           </div>

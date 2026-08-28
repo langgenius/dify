@@ -1,0 +1,11 @@
+.singleLine {
+  @apply truncate;
+}
+
+.multipleLines {
+  -webkit-line-clamp: 2;
+}
+
+.regular {
+  overflow: hidden;
+}

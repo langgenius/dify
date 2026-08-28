@@ -92,7 +92,10 @@ export function OperationDropdown({
             className="px-2 py-1 system-md-regular text-text-secondary"
             onClick={onInfo}
           >
-            <span className="min-w-0 grow truncate px-1 py-0.5">
+            <span
+              className="min-w-0 grow truncate px-1 py-0.5"
+              title={t(($) => $['detailPanel.operation.info'], { ns: 'plugin' })}
+            >
               {t(($) => $['detailPanel.operation.info'], { ns: 'plugin' })}
             </span>
           </DropdownMenuItem>
@@ -102,7 +105,10 @@ export function OperationDropdown({
             className="px-2 py-1 system-md-regular text-text-secondary"
             onClick={onCheckVersion}
           >
-            <span className="min-w-0 grow truncate px-1 py-0.5">
+            <span
+              className="min-w-0 grow truncate px-1 py-0.5"
+              title={t(($) => $['detailPanel.operation.checkUpdate'], { ns: 'plugin' })}
+            >
               {t(($) => $['detailPanel.operation.checkUpdate'], { ns: 'plugin' })}
             </span>
           </DropdownMenuItem>
@@ -115,7 +121,10 @@ export function OperationDropdown({
             rel="noopener noreferrer"
             aria-label={t(($) => $['detailPanel.operation.viewDetail'], { ns: 'plugin' })}
           >
-            <span className="min-w-0 grow truncate px-1 py-0.5">
+            <span
+              className="min-w-0 grow truncate px-1 py-0.5"
+              title={t(($) => $['detailPanel.operation.viewDetail'], { ns: 'plugin' })}
+            >
               {t(($) => $['detailPanel.operation.viewDetail'], { ns: 'plugin' })}
             </span>
             <span className="i-ri-arrow-right-up-line size-3.5 shrink-0 text-text-tertiary" />
@@ -126,7 +135,10 @@ export function OperationDropdown({
             className="px-2 py-1 system-md-regular text-text-secondary"
             onClick={onViewReadme}
           >
-            <span className="min-w-0 grow truncate px-1 py-0.5">
+            <span
+              className="min-w-0 grow truncate px-1 py-0.5"
+              title={t(($) => $['detailPanel.operation.viewReadme'], { ns: 'plugin' })}
+            >
               {t(($) => $['detailPanel.operation.viewReadme'], { ns: 'plugin' })}
             </span>
           </DropdownMenuItem>
@@ -146,6 +158,7 @@ export function OperationDropdown({
                 'min-w-0 grow truncate px-1 py-0.5',
                 destructiveRemove && 'text-inherit',
               )}
+              title={t(($) => $['detailPanel.operation.remove'], { ns: 'plugin' })}
             >
               {t(($) => $['detailPanel.operation.remove'], { ns: 'plugin' })}
             </span>

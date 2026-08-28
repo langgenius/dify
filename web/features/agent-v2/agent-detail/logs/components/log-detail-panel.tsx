@@ -108,7 +108,10 @@ export function AgentLogDetailPanel({
           </div>
         </div>
         <div className="flex min-w-0 grow flex-wrap items-center justify-end gap-y-1">
-          <div className="min-w-0 truncate system-sm-medium text-text-secondary">
+          <div
+            className="min-w-0 truncate system-sm-medium text-text-secondary"
+            title={log?.title || log?.conversation_id}
+          >
             {log?.title || log?.conversation_id}
           </div>
         </div>

@@ -350,7 +350,7 @@ export const CreateSubscriptionButton = ({
         <SelectContent placement="bottom-start" sideOffset={4}>
           {visibleOptions.map((option) => (
             <SelectItem key={option.value} value={option.value}>
-              <div className="mr-8 flex grow items-center gap-1 truncate px-1">
+              <div className="mr-8 flex grow items-center gap-1 truncate px-1" title={option.label}>
                 {option.label}
                 {option.tag}
               </div>

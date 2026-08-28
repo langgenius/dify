@@ -90,7 +90,10 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
       >
         <>
           {!annotationReply?.enabled && (
-            <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
+            <div
+              className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary"
+              title={t(($) => $['feature.annotation.description'], { ns: 'appDebug' })}
+            >
               {t(($) => $['feature.annotation.description'], { ns: 'appDebug' })}
             </div>
           )}

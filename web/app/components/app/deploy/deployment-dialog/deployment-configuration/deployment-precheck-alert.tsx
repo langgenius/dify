@@ -48,7 +48,10 @@ export function DeploymentPrecheckAlert({ nodes }: { nodes: UnsupportedNode[] })
           {nodes.map((node) => (
             <li key={node.id} className="flex min-w-0 items-center gap-2">
               <UnsupportedNodeIcon node={node} icon={getProviderIcon(node)} />
-              <span className="min-w-0 truncate system-xs-medium text-text-secondary">
+              <span
+                className="min-w-0 truncate system-xs-medium text-text-secondary"
+                title={node.title}
+              >
                 {node.title}
               </span>
             </li>

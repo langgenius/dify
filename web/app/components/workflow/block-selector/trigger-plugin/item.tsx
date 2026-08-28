@@ -149,10 +149,16 @@ const TriggerPluginItem: FC<Props> = ({
               toolIcon={providerIcon}
             />
             <div className="flex min-w-0 flex-1 items-center text-sm text-text-primary">
-              <span className="max-w-50 truncate">
+              <span
+                className="max-w-50 truncate"
+                title={notShowProvider ? actions[0]?.label[language] : payload.label[language]}
+              >
                 {notShowProvider ? actions[0]?.label[language] : payload.label[language]}
               </span>
-              <span className="ml-2 truncate system-xs-regular text-text-quaternary">
+              <span
+                className="ml-2 truncate system-xs-regular text-text-quaternary"
+                title={groupName}
+              >
                 {groupName}
               </span>
             </div>

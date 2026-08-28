@@ -46,6 +46,7 @@ const ModelName: FC<ModelNameProps> = ({
         'flex items-center gap-0.5 truncate overflow-hidden system-sm-regular text-ellipsis text-components-input-text-filled',
         className,
       )}
+      title={label}
     >
       <span className={cn('truncate', nameClassName)} title={label}>
         {label}

@@ -145,7 +145,10 @@ const BatchAction: FC<IBatchActionProps> = ({
         >
           <AlertDialogContent>
             <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              <AlertDialogTitle
+                className="w-full truncate title-2xl-semi-bold text-text-primary"
+                title={t(($) => $['list.delete.title'], { ns: 'datasetDocuments' })}
+              >
                 {t(($) => $['list.delete.title'], { ns: 'datasetDocuments' })}
               </AlertDialogTitle>
               <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">

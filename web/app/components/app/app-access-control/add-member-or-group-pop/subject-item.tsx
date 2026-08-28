@@ -68,7 +68,10 @@ function GroupItem({
             />
           </div>
         </div>
-        <span className="mr-1 min-w-0 truncate system-sm-medium text-text-secondary">
+        <span
+          className="mr-1 min-w-0 truncate system-sm-medium text-text-secondary"
+          title={group.name}
+        >
           {group.name}
         </span>
         <span className="shrink-0 system-xs-regular text-text-tertiary">{group.groupSize}</span>
@@ -112,7 +115,10 @@ function MemberItem({
             <Avatar size="xxs" avatar={null} name={member.name} />
           </div>
         </div>
-        <span className="mr-1 min-w-0 truncate system-sm-medium text-text-secondary">
+        <span
+          className="mr-1 min-w-0 truncate system-sm-medium text-text-secondary"
+          title={member.name}
+        >
           {member.name}
         </span>
         {currentUser.email === member.email && (
@@ -120,7 +126,10 @@ function MemberItem({
             ({t(($) => $.you, { ns: 'common' })})
           </span>
         )}
-        <span className="ml-auto min-w-0 truncate system-xs-regular text-text-quaternary">
+        <span
+          className="ml-auto min-w-0 truncate system-xs-regular text-text-quaternary"
+          title={member.email}
+        >
           {member.email}
         </span>
       </SubjectToggleButton>

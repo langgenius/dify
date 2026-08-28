@@ -17,9 +17,14 @@ const SnippetListItem = ({ snippet, className, ref, ...props }: SnippetListItemP
     )}
     {...props}
   >
-    <div className="w-full truncate system-md-semibold text-text-secondary">{snippet.name}</div>
+    <div className="w-full truncate system-md-semibold text-text-secondary" title={snippet.name}>
+      {snippet.name}
+    </div>
     {!!snippet.description && (
-      <div className="line-clamp-1 w-full system-sm-regular text-text-tertiary">
+      <div
+        className="line-clamp-1 w-full system-sm-regular text-text-tertiary"
+        title={snippet.description}
+      >
         {snippet.description}
       </div>
     )}

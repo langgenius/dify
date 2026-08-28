@@ -112,7 +112,10 @@ const LearnDifyContent = ({
               {sectionTitle}
             </h2>
             {showDescription && (
-              <p className="mt-0.5 truncate system-xs-regular text-text-tertiary">
+              <p
+                className="mt-0.5 truncate system-xs-regular text-text-tertiary"
+                title={t(($) => $['learnDify.description'], { ns: 'explore' })}
+              >
                 {t(($) => $['learnDify.description'], { ns: 'explore' })}
               </p>
             )}

@@ -160,7 +160,10 @@ export function CreateUploadQueue({
                 )}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate system-xs-medium text-text-primary">
+                <span
+                  className="block truncate system-xs-medium text-text-primary"
+                  title={upload.file.name}
+                >
                   {upload.file.name}
                 </span>
                 <span

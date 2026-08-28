@@ -78,7 +78,11 @@ const Records = ({ records, onClickRecord }: RecordsProps) => {
               >
                 <td className="max-w-xs p-3 pr-2">
                   <div className="flex flex-col gap-y-1">
-                    {content && <div className="line-clamp-2">{content}</div>}
+                    {content && (
+                      <div className="line-clamp-2" title={content}>
+                        {content}
+                      </div>
+                    )}
                     {images.length > 0 && (
                       <ImageList images={images} size="md" className="py-1" limit={5} />
                     )}

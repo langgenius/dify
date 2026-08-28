@@ -255,7 +255,10 @@ const ChatVariablePanel = () => {
                   <div className="shrink-0 system-2xs-medium text-text-tertiary">WRITE</div>
                 </div>
                 <BlockIcon className="shrink-0" type={BlockEnum.Assigner} />
-                <div className="grow truncate system-xs-semibold text-text-secondary">
+                <div
+                  className="grow truncate system-xs-semibold text-text-secondary"
+                  title={t(($) => $['blocks.assigner'], { ns: 'workflow' })}
+                >
                   {t(($) => $['blocks.assigner'], { ns: 'workflow' })}
                 </div>
               </div>
@@ -268,7 +271,10 @@ const ChatVariablePanel = () => {
                   />
                 </div>
                 <BlockIcon className="shrink-0" type={BlockEnum.LLM} />
-                <div className="grow truncate system-xs-semibold text-text-secondary">
+                <div
+                  className="grow truncate system-xs-semibold text-text-secondary"
+                  title={t(($) => $['blocks.llm'], { ns: 'workflow' })}
+                >
                   {t(($) => $['blocks.llm'], { ns: 'workflow' })}
                 </div>
               </div>

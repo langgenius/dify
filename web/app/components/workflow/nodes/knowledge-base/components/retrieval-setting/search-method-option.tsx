@@ -280,7 +280,9 @@ export function SearchMethodOption({
                     onCheckedChange={reranking.onEnabledChange}
                     disabled={readonly}
                   />
-                  <span className="truncate">{rerankModelLabel}</span>
+                  <span className="truncate" title={rerankModelLabel}>
+                    {rerankModelLabel}
+                  </span>
                 </FieldLabel>
                 <Infotip aria-label={rerankModelTip} className="ml-0.5 size-3.5 shrink-0">
                   {rerankModelTip}

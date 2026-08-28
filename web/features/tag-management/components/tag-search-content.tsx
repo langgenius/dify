@@ -95,7 +95,10 @@ export const TagSearchContentView = ({
                       aria-hidden="true"
                       className="i-ri-add-line size-4 shrink-0 text-text-tertiary"
                     />
-                    <span className="min-w-0 grow truncate px-1 system-md-regular text-text-secondary">
+                    <span
+                      className="min-w-0 grow truncate px-1 system-md-regular text-text-secondary"
+                      title={`${t(($) => $['tag.create'], { ns: 'common' })} '${tag.name}'`}
+                    >
                       {`${t(($) => $['tag.create'], { ns: 'common' })} `}
                       <span className="system-md-medium">{`'${tag.name}'`}</span>
                     </span>
@@ -146,7 +149,10 @@ export const TagSearchContentView = ({
                 className="i-custom-vender-line-financeAndECommerce-tag-01 size-4 text-text-tertiary"
                 aria-hidden="true"
               />
-              <span className="min-w-0 grow truncate px-1 system-md-regular text-text-secondary">
+              <span
+                className="min-w-0 grow truncate px-1 system-md-regular text-text-secondary"
+                title={t(($) => $['tag.manageTags'], { ns: 'common' })}
+              >
                 {t(($) => $['tag.manageTags'], { ns: 'common' })}
               </span>
             </Button>

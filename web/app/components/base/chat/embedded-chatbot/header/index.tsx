@@ -176,6 +176,7 @@ const Header: FC<IHeaderProps> = ({
         <div
           className="truncate system-md-semibold"
           style={CssTransform(theme?.colorFontOnHeaderStyle ?? '')}
+          title={title}
         >
           {title}
         </div>

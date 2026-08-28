@@ -97,14 +97,23 @@ const ConversationOpener = ({
     >
       <>
         {!opening?.enabled && (
-          <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
+          <div
+            className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary"
+            title={t(($) => $['feature.conversationOpener.description'], { ns: 'appDebug' })}
+          >
             {t(($) => $['feature.conversationOpener.description'], { ns: 'appDebug' })}
           </div>
         )}
         {!!opening?.enabled && (
           <>
             {!isHovering && (
-              <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
+              <div
+                className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary"
+                title={
+                  opening.opening_statement ||
+                  t(($) => $['openingStatement.placeholderLine1'], { ns: 'appDebug' })
+                }
+              >
                 {opening.opening_statement ||
                   t(($) => $['openingStatement.placeholderLine1'], { ns: 'appDebug' })}
               </div>

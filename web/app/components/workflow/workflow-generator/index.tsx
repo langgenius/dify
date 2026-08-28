@@ -136,7 +136,10 @@ const RecoveryDialog = ({
   <AlertDialog open={open} onOpenChange={(o) => !o && onOpenChange(false)}>
     <AlertDialogContent>
       <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-        <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+        <AlertDialogTitle
+          className="w-full truncate title-2xl-semi-bold text-text-primary"
+          title={title}
+        >
           {title}
         </AlertDialogTitle>
         <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
@@ -707,7 +710,10 @@ function WorkflowGeneratorModal() {
                     </span>
                   )}
                   {current.app_name && (
-                    <span className="truncate text-sm font-semibold text-text-primary">
+                    <span
+                      className="truncate text-sm font-semibold text-text-primary"
+                      title={current.app_name}
+                    >
                       {current.app_name}
                     </span>
                   )}

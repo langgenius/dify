@@ -159,7 +159,10 @@ const Blocks = ({
                       onClick={() => onSelect(block.metaData.type)}
                     >
                       <BlockIcon className="mr-2 shrink-0" type={block.metaData.type} />
-                      <span className="min-w-0 grow truncate text-sm text-text-secondary">
+                      <span
+                        className="min-w-0 grow truncate text-sm text-text-secondary"
+                        title={block.metaData.title}
+                      >
                         {block.metaData.title}
                       </span>
                       {block.metaData.type === BlockEnum.LoopEnd && (

@@ -51,6 +51,7 @@ export function DatasetDetailTop({ expand = true, onToggle }: DatasetDetailTopPr
             <Link
               href="/datasets"
               className="shrink-0 truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary transition-colors hover:bg-background-default-hover hover:text-text-primary"
+              title={t(($) => $['menus.datasets'], { ns: 'common' })}
             >
               {t(($) => $['menus.datasets'], { ns: 'common' })}
             </Link>

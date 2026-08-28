@@ -14,6 +14,7 @@ import {
   floatingSeparatorClassName,
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
+import { getTextFromNode } from '../utils/get-text-from-node'
 
 type ComboboxProps<Value, Multiple extends boolean | undefined = false> = BaseCombobox.Root.Props<
   Value,
@@ -122,16 +123,20 @@ function ComboboxTrigger({
   children,
   icon,
   size,
+  title,
   type = 'button',
   ...props
 }: ComboboxTriggerProps) {
+  const resolvedTitle = title ?? getTextFromNode(children)
   return (
     <BaseCombobox.Trigger
       type={type}
       className={cn(comboboxTriggerVariants({ size, className }))}
       {...props}
     >
-      <span className="min-w-0 grow truncate">{children}</span>
+      <span className="min-w-0 grow truncate" title={resolvedTitle}>
+        {children}
+      </span>
       {icon !== false && (
         <BaseCombobox.Icon className="shrink-0 text-text-quaternary transition-colors group-hover/combobox-trigger:text-text-secondary group-data-popup-open/combobox-trigger:text-text-secondary group-data-readonly/combobox-trigger:hidden">
           {icon ?? <span className="i-ri-arrow-down-s-line h-4 w-4" aria-hidden="true" />}
@@ -373,9 +378,16 @@ function ComboboxItem<Value = unknown>({ className, ...props }: ComboboxItemProp
 
 type ComboboxItemTextProps = React.ComponentProps<'span'>
 
-function ComboboxItemText({ className, ...props }: ComboboxItemTextProps) {
+function ComboboxItemText({ className, children, title, ...props }: ComboboxItemTextProps) {
+  const resolvedTitle = title ?? getTextFromNode(children)
   return (
-    <span className={cn('min-w-0 grow truncate px-1 system-sm-medium', className)} {...props} />
+    <span
+      className={cn('min-w-0 grow truncate px-1 system-sm-medium', className)}
+      title={resolvedTitle}
+      {...props}
+    >
+      {children}
+    </span>
   )
 }
 

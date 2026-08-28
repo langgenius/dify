@@ -319,7 +319,10 @@ function useSkillMarkdownComponents(onOpenReference?: (path: string) => void) {
                     className={cn('size-3.5 shrink-0', getReferenceIconClass(referencePath))}
                   />
                 </span>
-                <span className="max-w-48 truncate system-xs-medium">
+                <span
+                  className="max-w-48 truncate system-xs-medium"
+                  title={getReferenceDisplayLabel(referencePath, referenceLabel)}
+                >
                   {getReferenceDisplayLabel(referencePath, referenceLabel)}
                 </span>
               </span>
@@ -457,11 +460,16 @@ export function ReferenceFilesPicker({
     >
       <div className="flex h-10 items-center gap-2 border-b border-divider-subtle px-3">
         <span aria-hidden className="i-ri-folder-3-line size-4 text-text-tertiary" />
-        <span className="min-w-0 flex-1 truncate system-sm-medium text-text-secondary">
+        <span
+          className="min-w-0 flex-1 truncate system-sm-medium text-text-secondary"
+          title={currentDirectory || title}
+        >
           {currentDirectory || title}
         </span>
         {query && (
-          <span className="max-w-28 truncate system-xs-regular text-text-quaternary">{query}</span>
+          <span className="max-w-28 truncate system-xs-regular text-text-quaternary" title={query}>
+            {query}
+          </span>
         )}
       </div>
       <div className="max-h-[280px] overflow-y-auto p-1">
@@ -475,7 +483,10 @@ export function ReferenceFilesPicker({
               aria-hidden
               className="i-ri-arrow-left-s-line size-4 shrink-0 text-text-tertiary"
             />
-            <span className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary">
+            <span
+              className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary"
+              title=".."
+            >
               ..
             </span>
           </button>
@@ -504,7 +515,10 @@ export function ReferenceFilesPicker({
                       : getSkillFileIconClass(referenceFile),
                   )}
                 />
-                <span className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary">
+                <span
+                  className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary"
+                  title={getPathBaseName(referenceFile.path)}
+                >
                   {getPathBaseName(referenceFile.path)}
                 </span>
                 {isDirectory(referenceFile) && (
@@ -558,7 +572,10 @@ export function EditableMetadataField({
     <div className="flex w-full flex-col gap-0.5" onBlurCapture={onBlurCapture}>
       <div className="flex h-6 items-center gap-1">
         {readOnly || !onLabelChange ? (
-          <span className="min-w-0 truncate px-1 py-0.5 system-sm-medium text-text-tertiary">
+          <span
+            className="min-w-0 truncate px-1 py-0.5 system-sm-medium text-text-tertiary"
+            title={label}
+          >
             {label}
           </span>
         ) : (
@@ -1167,14 +1184,23 @@ export function VersionActionBar({
       <div className="pointer-events-auto flex h-14 w-[428px] max-w-[calc(100%-2rem)] items-center gap-4 rounded-xl border border-divider-subtle bg-background-default px-4 shadow-xl">
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-1.5">
-            <span className="truncate system-sm-semibold text-text-primary">
+            <span
+              className="truncate system-sm-semibold text-text-primary"
+              title={getSkillVersionTitle(version)}
+            >
               {getSkillVersionTitle(version)}
             </span>
             <span className="border-state-accent-border shrink-0 rounded-[5px] border bg-state-accent-hover px-1.5 py-0.5 system-2xs-semibold-uppercase text-text-accent">
               {t(($) => $['skillManagement.detail.viewOnly'])}
             </span>
           </div>
-          <div className="mt-0.5 truncate system-xs-regular text-text-tertiary">
+          <div
+            className="mt-0.5 truncate system-xs-regular text-text-tertiary"
+            title={t(($) => $['skillManagement.detail.versionPublishedMeta'], {
+              name: publishedBy,
+              time: publishedAt,
+            })}
+          >
             {t(($) => $['skillManagement.detail.versionPublishedMeta'], {
               name: publishedBy,
               time: publishedAt,

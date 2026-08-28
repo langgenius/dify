@@ -134,6 +134,7 @@ function SearchBox({
                   onSearchChange(e.target.value)
                 }}
                 placeholder={placeholder}
+                title={search}
               />
               {search && (
                 <IconButton

@@ -140,7 +140,9 @@ const MCPDetailContent: FC<Props> = ({
           </div>
           <div className="ml-3 w-0 grow">
             <div className="flex h-5 items-center">
-              <div className="truncate system-md-semibold text-text-primary">{detail.name}</div>
+              <div className="truncate system-md-semibold text-text-primary" title={detail.name}>
+                {detail.name}
+              </div>
             </div>
             <div className="mt-0.5 flex items-center gap-1">
               <Tooltip>
@@ -308,7 +310,10 @@ const MCPDetailContent: FC<Props> = ({
       >
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+            <AlertDialogTitle
+              className="w-full truncate title-2xl-semi-bold text-text-primary"
+              title={t(($) => $['mcp.toolUpdateConfirmTitle'], { ns: 'tools' })}
+            >
               {t(($) => $['mcp.toolUpdateConfirmTitle'], { ns: 'tools' })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">

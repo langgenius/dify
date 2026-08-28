@@ -96,7 +96,10 @@ const ChunkDetailModal = ({ payload, onHide }: ChunkDetailModalProps) => {
                 <Dot />
                 <div className="flex grow items-center space-x-1">
                   <FileIcon type={extension} size="sm" />
-                  <span className="w-0 grow truncate text-[13px] font-normal text-text-secondary">
+                  <span
+                    className="w-0 grow truncate text-[13px] font-normal text-text-secondary"
+                    title={document.name}
+                  >
                     {document.name}
                   </span>
                 </div>
@@ -118,7 +121,10 @@ const ChunkDetailModal = ({ payload, onHide }: ChunkDetailModalProps) => {
                     <div className="w-4 shrink-0 text-[13px] leading-5 font-medium text-text-tertiary">
                       Q
                     </div>
-                    <div className={cn('line-clamp-20 body-md-regular text-text-secondary')}>
+                    <div
+                      className={cn('line-clamp-20 body-md-regular text-text-secondary')}
+                      title={content}
+                    >
                       {content}
                     </div>
                   </div>
@@ -126,7 +132,10 @@ const ChunkDetailModal = ({ payload, onHide }: ChunkDetailModalProps) => {
                     <div className="w-4 shrink-0 text-[13px] leading-5 font-medium text-text-tertiary">
                       A
                     </div>
-                    <div className={cn('line-clamp-20 body-md-regular text-text-secondary')}>
+                    <div
+                      className={cn('line-clamp-20 body-md-regular text-text-secondary')}
+                      title={answer}
+                    >
                       {answer}
                     </div>
                   </div>

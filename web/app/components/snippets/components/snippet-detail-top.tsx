@@ -60,6 +60,7 @@ export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopPr
         <Link
           href="/snippets"
           className="shrink-0 truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary transition-colors hover:bg-background-default-hover hover:text-text-primary"
+          title={t(($) => $['tabs.snippets'], { ns: 'workflow' })}
         >
           {t(($) => $['tabs.snippets'], { ns: 'workflow' })}
         </Link>

@@ -24,7 +24,10 @@ const Statistics = ({ expand, documentCount, relatedApps }: StatisticsProps) => 
         <div className="system-md-semibold-uppercase text-text-secondary">
           {documentCount ?? '--'}
         </div>
-        <div className="truncate system-2xs-medium-uppercase text-text-tertiary">
+        <div
+          className="truncate system-2xs-medium-uppercase text-text-tertiary"
+          title={t(($) => $['datasetMenus.documents'], { ns: 'common' })}
+        >
           {t(($) => $['datasetMenus.documents'], { ns: 'common' })}
         </div>
       </div>
@@ -44,7 +47,10 @@ const Statistics = ({ expand, documentCount, relatedApps }: StatisticsProps) => 
                 type="button"
                 className="flex max-w-full cursor-pointer items-center gap-x-0.5 rounded-sm system-2xs-medium-uppercase text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
               >
-                <span className="truncate">
+                <span
+                  className="truncate"
+                  title={t(($) => $['datasetMenus.relatedApp'], { ns: 'common' })}
+                >
                   {t(($) => $['datasetMenus.relatedApp'], { ns: 'common' })}
                 </span>
                 <RiInformation2Line className="size-3 shrink-0" />

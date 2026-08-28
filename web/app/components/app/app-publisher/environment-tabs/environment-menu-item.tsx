@@ -11,7 +11,10 @@ export function EnvironmentMenuItem({
   return (
     <DropdownMenuItem className="mx-0 flex gap-2 px-2 py-1.5" onClick={onClick}>
       <span aria-hidden className="i-ri-instance-line size-4 shrink-0 text-text-tertiary" />
-      <span className="grow truncate system-md-regular text-text-secondary">
+      <span
+        className="grow truncate system-md-regular text-text-secondary"
+        title={environment.name}
+      >
         {environment.name}
       </span>
     </DropdownMenuItem>

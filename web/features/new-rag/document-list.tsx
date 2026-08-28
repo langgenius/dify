@@ -141,6 +141,7 @@ const DocumentRow = memo(
               id={titleId}
               className="truncate rounded system-xs-medium text-text-primary hover:text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               href={documentHref}
+              title={document.title}
             >
               {document.title}
             </Link>
@@ -161,7 +162,10 @@ const DocumentRow = memo(
               <span className="sr-only">{tCommon(($) => $.loading)}</span>
             </span>
           ) : (
-            <span className="block truncate">
+            <span
+              className="block truncate"
+              title={source ?? t(($) => $['newKnowledge.manualUpload'])}
+            >
               {source ?? t(($) => $['newKnowledge.manualUpload'])}
             </span>
           )}

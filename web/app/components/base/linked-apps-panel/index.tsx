@@ -42,7 +42,10 @@ const LikedItem = ({ detail, isMobile }: ILikedItemProps) => {
           />
         </div>
         {!isMobile && (
-          <div className={cn('ml-2 truncate system-sm-medium text-text-primary')}>
+          <div
+            className={cn('ml-2 truncate system-sm-medium text-text-primary')}
+            title={detail?.name || '--'}
+          >
             {detail?.name || '--'}
           </div>
         )}

@@ -155,7 +155,10 @@ export function AgentPromptSlashMenu({
                 aria-hidden
                 className={`${category.icon} size-4 shrink-0 text-text-secondary`}
               />
-              <span className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary">
+              <span
+                className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary"
+                title={category.label}
+              >
                 {category.label}
               </span>
               <span
@@ -180,7 +183,9 @@ export function AgentPromptSlashMenu({
           onClick={onBack}
         >
           <span aria-hidden className="i-ri-arrow-left-line size-4 shrink-0" />
-          <span className="min-w-0 flex-1 truncate system-xs-medium-uppercase">{title}</span>
+          <span className="min-w-0 flex-1 truncate system-xs-medium-uppercase" title={title}>
+            {title}
+          </span>
         </button>
         {view === 'skills' && (
           <AgentPromptSkillRows skills={skills} onInsertToken={onInsertToken} />
@@ -628,7 +633,10 @@ function AgentPromptProviderToolRow({
       >
         <AgentPromptProviderIcon provider={provider} getProviderIcon={getProviderIcon} />
         <span className="flex min-w-0 flex-1 items-center">
-          <span className="min-w-0 truncate system-sm-regular text-text-secondary">
+          <span
+            className="min-w-0 truncate system-sm-regular text-text-secondary"
+            title={providerLabel}
+          >
             {providerLabel}
           </span>
           {selectedToolsCount > 0 && selectedToolsCount < provider.tools.length && (
@@ -720,7 +728,10 @@ function AgentPromptProviderToolActionRow({
     >
       <span className="ml-4 h-full w-px shrink-0 bg-divider-subtle" />
       <span className="flex min-w-0 flex-1 items-center gap-1 py-1 pr-2 pl-3">
-        <span className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary">
+        <span
+          className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary"
+          title={getLocalizedText(tool.label, language) || tool.name}
+        >
           {getLocalizedText(tool.label, language) || tool.name}
         </span>
       </span>
@@ -748,7 +759,10 @@ function AgentPromptCliToolRow({
         <span className="flex size-5 shrink-0 items-center justify-center rounded-md border-[0.5px] border-effects-icon-border bg-background-default-dodge">
           <span aria-hidden className="i-ri-terminal-box-line size-3.5 text-text-tertiary" />
         </span>
-        <span className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary">
+        <span
+          className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary"
+          title={tool.name}
+        >
           {tool.name}
         </span>
         <span className="shrink-0 system-xs-regular text-text-quaternary">
@@ -825,7 +839,10 @@ function AgentPromptSubmenuRow({
           <span aria-hidden className={`${icon} size-4 shrink-0 text-text-secondary`} />
         )}
         {typeof icon !== 'string' && icon}
-        <span className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary">
+        <span
+          className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary"
+          title={label}
+        >
           {label}
         </span>
       </span>

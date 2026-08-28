@@ -33,6 +33,7 @@ const ChunkContent: FC<ChunkContentProps> = ({ detail, isFullDocMode, className 
             )}
             content={content}
             customDisallowedElements={['input']}
+            title={content}
           />
         </div>
         <div className="flex gap-x-1">
@@ -44,6 +45,7 @@ const ChunkContent: FC<ChunkContentProps> = ({ detail, isFullDocMode, className 
             )}
             content={answer}
             customDisallowedElements={['input']}
+            title={answer}
           />
         </div>
       </div>
@@ -58,6 +60,7 @@ const ChunkContent: FC<ChunkContentProps> = ({ detail, isFullDocMode, className 
       )}
       content={sign_content || content || ''}
       customDisallowedElements={['input']}
+      title={sign_content || content || ''}
     />
   )
 }

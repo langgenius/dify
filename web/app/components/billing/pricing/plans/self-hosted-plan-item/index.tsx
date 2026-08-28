@@ -60,7 +60,10 @@ export function SelfHostedPlanItem({ plan }: { plan: SelfHostedPlan }) {
             <h3 className="text-[30px] leading-[1.2] font-medium text-text-primary">
               {t(($) => $[`${i18nPrefix}.name`], { ns: 'billing' })}
             </h3>
-            <div className="line-clamp-2 system-md-regular text-text-secondary">
+            <div
+              className="line-clamp-2 system-md-regular text-text-secondary"
+              title={t(($) => $[`${i18nPrefix}.description`], { ns: 'billing' })}
+            >
               {t(($) => $[`${i18nPrefix}.description`], { ns: 'billing' })}
             </div>
           </div>

@@ -214,6 +214,11 @@ export function EmailRecipientsField({
                       if (isValid) focusInput()
                       else editRecipient(index)
                     }}
+                    title={
+                      isValid
+                        ? value
+                        : `${t(($) => $['operation.edit'], { ns: 'common' })} ${value}`
+                    }
                   >
                     {!isValid && (
                       <span
@@ -221,7 +226,9 @@ export function EmailRecipientsField({
                         className="i-ri-error-warning-fill size-3.5 shrink-0"
                       />
                     )}
-                    <span className="truncate">{value}</span>
+                    <span className="truncate" title={value}>
+                      {value}
+                    </span>
                   </button>
                   <button
                     type="button"

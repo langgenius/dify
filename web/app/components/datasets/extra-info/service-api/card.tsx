@@ -29,7 +29,10 @@ export function ServiceApiCard({ apiBaseUrl, canManageApiKey, onOpenApiKeyModal 
                 className="i-custom-vender-knowledge-api-aggregate size-4 text-text-primary-on-surface"
               />
             </div>
-            <div className="grow truncate system-sm-semibold text-text-secondary">
+            <div
+              className="grow truncate system-sm-semibold text-text-secondary"
+              title={t(($) => $['serviceApi.card.title'], { ns: 'dataset' })}
+            >
               {t(($) => $['serviceApi.card.title'], { ns: 'dataset' })}
             </div>
           </div>
@@ -46,7 +49,9 @@ export function ServiceApiCard({ apiBaseUrl, canManageApiKey, onOpenApiKeyModal 
           </div>
           <div className="flex h-8 items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
             <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
-              <div className="truncate system-xs-medium text-text-secondary">{apiBaseUrl}</div>
+              <div className="truncate system-xs-medium text-text-secondary" title={apiBaseUrl}>
+                {apiBaseUrl}
+              </div>
             </div>
             <CopyFeedback content={apiBaseUrl} />
           </div>

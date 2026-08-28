@@ -35,7 +35,10 @@ const StrategyItem = ({ provider, detail }: Props) => {
         <div className="pb-0.5 system-md-semibold text-text-secondary">
           {getValueFromI18nObject(detail.identity.label)}
         </div>
-        <div className="line-clamp-2 system-xs-regular text-text-tertiary">
+        <div
+          className="line-clamp-2 system-xs-regular text-text-tertiary"
+          title={getValueFromI18nObject(detail.description)}
+        >
           {getValueFromI18nObject(detail.description)}
         </div>
       </div>

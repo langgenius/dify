@@ -144,7 +144,10 @@ export function KnowledgeSpaceShell({
             <span aria-hidden className="text-text-quaternary">
               /
             </span>
-            <span className="truncate px-1.5 system-sm-semibold-uppercase text-text-secondary">
+            <span
+              className="truncate px-1.5 system-sm-semibold-uppercase text-text-secondary"
+              title={t(($) => $.knowledge)}
+            >
               {t(($) => $.knowledge)}
             </span>
           </div>
@@ -154,10 +157,16 @@ export function KnowledgeSpaceShell({
                 <span aria-hidden className="i-ri-book-open-line size-4.5 text-text-tertiary" />
               </div>
               <div className="min-w-0 flex-1">
-                <h1 className="truncate system-md-semibold text-text-secondary">
+                <h1
+                  className="truncate system-md-semibold text-text-secondary"
+                  title={knowledgeSpaceQuery.data.name}
+                >
                   {knowledgeSpaceQuery.data.name}
                 </h1>
-                <p className="mt-0.5 truncate system-2xs-medium-uppercase text-text-tertiary">
+                <p
+                  className="mt-0.5 truncate system-2xs-medium-uppercase text-text-tertiary"
+                  title={`${t(($) => $['chunkingMode.parentChild'])} · ${t(($) => $['indexingTechnique.high_quality'])} · ${t(($) => $['retrieval.semantic_search.title'])}`}
+                >
                   {t(($) => $['chunkingMode.parentChild'])} ·{' '}
                   {t(($) => $['indexingTechnique.high_quality'])} ·{' '}
                   {t(($) => $['retrieval.semantic_search.title'])}

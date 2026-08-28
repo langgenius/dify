@@ -45,7 +45,9 @@ const VarFullPathPanel: FC<Props> = ({ nodeName, path, varType, nodeType = Block
     <div className="w-70 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-0 shadow-lg backdrop-blur-[5px]">
       <div className="flex space-x-1 border-b-[0.5px] border-divider-subtle p-3 pb-2">
         <BlockIcon size="xs" type={nodeType} />
-        <div className="w-0 grow truncate system-xs-medium text-text-secondary">{nodeName}</div>
+        <div className="w-0 grow truncate system-xs-medium text-text-secondary" title={nodeName}>
+          {nodeName}
+        </div>
       </div>
       <Panel className="px-1 pt-2 pb-3" root={{ attrName: path[0]! }} payload={schema} readonly />
     </div>

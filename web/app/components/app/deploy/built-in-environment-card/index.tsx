@@ -68,7 +68,10 @@ export function BuiltInEnvironmentCard() {
             <h2 id="built-in-environment-title" className="system-md-semibold text-text-primary">
               {t(($) => $['studio.builtInTitle'])}
             </h2>
-            <p className="truncate system-xs-regular text-text-tertiary">
+            <p
+              className="truncate system-xs-regular text-text-tertiary"
+              title={t(($) => $['studio.builtInDescription'])}
+            >
               {t(($) => $['studio.builtInDescription'])}
             </p>
           </div>
@@ -100,7 +103,17 @@ export function BuiltInEnvironmentCard() {
       {/* Status and updated time */}
       <div className="flex items-center justify-between gap-4 px-4 py-2.5">
         <DeploymentStatus status={DeploymentStatusEnum.DEPLOYMENT_STATUS_RUNNING} />
-        <p className="truncate system-xs-regular text-text-tertiary">
+        <p
+          className="truncate system-xs-regular text-text-tertiary"
+          title={
+            publishedWorkflow
+              ? t(($) => $['studio.updatedAtBy'], {
+                  name: updatedBy,
+                  time: formatTime(publishedWorkflow.updated_at, 'MM-DD HH:mm'),
+                })
+              : '--'
+          }
+        >
           {publishedWorkflow
             ? t(($) => $['studio.updatedAtBy'], {
                 name: updatedBy,

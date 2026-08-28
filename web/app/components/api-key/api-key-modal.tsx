@@ -212,7 +212,10 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
       >
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+            <AlertDialogTitle
+              className="w-full truncate title-2xl-semi-bold text-text-primary"
+              title={t(($) => $['actionMsg.deleteConfirmTitle'], { ns: 'appApi' })}
+            >
               {t(($) => $['actionMsg.deleteConfirmTitle'], { ns: 'appApi' })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">

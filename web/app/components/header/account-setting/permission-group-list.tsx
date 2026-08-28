@@ -107,6 +107,7 @@ const PermissionGroupList = ({
                           className="min-w-0 flex-1 truncate text-left system-md-medium text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-components-input-border-active"
                           aria-expanded={expanded}
                           onClick={() => toggleGroupExpanded(group.group_key)}
+                          title={group.group_name}
                         >
                           {group.group_name}
                         </button>
@@ -171,7 +172,10 @@ const PermissionGroupList = ({
                                     togglePermission(permission.key)
                                   }}
                                 />
-                                <span className="min-w-0 flex-1 truncate system-md-regular text-text-secondary">
+                                <span
+                                  className="min-w-0 flex-1 truncate system-md-regular text-text-secondary"
+                                  title={permission.name}
+                                >
                                   {permission.name}
                                 </span>
                               </div>

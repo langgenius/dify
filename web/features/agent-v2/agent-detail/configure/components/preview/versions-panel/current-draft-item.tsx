@@ -30,6 +30,7 @@ export function CurrentDraftItem({
             'truncate system-sm-semibold',
             isActive ? 'text-text-accent' : 'text-text-secondary',
           )}
+          title={tWorkflow(($) => $['versionHistory.currentDraft'])}
         >
           {tWorkflow(($) => $['versionHistory.currentDraft'])}
         </p>

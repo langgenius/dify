@@ -142,10 +142,12 @@ function WorkflowAccessRow({ reference }: { reference: AgentReferencingWorkflowR
               imageUrl={imageUrl}
             />
           </span>
-          <span className="truncate">{reference.app_name}</span>
+          <span className="truncate" title={reference.app_name}>
+            {reference.app_name}
+          </span>
         </div>
       </td>
-      <td className="truncate px-3" translate="no">
+      <td className="truncate px-3" translate="no" title={reference.workflow_version}>
         {reference.workflow_version}
       </td>
       <td className="px-3 tabular-nums">

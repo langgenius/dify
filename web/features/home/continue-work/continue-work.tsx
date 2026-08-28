@@ -23,6 +23,7 @@ export function ContinueWork({ apps, className }: ContinueWorkProps) {
         <h2
           id="continue-work-title"
           className="min-w-0 truncate system-xl-medium text-text-primary"
+          title={t(($) => $['continueWork.title'], { ns: 'explore' })}
         >
           {t(($) => $['continueWork.title'], { ns: 'explore' })}
         </h2>

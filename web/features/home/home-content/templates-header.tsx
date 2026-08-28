@@ -27,6 +27,7 @@ export function HomeTemplatesHeader({
         <h2
           id="home-templates-title"
           className="min-w-0 flex-1 truncate system-xl-medium text-text-primary"
+          title={t(($) => $['apps.title'], { ns: 'explore' })}
         >
           {t(($) => $['apps.title'], { ns: 'explore' })}
         </h2>

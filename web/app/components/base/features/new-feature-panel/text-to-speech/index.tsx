@@ -59,7 +59,10 @@ const TextToSpeech = ({ disabled, onChange }: Props) => {
     >
       <>
         {!features.text2speech?.enabled && (
-          <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
+          <div
+            className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary"
+            title={t(($) => $['feature.textToSpeech.description'], { ns: 'appDebug' })}
+          >
             {t(($) => $['feature.textToSpeech.description'], { ns: 'appDebug' })}
           </div>
         )}

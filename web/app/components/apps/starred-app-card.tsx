@@ -81,13 +81,25 @@ export const StarredAppCard = memo(
           />
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
-          <div id={appNameId} className="truncate system-md-semibold text-text-secondary">
+          <div
+            id={appNameId}
+            className="truncate system-md-semibold text-text-secondary"
+            title={app.name}
+          >
             {app.name}
           </div>
           <div className="flex min-w-0 items-center gap-1 system-xs-regular text-text-tertiary">
-            {app.author_name && <span className="shrink-0 truncate">{app.author_name}</span>}
+            {app.author_name && (
+              <span className="shrink-0 truncate" title={app.author_name}>
+                {app.author_name}
+              </span>
+            )}
             {app.author_name && editTimeText && <span className="shrink-0">·</span>}
-            {editTimeText && <span className="min-w-0 truncate">{editTimeText}</span>}
+            {editTimeText && (
+              <span className="min-w-0 truncate" title={editTimeText}>
+                {editTimeText}
+              </span>
+            )}
           </div>
         </div>
       </>

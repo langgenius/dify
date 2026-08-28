@@ -34,7 +34,10 @@ function AgentPreviewChatEmptyState({
         imageUrl={imageUrl}
         className="bg-background-default"
       />
-      <div className="mt-3 max-w-full truncate system-md-medium text-text-secondary">
+      <div
+        className="mt-3 max-w-full truncate system-md-medium text-text-secondary"
+        title={agentName || t(($) => $['agentDetail.configure.preview.empty.defaultAgentName'])}
+      >
         {agentName || t(($) => $['agentDetail.configure.preview.empty.defaultAgentName'])}
       </div>
       <p className="mt-1 max-w-full body-md-regular text-text-tertiary">

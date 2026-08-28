@@ -159,6 +159,7 @@ function AgentLogsTableBody({
                     event.stopPropagation()
                     onOpenLog(log)
                   }}
+                  title={log.title || notAvailable}
                 >
                   {log.title || notAvailable}
                 </button>
@@ -302,9 +303,13 @@ function TableHead({ className, ...props }: ThHTMLAttributes<HTMLTableCellElemen
 }
 
 function TableCell({ children, className, ...props }: TdHTMLAttributes<HTMLTableCellElement>) {
+  const text =
+    typeof children === 'string' || typeof children === 'number' ? String(children) : undefined
   return (
     <td className={cn('min-w-0 px-3 whitespace-nowrap', className)} {...props}>
-      <div className="truncate">{children}</div>
+      <div className={cn(text && 'truncate')} title={text}>
+        {children}
+      </div>
     </td>
   )
 }

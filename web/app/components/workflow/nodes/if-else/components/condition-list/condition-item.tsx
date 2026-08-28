@@ -332,7 +332,10 @@ const ConditionItem = ({
                     <div className="flex cursor-pointer justify-start">
                       <div className="inline-flex h-6 max-w-full items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark px-1.5 text-text-accent shadow-xs">
                         <Variable02 className="size-3.5 shrink-0 text-text-accent" />
-                        <div className="ml-0.5 truncate system-xs-medium">
+                        <div
+                          className="ml-0.5 truncate system-xs-medium"
+                          title={selectedSubVarOption.name}
+                        >
                           {selectedSubVarOption.name}
                         </div>
                       </div>

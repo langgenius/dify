@@ -187,6 +187,7 @@ function AgentRosterDrawer({
                               ? 'system-xl-semibold text-text-primary'
                               : 'system-sm-medium text-text-secondary',
                           )}
+                          title={title}
                         >
                           {title}
                         </DrawerTitle>
@@ -203,6 +204,7 @@ function AgentRosterDrawer({
                             isSetup ? 'min-w-full' : 'truncate',
                             'system-xs-regular text-text-tertiary',
                           )}
+                          title={description}
                         >
                           {description}
                         </p>
@@ -262,7 +264,10 @@ function AgentRosterDrawer({
                       onClick={onMakeCopy}
                     >
                       <span aria-hidden className="i-ri-file-copy-2-line size-4 shrink-0" />
-                      <span className="truncate">
+                      <span
+                        className="truncate"
+                        title={t(($) => $[`${i18nPrefix}.roster.makeCopy`], { ns: 'workflow' })}
+                      >
                         {t(($) => $[`${i18nPrefix}.roster.makeCopy`], { ns: 'workflow' })}
                       </span>
                     </Button>
@@ -374,10 +379,16 @@ export function AgentRosterField({
     <>
       {isInlineSetup ? <InlineSetupAvatar /> : <AgentRosterAvatar agent={agent} />}
       <span className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
-        <span className="truncate system-sm-medium text-text-secondary">
+        <span
+          className="truncate system-sm-medium text-text-secondary"
+          title={isInlineSetup ? inlineSetupName : agent.name}
+        >
           {isInlineSetup ? inlineSetupName : agent.name}
         </span>
-        <span className="truncate system-xs-regular text-text-tertiary">
+        <span
+          className="truncate system-xs-regular text-text-tertiary"
+          title={(isInlineSetup ? inlineSetupType : agent.role) ?? undefined}
+        >
           {isInlineSetup ? inlineSetupType : agent.role}
         </span>
       </span>
@@ -469,7 +480,10 @@ export function AgentRosterField({
           <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-state-destructive-hover text-text-destructive">
             <span aria-hidden className="i-ri-error-warning-line size-4" />
           </span>
-          <span className="line-clamp-2 min-w-0 flex-1 system-xs-medium text-text-destructive">
+          <span
+            className="line-clamp-2 min-w-0 flex-1 system-xs-medium text-text-destructive"
+            title={errorMessage}
+          >
             {errorMessage}
           </span>
           {onRetry && (
@@ -533,7 +547,10 @@ export function AgentRosterField({
           <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-state-destructive-hover text-text-destructive">
             <span aria-hidden className="i-ri-error-warning-line size-4" />
           </span>
-          <span className="min-w-0 flex-1 truncate system-sm-medium text-text-destructive">
+          <span
+            className="min-w-0 flex-1 truncate system-sm-medium text-text-destructive"
+            title={rosterRequiredMessage}
+          >
             {rosterRequiredMessage}
           </span>
         </div>

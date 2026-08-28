@@ -66,6 +66,7 @@ export function FileTabs({
                       selected ? 'text-text-primary' : 'text-text-tertiary',
                       preview && 'italic',
                     )}
+                    title={getPathBaseName(file.path)}
                   >
                     {getPathBaseName(file.path)}
                   </span>

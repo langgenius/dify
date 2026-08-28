@@ -87,6 +87,7 @@ const ToolDatePicker: FC<Props> = ({
               !date && 'text-components-input-text-placeholder',
               date && 'pr-5',
             )}
+            title={displayValue || resolvedPlaceholder}
           >
             {displayValue || resolvedPlaceholder}
           </span>

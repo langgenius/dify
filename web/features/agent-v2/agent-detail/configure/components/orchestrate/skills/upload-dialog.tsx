@@ -184,7 +184,10 @@ function AgentSkillPackageUploader({
             <span aria-hidden className="i-custom-public-files-yaml size-6 shrink-0" />
           </div>
           <div className="flex min-w-0 grow flex-col items-start gap-0.5 py-1 pr-2">
-            <span className="max-w-full min-w-0 truncate text-[12px] leading-4 font-medium text-text-secondary">
+            <span
+              className="max-w-full min-w-0 truncate text-[12px] leading-4 font-medium text-text-secondary"
+              title={file.name}
+            >
               {file.name}
             </span>
             <div className="flex h-3 items-center gap-1 self-stretch text-2xs leading-3 font-medium text-text-tertiary uppercase">

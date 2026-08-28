@@ -23,10 +23,16 @@ export function HomeIntro() {
 
   return (
     <header className="flex w-full flex-col gap-1 px-8 pt-6 pb-4">
-      <h1 className="truncate title-3xl-semi-bold text-text-primary">
+      <h1
+        className="truncate title-3xl-semi-bold text-text-primary"
+        title={t(($) => $['banner.greeting'], { name: userProfile.name, ns: 'explore' })}
+      >
         {t(($) => $['banner.greeting'], { name: userProfile.name, ns: 'explore' })}
       </h1>
-      <p className="truncate body-sm-regular text-text-secondary">
+      <p
+        className="truncate body-sm-regular text-text-secondary"
+        title={t(($) => $['banner.tagline'], { ns: 'explore' })}
+      >
         {t(($) => $['banner.tagline'], { ns: 'explore' })}
       </p>
     </header>

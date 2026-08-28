@@ -30,7 +30,9 @@ export function AgentModelField({
       </FieldLabel>
       {readOnly ? (
         <div className="flex h-8 w-full min-w-0 items-center rounded-lg bg-components-input-bg-disabled px-3 system-sm-regular text-components-input-text-filled">
-          <span className="truncate">{currentModel?.model}</span>
+          <span className="truncate" title={currentModel?.model}>
+            {currentModel?.model}
+          </span>
         </div>
       ) : (
         <ModelParameterModal

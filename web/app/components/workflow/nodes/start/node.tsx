@@ -24,7 +24,10 @@ const Node: FC<NodeProps<StartNodeType>> = ({ data }) => {
           >
             <div className="flex w-0 grow items-center space-x-1">
               <Variable02 className="size-3.5 shrink-0 text-text-accent" />
-              <span className="w-0 grow truncate system-xs-regular text-text-secondary">
+              <span
+                className="w-0 grow truncate system-xs-regular text-text-secondary"
+                title={variable.variable}
+              >
                 {variable.variable}
               </span>
             </div>

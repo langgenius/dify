@@ -60,6 +60,7 @@ const VariableTypeSelector = <T extends string>({
               'grow truncate p-1 system-sm-regular text-components-input-text-filled',
               inCell && 'system-xs-regular text-text-secondary',
             )}
+            title={value}
           >
             {value}
           </div>

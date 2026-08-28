@@ -228,7 +228,10 @@ const ProviderToolActionItem = memo(
       <div className="group relative flex min-h-7 items-center gap-1 rounded-md py-px pr-0 pl-1 hover:bg-state-base-hover">
         <div className="absolute top-0 bottom-0 left-[13.5px] w-px bg-divider-regular" />
         <div className="flex min-w-0 flex-1 items-center py-1 pl-7">
-          <span className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary">
+          <span
+            className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary"
+            title={action.name}
+          >
             {action.name}
           </span>
         </div>
@@ -315,7 +318,10 @@ export const AgentProviderToolItem = memo(
           <CollapsibleTrigger className="group min-h-0 min-w-0 flex-1 justify-start gap-2 rounded-md px-0 pr-1 text-left hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-secondary data-panel-open:text-text-secondary">
             <ProviderIcon icon={icon} iconClassName={tool.iconClassName} />
             <span className="flex min-w-0 items-center">
-              <span className="min-w-0 truncate system-sm-medium text-text-primary">
+              <span
+                className="min-w-0 truncate system-sm-medium text-text-primary"
+                title={displayName}
+              >
                 {displayName}
               </span>
               <span

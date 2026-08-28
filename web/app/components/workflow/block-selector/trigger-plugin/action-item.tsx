@@ -78,7 +78,10 @@ const TriggerPluginActionItem: FC<Props> = ({
         })
       }}
     >
-      <div className="truncate border-l-2 border-divider-subtle py-2 pl-4 system-sm-medium text-text-secondary">
+      <div
+        className="truncate border-l-2 border-divider-subtle py-2 pl-4 system-sm-medium text-text-secondary"
+        title={payload.label[language]}
+      >
         <span className={cn(disabled && 'opacity-30')}>{payload.label[language]}</span>
       </div>
       {isAdded && (

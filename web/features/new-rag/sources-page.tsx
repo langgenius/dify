@@ -330,7 +330,9 @@ function SourceRow({
             )}
           />
           <div className="min-w-0">
-            <p className="truncate system-xs-medium text-text-primary">{source.name}</p>
+            <p className="truncate system-xs-medium text-text-primary" title={source.name}>
+              {source.name}
+            </p>
           </div>
         </div>
       </td>

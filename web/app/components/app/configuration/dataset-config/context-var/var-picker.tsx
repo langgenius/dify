@@ -24,7 +24,9 @@ const VarItem: FC<{ item: Option }> = ({ item }) => (
     <IconTypeIcon type={item.type as IInputTypeIconProps['type']} className="text-[#1570EF]" />
     <div className="flex text-xs font-medium text-[#1570EF]">
       <span className="opacity-60">{'{{'}</span>
-      <span className="max-w-37.5 truncate">{item.value}</span>
+      <span className="max-w-37.5 truncate" title={item.value}>
+        {item.value}
+      </span>
       <span className="opacity-60">{'}}'}</span>
     </div>
   </div>

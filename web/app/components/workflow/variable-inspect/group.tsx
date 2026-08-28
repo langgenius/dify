@@ -130,13 +130,19 @@ const Group = ({
                 toolIcon={toolIcon || ''}
                 size="xs"
               />
-              <div className="truncate system-xs-medium-uppercase text-text-tertiary">
+              <div
+                className="truncate system-xs-medium-uppercase text-text-tertiary"
+                title={nodeData.title}
+              >
                 {nodeData.title}
               </div>
             </>
           )}
           {!nodeData && (
-            <div className="truncate system-xs-medium-uppercase text-text-tertiary">
+            <div
+              className="truncate system-xs-medium-uppercase text-text-tertiary"
+              title={groupTitle}
+            >
               {groupTitle}
             </div>
           )}
@@ -197,7 +203,10 @@ const Group = ({
                   isExceptionVariable={['error_type', 'error_message'].includes(varItem.name)}
                   className="size-4"
                 />
-                <div className="grow truncate system-sm-medium text-text-secondary">
+                <div
+                  className="grow truncate system-sm-medium text-text-secondary"
+                  title={varItem.name}
+                >
                   {varItem.name}
                 </div>
                 <div className="shrink-0 system-xs-regular text-text-tertiary">

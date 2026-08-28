@@ -20,7 +20,10 @@ const ResultItemFooter: FC<Props> = ({ docType, docTitle, showDetailModal }) => 
     <div className="mt-3 flex h-10 items-center justify-between border-t border-divider-subtle pr-2 pl-3">
       <div className="flex grow items-center space-x-1">
         <FileIcon type={docType} size="sm" />
-        <span className="w-0 grow truncate text-[13px] font-normal text-text-secondary">
+        <span
+          className="w-0 grow truncate text-[13px] font-normal text-text-secondary"
+          title={docTitle}
+        >
           {docTitle}
         </span>
       </div>
