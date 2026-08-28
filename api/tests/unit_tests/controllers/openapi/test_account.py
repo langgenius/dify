@@ -17,7 +17,7 @@ from controllers.openapi.account import (
     AccountSessionsApi,
     AccountSessionsSelfApi,
 )
-from controllers.openapi.auth.requirements import CheckSessionOwnership, Rank
+from controllers.openapi.auth.requirements import CheckSessionOwnership, TokenScope
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -98,11 +98,15 @@ def test_revoke_by_id_declares_session_ownership():
     assert any(isinstance(requirement, CheckSessionOwnership) for requirement in requirements)
 
 
-def test_session_ownership_authorises_at_permission_rank():
-    """`Rank.ACCESS` would put it behind any `RequireWebappAccess` this route grew;
-    anything below `MEMBERSHIP` would run it before the caller is known to belong.
+def test_session_ownership_runs_after_token_scope():
+    """`CheckSessionOwnership` takes the default rank, so it is tied with
+    `TokenScope` — declaration order is what keeps a caller failing scope alone
+    from reaching the ownership check first.
     """
-    assert CheckSessionOwnership.rank is Rank.PERMISSION
+    requirements = AccountSessionByIdApi.delete.__spec__.requirements
+    token_scope_index = next(i for i, r in enumerate(requirements) if isinstance(r, TokenScope))
+    ownership_index = next(i for i, r in enumerate(requirements) if isinstance(r, CheckSessionOwnership))
+    assert token_scope_index < ownership_index
 
 
 def test_the_other_session_routes_do_not_declare_it():

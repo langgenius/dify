@@ -1,9 +1,9 @@
 """Self-contained authorization requirements.
 
-Each requirement owns its config, its applicability guard and its rank, so
-adding one means naming the decision it makes — there is no central ordering
-table to keep in step. `Pipeline` sorts by rank; declared order only breaks
-ties between requirements that decide the same thing.
+Each requirement owns its config and its applicability guard; rank is either
+named or left at `Requirement`'s default — there is no central ordering table
+to keep in step. `Pipeline` sorts by rank; declared order only breaks ties
+between requirements that decide the same thing.
 
 Requirements are process-lifetime singletons: built once at import, shared by
 every request and every thread. Config belongs in `__init__`, and `run` must
@@ -46,31 +46,25 @@ _DEAD_LICENSE_STATUSES = frozenset({LicenseStatus.INACTIVE, LicenseStatus.EXPIRE
 
 
 class Rank(IntEnum):
-    """The account pipeline's order, named for what each level decides.
-
-    Every requirement names one; there is no default. `TokenScope`,
-    `RBACCheck` and `RequireWebappAccess` are all endpoint-declared, so a
-    shared level would hand their mutual precedence to whatever order each
-    call site happened to be typed in.
+    """Three bands, coarsest first. Ties fall back to declaration order —
+    endpoint-declared ahead of pipeline-fixed — so `Pipeline.run`'s sort stays
+    stable rather than needing every requirement in its own band.
     """
 
-    SUBJECT = 0
-    RESOURCE = 10
-    SCOPE = 20
-    MEMBERSHIP = 30
-    PERMISSION = 40
-    ACCESS = 50
+    FIRST = 0  # reject the caller before anything touches data
+    EARLY = 10  # must precede permission checks
+    NORMAL = 20  # default - declared order decides
 
 
 class Requirement(ABC):
-    rank: ClassVar[Rank]
+    rank: ClassVar[Rank] = Rank.NORMAL
 
     @abstractmethod
     def run(self, subject: Subject, ctx: Context, session: Session) -> None: ...
 
 
 class SubjectCheck(Requirement):
-    rank = Rank.SUBJECT
+    rank = Rank.FIRST
 
     def __init__(self, *, allowed: Sequence[type[Subject]]) -> None:
         self.allowed = tuple(allowed)
@@ -89,7 +83,7 @@ class SubjectCheck(Requirement):
 
 
 class EditionCheck(Requirement):
-    rank = Rank.SUBJECT
+    rank = Rank.FIRST
 
     def __init__(self, editions: frozenset[DeploymentEdition]) -> None:
         self.editions = frozenset(editions)
@@ -110,7 +104,7 @@ def assert_license_valid() -> None:
 
 
 class LicenseCheck(Requirement):
-    rank = Rank.SUBJECT
+    rank = Rank.FIRST
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
@@ -118,7 +112,7 @@ class LicenseCheck(Requirement):
 
 
 class CheckAppApiEnabled(Requirement):
-    rank = Rank.RESOURCE
+    rank = Rank.EARLY
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
@@ -136,7 +130,7 @@ def _assert_member(subject: Subject, ctx: Context) -> None:
 
 
 class CheckAppWorkspaceMembership(Requirement):
-    rank = Rank.MEMBERSHIP
+    rank = Rank.EARLY
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
@@ -151,7 +145,7 @@ class RequireWorkspaceMembership(Requirement):
     and `GET /workspaces/<workspace_id>` has the path param but gets no check.
     """
 
-    rank = Rank.MEMBERSHIP
+    rank = Rank.EARLY
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
@@ -159,8 +153,6 @@ class RequireWorkspaceMembership(Requirement):
 
 
 class TokenScope(Requirement):
-    rank = Rank.SCOPE
-
     def __init__(self, scope: Scope) -> None:
         self.scope = scope
 
@@ -179,8 +171,6 @@ class RBACCheck(Requirement):
     deny requests that pass today. A declaration may carry a scene, a role
     floor, or both — `workspaces.py`'s member routes carry only the floor.
     """
-
-    rank = Rank.PERMISSION
 
     def __init__(
         self,
@@ -231,8 +221,6 @@ class CheckSessionOwnership(Requirement):
     same rule on the query side.
     """
 
-    rank = Rank.PERMISSION
-
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         session_id = (request.view_args or {})["session_id"]
@@ -247,8 +235,6 @@ class RequireWebappAccess(Requirement):
     `webapp_auth.enabled`, the private-app check is not. Run-scope comes from
     the declaration site, so it is not re-checked here.
     """
-
-    rank = Rank.ACCESS
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
