@@ -267,16 +267,20 @@ def test_both_routes_declare_the_surface_check(view):
     assert any(isinstance(requirement, CheckFormSurface) for requirement in view.__spec__.requirements)
 
 
-def test_the_surface_check_decides_access_last():
-    """`Rank.ACCESS` is the top rank, so no fixed pipeline requirement can slip
-    behind it and it keeps the handler-body position it was moved from. `RESOURCE`
-    would run it ahead of the membership check.
+def test_the_surface_check_takes_the_default_rank():
+    """No rank of its own: it ties with the other NORMAL requirements, and
+    declaration order is what keeps it last — it is written last at both
+    routes that declare it.
     """
-    assert CheckFormSurface.rank is Rank.ACCESS
+    for view in (OpenApiWorkflowHumanInputFormApi.get, OpenApiWorkflowHumanInputFormSubmitApi.post):
+        assert isinstance(view.__spec__.requirements[-1], CheckFormSurface)
+    assert CheckFormSurface.rank is Rank.NORMAL
 
 
 class TestCheckFormSurface:
-    """The refusal itself. `Rank.ACCESS`, so it answers before any handler body runs."""
+    """The refusal itself. Declared last at both routes, so it answers before
+    the handler body runs.
+    """
 
     def _run(self, app: Flask, monkeypatch: pytest.MonkeyPatch, form) -> None:
         _mock_service(monkeypatch, form)

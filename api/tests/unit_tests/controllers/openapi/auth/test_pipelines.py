@@ -100,11 +100,9 @@ def _boom(*_args: object, **_kwargs: object) -> NoReturn:
 
 
 class _Recorded(Requirement):
-    """One subclass per rank, because `rank` is a ClassVar — setting it per
-    instance would shadow the level the class declares.
+    """Shared plumbing for the ordering test doubles. Declares no rank of its
+    own, so a bare instance proves `Requirement`'s default applies.
     """
-
-    rank = Rank.SUBJECT
 
     def __init__(self, log: list[str], name: str) -> None:
         self._log = log
@@ -115,12 +113,12 @@ class _Recorded(Requirement):
         self._log.append(self._name)
 
 
-class _AtScope(_Recorded):
-    rank = Rank.SCOPE
+class _AtFirst(_Recorded):
+    rank = Rank.FIRST
 
 
-class _AtAccess(_Recorded):
-    rank = Rank.ACCESS
+class _AtEarly(_Recorded):
+    rank = Rank.EARLY
 
 
 class _NoFixed(Pipeline):
@@ -164,11 +162,11 @@ def _run(
 def test_requirements_run_in_rank_order(sqlite_session: Session) -> None:
     log: list[str] = []
     subject = _sso_subject()
-    requirements = (_AtAccess(log, "access"), _AtScope(log, "scope"), _Recorded(log, "subject"))
+    requirements = (_Recorded(log, "normal"), _AtEarly(log, "early"), _AtFirst(log, "first"))
 
     _run(_NoFixed(), subject, _ctx(sqlite_session, subject), sqlite_session, requirements=requirements)
 
-    assert log == ["subject", "scope", "access"]
+    assert log == ["first", "early", "normal"]
 
 
 def test_equal_ranks_keep_declared_order(sqlite_session: Session) -> None:

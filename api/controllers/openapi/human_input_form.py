@@ -26,7 +26,6 @@ from controllers.openapi._models import FormSubmitResponse, HumanInputFormDefini
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.data import CallerKind
 from controllers.openapi.auth.requirements import (
-    Rank,
     RBACCheck,
     Requirement,
     RequireWebappAccess,
@@ -60,8 +59,6 @@ class CheckFormSurface(Requirement):
     another app — is left to the handler's own 404: answering 403 here would tell
     an outsider the form token exists.
     """
-
-    rank = Rank.ACCESS
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
