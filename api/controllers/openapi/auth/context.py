@@ -6,16 +6,13 @@ route pays for is the union of what its requirements ask for, once each.
 
 Importing a loader from here would close a cycle
 (`context` -> `subjects` -> `loaders` -> `context`), so this module knows the
-models it stores and nothing else.
-
-Structurally satisfies `subjects.CallerContext`. Only imports from
-`subjects`, never the reverse.
+models it stores and nothing else. Structurally satisfies
+`subjects.CallerContext`.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import cast
 
 from sqlalchemy.orm import Session
 
@@ -23,31 +20,15 @@ from controllers.openapi.auth.subjects import Subject
 from models.account import Account, Tenant, TenantAccountRole
 from models.model import App, EndUser
 
+type Caller = Account | EndUser
 
-class _Slot[T]:
-    """One datum, either loaded or not. Reading an unloaded slot is a
-    programming error — a route whose requirements load nothing a handler
-    reads — not an answer any caller should ever see, so it raises
-    `LookupError` rather than an HTTP status.
+
+def _missing(name: str) -> LookupError:
+    """Reading a datum nothing loaded is a programming error — a route whose
+    requirements load nothing a handler reads — not an answer any caller
+    should see, so it raises rather than returning an HTTP status.
     """
-
-    def __init__(self, name: str) -> None:
-        self._name = name
-        self._value: T | None = None
-        self._loaded = False
-
-    @property
-    def loaded(self) -> bool:
-        return self._loaded
-
-    def get(self) -> T:
-        if not self._loaded:
-            raise LookupError(f"{self._name} was never loaded: no requirement on this route loads it")
-        return cast(T, self._value)
-
-    def set(self, value: T) -> None:
-        self._value = value
-        self._loaded = True
+    return LookupError(f"{name} was never loaded: no requirement on this route loads it")
 
 
 class Context:
@@ -55,10 +36,10 @@ class Context:
         self.subject = subject
         self._session = session
         self._view_args = view_args
-        self._app: _Slot[App] = _Slot("app")
-        self._workspace: _Slot[Tenant] = _Slot("workspace")
-        self._workspace_role: _Slot[TenantAccountRole] = _Slot("workspace_role")
-        self._caller: _Slot[Account | EndUser] = _Slot("caller")
+        self._app: App | None = None
+        self._workspace: Tenant | None = None
+        self._workspace_role: TenantAccountRole | None = None
+        self._caller: Caller | None = None
 
     @property
     def session(self) -> Session:
@@ -74,44 +55,52 @@ class Context:
 
     @property
     def app(self) -> App:
-        return self._app.get()
+        if self._app is None:
+            raise _missing("app")
+        return self._app
 
     @property
     def app_loaded(self) -> bool:
-        return self._app.loaded
+        return self._app is not None
 
     def set_app(self, app: App) -> None:
-        self._app.set(app)
+        self._app = app
 
     @property
     def workspace(self) -> Tenant:
-        return self._workspace.get()
+        if self._workspace is None:
+            raise _missing("workspace")
+        return self._workspace
 
     @property
     def workspace_loaded(self) -> bool:
-        return self._workspace.loaded
+        return self._workspace is not None
 
     def set_workspace(self, workspace: Tenant) -> None:
-        self._workspace.set(workspace)
+        self._workspace = workspace
 
     @property
     def workspace_role(self) -> TenantAccountRole:
-        return self._workspace_role.get()
+        if self._workspace_role is None:
+            raise _missing("workspace_role")
+        return self._workspace_role
 
     @property
     def workspace_role_loaded(self) -> bool:
-        return self._workspace_role.loaded
+        return self._workspace_role is not None
 
     def set_workspace_role(self, role: TenantAccountRole) -> None:
-        self._workspace_role.set(role)
+        self._workspace_role = role
 
     @property
-    def caller(self) -> Account | EndUser:
-        return self._caller.get()
+    def caller(self) -> Caller:
+        if self._caller is None:
+            raise _missing("caller")
+        return self._caller
 
     @property
     def caller_loaded(self) -> bool:
-        return self._caller.loaded
+        return self._caller is not None
 
-    def set_caller(self, caller: Account | EndUser) -> None:
-        self._caller.set(caller)
+    def set_caller(self, caller: Caller) -> None:
+        self._caller = caller
