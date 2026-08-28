@@ -140,6 +140,16 @@ def _message(session_id: str, body, actor: Actor) -> tuple[dict, int]:
     )
 
 
+def _ping(body, actor: Actor) -> tuple[dict, int]:
+    model_config = body.get("model_config") if isinstance(body, dict) else None
+    try:
+        from services.dify_builder.agent.ping import ping_model
+
+        return ping_model(actor.tenant_id, model_config), 200
+    except Exception as exc:  # a health check returns ok:false rather than 500
+        return {"ok": False, "error": str(exc)}, 200
+
+
 @console_ns.route("/dify-builder/sessions")
 class DifyBuilderSessionsApi(Resource):
     @setup_required
@@ -212,3 +222,15 @@ class DifyBuilderStreamApi(Resource):
             mimetype="text/event-stream",
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
         )
+
+
+@console_ns.route("/dify-builder/agent/ping")
+class DifyBuilderAgentPingApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @with_current_tenant_id
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user):
+        return _ping(request.get_json(silent=True), _actor(current_user, current_tenant_id))
