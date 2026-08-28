@@ -374,10 +374,14 @@ def test_graphon_ssrf_proxy_wraps_module_requests(method_name: str) -> None:
 
 
 def _build_squid_blocked_response(status_code: int = 403) -> MagicMock:
-    """Construct a mock httpx.Response that looks like Squid's ACL deny."""
+    """Construct a mock httpx.Response that looks like Squid's ACL deny page."""
     response = MagicMock()
     response.status_code = status_code
     response.headers = {"server": "squid/4.10", "via": "1.1 squid (squid/4.10)"}
+    response.content = (
+        b"<title>ERROR: The requested URL could not be retrieved</title>"
+        b"Access control configuration prevents your request from being allowed at this time."
+    )
     return response
 
 
@@ -405,14 +409,16 @@ def test_squid_block_raises_actionable_tool_ssrf_error(mock_get_client) -> None:
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_squid_401_via_header_also_triggers_actionable_error(mock_get_client) -> None:
-    """Squid can return 401 with only the Via header set (no Server header)
-    on some configurations. The detection must work for both."""
+def test_squid_401_deny_page_triggers_actionable_error(mock_get_client) -> None:
+    """A Squid-generated access-denied page must surface as ToolSSRFError."""
     mock_client = MagicMock()
     response = MagicMock()
     response.status_code = 401
-    # Server header absent — only Via identifies Squid.
     response.headers = {"server": "", "via": "1.1 squid (squid/4.10)"}
+    response.content = (
+        b"<title>ERROR: The requested URL could not be retrieved</title>"
+        b"Access control configuration prevents your request from being allowed at this time."
+    )
     mock_client.send.return_value = response
     mock_get_client.return_value = mock_client
 
@@ -420,6 +426,23 @@ def test_squid_401_via_header_also_triggers_actionable_error(mock_get_client) ->
         make_request("GET", "http://10.0.0.1/internal")
 
     assert "SSRF_PROXY_ALLOW_PRIVATE_IPS" in str(exc_info.value)
+
+
+@pytest.mark.parametrize("status_code", [401, 403])
+@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
+def test_squid_forwarded_auth_error_is_not_treated_as_ssrf_block(mock_get_client, status_code: int) -> None:
+    """Squid adds Via to forwarded upstream auth errors; that alone is not a deny."""
+    mock_client = MagicMock()
+    response = MagicMock()
+    response.status_code = status_code
+    response.headers = {"server": "nginx", "via": "1.1 squid (squid/6.13)"}
+    response.content = b'{"message":"invalid API key"}'
+    mock_client.send.return_value = response
+    mock_get_client.return_value = mock_client
+
+    returned = make_request("GET", "https://api.example.com/v1/models")
+
+    assert returned is response
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
