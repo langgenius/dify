@@ -225,7 +225,11 @@ class CheckSessionOwnership(Requirement):
 
 
 class RequireWebappAccess(Requirement):
-    """Run-scope comes from the declaration site, so it is not re-checked here."""
+    """Run-scope comes from the declaration site, so it is not re-checked here.
+
+    The ACL is gated on `webapp_auth.enabled` and the private-app check is not:
+    the asymmetry is deliberate, not an oversight.
+    """
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
