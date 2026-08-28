@@ -2,6 +2,11 @@
 
 from collections.abc import Callable
 
+from datetime import datetime
+
+from sqlalchemy.orm import Session
+
+from models.enums import DataSourceType, DocumentCreatedFrom
 from services.dataset_ref_service import DatasetRef, DatasetRefService, DocumentRef, SegmentRef
 
 from .dataset_service_test_helpers import (
@@ -10,6 +15,8 @@ from .dataset_service_test_helpers import (
     ChildChunkDeleteIndexError,
     ChildChunkIndexingError,
     ChildChunkUpdateArgs,
+    Dataset,
+    Document,
     DocumentSegment,
     IndexStructureType,
     MagicMock,
@@ -1143,3 +1150,166 @@ class TestSegmentServiceAdditionalRegenerationBranches:
         assert segment.status == "error"
         assert segment.error == "The knowledge base index technique is not high quality!"
         vector_service.update_multimodel_vector.assert_not_called()
+
+
+QA_TENANT_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+QA_ACCOUNT_ID = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+QA_DATASET_ID = "cccccccc-cccc-cccc-cccc-cccccccccccc"
+QA_DOCUMENT_ID = "dddddddd-dddd-dddd-dddd-dddddddddddd"
+QA_SEGMENT_ID = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"
+
+
+def _persist_qa_segment(
+    sqlite_session: Session, *, indexing_technique: str = "economy"
+) -> tuple[Dataset, Document, DocumentSegment]:
+    account = Account(name="User", email="user@example.com")
+    account.id = QA_ACCOUNT_ID
+    dataset = Dataset(
+        id=QA_DATASET_ID,
+        tenant_id=QA_TENANT_ID,
+        name="QA Dataset",
+        description="",
+        provider="vendor",
+        created_by=QA_ACCOUNT_ID,
+        indexing_technique=indexing_technique,
+        embedding_model_provider="openai",
+        embedding_model="text-embedding-3-small",
+    )
+    document = Document(
+        id=QA_DOCUMENT_ID,
+        tenant_id=QA_TENANT_ID,
+        dataset_id=QA_DATASET_ID,
+        position=1,
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        batch="batch-1",
+        name="QA Document",
+        created_from=DocumentCreatedFrom.API,
+        created_by=QA_ACCOUNT_ID,
+        created_at=datetime(2026, 1, 1),
+        updated_at=datetime(2026, 1, 1),
+        doc_form=IndexStructureType.QA_INDEX,
+        word_count=len("old question") + len("old answer"),
+        indexing_status="completed",
+        enabled=True,
+    )
+    segment = DocumentSegment(
+        tenant_id=QA_TENANT_ID,
+        dataset_id=QA_DATASET_ID,
+        document_id=QA_DOCUMENT_ID,
+        position=1,
+        content="old question",
+        word_count=len("old question") + len("old answer"),
+        tokens=0,
+        created_by=QA_ACCOUNT_ID,
+        enabled=True,
+        keywords=["old"],
+        answer="old answer",
+        index_node_id="node-1",
+        status="completed",
+    )
+    segment.id = QA_SEGMENT_ID
+    sqlite_session.add_all([account, dataset, document, segment])
+    sqlite_session.commit()
+    return dataset, document, segment
+
+
+class TestSegmentServiceQaPartialUpdate:
+    """Partial QA updates should not wipe an omitted answer (issue 41315)."""
+
+    @pytest.fixture
+    def account_context(self):
+        account = create_autospec(Account, instance=True)
+        account.id = QA_ACCOUNT_ID
+        account.current_tenant_id = QA_TENANT_ID
+        with patch("services.dataset_service.current_user", account):
+            yield account
+
+    def test_keywords_only_update_keeps_existing_answer(self, account_context, sqlite_session: Session):
+        dataset, document, segment = _persist_qa_segment(sqlite_session)
+
+        with (
+            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.dataset_service.VectorService") as vector_service,
+        ):
+            mock_redis.get.return_value = None
+            result = SegmentService.update_segment(
+                SegmentUpdateArgs(keywords=["new keyword"]),
+                segment,
+                document,
+                dataset,
+                sqlite_session,
+            )
+
+        assert result.answer == "old answer"
+        assert result.content == "old question"
+        assert sqlite_session.get(DocumentSegment, QA_SEGMENT_ID).answer == "old answer"
+        vector_service.update_segment_vector.assert_called_once()
+
+    def test_content_change_without_answer_keeps_existing_answer(self, account_context, sqlite_session: Session):
+        dataset, document, segment = _persist_qa_segment(sqlite_session)
+
+        with (
+            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.dataset_service.VectorService") as vector_service,
+            patch("services.dataset_service.helper.generate_text_hash", return_value="hash-new"),
+            patch("services.dataset_service.naive_utc_now", return_value=datetime(2026, 1, 2)),
+        ):
+            mock_redis.get.return_value = None
+            result = SegmentService.update_segment(
+                SegmentUpdateArgs(content="new question"),
+                segment,
+                document,
+                dataset,
+                sqlite_session,
+            )
+
+        assert result.answer == "old answer"
+        assert result.content == "new question"
+        assert sqlite_session.get(DocumentSegment, QA_SEGMENT_ID).answer == "old answer"
+        vector_service.update_segment_vector.assert_called_once()
+
+    def test_high_quality_content_change_omitted_answer_used_in_embedding(
+        self, account_context, sqlite_session: Session
+    ):
+        dataset, document, segment = _persist_qa_segment(sqlite_session, indexing_technique="high_quality")
+        embedding_model = MagicMock()
+        embedding_model.get_text_embedding_num_tokens.return_value = [12]
+
+        with (
+            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.dataset_service.VectorService"),
+            patch("services.dataset_service.ModelManager") as model_manager_cls,
+            patch("services.dataset_service.helper.generate_text_hash", return_value="hash-new"),
+            patch("services.dataset_service.naive_utc_now", return_value=datetime(2026, 1, 2)),
+        ):
+            mock_redis.get.return_value = None
+            model_manager_cls.for_tenant.return_value.get_model_instance.return_value = embedding_model
+            result = SegmentService.update_segment(
+                SegmentUpdateArgs(content="new question"),
+                segment,
+                document,
+                dataset,
+                sqlite_session,
+            )
+
+        assert result.answer == "old answer"
+        embedding_model.get_text_embedding_num_tokens.assert_called_once_with(texts=["new questionold answer"])
+
+    def test_explicit_answer_still_updates(self, account_context, sqlite_session: Session):
+        dataset, document, segment = _persist_qa_segment(sqlite_session)
+
+        with (
+            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.dataset_service.VectorService"),
+        ):
+            mock_redis.get.return_value = None
+            result = SegmentService.update_segment(
+                SegmentUpdateArgs(content="old question", answer="new answer"),
+                segment,
+                document,
+                dataset,
+                sqlite_session,
+            )
+
+        assert result.answer == "new answer"
+        assert sqlite_session.get(DocumentSegment, QA_SEGMENT_ID).answer == "new answer"
