@@ -15,7 +15,7 @@ import {
   floatingSeparatorClassName,
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
-import { getTextFromNode } from '../utils/get-text-from-node'
+import { getTextFromNode, hasTitleInNode } from '../utils/get-text-from-node'
 
 type SelectProps<Value, Multiple extends boolean | undefined = false> = BaseSelect.Root.Props<
   Value,
@@ -56,8 +56,52 @@ type SelectValueProps<Value = unknown, Multiple extends boolean | undefined = fa
 function SelectValue<Value = unknown, Multiple extends boolean | undefined = false>(
   props: SelectValueProps<Value, Multiple>,
 ): React.JSX.Element
-function SelectValue(props: BaseSelect.Value.Props): React.JSX.Element {
-  return <BaseSelect.Value {...props} />
+function SelectValue({
+  className,
+  render,
+  title,
+  ...props
+}: BaseSelect.Value.Props): React.JSX.Element {
+  const resolvedClassName =
+    typeof className === 'function'
+      ? (state: BaseSelect.Value.State) => cn('block min-w-0 truncate', className(state))
+      : cn('block min-w-0 truncate', className)
+
+  if (typeof render === 'function') {
+    return (
+      <BaseSelect.Value
+        {...props}
+        className={resolvedClassName}
+        title={title}
+        render={(renderProps, state) =>
+          render(
+            {
+              ...renderProps,
+              title: title ?? getTextFromNode(renderProps.children),
+            },
+            state,
+          )
+        }
+      />
+    )
+  }
+
+  if (render) {
+    return (
+      <BaseSelect.Value {...props} className={resolvedClassName} render={render} title={title} />
+    )
+  }
+
+  return (
+    <BaseSelect.Value
+      {...props}
+      className={resolvedClassName}
+      title={title}
+      render={(renderProps) => (
+        <span {...renderProps} title={title ?? getTextFromNode(renderProps.children)} />
+      )}
+    />
+  )
 }
 type SelectGroupProps = BaseSelect.Group.Props
 
@@ -93,9 +137,14 @@ type SelectTriggerProps = Omit<BaseSelect.Trigger.Props, 'className'> & {
 
 function SelectTrigger({ className, children, size, title, ...props }: SelectTriggerProps) {
   const resolvedTitle = title ?? getTextFromNode(children)
+  const valueOwnsTruncation = React.isValidElement(children) && children.type === SelectValue
+  const childOwnsTitle = valueOwnsTruncation || hasTitleInNode(children)
   return (
     <BaseSelect.Trigger className={cn(selectTriggerVariants({ size, className }))} {...props}>
-      <span className="min-w-0 grow truncate" title={resolvedTitle}>
+      <span
+        className={cn('min-w-0 grow', !valueOwnsTruncation && 'truncate')}
+        title={childOwnsTitle ? undefined : resolvedTitle}
+      >
         {children}
       </span>
       <BaseSelect.Icon className="shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary group-data-readonly:hidden data-popup-open:text-text-secondary">
