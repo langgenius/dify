@@ -1,5 +1,6 @@
 'use client'
 
+import type { AgentPublicationCountsResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { RosterFilterValue } from './roster-filter'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
@@ -16,8 +17,7 @@ import { RosterCreateMenu } from './roster-create-menu'
 import { RosterSortSelect } from './roster-sort-select'
 
 type RosterToolbarProps = {
-  draftAgents: number
-  publishedAgents: number
+  publicationCounts: AgentPublicationCountsResponse
 }
 
 type RosterFilterItemProps = {
@@ -39,7 +39,7 @@ function RosterFilterItem({ count, label, value }: RosterFilterItemProps) {
   )
 }
 
-function RosterStatusFilter({ draftAgents, publishedAgents }: RosterToolbarProps) {
+function RosterStatusFilter({ publicationCounts }: RosterToolbarProps) {
   const { t } = useTranslation('agentV2')
   const [filter, setFilter] = useQueryState(rosterQueryParamNames.filter, rosterFilterQueryParser)
 
@@ -54,12 +54,12 @@ function RosterStatusFilter({ draftAgents, publishedAgents }: RosterToolbarProps
       <RosterFilterItem
         value="published"
         label={t(($) => $['roster.filters.published'])}
-        count={publishedAgents}
+        count={publicationCounts.published}
       />
       <RosterFilterItem
         value="drafts"
         label={t(($) => $['roster.filters.drafts'])}
-        count={draftAgents}
+        count={publicationCounts.drafts}
       />
     </SegmentedControl>
   )
@@ -107,10 +107,10 @@ function RosterCreatedByMeFilter() {
   )
 }
 
-export function RosterToolbar({ draftAgents, publishedAgents }: RosterToolbarProps) {
+export function RosterToolbar({ publicationCounts }: RosterToolbarProps) {
   return (
     <div className="flex min-w-0 items-center gap-2">
-      <RosterStatusFilter draftAgents={draftAgents} publishedAgents={publishedAgents} />
+      <RosterStatusFilter publicationCounts={publicationCounts} />
       <RosterSearchFilter />
       <div className="flex h-4 shrink-0 px-1" aria-hidden="true">
         <div className="h-full w-px bg-divider-regular" />
