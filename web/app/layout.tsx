@@ -34,12 +34,23 @@ export const viewport: Viewport = {
 export async function generateMetadata(): Promise<Metadata> {
   const systemFeatures = await prefetchSystemFeatures()
   const applicationTitle = getApplicationTitle(systemFeatures?.branding)
+  const brandedFavicon =
+    systemFeatures?.branding.enabled && systemFeatures.branding.favicon
+      ? systemFeatures.branding.favicon
+      : undefined
 
   return {
     title: {
       default: applicationTitle,
       template: `%s - ${applicationTitle}`,
     },
+    icons: brandedFavicon
+      ? {
+          apple: brandedFavicon,
+          icon: brandedFavicon,
+          shortcut: brandedFavicon,
+        }
+      : undefined,
   }
 }
 
