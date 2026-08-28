@@ -3,7 +3,12 @@ import pytest
 from core.dify_builder.errors import BadRequestError
 from services.dify_builder.agent import model_resolver
 
-MC = {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {"temperature": 0.5, "stop": ["\n\n"]}}
+MC = {
+    "provider": "openai",
+    "name": "gpt-4o",
+    "mode": "chat",
+    "completion_params": {"temperature": 0.5, "stop": ["\n\n"]},
+}
 
 
 class _FakeManager:
@@ -18,16 +23,20 @@ class _FakeManager:
         self.explicit_args = (tenant_id, provider, str(model_type), model)
         return "EXPLICIT_INSTANCE"
 
-    def get_default_model_instance(self, *, tenant_id, model_type):
+    def get_default_model_instance(self, *, tenant_id, model_type):  # noqa: ARG002
         self.default_used = True
         return "DEFAULT_INSTANCE"
 
-    def get_default_provider_model_name(self, *, tenant_id, model_type):
+    def get_default_provider_model_name(self, *, tenant_id, model_type):  # noqa: ARG002
         return ("anthropic", "claude-sonnet-5")
 
 
 def _patch_manager(monkeypatch, manager):
-    monkeypatch.setattr(model_resolver.ModelManager, "for_tenant", staticmethod(lambda tenant_id, user_id=None: manager))
+    monkeypatch.setattr(
+        model_resolver.ModelManager,
+        "for_tenant",
+        staticmethod(lambda tenant_id, user_id=None: manager),  # noqa: ARG005
+    )
 
 
 def test_resolve_explicit_model(monkeypatch):
@@ -35,7 +44,8 @@ def test_resolve_explicit_model(monkeypatch):
     _patch_manager(monkeypatch, mgr)
     inst = model_resolver.resolve_model_instance("t1", MC)
     assert inst == "EXPLICIT_INSTANCE"
-    assert mgr.explicit_args[1] == "openai" and mgr.explicit_args[3] == "gpt-4o"
+    assert mgr.explicit_args[1] == "openai"
+    assert mgr.explicit_args[3] == "gpt-4o"
     assert mgr.explicit_args[2] == "llm"
 
 
@@ -69,4 +79,11 @@ def test_normalize_splits_stop():
 
 def test_normalize_no_stop():
     params, stop = model_resolver.normalize_completion_params({"temperature": 0.5})
-    assert params == {"temperature": 0.5} and stop is None
+    assert params == {"temperature": 0.5}
+    assert stop is None
+
+
+def test_normalize_string_stop_is_single_element_list():
+    params, stop = model_resolver.normalize_completion_params({"temperature": 0.1, "stop": "END"})
+    assert params == {"temperature": 0.1}
+    assert stop == ["END"]

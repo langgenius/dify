@@ -28,6 +28,7 @@ argument.
 """
 
 import functools
+import logging
 from collections.abc import Callable
 
 from flask import Response, request
@@ -52,6 +53,8 @@ from services.dify_builder.wiring import (
 from services.feature_service import FeatureService
 
 from . import console_ns
+
+logger = logging.getLogger(__name__)
 
 
 def dify_builder_required(func: Callable) -> Callable:
@@ -147,6 +150,7 @@ def _ping(body, actor: Actor) -> tuple[dict, int]:
 
         return ping_model(actor.tenant_id, model_config), 200
     except Exception as exc:  # a health check returns ok:false rather than 500
+        logger.warning("dify_builder agent ping failed: %s", exc)
         return {"ok": False, "error": str(exc)}, 200
 
 

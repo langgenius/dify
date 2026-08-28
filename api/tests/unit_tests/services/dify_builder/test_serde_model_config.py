@@ -8,9 +8,15 @@ def test_model_config_defaults_empty():
 
 
 def test_model_config_round_trips():
-    fc = DifyBuilderContext(model_config={"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {"temperature": 0.2}})
+    model_config = {
+        "provider": "openai",
+        "name": "gpt-4o",
+        "mode": "chat",
+        "completion_params": {"temperature": 0.2},
+    }
+    fc = DifyBuilderContext(model_config=model_config)
     restored = context_from_dict(context_to_dict(fc))
-    assert restored.model_config == {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {"temperature": 0.2}}
+    assert restored.model_config == model_config
 
 
 def test_model_config_absent_in_old_row_defaults_empty():
