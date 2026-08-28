@@ -92,17 +92,15 @@ vi.mock('@/service/client', async (importOriginal) => {
 
 vi.mock('../components/knowledge-fs-api-access-dialog', () => ({
   KnowledgeFsApiAccessDialog: ({
-    canManageCredentials,
     status,
     open,
   }: {
-    canManageCredentials: boolean
     status: 'active' | 'inactive' | 'loading' | 'unavailable'
     open: boolean
   }) =>
     open ? (
       <div role="dialog" aria-label="knowledge-fs-api-access">
-        {status}:{String(canManageCredentials)}
+        {status}
       </div>
     ) : null,
 }))
@@ -266,7 +264,7 @@ describe('KnowledgeSpaceShell', () => {
     ).toBeInTheDocument()
   })
 
-  it('shows API access as inactive when either public channel is disabled', () => {
+  it('shows API access as inactive when Service API access is disabled', () => {
     queryMock.data = {
       control_space_id: 'space-1',
       permission_keys: ['knowledge_space_access_config'],
@@ -280,11 +278,25 @@ describe('KnowledgeSpaceShell', () => {
     expect(screen.getByText('dataset.newKnowledge.apiAccessInactive')).toBeInTheDocument()
   })
 
-  it('opens the real KnowledgeFS credential management path', async () => {
+  it('shows API access as active independently from Agent access', () => {
+    queryMock.data = {
+      control_space_id: 'space-1',
+      permission_keys: ['knowledge_space_access_config'],
+      state: 'active',
+      technical_summary: { name: 'Support knowledge' },
+    }
+    externalAccessQueryMock.data.agent_enabled = false
+
+    render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">source content</KnowledgeSpaceShell>)
+
+    expect(screen.getByText('dataset.newKnowledge.apiAccessActive')).toBeInTheDocument()
+  })
+
+  it('opens the KnowledgeFS API access dialog', async () => {
     const user = userEvent.setup()
     queryMock.data = {
       control_space_id: 'space-1',
-      permission_keys: ['knowledge_space_access_config', 'knowledge_space_api_key_manage'],
+      permission_keys: ['knowledge_space_access_config'],
       state: 'active',
       technical_summary: { name: 'Support knowledge' },
     }
@@ -293,7 +305,7 @@ describe('KnowledgeSpaceShell', () => {
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.apiAgentAccess' }))
 
     expect(screen.getByRole('dialog', { name: 'knowledge-fs-api-access' })).toHaveTextContent(
-      'active:true',
+      'active',
     )
   })
 

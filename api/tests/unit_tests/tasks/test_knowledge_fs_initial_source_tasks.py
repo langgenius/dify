@@ -348,7 +348,7 @@ def test_initial_connector_source_import_uses_exact_binding_and_selection(
     assert import_payload.kind == workflow_kind
     assert import_payload.items == payload.selection
     sync_payload = facade.update_source_sync_policy.call_args.kwargs["payload"]
-    assert sync_payload.mode == ("manual" if workflow_kind == "online-drive-import" else "provider")
+    assert sync_payload.mode == ("manual" if workflow_kind == "online-drive-import" else "interval")
 
 
 def test_initial_website_source_import_reuses_source_across_pages_and_preserves_failure() -> None:
@@ -387,7 +387,7 @@ def test_initial_website_source_import_reuses_source_across_pages_and_preserves_
     [
         ("custom", "custom", True, 129_600),
         ("manual", "manual", False, None),
-        ("provider", "provider", True, None),
+        ("daily", "interval", True, None),
     ],
 )
 def test_initial_website_source_import_configures_remaining_sync_modes(
