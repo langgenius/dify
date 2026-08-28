@@ -14,10 +14,20 @@ describe('app-redirection', () => {
    * - App mode (workflow, advanced-chat, chat, completion, agent-chat)
    */
   describe('getRedirectionPath', () => {
-    it('returns access point path when app ACL cannot access guarded pages', () => {
-      const app = { id: 'app-123', mode: AppModeEnum.CHAT, permission_keys: [] }
+    it('returns access point path when app access point permission is granted', () => {
+      const app = {
+        id: 'app-123',
+        mode: AppModeEnum.CHAT,
+        permission_keys: [AppACLPermission.AccessPoint],
+      }
       const result = getRedirectionPath(app)
       expect(result).toBe('/app/app-123/access-point')
+    })
+
+    it('returns apps list path when app ACL cannot access guarded pages or access point', () => {
+      const app = { id: 'app-123', mode: AppModeEnum.CHAT, permission_keys: [] }
+      const result = getRedirectionPath(app)
+      expect(result).toBe('/apps')
     })
 
     it('returns workflow path for workflow mode when app ACL can access layout', () => {
@@ -92,7 +102,11 @@ describe('app-redirection', () => {
     })
 
     it('handles different app IDs', () => {
-      const app1 = { id: 'abc-123', mode: AppModeEnum.CHAT, permission_keys: [] }
+      const app1 = {
+        id: 'abc-123',
+        mode: AppModeEnum.CHAT,
+        permission_keys: [AppACLPermission.AccessPoint],
+      }
       const app2 = {
         id: 'xyz-789',
         mode: AppModeEnum.WORKFLOW,
@@ -129,7 +143,7 @@ describe('app-redirection', () => {
       const app = {
         id: 'app-123',
         mode: AppModeEnum.CHAT,
-        permission_keys: [AppACLPermission.AccessConfig],
+        permission_keys: [AppACLPermission.AccessConfig, AppACLPermission.AccessPoint],
       }
 
       expect(getRedirectionPath(app, { isRbacEnabled: false })).toBe('/app/app-123/access-point')
@@ -173,8 +187,12 @@ describe('app-redirection', () => {
     /**
      * Tests that the redirection function is called with the correct path
      */
-    it('calls redirection function with access point path when app ACL cannot access guarded pages', () => {
-      const app = { id: 'app-123', mode: AppModeEnum.CHAT, permission_keys: [] }
+    it('calls redirection function with access point path when access point permission is granted', () => {
+      const app = {
+        id: 'app-123',
+        mode: AppModeEnum.CHAT,
+        permission_keys: [AppACLPermission.AccessPoint],
+      }
       const mockRedirect = vi.fn()
 
       getRedirection(app, mockRedirect)

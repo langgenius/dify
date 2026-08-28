@@ -238,9 +238,11 @@ describe('AppDetailLayout', () => {
     expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
-  it('should allow access point pages without app deploy or app ACL permissions', async () => {
+  it('should allow users with access point permission to open access point directly', async () => {
     mockPathname = '/app/app-1/access-point'
-    mockFetchAppDetailDirect.mockResolvedValue(createAppDetail({ permission_keys: [] }))
+    mockFetchAppDetailDirect.mockResolvedValue(
+      createAppDetail({ permission_keys: [AppACLPermission.AccessPoint] }),
+    )
 
     render(
       <AppDetailLayout appId="app-1">
@@ -252,6 +254,25 @@ describe('AppDetailLayout', () => {
 
     expect(mockReplace).not.toHaveBeenCalled()
     expect(useStore.getState().appDetail?.id).toBe('app-1')
+  })
+
+  it('should redirect access point pages when access point permission is missing', async () => {
+    mockPathname = '/app/app-1/access-point'
+    mockFetchAppDetailDirect.mockResolvedValue(
+      createAppDetail({ permission_keys: [AppACLPermission.Monitor] }),
+    )
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/app/app-1/overview')
+    })
+    expect(screen.queryByText('App page content')).not.toBeInTheDocument()
+    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
   it('should redirect deploy pages when app deploy ACL permission is missing', async () => {
@@ -317,7 +338,7 @@ describe('AppDetailLayout', () => {
     )
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/app/app-1/access-point')
+      expect(mockReplace).toHaveBeenCalledWith('/apps')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
     expect(useStore.getState().appDetail).toBeUndefined()
@@ -488,7 +509,7 @@ describe('AppDetailLayout', () => {
     )
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/app/app-1/access-point')
+      expect(mockReplace).toHaveBeenCalledWith('/apps')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
     expect(useStore.getState().appDetail).toBeUndefined()
