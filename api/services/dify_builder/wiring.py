@@ -11,7 +11,7 @@ from collections.abc import Iterator
 
 from sqlalchemy.orm import sessionmaker
 
-from core.dify_builder.errors import BusyError, ConflictError, NotFoundError
+from core.dify_builder.errors import BadRequestError, BusyError, ConflictError, NotFoundError
 from core.dify_builder.models import Action, Actor
 from extensions.ext_database import db
 from libs.broadcast_channel.exc import SubscriptionClosedError
@@ -40,6 +40,8 @@ def session_view_to_dict(view: SessionView) -> dict:
 
 
 def dify_builder_error_response(exc: Exception) -> tuple[dict, int] | None:
+    if isinstance(exc, BadRequestError):
+        return {"code": "bad_request"}, 400
     # NotFoundError ALWAYS maps to a generic 404 regardless of message text
     # (owner-mismatch must be indistinguishable from a missing session).
     if isinstance(exc, NotFoundError):
