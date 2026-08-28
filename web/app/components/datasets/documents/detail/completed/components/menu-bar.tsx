@@ -14,7 +14,7 @@ import {
 } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import Input from '@/app/components/base/input'
+import { SearchInput } from '@/app/components/base/search-input'
 import DisplayToggle from '../display-toggle'
 import s from '../style.module.css'
 
@@ -72,7 +72,7 @@ function MenuBar({
         <SelectTrigger className="mr-2 w-25 shrink-0 shadow-none">
           {selectedStatus?.name ?? ''}
         </SelectTrigger>
-        <SelectContent popupClassName="w-[160px]">
+        <SelectContent className="w-[160px]">
           {statusList.map((item) => (
             <SelectItem key={item.value} value={item.value}>
               <SelectItemText>{item.name}</SelectItemText>
@@ -81,14 +81,7 @@ function MenuBar({
           ))}
         </SelectContent>
       </Select>
-      <Input
-        showLeftIcon
-        showClearIcon
-        wrapperClassName="w-52!"
-        value={inputValue}
-        onChange={(e) => onInputChange(e.target.value)}
-        onClear={() => onInputChange('')}
-      />
+      <SearchInput className="w-52!" value={inputValue} onValueChange={onInputChange} />
       <Divider type="vertical" className="mx-3 h-3.5" />
       <DisplayToggle isCollapsed={isCollapsed} toggleCollapsed={toggleCollapsed} />
     </div>

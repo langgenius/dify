@@ -1,13 +1,8 @@
-import type { SelfHostedPlan } from '@/app/components/billing/type'
-import * as React from 'react'
+import type { SelfHostedPlan } from '@/app/components/billing/config'
 import { Trans, useTranslation } from 'react-i18next'
-import Item from './item'
+import { SelfHostedPlanFeature } from './item'
 
-type ListProps = {
-  plan: SelfHostedPlan
-}
-
-const List = ({ plan }: ListProps) => {
+export function SelfHostedPlanFeatures({ plan }: { plan: SelfHostedPlan }) {
   const { t } = useTranslation()
   const i18nPrefix = `plans.${plan}` as const
   const features = t(($) => $[`${i18nPrefix}.features`], {
@@ -25,10 +20,8 @@ const List = ({ plan }: ListProps) => {
         />
       </div>
       {features.map((feature) => (
-        <Item key={`${plan}-${feature}`} label={feature} />
+        <SelfHostedPlanFeature key={`${plan}-${feature}`} label={feature} />
       ))}
     </div>
   )
 }
-
-export default React.memo(List)

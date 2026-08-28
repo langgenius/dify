@@ -2,7 +2,7 @@ import type { DeploymentEdition } from '@dify/contracts/api/console/system-featu
 import type { ReactNode } from 'react'
 import { QueryClient } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import Zendesk from '../index'
 
 // Shared state for mocks
@@ -13,6 +13,9 @@ let mockNonce: string | null = 'test-nonce'
 let queryClient: QueryClient
 const systemFeaturesQueryKey = ['console', 'system-features']
 const getSystemFeatures = vi.fn()
+const mocks = vi.hoisted(() => ({
+  headers: vi.fn(),
+}))
 
 // Mock react's memo to just return the function
 vi.mock('react', async (importOriginal) => {
@@ -32,32 +35,21 @@ vi.mock('@/config', () => ({
   },
 }))
 
-vi.mock('@/context/query-client-server', () => ({
-  getQueryClientServer: () => queryClient,
-}))
-
-vi.mock('@/service/server', () => ({
-  serverConsoleQuery: {
-    systemFeatures: {
-      get: {
-        queryOptions: vi.fn(() => ({
-          queryKey: systemFeaturesQueryKey,
-          queryFn: getSystemFeatures,
-          retry: false,
-        })),
-      },
-    },
+vi.mock('@/features/system-features/server', () => ({
+  prefetchSystemFeatures: async () => {
+    const queryOptions = {
+      queryKey: systemFeaturesQueryKey,
+      queryFn: getSystemFeatures,
+      retry: false,
+    }
+    await queryClient.prefetchQuery(queryOptions)
+    return queryClient.getQueryData(queryOptions.queryKey)
   },
 }))
 
 // Mock next/headers
 vi.mock('@/next/headers', () => ({
-  headers: vi.fn(() => ({
-    get: vi.fn((name: string) => {
-      if (name === 'x-nonce') return mockNonce
-      return null
-    }),
-  })),
+  headers: mocks.headers,
 }))
 
 // Mock next/script
@@ -88,6 +80,11 @@ describe('Zendesk', () => {
     getSystemFeatures.mockImplementation(async () => ({
       deployment_edition: mockDeploymentEdition,
     }))
+    mocks.headers.mockImplementation(async () => {
+      const requestHeaders = new Headers()
+      if (mockNonce !== null) requestHeaders.set('x-nonce', mockNonce)
+      return requestHeaders
+    })
   })
 
   // Helper to call the async component
@@ -109,6 +106,7 @@ describe('Zendesk', () => {
     mockZendeskWidgetKey = undefined
     const result = await renderZendesk()
     expect(result).toBeNull()
+    expect(mocks.headers).not.toHaveBeenCalled()
     expect(getSystemFeatures).not.toHaveBeenCalled()
   })
 

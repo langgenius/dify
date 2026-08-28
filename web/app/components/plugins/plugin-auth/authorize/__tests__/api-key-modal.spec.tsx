@@ -5,8 +5,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render } from '@/test/console/render'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { AuthCategory } from '../../types'
 
 const { mockToast } = vi.hoisted(() => {
@@ -32,10 +32,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({ userProfile: {} }))
-})
 const mockAddPluginCredential = vi.fn().mockResolvedValue({})
 const mockUpdatePluginCredential = vi.fn().mockResolvedValue({})
 const defaultCredentialSchemas = [
@@ -300,29 +296,28 @@ describe('ApiKeyModal', () => {
     })
   })
 
-  it('selects credential visibility through the native trigger', async () => {
+  it('selects credential visibility through the dropdown menu', async () => {
     const user = userEvent.setup()
     render(<ApiKeyModal pluginPayload={basePayload} />)
 
     const trigger = screen.getByRole('button', { name: /permissionsAllMember/ })
     expect(trigger).toHaveAttribute('type', 'button')
     await user.click(trigger)
-    const permissionDialog = screen.getByRole('dialog', { name: /auth.whoCanUse/ })
-    const permissionGroup = within(permissionDialog).getByRole('radiogroup', {
+    const permissionMenu = screen.getByRole('menu', { name: /auth.whoCanUse/ })
+    const permissionGroup = within(permissionMenu).getByRole('group', {
       name: /auth.whoCanUse/,
     })
-    const allMembers = within(permissionGroup).getByRole('radio', {
+    const allMembers = within(permissionGroup).getByRole('menuitemradio', {
       name: /permissionsAllMember/,
     })
-    const onlyMe = within(permissionGroup).getByRole('radio', { name: /permissionsOnlyMe/ })
-    expect(allMembers).toBeChecked()
-
-    allMembers.focus()
-    await user.keyboard('{ArrowUp}')
-    expect(onlyMe).toBeChecked()
-    expect(permissionDialog).toBeInTheDocument()
+    const onlyMe = within(permissionGroup).getByRole('menuitemradio', {
+      name: /permissionsOnlyMe/,
+    })
+    expect(allMembers).toHaveAttribute('aria-checked', 'true')
 
     await user.click(onlyMe)
+    expect(screen.queryByRole('menu', { name: /auth.whoCanUse/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /permissionsOnlyMe/ })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     await waitFor(() => {
@@ -483,13 +478,16 @@ describe('ApiKeyModal', () => {
     const mockOnClose = vi.fn()
     render(
       <Dialog open>
-        <DialogContent backdropClassName="bg-transparent">
+        <DialogContent>
           <ControlledModalHarness ApiKeyModal={ApiKeyModal} onClose={mockOnClose} />
         </DialogContent>
       </Dialog>,
     )
 
-    const backdrop = document.querySelector('.bg-background-overlay')
+    const backdrop = screen
+      .getAllByRole('presentation', { hidden: true })
+      .filter((element) => element.hasAttribute('data-open'))
+      .at(-1)
     expect(backdrop).toBeInTheDocument()
 
     fireEvent.pointerDown(backdrop!)

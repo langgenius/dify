@@ -10,6 +10,7 @@ import type { ExternalDataTool } from '@/models/common'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useProviderContext } from '@/context/provider-context'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { usePricingModal } from '@/hooks/use-query-params'
@@ -30,9 +31,12 @@ const ExternalDataToolModal = dynamic(
     ssr: false,
   },
 )
-const Pricing = dynamic(() => import('@/app/components/billing/pricing'), {
-  ssr: false,
-})
+const Pricing = dynamic(
+  () => import('@/app/components/billing/pricing').then((module) => module.Pricing),
+  {
+    ssr: false,
+  },
+)
 const AnnotationFullModal = dynamic(
   () => import('@/app/components/billing/annotation-full/modal'),
   {
@@ -288,8 +292,15 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
               showUpdatePluginModal.onCancelCallback?.()
             }}
             onSave={() => {
-              setShowUpdatePluginModal(null)
-              showUpdatePluginModal.onSaveCallback?.()
+              if (showUpdatePluginModal.payload.category !== PluginCategoryEnum.model) {
+                setShowUpdatePluginModal(null)
+                showUpdatePluginModal.onSaveCallback?.()
+                return
+              }
+
+              return Promise.resolve(showUpdatePluginModal.onSaveCallback?.()).then(() => {
+                setShowUpdatePluginModal(null)
+              })
             }}
           />
         )}

@@ -42,7 +42,7 @@ const AddBlock = ({ iterationNodeData }: AddBlockProps) => {
       size="medium"
       className="relative data-popup-open:bg-components-button-secondary-bg-hover"
     >
-      <RiAddLine aria-hidden className="mr-1 size-4" />
+      <RiAddLine aria-hidden className="size-4" />
       {t(($) => $['common.addBlock'], { ns: 'workflow' })}
     </Button>
   )

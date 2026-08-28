@@ -1,12 +1,15 @@
 'use client'
 
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import useDocumentTitle from '@/hooks/use-document-title'
+import Link from '@/next/link'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { deviceLookup } from '@/service/device-flow'
@@ -40,6 +43,18 @@ export default function DevicePage() {
   const [typed, setTyped] = useState('')
   const [view, setView] = useState<View>({ kind: 'code_entry' })
   const [errMsg, setErrMsg] = useState<string | null>(null)
+  const documentTitle = {
+    authorize_account: t(($) => $['authorize.title']),
+    authorize_sso: t(($) => $['authorize.title']),
+    chooser: t(($) => $['chooser.title']),
+    code_entry: t(($) => $['codeEntry.title']),
+    error_expired: t(($) => $['errorExpired.title']),
+    error_lookup_failed: t(($) => $['errorLookupFailed.title']),
+    error_rate_limited: t(($) => $['errorRateLimited.title']),
+    error_sso: t(($) => $['errorSso.title']),
+    success: t(($) => $['success.title']),
+  }[view.kind]
+  useDocumentTitle(documentTitle)
 
   // Account subject + workspace identity (for the authorize-account screen).
   // Logged-out is a valid landing state on /device — disable refetch storms
@@ -53,8 +68,10 @@ export default function DevicePage() {
     refetchOnMount: false,
   })
   const account = userResp?.profile
-  const { data: currentWorkspace } = useQuery({
-    ...consoleQuery.workspaces.current.post.queryOptions(),
+  const { data: currentWorkspaceName } = useQuery({
+    ...consoleQuery.workspaces.current.summary.get.queryOptions({
+      select: (workspace) => workspace.name,
+    }),
     enabled: !!account && !profileErr,
     retry: false,
     refetchOnWindowFocus: false,
@@ -66,7 +83,7 @@ export default function DevicePage() {
   const ssoAvailable =
     sys.webapp_auth.enabled &&
     sys.webapp_auth.allow_sso &&
-    sys.webapp_auth.sso_config.protocol !== ''
+    sys.webapp_auth.sso_config.protocol !== null
 
   // URL-driven view transitions. Only advances while the user is still on
   // the entry/chooser screens — never clobbers terminal views (success /
@@ -175,7 +192,7 @@ export default function DevicePage() {
           accountEmail={account?.email}
           accountName={account?.name}
           accountAvatarUrl={account?.avatar_url ?? null}
-          defaultWorkspace={currentWorkspace?.name ?? undefined}
+          defaultWorkspace={currentWorkspaceName ?? undefined}
           onApproved={() => setView({ kind: 'success' })}
           onDenied={() => setView({ kind: 'error_expired' })}
           onError={(e) => setErrMsg(e)}
@@ -199,9 +216,9 @@ export default function DevicePage() {
           </h1>
           <p className="text-sm text-text-secondary">{t(($) => $['success.subtitle'])}</p>
           <Divider className="my-3" />
-          <Button variant="ghost" className="w-full" onClick={() => router.push('/')}>
+          <Link href="/" className={cn(buttonVariants({ variant: 'ghost' }), 'w-full')}>
             {t(($) => $['success.goToConsole'])}
-          </Button>
+          </Link>
         </div>
       )}
 

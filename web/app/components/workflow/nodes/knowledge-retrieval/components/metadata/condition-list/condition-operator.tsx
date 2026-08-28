@@ -55,14 +55,14 @@ const ConditionOperator = ({
             {selectedOption
               ? selectedOption.label
               : t(($) => $[`${i18nPrefix}.select`], { ns: 'workflow' })}
-            <RiArrowDownSLine className="ml-1 size-3.5" />
+            <RiArrowDownSLine className="size-3.5" />
           </Button>
         }
       />
       <PopoverContent
         placement="bottom-end"
         sideOffset={4}
-        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+        className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <div className="rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
           {options.map((option) => (

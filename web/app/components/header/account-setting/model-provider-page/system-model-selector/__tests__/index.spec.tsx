@@ -1,7 +1,8 @@
 import type { DefaultModelResponse } from '../../declarations'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { vi } from 'vitest'
-import { render } from '@/test/console/render'
+import userEvent from '@testing-library/user-event'
+import { vi } from 'vite-plus/test'
+import { renderWithNuqs as render } from '@/test/nuqs-testing'
 import { ModelTypeEnum } from '../../declarations'
 import SystemModel from '../index'
 
@@ -23,6 +24,7 @@ vi.mock('react-i18next', async () => {
     'modelProvider.ttsModel.tip': 'TTS model tip',
     'operation.cancel': 'Cancel',
     'operation.save': 'Save',
+    loading: 'Loading',
     'actionMsg.modifiedSuccessfully': 'Modified successfully',
   })
 })
@@ -31,6 +33,7 @@ const mockToastSuccess = vi.hoisted(() => vi.fn())
 const mockUpdateModelList = vi.hoisted(() => vi.fn())
 const mockInvalidateDefaultModel = vi.hoisted(() => vi.fn())
 const mockUpdateDefaultModel = vi.hoisted(() => vi.fn(() => Promise.resolve({ result: 'success' })))
+const mockUseModelList = vi.hoisted(() => vi.fn())
 const mockModelSelectorProps = vi.hoisted(
   () =>
     [] as Array<{
@@ -67,9 +70,7 @@ vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
 })
 
 vi.mock('../../hooks', () => ({
-  useModelList: () => ({
-    data: [],
-  }),
+  useModelList: mockUseModelList,
   useSystemDefaultModelAndModelList: (defaultModel: DefaultModelResponse | undefined) => [
     defaultModel || {
       model: '',
@@ -86,16 +87,16 @@ vi.mock('@/service/common', () => ({
 }))
 
 vi.mock('../../model-selector', () => ({
-  default: (props: {
+  ModelSelector: (props: {
     hideProviderSettingsFooter?: boolean
     onConfigureEmptyState?: () => void
     showModelMeta?: boolean
-    onSelect: (model: { model: string; provider: string }) => void
+    onValueChange: (model: { model: string; provider: string }) => void
   }) => {
     mockModelSelectorProps.push(props)
     return (
       <div>
-        <button onClick={() => props.onSelect({ model: 'test', provider: 'test' })}>
+        <button onClick={() => props.onValueChange({ model: 'test', provider: 'test' })}>
           Mock Model Selector
         </button>
         {props.onConfigureEmptyState && (
@@ -128,6 +129,7 @@ const defaultProps = {
 describe('SystemModel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseModelList.mockReturnValue({ data: [], isLoading: false })
     mockModelSelectorProps.length = 0
     mockWorkspacePermissionKeys = ['plugin.model_config']
   })
@@ -144,6 +146,61 @@ describe('SystemModel', () => {
     await waitFor(() => {
       expect(screen.getByText(/system reasoning model/i)).toBeInTheDocument()
     })
+  })
+
+  it('opens the dialog from URL state', async () => {
+    render(<SystemModel {...defaultProps} />, { searchParams: '?dialog=system-models' })
+
+    expect(await screen.findByRole('button', { name: /save/i })).toBeInTheDocument()
+    expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.textEmbedding, { enabled: true })
+  })
+
+  it('clears only the dialog URL state when closed', async () => {
+    const user = userEvent.setup()
+    const { onUrlUpdate } = render(<SystemModel {...defaultProps} />, {
+      searchParams: '?dialog=system-models&source=goto-anything',
+    })
+
+    await user.click(await screen.findByRole('button', { name: /cancel/i }))
+
+    expect(onUrlUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ queryString: '?source=goto-anything' }),
+    )
+  })
+
+  it('loads non-text model lists only after the dialog opens', async () => {
+    const user = userEvent.setup()
+    render(<SystemModel {...defaultProps} />)
+
+    expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.textEmbedding, { enabled: false })
+    expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.rerank, { enabled: false })
+    expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.speech2text, { enabled: false })
+    expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.tts, { enabled: false })
+
+    await user.click(screen.getByRole('button', { name: /system model settings/i }))
+
+    await waitFor(() => {
+      expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.textEmbedding, { enabled: true })
+      expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.rerank, { enabled: true })
+      expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.speech2text, { enabled: true })
+      expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.tts, { enabled: true })
+    })
+  })
+
+  it('shows loading instead of empty model selectors while model lists load', async () => {
+    const user = userEvent.setup()
+    mockUseModelList.mockReturnValue({ data: [], isLoading: true })
+    render(<SystemModel {...defaultProps} />)
+
+    await user.click(screen.getByRole('button', { name: /system model settings/i }))
+
+    expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Mock Model Selector' })).not.toBeInTheDocument()
+    const saveButton = screen.getByRole('button', { name: /save/i })
+    expect(saveButton).toBeDisabled()
+
+    await user.click(saveButton)
+    expect(mockUpdateDefaultModel).not.toHaveBeenCalled()
   })
 
   it('should disable button when loading', () => {
@@ -237,18 +294,21 @@ describe('SystemModel', () => {
     expect(mockModelSelectorProps.every((props) => props.showModelMeta === false)).toBe(true)
   })
 
-  it('should close the dialog from the empty selector configure action', async () => {
+  it('should close the dialog from every empty selector configure action', async () => {
+    const user = userEvent.setup()
     render(<SystemModel {...defaultProps} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
-    })
+    for (let index = 0; index < 5; index++) {
+      await user.click(screen.getByRole('button', { name: /system model settings/i }))
+      const configureActions = await screen.findAllByRole('button', {
+        name: 'Mock Configure Empty State',
+      })
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Mock Configure Empty State' })[0]!)
+      await user.click(configureActions[index]!)
 
-    await waitFor(() => {
-      expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument()
-    })
+      await waitFor(() => {
+        expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument()
+      })
+    }
   })
 })

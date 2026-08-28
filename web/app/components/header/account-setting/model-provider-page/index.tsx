@@ -1,20 +1,21 @@
+import type {
+  ModelProviderPluginSummaryResponse,
+  ModelProviderSummaryResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
-import type { ModelProvider } from './declarations'
-import type { PluginDetail } from '@/app/components/plugins/types'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { noop } from 'es-toolkit/function'
-import { useEffect, useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
-import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
-import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { useInstalledPluginList } from '@/service/use-plugins'
+import { consoleQuery } from '@/service/client'
 import UpdateSettingDialog from '../update-setting-dialog'
-import { CustomConfigurationStatusEnum, ModelTypeEnum } from './declarations'
+import { ModelTypeEnum } from './declarations'
 import { useDefaultModel } from './hooks'
 import ModelProviderPageBody from './model-provider-page-body'
 import SystemModelSelector from './system-model-selector'
@@ -36,6 +37,11 @@ type Props = Readonly<{
 
 const FixedModelProvider = ['langgenius/openai/openai', 'langgenius/anthropic/anthropic']
 
+export type ModelProviderPluginSummary = ModelProviderPluginSummaryResponse & {
+  latestVersion?: string
+  latestUniqueIdentifier?: string
+}
+
 const ModelProviderPage = ({
   layout,
   onOpenMarketplace,
@@ -47,58 +53,53 @@ const ModelProviderPage = ({
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
   const { t } = useTranslation()
   const { canSetPluginPreferences } = usePluginSettingsAccess()
+  const defaultModelQueryOptions = { enabled: canSetPluginPreferences }
   const { data: textGenerationDefaultModel, isLoading: isTextGenerationDefaultModelLoading } =
-    useDefaultModel(ModelTypeEnum.textGeneration)
+    useDefaultModel(ModelTypeEnum.textGeneration, defaultModelQueryOptions)
   const { data: embeddingsDefaultModel, isLoading: isEmbeddingsDefaultModelLoading } =
-    useDefaultModel(ModelTypeEnum.textEmbedding)
+    useDefaultModel(ModelTypeEnum.textEmbedding, defaultModelQueryOptions)
   const { data: rerankDefaultModel, isLoading: isRerankDefaultModelLoading } = useDefaultModel(
     ModelTypeEnum.rerank,
+    defaultModelQueryOptions,
   )
   const { data: speech2textDefaultModel, isLoading: isSpeech2textDefaultModelLoading } =
-    useDefaultModel(ModelTypeEnum.speech2text)
+    useDefaultModel(ModelTypeEnum.speech2text, defaultModelQueryOptions)
   const { data: ttsDefaultModel, isLoading: isTTSDefaultModelLoading } = useDefaultModel(
     ModelTypeEnum.tts,
+    defaultModelQueryOptions,
   )
   const {
     modelProviders: providers,
+    modelProviderPlugins = {},
     isLoadingModelProviders,
-    refreshModelProviders,
   } = useProviderContext()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
-  const { data: installedModelPlugins } = useInstalledPluginList(false, 100, {
-    category: PluginCategoryEnum.model,
-  })
-  const enrichedPlugins = usePluginsWithLatestVersion(installedModelPlugins?.plugins)
-  const pluginDetailMap = useMemo(() => {
-    const map = new Map<string, PluginDetail>()
-    for (const plugin of enrichedPlugins) {
-      const existingPlugin = map.get(plugin.plugin_id)
-      if (!existingPlugin || plugin.source === PluginSource.debugging)
-        map.set(plugin.plugin_id, plugin)
+  const marketplacePluginIds = useMemo(
+    () =>
+      Object.values(modelProviderPlugins)
+        .filter((plugin) => plugin.source === 'marketplace')
+        .map((plugin) => plugin.plugin_id),
+    [modelProviderPlugins],
+  )
+  const { data: latestVersionData } = useQuery(
+    consoleQuery.workspaces.current.plugin.list.latestVersions.post.queryOptions({
+      input: { body: { plugin_ids: marketplacePluginIds } },
+      enabled: !!marketplacePluginIds.length,
+    }),
+  )
+  const pluginSummaryMap = useMemo(() => {
+    const map = new Map<string, ModelProviderPluginSummary>()
+    for (const plugin of Object.values(modelProviderPlugins)) {
+      const latestVersion = latestVersionData?.versions[plugin.plugin_id]
+      map.set(plugin.plugin_id, {
+        ...plugin,
+        latestVersion: latestVersion?.version,
+        latestUniqueIdentifier: latestVersion?.unique_identifier,
+      })
     }
     return map
-  }, [enrichedPlugins])
-  const debuggingModelPluginKey = useMemo(() => {
-    const debuggingModelPluginIds = enrichedPlugins
-      .filter((plugin) => plugin.source === PluginSource.debugging)
-      .map((plugin) => `${plugin.plugin_id}:${plugin.plugin_unique_identifier}`)
-      .sort()
-
-    return debuggingModelPluginIds.join(',')
-  }, [enrichedPlugins])
-  const refreshedDebuggingModelPluginKeyRef = useRef('')
-  useEffect(() => {
-    if (!debuggingModelPluginKey) {
-      refreshedDebuggingModelPluginKeyRef.current = ''
-      return
-    }
-
-    if (refreshedDebuggingModelPluginKeyRef.current === debuggingModelPluginKey) return
-
-    refreshedDebuggingModelPluginKeyRef.current = debuggingModelPluginKey
-    refreshModelProviders?.()
-  }, [debuggingModelPluginKey, refreshModelProviders])
+  }, [latestVersionData, modelProviderPlugins])
   const enableMarketplace = systemFeatures.enable_marketplace
   const isDefaultModelLoading =
     isTextGenerationDefaultModelLoading ||
@@ -107,17 +108,11 @@ const ModelProviderPage = ({
     isSpeech2textDefaultModelLoading ||
     isTTSDefaultModelLoading
   const [configuredProviders, notConfiguredProviders] = useMemo(() => {
-    const configuredProviders: ModelProvider[] = []
-    const notConfiguredProviders: ModelProvider[] = []
+    const configuredProviders: ModelProviderSummaryResponse[] = []
+    const notConfiguredProviders: ModelProviderSummaryResponse[] = []
 
     providers.forEach((provider) => {
-      if (
-        provider.custom_configuration.status === CustomConfigurationStatusEnum.active ||
-        (provider.system_configuration.enabled === true &&
-          provider.system_configuration.quota_configurations.some(
-            (item) => item.quota_type === provider.system_configuration.current_quota_type,
-          ))
-      ) {
+      if (provider.is_configured) {
         configuredProviders.push(provider)
       } else {
         notConfiguredProviders.push(provider)
@@ -162,35 +157,43 @@ const ModelProviderPage = ({
     systemModelConfigStatus === 'no-provider' || systemModelConfigStatus === 'none-configured'
       ? 'modelProvider.noneConfigured'
       : null
-  const showWarning = !isLoadingModelProviders && !isDefaultModelLoading && !!warningTextKey
-  const systemModelSelector = (className: string) => (
-    <SystemModelSelector
-      className={className}
-      notConfigured={showWarning}
-      textGenerationDefaultModel={textGenerationDefaultModel}
-      embeddingsDefaultModel={embeddingsDefaultModel}
-      rerankDefaultModel={rerankDefaultModel}
-      speech2textDefaultModel={speech2textDefaultModel}
-      ttsDefaultModel={ttsDefaultModel}
-      isLoading={isDefaultModelLoading}
-      hideProviderSettingsFooter={hideSystemModelSelectorProviderSettingsFooter}
-      onOpenMarketplace={onOpenMarketplace}
-    />
-  )
+  const showWarning =
+    canSetPluginPreferences &&
+    !isLoadingModelProviders &&
+    !isDefaultModelLoading &&
+    !!warningTextKey
+  const systemModelSelector = (className: string) => {
+    if (!canSetPluginPreferences) return null
+
+    return (
+      <SystemModelSelector
+        className={className}
+        notConfigured={showWarning}
+        textGenerationDefaultModel={textGenerationDefaultModel}
+        embeddingsDefaultModel={embeddingsDefaultModel}
+        rerankDefaultModel={rerankDefaultModel}
+        speech2textDefaultModel={speech2textDefaultModel}
+        ttsDefaultModel={ttsDefaultModel}
+        isLoading={isDefaultModelLoading}
+        hideProviderSettingsFooter={hideSystemModelSelectorProviderSettingsFooter}
+        onOpenMarketplace={onOpenMarketplace}
+      />
+    )
+  }
 
   const [filteredConfiguredProviders, filteredNotConfiguredProviders] = useMemo(() => {
     const filteredConfiguredProviders = configuredProviders.filter(
       (provider) =>
         provider.provider.toLowerCase().includes(debouncedSearchText.toLowerCase()) ||
         Object.values(provider.label).some((text) =>
-          text.toLowerCase().includes(debouncedSearchText.toLowerCase()),
+          text?.toLowerCase().includes(debouncedSearchText.toLowerCase()),
         ),
     )
     const filteredNotConfiguredProviders = notConfiguredProviders.filter(
       (provider) =>
         provider.provider.toLowerCase().includes(debouncedSearchText.toLowerCase()) ||
         Object.values(provider.label).some((text) =>
-          text.toLowerCase().includes(debouncedSearchText.toLowerCase()),
+          text?.toLowerCase().includes(debouncedSearchText.toLowerCase()),
         ),
     )
 
@@ -257,7 +260,7 @@ const ModelProviderPage = ({
       showMarketplace={showMarketplace}
       enableMarketplace={enableMarketplace}
       searchText={searchText}
-      pluginDetailMap={pluginDetailMap}
+      pluginSummaryMap={pluginSummaryMap}
       onOpenMarketplace={onOpenMarketplace}
     />
   )

@@ -36,6 +36,8 @@ from ..wraps import (
     RBACPermission,
     RBACResourceScope,
     account_initialization_required,
+    is_admin_or_owner_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -137,6 +139,8 @@ register_response_schema_models(
 class DataSourceApi(Resource):
     @setup_required
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[DataSourceIntegrateListResponse.__name__])
     @with_current_tenant_id
@@ -186,6 +190,8 @@ class DataSourceApi(Resource):
 
     @setup_required
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @with_current_tenant_id
@@ -229,12 +235,18 @@ class DataSourceNotionListApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
-    def get(self, session: Session, current_tenant_id: str, current_user: Account) -> tuple[dict[str, Any], int]:
-        query = DataSourceNotionListQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(DataSourceNotionListQuery)
+    def get(
+        self,
+        req_data: DataSourceNotionListQuery,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+    ) -> tuple[dict[str, Any], int]:
         datasource_provider_service = DatasourceProviderService()
         credential = datasource_provider_service.get_datasource_credentials(
             tenant_id=current_tenant_id,
-            credential_id=query.credential_id,
+            credential_id=req_data.credential_id,
             provider="notion_datasource",
             plugin_id="langgenius/notion_datasource",
         )
@@ -242,8 +254,8 @@ class DataSourceNotionListApi(Resource):
             raise NotFound("Credential not found.")
         exist_page_ids = []
         # import notion in the exist dataset
-        if query.dataset_id:
-            dataset = DatasetService.get_dataset(query.dataset_id, session)
+        if req_data.dataset_id:
+            dataset = DatasetService.get_dataset(req_data.dataset_id, session)
             if not dataset:
                 raise NotFound("Dataset not found.")
             if dataset.data_source_type != "notion_import":
@@ -251,7 +263,7 @@ class DataSourceNotionListApi(Resource):
 
             documents = session.scalars(
                 select(Document).where(
-                    Document.dataset_id == query.dataset_id,
+                    Document.dataset_id == req_data.dataset_id,
                     Document.tenant_id == current_tenant_id,
                     Document.data_source_type == "notion_import",
                     Document.enabled.is_(True),
@@ -318,13 +330,19 @@ class DataSourceNotionPreviewApi(Resource):
     @console_ns.doc(params=query_params_from_model(DataSourceNotionPreviewQuery))
     @console_ns.response(200, "Success", console_ns.models[TextContentResponse.__name__])
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, page_id: UUID, page_type: str) -> tuple[dict[str, str], int]:
-        query = DataSourceNotionPreviewQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(DataSourceNotionPreviewQuery)
+    def get(
+        self,
+        req_data: DataSourceNotionPreviewQuery,
+        current_tenant_id: str,
+        page_id: UUID,
+        page_type: str,
+    ) -> tuple[dict[str, str], int]:
 
         datasource_provider_service = DatasourceProviderService()
         credential = datasource_provider_service.get_datasource_credentials(
             tenant_id=current_tenant_id,
-            credential_id=query.credential_id,
+            credential_id=req_data.credential_id,
             provider="notion_datasource",
             plugin_id="langgenius/notion_datasource",
         )
@@ -354,12 +372,17 @@ class DataSourceNotionIndexingEstimateApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[IndexingEstimate.__name__])
     @with_current_tenant_id
     @with_session
-    def post(self, session: Session, current_tenant_id: str) -> tuple[dict[str, Any], int]:
-        payload = NotionEstimatePayload.model_validate(console_ns.payload or {})
-        args = payload.model_dump()
+    @model_validate(NotionEstimatePayload)
+    def post(
+        self,
+        req_data: NotionEstimatePayload,
+        session: Session,
+        current_tenant_id: str,
+    ) -> tuple[dict[str, Any], int]:
+        args = req_data.model_dump()
         # validate args
         DocumentService.estimate_args_validate(args)
-        notion_info_list = payload.notion_info_list
+        notion_info_list = req_data.notion_info_list
         extract_settings = []
         for notion_info in notion_info_list:
             workspace_id = notion_info["workspace_id"]

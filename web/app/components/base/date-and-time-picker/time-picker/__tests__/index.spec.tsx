@@ -1,30 +1,8 @@
 import type { TimePickerProps } from '../../types'
 import { fireEvent, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import dayjs, { isDayjsObject } from '../../utils/dayjs'
 import TimePicker from '../index'
-
-vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({
-    children,
-    onClick,
-    disabled,
-    className,
-  }: {
-    children?: React.ReactNode
-    onClick?: () => void
-    disabled?: boolean
-    className?: string
-  }) => (
-    <button
-      onClick={onClick as (() => void) | undefined}
-      disabled={disabled as boolean | undefined}
-      className={className as string | undefined}
-    >
-      {children}
-    </button>
-  ),
-}))
 
 // Mock scrollIntoView since the test DOM runtime doesn't implement it
 beforeAll(() => {
@@ -103,15 +81,16 @@ describe('TimePicker', () => {
       expect(input)!.toHaveValue('10:00 AM')
     })
 
-    it('should handle document mousedown listener while picker is open', () => {
+    it('should close when clicking outside while the picker is open', async () => {
+      const user = userEvent.setup()
       render(<TimePicker {...baseProps} value="10:00 AM" timezone="UTC" />)
 
       const input = screen.getByRole('textbox')
       fireEvent.click(input)
       expect(input)!.toHaveValue('')
 
-      fireEvent.mouseDown(document.body)
-      expect(input)!.toHaveValue('10:00 AM')
+      await user.click(document.body)
+      expect(input).toHaveValue('10:00 AM')
     })
 
     it('should call onClear when clear is clicked while picker is closed', () => {

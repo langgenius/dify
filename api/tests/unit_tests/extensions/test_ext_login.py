@@ -4,11 +4,13 @@ from unittest import mock
 
 import pytest
 from flask import Flask, Response, request
+from sqlalchemy.orm import Session
 
 from constants import COOKIE_NAME_ACCESS_TOKEN
 from core.logging.context import clear_request_context, get_identity_context
 from extensions import ext_login
 from extensions.ext_login import unauthorized_handler
+from models.account import TenantAccountRole
 
 
 @pytest.fixture(autouse=True)
@@ -31,9 +33,10 @@ def test_unauthorized_handler_returns_json_response() -> None:
 
 
 def test_on_user_logged_in_sets_account_logging_identity() -> None:
-    account = mock.Mock(spec=ext_login.Account)
+    account = ext_login.Account(name="Test Account", email="test@example.com")
     account.id = "account-id"
-    account.current_tenant_id = "tenant-id"
+    account._current_tenant = ext_login.Tenant(name="Test Tenant")
+    account._current_tenant.id = "tenant-id"
     clear_request_context()
 
     ext_login.on_user_logged_in(None, account)
@@ -42,10 +45,11 @@ def test_on_user_logged_in_sets_account_logging_identity() -> None:
 
 
 def test_on_user_logged_in_sets_end_user_logging_identity() -> None:
-    end_user = mock.Mock(spec=ext_login.EndUser)
-    end_user.id = "end-user-id"
-    end_user.tenant_id = "tenant-id"
-    end_user.type = "browser"
+    end_user = ext_login.EndUser(
+        id="end-user-id",
+        tenant_id="tenant-id",
+        type="browser",
+    )
     clear_request_context()
 
     ext_login.on_user_logged_in(None, end_user)
@@ -54,12 +58,19 @@ def test_on_user_logged_in_sets_end_user_logging_identity() -> None:
 
 
 def test_on_user_logged_in_does_not_break_auth_when_identity_is_unavailable(caplog: pytest.LogCaptureFixture) -> None:
-    account = mock.Mock(spec=ext_login.Account)
-    type(account).current_tenant_id = mock.PropertyMock(side_effect=RuntimeError("unavailable"))
+    account = ext_login.Account(name="Test Account", email="test@example.com")
     account.id = "account-id"
     clear_request_context()
 
-    with caplog.at_level("ERROR", logger=ext_login.logger.name):
+    with (
+        mock.patch.object(
+            ext_login.Account,
+            "current_tenant_id",
+            new_callable=mock.PropertyMock,
+            side_effect=RuntimeError("unavailable"),
+        ),
+        caplog.at_level("ERROR", logger=ext_login.logger.name),
+    ):
         ext_login.on_user_logged_in(None, account)
 
     assert get_identity_context() == ("", "", "")
@@ -77,14 +88,22 @@ def test_on_user_logged_in_logs_unsupported_user_type(caplog: pytest.LogCaptureF
     assert "Failed to set logging identity context" in caplog.text
 
 
-def test_admin_api_key_header_takes_precedence_over_console_cookie(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_admin_api_key_header_takes_precedence_over_console_cookie(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     app = Flask(__name__)
-    session = mock.Mock(spec=ext_login.Session)
-    tenant = mock.Mock(spec=ext_login.Tenant)
-    tenant_account_join = mock.Mock(spec=ext_login.TenantAccountJoin)
-    account = mock.Mock(spec=ext_login.Account)
-    session.execute.return_value.one_or_none.return_value = (tenant, tenant_account_join)
-    session.scalar.return_value = account
+    tenant = ext_login.Tenant(name="Test Tenant")
+    tenant.id = "workspace-id"
+    account = ext_login.Account(name="Test Account", email="test@example.com")
+    sqlite_session.add_all([tenant, account])
+    sqlite_session.flush()
+    tenant_account_join = ext_login.TenantAccountJoin(
+        tenant_id=tenant.id,
+        account_id=account.id,
+        role=TenantAccountRole.OWNER,
+    )
+    sqlite_session.add(tenant_account_join)
+    sqlite_session.commit()
     monkeypatch.setattr(ext_login.dify_config, "ADMIN_API_KEY_ENABLE", True)
     monkeypatch.setattr(ext_login.dify_config, "ADMIN_API_KEY", "admin-key")
     monkeypatch.setattr(ext_login.dify_config, "CONSOLE_WEB_URL", "http://console.example.com")
@@ -99,7 +118,7 @@ def test_admin_api_key_header_takes_precedence_over_console_cookie(monkeypatch: 
             "X-WORKSPACE-ID": "workspace-id",
         },
     ):
-        result = ext_login._load_user_from_request(request, session)
+        result = ext_login._load_user_from_request(request, sqlite_session)
 
     assert result is account
-    account.set_current_tenant_with_session.assert_called_once_with(tenant, session=session)
+    assert account.current_tenant is tenant

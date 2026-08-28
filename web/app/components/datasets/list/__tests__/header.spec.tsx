@@ -1,48 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import DatasetListHeader from '../header'
-
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, className, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button type="button" className={className} {...props}>
-      {children}
-    </button>
-  ),
-}))
-
-vi.mock('@langgenius/dify-ui/dropdown-menu', () => ({
-  DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuContent: ({
-    children,
-    popupProps,
-    positionerProps,
-  }: {
-    children: React.ReactNode
-    popupProps?: React.HTMLAttributes<HTMLDivElement>
-    positionerProps?: React.HTMLAttributes<HTMLDivElement>
-  }) => (
-    <div {...positionerProps}>
-      <div role="menu" {...popupProps}>
-        {children}
-      </div>
-    </div>
-  ),
-  DropdownMenuItem: ({
-    children,
-    className,
-    onClick,
-  }: {
-    children: React.ReactNode
-    className?: string
-    onClick?: () => void
-  }) => (
-    <button type="button" role="menuitem" className={className} onClick={onClick}>
-      {children}
-    </button>
-  ),
-  DropdownMenuSeparator: () => <hr />,
-  DropdownMenuTrigger: ({ render }: { render: React.ReactNode }) => render,
-}))
 
 vi.mock('@/features/tag-management/components/tag-filter', () => ({
   TagFilter: () => <div />,
@@ -53,7 +12,7 @@ vi.mock('@/app/components/datasets/create/website/base/checkbox-with-label', () 
 }))
 
 vi.mock('../../extra-info/service-api', () => ({
-  default: () => <button type="button">service api</button>,
+  ServiceApi: () => <button type="button">service api</button>,
 }))
 
 const defaultProps = {
@@ -79,20 +38,25 @@ describe('DatasetListHeader', () => {
     vi.clearAllMocks()
   })
 
-  it('uses the updated create menu labels and pipeline icon', () => {
+  it('shows dataset and pipeline creation actions in the create menu', async () => {
+    const user = userEvent.setup()
     render(<DatasetListHeader {...defaultProps} />)
+
+    await user.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
 
     expect(
       screen.getByRole('menuitem', { name: /dataset\.firstEmpty\.createTitle/ }),
     ).toBeInTheDocument()
-
-    const menuItem = screen.getByRole('menuitem', { name: /dataset\.firstEmpty\.pipelineTitle/ })
-
-    expect(menuItem.querySelector('.i-custom-vender-pipeline-pipeline-line')).toBeInTheDocument()
+    expect(
+      screen.getByRole('menuitem', { name: /dataset\.firstEmpty\.pipelineTitle/ }),
+    ).toBeInTheDocument()
   })
 
-  it('hides dataset creation actions without create permission', () => {
+  it('only shows external dataset connection without create permission', async () => {
+    const user = userEvent.setup()
     render(<DatasetListHeader {...defaultProps} canCreateDataset={false} />)
+
+    await user.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
 
     expect(
       screen.queryByRole('menuitem', { name: /dataset\.firstEmpty\.createTitle/ }),

@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import uuid
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 
 from controllers.web.completion import ChatApi, ChatStopApi, CompletionApi, CompletionStopApi
 from controllers.web.error import (
@@ -23,18 +23,43 @@ from controllers.web.error import (
 from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
+from models.enums import EndUserType
+from models.model import App, AppMode, EndUser, IconType
 
 
-def _completion_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", mode="completion")
+def _app(mode: AppMode) -> App:
+    return App(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Web App",
+        description="",
+        mode=mode,
+        icon_type=IconType.EMOJI,
+        icon="robot",
+        icon_background="#FFFFFF",
+        enable_site=True,
+        enable_api=False,
+        max_active_requests=0,
+    )
 
 
-def _chat_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", mode="chat")
+def _completion_app() -> App:
+    return _app(AppMode.COMPLETION)
 
 
-def _end_user() -> SimpleNamespace:
-    return SimpleNamespace(id="eu-1")
+def _chat_app() -> App:
+    return _app(AppMode.CHAT)
+
+
+def _end_user() -> EndUser:
+    return EndUser(
+        id="eu-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        type=EndUserType.BROWSER,
+        name="Web User",
+        session_id="session-1",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -153,7 +178,7 @@ class TestChatApi:
     @patch("controllers.web.completion.web_ns")
     def test_agent_not_published_error_mapped(self, mock_ns: MagicMock, mock_gen: MagicMock, app: Flask) -> None:
         mock_ns.payload = {"inputs": {}, "query": "x"}
-        app_model = SimpleNamespace(id="app-1", mode="agent")
+        app_model = _app(AppMode.AGENT)
 
         with app.test_request_context("/chat-messages", method="POST"):
             with pytest.raises(AgentNotPublishedError):
@@ -168,9 +193,10 @@ class TestChatApi:
         mock_get_conversation: MagicMock,
         mock_generate: MagicMock,
         app: Flask,
+        unbound_session: Session,
     ) -> None:
         mock_ns.payload = {"inputs": {}, "query": "hi", "conversation_id": str(uuid.uuid4())}
-        session = MagicMock()
+        session = unbound_session
 
         with app.test_request_context("/chat-messages", method="POST"):
             unwrap(ChatApi.post)(ChatApi(), session, _chat_app(), _end_user())

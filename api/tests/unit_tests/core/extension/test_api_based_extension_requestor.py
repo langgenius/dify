@@ -89,22 +89,28 @@ def test_request_timeout(mocker: MockerFixture):
     mock_client = mocker.MagicMock()
     mock_client_instance = mock_client.__enter__.return_value
     mocker.patch("httpx.Client", return_value=mock_client)
-    mock_client_instance.request.side_effect = httpx.TimeoutException("timeout")
+    original = httpx.TimeoutException("timeout")
+    mock_client_instance.request.side_effect = original
 
     requestor = APIBasedExtensionRequestor(api_endpoint="http://example.com", api_key="test_key")
-    with pytest.raises(ValueError, match="request timeout"):
+    with pytest.raises(ValueError, match="request timeout") as exc_info:
         requestor.request(APIBasedExtensionPoint.PING, {})
+
+    assert exc_info.value.__cause__ is original
 
 
 def test_request_connection_error(mocker: MockerFixture):
     mock_client = mocker.MagicMock()
     mock_client_instance = mock_client.__enter__.return_value
     mocker.patch("httpx.Client", return_value=mock_client)
-    mock_client_instance.request.side_effect = httpx.RequestError("error")
+    original = httpx.RequestError("error")
+    mock_client_instance.request.side_effect = original
 
     requestor = APIBasedExtensionRequestor(api_endpoint="http://example.com", api_key="test_key")
-    with pytest.raises(ValueError, match="request connection error"):
+    with pytest.raises(ValueError, match="request connection error") as exc_info:
         requestor.request(APIBasedExtensionPoint.PING, {})
+
+    assert exc_info.value.__cause__ is original
 
 
 def test_request_error_status_code(mocker: MockerFixture):

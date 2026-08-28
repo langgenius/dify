@@ -3,7 +3,7 @@ import type {
   TriggerSubscriptionBuilder,
 } from '@/app/components/workflow/block-selector/types'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import {
   AuthorizationStatusEnum,

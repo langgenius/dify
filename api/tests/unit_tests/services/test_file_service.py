@@ -3,7 +3,7 @@ import hashlib
 import os
 from collections.abc import Iterator
 from datetime import UTC, datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy import Engine
@@ -11,12 +11,19 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
+from enums import DeploymentEdition
 from extensions.storage.storage_type import StorageType
 from models.base import TypeBase
 from models.enums import CreatorUserRole
 from models.model import Account, EndUser, UploadFile
 from services.errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
 from services.file_service import FileService
+
+
+def _account() -> Account:
+    account = Account(name="Test Account", email="test@example.com")
+    account.id = "user_id"
+    return account
 
 
 class TestFileService:
@@ -86,7 +93,7 @@ class TestFileService:
         mock_now.return_value = datetime(2024, 1, 1, tzinfo=UTC)
         mock_get_url.return_value = "http://signed-url"
 
-        user = MagicMock(spec=Account)
+        user = Account(name="Test Account", email="test@example.com")
         user.id = "user_id"
         content = b"file content"
         filename = "test.jpg"
@@ -112,8 +119,22 @@ class TestFileService:
         assert persisted is not None
         assert persisted.hash == result.hash
 
+    @pytest.mark.parametrize("text", ["ASCII text", "包含多字节 UTF-8 文本 🚀"])
+    def test_upload_text_uses_utf8_byte_length(self, text: str, file_service: FileService):
+        with patch("services.file_service.storage") as mock_storage:
+            result = file_service.upload_text(
+                text=text,
+                text_name="test.txt",
+                user_id="user_id",
+                tenant_id="tenant_id",
+            )
+
+        expected_content = text.encode("utf-8")
+        assert result.size == len(expected_content)
+        mock_storage.save.assert_called_once_with(result.key, expected_content)
+
     def test_upload_file_uses_explicit_resource_tenant(self, file_service: FileService):
-        user = MagicMock(spec=Account)
+        user = Account(name="Test Account", email="test@example.com")
         user.id = "user-id"
 
         with (
@@ -135,12 +156,12 @@ class TestFileService:
 
     def test_upload_file_invalid_characters(self, file_service):
         with pytest.raises(ValueError, match="Filename contains invalid characters"):
-            file_service.upload_file(filename="invalid/file.txt", content=b"", mimetype="text/plain", user=MagicMock())
+            file_service.upload_file(filename="invalid/file.txt", content=b"", mimetype="text/plain", user=_account())
 
     def test_upload_file_long_filename(self, file_service: FileService, db_session: Session):
         # Setup
         long_name = "a" * 210 + ".txt"
-        user = MagicMock(spec=Account)
+        user = Account(name="Test Account", email="test@example.com")
         user.id = "user_id"
 
         with (
@@ -158,13 +179,13 @@ class TestFileService:
         with patch.object(dify_config, "inner_UPLOAD_FILE_EXTENSION_BLACKLIST", "exe"):
             with pytest.raises(BlockedFileExtensionError):
                 file_service.upload_file(
-                    filename="test.exe", content=b"", mimetype="application/octet-stream", user=MagicMock()
+                    filename="test.exe", content=b"", mimetype="application/octet-stream", user=_account()
                 )
 
     def test_upload_file_unsupported_type_for_datasets(self, file_service):
         with pytest.raises(UnsupportedFileTypeError):
             file_service.upload_file(
-                filename="test.jpg", content=b"", mimetype="image/jpeg", user=MagicMock(), source="datasets"
+                filename="test.jpg", content=b"", mimetype="image/jpeg", user=_account(), source="datasets"
             )
 
     def test_upload_file_too_large(self, file_service):
@@ -172,11 +193,12 @@ class TestFileService:
         content = b"a" * (16 * 1024 * 1024)
         with patch.object(dify_config, "UPLOAD_IMAGE_FILE_SIZE_LIMIT", 15):
             with pytest.raises(FileTooLargeError):
-                file_service.upload_file(filename="test.jpg", content=content, mimetype="image/jpeg", user=MagicMock())
+                file_service.upload_file(filename="test.jpg", content=content, mimetype="image/jpeg", user=_account())
 
     def test_upload_file_end_user(self, file_service: FileService, db_session: Session):
-        user = MagicMock(spec=EndUser)
-        user.id = "end_user_id"
+        user = EndUser(
+            id="end_user_id",
+        )
 
         with (
             patch("services.file_service.storage"),
@@ -210,6 +232,32 @@ class TestFileService:
             # Default
             assert FileService.is_file_size_within_limit(extension="txt", file_size=5 * 1024 * 1024) is True
             assert FileService.is_file_size_within_limit(extension="pdf", file_size=6 * 1024 * 1024) is False
+            assert (
+                FileService.is_file_size_within_limit(
+                    extension="pdf",
+                    file_size=6 * 1024 * 1024,
+                    default_file_size_limit=7,
+                )
+                is True
+            )
+            assert (
+                FileService.is_file_size_within_limit(
+                    extension="pdf",
+                    file_size=8 * 1024 * 1024,
+                    default_file_size_limit=7,
+                )
+                is False
+            )
+
+            # Media-specific limits are not affected by the knowledge document override.
+            assert (
+                FileService.is_file_size_within_limit(
+                    extension="jpg",
+                    file_size=11 * 1024 * 1024,
+                    default_file_size_limit=100,
+                )
+                is False
+            )
 
     def test_get_file_base64_success(self, file_service: FileService, db_session: Session):
         self._persist_upload_file(db_session, key="test_key")
@@ -254,6 +302,40 @@ class TestFileService:
     def test_get_file_presigned_url_not_found(self, file_service: FileService):
         with pytest.raises(NotFound, match="File not found"):
             file_service.get_file_presigned_url(file_id="file_id", tenant_id="tenant_id")
+
+    def test_get_icon_url_uses_direct_storage_url_for_cloud_s3(self, file_service: FileService):
+        with (
+            patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+            patch.object(dify_config, "STORAGE_TYPE", StorageType.S3),
+            patch.object(file_service, "get_file_presigned_url", return_value="direct-url") as get_presigned_url,
+        ):
+            result = file_service.get_icon_url("file_id", "tenant_id")
+
+        assert result == "direct-url"
+        get_presigned_url.assert_called_once_with(file_id="file_id", tenant_id="tenant_id")
+
+    @pytest.mark.parametrize(
+        ("deployment_edition", "storage_type"),
+        [
+            (DeploymentEdition.COMMUNITY, StorageType.S3),
+            (DeploymentEdition.CLOUD, StorageType.LOCAL),
+        ],
+    )
+    def test_get_icon_url_uses_preview_url_outside_cloud_s3(
+        self,
+        file_service: FileService,
+        deployment_edition: DeploymentEdition,
+        storage_type: StorageType,
+    ):
+        with (
+            patch.object(dify_config, "DEPLOYMENT_EDITION", deployment_edition),
+            patch.object(dify_config, "STORAGE_TYPE", storage_type),
+            patch("services.file_service.file_helpers.get_signed_file_url", return_value="preview-url") as get_url,
+        ):
+            result = file_service.get_icon_url("file_id", "tenant_id")
+
+        assert result == "preview-url"
+        get_url.assert_called_once_with(upload_file_id="file_id")
 
     def test_upload_text_success(self, file_service: FileService, db_session: Session):
         # Setup

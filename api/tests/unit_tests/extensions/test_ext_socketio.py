@@ -1,7 +1,9 @@
 import ssl
 
+import pytest
 import socketio
 
+from configs import dify_config
 from extensions import ext_socketio
 
 
@@ -9,7 +11,7 @@ def test_socketio_server_uses_redis_manager() -> None:
     assert isinstance(ext_socketio.sio.manager, socketio.RedisManager)
 
 
-def test_create_socketio_client_manager_uses_pubsub_url_and_prefixed_channel(monkeypatch) -> None:
+def test_create_socketio_client_manager_uses_pubsub_url_and_prefixed_channel(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(ext_socketio.dify_config, "PUBSUB_REDIS_URL", "redis://redis.example.com:6380/3")
     monkeypatch.setattr(ext_socketio.dify_config, "REDIS_KEY_PREFIX", "tenant-a")
 
@@ -19,7 +21,7 @@ def test_create_socketio_client_manager_uses_pubsub_url_and_prefixed_channel(mon
     assert manager.channel == "tenant-a:socketio"
 
 
-def test_build_redis_options_includes_tls_options_for_rediss(monkeypatch) -> None:
+def test_build_redis_options_includes_tls_options_for_rediss(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(ext_socketio.dify_config, "REDIS_SSL_CERT_REQS", "CERT_REQUIRED")
     monkeypatch.setattr(ext_socketio.dify_config, "REDIS_SSL_CA_CERTS", "/ca.pem")
     monkeypatch.setattr(ext_socketio.dify_config, "REDIS_SSL_CERTFILE", "/cert.pem")
@@ -33,7 +35,7 @@ def test_build_redis_options_includes_tls_options_for_rediss(monkeypatch) -> Non
     assert options["ssl_keyfile"] == "/key.pem"
 
 
-def test_build_redis_options_omits_socket_timeout(monkeypatch) -> None:
+def test_build_redis_options_omits_socket_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
     # socket_timeout must not be passed to RedisManager because the pub/sub
     # listen loop blocks indefinitely between messages; a read timeout there
     # triggers an infinite reconnect storm (issue #39423).
@@ -43,3 +45,7 @@ def test_build_redis_options_omits_socket_timeout(monkeypatch) -> None:
 
     assert "socket_timeout" not in options
     assert "socket_connect_timeout" in options
+
+
+def test_socketio_server_uses_configured_max_http_buffer_size() -> None:
+    assert ext_socketio.sio.eio.max_http_buffer_size == dify_config.WEBSOCKET_MAX_HTTP_BUFFER_SIZE

@@ -1,13 +1,10 @@
 import type {
-  BannerListResponse,
-  BannerResponse,
   GetExploreAppsLearnDifyResponse,
   GetExploreAppsResponse,
   RecommendedAppDetailResponse,
   RecommendedAppInfoResponse,
   RecommendedAppResponse,
 } from '@dify/contracts/api/console/explore/types.gen'
-import type { Banner } from '@/models/app'
 import type { App, AppCategory } from '@/models/explore'
 import type { AppIconType } from '@/types/app'
 import { consoleClient } from './client'
@@ -29,19 +26,6 @@ type ExploreAppDetailResponse = {
   mode: string
   export_data: string
   can_trial: boolean
-}
-
-const isRecord = (value: unknown): value is Record<string, unknown> => {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-const getValue = (source: object, key: string): unknown => {
-  return Reflect.get(source, key)
-}
-
-const getStringProperty = (source: object, key: string, fallback = '') => {
-  const value = getValue(source, key)
-  return typeof value === 'string' ? value : fallback
 }
 
 const normalizeAppMode = (value: unknown) => {
@@ -119,32 +103,6 @@ const normalizeAppDetail = (response: RecommendedAppDetailResponse): ExploreAppD
   }
 }
 
-const normalizeBannerContent = (content: unknown): Banner['content'] => {
-  const record = isRecord(content) ? content : {}
-
-  return {
-    category: getStringProperty(record, 'category'),
-    title: getStringProperty(record, 'title'),
-    description: getStringProperty(record, 'description'),
-    'img-src': getStringProperty(record, 'img-src'),
-  }
-}
-
-const normalizeBanner = (banner: BannerResponse): Banner => {
-  return {
-    id: banner.id,
-    content: normalizeBannerContent(banner.content),
-    link: banner.link ?? '',
-    sort: banner.sort,
-    status: banner.status,
-    created_at: banner.created_at ?? '',
-  }
-}
-
-const normalizeBannersResponse = (response: BannerListResponse): Banner[] => {
-  return response.map(normalizeBanner)
-}
-
 export const fetchAppList = (language?: string) => {
   if (!language) return consoleClient.explore.apps.get({}).then(normalizeExploreAppsResponse)
 
@@ -170,7 +128,6 @@ export const fetchAppDetail = async (id: string): Promise<ExploreAppDetailRespon
   const response = await consoleClient.explore.apps.byAppId.get({
     params: { app_id: id },
   })
-  if (!response) throw new Error('Recommended app not found')
   return normalizeAppDetail(response)
 }
 
@@ -180,14 +137,4 @@ export const fetchInstalledAppList = (appId?: string | null) => {
   return consoleClient.installedApps.get({
     query: { app_id: appId },
   })
-}
-
-export const fetchBanners = (language?: string) => {
-  if (!language) return consoleClient.explore.banners.get({}).then(normalizeBannersResponse)
-
-  return consoleClient.explore.banners
-    .get({
-      query: { language },
-    })
-    .then(normalizeBannersResponse)
 }

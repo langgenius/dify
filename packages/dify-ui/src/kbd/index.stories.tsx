@@ -9,6 +9,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '../context-menu'
+import { IconButton } from '../icon-button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../tooltip'
 
 const meta = {
@@ -169,13 +170,9 @@ export const InTooltip: Story = {
     <Tooltip open>
       <TooltipTrigger
         render={
-          <button
-            type="button"
-            aria-label="Collapse sidebar"
-            className="inline-flex size-8 items-center justify-center rounded-lg border border-divider-subtle bg-components-button-secondary-bg text-text-secondary shadow-xs outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          >
+          <IconButton aria-label="Collapse sidebar" size="lg" variant="secondary">
             <span aria-hidden className="i-ri-sidebar-fold-line size-4" />
-          </button>
+          </IconButton>
         }
       />
       <TooltipContent className="flex items-center gap-1">
@@ -207,13 +204,13 @@ export const InContextMenu: Story = {
         render={
           <button
             type="button"
-            className="flex h-28 w-60 items-center justify-center rounded-xl border border-divider-subtle bg-background-default-subtle px-6 text-center system-sm-regular text-text-tertiary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            className="flex h-28 w-60 items-center justify-center rounded-xl border border-divider-subtle bg-background-default-subtle px-6 text-center system-sm-regular text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           />
         }
       >
         Context menu trigger
       </ContextMenuTrigger>
-      <ContextMenuContent popupClassName="w-60">
+      <ContextMenuContent className="w-60">
         {MENU_ITEMS.map(({ label, icon, hotkey }) => (
           <ContextMenuItem key={label} className="justify-between gap-4">
             <span aria-hidden className={`${icon} size-4 shrink-0 text-text-tertiary`} />

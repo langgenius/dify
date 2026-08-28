@@ -1,7 +1,7 @@
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
@@ -85,6 +85,19 @@ describe('AgentEnvEditor', () => {
   })
 
   describe('User Interactions', () => {
+    it('should only expose plain environment variables', () => {
+      renderAgentEnvEditor()
+
+      expect(
+        screen.queryByText('agentV2.agentDetail.configure.advancedSettings.envEditor.scopeColumn'),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('combobox', {
+          name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.scopeSelector',
+        }),
+      ).not.toBeInTheDocument()
+    })
+
     it('should edit the initial environment variable row directly', async () => {
       const user = userEvent.setup()
       renderAgentEnvEditor()

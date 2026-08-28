@@ -30,8 +30,8 @@ class DocumentResponse(ResponseModel):
     id: str
     position: int | None = None
     data_source_type: str | None = None
-    data_source_info: Any = Field(default=None, validation_alias="data_source_info_dict")
-    data_source_detail_dict: Any = None
+    data_source_info: dict[str, Any] | None = Field(default=None, validation_alias="data_source_info_dict")
+    data_source_detail_dict: dict[str, Any]
     dataset_process_rule_id: str | None = None
     name: str
     created_from: str | None = None
@@ -121,6 +121,9 @@ class DocumentStatusResponse(ResponseModel):
     completed_at: int | None
     paused_at: int | None
     error: str | None
+    error_code: str | None = None
+    estimated_vector_space_mb: int | None = None
+    vector_space_limit_mb: int | None = None
     stopped_at: int | None
     completed_segments: int | None = None
     total_segments: int | None = None

@@ -1,30 +1,8 @@
 import type { DatePickerProps } from '../../types'
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import dayjs from '../../utils/dayjs'
 import DatePicker from '../index'
-
-vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({
-    children,
-    onClick,
-    disabled,
-    className,
-  }: {
-    children?: React.ReactNode
-    onClick?: () => void
-    disabled?: boolean
-    className?: string
-  }) => (
-    <button
-      onClick={onClick as (() => void) | undefined}
-      disabled={disabled as boolean | undefined}
-      className={className as string | undefined}
-    >
-      {children}
-    </button>
-  ),
-}))
 
 // Mock scrollIntoView
 beforeAll(() => {
@@ -131,19 +109,18 @@ describe('DatePicker', () => {
       expect(screen.getByText(/2024/))!.toBeInTheDocument()
     })
 
-    it('should close when clicking outside the container', () => {
+    it('should close when clicking outside the container', async () => {
+      const user = userEvent.setup()
       const props = createDatePickerProps()
       render(<DatePicker {...props} />)
 
       openPicker()
-      expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'true')
+      expect(screen.getAllByText(/daysInWeek/).length).toBeGreaterThan(0)
 
-      act(() => {
-        document.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
-      })
+      await user.click(document.body)
 
-      expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'false')
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.queryAllByText(/daysInWeek/)).toHaveLength(0)
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
   })
 

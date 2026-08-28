@@ -1,15 +1,14 @@
 import { fireEvent, screen, within } from '@testing-library/react'
-import { render } from '@/test/console/render'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import CreatorsFilter from '../creators-filter'
 
 const mockOnChange = vi.hoisted(() => vi.fn())
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: { id: 'member-2' },
-  }))
-})
+const render = (ui: Parameters<typeof renderWithConsoleState>[0]) =>
+  renderWithConsoleState(ui, {
+    wrapper: createConsoleQueryWrapper({ accountProfile: { id: 'member-2' } }).wrapper,
+  })
 
 vi.mock('@/service/use-common', () => ({
   useMembers: () => ({
@@ -62,7 +61,9 @@ describe('CreatorsFilter', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
-    expect(screen.getByPlaceholderText('app.studio.filters.searchCreators')).toHaveValue('')
+    const searchInput = screen.getByPlaceholderText('app.studio.filters.searchCreators')
+    expect(searchInput).toHaveValue('')
+    expect(searchInput).toHaveFocus()
 
     fireEvent.click(screen.getByRole('button', { name: /Bob/ }))
 

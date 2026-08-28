@@ -1,13 +1,15 @@
 'use client'
 
 import type {
+  ToastManager as BaseToastManager,
   ToastManagerAddOptions,
   ToastManagerUpdateOptions,
   ToastObject,
 } from '@base-ui/react/toast'
-import type * as React from 'react'
 import { Toast as BaseToast } from '@base-ui/react/toast'
+import * as React from 'react'
 import { cn } from '../cn'
+import { iconButtonVariants } from '../icon-button/variants'
 
 type ToastData = Record<string, never>
 type ToastToneStyle = {
@@ -80,7 +82,11 @@ type ToastPromiseOptions<Value> = {
 type ToastHostProps = {
   timeout?: number
   limit?: number
+  manager?: ToastManager
+  offset?: ToastHostOffset
 }
+
+type ToastHostOffset = Pick<React.CSSProperties, 'top' | 'right'>
 
 type ToastDismiss = (toastId?: string) => void
 type ToastCall = (title: React.ReactNode, options?: ToastOptions) => string
@@ -100,7 +106,7 @@ type ToastApi = {
   ) => Promise<Value>
 }
 
-const toastManager = BaseToast.createToastManager<ToastData>()
+type ToastManager = BaseToastManager<ToastData>
 
 function isToastRenderType(type: string): type is ToastRenderType {
   return Object.prototype.hasOwnProperty.call(TOAST_TONE_STYLES, type)
@@ -110,46 +116,53 @@ function getToastRenderType(type?: string): ToastRenderType | undefined {
   return type && isToastRenderType(type) ? type : undefined
 }
 
-function addToast(options: ToastAddOptions) {
-  return toastManager.add(options)
-}
-
-const showToast: ToastCall = (title, options) =>
-  addToast({
-    ...options,
-    title,
-  })
-
-const dismissToast: ToastDismiss = (toastId) => {
-  toastManager.close(toastId)
-}
-
-function createTypedToast(type: ToastType): TypedToastCall {
-  return (title, options) =>
+function createToast(manager: ToastManager): ToastApi {
+  const addToast = (options: ToastAddOptions) => manager.add(options)
+  const showToast: ToastCall = (title, options) =>
     addToast({
       ...options,
       title,
-      type,
     })
+
+  const dismissToast: ToastDismiss = (toastId) => {
+    manager.close(toastId)
+  }
+
+  const createTypedToast = (type: ToastType): TypedToastCall => {
+    return (title, options) =>
+      addToast({
+        ...options,
+        title,
+        type,
+      })
+  }
+
+  const updateToast = (toastId: string, options: ToastUpdateOptions) => {
+    manager.update(toastId, options)
+  }
+
+  const promiseToast = <Value,>(
+    promiseValue: Promise<Value>,
+    options: ToastPromiseOptions<Value>,
+  ) => manager.promise(promiseValue, options)
+
+  return Object.assign(showToast, {
+    success: createTypedToast('success'),
+    error: createTypedToast('error'),
+    warning: createTypedToast('warning'),
+    info: createTypedToast('info'),
+    dismiss: dismissToast,
+    update: updateToast,
+    promise: promiseToast,
+  })
 }
 
-function updateToast(toastId: string, options: ToastUpdateOptions) {
-  toastManager.update(toastId, options)
+function createToastManager(): ToastManager {
+  return BaseToast.createToastManager<ToastData>()
 }
 
-function promiseToast<Value>(promiseValue: Promise<Value>, options: ToastPromiseOptions<Value>) {
-  return toastManager.promise(promiseValue, options)
-}
-
-const toast: ToastApi = Object.assign(showToast, {
-  success: createTypedToast('success'),
-  error: createTypedToast('error'),
-  warning: createTypedToast('warning'),
-  info: createTypedToast('info'),
-  dismiss: dismissToast,
-  update: updateToast,
-  promise: promiseToast,
-})
+const defaultToastManager = createToastManager()
+const toast = createToast(defaultToastManager)
 
 function ToastIcon({ type }: { type?: ToastRenderType }) {
   return type ? (
@@ -168,18 +181,19 @@ function ToastCard({ toast: toastItem }: { toast: ToastObject<ToastData> }) {
   return (
     <BaseToast.Root
       toast={toastItem}
+      swipeDirection={['up', 'right']}
       className={cn(
         'pointer-events-auto absolute top-0 right-0 w-full origin-top cursor-default rounded-xl select-none focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-        '[--toast-current-height:var(--toast-frontmost-height,var(--toast-height))] [--toast-gap:8px] [--toast-peek:5px] [--toast-scale:calc(1-(var(--toast-index)*0.0225))] [--toast-shrink:calc(1-var(--toast-scale))]',
+        '[--toast-current-height:var(--toast-frontmost-height,var(--toast-height))] [--toast-expanded-offset-y:calc(var(--toast-offset-y)+var(--toast-swipe-movement-y)+(var(--toast-index)*var(--toast-gap)))] [--toast-gap:8px] [--toast-peek:5px] [--toast-scale:calc(1-(var(--toast-index)*0.0225))] [--toast-shrink:calc(1-var(--toast-scale))]',
         'z-[calc(100-var(--toast-index))] h-(--toast-current-height)',
         '[transition:transform_500ms_cubic-bezier(0.22,1,0.36,1),opacity_500ms,height_150ms] motion-reduce:transition-none',
         'transform-[translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--toast-swipe-movement-y)+(var(--toast-index)*var(--toast-peek))+(var(--toast-shrink)*var(--toast-current-height))))_scale(var(--toast-scale))]',
-        'data-expanded:h-(--toast-height) data-expanded:transform-[translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--toast-offset-y)+var(--toast-swipe-movement-y)+(var(--toast-index)*8px)))_scale(1)]',
+        'data-expanded:h-(--toast-height) data-expanded:transform-[translateX(var(--toast-swipe-movement-x))_translateY(var(--toast-expanded-offset-y))_scale(1)]',
         'data-ending-style:pointer-events-none data-ending-style:transform-[translateY(-150%)] data-ending-style:opacity-0 data-ending-style:after:pointer-events-none',
-        'data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(var(--toast-swipe-movement-y)+150%))]',
-        'data-ending-style:data-[swipe-direction=right]:transform-[translateX(calc(var(--toast-swipe-movement-x)+150%))]',
+        'data-ending-style:data-[swipe-direction=up]:transform-[translateY(calc(var(--toast-swipe-movement-y)-150%))]',
+        'data-ending-style:data-[swipe-direction=right]:transform-[translateX(calc(var(--toast-swipe-movement-x)+150%))_translateY(var(--toast-expanded-offset-y))]',
         'data-limited:pointer-events-none data-limited:opacity-0 data-starting-style:transform-[translateY(-150%)] data-starting-style:opacity-0',
-        "after:pointer-events-auto after:absolute after:top-full after:left-0 after:h-[calc(var(--toast-gap)+1px)] after:w-full after:content-['']",
+        "after:pointer-events-auto after:absolute after:bottom-full after:left-0 after:h-[calc(var(--toast-gap)+1px)] after:w-full after:content-['']",
       )}
     >
       <div className="relative h-full overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
@@ -190,7 +204,7 @@ function ToastCard({ toast: toastItem }: { toast: ToastObject<ToastData> }) {
             getToneGradientClasses(toastType),
           )}
         />
-        <BaseToast.Content className="relative flex h-full items-start gap-1 overflow-hidden p-3 transition-opacity duration-200 data-behind:opacity-0 data-expanded:opacity-100 motion-reduce:transition-none">
+        <BaseToast.Content className="relative flex items-start gap-1 overflow-hidden p-3 transition-opacity duration-200 data-behind:opacity-0 data-expanded:opacity-100 motion-reduce:transition-none">
           <div className="flex shrink-0 items-center justify-center p-0.5">
             <ToastIcon type={toastType} />
           </div>
@@ -222,10 +236,11 @@ function ToastCard({ toast: toastItem }: { toast: ToastObject<ToastData> }) {
             <BaseToast.Close
               aria-label={toastCloseLabel}
               className={cn(
-                'flex h-5 w-5 items-center justify-center rounded-md hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
+                iconButtonVariants({ size: 'sm' }),
+                'focus-visible:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50',
               )}
             >
-              <span aria-hidden="true" className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+              <span aria-hidden="true" className="i-ri-close-line size-4 text-text-tertiary" />
             </BaseToast.Close>
           </div>
         </BaseToast.Content>
@@ -234,15 +249,14 @@ function ToastCard({ toast: toastItem }: { toast: ToastObject<ToastData> }) {
   )
 }
 
-function ToastViewport() {
+function ToastViewport({ offset }: { offset?: ToastHostOffset }) {
   const { toasts } = BaseToast.useToastManager<ToastData>()
 
   return (
     <BaseToast.Viewport
       aria-label={toastViewportLabel}
-      className={cn(
-        'group/toast-viewport pointer-events-none fixed top-4 right-4 z-60 w-90 max-w-[calc(100vw-2rem)] overflow-visible sm:right-8',
-      )}
+      className="group/toast-viewport pointer-events-none fixed top-4 right-4 z-60 w-90 max-w-[calc(100vw-2rem)] overflow-visible sm:right-8"
+      style={offset}
     >
       {toasts.map((toastItem) => (
         <ToastCard key={toastItem.id} toast={toastItem} />
@@ -251,16 +265,16 @@ function ToastViewport() {
   )
 }
 
-function ToastHost({ timeout, limit }: ToastHostProps) {
+function ToastHost({ timeout, limit, manager = defaultToastManager, offset }: ToastHostProps) {
   return (
-    <BaseToast.Provider toastManager={toastManager} timeout={timeout} limit={limit}>
+    <BaseToast.Provider toastManager={manager} timeout={timeout} limit={limit}>
       <BaseToast.Portal>
-        <ToastViewport />
+        <ToastViewport offset={offset} />
       </BaseToast.Portal>
     </BaseToast.Provider>
   )
 }
 
-export { toast, ToastHost }
+export { createToast, createToastManager, toast, ToastHost }
 
 export type { ToastHostProps }

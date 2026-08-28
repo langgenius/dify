@@ -8,7 +8,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import ExternalAPIPanel from '@/app/components/datasets/external-api/external-api-panel'
-import ServiceApi from '@/app/components/datasets/extra-info/service-api'
+import { ServiceApi } from '@/app/components/datasets/extra-info/service-api'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
@@ -107,14 +107,14 @@ export function NewKnowledgeList({
               <Button
                 variant="ghost"
                 size="small"
-                className="gap-1 overflow-hidden px-1.5 text-text-tertiary"
+                className="overflow-hidden text-text-tertiary"
                 onClick={() => setShowExternalApiPanel(true)}
               >
                 <span
                   aria-hidden
                   className="i-custom-vender-solid-development-api-connection-mod size-3.5 shrink-0"
                 />
-                <span className="px-0.5 system-xs-medium">{t(($) => $.externalAPIPanelTitle)}</span>
+                <span className="system-xs-medium">{t(($) => $.externalAPIPanelTitle)}</span>
               </Button>
             )}
             <ServiceApi apiBaseUrl={apiBaseInfo?.api_base_url ?? ''} />
@@ -139,10 +139,10 @@ export function NewKnowledgeList({
                 render={<Link href="/datasets/new/create" />}
                 variant="primary"
                 size="medium"
-                className="gap-0.5 px-2 shadow-xs"
+                className="px-2 shadow-xs"
               >
                 <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
-                <span className="pl-1">{createLabel}</span>
+                <span>{createLabel}</span>
               </Button>
             </div>
           )}

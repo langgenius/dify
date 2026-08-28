@@ -2,13 +2,14 @@ import type { IconInfo } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import Publisher from '../index'
 import { Popup } from '../popup'
 
-vi.mock('@/context/system-features-state', async () => {
+vi.mock('@/features/system-features/state', async () => {
   const { atom } = await import('jotai')
   return {
     deploymentEditionAtom: atom('CLOUD'),
@@ -36,66 +37,12 @@ const triggerHotkey = (hotkey: string) => {
   })
 }
 
-vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick, disabled, variant, className }: Record<string, unknown>) => (
-    <button
-      onClick={onClick as (() => void) | undefined}
-      disabled={disabled as boolean | undefined}
-      data-variant={variant as string | undefined}
-      className={className as string | undefined}
-    >
-      {children as React.ReactNode}
-    </button>
-  ),
-}))
-vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
-  AlertDialog: ({
-    children,
-    open,
-    onOpenChange,
-  }: {
-    children: React.ReactNode
-    open?: boolean
-    onOpenChange?: (open: boolean) => void
-  }) =>
-    open ? (
-      <div role="alertdialog">
-        {children}
-        <button data-testid="alert-dialog-close" onClick={() => onOpenChange?.(false)}>
-          Close
-        </button>
-      </div>
-    ) : null,
-  AlertDialogActions: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogCancelButton: ({ children }: { children: React.ReactNode }) => (
-    <button>{children}</button>
-  ),
-  AlertDialogConfirmButton: ({ children, onClick, disabled }: Record<string, unknown>) => (
-    <button
-      onClick={onClick as (() => void) | undefined}
-      disabled={disabled as boolean | undefined}
-    >
-      {children as React.ReactNode}
-    </button>
-  ),
-  AlertDialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
-const mockPush = vi.fn()
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'test-dataset-id' }),
-  useRouter: () => ({ push: mockPush }),
 }))
 
 vi.mock('@/next/link', () => ({
-  default: ({ children, href, ...props }: { children: React.ReactNode; href: string }) => (
-    <a href={href} {...props}>
-      {children}
-    </a>
-  ),
+  default: ({ children, ...props }: React.ComponentProps<'a'>) => <a {...props}>{children}</a>,
 }))
 
 const mockHandleSyncWorkflowDraft = vi.fn()
@@ -161,16 +108,6 @@ vi.mock('@/context/dataset-detail', () => ({
   },
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: {
-      id: mockCurrentUserId,
-    },
-    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => ({
@@ -315,6 +252,7 @@ const createQueryClient = () =>
 
 const renderWithQueryClient = (ui: React.ReactElement) => {
   const queryClient = createQueryClient()
+  seedAccountProfileQuery(queryClient, { id: 'user-1' })
   seedSystemFeatures(queryClient, { deployment_edition: 'CLOUD' })
   return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 }
@@ -348,7 +286,7 @@ describe('publisher', () => {
       it('should render portal element in closed state by default', () => {
         renderWithQueryClient(<Publisher />)
 
-        expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'false')
+        expect(screen.getByRole('button')).toHaveAttribute('aria-expanded', 'false')
         expect(screen.queryByText('workflow.common.publishUpdate')).not.toBeInTheDocument()
       })
 
@@ -489,17 +427,6 @@ describe('publisher', () => {
         expect(addDocumentsButton).toBeDisabled()
       })
 
-      it('should enable action buttons when published', () => {
-        mockPublishedAt.mockReturnValue(1700000000)
-
-        renderWithQueryClient(<Popup />)
-
-        const addDocumentsButton = screen
-          .getAllByRole('button')
-          .find((btn) => btn.textContent?.includes('pipeline.common.goToAddDocuments'))
-        expect(addDocumentsButton).not.toBeDisabled()
-      })
-
       it('should show premium badge when publish as template is not allowed', () => {
         mockPublishedAt.mockReturnValue(1700000000)
         mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(false)
@@ -562,18 +489,13 @@ describe('publisher', () => {
     })
 
     describe('User Interactions', () => {
-      it('should navigate to add documents when go to add documents is clicked', async () => {
+      it('should link to add documents when the pipeline is published', () => {
         mockPublishedAt.mockReturnValue(1700000000)
         renderWithQueryClient(<Popup />)
 
-        const addDocumentsButton = screen
-          .getAllByRole('button')
-          .find((btn) => btn.textContent?.includes('pipeline.common.goToAddDocuments'))
-        fireEvent.click(addDocumentsButton!)
-
-        expect(mockPush).toHaveBeenCalledWith(
-          '/datasets/test-dataset-id/documents/create-from-pipeline',
-        )
+        expect(
+          screen.getByRole('link', { name: 'pipeline.common.goToAddDocuments' }),
+        ).toHaveAttribute('href', '/datasets/test-dataset-id/documents/create-from-pipeline')
       })
 
       it('should show pricing modal when publish as template is clicked without permission', async () => {
@@ -900,7 +822,7 @@ describe('publisher', () => {
           expect(screen.getByText('pipeline.common.confirmPublish')).toBeInTheDocument()
         })
 
-        fireEvent.click(screen.getByTestId('alert-dialog-close'))
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
         await waitFor(() => {
           expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
@@ -969,9 +891,12 @@ describe('publisher', () => {
 
         renderWithQueryClient(<Popup />)
 
-        const apiLink = screen.getByRole('link')
+        const apiLink = screen.getByRole('link', {
+          name: 'workflow.common.accessAPIReference',
+        })
         expect(apiLink).toHaveAttribute('href', 'https://api.dify.ai/v1/datasets/test-dataset-id')
         expect(apiLink).toHaveAttribute('target', '_blank')
+        expect(apiLink).toHaveAttribute('rel', 'noopener noreferrer')
       })
     })
 

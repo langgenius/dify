@@ -1,8 +1,10 @@
+import type { AgentSoulDifyToolConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type { CommonNodeType, Node } from '../../types'
 import type { ChecklistItem } from '../use-checklist'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { zWorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/zod.gen'
 import { QueryClient } from '@tanstack/react-query'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import { createElement, Fragment } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
 import { consoleQuery } from '@/service/client'
@@ -12,11 +14,22 @@ import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock
 import { renderWorkflowComponent, renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { useStore } from '../../store'
 import { BlockEnum } from '../../types'
-import { useChecklist, useWorkflowRunValidation } from '../use-checklist'
+import { useChecklist, useChecklistBeforePublish, useWorkflowRunValidation } from '../use-checklist'
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
+
+const toolServiceState = vi.hoisted(() => ({
+  buildInTools: [] as ToolWithProvider[] | undefined,
+  customTools: [] as ToolWithProvider[] | undefined,
+  mcpTools: [] as ToolWithProvider[] | undefined,
+  workflowTools: [] as ToolWithProvider[] | undefined,
+}))
+
+const marketplacePluginState = vi.hoisted(() => ({
+  label: undefined as Record<string, string> | undefined,
+}))
 
 vi.mock('reactflow', async () => {
   const base = (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock()
@@ -31,9 +44,32 @@ vi.mock('reactflow', async () => {
   }
 })
 
-vi.mock('@/service/use-tools', async () =>
-  (await import('../../__tests__/service-mock-factory')).createToolServiceMock(),
-)
+vi.mock('@/service/use-tools', () => ({
+  useAllBuiltInTools: () => ({ data: toolServiceState.buildInTools }),
+  useAllCustomTools: () => ({ data: toolServiceState.customTools }),
+  useAllMCPTools: () => ({ data: toolServiceState.mcpTools }),
+  useAllWorkflowTools: () => ({ data: toolServiceState.workflowTools }),
+}))
+
+vi.mock('@/service/use-plugins', () => ({
+  useFetchPluginsInMarketPlaceByInfo: (infos: Array<{ organization: string; plugin: string }>) => ({
+    data:
+      infos.length > 0 && marketplacePluginState.label
+        ? {
+            data: {
+              list: infos.map(({ organization, plugin }) => ({
+                plugin: {
+                  label: marketplacePluginState.label,
+                  labels: marketplacePluginState.label,
+                  name: plugin,
+                  plugin_id: `${organization}/${plugin}`,
+                },
+              })),
+            },
+          }
+        : undefined,
+  }),
+}))
 
 vi.mock('@/service/use-triggers', async () =>
   (await import('../../__tests__/service-mock-factory')).createTriggerServiceMock(),
@@ -77,7 +113,11 @@ vi.mock('../use-nodes-available-var-list', () => ({
     }
     return map
   },
-  useGetNodesAvailableVarList: () => ({ getNodesAvailableVarList: vi.fn(() => ({})) }),
+  useGetNodesAvailableVarList: () => ({
+    getNodesAvailableVarList: vi.fn((nodes: Node[]) =>
+      Object.fromEntries(nodes.map((node) => [node.id, { availableVars: [] }])),
+    ),
+  }),
 }))
 
 vi.mock('../../nodes/_base/components/variable/utils', () => ({
@@ -163,6 +203,11 @@ beforeEach(() => {
   Object.keys(mockAvailableVarMap).forEach((k) => delete mockAvailableVarMap[k])
   mockModelProviders = []
   mockUsedVars = []
+  toolServiceState.buildInTools = []
+  toolServiceState.customTools = []
+  toolServiceState.mcpTools = []
+  toolServiceState.workflowTools = []
+  marketplacePluginState.label = undefined
   setupNodesMap()
 })
 
@@ -182,12 +227,34 @@ function buildConnectedGraph() {
   return { nodes, edges }
 }
 
+function buildLegacyAgentGraph() {
+  const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
+  const agentNode = createNode({
+    id: 'legacy-agent',
+    data: {
+      type: BlockEnum.Agent,
+      title: 'Legacy Agent',
+      agent_strategy_provider_name: 'provider',
+      agent_strategy_name: 'strategy',
+    },
+  })
+
+  return {
+    nodes: [startNode, agentNode],
+    edges: [createEdge({ source: 'start', target: 'legacy-agent' })],
+  }
+}
+
 function buildInlineAgentGraph({
-  hasMissingFile,
-  hasMissingSkill,
+  difyTools = [],
+  hasModel = true,
+  hasMissingFile = false,
+  hasMissingSkill = false,
 }: {
-  hasMissingFile: boolean
-  hasMissingSkill: boolean
+  difyTools?: AgentSoulDifyToolConfig[]
+  hasModel?: boolean
+  hasMissingFile?: boolean
+  hasMissingSkill?: boolean
 }) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -207,6 +274,13 @@ function buildInlineAgentGraph({
     }),
     zWorkflowAgentComposerResponse.parse({
       agent_soul: {
+        model: hasModel
+          ? {
+              model_provider: 'langgenius/openai/openai',
+              model: 'gpt-4o-mini',
+              plugin_id: 'langgenius/openai',
+            }
+          : undefined,
         config_files: [
           { file_kind: 'upload_file', name: 'available.pdf' },
           ...(hasMissingFile
@@ -217,6 +291,9 @@ function buildInlineAgentGraph({
           { name: 'Available Skill' },
           ...(hasMissingSkill ? [{ is_missing: true, name: 'Missing Skill' }] : []),
         ],
+        tools: {
+          dify_tools: difyTools,
+        },
       },
       node_job: {},
       save_options: [],
@@ -257,6 +334,45 @@ function buildInlineAgentGraph({
     },
   }
 }
+
+const credentialRequiredProvider = {
+  id: 'google',
+  name: 'google',
+  author: 'Google',
+  description: {
+    en_US: 'Google tools.',
+    zh_Hans: 'Google 工具。',
+  },
+  icon: 'https://example.com/google.svg',
+  icon_dark: 'https://example.com/google-dark.svg',
+  label: {
+    en_US: 'Google Tools',
+    zh_Hans: 'Google 工具',
+  },
+  type: CollectionType.builtIn,
+  team_credentials: {
+    api_key: {
+      label: {
+        en_US: 'API Key',
+        zh_Hans: 'API Key',
+      },
+      placeholder: {
+        en_US: 'Enter API key',
+        zh_Hans: '输入 API Key',
+      },
+      required: true,
+      type: 'secret-input',
+      variable: 'api_key',
+    },
+  },
+  is_team_authorization: false,
+  allow_delete: false,
+  labels: [],
+  meta: {
+    version: '0.0.1',
+  },
+  tools: [],
+} satisfies ToolWithProvider
 
 // ---------------------------------------------------------------------------
 // useChecklist
@@ -305,6 +421,19 @@ describe('useChecklist', () => {
     expect(warning!.errorMessages).toContain('Model not configured')
   })
 
+  it('should validate legacy Agent nodes when their metadata is hidden by Agent v2', () => {
+    const { nodes, edges } = buildLegacyAgentGraph()
+
+    const { result } = renderWorkflowHook(() => useChecklist(nodes, edges))
+
+    expect(result.current).toEqual([
+      expect.objectContaining({
+        id: 'legacy-agent',
+        errorMessages: ['workflow.nodes.agent.checkList.strategyNotSelected'],
+      }),
+    ])
+  })
+
   it.each([
     {
       errorMessage: 'agentV2.agentDetail.configure.files.missing',
@@ -333,6 +462,21 @@ describe('useChecklist', () => {
     })
   })
 
+  it('should report a missing model from inline agents and open their configuration panel', async () => {
+    const { edges, nodeId, nodes, options } = buildInlineAgentGraph({ hasModel: false })
+    const { result } = renderWorkflowHook(() => useChecklist(nodes, edges), options)
+
+    await waitFor(() => {
+      expect(result.current).toEqual([
+        expect.objectContaining({
+          id: nodeId,
+          errorMessages: ['workflow.nodes.agent.modelNotSelected'],
+          openInlineAgentPanel: true,
+        }),
+      ])
+    })
+  })
+
   it('should not report available file and skill references from inline agents', () => {
     const { edges, nodes, options } = buildInlineAgentGraph({
       hasMissingFile: false,
@@ -341,6 +485,61 @@ describe('useChecklist', () => {
     const { result } = renderWorkflowHook(() => useChecklist(nodes, edges), options)
 
     expect(result.current).toEqual([])
+  })
+
+  it('should report uninstalled tools from inline agents and open their configuration panel', async () => {
+    marketplacePluginState.label = {
+      en_US: 'Jina',
+    }
+    const { edges, nodeId, nodes, options } = buildInlineAgentGraph({
+      difyTools: [
+        {
+          credential_type: 'unauthorized',
+          plugin_id: 'langgenius/jina_tool',
+          provider: 'langgenius/jina_tool/jina',
+          provider_id: 'langgenius/jina_tool/jina',
+          provider_type: 'plugin',
+          tool_name: 'search',
+        },
+      ],
+    })
+    const { result } = renderWorkflowHook(() => useChecklist(nodes, edges), options)
+
+    await waitFor(() => {
+      expect(result.current).toEqual([
+        expect.objectContaining({
+          id: nodeId,
+          errorMessages: ['workflow.nodes.agent.toolNotInstallTooltip:{"tool":"Jina"}'],
+          openInlineAgentPanel: true,
+        }),
+      ])
+    })
+  })
+
+  it('should report unauthorized tools from inline agents and open their configuration panel', async () => {
+    toolServiceState.buildInTools = [credentialRequiredProvider]
+    const { edges, nodeId, nodes, options } = buildInlineAgentGraph({
+      difyTools: [
+        {
+          credential_type: 'unauthorized',
+          provider: 'google',
+          provider_id: 'google',
+          provider_type: 'builtin',
+          tool_name: 'search',
+        },
+      ],
+    })
+    const { result } = renderWorkflowHook(() => useChecklist(nodes, edges), options)
+
+    await waitFor(() => {
+      expect(result.current).toEqual([
+        expect.objectContaining({
+          id: nodeId,
+          errorMessages: ['workflow.nodes.agent.toolNotAuthorizedTooltip:{"tool":"Google Tools"}'],
+          openInlineAgentPanel: true,
+        }),
+      ])
+    })
   })
 
   it('should pass flow type to node validators', () => {
@@ -601,6 +800,27 @@ describe('useChecklist', () => {
     } finally {
       errorSpy.mockRestore()
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// useChecklistBeforePublish
+// ---------------------------------------------------------------------------
+
+describe('useChecklistBeforePublish', () => {
+  it('should reject an invalid legacy Agent instead of throwing when its metadata is hidden', async () => {
+    const { nodes, edges } = buildLegacyAgentGraph()
+    rfState.nodes = nodes as unknown as typeof rfState.nodes
+    rfState.edges = edges as unknown as typeof rfState.edges
+
+    const { result } = renderWorkflowHook(() => useChecklistBeforePublish())
+    let isValid: boolean | undefined
+
+    await act(async () => {
+      isValid = await result.current.handleCheckBeforePublish()
+    })
+
+    expect(isValid).toBe(false)
   })
 })
 

@@ -72,6 +72,7 @@ const normalizeI18nObject = (value: GeneratedI18nObject | null | undefined, fall
     'de-DE': en,
     'ja-JP': ja,
     'ko-KR': en,
+    'lo-LA': en,
     'ru-RU': en,
     'it-IT': en,
     'th-TH': en,
@@ -108,6 +109,7 @@ const normalizeUnknownI18nObject = (value: unknown, fallback = '') => {
     'de-DE': en,
     'ja-JP': ja,
     'ko-KR': en,
+    'lo-LA': en,
     'ru-RU': en,
     'it-IT': en,
     'th-TH': en,
@@ -655,7 +657,7 @@ export const useVerifyAndUpdateTriggerSubscriptionBuilder = () => {
       return consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.builder.verifyAndUpdate.bySubscriptionBuilderId.post(
         {
           params: { provider, subscription_builder_id: subscriptionBuilderId },
-          body: { credentials: credentials ?? {} },
+          body: credentials === undefined ? {} : { credentials },
         },
         {
           context: { silent: true },

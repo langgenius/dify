@@ -28,14 +28,6 @@ const mockUserProfile = {
 }
 let mockWorkspacePermissionKeys = ['dataset.create_and_management']
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createAccountStateModuleMock(() => ({
-    userProfile: mockUserProfile,
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
 

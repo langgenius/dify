@@ -56,6 +56,7 @@ from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import BuiltinNodeTypes
 from graphon.file import FileTransferMethod, FileType
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.enums import MessageStatus
@@ -174,7 +175,7 @@ class TestAdvancedChatGenerateTaskPipeline:
                 variables=build_system_variables(workflow_execution_id="run-id"),
             ),
             start_at=0.0,
-            total_tokens=7,
+            llm_usage=LLMUsage.empty_usage().model_copy(update={"total_tokens": 7}),
             node_run_steps=3,
         )
 
@@ -272,7 +273,7 @@ class TestAdvancedChatGenerateTaskPipeline:
 
     def test_listen_audio_msg_returns_audio_stream(self):
         pipeline = _make_pipeline()
-        publisher = SimpleNamespace(check_and_get_audio=lambda: AudioTrunk(status="stream", audio="data"))
+        publisher = SimpleNamespace(check_and_get_audio=lambda: AudioTrunk(status="responding", audio="data"))
 
         response = pipeline._listen_audio_msg(publisher=publisher, task_id="task")
 

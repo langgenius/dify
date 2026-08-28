@@ -24,13 +24,11 @@ const AddField = () => {
       <Button
         size="small"
         variant="secondary-accent"
-        className="flex items-center gap-x-px"
+        className="flex items-center"
         onClick={handleAddField}
       >
         <RiAddCircleFill className="size-3.5" />
-        <span className="px-0.75">
-          {t(($) => $['nodes.llm.jsonSchema.addField'], { ns: 'workflow' })}
-        </span>
+        <span>{t(($) => $['nodes.llm.jsonSchema.addField'], { ns: 'workflow' })}</span>
       </Button>
     </div>
   )

@@ -648,6 +648,12 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     raise ValueError("Workflow not found")
 
                 workflow = self._ensure_snippet_start_node_in_worker(session=session, workflow=workflow)
+                if graph_runtime_state is not None:
+                    self._restore_workflow_run_graph(
+                        session=session,
+                        workflow=workflow,
+                        workflow_run_id=application_generate_entity.workflow_execution_id,
+                    )
 
                 # Determine system_user_id based on invocation source
                 is_external_api_call = application_generate_entity.invoke_from in {
@@ -680,8 +686,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             try:
                 with active_workflow_task(application_generate_entity.task_id):
                     runner.run()
-            except GenerateTaskStoppedError as e:
-                logger.warning("Task stopped: %s", str(e))
+            except GenerateTaskStoppedError:
+                logger.warning("Task stopped", exc_info=True)
                 pass
             except InvokeAuthorizationError:
                 queue_manager.publish_error(

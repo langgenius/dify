@@ -130,7 +130,7 @@ const RetrievalConfig: FC<Props> = ({
             disabled={readonly}
             className="data-popup-open:bg-components-button-ghost-bg-hover"
           >
-            <RiEqualizer2Line className="mr-1 size-3.5" />
+            <RiEqualizer2Line className="size-3.5" />
             {t(($) => $.retrievalSettings, { ns: 'dataset' })}
           </Button>
         }
@@ -139,7 +139,7 @@ const RetrievalConfig: FC<Props> = ({
         placement="bottom-end"
         sideOffset={0}
         alignOffset={-2}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div className="w-101 rounded-2xl border border-components-panel-border bg-components-panel-bg px-4 pt-3 pb-4 shadow-xl">
           <ConfigRetrievalContent

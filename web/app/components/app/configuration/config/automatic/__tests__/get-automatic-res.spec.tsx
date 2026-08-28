@@ -14,7 +14,7 @@ let mockDefaultModel: {
 } | null = null
 
 let mockInstructionTemplate: { data: string } | undefined
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/components/app/configuration/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
   },
@@ -26,10 +26,9 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   }),
 }))
 
-vi.mock('@/service/use-apps', () => ({
-  useGenerateRuleTemplate: () => ({
-    data: mockInstructionTemplate,
-  }),
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQuery: () => ({ data: mockInstructionTemplate }),
 }))
 
 vi.mock('@/service/debug', () => ({
@@ -80,6 +79,7 @@ vi.mock('../instruction-editor-in-workflow', () => ({
     <div>
       <div data-testid="workflow-editor">{value}</div>
       <button onClick={() => onChange('workflow instruction')}>set-workflow-instruction</button>
+      <button onClick={() => onChange('')}>clear-workflow-instruction</button>
     </div>
   ),
 }))
@@ -129,9 +129,7 @@ describe('GetAutomaticRes', () => {
     mockInstructionTemplate = undefined
   })
 
-  it('should initialize from template suggestions and persist model updates', async () => {
-    mockInstructionTemplate = { data: 'template instruction' }
-
+  it('should apply a basic suggestion and persist model updates', async () => {
     render(
       <GetAutomaticRes
         mode={AppModeEnum.CHAT}
@@ -142,10 +140,6 @@ describe('GetAutomaticRes', () => {
         isBasicMode
       />,
     )
-
-    await waitFor(() => {
-      expect(screen.getByTestId('basic-editor')).toHaveTextContent('template instruction')
-    })
 
     fireEvent.click(screen.getByText(/(?:^|\.)generate\.template\.pythonDebugger\.name(?=$|:)/))
 
@@ -160,6 +154,32 @@ describe('GetAutomaticRes', () => {
 
     fireEvent.click(screen.getByText('change-params'))
     expect(localStorage.getItem('auto-gen-model')).toContain('"temperature":0.3')
+  })
+
+  it('should preserve an intentionally cleared template instruction', async () => {
+    mockInstructionTemplate = { data: 'template instruction' }
+
+    render(
+      <GetAutomaticRes
+        mode={AppModeEnum.CHAT}
+        isShow
+        onClose={mockOnClose}
+        onFinished={mockOnFinished}
+        flowId="flow-1"
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('workflow-editor')).toHaveTextContent('template instruction')
+    })
+    fireEvent.click(screen.getByText('clear-workflow-instruction'))
+    fireEvent.click(screen.getByText(/(?:^|\.)generate\.generate(?=$|:)/))
+
+    expect(screen.getByTestId('workflow-editor')).toBeEmptyDOMElement()
+    expect(mockToastError).toHaveBeenCalledWith(
+      expect.stringMatching(/(?:^|\.)errorMsg\.fieldRequired(?=$|:)/),
+    )
+    expect(mockGenerateRule).not.toHaveBeenCalled()
   })
 
   it('should block generation when instruction is empty', () => {

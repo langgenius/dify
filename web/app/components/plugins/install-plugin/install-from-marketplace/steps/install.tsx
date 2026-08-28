@@ -3,12 +3,12 @@ import type { FC } from 'react'
 import type { InstallPackageResponse, Plugin, PluginManifestInMarket } from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiLoader2Line } from '@remixicon/react'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
-import { langGeniusVersionInfoAtom } from '@/context/version-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import {
   useInstallPackageFromMarketPlace,
   usePluginDeclarationFromMarketPlace,
@@ -126,15 +126,18 @@ const Installed: FC<Props> = ({
     }
   }
 
-  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
+  const { data: currentVersion } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.meta.currentVersion ?? '',
+  })
   const { data: pluginDeclaration } = usePluginDeclarationFromMarketPlace(uniqueIdentifier)
   const isDifyVersionCompatible = useMemo(() => {
-    if (!pluginDeclaration || !langGeniusVersionInfo.current_version) return true
+    if (!pluginDeclaration || !currentVersion) return true
     return isEqualOrLaterThanVersion(
-      langGeniusVersionInfo.current_version,
+      currentVersion,
       pluginDeclaration?.manifest.meta.minimum_dify_version ?? '0.0.0',
     )
-  }, [langGeniusVersionInfo.current_version, pluginDeclaration])
+  }, [currentVersion, pluginDeclaration])
 
   const { canInstall } = useInstallPluginLimit({
     ...payload,
@@ -180,7 +183,7 @@ const Installed: FC<Props> = ({
         )}
         <Button
           variant="primary"
-          className="flex min-w-18 space-x-0.5"
+          className="flex min-w-18"
           disabled={isInstalling || isLoading || !canInstall}
           onClick={handleInstall}
         >

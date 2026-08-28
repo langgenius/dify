@@ -1,8 +1,10 @@
 import io
-from unittest.mock import MagicMock, patch
+from datetime import datetime
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
+from sqlalchemy import Engine
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -21,8 +23,11 @@ from controllers.console.files import (
     FileSupportTypeApi,
     upload_file_from_request,
 )
+from extensions.storage.storage_type import StorageType
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
+from models.enums import CreatorUserRole
+from models.model import UploadFile
 
 
 def unwrap(func):
@@ -32,6 +37,24 @@ def unwrap(func):
     while hasattr(func, "__wrapped__"):
         func = func.__wrapped__
     return func
+
+
+def _upload_file(*, file_id: str = "file-id-123", size: int = 1024) -> UploadFile:
+    upload_file = UploadFile(
+        tenant_id="tenant-123",
+        storage_type=StorageType.LOCAL,
+        key=f"upload/{file_id}/test.txt",
+        name="test.txt",
+        size=size,
+        extension="txt",
+        mime_type="text/plain",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-123",
+        created_at=datetime(2024, 1, 1),
+        used=False,
+    )
+    upload_file.id = file_id
+    return upload_file
 
 
 @pytest.fixture
@@ -69,9 +92,9 @@ def mock_account_context(mock_current_user):
 
 
 @pytest.fixture
-def mock_db():
+def mock_db(sqlite_engine: Engine):
     with patch("controllers.console.files.db") as db_mock:
-        db_mock.engine = MagicMock()
+        db_mock.engine = sqlite_engine
         yield db_mock
 
 
@@ -87,12 +110,20 @@ class TestFileApiGet:
         api = FileApi()
         get_method = unwrap(api.get)
 
-        with app.test_request_context():
-            data, status = get_method(api)
+        with (
+            app.test_request_context(),
+            patch(
+                "controllers.console.files.FeatureService.get_knowledge_file_size_limit",
+                return_value=50,
+            ) as get_knowledge_file_size_limit,
+        ):
+            data, status = get_method(api, "tenant-1")
 
         assert status == 200
         assert "file_size_limit" in data
+        assert data["knowledge_file_size_limit"] == 50
         assert "batch_count_limit" in data
+        get_knowledge_file_size_limit.assert_called_once_with("tenant-1")
         assert data["skill_file_size_limit"] == dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT
 
 
@@ -153,25 +184,7 @@ class TestFileApiPost:
         api = FileApi()
         post_method = unwrap(api.post)
 
-        mock_file = MagicMock()
-        mock_file.id = "file-id-123"
-        mock_file.filename = "test.txt"
-        mock_file.name = "test.txt"
-        mock_file.size = 1024
-        mock_file.extension = "txt"
-        mock_file.mime_type = "text/plain"
-        mock_file.created_by = "user-123"
-        mock_file.created_at = 1234567890
-        mock_file.preview_url = "http://example.com/preview/file-id-123"
-        mock_file.source_url = "http://example.com/source/file-id-123"
-        mock_file.original_url = None
-        mock_file.reference = None
-        mock_file.user_id = "user-123"
-        mock_file.tenant_id = "tenant-123"
-        mock_file.conversation_id = None
-        mock_file.file_key = "file-key-123"
-
-        mock_file_service.upload_file.return_value = mock_file
+        mock_file_service.upload_file.return_value = _upload_file()
 
         data = {
             "file": (io.BytesIO(b"hello"), "test.txt"),
@@ -185,7 +198,7 @@ class TestFileApiPost:
         assert response["name"] == "test.txt"
 
     def test_upload_with_resource_tenant(self, app: Flask, mock_account_context, mock_file_service):
-        upload_file = MagicMock()
+        upload_file = _upload_file()
         mock_file_service.upload_file.return_value = upload_file
 
         with app.test_request_context(
@@ -200,31 +213,39 @@ class TestFileApiPost:
         assert result is upload_file
         assert mock_file_service.upload_file.call_args.kwargs["tenant_id"] == "app-tenant-id"
 
+    def test_dataset_source_from_query_uses_knowledge_limit(
+        self,
+        app: Flask,
+        mock_account_context,
+        mock_file_service,
+    ):
+        upload_file = _upload_file()
+        mock_file_service.upload_file.return_value = upload_file
+
+        with (
+            app.test_request_context(
+                "/?source=datasets",
+                method="POST",
+                data={"file": (io.BytesIO(b"hello"), "test.txt")},
+            ),
+            patch(
+                "controllers.console.files.FeatureService.get_knowledge_file_size_limit",
+                return_value=50,
+            ) as get_knowledge_file_size_limit,
+        ):
+            result = upload_file_from_request(current_user=mock_account_context)
+
+        assert result is upload_file
+        assert mock_file_service.upload_file.call_args.kwargs["source"] == "datasets"
+        assert mock_file_service.upload_file.call_args.kwargs["default_file_size_limit"] == 50
+        get_knowledge_file_size_limit.assert_called_once_with(mock_account_context.current_tenant_id)
+
     def test_upload_with_invalid_source(self, app: Flask, mock_account_context, mock_file_service):
         """Test that invalid source parameter gets normalized to None"""
         api = FileApi()
         post_method = unwrap(api.post)
 
-        # Create a properly structured mock file object
-        mock_file = MagicMock()
-        mock_file.id = "file-id-456"
-        mock_file.filename = "test.txt"
-        mock_file.name = "test.txt"
-        mock_file.size = 512
-        mock_file.extension = "txt"
-        mock_file.mime_type = "text/plain"
-        mock_file.created_by = "user-456"
-        mock_file.created_at = 1234567890
-        mock_file.preview_url = None
-        mock_file.source_url = None
-        mock_file.original_url = None
-        mock_file.reference = None
-        mock_file.user_id = "user-456"
-        mock_file.tenant_id = "tenant-456"
-        mock_file.conversation_id = None
-        mock_file.file_key = "file-key-456"
-
-        mock_file_service.upload_file.return_value = mock_file
+        mock_file_service.upload_file.return_value = _upload_file(file_id="file-id-456", size=512)
 
         data = {
             "file": (io.BytesIO(b"content"), "test.txt"),

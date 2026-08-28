@@ -162,7 +162,7 @@
   "mcp.server.modal.parametersPlaceholder": "هدف و محدودیت‌های پارامتر",
   "mcp.server.modal.parametersTip": "برای کمک به LLM در درک هدف و محدودیت‌ها، برای هر پارامتر توضیحات اضافه کنید.",
   "mcp.server.publishTip": "برنامه منتشر نشده است. لطفاً ابتدا برنامه را منتشر کنید.",
-  "mcp.server.reGen": "تولید مجدد آدرس سرور؟",
+  "mcp.server.reGen": "آدرس سرور دوباره تولید شود؟ آدرس فعلی بلافاصله از کار خواهد افتاد.",
   "mcp.server.title": "سرور MCP",
   "mcp.server.url": "آدرس سرور",
   "mcp.toolItem.noDescription": "بدون توضیح",

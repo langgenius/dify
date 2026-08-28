@@ -1,11 +1,8 @@
-from datetime import UTC, datetime, timedelta
 from typing import Literal
 from uuid import UUID
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
@@ -17,6 +14,7 @@ from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
     account_initialization_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -35,14 +33,12 @@ from fields.workflow_run_fields import (
     WorkflowRunPaginationResponse,
 )
 from graphon.enums import WorkflowExecutionStatus
-from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
 from libs.custom_inputs import time_duration
 from libs.helper import uuid_value
 from libs.login import login_required
-from models import Account, App, AppMode, WorkflowArchiveLog, WorkflowRunTriggeredFrom
+from models import Account, App, AppMode, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
-from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_NAME
 from services.workflow_run_service import WorkflowRunListArgs, WorkflowRunService
 
 
@@ -57,7 +53,6 @@ def _build_backstage_input_url(form_token: str | None) -> str | None:
 
 # Workflow run status choices for filtering
 WORKFLOW_RUN_STATUS_CHOICES = ["running", "succeeded", "failed", "stopped", "partial-succeeded"]
-EXPORT_SIGNED_URL_EXPIRE_SECONDS = 3600
 
 
 class WorkflowRunListQuery(BaseModel):
@@ -101,12 +96,6 @@ class WorkflowRunCountQuery(BaseModel):
         return time_duration(value)
 
 
-class WorkflowRunExportResponse(ResponseModel):
-    status: str = Field(description="Export status: success/failed")
-    presigned_url: str | None = Field(default=None, description="Pre-signed URL for download")
-    presigned_url_expires_at: str | None = Field(default=None, description="Pre-signed URL expiration time")
-
-
 class HumanInputPauseTypeResponse(ResponseModel):
     type: Literal["human_input"]
     form_id: str
@@ -137,7 +126,6 @@ register_response_schema_models(
     WorkflowRunDetailResponse,
     WorkflowRunNodeExecutionResponse,
     WorkflowRunNodeExecutionListResponse,
-    WorkflowRunExportResponse,
     HumanInputPauseTypeResponse,
     PausedNodeResponse,
     WorkflowPauseDetailsResponse,
@@ -160,21 +148,21 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
-    def get(self, app_model: App):
+    @model_validate(WorkflowRunListQuery)
+    def get(self, req_data: WorkflowRunListQuery, app_model: App):
         """
         Get advanced chat app workflow run list
         """
-        args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))
-        args: WorkflowRunListArgs = {"limit": args_model.limit}
-        if args_model.last_id is not None:
-            args["last_id"] = args_model.last_id
-        if args_model.status is not None:
-            args["status"] = args_model.status
+        args: WorkflowRunListArgs = {"limit": req_data.limit}
+        if req_data.last_id is not None:
+            args["last_id"] = req_data.last_id
+        if req_data.status is not None:
+            args["status"] = req_data.status
 
         # Default to DEBUGGING if not specified
         triggered_from = (
-            WorkflowRunTriggeredFrom(args_model.triggered_from)
-            if args_model.triggered_from
+            WorkflowRunTriggeredFrom(req_data.triggered_from)
+            if req_data.triggered_from
             else WorkflowRunTriggeredFrom.DEBUGGING
         )
 
@@ -186,60 +174,6 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
         return AdvancedChatWorkflowRunPaginationResponse.model_validate(result, from_attributes=True).model_dump(
             mode="json"
         )
-
-
-@console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>/export")
-class WorkflowRunExportApi(Resource):
-    @console_ns.doc("get_workflow_run_export_url")
-    @console_ns.doc(description="Generate a download URL for an archived workflow run.")
-    @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
-    @console_ns.response(200, "Export URL generated", console_ns.models[WorkflowRunExportResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
-    @get_app_model()
-    def get(self, app_model: App, run_id: UUID):
-        tenant_id = app_model.tenant_id
-        app_id = app_model.id
-        run_id_str = str(run_id)
-
-        run_created_at = db.session.scalar(
-            select(WorkflowArchiveLog.run_created_at)
-            .where(
-                WorkflowArchiveLog.tenant_id == tenant_id,
-                WorkflowArchiveLog.app_id == app_id,
-                WorkflowArchiveLog.workflow_run_id == run_id_str,
-            )
-            .limit(1)
-        )
-        if not run_created_at:
-            return {"code": "archive_log_not_found", "message": "workflow run archive not found"}, 404
-
-        prefix = (
-            f"{tenant_id}/app_id={app_id}/year={run_created_at.strftime('%Y')}/"
-            f"month={run_created_at.strftime('%m')}/workflow_run_id={run_id_str}"
-        )
-        archive_key = f"{prefix}/{ARCHIVE_BUNDLE_NAME}"
-
-        try:
-            archive_storage = get_archive_storage()
-        except ArchiveStorageNotConfiguredError as e:
-            return {"code": "archive_storage_not_configured", "message": str(e)}, 500
-
-        presigned_url = archive_storage.generate_presigned_url(
-            archive_key,
-            expires_in=EXPORT_SIGNED_URL_EXPIRE_SECONDS,
-        )
-        expires_at = datetime.now(UTC) + timedelta(seconds=EXPORT_SIGNED_URL_EXPIRE_SECONDS)
-        response = WorkflowRunExportResponse.model_validate(
-            {
-                "status": "success",
-                "presigned_url": presigned_url,
-                "presigned_url_expires_at": expires_at.isoformat(),
-            }
-        )
-        return response.model_dump(mode="json"), 200
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflow-runs/count")
@@ -258,17 +192,17 @@ class AdvancedChatAppWorkflowRunCountApi(Resource):
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
-    def get(self, app_model: App):
+    @model_validate(WorkflowRunCountQuery)
+    def get(self, req_data: WorkflowRunCountQuery, app_model: App):
         """
         Get advanced chat workflow runs count statistics
         """
-        args_model = WorkflowRunCountQuery.model_validate(request.args.to_dict(flat=True))
-        args = args_model.model_dump(exclude_none=True)
+        args = req_data.model_dump(exclude_none=True)
 
         # Default to DEBUGGING if not specified
         triggered_from = (
-            WorkflowRunTriggeredFrom(args_model.triggered_from)
-            if args_model.triggered_from
+            WorkflowRunTriggeredFrom(req_data.triggered_from)
+            if req_data.triggered_from
             else WorkflowRunTriggeredFrom.DEBUGGING
         )
 
@@ -299,21 +233,21 @@ class WorkflowRunListApi(Resource):
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App):
+    @model_validate(WorkflowRunListQuery)
+    def get(self, req_data: WorkflowRunListQuery, app_model: App):
         """
         Get workflow run list
         """
-        args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))
-        args: WorkflowRunListArgs = {"limit": args_model.limit}
-        if args_model.last_id is not None:
-            args["last_id"] = args_model.last_id
-        if args_model.status is not None:
-            args["status"] = args_model.status
+        args: WorkflowRunListArgs = {"limit": req_data.limit}
+        if req_data.last_id is not None:
+            args["last_id"] = req_data.last_id
+        if req_data.status is not None:
+            args["status"] = req_data.status
 
         # Default to DEBUGGING for workflow if not specified (backward compatibility)
         triggered_from = (
-            WorkflowRunTriggeredFrom(args_model.triggered_from)
-            if args_model.triggered_from
+            WorkflowRunTriggeredFrom(req_data.triggered_from)
+            if req_data.triggered_from
             else WorkflowRunTriggeredFrom.DEBUGGING
         )
 
@@ -341,17 +275,17 @@ class WorkflowRunCountApi(Resource):
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App):
+    @model_validate(WorkflowRunCountQuery)
+    def get(self, req_data: WorkflowRunCountQuery, app_model: App):
         """
         Get workflow runs count statistics
         """
-        args_model = WorkflowRunCountQuery.model_validate(request.args.to_dict(flat=True))
-        args = args_model.model_dump(exclude_none=True)
+        args = req_data.model_dump(exclude_none=True)
 
         # Default to DEBUGGING for workflow if not specified (backward compatibility)
         triggered_from = (
-            WorkflowRunTriggeredFrom(args_model.triggered_from)
-            if args_model.triggered_from
+            WorkflowRunTriggeredFrom(req_data.triggered_from)
+            if req_data.triggered_from
             else WorkflowRunTriggeredFrom.DEBUGGING
         )
 

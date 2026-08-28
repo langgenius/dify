@@ -31,7 +31,7 @@ COPY packages /app/packages
 RUN corepack install
 
 # Install workspace dependencies for the Docker build environment.
-RUN VITE_GIT_HOOKS=0 pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # build resources
 FROM base AS builder

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { normalizeStatusForQuery, sanitizeStatusValue } from '../status-filter'
 
 vi.mock('@/models/datasets', () => ({

@@ -1,8 +1,18 @@
+import type { ReactElement } from 'react'
 import type { PipelineTemplate } from '@/models/pipeline'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { fireEvent, screen, render as testingLibraryRender, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
 import EditPipelineInfo from '../edit-pipeline-info'
+
+const render = (ui: ReactElement) =>
+  testingLibraryRender(
+    <Dialog open>
+      <DialogContent>{ui}</DialogContent>
+    </Dialog>,
+  )
 
 const mockUpdatePipeline = vi.fn()
 const mockInvalidCustomizedTemplateList = vi.fn()
@@ -65,6 +75,10 @@ describe('EditPipelineInfo', () => {
     onClose: vi.fn(),
     pipeline: createPipelineTemplate(),
   }
+  const getIconButton = () =>
+    screen.getByRole('button', {
+      name: 'common.operation.edit datasetPipeline.pipelineNameAndIcon',
+    })
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -74,13 +88,12 @@ describe('EditPipelineInfo', () => {
   describe('Rendering', () => {
     it('should render title', () => {
       render(<EditPipelineInfo {...defaultProps} />)
-      expect(screen.getByText(/editPipelineInfo/i)).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: /editPipelineInfo/i })).toBeInTheDocument()
     })
 
     it('should render close button', () => {
-      const { container } = render(<EditPipelineInfo {...defaultProps} />)
-      const closeButton = container.querySelector('button[type="button"]')
-      expect(closeButton).toBeInTheDocument()
+      render(<EditPipelineInfo {...defaultProps} />)
+      expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
     })
 
     it('should render name input with initial value', () => {
@@ -113,11 +126,11 @@ describe('EditPipelineInfo', () => {
   })
 
   describe('User Interactions', () => {
-    it('should call onClose when close button is clicked', () => {
-      const { container } = render(<EditPipelineInfo {...defaultProps} />)
+    it('should call onClose when close button is clicked', async () => {
+      const user = userEvent.setup()
+      render(<EditPipelineInfo {...defaultProps} />)
 
-      const closeButton = container.querySelector('button[type="button"]')
-      fireEvent.click(closeButton!)
+      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
     })
@@ -149,7 +162,8 @@ describe('EditPipelineInfo', () => {
       expect(screen.getByDisplayValue('New description')).toBeInTheDocument()
     })
 
-    it('should call updatePipeline when save is clicked with valid name', async () => {
+    it('should submit with Enter from the name input', async () => {
+      const user = userEvent.setup()
       mockUpdatePipeline.mockImplementation((_data, callbacks) => {
         callbacks.onSuccess()
         return Promise.resolve()
@@ -157,8 +171,8 @@ describe('EditPipelineInfo', () => {
 
       render(<EditPipelineInfo {...defaultProps} />)
 
-      const saveButton = screen.getByText(/operation\.save/i)
-      fireEvent.click(saveButton)
+      await user.click(screen.getByRole('textbox', { name: 'datasetPipeline.pipelineNameAndIcon' }))
+      await user.keyboard('{Enter}')
 
       await waitFor(() => {
         expect(mockUpdatePipeline).toHaveBeenCalled()
@@ -231,9 +245,9 @@ describe('EditPipelineInfo', () => {
   // Icon Types Tests (Branch Coverage for lines 29-30, 36-37)
   describe('Icon Types', () => {
     it('should initialize with emoji icon type when pipeline has emoji icon', () => {
-      const { container } = render(<EditPipelineInfo {...defaultProps} />)
+      render(<EditPipelineInfo {...defaultProps} />)
       // Should render component with emoji icon
-      expect(container.querySelector('[class*="cursor-pointer"]')).toBeInTheDocument()
+      expect(getIconButton()).toBeInTheDocument()
       expect(screen.getByDisplayValue('Test Pipeline')).toBeInTheDocument()
     })
 
@@ -248,10 +262,10 @@ describe('EditPipelineInfo', () => {
         onClose: vi.fn(),
         pipeline: imagePipeline,
       }
-      const { container } = render(<EditPipelineInfo {...props} />)
+      render(<EditPipelineInfo {...props} />)
       // Component should initialize with image icon state
       expect(screen.getByDisplayValue('Image Pipeline')).toBeInTheDocument()
-      expect(container.querySelector('[class*="cursor-pointer"]')).toBeInTheDocument()
+      expect(getIconButton()).toBeInTheDocument()
     })
 
     it('should render correctly with image icon and then update', () => {
@@ -261,14 +275,13 @@ describe('EditPipelineInfo', () => {
         ...defaultProps,
         pipeline: imagePipeline,
       }
-      const { container } = render(<EditPipelineInfo {...props} />)
+      render(<EditPipelineInfo {...props} />)
 
       // Verify component rendered with image pipeline
       expect(screen.getByDisplayValue('Image Pipeline')).toBeInTheDocument()
 
       // Open icon picker
-      const appIcon = container.querySelector('[class*="cursor-pointer"]')
-      fireEvent.click(appIcon!)
+      fireEvent.click(getIconButton())
       expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
     })
 
@@ -329,11 +342,10 @@ describe('EditPipelineInfo', () => {
         ...defaultProps,
         pipeline: createImagePipelineTemplate(),
       }
-      const { container } = render(<EditPipelineInfo {...props} />)
+      render(<EditPipelineInfo {...props} />)
 
       // Open picker
-      const appIcon = container.querySelector('[class*="cursor-pointer"]')
-      fireEvent.click(appIcon!)
+      fireEvent.click(getIconButton())
       expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
 
       // Close without selection - should revert to original image icon
@@ -354,11 +366,10 @@ describe('EditPipelineInfo', () => {
         ...defaultProps,
         pipeline: createImagePipelineTemplate(),
       }
-      const { container } = render(<EditPipelineInfo {...props} />)
+      render(<EditPipelineInfo {...props} />)
 
       // Open picker and select emoji
-      const appIcon = container.querySelector('[class*="cursor-pointer"]')
-      fireEvent.click(appIcon!)
+      fireEvent.click(getIconButton())
       const emojiButton = document.querySelector('em-emoji')?.closest('button')
       expect(emojiButton).toBeTruthy()
       fireEvent.click(emojiButton!)
@@ -383,10 +394,9 @@ describe('EditPipelineInfo', () => {
     })
 
     it('should switch to the image tab in the real picker', () => {
-      const { container } = render(<EditPipelineInfo {...defaultProps} />)
+      render(<EditPipelineInfo {...defaultProps} />)
 
-      const appIcon = container.querySelector('[class*="cursor-pointer"]')
-      fireEvent.click(appIcon!)
+      fireEvent.click(getIconButton())
       fireEvent.click(screen.getByRole('button', { name: /iconPicker\.image/ }))
 
       expect(screen.getByRole('button', { name: /iconPicker\.ok/ })).toBeInTheDocument()
@@ -401,17 +411,15 @@ describe('EditPipelineInfo', () => {
     })
 
     it('should open picker when icon is clicked', () => {
-      const { container } = render(<EditPipelineInfo {...defaultProps} />)
-      const appIcon = container.querySelector('[class*="cursor-pointer"]')
-      fireEvent.click(appIcon!)
+      render(<EditPipelineInfo {...defaultProps} />)
+      fireEvent.click(getIconButton())
 
       expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
     })
 
     it('should close picker and update icon when emoji style is selected', async () => {
-      const { container } = render(<EditPipelineInfo {...defaultProps} />)
-      const appIcon = container.querySelector('[class*="cursor-pointer"]')
-      fireEvent.click(appIcon!)
+      render(<EditPipelineInfo {...defaultProps} />)
+      fireEvent.click(getIconButton())
 
       fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
       fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
@@ -422,9 +430,8 @@ describe('EditPipelineInfo', () => {
     })
 
     it('should keep picker open when only switching to image tab', () => {
-      const { container } = render(<EditPipelineInfo {...defaultProps} />)
-      const appIcon = container.querySelector('[class*="cursor-pointer"]')
-      fireEvent.click(appIcon!)
+      render(<EditPipelineInfo {...defaultProps} />)
+      fireEvent.click(getIconButton())
 
       fireEvent.click(screen.getByRole('button', { name: /iconPicker\.image/ }))
 
@@ -432,9 +439,8 @@ describe('EditPipelineInfo', () => {
     })
 
     it('should revert icon when picker is closed without selection', async () => {
-      const { container } = render(<EditPipelineInfo {...defaultProps} />)
-      const appIcon = container.querySelector('[class*="cursor-pointer"]')
-      fireEvent.click(appIcon!)
+      render(<EditPipelineInfo {...defaultProps} />)
+      fireEvent.click(getIconButton())
 
       fireEvent.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
 
@@ -449,11 +455,10 @@ describe('EditPipelineInfo', () => {
         return Promise.resolve()
       })
 
-      const { container } = render(<EditPipelineInfo {...defaultProps} />)
+      render(<EditPipelineInfo {...defaultProps} />)
 
       // Open picker and select new emoji
-      const appIcon = container.querySelector('[class*="cursor-pointer"]')
-      fireEvent.click(appIcon!)
+      fireEvent.click(getIconButton())
       fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
       fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
@@ -480,12 +485,9 @@ describe('EditPipelineInfo', () => {
         return Promise.resolve()
       })
 
-      const { container } = render(
-        <EditPipelineInfo {...defaultProps} pipeline={createImagePipelineTemplate()} />,
-      )
+      render(<EditPipelineInfo {...defaultProps} pipeline={createImagePipelineTemplate()} />)
 
-      const appIcon = container.querySelector('[class*="cursor-pointer"]')
-      fireEvent.click(appIcon!)
+      fireEvent.click(getIconButton())
       const emojiButton = document.querySelector('em-emoji')?.closest('button')
       expect(emojiButton).toBeTruthy()
       fireEvent.click(emojiButton!)
@@ -569,8 +571,8 @@ describe('EditPipelineInfo', () => {
 
   describe('Layout', () => {
     it('should have close button in header', () => {
-      const { container } = render(<EditPipelineInfo {...defaultProps} />)
-      const closeButton = container.querySelector('button.absolute')
+      render(<EditPipelineInfo {...defaultProps} />)
+      const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
       expect(closeButton).toHaveClass('right-5', 'top-5')
     })
   })

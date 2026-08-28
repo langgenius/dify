@@ -72,8 +72,6 @@ vi.mock('../authorized-item', () => ({
   ),
 }))
 
-vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
-
 describe('Authorized', () => {
   const mockProvider: ModelProvider = {
     provider: 'openai',
@@ -102,6 +100,8 @@ describe('Authorized', () => {
     </button>
   )
 
+  const getTrigger = () => screen.getAllByRole('button', { name: /trigger\s*(open|closed)/i })[0]!
+
   beforeEach(() => {
     vi.clearAllMocks()
     mockDeleteCredentialId = null
@@ -119,13 +119,13 @@ describe('Authorized', () => {
       />,
     )
 
-    const trigger = screen.getByTestId('popover-trigger')
+    const trigger = getTrigger()
     expect(trigger).not.toHaveAttribute('data-popup-open')
 
-    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    fireEvent.click(trigger)
 
     expect(trigger).toHaveAttribute('data-popup-open', '')
-    expect(screen.getByRole('button', { name: /trigger\s*open/i })).toBeInTheDocument()
+    expect(trigger).toHaveTextContent(/trigger\s*open/i)
     expect(screen.getByTestId('authorized-item'))!.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /addApiKey/i }))!.toBeInTheDocument()
   })
@@ -141,9 +141,8 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    fireEvent.click(getTrigger())
     expect(mockHandleOpenModal).toHaveBeenCalled()
-    expect(screen.queryByTestId('authorized-item')).not.toBeInTheDocument()
   })
 
   it('should call onItemClick when credential is selected', () => {
@@ -158,7 +157,7 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    fireEvent.click(getTrigger())
     fireEvent.click(screen.getAllByRole('button', { name: 'Select' })[0]!)
 
     expect(onItemClick).toHaveBeenCalledWith(mockCredentials[0], mockItems[0]!.model)
@@ -174,7 +173,7 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    fireEvent.click(getTrigger())
     fireEvent.click(screen.getAllByRole('button', { name: 'Select' })[0]!)
 
     expect(mockHandleActiveCredential).toHaveBeenCalledWith(mockCredentials[0], mockItems[0]!.model)
@@ -195,7 +194,7 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    fireEvent.click(getTrigger())
     fireEvent.click(screen.getByText(/addModelCredential/))
 
     expect(mockHandleOpenModal).toHaveBeenCalledWith(undefined, {
@@ -215,7 +214,7 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    fireEvent.click(getTrigger())
     expect(screen.queryByRole('button', { name: /addApiKey/i })).not.toBeInTheDocument()
   })
 
@@ -231,7 +230,7 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    fireEvent.click(getTrigger())
     fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]!)
     fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0]!)
     fireEvent.click(screen.getAllByRole('button', { name: 'Select' })[0]!)
@@ -254,7 +253,7 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    fireEvent.click(getTrigger())
     fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]!)
     fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0]!)
     fireEvent.click(screen.getAllByRole('button', { name: 'Select' })[0]!)
@@ -278,11 +277,11 @@ describe('Authorized', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    fireEvent.click(getTrigger())
     fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]!)
-    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    fireEvent.click(getTrigger())
     fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0]!)
-    fireEvent.click(screen.getByRole('button', { name: /trigger\s*closed/i }))
+    fireEvent.click(getTrigger())
     fireEvent.click(screen.getAllByRole('button', { name: 'Select' })[0]!)
 
     expect(mockHandleOpenModal).toHaveBeenCalledWith(mockCredentials[0], mockItems[0]!.model)

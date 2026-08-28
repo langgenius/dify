@@ -129,7 +129,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.6.3-local
+    image: langgenius/dify-plugin-daemon:0.6.10-local
     restart: always
     env_file:
       - ./middleware.env
@@ -193,7 +193,7 @@ services:
 
   # ssrf_proxy server
   # for more information, please refer to
-  # https://docs.dify.ai/learn-more/faq/install-faq#18-why-is-ssrf-proxy-needed%3F
+  # https://docs.dify.ai/en/self-host/deploy/troubleshooting/docker-issues#why-is-ssrf-proxy-needed
   ssrf_proxy:
     image: ubuntu/squid:latest
     restart: always

@@ -2,10 +2,10 @@ import type { DehydratedState } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 const mocks = vi.hoisted(() => ({
-  rootQueryClient: undefined as QueryClient | undefined,
+  queryClient: undefined as QueryClient | undefined,
   profileQueryFn: vi.fn(),
   workspaceQueryFn: vi.fn(),
   workspaceQueryOptions: vi.fn(),
@@ -20,12 +20,9 @@ const mocks = vi.hoisted(() => ({
   basePath: '',
 }))
 
-vi.mock('@/context/query-client-server', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/query-client-server')>()
-
+vi.mock('@/app/get-query-client', () => {
   return {
-    ...actual,
-    getQueryClientServer: () => mocks.rootQueryClient,
+    getQueryClient: () => mocks.queryClient,
   }
 })
 
@@ -57,8 +54,10 @@ vi.mock('@/service/server', () => ({
   serverConsoleQuery: {
     workspaces: {
       current: {
-        post: {
-          queryOptions: (...args: unknown[]) => mocks.workspaceQueryOptions(...args),
+        summary: {
+          get: {
+            queryOptions: (...args: unknown[]) => mocks.workspaceQueryOptions(...args),
+          },
         },
         rbac: {
           myPermissions: {
@@ -76,7 +75,7 @@ describe('CommonLayoutHydrationBoundary', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.basePath = ''
-    mocks.rootQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    mocks.queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     mocks.headers.mockResolvedValue(
       new Headers({
         'x-dify-pathname': '/apps',
@@ -100,7 +99,13 @@ describe('CommonLayoutHydrationBoundary', () => {
         currentEnv: 'DEVELOPMENT',
       },
     })
-    mocks.workspaceQueryFn.mockResolvedValue({ id: 'workspace-id', name: 'Workspace' })
+    mocks.workspaceQueryFn.mockResolvedValue({
+      id: 'workspace-id',
+      name: 'Workspace',
+      role: 'owner',
+      plan: 'sandbox',
+      credits: 200,
+    })
     mocks.permissionQueryFn.mockResolvedValue({
       workspace: { permission_keys: ['agent.manage'] },
       app: { default_permission_keys: [], overrides: [] },
@@ -111,7 +116,7 @@ describe('CommonLayoutHydrationBoundary', () => {
       csrfToken: 'csrf-token',
     })
     mocks.workspaceQueryOptions.mockReturnValue({
-      queryKey: ['console', 'workspaces', 'current', 'post'],
+      queryKey: ['console', 'workspaces', 'current', 'summary', 'get'],
       queryFn: mocks.workspaceQueryFn,
       retry: false,
     })
@@ -159,9 +164,6 @@ describe('CommonLayoutHydrationBoundary', () => {
   })
 
   it('should dehydrate only Common-owned queries', async () => {
-    mocks.rootQueryClient?.setQueryData(['console', 'system-features'], {
-      deployment_edition: 'CLOUD',
-    })
     const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
 
     const element = await CommonLayoutHydrationBoundary({ children: null })
@@ -172,7 +174,7 @@ describe('CommonLayoutHydrationBoundary', () => {
     expect(queryKeys).toEqual(
       expect.arrayContaining([
         ['common', 'user-profile'],
-        ['console', 'workspaces', 'current', 'post'],
+        ['console', 'workspaces', 'current', 'summary', 'get'],
         [['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'], { type: 'query' }],
       ]),
     )

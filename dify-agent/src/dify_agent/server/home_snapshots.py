@@ -15,6 +15,7 @@ from dify_agent.runtime_backend import (
     HomeSnapshotCreateError,
     HomeSnapshotCreateSpec,
     HomeSnapshotNotFoundError,
+    HomeSnapshotTooLargeError,
 )
 from dify_agent.runtime_backend.leases import open_runtime_lease
 
@@ -52,6 +53,8 @@ class HomeSnapshotService:
                 )
         except BindingLostError as exc:
             raise HomeSnapshotServiceError("binding_lost", str(exc), status_code=404) from exc
+        except HomeSnapshotTooLargeError as exc:
+            raise HomeSnapshotServiceError("home_snapshot_too_large", str(exc), status_code=413) from exc
         except (BindingAcquireError, HomeSnapshotCreateError) as exc:
             raise HomeSnapshotServiceError("home_snapshot_create_failed", str(exc), status_code=502) from exc
         return HomeSnapshotResponse(snapshot_ref=snapshot_ref)

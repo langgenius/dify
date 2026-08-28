@@ -16,7 +16,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
@@ -28,6 +28,7 @@ import {
 import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
+import { consoleQuery } from '@/service/client'
 import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
 
 type MainNavRadioItemContentProps = {
@@ -71,7 +72,7 @@ function AppearanceSubmenu() {
       <DropdownMenuSubContent
         placement="right-start"
         sideOffset={6}
-        popupClassName="w-[139px] max-h-[360px] bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
+        className="max-h-[360px] w-[139px] bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
       >
         <DropdownMenuRadioGroup<Theme>
           value={currentTheme}
@@ -123,7 +124,13 @@ export function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
-  const { isEducationAccount } = useProviderContext()
+  const { enableEducationPlan } = useProviderContext()
+  const { data: isEducationAccount = false } = useQuery(
+    consoleQuery.account.education.get.queryOptions({
+      enabled: enableEducationPlan,
+      select: ({ is_student }) => is_student ?? false,
+    }),
+  )
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
 
   return (

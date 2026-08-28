@@ -11,13 +11,12 @@ import {
   RiLoginCircleLine,
 } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { API_PREFIX } from '@/config'
-import { langGeniusVersionInfoAtom } from '@/context/version-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import useTheme from '@/hooks/use-theme'
@@ -81,15 +80,18 @@ const PluginItem: FC<Props> = ({
     return [PluginSource.github, PluginSource.marketplace].includes(source) ? author : ''
   }, [source, author])
 
-  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
+  const { data: currentVersion } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.meta.currentVersion ?? '',
+  })
 
   const isDifyVersionCompatible = useMemo(() => {
-    if (!langGeniusVersionInfo.current_version) return true
+    if (!currentVersion) return true
     return isEqualOrLaterThanVersion(
-      langGeniusVersionInfo.current_version,
+      currentVersion,
       declarationMeta.minimum_dify_version ?? '0.0.0',
     )
-  }, [declarationMeta.minimum_dify_version, langGeniusVersionInfo.current_version])
+  }, [currentVersion, declarationMeta.minimum_dify_version])
 
   const isDeprecated = useMemo(() => {
     return status === 'deleted' && !!deprecated_reason
@@ -137,8 +139,12 @@ const PluginItem: FC<Props> = ({
           <div className="flex size-10 items-center justify-center overflow-hidden rounded-xl border border-components-panel-border-subtle">
             <img
               className="size-full"
+              decoding="async"
+              height={40}
+              loading="lazy"
               src={iconSrc}
               alt={`plugin-${plugin_unique_identifier}-logo`}
+              width={40}
             />
           </div>
           <div className="ml-3 w-0 grow">
@@ -162,7 +168,7 @@ const PluginItem: FC<Props> = ({
                   >
                     <RiErrorWarningLine color="red" className="size-4 text-text-accent" />
                   </PopoverTrigger>
-                  <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
+                  <PopoverContent className="px-3 py-2 system-xs-regular text-text-tertiary">
                     {t(($) => $.difyVersionNotCompatible, {
                       ns: 'plugin',
                       minimalDifyVersion: declarationMeta.minimum_dify_version,
