@@ -57,6 +57,10 @@ const navigationMock = vi.hoisted(() => ({
   startMode: null as string | null,
 }))
 
+const fileUploadConfigMock = vi.hoisted(() => ({
+  knowledgeFileSizeLimit: 15,
+}))
+
 const permissionStateMock = vi.hoisted(() => ({
   atom: Symbol('datasetDefaultPermissionKeysAtom'),
   keys: ['dataset.acl.access_config'],
@@ -78,6 +82,15 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
+}))
+
+vi.mock('@/service/use-common', () => ({
+  useFileUploadConfig: () => ({
+    data: {
+      file_size_limit: 15,
+      knowledge_file_size_limit: fileUploadConfigMock.knowledgeFileSizeLimit,
+    },
+  }),
 }))
 
 vi.mock('@/context/permission-state', () => ({
@@ -742,6 +755,7 @@ describe('CreateKnowledgePage', () => {
     )
     serviceMock.discardUpload.mockResolvedValue(undefined)
     permissionStateMock.keys = ['dataset.acl.access_config']
+    fileUploadConfigMock.knowledgeFileSizeLimit = 15
     systemFeaturesStateMock.uploadEnabled = true
     systemFeaturesStateMock.rbacEnabled = true
     navigationMock.startMode = null
@@ -2125,6 +2139,35 @@ describe('CreateKnowledgePage', () => {
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'dataset.newKnowledge.preview' })).toBeNull()
     expect(serviceMock.create).not.toHaveBeenCalled()
+  })
+
+  it('uses the workspace knowledge file size limit for upload validation and guidance', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    fileUploadConfigMock.knowledgeFileSizeLimit = 50
+    renderPage()
+    await fillRequiredFields(user)
+    const file = new File(['content'], 'handbook.pdf', { type: 'application/pdf' })
+    Object.defineProperty(file, 'size', { value: 16 * 1024 * 1024 })
+
+    expect(
+      screen.getByText(/dataset\.newKnowledge\.documentUploadFormats:.*"size":50/),
+    ).toBeVisible()
+    await user.upload(
+      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+        selector: 'input[type="file"]',
+      }),
+      file,
+    )
+
+    await waitFor(() =>
+      expect(serviceMock.stageUpload).toHaveBeenCalledWith({
+        body: { file: expect.objectContaining({ name: 'handbook.pdf' }) },
+      }),
+    )
+    expect(
+      screen.queryByText(/dataset\.newKnowledge\.documentUploadExclusion\.fileSize/),
+    ).not.toBeInTheDocument()
   })
 
   it('rejects an empty upload before staging or creating the knowledge space', async () => {

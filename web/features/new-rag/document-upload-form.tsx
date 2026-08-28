@@ -18,6 +18,7 @@ export type DocumentUploadFormHandle = {
 }
 
 type DocumentUploadFormProps = {
+  fileSizeLimitMb: number
   initialFiles?: File[]
   onCancel: () => void
   onFilesAdded: (files: File[]) => Promise<void>
@@ -29,6 +30,7 @@ type DocumentUploadFormProps = {
 }
 
 export function DocumentUploadForm({
+  fileSizeLimitMb,
   initialFiles = [],
   onCancel,
   onFilesAdded,
@@ -45,9 +47,12 @@ export function DocumentUploadForm({
   const filesRef = useRef(initialFiles)
   const [files, setFiles] = useState(initialFiles)
   const [stagingFiles, setStagingFiles] = useState<ReadonlySet<File>>(
-    () => new Set(initialFiles.filter((file) => !documentUploadIssue(file))),
+    () => new Set(initialFiles.filter((file) => !documentUploadIssue(file, fileSizeLimitMb))),
   )
-  const validFiles = useMemo(() => files.filter((file) => !documentUploadIssue(file)), [files])
+  const validFiles = useMemo(
+    () => files.filter((file) => !documentUploadIssue(file, fileSizeLimitMb)),
+    [fileSizeLimitMb, files],
+  )
   const effectiveUploadProgress = useMemo(() => {
     const progress = new Map(uploadProgress)
     for (const file of stagingFiles) progress.set(file, 'pending')
@@ -74,12 +79,14 @@ export function DocumentUploadForm({
   const addFiles = useCallback(
     (nextFiles: File[]) => {
       const uniqueFiles = uniqueDocumentUploadFiles(filesRef.current, nextFiles)
-      const validUniqueFiles = uniqueFiles.filter((file) => !documentUploadIssue(file))
+      const validUniqueFiles = uniqueFiles.filter(
+        (file) => !documentUploadIssue(file, fileSizeLimitMb),
+      )
       filesRef.current = [...filesRef.current, ...uniqueFiles]
       setFiles(filesRef.current)
       stageAddedFiles(validUniqueFiles)
     },
-    [stageAddedFiles],
+    [fileSizeLimitMb, stageAddedFiles],
   )
 
   useImperativeHandle(ref, () => ({ addFiles }), [addFiles])
@@ -87,7 +94,9 @@ export function DocumentUploadForm({
   useEffect(() => {
     if (initialFilesAnnouncedRef.current) return
     initialFilesAnnouncedRef.current = true
-    const validInitialFiles = initialFiles.filter((file) => !documentUploadIssue(file))
+    const validInitialFiles = initialFiles.filter(
+      (file) => !documentUploadIssue(file, fileSizeLimitMb),
+    )
     if (!validInitialFiles.length) return
     void onFilesAdded(validInitialFiles)
       .catch(() => undefined)
@@ -98,7 +107,7 @@ export function DocumentUploadForm({
           return next
         })
       })
-  }, [initialFiles, onFilesAdded])
+  }, [fileSizeLimitMb, initialFiles, onFilesAdded])
 
   return (
     <form
@@ -144,7 +153,7 @@ export function DocumentUploadForm({
           {t(($) => $['newKnowledge.uploadDropZoneTitle'])}
         </span>
         <span className="text-[12px] leading-[15px] font-normal text-text-placeholder">
-          {t(($) => $['newKnowledge.documentUploadFormats'])}
+          {t(($) => $['newKnowledge.documentUploadFormats'], { size: fileSizeLimitMb })}
         </span>
       </button>
 
@@ -159,6 +168,7 @@ export function DocumentUploadForm({
           <DocumentUploadFileList
             className="mt-2"
             disabled={uploading}
+            fileSizeLimitMb={fileSizeLimitMb}
             items={files.map((file) => ({
               file,
               id: documentUploadFingerprint(file),
@@ -172,7 +182,7 @@ export function DocumentUploadForm({
                 next.delete(item.file)
                 return next
               })
-              if (!documentUploadIssue(item.file)) onFileRemoved(item.file)
+              if (!documentUploadIssue(item.file, fileSizeLimitMb)) onFileRemoved(item.file)
             }}
           />
         </section>

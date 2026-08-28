@@ -68,6 +68,7 @@ import {
   newKnowledgeListPath,
   newKnowledgeSettingsPath,
 } from './routes'
+import { useKnowledgeFileSizeLimit } from './use-knowledge-file-size-limit'
 
 type InitialSource = NonNullable<KnowledgeFsSpaceCreatePayload['initial_source']>
 
@@ -81,6 +82,7 @@ export function CreateKnowledgePage() {
   const { t: tCommon } = useTranslation('common')
   const { t: tDatasetCreation } = useTranslation('datasetCreation')
   const { t: tWorkflow } = useTranslation('workflow')
+  const fileSizeLimitMb = useKnowledgeFileSizeLimit()
   useDocumentTitle(t(($) => $['newKnowledge.createTitle']))
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -632,6 +634,7 @@ export function CreateKnowledgePage() {
                       >
                         <CreateUploadQueue
                           disabled={submissionPending}
+                          fileSizeLimitMb={fileSizeLimitMb}
                           uploads={uploads}
                           uploadPhases={uploadPhases}
                           uploading={uploading || stagingCount > 0}

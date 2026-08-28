@@ -922,7 +922,7 @@ export function DocumentBulkActions({
   )
 }
 
-export function DocumentDropOverlay() {
+export function DocumentDropOverlay({ fileSizeLimitMb }: { fileSizeLimitMb: number }) {
   const { t } = useTranslation('dataset')
 
   return (
@@ -940,7 +940,7 @@ export function DocumentDropOverlay() {
         {t(($) => $['newKnowledge.dropFilesHere'])}
       </p>
       <p className="mt-1 system-xs-regular text-text-tertiary">
-        {t(($) => $['newKnowledge.documentUploadFormats'])}
+        {t(($) => $['newKnowledge.documentUploadFormats'], { size: fileSizeLimitMb })}
       </p>
     </div>
   )

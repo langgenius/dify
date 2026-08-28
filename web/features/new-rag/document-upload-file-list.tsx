@@ -34,6 +34,7 @@ export function DocumentUploadFileList({
   ariaLabel,
   className,
   disabled,
+  fileSizeLimitMb,
   idleStatus,
   items,
   onRemove,
@@ -43,6 +44,7 @@ export function DocumentUploadFileList({
   ariaLabel?: string
   className?: string
   disabled: boolean
+  fileSizeLimitMb: number
   idleStatus?: ReactNode
   items: DocumentUploadFileItem[]
   onRemove: (item: DocumentUploadFileItem) => void
@@ -57,14 +59,18 @@ export function DocumentUploadFileList({
     <>
       <ul className={cn('space-y-1', className)} aria-label={ariaLabel}>
         {items.map((item) => {
-          const issue = item.issue ?? documentUploadIssue(item.file)
+          const issue = item.issue ?? documentUploadIssue(item.file, fileSizeLimitMb)
           const extension =
             documentUploadFileExtension(item.file.name).toLocaleUpperCase() || 'FILE'
           const fileUploading = uploadProgress.get(item.file) === 'pending'
           const status = fileUploading
             ? t(($) => $['newKnowledge.uploadingFiles'])
             : issue
-              ? t(($) => $[`newKnowledge.documentUploadExclusion.${issue}`])
+              ? issue === 'fileSize'
+                ? t(($) => $['newKnowledge.documentUploadExclusion.fileSize'], {
+                    size: fileSizeLimitMb,
+                  })
+                : t(($) => $[`newKnowledge.documentUploadExclusion.${issue}`])
               : idleStatus
           return (
             <li

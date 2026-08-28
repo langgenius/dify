@@ -21,32 +21,34 @@ export type QueuedUpload = {
   stagingFailed?: boolean
 }
 
-function createQueuedUpload(file: File): QueuedUpload {
+function createQueuedUpload(file: File, fileSizeLimitMb: number): QueuedUpload {
   return {
     file,
     id: createRequestId(),
-    issue: documentUploadIssue(file),
+    issue: documentUploadIssue(file, fileSizeLimitMb),
   }
 }
 
-function mergeFiles(current: QueuedUpload[], files: File[]) {
+function mergeFiles(current: QueuedUpload[], files: File[], fileSizeLimitMb: number) {
   return [
     ...current,
     ...uniqueDocumentUploadFiles(
       current.map(({ file }) => file),
       files,
-    ).map(createQueuedUpload),
+    ).map((file) => createQueuedUpload(file, fileSizeLimitMb)),
   ]
 }
 
 export function CreateUploadQueue({
   disabled,
+  fileSizeLimitMb,
   uploadPhases = new Map(),
   uploading,
   uploads,
   onChange,
 }: {
   disabled: boolean
+  fileSizeLimitMb: number
   uploadPhases?: ReadonlyMap<File, KnowledgeFsUploadPhase>
   uploading: boolean
   uploads: QueuedUpload[]
@@ -58,7 +60,7 @@ export function CreateUploadQueue({
   const validUploadCount = uploads.filter(({ issue }) => !issue).length
 
   const addFiles = (files: File[]) => {
-    if (!disabled && files.length) onChange(mergeFiles(uploads, files))
+    if (!disabled && files.length) onChange(mergeFiles(uploads, files, fileSizeLimitMb))
   }
 
   return (
@@ -116,7 +118,7 @@ export function CreateUploadQueue({
             : t(($) => $['newKnowledge.uploadDropZoneTitle'])}
         </span>
         <span className="system-2xs-medium text-text-tertiary">
-          {t(($) => $['newKnowledge.documentUploadFormats'])}
+          {t(($) => $['newKnowledge.documentUploadFormats'], { size: fileSizeLimitMb })}
         </span>
       </label>
 
@@ -132,6 +134,7 @@ export function CreateUploadQueue({
             ariaLabel={t(($) => $['newKnowledge.uploadFiles'])}
             className="mt-2"
             disabled={disabled}
+            fileSizeLimitMb={fileSizeLimitMb}
             idleStatus={t(($) => $['newKnowledge.uploadCharactersUnavailable'])}
             items={uploads}
             uploadProgress={uploadPhases}

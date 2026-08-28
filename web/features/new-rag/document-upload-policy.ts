@@ -1,4 +1,4 @@
-const DOCUMENT_UPLOAD_MAX_BYTES = 15 * 1024 * 1024
+const BYTES_PER_MEBIBYTE = 1024 * 1024
 
 const DOCUMENT_UPLOAD_EXTENSIONS = [
   'csv',
@@ -58,8 +58,11 @@ export function documentUploadFileExtension(name: string) {
     : ''
 }
 
-export function documentUploadIssue(file: File): DocumentUploadIssue | undefined {
+export function documentUploadIssue(
+  file: File,
+  fileSizeLimitMb: number,
+): DocumentUploadIssue | undefined {
   if (file.size === 0) return 'fileEmpty'
-  if (file.size > DOCUMENT_UPLOAD_MAX_BYTES) return 'fileSize'
+  if (file.size > fileSizeLimitMb * BYTES_PER_MEBIBYTE) return 'fileSize'
   if (!documentUploadExtensionSet.has(documentUploadFileExtension(file.name))) return 'fileType'
 }

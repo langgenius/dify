@@ -164,11 +164,22 @@ const systemFeaturesStateMock = vi.hoisted(() => ({
   atom: Symbol('knowledgeFsUploadEnabledAtom'),
   uploadEnabled: true,
 }))
+const fileUploadConfigMock = vi.hoisted(() => ({
+  knowledgeFileSizeLimit: 15,
+}))
 const toastMock = vi.hoisted(() => ({
   error: vi.fn(),
   info: vi.fn(),
   success: vi.fn(),
   warning: vi.fn(),
+}))
+vi.mock('@/service/use-common', () => ({
+  useFileUploadConfig: () => ({
+    data: {
+      file_size_limit: 15,
+      knowledge_file_size_limit: fileUploadConfigMock.knowledgeFileSizeLimit,
+    },
+  }),
 }))
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }))
 const settingsState = vi.hoisted(() => ({
@@ -725,6 +736,7 @@ async function waitForDocumentFilesStaged() {
 describe('DocumentsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    fileUploadConfigMock.knowledgeFileSizeLimit = 15
     systemFeaturesStateMock.uploadEnabled = true
     settingsState.configurationState = 'active'
     settingsState.refetch.mockImplementation(async () => ({
@@ -2558,7 +2570,35 @@ describe('DocumentsPage', () => {
 
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeDisabled()
-    expect(screen.getByText('dataset.newKnowledge.documentUploadExclusion.fileSize')).toBeVisible()
+    expect(
+      screen.getByText(/dataset\.newKnowledge\.documentUploadExclusion\.fileSize:.*"size":15/),
+    ).toBeVisible()
+  })
+
+  it('accepts files within the workspace knowledge file size limit', async () => {
+    const user = userEvent.setup()
+    fileUploadConfigMock.knowledgeFileSizeLimit = 50
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    const file = new File(['one'], 'handbook.pdf', { type: 'application/pdf' })
+    Object.defineProperty(file, 'size', { value: 16 * 1024 * 1024 })
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
+      target: { files: [file] },
+    })
+
+    await waitFor(() =>
+      expect(stageUploadMutation).toHaveBeenCalledWith(
+        {
+          body: { file: expect.objectContaining({ name: 'handbook.pdf' }) },
+        },
+        { signal: expect.any(AbortSignal) },
+      ),
+    )
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeEnabled()
+    expect(
+      screen.queryByText(/dataset\.newKnowledge\.documentUploadExclusion\.fileSize/),
+    ).toBeNull()
   })
 
   it('rejects empty files locally with a field-level reason', async () => {

@@ -74,6 +74,7 @@ import { newKnowledgeDocumentDetailPath } from './routes'
 import { sourceFromApi } from './source-models'
 import { TaskEventObserver } from './task-event-observer'
 import { createTaskProgressStore } from './task-progress-store'
+import { useKnowledgeFileSizeLimit } from './use-knowledge-file-size-limit'
 import { useKnowledgeModelSetupGuard } from './use-knowledge-model-setup-guard'
 import { useQueryDataUpdateCount } from './use-query-data-update-count'
 
@@ -253,6 +254,7 @@ function mergeTaskOverride(
 export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
+  const fileSizeLimitMb = useKnowledgeFileSizeLimit()
   const queryClient = useQueryClient()
   const { refetch: refetchKnowledgeSpace, space } = useKnowledgeSpace()
   const datasetDefaultPermissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
@@ -1662,19 +1664,22 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         reasonKey: UploadExclusionReasonKey
       }> = []
       for (const file of files) {
-        const issue = documentUploadIssue(file)
+        const issue = documentUploadIssue(file, fileSizeLimitMb)
         if (issue) localExclusions.push({ filename: file.name, reasonKey: issue })
         else uploadableFiles.push(file)
       }
       const formatExclusionDetails = (
         exclusions: Array<{ filename: string; reasonKey: UploadExclusionReasonKey }>,
       ) => {
-        const detailItems = exclusions
-          .slice(0, 3)
-          .map(
-            ({ filename, reasonKey }) =>
-              `${filename} (${t(($) => $[`newKnowledge.documentUploadExclusion.${reasonKey}`])})`,
-          )
+        const detailItems = exclusions.slice(0, 3).map(({ filename, reasonKey }) => {
+          const reason =
+            reasonKey === 'fileSize'
+              ? t(($) => $['newKnowledge.documentUploadExclusion.fileSize'], {
+                  size: fileSizeLimitMb,
+                })
+              : t(($) => $[`newKnowledge.documentUploadExclusion.${reasonKey}`])
+          return `${filename} (${reason})`
+        })
         if (exclusions.length > detailItems.length)
           detailItems.push(
             t(($) => $['newKnowledge.documentUploadExclusion.more'], {
@@ -1770,6 +1775,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       cancelUploadForm,
       endUploadActivity,
       ensureModelReady,
+      fileSizeLimitMb,
       handleWritePermissionDenied,
       knowledgeSpaceId,
       refreshDocumentsAndTasks,
@@ -2843,6 +2849,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         ) : uploadFormOpen ? (
           <DocumentUploadForm
             ref={uploadFormRef}
+            fileSizeLimitMb={fileSizeLimitMb}
             initialFiles={uploadFormInitialFiles}
             uploadProgress={stagedUploadProgress}
             uploading={uploading}
@@ -2933,7 +2940,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             uploading={uploading}
           />
         )}
-        {isFileDragActive && canUpload && <DocumentDropOverlay />}
+        {isFileDragActive && canUpload && <DocumentDropOverlay fileSizeLimitMb={fileSizeLimitMb} />}
       </section>
       {bulkActionsVisible && (
         <DocumentBulkActions
