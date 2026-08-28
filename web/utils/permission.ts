@@ -2,7 +2,7 @@ import type { PermissionKey } from '@/models/access-control'
 
 export const AppACLPermission = {
   Preview: 'app.acl.preview',
-  AccessPoint: 'access_point.manage',
+  AccessPoint: 'app.acl.access_point_manage',
   ViewLayout: 'app.acl.view_layout',
   TestAndRun: 'app.acl.test_and_run',
   Edit: 'app.acl.edit',
