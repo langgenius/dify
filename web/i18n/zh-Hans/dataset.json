@@ -757,7 +757,6 @@
   "newKnowledge.syncPolicyEveryValue": "每 {{interval}}",
   "newKnowledge.syncPolicyLoadFailed": "无法加载同步策略。",
   "newKnowledge.syncPolicyManual": "仅手动",
-  "newKnowledge.syncPolicyProvider": "按提供商计划同步",
   "newKnowledge.syncPolicyUnit.days": "天",
   "newKnowledge.syncPolicyUnit.hours": "小时",
   "newKnowledge.tags": "标签",

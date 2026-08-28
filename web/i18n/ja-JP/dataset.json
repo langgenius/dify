@@ -712,7 +712,6 @@
   "newKnowledge.syncPolicyEveryValue": "{{interval}}ごと",
   "newKnowledge.syncPolicyLoadFailed": "同期ポリシーを読み込めませんでした。",
   "newKnowledge.syncPolicyManual": "手動のみ",
-  "newKnowledge.syncPolicyProvider": "プロバイダーのスケジュールを使用",
   "newKnowledge.syncPolicyUnit.days": "日",
   "newKnowledge.syncPolicyUnit.hours": "時間",
   "newKnowledge.tags": "タグ",

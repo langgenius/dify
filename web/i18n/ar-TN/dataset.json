@@ -712,7 +712,6 @@
   "newKnowledge.syncPolicyEveryValue": "كل {{interval}}",
   "newKnowledge.syncPolicyLoadFailed": "تعذّر تحميل سياسة المزامنة.",
   "newKnowledge.syncPolicyManual": "يدوي فقط",
-  "newKnowledge.syncPolicyProvider": "استخدام جدول المزوّد",
   "newKnowledge.syncPolicyUnit.days": "أيام",
   "newKnowledge.syncPolicyUnit.hours": "ساعات",
   "newKnowledge.tags": "الوسوم",

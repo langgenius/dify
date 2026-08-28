@@ -3,7 +3,7 @@ import { datasourceParameterRecord } from './datasource-parameter-model'
 
 export type NewKnowledgeStartMode = 'empty' | 'source' | 'upload'
 export type NewKnowledgeSourceType = 'onlineDocuments' | 'onlineDrive' | 'websiteCrawl'
-type NewKnowledgeSyncPolicy = 'custom' | 'daily' | 'manual' | 'provider'
+type NewKnowledgeSyncPolicy = 'custom' | 'daily' | 'manual'
 export type NewKnowledgeWebsiteProvider = string
 export type NewKnowledgeOnlineDocumentsProvider = string
 export type NewKnowledgeOnlineDriveProvider = string
@@ -61,7 +61,7 @@ export function createNewKnowledgeSourceDraft(
       parameters: {},
       sourceName: '',
       sourceType,
-      syncPolicy: 'provider',
+      syncPolicy: 'daily',
     }
   if (sourceType === 'onlineDrive')
     return {
@@ -69,7 +69,7 @@ export function createNewKnowledgeSourceDraft(
       parameters: {},
       sourceName: '',
       sourceType,
-      syncPolicy: 'provider',
+      syncPolicy: 'daily',
     }
   return {
     includeSubpages: true,
@@ -132,12 +132,10 @@ export function parseNewKnowledgeSourceDraft(value: string): NewKnowledgeSourceD
     const draft: unknown = JSON.parse(value)
     if (!draft || typeof draft !== 'object') return undefined
     const candidate = draft as Record<string, unknown>
-    const syncPolicy = ['custom', 'daily', 'manual', 'provider'].includes(
-      String(candidate.syncPolicy),
-    )
+    const syncPolicy = ['custom', 'daily', 'manual'].includes(String(candidate.syncPolicy))
       ? (candidate.syncPolicy as NewKnowledgeSyncPolicy)
       : candidate.syncPolicy === undefined
-        ? 'provider'
+        ? 'daily'
         : undefined
     const customIntervalSeconds =
       typeof candidate.customIntervalSeconds === 'number' &&

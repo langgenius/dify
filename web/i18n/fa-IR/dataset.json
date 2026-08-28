@@ -712,7 +712,6 @@
   "newKnowledge.syncPolicyEveryValue": "هر {{interval}}",
   "newKnowledge.syncPolicyLoadFailed": "بارگیری سیاست همگام‌سازی ممکن نشد.",
   "newKnowledge.syncPolicyManual": "فقط دستی",
-  "newKnowledge.syncPolicyProvider": "استفاده از برنامه ارائه‌دهنده",
   "newKnowledge.syncPolicyUnit.days": "روز",
   "newKnowledge.syncPolicyUnit.hours": "ساعت",
   "newKnowledge.tags": "برچسب‌ها",

@@ -487,7 +487,6 @@ export function CreateConnectedSourceSetup({
         </section>
       )}
       <SourceSyncPolicyField
-        availablePolicies={draft.provider === 'Amazon S3' ? ['daily', 'manual'] : undefined}
         disabled={disabled}
         draft={draft}
         size="medium"

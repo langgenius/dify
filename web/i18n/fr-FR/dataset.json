@@ -712,7 +712,6 @@
   "newKnowledge.syncPolicyEveryValue": "Toutes les {{interval}}",
   "newKnowledge.syncPolicyLoadFailed": "Impossible de charger la politique de synchronisation.",
   "newKnowledge.syncPolicyManual": "Manuel uniquement",
-  "newKnowledge.syncPolicyProvider": "Utiliser la planification du fournisseur",
   "newKnowledge.syncPolicyUnit.days": "jours",
   "newKnowledge.syncPolicyUnit.hours": "heures",
   "newKnowledge.tags": "Étiquettes",

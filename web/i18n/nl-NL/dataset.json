@@ -712,7 +712,6 @@
   "newKnowledge.syncPolicyEveryValue": "Elke {{interval}}",
   "newKnowledge.syncPolicyLoadFailed": "Het synchronisatiebeleid kon niet worden geladen.",
   "newKnowledge.syncPolicyManual": "Alleen handmatig",
-  "newKnowledge.syncPolicyProvider": "Planning van provider gebruiken",
   "newKnowledge.syncPolicyUnit.days": "dagen",
   "newKnowledge.syncPolicyUnit.hours": "uur",
   "newKnowledge.tags": "Tags",

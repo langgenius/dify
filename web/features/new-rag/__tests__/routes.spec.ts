@@ -66,7 +66,9 @@ describe('New RAG routes', () => {
     expect(createNewKnowledgeSourceDraft('onlineDrive', 'Acme Drive').provider).toBe('Acme Drive')
   })
 
-  it('defaults website crawls to a daily sync policy', () => {
+  it('defaults every source type to a daily sync policy', () => {
+    expect(createNewKnowledgeSourceDraft('onlineDocuments').syncPolicy).toBe('daily')
+    expect(createNewKnowledgeSourceDraft('onlineDrive').syncPolicy).toBe('daily')
     expect(createNewKnowledgeSourceDraft('websiteCrawl').syncPolicy).toBe('daily')
   })
 
@@ -93,7 +95,7 @@ describe('New RAG routes', () => {
           rootUrl: 'https://docs.dify.ai',
           sourceName: 'Dify docs',
           sourceType: 'websiteCrawl',
-          syncPolicy: 'provider',
+          syncPolicy: 'daily',
         }),
       ),
     ).toBeUndefined()
@@ -118,7 +120,7 @@ describe('New RAG routes', () => {
       rootUrl: 'https://docs.dify.ai',
       sourceName: 'Dify docs',
       sourceType: 'websiteCrawl',
-      syncPolicy: 'provider',
+      syncPolicy: 'daily',
     })
   })
 

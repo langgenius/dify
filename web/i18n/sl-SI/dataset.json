@@ -712,7 +712,6 @@
   "newKnowledge.syncPolicyEveryValue": "Vsakih {{interval}}",
   "newKnowledge.syncPolicyLoadFailed": "Pravilnika sinhronizacije ni bilo mogoče naložiti.",
   "newKnowledge.syncPolicyManual": "Samo ročno",
-  "newKnowledge.syncPolicyProvider": "Uporabi urnik ponudnika",
   "newKnowledge.syncPolicyUnit.days": "dni",
   "newKnowledge.syncPolicyUnit.hours": "ur",
   "newKnowledge.tags": "Oznake",

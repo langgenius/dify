@@ -57,7 +57,7 @@ type CrawlConfiguration = {
 }
 
 function initialSyncPolicyValue(draft?: NewKnowledgeWebsiteSourceDraft): SyncPolicyValue {
-  const mode = draft?.syncPolicy === 'daily' ? 'interval' : (draft?.syncPolicy ?? 'provider')
+  const mode = draft?.syncPolicy === 'daily' ? 'interval' : (draft?.syncPolicy ?? 'interval')
   return {
     ...(mode === 'custom' ? { customIntervalSeconds: draft?.customIntervalSeconds } : {}),
     mode,

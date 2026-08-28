@@ -510,7 +510,7 @@ export const zKnowledgeFsSourceSyncPolicyResponse = z.object({
   expected_source_version: z.int().gte(1),
   id: z.string(),
   knowledge_space_id: z.string(),
-  mode: z.enum(['custom', 'interval', 'manual', 'provider']),
+  mode: z.enum(['custom', 'interval', 'manual']),
   next_run_at: z.iso.datetime().nullish(),
   revision: z.int().gte(1),
   source_id: z.string(),
@@ -525,7 +525,7 @@ export const zKnowledgeFsSourceSyncPolicyPayload = z.object({
   enabled: z.boolean(),
   expectedRevision: z.int().gte(0),
   expectedSourceVersion: z.int().gte(1),
-  mode: z.enum(['custom', 'interval', 'manual', 'provider']),
+  mode: z.enum(['custom', 'interval', 'manual']),
 })
 
 /**
@@ -2177,7 +2177,7 @@ export const zKnowledgeFsInitialWebsiteSourcePayload = z.object({
   providerDisplayName: z.string().min(1).max(255).nullish(),
   root_url: z.string().min(1).max(4096),
   selection: z.array(zKnowledgeFsInitialWebsiteSelectionPayload).min(1).max(200),
-  sync_policy: z.enum(['custom', 'daily', 'manual', 'provider']).optional().default('provider'),
+  sync_policy: z.enum(['custom', 'daily', 'manual']).optional().default('daily'),
 })
 
 /**
@@ -2207,7 +2207,7 @@ export const zKnowledgeFsInitialOnlineDocumentSourcePayload = z.object({
   provider: z.string().min(1).max(255),
   providerDisplayName: z.string().min(1).max(255).nullish(),
   selection: z.array(zKnowledgeFsOnlineDocumentWorkflowImportItemPayload).min(1).max(200),
-  sync_policy: z.enum(['custom', 'daily', 'manual', 'provider']).optional().default('provider'),
+  sync_policy: z.enum(['custom', 'daily', 'manual']).optional().default('daily'),
 })
 
 /**
@@ -2244,7 +2244,7 @@ export const zKnowledgeFsInitialOnlineDriveSourcePayload = z.object({
   provider: z.string().min(1).max(255),
   providerDisplayName: z.string().min(1).max(255).nullish(),
   selection: z.array(zKnowledgeFsOnlineDriveWorkflowImportItemPayload).min(1).max(200),
-  sync_policy: z.enum(['custom', 'daily', 'manual', 'provider']).optional().default('provider'),
+  sync_policy: z.enum(['custom', 'daily', 'manual']).optional().default('daily'),
 })
 
 /**
@@ -2731,7 +2731,7 @@ export const zKnowledgeFsSourceProviderListResponse = z.object({
 export const zKnowledgeFsDeferredSyncPolicyPayload = z.object({
   customIntervalSeconds: z.int().gte(3600).lte(2592000).nullish(),
   enabled: z.boolean(),
-  mode: z.enum(['custom', 'interval', 'manual', 'provider']),
+  mode: z.enum(['custom', 'interval', 'manual']),
 })
 
 /**

@@ -919,7 +919,7 @@ describe('SourcesPage', () => {
                 lastImport: {
                   kind: 'online-document-import',
                   state: 'failed',
-                  syncPolicy: { enabled: true, mode: 'provider' },
+                  syncPolicy: { enabled: true, mode: 'interval' },
                   workflowId: 'import-workflow',
                 },
                 preview: false,
@@ -964,7 +964,7 @@ describe('SourcesPage', () => {
       metadata: {
         pendingImport: {
           kind: 'online-document-import',
-          syncPolicy: { enabled: true, mode: 'provider' },
+          syncPolicy: { enabled: true, mode: 'interval' },
           workflowId: 'import-workflow',
         },
         preview: false,

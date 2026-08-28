@@ -17,7 +17,7 @@ import { sourceWorkflowFromApi } from './source-models'
 import { DEFAULT_CUSTOM_SYNC_INTERVAL_SECONDS, SyncPolicyField } from './sync-policy-field'
 import { useKnowledgeModelSetupGuard } from './use-knowledge-model-setup-guard'
 
-type SyncMode = 'provider' | 'manual' | 'interval' | 'custom'
+type SyncMode = 'manual' | 'interval' | 'custom'
 
 export const MAX_SELECTED_PAGES = 200
 

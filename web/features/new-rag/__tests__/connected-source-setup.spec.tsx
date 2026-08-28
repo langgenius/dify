@@ -478,7 +478,7 @@ const defaultDraft: NewKnowledgeOnlineDocumentsSourceDraft = {
   provider: 'Notion',
   sourceName: '',
   sourceType: 'onlineDocuments',
-  syncPolicy: 'provider',
+  syncPolicy: 'daily',
 }
 
 type ConnectedDraft = NewKnowledgeOnlineDocumentsSourceDraft | NewKnowledgeOnlineDriveSourceDraft
@@ -760,7 +760,7 @@ describe('ConnectedSourceSetup', () => {
           },
         ],
         kind: 'online-document-import',
-        syncPolicy: { enabled: true, mode: 'provider' },
+        syncPolicy: { enabled: true, mode: 'interval' },
       },
       headers: { 'Idempotency-Key': expect.any(String) },
       params: { control_space_id: 'space-1', source_id: 'preview-source' },
@@ -811,7 +811,7 @@ describe('ConnectedSourceSetup', () => {
         metadata: {
           pendingImport: {
             kind: 'online-document-import',
-            syncPolicy: { enabled: true, mode: 'provider' },
+            syncPolicy: { enabled: true, mode: 'interval' },
             workflowId: 'import-run-1',
           },
           preview: false,
@@ -1021,7 +1021,7 @@ describe('ConnectedSourceSetup', () => {
       provider: 'Google Docs',
       sourceName: 'Team docs',
       sourceType: 'onlineDocuments',
-      syncPolicy: 'provider',
+      syncPolicy: 'daily',
     }
 
     clientMock.listProviders.mockResolvedValue({
@@ -1160,7 +1160,7 @@ describe('ConnectedSourceSetup', () => {
           },
         ],
         kind: 'online-drive-import',
-        syncPolicy: { enabled: true, mode: 'provider' },
+        syncPolicy: { enabled: true, mode: 'interval' },
       },
       headers: { 'Idempotency-Key': expect.any(String) },
       params: { control_space_id: 'space-1', source_id: googlePreviewSource.id },
@@ -1177,7 +1177,7 @@ describe('ConnectedSourceSetup', () => {
       provider: 'Amazon S3',
       sourceName: 'Product archive',
       sourceType: 'onlineDrive',
-      syncPolicy: 'provider',
+      syncPolicy: 'daily',
     }
     const s3Connection = connectionResponse({
       configuration: {
@@ -1331,14 +1331,6 @@ describe('ConnectedSourceSetup', () => {
     )
 
     const view = renderSetup(s3Draft)
-
-    await waitFor(() =>
-      expect(view.onDraftChange).toHaveBeenCalledWith({
-        ...s3Draft,
-        syncPolicy: 'daily',
-      }),
-    )
-    view.rerenderDraft({ ...s3Draft, syncPolicy: 'daily' })
 
     const bucket = await screen.findByRole('button', { name: 'product-bucket' })
     expect(screen.getByText('s3://product-bucket · us-west-2')).toBeInTheDocument()

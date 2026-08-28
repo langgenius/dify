@@ -47,11 +47,7 @@ function SyncPolicyFieldHarness() {
   return (
     <>
       <output data-testid="policy-value">{JSON.stringify(value)}</output>
-      <SyncPolicyField
-        availableModes={['manual', 'interval', 'custom']}
-        value={value}
-        onChange={setValue}
-      />
+      <SyncPolicyField value={value} onChange={setValue} />
     </>
   )
 }

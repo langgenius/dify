@@ -712,7 +712,6 @@
   "newKnowledge.syncPolicyEveryValue": "{{interval}}마다",
   "newKnowledge.syncPolicyLoadFailed": "동기화 정책을 불러오지 못했습니다.",
   "newKnowledge.syncPolicyManual": "수동 전용",
-  "newKnowledge.syncPolicyProvider": "제공업체 일정 사용",
   "newKnowledge.syncPolicyUnit.days": "일",
   "newKnowledge.syncPolicyUnit.hours": "시간",
   "newKnowledge.tags": "태그",

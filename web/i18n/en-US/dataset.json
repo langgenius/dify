@@ -757,7 +757,6 @@
   "newKnowledge.syncPolicyEveryValue": "Every {{interval}}",
   "newKnowledge.syncPolicyLoadFailed": "We couldn't load the sync policy.",
   "newKnowledge.syncPolicyManual": "Manual only",
-  "newKnowledge.syncPolicyProvider": "Provider sync",
   "newKnowledge.syncPolicyUnit.days": "days",
   "newKnowledge.syncPolicyUnit.hours": "hours",
   "newKnowledge.tags": "Tags",

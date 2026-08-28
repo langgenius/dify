@@ -547,14 +547,7 @@ function ConnectedSourceSyncPolicyField({
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
 }) {
   return (
-    <SourceSyncPolicyField
-      availablePolicies={
-        draft.provider === 'Amazon S3' ? ['daily', 'manual'] : ['provider', 'daily', 'manual']
-      }
-      draft={draft}
-      triggerClassName="w-75.25"
-      onDraftChange={onDraftChange}
-    />
+    <SourceSyncPolicyField draft={draft} triggerClassName="w-75.25" onDraftChange={onDraftChange} />
   )
 }
 
@@ -1256,15 +1249,13 @@ function ResourceConfiguration({
       const policy =
         draft.syncPolicy === 'manual'
           ? ({ enabled: false, mode: 'manual' } as const)
-          : draft.syncPolicy === 'daily'
-            ? ({ enabled: true, mode: 'interval' } as const)
-            : draft.syncPolicy === 'custom'
-              ? ({
-                  customIntervalSeconds: draft.customIntervalSeconds,
-                  enabled: true,
-                  mode: 'custom',
-                } as const)
-              : ({ enabled: true, mode: 'provider' } as const)
+          : draft.syncPolicy === 'custom'
+            ? ({
+                customIntervalSeconds: draft.customIntervalSeconds,
+                enabled: true,
+                mode: 'custom',
+              } as const)
+            : ({ enabled: true, mode: 'interval' } as const)
       const requestFingerprint = JSON.stringify({
         policy,
         selected: [...selected.keys()].sort(),
@@ -1664,11 +1655,6 @@ export function ConnectedSourceSetup({
   const { refetch: refetchDatasourcePlugins } = datasourcePluginsQuery
 
   useEffect(() => {
-    if (draft.provider === 'Amazon S3' && draft.syncPolicy === 'provider')
-      onDraftChange({ ...draft, syncPolicy: 'daily' })
-  }, [draft, onDraftChange])
-
-  useEffect(() => {
     if (hasNextConnectionPage && !fetchingNextConnectionPage && !connectionNextPageError)
       void fetchNextConnectionPage()
   }, [
@@ -1801,10 +1787,6 @@ export function ConnectedSourceSetup({
       provider: nextProvider.label,
       providerKey: nextProvider.key,
       sourceName: '',
-      syncPolicy:
-        nextProvider.label === 'Amazon S3' && draft.syncPolicy === 'provider'
-          ? 'daily'
-          : draft.syncPolicy,
     })
   }
   return (

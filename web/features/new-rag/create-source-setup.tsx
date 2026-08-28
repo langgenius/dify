@@ -243,11 +243,6 @@ export function CreateSourceSetup({
       providerKey: nextProvider.key,
       sourceName: '',
       ...(draft.sourceType === 'websiteCrawl' ? { rootUrl: '' } : {}),
-      ...(draft.sourceType === 'onlineDrive' &&
-      nextProvider.label === 'Amazon S3' &&
-      draft.syncPolicy === 'provider'
-        ? { syncPolicy: 'daily' as const }
-        : {}),
     })
   }
 

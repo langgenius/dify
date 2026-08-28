@@ -715,7 +715,6 @@
   "newKnowledge.syncPolicyEveryValue": "每 {{interval}}",
   "newKnowledge.syncPolicyLoadFailed": "無法載入同步政策。",
   "newKnowledge.syncPolicyManual": "僅限手動",
-  "newKnowledge.syncPolicyProvider": "使用供應商排程",
   "newKnowledge.syncPolicyUnit.days": "天",
   "newKnowledge.syncPolicyUnit.hours": "小時",
   "newKnowledge.tags": "標籤",

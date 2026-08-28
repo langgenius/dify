@@ -2178,7 +2178,7 @@ export type KnowledgeFsSourceSyncPolicyResponse = {
   expected_source_version: number
   id: string
   knowledge_space_id: string
-  mode: 'custom' | 'interval' | 'manual' | 'provider'
+  mode: 'custom' | 'interval' | 'manual'
   next_run_at?: string | null
   revision: number
   source_id: string

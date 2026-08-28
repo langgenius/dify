@@ -712,7 +712,6 @@
   "newKnowledge.syncPolicyEveryValue": "Her {{interval}}",
   "newKnowledge.syncPolicyLoadFailed": "Eşitleme politikası yüklenemedi.",
   "newKnowledge.syncPolicyManual": "Yalnızca manuel",
-  "newKnowledge.syncPolicyProvider": "Sağlayıcı zamanlamasını kullan",
   "newKnowledge.syncPolicyUnit.days": "gün",
   "newKnowledge.syncPolicyUnit.hours": "saat",
   "newKnowledge.tags": "Etiketler",

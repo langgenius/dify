@@ -4579,6 +4579,7 @@ Model class for i18n object.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| document_title | string |  | No |
 | job | [KnowledgeFSDurableDeletionJobResponse](#knowledgefsdurabledeletionjobresponse) |  | Yes |
 | status_url | string |  | Yes |
 
@@ -5095,7 +5096,7 @@ Model class for i18n object.
 | expected_source_version | integer |  | Yes |
 | id | string |  | Yes |
 | knowledge_space_id | string |  | Yes |
-| mode | string, <br>**Available values:** "custom", "interval", "manual", "provider" | *Enum:* `"custom"`, `"interval"`, `"manual"`, `"provider"` | Yes |
+| mode | string, <br>**Available values:** "custom", "interval", "manual" | *Enum:* `"custom"`, `"interval"`, `"manual"` | Yes |
 | next_run_at | string |  | No |
 | revision | integer |  | Yes |
 | source_id | string |  | Yes |
@@ -5108,7 +5109,9 @@ Model class for i18n object.
 | expectedVersion | integer |  | No |
 | metadata | object |  | No |
 | name | string |  | No |
+| providerParameters | object |  | No |
 | status | string |  | No |
+| uri | string |  | No |
 
 #### KnowledgeFSSourceWorkflowResponse
 

@@ -712,7 +712,6 @@
   "newKnowledge.syncPolicyEveryValue": "हर {{interval}}",
   "newKnowledge.syncPolicyLoadFailed": "सिंक नीति लोड नहीं की जा सकी।",
   "newKnowledge.syncPolicyManual": "केवल मैन्युअल",
-  "newKnowledge.syncPolicyProvider": "प्रदाता का शेड्यूल उपयोग करें",
   "newKnowledge.syncPolicyUnit.days": "दिन",
   "newKnowledge.syncPolicyUnit.hours": "घंटे",
   "newKnowledge.tags": "टैग",

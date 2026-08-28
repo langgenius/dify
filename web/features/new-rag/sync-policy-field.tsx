@@ -38,7 +38,7 @@ const MIN_SYNC_INTERVAL_SECONDS = HOUR_SECONDS
 const MAX_SYNC_INTERVAL_SECONDS = 30 * DAY_SECONDS
 export const DEFAULT_CUSTOM_SYNC_INTERVAL_SECONDS = 36 * HOUR_SECONDS
 
-export type SyncPolicyMode = 'custom' | 'interval' | 'manual' | 'provider'
+export type SyncPolicyMode = 'custom' | 'interval' | 'manual'
 export type SyncPolicyValue = {
   customIntervalSeconds?: number
   mode: SyncPolicyMode
@@ -53,7 +53,6 @@ type SyncPolicyChoice =
   | 'interval-3-days'
   | 'interval-7-days'
   | 'manual'
-  | 'provider'
 
 type IntervalUnit = 'days' | 'hours'
 
@@ -73,7 +72,7 @@ function clampedIntervalSeconds(value: number) {
 }
 
 function choiceForValue(value: SyncPolicyValue): SyncPolicyChoice {
-  if (value.mode === 'manual' || value.mode === 'provider') return value.mode
+  if (value.mode === 'manual') return value.mode
   if (value.mode === 'interval') return 'interval-24-hours'
   return (
     presetIntervals.find((option) => option.seconds === value.customIntervalSeconds)?.choice ??
@@ -93,7 +92,6 @@ function initialEditorValue(seconds: number) {
 }
 
 function syncPolicyValueLabel(t: TFunction<'dataset'>, language: string, value: SyncPolicyValue) {
-  if (value.mode === 'provider') return t(($) => $['newKnowledge.syncPolicyProvider'])
   if (value.mode === 'manual') return t(($) => $['newKnowledge.syncPolicyManual'])
   if (value.mode === 'interval') return t(($) => $['newKnowledge.syncPolicyDaily'])
 
@@ -230,7 +228,6 @@ function CustomIntervalPopover({
 }
 
 export function SyncPolicyField({
-  availableModes = ['provider', 'manual', 'interval', 'custom'],
   className,
   disabled = false,
   label = true,
@@ -239,7 +236,6 @@ export function SyncPolicyField({
   value,
   onChange,
 }: {
-  availableModes?: readonly SyncPolicyMode[]
   className?: string
   disabled?: boolean
   label?: boolean
@@ -263,7 +259,7 @@ export function SyncPolicyField({
       window.requestAnimationFrame(() => setCustomOpen(true))
       return
     }
-    if (choice === 'manual' || choice === 'provider') {
+    if (choice === 'manual') {
       onChange({ mode: choice })
       return
     }
@@ -289,53 +285,44 @@ export function SyncPolicyField({
           {syncPolicyValueLabel(t, i18n.resolvedLanguage ?? i18n.language, value)}
         </SelectTrigger>
         <SelectContent>
-          {availableModes.includes('manual') && (
-            <SelectItem value="manual">
-              <SelectItemText>{t(($) => $['newKnowledge.syncPolicyManual'])}</SelectItemText>
+          <SelectItem value="manual">
+            <SelectItemText>{t(($) => $['newKnowledge.syncPolicyManual'])}</SelectItemText>
+            <SelectItemIndicator />
+          </SelectItem>
+          {presetIntervals.map((option) => (
+            <SelectItem key={option.choice} value={option.choice}>
+              <SelectItemText>
+                {syncPolicyValueLabel(t, i18n.resolvedLanguage ?? i18n.language, {
+                  customIntervalSeconds: option.seconds,
+                  mode: option.seconds === DAY_SECONDS ? 'interval' : 'custom',
+                })}
+              </SelectItemText>
               <SelectItemIndicator />
             </SelectItem>
+          ))}
+          <SelectSeparator />
+          {customIntervalSelected ? (
+            <SelectItem value="custom">
+              <SelectItemText>
+                {t(($) => $['newKnowledge.syncPolicyCustomValue'], {
+                  interval: syncPolicyValueLabel(
+                    t,
+                    i18n.resolvedLanguage ?? i18n.language,
+                    value,
+                  ).toLocaleLowerCase(i18n.resolvedLanguage ?? i18n.language),
+                })}
+              </SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+          ) : (
+            <SelectItem value="custom">
+              <SelectItemText>{t(($) => $['newKnowledge.syncPolicyCustom'])}</SelectItemText>
+            </SelectItem>
           )}
-          {availableModes.includes('interval') &&
-            presetIntervals.map((option) => (
-              <SelectItem key={option.choice} value={option.choice}>
-                <SelectItemText>
-                  {syncPolicyValueLabel(t, i18n.resolvedLanguage ?? i18n.language, {
-                    customIntervalSeconds: option.seconds,
-                    mode: option.seconds === DAY_SECONDS ? 'interval' : 'custom',
-                  })}
-                </SelectItemText>
-                <SelectItemIndicator />
-              </SelectItem>
-            ))}
-          {availableModes.includes('custom') && (
-            <>
-              <SelectSeparator />
-              {customIntervalSelected ? (
-                <SelectItem value="custom">
-                  <SelectItemText>
-                    {t(($) => $['newKnowledge.syncPolicyCustomValue'], {
-                      interval: syncPolicyValueLabel(
-                        t,
-                        i18n.resolvedLanguage ?? i18n.language,
-                        value,
-                      ).toLocaleLowerCase(i18n.resolvedLanguage ?? i18n.language),
-                    })}
-                  </SelectItemText>
-                  <SelectItemIndicator />
-                </SelectItem>
-              ) : (
-                <SelectItem value="custom">
-                  <SelectItemText>{t(($) => $['newKnowledge.syncPolicyCustom'])}</SelectItemText>
-                </SelectItem>
-              )}
-              {customIntervalSelected && (
-                <SelectItem value="custom-edit">
-                  <SelectItemText>
-                    {t(($) => $['newKnowledge.syncPolicyEditCustom'])}
-                  </SelectItemText>
-                </SelectItem>
-              )}
-            </>
+          {customIntervalSelected && (
+            <SelectItem value="custom-edit">
+              <SelectItemText>{t(($) => $['newKnowledge.syncPolicyEditCustom'])}</SelectItemText>
+            </SelectItem>
           )}
         </SelectContent>
       </Select>
