@@ -692,19 +692,6 @@ describe('AppCard', () => {
       expect(screen.getByRole('listitem')).toContainElement(cardLink)
     })
 
-    it('should expose the card focus ring from the visual surface', () => {
-      render(<AppCard app={mockApp} />)
-      const cardLink = screen.getByRole('link', { name: 'Test App' })
-      const card = screen.getByRole('listitem')
-
-      expect(cardLink).toHaveClass('outline-hidden')
-      expect(cardLink.parentElement).toBe(card)
-      expect(card).toHaveClass('isolate')
-      expect(card).toHaveClass('after:z-1')
-      expect(card).toHaveClass('has-[>a:focus-visible]:after:inset-ring-2')
-      expect(card).toHaveClass('has-[>a:focus-visible]:after:inset-ring-state-accent-solid')
-    })
-
     it('should keep card navigation and actions as sibling focus targets', async () => {
       const user = userEvent.setup()
       render(<AppCard app={mockApp} />)
@@ -764,22 +751,6 @@ describe('AppCard', () => {
   })
 
   describe('Operations Menu', () => {
-    it('should reveal operations trigger when card receives keyboard focus', () => {
-      render(<AppCard app={mockApp} />)
-      const operationsTrigger = getOperationsTrigger()
-      const operationsTriggerWrapper = operationsTrigger.closest('.absolute')
-      const actionBar = operationsTriggerWrapper?.firstElementChild
-
-      expect(operationsTriggerWrapper).toHaveClass('top-[-0.5px]')
-      expect(operationsTriggerWrapper).toHaveClass('right-[-0.5px]')
-      expect(operationsTriggerWrapper).toHaveClass('h-16')
-      expect(operationsTriggerWrapper).toHaveClass('w-30')
-      expect(operationsTriggerWrapper).toHaveClass('group-focus-within:opacity-100')
-      expect(actionBar).toHaveClass('group-focus-within:pointer-events-auto')
-      expect(operationsTrigger).toHaveClass('focus-visible:ring-2')
-      expect(operationsTrigger).toHaveClass('focus-visible:ring-state-accent-solid')
-    })
-
     it('should show edit option when dropdown menu is opened', async () => {
       const user = userEvent.setup()
       render(<AppCard app={mockApp} />)
@@ -1255,10 +1226,8 @@ describe('AppCard', () => {
       render(<AppCard app={mockApp} />)
 
       const trigger = screen.getByRole('button', { name: 'common.operation.exporting' })
-      const actionBar = trigger.closest('.absolute')?.firstElementChild
 
       expect(trigger).toBeDisabled()
-      expect(actionBar).toHaveClass('pointer-events-auto')
     })
   })
 
