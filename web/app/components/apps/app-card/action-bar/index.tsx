@@ -357,10 +357,8 @@ export const AppCardActionBar = memo(
       shouldShowSwitchOption ||
       shouldShowAccessConfigOption ||
       shouldShowDeleteOption
-    const starActionLabel = app.is_starred
-      ? t(($) => $['studio.unstarApp'], { ns: 'app' })
-      : t(($) => $['studio.starApp'], { ns: 'app' })
     const starToggleLabel = t(($) => $['studio.starApp'], { ns: 'app' })
+    const starToggleAccessibleLabel = `${starToggleLabel}: ${app.name}`
 
     return (
       <>
@@ -383,7 +381,7 @@ export const AppCardActionBar = memo(
                     render={
                       <IconButton
                         size="lg"
-                        aria-label={starToggleLabel}
+                        aria-label={starToggleAccessibleLabel}
                         className="group disabled:opacity-70"
                       >
                         <StarIcon
@@ -395,7 +393,7 @@ export const AppCardActionBar = memo(
                   />
                 }
               />
-              <TooltipContent>{starActionLabel}</TooltipContent>
+              <TooltipContent>{starToggleLabel}</TooltipContent>
             </Tooltip>
             {shouldShowOperationsMenu && (
               <DropdownMenu

@@ -16,6 +16,7 @@ import {
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { headers } from '@/next/headers'
 import { getApplicationTitle } from '@/utils/document-title'
+import { basePath } from '@/utils/var'
 import { CloudAnalytics } from './components/base/analytics-consent/cloud-analytics'
 import { PartnerStackCookieRecorder } from './components/billing/partner-stack/cookie-recorder'
 import { AgentationLoader } from './components/devtools/agentation-loader'
@@ -33,11 +34,9 @@ export const viewport: Viewport = {
 
 export async function generateMetadata(): Promise<Metadata> {
   const systemFeatures = await prefetchSystemFeatures()
-  const applicationTitle = getApplicationTitle(systemFeatures?.branding)
-  const brandedFavicon =
-    systemFeatures?.branding.enabled && systemFeatures.branding.favicon
-      ? systemFeatures.branding.favicon
-      : undefined
+  const branding = systemFeatures?.branding
+  const applicationTitle = getApplicationTitle(branding)
+  const brandedFavicon = branding?.enabled ? branding.favicon : undefined
 
   return {
     title: {
@@ -45,12 +44,8 @@ export async function generateMetadata(): Promise<Metadata> {
       template: `%s - ${applicationTitle}`,
     },
     icons: brandedFavicon
-      ? {
-          apple: brandedFavicon,
-          icon: brandedFavicon,
-          shortcut: brandedFavicon,
-        }
-      : undefined,
+      ? { icon: brandedFavicon, apple: brandedFavicon }
+      : { icon: `${basePath}/favicon.ico` },
   }
 }
 
