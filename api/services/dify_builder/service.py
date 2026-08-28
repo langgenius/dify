@@ -37,6 +37,7 @@ from core.dify_builder.models import (
 )
 from core.dify_builder.ports import Repository
 from core.dify_builder.state import PcState, canvas_read_only, is_terminal, is_waiting, is_working
+from services.dify_builder.agent.model_resolver import validate_model_config
 from services.feature_service import FeatureService
 
 __all__ = ["DifyBuilderService", "SessionLock", "SessionView", "resolve_action_kind"]
@@ -307,6 +308,7 @@ class DifyBuilderService:
         actor: Actor,
         failed_run_id: str | None = None,
         checklist_errors: list[ChecklistError] | None = None,
+        model_config: dict | None = None,
     ) -> SessionView:
         """Port of Go ``CreateFixSession``, extended to record the failed run.
 
@@ -318,10 +320,14 @@ class DifyBuilderService:
         ``dify.node_outputs``). Checklist takes precedence when errors are
         present (no failed run on that path).
         """
+        if model_config:
+            validate_model_config(actor.tenant_id, model_config)
         failed_run: Run | None = None
         if checklist_errors:
             entry_mode, state = EntryMode.FIX_CHECKLIST, PcState.CHECKLIST_DIAGNOSE
-            fc = DifyBuilderContext(source="checklist", checklist_errors=checklist_errors)
+            fc = DifyBuilderContext(
+                source="checklist", checklist_errors=checklist_errors, model_config=model_config or {}
+            )
         else:
             entry_mode, state = EntryMode.FIX, PcState.FIX_DIAGNOSE
             failed_run = Run(
@@ -331,7 +337,7 @@ class DifyBuilderService:
                 status="failed",
                 immutable=True,
             )
-            fc = DifyBuilderContext(failed_run_id=failed_run.id, source="run")
+            fc = DifyBuilderContext(failed_run_id=failed_run.id, source="run", model_config=model_config or {})
 
         s = Session(
             app_id=app_id,
@@ -353,13 +359,17 @@ class DifyBuilderService:
         self.dispatch(s.id, Action(kind="request_fix", base_version=1), actor)
         return self.get_session_view(s.id, actor)
 
-    def create_build_session(self, app_id: str, actor: Actor, goal_text: str) -> SessionView:
+    def create_build_session(
+        self, app_id: str, actor: Actor, goal_text: str, model_config: dict | None = None
+    ) -> SessionView:
         """Start a Build session at build.capability_check and dispatch the
         initial ``send_goal`` (parallels ``create_fix_session``). The goal is
         seeded as the user's opening bubble; the first advance's
         ``handle_capability_check`` analyzes it into requirements."""
+        if model_config:
+            validate_model_config(actor.tenant_id, model_config)
         policy = FeatureService.get_features(actor.tenant_id).skill_learning_policy
-        fc = DifyBuilderContext(goal_text=goal_text, skill_learning_policy=policy)
+        fc = DifyBuilderContext(goal_text=goal_text, skill_learning_policy=policy, model_config=model_config or {})
         s = Session(
             app_id=app_id,
             tenant_id=actor.tenant_id,
@@ -372,14 +382,16 @@ class DifyBuilderService:
         self.dispatch(s.id, Action(kind="send_goal", payload={"text": goal_text}, base_version=1), actor)
         return self.get_session_view(s.id, actor)
 
-    def create_edit_session(self, app_id: str, actor: Actor) -> SessionView:
+    def create_edit_session(self, app_id: str, actor: Actor, model_config: dict | None = None) -> SessionView:
         """Start an Edit session at edit.capability_check WITHOUT dispatching.
         Mock 02-edit.txt:3 -- on open, show history + composer only; do not read
         or lock the canvas. The graph read + impact analysis happen on the first
         send_edit_goal action, not here. Unlike create_build_session, this takes
         no goal and enqueues no advance -- the session simply rests, canvas
         editable, until the user sends their change request."""
-        fc = DifyBuilderContext()
+        if model_config:
+            validate_model_config(actor.tenant_id, model_config)
+        fc = DifyBuilderContext(model_config=model_config or {})
         s = Session(
             app_id=app_id,
             tenant_id=actor.tenant_id,
