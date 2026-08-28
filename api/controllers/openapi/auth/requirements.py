@@ -207,8 +207,7 @@ class CheckSessionOwnership(Requirement):
 
     A token id belonging to another subject answers 404, not 403, exactly like a
     token id that does not exist — a 403 would confirm the id, letting a caller
-    enumerate session ids across subjects. `token_belongs_to_subject` carries the
-    same rule on the query side.
+    enumerate session ids across subjects.
     """
 
     @override
@@ -219,7 +218,11 @@ class CheckSessionOwnership(Requirement):
 
 
 class RequireWebappAccess(Requirement):
-    """Run-scope comes from the declaration site, so it is not re-checked here."""
+    """Run-scope comes from the declaration site, so it is not re-checked here.
+
+    The ACL is gated on `webapp_auth.enabled` and the private-app check is not:
+    the asymmetry is deliberate, not an oversight.
+    """
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
