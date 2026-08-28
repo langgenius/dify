@@ -10,14 +10,6 @@ import Pricing from '../index'
 
 let mockConsoleState: Record<string, unknown> = {}
 
-vi.mock('../header', () => ({
-  default: ({ onClose }: { onClose: () => void }) => (
-    <button type="button" onClick={onClose}>
-      close
-    </button>
-  ),
-}))
-
 vi.mock('../plan-switcher', () => ({
   default: () => <div>plan-switcher</div>,
 }))
@@ -76,7 +68,7 @@ describe('Pricing dialog lifecycle', () => {
     const { wrapper } = createConsoleQueryWrapper()
     render(<Pricing onCancel={onCancel} />, { wrapper })
 
-    await user.click(screen.getByRole('button', { name: 'close' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(onCancel).toHaveBeenCalledTimes(1)
   })

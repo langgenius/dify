@@ -1,7 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import type { Category } from './types'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -14,6 +15,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGetPricingPageLanguage } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
@@ -31,6 +33,7 @@ type PricingProps = {
 }
 
 const Pricing: FC<PricingProps> = ({ onCancel }) => {
+  const { t } = useTranslation()
   const { plan, enableEducationPlan } = useProviderContext()
   const { data: isEducationAccount = false } = useQuery(
     consoleQuery.account.education.get.queryOptions({
@@ -59,14 +62,26 @@ const Pricing: FC<PricingProps> = ({ onCancel }) => {
       }}
     >
       <DialogContent className="inset-0 size-full max-h-none max-w-none translate-0 overflow-hidden rounded-none border-none bg-saas-background p-0 shadow-none">
-        <ScrollArea className="relative h-full w-full overflow-hidden">
+        <DialogClose
+          render={
+            <IconButton
+              variant="secondary"
+              size="xl"
+              className="absolute inset-e-5.5 top-6 z-10 rounded-full"
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            >
+              <span aria-hidden="true" className="i-ri-close-line size-5" />
+            </IconButton>
+          }
+        />
+        <ScrollArea className="h-full w-full overflow-hidden">
           <ScrollAreaViewport className="overscroll-contain">
             <ScrollAreaContent className="min-h-full min-w-300">
               <div className="relative grid min-h-full grid-rows-[1fr_auto_auto_1fr] overflow-hidden">
                 <div className="absolute inset-x-0 -top-12 -z-10">
                   <NoiseTop />
                 </div>
-                <Header onClose={onCancel} />
+                <Header />
                 <PlanSwitcher
                   currentCategory={currentCategory}
                   onChangeCategory={setCurrentCategory}

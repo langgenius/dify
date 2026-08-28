@@ -240,7 +240,7 @@ const WebAppsSectionContent = () => {
         </div>
       </CollapsiblePanel>
       {appsExpanded && (
-        <ScrollArea className="relative min-h-0 flex-1 overflow-hidden">
+        <ScrollArea className="min-h-0 flex-1 overflow-hidden">
           <ScrollAreaViewport
             ref={scrollRef}
             aria-busy={installedAppsQuery.isFetchingNextPage}

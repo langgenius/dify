@@ -184,7 +184,7 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
   const body = (
     <>
       <div className="relative flex h-0 shrink-0 grow flex-col overflow-hidden bg-components-panel-bg">
-        <ScrollArea className="relative min-h-0 grow overflow-hidden bg-components-panel-bg">
+        <ScrollArea className="min-h-0 grow overflow-hidden bg-components-panel-bg">
           <ScrollAreaViewport
             ref={containerRef}
             aria-label={t(($) => $['menus.tools'], { ns: 'common' })}
