@@ -1068,11 +1068,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/icons/src/public/billing/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 4
-    }
-  },
   "web/app/components/base/icons/src/public/common/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 5
@@ -1765,11 +1760,6 @@
   "web/app/components/billing/plan/assets/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
-    }
-  },
-  "web/app/components/billing/pricing/assets/index.tsx": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 12
     }
   },
   "web/app/components/datasets/chunk.tsx": {
