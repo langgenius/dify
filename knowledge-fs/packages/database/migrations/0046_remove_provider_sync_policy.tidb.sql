@@ -14,10 +14,10 @@ SET @kfs_0046_source_sync_policies_mode_ck_drop_sql = IF(
   'ALTER TABLE `source_sync_policies` DROP CONSTRAINT `source_sync_policies_mode_ck`',
   'SELECT 1'
 );
-PREPARE kfs_0046_source_sync_policies_mode_ck_drop_stmt
+PREPARE kfs_0046_drop_mode_ck_stmt
   FROM @kfs_0046_source_sync_policies_mode_ck_drop_sql;
-EXECUTE kfs_0046_source_sync_policies_mode_ck_drop_stmt;
-DEALLOCATE PREPARE kfs_0046_source_sync_policies_mode_ck_drop_stmt;
+EXECUTE kfs_0046_drop_mode_ck_stmt;
+DEALLOCATE PREPARE kfs_0046_drop_mode_ck_stmt;
 
 ALTER TABLE `source_sync_policies`
   ADD CONSTRAINT `source_sync_policies_mode_ck`
