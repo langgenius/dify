@@ -32,7 +32,7 @@ function HomeCatalogNavigation({
   const setIsPinned = useSetAtom(homeCatalogPinnedAtom)
   const isPinnedRef = useRef(isPinned)
   const pendingFocusedTabHrefRef = useRef<string | null>(null)
-  const pinTriggerRef = useRef<HTMLSpanElement>(null)
+  const catalogTabsRegionRef = useRef<HTMLDivElement>(null)
 
   useLayoutEffect(() => {
     isPinnedRef.current = isPinned
@@ -52,14 +52,15 @@ function HomeCatalogNavigation({
         : null
 
     const updatePinnedState = () => {
-      const pinTrigger = pinTriggerRef.current
-      if (!pinTrigger) return
+      const catalogTabsRegion = catalogTabsRegionRef.current
+      if (!catalogTabsRegion) return
 
       const containerTop = scrollContainer.getBoundingClientRect().top
-      const triggerTop = pinTrigger.getBoundingClientRect().top
+      const catalogTabsRegionBottom = catalogTabsRegion.getBoundingClientRect().bottom
       const canUseHeaderSlot =
         !isMarketplacePlatform || !desktopHeaderSlotQuery || desktopHeaderSlotQuery.matches
-      const nextIsPinned = canUseHeaderSlot && triggerTop <= containerTop + HOME_HEADER_HEIGHT_PX
+      const nextIsPinned =
+        canUseHeaderSlot && catalogTabsRegionBottom <= containerTop + HOME_HEADER_HEIGHT_PX
       if (nextIsPinned === isPinnedRef.current) return
 
       pendingFocusedTabHrefRef.current = getFocusedCatalogTabHref(
@@ -82,8 +83,20 @@ function HomeCatalogNavigation({
   }, [isMarketplacePlatform, setIsPinned])
 
   return (
-    <>
-      <span ref={pinTriggerRef} aria-hidden className={styles.catalogNavigationTrigger} />
+    <div className={styles.catalogNavigationGroup} style={{ top: HOME_HEADER_HEIGHT_PX }}>
+      <div
+        ref={catalogTabsRegionRef}
+        className={cn('w-full shrink-0 bg-background-default', styles.catalogTabsRegion)}
+      >
+        <div
+          aria-hidden={isPinned ? true : undefined}
+          className={cn(styles.catalogTabs, isPinned && styles.catalogTabsPinned)}
+          data-home-catalog-tabs-slot="content"
+          inert={isPinned ? true : undefined}
+        >
+          {catalogTabs}
+        </div>
+      </div>
       <section
         aria-label={t(($) => $['mainNav.marketplace'], { ns: 'common' })}
         className={cn(
@@ -95,15 +108,7 @@ function HomeCatalogNavigation({
         style={{ top: HOME_HEADER_HEIGHT_PX }}
       >
         <div className="w-full">
-          <div
-            aria-hidden={isPinned ? true : undefined}
-            className={cn(styles.catalogTabs, isPinned && styles.catalogTabsPinned)}
-            data-home-catalog-tabs-slot="content"
-            inert={isPinned ? true : undefined}
-          >
-            {catalogTabs}
-          </div>
-          <div className="mt-4 flex w-full items-center gap-2">
+          <div className="flex w-full items-center gap-2">
             {catalogLeading && (
               <>
                 <div className={cn('shrink-0', styles.catalogLeading)}>{catalogLeading}</div>
@@ -123,7 +128,7 @@ function HomeCatalogNavigation({
           </div>
         </div>
       </section>
-    </>
+    </div>
   )
 }
 

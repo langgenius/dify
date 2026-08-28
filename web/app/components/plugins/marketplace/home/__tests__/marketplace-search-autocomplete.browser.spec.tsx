@@ -124,10 +124,10 @@ describe('Marketplace search autocomplete layout', () => {
             id={MARKETPLACE_CONTAINER_ID}
             data-marketplace-standalone
             data-testid="marketplace-scroll-container"
-            className="h-[360px] w-[1200px] overflow-y-auto"
+            style={{ height: 360, width: 1200, overflowY: 'auto' }}
           >
             <PinnedHeaderState />
-            <div className="h-[180px]" aria-hidden />
+            <div style={{ height: 180 }} aria-hidden />
             <HomeSearch enableSearchShortcut={false}>
               <StickyTemplateSearch />
             </HomeSearch>
@@ -136,14 +136,14 @@ describe('Marketplace search autocomplete layout', () => {
               catalogCategories={<div role="group" aria-label="Template categories" />}
               catalogTabs={<div role="tablist" aria-label="Catalog tabs" />}
             />
-            <main aria-label="Template catalog" className="h-[900px]" />
+            <main aria-label="Template catalog" style={{ height: 900 }} />
           </div>
         </HomeStickyStateProvider>
       </Wrapper>,
     )
 
     const scrollContainer = screen.getByTestId('marketplace-scroll-container').element()
-    scrollContainer.scrollTop = 220
+    scrollContainer.scrollTop = 300
     scrollContainer.dispatchEvent(new Event('scroll'))
     await new Promise(requestAnimationFrame)
 

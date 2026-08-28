@@ -54,18 +54,18 @@
   max-width: 420px;
 }
 
-.catalogNavigationTrigger {
-  display: block;
-  width: 100%;
-  height: 0;
-  flex-shrink: 0;
-  pointer-events: none;
+.catalogNavigationGroup {
+  display: contents;
+}
+
+.catalogTabsRegion {
+  padding: 24px 32px 0;
 }
 
 .catalogNavigation {
   position: sticky;
   z-index: 40;
-  padding: 24px 32px 16px;
+  padding: 16px 32px;
 }
 
 .catalogNavigationPinned {
@@ -113,8 +113,21 @@
     display: none;
   }
 
+  :global([data-marketplace-standalone]) .catalogNavigationGroup {
+    position: sticky;
+    z-index: 40;
+    display: block;
+    background-color: var(--color-background-default);
+  }
+
+  :global([data-marketplace-standalone]) .catalogTabsRegion {
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+
   :global([data-marketplace-standalone]) .catalogNavigation {
-    padding: 24px 20px 16px;
+    position: static;
+    padding: 16px 20px;
   }
 
   :global([data-marketplace-standalone]) .catalogLeading {

@@ -23,7 +23,7 @@ vi.mock('../../plugin-type-switch', () => ({
 }))
 
 afterEach(() => {
-  document.querySelectorAll('#marketplace-container').forEach(element => element.remove())
+  document.querySelectorAll('#marketplace-container').forEach((element) => element.remove())
 })
 
 describe('HomeCatalogNavigation', () => {
@@ -196,15 +196,15 @@ describe('HomeCatalogNavigation', () => {
 
     renderNavigation(true)
 
-    const navigationSection = screen.getByRole('region', { name: 'common.mainNav.marketplace' })
-    const pinTrigger = navigationSection.previousElementSibling as HTMLElement
-    const contentTabs = screen.getByRole('navigation', { name: 'common.mainNav.marketplace' })
-      .parentElement!
+    const contentTabs = document.querySelector<HTMLElement>(
+      '[data-home-catalog-tabs-slot="content"]',
+    )!
+    const catalogTabsRegion = contentTabs.parentElement!
     const headerTabs = screen.getByTestId('header-catalog-tabs')
     const headerTabsSlot = headerTabs.parentElement!
-    const triggerRect = vi
-      .spyOn(pinTrigger, 'getBoundingClientRect')
-      .mockReturnValue(new DOMRect(0, 49, 100, 100))
+    const handoffBoundaryRect = vi
+      .spyOn(catalogTabsRegion, 'getBoundingClientRect')
+      .mockReturnValue(new DOMRect(0, -7, 100, 56))
 
     expect(headerTabsSlot).toHaveAttribute('aria-hidden', 'true')
     expect(headerTabsSlot).toHaveAttribute('inert')
@@ -212,7 +212,7 @@ describe('HomeCatalogNavigation', () => {
     expect(contentTabs).not.toHaveAttribute('inert')
 
     containerRect.mockReturnValue(new DOMRect(0, 0, 100, 100))
-    triggerRect.mockReturnValue(new DOMRect(0, 48, 100, 100))
+    handoffBoundaryRect.mockReturnValue(new DOMRect(0, -8, 100, 56))
     fireEvent.scroll(scrollContainer)
 
     expect(headerTabs).toBeInTheDocument()
@@ -232,14 +232,16 @@ describe('HomeCatalogNavigation', () => {
     renderNavigation(true)
 
     const navigationSection = screen.getByRole('region', { name: 'common.mainNav.marketplace' })
-    const pinTrigger = navigationSection.previousElementSibling as HTMLElement
-    const contentTabsSlot = navigationSection.querySelector('nav')!.parentElement!
+    const contentTabsSlot = document.querySelector<HTMLElement>(
+      '[data-home-catalog-tabs-slot="content"]',
+    )!
+    const catalogTabsRegion = contentTabsSlot.parentElement!
     const headerTabs = screen.getByTestId('header-catalog-tabs')
     const headerTabsSlot = headerTabs.parentElement!
     vi.spyOn(scrollContainer, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 100, 100))
-    const triggerRect = vi
-      .spyOn(pinTrigger, 'getBoundingClientRect')
-      .mockReturnValue(new DOMRect(0, 49, 100, 100))
+    const handoffBoundaryRect = vi
+      .spyOn(catalogTabsRegion, 'getBoundingClientRect')
+      .mockReturnValue(new DOMRect(0, -7, 100, 56))
 
     fireEvent.scroll(scrollContainer)
     expect(headerTabs).toBeInTheDocument()
@@ -248,7 +250,7 @@ describe('HomeCatalogNavigation', () => {
     expect(contentTabsSlot).not.toHaveAttribute('aria-hidden')
     expect(contentTabsSlot).not.toHaveAttribute('inert')
 
-    triggerRect.mockReturnValue(new DOMRect(0, 48, 100, 100))
+    handoffBoundaryRect.mockReturnValue(new DOMRect(0, -8, 100, 56))
     fireEvent.scroll(scrollContainer)
 
     expect(navigationSection).toHaveClass(styles.catalogNavigationPinned!)
@@ -258,7 +260,7 @@ describe('HomeCatalogNavigation', () => {
     expect(contentTabsSlot).toHaveAttribute('aria-hidden', 'true')
     expect(contentTabsSlot).toHaveAttribute('inert')
 
-    triggerRect.mockReturnValue(new DOMRect(0, 49, 100, 100))
+    handoffBoundaryRect.mockReturnValue(new DOMRect(0, -7, 100, 56))
     fireEvent.scroll(scrollContainer)
 
     expect(navigationSection).not.toHaveClass(styles.catalogNavigationPinned!)
@@ -279,9 +281,14 @@ describe('HomeCatalogNavigation', () => {
     renderNavigation(true)
 
     const navigationSection = screen.getByRole('region', { name: 'common.mainNav.marketplace' })
-    const pinTrigger = navigationSection.previousElementSibling as HTMLElement
+    const contentTabsSlot = document.querySelector<HTMLElement>(
+      '[data-home-catalog-tabs-slot="content"]',
+    )!
+    const catalogTabsRegion = contentTabsSlot.parentElement!
     vi.spyOn(scrollContainer, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 100, 100))
-    vi.spyOn(pinTrigger, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 47, 100, 0))
+    vi.spyOn(catalogTabsRegion, 'getBoundingClientRect').mockReturnValue(
+      new DOMRect(0, -9, 100, 56),
+    )
     vi.spyOn(navigationSection, 'getBoundingClientRect').mockReturnValue(
       new DOMRect(0, 49, 100, 60),
     )

@@ -7,7 +7,7 @@ import { HomeStickyCatalogTabs, HomeStickyStateProvider } from '../home-sticky-s
 import styles from '../home-sticky.module.css'
 
 describe('Marketplace catalog tab handoff', () => {
-  it('keeps the sticky navigation geometry stable while fading its tabs into the header', async () => {
+  it('hands off only when the in-flow tabs fully reach the sticky header', async () => {
     await page.viewport(1200, 800)
     const screen = await render(
       <HomeStickyStateProvider>
@@ -16,7 +16,19 @@ describe('Marketplace catalog tab handoff', () => {
           data-marketplace-standalone
           style={{ display: 'flex', height: 320, flexDirection: 'column', overflowY: 'auto' }}
         >
-          <div style={{ display: 'flex', height: 48, flexShrink: 0 }}>
+          <div
+            data-testid="catalog-header"
+            style={{
+              position: 'sticky',
+              top: 0,
+              zIndex: 50,
+              display: 'flex',
+              height: 48,
+              flexShrink: 0,
+              alignItems: 'center',
+              background: 'white',
+            }}
+          >
             <HomeStickyCatalogTabs>
               <div className={styles.headerCatalogTabs} data-testid="header-catalog-tabs">
                 <HomeCatalogTabs
@@ -30,14 +42,14 @@ describe('Marketplace catalog tab handoff', () => {
           <HomeCatalogNavigation
             isMarketplacePlatform
             catalogCategories={<div data-testid="catalog-categories">Categories</div>}
-            catalogTabs={(
+            catalogTabs={
               <div data-testid="content-catalog-tabs">
                 <HomeCatalogTabs
                   isMarketplacePlatform
                   labels={{ plugins: 'Plugins', templates: 'Templates' }}
                 />
               </div>
-            )}
+            }
           />
           <div data-testid="following-content" style={{ height: 640, flexShrink: 0 }} />
         </div>
@@ -45,9 +57,11 @@ describe('Marketplace catalog tab handoff', () => {
     )
 
     const scrollContainer = document.getElementById(MARKETPLACE_CONTAINER_ID)!
+    const header = screen.getByTestId('catalog-header').element()
     const navigation = screen.getByRole('region').element()
     const categories = screen.getByTestId('catalog-categories').element()
     const contentTabsSlot = screen.getByTestId('content-catalog-tabs').element().parentElement!
+    const contentTabsRegion = contentTabsSlot.parentElement!
     const headerTabsSlot = screen.getByTestId('header-catalog-tabs').element().parentElement!
     const followingContent = screen.getByTestId('following-content').element() as HTMLElement
     const initialHeight = navigation.getBoundingClientRect().height
@@ -57,7 +71,8 @@ describe('Marketplace catalog tab handoff', () => {
     const initialHeaderSlotHeight = headerTabsSlot.getBoundingClientRect().height
     const initialFollowingOffset = followingContent.offsetTop
     const initialScrollHeight = scrollContainer.scrollHeight
-    const contentPluginsLink = contentTabsSlot.querySelector<HTMLAnchorElement>('a[href="/plugins"]')!
+    const contentPluginsLink =
+      contentTabsSlot.querySelector<HTMLAnchorElement>('a[href="/plugins"]')!
     const headerPluginsLink = headerTabsSlot.querySelector<HTMLAnchorElement>('a[href="/plugins"]')!
 
     expect(initialHeaderSlotWidth).toBeGreaterThan(0)
@@ -69,16 +84,44 @@ describe('Marketplace catalog tab handoff', () => {
     contentPluginsLink.focus()
     expect(document.activeElement).toBe(contentPluginsLink)
 
-    scrollContainer.scrollTop = 260
+    const handoffScrollTop =
+      scrollContainer.scrollTop +
+      contentTabsRegion.getBoundingClientRect().bottom -
+      header.getBoundingClientRect().bottom
+    scrollContainer.scrollTop = handoffScrollTop - 1
+    scrollContainer.dispatchEvent(new Event('scroll'))
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+    )
+
+    expect(navigation).not.toHaveClass(styles.catalogNavigationPinned!)
+    expect(scrollContainer.scrollTop).toBe(handoffScrollTop - 1)
+    expect(
+      contentTabsRegion.getBoundingClientRect().bottom - header.getBoundingClientRect().bottom,
+    ).toBeCloseTo(1)
+    expect(contentTabsSlot).not.toHaveAttribute('aria-hidden')
+    expect(contentTabsSlot).not.toHaveAttribute('inert')
+    expect(headerTabsSlot).toHaveAttribute('aria-hidden', 'true')
+    expect(headerTabsSlot).toHaveAttribute('inert')
+    expect(document.activeElement).toBe(contentPluginsLink)
+
+    scrollContainer.scrollTop = handoffScrollTop
     scrollContainer.dispatchEvent(new Event('scroll'))
     await vi.waitFor(() => {
       expect(navigation).toHaveClass(styles.catalogNavigationPinned!)
     })
 
+    expect(scrollContainer.scrollTop).toBe(handoffScrollTop)
     expect(navigation.getBoundingClientRect().height).toBeCloseTo(initialHeight)
     expect(
       categories.getBoundingClientRect().top - navigation.getBoundingClientRect().top,
     ).toBeCloseTo(initialCategoryOffset)
+    expect(
+      categories.getBoundingClientRect().top - scrollContainer.getBoundingClientRect().top,
+    ).toBeCloseTo(64)
+    expect(
+      contentTabsRegion.getBoundingClientRect().bottom - header.getBoundingClientRect().bottom,
+    ).toBeCloseTo(0)
     expect(headerTabsSlot.getBoundingClientRect().width).toBeCloseTo(initialHeaderSlotWidth)
     expect(headerTabsSlot.getBoundingClientRect().height).toBeCloseTo(initialHeaderSlotHeight)
     expect(followingContent.offsetTop).toBe(initialFollowingOffset)
@@ -92,19 +135,26 @@ describe('Marketplace catalog tab handoff', () => {
     expect(headerTabsSlot).not.toHaveAttribute('aria-hidden')
     expect(headerTabsSlot).not.toHaveAttribute('inert')
     expect(getComputedStyle(headerTabsSlot).pointerEvents).toBe('auto')
-    await vi.waitFor(() => {
-      expect(getComputedStyle(contentTabsSlot).opacity).toBe('0')
-      expect(getComputedStyle(headerTabsSlot).opacity).toBe('1')
-      expect(document.activeElement).toBe(headerPluginsLink)
-    }, { timeout: 500 })
+    await vi.waitFor(
+      () => {
+        expect(getComputedStyle(contentTabsSlot).opacity).toBe('0')
+        expect(getComputedStyle(headerTabsSlot).opacity).toBe('1')
+        expect(document.activeElement).toBe(headerPluginsLink)
+      },
+      { timeout: 500 },
+    )
 
-    scrollContainer.scrollTop = 0
+    scrollContainer.scrollTop = handoffScrollTop - 1
     scrollContainer.dispatchEvent(new Event('scroll'))
     await vi.waitFor(() => {
-      expect(navigation).not.toHaveClass(styles.catalogNavigationPinned!)
       expect(document.activeElement).toBe(contentPluginsLink)
     })
 
+    expect(navigation).not.toHaveClass(styles.catalogNavigationPinned!)
+    expect(scrollContainer.scrollTop).toBe(handoffScrollTop - 1)
+    expect(
+      contentTabsRegion.getBoundingClientRect().bottom - header.getBoundingClientRect().bottom,
+    ).toBeCloseTo(1)
     expect(contentTabsSlot).not.toHaveAttribute('aria-hidden')
     expect(contentTabsSlot).not.toHaveAttribute('inert')
     expect(headerTabsSlot).toHaveAttribute('aria-hidden', 'true')
@@ -146,7 +196,7 @@ describe('Marketplace catalog tab handoff', () => {
 
     expect(getComputedStyle(headerTabs).display).toBe('none')
 
-    scrollContainer.scrollTop = 260
+    scrollContainer.scrollTop = 300
     scrollContainer.dispatchEvent(new Event('scroll'))
 
     expect(navigation).not.toHaveClass(styles.catalogNavigationPinned!)
@@ -156,6 +206,9 @@ describe('Marketplace catalog tab handoff', () => {
     expect(getComputedStyle(contentTabsSlot).pointerEvents).toBe('auto')
     expect(headerTabsSlot).toHaveAttribute('aria-hidden', 'true')
     expect(headerTabsSlot).toHaveAttribute('inert')
+    expect(
+      contentTabsSlot.getBoundingClientRect().top - scrollContainer.getBoundingClientRect().top,
+    ).toBeCloseTo(72)
 
     await page.viewport(880, 800)
     await vi.waitFor(() => {
