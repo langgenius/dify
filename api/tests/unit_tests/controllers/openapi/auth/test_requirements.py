@@ -24,7 +24,7 @@ from controllers.openapi.auth.requirements import (
 from controllers.openapi.auth.subjects import AccountSubject
 from core.rbac import RBACPermission, RBACResourceScope
 from enums import DeploymentEdition
-from models.account import TenantAccountRole
+from models.account import AccountStatus, TenantAccountRole
 from models.oauth import OAuthAccessToken
 from services.enterprise.enterprise_service import WebAppAccessMode, WebAppSettings
 from services.entities.feature_entities import (
@@ -235,6 +235,44 @@ class TestRBACCheck:
                 requirement.run(subject, ctx, sqlite_session)
 
         assert enforce.called is rbac_enabled
+
+    @pytest.mark.parametrize(
+        ("status", "role"),
+        [
+            (AccountStatus.ACTIVE, None),
+            (AccountStatus.BANNED, TenantAccountRole.ADMIN),
+        ],
+        ids=["no membership at all", "banned account still holding a role"],
+    )
+    def test_the_role_floor_reads_the_role_through_the_loader(
+        self,
+        app: Flask,
+        sqlite_session: Session,
+        config_overrides: Callable[..., None],
+        status: AccountStatus,
+        role: TenantAccountRole | None,
+    ) -> None:
+        """Both answers are `load_workspace_role`'s, not a direct role read's: a
+        non-member and an account that is not `ACTIVE` are both non-members, and
+        both hear 404 rather than the floor's own 403.
+
+        No matrix row reaches this. An `EARLY` membership requirement pre-empts the
+        `NORMAL` floor on every shipped route, and the matrix mints only `ACTIVE`
+        accounts — so this is the only thing standing between the floor and a
+        refactor that calls `get_account_role_in_tenant` itself, which would
+        re-admit a banned admin and answer 403 where the surface answers 404.
+        """
+        config_overrides(RBAC_ENABLED=False)
+        rows: list[object] = [make_app(), make_tenant(), make_account(status=status)]
+        if role is not None:
+            rows.append(make_membership(role))
+        persist(sqlite_session, *rows)
+        subject = account_subject()
+        ctx = make_ctx(sqlite_session, subject=subject, app_id=APP_ID)
+
+        with app.test_request_context(f"/openapi/v1/apps/{APP_ID}"):
+            with pytest.raises(NotFound, match="workspace not found"):
+                self._requirement(roles=self.admin_only).run(subject, ctx, sqlite_session)
 
     @pytest.mark.parametrize("resource_type", [None, RBACResourceScope.APP])
     def test_rejects_a_declaration_that_checks_nothing(self, resource_type: RBACResourceScope | None) -> None:
