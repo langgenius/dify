@@ -712,7 +712,6 @@
   "newKnowledge.syncPolicyEveryValue": "La fiecare {{interval}}",
   "newKnowledge.syncPolicyLoadFailed": "Politica de sincronizare nu a putut fi încărcată.",
   "newKnowledge.syncPolicyManual": "Doar manual",
-  "newKnowledge.syncPolicyProvider": "Folosește programul furnizorului",
   "newKnowledge.syncPolicyUnit.days": "zile",
   "newKnowledge.syncPolicyUnit.hours": "ore",
   "newKnowledge.tags": "Etichete",

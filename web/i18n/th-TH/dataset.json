@@ -712,7 +712,6 @@
   "newKnowledge.syncPolicyEveryValue": "ทุก {{interval}}",
   "newKnowledge.syncPolicyLoadFailed": "ไม่สามารถโหลดนโยบายการซิงค์ได้",
   "newKnowledge.syncPolicyManual": "ด้วยตนเองเท่านั้น",
-  "newKnowledge.syncPolicyProvider": "ใช้กำหนดการของผู้ให้บริการ",
   "newKnowledge.syncPolicyUnit.days": "วัน",
   "newKnowledge.syncPolicyUnit.hours": "ชั่วโมง",
   "newKnowledge.tags": "แท็ก",

@@ -169,7 +169,7 @@ function renderSelectionForm({
   workflowUncertain = false,
 }: {
   initialSelectedPageIds?: readonly string[]
-  initialSyncMode?: 'custom' | 'interval' | 'manual' | 'provider'
+  initialSyncMode?: 'custom' | 'interval' | 'manual'
   onCancel?: () => void
   syncPolicyValue?: SyncPolicyValue
   workflowUncertain?: boolean
@@ -220,13 +220,12 @@ function renderSelectionForm({
 
 async function selectSyncPolicy(
   user: ReturnType<typeof userEvent.setup>,
-  mode: 'custom' | 'interval' | 'manual' | 'provider',
+  mode: 'custom' | 'interval' | 'manual',
 ) {
   const optionNames = {
     custom: 'dataset.newKnowledge.syncPolicyCustom',
     interval: 'dataset.newKnowledge.syncPolicyDaily',
     manual: 'dataset.newKnowledge.syncPolicyManual',
-    provider: 'dataset.newKnowledge.syncPolicyProvider',
   }
   await user.click(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }))
   await user.click(screen.getByRole('option', { name: optionNames[mode] }))
@@ -398,7 +397,6 @@ describe('CrawlSelectionForm', () => {
   })
 
   it.each([
-    { enabled: true, mode: 'provider' },
     { enabled: false, mode: 'manual' },
     { enabled: true, mode: 'interval' },
   ] as const)('includes the $mode policy in the async import', async ({ enabled, mode }) => {

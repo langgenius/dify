@@ -712,7 +712,6 @@
   "newKnowledge.syncPolicyEveryValue": "Кожні {{interval}}",
   "newKnowledge.syncPolicyLoadFailed": "Не вдалося завантажити політику синхронізації.",
   "newKnowledge.syncPolicyManual": "Лише вручну",
-  "newKnowledge.syncPolicyProvider": "Використовувати розклад постачальника",
   "newKnowledge.syncPolicyUnit.days": "днів",
   "newKnowledge.syncPolicyUnit.hours": "годин",
   "newKnowledge.tags": "Теги",

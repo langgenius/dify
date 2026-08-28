@@ -712,7 +712,6 @@
   "newKnowledge.syncPolicyEveryValue": "Co {{interval}}",
   "newKnowledge.syncPolicyLoadFailed": "Nie udało się załadować zasad synchronizacji.",
   "newKnowledge.syncPolicyManual": "Tylko ręcznie",
-  "newKnowledge.syncPolicyProvider": "Użyj harmonogramu dostawcy",
   "newKnowledge.syncPolicyUnit.days": "dni",
   "newKnowledge.syncPolicyUnit.hours": "godziny",
   "newKnowledge.tags": "Tagi",

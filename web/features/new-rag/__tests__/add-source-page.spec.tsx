@@ -82,7 +82,6 @@ vi.mock('../connected-source-setup', () => ({
               })
             }
           >
-            <option value="provider">dataset.newKnowledge.syncPolicyProvider</option>
             <option value="daily">dataset.newKnowledge.syncPolicyDaily</option>
             <option value="manual">dataset.newKnowledge.syncPolicyManual</option>
           </select>
@@ -707,7 +706,7 @@ describe('AddSourcePage', () => {
           rootUrl: 'https://docs.dify.ai',
           sourceName: 'Dify docs',
           sourceType: 'websiteCrawl',
-          syncPolicy: 'provider',
+          syncPolicy: 'daily',
         }}
         knowledgeSpaceId="space-1"
       />,
@@ -776,7 +775,7 @@ describe('AddSourcePage', () => {
           rootUrl: 'https://docs.dify.ai',
           sourceName: 'Dify docs',
           sourceType: 'websiteCrawl',
-          syncPolicy: 'provider',
+          syncPolicy: 'daily',
         }}
         knowledgeSpaceId="space-1"
       />,
@@ -835,7 +834,7 @@ describe('AddSourcePage', () => {
         rootUrl: 'https://docs.dify.ai',
         sourceName: 'Dify docs',
         sourceType: 'websiteCrawl',
-        syncPolicy: 'provider',
+        syncPolicy: 'daily',
       }),
     )
 
@@ -863,7 +862,7 @@ describe('AddSourcePage', () => {
         rootUrl: 'https://docs.dify.ai/strict',
         sourceName: 'Strict docs',
         sourceType: 'websiteCrawl',
-        syncPolicy: 'provider',
+        syncPolicy: 'daily',
       }),
     )
 
@@ -913,7 +912,7 @@ describe('AddSourcePage', () => {
         rootUrl: 'https://docs.dify.ai',
         sourceName: 'Dify docs',
         sourceType: 'websiteCrawl',
-        syncPolicy: 'provider',
+        syncPolicy: 'daily',
       }),
     )
 
@@ -1273,7 +1272,7 @@ describe('AddSourcePage', () => {
       rootUrl: 'https://docs.dify.ai',
       sourceName: 'Dify docs',
       sourceType: 'websiteCrawl' as const,
-      syncPolicy: 'provider' as const,
+      syncPolicy: 'daily' as const,
     }
     const view = render(
       <AddSourcePage initialSourceDraft={initialSourceDraft} knowledgeSpaceId="space-1" />,

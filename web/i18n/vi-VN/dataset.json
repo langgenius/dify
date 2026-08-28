@@ -712,7 +712,6 @@
   "newKnowledge.syncPolicyEveryValue": "Mỗi {{interval}}",
   "newKnowledge.syncPolicyLoadFailed": "Không thể tải chính sách đồng bộ.",
   "newKnowledge.syncPolicyManual": "Chỉ thủ công",
-  "newKnowledge.syncPolicyProvider": "Dùng lịch của nhà cung cấp",
   "newKnowledge.syncPolicyUnit.days": "ngày",
   "newKnowledge.syncPolicyUnit.hours": "giờ",
   "newKnowledge.tags": "Thẻ",

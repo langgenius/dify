@@ -21120,6 +21120,7 @@ Input field definition for snippet parameters.
 | created_at | dateTime |  | Yes |
 | document_id | string |  | No |
 | document_revision | integer |  | No |
+| document_title | string |  | No |
 | error_code | string |  | No |
 | error_message | string |  | No |
 | failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
@@ -21342,7 +21343,7 @@ Input field definition for snippet parameters.
 | ---- | ---- | ----------- | -------- |
 | customIntervalSeconds | integer |  | No |
 | enabled | boolean |  | Yes |
-| mode | string, <br>**Available values:** "custom", "interval", "manual", "provider" | *Enum:* `"custom"`, `"interval"`, `"manual"`, `"provider"` | Yes |
+| mode | string, <br>**Available values:** "custom", "interval", "manual" | *Enum:* `"custom"`, `"interval"`, `"manual"` | Yes |
 
 #### KnowledgeFSDocumentAvailabilityPayload
 
@@ -21618,6 +21619,7 @@ Input field definition for snippet parameters.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| document_title | string |  | No |
 | job | [KnowledgeFSDurableDeletionJobResponse](#knowledgefsdurabledeletionjobresponse) |  | Yes |
 | status_url | string |  | Yes |
 
@@ -21796,7 +21798,7 @@ Input field definition for snippet parameters.
 | provider | string |  | Yes |
 | providerDisplayName | string |  | No |
 | selection | [ [KnowledgeFSOnlineDocumentWorkflowImportItemPayload](#knowledgefsonlinedocumentworkflowimportitempayload) ] |  | Yes |
-| sync_policy | string, <br>**Available values:** "custom", "daily", "manual", "provider", <br>**Default:** provider | *Enum:* `"custom"`, `"daily"`, `"manual"`, `"provider"` | No |
+| sync_policy | string, <br>**Available values:** "custom", "daily", "manual", <br>**Default:** daily | *Enum:* `"custom"`, `"daily"`, `"manual"` | No |
 
 #### KnowledgeFSInitialOnlineDriveSourcePayload
 
@@ -21812,7 +21814,7 @@ Input field definition for snippet parameters.
 | provider | string |  | Yes |
 | providerDisplayName | string |  | No |
 | selection | [ [KnowledgeFSOnlineDriveWorkflowImportItemPayload](#knowledgefsonlinedriveworkflowimportitempayload) ] |  | Yes |
-| sync_policy | string, <br>**Available values:** "custom", "daily", "manual", "provider", <br>**Default:** provider | *Enum:* `"custom"`, `"daily"`, `"manual"`, `"provider"` | No |
+| sync_policy | string, <br>**Available values:** "custom", "daily", "manual", <br>**Default:** daily | *Enum:* `"custom"`, `"daily"`, `"manual"` | No |
 
 #### KnowledgeFSInitialSourcePreviewDocumentResponse
 
@@ -21916,7 +21918,7 @@ Input field definition for snippet parameters.
 | providerDisplayName | string |  | No |
 | root_url | string |  | Yes |
 | selection | [ [KnowledgeFSInitialWebsiteSelectionPayload](#knowledgefsinitialwebsiteselectionpayload) ] |  | Yes |
-| sync_policy | string, <br>**Available values:** "custom", "daily", "manual", "provider", <br>**Default:** provider | *Enum:* `"custom"`, `"daily"`, `"manual"`, `"provider"` | No |
+| sync_policy | string, <br>**Available values:** "custom", "daily", "manual", <br>**Default:** daily | *Enum:* `"custom"`, `"daily"`, `"manual"` | No |
 
 #### KnowledgeFSInitialWebsiteSourcePreviewPayload
 
@@ -23080,7 +23082,7 @@ Input field definition for snippet parameters.
 | enabled | boolean |  | Yes |
 | expectedRevision | integer |  | Yes |
 | expectedSourceVersion | integer |  | Yes |
-| mode | string, <br>**Available values:** "custom", "interval", "manual", "provider" | *Enum:* `"custom"`, `"interval"`, `"manual"`, `"provider"` | Yes |
+| mode | string, <br>**Available values:** "custom", "interval", "manual" | *Enum:* `"custom"`, `"interval"`, `"manual"` | Yes |
 
 #### KnowledgeFSSourceSyncPolicyResponse
 
@@ -23092,7 +23094,7 @@ Input field definition for snippet parameters.
 | expected_source_version | integer |  | Yes |
 | id | string |  | Yes |
 | knowledge_space_id | string |  | Yes |
-| mode | string, <br>**Available values:** "custom", "interval", "manual", "provider" | *Enum:* `"custom"`, `"interval"`, `"manual"`, `"provider"` | Yes |
+| mode | string, <br>**Available values:** "custom", "interval", "manual" | *Enum:* `"custom"`, `"interval"`, `"manual"` | Yes |
 | next_run_at | string |  | No |
 | revision | integer |  | Yes |
 | source_id | string |  | Yes |
@@ -23105,7 +23107,9 @@ Input field definition for snippet parameters.
 | expectedVersion | integer |  | No |
 | metadata | object |  | No |
 | name | string |  | No |
+| providerParameters | object |  | No |
 | status | string |  | No |
+| uri | string |  | No |
 
 #### KnowledgeFSSourceWorkflowCancelPayload
 

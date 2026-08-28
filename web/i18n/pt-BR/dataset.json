@@ -712,7 +712,6 @@
   "newKnowledge.syncPolicyEveryValue": "A cada {{interval}}",
   "newKnowledge.syncPolicyLoadFailed": "Não foi possível carregar a política de sincronização.",
   "newKnowledge.syncPolicyManual": "Somente manual",
-  "newKnowledge.syncPolicyProvider": "Usar agenda do provedor",
   "newKnowledge.syncPolicyUnit.days": "dias",
   "newKnowledge.syncPolicyUnit.hours": "horas",
   "newKnowledge.tags": "Tags",

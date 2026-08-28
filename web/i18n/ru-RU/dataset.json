@@ -712,7 +712,6 @@
   "newKnowledge.syncPolicyEveryValue": "Каждые {{interval}}",
   "newKnowledge.syncPolicyLoadFailed": "Не удалось загрузить политику синхронизации.",
   "newKnowledge.syncPolicyManual": "Только вручную",
-  "newKnowledge.syncPolicyProvider": "Использовать расписание поставщика",
   "newKnowledge.syncPolicyUnit.days": "дней",
   "newKnowledge.syncPolicyUnit.hours": "часов",
   "newKnowledge.tags": "Теги",

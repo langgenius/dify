@@ -712,7 +712,6 @@
   "newKnowledge.syncPolicyEveryValue": "Setiap {{interval}}",
   "newKnowledge.syncPolicyLoadFailed": "Kebijakan sinkronisasi tidak dapat dimuat.",
   "newKnowledge.syncPolicyManual": "Hanya manual",
-  "newKnowledge.syncPolicyProvider": "Gunakan jadwal penyedia",
   "newKnowledge.syncPolicyUnit.days": "hari",
   "newKnowledge.syncPolicyUnit.hours": "jam",
   "newKnowledge.tags": "Tag",

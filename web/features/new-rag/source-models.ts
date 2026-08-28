@@ -110,7 +110,7 @@ export type SourceSyncPolicy = {
   expectedSourceVersion: number
   id: string
   knowledgeSpaceId: string
-  mode: 'provider' | 'manual' | 'interval' | 'custom'
+  mode: 'manual' | 'interval' | 'custom'
   nextRunAt?: string
   revision: number
   sourceId: string

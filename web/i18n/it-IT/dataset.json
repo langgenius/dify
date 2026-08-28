@@ -712,7 +712,6 @@
   "newKnowledge.syncPolicyEveryValue": "Ogni {{interval}}",
   "newKnowledge.syncPolicyLoadFailed": "Impossibile caricare i criteri di sincronizzazione.",
   "newKnowledge.syncPolicyManual": "Solo manuale",
-  "newKnowledge.syncPolicyProvider": "Usa la pianificazione del provider",
   "newKnowledge.syncPolicyUnit.days": "giorni",
   "newKnowledge.syncPolicyUnit.hours": "ore",
   "newKnowledge.tags": "Tag",

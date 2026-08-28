@@ -2532,7 +2532,7 @@ export const zKnowledgeFsSourceSyncPolicyResponse = z.object({
   expected_source_version: z.int().gte(1),
   id: z.string(),
   knowledge_space_id: z.string(),
-  mode: z.enum(['custom', 'interval', 'manual', 'provider']),
+  mode: z.enum(['custom', 'interval', 'manual']),
   next_run_at: z.iso.datetime().nullish(),
   revision: z.int().gte(1),
   source_id: z.string(),

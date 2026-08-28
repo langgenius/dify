@@ -696,7 +696,7 @@ describe('CreateKnowledgePage', () => {
       expected_source_version: 3,
       id: 'policy-1',
       knowledge_space_id: createdKnowledge.control_space_id,
-      mode: 'provider',
+      mode: 'interval',
       next_run_at: null,
       revision: 1,
       source_id: 'source-1',
@@ -1723,7 +1723,7 @@ describe('CreateKnowledgePage', () => {
               workspaceId: 'workspace-1',
             },
           ],
-          sync_policy: 'provider',
+          sync_policy: 'daily',
         },
       }),
     })
@@ -1871,7 +1871,7 @@ describe('CreateKnowledgePage', () => {
               providerItemId: '["","file-1"]',
             },
           ],
-          sync_policy: 'provider',
+          sync_policy: 'daily',
         },
       }),
     })

@@ -1017,7 +1017,7 @@ export type KnowledgeFsSourceSyncPolicyResponse = {
   expected_source_version: number
   id: string
   knowledge_space_id: string
-  mode: 'custom' | 'interval' | 'manual' | 'provider'
+  mode: 'custom' | 'interval' | 'manual'
   next_run_at?: string | null
   revision: number
   source_id: string
@@ -1029,7 +1029,7 @@ export type KnowledgeFsSourceSyncPolicyPayload = {
   enabled: boolean
   expectedRevision: number
   expectedSourceVersion: number
-  mode: 'custom' | 'interval' | 'manual' | 'provider'
+  mode: 'custom' | 'interval' | 'manual'
 }
 
 export type KnowledgeFsSourceCredentialTestResponse = {
@@ -1287,7 +1287,7 @@ export type KnowledgeFsInitialWebsiteSourcePayload = {
   providerDisplayName?: string | null
   root_url: string
   selection: Array<KnowledgeFsInitialWebsiteSelectionPayload>
-  sync_policy?: 'custom' | 'daily' | 'manual' | 'provider'
+  sync_policy?: 'custom' | 'daily' | 'manual'
 }
 
 export type KnowledgeFsInitialOnlineDocumentSourcePayload = {
@@ -1303,7 +1303,7 @@ export type KnowledgeFsInitialOnlineDocumentSourcePayload = {
   provider: string
   providerDisplayName?: string | null
   selection: Array<KnowledgeFsOnlineDocumentWorkflowImportItemPayload>
-  sync_policy?: 'custom' | 'daily' | 'manual' | 'provider'
+  sync_policy?: 'custom' | 'daily' | 'manual'
 }
 
 export type KnowledgeFsInitialOnlineDriveSourcePayload = {
@@ -1319,7 +1319,7 @@ export type KnowledgeFsInitialOnlineDriveSourcePayload = {
   provider: string
   providerDisplayName?: string | null
   selection: Array<KnowledgeFsOnlineDriveWorkflowImportItemPayload>
-  sync_policy?: 'custom' | 'daily' | 'manual' | 'provider'
+  sync_policy?: 'custom' | 'daily' | 'manual'
 }
 
 export type KnowledgeFsRetrievalProfileIntent = {
@@ -2203,7 +2203,7 @@ export type KnowledgeFsSourceProviderFieldResponse = {
 export type KnowledgeFsDeferredSyncPolicyPayload = {
   customIntervalSeconds?: number | null
   enabled: boolean
-  mode: 'custom' | 'interval' | 'manual' | 'provider'
+  mode: 'custom' | 'interval' | 'manual'
 }
 
 export type KnowledgeFsSourceFileResponse = {

@@ -21,8 +21,6 @@ const sourceTypeOptions = [
   { icon: 'i-ri-hard-drive-3-line', iconSize: 'size-3.5', value: 'onlineDrive' },
 ] as const
 
-const defaultSyncPolicies = ['provider', 'daily', 'manual'] as const
-
 export function SourceTypeSelector({
   appearance = 'page',
   disabled = false,
@@ -285,7 +283,6 @@ export function SourceNameField({
 }
 
 export function SourceSyncPolicyField({
-  availablePolicies = defaultSyncPolicies,
   className,
   disabled = false,
   draft,
@@ -293,7 +290,6 @@ export function SourceSyncPolicyField({
   triggerClassName,
   onDraftChange,
 }: {
-  availablePolicies?: readonly NewKnowledgeSourceDraft['syncPolicy'][]
   className?: string
   disabled?: boolean
   draft: NewKnowledgeSourceDraft
@@ -303,11 +299,6 @@ export function SourceSyncPolicyField({
 }) {
   return (
     <SyncPolicyField
-      availableModes={[
-        ...(availablePolicies.includes('provider') ? (['provider'] as const) : []),
-        ...(availablePolicies.includes('manual') ? (['manual'] as const) : []),
-        ...(availablePolicies.includes('daily') ? (['interval', 'custom'] as const) : []),
-      ]}
       className={className}
       disabled={disabled}
       size={size}

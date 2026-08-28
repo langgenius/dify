@@ -457,7 +457,6 @@
   "newKnowledge.syncPolicyEveryValue": "ທຸກ {{interval}}",
   "newKnowledge.syncPolicyLoadFailed": "ພວກເຮົາບໍ່ສາມາດໂຫຼດນະໂຍບາຍການຊິງຄ໌ໄດ້.",
   "newKnowledge.syncPolicyManual": "ຄູ່ມືເທົ່ານັ້ນ",
-  "newKnowledge.syncPolicyProvider": "ໃຊ້ຕາຕະລາງຜູ້ໃຫ້ບໍລິການ",
   "newKnowledge.syncPolicyUnit.days": "ມື້",
   "newKnowledge.syncPolicyUnit.hours": "ຊົ່ວໂມງ",
   "newKnowledge.tags": "ແທັກ",

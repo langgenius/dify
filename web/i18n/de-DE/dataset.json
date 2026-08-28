@@ -712,7 +712,6 @@
   "newKnowledge.syncPolicyEveryValue": "Alle {{interval}}",
   "newKnowledge.syncPolicyLoadFailed": "Die Synchronisierungsrichtlinie konnte nicht geladen werden.",
   "newKnowledge.syncPolicyManual": "Nur manuell",
-  "newKnowledge.syncPolicyProvider": "Zeitplan des Anbieters verwenden",
   "newKnowledge.syncPolicyUnit.days": "Tage",
   "newKnowledge.syncPolicyUnit.hours": "Stunden",
   "newKnowledge.tags": "Tags",
