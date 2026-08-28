@@ -681,9 +681,16 @@ def test_trace_helpers_and_streaming_metrics(trace_environment: None) -> None:
     assert generated.message_id == "message-1"
 
 
-def test_trace_queue_collect_run_and_storage_boundary(monkeypatch: pytest.MonkeyPatch, trace_environment: None) -> None:
-    monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", classmethod(lambda cls, _app_id: True))
-    manager = TraceQueueManager(app_id="app-id", user_id="user-1")
+def test_trace_queue_preserves_source_app_when_another_manager_drains(
+    monkeypatch: pytest.MonkeyPatch, trace_environment: None
+) -> None:
+    monkeypatch.setattr(
+        OpsTraceManager,
+        "get_ops_trace_instance",
+        classmethod(lambda cls, app_id: app_id == "source-app-id"),
+    )
+    draining_manager = TraceQueueManager(app_id="draining-app-id", user_id="user-1")
+    source_manager = TraceQueueManager(app_id="source-app-id", user_id="user-2")
     task = TraceTask(
         trace_type=TraceTaskName.GENERATE_NAME_TRACE,
         conversation_id="conversation-1",
@@ -692,8 +699,8 @@ def test_trace_queue_collect_run_and_storage_boundary(monkeypatch: pytest.Monkey
         generate_conversation_name="name",
         inputs="query",
     )
-    manager.add_trace_task(task)
-    assert manager.collect_tasks() == [task]
+    source_manager.add_trace_task(task)
+    assert draining_manager.collect_tasks() == [task]
 
     recording_storage = RecordingStorage()
     dispatcher = RecordingDispatcher()
@@ -701,14 +708,14 @@ def test_trace_queue_collect_run_and_storage_boundary(monkeypatch: pytest.Monkey
     monkeypatch.setattr(module.process_trace_tasks, "apply_async", dispatcher.apply_async)
     file_id = UUID("00000000-0000-0000-0000-000000000123")
     monkeypatch.setattr(module, "uuid4", lambda: file_id)
-    manager.add_trace_task(task)
-    manager.run()
+    source_manager.add_trace_task(task)
+    draining_manager.run()
 
     assert len(recording_storage.writes) == 1
     path, data = recording_storage.writes[0]
-    assert path.endswith(f"app-id/{file_id.hex}.json")
-    assert json.loads(data)["app_id"] == "app-id"
-    assert dispatcher.payloads == [{"file_id": file_id.hex, "app_id": "app-id"}]
+    assert path.endswith(f"source-app-id/{file_id.hex}.json")
+    assert json.loads(data)["app_id"] == "source-app-id"
+    assert dispatcher.payloads == [{"file_id": file_id.hex, "app_id": "source-app-id"}]
 
 
 def test_trace_queue_persists_with_caller_supplied_file_id(
@@ -724,6 +731,7 @@ def test_trace_queue_persists_with_caller_supplied_file_id(
         generate_conversation_name="name",
         inputs="query",
     )
+    task.app_id = "app-id"
     recording_storage = RecordingStorage()
     monkeypatch.setattr(module.storage, "save", recording_storage.save)
 
@@ -740,6 +748,7 @@ def test_trace_queue_persistence_error_propagates(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", classmethod(lambda cls, _app_id: True))
     manager = TraceQueueManager(app_id="app-id", user_id="user-1")
     task = TraceTask(trace_type=TraceTaskName.GENERATE_NAME_TRACE)
+    task.app_id = "app-id"
 
     def fail_save(_path: str, _data: bytes) -> None:
         raise OSError("storage unavailable")

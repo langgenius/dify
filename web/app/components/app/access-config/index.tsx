@@ -22,6 +22,7 @@ import {
   useUpdateAppAutomaticIncludeWorkspaceMembers,
   useUpdateAppUserAccessSettings,
 } from '@/service/access-control/use-app-access-config'
+import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 
 type AppAccessConfigPageProps = {
@@ -257,7 +258,13 @@ const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
     ],
   )
 
-  if (!appDetail || appDetail.id !== appId || !appACLCapabilities.canAccessConfig) return null
+  if (
+    !appDetail ||
+    appDetail.id !== appId ||
+    appDetail.mode === AppModeEnum.AGENT ||
+    !appACLCapabilities.canAccessConfig
+  )
+    return null
 
   return <AppAccessConfigContent appId={appId} maintainerId={appDetail.maintainer} />
 }

@@ -42,6 +42,7 @@
   "accessRule.summary_one": "{{count}} مجموعه مجوز",
   "accessRule.summary_other": "{{count}} مجموعه مجوز",
   "accessRule.updated": "قانون دسترسی با موفقیت به‌روزرسانی شد",
+  "accessRule.workspaceOwner": "مالک فضای کاری",
   "common.duplicateAction": "تکثیر",
   "group.app": "برنامه‌ها",
   "group.app_acl": "مجوزهای دسترسی برنامه",

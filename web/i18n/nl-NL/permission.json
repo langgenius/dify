@@ -42,6 +42,7 @@
   "accessRule.summary_one": "{{count}} rechtenset",
   "accessRule.summary_other": "{{count}} rechtensets",
   "accessRule.updated": "Toegangsregel succesvol bijgewerkt",
+  "accessRule.workspaceOwner": "Eigenaar van de workspace",
   "common.duplicateAction": "Dupliceren",
   "group.app": "Applicaties",
   "group.app_acl": "Toegangsrechten voor app",

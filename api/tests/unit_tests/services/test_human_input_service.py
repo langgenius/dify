@@ -32,6 +32,7 @@ from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.human_input import RecipientType
 from models.model import App, AppMode
+from models.workflow import WorkflowRun
 from services.human_input_service import (
     Form,
     FormExpiredError,
@@ -53,6 +54,10 @@ def _make_app(mode: AppMode) -> App:
         enable_api=True,
         max_active_requests=0,
     )
+
+
+def _workflow_run() -> WorkflowRun:
+    return WorkflowRun(id="workflow-run-id", app_id="app-id")
 
 
 @pytest.fixture
@@ -93,8 +98,7 @@ def test_enqueue_resume_dispatches_task_for_workflow(
 ) -> None:
     service = HumanInputService(sqlite_session_factory)
 
-    workflow_run = MagicMock()
-    workflow_run.app_id = "app-id"
+    workflow_run = _workflow_run()
 
     workflow_run_repo = MagicMock()
     workflow_run_repo.get_workflow_run_by_id_without_tenant.return_value = workflow_run
@@ -138,8 +142,7 @@ def test_enqueue_resume_dispatches_task_for_advanced_chat(
 ) -> None:
     service = HumanInputService(sqlite_session_factory)
 
-    workflow_run = MagicMock()
-    workflow_run.app_id = "app-id"
+    workflow_run = _workflow_run()
 
     workflow_run_repo = MagicMock()
     workflow_run_repo.get_workflow_run_by_id_without_tenant.return_value = workflow_run
@@ -166,8 +169,7 @@ def test_enqueue_resume_skips_unsupported_app_mode(
 ) -> None:
     service = HumanInputService(sqlite_session_factory)
 
-    workflow_run = MagicMock()
-    workflow_run.app_id = "app-id"
+    workflow_run = _workflow_run()
 
     workflow_run_repo = MagicMock()
     workflow_run_repo.get_workflow_run_by_id_without_tenant.return_value = workflow_run
@@ -671,8 +673,7 @@ def test_enqueue_resume_app_not_found(
 ) -> None:
     service = HumanInputService(sqlite_session_factory)
 
-    workflow_run = MagicMock()
-    workflow_run.app_id = "app-id"
+    workflow_run = _workflow_run()
 
     workflow_run_repo = MagicMock()
     workflow_run_repo.get_workflow_run_by_id_without_tenant.return_value = workflow_run

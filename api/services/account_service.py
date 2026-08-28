@@ -115,6 +115,14 @@ logger = logging.getLogger(__name__)
 _change_email_token_adapter: TypeAdapter[ChangeEmailTokenData] = TypeAdapter(ChangeEmailTokenData)
 
 
+class EnterpriseWorkspaceMemberAccountNotFoundError(Exception):
+    pass
+
+
+class EnterpriseWorkspaceMemberWorkspaceNotFoundError(Exception):
+    pass
+
+
 class InvitationDetailDict(TypedDict):
     account: Account
     data: InvitationData
@@ -1319,7 +1327,12 @@ class TenantService:
 
     @staticmethod
     def create_tenant_member(
-        tenant: Tenant, account: Account, session: Session, role: str = "normal"
+        tenant: Tenant,
+        account: Account,
+        session: Session,
+        role: str = "normal",
+        *,
+        operator_account_id: str | None = None,
     ) -> TenantAccountJoin:
         """Create tenant member"""
         if role == TenantAccountRole.OWNER:
@@ -1335,9 +1348,11 @@ class TenantService:
         previous_role = TenantAccountRole(ta.role) if ta else None
         if ta:
             ta.role = TenantAccountRole(role)
+            membership_created = False
         else:
             ta = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole(role))
             session.add(ta)
+            membership_created = True
 
         requested_role = TenantAccountRole(role)
         if previous_role is None or previous_role is not requested_role:
@@ -1360,7 +1375,57 @@ class TenantService:
         session.commit()
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             BillingService.clean_billing_info_cache(tenant.id)
+        if (
+            membership_created
+            and dify_config.RBAC_ENABLED
+            and TenantAccountRole(role) != TenantAccountRole.OWNER
+            and account.status != AccountStatus.PENDING
+        ):
+            from tasks.initialize_created_app_rbac_access_task import sync_joined_workspace_member_rbac_access_task
+
+            sync_joined_workspace_member_rbac_access_task.delay(
+                str(tenant.id),
+                str(account.id),
+                operator_account_id=operator_account_id,
+            )
         return ta
+
+    @staticmethod
+    def join_enterprise_workspace_member(
+        *,
+        workspace_id: str,
+        account_id: str,
+        email: str,
+        role: TenantAccountRole,
+        operator_account_id: str | None,
+        session: Session | None = None,
+    ) -> TenantAccountJoin:
+        session = session or db.session()
+        tenant = session.scalar(
+            select(Tenant).where(
+                Tenant.id == workspace_id,
+                Tenant.status == TenantStatus.NORMAL,
+            )
+        )
+        if tenant is None:
+            raise EnterpriseWorkspaceMemberWorkspaceNotFoundError
+
+        account = session.scalar(
+            select(Account).where(
+                Account.id == account_id,
+                Account.email == email,
+            )
+        )
+        if account is None:
+            raise EnterpriseWorkspaceMemberAccountNotFoundError
+
+        return TenantService.create_tenant_member(
+            tenant,
+            account,
+            session=session,
+            role=role.value,
+            operator_account_id=operator_account_id,
+        )
 
     @staticmethod
     def get_join_tenants(account: Account, *, session: Session) -> list[Tenant]:
@@ -2066,7 +2131,13 @@ class RegisterService:
                 check_normalized_email=True,
                 session=session,
             )
-            TenantService.create_tenant_member(tenant, account, session, tenant_join_role)
+            TenantService.create_tenant_member(
+                tenant,
+                account,
+                session,
+                tenant_join_role,
+                operator_account_id=inviter.id,
+            )
             TenantService.switch_tenant(account, tenant.id, session=session)
             requires_setup = True
         else:
@@ -2079,7 +2150,13 @@ class RegisterService:
             requires_setup = account.status == AccountStatus.PENDING
 
             if not ta and (account.status == AccountStatus.PENDING or dify_config.RBAC_ENABLED):
-                TenantService.create_tenant_member(tenant, account, session, tenant_join_role)
+                TenantService.create_tenant_member(
+                    tenant,
+                    account,
+                    session,
+                    tenant_join_role,
+                    operator_account_id=inviter.id,
+                )
 
             # Support resend invitation email when the account is pending status
             if account.status != AccountStatus.PENDING:
