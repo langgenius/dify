@@ -44,9 +44,9 @@ import { hasPermission } from '@/utils/permission'
 
 const emptyInstalledApps: InstalledAppResponse[] = []
 
-const appNavItemHeight = 32
-const appNavItemGap = 2
-const appNavSeparatorHeight = 16.5
+const appNavItemHeight = 28
+const appNavItemGap = 1
+const appNavSeparatorHeight = 12
 
 const getPreloadDistance = (scrollContainer: Element) =>
   Math.max(160, Math.min(scrollContainer.clientHeight * 0.25, 320))
@@ -124,7 +124,7 @@ const WebAppsSectionContent = () => {
     getItemKey: getWebAppRowKey,
     getScrollElement: () => scrollRef.current,
     overscan: 6,
-    paddingEnd: 8,
+    paddingEnd: installedAppsQuery.hasNextPage ? 0 : 8,
   })
 
   const canLoadMore = !installedAppsQuery.isFetching && !installedAppsQuery.error
@@ -186,7 +186,13 @@ const WebAppsSectionContent = () => {
     />
   )
   const renderRow = (row: WebAppListRow) => {
-    if (row.kind === 'separator') return <Divider />
+    if (row.kind === 'separator') {
+      return (
+        <div className="flex h-3 items-center px-1">
+          <Divider className="m-0 h-px bg-divider-subtle" />
+        </div>
+      )
+    }
 
     return renderAppNavItem(row.app)
   }
