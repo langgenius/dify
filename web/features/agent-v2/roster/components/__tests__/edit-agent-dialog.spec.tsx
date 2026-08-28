@@ -71,7 +71,7 @@ const createAgent = (overrides: Partial<AgentAppPartial> = {}): AgentAppPartial 
 const renderDialog = (agent = createAgent()) => {
   const onOpenChange = vi.fn()
 
-  render(<EditAgentDialog agent={agent} formKey={0} open onOpenChange={onOpenChange} />)
+  render(<EditAgentDialog agent={agent} open onOpenChange={onOpenChange} />)
 
   return { onOpenChange }
 }

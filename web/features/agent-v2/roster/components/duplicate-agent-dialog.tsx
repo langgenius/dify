@@ -28,7 +28,6 @@ import { createAgentIconSelection } from './agent-form'
 
 type DuplicateAgentDialogProps = {
   agent: AgentAppPartial
-  formKey: number
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -38,12 +37,7 @@ const getDefaultCopyName = (name: string) => {
   return `${name.slice(0, 255 - suffix.length)}${suffix}`
 }
 
-export function DuplicateAgentDialog({
-  agent,
-  formKey,
-  open,
-  onOpenChange,
-}: DuplicateAgentDialogProps) {
+export function DuplicateAgentDialog({ agent, open, onOpenChange }: DuplicateAgentDialogProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
@@ -57,7 +51,6 @@ export function DuplicateAgentDialog({
         },
       }),
     ) ?? agent
-  const [renderedFormKey, setRenderedFormKey] = useState(formKey)
   const [name, setName] = useState(() => getDefaultCopyName(latestAgent.name))
   const [description, setDescription] = useState(latestAgent.description ?? '')
   const [role, setRole] = useState(latestAgent.role ?? '')
@@ -68,34 +61,8 @@ export function DuplicateAgentDialog({
   const duplicateAgentMutation = useMutation(
     consoleQuery.agent.byAgentId.copy.post.mutationOptions(),
   )
-  if (formKey !== renderedFormKey) {
-    setRenderedFormKey(formKey)
-    setName(getDefaultCopyName(latestAgent.name))
-    setDescription(latestAgent.description ?? '')
-    setRole(latestAgent.role ?? '')
-    setIconPickerOpen(false)
-    setAgentIcon(createAgentIconSelection(latestAgent))
-  }
-
   const handleOpenChange = (nextOpen: boolean) => {
-    if (nextOpen) {
-      const currentAgent =
-        queryClient.getQueryData<AgentAppPartial>(
-          consoleQuery.agent.byAgentId.get.queryKey({
-            input: {
-              params: {
-                agent_id: agent.id,
-              },
-            },
-          }),
-        ) ?? agent
-      setName(getDefaultCopyName(currentAgent.name))
-      setDescription(currentAgent.description ?? '')
-      setRole(currentAgent.role ?? '')
-      setAgentIcon(createAgentIconSelection(currentAgent))
-    } else {
-      setIconPickerOpen(false)
-    }
+    if (!nextOpen) setIconPickerOpen(false)
     onOpenChange(nextOpen)
   }
 
@@ -152,11 +119,7 @@ export function DuplicateAgentDialog({
               {t(($) => $['roster.duplicateDialog.description'], { name: latestAgent.name })}
             </DialogDescription>
           </div>
-          <Form<AgentFormValues>
-            key={formKey}
-            className="min-h-0 flex-1"
-            onFormSubmit={handleSubmit}
-          >
+          <Form<AgentFormValues> className="min-h-0 flex-1" onFormSubmit={handleSubmit}>
             <div className="space-y-5 px-6 py-3">
               <div className="flex items-end gap-4 pb-2">
                 <button

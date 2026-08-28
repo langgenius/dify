@@ -69,12 +69,10 @@ function CatalogSkeleton() {
   const { t } = useTranslation()
 
   return (
-    <div
-      className={`relative grow content-start ${APP_LIST_GRID_CLASS_NAME}`}
-      role="status"
-      aria-label={t(($) => $.loading, { ns: 'common' })}
-    >
-      <AppCardSkeleton count={6} />
+    <div className="relative grow" role="status" aria-label={t(($) => $.loading, { ns: 'common' })}>
+      <ul aria-hidden className={APP_LIST_GRID_CLASS_NAME}>
+        <AppCardSkeleton count={6} />
+      </ul>
     </div>
   )
 }
@@ -178,56 +176,68 @@ function AppListCatalogContent({
             />
           )}
           <div
-            role={hasAnyApp ? 'list' : undefined}
             aria-busy={isFetching}
-            aria-labelledby={hasAnyApp && starredApps.length > 0 ? ALL_APPS_HEADING_ID : undefined}
-            className={cn(
-              `relative grow content-start ${APP_LIST_GRID_CLASS_NAME}`,
-              !hasAnyApp && 'overflow-hidden',
-            )}
+            className={cn('relative grow', !hasAnyApp && 'overflow-hidden')}
           >
             {hasAnyApp ? (
-              apps.map((app, index) => (
-                <AppCard
-                  key={app.id}
-                  app={app}
-                  onlineUsers={workflowOnlineUsersMap[app.id]}
-                  onOpenTagManagement={onOpenTagManagement}
-                  stepByStepTourActionMenuOpen={
-                    index === 0 ? shouldOpenFirstAppActionMenu : undefined
-                  }
-                  stepByStepTourCardTarget={
-                    index === 0
-                      ? shouldHighlightAllAppsRow
-                        ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard
-                        : canCreateApp
-                          ? STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCard
-                          : undefined
-                      : undefined
-                  }
-                  stepByStepTourCardHighlightPart={
-                    index < STEP_BY_STEP_TOUR_APP_ROW_CARD_COUNT && shouldHighlightAllAppsRow
-                      ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard
-                      : undefined
-                  }
-                  stepByStepTourActionMenuHighlightPart={
-                    index === 0 && shouldOpenFirstAppActionMenu
-                      ? STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu
+              <ul
+                // Safari list semantics: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/list-style#accessibility
+                // oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Dify's preflight removes list markers.
+                role="list"
+                aria-label={
+                  starredApps.length === 0
+                    ? t(($) => $['studio.allApps'], { ns: 'app' })
+                    : undefined
+                }
+                aria-labelledby={starredApps.length > 0 ? ALL_APPS_HEADING_ID : undefined}
+                className={APP_LIST_GRID_CLASS_NAME}
+              >
+                {apps.map((app, index) => (
+                  <AppCard
+                    key={app.id}
+                    app={app}
+                    onlineUsers={workflowOnlineUsersMap[app.id]}
+                    onOpenTagManagement={onOpenTagManagement}
+                    stepByStepTourActionMenuOpen={
+                      index === 0 ? shouldOpenFirstAppActionMenu : undefined
+                    }
+                    stepByStepTourCardTarget={
+                      index === 0
+                        ? shouldHighlightAllAppsRow
+                          ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard
+                          : canCreateApp
+                            ? STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCard
+                            : undefined
+                        : undefined
+                    }
+                    stepByStepTourCardHighlightPart={
+                      index < STEP_BY_STEP_TOUR_APP_ROW_CARD_COUNT && shouldHighlightAllAppsRow
+                        ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard
+                        : undefined
+                    }
+                    stepByStepTourActionMenuHighlightPart={
+                      index === 0 && shouldOpenFirstAppActionMenu
+                        ? STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu
+                        : undefined
+                    }
+                  />
+                ))}
+                {hasNextPage && <AppCardSkeleton count={3} />}
+              </ul>
+            ) : (
+              <div className={`content-start ${APP_LIST_GRID_CLASS_NAME}`}>
+                <Empty
+                  message={emptyMessage}
+                  stepByStepTourTarget={
+                    showNoCreateEmptyState
+                      ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateEmpty
                       : undefined
                   }
                 />
-              ))
-            ) : (
-              <Empty
-                message={emptyMessage}
-                stepByStepTourTarget={
-                  showNoCreateEmptyState ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateEmpty : undefined
-                }
-              />
+              </div>
             )}
             {hasNextPage && (
               <>
-                <AppCardSkeleton count={3} />
                 {isFetchNextPageError && (
                   <div
                     className="absolute inset-x-0 bottom-0 flex h-40 items-center justify-center gap-2 bg-background-body system-xs-regular text-text-tertiary"
