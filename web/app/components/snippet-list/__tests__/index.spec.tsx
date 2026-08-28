@@ -392,7 +392,7 @@ describe('SnippetList', () => {
     renderList()
 
     fireEvent.click(screen.getByRole('button', { name: 'app.studio.filters.creators' }))
-    fireEvent.click(screen.getByRole('button', { name: /Bob/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /Bob/ }))
 
     expect(mockSetCreatorIDs).toHaveBeenCalledWith(['creator-2'])
   })
