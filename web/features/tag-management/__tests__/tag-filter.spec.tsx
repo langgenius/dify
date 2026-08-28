@@ -133,10 +133,11 @@ describe('TagFilter', () => {
       const onChange = vi.fn()
       render(<TagFilter {...defaultProps} value={['tag-1']} onChange={onChange} />)
 
-      // Open dropdown — trigger shows the tag name "Frontend"
-      await user.click(screen.getByText('Frontend'))
-      // Click the tag in the dropdown (it has a title attribute)
-      await user.click(screen.getByTitle('Frontend'))
+      const trigger = screen.getByRole('combobox', { name: 'Frontend' })
+      await user.click(trigger)
+
+      const option = screen.getByRole('option', { name: /Frontend/i })
+      await user.click(option)
 
       expect(onChange).toHaveBeenCalledWith([])
     })
@@ -173,7 +174,7 @@ describe('TagFilter', () => {
       render(<TagFilter {...defaultProps} value={['tag-1']} onChange={onChange} />)
 
       await user.click(screen.getByText('Frontend'))
-      await user.click(screen.getByTitle('Backend'))
+      await user.click(screen.getByRole('option', { name: /Backend/i }))
 
       expect(onChange).toHaveBeenCalledWith(['tag-1', 'tag-2'])
     })
