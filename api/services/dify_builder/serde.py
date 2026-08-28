@@ -74,4 +74,5 @@ def context_from_dict(d: dict[str, Any]) -> DifyBuilderContext:
         last_structure_fingerprint=d.get("last_structure_fingerprint", ""),
         recovery_class=d.get("recovery_class", ""),
         skill_learning_policy=d.get("skill_learning_policy", "ask"),
+        model_config=dict(d.get("model_config") or {}),
     )

@@ -253,6 +253,12 @@ class DifyBuilderContext:
     # -- Governance fields (C-2, additive) --
     skill_learning_policy: str = "ask"
 
+    # -- Agent model selection (Foundation slice, additive) --
+    # The user's per-session model choice, in Dify's model-selector shape
+    # {provider, name, mode, completion_params}. Empty == use the tenant default LLM.
+    # Kept a plain dict so core imports no services/model-runtime type.
+    model_config: dict[str, Any] = field(default_factory=dict)
+
 
 @dataclass(kw_only=True)
 class Action:
