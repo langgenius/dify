@@ -53,6 +53,7 @@ const workflowFailedRetrievalCaptureMigrationId = "0042_workflow_failed_retrieva
 const semanticGenerationReceiptsMigrationId = "0043_semantic_generation_receipts";
 const semanticWindowCheckpointsMigrationId = "0044_document_semantic_window_checkpoints";
 const qualityReplayMatchPolicyMigrationId = "0045_quality_replay_match_policy";
+const removeProviderSyncPolicyMigrationId = "0046_remove_provider_sync_policy";
 const migrationsAfterDurableDeletion = [
   versionedSpaceProfilesMigrationId,
   profilePublicationBindingsMigrationId,
@@ -82,6 +83,7 @@ const migrationsAfterDurableDeletion = [
   semanticGenerationReceiptsMigrationId,
   semanticWindowCheckpointsMigrationId,
   qualityReplayMatchPolicyMigrationId,
+  removeProviderSyncPolicyMigrationId,
 ] as const;
 const migrationsAfterTidbBaselineRepair = [
   spaceAccessControlMigrationId,
