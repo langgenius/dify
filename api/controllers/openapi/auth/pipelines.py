@@ -51,7 +51,7 @@ class Pipeline:
         """
         for requirement in sorted(spec.requirements + self.fixed, key=lambda item: item.rank):
             requirement.run(subject, ctx, session)
-        with mounted(auth, ctx):
+        with mounted(subject, auth, ctx):
             return call(ctx=ctx)
 
 
@@ -69,17 +69,19 @@ class ExternalSsoPipeline(Pipeline):
 
 
 @contextmanager
-def mounted(auth: AuthContext, ctx: Context) -> Generator[None]:
+def mounted(subject: Subject, auth: AuthContext, ctx: Context) -> Generator[None]:
     """Effects, not policy: the identity ContextVar is published for every
-    subject, but flask-login is mounted only for a subject `ResolveCaller`
-    resolved a caller for — the `mounts_caller` policy is consulted there, once.
+    subject, but flask-login is mounted only for a subject whose own
+    `mounts_caller` says so. Reading `ctx.caller_loaded` instead would mount
+    whatever a membership check happened to resolve, which is the same answer
+    today and would stop being one for a subject that declines conditionally.
 
     `ResolveCaller` is a requirement, so the caller is resolved *before*
     `set_auth_ctx`, because resolution raises on a token that outlived its
     account. Raising after the ContextVar is set would strand the identity
     there, and `libs/rate_limit` buckets on it.
     """
-    user = ctx.caller if ctx.caller_loaded else None
+    user = ctx.caller if subject.mounts_caller(ctx) else None
     reset_token = set_auth_ctx(auth)
     try:
         if user is not None:

@@ -3,12 +3,14 @@ from __future__ import annotations
 import ast
 import inspect
 from collections.abc import Callable
+from types import ModuleType
 from typing import NamedTuple, cast, get_args, get_type_hints
 
 import pytest
 from sqlalchemy.orm import Session
 
 import controllers.openapi.auth.context as context_module
+import controllers.openapi.auth.subjects as subjects_module
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import Subject
 from models import Account, App, Tenant
@@ -19,6 +21,7 @@ from models.model import AppMode, IconType
 APP_ID = "00000000-0000-0000-0000-000000000001"
 TENANT_ID = "00000000-0000-0000-0000-000000000002"
 ACCOUNT_ID = "00000000-0000-0000-0000-000000000004"
+LOADERS = "controllers.openapi.auth.loaders"
 
 
 def _subject() -> Subject:
@@ -130,17 +133,23 @@ def test_the_session_and_path_params_are_handed_over_at_construction(sqlite_sess
     assert dict(ctx.view_args) == {"app_id": APP_ID}
 
 
-def test_the_store_reaches_no_service() -> None:
-    """The store's whole contract. It also keeps the import graph acyclic:
-    `context` -> `subjects`, and the loaders sit above both.
-    """
-    tree = ast.parse(inspect.getsource(context_module))
-    imported = {
-        node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) and node.module is not None
-    } | {alias.name for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names}
+def _imports(module: ModuleType) -> set[str]:
+    tree = ast.parse(inspect.getsource(module))
+    from_imports = {node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) and node.module}
+    plain = {alias.name for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names}
+    return from_imports | plain
 
-    assert not [module for module in imported if module.split(".")[0] == "services"]
-    assert "controllers.openapi.auth.loaders" not in imported
+
+def test_the_auth_import_graph_cannot_cycle() -> None:
+    """The store's whole contract, and the edge that would close the cycle:
+    `context` -> `subjects` -> `loaders` -> `context`. The store reaches no
+    service, and a subject reaches no loader.
+    """
+    context_imports = _imports(context_module)
+
+    assert not [module for module in context_imports if module.split(".")[0] == "services"]
+    assert LOADERS not in context_imports
+    assert LOADERS not in _imports(subjects_module)
 
 
 def test_no_reader_can_hand_a_handler_an_optional() -> None:
@@ -152,4 +161,6 @@ def test_no_reader_can_hand_a_handler_an_optional() -> None:
         assert isinstance(reader, property)
         assert reader.fget is not None
         returns = get_type_hints(reader.fget)["return"]
+        # `caller` is a type alias, whose args are empty until it is unwrapped.
+        returns = getattr(returns, "__value__", returns)  # guard-ignore: no-new-getattr -- alias unwrap
         assert type(None) not in get_args(returns)
