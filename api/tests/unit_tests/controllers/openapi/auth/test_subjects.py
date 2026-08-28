@@ -48,8 +48,8 @@ def _auth(subject_type: SubjectType, **overrides: object) -> AuthContext:
 
 
 class _StubContext:
-    """Stands in for Task 3's `Context`; `app` / `workspace` blow up when an
-    accessor is reached that today's pipeline would not have resolved.
+    """Stands in for `Context`; `app` / `workspace` blow up when a reader is
+    reached that no requirement on the route would have loaded.
     """
 
     def __init__(
@@ -58,12 +58,12 @@ class _StubContext:
         app: App | None = None,
         workspace: Tenant | None = None,
         has_app: bool = False,
-        workspace_resolved: bool = False,
+        workspace_loaded: bool = False,
     ) -> None:
         self._app = app
         self._workspace = workspace
         self.has_app = has_app
-        self.workspace_resolved = workspace_resolved
+        self.workspace_loaded = workspace_loaded
 
     @property
     def app(self) -> App:
@@ -176,9 +176,9 @@ class TestAccountResolveCaller:
         with pytest.raises(Unauthorized, match="account not found"):
             subject.resolve_caller(_StubContext(), sqlite_session)
 
-    @pytest.mark.parametrize(("has_app", "workspace_resolved"), [(True, False), (False, True)])
+    @pytest.mark.parametrize(("has_app", "workspace_loaded"), [(True, False), (False, True)])
     def test_binds_the_current_tenant_on_app_scoped_and_membership_routes(
-        self, sqlite_session: Session, has_app: bool, workspace_resolved: bool
+        self, sqlite_session: Session, has_app: bool, workspace_loaded: bool
     ) -> None:
         account = _account()
         tenant = _tenant()
@@ -194,7 +194,7 @@ class TestAccountResolveCaller:
             ),
         )
         subject = AccountSubject(_auth(SubjectType.ACCOUNT))
-        ctx = _StubContext(workspace=tenant, has_app=has_app, workspace_resolved=workspace_resolved)
+        ctx = _StubContext(workspace=tenant, has_app=has_app, workspace_loaded=workspace_loaded)
 
         caller = subject.resolve_caller(ctx, sqlite_session)
 

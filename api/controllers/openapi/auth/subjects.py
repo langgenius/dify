@@ -35,7 +35,7 @@ class CallerContext(Protocol):
     def has_app(self) -> bool: ...
 
     @property
-    def workspace_resolved(self) -> bool: ...
+    def workspace_loaded(self) -> bool: ...
 
     @property
     def app(self) -> App: ...
@@ -107,7 +107,7 @@ class AccountSubject(Subject):
         account = AccountService.get_account_by_id(str(self.account_id), session=session)
         if account is None:
             raise Unauthorized("account not found")
-        if ctx.has_app or ctx.workspace_resolved:
+        if ctx.has_app or ctx.workspace_loaded:
             account.set_current_tenant_with_session(ctx.workspace, session=session)
         return account
 

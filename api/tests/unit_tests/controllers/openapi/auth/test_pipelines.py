@@ -18,6 +18,7 @@ from controllers.openapi.auth.requirements import (
     LicenseCheck,
     Rank,
     Requirement,
+    ResolveCaller,
 )
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, Subject
@@ -190,16 +191,23 @@ def test_equal_ranks_keep_declared_order(sqlite_session: Session) -> None:
 def test_fixed_requirements_reproduce_the_two_pipelines() -> None:
     """What every route of each subject gets, whatever it declares itself.
     Tuples, not lists: `fixed` is a ClassVar on a process-lifetime object.
+
+    `ResolveCaller` is last in both and takes the default rank, which is what
+    puts caller resolution after every endpoint-declared requirement — where
+    the lazy context used to put it, at mount.
     """
     assert [type(requirement) for requirement in AccountPipeline.fixed] == [
         CheckAppApiEnabled,
         CheckAppWorkspaceMembership,
+        ResolveCaller,
     ]
     assert [type(requirement) for requirement in ExternalSsoPipeline.fixed] == [
         EditionCheck,
         LicenseCheck,
         CheckAppApiEnabled,
+        ResolveCaller,
     ]
+    assert ResolveCaller.rank is Rank.NORMAL
     edition_check = ExternalSsoPipeline.fixed[0]
     assert isinstance(edition_check, EditionCheck)
     assert edition_check.editions == frozenset({DeploymentEdition.ENTERPRISE})
@@ -236,16 +244,16 @@ def test_a_subject_that_mounts_no_caller_leaves_the_context_untouched(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """`ExternalSsoSubject.mounts_caller` is false without an `app_id`, so an SSO
-    request on an app-less route resolves no caller at all. Reading `ctx.caller`
-    here would both change that and defeat the lazy context.
+    request on an app-less route resolves no caller at all — `ResolveCaller` is
+    where that policy is consulted, and `mounted` only reads what it stored.
     """
     monkeypatch.setattr(MOUNT, _boom)
     subject = _sso_subject()
     ctx = _ctx(sqlite_session, subject)
 
-    _run(_NoFixed(), subject, ctx, sqlite_session)
+    _run(_NoFixed(), subject, ctx, sqlite_session, requirements=(ResolveCaller(),))
 
-    assert "caller" not in ctx.__dict__
+    assert ctx.caller_loaded is False
 
 
 def test_app_scoped_route_mounts_an_account_bound_to_the_workspace(
@@ -272,15 +280,16 @@ def test_a_caller_that_cannot_be_resolved_leaves_the_auth_ctx_unset(
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A token outliving its account raises inside `ctx.caller`. Resolving
-    after `set_auth_ctx` would strand the identity on the ContextVar that
-    `libs/rate_limit` buckets on, with no reset to undo it.
+    """A token outliving its account raises inside `ResolveCaller`, which is a
+    requirement and so runs before `mounted`. Resolving after `set_auth_ctx`
+    would strand the identity on the ContextVar that `libs/rate_limit` buckets
+    on, with no reset to undo it.
     """
     monkeypatch.setattr(MOUNT, _boom)
     subject = _account_subject()
 
     with pytest.raises(Unauthorized, match="account not found"):
-        _run(_NoFixed(), subject, _ctx(sqlite_session, subject), sqlite_session)
+        _run(AccountPipeline(), subject, _ctx(sqlite_session, subject), sqlite_session)
 
     assert try_get_auth_ctx() is None
 
