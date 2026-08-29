@@ -121,8 +121,13 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   }, [appInfo])
   const allowResetChat = !conversationId
   const conversationScopeId = getWebAppConversationScopeId(resolveWebAppAddress(), appId)
+  const endUserId = (appInfo as AppData | undefined)?.end_user_id
   const { currentConversationId, handleConversationIdInfoChange, removeConversationIdInfo } =
-    useConversationSelection({ scopeId: conversationScopeId, userId, conversationId })
+    useConversationSelection({
+      scopeId: isTryApp || endUserId ? conversationScopeId : '',
+      userId: isTryApp ? userId : endUserId,
+      conversationId,
+    })
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {
     if (currentConversationId === newConversationId) return ''

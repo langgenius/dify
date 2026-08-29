@@ -26,7 +26,6 @@ import {
   updateFeedback,
 } from '@/service/share'
 import {
-  AppDeployConversationNotFoundError,
   useInvalidateShareConversations,
   useShareChatList,
   useShareConversationName,
@@ -188,8 +187,10 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     },
     [appId, setStoredSidebarCollapseState],
   )
-  const { currentConversationId, handleConversationIdInfoChange, removeConversationIdInfo } =
-    useConversationSelection({ scopeId: conversationScopeId, userId })
+  const { currentConversationId, handleConversationIdInfoChange } = useConversationSelection({
+    scopeId: isInstalledApp || appData?.end_user_id ? conversationScopeId : '',
+    userId: isInstalledApp ? userId : appData?.end_user_id,
+  })
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {
     if (currentConversationId === newConversationId) return ''
@@ -222,11 +223,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
         refetchOnReconnect: false,
       },
     )
-  const {
-    data: appChatListData,
-    error: appChatListError,
-    isLoading: appChatListDataLoading,
-  } = useShareChatList(
+  const { data: appChatListData, isLoading: appChatListDataLoading } = useShareChatList(
     {
       conversationId: chatShouldReloadKey,
       appSourceType,
@@ -491,12 +488,6 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     setClearChatList,
     inputsForms,
   ])
-  useEffect(() => {
-    if (!(appChatListError instanceof AppDeployConversationNotFoundError) || !appId) return
-
-    handleNewConversation()
-    removeConversationIdInfo()
-  }, [appChatListError, appId, handleNewConversation, removeConversationIdInfo])
   const handleUpdateConversationList = useCallback(() => {
     invalidateShareConversations()
   }, [invalidateShareConversations])

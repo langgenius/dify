@@ -130,8 +130,6 @@ export const useShareConversations = (
 
 export const useShareChatList = (params: ShareChatListParams, options: ShareQueryOptions = {}) => {
   const address = resolveWebAppAddress()
-  const isEnvironmentWebApp =
-    address?.kind === 'environment' && params.appSourceType === AppSourceType.webApp
   const { enabled = true, refetchOnReconnect, refetchOnWindowFocus } = options
   const isEnabled =
     enabled &&
@@ -139,27 +137,8 @@ export const useShareChatList = (params: ShareChatListParams, options: ShareQuer
     (params.appSourceType !== AppSourceType.installedApp || !!params.appId) &&
     !!params.conversationId
   return useQuery({
-    queryKey: [...shareQueryKeys.chatList(address, params), isEnvironmentWebApp],
-    queryFn: async () => {
-      try {
-        return await fetchChatList(params.conversationId, params.appSourceType, params.appId)
-      } catch (error) {
-        if (isEnvironmentWebApp && error instanceof Response && error.status === 404) {
-          const data: unknown = await error
-            .clone()
-            .json()
-            .catch(() => null)
-          if (
-            typeof data === 'object' &&
-            data !== null &&
-            'reason' in data &&
-            data.reason === 'APPDEPLOY_CONVERSATION_NOT_FOUND'
-          )
-            throw new AppDeployConversationNotFoundError()
-        }
-        throw error
-      }
-    },
+    queryKey: shareQueryKeys.chatList(address, params),
+    queryFn: () => fetchChatList(params.conversationId, params.appSourceType, params.appId),
     enabled: isEnabled,
     refetchOnReconnect,
     refetchOnWindowFocus,
@@ -167,18 +146,7 @@ export const useShareChatList = (params: ShareChatListParams, options: ShareQuer
     // back to a conversation. This fixes issue where recent messages don't appear
     // until switching away and back again (GitHub issue #30378).
     staleTime: 0,
-    ...(isEnvironmentWebApp && {
-      retry: (failureCount: number, error: Error) =>
-        !(error instanceof AppDeployConversationNotFoundError) && failureCount < 3,
-    }),
   })
-}
-
-export class AppDeployConversationNotFoundError extends Error {
-  constructor() {
-    super('APPDEPLOY_CONVERSATION_NOT_FOUND')
-    this.name = 'AppDeployConversationNotFoundError'
-  }
 }
 
 export const useShareConversationName = (

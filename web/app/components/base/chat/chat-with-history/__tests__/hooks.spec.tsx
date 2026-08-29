@@ -157,6 +157,7 @@ describe('useChatWithHistory', () => {
     localStorage.removeItem('webappSidebarCollapse')
     mockStoreState.appInfo = {
       app_id: 'app-1',
+      end_user_id: 'user-1',
       custom_config: null,
       site: {
         title: 'Test App',
@@ -300,7 +301,7 @@ describe('useChatWithHistory', () => {
       expect(mockFetchChatList).toHaveBeenCalledTimes(1)
     })
 
-    it('should clear a stale Environment conversation and enter New Chat', async () => {
+    it('should not mutate Environment selection when the server returns not found', async () => {
       window.history.replaceState({}, '', '/environment/workflow/environment-code')
       setConversationIdInfo('environment:environment-code', 'conversation-1')
       mockFetchConversations.mockResolvedValue(createConversationData())
@@ -313,17 +314,11 @@ describe('useChatWithHistory', () => {
       const { result } = await renderWithClient(() => useChatWithHistory())
 
       await waitFor(() => {
-        expect(result!.current.currentConversationId).toBe('')
+        expect(mockFetchChatList).toHaveBeenCalledTimes(1)
       })
-      expect(result!.current.clearChatList).toBe(true)
-      expect(mockFetchChatList).toHaveBeenCalledTimes(1)
-
-      const lastSelection = JSON.parse(localStorage.getItem(CONVERSATION_ID_INFO) ?? '{}')
-      const tabSelection = JSON.parse(sessionStorage.getItem(TAB_CONVERSATION_ID_INFO) ?? '{}')
-      expect(lastSelection['environment:environment-code']).toBeUndefined()
-      expect(Object.values(tabSelection['environment:environment-code'] ?? {})).not.toContain(
-        'conversation-1',
-      )
+      expect(result!.current.currentConversationId).toBe('conversation-1')
+      expect(result!.current.clearChatList).toBe(false)
+      expect(localStorage.getItem(CONVERSATION_ID_INFO)).toContain('conversation-1')
     })
 
     it('should keep the selected Environment conversation for other errors', async () => {
@@ -336,7 +331,7 @@ describe('useChatWithHistory', () => {
       const { result } = await renderWithClient(() => useChatWithHistory())
 
       await waitFor(() => {
-        expect(mockFetchChatList).toHaveBeenCalledTimes(4)
+        expect(mockFetchChatList).toHaveBeenCalledTimes(1)
       })
       expect(result!.current.currentConversationId).toBe('conversation-1')
       expect(result!.current.clearChatList).toBe(false)
@@ -390,6 +385,76 @@ describe('useChatWithHistory', () => {
       const { result } = await renderWithClient(() => useChatWithHistory())
 
       // Assert
+      expect(result!.current.currentConversationId).toBe('')
+      expect(mockFetchChatList).not.toHaveBeenCalled()
+    })
+
+    it('should isolate built-in and Environment conversations in the same browser', async () => {
+      window.history.replaceState({}, '', '/environment/chat/environment-code')
+      localStorage.setItem(
+        CONVERSATION_ID_INFO,
+        JSON.stringify({
+          'app-1': { 'user-1': 'built-in-conversation' },
+          'environment:environment-code': { 'user-1': 'environment-conversation' },
+        }),
+      )
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      mockFetchChatList.mockResolvedValue({ data: [] })
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      expect(result!.current.currentConversationId).toBe('environment-conversation')
+      expect(mockFetchChatList).toHaveBeenCalledWith(
+        'environment-conversation',
+        AppSourceType.webApp,
+        'app-1',
+      )
+      expect(mockFetchChatList).not.toHaveBeenCalledWith(
+        'built-in-conversation',
+        AppSourceType.webApp,
+        'app-1',
+      )
+    })
+
+    it('should select by the current EndUser after access mode changes', async () => {
+      window.history.replaceState({}, '', '/environment/chat/environment-code')
+      mockStoreState.appInfo = {
+        ...mockStoreState.appInfo!,
+        end_user_id: 'authenticated-end-user',
+      }
+      localStorage.setItem(
+        CONVERSATION_ID_INFO,
+        JSON.stringify({
+          'environment:environment-code': {
+            'anonymous-end-user': 'anonymous-conversation',
+            'authenticated-end-user': 'authenticated-conversation',
+          },
+        }),
+      )
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      mockFetchChatList.mockResolvedValue({ data: [] })
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      expect(result!.current.currentConversationId).toBe('authenticated-conversation')
+      expect(mockFetchChatList).not.toHaveBeenCalledWith(
+        'anonymous-conversation',
+        AppSourceType.webApp,
+        'app-1',
+      )
+    })
+
+    it('should not initialize WebApp selection before EndUser is known', async () => {
+      mockStoreState.appInfo = { ...mockStoreState.appInfo!, end_user_id: undefined }
+      localStorage.setItem(
+        CONVERSATION_ID_INFO,
+        JSON.stringify({ 'app-1': { DEFAULT: 'stale-conversation' } }),
+      )
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      mockFetchChatList.mockResolvedValue({ data: [] })
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
       expect(result!.current.currentConversationId).toBe('')
       expect(mockFetchChatList).not.toHaveBeenCalled()
     })
@@ -448,14 +513,8 @@ describe('useChatWithHistory', () => {
         const tabStoredValue = sessionStorage.getItem(TAB_CONVERSATION_ID_INFO)
         const tabConversationIdInfo = tabStoredValue ? JSON.parse(tabStoredValue) : {}
 
-        expect([
-          lastConversationIdInfo['app-1']?.['user-1'],
-          lastConversationIdInfo['app-1']?.DEFAULT,
-        ]).toContain('conversation-new')
-        expect([
-          tabConversationIdInfo['app-1']?.['user-1'],
-          tabConversationIdInfo['app-1']?.DEFAULT,
-        ]).toContain('conversation-new')
+        expect(lastConversationIdInfo['app-1']?.['user-1']).toBe('conversation-new')
+        expect(tabConversationIdInfo['app-1']?.['user-1']).toBe('conversation-new')
       })
     })
   })
@@ -2176,7 +2235,7 @@ describe('useChatWithHistory', () => {
       expect(localStorage.getItem(CONVERSATION_ID_INFO)).toBe(original)
     })
 
-    it('should write conversation id under DEFAULT key when user id is missing', async () => {
+    it('should use the site EndUser when the URL user id is missing', async () => {
       // Arrange
       const { getProcessedSystemVariablesFromUrlParams } = await import('../../utils')
       vi.mocked(getProcessedSystemVariablesFromUrlParams).mockResolvedValueOnce({
@@ -2196,7 +2255,7 @@ describe('useChatWithHistory', () => {
       await waitFor(() => {
         const stored = localStorage.getItem(CONVERSATION_ID_INFO)
         const parsed = stored ? JSON.parse(stored) : {}
-        expect(parsed['app-1']?.DEFAULT).toBe('conversation-default-user')
+        expect(parsed['app-1']?.['user-1']).toBe('conversation-default-user')
       })
     })
   })

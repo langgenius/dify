@@ -9,7 +9,6 @@ import {
   generationConversationName,
 } from './share'
 import {
-  AppDeployConversationNotFoundError,
   shareQueryKeys,
   useInvalidateShareConversations,
   useShareChatList,
@@ -208,23 +207,22 @@ describe('useShareChatList', () => {
     expect(mockFetchChatList).not.toHaveBeenCalled()
   })
 
-  it('should not retry a missing Environment conversation', async () => {
+  it('should expose a missing Environment conversation without translating it', async () => {
     window.history.replaceState({}, '', '/environment/workflow/environment-code')
     const params = {
       conversationId: 'stale-conversation',
       appId: 'app-1',
       appSourceType: AppSourceType.webApp,
     }
-    mockFetchChatList.mockRejectedValue(
-      new Response(JSON.stringify({ reason: 'APPDEPLOY_CONVERSATION_NOT_FOUND' }), {
-        status: 404,
-      }),
-    )
+    const response = new Response(JSON.stringify({ reason: 'APPDEPLOY_CONVERSATION_NOT_FOUND' }), {
+      status: 404,
+    })
+    mockFetchChatList.mockRejectedValue(response)
 
     const { result } = renderShareHook(() => useShareChatList(params))
 
     await waitFor(() => {
-      expect(result.current.error).toBeInstanceOf(AppDeployConversationNotFoundError)
+      expect(result.current.error).toBe(response)
     })
     expect(mockFetchChatList).toHaveBeenCalledTimes(1)
   })
@@ -244,7 +242,7 @@ describe('useShareChatList', () => {
     await waitFor(() => {
       expect(result.current.error).toBe(response)
     })
-    expect(mockFetchChatList).toHaveBeenCalledTimes(4)
+    expect(mockFetchChatList).toHaveBeenCalledTimes(1)
   })
 
   it('should preserve ordinary WebApp handling for the same 404 reason', async () => {
