@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import base64
 from collections.abc import Iterator
-from unittest.mock import ANY, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
+from enums.deployment_edition import DeploymentEdition
 from flask import Flask
 
 from controllers.web.forgot_password import (
@@ -14,7 +15,6 @@ from controllers.web.forgot_password import (
     ForgotPasswordResetApi,
     ForgotPasswordSendEmailApi,
 )
-from enums import DeploymentEdition
 from models.account import Account
 from models.engine import db
 from services.entities.feature_entities import SystemFeatureModel
@@ -39,7 +39,8 @@ def _patch_wraps():
     )
     with (
         patch("controllers.console.wraps.db") as mock_db,
-        patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE),
+        patch("controllers.console.wraps.dify_config.ENTERPRISE_ENABLED", True),
+        patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
         patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
     ):
         yield
@@ -58,8 +59,8 @@ class TestForgotPasswordSendEmailApi:
         mock_send_mail,
         app: Flask,
     ):
-        account = Account(name="User", email="user@example.com")
-        mock_get_account.return_value = account
+        mock_account = MagicMock()
+        mock_get_account.return_value = mock_account
         mock_send_mail.return_value = "token-123"
 
         with app.test_request_context(
@@ -71,7 +72,12 @@ class TestForgotPasswordSendEmailApi:
 
         assert response == {"result": "success", "data": "token-123"}
         mock_get_account.assert_called_once_with("User@Example.com", session=ANY)
-        mock_send_mail.assert_called_once_with(account=account, email="user@example.com", language="zh-Hans")
+        mock_send_mail.assert_called_once_with(
+            account=mock_account,
+            account_id=mock_account.id,
+            email="user@example.com",
+            language="zh-Hans",
+        )
         mock_extract_ip.assert_called_once()
         mock_rate_limit.assert_called_once_with("127.0.0.1")
 
