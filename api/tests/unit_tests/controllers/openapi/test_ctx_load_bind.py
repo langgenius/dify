@@ -27,7 +27,7 @@ actually ran every requirement against built fixtures — one per route × subje
 plus explicit `RBAC_ENABLED`/`DEPLOYMENT_EDITION` worlds — would be more truthful (it would
 have caught the `self.roles` gap below for free, by executing real control flow instead of
 modelling it) but nowhere near simpler: ~21 routes × 2 subjects × `has_app`, times the config
-worlds each `RBACCheck`/`RequireWebappAccess` needs to actually exercise both its branches. A
+worlds each `RBACScene`/`RequireWebappAccess` needs to actually exercise both its branches. A
 static AST walk over the same dozen `Requirement`/loader functions is smaller and, importantly,
 cheap enough to run on every test invocation rather than only in CI. The trade is deliberate:
 a dynamic probe would be more truthful and is worth revisiting if the config worlds ever shrink.
@@ -35,7 +35,7 @@ a dynamic probe would be more truthful and is worth revisiting if the config wor
 The one exception is `subject.mounts_caller(ctx)`: unlike `self.roles` or
 `dify_config.RBAC_ENABLED`, its answer is not a business condition varying by deployment or
 constructor argument — it is a fixed property of one of exactly two known `Subject`
-implementations, reads nothing an AST couldn't already tell it (`ctx.has_app`), and this file
+implementations, reads nothing an AST couldn't already tell it (the route's path params), and this file
 already builds a stub `ctx` and a real subject instance to answer it dynamically for the
 second-coupling check below (`_mounts_caller`). Reusing that instead of modelling the two
 `mounts_caller` bodies in AST is the smaller, not the more truthful, choice — and if a future
@@ -43,11 +43,11 @@ second-coupling check below (`_mounts_caller`). Reusing that instead of modellin
 same "fail loudly, do not default" rule as everywhere else here, not an exception to it.
 
 A load is credited only when it is unconditional or sits under a condition this scan decides
-precisely (`ctx.has_app`, `subject.caller_kind`, `subject.mounts_caller(ctx)`) — never under
+precisely (`route_has_app(ctx)`, `subject.caller_kind`, `subject.mounts_caller(ctx)`) — never under
 one it cannot pin (a config flag, an untracked instance attribute like `self.roles`). Getting
 this wrong in the permissive direction is exactly how a requirement conditionally guarding a
-load (`RBACCheck(scene=X, roles=None)`, which only loads `workspace_role` when `RBAC_ENABLED`
-and never when `roles` is `None`) can look like it always loads it. A separate exception:
+load (`RBACScene`, which only loads `workspace` when `RBAC_ENABLED`) can look like it always
+loads it. A separate exception:
 `if not ctx.<name>_loaded:` is a loader's own idempotent check-then-fetch, not a business
 condition — its postcondition holds on either branch — so it does not degrade credit the way
 an ordinary undecidable condition does (`_is_cache_check`). Reads stay pessimistic throughout
@@ -57,7 +57,7 @@ credits conservatively.
 Known, inert boundaries a future extension should check before relying on: no awareness of a
 nested `if` inside a `with`/`try` block (every scanned function body today is flat); `self.`
 method resolution only looks at the method's own class, no MRO climbing; and `_mounts_caller`'s
-stub `ctx` only answers `has_app`/`workspace_loaded` — a future `Subject.mounts_caller` reading
+stub `ctx` only answers `view_args` — a future `Subject.mounts_caller` reading
 `.app`/`.workspace` raises there rather than silently answering, which is correct under this
 file's own rule but means the stub needs extending before that subject's routes can be scanned
 at all.
@@ -125,8 +125,8 @@ class _Facts:
     `_mounts_caller`) — a real, unavoidable value for a real `Subject` implementation, not
     something to model in the AST. `None` means "not pinned for this resolution" — an `if`
     gated on it is walked on both branches rather than guessed at, same as any other
-    undecidable condition. Without these three, a fixed requirement guarding on any of them
-    (`CheckAppWorkspaceMembership`, `ResolveCaller`) would look like it always loads its data
+    undecidable condition. Without these three, a requirement guarding on any of them
+    (`ResolveCaller`, `RequireWorkspaceMembership`) would look like it always loads its data
     regardless of whether that guard clause would actually have returned first.
     """
 
@@ -278,8 +278,8 @@ def _resolve_calls_in(
 
 
 def _evaluate_condition(test: ast.expr, facts: _Facts) -> bool | None:
-    """Whether `test` is statically decidable from `facts` — `ctx.has_app` (route-derived),
-    `subject.caller_kind` (pipeline-derived), or `subject.mounts_caller(ctx)` (resolved by
+    """Whether `test` is statically decidable from `facts` — `route_has_app(ctx)`
+    (route-derived), `subject.caller_kind` (pipeline-derived), or `subject.mounts_caller(ctx)` (resolved by
     actually calling it, see `_mounts_caller`) — or `None` when it turns on something this
     scan cannot pin (a config flag, an instance attribute like `self.roles`), in which case
     the condition is undecidable: both branches are walked for unresolvable-call detection,
@@ -289,8 +289,15 @@ def _evaluate_condition(test: ast.expr, facts: _Facts) -> bool | None:
     if isinstance(test, ast.UnaryOp) and isinstance(test.op, ast.Not):
         inner = _evaluate_condition(test.operand, facts)
         return None if inner is None else not inner
-    if isinstance(test, ast.Attribute) and isinstance(test.value, ast.Name) and test.value.id == "ctx":
-        return facts.has_app if test.attr == "has_app" else None
+    if (
+        isinstance(test, ast.Call)
+        and isinstance(test.func, ast.Name)
+        and test.func.id == "route_has_app"
+        and len(test.args) == 1
+        and isinstance(test.args[0], ast.Name)
+        and test.args[0].id == "ctx"
+    ):
+        return facts.has_app
     if (
         isinstance(test, ast.Call)
         and isinstance(test.func, ast.Attribute)
@@ -334,7 +341,7 @@ def _resolve_body(
     credited: bool,
 ) -> frozenset[str]:
     """Walks a straight-line function body, crediting a load only when it is unconditional or
-    sits under a condition decided precisely here (`ctx.has_app`, `subject.caller_kind`) —
+    sits under a condition decided precisely here (`route_has_app(ctx)`, `subject.caller_kind`) —
     never under one this scan cannot pin. Reads stay pessimistic elsewhere (`_CtxUsage`
     collects every `ctx.<name>` access regardless of branch); this is the loads side only,
     and it fails safe in the opposite direction: under-crediting produces a reported gap
@@ -345,7 +352,7 @@ def _resolve_body(
     - `if not ctx.<name>_loaded:` (a loader's own check-then-fetch) is not a business
       condition — its postcondition holds on either branch — so it is walked with `credited`
       unchanged, not degraded.
-    - A condition decided precisely (`ctx.has_app`, `subject.caller_kind`,
+    - A condition decided precisely (`route_has_app(ctx)`, `subject.caller_kind`,
       `subject.mounts_caller(ctx)`) walks only the branch actually taken, `credited`
       unchanged; a decided branch that stops truncates what follows, or a fixed requirement
       guarding on one of these would look like it loads its data regardless of whether that
@@ -487,7 +494,7 @@ def _guarded_routes(app: Flask) -> Iterator[tuple[str, str, bool, EndpointSpec, 
     """(method, path, has_app, spec, "Resource.method" label, handler) for every
     `/openapi/v1` route carrying a `__spec__` — the same derivation `test_auth_matrix.py`
     uses, off the same `view.__spec__`, never a hand-kept route list. `has_app` is read off
-    the rule's own URL variables — `ctx.has_app` at runtime is exactly `"app_id" in
+    the rule's own URL variables — `route_has_app` at runtime is exactly `"app_id" in
     view_args`, so a route's own pattern already answers it, for every request it serves.
     """
     for rule in app.url_map.iter_rules():
@@ -571,15 +578,15 @@ def test_every_handler_read_is_backed_by_a_load(load_coverage: LoadCoverageRepor
     assert not load_coverage.missing, "\n".join(["handler reads with no backing load:", *load_coverage.missing])
 
 
-class _ProbeCallerContext:
-    """A `CallerContext` stand-in for probing `mounts_caller` without a real request.
-    `app`/`workspace` raise: no shipped `mounts_caller` reads them, and a future one that
-    does needs this probe extended, not silently handed a placeholder model.
+class _ProbeContext:
+    """A `Context` stand-in for probing `mounts_caller` without a real request. It carries
+    the path params and nothing else; `app`/`workspace` raise, since no shipped
+    `mounts_caller` reads them and a future one that does needs this probe extended, not
+    silently handed a placeholder model.
     """
 
     def __init__(self, *, has_app: bool) -> None:
-        self.has_app = has_app
-        self.workspace_loaded = False
+        self.view_args = {"app_id": "probe-app"} if has_app else {}
 
     @property
     def app(self) -> NoReturn:
@@ -606,7 +613,7 @@ def _probe_auth_context(subject_type: SubjectType) -> AuthContext:
 
 def _mounts_caller(subject_cls: type[Subject], *, has_app: bool) -> bool:
     subject = subject_cls(_probe_auth_context(subject_cls.subject_type))
-    return subject.mounts_caller(_ProbeCallerContext(has_app=has_app))
+    return subject.mounts_caller(_ProbeContext(has_app=has_app))  # type: ignore[arg-type]
 
 
 def test_every_mounting_pipeline_loads_a_caller() -> None:
@@ -617,10 +624,9 @@ def test_every_mounting_pipeline_loads_a_caller() -> None:
     today's two classes.
 
     Checked separately for `has_app` true and false, never blanketed (`_Facts(has_app=None,
-    ...)`): a blanket check lets `CheckAppWorkspaceMembership`'s own has_app-gated path to
-    `load_workspace_role` (which loads a caller too, transitively) stand in for a caller load
-    that is only ever guaranteed on the has_app branch that gate actually takes — exactly
-    coincidental coverage, the thing this whole module exists to refuse.
+    ...)`): `mounts_caller` itself answers differently per branch, so a blanket check lets a
+    load guaranteed on only one of them stand in for both — exactly coincidental coverage,
+    the thing this whole module exists to refuse.
     """
     failures: list[str] = []
     for subject_type, pipeline in subject_router._pipelines.items():
@@ -661,8 +667,8 @@ def _home_from_source(
 
 
 def test_resolver_follows_a_same_module_helper() -> None:
-    """The brief's own example: `_assert_member` calling `load_workspace_role` makes
-    `CheckAppWorkspaceMembership` load it transitively."""
+    """A requirement whose `run` delegates to a module-level helper loads whatever that
+    helper loads, transitively."""
     home, run = _home_from_source(
         "def _helper(ctx):\n    load_workspace_role(ctx)\n\ndef run(subject, ctx, session):\n    _helper(ctx)\n"
     )
@@ -704,19 +710,20 @@ def test_resolver_ignores_a_call_on_a_foreign_receiver() -> None:
     assert _resolve_loads(run, home, {}, _BLANKET, True) == frozenset({"caller"})
 
 
-def test_resolver_respects_a_decided_has_app_guard_clause() -> None:
+def test_resolver_respects_a_decided_route_has_app_guard_clause() -> None:
     """The precise bug this scan exists to avoid reintroducing: a blanket walk that ignores
-    `if not ctx.has_app: return` would count `load_app` as loaded on every route, including
-    ones with no `app_id` in the path at all."""
+    `if not route_has_app(ctx): return` would count `load_app` as loaded on every route,
+    including ones with no `app_id` in the path at all."""
     home, run = _home_from_source(
-        "def run(subject, ctx, session):\n    if not ctx.has_app:\n        return\n    load_app(ctx)\n"
+        "def run(subject, ctx, session):\n    if not route_has_app(ctx):\n        return\n    load_app(ctx)\n"
     )
     assert _resolve_loads(run, home, {}, _Facts(has_app=False, caller_kind=None), True) == frozenset()
     assert _resolve_loads(run, home, {}, _Facts(has_app=True, caller_kind=None), True) == frozenset({"app"})
 
 
 def test_resolver_respects_a_decided_caller_kind_guard_clause() -> None:
-    """`_assert_member`'s own guard: an end-user subject never reaches `load_workspace_role`."""
+    """`RequireWorkspaceMembership`'s own guard: an end-user subject never reaches
+    `load_workspace_role`."""
     home, run = _home_from_source(
         "def run(subject, ctx, session):\n"
         "    if subject.caller_kind is not CallerKind.ACCOUNT:\n"
@@ -729,11 +736,11 @@ def test_resolver_respects_a_decided_caller_kind_guard_clause() -> None:
 
 
 def test_resolver_does_not_credit_a_load_under_an_undecidable_condition() -> None:
-    """`RBACCheck`'s `dify_config.RBAC_ENABLED` gate is exactly this shape: undecidable, so
+    """`RBACScene`'s `dify_config.RBAC_ENABLED` gate is exactly this shape: undecidable, so
     a load under it is not credited — even though it really runs under some deployment
-    configs. Crediting it anyway is the bug this rule closes: `RBACCheck(scene=X,
-    roles=None)` would otherwise look like it loads `workspace` in every config, though at
-    runtime it loads it in none (see `test_resolver_does_not_credit_a_load_gated_by_an_
+    configs. Crediting it anyway is the bug this rule closes: `RBACScene` would otherwise
+    look like it loads `workspace` in every config, though on an RBAC-off deployment it
+    loads it in none (see `test_resolver_does_not_credit_a_load_gated_by_an_
     untracked_instance_attribute` for the real shape that bit us)."""
     home, run = _home_from_source(
         "def run(subject, ctx, session):\n    if some_flag:\n        load_app(ctx)\n    load_caller(ctx)\n"
@@ -763,10 +770,10 @@ def test_resolver_preserves_credited_through_a_loaders_own_cache_check() -> None
 
 
 def test_resolver_does_not_credit_a_load_gated_by_an_untracked_instance_attribute() -> None:
-    """The exact shape the reviewer found live in `RBACCheck._enforce_role_floor`:
-    `if self.roles is None: return` is undecidable (the scanner does not track per-instance
-    attribute values), so the `load_workspace_role` in the following `if`'s own test must
-    not be credited — even read in isolation it looks unconditional."""
+    """The shape live in `RoleFloor.run`, whose stand-down turns on `self.superseded_by`:
+    an instance attribute is undecidable (the scanner does not track per-instance values), so
+    the `load_workspace_role` in the following `if`'s own test must not be credited — even
+    read in isolation it looks unconditional."""
     home, run = _home_from_source(
         "def run(subject, ctx, session):\n"
         "    if self.roles is None:\n"

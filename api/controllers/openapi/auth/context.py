@@ -1,21 +1,23 @@
 """Holds what the request resolved; it resolves nothing itself — `loaders.py`
 owns the check-then-fetch.
 
-Importing a loader from here would close a cycle
-(`context` -> `subjects` -> `loaders` -> `context`), so this module knows the
-models it stores and nothing else. Structurally satisfies
-`subjects.CallerContext`.
+A subject resolves its caller through the loaders, so the import of `Subject`
+here is type-only: a runtime one would close the cycle
+`context` -> `subjects` -> `loaders` -> `context`.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Session
 
-from controllers.openapi.auth.subjects import Subject
 from models.account import Account, Tenant, TenantAccountRole
 from models.model import App, EndUser
+
+if TYPE_CHECKING:
+    from controllers.openapi.auth.subjects import Subject
 
 type Caller = Account | EndUser
 
@@ -41,10 +43,6 @@ class Context:
     @property
     def view_args(self) -> Mapping[str, str]:
         return self._view_args
-
-    @property
-    def has_app(self) -> bool:
-        return "app_id" in self._view_args
 
     @property
     def app(self) -> App:

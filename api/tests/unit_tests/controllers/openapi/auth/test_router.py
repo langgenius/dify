@@ -14,7 +14,7 @@ from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 import libs.rate_limit as rate_limit_module
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.pipelines import AccountPipeline
-from controllers.openapi.auth.requirements import Requirement, SubjectCheck
+from controllers.openapi.auth.requirements import CheckAppApiEnabled, Requirement, SubjectCheck
 from controllers.openapi.auth.router import AuthRouter, subject_router
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import AccountSubject
@@ -331,12 +331,12 @@ def test_path_params_reach_the_context(
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """`CheckAppApiEnabled` is fixed on the account pipeline, so it only fires
-    when the router has put the route's `app_id` on the context.
+    """`CheckAppApiEnabled` reads its `app_id` off the context, so it only fires
+    when the router has put the route's path params there.
     """
     persist(sqlite_session, make_app(enable_api=False))
     _authenticates(monkeypatch, make_auth(SubjectType.ACCOUNT))
-    view = _guard(_nothing)
+    view = _guard(_nothing, requirements=(CheckAppApiEnabled(),))
 
     with app.test_request_context(f"/openapi/v1/apps/{APP_ID}", headers={"Authorization": "Bearer tok"}):
         request.view_args = {"app_id": APP_ID}

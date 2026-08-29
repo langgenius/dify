@@ -10,8 +10,6 @@ from sqlalchemy.orm import Session
 
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
-    CheckAppApiEnabled,
-    CheckAppWorkspaceMembership,
     EditionCheck,
     LicenseCheck,
     Requirement,
@@ -49,14 +47,13 @@ class Pipeline:
 
 
 class AccountPipeline(Pipeline):
-    fixed = (CheckAppApiEnabled(), CheckAppWorkspaceMembership(), ResolveCaller())
+    fixed = (ResolveCaller(),)
 
 
 class ExternalSsoPipeline(Pipeline):
     fixed = (
         EditionCheck(frozenset({DeploymentEdition.ENTERPRISE})),
         LicenseCheck(),
-        CheckAppApiEnabled(),
         ResolveCaller(),
     )
 

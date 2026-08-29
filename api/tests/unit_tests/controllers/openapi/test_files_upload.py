@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from controllers.openapi.auth.requirements import RBACCheck
+from controllers.openapi.auth.requirements import RBACScene
 from controllers.openapi.files import AppFileUploadApi
 
 
@@ -12,7 +12,7 @@ def test_upload_declares_no_rbac_scene():
     still upload. `files.upload-rbac_on_denied` pins that end to end in the
     allow/deny matrix; this pins the declaration that row depends on.
     """
-    assert not any(isinstance(requirement, RBACCheck) for requirement in AppFileUploadApi.post.__spec__.requirements)
+    assert not any(isinstance(requirement, RBACScene) for requirement in AppFileUploadApi.post.__spec__.requirements)
 
 
 def test_transaction_boundary_matches_the_pre_migration_decorator():
