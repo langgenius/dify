@@ -190,3 +190,18 @@ def test_serde_defaults_skill_learning_policy_for_old_rows():
     from services.dify_builder.serde import context_from_dict
 
     assert context_from_dict({}).skill_learning_policy == "ask"
+
+
+def test_form_fields_round_trips():
+    from core.dify_builder.models import DifyBuilderContext
+    from services.dify_builder.serde import context_from_dict, context_to_dict
+
+    fc = DifyBuilderContext()
+    fc.form_fields = [{"key": "categories", "label": "Categories", "type": "text", "options": []}]
+    restored = context_from_dict(context_to_dict(fc))
+    assert restored.form_fields == fc.form_fields
+
+
+def test_form_fields_defaults_empty_when_absent():
+    from services.dify_builder.serde import context_from_dict
+    assert context_from_dict({}).form_fields == []
