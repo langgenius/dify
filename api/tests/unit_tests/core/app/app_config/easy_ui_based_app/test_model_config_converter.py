@@ -100,6 +100,38 @@ class TestModelConfigConverter:
         assert result.parameters == {"temperature": 0.7}
         assert result.stop == ["\n"]
 
+    def test_convert_success_with_model_config_stop(self, mock_app_config, patch_provider_manager):
+        mock_app_config.model.stop = ["###", "Human:"]
+        mock_app_config.model.parameters = {"temperature": 0.7}
+
+        result = ModelConfigConverter.convert(mock_app_config)
+
+        assert result.parameters == {"temperature": 0.7}
+        assert result.stop == ["###", "Human:"]
+
+    def test_convert_from_manager_entity_with_stop(self, patch_provider_manager):
+        from core.app.app_config.easy_ui_based_app.model_config.manager import ModelConfigManager
+
+        saved = {
+            "model": {
+                "provider": "openai",
+                "name": "gpt-4",
+                "mode": "chat",
+                "completion_params": {"temperature": 0.5, "stop": ["###"]},
+            }
+        }
+        entity = ModelConfigManager.convert(saved)
+        assert entity.stop == ["###"]
+        assert "stop" not in entity.parameters
+
+        app_config = MagicMock()
+        app_config.tenant_id = "tenant_1"
+        app_config.model = entity
+
+        result = ModelConfigConverter.convert(app_config)
+        assert result.stop == ["###"]
+        assert result.parameters == {"temperature": 0.5}
+
     def test_convert_mode_from_schema_valid(self, mock_app_config, mock_provider_bundle, mocker: MockerFixture):
         mock_app_config.model.mode = None
 
