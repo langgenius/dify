@@ -13,7 +13,7 @@ import { buildCarouselPages } from '../utils'
 import CardWrapper from './card-wrapper'
 import Carousel from './carousel'
 import { BECOME_PARTNER_URL, GRID_CLASS, PARTNER_COLLECTION_NAMES } from './collection-constants'
-import styles from './list-with-collection.module.css'
+import styles from './partner-header.module.css'
 import { useCarouselItemsPerPage } from './use-carousel-items-per-page'
 
 const COLLECTION_PRELOAD_MARGIN = '320px 0px'
