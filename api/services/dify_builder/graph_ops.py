@@ -164,8 +164,7 @@ def apply_delete_node(graph: Graph, node_id: str) -> tuple[Graph, list[str]]:
 
     new_graph["nodes"] = [n for n in nodes if n.get("id") != node_id]
     new_graph["edges"] = [
-        e for e in new_graph.get("edges", [])
-        if e.get("source") != node_id and e.get("target") != node_id
+        e for e in new_graph.get("edges", []) if e.get("source") != node_id and e.get("target") != node_id
     ]
     return new_graph, [node_id]
 
@@ -235,9 +234,7 @@ def apply_insert_between(
     old_target = edge.get("target")
     new_graph = copy.deepcopy(graph)
     edges = new_graph.get("edges", [])
-    matched = next(
-        (e for e in edges if e.get("source") == old_source and e.get("target") == old_target), None
-    )
+    matched = next((e for e in edges if e.get("source") == old_source and e.get("target") == old_target), None)
     if matched is None:
         raise ValueError(f"edge not found: {old_source} -> {old_target}")
 
@@ -287,16 +284,13 @@ def diff_graphs(before: Graph, after: Graph) -> tuple[list[str], str]:
     changes.extend(f"added node {node_id}" for node_id in added_nodes)
     changes.extend(f"removed node {node_id}" for node_id in removed_nodes)
     changes.extend(f"added {source} → {target}" for source, target, _sh, _th in added_edges)
-    changes.extend(
-        f"removed {source} → {target}" for source, target, _sh, _th in removed_edges
-    )
+    changes.extend(f"removed {source} → {target}" for source, target, _sh, _th in removed_edges)
 
     for node_id in sorted(before_nodes.keys() & after_nodes.keys()):
         before_data = before_nodes[node_id].get("data", {})
         after_data = after_nodes[node_id].get("data", {})
         changed_keys = sorted(
-            key for key in set(before_data) | set(after_data)
-            if before_data.get(key) != after_data.get(key)
+            key for key in set(before_data) | set(after_data) if before_data.get(key) != after_data.get(key)
         )
         changes.extend(f"{node_id}: {key} updated" for key in changed_keys)
 
@@ -311,10 +305,7 @@ def structural_fingerprint(graph: Graph) -> str:
     removing, or reconnecting a node changes it. Used by recovery (C-1) to
     tell a config-only hand-edit from a structural one. Order-independent
     (nodes and edges are sorted before hashing)."""
-    nodes = sorted(
-        (str(n.get("id", "")), str((n.get("data") or {}).get("type", "")))
-        for n in graph.get("nodes", [])
-    )
+    nodes = sorted((str(n.get("id", "")), str((n.get("data") or {}).get("type", ""))) for n in graph.get("nodes", []))
     edges = sorted(
         (
             str(e.get("source", "")),
@@ -332,3 +323,53 @@ def node_ids(graph: Graph) -> list[str]:
     """The ids of every node in ``graph``, in document order (missing-id
     nodes skipped). Used by recovery's target-presence check."""
     return [str(n["id"]) for n in graph.get("nodes", []) if n.get("id") is not None]
+
+
+STRUCTURAL_OPS: frozenset[str] = frozenset({"create_node", "delete_node", "connect", "insert_between"})
+
+_APPLY_FNS = {
+    "set_node_config": apply_set_node_config,
+    "create_node": apply_create_node,
+    "delete_node": apply_delete_node,
+    "connect": apply_connect,
+    "insert_between": apply_insert_between,
+}
+
+
+def filter_applicable(
+    graph: Graph,
+    intents: list[MutationIntent],
+    allowed_node_types: set[str] | None = None,
+) -> tuple[list[MutationIntent], list[tuple[MutationIntent, str]]]:
+    """Dry-run each intent through the real validate_intent_args + apply_* on a
+    working deep copy, in order (so a connect sees a node an earlier create_node
+    added). Returns (applicable, rejected) where each rejected entry is
+    (intent, reason).
+
+    Catches every failure the live apply_repair would hit -- unknown op, missing
+    required arg / extra arg key, dangling node/edge ref, duplicate id -- and
+    additionally rejects a create_node / insert_between whose node_type is not in
+    allowed_node_types (a check apply_* does not do). Applicable intents advance
+    the working copy; a rejected intent does not.
+    """
+    working = copy.deepcopy(graph)
+    applicable: list[MutationIntent] = []
+    rejected: list[tuple[MutationIntent, str]] = []
+    for intent in intents:
+        apply_fn = _APPLY_FNS.get(intent.op)
+        if apply_fn is None:
+            rejected.append((intent, f"unknown mutation op: {intent.op!r}"))
+            continue
+        if allowed_node_types is not None and intent.op in ("create_node", "insert_between"):
+            node_type = intent.args.get("node_type")
+            if node_type not in allowed_node_types:
+                rejected.append((intent, f"node_type not allowed: {node_type!r}"))
+                continue
+        try:
+            validate_intent_args(intent)
+            working, _changed = apply_fn(working, **intent.args)
+        except (ValueError, TypeError) as exc:
+            rejected.append((intent, str(exc)))
+            continue
+        applicable.append(intent)
+    return applicable, rejected
