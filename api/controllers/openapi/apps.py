@@ -7,7 +7,6 @@ from typing import Any
 
 from flask_restx import Resource
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Conflict, NotFound, UnprocessableEntity
 
 from configs import dify_config
 from controllers.common.app_access import AppAccessFilter, resolve_app_access_filter
@@ -26,6 +25,7 @@ from controllers.openapi._models import (
 )
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.data import CallerKind
+from controllers.openapi.auth.loaders import load_app
 from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
     RBACScene,
@@ -59,39 +59,6 @@ _EMPTY_PARAMETERS: dict[str, Any] = {
     "file_upload": None,
     "system_parameters": {},
 }
-
-
-class AppReadResource(Resource):
-    """Base for per-app read endpoints; subclasses call `_load()` for membership/exists checks."""
-
-    def _load(self, session: Session, app_id: str, workspace_id: str | None = None) -> App:
-        try:
-            parsed_uuid = _uuid.UUID(app_id)
-            is_uuid = True
-        except ValueError:
-            parsed_uuid = None
-            is_uuid = False
-
-        if is_uuid:
-            # ``str(parsed_uuid)`` normalises to the canonical dashed form.
-            app = AppService.get_visible_app_by_id(str(parsed_uuid), session)
-            if app is None:
-                raise NotFound("app not found")
-        else:
-            if not workspace_id:
-                raise UnprocessableEntity("workspace_id is required for name-based lookup")
-            matches = AppService.find_visible_apps_by_name(session, name=app_id, tenant_id=workspace_id)
-            if len(matches) == 0:
-                raise NotFound("app not found")
-            if len(matches) > 1:
-                lines = [f"app name {app_id!r} is ambiguous — re-run with a UUID:\n\n"]
-                lines.append(f"  {'ID':<36}  {'MODE':<12}  NAME\n")
-                for m in matches:
-                    lines.append(f"  {str(m.id):<36}  {str(m.mode.value):<12}  {m.name}\n")
-                raise Conflict("".join(lines))
-            app = matches[0]
-
-        return app
 
 
 def parameters_payload(app: App, *, session: Session) -> dict:
@@ -138,7 +105,7 @@ def build_app_describe_response(app: App, fields: set[str] | None, *, session: S
 
 
 @openapi_ns.route("/apps/<string:app_id>")
-class AppDescribeApi(AppReadResource):
+class AppDescribeApi(Resource):
     @endpoint(
         requirements=(
             _ACCOUNT_SUBJECT,
@@ -152,9 +119,8 @@ class AppDescribeApi(AppReadResource):
         write=False,
     )
     def get(self, ctx: Context, app_id: str, *, query: AppDescribeQuery):
-        # describe is UUID-only (workspace_id query param dropped in #37212).
-        app = self._load(ctx.session, app_id)
-        return build_app_describe_response(app, query.fields, session=ctx.session)
+        # The pipeline has already loaded the app; project it.
+        return build_app_describe_response(load_app(ctx), query.fields, session=ctx.session)
 
 
 @openapi_ns.route("/apps")
