@@ -1,26 +1,25 @@
 import { Popover } from '@langgenius/dify-ui/popover'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import Card from '../card'
+import { ServiceApiCard } from '../card'
 
 vi.mock('@/hooks/use-api-access-url', () => ({
   useDatasetApiAccessUrl: () => 'https://docs.dify.ai/api-reference/datasets',
 }))
 
 describe('Service API card', () => {
-  const renderCard = (props: React.ComponentProps<typeof Card>) =>
+  const renderCard = (props: React.ComponentProps<typeof ServiceApiCard>) =>
     render(
       <Popover>
-        <Card {...props} />
+        <ServiceApiCard {...props} />
       </Popover>,
     )
 
   it('shows the service endpoint and API reference', () => {
     renderCard({
       apiBaseUrl: 'https://api.example.com',
-      canManageSecretKey: true,
-      onOpenSecretKeyModal: vi.fn(),
-      onOpenAddModal: vi.fn(),
+      canManageApiKey: true,
+      onOpenApiKeyModal: vi.fn(),
     })
 
     expect(screen.getByText('https://api.example.com')).toBeInTheDocument()
@@ -29,46 +28,27 @@ describe('Service API card', () => {
     ).toHaveAttribute('href', 'https://docs.dify.ai/api-reference/datasets')
   })
 
-  it('opens the add-key dialog when allowed', async () => {
-    const user = userEvent.setup()
-    const onOpenAddModal = vi.fn()
-    renderCard({
-      apiBaseUrl: 'https://api.example.com',
-      canManageSecretKey: true,
-      onOpenSecretKeyModal: vi.fn(),
-      onOpenAddModal,
-    })
-
-    await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.card.addApiKey' }))
-
-    expect(onOpenAddModal).toHaveBeenCalledOnce()
-  })
-
   it('opens secret-key management when allowed', async () => {
     const user = userEvent.setup()
-    const onOpenSecretKeyModal = vi.fn()
+    const onOpenApiKeyModal = vi.fn()
     renderCard({
       apiBaseUrl: 'https://api.example.com',
-      canManageSecretKey: true,
-      onOpenSecretKeyModal,
-      onOpenAddModal: vi.fn(),
+      canManageApiKey: true,
+      onOpenApiKeyModal,
     })
 
-    await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.card.manageApiKey' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.card.apiKey' }))
 
-    expect(onOpenSecretKeyModal).toHaveBeenCalledOnce()
+    expect(onOpenApiKeyModal).toHaveBeenCalledOnce()
   })
 
-  it('disables key management when it is not allowed', () => {
+  it('disables secret-key management when it is not allowed', () => {
     renderCard({
       apiBaseUrl: 'https://api.example.com',
-      onOpenSecretKeyModal: vi.fn(),
-      onOpenAddModal: vi.fn(),
+      canManageApiKey: false,
+      onOpenApiKeyModal: vi.fn(),
     })
 
-    expect(screen.getByRole('button', { name: 'dataset.serviceApi.card.addApiKey' })).toBeDisabled()
-    expect(
-      screen.getByRole('button', { name: 'dataset.serviceApi.card.manageApiKey' }),
-    ).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'dataset.serviceApi.card.apiKey' })).toBeDisabled()
   })
 })

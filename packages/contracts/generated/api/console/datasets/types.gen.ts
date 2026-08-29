@@ -1682,6 +1682,10 @@ export type PostDatasetsByDatasetIdDocumentsMetadataData = {
   url: '/datasets/{dataset_id}/documents/metadata'
 }
 
+export type PostDatasetsByDatasetIdDocumentsMetadataErrors = {
+  404: unknown
+}
+
 export type PostDatasetsByDatasetIdDocumentsMetadataResponses = {
   204: void
 }
@@ -2485,3 +2489,56 @@ export type GetDatasetsByDatasetIdUseCheckResponses = {
 
 export type GetDatasetsByDatasetIdUseCheckResponse =
   GetDatasetsByDatasetIdUseCheckResponses[keyof GetDatasetsByDatasetIdUseCheckResponses]
+
+export type GetDatasetsByResourceIdApiKeysData = {
+  body?: never
+  path: {
+    resource_id: string
+  }
+  query?: never
+  url: '/datasets/{resource_id}/api-keys'
+}
+
+export type GetDatasetsByResourceIdApiKeysResponses = {
+  200: ApiKeyList
+}
+
+export type GetDatasetsByResourceIdApiKeysResponse =
+  GetDatasetsByResourceIdApiKeysResponses[keyof GetDatasetsByResourceIdApiKeysResponses]
+
+export type PostDatasetsByResourceIdApiKeysData = {
+  body?: never
+  path: {
+    resource_id: string
+  }
+  query?: never
+  url: '/datasets/{resource_id}/api-keys'
+}
+
+export type PostDatasetsByResourceIdApiKeysErrors = {
+  400: unknown
+}
+
+export type PostDatasetsByResourceIdApiKeysResponses = {
+  201: ApiKeyItem
+}
+
+export type PostDatasetsByResourceIdApiKeysResponse =
+  PostDatasetsByResourceIdApiKeysResponses[keyof PostDatasetsByResourceIdApiKeysResponses]
+
+export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdData = {
+  body?: never
+  path: {
+    api_key_id: string
+    resource_id: string
+  }
+  query?: never
+  url: '/datasets/{resource_id}/api-keys/{api_key_id}'
+}
+
+export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponses = {
+  204: void
+}
+
+export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponse =
+  DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponses[keyof DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponses]

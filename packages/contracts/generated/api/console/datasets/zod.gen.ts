@@ -876,7 +876,7 @@ export const zProcessRule = z.object({
  * MetadataDetail
  */
 export const zMetadataDetail = z.object({
-  id: z.string(),
+  id: z.uuid(),
   name: z.string(),
   value: z.union([z.string(), z.int(), z.number()]).nullish(),
 })
@@ -885,7 +885,7 @@ export const zMetadataDetail = z.object({
  * DocumentMetadataOperation
  */
 export const zDocumentMetadataOperation = z.object({
-  document_id: z.string(),
+  document_id: z.uuid(),
   metadata_list: z.array(zMetadataDetail),
   partial_update: z.boolean().optional().default(false),
 })
@@ -2292,3 +2292,31 @@ export const zGetDatasetsByDatasetIdUseCheckPath = z.object({
  * Dataset use status retrieved successfully
  */
 export const zGetDatasetsByDatasetIdUseCheckResponse = zUsageCheckResponse
+
+export const zGetDatasetsByResourceIdApiKeysPath = z.object({
+  resource_id: z.uuid(),
+})
+
+/**
+ * API keys retrieved successfully
+ */
+export const zGetDatasetsByResourceIdApiKeysResponse = zApiKeyList
+
+export const zPostDatasetsByResourceIdApiKeysPath = z.object({
+  resource_id: z.uuid(),
+})
+
+/**
+ * API key created successfully
+ */
+export const zPostDatasetsByResourceIdApiKeysResponse = zApiKeyItem
+
+export const zDeleteDatasetsByResourceIdApiKeysByApiKeyIdPath = z.object({
+  api_key_id: z.uuid(),
+  resource_id: z.uuid(),
+})
+
+/**
+ * API key deleted successfully
+ */
+export const zDeleteDatasetsByResourceIdApiKeysByApiKeyIdResponse = z.void()

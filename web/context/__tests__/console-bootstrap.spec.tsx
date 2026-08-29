@@ -13,15 +13,13 @@ import { setAnalyticsConsent } from '@/app/components/base/analytics-consent/con
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import { ZENDESK_FIELD_IDS } from '@/config'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
-import { refreshUserProfileAtom, userProfileAtom } from '../account-state'
-import { initialWorkspaceInfo } from '../app-context-defaults'
+import { initialWorkspaceSummary } from '../app-context-defaults'
 import {
   datasetDefaultPermissionKeysAtom,
   refreshWorkspacePermissionKeysAfterMutationDenialAtom,
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,
 } from '../permission-state'
-import { langGeniusVersionInfoAtom } from '../version-state'
 import {
   currentWorkspaceAtom,
   currentWorkspaceLoadingAtom,
@@ -29,7 +27,6 @@ import {
   isCurrentWorkspaceEditorAtom,
   isCurrentWorkspaceManagerAtom,
   isCurrentWorkspaceOwnerAtom,
-  refreshCurrentWorkspaceAtom,
 } from '../workspace-state'
 
 const mockGetRequest = vi.hoisted(() => vi.fn())
@@ -43,13 +40,8 @@ const mockCurrentWorkspaceResponse = vi.hoisted(() => ({
   id: 'workspace-1',
   name: 'Workspace',
   plan: 'sandbox',
-  status: 'normal',
-  created_at: 1704067200,
+  credits: 200,
   role: 'editor',
-  trial_credits: 200,
-  trial_credits_used: 0,
-  next_credit_reset_date: 1706745600,
-  custom_config: {},
 }))
 const mockCurrentWorkspaceQueryState = vi.hoisted(() => ({
   data: mockCurrentWorkspaceResponse as typeof mockCurrentWorkspaceResponse | undefined,
@@ -90,23 +82,11 @@ const mockSystemFeaturesState = vi.hoisted(() => ({
 const mockLangGeniusVersionState = vi.hoisted(() => ({
   data: {
     version: '1.0.1',
-    release_date: '',
     release_notes: '',
-    features: {
-      can_replace_logo: false,
-      model_load_balancing_enabled: false,
-    },
-    can_auto_update: false,
   } as
     | {
         version: string
-        release_date: string
         release_notes: string
-        features: {
-          can_replace_logo: boolean
-          model_load_balancing_enabled: boolean
-        }
-        can_auto_update: boolean
       }
     | undefined,
 }))
@@ -143,19 +123,21 @@ vi.mock('@/service/client', () => ({
     },
     workspaces: {
       current: {
-        post: {
-          key: () => ['current-workspace'],
-          queryOptions: (options: {
-            select?: (workspace?: typeof mockCurrentWorkspaceResponse) => unknown
-          }) => ({
-            queryKey: ['current-workspace'],
-            queryFn: async () => {
-              if (mockCurrentWorkspaceQueryState.isPending) return new Promise(() => {})
+        summary: {
+          get: {
+            key: () => ['current-workspace-summary'],
+            queryOptions: (options: {
+              select?: (workspace?: typeof mockCurrentWorkspaceResponse) => unknown
+            }) => ({
+              queryKey: ['current-workspace-summary'],
+              queryFn: async () => {
+                if (mockCurrentWorkspaceQueryState.isPending) return new Promise(() => {})
 
-              return mockCurrentWorkspaceQueryState.data
-            },
-            ...options,
-          }),
+                return mockCurrentWorkspaceQueryState.data
+              },
+              ...options,
+            }),
+          },
         },
         rbac: {
           myPermissions: {
@@ -215,7 +197,6 @@ vi.mock('@/app/components/header/maintenance-notice', () => ({
 }))
 
 function ConsoleBootstrapProbe() {
-  const userProfile = useAtomValue(userProfileAtom)
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
@@ -225,9 +206,6 @@ function ConsoleBootstrapProbe() {
   const datasetDefaultPermissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
   const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
-  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
-  const refreshUserProfile = useSetAtom(refreshUserProfileAtom)
-  const refreshCurrentWorkspace = useSetAtom(refreshCurrentWorkspaceAtom)
   const refreshPermissionsAfterMutationDenial = useSetAtom(
     refreshWorkspacePermissionKeysAfterMutationDenialAtom,
   )
@@ -249,10 +227,6 @@ function ConsoleBootstrapProbe() {
       <span>
         workspace loading:
         {String(isLoadingCurrentWorkspace)}
-      </span>
-      <span>
-        user:
-        {userProfile.email}
       </span>
       <span>
         workspace:
@@ -278,17 +252,6 @@ function ConsoleBootstrapProbe() {
         dataset operator:
         {String(isCurrentWorkspaceDatasetOperator)}
       </span>
-      <span>
-        version:
-        {langGeniusVersionInfo.current_version}/{langGeniusVersionInfo.latest_version}/
-        {langGeniusVersionInfo.current_env}
-      </span>
-      <button type="button" onClick={refreshUserProfile}>
-        refresh user
-      </button>
-      <button type="button" onClick={refreshCurrentWorkspace}>
-        refresh workspace
-      </button>
       <button type="button" onClick={() => void refreshPermissionsAfterMutationDenial()}>
         refresh permissions after denial
       </button>
@@ -388,13 +351,7 @@ describe('Console bootstrap', () => {
     })
     mockLangGeniusVersionState.data = {
       version: '1.0.1',
-      release_date: '',
       release_notes: '',
-      features: {
-        can_replace_logo: false,
-        model_load_balancing_enabled: false,
-      },
-      can_auto_update: false,
     }
     mockGetRequest.mockImplementation((url: string) => {
       if (url === '/version') return Promise.resolve(mockLangGeniusVersionState.data)
@@ -404,19 +361,17 @@ describe('Console bootstrap', () => {
   })
 
   describe('Bootstrap atoms', () => {
-    it('should provide profile, workspace, permissions, loading state, and version metadata', async () => {
+    it('should provide workspace, permissions, and loading state', async () => {
       renderConsoleBootstrap()
 
-      expect(await screen.findByText('user:user@example.com')).toBeInTheDocument()
       expect(await screen.findByText('workspace:Workspace')).toBeInTheDocument()
       expect(await screen.findByText('keys:app.create_and_management')).toBeInTheDocument()
       expect(screen.getByText('dataset keys:dataset.acl.edit')).toBeInTheDocument()
       expect(screen.getByText('permission loading:false')).toBeInTheDocument()
       expect(screen.getByText('workspace loading:false')).toBeInTheDocument()
-      expect(await screen.findByText('version:1.0.0/1.0.1/cloud')).toBeInTheDocument()
     })
 
-    it('should fall back to placeholder values when workspace, permission, or version data is missing', async () => {
+    it('should fall back to placeholder values when workspace or permission data is missing', async () => {
       mockCurrentWorkspaceQueryState.data = undefined
       mockPermissionKeysState.datasetPermissionKeys = []
       mockPermissionKeysState.permissionKeys = []
@@ -424,12 +379,12 @@ describe('Console bootstrap', () => {
 
       renderConsoleBootstrap()
 
-      expect(await screen.findByText('user:user@example.com')).toBeInTheDocument()
-      expect(screen.getByText(`workspace:${initialWorkspaceInfo.name}`)).toBeInTheDocument()
-      expect(screen.getByText(`role:${initialWorkspaceInfo.role}`)).toBeInTheDocument()
+      expect(
+        await screen.findByText(`workspace:${initialWorkspaceSummary.name}`),
+      ).toBeInTheDocument()
+      expect(screen.getByText(`role:${initialWorkspaceSummary.role}`)).toBeInTheDocument()
       expect(screen.getByText('keys:')).toBeInTheDocument()
       expect(screen.getByText('dataset keys:')).toBeInTheDocument()
-      expect(screen.getByText('version://')).toBeInTheDocument()
     })
 
     it('should normalize invalid workspace roles to the initial workspace role', async () => {
@@ -440,7 +395,7 @@ describe('Console bootstrap', () => {
 
       renderConsoleBootstrap()
 
-      expect(await screen.findByText(`role:${initialWorkspaceInfo.role}`)).toBeInTheDocument()
+      expect(await screen.findByText(`role:${initialWorkspaceSummary.role}`)).toBeInTheDocument()
     })
 
     it('should derive role flags from the current workspace role', async () => {
@@ -469,17 +424,6 @@ describe('Console bootstrap', () => {
   })
 
   describe('Refresh actions', () => {
-    it('should invalidate the source queries when refresh actions are called', async () => {
-      const { queryClient } = renderConsoleBootstrap()
-      const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
-
-      fireEvent.click(await screen.findByRole('button', { name: /refresh user/i }))
-      fireEvent.click(screen.getByRole('button', { name: /refresh workspace/i }))
-
-      expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['user-profile'] })
-      expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['current-workspace'] })
-    })
-
     it('starts a fresh permission request without waiting for an older request', async () => {
       const { queryClient } = renderConsoleBootstrap()
       await screen.findByText('dataset keys:dataset.acl.edit')
@@ -566,6 +510,60 @@ describe('Console bootstrap', () => {
       })
     })
 
+    it('should not sync Zendesk fields outside cloud deployments', async () => {
+      mockSystemFeaturesState.data = createSystemFeaturesFixture({
+        deployment_edition: 'COMMUNITY',
+      })
+
+      renderConsoleBootstrap()
+
+      await screen.findByText('workspace:Workspace')
+      expect(setZendeskConversationFields).not.toHaveBeenCalled()
+    })
+
+    it('should resync only changed Zendesk fields', async () => {
+      const { queryClient, rerender } = renderConsoleBootstrap()
+
+      await waitFor(() => expect(setZendeskConversationFields).toHaveBeenCalledTimes(4))
+
+      rerender(
+        <JotaiProvider>
+          <QueryClientProvider client={queryClient}>
+            <TestQueryClientHydrator queryClient={queryClient}>
+              <Suspense fallback={<span>loading</span>}>
+                <ExternalServiceSync />
+                <ConsoleBootstrapProbe />
+              </Suspense>
+            </TestQueryClientHydrator>
+          </QueryClientProvider>
+        </JotaiProvider>,
+      )
+      expect(setZendeskConversationFields).toHaveBeenCalledTimes(4)
+
+      act(() => {
+        queryClient.setQueryData(['user-profile'], {
+          ...mockUserProfileResponseState.data,
+          profile: {
+            ...mockUserProfileResponseState.data.profile,
+            email: 'updated@example.com',
+          },
+        })
+      })
+
+      await waitFor(() => {
+        expect(setZendeskConversationFields).toHaveBeenCalledTimes(5)
+        expect(setZendeskConversationFields).toHaveBeenLastCalledWith(
+          [
+            {
+              id: ZENDESK_FIELD_IDS.EMAIL,
+              value: 'updated@example.com',
+            },
+          ],
+          'CLOUD',
+        )
+      })
+    })
+
     it('should not sync Amplitude identity when user id is missing', async () => {
       mockUserProfileResponseState.data = {
         profile: {
@@ -584,7 +582,7 @@ describe('Console bootstrap', () => {
 
       renderConsoleBootstrap()
 
-      await screen.findByText('user:')
+      await screen.findByText('workspace:Workspace')
       expect(setUserId).not.toHaveBeenCalled()
       expect(setUserProperties).not.toHaveBeenCalled()
       expect(flushRegistrationSuccess).not.toHaveBeenCalled()
@@ -594,7 +592,7 @@ describe('Console bootstrap', () => {
       setAnalyticsConsent('denied')
       renderConsoleBootstrap()
 
-      await screen.findByText('user:user@example.com')
+      await screen.findByText('workspace:Workspace')
       expect(setUserId).not.toHaveBeenCalled()
       expect(setUserProperties).not.toHaveBeenCalled()
 
@@ -604,6 +602,43 @@ describe('Console bootstrap', () => {
         expect(setUserId).toHaveBeenCalledWith('user@example.com')
         expect(setUserProperties).toHaveBeenCalled()
         expect(flushRegistrationSuccess).toHaveBeenCalled()
+      })
+    })
+
+    it('should resync Amplitude only when identity properties change', async () => {
+      const { queryClient, rerender } = renderConsoleBootstrap()
+
+      await waitFor(() => expect(setUserProperties).toHaveBeenCalledTimes(1))
+
+      rerender(
+        <JotaiProvider>
+          <QueryClientProvider client={queryClient}>
+            <TestQueryClientHydrator queryClient={queryClient}>
+              <Suspense fallback={<span>loading</span>}>
+                <ExternalServiceSync />
+                <ConsoleBootstrapProbe />
+              </Suspense>
+            </TestQueryClientHydrator>
+          </QueryClientProvider>
+        </JotaiProvider>,
+      )
+      expect(setUserProperties).toHaveBeenCalledTimes(1)
+
+      act(() => {
+        queryClient.setQueryData(['user-profile'], {
+          ...mockUserProfileResponseState.data,
+          profile: {
+            ...mockUserProfileResponseState.data.profile,
+            name: 'Updated User',
+          },
+        })
+      })
+
+      await waitFor(() => {
+        expect(setUserProperties).toHaveBeenCalledTimes(2)
+        expect(setUserProperties).toHaveBeenLastCalledWith(
+          expect.objectContaining({ name: 'Updated User' }),
+        )
       })
     })
   })

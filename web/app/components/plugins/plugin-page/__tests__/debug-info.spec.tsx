@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import DebugInfo from '../debug-info'
 
 vi.mock('@/context/i18n', () => ({
@@ -49,7 +49,7 @@ describe('DebugInfo', () => {
   it('renders a disabled trigger when debug info is unavailable', () => {
     render(<DebugInfo />)
 
-    const trigger = screen.getByRole('button')
+    const trigger = screen.getByRole('button', { name: 'plugin.debugInfo.title' })
     expect(trigger).toBeDisabled()
   })
 
@@ -63,7 +63,7 @@ describe('DebugInfo', () => {
     const user = userEvent.setup()
     render(<DebugInfo />)
 
-    const trigger = screen.getByRole('button')
+    const trigger = screen.getByRole('button', { name: 'plugin.debugInfo.title' })
     expect(trigger).toBeEnabled()
 
     // Popover is closed initially — content not rendered yet

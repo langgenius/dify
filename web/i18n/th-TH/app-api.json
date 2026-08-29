@@ -6,7 +6,7 @@
   "apiKeyModal.addKnowledgeBase": "เพิ่มฐานความรู้",
   "apiKeyModal.addSubtitle": "สร้างกุญแจ API ใหม่เพื่อเข้าถึง API ของฐานความรู้",
   "apiKeyModal.addTitle": "เพิ่มกุญแจ API",
-  "apiKeyModal.apiSecretKey": "คีย์ลับ API",
+  "apiKeyModal.apiSecretKey": "คีย์ API",
   "apiKeyModal.apiSecretKeyTips": "เพื่อป้องกันการละเมิด API ให้ปกป้องคีย์ API ของคุณ หลีกเลี่ยงการใช้เป็นข้อความธรรมดาในโค้ดส่วนหน้า :)",
   "apiKeyModal.createNewSecretKey": "สร้างคีย์ลับใหม่",
   "apiKeyModal.created": "สร้าง",

@@ -48,6 +48,7 @@ export const zLicenseStatus = z.enum(['active', 'expired', 'expiring', 'inactive
  */
 export const zLicenseModel = z.object({
   expired_at: z.string().default(''),
+  license_expiry_notice_enabled: z.boolean().default(false),
   seats: zLicenseLimitationModel.default({
     enabled: false,
     limit: 0,

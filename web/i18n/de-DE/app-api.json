@@ -6,7 +6,7 @@
   "apiKeyModal.addKnowledgeBase": "Wissensdatenbank hinzufügen",
   "apiKeyModal.addSubtitle": "Erstellen Sie einen neuen API-Schlüssel für den Zugriff auf die Wissensdatenbank-API.",
   "apiKeyModal.addTitle": "API-Schlüssel hinzufügen",
-  "apiKeyModal.apiSecretKey": "API Geheimschlüssel",
+  "apiKeyModal.apiSecretKey": "API Schlüssel",
   "apiKeyModal.apiSecretKeyTips": "Um Missbrauch der API zu verhindern, schützen Sie Ihren API Schlüssel. Vermeiden Sie es, ihn als Klartext im Frontend-Code zu verwenden. :)",
   "apiKeyModal.createNewSecretKey": "Neuen Geheimschlüssel erstellen",
   "apiKeyModal.created": "ERSTELLT",

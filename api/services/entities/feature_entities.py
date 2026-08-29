@@ -4,8 +4,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from enums.cloud_plan import CloudPlan
-from enums.deployment_edition import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 
 
 class FeatureResponseModel(BaseModel):
@@ -13,12 +12,18 @@ class FeatureResponseModel(BaseModel):
 
 
 class SubscriptionModel(FeatureResponseModel):
-    plan: str = CloudPlan.SANDBOX
+    plan: CloudPlan = CloudPlan.SANDBOX
     interval: str = ""
 
 
 class BillingModel(FeatureResponseModel):
-    enabled: bool = False
+    # Deprecated compatibility field. Deployment edition is the only source of truth for product edition.
+    # TODO: Remove after clients migrate to `SystemFeatureModel.deployment_edition`.
+    enabled: bool = Field(
+        default=False,
+        deprecated=True,
+        description="Deprecated. Use system features deployment_edition to determine the product edition.",
+    )
     subscription: SubscriptionModel = SubscriptionModel()
 
 
@@ -89,6 +94,7 @@ class LicenseModel(LicenseStatusModel):
     expired_at: str = ""
     workspaces: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
     seats: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
+    license_expiry_notice_enabled: bool = False
 
 
 class BrandingModel(FeatureResponseModel):

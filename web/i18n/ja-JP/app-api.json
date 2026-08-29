@@ -6,7 +6,7 @@
   "apiKeyModal.addKnowledgeBase": "ナレッジベースを追加",
   "apiKeyModal.addSubtitle": "ナレッジベースAPIにアクセスするための新しいAPIキーを作成します。",
   "apiKeyModal.addTitle": "APIキーを追加",
-  "apiKeyModal.apiSecretKey": "API シークレットキー",
+  "apiKeyModal.apiSecretKey": "API キー",
   "apiKeyModal.apiSecretKeyTips": "API の悪用を防ぐために、API キーを保護してください。フロントエンドのコードで平文として使用しないでください。:)",
   "apiKeyModal.createNewSecretKey": "新しいシークレットキーを作成",
   "apiKeyModal.created": "作成日時",

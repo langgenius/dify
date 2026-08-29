@@ -36,11 +36,8 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
       <SegmentedControl
         className="max-w-full rounded-md p-px"
         aria-label={t(($) => $['newKnowledge.viewLabel'])}
-        value={[value]}
-        onValueChange={(values) => {
-          const nextValue = values[0]
-          if (nextValue === 'legacy' || nextValue === 'new') onChange(nextValue)
-        }}
+        value={value}
+        onValueChange={(value) => onChange(value)}
       >
         <SegmentedControlItem
           className="h-5.5 rounded-md px-1 py-px system-xs-medium"
@@ -90,7 +87,7 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
                 href="https://docs.dify.ai/en/guides/knowledge-base"
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-sm system-xs-regular text-text-accent outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                className="rounded-sm system-xs-regular text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               >
                 {t(($) => $['newKnowledge.learnMore'])}
               </a>

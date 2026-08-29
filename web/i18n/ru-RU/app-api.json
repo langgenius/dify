@@ -6,7 +6,7 @@
   "apiKeyModal.addKnowledgeBase": "Добавить базу знаний",
   "apiKeyModal.addSubtitle": "Создайте новый API ключ для доступа к API базы знаний.",
   "apiKeyModal.addTitle": "Добавить API ключ",
-  "apiKeyModal.apiSecretKey": "Секретный ключ API",
+  "apiKeyModal.apiSecretKey": "API Ключ",
   "apiKeyModal.apiSecretKeyTips": "Чтобы предотвратить злоупотребление API, защитите свой API ключ. Избегайте использования его в виде plain-текста во фронтенд-коде. :)",
   "apiKeyModal.createNewSecretKey": "Создать новый секретный ключ",
   "apiKeyModal.created": "СОЗДАН",

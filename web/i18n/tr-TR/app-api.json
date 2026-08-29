@@ -6,7 +6,7 @@
   "apiKeyModal.addKnowledgeBase": "Bilgi tabanı ekle",
   "apiKeyModal.addSubtitle": "Bilgi tabanı API'sine erişmek için yeni bir API anahtarı oluşturun.",
   "apiKeyModal.addTitle": "API Anahtarı Ekle",
-  "apiKeyModal.apiSecretKey": "API Gizli Anahtar",
+  "apiKeyModal.apiSecretKey": "API Anahtarı",
   "apiKeyModal.apiSecretKeyTips": "API suiistimalini önlemek için, API Anahtarınızı koruyunuz. Ön uç kodda düz metin olarak kullanmaktan kaçının. :)",
   "apiKeyModal.createNewSecretKey": "Yeni Gizli Anahtar Oluştur",
   "apiKeyModal.created": "OLUŞTURULDU",

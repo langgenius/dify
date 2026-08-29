@@ -17,8 +17,6 @@ from .agent import (
     AgentConfigSnapshot,
     AgentConfigVersionKind,
     AgentDebugConversation,
-    AgentDriveFile,
-    AgentDriveFileKind,
     AgentHomeSnapshot,
     AgentIconType,
     AgentKind,
@@ -149,6 +147,7 @@ from .workflow import (
     WorkflowRun,
     WorkflowRunArchiveBundle,
     WorkflowType,
+    WorkflowVersionCounter,
     resolve_workflow_kind,
 )
 
@@ -168,8 +167,6 @@ __all__ = [
     "AgentConfigSnapshot",
     "AgentConfigVersionKind",
     "AgentDebugConversation",
-    "AgentDriveFile",
-    "AgentDriveFileKind",
     "AgentHomeSnapshot",
     "AgentIconType",
     "AgentKind",
@@ -295,5 +292,6 @@ __all__ = [
     "WorkflowToolProvider",
     "WorkflowTriggerStatus",
     "WorkflowType",
+    "WorkflowVersionCounter",
     "resolve_workflow_kind",
 ]

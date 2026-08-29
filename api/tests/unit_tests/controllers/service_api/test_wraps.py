@@ -4,12 +4,12 @@ Unit tests for Service API wraps (authentication decorators)
 
 import uuid
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from flask import Flask
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session
 from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
 
 from controllers.service_api.wraps import (
@@ -23,7 +23,7 @@ from controllers.service_api.wraps import (
     validate_app_token,
     validate_dataset_token,
 )
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
 from models.dataset import Dataset, RateLimitLog
@@ -36,11 +36,9 @@ def _configure_current_app_mock(mock_current_app):
     mock_current_app._get_current_object = Mock(return_value=Mock())
 
 
-def _session_proxy(session: Session) -> MagicMock:
-    """Emulate Flask-SQLAlchemy's callable scoped-session proxy around a test session."""
-    proxy = MagicMock(wraps=session)
-    proxy.return_value = session
-    return proxy
+def _session_proxy(session: Session) -> scoped_session[Session]:
+    """Expose the real SQLite session through Flask-SQLAlchemy's callable shape."""
+    return scoped_session(lambda: session)
 
 
 def _api_token(*, tenant_id: str, app_id: str | None = None, token_type: ApiTokenType) -> ApiToken:
@@ -348,7 +346,7 @@ class TestCloudEditionBillingResourceCheck:
         # Act
         with (
             app.test_request_context("/", method="GET"),
-            patch("controllers.service_api.wraps.dify_config.BILLING_ENABLED", True),
+            patch("controllers.service_api.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         ):
             result = add_segment()
 
@@ -378,7 +376,7 @@ class TestCloudEditionBillingResourceCheck:
 
         with (
             app.test_request_context("/", method="GET"),
-            patch("controllers.service_api.wraps.dify_config.BILLING_ENABLED", True),
+            patch("controllers.service_api.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             pytest.raises(ServiceUnavailable) as exc_info,
         ):
             upload_document()
@@ -408,7 +406,7 @@ class TestCloudEditionBillingResourceCheck:
 
         with (
             app.test_request_context("/", method="GET"),
-            patch("controllers.service_api.wraps.dify_config.BILLING_ENABLED", True),
+            patch("controllers.service_api.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         ):
             result = upload_document()
 

@@ -6,7 +6,7 @@
   "apiKeyModal.addKnowledgeBase": "Añadir base de conocimiento",
   "apiKeyModal.addSubtitle": "Crea una nueva clave API para acceder a la API de la base de conocimiento.",
   "apiKeyModal.addTitle": "Añadir clave API",
-  "apiKeyModal.apiSecretKey": "Clave secreta de API",
+  "apiKeyModal.apiSecretKey": "Clave de API",
   "apiKeyModal.apiSecretKeyTips": "Para evitar el abuso de la API, protege tu clave de API. Evita usarla como texto plano en el código del frontend. :)",
   "apiKeyModal.createNewSecretKey": "Crear nueva clave secreta",
   "apiKeyModal.created": "CREADA",

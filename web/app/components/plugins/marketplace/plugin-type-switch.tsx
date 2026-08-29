@@ -91,9 +91,11 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
 
         return (
           <Fragment key={option.value}>
-            <div
+            <button
+              type="button"
+              aria-pressed={isActive}
               className={cn(
-                'flex h-8 cursor-pointer items-center rounded-lg border border-transparent px-2.5 system-md-medium whitespace-nowrap',
+                'flex h-8 cursor-pointer appearance-none items-center rounded-lg border border-transparent px-2.5 system-md-medium whitespace-nowrap outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
                 isHero ? 'text-text-primary-on-surface' : 'text-text-tertiary',
                 !isActive &&
                   (isHero
@@ -113,7 +115,7 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
             >
               {option.icon}
               {option.text}
-            </div>
+            </button>
             {isHero && index === 0 && (
               <div
                 aria-hidden

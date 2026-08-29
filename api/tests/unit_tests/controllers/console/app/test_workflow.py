@@ -650,6 +650,7 @@ def test_draft_workflow_get_projects_agent_node_job_to_graph(monkeypatch: pytest
                     "data": {
                         "type": "agent",
                         "version": "2",
+                        "agent_node_kind": "dify_agent",
                     },
                 }
             ],
@@ -663,6 +664,7 @@ def test_draft_workflow_get_projects_agent_node_job_to_graph(monkeypatch: pytest
                 "data": {
                     "type": "agent",
                     "version": "2",
+                    "agent_node_kind": "dify_agent",
                     "agent_task": "Summarize it.",
                     "agent_declared_outputs": [{"name": "summary", "type": "string"}],
                 },
@@ -724,6 +726,7 @@ def test_advanced_chat_run_conversation_not_exists(app: Flask, monkeypatch: pyte
 def test_trigger_run_loads_draft_with_request_session(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
+    unbound_session: Session,
     resource: type,
     payload: dict[str, object],
 ) -> None:
@@ -733,7 +736,7 @@ def test_trigger_run_loads_draft_with_request_session(
         "WorkflowService",
         lambda: SimpleNamespace(get_draft_workflow=get_draft_workflow),
     )
-    session = Mock()
+    session = unbound_session
     app_model = SimpleNamespace(id="app-1")
     handler = inspect.unwrap(resource.post)
 

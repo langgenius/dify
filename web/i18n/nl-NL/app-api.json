@@ -6,7 +6,7 @@
   "apiKeyModal.addKnowledgeBase": "Kennisbank toevoegen",
   "apiKeyModal.addSubtitle": "Maak een nieuwe API Key om toegang te krijgen tot de kennisbank-API.",
   "apiKeyModal.addTitle": "API Key toevoegen",
-  "apiKeyModal.apiSecretKey": "API Secret key",
+  "apiKeyModal.apiSecretKey": "API Key",
   "apiKeyModal.apiSecretKeyTips": "To prevent API abuse, protect your API Key. Avoid using it as plain text in front-end code. :)",
   "apiKeyModal.createNewSecretKey": "Create new Secret key",
   "apiKeyModal.created": "CREATED",

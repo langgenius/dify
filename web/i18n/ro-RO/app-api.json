@@ -6,7 +6,7 @@
   "apiKeyModal.addKnowledgeBase": "Adaugă bază de cunoștințe",
   "apiKeyModal.addSubtitle": "Creează o nouă cheie API pentru a accesa API-ul bazei de cunoștințe.",
   "apiKeyModal.addTitle": "Adaugă cheie API",
-  "apiKeyModal.apiSecretKey": "Cheia secretă API",
+  "apiKeyModal.apiSecretKey": "Cheia API",
   "apiKeyModal.apiSecretKeyTips": "Pentru a preveni abuzul API, protejați-vă Cheia API. Evitați utilizarea ei ca text simplu în codul front-end. :)",
   "apiKeyModal.createNewSecretKey": "Creează o nouă cheie secretă",
   "apiKeyModal.created": "CREATĂ",

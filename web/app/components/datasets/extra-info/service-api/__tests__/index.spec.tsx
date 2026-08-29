@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
-import ServiceApi from '../index'
+import { ServiceApi } from '../index'
 
 let mockPermissionKeys = ['dataset.api_key.manage']
 
@@ -13,12 +13,8 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
-  default: ({ isShow }: { isShow: boolean }) => (isShow ? <div>secret key modal</div> : null),
-}))
-
-vi.mock('@/app/components/develop/secret-key/add-api-key-modal', () => ({
-  default: ({ isShow }: { isShow: boolean }) => (isShow ? <div>add api key modal</div> : null),
+vi.mock('@/app/components/api-key/api-key-modal', () => ({
+  ApiKeyModal: ({ open }: { open: boolean }) => (open ? <div>API key modal</div> : null),
 }))
 
 vi.mock('@/hooks/use-api-access-url', () => ({
@@ -36,39 +32,23 @@ describe('ServiceApi', () => {
 
     const trigger = screen.getByRole('button', { name: 'dataset.serviceApi.title' })
     expect(trigger).not.toHaveAttribute('data-popup-open')
-    expect(trigger.firstElementChild).toHaveClass('hover:bg-state-base-hover')
 
     await user.click(trigger)
 
     expect(trigger).toHaveAttribute('data-popup-open', '')
-    expect(trigger.firstElementChild).toHaveClass('bg-state-base-hover')
-    await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.card.manageApiKey' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.card.apiKey' }))
 
-    expect(screen.getByText('secret key modal')).toBeInTheDocument()
+    expect(screen.getByText('API key modal')).toBeInTheDocument()
   })
 
-  it('opens the add-key dialog from the service API details', async () => {
-    const user = userEvent.setup()
-    render(<ServiceApi apiBaseUrl="https://api.example.com" />)
-
-    await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.title' }))
-    await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.card.addApiKey' }))
-
-    expect(screen.getByText('add api key modal')).toBeInTheDocument()
-  })
-
-  it('prevents key management without workspace permission', async () => {
+  it('prevents secret-key management without workspace permission', async () => {
     const user = userEvent.setup()
     mockPermissionKeys = []
     render(<ServiceApi apiBaseUrl="https://api.example.com" />)
 
     await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.title' }))
 
-    expect(screen.getByRole('button', { name: 'dataset.serviceApi.card.addApiKey' })).toBeDisabled()
-    expect(
-      screen.getByRole('button', { name: 'dataset.serviceApi.card.manageApiKey' }),
-    ).toBeDisabled()
-    expect(screen.queryByText('secret key modal')).not.toBeInTheDocument()
-    expect(screen.queryByText('add api key modal')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'dataset.serviceApi.card.apiKey' })).toBeDisabled()
+    expect(screen.queryByText('API key modal')).not.toBeInTheDocument()
   })
 })

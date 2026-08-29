@@ -7,6 +7,7 @@ separated from the infrastructure layer.
 
 Pipeline:
 
+    0. ROUTER   — only for large tool catalogues, extract capability queries.
     1. PLANNER  — short LLM call producing a high-level node list.
     2. BUILDERS — bounded concurrent LLM calls producing compact node configs.
     3. POSTPROC — fill safe defaults, lay nodes out left-to-right, dedupe
@@ -17,7 +18,7 @@ Intentionally NOT here (deferred to a future iteration):
     - Mermaid rendering
     - Broad semantic auto-repair when multiple valid graph interpretations exist
     - Multi-step validation engine with classification of fixable vs. user-required errors
-    - Tool / model catalogue filtering
+    - Model catalogue filtering
 
 If quality regresses below product threshold we add those back; for now the
 planner and bounded parallel node builders shipped behind cmd+k `/create` are
@@ -52,6 +53,18 @@ from core.workflow.generator.prompts.planner_prompts import (
     format_existing_graph_section,
     format_ideal_output_section,
     format_tool_catalogue_section,
+)
+from core.workflow.generator.prompts.tool_router_prompts import TOOL_ROUTER_SYSTEM_PROMPT, TOOL_ROUTER_USER_PROMPT
+from core.workflow.generator.tool_catalogue import (
+    DIRECT_TOOL_INJECTION_LIMIT,
+    ToolCapabilityQuery,
+    ToolCatalogueEntry,
+    find_tool_entry,
+    format_tool_builder_context,
+    format_tool_catalogue,
+    select_legacy_fallback_tools,
+    select_tool_candidates,
+    text_mentions_tool_identifier,
 )
 from core.workflow.generator.types import (
     GraphDict,
@@ -106,6 +119,7 @@ _DEFAULT_FILE_UPLOAD_METHODS = ("local_file", "remote_url")
 # is generous headroom while still bounding a runaway response. Builder calls
 # keep the caller's budget so complex node configs are not truncated.
 _PLANNER_DEFAULT_MAX_TOKENS = 4096
+_TOOL_ROUTER_MAX_TOKENS = 256
 
 
 # Per-node calls trade a larger request count for a shorter critical path.
@@ -305,6 +319,28 @@ def _build_plan_event(
     }
 
 
+def _find_planned_tool_entry(node: dict[str, Any], entries: list[ToolCatalogueEntry]) -> ToolCatalogueEntry | None:
+    """Resolve the installed tool selected by one planner node.
+
+    New planner responses carry a structured ``tool`` selector. The purpose
+    fallback keeps older/smaller models useful when they follow the instruction
+    to name ``provider/tool`` but omit the optional object.
+    """
+    tool_selector = node.get("tool")
+    if isinstance(tool_selector, dict):
+        provider_name = str(tool_selector.get("provider_id") or tool_selector.get("provider_name") or "")
+        tool_name = str(tool_selector.get("tool_name") or "")
+        entry = find_tool_entry(entries, provider_name, tool_name)
+        if entry is not None:
+            return entry
+
+    purpose = str(node.get("purpose") or "")
+    for entry in entries:
+        if text_mentions_tool_identifier(purpose, entry["provider_name"], entry["tool_name"]):
+            return entry
+    return None
+
+
 def _stage_error_to_envelope_code(exc: Exception) -> str:
     """Map a stage-typed exception to the result envelope's error code."""
     if isinstance(exc, _StageJSONError):
@@ -336,6 +372,7 @@ class WorkflowGenerator:
         instruction: str,
         ideal_output: str = "",
         tool_catalogue_text: str = "",
+        tool_catalogue_entries: list[ToolCatalogueEntry] | None = None,
         installed_tools: set[tuple[str, str]] | None = None,
         current_graph: dict[str, Any] | None = None,
     ) -> WorkflowGenerateResultDict:
@@ -353,13 +390,16 @@ class WorkflowGenerator:
         marked ``keep`` are reused without an LLM call. ``None`` (the default)
         is plain create-from-scratch behaviour.
 
-        ``tool_catalogue_text`` is the formatted list of installed tools for
-        the calling tenant (see ``tool_catalogue.build_tool_catalogue`` /
-        ``format_tool_catalogue``). It's injected into both the planner and
-        builder prompts so the LLM can pick concrete ``provider/tool``
-        identifiers instead of inventing names; node builders receive it
-        only for tool nodes. An empty string skips the section entirely (useful
-        for unit tests).
+        ``tool_catalogue_text`` is an optional preformatted compatibility
+        override. Production calls leave it empty so the runner can dynamically
+        select relevant entries from ``tool_catalogue_entries`` after seeing
+        the instruction. Tests and internal callers may still supply text
+        directly, which bypasses routing.
+
+        ``tool_catalogue_entries`` carries the complete catalogue as structured
+        server-owned metadata. Small catalogues are injected directly; large
+        ones are routed to a relevant subset for the planner. Tool builders,
+        hydration, and validation continue to use the complete inventory.
 
         ``installed_tools`` is the structural sibling — a set of
         ``(provider_name, tool_name)`` pairs the validator consults to reject
@@ -391,6 +431,7 @@ class WorkflowGenerator:
             instruction=instruction,
             ideal_output=ideal_output,
             tool_catalogue_text=tool_catalogue_text,
+            tool_catalogue_entries=tool_catalogue_entries,
             installed_tools=installed_tools,
             current_graph=current_graph,
         ):
@@ -415,6 +456,7 @@ class WorkflowGenerator:
         instruction: str,
         ideal_output: str = "",
         tool_catalogue_text: str = "",
+        tool_catalogue_entries: list[ToolCatalogueEntry] | None = None,
         installed_tools: set[tuple[str, str]] | None = None,
         current_graph: dict[str, Any] | None = None,
     ) -> Iterator[tuple[str, dict[str, Any]]]:
@@ -438,6 +480,7 @@ class WorkflowGenerator:
             instruction=instruction,
             ideal_output=ideal_output,
             tool_catalogue_text=tool_catalogue_text,
+            tool_catalogue_entries=tool_catalogue_entries,
             installed_tools=installed_tools,
             current_graph=current_graph,
         )
@@ -455,6 +498,7 @@ class WorkflowGenerator:
         instruction: str,
         ideal_output: str = "",
         tool_catalogue_text: str = "",
+        tool_catalogue_entries: list[ToolCatalogueEntry] | None = None,
         installed_tools: set[tuple[str, str]] | None = None,
         current_graph: dict[str, Any] | None = None,
     ) -> Iterator[tuple[str, dict[str, Any]]]:
@@ -470,6 +514,17 @@ class WorkflowGenerator:
         stamped with the resolved concrete ``mode``.
         """
 
+        full_tool_catalogue_entries = tool_catalogue_entries or []
+        planner_tool_catalogue_text = cls._resolve_prompt_tool_catalogue(
+            model_instance=model_instance,
+            model_parameters=model_parameters,
+            instruction=instruction,
+            ideal_output=ideal_output,
+            tool_catalogue_text=tool_catalogue_text,
+            tool_catalogue_entries=full_tool_catalogue_entries,
+            current_graph=current_graph,
+        )
+
         # ── 1. PLANNER ────────────────────────────────────────────────────
         plan, plan_err = cls._run_stage(
             stage="Planner",
@@ -480,7 +535,7 @@ class WorkflowGenerator:
                 mode=mode,
                 instruction=instruction,
                 ideal_output=ideal_output,
-                tool_catalogue_text=tool_catalogue_text,
+                tool_catalogue_text=planner_tool_catalogue_text,
                 current_graph=current_graph,
             ),
         )
@@ -538,7 +593,8 @@ class WorkflowGenerator:
                 ideal_output=ideal_output,
                 plan_nodes=plan_nodes,
                 plan_edges=plan_edges,
-                tool_catalogue_text=tool_catalogue_text,
+                tool_catalogue_text=planner_tool_catalogue_text,
+                tool_catalogue_entries=full_tool_catalogue_entries,
                 start_inputs=start_inputs,
                 current_graph=current_graph,
             )
@@ -562,6 +618,11 @@ class WorkflowGenerator:
         graph = cast(GraphDict, graph)
 
         # ── 3. POSTPROC + VALIDATE ────────────────────────────────────────
+        cls._hydrate_tool_nodes(
+            graph=graph,
+            plan_nodes=plan_nodes,
+            tool_catalogue_entries=full_tool_catalogue_entries,
+        )
         graph = cls._postprocess_graph(graph=graph, mode=resolved_mode)
 
         # ``app_name`` / ``icon`` are planner display metadata; both default
@@ -612,6 +673,163 @@ class WorkflowGenerator:
         except Exception as e:
             logger.exception("Workflow generator: %s step failed", stage.lower())
             return None, _err(WorkflowGenerateErrorCode.MODEL_ERROR, f"{failure_fallback_message}: {e}")
+
+    # ------------------------------------------------------------------
+    # Tool routing
+    # ------------------------------------------------------------------
+    @classmethod
+    def _resolve_prompt_tool_catalogue(
+        cls,
+        *,
+        model_instance,
+        model_parameters: dict[str, Any],
+        instruction: str,
+        ideal_output: str,
+        tool_catalogue_text: str,
+        tool_catalogue_entries: list[ToolCatalogueEntry],
+        current_graph: dict[str, Any] | None,
+    ) -> str:
+        """Return the relevant installed-tool text for the planner.
+
+        A non-empty preformatted string is an explicit compatibility override.
+        Production service calls pass the complete structured catalogue and let
+        this method dynamically route large inventories. Router failures are
+        intentionally non-fatal and fall back to the legacy 80-tool prompt.
+        """
+        if tool_catalogue_text.strip():
+            return tool_catalogue_text
+        tool_count = len(tool_catalogue_entries)
+        if not tool_catalogue_entries:
+            return ""
+        if tool_count <= DIRECT_TOOL_INJECTION_LIMIT:
+            logger.info(
+                "Workflow generator: tool catalogue selection mode=direct total=%s query_count=0 "
+                "candidates=%s elapsed_ms=0.0",
+                tool_count,
+                tool_count,
+            )
+            return format_tool_catalogue(tool_catalogue_entries, max_tools=None)
+
+        started_at = time.monotonic()
+        explicit_text = f"{instruction}\n{ideal_output}"
+        query_count = 0
+        candidate_count = 0
+        try:
+            needs_tools, queries = cls._run_tool_router(
+                model_instance=model_instance,
+                model_parameters=model_parameters,
+                instruction=instruction,
+                ideal_output=ideal_output,
+            )
+            query_count = len(queries)
+            selection = select_tool_candidates(
+                tool_catalogue_entries,
+                queries if needs_tools else [],
+                explicit_text=explicit_text,
+                current_graph=current_graph,
+            )
+            candidate_count = len(selection.entries)
+            if selection.unmatched_queries:
+                fallback_entries = select_legacy_fallback_tools(
+                    tool_catalogue_entries,
+                    explicit_text=explicit_text,
+                    current_graph=current_graph,
+                )
+                logger.warning(
+                    "Workflow generator: tool catalogue selection mode=fallback reason=unmatched_query "
+                    "total=%s query_count=%s candidates=%s pinned=%s elapsed_ms=%.1f",
+                    tool_count,
+                    query_count,
+                    len(fallback_entries),
+                    selection.pinned_count,
+                    (time.monotonic() - started_at) * 1000,
+                )
+                return format_tool_catalogue(fallback_entries, max_tools=None)
+
+            logger.info(
+                "Workflow generator: tool catalogue selection mode=routed total=%s needs_tools=%s "
+                "query_count=%s candidates=%s pinned=%s elapsed_ms=%.1f",
+                tool_count,
+                needs_tools,
+                query_count,
+                candidate_count,
+                selection.pinned_count,
+                (time.monotonic() - started_at) * 1000,
+            )
+            return format_tool_catalogue(selection.entries, max_tools=None)
+        except Exception as e:
+            fallback_entries = select_legacy_fallback_tools(
+                tool_catalogue_entries,
+                explicit_text=explicit_text,
+                current_graph=current_graph,
+            )
+            logger.warning(
+                "Workflow generator: tool catalogue selection mode=fallback reason=%s total=%s "
+                "query_count=%s candidates=%s elapsed_ms=%.1f",
+                type(e).__name__,
+                tool_count,
+                query_count,
+                len(fallback_entries),
+                (time.monotonic() - started_at) * 1000,
+            )
+            return format_tool_catalogue(fallback_entries, max_tools=None)
+
+    @classmethod
+    def _run_tool_router(
+        cls,
+        *,
+        model_instance,
+        model_parameters: dict[str, Any],
+        instruction: str,
+        ideal_output: str,
+    ) -> tuple[bool, list[ToolCapabilityQuery]]:
+        user_prompt = TOOL_ROUTER_USER_PROMPT.format(
+            instruction=instruction.strip(),
+            ideal_output_section=format_ideal_output_section(ideal_output),
+        )
+        response = cls._invoke_with_retry(
+            model_instance=model_instance,
+            prompt_messages=[
+                SystemPromptMessage(content=TOOL_ROUTER_SYSTEM_PROMPT),
+                UserPromptMessage(content=user_prompt),
+            ],
+            model_parameters=_clamp_for_tool_router(model_parameters),
+            stage="Tool Router",
+        )
+        response_text = response.message.get_text_content() or ""
+        try:
+            parsed = json_repair.loads(response_text)
+        except Exception as e:
+            raise _StageJSONError("Tool Router", str(e)) from e
+        if not isinstance(parsed, dict):
+            raise _StageJSONError("Tool Router", f"Non-object JSON: {type(parsed).__name__}")
+
+        needs_tools = parsed.get("needs_tools")
+        raw_queries = parsed.get("queries")
+        if not isinstance(needs_tools, bool):
+            raise _StageSchemaError("Tool Router", "needs_tools must be a boolean")
+        if not isinstance(raw_queries, list):
+            raise _StageSchemaError("Tool Router", "queries must be an array")
+        if not needs_tools:
+            return False, []
+
+        queries: list[ToolCapabilityQuery] = []
+        for raw_query in raw_queries[:5]:
+            if not isinstance(raw_query, dict):
+                continue
+            raw_capability = raw_query.get("capability")
+            capability = raw_capability.strip() if isinstance(raw_capability, str) else ""
+            raw_keywords = raw_query.get("keywords")
+            keywords = (
+                [keyword.strip() for keyword in raw_keywords[:8] if isinstance(keyword, str) and keyword.strip()]
+                if isinstance(raw_keywords, list)
+                else []
+            )
+            if capability:
+                queries.append(ToolCapabilityQuery(capability=capability, keywords=keywords))
+        if not queries:
+            raise _StageSchemaError("Tool Router", "needs_tools=true requires at least one capability query")
+        return True, queries
 
     # ------------------------------------------------------------------
     # Shared LLM call + JSON parse with one-shot retry
@@ -810,6 +1028,7 @@ class WorkflowGenerator:
         plan_nodes: list[dict[str, Any]],
         plan_edges: list[dict[str, Any]],
         tool_catalogue_text: str,
+        tool_catalogue_entries: list[ToolCatalogueEntry],
         start_inputs: list[dict[str, Any]],
         current_graph: dict[str, Any] | None,
     ) -> GraphDict:
@@ -853,6 +1072,7 @@ class WorkflowGenerator:
                         target_node=node,
                         plan_json=plan_json,
                         tool_catalogue_text=tool_catalogue_text,
+                        tool_catalogue_entries=tool_catalogue_entries,
                         start_inputs=start_inputs,
                         existing_node=existing_by_id.get(str(node.get("id"))),
                     ): str(node.get("id"))
@@ -894,6 +1114,7 @@ class WorkflowGenerator:
         target_node: dict[str, Any],
         plan_json: str,
         tool_catalogue_text: str,
+        tool_catalogue_entries: list[ToolCatalogueEntry],
         start_inputs: list[dict[str, Any]],
         existing_node: dict[str, Any] | None,
     ) -> dict[str, Any]:
@@ -912,6 +1133,14 @@ class WorkflowGenerator:
                 "# Existing config to preserve unless the instruction changes it\n\n"
                 f"{json.dumps(existing_data, ensure_ascii=False, separators=(',', ':'))}\n\n"
             )
+        tool_catalogue_section = ""
+        if node_type == BuiltinNodeTypes.TOOL:
+            selected_tool = _find_planned_tool_entry(target_node, tool_catalogue_entries)
+            tool_catalogue_section = (
+                format_tool_builder_context(selected_tool)
+                if selected_tool is not None
+                else format_node_tool_catalogue_section(tool_catalogue_text)
+            )
         user_prompt = NODE_BUILDER_USER_PROMPT.format(
             node_id=node_id,
             node_type=node_type,
@@ -921,9 +1150,7 @@ class WorkflowGenerator:
             ideal_output_section=format_ideal_output_section(ideal_output),
             mode_section=mode_section,
             model_section=model_section,
-            tool_catalogue_section=(
-                format_node_tool_catalogue_section(tool_catalogue_text) if node_type == BuiltinNodeTypes.TOOL else ""
-            ),
+            tool_catalogue_section=tool_catalogue_section,
             start_inputs_section=(
                 format_start_inputs_section(start_inputs) if node_type == BuiltinNodeTypes.START else ""
             ),
@@ -943,6 +1170,99 @@ class WorkflowGenerator:
         if not isinstance(config, dict):
             raise _StageSchemaError(f"Builder {node_id}", "missing 'config' object")
         return cast(dict[str, Any], config)
+
+    @staticmethod
+    def _hydrate_tool_nodes(
+        *,
+        graph: GraphDict,
+        plan_nodes: list[dict[str, Any]],
+        tool_catalogue_entries: list[ToolCatalogueEntry],
+    ) -> None:
+        """Stamp generated tool nodes with trusted installed-tool metadata.
+
+        The model still owns variable bindings, but provider identity, plugin
+        metadata, parameter declarations, output schema, and form defaults are
+        deterministic catalogue data. Hydrating them here prevents a selected
+        installed plugin from becoming an unusable guessed node configuration.
+        """
+        if not tool_catalogue_entries:
+            return
+        planned_by_id = {
+            str(node.get("id") or ""): node
+            for node in plan_nodes
+            if node.get("node_type") == BuiltinNodeTypes.TOOL and node.get("id")
+        }
+        for node in graph.get("nodes") or []:
+            planned = planned_by_id.get(str(node.get("id") or ""))
+            if planned is None:
+                continue
+            data = node.get("data")
+            if not isinstance(data, dict):
+                continue
+            entry = _find_planned_tool_entry(planned, tool_catalogue_entries)
+            if entry is None:
+                entry = find_tool_entry(
+                    tool_catalogue_entries,
+                    str(data.get("provider_id") or data.get("provider_name") or ""),
+                    str(data.get("tool_name") or ""),
+                )
+            if entry is None:
+                continue
+
+            data.update(
+                {
+                    "provider_id": entry["provider_name"],
+                    "provider_name": entry["provider_name"],
+                    "provider_type": entry["provider_type"],
+                    "tool_name": entry["tool_name"],
+                    "tool_label": entry["tool_label"] or entry["tool_name"],
+                    "tool_description": entry.get("description", ""),
+                    "tool_node_version": "2",
+                }
+            )
+            for field in ("plugin_id", "plugin_unique_identifier"):
+                value = entry.get(field, "")
+                if value:
+                    data[field] = value
+                else:
+                    data.pop(field, None)
+
+            parameters = deepcopy(entry.get("parameters") or [])
+            data["paramSchemas"] = parameters
+            parameter_names = [str(parameter.get("name")) for parameter in parameters if parameter.get("name")]
+            parameter_name_set = set(parameter_names)
+            llm_parameter_names = {
+                str(parameter.get("name"))
+                for parameter in parameters
+                if parameter.get("name") and parameter.get("form") != "form"
+            }
+            form_parameter_names = parameter_name_set - llm_parameter_names
+            data["params"] = dict.fromkeys(parameter_names, "")
+
+            raw_tool_parameters = data.get("tool_parameters")
+            data["tool_parameters"] = (
+                {name: value for name, value in raw_tool_parameters.items() if name in llm_parameter_names}
+                if isinstance(raw_tool_parameters, dict)
+                else {}
+            )
+            raw_configurations = data.get("tool_configurations")
+            configurations = (
+                {name: value for name, value in raw_configurations.items() if name in form_parameter_names}
+                if isinstance(raw_configurations, dict)
+                else {}
+            )
+            data["tool_configurations"] = configurations
+            for parameter in parameters:
+                if parameter.get("form") != "form" or parameter.get("default") is None:
+                    continue
+                name = str(parameter.get("name") or "")
+                if name:
+                    configurations.setdefault(
+                        name,
+                        {"type": "constant", "value": deepcopy(parameter["default"])},
+                    )
+            output_schema = entry.get("output_schema") or {}
+            data["output_schema"] = deepcopy(output_schema)
 
     @classmethod
     def _assemble_parallel_graph(
@@ -2452,6 +2772,14 @@ def _clamp_for_planner(params: dict[str, Any]) -> dict[str, Any]:
     if "temperature" in out and isinstance(out["temperature"], (int, float)) and out["temperature"] > 0.5:
         out["temperature"] = 0.2
     out.setdefault("max_tokens", _PLANNER_DEFAULT_MAX_TOKENS)
+    return out
+
+
+def _clamp_for_tool_router(params: dict[str, Any]) -> dict[str, Any]:
+    """Use a small deterministic budget for capability-query extraction."""
+    out = dict(params)
+    out["temperature"] = 0.1
+    out["max_tokens"] = _TOOL_ROUTER_MAX_TOKENS
     return out
 
 

@@ -20,6 +20,8 @@ import {
   zDeleteDatasetsByDatasetIdMetadataByMetadataIdResponse,
   zDeleteDatasetsByDatasetIdPath,
   zDeleteDatasetsByDatasetIdResponse,
+  zDeleteDatasetsByResourceIdApiKeysByApiKeyIdPath,
+  zDeleteDatasetsByResourceIdApiKeysByApiKeyIdResponse,
   zDeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath,
   zDeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse,
   zGetDatasetsApiBaseInfoResponse,
@@ -78,6 +80,8 @@ import {
   zGetDatasetsByDatasetIdResponse,
   zGetDatasetsByDatasetIdUseCheckPath,
   zGetDatasetsByDatasetIdUseCheckResponse,
+  zGetDatasetsByResourceIdApiKeysPath,
+  zGetDatasetsByResourceIdApiKeysResponse,
   zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath,
   zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse,
   zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckPath,
@@ -167,6 +171,8 @@ import {
   zPostDatasetsByDatasetIdRetryBody,
   zPostDatasetsByDatasetIdRetryPath,
   zPostDatasetsByDatasetIdRetryResponse,
+  zPostDatasetsByResourceIdApiKeysPath,
+  zPostDatasetsByResourceIdApiKeysResponse,
   zPostDatasetsExternalBody,
   zPostDatasetsExternalKnowledgeApiBody,
   zPostDatasetsExternalKnowledgeApiResponse,
@@ -1692,9 +1698,79 @@ export const byDatasetId = {
 }
 
 /**
- * Get list of datasets
+ * Delete an API key for a dataset
+ *
+ * Delete an API key for a dataset
+ */
+export const delete10 = oc
+  .route({
+    description: 'Delete an API key for a dataset',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteDatasetsByResourceIdApiKeysByApiKeyId',
+    path: '/datasets/{resource_id}/api-keys/{api_key_id}',
+    successStatus: 204,
+    summary: 'Delete an API key for a dataset',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteDatasetsByResourceIdApiKeysByApiKeyIdPath }))
+  .output(zDeleteDatasetsByResourceIdApiKeysByApiKeyIdResponse)
+
+export const byApiKeyId2 = {
+  delete: delete10,
+}
+
+/**
+ * Get all API keys for a dataset
+ *
+ * Get all API keys for a dataset
  */
 export const get35 = oc
+  .route({
+    description: 'Get all API keys for a dataset',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsByResourceIdApiKeys',
+    path: '/datasets/{resource_id}/api-keys',
+    summary: 'Get all API keys for a dataset',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetDatasetsByResourceIdApiKeysPath }))
+  .output(zGetDatasetsByResourceIdApiKeysResponse)
+
+/**
+ * Create a new API key for a dataset
+ *
+ * Create a new API key for a dataset
+ */
+export const post22 = oc
+  .route({
+    description: 'Create a new API key for a dataset',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByResourceIdApiKeys',
+    path: '/datasets/{resource_id}/api-keys',
+    successStatus: 201,
+    summary: 'Create a new API key for a dataset',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostDatasetsByResourceIdApiKeysPath }))
+  .output(zPostDatasetsByResourceIdApiKeysResponse)
+
+export const apiKeys3 = {
+  get: get35,
+  post: post22,
+  byApiKeyId: byApiKeyId2,
+}
+
+export const byResourceId = {
+  apiKeys: apiKeys3,
+}
+
+/**
+ * Get list of datasets
+ */
+export const get36 = oc
   .route({
     description: 'Get list of datasets',
     inputStructure: 'detailed',
@@ -1709,7 +1785,7 @@ export const get35 = oc
 /**
  * Create a new dataset
  */
-export const post22 = oc
+export const post23 = oc
   .route({
     description: 'Create a new dataset',
     inputStructure: 'detailed',
@@ -1723,8 +1799,8 @@ export const post22 = oc
   .output(zPostDatasetsResponse)
 
 export const datasets = {
-  get: get35,
-  post: post22,
+  get: get36,
+  post: post23,
   apiBaseInfo,
   apiKeys,
   batchImportStatus,
@@ -1737,6 +1813,7 @@ export const datasets = {
   processRule,
   retrievalSetting,
   byDatasetId,
+  byResourceId,
 }
 
 export const contract = {

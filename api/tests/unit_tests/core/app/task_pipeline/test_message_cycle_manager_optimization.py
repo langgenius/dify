@@ -20,7 +20,7 @@ from graphon.file import FileTransferMethod, FileType
 from models import model as model_module
 from models.base import TypeBase
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
-from models.model import App, AppMode, Conversation, MessageFile
+from models.model import App, AppMode, Conversation, MessageAnnotation, MessageFile
 
 
 @dataclass(frozen=True)
@@ -392,8 +392,10 @@ class TestMessageCycleManagerOptimization:
         cycle_db: Session,
         sqlite_engine: Engine,
         caplog: pytest.LogCaptureFixture,
+        config_overrides,
     ):
         """Fallback to truncated query when LLM generation fails."""
+        config_overrides(DEBUG=True)
         flask_app = Flask(__name__)
         cycle_db.add_all([_app(), _conversation()])
         cycle_db.commit()
@@ -402,12 +404,9 @@ class TestMessageCycleManagerOptimization:
         with (
             patch("core.app.task_pipeline.message_cycle_manager.redis_client") as mock_redis,
             patch("core.app.task_pipeline.message_cycle_manager.LLMGenerator") as mock_llm_generator,
-            patch("core.app.task_pipeline.message_cycle_manager.dify_config") as mock_dify_config,
         ):
             mock_redis.get.return_value = None
             mock_llm_generator.generate_conversation_name.side_effect = RuntimeError("generation failed")
-            mock_dify_config.DEBUG = True
-
             with caplog.at_level(logging.ERROR, logger="core.app.task_pipeline.message_cycle_manager"):
                 message_cycle_manager._generate_conversation_name_worker(flask_app, "conv-1", long_query)
 
@@ -418,7 +417,7 @@ class TestMessageCycleManagerOptimization:
         assert conversation.name == (long_query[:47] + "...")
         assert any(record.levelno == logging.ERROR for record in caplog.records)
 
-    def test_handle_annotation_reply_sets_metadata(self, message_cycle_manager):
+    def test_handle_annotation_reply_sets_metadata(self, message_cycle_manager, unbound_session: Session):
         """Populate task metadata from annotation reply events.
 
         Args: message_cycle_manager with TaskStateMetadata and a mocked AppAnnotationService.
@@ -427,11 +426,14 @@ class TestMessageCycleManagerOptimization:
         """
         message_cycle_manager._task_state = SimpleNamespace(metadata=TaskStateMetadata())
 
-        annotation = SimpleNamespace(
-            id="ann-1",
+        annotation = MessageAnnotation(
+            app_id="app-id",
+            question="question",
+            content="answer",
             account_id="acct-1",
         )
-        session = Mock()
+        annotation.id = "ann-1"
+        session = unbound_session
 
         with (
             patch("core.app.task_pipeline.message_cycle_manager.AppAnnotationService") as mock_service,

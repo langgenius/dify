@@ -6,7 +6,7 @@
   "apiKeyModal.addKnowledgeBase": "Tambah basis pengetahuan",
   "apiKeyModal.addSubtitle": "Buat API Key baru untuk mengakses API basis pengetahuan.",
   "apiKeyModal.addTitle": "Tambah API Key",
-  "apiKeyModal.apiSecretKey": "Kunci rahasia API",
+  "apiKeyModal.apiSecretKey": "Kunci API",
   "apiKeyModal.apiSecretKeyTips": "Untuk mencegah penyalahgunaan API, lindungi Kunci API Anda. Hindari menggunakannya sebagai teks biasa dalam kode front-end. :)",
   "apiKeyModal.createNewSecretKey": "Membuat kunci Rahasia baru",
   "apiKeyModal.created": "DIBUAT",

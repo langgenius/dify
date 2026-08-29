@@ -162,7 +162,7 @@
   "mcp.server.modal.parametersPlaceholder": "ຈຸດປະສົງ ແລະ ຂໍ້ຈຳກັດຂອງພາລາມິເຕີ",
   "mcp.server.modal.parametersTip": "ເພີ່ມຄຳອະທິບາຍສຳລັບແຕ່ລະພາລາມິເຕີເພື່ອຊ່ວຍໃຫ້ LLM ເຂົ້າໃຈຈຸດປະສົງ ແລະ ຂໍ້ຈຳກັດຂອງພວກມັນ.",
   "mcp.server.publishTip": "ແອັບຍັງບໍ່ທັນໄດ້ເຜີຍແຜ່. ກະລຸນາເຜີຍແຜ່ແອັບກ່ອນ.",
-  "mcp.server.reGen": "ທ່ານຕ້ອງການສ້າງ URL ເຊີເວີໃໝ່ ຫຼື ບໍ່?",
+  "mcp.server.reGen": "ທ່ານຕ້ອງການສ້າງ URL ເຊີເວີໃໝ່ ຫຼື ບໍ່? URL ປັດຈຸບັນຈະຢຸດໃຊ້ງານທັນທີ.",
   "mcp.server.title": "ເຊີເວີ MCP",
   "mcp.server.url": "URL ຂອງເຊີເວີ",
   "mcp.toolItem.noDescription": "ບໍ່ມີຄຳອະທິບາຍ",

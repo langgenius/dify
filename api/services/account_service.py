@@ -22,6 +22,7 @@ from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from constants.languages import get_valid_language, language_timezone_mapping
+from enums import DeploymentEdition
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client, redis_fallback
@@ -47,6 +48,10 @@ from models.account import (
 from models.dataset import Dataset
 from models.model import App, DifySetup
 from services.billing_service import BillingService
+from services.email_code_login_challenge import (
+    EmailCodeLoginChallengeResult,
+    EmailCodeLoginChallengeStore,
+)
 from services.enterprise.rbac_service import ListOption, RBACService
 from services.entities.auth_entities import (
     ChangeEmailNewEmailToken,
@@ -119,7 +124,7 @@ class InvitationDetailDict(TypedDict):
 
 def _try_join_enterprise_default_workspace(account_id: str) -> None:
     """Best-effort join to enterprise default workspace."""
-    if not dify_config.ENTERPRISE_ENABLED:
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
         return
 
     from services.enterprise.enterprise_service import try_join_default_workspace
@@ -325,26 +330,41 @@ class AccountService:
         if account.status == AccountStatus.BANNED:
             raise Unauthorized("Account is banned.")
 
-        current_tenant = session.scalar(
+        current_tenant_join = session.scalar(
             select(TenantAccountJoin)
             .where(TenantAccountJoin.account_id == account.id, TenantAccountJoin.current == True)
             .limit(1)
         )
-        if current_tenant:
-            account.set_tenant_id_with_session(current_tenant.tenant_id, session=session)
-        else:
-            available_ta = session.scalar(
+        if current_tenant_join is not None:
+            account.set_tenant_id_with_session(current_tenant_join.tenant_id, session=session)
+
+        has_valid_current_tenant = (
+            current_tenant_join is not None
+            and account.current_tenant is not None
+            and account.current_tenant.status == TenantStatus.NORMAL
+        )
+        if not has_valid_current_tenant:
+            if current_tenant_join is not None:
+                current_tenant_join.current = False
+
+            available_tenant_join = session.scalar(
                 select(TenantAccountJoin)
-                .where(TenantAccountJoin.account_id == account.id)
+                .join(Tenant, TenantAccountJoin.tenant_id == Tenant.id)
+                .where(
+                    TenantAccountJoin.account_id == account.id,
+                    Tenant.status == TenantStatus.NORMAL,
+                )
                 .order_by(TenantAccountJoin.id.asc())
                 .limit(1)
             )
-            if not available_ta:
+            if available_tenant_join is None:
+                if current_tenant_join is not None:
+                    session.commit()
                 return None
 
-            account.set_tenant_id_with_session(available_ta.tenant_id, session=session)
-            available_ta.current = True
-            available_ta.last_opened_at = naive_utc_now()
+            account.set_tenant_id_with_session(available_tenant_join.tenant_id, session=session)
+            available_tenant_join.current = True
+            available_tenant_join.last_opened_at = naive_utc_now()
             session.commit()
 
         AccountService._refresh_account_last_active(account, session)
@@ -363,7 +383,7 @@ class AccountService:
         payload = {
             "user_id": account.id,
             "exp": exp,
-            "iss": dify_config.EDITION,
+            "iss": dify_config.DEPLOYMENT_EDITION.value,
             "sub": "Console API Passport",
         }
 
@@ -432,6 +452,7 @@ class AccountService:
         interface_theme: str = "light",
         is_setup: bool | None = False,
         timezone: str | None = None,
+        ip_address: str | None = None,
         *,
         session: Session,
     ) -> Account:
@@ -448,7 +469,7 @@ class AccountService:
         if not FeatureService.get_license().seats.is_available():
             raise SeatsLimitExceededError("licensed seats limit exceeded")
 
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(email):
             raise AccountRegisterError(
                 description=(
                     "This email account has been deleted within the past "
@@ -484,6 +505,7 @@ class AccountService:
             interface_language=interface_language,
             interface_theme=interface_theme,
             timezone=resolved_timezone,
+            last_login_ip=ip_address,
         )
 
         session.add(account)
@@ -497,6 +519,7 @@ class AccountService:
         interface_language: str,
         password: str | None = None,
         timezone: str | None = None,
+        ip_address: str | None = None,
         *,
         session: Session,
     ) -> Account:
@@ -507,6 +530,7 @@ class AccountService:
             interface_language=interface_language,
             password=password,
             timezone=timezone,
+            ip_address=ip_address,
             session=session,
         )
 
@@ -997,14 +1021,17 @@ class AccountService:
         email = account.email if account else email
         if email is None:
             raise ValueError("Email must be provided.")
+        email = email.lower()
         if cls.email_code_login_rate_limiter.is_rate_limited(email):
             from controllers.console.auth.error import EmailCodeLoginRateLimitExceededError
 
             raise EmailCodeLoginRateLimitExceededError(int(cls.email_code_login_rate_limiter.time_window / 60))
 
         code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
-        token = TokenManager.generate_token(
-            account=account, email=email, token_type="email_code_login", additional_data={"code": code}
+        token = EmailCodeLoginChallengeStore.create(
+            account_id=str(account.id) if account else None,
+            email=email,
+            code=code,
         )
         send_email_code_login_mail_task.delay(
             language=language,
@@ -1033,12 +1060,16 @@ class AccountService:
         return TokenManager.get_token_data(token, "email_code_login")
 
     @classmethod
+    def verify_email_code_login_challenge(cls, *, email: str, code: str, token: str) -> EmailCodeLoginChallengeResult:
+        return EmailCodeLoginChallengeStore.verify(email=email, code=code, token=token)
+
+    @classmethod
     def revoke_email_code_login_token(cls, token: str):
         TokenManager.revoke_token(token, "email_code_login")
 
     @classmethod
     def get_user_through_email(cls, email: str, *, session: Session):
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(email):
             raise AccountRegisterError(
                 description=(
                     "This email account has been deleted within the past "
@@ -1057,7 +1088,7 @@ class AccountService:
 
     @classmethod
     def is_account_in_freeze(cls, email: str) -> bool:
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(email):
             return True
         return False
 
@@ -1380,7 +1411,7 @@ class TenantService:
             session.add(ta)
 
         session.commit()
-        if dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             BillingService.clean_billing_info_cache(tenant.id)
         return ta
 
@@ -1813,7 +1844,7 @@ class TenantService:
                 account_email,
             )
 
-        if dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             BillingService.clean_billing_info_cache(tenant.id)
 
         # Queue account deletion sync task for enterprise backend to reassign resources (enterprise only)
@@ -1945,10 +1976,10 @@ class RegisterService:
                 interface_language=get_valid_language(language),
                 password=password,
                 is_setup=True,
+                ip_address=ip_address,
                 session=session,
             )
 
-            account.last_login_ip = ip_address
             account.initialized_at = naive_utc_now()
 
             TenantService.create_owner_tenant_if_not_exist(account=account, is_setup=True, session=session)
@@ -1984,6 +2015,7 @@ class RegisterService:
         is_setup: bool | None = False,
         create_workspace_required: bool | None = True,
         timezone: str | None = None,
+        ip_address: str | None = None,
         *,
         session: Session,
     ) -> Account:
@@ -1998,6 +2030,7 @@ class RegisterService:
                 password=password,
                 is_setup=is_setup,
                 timezone=timezone,
+                ip_address=ip_address,
                 session=session,
             )
             account.status = status or AccountStatus.ACTIVE

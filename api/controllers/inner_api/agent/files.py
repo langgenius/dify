@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Literal
 
 from flask_restx import Resource
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -38,6 +38,8 @@ class AgentFileRequestHttpError(BaseHTTPException):
 class AgentFileUploadRequestPayload(RequestRequestUploadFile):
     tenant_id: str
     user_id: str
+    user_from: Literal["account", "end-user"] | None = None
+    max_size: int = Field(ge=0, description="Maximum upload size in bytes")
 
     model_config = ConfigDict(extra="forbid")
 
@@ -113,13 +115,20 @@ class AgentFileUploadRequestApi(Resource):
                 status_code=404,
             )
         try:
-            user = get_user(tenant.id, payload.user_id)
+            if payload.user_from == "account":
+                if not TenantService.account_belongs_to_tenant(payload.user_id, tenant.id, session=session):
+                    raise ValueError("account not found")
+                owner_id = payload.user_id
+            else:
+                owner_id = get_user(tenant.id, payload.user_id).id
             upload_uri = get_signed_file_uri_for_plugin(
                 filename=payload.filename,
                 mimetype=payload.mimetype,
                 tenant_id=tenant.id,
-                user_id=user.id,
+                user_id=owner_id,
                 conversation_id=payload.conversation_id,
+                user_from=payload.user_from,
+                max_size=payload.max_size,
             )
         except ValueError as exc:
             raise AgentFileRequestHttpError(
