@@ -33,6 +33,18 @@ def _new_env(dify=None, emit_canvas=None) -> tuple[Env, InMemoryRepository]:
     return env, repo
 
 
+def _session(**overrides) -> Session:
+    fields: dict = {
+        "app_id": "app",
+        "tenant_id": "tenant-1",
+        "owner_account_id": "acc-1",
+        "entry_mode": EntryMode.EDIT,
+        "current_state": PcState.EDIT_CAPABILITY_CHECK,
+    }
+    fields.update(overrides)
+    return Session(**fields)
+
+
 def _seed_edit_session(repo: InMemoryRepository, state: PcState, **fc_kwargs) -> Session:
     s = Session(
         app_id="app",
@@ -75,6 +87,28 @@ def test_capability_check_send_edit_goal_advances_to_impact_analysis():
     assert any(e["event"] == "highlight_edit_target" for e in events)
 
 
+def test_edit_capability_check_renders_agent_fields():
+    # PlaceholderAgent.analyze_impact returns dynamic fields/values/targets;
+    # the form card and fc.form_fields/edit_rules/edit_target_node_ids must
+    # reflect them (not the old hardcoded _EDIT_RULE_FIELDS constant).
+    from core.dify_builder.handlers_edit import handle_capability_check
+
+    env, _ = _new_env()
+    env.agent.analyze_impact = lambda _g, _graph: {
+        "fields": [{"key": "tone", "label": "Tone", "type": "select", "options": ["formal", "casual"]}],
+        "values": {"tone": "formal"},
+        "target_node_ids": ["llm"],
+    }
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_CAPABILITY_CHECK)
+    fc = DifyBuilderContext(goal_text="make it formal")
+    result = handle_capability_check(
+        env, Turn(actor=_actor(), action=Action(kind="send_edit_goal", payload={"text": "formal"})), s, fc
+    )
+    assert result.context.form_fields[0]["key"] == "tone"
+    assert result.context.edit_rules == {"tone": "formal"}
+    assert result.context.edit_target_node_ids == ["llm"]
+
+
 def test_capability_check_ignores_non_goal_action():
     from core.dify_builder.handlers_edit import handle_capability_check
 
@@ -95,6 +129,10 @@ def test_impact_analysis_submit_rules_advances_to_plan_approval_with_checkpoint(
         PcState.EDIT_IMPACT_ANALYSIS,
         edit_rules={"risk_threshold": "medium", "review_team": "compliance"},
         edit_target_node_ids=["llm"],
+        form_fields=[
+            {"key": "risk_threshold", "label": "Risk threshold", "type": "text"},
+            {"key": "review_team", "label": "Review team", "type": "text"},
+        ],
     )
     turn = Turn(
         action=Action(

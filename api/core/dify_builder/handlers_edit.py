@@ -19,7 +19,6 @@ from core.dify_builder.contract import (
     CheckpointCard,
     DecisionItem,
     FormCard,
-    FormField,
     PlanCard,
     PublishCard,
     SummaryCard,
@@ -34,6 +33,7 @@ from core.dify_builder.handlers_fix import (
     action_string,
     append_card,
     build_change_set,
+    build_form_fields,
     emit_canvas,
     merge_known_keys,
     mint_checkpoint,
@@ -55,16 +55,6 @@ __all__ = [
 ]
 
 
-_EDIT_RULE_FIELDS = [
-    FormField(key="risk_threshold", label="Risk threshold", type="text"),
-    FormField(key="review_team", label="Review team", type="select", options=["compliance", "legal", "engineering"]),
-    FormField(key="timeout_behavior", label="Timeout behavior", type="select", options=["fail_open", "fail_closed"]),
-    FormField(key="preserve_summary", label="Preserve summary", type="bool"),
-]
-
-_EDIT_RULE_KEYS = ("risk_threshold", "review_team", "timeout_behavior", "preserve_summary")
-
-
 def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) Entry state. On ``send_edit_goal`` read the existing graph,
     emit a read-only context summary, analyze impact into edit_rules + target
@@ -84,8 +74,9 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     edge_count = len(graph.get("edges", []))
 
     impact = env.agent.analyze_impact(fc.goal_text, graph)
-    fc.edit_rules = dict(impact.get("edit_rules", {}))
-    fc.edit_target_node_ids = list(impact.get("target_node_ids", []))
+    fc.form_fields = list(impact.get("fields") or [])
+    fc.edit_rules = dict(impact.get("values") or {})
+    fc.edit_target_node_ids = list(impact.get("target_node_ids") or [])
 
     for node_id in fc.edit_target_node_ids:
         emit_canvas(env, "highlight_edit_target", node_id=node_id)
@@ -100,7 +91,9 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     )
     form_items = append_card(
         fc,
-        FormCard(variant="edit_rules", fields=list(_EDIT_RULE_FIELDS), values=dict(fc.edit_rules), frozen=False),
+        FormCard(
+            variant="edit_rules", fields=build_form_fields(fc.form_fields), values=dict(fc.edit_rules), frozen=False
+        ),
     )
     challenge_items = append_card(
         fc,
@@ -148,7 +141,8 @@ def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     fc.checkpoint_seq = fc.next_seq
 
     if turn.action is not None and isinstance(turn.action.payload, dict):
-        fc.edit_rules = merge_known_keys(fc.edit_rules, turn.action.payload, _EDIT_RULE_KEYS)
+        keys = [f["key"] for f in fc.form_fields if isinstance(f, dict) and f.get("key")]
+        fc.edit_rules = merge_known_keys(fc.edit_rules, turn.action.payload, keys)
 
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
     fc.plan_items = env.agent.propose_edit_plan(dict(fc.edit_rules), graph)
@@ -366,7 +360,10 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
             emit_canvas(env, "highlight_edit_target", node_id=node_id)
         decision_items = append_card(fc, DecisionItem(text="Continue adjusting"))
         form_items = append_card(
-            fc, FormCard(variant="edit_rules", fields=list(_EDIT_RULE_FIELDS), values=dict(fc.edit_rules), frozen=False)
+            fc,
+            FormCard(
+                variant="edit_rules", fields=build_form_fields(fc.form_fields), values=dict(fc.edit_rules), frozen=False
+            ),
         )
         challenge_items = append_card(
             fc,
