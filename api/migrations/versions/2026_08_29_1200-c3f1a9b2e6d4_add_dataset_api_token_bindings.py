@@ -1,8 +1,8 @@
 """add dataset_api_token_bindings
 
 Revision ID: c3f1a9b2e6d4
-Revises: e4708db55c1d
-Create Date: 2026-07-30 10:00:00.000000
+Revises: 5578e028b2f2
+Create Date: 2026-08-29 12:00:00.000000
 
 Many-to-many binding table scoping a dataset service-API key to knowledge bases:
 
@@ -19,7 +19,7 @@ import models as models
 
 # revision identifiers, used by Alembic.
 revision = "c3f1a9b2e6d4"
-down_revision = "e4708db55c1d"
+down_revision = "5578e028b2f2"
 branch_labels = None
 depends_on = None
 
