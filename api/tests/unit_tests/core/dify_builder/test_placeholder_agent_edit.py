@@ -11,10 +11,12 @@ def _graph_with_llm():
     }
 
 
-def test_analyze_impact_returns_edit_rules_and_targets_from_graph():
+def test_analyze_impact_returns_fields_values_and_targets_from_graph():
     agent = PlaceholderAgent()
     out = agent.analyze_impact("tighten risk handling", _graph_with_llm())
-    assert set(out["edit_rules"]) == {"risk_threshold", "review_team", "timeout_behavior", "preserve_summary"}
+    expected_keys = {"risk_threshold", "review_team", "timeout_behavior", "preserve_summary"}
+    assert {f["key"] for f in out["fields"]} == expected_keys
+    assert set(out["values"]) == expected_keys
     assert "llm" in out["target_node_ids"]
 
 
