@@ -1,6 +1,7 @@
 from core.dify_builder.models import Diagnosis
 from core.dify_builder.placeholder_agent import PlaceholderAgent
 from core.dify_builder.ports import DifyBuilderAgent
+from services.dify_builder.agent import fix as fix_mod
 from services.dify_builder.agent import llm_agent
 from services.dify_builder.agent.llm_agent import LlmBuilderAgent
 
@@ -17,11 +18,13 @@ def test_delegates_build_methods_to_placeholder():
     assert agent.learn_from_build("g", {}, [], []) == canned.learn_from_build("g", {}, [], [])
 
 
-def test_delegates_fix_methods_to_placeholder():
+def test_fix_methods_degrade_without_model():
+    """Fix methods call fix.* which degrades gracefully when model_config is None."""
     agent = LlmBuilderAgent("t1", None)
-    canned = PlaceholderAgent()
     diag = Diagnosis(culprit_node_id="llm", root_cause="x", severity="high")
-    assert agent.propose_repair(diag, {}) == canned.propose_repair(diag, {})
+    intents, risk = agent.propose_repair(diag, {})
+    assert intents == []  # degraded response: no fix
+    assert risk.level == "high"  # degraded response: high risk
 
 
 def test_model_is_resolved_lazily_and_memoized(monkeypatch):
@@ -37,3 +40,35 @@ def test_model_is_resolved_lazily_and_memoized(monkeypatch):
     assert agent._model() == "INSTANCE"
     assert agent._model() == "INSTANCE"
     assert calls["n"] == 1  # memoized
+
+
+def test_fix_methods_call_fix_module_with_resolved_model(monkeypatch):
+    seen = {}
+
+    def mock_diagnose(model, fr, g, no):  # noqa: ARG001
+        seen["m"] = model
+        return "DIAG"
+
+    monkeypatch.setattr(fix_mod, "diagnose", mock_diagnose)
+    agent = LlmBuilderAgent("t1", {"provider": "p", "name": "m", "mode": "chat", "completion_params": {}})
+    monkeypatch.setattr(agent, "_model", lambda: "MODEL")
+    assert agent.diagnose("run", {"nodes": []}, []) == "DIAG"
+    assert seen["m"] == "MODEL"
+
+
+def test_model_or_none_swallows_resolution_error(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(fix_mod, "propose_repair", lambda model, d, g: seen.setdefault("m", model) or ([], None))  # noqa: ARG005
+    agent = LlmBuilderAgent("t1", None)
+
+    def boom():
+        raise RuntimeError("no default model")
+
+    monkeypatch.setattr(agent, "_model", boom)
+    agent.propose_repair("diag", {"nodes": []})
+    assert seen["m"] is None  # a resolution error -> None passed to fix (degrade path)
+
+
+def test_generate_mock_inputs_still_canned():
+    agent = LlmBuilderAgent("t1", None)
+    assert agent.generate_mock_inputs({}, {}) == PlaceholderAgent().generate_mock_inputs({}, {})
