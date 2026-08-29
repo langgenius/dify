@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 // oxlint-disable-next-line no-restricted-imports -- This spec directly tests the legacy request owner.
-import { request } from '../base'
+import { request, ssePost } from '../base'
 
 const mocks = vi.hoisted(() => ({
   isClient: true,
   baseFetch: vi.fn(),
+  clearWebAppPassport: vi.fn(),
   refreshAccessTokenOrReLogin: vi.fn(),
+  resolveWebAppAddress: vi.fn(),
 }))
 
 vi.mock('@/utils/client', () => ({
@@ -34,6 +36,16 @@ vi.mock('../fetch', () => ({
 
 vi.mock('../refresh-token', () => ({
   refreshAccessTokenOrReLogin: mocks.refreshAccessTokenOrReLogin,
+}))
+
+vi.mock('../webapp-address', () => ({
+  getWebAppPublicApiPath: (_address: unknown, path: string) => path,
+  resolveWebAppAddress: mocks.resolveWebAppAddress,
+}))
+
+vi.mock('../webapp-auth', () => ({
+  clearWebAppPassport: mocks.clearWebAppPassport,
+  getWebAppPassport: vi.fn(() => ''),
 }))
 
 const createUnauthorizedResponse = () =>
@@ -67,7 +79,9 @@ describe('request 401 handling', () => {
   beforeEach(() => {
     mocks.isClient = true
     mocks.baseFetch.mockReset()
+    mocks.clearWebAppPassport.mockReset()
     mocks.refreshAccessTokenOrReLogin.mockReset()
+    mocks.resolveWebAppAddress.mockReset()
     Object.defineProperty(globalThis, 'location', {
       value: {
         origin: 'https://example.com',
@@ -125,5 +139,47 @@ describe('request 401 handling', () => {
     expect(globalThis.location.href).toBe(
       `https://example.com/app/signin?redirect_url=${encodeURIComponent('/app/apps?category=agent#recent')}`,
     )
+  })
+
+  it('should reload an environment webapp after its passport becomes unauthorized', async () => {
+    const address = { kind: 'environment', code: 'environment-code' } as const
+    const response = new Response(
+      JSON.stringify({
+        code: 401,
+        reason: 'APPDEPLOY_UNAUTHORIZED',
+        message: 'Unauthorized',
+      }),
+      { status: 401, headers: { 'Content-Type': 'application/json' } },
+    )
+    mocks.resolveWebAppAddress.mockReturnValue(address)
+    arrangeClientRequest({ response })
+
+    await expect(request('/messages')).rejects.toBe(response)
+
+    expect(mocks.clearWebAppPassport).toHaveBeenCalledWith(address)
+    expect(globalThis.location.reload).toHaveBeenCalledOnce()
+    expect(mocks.refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
+  })
+
+  it('should reload an environment webapp after an SSE request becomes unauthorized', async () => {
+    const address = { kind: 'environment', code: 'environment-code' } as const
+    mocks.resolveWebAppAddress.mockReturnValue(address)
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          code: 401,
+          reason: 'APPDEPLOY_UNAUTHORIZED',
+          message: 'Unauthorized',
+        }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } },
+      ),
+    )
+
+    ssePost('/chat-messages', { body: { query: 'hello' } }, { isPublicAPI: true })
+
+    await vi.waitFor(() => {
+      expect(mocks.clearWebAppPassport).toHaveBeenCalledWith(address)
+      expect(globalThis.location.reload).toHaveBeenCalledOnce()
+    })
   })
 })

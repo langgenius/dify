@@ -45,9 +45,23 @@ import { basePath } from '@/utils/var'
 import { base, ContentType, getBaseOptions } from './fetch'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
-import { getWebAppPassport } from './webapp-auth'
+import { clearWebAppPassport, getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
+
+const recoverEnvironmentWebAppAuthorization = (error: { reason?: string }, url?: string) => {
+  const address = resolveWebAppAddress()
+  if (
+    address?.kind !== 'environment' ||
+    error.reason !== 'APPDEPLOY_UNAUTHORIZED' ||
+    (url && /\/(?:login|passport)(?:\?|$)/.test(url))
+  )
+    return false
+
+  clearWebAppPassport(address)
+  window.location.reload()
+  return true
+}
 
 const isAbortError = (error: unknown) => {
   if (typeof error === 'string') return error === 'AbortError' || error.startsWith('AbortError:')
@@ -640,8 +654,10 @@ export const ssePost = async (
       if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401) {
           if (isPublicAPI) {
-            res.json().then((data: { code?: string; message?: string }) => {
+            res.json().then((data: { code?: string; message?: string; reason?: string }) => {
               if (isPublicAPI) {
+                if (recoverEnvironmentWebAppAuthorization(data)) return
+
                 if (data.code === 'web_app_access_denied') requiredWebSSOLogin(data.message, 403)
 
                 if (data.code === 'web_sso_auth_required') requiredWebSSOLogin()
@@ -803,8 +819,10 @@ export const sseGet = async (
       if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401) {
           if (isPublicAPI) {
-            res.json().then((data: { code?: string; message?: string }) => {
+            res.json().then((data: { code?: string; message?: string; reason?: string }) => {
               if (isPublicAPI) {
+                if (recoverEnvironmentWebAppAuthorization(data)) return
+
                 if (data.code === 'web_app_access_denied') requiredWebSSOLogin(data.message, 403)
 
                 if (data.code === 'web_sso_auth_required') requiredWebSSOLogin()
@@ -1012,6 +1030,7 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         return Promise.reject(err)
       }
       if (/\/login/.test(url)) return Promise.reject(errRespData)
+      if (recoverEnvironmentWebAppAuthorization(errRespData, url)) return Promise.reject(err)
       // special code
       const { code, message } = errRespData
       // webapp sso
