@@ -200,11 +200,25 @@ class PlaceholderAgent:
         # Pick affected nodes from the existing graph (LLM + knowledge), with a
         # canned-id fallback so the flow works on any Build-shaped draft.
         node_ids = {n.get("id") for n in graph.get("nodes", [])}
-        targets = [nid for nid in (BUILD_LLM_ID, BUILD_KNOWLEDGE_ID) if nid in node_ids]
-        if not targets:
-            targets = [BUILD_LLM_ID]
+        targets = [nid for nid in (BUILD_LLM_ID, BUILD_KNOWLEDGE_ID) if nid in node_ids] or [BUILD_LLM_ID]
         return {
-            "edit_rules": {
+            "fields": [
+                {"key": "risk_threshold", "label": "Risk threshold", "type": "text"},
+                {
+                    "key": "review_team",
+                    "label": "Review team",
+                    "type": "select",
+                    "options": ["compliance", "legal", "engineering"],
+                },
+                {
+                    "key": "timeout_behavior",
+                    "label": "Timeout behavior",
+                    "type": "select",
+                    "options": ["fail_open", "fail_closed"],
+                },
+                {"key": "preserve_summary", "label": "Preserve summary", "type": "bool"},
+            ],
+            "values": {
                 "risk_threshold": "medium",
                 "review_team": "compliance",
                 "timeout_behavior": "fail_closed",
