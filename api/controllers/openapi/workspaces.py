@@ -6,7 +6,9 @@ External SSO bearers (dfoe_) have no account_id and so see an empty list —
 that matches /openapi/v1/account.
 
 Member-management endpoints declare ``RequireWorkspaceMembership`` and, where
-the console gates on role, one ``RBACCheck`` carrying the legacy role floor.
+the console gates on role, a ``RoleFloor``. That floor names no superseding
+scene: nothing in the RBAC scene set covers member management on this surface,
+so it stands whether or not RBAC is enabled.
 ``GET /workspaces/<workspace_id>`` deliberately declares neither: it admits any
 account bearer and lets the view's own membership-scoped lookup answer 404.
 """
@@ -38,8 +40,8 @@ from controllers.openapi._models import (
 )
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
-    RBACCheck,
     RequireWorkspaceMembership,
+    RoleFloor,
     SubjectCheck,
     TokenScope,
 )
@@ -68,7 +70,7 @@ _WORKSPACE_MEMBER_ADMIN = (
     _ACCOUNT_SUBJECT,
     TokenScope(Scope.WORKSPACE_WRITE),
     RequireWorkspaceMembership(),
-    RBACCheck(roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})),
+    RoleFloor(frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})),
 )
 
 

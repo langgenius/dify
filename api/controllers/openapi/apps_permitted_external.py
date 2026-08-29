@@ -20,7 +20,12 @@ from controllers.openapi._models import (
 )
 from controllers.openapi.apps import build_app_describe_response
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.requirements import RequireWebappAccess, SubjectCheck, TokenScope
+from controllers.openapi.auth.requirements import (
+    CheckAppApiEnabled,
+    RequireWebappAccess,
+    SubjectCheck,
+    TokenScope,
+)
 from controllers.openapi.auth.subjects import ExternalSsoSubject
 from enums import DeploymentEdition
 from libs.oauth_bearer import Scope
@@ -98,6 +103,7 @@ class PermittedExternalAppDescribeApi(Resource):
     @endpoint(
         requirements=(
             _EXTERNAL_SUBJECT,
+            CheckAppApiEnabled(),
             TokenScope(Scope.APPS_READ_PERMITTED_EXTERNAL),
             RequireWebappAccess(),
         ),

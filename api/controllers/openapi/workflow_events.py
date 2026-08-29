@@ -22,7 +22,14 @@ from controllers.openapi import openapi_ns
 from controllers.openapi._contract import endpoint
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.data import CallerKind
-from controllers.openapi.auth.requirements import RBACCheck, RequireWebappAccess, SubjectCheck, TokenScope
+from controllers.openapi.auth.requirements import (
+    CheckAppApiEnabled,
+    RBACScene,
+    RequireWebappAccess,
+    RequireWorkspaceMembership,
+    SubjectCheck,
+    TokenScope,
+)
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.base_app_generator import BaseAppGenerator
@@ -51,8 +58,10 @@ class OpenApiWorkflowEventsApi(Resource):
     @endpoint(
         requirements=(
             SubjectCheck(allowed=(AccountSubject, ExternalSsoSubject)),
+            CheckAppApiEnabled(),
+            RequireWorkspaceMembership(),
             TokenScope(Scope.APPS_RUN),
-            RBACCheck(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
+            RBACScene(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
             RequireWebappAccess(),
         ),
         returns=(200, EventStreamResponse, "SSE event stream"),

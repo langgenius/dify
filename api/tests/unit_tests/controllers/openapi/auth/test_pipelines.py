@@ -13,12 +13,12 @@ from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.pipelines import AccountPipeline, ExternalSsoPipeline, Pipeline
 from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
-    CheckAppWorkspaceMembership,
     EditionCheck,
     LicenseCheck,
     Rank,
     Requirement,
     RequireWebappAccess,
+    RequireWorkspaceMembership,
     ResolveCaller,
     SubjectCheck,
     TokenScope,
@@ -134,19 +134,18 @@ def test_fixed_requirements_reproduce_the_two_pipelines() -> None:
     """What every route of each subject gets, whatever it declares itself.
     Tuples, not lists: `fixed` is a ClassVar on a process-lifetime object.
 
+    Nothing app-scoped is here: a fixed requirement runs on every route of its
+    subject, including the ones with no `app_id` to check, so the app checks are
+    declared per endpoint instead. What is left is true of every route.
+
     `ResolveCaller` is last in both and takes the default rank, which is what
     puts caller resolution after every endpoint-declared requirement — where
     the lazy context used to put it, at mount.
     """
-    assert [type(requirement) for requirement in AccountPipeline.fixed] == [
-        CheckAppApiEnabled,
-        CheckAppWorkspaceMembership,
-        ResolveCaller,
-    ]
+    assert [type(requirement) for requirement in AccountPipeline.fixed] == [ResolveCaller]
     assert [type(requirement) for requirement in ExternalSsoPipeline.fixed] == [
         EditionCheck,
         LicenseCheck,
-        CheckAppApiEnabled,
         ResolveCaller,
     ]
     assert ResolveCaller.rank is Rank.NORMAL
@@ -210,7 +209,13 @@ def test_app_scoped_route_mounts_an_account_bound_to_the_workspace(
     monkeypatch.setattr(MOUNT, mounted.append)
     subject = account_subject()
 
-    _run(AccountPipeline(), subject, make_ctx(sqlite_session, subject, app_id=APP_ID), sqlite_session)
+    _run(
+        AccountPipeline(),
+        subject,
+        make_ctx(sqlite_session, subject, app_id=APP_ID),
+        sqlite_session,
+        requirements=(RequireWorkspaceMembership(),),
+    )
 
     assert len(mounted) == 1
     account = mounted[0]
@@ -252,9 +257,9 @@ def test_the_requirements_that_share_a_datum_fetch_it_once(
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Three requirements on this route need the app — the endpoint's own
-    `CheckAppApiEnabled`, the pipeline's, and `ResolveCaller` — and two of them
-    need the workspace and the caller. Each is fetched once.
+    """Both declared requirements need the app — `CheckAppApiEnabled` directly,
+    `RequireWorkspaceMembership` through the workspace it hangs off — and the
+    membership check and `ResolveCaller` both need the caller. Each is fetched once.
     """
     persist(sqlite_session, make_app(), make_tenant(), make_account(), make_membership())
     monkeypatch.setattr(MOUNT, lambda _user: None)
@@ -270,7 +275,7 @@ def test_the_requirements_that_share_a_datum_fetch_it_once(
             subject,
             make_ctx(sqlite_session, subject, app_id=APP_ID),
             sqlite_session,
-            requirements=(CheckAppApiEnabled(),),
+            requirements=(CheckAppApiEnabled(), RequireWorkspaceMembership()),
         )
 
     assert (app_fetch.call_count, workspace_fetch.call_count, caller_fetch.call_count) == (1, 1, 1)
@@ -344,7 +349,7 @@ def test_a_loaded_caller_is_not_mounted_when_the_subject_declines(
     monkeypatch.setattr(subject, "mounts_caller", lambda _ctx: False)
     ctx = make_ctx(sqlite_session, subject, app_id=APP_ID)
 
-    _run(AccountPipeline(), subject, ctx, sqlite_session)
+    _run(AccountPipeline(), subject, ctx, sqlite_session, requirements=(RequireWorkspaceMembership(),))
 
     assert ctx.caller_loaded is True
 
@@ -353,7 +358,7 @@ def test_a_loaded_caller_is_not_mounted_when_the_subject_declines(
     ("requirements", "enable_api", "webapp_auth", "message"),
     [
         ((SubjectCheck(allowed=[AccountSubject]),), True, False, "unsupported_token_type"),
-        ((), False, False, "service_api_disabled"),
+        ((CheckAppApiEnabled(),), False, False, "service_api_disabled"),
         ((RequireWebappAccess(),), True, True, "subject_not_allowed_for_access_mode"),
     ],
     ids=["wrong subject (FIRST)", "api disabled (EARLY)", "webapp acl (NORMAL)"],

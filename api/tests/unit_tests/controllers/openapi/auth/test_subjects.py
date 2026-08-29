@@ -15,7 +15,7 @@ from controllers.openapi.auth.subjects import (
     subject_from_auth,
 )
 from libs.oauth_bearer import Scope, SubjectType
-from models import Account, App, EndUser, Tenant, TenantAccountJoin
+from models import Account, EndUser, TenantAccountJoin
 from models.account import TenantAccountRole
 from models.enums import EndUserType
 from services.enterprise.enterprise_service import WebAppAccessMode
@@ -31,40 +31,10 @@ from ._world import (
     make_account,
     make_app,
     make_auth,
+    make_ctx,
     make_tenant,
     persist,
 )
-
-
-class _StubContext:
-    """Stands in for `Context`; `app` / `workspace` blow up when a reader is
-    reached that no requirement on the route would have loaded.
-    """
-
-    def __init__(
-        self,
-        *,
-        app: App | None = None,
-        workspace: Tenant | None = None,
-        has_app: bool = False,
-        workspace_loaded: bool = False,
-    ) -> None:
-        self._app = app
-        self._workspace = workspace
-        self.has_app = has_app
-        self.workspace_loaded = workspace_loaded
-
-    @property
-    def app(self) -> App:
-        if self._app is None:
-            raise AssertionError("app fetched but not available")
-        return self._app
-
-    @property
-    def workspace(self) -> Tenant:
-        if self._workspace is None:
-            raise AssertionError("workspace fetched but not available")
-        return self._workspace
 
 
 def test_account_subject_carries_its_identity() -> None:
@@ -112,11 +82,12 @@ def test_subject_from_auth_rejects_an_unregistered_subject_type() -> None:
     ],
 )
 def test_mounts_caller_tracks_todays_resolution_points(
-    subject_type: SubjectType, has_app: bool, expected: bool
+    subject_type: SubjectType, has_app: bool, expected: bool, sqlite_session: Session
 ) -> None:
     subject = subject_from_auth(make_auth(subject_type))
+    view_args = {"app_id": APP_ID} if has_app else {}
 
-    assert subject.mounts_caller(_StubContext(has_app=has_app)) is expected
+    assert subject.mounts_caller(make_ctx(sqlite_session, subject, **view_args)) is expected
 
 
 class TestAccountResolveCaller:
@@ -124,12 +95,13 @@ class TestAccountResolveCaller:
         subject = AccountSubject(make_auth(SubjectType.ACCOUNT))
 
         with pytest.raises(Unauthorized, match="account not found"):
-            subject.resolve_caller(_StubContext(), sqlite_session)
+            subject.resolve_caller(make_ctx(sqlite_session, subject), sqlite_session)
 
-    @pytest.mark.parametrize(("has_app", "workspace_loaded"), [(True, False), (False, True)])
-    def test_binds_the_current_tenant_on_app_scoped_and_membership_routes(
-        self, sqlite_session: Session, has_app: bool, workspace_loaded: bool
-    ) -> None:
+    def test_binds_the_current_tenant_to_the_workspace_the_route_resolved(self, sqlite_session: Session) -> None:
+        """A loaded workspace is the whole signal. `app_id` in the path says one
+        *can* be resolved, never that anything did — and binding on that would
+        read a workspace no requirement asked for.
+        """
         account = make_account()
         tenant = make_tenant()
         persist(
@@ -144,7 +116,8 @@ class TestAccountResolveCaller:
             ),
         )
         subject = AccountSubject(make_auth(SubjectType.ACCOUNT))
-        ctx = _StubContext(workspace=tenant, has_app=has_app, workspace_loaded=workspace_loaded)
+        ctx = make_ctx(sqlite_session, subject, app_id=APP_ID)
+        ctx.set_workspace(tenant)
 
         caller = subject.resolve_caller(ctx, sqlite_session)
 
@@ -156,7 +129,7 @@ class TestAccountResolveCaller:
         persist(sqlite_session, make_account())
         subject = AccountSubject(make_auth(SubjectType.ACCOUNT))
 
-        caller = subject.resolve_caller(_StubContext(), sqlite_session)
+        caller = subject.resolve_caller(make_ctx(sqlite_session, subject, app_id=APP_ID), sqlite_session)
 
         assert isinstance(caller, Account)
         assert caller.current_tenant_id is None
@@ -164,8 +137,13 @@ class TestAccountResolveCaller:
 
 class TestExternalSsoResolveCaller:
     def test_resolves_the_end_user_against_the_apps_workspace(self, sqlite_session: Session) -> None:
+        """It loads both itself. Nothing before it on an SSO route needs a
+        workspace, so a subject that expected one to be there already would
+        resolve an end user against nothing.
+        """
+        persist(sqlite_session, make_app(), make_tenant())
         subject = ExternalSsoSubject(make_auth(SubjectType.EXTERNAL_SSO))
-        ctx = _StubContext(app=make_app(), workspace=make_tenant())
+        ctx = make_ctx(sqlite_session, subject, app_id=APP_ID)
         end_user = EndUser(
             tenant_id=TENANT_ID,
             app_id=APP_ID,
@@ -189,7 +167,7 @@ class TestExternalSsoResolveCaller:
 
     def test_rejects_a_token_without_an_external_identity(self, sqlite_session: Session) -> None:
         subject = ExternalSsoSubject(make_auth(SubjectType.EXTERNAL_SSO, subject_email=None))
-        ctx = _StubContext(app=make_app(), workspace=make_tenant())
+        ctx = make_ctx(sqlite_session, subject, app_id=APP_ID)
 
         with pytest.raises(Unauthorized, match="missing context for external user resolution"):
             subject.resolve_caller(ctx, sqlite_session)

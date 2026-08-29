@@ -107,40 +107,27 @@ class CheckAppApiEnabled(Requirement):
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        if not ctx.has_app:
-            return
         if not load_app(ctx).enable_api:
             raise Forbidden("service_api_disabled")
 
 
-def _assert_member(subject: Subject, ctx: Context) -> None:
-    """Resolving the role *is* the check: `load_workspace_role` 404s a non-member."""
-    if subject.caller_kind is not CallerKind.ACCOUNT:
-        return
-    load_workspace_role(ctx)
-
-
-class CheckAppWorkspaceMembership(Requirement):
-    rank = Rank.EARLY
-
-    @override
-    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        if not ctx.has_app:
-            return
-        _assert_member(subject, ctx)
-
-
 class RequireWorkspaceMembership(Requirement):
-    """Declared by workspace-scoped endpoints. Membership cannot be inferred
-    from the request: `GET /apps` takes its workspace from the query string,
-    and `GET /workspaces/<workspace_id>` has the path param but gets no check.
+    """Resolving the role *is* the check: `load_workspace_role` 404s a non-member.
+
+    Which workspace that is follows from the route — the app's on an app-scoped
+    one, the path or query parameter otherwise — so this one requirement serves
+    both. It cannot be inferred and left implicit: `GET /apps` takes its
+    workspace from the query string, and `GET /workspaces/<workspace_id>` has
+    the path parameter but gets no membership check.
     """
 
     rank = Rank.EARLY
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        _assert_member(subject, ctx)
+        if subject.caller_kind is not CallerKind.ACCOUNT:
+            return
+        load_workspace_role(ctx)
 
 
 class TokenScope(Requirement):
@@ -154,49 +141,62 @@ class TokenScope(Requirement):
         raise Forbidden("insufficient_scope")
 
 
-class RBACCheck(Requirement):
-    """The RBAC scene and the legacy role floor, in one requirement.
-
-    They cannot be separate: the role floor stands down as soon as RBAC is
-    enabled for a declared scene, so two requirements would double-enforce and
-    deny requests that pass today.
+class RBACScene(Requirement):
+    """One RBAC permission point. Inert wherever RBAC is switched off, which is
+    also what lets the `RoleFloor` beside it take over there.
     """
 
     def __init__(
         self,
         *,
-        resource_type: RBACResourceScope | None = None,
-        scene: RBACPermission | None = None,
-        roles: frozenset[TenantAccountRole] | None = None,
+        resource_type: RBACResourceScope,
+        scene: RBACPermission,
         resource_required: bool = True,
     ) -> None:
-        if (resource_type is None) != (scene is None):
-            raise ValueError("resource_type and scene must be declared together")
-        if scene is None and roles is None:
-            raise ValueError("RBACCheck must declare a scene, a role floor, or both")
         self.resource_type = resource_type
         self.scene = scene
-        self.roles = roles
         self.resource_required = resource_required
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         if subject.caller_kind is not CallerKind.ACCOUNT:
             return
-        if dify_config.RBAC_ENABLED and self.scene is not None and self.resource_type is not None:
-            enforce_rbac_access(
-                tenant_id=str(load_workspace(ctx).id),
-                account_id=str(subject.account_id),
-                resource_type=self.resource_type,
-                scene=self.scene,
-                resource_required=self.resource_required,
-                path_args=dict(ctx.view_args),
-            )
+        if not dify_config.RBAC_ENABLED:
             return
-        self._enforce_role_floor(ctx)
+        enforce_rbac_access(
+            tenant_id=str(load_workspace(ctx).id),
+            account_id=str(subject.account_id),
+            resource_type=self.resource_type,
+            scene=self.scene,
+            resource_required=self.resource_required,
+            path_args=dict(ctx.view_args),
+        )
 
-    def _enforce_role_floor(self, ctx: Context) -> None:
-        if self.roles is None:
+
+class RoleFloor(Requirement):
+    """The coarse workspace-role gate that predates RBAC.
+
+    `superseded_by` names the `RBACScene` declared beside it on the same route:
+    where RBAC is on, that scene is the authority and this floor stands down
+    rather than double-enforcing. A floor that names nothing applies
+    unconditionally, which is what keeps workspace administration guarded on an
+    RBAC deployment: no scene there has taken the job over.
+    """
+
+    def __init__(
+        self,
+        roles: frozenset[TenantAccountRole],
+        *,
+        superseded_by: RBACPermission | None = None,
+    ) -> None:
+        self.roles = roles
+        self.superseded_by = superseded_by
+
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        if subject.caller_kind is not CallerKind.ACCOUNT:
+            return
+        if dify_config.RBAC_ENABLED and self.superseded_by is not None:
             return
         if load_workspace_role(ctx) not in self.roles:
             raise Forbidden("insufficient workspace role")
@@ -226,8 +226,6 @@ class RequireWebappAccess(Requirement):
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        if not ctx.has_app:
-            return
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
             return
         access_mode = self._access_mode(str(load_app(ctx).id))
@@ -265,6 +263,4 @@ class ResolveCaller(Requirement):
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         if not subject.mounts_caller(ctx):
             return
-        if ctx.has_app:
-            load_workspace(ctx)
         load_caller(ctx)

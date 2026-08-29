@@ -19,9 +19,11 @@ from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.data import CallerKind
 from controllers.openapi.auth.loaders import load_app
 from controllers.openapi.auth.requirements import (
-    RBACCheck,
+    CheckAppApiEnabled,
+    RBACScene,
     Requirement,
     RequireWebappAccess,
+    RequireWorkspaceMembership,
     SubjectCheck,
     TokenScope,
 )
@@ -66,8 +68,10 @@ class CheckFormSurface(Requirement):
 
 _HUMAN_INPUT_FORM = (
     SubjectCheck(allowed=(AccountSubject, ExternalSsoSubject)),
+    CheckAppApiEnabled(),
+    RequireWorkspaceMembership(),
     TokenScope(Scope.APPS_RUN),
-    RBACCheck(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
+    RBACScene(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
     RequireWebappAccess(),
     CheckFormSurface(),
 )

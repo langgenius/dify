@@ -18,7 +18,13 @@ from controllers.openapi import openapi_ns
 from controllers.openapi._contract import endpoint
 from controllers.openapi._errors import FilenameNotExists
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.requirements import RequireWebappAccess, SubjectCheck, TokenScope
+from controllers.openapi.auth.requirements import (
+    CheckAppApiEnabled,
+    RequireWebappAccess,
+    RequireWorkspaceMembership,
+    SubjectCheck,
+    TokenScope,
+)
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
 from extensions.ext_database import db
 from fields.file_fields import FileResponse
@@ -42,6 +48,8 @@ class AppFileUploadApi(Resource):
     @endpoint(
         requirements=(
             SubjectCheck(allowed=(AccountSubject, ExternalSsoSubject)),
+            CheckAppApiEnabled(),
+            RequireWorkspaceMembership(),
             TokenScope(Scope.APPS_RUN),
             RequireWebappAccess(),
         ),
