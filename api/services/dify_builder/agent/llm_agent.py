@@ -1,7 +1,7 @@
 """The real Dify Builder agent shell.
 
 Owns the resolved model. Of the Protocol's 14 methods (Fix 4 + Build 7 + Edit 3),
-9 now use real LLM cognition: the 3 Fix methods that reason about a failed run --
+12 now use real LLM cognition: the 3 Fix methods that reason about a failed run --
 ``diagnose``, ``diagnose_checklist``, ``propose_repair`` -- via
 ``services.dify_builder.agent.fix``; 6 of the 7 Build methods -- ``analyze_goal``,
 ``propose_plan_v1``, ``discover_resources``, ``bind_resources``, ``build_nodes``,
