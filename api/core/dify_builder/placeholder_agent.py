@@ -82,12 +82,22 @@ class PlaceholderAgent:
         # Always proceeds -- no real missing-info branch. The challenge card
         # the handler shows is an informational "proceeding" note.
         return {
-            "report_types": "quarterly",
-            "audience": "executives",
-            "currency": "USD",
-            "metrics": "revenue, gross_margin",
-            "output": "PDF summary",
-            "prefer_audited": True,
+            "fields": [
+                {"key": "report_types", "label": "Report types", "type": "text"},
+                {"key": "audience", "label": "Audience", "type": "text"},
+                {"key": "currency", "label": "Currency", "type": "text"},
+                {"key": "metrics", "label": "Metrics", "type": "text"},
+                {"key": "output", "label": "Output", "type": "textarea"},
+                {"key": "prefer_audited", "label": "Prefer audited sources", "type": "bool"},
+            ],
+            "values": {
+                "report_types": "quarterly",
+                "audience": "executives",
+                "currency": "USD",
+                "metrics": "revenue, gross_margin",
+                "output": "PDF summary",
+                "prefer_audited": True,
+            },
         }
 
     def propose_plan_v1(self, requirements: dict[str, Any]) -> list[str]:

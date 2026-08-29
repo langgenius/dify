@@ -32,6 +32,7 @@ from core.dify_builder.contract import (
     AssistantTurnItem,
     ChangeSetCard,
     DecisionItem,
+    FormField,
     NoticeItem,
     SummaryCard,
     TestResultCard,
@@ -61,6 +62,7 @@ __all__ = [
     "append_card",
     "append_item",
     "build_change_set",
+    "build_form_fields",
     "decode_checklist_errors",
     "emit_canvas",
     "first_failed_node",
@@ -106,6 +108,29 @@ def append_card(fc: DifyBuilderContext, card) -> list[ConversationItem]:
     item = card.to_item(seq=fc.next_seq, at_version=0)
     fc.next_seq += 1
     return [item]
+
+
+_FORM_FIELD_TYPES = {"text", "textarea", "select", "bool"}
+
+
+def build_form_fields(specs: list[dict]) -> list[FormField]:
+    """Build FormField cards from agent-provided field specs, whitelisting
+    keys and clamping type to the 4 supported kinds (unknown -> text)."""
+    fields: list[FormField] = []
+    for spec in specs:
+        if not isinstance(spec, dict) or not spec.get("key"):
+            continue
+        ftype = spec.get("type") if spec.get("type") in _FORM_FIELD_TYPES else "text"
+        options = spec.get("options") if isinstance(spec.get("options"), list) else []
+        fields.append(
+            FormField(
+                key=str(spec["key"]),
+                label=str(spec.get("label", spec["key"])),
+                type=ftype,
+                options=[str(o) for o in options],
+            )
+        )
+    return fields
 
 
 def action_string(turn: Turn, key: str) -> tuple[str, bool]:
