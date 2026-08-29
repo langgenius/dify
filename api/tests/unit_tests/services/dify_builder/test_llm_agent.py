@@ -17,9 +17,8 @@ def test_llm_agent_build_methods_delegate_to_build(monkeypatch):
     monkeypatch.setattr(
         build,
         "analyze_goal",
-        lambda m, g: {"fields": [{"key": "k", "label": "K", "type": "text"}], "values": {}},  # noqa: ARG005
+        lambda _m, _g: {"fields": [{"key": "k", "label": "K", "type": "text"}], "values": {}},
     )
-    monkeypatch.setattr(build, "build_nodes", lambda t, mc, p: [])  # noqa: ARG005
     agent = LlmBuilderAgent("t1", {})
     assert agent.analyze_goal("goal")["fields"][0]["key"] == "k"
     assert agent.propose_build_repair(["n1"]) == []
@@ -28,7 +27,7 @@ def test_llm_agent_build_methods_delegate_to_build(monkeypatch):
 def test_build_methods_call_build_module_with_resolved_model(monkeypatch):
     seen = {}
 
-    def mock_analyze_goal(model, goal_text):  # noqa: ARG001
+    def mock_analyze_goal(model, _goal_text):
         seen["m"] = model
         return {"fields": [], "values": {}}
 
@@ -37,6 +36,60 @@ def test_build_methods_call_build_module_with_resolved_model(monkeypatch):
     monkeypatch.setattr(agent, "_model", lambda: "MODEL")
     agent.analyze_goal("goal")
     assert seen["m"] == "MODEL"
+
+
+def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
+    """Mirrors test_build_methods_call_build_module_with_resolved_model for
+    analyze_goal: pins that propose_plan_v1/discover_resources/bind_resources/
+    build_nodes/learn_from_build each call the corresponding build.* with the
+    resolved model threaded through (build_nodes takes no model -- it threads
+    self._tenant_id/self._model_config directly instead)."""
+    seen = {}
+
+    def mock_propose_plan_v1(model, requirements):
+        seen["propose_plan_v1"] = (model, requirements)
+        return []
+
+    def mock_discover_resources(model, tenant_id, plan_items):
+        seen["discover_resources"] = (model, tenant_id, plan_items)
+        return []
+
+    def mock_bind_resources(model, tenant_id, plan_items, resource_ids, conflict_policy):
+        seen["bind_resources"] = (model, tenant_id, plan_items, resource_ids, conflict_policy)
+        return []
+
+    def mock_build_nodes(tenant_id, model_config, plan_items):
+        seen["build_nodes"] = (tenant_id, model_config, plan_items)
+        return []
+
+    def mock_learn_from_build(model, goal_text, requirements, plan_items, built_node_ids):
+        seen["learn_from_build"] = (model, goal_text, requirements, plan_items, built_node_ids)
+        return "skill"
+
+    monkeypatch.setattr(build_mod, "propose_plan_v1", mock_propose_plan_v1)
+    monkeypatch.setattr(build_mod, "discover_resources", mock_discover_resources)
+    monkeypatch.setattr(build_mod, "bind_resources", mock_bind_resources)
+    monkeypatch.setattr(build_mod, "build_nodes", mock_build_nodes)
+    monkeypatch.setattr(build_mod, "learn_from_build", mock_learn_from_build)
+
+    model_config = {"provider": "p", "name": "m", "mode": "chat", "completion_params": {}}
+    agent = LlmBuilderAgent("t1", model_config)
+    monkeypatch.setattr(agent, "_model", lambda: "MODEL")
+
+    agent.propose_plan_v1({"x": 1})
+    assert seen["propose_plan_v1"] == ("MODEL", {"x": 1})
+
+    agent.discover_resources(["step"])
+    assert seen["discover_resources"] == ("MODEL", "t1", ["step"])
+
+    agent.bind_resources(["step"], ["rid"], "audited")
+    assert seen["bind_resources"] == ("MODEL", "t1", ["step"], ["rid"], "audited")
+
+    agent.build_nodes(["step"])
+    assert seen["build_nodes"] == ("t1", model_config, ["step"])
+
+    agent.learn_from_build("goal", {"x": 1}, ["step"], ["n1"])
+    assert seen["learn_from_build"] == ("MODEL", "goal", {"x": 1}, ["step"], ["n1"])
 
 
 def test_fix_methods_degrade_without_model():

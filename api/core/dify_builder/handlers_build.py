@@ -426,7 +426,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             stage_id="build.review",
             trace=Trace(status="completed", steps=[]),
             reply_text="Tests passed; ready for review.",
-            cards=["error", "change_set", "test_result", "summary"],
+            cards=(["error", "change_set"] if repair_intents else []) + ["test_result", "summary"],
         ),
     )
     return StepResult(
