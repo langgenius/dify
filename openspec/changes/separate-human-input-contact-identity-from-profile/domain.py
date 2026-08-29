@@ -1,7 +1,7 @@
 # /Users/qg/.codex/worktrees/5ab7/dify/api/controllers/console/workspace/human_input.py
 
 class ContactType(StrEnum):
-    """Workspace-relative availability of one canonical Contact."""
+    """Workspace-scoped classification of a currently available Contact."""
 
     WORKSPACE = "workspace"
     PLATFORM = "platform"
@@ -20,7 +20,8 @@ class Contact:
 
 @dataclass(frozen=True, slots=True)
 class ExternalContact:
-    """This model should only be used for save_external_contact / delete_external_contact"""
+    """Workspace-soped External Contact data used only by save_external_contact and delete_external_contact."""
+
     id: ContactId
     name: str
     email: str
@@ -37,35 +38,60 @@ class Page[T]:
     limit: int
 
 
-class ContactRepository(Protocol):
-    def count_contact(self, tenant_id: TenantId) -> int: ...
+@dataclass(frozen=True, slots=True)
+class ContactQuery:
+    # empty keyword means keyword is unspecified.
+    keyword: str = ""
 
-    def list_contact(self, tenant_id: TenantId, page: int, limit: int) -> Page[Contact]: ...
+    # search_contacts = None means no contact type filtering.
+    contact_type: ContactType | None = None
+
+
+class ContactRepository(Protocol):
+    """Tenant-scoped current Contact queries and Contact lifecycle writes.
+
+    Query methods return only Contacts currently available in the requested
+    tenant and resolve ``Contact.type`` according to these rules:
+
+    - A tenant-owned ``HumanInputExternalContactProfile`` resolves to
+      ``ContactType.EXTERNAL``.
+    - An active Account with a current ``TenantAccountJoin`` resolves to
+      ``ContactType.WORKSPACE``.
+    - An active Account with a current
+      ``HumanInputPlatformContactWorkspaceEntry`` resolves to
+      ``ContactType.PLATFORM``.
+    - Current membership takes precedence over a Platform entry, so an Account
+      with both resolves to ``ContactType.WORKSPACE``.
+    - An inactive Account, or an Account with neither current membership nor a
+      Platform entry, is omitted from current Contact results.
+    """
+
+    def count_contact(self, tenant_id: TenantId, query: ContactQuery = ContactQuery()) -> int: ...
+
+    def list_contact(
+            self, tenant_id: TenantId, page: int, limit: int,
+            query: ContactQuery = ContactQuery()) -> Page[Contact]: ...
 
     def get_contacts_by_id(self, tenant_id: TenantId, contact_id: ContactId) -> Contact | None: ...
 
     def get_contacts_by_ids(
-            self, tenant_id:ContactIMBIndingRepository TenantId, contact_ids: Sequence[ContactId]
-        ) -> Sequence[Contact]: ...
-        """Query contacts by their identities.
+            self, tenant_id: TenantId, contact_ids: Sequence[ContactId]
+        ) -> Sequence[Contact]:
+        """Return currently available Contacts for the requested identities.
 
-        missing / invisible contacts are not included in the result.
-
-        repeated ids will only be returned once.
-
-        The order in returned value is undetermined.
-
-        For example, an account has no member nor HumanInputPlatformContactWorkspaceEntry will not be incluced.
-
+        Missing or unavailable Contacts are omitted. Repeated Contact IDs
+        produce at most one result, and result ordering is unspecified.
         """
+        ...
 
-    def available(self, tenant_id: TenantId, contact_ids: Sequence[ContactId]) -> Mapping[ContactId, bool]: ...
-        """available check whether a given contact is available in the given workspace (tenant).
+    def available(self, tenant_id: TenantId, contact_ids: Sequence[ContactId]) -> Mapping[ContactId, bool]:
+        """Return current tenant availability for the requested Contact identities.
 
-        External contacts are always available in the correspond workspace. Availability of account-backed
-        contacts are determined by workspace membership (TenantAccountJoin) and PlatformEntry existence. (
-        whether HumanInputPlatformContactWorkspaceEntry in given tenant exists.)
+        An External Contact is available only in its owning tenant. An
+        Account-backed Contact is available only when its Account is active and
+        has either current membership or a Platform entry in the tenant.
         """
+        ...
 
     def save_external_contact(self, tenant_id: TenantId, external_contact: ExternalContact) -> Contact: ...
 
@@ -73,7 +99,7 @@ class ContactRepository(Protocol):
 
     def provision_account_backed_contact(self, account_id: AccountId) -> ContactId: ...
 
-    # API for EE platform contact
+    # EE Platform visibility mutations.
     def create_platform_entry(
             self, tenant_id: TenantId, account_id: AccountId,
             added_by_account_id: AccountId,
@@ -83,18 +109,14 @@ class ContactRepository(Protocol):
 
     def query_contacts_by_email(
             self, tenant_id: TenantId, emails: Sequence[str]
-        ) -> Sequence[Contact]: ...
-        """The order in returned value is undetermined.
+        ) -> Sequence[Contact]:
+        """Return currently available Contacts matching the requested Emails.
 
-        Missing emails are omitted from the result.
-
-        This
+        Emails without a matching Contact are omitted, and result ordering is
+        unspecified. If one Email matches both an Account-backed Contact and an
+        External Contact, both Contacts are returned.
         """
-
-    def search_contacts(
-            self, tenant_id: TenantId, keyword: str,
-            contact_type: ContactType | None = None
-        ) -> Sequence[Contact]: ...
+        ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,5 +128,7 @@ class IMBinding:
     provider: IMProvider
 
 
-class ContactImBIndingRepository(Protocol):
+class ContactIMBindingRepository(Protocol):
+    """Tenant-scoped queries for IM bindings associated with Contacts."""
+
     def get_im_bindings(self, tenant_id: TenantId, contact_ids: Sequence[ContactId]) -> Sequence[IMBinding]: ...
