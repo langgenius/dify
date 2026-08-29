@@ -8,7 +8,10 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-u
 import { toast } from '@langgenius/dify-ui/toast'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
+import {
+  navigateAfterWebAppLogin,
+  resolveWebAppLoginRedirect,
+} from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useWebAppStore } from '@/context/web-app-context'
@@ -87,7 +90,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
           userId: embeddedUserId || undefined,
         })
         setWebAppPassport(loginRedirect.address, access_token)
-        replaceLoginRedirect(loginRedirect.target, router.replace, basePath)
+        navigateAfterWebAppLogin(loginRedirect, router.replace, basePath)
       } else {
         toast.error(res.data)
       }

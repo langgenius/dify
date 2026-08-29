@@ -1,4 +1,4 @@
-import { resolveWebAppLoginRedirect } from '../login-redirect'
+import { navigateAfterWebAppLogin, resolveWebAppLoginRedirect } from '../login-redirect'
 
 describe('resolveWebAppLoginRedirect', () => {
   // Covers the canonical relative redirect shape used by share applications.
@@ -82,5 +82,52 @@ describe('resolveWebAppLoginRedirect', () => {
     ])('should return null for %s', (redirectUrl) => {
       expect(resolveWebAppLoginRedirect(redirectUrl, 'https://self-hosted.example.com')).toBeNull()
     })
+  })
+})
+
+describe('navigateAfterWebAppLogin', () => {
+  const routerReplace = vi.fn()
+  const locationReplace = vi.fn()
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.stubGlobal('location', {
+      ...window.location,
+      replace: locationReplace,
+    } as unknown as Location)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('reloads the document after an environment login', () => {
+    navigateAfterWebAppLogin(
+      {
+        appCode: 'environment-app',
+        address: { kind: 'environment', code: 'environment-app' },
+        target: { kind: 'internal', href: '/environment/chat/environment-app' },
+      },
+      routerReplace,
+      '',
+    )
+
+    expect(locationReplace).toHaveBeenCalledWith('/environment/chat/environment-app')
+    expect(routerReplace).not.toHaveBeenCalled()
+  })
+
+  it('keeps client navigation for an ordinary Web App login', () => {
+    navigateAfterWebAppLogin(
+      {
+        appCode: 'share-app',
+        address: { kind: 'default', code: 'share-app' },
+        target: { kind: 'internal', href: '/chatbot/share-app' },
+      },
+      routerReplace,
+      '',
+    )
+
+    expect(routerReplace).toHaveBeenCalledWith('/chatbot/share-app')
+    expect(locationReplace).not.toHaveBeenCalled()
   })
 })
