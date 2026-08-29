@@ -10,6 +10,7 @@ from typing import Any
 
 from core.dify_builder.placeholder_agent import PlaceholderAgent
 from core.model_manager import ModelInstance
+from services.dify_builder.agent import fix
 from services.dify_builder.agent.model_resolver import resolve_model_instance
 
 
@@ -26,15 +27,23 @@ class LlmBuilderAgent:
             self._model_instance = resolve_model_instance(self._tenant_id, self._model_config)
         return self._model_instance
 
+    def _model_or_none(self) -> ModelInstance | None:
+        """The resolved model, or None if it can't resolve — fix.* degrades on None
+        rather than crashing the advance."""
+        try:
+            return self._model()
+        except Exception:  # any resolution failure -> degrade path (fix.* handles None)
+            return None
+
     # -- Fix cognition (delegated) --
     def diagnose(self, failed_run, graph, node_outputs):
-        return self._canned.diagnose(failed_run, graph, node_outputs)
+        return fix.diagnose(self._model_or_none(), failed_run, graph, node_outputs)
 
     def diagnose_checklist(self, errors, graph):
-        return self._canned.diagnose_checklist(errors, graph)
+        return fix.diagnose_checklist(self._model_or_none(), errors, graph)
 
     def propose_repair(self, diagnosis, graph):
-        return self._canned.propose_repair(diagnosis, graph)
+        return fix.propose_repair(self._model_or_none(), diagnosis, graph)
 
     def generate_mock_inputs(self, schema, prior_failed):
         return self._canned.generate_mock_inputs(schema, prior_failed)
