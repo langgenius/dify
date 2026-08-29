@@ -261,15 +261,6 @@ class RequireWebappAccess(Requirement):
 
 
 class ResolveCaller(Requirement):
-    """Written last in each pipeline's `fixed` and taking the default rank, so it
-    runs after every other requirement — the point at which the caller used to
-    resolve, lazily, at mount.
-
-    `ExternalSsoSubject.resolve_caller` reads the workspace, and its pipeline
-    carries no membership check, so nothing else on an SSO app route would load
-    one. Loading it here is what keeps that route working.
-    """
-
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         if not subject.mounts_caller(ctx):
