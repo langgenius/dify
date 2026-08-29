@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import cast
+from typing import cast, get_args, get_type_hints
 
 import pytest
 from flask import Flask
@@ -80,7 +80,7 @@ class TestLoadApp:
         with pytest.raises(NotFound):
             load_app(ctx)
 
-        assert ctx.app_loaded is False
+        assert ctx.app is None
 
 
 class TestWorkspaceFromApp:
@@ -89,8 +89,8 @@ class TestWorkspaceFromApp:
         ctx = Context(_subject(), sqlite_session, {"app_id": APP_ID})
 
         assert load_workspace(ctx).id == TENANT_ID
-        assert ctx.workspace_loaded is True
-        assert ctx.app_loaded is True
+        assert ctx.workspace is not None
+        assert ctx.app is not None
 
     @pytest.mark.parametrize("persist_archived", [True, False])
     def test_forbidden_when_the_apps_tenant_is_missing_or_archived(
@@ -136,6 +136,18 @@ class TestWorkspaceFromRequest:
 
         with app.test_request_context("/test"), pytest.raises(NotFound, match="workspace not found"):
             load_workspace(ctx)
+
+
+def test_no_loader_can_hand_a_handler_an_optional() -> None:
+    """The store's fields are optional; a loader's answer never is. That is the
+    one boundary where the shape is normalised, so nothing downstream re-checks —
+    and a `None` slipping past it would reach a handler as a value it cannot tell
+    from a real one.
+    """
+    for loader in (load_app, load_workspace, load_workspace_role, load_caller):
+        returns = get_type_hints(loader)["return"]
+
+        assert type(None) not in get_args(returns), loader.__name__
 
 
 def test_route_has_app_reads_the_path_the_router_stored(sqlite_session: Session) -> None:
@@ -234,7 +246,7 @@ class TestLoadWorkspaceRole:
 
         class _Recording(_StubSubject):
             def resolve_caller(self, ctx: object, session: Session) -> object:
-                loaded_when_called.append(cast(Context, ctx).workspace_loaded)
+                loaded_when_called.append(cast(Context, ctx).workspace is not None)
                 return super().resolve_caller(ctx, session)
 
         ctx = Context(cast(Subject, _Recording(make_account())), sqlite_session, {"app_id": APP_ID})

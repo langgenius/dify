@@ -9,6 +9,7 @@ from flask_login import user_logged_in
 from sqlalchemy.orm import Session
 
 from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.loaders import load_caller
 from controllers.openapi.auth.requirements import (
     EditionCheck,
     LicenseCheck,
@@ -62,16 +63,16 @@ class ExternalSsoPipeline(Pipeline):
 def mounted(subject: Subject, auth: AuthContext, ctx: Context) -> Generator[None]:
     """Effects, not policy: the identity ContextVar is published for every
     subject, but flask-login is mounted only for a subject whose own
-    `mounts_caller` says so. Reading `ctx.caller_loaded` instead would mount
-    whatever a membership check happened to resolve, which is the same answer
-    today and would stop being one for a subject that declines conditionally.
+    `mounts_caller` says so. Reading whatever `ctx.caller` happens to hold would
+    mount what a membership check resolved, which is the same answer today and
+    would stop being one for a subject that declines conditionally.
 
     `ResolveCaller` is a requirement, so the caller is resolved *before*
     `set_auth_ctx`, because resolution raises on a token that outlived its
     account. Raising after the ContextVar is set would strand the identity
     there, and `libs/rate_limit` buckets on it.
     """
-    user = ctx.caller if subject.mounts_caller(ctx) else None
+    user = load_caller(ctx) if subject.mounts_caller(ctx) else None
     reset_token = set_auth_ctx(auth)
     try:
         if user is not None:

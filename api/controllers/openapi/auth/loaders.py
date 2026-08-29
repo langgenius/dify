@@ -24,26 +24,29 @@ def route_has_app(ctx: Context) -> bool:
 
 
 def load_app(ctx: Context) -> App:
-    if not ctx.app_loaded:
-        ctx.set_app(_fetch_app(ctx))
+    """The boundary where an unset field becomes a value: fetched once per
+    request, and non-optional from here on, so nothing downstream re-checks.
+    """
+    if ctx.app is None:
+        ctx.app = _fetch_app(ctx)
     return ctx.app
 
 
 def load_workspace(ctx: Context) -> Tenant:
-    if not ctx.workspace_loaded:
-        ctx.set_workspace(_fetch_workspace(ctx))
+    if ctx.workspace is None:
+        ctx.workspace = _fetch_workspace(ctx)
     return ctx.workspace
 
 
 def load_caller(ctx: Context) -> Account | EndUser:
-    if not ctx.caller_loaded:
-        ctx.set_caller(ctx.subject.resolve_caller(ctx, ctx.session))
+    if ctx.caller is None:
+        ctx.caller = ctx.subject.resolve_caller(ctx, ctx.session)
     return ctx.caller
 
 
 def load_workspace_role(ctx: Context) -> TenantAccountRole:
-    if not ctx.workspace_role_loaded:
-        ctx.set_workspace_role(_fetch_workspace_role(ctx))
+    if ctx.workspace_role is None:
+        ctx.workspace_role = _fetch_workspace_role(ctx)
     return ctx.workspace_role
 
 
