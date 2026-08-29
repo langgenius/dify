@@ -540,3 +540,10 @@ def test_filter_create_then_connect_ordering():
     ok, bad = graph_ops.filter_applicable(_G, intents, allowed_node_types={"llm", "end"})
     assert ok == intents  # the connect sees the node the prior create added
     assert bad == []
+
+
+def test_filter_rejects_duplicate_node_id():
+    intents = [MutationIntent(op="create_node", args={"node_type": "llm", "config": {}, "node_id": "a"})]
+    ok, bad = graph_ops.filter_applicable(_G, intents, allowed_node_types={"llm", "end"})
+    assert ok == []
+    assert "already exists" in bad[0][1]
