@@ -60,6 +60,16 @@ class TestLoadApp:
         with pytest.raises(NotFound, match="app not found"):
             load_app(ctx)
 
+    def test_a_bare_hex_app_id_names_the_same_app(self, sqlite_session: Session) -> None:
+        """The path parameter is whatever the caller typed; the row is keyed by the
+        canonical dashed form. Normalising here is what lets one spelling of a UUID
+        reach the app another spelling stored.
+        """
+        persist(sqlite_session, make_app())
+        ctx = Context(_subject(), sqlite_session, {"app_id": APP_ID.replace("-", "")})
+
+        assert load_app(ctx).id == APP_ID
+
     def test_404s_when_missing_or_not_normal(self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(AppService, "get_app_by_id", lambda *_a, **_k: None)
         ctx = Context(_subject(), sqlite_session, {"app_id": APP_ID})

@@ -332,25 +332,6 @@ class AppService:
             return []
         return list(session.execute(apply_openapi_gate(select(App).where(App.id.in_(list(app_ids))))).scalars().all())
 
-    @staticmethod
-    def find_visible_apps_by_name(
-        session: Session,
-        *,
-        name: str,
-        tenant_id: str,
-    ) -> list[App]:
-        return list(
-            session.execute(
-                apply_openapi_gate(
-                    select(App).where(
-                        App.name == name,
-                        App.tenant_id == tenant_id,
-                        App.status == "normal",
-                    )
-                )
-            ).scalars()
-        )
-
     def get_paginate_apps(
         self,
         user_id: str,

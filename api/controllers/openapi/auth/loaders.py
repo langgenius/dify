@@ -60,9 +60,10 @@ def _path_param(ctx: Context, name: str) -> str:
 
 
 def _fetch_app(ctx: Context) -> App:
-    app_id = _path_param(ctx, _APP_ID)
+    raw = _path_param(ctx, _APP_ID)
     try:
-        uuid.UUID(app_id)
+        # Canonical dashed form, so a bare-hex path parameter names the same app.
+        app_id = str(uuid.UUID(raw))
     except ValueError:
         raise NotFound("app not found")
     app = AppService.get_app_by_id(app_id, ctx.session)
