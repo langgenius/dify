@@ -317,6 +317,20 @@ def test_test_and_repair_finds_and_fixes_then_reaches_review():
     assert llm["data"]["prompt_template"][0]["text"] == "You are a financial report assistant."
 
 
+def test_test_and_repair_neutral_when_repair_empty():
+    from core.dify_builder.handlers_build import handle_test_and_repair
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()
+    env.agent.propose_build_repair = lambda _ids: []
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    fc = DifyBuilderContext(built_node_ids=["llm"])
+    result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
+    assert result.next == PcState.BUILD_REVIEW
+    assert env.dify.applied == []  # no repair applied when propose_build_repair returns []
+
+
 def test_review_publish_advances_to_publish():
     from core.dify_builder.handlers_build import handle_review
 
