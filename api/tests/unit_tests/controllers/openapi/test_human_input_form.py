@@ -19,7 +19,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from flask import Flask, request
+from flask import Flask
 
 from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.openapi._errors import (
@@ -59,6 +59,7 @@ def _context(caller: Account | EndUser, caller_kind: CallerKind) -> SimpleNamesp
         app_loaded=True,
         caller=caller,
         subject=SimpleNamespace(caller_kind=caller_kind),
+        view_args={"app_id": "app-1", "form_token": "tok-1"},
     )
 
 
@@ -287,29 +288,25 @@ class TestCheckFormSurface:
     the handler body runs.
     """
 
-    def _run(self, app: Flask, monkeypatch: pytest.MonkeyPatch, form) -> None:
+    def _run(self, monkeypatch: pytest.MonkeyPatch, form) -> None:
         _mock_service(monkeypatch, form)
         ctx = _context(_make_account(), CallerKind.ACCOUNT)
-        with app.test_request_context("/openapi/v1/apps/app-1/human-input-forms/tok-1"):
-            request.view_args = {"app_id": "app-1", "form_token": "tok-1"}
-            CheckFormSurface().run(ctx.subject, ctx, Mock())
+        CheckFormSurface().run(ctx.subject, ctx, Mock())
 
-    def test_admits_a_web_app_recipient(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
-        self._run(app, monkeypatch, _make_form(recipient_type=RecipientType.STANDALONE_WEB_APP))
+    def test_admits_a_web_app_recipient(self, monkeypatch: pytest.MonkeyPatch):
+        self._run(monkeypatch, _make_form(recipient_type=RecipientType.STANDALONE_WEB_APP))
 
     @pytest.mark.parametrize("recipient_type", [RecipientType.CONSOLE, RecipientType.BACKSTAGE, None])
-    def test_refuses_a_recipient_this_surface_may_not_act_on(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, recipient_type
-    ):
+    def test_refuses_a_recipient_this_surface_may_not_act_on(self, monkeypatch: pytest.MonkeyPatch, recipient_type):
         with pytest.raises(RecipientSurfaceMismatch):
-            self._run(app, monkeypatch, _make_form(recipient_type=recipient_type))
+            self._run(monkeypatch, _make_form(recipient_type=recipient_type))
 
     @pytest.mark.parametrize("form", [None, "foreign"])
     def test_leaves_a_form_the_caller_could_not_have_found_to_the_handlers_404(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, form
+        self, monkeypatch: pytest.MonkeyPatch, form
     ):
         """Answering 403 on a console-bound form in another app would confirm the
         token exists; the handler's own 404 owns both cases.
         """
         foreign = _make_form(app_id=str(uuid.uuid4()), recipient_type=RecipientType.CONSOLE)
-        self._run(app, monkeypatch, foreign if form == "foreign" else None)
+        self._run(monkeypatch, foreign if form == "foreign" else None)

@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import pytest
-from flask import Flask, request
+from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -196,7 +196,7 @@ class TestRBACCheck:
             resource_type=RBACResourceScope.APP,
             scene=RBACPermission.APP_VIEW_LAYOUT,
             resource_required=True,
-            path_args={},
+            path_args={"app_id": APP_ID},
         )
 
     def test_a_scene_less_declaration_keeps_enforcing_the_role_floor(
@@ -383,21 +383,18 @@ class TestCheckSessionOwnership:
         row.id = session_id
         return row
 
-    def test_admits_the_callers_own_session(self, app: Flask, sqlite_session: Session) -> None:
+    def test_admits_the_callers_own_session(self, sqlite_session: Session) -> None:
         subject = account_subject()
         persist(
             sqlite_session,
             self._token(SESSION_ID, account_id=ACCOUNT_ID, email="account@example.com", issuer="dify:account"),
         )
 
-        with app.test_request_context(f"/openapi/v1/account/sessions/{SESSION_ID}", method="DELETE"):
-            request.view_args = {"session_id": SESSION_ID}
-            CheckSessionOwnership().run(subject, make_ctx(sqlite_session, subject=subject), sqlite_session)
+        ctx = make_ctx(sqlite_session, subject=subject, session_id=SESSION_ID)
+        CheckSessionOwnership().run(subject, ctx, sqlite_session)
 
     @pytest.mark.parametrize("persist_foreign", [True, False])
-    def test_404s_a_session_the_caller_does_not_own(
-        self, app: Flask, sqlite_session: Session, persist_foreign: bool
-    ) -> None:
+    def test_404s_a_session_the_caller_does_not_own(self, sqlite_session: Session, persist_foreign: bool) -> None:
         """A token id owned by another subject is indistinguishable from one that
         does not exist, so session ids cannot be probed across subjects.
         """
@@ -408,7 +405,6 @@ class TestCheckSessionOwnership:
                 self._token(SESSION_ID, account_id=str(uuid.uuid4()), email="other@example.com", issuer="dify:account"),
             )
 
-        with app.test_request_context(f"/openapi/v1/account/sessions/{SESSION_ID}", method="DELETE"):
-            request.view_args = {"session_id": SESSION_ID}
-            with pytest.raises(NotFound, match="session not found"):
-                CheckSessionOwnership().run(subject, make_ctx(sqlite_session, subject=subject), sqlite_session)
+        ctx = make_ctx(sqlite_session, subject=subject, session_id=SESSION_ID)
+        with pytest.raises(NotFound, match="session not found"):
+            CheckSessionOwnership().run(subject, ctx, sqlite_session)
