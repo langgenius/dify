@@ -547,3 +547,12 @@ def test_filter_rejects_duplicate_node_id():
     ok, bad = graph_ops.filter_applicable(_G, intents, allowed_node_types={"llm", "end"})
     assert ok == []
     assert "already exists" in bad[0][1]
+
+
+def test_filter_rejects_insert_between_with_non_dict_edge():
+    # A hallucinated insert_between with a string edge (not a {source,target} dict)
+    # must be REJECTED gracefully, never raise (it would crash the advance).
+    intents = [MutationIntent(op="insert_between", args={"edge": "a-b", "node_type": "llm", "config": {}})]
+    ok, bad = graph_ops.filter_applicable(_G, intents, allowed_node_types={"llm", "end"})
+    assert ok == []
+    assert len(bad) == 1  # rejected with a reason, not raised
