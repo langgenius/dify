@@ -99,7 +99,10 @@ class AwsKmsKeyProvider(BaseKeyProvider):
         cipher_aes = AES.new(data_key, AES.MODE_EAX)
         ciphertext, tag = cipher_aes.encrypt_and_digest(text.encode())
 
-        metadata = json.dumps({"key_id": self._key_id}).encode()
+        # Record the ARN KMS actually resolved, not the configured identifier, so an operator can
+        # tell which key a stored credential belongs to even when AWS_KMS_KEY_ID is an alias.
+        # This is diagnostic only: decrypt deliberately does not trust it (see below).
+        metadata = json.dumps({"key_id": response.get("KeyId", self._key_id)}).encode()
 
         return (
             _PREFIX
@@ -161,7 +164,11 @@ class AwsKmsKeyProvider(BaseKeyProvider):
             tag = body[offset : offset + 16]
             offset += 16
             ciphertext = body[offset:]
-        except (IndexError, TypeError, json.JSONDecodeError) as exc:
+        # RecursionError is included because json.loads raises it, not JSONDecodeError, on deeply
+        # nested input, and a metadata_len is only 16 bits -- comfortably enough nesting to trip
+        # CPython's limit. Letting it escape would turn one poisoned row into a 500 for every
+        # caller listing that tenant's providers.
+        except (IndexError, TypeError, RecursionError, json.JSONDecodeError) as exc:
             raise ValueError("Malformed AWS KMS envelope") from exc
 
         try:
@@ -178,9 +185,16 @@ class AwsKmsKeyProvider(BaseKeyProvider):
             # supplying it makes KMS reject a blob wrapped under any other key instead of
             # transparently decrypting it, which is the documented defence against a substituted
             # ciphertext.
+            #
+            # It must come from configuration, never from metadata["key_id"]. The metadata is
+            # authenticated by neither the EAX tag nor the KMS encryption context, so an attacker
+            # able to write this row could swap in a whole envelope wrapped under a key they own
+            # and name that key here -- and if the deployment's IAM policy grants kms:Decrypt
+            # broadly, KMS would honour it and hand back an attacker-chosen plaintext to be used
+            # as a tenant credential.
             response = self._client.decrypt(
                 CiphertextBlob=wrapped_key,
-                KeyId=metadata.get("key_id") or self._key_id,
+                KeyId=self._key_id,
                 EncryptionContext=self._encryption_context(tenant_id),
             )
         except (ClientError, BotoCoreError) as exc:

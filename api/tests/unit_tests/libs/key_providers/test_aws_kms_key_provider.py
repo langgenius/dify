@@ -15,8 +15,16 @@ from botocore.exceptions import ClientError, EndpointConnectionError
 
 from libs.key_providers.aws_kms_key_provider import AwsKmsKeyProvider
 
-KEY_ID = "arn:aws:kms:us-east-1:111122223333:key/fake-key"
+KEY_ID = "alias/dify"
+RESOLVED_KEY_ARN = "arn:aws:kms:us-east-1:111122223333:key/fake-key"
 OTHER_KEY_ID = "arn:aws:kms:us-east-1:111122223333:key/other-key"
+
+# Mirrors how KMS resolves an alias to the underlying key ARN.
+_ALIASES = {KEY_ID: RESOLVED_KEY_ARN}
+
+
+def _resolve(key_id: str) -> str:
+    return _ALIASES.get(key_id, key_id)
 
 
 class FakeKmsClient:
@@ -42,8 +50,10 @@ class FakeKmsClient:
             raise ClientError({"Error": {"Code": "DisabledException", "Message": "key is disabled"}}, "GenerateDataKey")
         size = {"AES_256": 32, "AES_128": 16}[KeySpec]
         plaintext = bytes(range(size))
-        blob = json.dumps({"key_id": KeyId, "ctx": EncryptionContext, "key": plaintext.hex()}).encode()
-        return {"Plaintext": plaintext, "CiphertextBlob": blob}
+        resolved = _resolve(KeyId)
+        blob = json.dumps({"key_id": resolved, "ctx": EncryptionContext, "key": plaintext.hex()}).encode()
+        # Real KMS returns the resolved key ARN, never the alias it was called with.
+        return {"Plaintext": plaintext, "CiphertextBlob": blob, "KeyId": resolved}
 
     def decrypt(self, *, CiphertextBlob: bytes, KeyId: str, EncryptionContext: dict[str, str]) -> dict:  # noqa: N803
         self.decrypt_calls.append(
@@ -52,7 +62,7 @@ class FakeKmsClient:
         if KeyId in self.disabled_keys:
             raise ClientError({"Error": {"Code": "DisabledException", "Message": "key is disabled"}}, "Decrypt")
         payload = json.loads(CiphertextBlob)
-        if payload["key_id"] != KeyId:
+        if payload["key_id"] != _resolve(KeyId):
             raise ClientError(
                 {"Error": {"Code": "IncorrectKeyException", "Message": "wrong key"}},
                 "Decrypt",
@@ -122,16 +132,47 @@ def test_encryption_context_binds_the_tenant(fake_kms_client: FakeKmsClient) -> 
         provider.decrypt_with_decoding(encrypted, "tenant-2")
 
 
-def test_decrypt_passes_key_id_so_a_substituted_blob_is_rejected(fake_kms_client: FakeKmsClient) -> None:
+def test_decrypt_pins_key_id_to_config_so_a_substituted_envelope_is_rejected(
+    fake_kms_client: FakeKmsClient,
+) -> None:
+    """
+    The realistic attack is a *coherent* substitution: an attacker who can write the credential
+    row supplies a whole envelope wrapped under a key they control and names that key in the
+    metadata. Rewriting only the metadata, leaving the blob wrapped under the real key, would
+    prove nothing -- no attacker would produce that.
+
+    The defence is that KeyId comes from configuration, so KMS is asked to decrypt under the
+    operator's key and refuses.
+    """
+    provider = AwsKmsKeyProvider()
+
+    foreign = _envelope_wrapped_under(fake_kms_client, OTHER_KEY_ID, "tenant-1", "attacker-chosen")
+
+    with pytest.raises(ValueError, match="Failed to unwrap credential via AWS KMS"):
+        provider.decrypt_with_decoding(foreign, "tenant-1")
+    # The configured key was used, not the one the envelope asked for.
+    assert fake_kms_client.decrypt_calls[-1]["KeyId"] == KEY_ID
+
+
+@pytest.mark.usefixtures("fake_kms_client")
+def test_metadata_records_the_resolved_key_arn() -> None:
+    """An alias must not be what gets recorded, or an operator cannot tell which key a row uses."""
     provider = AwsKmsKeyProvider()
     encrypted = provider.encrypt("tenant-1", "super-secret")
 
-    # Rewrite the embedded metadata to name a different key, as a swapped ciphertext would.
-    tampered = _with_metadata(encrypted, {"key_id": OTHER_KEY_ID})
+    _, metadata, _ = _split(encrypted)
+    assert json.loads(metadata)["key_id"] == RESOLVED_KEY_ARN
 
-    with pytest.raises(ValueError, match="Failed to unwrap credential via AWS KMS"):
-        provider.decrypt_with_decoding(tampered, "tenant-1")
-    assert fake_kms_client.decrypt_calls[-1]["KeyId"] == OTHER_KEY_ID
+
+@pytest.mark.usefixtures("fake_kms_client")
+def test_deeply_nested_metadata_raises_value_error() -> None:
+    """json.loads raises RecursionError, not JSONDecodeError, on deeply nested input."""
+    provider = AwsKmsKeyProvider()
+    encrypted = provider.encrypt("tenant-1", "super-secret")
+    nested = b"[" * 3000 + b"]" * 3000
+
+    with pytest.raises(ValueError, match="Malformed AWS KMS envelope"):
+        provider.decrypt_with_decoding(_with_raw_metadata(encrypted, nested), "tenant-1")
 
 
 def test_data_key_spec_is_aes_256(fake_kms_client: FakeKmsClient) -> None:
@@ -237,3 +278,31 @@ def _with_raw_metadata(envelope: bytes, metadata: bytes) -> bytes:
 
 def _with_metadata(envelope: bytes, metadata: dict) -> bytes:
     return _with_raw_metadata(envelope, json.dumps(metadata).encode())
+
+
+def _envelope_wrapped_under(client: FakeKmsClient, key_id: str, tenant_id: str, plaintext: str) -> bytes:
+    """
+    Build a fully self-consistent envelope wrapped under `key_id` -- blob, metadata and encryption
+    context all agree, exactly as an attacker with their own KMS key would produce.
+    """
+    from Crypto.Cipher import AES
+
+    response = client.generate_data_key(
+        KeyId=key_id, KeySpec="AES_256", EncryptionContext={"dify:tenant_id": tenant_id}
+    )
+    cipher = AES.new(response["Plaintext"], AES.MODE_EAX)
+    ciphertext, tag = cipher.encrypt_and_digest(plaintext.encode())
+    metadata = json.dumps({"key_id": response["KeyId"]}).encode()
+    wrapped = response["CiphertextBlob"]
+
+    return (
+        b"HYBRID:"
+        + (1).to_bytes(1, "big")
+        + len(metadata).to_bytes(2, "big")
+        + metadata
+        + len(wrapped).to_bytes(2, "big")
+        + wrapped
+        + cipher.nonce
+        + tag
+        + ciphertext
+    )

@@ -12,10 +12,13 @@ class AwsKmsConfig(BaseSettings):
         " key ARN, alias name ('alias/dify') or alias ARN. Required when KEY_PROVIDER_TYPE is set to"
         " 'aws-kms'. One key serves every tenant; tenants are separated by a KMS encryption context"
         " rather than by separate keys, so enabling automatic key rotation on it is safe and requires"
-        " no re-encryption. Credentials are only ever wrapped with a data key, so the KMS key material"
-        " never leaves KMS. Authentication uses the standard boto3 credential chain (instance role,"
-        " environment variables, shared profile). The only permissions Dify needs on this key are"
-        " kms:GenerateDataKey and kms:Decrypt.",
+        " no re-encryption. Repointing an alias at a *different* key is not rotation in that sense:"
+        " decryption is pinned to this configured identifier, so existing credentials would have to"
+        " be re-encrypted first. Credentials are only ever wrapped with a data key, so the KMS key"
+        " material never leaves KMS. Authentication uses the standard boto3 credential chain"
+        " (instance role, environment variables, shared profile). Dify needs kms:GenerateDataKey and"
+        " kms:Decrypt, and the policy granting them should name this key rather than Resource '*',"
+        " so that a compromised database cannot point decryption at an attacker-supplied key.",
         default=None,
     )
 
