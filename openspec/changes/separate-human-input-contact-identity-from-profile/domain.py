@@ -20,7 +20,7 @@ class Contact:
 
 @dataclass(frozen=True, slots=True)
 class ExternalContact:
-    """Workspace-soped External Contact data used only by save_external_contact and delete_external_contact."""
+    """Workspace-scoped External Contact data used only by save_external_contact and delete_external_contact."""
 
     id: ContactId
     name: str
@@ -43,7 +43,7 @@ class ContactQuery:
     # empty keyword means keyword is unspecified.
     keyword: str = ""
 
-    # search_contacts = None means no contact type filtering.
+    # contact_type = None means no contact type filtering.
     contact_type: ContactType | None = None
 
 
@@ -99,14 +99,6 @@ class ContactRepository(Protocol):
 
     def provision_account_backed_contact(self, account_id: AccountId) -> ContactId: ...
 
-    # EE Platform visibility mutations.
-    def create_platform_entry(
-            self, tenant_id: TenantId, account_id: AccountId,
-            added_by_account_id: AccountId,
-        ): ...
-
-    def delete_platform_entry(self, tenant_id: TenantId, account_id: AccountId): ...
-
     def query_contacts_by_email(
             self, tenant_id: TenantId, emails: Sequence[str]
         ) -> Sequence[Contact]:
@@ -117,6 +109,34 @@ class ContactRepository(Protocol):
         External Contact, both Contacts are returned.
         """
         ...
+
+
+# This is equivalent to ContactId in implementation. But we do not guarantee this as a contract.
+CandidateId = NewType("CandidateId", str)
+
+
+@dataclass(frozen=True, slots=True)
+class OrganizationCandidate:
+    id: CandidateId
+    name: str
+    email: str | None
+    avatar_file_id: str | None
+    created_at: NaiveDatetime
+
+
+class EnterpriseContactRepository(Protocol):
+    """Only express EE capabilties."""
+    def list_organization_candidates(self, page: int, limit: int, keyword: str = "") -> Sequence[OrganizationCandidate]: ...
+
+    def count_organization_candidates(self, keyword: str = "") -> int: ...
+
+    # EE Platform visibility mutations.
+    def create_platform_entry(
+            self, tenant_id: TenantId, candidate_id: CandidateId,
+            added_by_account_id: AccountId,
+        ): ...
+
+    def delete_platform_entry(self, tenant_id: TenantId, contant_id: ContactId): ...
 
 
 @dataclass(frozen=True, slots=True)

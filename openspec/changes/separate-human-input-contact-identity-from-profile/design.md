@@ -1,133 +1,113 @@
 ## Context
 
-`human_input_contacts` currently acts as both the shared Contact identity anchor and a mutable profile projection. Account-backed rows copy `Account.name` and `Account.email`; workspace-owned External rows store their own profile in the same columns. `identity_source` also distinguishes EE Organization Account、CE/SaaS workspace membership and External lifecycle ownership. This shape gives workflow、grant、OTP、binding and sync tables one UUID `contact_id`, but it requires Account/member initialization、profile write-through and periodic reconciliation to keep copied data current.
+现有代码以 `HumanInputContact` 同时表示持久化 identity 与 mutable profile。`api/core/human_input_v2/contact_directory` 又定义 `ContactDirectorySnapshot`、`ContactDirectoryPolicy` 与 `ContactResolution`，SQLAlchemy adapter 为一次操作加载 Contact、membership、Platform entry 与 Account availability 集合。recipient resolution 随后再次查找 Contact、解释 `ABSENT` 并捕获 domain error；approval、submission 与 IM repositories 仍有路径直接 join `HumanInputContact`。
 
-The current business model treats a Dify Account as one Contact identity. Membership and Platform allow-list rows determine whether that identity currently resolves as Workspace、Platform or Absent in each workspace. External Contact remains a workspace-owned identity with mutable profile data and hard-delete/recreate semantics.
-
-The Contact API and every durable consumer already depend on UUID `ContactId`. This change must preserve those identifiers and keep Account/External persistence details below the Contact Directory boundary.
+该实现尚未发布，现有 migration 可以直接改为最终 schema。`schema.py` 定义 `HumanInputContactIdentity` 与 `HumanInputExternalContactProfile`；`domain.py` 定义 current `Contact`、`ExternalContact`、`ContactQuery`、`ContactRepository` 与 `ContactIMBindingRepository`。二者是本 change 的实现基准。
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-- Define `human_input_contact_identities` as the thin, immutable UUID identity table used by every downstream `contact_id` reference.
-- Move mutable Account-backed profile reads to `Account` and mutable External Contact profile fields to `HumanInputExternalContactProfile`.
-- Replace the three persistence sources `ORGANIZATION_ACCOUNT / WORKSPACE_MEMBER / EXTERNAL` with `ContactSubjectType.ACCOUNT / ContactSubjectType.EXTERNAL`; keep `WORKSPACE / PLATFORM / EXTERNAL / ABSENT` as Contact resolutions.
-- Preserve one global Account-backed Contact ID across profile changes、disable/reactivate、workspace membership changes and EE Workspace/Platform transitions.
-- Keep UUID Contact IDs and existing referencing-column shapes unchanged in the first released schema.
-- Reduce initialization and repair to missing Account-backed Contact identities; eliminate Account profile drift reconciliation.
+- 删除旧 Contact domain package、snapshot、policy、resolution enum 与 aggregate repository。
+- 让 `HumanInputContactIdentity` 只保存 immutable subject mapping，让 profile 始终从 `Account` 或 `HumanInputExternalContactProfile` 读取。
+- 让所有 current Contact consumers 只依赖 `ContactRepository`，需要 IM binding 时额外依赖 `ContactIMBindingRepository`。
+- 在 Repository 内统一执行 tenant predicates、Account availability、membership/Platform precedence、External ownership 与 Email matching。
+- 使用调用方注入的 SQLAlchemy `Session` 共享 transaction 和 identity map。
+- 保留现有 UUID `ContactId`、transport payload、workflow DSL 与历史 snapshot。
 
 **Non-Goals:**
 
-- Do not change Console Contact request/response fields、workflow recipient schema、form grant schema or IM API semantics.
-- Do not encode `ContactSubjectType` into Contact ID or expose it to frontend clients.
-- Do not merge External Contact with Account-backed Contact when their normalized Emails overlap.
-- Do not add IM bindings to External Contact.
-- Do not change frozen historical snapshots into current profile lookups.
-- Do not define legacy Contact-row migration、compatibility columns、dual-read/write rollout or rollback rehydration; the affected Contact implementation has not shipped.
-- Do not define first-time identity provisioning for pre-existing Accounts; that rollout concern remains owned outside this schema change.
-
-## Naming
-
-- A **Contact identity** is one immutable `HumanInputContactIdentity` row identified by `ContactId`.
-- The **Contact subject type** is the persisted `ContactSubjectType` value in `subject_type`: `ACCOUNT` or `EXTERNAL`.
-- An **External Contact profile** is one mutable `HumanInputExternalContactProfile` row keyed by the External Contact identity's `contact_id`.
-- A **Contact resolution** is the workspace-relative result `WORKSPACE`、`PLATFORM`、`EXTERNAL` or `ABSENT`; it is not persisted on the Contact identity.
-- A **current Contact projection** combines one Contact identity with current Account or External Contact profile facts for reads. A **historical snapshot** remains the frozen data stored by an existing durable consumer.
+- 不修改 Console Contact route、response field、workflow recipient schema、grant、OTP、sync result 或 reconciliation history 的外部 shape。
+- 不为 External Contact 添加 IM binding。
+- 不把历史 snapshot 改成 current Contact 查询。
+- 不增加兼容 column、dual read/write、旧 Contact row migration 或 rollback rehydration；旧 schema 未发布。
+- 不引入额外 Unit of Work class，也不改变 IM control-plane 对 binding mutation 的 ownership。
 
 ## Decisions
 
-### 1. Define `human_input_contact_identities` as the unified identity table
+### 1. Schema 只保存 Contact identity 与 External Contact profile
 
-The final unreleased schema makes this table the single target of every logical `contact_id` reference. Each row stores only immutable subject facts:
+`human_input_contact_identities` 保存 `id`、`subject_type`、`account_id` 与默认时间字段。`ContactSubjectType.ACCOUNT` 必须引用一个全局唯一 Account；`ContactSubjectType.EXTERNAL` 必须令 `account_id` 为 null。
 
-```text
-HumanInputContactIdentity
-  id: ContactId
-  subject_type: ContactSubjectType.ACCOUNT | ContactSubjectType.EXTERNAL
-  account_id: AccountId | null
-  created_at
-```
+`human_input_external_contact_profiles` 以 `contact_id` 为主键，保存 `tenant_id`、name、normalized name、Email、normalized Email 与 avatar。`UNIQUE(tenant_id, normalized_email)` 只约束 External Contact；Account Email 与 External Email 不共享 uniqueness boundary。
 
-`ACCOUNT` requires a globally unique `account_id`. Membership、Platform visibility、IM binding scope、form ownership and authorization already carry their workspace/Organization context; identity allocation must not copy that scope. Possession of a Contact ID never grants access, so every read and mutation still applies complete workspace/Organization owner predicates.
+所有 durable `contact_id` 继续引用 `HumanInputContactIdentity.id`。`HumanInputPlatformContactWorkspaceEntry.contact_id` 引用 Account-backed Contact identity；它只表示该 identity 在一个 workspace 的 Platform visibility，不创建新的 Contact identity。
 
-`EXTERNAL` forbids `account_id` and obtains workspace ownership plus mutable fields through a one-to-one External Contact profile row keyed by the same Contact ID. External deletion removes both rows and current bindings in one transaction. Historical grants、OTP rows and audit records keep their logical Contact ID and frozen snapshots without requiring a live Contact identity row.
+拒绝在 identity row 保存 Account name、Email、avatar、membership、Platform visibility 或 authorization state。该选择避免 profile write-through 与 drift repair。
 
-An alternative is to allocate one Account Contact per Tenant/Organization. That duplicates `TenantAccountJoin` and Platform visibility facts、reintroduces membership-driven identity provisioning and does not enforce authorization; it is rejected. Replacing Contact ID with Account ID or a type-encoded opaque string is also rejected because it spreads a polymorphic reference across grants、OTP、bindings、sync history and workflow configuration.
+### 2. `Contact` 是 current read value，不是持久化 aggregate
 
-### 2. Profile facts remain with their authoritative source
+`Contact` 只包含 current consumers 需要的 `id`、`type`、name、Email、avatar 与 creation time。`Contact.type` 只允许：
 
-Account-backed current projections read name、Email、avatar、status and timestamps from `Account`; Contact writes never copy these fields. External Contact profile owns name、normalized name、Email、normalized Email and avatar because no other source owns them.
+- owning tenant 的 External profile → `EXTERNAL`；
+- active Account 加当前 `TenantAccountJoin` → `WORKSPACE`；
+- active Account 加当前 `HumanInputPlatformContactWorkspaceEntry` → `PLATFORM`；
+- membership 与 Platform entry 同时存在 → `WORKSPACE`。
 
-Contact list、detail、recipient resolution、submission authorization and IM matching join Contact identity rows to current source facts under their existing tenant/Organization predicates. Query repositories may use source-owned normalization expressions and indexes, but they must not restore normalized Account copies on `HumanInputContactIdentity`. Query parity tests continue to compare repository results with the pure workspace-resolution policy.
+inactive Account、缺少 membership 与 Platform entry 的 Account identity、其他 tenant 的 External profile，以及不存在的 identity 均不产生 current `Contact`。Repository 通过缺失结果表达不可用，不构造第四种 Contact type。
 
-An alternative is to retain copied normalized Account fields only for search performance. That recreates profile write-through and drift repair, so it is rejected. Source-owned indexes or measured query-specific optimization must address performance instead.
+`ExternalContact` 是 External write value，只能传给 `save_external_contact` 与 `delete_external_contact`。Account-backed profile 永远从 `Account` 读取。
 
-### 3. Workspace resolution never changes identity state
+### 3. `ContactRepository` 是 current Contact 的唯一 port
 
-The canonical resolution input becomes:
+`count_contact` 与 `list_contact` 接收相同的 `ContactQuery`，并使用完全相同的 visibility、keyword 与 type predicates；filtering 必须先于 count 和 pagination。
 
-```text
-Contact identity
-+ current Account or External Contact profile
-+ current Account status
-+ current workspace membership
-+ current Platform allow-list entry
-```
+`get_contacts_by_id` 返回一个 current `Contact` 或 `None`。`get_contacts_by_ids` 省略 missing/unavailable Contact、对重复 ID 最多返回一次且不承诺顺序。`available` 为请求的 Contact IDs 返回 tenant-scoped availability mapping。
 
-Resolution applies these rules in order:
+`query_contacts_by_email` 只返回当前 tenant 可用的 Contact。若一个 normalized Email 同时匹配 Account-backed Contact 与 External Contact，结果必须包含两者；结果不承诺顺序。
 
-- a current owning-workspace External Contact profile resolves as `EXTERNAL`;
-- an active Account with current workspace membership resolves as `WORKSPACE`;
-- an active EE Account with a current Platform allow-list entry resolves as `PLATFORM`;
-- every other state resolves as `ABSENT`.
+`provision_account_backed_contact` 以 `account_id` 幂等分配全局 Contact ID。并发调用由 `UNIQUE(account_id)` 收敛到同一个 ID；冲突后的成功 retry 返回已提交的 ID。
 
-Account profile update、disable/reactivate、membership removal/re-addition and Platform add/remove do not update the Contact identity row. Reads remain side-effect free.
+`create_platform_entry` 与 `delete_platform_entry` 接收 `account_id`，因为业务操作针对 Account。adapter 使用 Account-backed identity 的 `contact_id` 持久化或删除 `(tenant_id, contact_id)` entry。该 mutation 不创建 Platform-specific identity，也不修改 Contact identity。
 
-### 4. All durable consumers keep UUID `contact_id`
+`save_external_contact` 原子创建 identity/profile 或只更新现有 profile；`delete_external_contact` 删除 owning tenant 的 External profile 与对应 identity。删除后使用相同 Email 创建 External Contact 必须获得新的 Contact ID。
 
-Platform allow-list、IM bindings、sync results、reconciliation history、form grants、OTP challenges and workflow recipient specifications retain their existing Contact UUID. Their Contact relationship targets `HumanInputContactIdentity`, not a profile row. Repositories that need current data call the current Contact projection or explicitly batch-load Contact identities plus current Account or External Contact profile facts; ORM relationships must not synthesize a polymorphic profile object.
+`ContactRepository` 的所有 read 和 mutation methods 都只处理一个 `tenant_id`。它不搜索其他 tenant，也不解释 deployment-wide Organization scope。EE Platform candidate search 由 EE implementation 查询 deployment-owned Accounts；选定 Account 后，EE application service 调用 tenant-scoped Repository provisioning 与 Platform entry methods。
 
-Historical tables keep their captured snapshots. External deletion and Account unavailability do not delete historical rows. Current authorization resolves the stored Contact ID against current source facts and rejects a missing、disabled or workspace-unavailable subject.
+### 4. `ContactIMBindingRepository` 只提供 Contact-facing binding query
 
-An alternative is to replace source-specific references with `account_id` and generic references with encoded strings. That makes every consumer understand Contact source layout and is rejected as information leakage.
+Contact detail 与 recipient delivery 通过 `ContactIMBindingRepository.get_im_bindings` 批量读取指定 Contact IDs 在 tenant 中可见的 bindings。`Contact` 不包含 binding，Contact query 不隐式 eager-load binding。
 
-### 5. Lifecycle writes become identity allocation and source-owned mutation
+IM binding create/update/delete 继续由现有 IM control-plane repository 与 synchronization transaction 管理。本 change 不把 mutation methods 复制到 `ContactIMBindingRepository`。
 
-The Contact Directory exposes an idempotent Account-backed Contact identity ensure operation keyed only by `account_id`. First ensure allocates one UUID; later ensures return it. Account profile、membership and Platform visibility writes do not mutate the Contact identity.
+### 5. SQLAlchemy `Session` 直接承担 transaction boundary
 
-External Contact create atomically inserts one Contact identity row and one External Contact profile row. External Contact update changes only its profile. External Contact delete removes the profile、identity and current bindings. A later create with the same Email allocates a new Contact identity.
+SQLAlchemy Repository implementation 由调用方注入 `Session`。需要组合 Contact 与 binding mutation 的 application operation 必须把两个 Repository 绑定到同一个 Session，并由外层 `session.begin()` 管理 commit 与 rollback。
 
-Periodic repair scans only Accounts missing Contact identities and invalid current External Contact identity/profile relationships. It does not compare or rewrite Account profile values. Foreground ensure and repair use the same allocation primitive.
+Repository methods 可以 flush，但不得创建独立 Session、commit、rollback 或开启嵌套 application transaction。该选择保留 SQLAlchemy 自身的 transaction 与 identity-map 语义，不增加重复 Unit of Work abstraction。
 
-### 6. Identity uniqueness is enforced by the subject key
+### 6. 删除旧实现并迁移所有 consumer
 
-Account-backed Contact identity uniqueness is global `UNIQUE(account_id)`. Concurrent ensure operations attempt the same subject key; one insert commits and a unique-conflict retry loads the committed Contact ID. Tenant and `DifySetup` owner locks are not part of Account-backed Contact identity allocation.
+删除 `api/core/human_input_v2/contact_directory` 与 `api/repositories/human_input_v2/contact_directory`。同时删除旧 owner/source values、snapshot、policy、resolution enum、errors、ports、mappers 与 SQLAlchemy aggregate adapter。
 
-External Contact Email uniqueness remains `(tenant_id, normalized_email)` on `HumanInputExternalContactProfile`. It does not share a uniqueness or lock boundary with Account Email. Contact identity plus External Contact profile creation and External Contact profile deletion plus binding cleanup execute in one explicit transaction.
+Console Contact services、recipient resolution、approval、submission authorization 与 IM code 通过注入的 Repository 读取 current Contact。除 SQLAlchemy Contact adapter 外，任何 module 都不得组合 `HumanInputContactIdentity`、`Account`、`TenantAccountJoin`、`HumanInputPlatformContactWorkspaceEntry` 与 `HumanInputExternalContactProfile` 来重新实现 current Contact rules。
 
-### 7. Define the unreleased schema directly
+Recipient application orchestration 先调用 `ContactRepository.get_contacts_by_ids` 与 `ContactIMBindingRepository.get_im_bindings`，再把 immutable Contact、binding 与 delivery capability values 传给 pure resolver。Resolver 不导入 Repository、Session、ORM 或旧 snapshot/policy types。
 
-The implementation must edit the existing unreleased Contact ORM models and schema revision so the first shipped shape already contains `human_input_contact_identities` and `human_input_external_contact_profiles`. It must not add compatibility columns、copy legacy Contact rows、rewrite downstream Contact IDs or introduce expand/contract phases for an implementation that has never reached production.
+Historical grant、OTP、sync 与 audit readers 继续读取各自冻结字段。它们只有在执行 current authorization 时才调用 `ContactRepository`。
 
-### 8. Existing projection lifecycle changes are superseded before implementation
+### 7. 直接改写未发布 schema
 
-`initialize-human-input-contact-projection` must target one Contact identity per Account without migrating an earlier Contact representation. `implement-contact-projection-lifecycle-maintenance` must remove Account profile write-through、membership-driven identity mutation and profile-drift repair; it retains global Account-backed Contact identity ensure、missing-identity repair、current availability and required binding cleanup. Production gates remain closed until their revised contracts and this schema are compatible.
+修改现有 Contact migration 与 ORM 为最终 shape，不新增迁移旧 `human_input_contacts` row 的 revision。所有 referencing column 保持 UUID shape，避免改写 workflow、grant、OTP、binding、sync 与 reconciliation 数据结构。
 
 ## Risks / Trade-offs
 
-- [Account-backed list/search loses copied normalized indexes] → Query source-owned Account fields, retain parity tests, inspect query plans, and add Account-owned or expression indexes only where measured.
-- [A Contact identity is missing after a bypass Account write] → Use idempotent foreground ensure plus bounded missing-identity repair; do not repair profile data.
-- [A global Contact ID is presented in another workspace] → Treat identifiers as non-authorizing references and require complete membership、Platform entry or External owner predicates on every current read and mutation.
-- [Repository code bypasses the unified Contact projection] → Add import/call-graph tests and focused authorization/query parity coverage for every Contact consumer.
-- [Active OpenSpec changes reintroduce stale semantics] → Revise or supersede their artifacts before implementation and validate the combined dependency graph.
+- [Account list/search 不再使用 Contact profile 副本索引] → 直接查询 Account-owned fields，使用 query-plan tests；只有测量证明需要时才增加 Account-owned 或 expression index。
+- [consumer 绕过 Repository 重新 join source tables] → 增加 import/call-graph tests，并扫描 Contact ORM/table imports。
+- [count 与 list predicates 漂移] → 复用同一个 query builder，并增加 type、keyword、pagination parity tests。
+- [并发 Account provisioning 返回不同 Contact ID] → 依赖 `UNIQUE(account_id)`、conflict translation 与 same-ID retry tests。
+- [Repository 各自创建 Session 导致部分提交] → constructor 注入 Session，增加 transaction rollback tests，禁止 Repository commit。
+- [其他 active changes 继续描述 profile projection 或旧 snapshot] → 在 implementation gate 前修订相关 artifacts，并对 dependency graph 做术语与 contract 检查。
+- [core Repository 被用于 EE 跨 tenant search] → architecture tests 限制 Repository 为 single-tenant port；EE candidate search 继续留在 EE adapter/application service。
 
-## Delivery Plan
+## Migration Plan
 
-1. Update the unreleased Contact schema and ORM models directly to `HumanInputContactIdentity` plus `HumanInputExternalContactProfile`.
-2. Switch domain objects、repositories and current queries to identity-plus-source facts without adding legacy compatibility paths.
-3. Connect Account creation/ensure to global identity allocation and keep Account profile、membership and Platform visibility operations independent from Contact identity writes.
-4. Revise the dependent initialization and lifecycle-maintenance changes、run focused unit/type/lint checks and CI-owned database integration，then enable the production gate.
+1. 直接修改未发布 ORM 与 schema revision，并先加入 constraint tests。
+2. 定义 Contact values 与两个 Repository protocols，实现 SQLAlchemy adapters。
+3. 迁移 current Contact consumers 后删除旧 packages 与直接 ORM joins。
+4. 接通 Account provisioning、External lifecycle 与 Platform entry mutations。
+5. 运行 focused unit/type/lint/schema tests；PostgreSQL/MySQL concurrency 与 transaction coverage 由 CI 执行。
+6. 所有 consumer 与 dependent changes 使用新 contracts 后再打开 Contact/IM rollout gate。
 
 ## Open Questions
 

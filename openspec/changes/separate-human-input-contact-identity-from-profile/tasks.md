@@ -1,54 +1,58 @@
-## 1. Contract Alignment And Failing Coverage
+## 1. Freeze The Replacement Contracts
 
-- [ ] 1.1 Revise or supersede `initialize-human-input-contact-projection` and `implement-contact-projection-lifecycle-maintenance` artifacts so they initialize one Contact identity per Account、preserve stable SaaS/CE Account-backed Contact IDs and repair missing identities without an Account profile projection.
-- [ ] 1.2 Inventory every legacy `HumanInputContact` profile read/write and every durable `contact_id` consumer; classify each path as Contact identity-only、current Account profile、current External Contact profile、current availability or historical snapshot usage.
-- [ ] 1.3 Add failing domain tests for immutable `ContactSubjectType.ACCOUNT / ContactSubjectType.EXTERNAL` identities、global Account uniqueness、stable Account-backed Contact identity across workspace membership/visibility changes and complete External Contact identity deletion.
-- [ ] 1.4 Add failing application and repository tests proving Account profile updates perform no Contact write while current detail、list、recipient and authorization results immediately use current Account values.
-- [ ] 1.5 Add failing architecture tests that forbid Account profile writers、controllers、IM workers and read repositories from writing mutable fields on `HumanInputContactIdentity`.
+- [ ] 1.1 Inventory every production import of the old Contact packages and every direct `HumanInputContact` read/write; classify each path as current Contact query、Contact lifecycle write、IM binding query、current authorization or historical snapshot read.
+- [ ] 1.2 Add failing architecture tests that require current Contact consumers to depend on `ContactRepository` and optionally `ContactIMBindingRepository`, and forbid direct source-table composition outside the SQLAlchemy Contact adapter.
+- [ ] 1.3 Add failing contract tests for `ContactQuery`、`Contact`、`ExternalContact`、batch omission/deduplication、availability mapping、Email multi-match and membership-over-Platform precedence.
+- [ ] 1.4 Remove the legacy `contact-directory-governance` requirements, migrate current Contact behavior to the Contact Repository capability, retain cross-tenant Platform candidate search in EE capabilities, and revise dependent active changes so they no longer require mutable Account profile projection、whole-directory snapshot loading、membership-owned Contact identity or removed policy/resolution symbols.
 
 ## 2. Define The Final Unreleased Schema
 
-- [ ] 2.1 Rewrite the unreleased Contact ORM model and schema revision to create `HumanInputContactIdentity`、`HumanInputExternalContactProfile`、`human_input_contact_identities` and `human_input_external_contact_profiles` as the first shipped shape.
-- [ ] 2.2 Add schema constraint tests for valid `ContactSubjectType.ACCOUNT / ContactSubjectType.EXTERNAL` shapes、global Account uniqueness、workspace-owned External Contact profiles and unchanged UUID referencing-column shapes.
-- [ ] 2.3 Remove legacy mutable Contact profile columns and obsolete `ORGANIZATION_ACCOUNT / WORKSPACE_MEMBER` values directly instead of adding compatibility or data-copy paths.
+- [ ] 2.1 Rewrite the unreleased Contact ORM and schema revision to create `HumanInputContactIdentity`、`HumanInputExternalContactProfile`、`human_input_contact_identities` and `human_input_external_contact_profiles` directly.
+- [ ] 2.2 Add schema tests for valid `ContactSubjectType.ACCOUNT / ContactSubjectType.EXTERNAL` shapes、global `UNIQUE(account_id)`、one-to-one External profile ownership and `UNIQUE(tenant_id, normalized_email)`.
+- [ ] 2.3 Retarget existing logical `contact_id` relationships, including Platform entries、IM bindings、grant、OTP、sync and reconciliation records, to `HumanInputContactIdentity.id` without changing UUID column shapes.
+- [ ] 2.4 Remove mutable profile columns and obsolete `ORGANIZATION_ACCOUNT / WORKSPACE_MEMBER` persistence values without compatibility columns、data-copy code or an additional migration revision.
 
-## 3. Contact Identity And External Contact Profile Domain
+## 3. Add Contact Values And Repository Ports
 
-- [ ] 3.1 Replace the mutable canonical `Contact` persistence entity with immutable Contact identity values and explicit `ContactSubjectType.ACCOUNT / ContactSubjectType.EXTERNAL` subjects while retaining one current Contact projection.
-- [ ] 3.2 Implement record mappers that load `HumanInputContactIdentity` separately from Account and `HumanInputExternalContactProfile` facts and reject invalid subject/profile combinations without returning ORM instances.
-- [ ] 3.3 Implement idempotent global Account-backed Contact identity ensure with database `account_id` uniqueness、conflict translation and same-ID retry semantics.
-- [ ] 3.4 Implement atomic External Contact identity/profile create、profile-only update and profile/identity/current-binding delete.
-- [ ] 3.5 Move External Contact normalized Email uniqueness and avatar-owner validation to the External Contact profile repository and preserve Account/External same-email coexistence.
+- [ ] 3.1 Define `ContactType` with only `WORKSPACE / PLATFORM / EXTERNAL` and add immutable `Contact`、`ExternalContact`、`ContactQuery` and `Page` values.
+- [ ] 3.2 Define `ContactRepository` with count/list/detail/batch/availability/Email query、Account provisioning、External save/delete and Platform entry create/delete methods matching `domain.py`.
+- [ ] 3.3 Define `ContactIMBindingRepository.get_im_bindings` as the Contact-facing binding query port while leaving binding mutations on the existing IM control-plane contract.
+- [ ] 3.4 Implement SQLAlchemy adapters that receive a caller-provided `Session`, may flush, and never create a Session、commit、rollback or introduce another Unit of Work abstraction.
 
-## 4. Current Contact Queries And Management
+## 4. Implement Current Contact Queries And Lifecycle Writes
 
-- [ ] 4.1 Rewrite canonical availability predicates and current Contact facts to combine Contact identities with current Account status、membership、Platform allow-list and External Contact profile existence.
-- [ ] 4.2 Rewrite current Contact detail、batch、list and editor-option queries to load Account profile directly and External Contact profile through its one-to-one relation while preserving filtering-before-count/pagination and request-order guarantees.
-- [ ] 4.3 Rewrite Platform candidate search and add/remove commands to keep unified Contact IDs while validating `ContactSubjectType.ACCOUNT`、current membership and Platform visibility through workspace-scoped queries.
-- [ ] 4.4 Rewrite External Contact create/update/mixed-remove services to mutate only External Contact profile state and preserve batch validation and atomicity.
-- [ ] 4.5 Add query parity、keyword normalization、pagination and query-plan coverage; add source-owned or expression indexes only when measured plans require them.
-- [ ] 4.6 Preserve Console request/response schemas and UUID routes, and add regression tests proving frontend-visible `ContactId` and `WORKSPACE / PLATFORM / EXTERNAL` values do not expose `ContactSubjectType`.
+- [ ] 4.1 Implement one reusable query builder that joins Contact identity to current Account or External profile facts and applies Account active status、tenant ownership、membership and Platform entry predicates.
+- [ ] 4.2 Implement `count_contact` and `list_contact` with identical `ContactQuery` filtering before count/pagination and add keyword、type、page-boundary and query-plan tests.
+- [ ] 4.3 Implement detail、batch and availability queries with tenant isolation、missing/unavailable omission、duplicate-ID deduplication and unspecified-order contract tests.
+- [ ] 4.4 Implement Email batch matching that reads Account Email and External normalized Email from their owners and returns both Contacts when one Email matches both identities.
+- [ ] 4.5 Implement idempotent Account-backed Contact provisioning with global uniqueness、concurrent conflict translation and same-ID retry coverage.
+- [ ] 4.6 Implement External save as atomic identity/profile create or profile-only update, preserving workspace-local External uniqueness and Account/External same-email coexistence.
+- [ ] 4.7 Implement External delete with complete tenant predicates、profile/identity atomicity、new-ID recreation behavior and unchanged historical references.
+- [ ] 4.8 Implement Platform entry create/delete by `account_id` while persisting the mapped stable `contact_id`; prove membership precedence and identity immutability.
+- [ ] 4.9 Implement `ContactIMBindingRepository` using explicit batch queries without adding bindings to `Contact` or triggering hidden lazy loads.
 
-## 5. Runtime、Binding And IM Consumers
+## 5. Migrate Existing Consumers
 
-- [ ] 5.1 Rewrite IM Contact matching and apply preconditions to join Contact identities with current Account profile instead of copied Contact name、Email or normalized Email.
-- [ ] 5.2 Rewrite Organization binding and workspace override validation to resolve `ContactSubjectType.ACCOUNT` from `HumanInputContactIdentity` and validate current binding scope/membership separately while continuing to reject External binding targets.
-- [ ] 5.3 Rewrite recipient resolution and delivery-capability current-facts loading to expose one current Contact projection without source-layout branching above Contact Directory.
-- [ ] 5.4 Rewrite form-grant、OTP and submission-authorization repositories to retain UUID `contact_id` and frozen historical snapshots while revalidating current Contact identity、Account/profile and workspace availability from source-owned facts.
-- [ ] 5.5 Preserve sync-result and reconciliation-history Contact IDs/snapshots and remove ORM relationships that assume `HumanInputContactIdentity` owns current profile fields.
-- [ ] 5.6 Add cross-consumer regression tests for Account profile changes、disabled/reactivated Account、membership removal/re-addition、EE Workspace/Platform transitions、deleted External Contact profile and unchanged historical display.
+- [ ] 5.1 Rewrite Console Contact list、detail、batch、options、External management and Platform management services to compose `ContactRepository` results and optional `ContactIMBindingRepository` results.
+- [ ] 5.2 Rewrite recipient-resolution application orchestration to batch-load current Contacts through `ContactRepository` and bindings through `ContactIMBindingRepository`, pass immutable values to the pure resolver, remove snapshot/policy inputs and preserve deterministic approval-plan behavior.
+- [ ] 5.3 Rewrite form-grant、OTP and submission-authorization paths to use Repository availability/current Contact reads while retaining frozen historical subject snapshots.
+- [ ] 5.4 Rewrite IM synchronization Email matching and apply preconditions to use `ContactRepository` with the synchronization transaction's existing Session instead of direct Contact/profile joins.
+- [ ] 5.5 Rewrite binding detail and delivery-capability reads to use `ContactIMBindingRepository` without changing IM control-plane mutation ownership.
+- [ ] 5.6 Remove ORM relationships and helper mappers that assume Contact identity owns mutable profile fields.
+- [ ] 5.7 Keep EE Platform candidate search outside `ContactRepository`; pass selected Account IDs into tenant-scoped provisioning and Platform entry mutations.
 
-## 6. Contact Identity Lifecycle
+## 6. Replace Lifecycle Hooks And Delete The Old Implementation
 
-- [ ] 6.1 Connect Account creation and Contact identity provisioning to global Account-backed Contact identity ensure without connecting Account profile、membership or Platform visibility updates to Contact identity mutation.
-- [ ] 6.2 Keep membership removal and External deletion responsible for required current binding cleanup, but prove Account membership removal never deletes its Contact identity.
-- [ ] 6.3 Implement bounded missing Contact identity and invalid External Contact identity/profile repair using the same idempotent Contact identity allocation primitive as foreground writes and without comparing Account profile fields.
-- [ ] 6.4 Add lifecycle tests for competing global ensure operations、bypass-write repair、stable Contact ID across workspace membership changes、owner-scoped access control and no provider/IM-sync dependency.
+- [ ] 6.1 Connect authoritative Account creation and bounded missing-identity repair to `provision_account_backed_contact`; remove profile write-through and profile-drift repair.
+- [ ] 6.2 Keep Account profile、disable/reactivate、membership and Platform operations independent from identity mutation while making current Repository reads reflect committed source facts immediately.
+- [ ] 6.3 Ensure operations that combine repositories construct them with the same Session and use one caller-owned `session.begin()` transaction; add complete rollback tests.
+- [ ] 6.4 Delete `api/core/human_input_v2/contact_directory` and `api/repositories/human_input_v2/contact_directory`, including old values、errors、snapshot、policy、ports、mappers and aggregate adapter.
+- [ ] 6.5 Remove remaining production imports、comments、exceptions and branches that reference `ContactDirectoryPolicy`、`ContactDirectorySnapshot`、`ContactResolution`、`ABSENT` or old identity-source values.
 
 ## 7. Verification
 
-- [ ] 7.1 Remove every remaining legacy mutable profile read/write and obsolete `ORGANIZATION_ACCOUNT / WORKSPACE_MEMBER` branch after all consumers use `ContactSubjectType.ACCOUNT / ContactSubjectType.EXTERNAL` identities.
-- [ ] 7.2 Run focused non-container backend unit suites through `uv run --project api`, plus formatter、lint、type checks and schema tests.
-- [ ] 7.3 Run CI-owned PostgreSQL/MySQL integration coverage for Contact identity allocation concurrency、External Contact uniqueness、query parity、binding cleanup and runtime authorization.
-- [ ] 7.4 Run `openspec validate separate-human-input-contact-identity-from-profile --strict` and validate the revised initialization/lifecycle changes; review the final dependency graph for one Contact identity writer and no mutable Account profile projection.
-- [ ] 7.5 Keep production Contact/IM gates closed until the final schema、Contact identity provisioning owner and missing-identity diagnostics are verified together.
+- [ ] 7.1 Run focused non-container backend unit suites through `uv run --project api`, including schema、Repository、recipient、authorization、IM matching and architecture coverage.
+- [ ] 7.2 Run backend formatter、lint and type checks for every changed module.
+- [ ] 7.3 Run CI-owned PostgreSQL/MySQL tests for Account provisioning concurrency、External uniqueness races、Session rollback、query parity and tenant isolation.
+- [ ] 7.4 Run `openspec validate separate-human-input-contact-identity-from-profile --strict` and validate every revised dependent change.
+- [ ] 7.5 Search production code and this change for stale active references to the removed packages、snapshot、policy、resolution enum or mutable Account profile projection before enabling Contact/IM rollout gates.

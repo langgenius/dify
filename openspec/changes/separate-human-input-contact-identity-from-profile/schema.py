@@ -7,7 +7,7 @@ Invariants:
 2. Account subjects require ``account_id``; External subjects forbid it.
 3. External workspace ownership lives only on its one-to-one current profile.
 4. Deleting an External Contact removes its profile and identity atomically.
-5. WORKSPACE, PLATFORM, EXTERNAL remain query resolutions.
+5. WORKSPACE, PLATFORM, EXTERNAL remain current ``ContactType`` values.
 6. Every durable ``contact_id`` continues to target ``human_input_contact_identities.id``.
 7. One Account maps to one globally unique Contact identity.
 8. Workspace access is enforced by membership、Platform visibility or External
@@ -36,7 +36,7 @@ from models.types import EnumText, StringUUID
 
 
 class ContactSubjectType(StrEnum):
-    """Immutable subject discriminator; never serialized as Contact resolution."""
+    """Immutable subject discriminator; never exposed as ``ContactType``."""
 
     ACCOUNT = "account"
     EXTERNAL = "external"
