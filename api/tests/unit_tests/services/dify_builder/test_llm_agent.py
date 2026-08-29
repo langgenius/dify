@@ -2,6 +2,7 @@ from core.dify_builder.models import Diagnosis
 from core.dify_builder.placeholder_agent import PlaceholderAgent
 from core.dify_builder.ports import DifyBuilderAgent
 from services.dify_builder.agent import build as build_mod
+from services.dify_builder.agent import edit as edit_mod
 from services.dify_builder.agent import fix as fix_mod
 from services.dify_builder.agent import llm_agent
 from services.dify_builder.agent.llm_agent import LlmBuilderAgent
@@ -146,3 +147,55 @@ def test_model_or_none_swallows_resolution_error(monkeypatch):
 def test_generate_mock_inputs_still_canned():
     agent = LlmBuilderAgent("t1", None)
     assert agent.generate_mock_inputs({}, {}) == PlaceholderAgent().generate_mock_inputs({}, {})
+
+
+def test_llm_agent_edit_methods_delegate_to_edit(monkeypatch):
+    monkeypatch.setattr(
+        edit_mod,
+        "analyze_impact",
+        lambda _m, _g, _graph: {"fields": [], "values": {}, "target_node_ids": []},
+    )
+    monkeypatch.setattr(edit_mod, "build_edit_intents", lambda _m, _r, _graph: [])
+    agent = LlmBuilderAgent("t1", {})
+    assert agent.analyze_impact("g", {"nodes": [], "edges": []}) == {
+        "fields": [],
+        "values": {},
+        "target_node_ids": [],
+    }
+    assert agent.build_edit_intents({}, {"nodes": [], "edges": []}) == []
+
+
+def test_edit_methods_call_edit_module_with_resolved_model(monkeypatch):
+    """Mirrors test_remaining_build_methods_thread_model_and_tenant_args for the
+    Edit trio: analyze_impact/propose_edit_plan/build_edit_intents each call the
+    corresponding edit.* with the resolved model threaded through."""
+    seen = {}
+
+    def mock_analyze_impact(model, goal_text, graph):
+        seen["analyze_impact"] = (model, goal_text, graph)
+        return {"fields": [], "values": {}, "target_node_ids": []}
+
+    def mock_propose_edit_plan(model, edit_rules, graph):
+        seen["propose_edit_plan"] = (model, edit_rules, graph)
+        return ["step"]
+
+    def mock_build_edit_intents(model, edit_rules, graph):
+        seen["build_edit_intents"] = (model, edit_rules, graph)
+        return []
+
+    monkeypatch.setattr(edit_mod, "analyze_impact", mock_analyze_impact)
+    monkeypatch.setattr(edit_mod, "propose_edit_plan", mock_propose_edit_plan)
+    monkeypatch.setattr(edit_mod, "build_edit_intents", mock_build_edit_intents)
+
+    agent = LlmBuilderAgent("t1", {"provider": "p", "name": "m", "mode": "chat", "completion_params": {}})
+    monkeypatch.setattr(agent, "_model", lambda: "MODEL")
+
+    graph = {"nodes": [], "edges": []}
+    agent.analyze_impact("goal", graph)
+    assert seen["analyze_impact"] == ("MODEL", "goal", graph)
+
+    agent.propose_edit_plan({"tone": "formal"}, graph)
+    assert seen["propose_edit_plan"] == ("MODEL", {"tone": "formal"}, graph)
+
+    agent.build_edit_intents({"tone": "formal"}, graph)
+    assert seen["build_edit_intents"] == ("MODEL", {"tone": "formal"}, graph)

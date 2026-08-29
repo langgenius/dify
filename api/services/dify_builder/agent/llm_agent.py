@@ -1,25 +1,24 @@
 """The real Dify Builder agent shell.
 
 Owns the resolved model. Of the Protocol's 14 methods (Fix 4 + Build 7 + Edit 3),
-the 3 Fix methods that reason about a failed run -- ``diagnose``,
-``diagnose_checklist``, ``propose_repair`` -- and 6 of the 7 Build methods --
-``analyze_goal``, ``propose_plan_v1``, ``discover_resources``, ``bind_resources``,
-``build_nodes``, ``learn_from_build`` -- now use real LLM cognition via
-``services.dify_builder.agent.fix`` / ``services.dify_builder.agent.build``,
-resolving the model through ``_model_or_none`` (which degrades to ``None`` on
-resolution failure rather than crashing the advance; ``fix.*``/``build.*``
-handle that). ``propose_build_repair`` returns ``[]`` -- there is no real
-failure signal to diagnose until the live test step is de-canned (deferred).
-``generate_mock_inputs`` and every Edit method still delegate to the canned
-``PlaceholderAgent`` unchanged. Later slices replace those remaining method
-bodies one at a time with real LLM calls, no structural change.
+9 now use real LLM cognition: the 3 Fix methods that reason about a failed run --
+``diagnose``, ``diagnose_checklist``, ``propose_repair`` -- via
+``services.dify_builder.agent.fix``; 6 of the 7 Build methods -- ``analyze_goal``,
+``propose_plan_v1``, ``discover_resources``, ``bind_resources``, ``build_nodes``,
+``learn_from_build`` -- via ``services.dify_builder.agent.build``; and all 3 Edit
+methods -- ``analyze_impact``, ``propose_edit_plan``, ``build_edit_intents`` -- via
+``services.dify_builder.agent.edit``. Each resolves the model through
+``_model_or_none`` (which degrades to ``None`` on resolution failure rather than
+crashing the advance; ``fix.*``/``build.*``/``edit.*`` handle that).
+``generate_mock_inputs`` and ``propose_build_repair`` remain deferred;
+``propose_build_repair`` returns ``[]`` pending the live-test step.
 """
 
 from typing import Any
 
 from core.dify_builder.placeholder_agent import PlaceholderAgent
 from core.model_manager import ModelInstance
-from services.dify_builder.agent import build, fix  # `edit` import added in Task B3
+from services.dify_builder.agent import build, edit, fix
 from services.dify_builder.agent.model_resolver import resolve_model_instance
 
 
@@ -79,12 +78,12 @@ class LlmBuilderAgent:
     def learn_from_build(self, goal_text, requirements, plan_items, built_node_ids):
         return build.learn_from_build(self._model_or_none(), goal_text, requirements, plan_items, built_node_ids)
 
-    # -- Edit cognition (delegated) --
+    # -- Edit cognition (real) --
     def analyze_impact(self, goal_text, graph):
-        return self._canned.analyze_impact(goal_text, graph)
+        return edit.analyze_impact(self._model_or_none(), goal_text, graph)
 
     def propose_edit_plan(self, edit_rules, graph):
-        return self._canned.propose_edit_plan(edit_rules, graph)
+        return edit.propose_edit_plan(self._model_or_none(), edit_rules, graph)
 
     def build_edit_intents(self, edit_rules, graph):
-        return self._canned.build_edit_intents(edit_rules, graph)
+        return edit.build_edit_intents(self._model_or_none(), edit_rules, graph)
