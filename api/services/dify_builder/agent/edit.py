@@ -58,7 +58,8 @@ def analyze_impact(model, goal_text: str, graph: dict) -> dict[str, Any]:
     except Exception:
         return _degraded_impact(goal_text)
     ids = _node_ids(graph)
-    targets = [str(t) for t in (data.get("target_node_ids") or []) if str(t) in ids]
+    raw_targets = data.get("target_node_ids")
+    targets = [str(t) for t in raw_targets if str(t) in ids] if isinstance(raw_targets, list) else []
     fields = data.get("fields") if isinstance(data.get("fields"), list) else []
     values = data.get("values") if isinstance(data.get("values"), dict) else {}
     return {"fields": fields, "values": values, "target_node_ids": targets}
