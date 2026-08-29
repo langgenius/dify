@@ -49,11 +49,16 @@ import { clearWebAppPassport, getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
 
-const recoverEnvironmentWebAppAuthorization = (error: { reason?: string }, url?: string) => {
+const recoverEnvironmentWebAppAuthorization = (
+  error: { code?: string; reason?: string },
+  url?: string,
+) => {
   const address = resolveWebAppAddress()
   if (
     address?.kind !== 'environment' ||
-    error.reason !== 'APPDEPLOY_UNAUTHORIZED' ||
+    (error.reason !== 'APPDEPLOY_UNAUTHORIZED' &&
+      error.code !== 'unauthorized' &&
+      error.code !== 'web_app_access_denied') ||
     (url && /\/(?:login|passport)(?:\?|$)/.test(url))
   )
     return false
@@ -652,7 +657,7 @@ export const ssePost = async (
     .fetch(urlWithPrefix, options as RequestInit)
     .then((res) => {
       if (!/^[23]\d{2}$/.test(String(res.status))) {
-        if (res.status === 401) {
+        if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
           if (isPublicAPI) {
             res.json().then((data: { code?: string; message?: string; reason?: string }) => {
               if (isPublicAPI) {
@@ -817,7 +822,7 @@ export const sseGet = async (
     .fetch(urlWithPrefix, options as RequestInit)
     .then((res) => {
       if (!/^[23]\d{2}$/.test(String(res.status))) {
-        if (res.status === 401) {
+        if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
           if (isPublicAPI) {
             res.json().then((data: { code?: string; message?: string; reason?: string }) => {
               if (isPublicAPI) {

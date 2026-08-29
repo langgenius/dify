@@ -167,11 +167,10 @@ describe('request 401 handling', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
       new Response(
         JSON.stringify({
-          code: 401,
-          reason: 'APPDEPLOY_UNAUTHORIZED',
-          message: 'Unauthorized',
+          code: 'web_app_access_denied',
+          message: 'webapp access denied',
         }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } },
+        { status: 403, headers: { 'Content-Type': 'application/json' } },
       ),
     )
 
