@@ -55,9 +55,6 @@ def _degraded_plan() -> list[str]:
     return ["Ingest the input", "Process with an LLM", "Emit the result"]
 
 
-_KIND_BY_PREFIX = {"knowledge": "knowledge", "tool": "plugin", "model": "model"}
-
-
 def discover_resources(model, tenant_id: str, plan_items: list[str]) -> list[ResourceOption]:
     inv = resources.list_tenant_resources(tenant_id)
     catalog = {r.id: ("knowledge", r) for r in inv.datasets}
@@ -80,7 +77,7 @@ def discover_resources(model, tenant_id: str, plan_items: list[str]) -> list[Res
             if picked:
                 chosen_ids = picked
         except Exception:
-            pass  # degrade to the full inventory (still real ids)
+            chosen_ids = list(catalog.keys())  # explicit reset: degrade to full inventory
     return [
         ResourceOption(id=rid, label=catalog[rid][1].label, meta=catalog[rid][1].meta,
                        kind=catalog[rid][0], readiness=catalog[rid][1].readiness)
@@ -88,7 +85,9 @@ def discover_resources(model, tenant_id: str, plan_items: list[str]) -> list[Res
     ]
 
 
-def bind_resources(model, tenant_id: str, plan_items: list[str], resource_ids: list[str], conflict_policy: str) -> list[str]:
+def bind_resources(
+    model, tenant_id: str, plan_items: list[str], resource_ids: list[str], conflict_policy: str
+) -> list[str]:
     inv = resources.list_tenant_resources(tenant_id)
     by_id = {r.id: r for r in (*inv.datasets, *inv.tools, *inv.models)}
     labels = [by_id[rid].label for rid in resource_ids if rid in by_id]
@@ -104,7 +103,10 @@ def bind_resources(model, tenant_id: str, plan_items: list[str], resource_ids: l
     return bound
 
 
-def learn_from_build(model, goal_text: str, requirements: dict[str, Any], plan_items: list[str], built_node_ids: list[str]) -> str:
+def learn_from_build(
+    model, goal_text: str, requirements: dict[str, Any], plan_items: list[str],
+    built_node_ids: list[str]
+) -> str:
     fallback = f"Reusable skill: a {len(built_node_ids)}-node workflow for: {goal_text[:80]}"
     if model is None:
         return fallback
