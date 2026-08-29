@@ -2,6 +2,7 @@ import type { WebAppAddress } from '@/service/webapp-address'
 import type { LoginRedirectTarget } from '@/utils/login-redirect'
 import { parseWebAppAddress } from '@/service/webapp-address'
 import { resolveLoginRedirectTarget } from '@/utils/login-redirect'
+import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 
 const INTERNAL_PATH_PARSE_BASE = 'https://login-redirect.invalid'
 
@@ -9,6 +10,19 @@ export type WebAppLoginRedirect = {
   appCode: string
   address: WebAppAddress
   target: LoginRedirectTarget
+}
+
+export function navigateAfterWebAppLogin(
+  loginRedirect: WebAppLoginRedirect,
+  routerReplace: (href: string) => void,
+  basePath: string,
+) {
+  if (loginRedirect.address.kind === 'environment') {
+    globalThis.location.replace(loginRedirect.target.href)
+    return
+  }
+
+  replaceLoginRedirect(loginRedirect.target, routerReplace, basePath)
 }
 
 export function isWebAppSigninPath(pathname: string): boolean {

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   isWebAppSigninPath,
+  navigateAfterWebAppLogin,
   resolveWebAppLoginRedirect,
 } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import AppUnavailable from '@/app/components/base/app-unavailable'
@@ -77,7 +78,7 @@ function Splash({ children }: PropsWithChildren) {
     if (tokenFromUrl) setWebAppAccessToken(tokenFromUrl)
 
     const redirectOrFinish = () => {
-      if (loginRedirect) replaceLoginRedirect(loginRedirect.target, router.replace, basePath)
+      if (loginRedirect) navigateAfterWebAppLogin(loginRedirect, router.replace, basePath)
       else setIsLoading(false)
     }
 

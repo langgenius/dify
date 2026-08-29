@@ -5,7 +5,10 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
+import {
+  navigateAfterWebAppLogin,
+  resolveWebAppLoginRedirect,
+} from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import Input from '@/app/components/base/input'
 import Countdown from '@/app/components/signin/countdown'
 import { useLocale } from '@/context/i18n'
@@ -67,7 +70,7 @@ export default function CheckCode() {
           userId: embeddedUserId || undefined,
         })
         setWebAppPassport(loginRedirect.address, access_token)
-        replaceLoginRedirect(loginRedirect.target, router.replace, basePath)
+        navigateAfterWebAppLogin(loginRedirect, router.replace, basePath)
       }
     } catch (error) {
       console.error(error)
