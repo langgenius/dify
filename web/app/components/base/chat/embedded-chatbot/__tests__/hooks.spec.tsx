@@ -165,6 +165,7 @@ describe('useEmbeddedChatbot', () => {
     sessionStorage.removeItem(TAB_CONVERSATION_ID_INFO)
     mockStoreState.appInfo = {
       app_id: 'app-1',
+      end_user_id: 'user-1',
       custom_config: null,
       site: {
         title: 'Test App',
@@ -396,14 +397,8 @@ describe('useEmbeddedChatbot', () => {
         const tabStoredValue = sessionStorage.getItem(TAB_CONVERSATION_ID_INFO)
         const tabConversationIdInfo = tabStoredValue ? JSON.parse(tabStoredValue) : {}
 
-        expect([
-          lastConversationIdInfo['app-1']?.['embedded-user-1'],
-          lastConversationIdInfo['app-1']?.DEFAULT,
-        ]).toContain('conversation-new')
-        expect([
-          tabConversationIdInfo['app-1']?.['embedded-user-1'],
-          tabConversationIdInfo['app-1']?.DEFAULT,
-        ]).toContain('conversation-new')
+        expect(lastConversationIdInfo['app-1']?.['user-1']).toBe('conversation-new')
+        expect(tabConversationIdInfo['app-1']?.['user-1']).toBe('conversation-new')
       })
     })
   })
@@ -656,7 +651,7 @@ describe('useEmbeddedChatbot', () => {
       localStorage.setItem(
         CONVERSATION_ID_INFO,
         JSON.stringify({
-          'app-1': { DEFAULT: 'stored-conv-id' },
+          'app-1': { 'user-1': 'stored-conv-id' },
         }),
       )
       mockStoreState.embeddedConversationId = null
@@ -776,14 +771,11 @@ describe('useEmbeddedChatbot', () => {
       await waitFor(() => {
         const stored = JSON.parse(localStorage.getItem(CONVERSATION_ID_INFO) || '{}')
         const appEntry = stored['app-1']
-        // userId may be 'embedded-user-1' or 'DEFAULT' depending on timing; either is valid
-        const storedId = appEntry?.['embedded-user-1'] ?? appEntry?.DEFAULT
-        expect(storedId).toBe('new-conv-id')
+        expect(appEntry?.['user-1']).toBe('new-conv-id')
       })
     })
 
-    it('should use DEFAULT when userId is null', async () => {
-      // Override userId to be null/empty to exercise the "|| 'DEFAULT'" fallback path
+    it('should use the site EndUser when embeddedUserId is null', async () => {
       mockStoreState.embeddedUserId = null
       const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 
@@ -794,8 +786,7 @@ describe('useEmbeddedChatbot', () => {
       await waitFor(() => {
         const stored = JSON.parse(localStorage.getItem(CONVERSATION_ID_INFO) || '{}')
         const appEntry = stored['app-1']
-        // Should use DEFAULT key since userId is null
-        expect(appEntry?.DEFAULT).toBe('default-conv-id')
+        expect(appEntry?.['user-1']).toBe('default-conv-id')
       })
     })
   })
@@ -935,7 +926,7 @@ describe('useEmbeddedChatbot', () => {
       // Ensure a currentConversationId is set so appChatListData is fetched
       localStorage.setItem(
         CONVERSATION_ID_INFO,
-        JSON.stringify({ 'app-1': { DEFAULT: 'conversation-1' } }),
+        JSON.stringify({ 'app-1': { 'user-1': 'conversation-1' } }),
       )
       mockFetchConversations.mockResolvedValue(
         createConversationData({ data: [createConversationItem({ id: 'conversation-1' })] }),
@@ -977,7 +968,7 @@ describe('useEmbeddedChatbot', () => {
       mockFetchChatList.mockResolvedValue({ data: [] })
       localStorage.setItem(
         CONVERSATION_ID_INFO,
-        JSON.stringify({ 'app-1': { DEFAULT: 'pinned-conv' } }),
+        JSON.stringify({ 'app-1': { 'user-1': 'pinned-conv' } }),
       )
 
       const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
@@ -1025,7 +1016,7 @@ describe('useEmbeddedChatbot', () => {
   describe('currentConversationLatestInputs', () => {
     it('should return inputs from latest chat message when conversation has data', async () => {
       const convId = 'conversation-with-inputs'
-      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({ 'app-1': { DEFAULT: convId } }))
+      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({ 'app-1': { 'user-1': convId } }))
       mockFetchConversations.mockResolvedValue(
         createConversationData({ data: [createConversationItem({ id: convId })] }),
       )

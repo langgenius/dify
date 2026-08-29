@@ -1,7 +1,7 @@
 import type { WebAppAddress } from './webapp-address'
 import { ACCESS_TOKEN_LOCAL_STORAGE_NAME, PASSPORT_LOCAL_STORAGE_NAME } from '@/config'
 import { getPublic, postPublic } from './base'
-import { getWebAppPassportKey, resolveWebAppAddress } from './webapp-address'
+import { getWebAppPassportKey, getWebAppScopeKey, resolveWebAppAddress } from './webapp-address'
 
 export function setWebAppAccessToken(token: string) {
   localStorage.setItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME, token)
@@ -18,6 +18,18 @@ export function getWebAppAccessToken() {
 export function getWebAppPassport(address: WebAppAddress | null) {
   if (!address) return ''
   return localStorage.getItem(PASSPORT_LOCAL_STORAGE_NAME(getWebAppPassportKey(address))) || ''
+}
+
+export function getOrCreateWebAppVisitorId(address: WebAppAddress) {
+  if (address.kind !== 'environment') return ''
+
+  const key = `visitor-${getWebAppScopeKey(address)}`
+  const visitorId = localStorage.getItem(key)
+  if (visitorId) return visitorId
+
+  const created = crypto.randomUUID()
+  localStorage.setItem(key, created)
+  return created
 }
 
 function clearWebAppAccessToken() {

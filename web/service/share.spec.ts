@@ -16,6 +16,7 @@ vi.mock('./base', () => ({
 }))
 
 vi.mock('./webapp-auth', () => ({
+  getOrCreateWebAppVisitorId: vi.fn(() => 'visitor-1'),
   getWebAppAccessToken: vi.fn(() => ''),
 }))
 
@@ -39,6 +40,7 @@ describe('fetchAccessToken', () => {
     const secondRequest = fetchAccessToken({ appCode: 'environment-app' })
 
     expect(getMock).toHaveBeenCalledTimes(1)
+    expect(getMock).toHaveBeenCalledWith('/passport?user_id=visitor-1', expect.anything())
 
     resolveRequest({ access_token: 'passport' })
     await expect(Promise.all([firstRequest, secondRequest])).resolves.toEqual([

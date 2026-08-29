@@ -6,7 +6,8 @@ vi.mock('./base', () => ({
   postPublic: vi.fn(),
 }))
 
-const { getWebAppPassport, setWebAppPassport, webAppLoginStatus } = await import('./webapp-auth')
+const { getOrCreateWebAppVisitorId, getWebAppPassport, setWebAppPassport, webAppLoginStatus } =
+  await import('./webapp-auth')
 
 describe('webAppLoginStatus', () => {
   beforeEach(() => {
@@ -32,6 +33,18 @@ describe('webAppLoginStatus', () => {
     setWebAppPassport(address, 'passport')
 
     expect(localStorage.getItem('passport-workflow-app')).toBe('passport')
+  })
+
+  it('keeps a stable visitor id for each environment', () => {
+    const firstEnvironment = { kind: 'environment' as const, code: 'environment-1' }
+    const secondEnvironment = { kind: 'environment' as const, code: 'environment-2' }
+
+    const first = getOrCreateWebAppVisitorId(firstEnvironment)
+
+    expect(first).toMatch(/^[0-9a-f-]{36}$/i)
+    expect(getOrCreateWebAppVisitorId(firstEnvironment)).toBe(first)
+    expect(getOrCreateWebAppVisitorId(secondEnvironment)).not.toBe(first)
+    expect(localStorage.getItem('visitor-environment:environment-1')).toBe(first)
   })
 
   it('does not add an app code query to environment login status', async () => {

@@ -24,7 +24,8 @@
     "e2e:reset": "tsx ./scripts/setup.ts reset",
     "seed": "tsx ./scripts/run-cucumber.ts --seed-only",
     "test:unit": "vp test run",
-    "type-check": "tsc"
+    "type-check": "tsc",
+    "verify:environment-webapp": "tsx ./scripts/verify-environment-webapp.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "catalog:",
