@@ -1,17 +1,17 @@
-"""Reference declarative schema for the Contact identity-map proposal.
+"""Reference declarative schema for the Contact identity and profile proposal.
 
 This file is an OpenSpec artifact and is not imported by the application.
 
 Invariants:
-1. ``human_input_contact_identites`` stores subject identity only.
+1. ``human_input_contact_identities`` stores Contact identity only.
 2. Account subjects require ``account_id``; External subjects forbid it.
 3. External workspace ownership lives only on its one-to-one current profile.
 4. Deleting an External Contact removes its profile and identity atomically.
-5. WORKSPACE, PLATFORM, EXTERNAL, and ABSENT remain query resolutions.
-6. Every durable ``contact_id`` continues to target the identity-map UUID.
+5. WORKSPACE, PLATFORM, EXTERNAL remain query resolutions.
+6. Every durable ``contact_id`` continues to target ``human_input_contact_identities.id``.
 7. One Account maps to one globally unique Contact identity.
 8. Workspace access is enforced by membership、Platform visibility or External
-   profile ownership predicates; possession of a Contact ID grants no access.
+   Contact profile ownership predicates; possession of a Contact ID grants no access.
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ from models.types import EnumText, StringUUID
 
 
 class ContactSubjectType(StrEnum):
-    """Immutable source discriminator; never serialized as Contact resolution."""
+    """Immutable subject discriminator; never serialized as Contact resolution."""
 
     ACCOUNT = "account"
     EXTERNAL = "external"
@@ -50,22 +50,22 @@ class HumanInputContactIdentity(TypeBase):
         sa.CheckConstraint(
             "(subject_type = 'account' AND account_id IS NOT NULL) OR "
             "(subject_type = 'external' AND account_id IS NULL)",
-            name="human_input_contacts_subject_ck",
+            name="human_input_contact_identities_subject_type_ck",
         ),
         sa.UniqueConstraint(
             "account_id",
-            name="human_input_contacts_account_uq",
+            name="human_input_contact_identities_account_id_uq",
         ),
         {
             "comment": (
-                "Immutable Human Input Contact identity map. Mutable Account and External "
-                "profile facts live with their source owners."
+                "Immutable Human Input Contact identities. Mutable Account and External "
+                "Contact profile facts live with their source owners."
             )
         },
     )
 
-    subject_type: Mapped[HumanInputContactSubjectKind] = mapped_column(
-        EnumText(HumanInputContactSubjectKind),
+    subject_type: Mapped[ContactSubjectType] = mapped_column(
+        EnumText(ContactSubjectType),
         nullable=False,
         comment="Immutable Account or External subject discriminator.",
     )
@@ -76,11 +76,11 @@ class HumanInputContactIdentity(TypeBase):
         comment="Logical accounts.id reference for Account subjects only.",
     )
 
-    external_profile: Mapped[HumanInputExternalContact | None] = relationship(
-        lambda: HumanInputExternalContact,
+    external_profile: Mapped[HumanInputExternalContactProfile | None] = relationship(
+        lambda: HumanInputExternalContactProfile,
         primaryjoin=lambda: sa.and_(
-            HumanInputContact.id == orm.foreign(HumanInputExternalContact.contact_id),
-            HumanInputContact.subject_type == ContactSubjectType.EXTERNAL,
+            HumanInputContactIdentity.id == orm.foreign(HumanInputExternalContactProfile.contact_id),
+            HumanInputContactIdentity.subject_type == ContactSubjectType.EXTERNAL,
         ),
         back_populates="identity",
         viewonly=True,
@@ -97,10 +97,10 @@ class HumanInputExternalContactProfile(DefaultFieldsMixin, TypeBase):
         sa.UniqueConstraint(
             "tenant_id",
             "normalized_email",
-            name="human_input_external_contact_profiles_tenant_email_uq",
+            name="hiecp_tenant_normalized_email_uq",
         ),
         sa.Index(
-            "human_input_external_contact_profiles_tenant_name_idx",
+            "hiecp_tenant_normalized_name_idx",
             "tenant_id",
             "normalized_name",
         ),
@@ -115,7 +115,7 @@ class HumanInputExternalContactProfile(DefaultFieldsMixin, TypeBase):
     contact_id: Mapped[str] = mapped_column(
         StringUUID,
         primary_key=True,
-        comment="Logical human_input_contacts.id reference for one External subject.",
+        comment="Logical human_input_contact_identities.id reference for one External subject.",
     )
     tenant_id: Mapped[str] = mapped_column(
         StringUUID,
@@ -152,7 +152,7 @@ class HumanInputExternalContactProfile(DefaultFieldsMixin, TypeBase):
 
 @dataclass(frozen=True, slots=True)
 class ContactReference:
-    """One unchanged logical reference to ``human_input_contacts.id``."""
+    """One logical reference to ``human_input_contact_identities.id``."""
 
     table_name: str
     column_name: str
@@ -203,9 +203,7 @@ CONTACT_REFERENCES: tuple[ContactReference, ...] = (
 __all__ = [
     "CONTACT_REFERENCES",
     "ContactReference",
-    "HumanInputContact",
-    "HumanInputContactSubjectKind",
-    "HumanInputExternalContact",
-    "HumanInputPlatformContactWorkspaceEntry",
-    "SchemaBase",
+    "ContactSubjectType",
+    "HumanInputContactIdentity",
+    "HumanInputExternalContactProfile",
 ]
