@@ -50,6 +50,7 @@ from repositories.api_workflow_node_execution_repository import WorkflowNodeExec
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from services.app_generate_service import AppGenerateService
 from services.workflow_event_snapshot_service import _build_snapshot_events
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 class _DummyRateLimit:
@@ -380,7 +381,7 @@ class TestHitlServiceApi:
         monkeypatch: pytest.MonkeyPatch,
         sqlite_engine: Engine,
     ) -> None:
-        monkeypatch.setattr(ags_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+        apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         monkeypatch.setattr(ags_module, "RateLimit", _DummyRateLimit)
 
         workflow = MagicMock()

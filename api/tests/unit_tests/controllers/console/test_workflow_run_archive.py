@@ -6,7 +6,6 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import Conflict, Forbidden, NotFound
 
-from configs import dify_config
 from controllers.console import flask_admission, workflow_run_archive
 from controllers.console.workflow_run_archive import (
     WorkflowRunArchiveDownloadApi,
@@ -37,6 +36,7 @@ _ENDPOINTS = [
     WorkflowRunArchiveDownloadApi.get,
     WorkflowRunArchiveDownloadFileApi.get,
 ]
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _account(role: TenantAccountRole) -> Account:
@@ -82,7 +82,7 @@ def test_workflow_run_archive_endpoints_reject_non_manager_when_rbac_is_disabled
     method,
 ) -> None:
     account = _account(TenantAccountRole.NORMAL)
-    monkeypatch.setattr(dify_config, "RBAC_ENABLED", False)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
     monkeypatch.setattr(
         flask_admission,
         "current_account_with_tenant",
@@ -108,7 +108,7 @@ def test_workflow_run_archive_endpoints_are_hidden_outside_cloud(
     method,
     args: tuple[object, ...],
 ) -> None:
-    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     app = Flask(__name__)
 
     with app.test_request_context(), pytest.raises(NotFound):
@@ -119,7 +119,7 @@ def test_workflow_run_archive_endpoint_allows_admitted_role_when_rbac_is_enabled
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     account = _account(TenantAccountRole.NORMAL)
-    monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     account_with_tenant = AccountWithTenant(account=account, tenant_id="tenant-1")
     monkeypatch.setattr(flask_admission, "current_account_with_tenant", lambda: account_with_tenant)
     monkeypatch.setattr("controllers.console.wraps.current_account_with_tenant", lambda: account_with_tenant)

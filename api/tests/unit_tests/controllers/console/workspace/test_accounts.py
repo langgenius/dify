@@ -59,6 +59,7 @@ from services.account_errors import (
     MissingInvitationCodeError,
 )
 from services.entities.account_entities import AccountIntegrationStatus, AccountProfileChanges
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def make_account(account_id: str = "u1", *, status: AccountStatus = AccountStatus.ACTIVE) -> Account:
@@ -409,7 +410,7 @@ class TestAccountAvatarApiGet:
         with (
             app.test_request_context("/account/avatar"),
             patch("controllers.console.wraps._is_setup_completed", return_value=True),
-            patch("libs.login.dify_config.LOGIN_DISABLED", True),
+            config_overrides_context(LOGIN_DISABLED=True),
             patch(
                 "controllers.console.wraps.current_account_with_tenant",
                 return_value=(account, "workspace-1"),

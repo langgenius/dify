@@ -17,6 +17,7 @@ from services.app_dsl_service import AppDslService, PendingData
 from services.entities.dsl_entities import ImportStatus
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
+from tests.unit_tests.config_override import apply_config_overrides
 
 _OVERWRITE_APP_ID = "11111111-1111-4111-8111-111111111111"
 _TENANT_ID = "22222222-2222-4222-8222-222222222222"
@@ -192,7 +193,7 @@ def test_import_app_checks_overwrite_rbac_before_database_access(
 
     check = Mock(side_effect=deny_before_transaction)
     setex = Mock()
-    monkeypatch.setattr("services.app_dsl_service.dify_config.RBAC_ENABLED", True)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", check)
     monkeypatch.setattr("services.app_dsl_service.redis_client.setex", setex)
 
@@ -230,7 +231,7 @@ def test_confirm_import_rechecks_overwrite_rbac_before_database_access(
         return False
 
     check = Mock(side_effect=deny_before_transaction)
-    monkeypatch.setattr("services.app_dsl_service.dify_config.RBAC_ENABLED", True)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", check)
 
     with pytest.raises(NoPermissionError, match="permission to overwrite"):
@@ -254,7 +255,7 @@ def test_confirm_import_does_not_create_when_overwrite_target_disappeared(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     monkeypatch.setattr("services.app_dsl_service.redis_client.get", Mock(return_value=_PENDING_DATA_JSON))
-    monkeypatch.setattr("services.app_dsl_service.dify_config.RBAC_ENABLED", True)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", Mock(return_value=True))
     redis_delete = Mock()
     monkeypatch.setattr("services.app_dsl_service.redis_client.delete", redis_delete)

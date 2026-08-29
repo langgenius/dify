@@ -37,6 +37,7 @@ from services.errors.account import (
     EmailDomainSuspendedError,
     NoPermissionError,
 )
+from tests.unit_tests.config_override import config_overrides_context
 
 type _MockDependencies = dict[str, MagicMock]
 
@@ -391,7 +392,7 @@ class TestAccountService:
             "billing_service"
         ].get_email_freeze_type.return_value = "email_domain_suspended"
 
-        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD):
+        with config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD):
             with pytest.raises(EmailDomainSuspendedError):
                 AccountService.create_account(
                     email="user@suspended.example",
@@ -408,7 +409,7 @@ class TestAccountService:
             "billing_service"
         ].get_email_freeze_type.return_value = "email_domain_suspended"
 
-        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD):
+        with config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD):
             with pytest.raises(EmailDomainSuspendedError):
                 AccountService.get_user_through_email("user@suspended.example", session=unbound_session)
 
@@ -417,9 +418,9 @@ class TestAccountService:
     ) -> None:
         mock_external_service_dependencies["billing_service"].get_email_freeze_type.return_value = "freeze"
 
-        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD):
+        with config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD):
             assert AccountService.get_account_freeze_type("frozen@example.com") == "freeze"
-        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
+        with config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY):
             assert AccountService.get_account_freeze_type("frozen@example.com") is None
 
         mock_external_service_dependencies["billing_service"].get_email_freeze_type.assert_called_once_with(
@@ -979,7 +980,7 @@ class TestTenantService:
             service_session.commit()
 
             with (
-                patch("services.account_service.dify_config.RBAC_ENABLED", True),
+                config_overrides_context(RBAC_ENABLED=True),
                 patch.object(rbac_task_module.sync_joined_workspace_member_rbac_access_task, "delay", delay),
             ):
                 TenantService.create_tenant_member(
@@ -1012,7 +1013,7 @@ class TestTenantService:
             service_session.commit()
 
             with (
-                patch("services.account_service.dify_config.RBAC_ENABLED", True),
+                config_overrides_context(RBAC_ENABLED=True),
                 patch.object(rbac_task_module.sync_joined_workspace_member_rbac_access_task, "delay", delay),
             ):
                 TenantService.create_tenant_member(

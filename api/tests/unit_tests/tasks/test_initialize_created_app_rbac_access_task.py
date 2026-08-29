@@ -111,7 +111,7 @@ def test_sync_joined_workspace_member_rbac_access_task_appends_auto_included_res
     app_append = MagicMock()
     dataset_append = MagicMock()
 
-    monkeypatch.setattr(task_module.dify_config, "RBAC_ENABLED", True)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr(task_module, "_iter_resource_config_batches", lambda tenant_id, batch_size: iter([resources]))
     monkeypatch.setattr(rbac.RBACService.ResourceWhitelistConfigs, "batch_get", batch_get)
     monkeypatch.setattr(rbac.RBACService.AppAccess, "append_whitelist_members_batch", app_append)

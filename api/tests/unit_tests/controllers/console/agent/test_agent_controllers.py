@@ -74,6 +74,7 @@ from services.entities.agent_entities import (
     WorkflowAgentComposerQuery,
     WorkflowComposerCopyFromRosterPayload,
 )
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _persist_conversation_message(
@@ -864,7 +865,7 @@ def test_agent_api_access_uses_agent_id_and_returns_service_api_metadata(monkeyp
     monkeypatch.setattr(roster_controller, "_resolve_agent_app_model", lambda _session, **kwargs: app_model)
     monkeypatch.setattr(roster_controller, "_agent_api_key_count", lambda _session, _app: 2)
     monkeypatch.setattr(roster_controller, "_agent_app_access_ready", lambda _session, _app: True)
-    monkeypatch.setattr("models.model.dify_config.SERVICE_API_URL", "https://api.example.test/v1")
+    apply_config_overrides(monkeypatch, SERVICE_API_URL="https://api.example.test/v1")
     response = unwrap(AgentApiAccessApi.get)(AgentApiAccessApi(), MagicMock(), "tenant-1", agent_id)
     assert response == {
         "access_ready": True,
