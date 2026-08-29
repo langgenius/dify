@@ -68,7 +68,8 @@ def test_build_form_fields_whitelists_and_coerces_type():
         ]
     )
     assert [f.key for f in fields] == ["a", "b"]
-    assert fields[0].type == "select" and fields[0].options == ["x"]
+    assert fields[0].type == "select"
+    assert fields[0].options == ["x"]
     assert fields[1].type == "text"  # unknown type coerced to text
 
 
@@ -416,7 +417,8 @@ def test_governance_automatic_learns_and_reaches_complete():
     res = handle_governance_feedback(env, Turn(actor=_actor()), *repo.get_session(s.id))
     assert res.next == PcState.BUILD_COMPLETE
     kinds = [i.kind for i in res.items]
-    assert "build_learning" in kinds and "summary" in kinds
+    assert "build_learning" in kinds
+    assert "summary" in kinds
     assert "notice" in kinds
     assert env.agent.learn_calls == 1  # seam called for automatic
 
@@ -454,7 +456,8 @@ def test_governance_ask_rests_at_await_learning_with_pending_card():
     res = handle_governance_feedback(env, Turn(actor=_actor()), *repo.get_session(s.id))
     assert res.next == PcState.BUILD_AWAIT_LEARNING
     bl = [i for i in res.items if i.kind == "build_learning"][0]
-    assert bl.payload["policy"] == "ask" and bl.payload["state"] == "pending"
+    assert bl.payload["policy"] == "ask"
+    assert bl.payload["state"] == "pending"
     assert getattr(env.agent, "learn_calls", 0) == 0  # not learned until accepted
 
 
@@ -474,7 +477,8 @@ def test_await_learning_accept_learns_and_completes():
     )
     assert res.next == PcState.BUILD_COMPLETE
     kinds = [i.kind for i in res.items]
-    assert "decision" in kinds and "summary" in kinds
+    assert "decision" in kinds
+    assert "summary" in kinds
     assert "notice" in kinds
     assert env.agent.learn_calls == 1
 

@@ -73,6 +73,51 @@ def test_build_nodes_degrades_to_empty_on_generator_error():
         assert build.build_nodes("t1", {}, ["x"]) == []
 
 
+def test_build_nodes_grounds_model_on_question_classifier_node():
+    gen_graph_qc = {
+        "graph": {
+            "nodes": [
+                {"id": "s", "type": "custom", "data": {"type": "start", "title": "Start", "variables": []}},
+                {
+                    "id": "qc1",
+                    "type": "custom",
+                    "data": {
+                        "type": "question-classifier",
+                        "title": "Classify",
+                        "model": {"provider": "wrong", "name": "wrong"},
+                        "classes": [],
+                    },
+                },
+                {"id": "e", "type": "custom", "data": {"type": "end", "title": "End", "outputs": []}},
+            ],
+            "edges": [
+                {"id": "e1", "source": "s", "target": "qc1"},
+                {"id": "e2", "source": "qc1", "target": "e"},
+            ],
+        },
+        "error": "",
+        "errors": [],
+    }
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "claude-opus-4-8")),
+        patch(
+            "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
+            return_value=gen_graph_qc,
+        ),
+    ):
+        intents = build.build_nodes("t1", {}, ["Classify the request"])
+
+    by_type = {}
+    for intent in intents:
+        if intent.op == "create_node":
+            by_type[intent.args["node_type"]] = intent.args["config"]
+    assert by_type["question-classifier"]["model"]["provider"] == "anthropic"  # ungrounded model overwritten
+    assert by_type["question-classifier"]["model"]["name"] == "claude-opus-4-8"
+    # no fabricated params: the fixture's node carried no completion_params, and none
+    # should be synthesized (e.g. a guessed temperature) during grounding.
+    assert "completion_params" not in by_type["question-classifier"]["model"]
+
+
 def test_build_nodes_dataset_ids_are_independent_lists_per_node():
     gen_graph_two_kb = {
         "graph": {
