@@ -363,29 +363,36 @@ def handle_execution(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -
 
 
 def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
-    """(working, auto) Canned test/repair arc: found a config bug -> applied a
-    real set_node_config fix via apply_repair -> retested green. Emits the
-    error/change_set/test_result plus the review summary, transitions to
-    build.review. No live run_draft (spec: canned test_and_repair)."""
-    emit_canvas(env, "mark_test_error")
-    error_items = append_card(
-        fc,
-        ErrorCard(
-            title="gross_margin parsed as text",
-            body="The LLM node returned gross_margin as a string; tightening the prompt to coerce a number.",
-            tone="danger",
-            node_id="llm",
-        ),
-    )
-
+    """(working, auto) Canned test/repair arc: if the agent finds a config bug
+    (placeholder mode's fixed repair, targeting the hardcoded "llm" id), apply
+    it via apply_repair and report it fixed; a real cognition agent currently
+    always returns no repair (no live failure signal yet -- deferred), so that
+    case skips the error card and apply, and reports a clean run instead.
+    Either way: test green, review summary, transition to build.review. No
+    live run_draft (spec: canned test_and_repair)."""
     repair_intents = env.agent.propose_build_repair(list(fc.built_node_ids))
-    result = env.dify.apply_repair(s.app_id, turn.actor, repair_intents, on_canvas=env.emit_canvas)
-    fc.last_snapshot_hash = result.new_hash
-    fc.last_structure_fingerprint = result.structure_fingerprint
-    changes, scope, fc.change_set = build_change_set(result, default_scope="configuration", fallback_diff="config edit")
-    change_set_items = append_card(
-        fc, ChangeSetCard(count=len(changes), changes=changes, scope=scope, full_diff_open=False)
-    )
+    error_items: list[ConversationItem] = []
+    change_set_items: list[ConversationItem] = []
+    if repair_intents:
+        emit_canvas(env, "mark_test_error")
+        error_items = append_card(
+            fc,
+            ErrorCard(
+                title="Config issue found",
+                body="Applying a fix and retesting.",
+                tone="danger",
+                node_id=fc.built_node_ids[0] if fc.built_node_ids else "",
+            ),
+        )
+        result = env.dify.apply_repair(s.app_id, turn.actor, repair_intents, on_canvas=env.emit_canvas)
+        fc.last_snapshot_hash = result.new_hash
+        fc.last_structure_fingerprint = result.structure_fingerprint
+        changes, scope, fc.change_set = build_change_set(
+            result, default_scope="configuration", fallback_diff="config edit"
+        )
+        change_set_items = append_card(
+            fc, ChangeSetCard(count=len(changes), changes=changes, scope=scope, full_diff_open=False)
+        )
 
     emit_canvas(env, "mark_test_success")
     test_result_items = append_card(
@@ -407,7 +414,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             title="Review",
             items=[
                 "Workflow built: Start -> Knowledge -> LLM -> End",
-                "1 issue found and fixed",
+                "1 issue found and fixed" if repair_intents else "No issues found",
                 "Tests passing",
             ],
         ),

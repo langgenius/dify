@@ -1,6 +1,7 @@
 from core.dify_builder.models import Diagnosis
 from core.dify_builder.placeholder_agent import PlaceholderAgent
 from core.dify_builder.ports import DifyBuilderAgent
+from services.dify_builder.agent import build as build_mod
 from services.dify_builder.agent import fix as fix_mod
 from services.dify_builder.agent import llm_agent
 from services.dify_builder.agent.llm_agent import LlmBuilderAgent
@@ -10,12 +11,32 @@ def test_is_dify_builder_agent():
     assert isinstance(LlmBuilderAgent("t1", None), DifyBuilderAgent)
 
 
-def test_delegates_build_methods_to_placeholder():
-    agent = LlmBuilderAgent("t1", {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}})
-    canned = PlaceholderAgent()
-    assert agent.analyze_goal("summarize a PDF") == canned.analyze_goal("summarize a PDF")
-    assert agent.propose_plan_v1({"x": 1}) == canned.propose_plan_v1({"x": 1})
-    assert agent.learn_from_build("g", {}, [], []) == canned.learn_from_build("g", {}, [], [])
+def test_llm_agent_build_methods_delegate_to_build(monkeypatch):
+    from services.dify_builder.agent import build
+
+    monkeypatch.setattr(
+        build,
+        "analyze_goal",
+        lambda m, g: {"fields": [{"key": "k", "label": "K", "type": "text"}], "values": {}},  # noqa: ARG005
+    )
+    monkeypatch.setattr(build, "build_nodes", lambda t, mc, p: [])  # noqa: ARG005
+    agent = LlmBuilderAgent("t1", {})
+    assert agent.analyze_goal("goal")["fields"][0]["key"] == "k"
+    assert agent.propose_build_repair(["n1"]) == []
+
+
+def test_build_methods_call_build_module_with_resolved_model(monkeypatch):
+    seen = {}
+
+    def mock_analyze_goal(model, goal_text):  # noqa: ARG001
+        seen["m"] = model
+        return {"fields": [], "values": {}}
+
+    monkeypatch.setattr(build_mod, "analyze_goal", mock_analyze_goal)
+    agent = LlmBuilderAgent("t1", {"provider": "p", "name": "m", "mode": "chat", "completion_params": {}})
+    monkeypatch.setattr(agent, "_model", lambda: "MODEL")
+    agent.analyze_goal("goal")
+    assert seen["m"] == "MODEL"
 
 
 def test_fix_methods_degrade_without_model():
