@@ -83,7 +83,7 @@ function HomeCatalogNavigation({
   }, [isMarketplacePlatform, setIsPinned])
 
   return (
-    <div className={styles.catalogNavigationGroup} style={{ top: HOME_HEADER_HEIGHT_PX }}>
+    <div className={styles.catalogNavigationGroup}>
       <div
         ref={catalogTabsRegionRef}
         className={cn('w-full shrink-0 bg-background-default', styles.catalogTabsRegion)}

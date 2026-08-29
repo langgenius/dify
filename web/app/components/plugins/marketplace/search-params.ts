@@ -11,7 +11,7 @@ export const marketplaceSearchParamsParsers = {
   )
     .withDefault('all')
     .withOptions({ history: 'replace', clearOnDefault: false, scroll: false }),
-  q: parseAsString.withDefault('').withOptions({ history: 'replace' }),
+  q: parseAsString.withDefault('').withOptions({ history: 'replace', scroll: false }),
   tags: parseAsArrayOf(parseAsString).withDefault([]).withOptions({ history: 'replace' }),
   languages: parseAsArrayOf(parseAsString).withDefault([]).withOptions({ history: 'replace' }),
 }

@@ -1,6 +1,6 @@
-/* The header height and the sticky top offset of the catalog navigation are
-   inline styles driven by HOME_HEADER_HEIGHT_PX in home-constants.ts, so the
-   two values cannot drift apart. */
+/* Sticky offsets read --home-header-height and --home-search-height from
+   HomeShell (HOME_HEADER_HEIGHT_PX / HOME_SEARCH_HEIGHT_PX). Desktop catalog
+   navigation still pins with an inline top of HOME_HEADER_HEIGHT_PX. */
 
 .headerCatalogTabs {
   display: flex;
@@ -45,9 +45,12 @@
 }
 
 .search {
+  position: sticky;
+  z-index: 60;
   top: 6px;
   padding-right: 356px;
   padding-left: 356px;
+  overflow-anchor: none;
 }
 
 .searchContent {
@@ -98,8 +101,12 @@
   }
 
   :global([data-marketplace-standalone]) .search {
+    position: sticky;
+    z-index: 45;
+    top: var(--home-header-height, 48px);
     padding-right: 20px;
     padding-left: 20px;
+    background-color: var(--color-background-default);
   }
 
   :global([data-marketplace-standalone]) .searchContent {
@@ -118,6 +125,7 @@
     position: sticky;
     z-index: 40;
     display: block;
+    top: calc(var(--home-header-height, 48px) + var(--home-search-height, 36px));
     background-color: var(--color-background-default);
   }
 

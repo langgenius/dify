@@ -208,7 +208,7 @@ describe('Marketplace catalog tab handoff', () => {
     expect(headerTabsSlot).toHaveAttribute('inert')
     expect(
       contentTabsSlot.getBoundingClientRect().top - scrollContainer.getBoundingClientRect().top,
-    ).toBeCloseTo(72)
+    ).toBeCloseTo(108)
 
     await page.viewport(880, 800)
     await vi.waitFor(() => {

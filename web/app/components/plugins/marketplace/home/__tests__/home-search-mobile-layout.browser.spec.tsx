@@ -30,34 +30,45 @@ const nextFrame = () =>
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
   })
 
-describe('Marketplace mobile search layout', () => {
-  it('keeps the sticky header brand and actions above the search while scrolling', async () => {
-    await page.viewport(390, 844)
+const overlaps = (a: DOMRect, b: DOMRect) =>
+  a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
 
-    const screen = await render(
-      <div id={MARKETPLACE_CONTAINER_ID} style={{ height: 320, overflowY: 'auto' }}>
-        <HomeShell
-          banners={[]}
-          header={
-            <HomeHeader actions={<button type="button">Sign in</button>} isMarketplacePlatform />
-          }
-          hero={<div aria-hidden style={{ height: 180, flexShrink: 0 }} />}
-          isMarketplacePlatform
-          navigation={<div aria-hidden style={{ height: 80, flexShrink: 0 }} />}
-          page="plugins"
-          search={
-            <HomeSearch enableSearchShortcut={false}>
-              <input
-                aria-label="Search plugins or templates"
-                style={{ display: 'block', height: 36, width: '100%' }}
-              />
-            </HomeSearch>
-          }
-        >
-          <div aria-hidden style={{ height: 640, flexShrink: 0 }} />
-        </HomeShell>
-      </div>,
-    )
+const isCenterClickable = (target: Element) => {
+  const rect = target.getBoundingClientRect()
+  const node = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+  return Boolean(node && target.contains(node))
+}
+
+const renderMarketplaceHome = () =>
+  render(
+    <div id={MARKETPLACE_CONTAINER_ID} style={{ height: 320, overflowY: 'auto' }}>
+      <HomeShell
+        banners={[]}
+        header={
+          <HomeHeader actions={<button type="button">Sign in</button>} isMarketplacePlatform />
+        }
+        hero={<div aria-hidden style={{ height: 180, flexShrink: 0 }} />}
+        isMarketplacePlatform
+        navigation={<div aria-hidden style={{ height: 80, flexShrink: 0 }} />}
+        page="plugins"
+        search={
+          <HomeSearch enableSearchShortcut={false}>
+            <input
+              aria-label="Search plugins or templates"
+              style={{ display: 'block', height: 36, width: '100%' }}
+            />
+          </HomeSearch>
+        }
+      >
+        <div aria-hidden style={{ height: 640, flexShrink: 0 }} />
+      </HomeShell>
+    </div>,
+  )
+
+describe('Marketplace mobile search layout', () => {
+  it('pins the mobile search below the header without covering brand or actions', async () => {
+    await page.viewport(390, 844)
+    const screen = await renderMarketplaceHome()
 
     const scrollContainer = document.getElementById(MARKETPLACE_CONTAINER_ID)!
     const header = screen.getByRole('banner').element()
@@ -67,26 +78,70 @@ describe('Marketplace mobile search layout', () => {
       .getByRole('textbox', { name: 'Search plugins or templates' })
       .element()
 
-    scrollContainer.scrollTop =
-      searchInput.getBoundingClientRect().top - header.getBoundingClientRect().top - 6
+    scrollContainer.scrollTop = 400
     scrollContainer.dispatchEvent(new Event('scroll'))
     await nextFrame()
 
+    const headerRect = header.getBoundingClientRect()
     const searchRect = searchInput.getBoundingClientRect()
-    const assertHeaderTargetIsClickable = (target: Element) => {
-      const targetRect = target.getBoundingClientRect()
-      const x = targetRect.left + targetRect.width / 2
-      const overlapTop = Math.max(targetRect.top, searchRect.top)
-      const overlapBottom = Math.min(targetRect.bottom, searchRect.bottom)
-      const y = overlapTop + (overlapBottom - overlapTop) / 2
 
-      expect(overlapBottom).toBeGreaterThan(overlapTop)
-      expect(searchRect.left).toBeLessThan(x)
-      expect(searchRect.right).toBeGreaterThan(x)
-      expect(target.contains(document.elementFromPoint(x, y))).toBe(true)
-    }
+    expect(searchRect.top).toBeGreaterThanOrEqual(headerRect.bottom - 1)
+    expect(searchRect.top).toBeLessThanOrEqual(headerRect.bottom + 2)
+    expect(overlaps(searchRect, brand.getBoundingClientRect())).toBe(false)
+    expect(overlaps(searchRect, signIn.getBoundingClientRect())).toBe(false)
+    expect(isCenterClickable(brand)).toBe(true)
+    expect(isCenterClickable(signIn)).toBe(true)
+    expect(isCenterClickable(searchInput)).toBe(true)
+  })
 
-    assertHeaderTargetIsClickable(brand)
-    assertHeaderTargetIsClickable(signIn)
+  it('keeps the desktop search in the header gap while scrolling', async () => {
+    await page.viewport(1280, 900)
+    const screen = await renderMarketplaceHome()
+
+    const scrollContainer = document.getElementById(MARKETPLACE_CONTAINER_ID)!
+    const header = screen.getByRole('banner').element()
+    const searchInput = screen
+      .getByRole('textbox', { name: 'Search plugins or templates' })
+      .element()
+
+    scrollContainer.scrollTop = 400
+    scrollContainer.dispatchEvent(new Event('scroll'))
+    await nextFrame()
+
+    expect(
+      searchInput.getBoundingClientRect().top - header.getBoundingClientRect().top,
+    ).toBeCloseTo(6, 0)
+  })
+
+  it('does not jump the page when the stuck desktop search is focused or typed into', async () => {
+    await page.viewport(1280, 900)
+    const screen = await renderMarketplaceHome()
+
+    const scrollContainer = document.getElementById(MARKETPLACE_CONTAINER_ID)!
+    const header = screen.getByRole('banner').element()
+    const searchInput = screen
+      .getByRole('textbox', { name: 'Search plugins or templates' })
+      .element()
+
+    scrollContainer.scrollTop = 400
+    scrollContainer.dispatchEvent(new Event('scroll'))
+    await nextFrame()
+
+    const scrollTopBefore = scrollContainer.scrollTop
+    const inputTopBefore = searchInput.getBoundingClientRect().top
+    expect(inputTopBefore - header.getBoundingClientRect().top).toBeCloseTo(6, 0)
+
+    const searchLocator = screen.getByRole('textbox', { name: 'Search plugins or templates' })
+    await searchLocator.click()
+    await nextFrame()
+
+    expect(scrollContainer.scrollTop).toBe(scrollTopBefore)
+    expect(searchInput.getBoundingClientRect().top).toBeCloseTo(inputTopBefore)
+
+    await searchLocator.fill('g')
+    await nextFrame()
+
+    expect(scrollContainer.scrollTop).toBe(scrollTopBefore)
+    expect(searchInput.getBoundingClientRect().top).toBeCloseTo(inputTopBefore)
   })
 })

@@ -1,7 +1,8 @@
 import type { PluginBanner } from '@dify/contracts/marketplace'
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import type { MarketplaceBannerPage } from './banners'
 import { cn } from '@langgenius/dify-ui/cn'
+import { HOME_HEADER_HEIGHT_PX, HOME_SEARCH_HEIGHT_PX } from './home-constants'
 import { HomeStickyStateProvider } from './home-sticky-state-provider'
 import styles from './home-sticky.module.css'
 import HomeTrending from './home-trending'
@@ -38,6 +39,12 @@ export function HomeShell({
       <div
         className="flex min-h-full w-full shrink-0 flex-col bg-background-default"
         data-marketplace-standalone={isMarketplacePlatform ? '' : undefined}
+        style={
+          {
+            '--home-header-height': `${HOME_HEADER_HEIGHT_PX}px`,
+            '--home-search-height': `${HOME_SEARCH_HEIGHT_PX}px`,
+          } as CSSProperties
+        }
       >
         {header}
         <div className="relative flex w-full flex-col">
