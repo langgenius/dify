@@ -119,7 +119,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         assert app_config.agent
 
         iteration_step = 1
-        max_iteration_steps = min(app_config.agent.max_iteration, 99) + 1
+        max_iteration_steps = min(app_config.agent.max_iteration, 99)
 
         # continue to run until there is not any tool call
         function_call_state = True
@@ -308,7 +308,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
             # Check if max iteration is reached and model still wants to call tools
             if iteration_step == max_iteration_steps and tool_calls:
-                raise AgentMaxIterationError(app_config.agent.max_iteration)
+                raise AgentMaxIterationError(max_iteration_steps)
 
             # call tools
             tool_responses = []

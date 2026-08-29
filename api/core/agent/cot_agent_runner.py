@@ -79,7 +79,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         self._instruction = self._fill_in_inputs_from_external_data_tools(instruction, inputs)
 
         iteration_step = 1
-        max_iteration_steps = min(app_config.agent.max_iteration, 99) + 1
+        max_iteration_steps = min(app_config.agent.max_iteration, 99)
 
         # convert tools into ModelRuntime Tool format
         tool_instances, prompt_messages_tools = self._init_prompt_tools()
@@ -196,7 +196,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             # Check if max iteration is reached and model still wants to call tools
             if iteration_step == max_iteration_steps and scratchpad.action:
                 if scratchpad.action.action_name.lower() != "final answer":
-                    raise AgentMaxIterationError(app_config.agent.max_iteration)
+                    raise AgentMaxIterationError(max_iteration_steps)
 
             # get llm usage
             if "usage" in usage_dict:

@@ -333,8 +333,8 @@ class BaseSession[
                                     )
                                 )
                         else:
-                            self._handle_incoming(
-                                RuntimeError(f"Received response with an unknown request ID: {message}")
+                            logger.warning(
+                                "Received response with an unknown request ID: %s", message
                             )
                     case Exception():
                         self._handle_incoming(message)
@@ -360,6 +360,8 @@ class BaseSession[
 
                         if not responder.completed:
                             self._handle_incoming(responder)
+                            if not responder.completed:
+                                self._in_flight.pop(responder.request_id, None)
 
                     case SessionMessage(message=JSONRPCMessage(root=JSONRPCNotification())):
                         try:
@@ -382,14 +384,18 @@ class BaseSession[
                     case _:  # Response or error
                         response_root = message.message.root
                         if not isinstance(response_root, (JSONRPCResponse, JSONRPCError)):
-                            self._handle_incoming(RuntimeError(f"Server Error: {message}"))
+                            logger.warning("Unexpected message type in response: %s", message)
                             continue
 
                         response_queue = self._response_streams.get(response_root.id)
                         if response_queue is not None:
                             response_queue.put(response_root)
                         else:
-                            self._handle_incoming(RuntimeError(f"Server Error: {message}"))
+                            logger.warning(
+                                "Received response for unknown request ID %s: %s",
+                                response_root.id,
+                                message,
+                            )
             except queue.Empty:
                 continue
             except Exception:
