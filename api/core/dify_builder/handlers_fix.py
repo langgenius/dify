@@ -246,13 +246,18 @@ def handle_propose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
     if risk.level == "high" or risk.has_external_side_effect:
         next_state = PcState.FIX_AWAIT_APPROVAL
 
+    reply_text = (
+        f"Proposed repair (risk: {risk.level}, {len(intents)} change(s))"
+        if intents
+        else "No automatic fix found — review the diagnosis and edit the canvas manually, or reject."
+    )
     items = append_card(
         fc,
         AssistantTurnItem(
             turn_id=str(uuid.uuid4()),
             stage_id="fix.propose",
             trace=Trace(status="completed", steps=[]),
-            reply_text=f"Proposed repair (risk: {risk.level}, {len(intents)} change(s))",
+            reply_text=reply_text,
             cards=[],
         ),
     )

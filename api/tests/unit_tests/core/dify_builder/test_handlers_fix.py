@@ -26,6 +26,7 @@ from core.dify_builder.models import (
     ConversationItem,
     DifyBuilderContext,
     EntryMode,
+    Risk,
     Run,
     Session,
     Turn,
@@ -122,6 +123,25 @@ def test_diagnose_then_propose_high_risk_stops_at_await_approval():
 
     assert out.current_state == PcState.FIX_AWAIT_APPROVAL
     assert not canvas_read_only(out.current_state), "await states leave the canvas editable"
+
+
+def test_handle_propose_empty_intents_shows_notice():
+    # propose_repair may legitimately return no intents alongside a high-risk
+    # surface-to-human Risk (Task 3) -- the reply must explain that instead of
+    # claiming "0 change(s))".
+    env, _ = _new_env()
+    s = _session()
+    fc = DifyBuilderContext()
+    env.agent.propose_repair = lambda _diagnosis, _graph: (
+        [],
+        Risk(level="high", reason="none", has_external_side_effect=False),
+    )
+
+    result = handle_propose(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.FIX_AWAIT_APPROVAL
+    turns = [i for i in result.items if i.kind == "assistant_turn"]
+    assert turns[-1].payload["reply_text"].startswith("No automatic fix found")
 
 
 def test_diagnose_then_propose_low_risk_creates_checkpoint_and_stages_repair():
