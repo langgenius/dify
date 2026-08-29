@@ -107,6 +107,28 @@ def test_propose_config_fix_auto_applies_low_risk():
     assert risk.level == "low"
 
 
+_HTTP_GRAPH = {
+    "nodes": [
+        {"id": "http1", "data": {"type": "http-request", "title": "HTTP"}},
+        {"id": "end1", "data": {"type": "end", "title": "End"}},
+    ],
+    "edges": [{"id": "http1-end1", "source": "http1", "target": "end1"}],
+}
+
+
+def test_propose_external_config_forced_high():
+    payload = (
+        '{"intents":[{"op":"set_node_config","args":{"node_id":"http1","path":"url",'
+        '"value":"https://example.com"}}],'
+        '"risk":{"level":"low","reason":"config fix","has_external_side_effect":false}}'
+    )
+    diag = Diagnosis(culprit_node_id="http1", root_cause="bad url", severity="high")
+    intents, risk = fix.propose_repair(_FakeInstance([payload]), diag, _HTTP_GRAPH)
+    assert len(intents) == 1
+    assert intents[0].op == "set_node_config"
+    assert risk.level == "high"  # http-request node touched -> external side effect, even config-only
+
+
 def test_propose_structural_forced_high():
     payload = (
         '{"intents":[{"op":"create_node","args":{"node_type":"llm","config":{},"node_id":"llm2"}},'

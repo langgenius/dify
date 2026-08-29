@@ -198,7 +198,9 @@ def _touched_node_types(intents: list[MutationIntent], graph: Graph) -> set[str]
     for intent in intents:
         if intent.op in ("create_node", "insert_between"):
             types.add(str(intent.args.get("node_type", "")))
-        else:
+        elif intent.op == "connect":
+            types.update(by_id.get(intent.args.get(key), "") for key in ("from_node", "to_node"))
+        else:  # set_node_config / delete_node -> node_id
             types.add(by_id.get(intent.args.get("node_id"), ""))
     return types
 
