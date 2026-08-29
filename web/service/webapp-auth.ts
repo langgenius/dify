@@ -1,4 +1,5 @@
 import type { WebAppAddress } from './webapp-address'
+import { v4 as uuidV4 } from 'uuid'
 import { ACCESS_TOKEN_LOCAL_STORAGE_NAME, PASSPORT_LOCAL_STORAGE_NAME } from '@/config'
 import { getPublic, postPublic } from './base'
 import { getWebAppPassportKey, getWebAppScopeKey, resolveWebAppAddress } from './webapp-address'
@@ -27,7 +28,7 @@ export function getOrCreateWebAppVisitorId(address: WebAppAddress) {
   const visitorId = localStorage.getItem(key)
   if (visitorId) return visitorId
 
-  const created = crypto.randomUUID()
+  const created = uuidV4()
   localStorage.setItem(key, created)
   return created
 }
