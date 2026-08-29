@@ -10,6 +10,7 @@ from controllers.openapi import openapi_ns
 from controllers.openapi._contract import endpoint
 from controllers.openapi._models import AppDslExportQuery, AppDslExportResponse, AppDslImportPayload
 from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.loaders import load_app, load_caller
 from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
     RBACScene,
@@ -82,7 +83,7 @@ class AppDslImportApi(Resource):
         write=False,
     )
     def post(self, ctx: Context, workspace_id: str, *, body: AppDslImportPayload):
-        account = cast(Account, ctx.caller)
+        account = cast(Account, load_caller(ctx))
 
         with Session(db.engine, expire_on_commit=False) as session:
             service = AppDslService(session)
@@ -133,7 +134,7 @@ class AppDslImportConfirmApi(Resource):
         write=False,
     )
     def post(self, ctx: Context, workspace_id: str, import_id: str):
-        account = cast(Account, ctx.caller)
+        account = cast(Account, load_caller(ctx))
 
         with Session(db.engine, expire_on_commit=False) as session:
             service = AppDslService(session)
@@ -173,7 +174,7 @@ class AppDslExportApi(Resource):
     def get(self, ctx: Context, app_id: str, *, query: AppDslExportQuery):
         try:
             data = AppDslService.export_dsl(
-                app_model=ctx.app,
+                app_model=load_app(ctx),
                 session=db.session(),
                 include_secret=query.include_secret,
                 workflow_id=query.workflow_id,
@@ -201,6 +202,6 @@ class AppDslCheckDependenciesApi(Resource):
     def get(self, ctx: Context, app_id: str):
         with Session(db.engine, expire_on_commit=False) as session:
             service = AppDslService(session)
-            result = service.check_dependencies(app_model=ctx.app)
+            result = service.check_dependencies(app_model=load_app(ctx))
 
         return result, 200

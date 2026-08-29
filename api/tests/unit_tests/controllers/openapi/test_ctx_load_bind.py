@@ -1,8 +1,11 @@
-"""Binds handler `ctx.<name>` reads to the loads their own route wiring actually derives.
+"""Binds what a handler reads out of `ctx` to the loads its own route wiring actually derives.
 
-T2 made auth `Context` a store: `app`/`workspace`/`workspace_role`/`caller` are filled by
-whichever requirement asks for them first, and a reader whose datum was never loaded raises
-`LookupError`. Which requirement fills a datum is a property of each route's decorator —
+Auth `Context` is a store and nothing more: `app`/`workspace`/`workspace_role`/`caller` start
+unset and are filled by whichever requirement asks for them first. A handler reaches one
+through `load_<name>(ctx)`, which is idempotent — so if a requirement already loaded it the
+handler gets that vetted value, and if none did the handler would be fetching a datum no
+requirement on its route ever checked. That is the gap this module reports. Which requirement
+fills a datum is a property of each route's decorator —
 `spec.requirements` merged with its subject's pipeline `fixed` — so nothing short of
 re-deriving that merge from the live objects can tell a safe read from a coincidence.
 
@@ -48,7 +51,7 @@ one it cannot pin (a config flag, an untracked instance attribute like `self.rol
 this wrong in the permissive direction is exactly how a requirement conditionally guarding a
 load (`RBACScene`, which only loads `workspace` when `RBAC_ENABLED`) can look like it always
 loads it. A separate exception:
-`if not ctx.<name>_loaded:` is a loader's own idempotent check-then-fetch, not a business
+`if ctx.<name> is None:` is a loader's own idempotent check-then-fetch, not a business
 condition — its postcondition holds on either branch — so it does not degrade credit the way
 an ordinary undecidable condition does (`_is_cache_check`). Reads stay pessimistic throughout
 (`_CtxUsage` collects every `ctx.<name>` access regardless of branch) — only the loads side
@@ -89,6 +92,7 @@ from controllers.openapi import bp as openapi_bp
 from controllers.openapi.auth import loaders as loaders_module
 from controllers.openapi.auth import subjects as subjects_module
 from controllers.openapi.auth.data import CallerKind
+from controllers.openapi.auth.loaders import load_app, load_caller
 from controllers.openapi.auth.pipelines import Pipeline
 from controllers.openapi.auth.requirements import Requirement, SubjectCheck
 from controllers.openapi.auth.router import subject_router
@@ -178,18 +182,25 @@ def _loader_home() -> _Home:
 
 
 def _is_cache_check(test: ast.expr) -> bool:
-    """`if not ctx.<name>_loaded:` — a loader's own idempotent check-then-fetch guard.
+    """`if ctx.<name> is None:` — a loader's own idempotent check-then-fetch guard.
     Whichever branch runs, the postcondition (the datum ends up loaded) holds either way, so
     this is not a business condition to gate crediting on the way `self.roles is None` or
     `dify_config.RBAC_ENABLED` are — it is walked plainly, credited state unchanged.
+
+    `is not None` is deliberately not this shape: `AccountSubject.resolve_caller` asking
+    whether the route resolved a workspace is a business condition, and crediting what sits
+    under it would be exactly the coincidence this scan refuses.
     """
     return (
-        isinstance(test, ast.UnaryOp)
-        and isinstance(test.op, ast.Not)
-        and isinstance(test.operand, ast.Attribute)
-        and isinstance(test.operand.value, ast.Name)
-        and test.operand.value.id == "ctx"
-        and test.operand.attr.endswith("_loaded")
+        isinstance(test, ast.Compare)
+        and len(test.ops) == 1
+        and isinstance(test.ops[0], ast.Is)
+        and len(test.comparators) == 1
+        and isinstance(test.comparators[0], ast.Constant)
+        and test.comparators[0].value is None
+        and isinstance(test.left, ast.Attribute)
+        and isinstance(test.left.value, ast.Name)
+        and test.left.value.id == "ctx"
     )
 
 
@@ -349,7 +360,7 @@ def _resolve_body(
     passes when it shouldn't.
 
     Three shapes, not two:
-    - `if not ctx.<name>_loaded:` (a loader's own check-then-fetch) is not a business
+    - `if ctx.<name> is None:` (a loader's own check-then-fetch) is not a business
       condition — its postcondition holds on either branch — so it is walked with `credited`
       unchanged, not degraded.
     - A condition decided precisely (`route_has_app(ctx)`, `subject.caller_kind`,
@@ -423,14 +434,31 @@ def _combined_loads(requirements: tuple[Requirement, ...], facts: _Facts) -> fro
 
 
 class _CtxUsage(ast.NodeVisitor):
-    """`ctx.<attr>` reads in a handler body. A bare `ctx` — handed to something else rather
-    than read as a named attribute — is exactly the hole the module docstring calls out, so
-    it is recorded rather than silently walked past.
+    """What a handler body takes out of `ctx` — `load_<name>(ctx)` calls and `ctx.<attr>`
+    reads alike. A bare `ctx` — handed to something else rather than named at the seam — is
+    exactly the hole the module docstring calls out, so it is recorded rather than silently
+    walked past.
     """
 
     def __init__(self) -> None:
         self.reads: set[str] = set()
         self.bare_ctx = False
+
+    def visit_Call(self, node: ast.Call) -> None:
+        """`load_<name>(ctx)` is the seam where the store's optional field becomes a value.
+        The `ctx` it takes is named there, not handed off blind, so it does not trip the
+        bare-`ctx` hole below.
+        """
+        if (
+            isinstance(node.func, ast.Name)
+            and node.func.id in _LOADER_NAMES
+            and len(node.args) == 1
+            and isinstance(node.args[0], ast.Name)
+            and node.args[0].id == "ctx"
+        ):
+            self.reads.add(_LOADER_NAMES[node.func.id])
+            return
+        self.generic_visit(node)
 
     def visit_Attribute(self, node: ast.Attribute) -> None:
         if isinstance(node.value, ast.Name) and node.value.id == "ctx":
@@ -451,7 +479,7 @@ def _handler_ctx_reads(handler: object) -> frozenset[str]:
     for statement in function.body:
         usage.visit(statement)
     if usage.bare_ctx:
-        raise _UnresolvableError("hands `ctx` to something other than a named attribute read")
+        raise _UnresolvableError("hands `ctx` to something other than a named read or loader call")
     return frozenset(name for name in usage.reads if name in LOADABLE)
 
 
@@ -759,7 +787,7 @@ def test_resolver_stops_crediting_after_an_undecidable_branch_that_could_stop() 
 
 
 def test_resolver_preserves_credited_through_a_loaders_own_cache_check() -> None:
-    """`if not ctx.<name>_loaded:` is a loader's own idempotent check-then-fetch guard, not
+    """`if ctx.<name> is None:` is a loader's own idempotent check-then-fetch guard, not
     a business condition — its postcondition holds on either branch, so a load reached only
     through it must still be credited, or the brief's own worked example (`load_workspace_
     role` transitively loading `workspace`/`caller` via `loaders.py`'s internals) would stop
@@ -804,5 +832,18 @@ def test_handler_scan_collects_loadable_reads() -> None:
     def handler(_self, ctx):
         _ = ctx.app
         _ = ctx.caller.id
+
+    assert _handler_ctx_reads(handler) == frozenset({"app", "caller"})
+
+
+def test_handler_scan_counts_a_loader_call_as_a_read() -> None:
+    """How every shipped handler reaches its data now. The call names the datum as
+    plainly as the attribute did, and handing `ctx` to a loader is not the blind
+    hand-off the bare-`ctx` check exists for.
+    """
+
+    def handler(_self, ctx):
+        _ = load_app(ctx)
+        _ = load_caller(ctx).id
 
     assert _handler_ctx_reads(handler) == frozenset({"app", "caller"})

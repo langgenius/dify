@@ -89,7 +89,7 @@ class AccountSubject(Subject):
         account = AccountService.get_account_by_id(str(self.account_id), session=session)
         if account is None:
             raise Unauthorized("account not found")
-        if ctx.workspace_loaded:
+        if ctx.workspace is not None:
             account.set_current_tenant_with_session(ctx.workspace, session=session)
         return account
 
