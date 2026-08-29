@@ -21,10 +21,6 @@ type Caller = Account | EndUser
 
 
 def _missing(name: str) -> LookupError:
-    """Reading a datum nothing loaded is a programming error — a route whose
-    requirements load nothing a handler reads — not an answer any caller
-    should see, so it raises rather than returning an HTTP status.
-    """
     return LookupError(f"{name} was never loaded: no requirement on this route loads it")
 
 
