@@ -140,16 +140,6 @@ def _generator_model_config(tenant_id: str, model_config: dict[str, Any]) -> Mod
     })
 
 
-def _model_dict(mc: ModelConfig) -> dict[str, Any]:
-    mode = mc.mode.value if hasattr(mc.mode, "value") else str(mc.mode)
-    return {
-        "provider": mc.provider,
-        "name": mc.name,
-        "mode": mode,
-        "completion_params": dict(mc.completion_params) or {"temperature": 0.7},
-    }
-
-
 def build_nodes(tenant_id: str, model_config: dict[str, Any], plan_items: list[str]) -> list[MutationIntent]:
     try:
         mc = _generator_model_config(tenant_id, model_config)
@@ -172,7 +162,7 @@ def build_nodes(tenant_id: str, model_config: dict[str, Any], plan_items: list[s
 
 
 def _ground(intents: list[MutationIntent], mc: ModelConfig, tenant_id: str, plan_items: list[str]) -> None:
-    model_dict = _model_dict(mc)
+    mode = mc.mode.value if hasattr(mc.mode, "value") else str(mc.mode)
     datasets = resources.list_tenant_resources(tenant_id).datasets
     matched = [d.id for d in datasets if any(d.label in item for item in plan_items)]
     for intent in intents:
@@ -180,7 +170,13 @@ def _ground(intents: list[MutationIntent], mc: ModelConfig, tenant_id: str, plan
             continue
         config = intent.args.get("config") or {}
         if intent.args.get("node_type") == "llm":
-            config["model"] = model_dict  # ground the model (real, configured provider)
+            # Ground ONLY provider+name (the real, configured model); preserve whatever
+            # mode/completion_params the generator produced -- never fabricate params.
+            model = dict(config.get("model") or {})
+            model["provider"] = mc.provider
+            model["name"] = mc.name
+            model.setdefault("mode", mode)
+            config["model"] = model
         elif intent.args.get("node_type") == "knowledge-retrieval":
-            config["dataset_ids"] = matched  # ground datasets (real ids matched by label)
+            config["dataset_ids"] = list(matched)  # independent copy per node -- never share one list
         intent.args["config"] = config
