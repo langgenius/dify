@@ -29,8 +29,8 @@ have caught the `self.roles` gap below for free, by executing real control flow 
 modelling it) but nowhere near simpler: ~21 routes × 2 subjects × `has_app`, times the config
 worlds each `RBACCheck`/`RequireWebappAccess` needs to actually exercise both its branches. A
 static AST walk over the same dozen `Requirement`/loader functions is smaller and, importantly,
-cheap enough to run on every test invocation rather than only in CI. The trade was made
-deliberately, not by omission — see task-T3-report.md's "Static vs. dynamic" section.
+cheap enough to run on every test invocation rather than only in CI. The trade is deliberate:
+a dynamic probe would be more truthful and is worth revisiting if the config worlds ever shrink.
 
 The one exception is `subject.mounts_caller(ctx)`: unlike `self.roles` or
 `dify_config.RBAC_ENABLED`, its answer is not a business condition varying by deployment or

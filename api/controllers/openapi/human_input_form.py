@@ -4,7 +4,7 @@ import json
 import logging
 from typing import override
 
-from flask import Response, request
+from flask import Response
 from flask_restx import Resource
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
@@ -53,7 +53,7 @@ class CheckFormSurface(Requirement):
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        form_token = (request.view_args or {})["form_token"]
+        form_token = ctx.view_args["form_token"]
         app = load_app(ctx)
         # `HumanInputService` takes an engine or a maker, never a `Session`, so this
         # read is a separate transaction from the handler's — as it was before the move.

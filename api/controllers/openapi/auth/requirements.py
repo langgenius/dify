@@ -3,7 +3,7 @@
 Requirements are process-lifetime singletons: built once at import, shared by
 every request and every thread. Config belongs in `__init__`, and `run` must
 neither cache nor mutate — a cache here would outlive the fact it recorded.
-Per-request caching belongs on `Context`.
+Per-request caching belongs in `loaders.py`, which stores into `Context`.
 """
 
 from __future__ import annotations
@@ -190,7 +190,7 @@ class RBACCheck(Requirement):
                 resource_type=self.resource_type,
                 scene=self.scene,
                 resource_required=self.resource_required,
-                path_args=dict(request.view_args or {}),
+                path_args=dict(ctx.view_args),
             )
             return
         self._enforce_role_floor(ctx)
@@ -212,7 +212,7 @@ class CheckSessionOwnership(Requirement):
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        session_id = (request.view_args or {})["session_id"]
+        session_id = ctx.view_args["session_id"]
         if not token_belongs_to_subject(session_id, subject.auth, session=session):
             raise NotFound("session not found")
 
@@ -275,6 +275,5 @@ class ResolveCaller(Requirement):
         if not subject.mounts_caller(ctx):
             return
         if ctx.has_app:
-            load_app(ctx)
             load_workspace(ctx)
         load_caller(ctx)
