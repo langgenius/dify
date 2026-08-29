@@ -7,6 +7,7 @@ from pydantic_settings import BaseSettings
 
 from .cache.redis_config import RedisConfig
 from .cache.redis_pubsub_config import RedisPubSubConfig
+from .key_provider.aws_kms_config import AwsKmsConfig
 from .key_provider.azure_keyvault_config import AzureKeyVaultConfig
 from .storage.aliyun_oss_storage_config import AliyunOSSStorageConfig
 from .storage.amazon_s3_storage_config import S3StorageConfig
@@ -87,6 +88,7 @@ class StorageConfig(BaseSettings):
 _VALID_KEY_PROVIDER_TYPE = Literal[
     "local",
     "azure-keyvault",
+    "aws-kms",
 ]
 
 
@@ -94,7 +96,9 @@ class KeyProviderConfig(BaseSettings):
     KEY_PROVIDER_TYPE: _VALID_KEY_PROVIDER_TYPE = Field(
         description="Key provider used to encrypt/decrypt tenant credentials (LLM/tool provider secrets)."
         " Options: 'local' (per-tenant RSA key pair, private key kept in the STORAGE_TYPE backend),"
-        " 'azure-keyvault' (per-tenant RSA key kept in Azure Key Vault, private key never leaves the vault)."
+        " 'azure-keyvault' (per-tenant RSA key kept in Azure Key Vault, private key never leaves the vault),"
+        " 'aws-kms' (data keys wrapped by a shared symmetric AWS KMS key, tenants separated by the KMS"
+        " encryption context; the key material never leaves KMS)."
         " Default is 'local'.",
         default=cast(_VALID_KEY_PROVIDER_TYPE, "local"),
     )
@@ -362,6 +366,7 @@ class MiddlewareConfig(
     RedisPubSubConfig,
     # configs of the tenant credential encryption key provider
     KeyProviderConfig,
+    AwsKmsConfig,
     AzureKeyVaultConfig,
     # configs of storage and storage providers
     StorageConfig,
