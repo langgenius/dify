@@ -237,6 +237,7 @@ class DifyBuilderContext:
     plan_version_tag: str = ""
     resource_selection: dict[str, Any] = field(default_factory=dict)
     built_node_ids: list[str] = field(default_factory=list)
+    form_fields: list[dict] = field(default_factory=list)
 
     # -- Edit fields (Slice 3, additive) --
     edit_rules: dict[str, Any] = field(default_factory=dict)
