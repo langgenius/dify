@@ -84,109 +84,6 @@ TBD - created by archiving change human-input-v2-api-contracts. Update Purpose a
 - **WHEN** a workspace admin tries to include one `workspace contact` in `POST /console/api/workspaces/current/human-input/contacts/remove`
 - **THEN** 系统 MUST 拒绝该条目或整个请求，并 MUST 要求改走 membership management 流程，而 MUST NOT 在 Human Input Contact API 中额外引入 workspace member removal
 
-### Requirement: Workspace console MUST expose IM integration, latest-run sync summary, paginated sync results, identity search, and override APIs
-系统 MUST 在 `/console/api/workspaces/current/human-input` 下提供 Organization 级 IM integration、read-only effective deployment event transport context、manual sync、最近一次 sync run 的 summary、按 result 分页的最近一次 sync 结果查询，以及 IM identity candidate 查询和 workspace IM override API。该 surface MUST 是 latest-only，MUST NOT 新增 run-by-ID、run list 或历史 run detail endpoint。manual sync 结果 MUST 能表达 `added / not_matched / failed / removed / skipped` 五类 bucket。该surface MUST NOT提供Integration级`DISABLED / WEBHOOK / STREAM`写入。same IM identity reuse across Organization binding and workspace overrides MUST be modeled as a workspace-scoped resolution concern, not a global uniqueness conflict.
-
-#### Scenario: 读取当前 IM integration 摘要
-- **WHEN** a workspace owner or admin calls `GET /console/api/workspaces/current/human-input/im-integration`
-- **THEN** 系统 MUST 返回当前唯一 IM channel 的配置摘要、read-only effective deployment event transport mode、适用时的 derived webhook URL、safe operational status、`integration_id` 和 `config_version`；MUST NOT返回tenant-selectable supported modes；若尚未配置，MUST 返回 `Not configured`
-
-#### Scenario: 校验 provider 与 deployment event transport compatibility
-- **WHEN** a workspace owner or admin creates or updates an Integration while deployment event transport mode is `WEBHOOK` or `STREAM`
-- **THEN** 系统 MUST 在任何Integration revision或credential变更前校验provider compatibility与required provider-specific verification material，并 MUST NOT将deployment mode持久化到Integration
-
-#### Scenario: Administrator submits an Integration-level transport mode
-- **WHEN** a workspace owner or admin includes `event_transport_mode` in an Integration create、update or test request
-- **THEN** the API MUST reject the field and MUST NOT shadow or mutate deployment runtime configuration
-
-#### Scenario: 使用当前 revision 更新 IM integration
-- **WHEN** a workspace owner or admin calls `PUT /console/api/workspaces/current/human-input/im-integration` for an existing integration with its current `integration_id` and `config_version`
-- **THEN** 系统 MUST compare-and-swap 当前 integration，成功时 MUST 递增 `config_version`
-
-#### Scenario: 首次创建 IM integration
-- **WHEN** the current Organization has no configured integration and a workspace owner or admin calls `PUT /console/api/workspaces/current/human-input/im-integration` without an expected integration ID or config version
-- **THEN** 系统 MUST 创建新的 integration，并 MUST 从 `config_version = 1` 开始
-
-#### Scenario: Existing integration update 缺少完整 CAS token
-- **WHEN** a workspace owner or admin updates an existing integration without both `integration_id` and `config_version`, or provides only one of them
-- **THEN** 系统 MUST 拒绝请求，并 MUST NOT 修改 integration 或触发 sync
-
-#### Scenario: 使用 stale revision 更新 IM integration
-- **WHEN** a workspace owner or admin updates an existing integration with a stale or mismatched `integration_id` or `config_version`
-- **THEN** 系统 MUST 返回 `409 Conflict`，MUST NOT 修改 integration、清理 IM bindings / workspace overrides 或触发 manual / automatic sync
-
-#### Scenario: 替换当前 IM provider
-- **WHEN** a workspace owner or admin calls `PUT /console/api/workspaces/current/human-input/im-integration` with credentials for a provider different from the current provider
-- **THEN** 系统 MUST 将该操作视为 provider replacement，MUST 使旧 provider 的 IM bindings 和 workspace overrides 失效，并 MUST 要求管理员重新执行 manual sync 后才能使用新 provider identity
-
-#### Scenario: 同一 platform tenant 内轮换 provider credentials
-- **WHEN** a workspace owner or admin updates credentials for the current provider, and the system can confirm that `platform_tenant_id` is unchanged
-- **THEN** 系统 MUST 将该操作视为 credential rotation，并 MUST 保留当前 IM identities、Organization bindings 和 workspace overrides
-
-#### Scenario: 更新 credentials 时 platform tenant 变化或无法确认
-- **WHEN** a workspace owner or admin updates credentials for the current provider, but `platform_tenant_id` has changed or cannot be confirmed as unchanged
-- **THEN** 系统 MUST 将该操作视为 provider replacement，MUST 使旧 IM bindings 和 workspace overrides 失效，并 MUST 要求管理员重新执行 manual sync
-
-#### Scenario: 解除当前 IM integration
-- **WHEN** a workspace owner or admin calls `DELETE /console/api/workspaces/current/human-input/im-integration` with the current `integration_id` and `config_version`
-- **THEN** 系统 MUST 清空当前 IM integration，并使后续读取结果回到 `Not configured`
-
-#### Scenario: 测试 candidate Integration event transport compatibility
-- **WHEN** a workspace owner or admin tests candidate credentials under the effective deployment event transport mode
-- **THEN** 系统 MUST 通过Foundation management boundary校验credential、provider baseline permission与deployment event transport compatibility，并 MUST 不接受mode override或持久化candidate configuration
-
-#### Scenario: 使用 stale revision 解除 IM integration
-- **WHEN** a workspace owner or admin calls `DELETE /console/api/workspaces/current/human-input/im-integration` with a stale or mismatched `integration_id` or `config_version`
-- **THEN** 系统 MUST 返回 `409 Conflict`，并 MUST 保留当前 integration、IM identities、bindings 和 workspace overrides
-
-#### Scenario: 手动触发一次 IM sync
-- **WHEN** a workspace owner or admin calls `POST /console/api/workspaces/current/human-input/im-sync-runs`
-- **THEN** Dify MUST 原子地获取当前 single active run；不存在 active run 时 MUST 创建并保存当前 `integration_id` 与 `config_version`，已存在时 MUST 复用它，并返回 authoritative run identifier 与初始状态
-
-#### Scenario: Sync run 对应的 integration revision 已过期
-- **WHEN** an IM sync worker is ready to apply reconciliation results, but the current integration ID or config version no longer matches the revision captured by the run
-- **THEN** 系统 MUST 将该 run 作为 stale work 终止，MUST NOT 写入 current IM identities、Organization bindings 或 workspace overrides
-
-#### Scenario: 查看最近一次 sync run summary
-- **WHEN** a workspace owner or admin calls `GET /console/api/workspaces/current/human-input/im-sync-runs/latest`
-- **THEN** 系统 MUST 返回最近一次 sync run 的 summary，包括 run metadata、作为 UI 显式同步时间的 `finished_at` 和五类 bucket 的 aggregate counts，并 MUST NOT 返回 `started_by`
-
-#### Scenario: 按 bucket 分页查看最近一次 sync result
-- **WHEN** a workspace owner or admin calls `GET /console/api/workspaces/current/human-input/im-sync-runs/latest/results?result=not_matched&page=1&limit=20`
-- **THEN** 系统 MUST 只返回最近一次 sync run 中 `not_matched` bucket 的结果条目分页，使用 `page / limit / total` 表达分页状态，MUST NOT 返回 cursor，且 MUST NOT 在分页响应中重复 run summary；需要 summary 的客户端 MUST 同时请求 `GetLatestIMSyncRun`
-
-#### Scenario: Latest sync result 必须指定真实 bucket
-- **WHEN** a workspace owner or admin omits `result` or requests `result=all` from the latest results endpoint
-- **THEN** 系统 MUST 拒绝该请求；`result` MUST 是 `added / not_matched / failed / removed / skipped` 之一，MUST NOT 提供 `All` 或不筛选模式
-
-#### Scenario: Sync result item 不返回 Contact type
-- **WHEN** a workspace owner or admin reads one latest-run result page
-- **THEN** each `IMSyncResultItem` MUST describe its reconciliation result without returning `HumanInputContactType`
-
-#### Scenario: Removed sync result 返回稳定原因
-- **WHEN** a workspace owner or admin reads one `removed` sync result
-- **THEN** 系统 MUST 返回 `not_present_in_directory`、`binding_invalidated` 或 `binding_replaced` 之一作为 machine-readable removal reason
-
-#### Scenario: 按 provider user ID 搜索 IM identity
-- **WHEN** a workspace owner or admin searches `GET /console/api/workspaces/current/human-input/im-identities` with a provider user ID keyword
-- **THEN** 系统 MUST match the provider-side user identifier in addition to display name and email
-
-#### Scenario: 为 contact 设置 workspace IM override
-- **WHEN** a workspace admin calls `PUT /console/api/workspaces/current/human-input/contacts/<contact_id>/im-override` with one synced identity
-- **THEN** 系统 MUST 将该 identity 绑定为当前 workspace override，而 MUST NOT 改写 Organization 级 global IM identity
-
-#### Scenario: Override reuses organization-bound identity in the same workspace
-- **WHEN** a workspace admin sets one workspace override to an IM identity already used by another organization binding
-- **THEN** the API MUST allow the override if current workspace rules permit it and MUST preserve organization binding state
-
-#### Scenario: Override reuses one IM identity in another workspace
-- **WHEN** another workspace already uses the same IM identity in its own override
-- **THEN** the current workspace override request MUST still be allowed if all current-scope predicates pass
-
-#### Scenario: Authorization or runtime lookup needs the Contact target
-- **WHEN** a later task or runtime lookup evaluates an IM identity returned by override APIs
-- **THEN** the contract MUST require workspace-scoped target context and MUST NOT imply a global `im_user_id -> Contact` reverse lookup
-
 ### Requirement: Draft human-input editor MUST expose preview, run, and message template test APIs
 系统 MUST 继续提供 draft `form/preview` 与 `form/run` API，并为 v2 新增独立 `message-template/test`。v1 `delivery-test`、完整 v1 node model 与 request contract MUST 保持不变；preview / run MUST 按 node version 使用独立逻辑，MUST NOT 让 v1 / v2 payload 交叉提交。v2 测试接口 MUST 使用 `DebugChannel` 作为 `channel` 参数，而 MUST NOT 依赖旧 `delivery_method_id`。
 
@@ -289,3 +186,75 @@ TBD - created by archiving change human-input-v2-api-contracts. Update Purpose a
 #### Scenario: message template test 复用 DebugChannel
 - **WHEN** the request model for `message-template/test` is defined
 - **THEN** 系统 MUST 复用 `DebugChannel` 作为 `channel` 字段类型，而 MUST NOT 新增一个语义重复的 debug-channel enum
+
+### Requirement: Workspace console MUST expose latest-run IM sync, identity search, and override APIs
+
+系统 MUST 在 `/console/api/workspaces/current/human-input` 下继续提供 manual sync、最近一次 sync run summary、按 result 分页的最近一次 sync results、IM identity candidate 查询和 workspace IM override APIs。该 surface MUST 是 latest-only，MUST NOT 新增 run-by-ID、run list 或 historical run detail endpoint。Manual sync results MUST 能表达 `added / not_matched / failed / removed / skipped` 五类 bucket。Same IM identity reuse across Organization binding and workspace overrides MUST be modeled as a workspace-scoped resolution concern, not a global uniqueness conflict。
+
+#### Scenario: Manual IM sync is requested
+
+- **WHEN** workspace owner or admin calls `POST /console/api/workspaces/current/human-input/im-sync-runs`
+- **THEN** system MUST atomically obtain the current single active run
+- **AND** it MUST create a run with current `integration_id` and `config_version` when no active run exists, or reuse the active run when one exists
+
+#### Scenario: Sync run references a stale Integration revision
+
+- **WHEN** IM sync worker is ready to apply results but current Integration ID or config version no longer matches the revision captured by the run
+- **THEN** system MUST terminate the run as stale work
+- **AND** it MUST NOT write current IM identities, Organization bindings or workspace overrides
+
+#### Scenario: Latest sync run summary is requested
+
+- **WHEN** workspace owner or admin calls `GET /console/api/workspaces/current/human-input/im-sync-runs/latest`
+- **THEN** system MUST return run metadata, `finished_at` and aggregate counts for all five result buckets
+- **AND** it MUST NOT return `started_by`
+
+#### Scenario: Latest sync results are requested by bucket
+
+- **WHEN** workspace owner or admin calls `GET /console/api/workspaces/current/human-input/im-sync-runs/latest/results?result=not_matched&page=1&limit=20`
+- **THEN** system MUST return only the latest run's `not_matched` results using `page / limit / total`
+- **AND** it MUST NOT repeat run summary in the paginated response
+
+#### Scenario: Latest sync result omits a real bucket
+
+- **WHEN** caller omits `result` or requests `result=all`
+- **THEN** API MUST reject the request
+- **AND** `result` MUST be one of `added / not_matched / failed / removed / skipped`
+
+#### Scenario: Sync result item is returned
+
+- **WHEN** caller reads one latest-run result page
+- **THEN** each `IMSyncResultItem` MUST describe its reconciliation result without returning `HumanInputContactType`
+
+#### Scenario: Removed sync result is returned
+
+- **WHEN** caller reads one `removed` result
+- **THEN** system MUST return `not_present_in_directory`, `binding_invalidated` or `binding_replaced` as the machine-readable reason
+
+#### Scenario: IM identity is searched by provider user ID
+
+- **WHEN** workspace owner or admin searches `GET /console/api/workspaces/current/human-input/im-identities`
+- **THEN** system MUST match provider-side user identifier in addition to display name and email
+
+#### Scenario: Workspace IM override is set
+
+- **WHEN** workspace admin calls `PUT /console/api/workspaces/current/human-input/contacts/<contact_id>/im-override` with one synced identity
+- **THEN** system MUST bind that identity as the current workspace override
+- **AND** it MUST NOT rewrite the Organization-level global IM identity
+
+#### Scenario: Override reuses an Organization-bound identity
+
+- **WHEN** workspace admin selects an identity already used by another Organization binding
+- **THEN** API MUST allow the override if current workspace predicates pass
+- **AND** it MUST preserve Organization binding state
+
+#### Scenario: Override reuses an identity from another workspace
+
+- **WHEN** another workspace already uses the same identity in its override
+- **THEN** current workspace request MUST remain allowed if all current-scope predicates pass
+
+#### Scenario: Contact target is needed for authorization or runtime lookup
+
+- **WHEN** later task or runtime lookup evaluates an identity returned by override APIs
+- **THEN** contract MUST require workspace-scoped target context
+- **AND** it MUST NOT imply a global `im_user_id -> Contact` reverse lookup

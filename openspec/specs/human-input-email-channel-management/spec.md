@@ -2,10 +2,9 @@
 
 ## Purpose
 
-Defines the Resend-specific handler and persistence behavior behind the common Human Input Channel Management facade.
+Defines the Resend Email Management owner and its persistence behavior behind the Console v2 transport projection.
 
 ## Requirements
-
 ### Requirement: Each Workspace MUST have at most one Human Input Email configuration
 
 Email channel management MUST scope every read and write to one Workspace and MUST prevent more than one current provider configuration for that Workspace.
@@ -91,31 +90,6 @@ Testing a candidate MUST validate the complete candidate and send exactly one te
 - **WHEN** a candidate connection is tested
 - **THEN** the test MUST use the candidate Workspace provider settings
 - **AND** it MUST NOT use Dify system mail as a fallback
-
-### Requirement: API key retention and replacement MUST be explicit
-
-An update MUST distinguish retaining the current protected API key from supplying a replacement plaintext key.
-
-#### Scenario: Existing API key is retained
-
-- **WHEN** an update explicitly requests retention and a current configuration exists
-- **THEN** validation MUST use the existing API key with the candidate sender settings
-- **AND** a successful update MUST preserve the protected credential while updating the sender configuration atomically
-
-#### Scenario: API key retention is requested without a configuration
-
-- **WHEN** a create command requests retention but no current configuration exists
-- **THEN** management MUST reject the command before provider validation or persistence
-
-#### Scenario: Replacement API key validates successfully
-
-- **WHEN** an update supplies a new API key and the complete candidate validates
-- **THEN** management MUST protect the new key and atomically replace the previous protected credential
-
-#### Scenario: Replacement API key fails validation
-
-- **WHEN** an update supplies a new API key that fails validation
-- **THEN** the previous configuration and protected credential MUST remain unchanged
 
 ### Requirement: Credentials MUST remain protected throughout management
 
@@ -209,3 +183,25 @@ Persistence operations MUST distinguish not-configured, created, updated, delete
 - **WHEN** management loads the current configuration for a mutation
 - **THEN** persistence MUST return a domain aggregate or immutable snapshot
 - **AND** it MUST NOT expose a live ORM record outside the repository boundary
+
+### Requirement: Resend create, update and test MUST require the same complete candidate
+
+Resend create、update and connection test MUST require the same complete candidate containing `sender_email`、`sender_name` and a newly submitted non-blank `api_key`。Management MUST NOT reveal or reuse the persisted API key to complete an update or connection test candidate。
+
+#### Scenario: Resend configuration is updated
+
+- **WHEN** an administrator updates an existing Resend configuration
+- **THEN** the command MUST contain required `sender_email`、required `sender_name` and a newly submitted API key
+- **AND** management MUST validate and protect that complete candidate before persistence
+
+#### Scenario: Resend update omits the API key
+
+- **WHEN** an update omits the API key, submits `null`, submits a blank value or submits a retention marker
+- **THEN** management MUST reject the request before provider validation or persistence
+- **AND** the current configuration MUST remain unchanged
+
+#### Scenario: Resend connection test is requested
+
+- **WHEN** an administrator tests a Resend candidate
+- **THEN** the command MUST contain the same required sender email、sender name and newly submitted API key required for create and update
+- **AND** management MUST NOT read or reuse the persisted API key

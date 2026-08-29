@@ -1,30 +1,43 @@
 # human-input-channel-management-console-api Specification
 
 ## Purpose
-TBD - created by archiving change implement-human-input-channel-management-api. Update Purpose after archive.
+
+Defines the authenticated Workspace Console v2 transport that projects independent Email and IM management owners through one safe, discriminated API.
 ## Requirements
 ### Requirement: The Console API MUST expose one canonical Channels resource
 
-The system MUST expose collection and item operations for the supported complete channel references through `/console/api/workspaces/current/human-input/channels`. The supported references MUST be `email/resend`, `im/slack`, `im/feishu` and `im/ding_talk`.
+The Console API MUST expose the canonical prefix `/console/api/workspace/current/human-input/v2`。It MUST expose one configured Channel collection at `GET /channels` and one available-provider catalog at `GET /channel-providers`。Email and IM create、test and ID-addressed item routes MUST remain separated by kind。Every route MUST require a workspace owner or administrator。
 
-#### Scenario: Channels collection is read
+#### Scenario: Configured Channels are listed
 
-- **WHEN** an authorized caller reads the Channels collection
-- **THEN** the response MUST contain one safe persisted-state view for each successfully read supported reference
-- **AND** Resend MUST appear in `channels`
-- **AND** the unimplemented Slack, Feishu and DingTalk references MUST appear in `failures` in product order
+- **WHEN** an authorized caller requests `GET /console/api/workspace/current/human-input/v2/channels`
+- **THEN** the response MUST contain every configured Email and IM Channel
+- **AND** an unconfigured provider MUST NOT appear as a `not_configured` Channel
 
-#### Scenario: Resend channel is read
+#### Scenario: Available providers are listed
 
-- **WHEN** an authorized caller reads the `email/resend` path
-- **THEN** the response MUST contain the current safe persisted-state view for Resend
-- **AND** an unconfigured Resend reference MUST return a successful not-configured view
+- **WHEN** an authorized caller requests `GET /console/api/workspace/current/human-input/v2/channel-providers`
+- **THEN** the response MUST contain `email_providers` and `im_providers`
+- **AND** each entry MUST contain only `provider` and `connection_mode`
+- **AND** this change MUST return only `custom_app` as `connection_mode`
+- **AND** an unavailable provider MUST be omitted instead of being returned with availability state or a reason
 
-#### Scenario: Unsupported reference is read
+#### Scenario: Kind-specific discovery path is requested
 
-- **WHEN** the path kind/provider combination is not one of the supported complete references
-- **THEN** the API MUST return the stable unsupported-channel error
-- **AND** it MUST NOT perform provider or persistence work
+- **WHEN** a caller sends `GET /channels/email`、`GET /channels/im`、`GET /channel-providers/email` or `GET /channel-providers/im`
+- **THEN** the v2 controller MUST NOT register that method/path as another collection or catalog authority
+
+#### Scenario: One configured Channel is read
+
+- **WHEN** an authorized caller requests `GET /channels/<kind>/<channel_id>`
+- **THEN** the response MUST describe exactly the persisted Channel identified by `<kind>` and `<channel_id>`
+- **AND** it MUST NOT describe a provider slot or another current Channel
+
+#### Scenario: Channel item does not exist
+
+- **WHEN** `<channel_id>` is absent、belongs to another scope or does not match the route kind
+- **THEN** item GET、PUT and DELETE MUST return `404`
+- **AND** they MUST NOT read or mutate another Channel
 
 ### Requirement: Channel routes MUST be restricted to trusted Workspace administrators
 
@@ -38,7 +51,7 @@ Every Community and Cloud Channels route MUST require an authenticated, initiali
 #### Scenario: Non-admin member accesses Channels
 
 - **WHEN** a member who is neither Owner nor Admin calls a Channels route
-- **THEN** the API MUST reject the request before facade, repository or provider work
+- **THEN** the API MUST reject the request before application-owner or provider work
 
 #### Scenario: Payload attempts to select ownership
 
@@ -46,21 +59,15 @@ Every Community and Cloud Channels route MUST require an authenticated, initiali
 - **THEN** strict request validation MUST reject the payload
 - **AND** the caller MUST NOT be able to redirect the operation to another scope
 
-#### Scenario: Unimplemented IM reference is requested
-
-- **WHEN** an authenticated caller requests Slack, Feishu or DingTalk management
-- **THEN** the API MUST return `unsupported_operation` with code `im_channel_management_not_implemented`
-- **AND** it MUST NOT perform IM provider, credential-protection or persistence work
-
 #### Scenario: Resend management operation is requested
 
 - **WHEN** an authenticated caller reads, saves, tests or deletes a Resend candidate
-- **THEN** the API MUST dispatch the operation through the common facade and Email manager
+- **THEN** the API MUST dispatch the operation directly to the Email Management owner
 - **AND** provider I/O MUST remain behind the Resend adapter
 
 ### Requirement: Community and Cloud support MUST NOT alter Enterprise IM behavior
 
-Functional support in this change MUST target Community and Cloud. One pre-dispatch edition gate MUST return HTTP `501` for the canonical Channels paths on Enterprise. The channel-management composition MUST leave shared Organization and deployment ownership fields unset and MUST NOT resolve or access Enterprise deployment-wide IM state.
+Functional support in this change MUST target Community and Cloud. One pre-dispatch edition gate MUST return HTTP `501` for the canonical Channels paths on Enterprise. The Console v2 transport MUST NOT resolve or access Enterprise deployment-wide IM state.
 
 #### Scenario: Workspace management context is built
 
@@ -71,51 +78,48 @@ Functional support in this change MUST target Community and Cloud. One pre-dispa
 #### Scenario: The change is present in an Enterprise deployment
 
 - **WHEN** any request targets a canonical Channels collection, item or test path on Enterprise
-- **THEN** the API MUST return HTTP `501` before authentication decorators, DTO mapping, composition or facade dispatch
+- **THEN** the API MUST return HTTP `501` before authentication decorators, DTO mapping or application-owner dispatch
 - **AND** it MUST NOT resolve, read, write or reinterpret deployment-wide IM ownership, configuration, credentials or provider state
 - **AND** existing Enterprise IM behavior MUST remain unchanged
 
-### Requirement: Save and test requests MUST use provider-discriminated DTOs
+### Requirement: Console v2 MUST own provider credential DTOs
 
-The API MUST define separate Resend, Slack, Feishu and DingTalk candidate variants. The request discriminator and payload MUST match the complete reference in the route.
+`api/controllers/console/human_input_v2/providers.py` MUST be the canonical Console owner of `IMProviderCredentials`、`EmailProviderCredentials` and their provider-specific variants。Old controller transport DTOs that repeat these fields MUST be deleted or migrated。The Email and IM application owners MAY keep internal domain credential types, but those types MUST NOT register or define a second HTTP contract。
 
-#### Scenario: Resend candidate is submitted
+#### Scenario: Provider credentials are submitted
 
-- **WHEN** the route is `email/resend` and the payload contains a valid Resend candidate
-- **THEN** the API MUST construct the corresponding Email management command
+- **WHEN** a create、update、replacement or test request supplies `credentials`
+- **THEN** strict Pydantic validation MUST select exactly one provider-specific variant through its `provider` discriminator
+- **AND** the controller MUST map that DTO to the corresponding Email or IM application input and call that owner directly
 
-#### Scenario: IM candidate is submitted
+#### Scenario: Secret fields are defined
 
-- **WHEN** the route is one supported IM provider and the payload contains that provider's complete candidate
-- **THEN** the API MAY validate and construct the reserved provider-specific command shape
-- **AND** facade dispatch MUST return the stable unimplemented response before IM infrastructure work
+- **WHEN** a provider DTO declares an API key、client secret、app secret、signing secret、bot token、app token、verification token、encrypt key or equivalent secret
+- **THEN** the field MUST use Pydantic `SecretStr`
+- **AND** its value MUST NOT enter DTO repr、logs or validation diagnostics
 
-#### Scenario: Route and payload disagree
+#### Scenario: Complete credentials are required
 
-- **WHEN** route kind/provider and candidate discriminator do not match
-- **THEN** the API MUST return a validation failure before facade, provider or persistence work
+- **WHEN** create、update、replacement or test omits a required credential field or supplies a retention marker
+- **THEN** strict DTO validation MUST reject the request
+- **AND** the controller MUST NOT load persisted credentials to complete it
 
-#### Scenario: Extra credential field is submitted
+#### Scenario: Resend credentials are submitted
 
-- **WHEN** a request contains a credential or configuration field outside its selected candidate schema
-- **THEN** strict DTO validation MUST reject it
+- **WHEN** a caller creates、updates or tests a Resend Channel
+- **THEN** `sender_email`、`sender_name` and `api_key` MUST all be present and valid
+- **AND** update MUST require the complete configuration instead of supporting partial update or API-key retention
 
-### Requirement: Email credential directives MUST have unambiguous transport semantics
+#### Scenario: Extra provider field is submitted
 
-The Resend DTO MUST distinguish a non-blank new API key from an omitted or blank retain-existing directive. Production save and test MUST execute that explicit directive through the Email manager without returning credential material.
+- **WHEN** credentials contain a field outside the selected provider DTO
+- **THEN** strict DTO validation MUST reject it before application、provider or persistence work
 
-#### Scenario: Email is configured for the first time
+#### Scenario: Tenant submits Integration-level event transport
 
-- **WHEN** a Resend request submits a non-blank API key
-- **THEN** the API MUST map it to a new-secret candidate
-- **AND** the submitted value MUST NOT appear in any response
-
-#### Scenario: Existing Email key is retained
-
-- **WHEN** a Resend request omits the API key or submits a blank value
-- **THEN** the API MUST map that input to explicit existing-key retention
-- **AND** the current Workspace credential MUST be revealed only for transient provider validation
-- **AND** the protected credential MUST remain unchanged after a successful retained-key update
+- **WHEN** IM credentials include `event_transport_mode`
+- **THEN** strict DTO validation MUST reject the field
+- **AND** the request MUST NOT shadow or mutate effective deployment runtime configuration
 
 ### Requirement: Resend save and test MUST be functional and safely separated
 
@@ -125,7 +129,7 @@ Resend save MUST validate the complete candidate without sending Email before pe
 
 - **WHEN** a Full access API key can list domains and the exact sender domain is verified with sending enabled
 - **THEN** save MUST persist the protected candidate through the existing Email repository
-- **AND** it MUST return the resulting credential-free configured view
+- **AND** it MUST return the resulting credential-free `ChannelSummary`
 - **AND** it MUST NOT send an Email
 
 #### Scenario: Sending-only key is submitted
@@ -154,55 +158,127 @@ Resend save MUST validate the complete candidate without sending Email before pe
 - **THEN** the API MUST return a stable validation or provider failure
 - **AND** no provider body, request header, exception text or credential material MUST appear in the response or logs
 
-### Requirement: Non-Resend channel operations MUST remain explicit placeholders
+### Requirement: ChannelSummary MUST be the canonical configured-channel projection
 
-Slack, Feishu and DingTalk MUST remain unimplemented in this change. Their registered complete references MUST return one stable unsupported-operation result and MUST NOT call existing IM managers, repositories, credential protectors or providers.
+`ChannelSummary` MUST contain `id`、`created_at`、`updated_at`、`kind`、`provider`、`status`、`status_description`、`display_identifier`、`webhook_url` and `config_version`。It MUST NOT contain plaintext、encrypted or masked credentials。The controller MUST NOT expose a second per-kind configured summary DTO。
 
-#### Scenario: IM channel is read
+#### Scenario: Configured Channel is listed
 
-- **WHEN** a caller reads one Slack, Feishu or DingTalk item
-- **THEN** the API MUST return `unsupported_operation` with code `im_channel_management_not_implemented`
+- **WHEN** a configured Email or IM Channel appears in `ListChannelsResponse.channels`
+- **THEN** the entry MUST be a `ChannelSummary`
 
-#### Scenario: IM secret retention marker is submitted
+#### Scenario: Email Channel detail is read
 
-- **WHEN** an IM candidate contains a preserve-existing, masked or omitted required secret
-- **THEN** strict placeholder DTO validation MUST reject it
+- **WHEN** an Email item GET succeeds
+- **THEN** the response MUST contain `summary`、`sender_name` and `sender_email`
+- **AND** it MUST NOT contain `api_key` or an API-key configured marker
 
-#### Scenario: IM mutation or test is requested
+#### Scenario: IM Channel detail is read
 
-- **WHEN** a valid reserved IM candidate or delete request reaches facade dispatch
-- **THEN** the API MUST return the stable unimplemented response
-- **AND** it MUST NOT validate provider credentials, protect secrets, load IM state or write IM state
+- **WHEN** an IM item GET succeeds
+- **THEN** the response MUST contain exactly one `summary` configured-state projection
+- **AND** it MUST NOT serialize a retained controller `IMIntegration` or `IMChannelSummaryResponse`
 
-### Requirement: Persisted views MUST remain credential-free
+#### Scenario: IM display identifier is built
 
-Read, save and delete responses MUST contain only persisted-state views. Candidate-test response DTOs MUST remain structurally distinct from persisted views.
+- **WHEN** an IM `ChannelSummary` is returned
+- **THEN** `display_identifier` MUST contain a safe app/client identifier or equivalent non-secret application identifier
+- **AND** it MAY append a provider tenant display name when available
+- **AND** it MUST NOT contain an API key、secret、token、encrypt key or masked credential
+
+#### Scenario: Email display identifier is built
+
+- **WHEN** an Email `ChannelSummary` is returned
+- **THEN** `display_identifier` MUST include a safe client/app identifier when the provider has one and `${sender_name} ${sender_email}` when sender fields are available
+- **AND** a Resend summary MUST use `${sender_name} ${sender_email}` without any API-key material
+
+### Requirement: HTTP configuration versions MUST be client-opaque
+
+`ConfigVersion` MUST be an opaque string in Console v2 responses and mutation inputs。A client MUST store and return it exactly as received and MUST NOT parse、decode、modify、interpret or synthesize it。The server MUST translate the path `channel_id` and opaque `ConfigVersion` to the complete owner-native CAS input。
+
+#### Scenario: IM configuration is mutated
+
+- **WHEN** an IM update、replacement or delete supplies the current opaque `expected_config_version`
+- **THEN** the server MUST validate the path identity and the underlying numeric configuration version together
+- **AND** the IM owner MUST retain its complete `integration_id + numeric config_version` CAS invariant
+
+#### Scenario: Configuration version is stale
+
+- **WHEN** the expected configuration version does not identify the current configuration revision
+- **THEN** the API MUST return `409` with conflict code `provider_configuration_updated`
+- **AND** it MUST leave current state unchanged
+
+### Requirement: Configured Channel status MUST use the synchronous three-state contract
+
+`ChannelSummary.status` MUST be one of `connected`、`invalid_credentials` or `connection_failure`。`status_description` MUST be empty when status is `connected` and MUST contain only a safe human-readable explanation for an error status。The response MUST NOT expose `last_checked_at` or an asynchronous creation status。
+
+#### Scenario: Configured Channel is healthy
+
+- **WHEN** a Channel is connected and ready for use
+- **THEN** its status MUST be `connected`
+- **AND** `status_description` MUST be empty
+
+#### Scenario: Stored credentials are rejected
+
+- **WHEN** a configured Channel is known to have invalid credentials
+- **THEN** its status MUST be `invalid_credentials`
+- **AND** `status_description` MUST NOT expose a credential or raw provider response
+
+#### Scenario: Other classified connection failure is stored
+
+- **WHEN** a configured Channel has another expected provider connection failure
+- **THEN** its status MUST be `connection_failure`
+- **AND** `status_description` MUST contain only a safe explanation
+
+### Requirement: Mutation responses MUST return their resulting Channel identity
+
+Create、update and replacement MUST return HTTP `200` with a response whose `summary` is the resulting `ChannelSummary`。Delete MUST return HTTP `200` with the deleted `channel_id`。No successful mutation requires a follow-up collection read to discover its resulting identity or configuration version。
+
+#### Scenario: Channel create succeeds
+
+- **WHEN** a new Email or IM Channel is created
+- **THEN** the API MUST return `200` with `summary`
+
+#### Scenario: Channel update succeeds
+
+- **WHEN** an existing Channel is updated through its ID-addressed item route
+- **THEN** the API MUST return `200` with the updated `summary`
+
+#### Scenario: IM replacement succeeds
+
+- **WHEN** an IM Channel is replaced through `/channels/im/<channel_id>/replacement`
+- **THEN** the API MUST return `200` with the replacement `summary`
 
 #### Scenario: Channel delete succeeds
 
-- **WHEN** a configured channel is deleted
-- **THEN** the response MUST contain the resulting not-configured view
-- **AND** the client MUST NOT need an immediate follow-up read to replace that cache entry
+- **WHEN** an existing Channel is deleted through its ID-addressed item route
+- **THEN** the API MUST return `200` with the deleted `channel_id`
 
-#### Scenario: Credential-bearing response is attempted
+### Requirement: Candidate tests MUST be non-persistent and safely classified
 
-- **WHEN** a response is serialized for any Channels route
-- **THEN** it MUST NOT contain plaintext, encrypted or masked credential material
+`POST /channels/email/test` and `POST /channels/im/test` MUST use only the submitted complete credentials and MUST NOT read or mutate configured Channel state。Success MUST return HTTP `200` with `ChannelTestResponse`。Expected failures MUST use only `invalid_credentials` or `connection_failure`；an unexpected failure MUST return HTTP `500` without provider or internal error information。
 
-### Requirement: Collection reads MUST isolate safe channel failures
+#### Scenario: Candidate test succeeds
 
-One handler read failure MUST NOT prevent other supported channel views from being returned.
+- **WHEN** submitted credentials pass provider validation
+- **THEN** the API MUST return `200`
+- **AND** the response MUST NOT contain credentials、persisted resource identity、configured status or configuration revision
 
-#### Scenario: One channel read fails
+#### Scenario: Candidate credentials are invalid
 
-- **WHEN** one registered handler fails while other handlers return safe views
-- **THEN** the collection response MUST return the successful views
-- **AND** it MUST include one credential-free failure associated with the failed complete reference
+- **WHEN** the provider rejects submitted credentials as invalid
+- **THEN** the API MUST classify the failure as `invalid_credentials`
 
-#### Scenario: Collection is read
+#### Scenario: Expected provider operation fails
 
-- **WHEN** the collection endpoint builds persisted-state views
-- **THEN** it MUST NOT call any external provider
+- **WHEN** a classified provider failure is not invalid credentials
+- **THEN** the API MUST classify it as `connection_failure`
+
+#### Scenario: Candidate test fails unexpectedly
+
+- **WHEN** the failure is not a classified provider error
+- **THEN** the API MUST return `500`
+- **AND** it MUST NOT expose the exception、raw provider response or internal diagnostic
 
 ### Requirement: Failure responses MUST be stable and credential-free
 
@@ -217,7 +293,7 @@ The API MUST map management categories to stable HTTP statuses and safe bodies w
 
 - **WHEN** a save or test request contains malformed JSON or uses an unsupported non-JSON content type
 - **THEN** the API MUST return HTTP `400` with `validation_failure` and code `invalid_request`
-- **AND** it MUST NOT construct the channel-management service or perform provider or persistence work
+- **AND** it MUST NOT invoke an application owner or perform provider or persistence work
 
 #### Scenario: Configuration conflict occurs
 
@@ -230,22 +306,46 @@ The API MUST map management categories to stable HTTP statuses and safe bodies w
 - **THEN** the API MUST return a generic channel failure
 - **AND** logs and responses MUST remain credential-free
 
-### Requirement: The obsolete Email provider stub MUST not remain an alternative authority
+### Requirement: Canonical v2 routes MUST be the only configuration authority
 
-The non-functional Email provider route MUST be removed or made unavailable when the canonical Resend route lands. Existing IM integration routes MAY remain 501-only stubs and MUST NOT gain implementation in this change.
+The v2 Channel controllers MUST be the only public configuration lifecycle for Human Input Email and IM。The obsolete Email provider stub and legacy `/im-integration` management resources MUST NOT remain registered、proxied or implemented as aliases。
 
-#### Scenario: Canonical API is enabled
+#### Scenario: Legacy IM integration path is requested
 
-- **WHEN** the unified Channels controllers are registered
-- **THEN** Resend reads, validated saves, deletes and operator-targeted tests MUST dispatch through the common management facade
-- **AND** no controller MUST call Email persistence directly
+- **WHEN** a caller requests `/console/api/workspaces/current/human-input/im-integration` or `/console/api/workspaces/current/human-input/im-integration/test`
+- **THEN** HTTP routing MUST return `404`
+- **AND** the request MUST NOT invoke Channel Management or IM Integration application services
 
-#### Scenario: Legacy stub path is requested
+### Requirement: Channel create, update and replacement MUST express distinct resource transitions
 
-- **WHEN** a caller requests the removed Email provider path
-- **THEN** the route MUST NOT expose an independently implemented Email lifecycle
+`POST /channels/<kind>` MUST create a resource。`PUT /channels/<kind>/<channel_id>` MUST update exactly the addressed resource。IM provider or provider-tenant replacement MUST use `POST /channels/im/<channel_id>/replacement`。The API MUST NOT infer replacement from a provider-addressed URL or ordinary create。Stable conflict codes MUST correspond to distinct client recovery behavior。This change defines only `replacement_required` and `provider_configuration_updated`；the API MUST NOT introduce another stable conflict code without a concrete client recovery requirement。
 
-#### Scenario: Existing IM stub path is requested
+#### Scenario: New IM Channel is created
 
-- **WHEN** a caller requests an existing IM integration stub path
-- **THEN** it MUST remain unimplemented
+- **WHEN** no active IM Channel exists and an administrator submits `POST /channels/im` with complete credentials
+- **THEN** the API MUST create the resource and return `200` with its summary
+
+#### Scenario: Ordinary IM create reaches current cardinality
+
+- **WHEN** an active IM Channel exists and an administrator submits another ordinary `POST /channels/im`
+- **THEN** the API MUST return `409` before provider I/O
+- **AND** it MUST NOT create a second Integration or clear existing identities or bindings
+
+#### Scenario: IM credentials rotate
+
+- **WHEN** an administrator calls `PUT /channels/im/<channel_id>` with complete credentials、the current expected version、the same provider and the same provider tenant
+- **THEN** the API MUST update that resource and return `200` with its summary
+- **AND** the IM owner MUST preserve the existing `integration_id`, IM identity records, and Contact bindings
+
+#### Scenario: IM update requires replacement
+
+- **WHEN** update credentials select another provider or resolve another provider tenant
+- **THEN** the API MUST return `409` with conflict code `replacement_required` without mutation
+- **AND** the caller MUST use `/channels/im/<channel_id>/replacement`
+
+#### Scenario: Current IM Channel is atomically replaced
+
+- **WHEN** an administrator posts complete credentials and the current `expected_config_version` to `/channels/im/<channel_id>/replacement`
+- **THEN** the IM owner MUST atomically replace the addressed Channel
+- **AND** it MUST clear only identities and bindings owned by that Channel
+- **AND** the API MUST return `200` with the replacement summary
