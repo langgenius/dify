@@ -5132,6 +5132,12 @@ Get dataset API keys
 | 200 | API keys retrieved successfully | **application/json**: [ApiKeyList](#apikeylist)<br> |
 
 ### [POST] /datasets/api-keys
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DatasetApiKeyCreatePayload](#datasetapikeycreatepayload)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -6383,6 +6389,53 @@ Check if dataset is in use
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Dataset use status retrieved successfully | **application/json**: [UsageCheckResponse](#usagecheckresponse)<br> |
+
+### [GET] /datasets/{resource_id}/api-keys
+**Get all API keys for a dataset**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| resource_id | path | Dataset ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | API keys retrieved successfully | **application/json**: [ApiKeyList](#apikeylist)<br> |
+
+### [POST] /datasets/{resource_id}/api-keys
+**Create a new API key for a dataset**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| resource_id | path | Dataset ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | API key created successfully | **application/json**: [ApiKeyItem](#apikeyitem)<br> |
+| 400 | Maximum keys exceeded |  |
+
+### [DELETE] /datasets/{resource_id}/api-keys/{api_key_id}
+**Delete an API key for a dataset**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| api_key_id | path | API key ID | Yes | string (uuid) |
+| resource_id | path | Dataset ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 204 | API key deleted successfully |
 
 ### [POST] /email-code-login
 #### Request Body
@@ -16754,6 +16807,12 @@ Model class for provider custom model configuration.
 | batch | string |  | Yes |
 | dataset | [DatasetResponse](#datasetresponse) |  | Yes |
 | documents | [ [DocumentResponse](#documentresponse) ] |  | Yes |
+
+#### DatasetApiKeyCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| dataset_ids | [ string ] |  | No |
 
 #### DatasetCreatePayload
 
