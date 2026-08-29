@@ -37,7 +37,7 @@ function clearWebAppAccessToken() {
   localStorage.removeItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME)
 }
 
-function clearWebAppPassport(address: WebAppAddress | null) {
+export function clearWebAppPassport(address: WebAppAddress | null) {
   if (!address) return
   localStorage.removeItem(PASSPORT_LOCAL_STORAGE_NAME(getWebAppPassportKey(address)))
 }
