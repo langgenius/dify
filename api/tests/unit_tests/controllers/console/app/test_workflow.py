@@ -77,6 +77,9 @@ def _make_workflow(**overrides):
     )
     for key, value in overrides.items():
         setattr(workflow, key, value)
+    workflow.get_created_by_account = Mock(return_value=workflow.created_by_account)
+    workflow.get_updated_by_account = Mock(return_value=workflow.updated_by_account)
+    workflow.get_tool_published = Mock(return_value=workflow.tool_published)
     return workflow
 
 
@@ -614,6 +617,25 @@ def test_draft_workflow_get_serializes_response_model(monkeypatch: pytest.Monkey
             "allowed_file_upload_methods": ["local_file"],
         }
     ]
+
+
+def test_published_workflow_get_uses_session_aware_response_source(monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow = _make_workflow()
+    session = Mock(spec=Session)
+    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(session=Mock(return_value=session)))
+    monkeypatch.setattr(
+        workflow_module, "WorkflowService", lambda: SimpleNamespace(get_published_workflow=lambda **_kwargs: workflow)
+    )
+
+    api = workflow_module.PublishedWorkflowApi()
+    handler = inspect.unwrap(api.get)
+
+    response = handler(api, app_model=SimpleNamespace(id="app"))
+
+    assert response["id"] == "workflow-1"
+    workflow.get_created_by_account.assert_called_once_with(session=session)
+    workflow.get_updated_by_account.assert_called_once_with(session=session)
+    workflow.get_tool_published.assert_called_once_with(session=session)
 
 
 def test_pipeline_variable_response_accepts_legacy_file_field_names() -> None:
