@@ -1,11 +1,3 @@
-"""One loader per datum, owning both the fetch and the "already there?" test, so
-no requirement carries its own copy. Several requirements on one route call
-the same loader; only the first pays for the query.
-
-Imports `context` and the services; `requirements` imports this. `subjects`
-must not — `context` imports `subjects`, so that edge would close a cycle.
-"""
-
 from __future__ import annotations
 
 import uuid
@@ -86,15 +78,6 @@ def _workspace_from_request(ctx: Context) -> Tenant:
 
 
 def _fetch_workspace_role(ctx: Context) -> TenantAccountRole:
-    """The caller's role in the loaded workspace.
-
-    Non-membership answers 404, never 403, so workspace ids cannot be probed
-    across tenants, and an account that is not `ACTIVE` is a non-member even
-    when it still holds a role.
-
-    The workspace is loaded before the caller: an account binds its current
-    tenant only once the workspace is there.
-    """
     workspace = load_workspace(ctx)
     caller = load_caller(ctx)
     if not isinstance(caller, Account) or caller.status != AccountStatus.ACTIVE:
