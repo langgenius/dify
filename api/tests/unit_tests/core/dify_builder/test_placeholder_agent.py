@@ -103,8 +103,9 @@ def test_generate_mock_inputs_returns_canned_query():
 def test_analyze_goal_returns_full_requirements_shape():
     from core.dify_builder.placeholder_agent import PlaceholderAgent
 
-    req = PlaceholderAgent().analyze_goal("Build a quarterly report workflow")
-    assert set(req.keys()) == {
+    analysis = PlaceholderAgent().analyze_goal("Build a quarterly report workflow")
+    assert set(analysis.keys()) == {"fields", "values"}
+    assert {f["key"] for f in analysis["fields"]} == {
         "report_types",
         "audience",
         "currency",
@@ -112,8 +113,16 @@ def test_analyze_goal_returns_full_requirements_shape():
         "output",
         "prefer_audited",
     }
-    assert req["currency"] == "USD"
-    assert req["prefer_audited"] is True
+    assert set(analysis["values"].keys()) == {
+        "report_types",
+        "audience",
+        "currency",
+        "metrics",
+        "output",
+        "prefer_audited",
+    }
+    assert analysis["values"]["currency"] == "USD"
+    assert analysis["values"]["prefer_audited"] is True
 
 
 def test_propose_plan_v1_and_bind_resources_return_ordered_strings():
