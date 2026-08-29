@@ -1,7 +1,6 @@
 import logging
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from typing import cast
 
 import pytest
 from pytest_mock import MockerFixture
@@ -46,6 +45,18 @@ def _document(**overrides: object) -> Document:
     }
     values.update(overrides)
     return Document(**values)
+
+
+def _pipeline(*, pipeline_id: str = "p-new", tenant_id: str = "t1") -> Pipeline:
+    pipeline = Pipeline(
+        tenant_id=tenant_id,
+        name="Pipeline",
+        description="",
+        created_by="user-1",
+        updated_by="user-1",
+    )
+    pipeline.id = pipeline_id
+    return pipeline
 
 
 def _upload_file(*, file_id: str = "file-1", tenant_id: str = "tenant-1") -> UploadFile:
@@ -258,14 +269,11 @@ def test_transform_dataset_calls_empty_pipeline_when_no_doc_form(
 
 def test_deal_knowledge_index_high_quality_sets_embedding(mocker: MockerFixture) -> None:
     service = RagPipelineTransformService()
-    dataset = cast(
-        Dataset,
-        SimpleNamespace(
-            embedding_model="text-embedding-ada-002",
-            embedding_model_provider="openai",
-            retrieval_model=None,
-            summary_index_setting=None,
-        ),
+    dataset = _dataset(
+        embedding_model="text-embedding-ada-002",
+        embedding_model_provider="openai",
+        retrieval_model=None,
+        summary_index_setting=None,
     )
     node = {
         "data": {
@@ -389,7 +397,7 @@ def test_transform_dataset_full_flow(mocker: MockerFixture, sqlite_session: Sess
     mocker.patch.object(service, "_deal_dependencies")
     mocker.patch.object(service, "_deal_document_data")
 
-    pipeline = SimpleNamespace(id="p-new")
+    pipeline = _pipeline()
     create_pipeline = mocker.patch.object(service, "_create_pipeline", return_value=pipeline)
 
     result = service.transform_dataset(dataset, "user-1", sqlite_session)
@@ -426,7 +434,7 @@ def test_transform_dataset_raises_for_unsupported_doc_form_after_pipeline_create
     sqlite_session.commit()
     mocker.patch.object(service, "_get_transform_yaml", return_value={"workflow": {"graph": {"nodes": []}}})
     mocker.patch.object(service, "_deal_dependencies")
-    mocker.patch.object(service, "_create_pipeline", return_value=SimpleNamespace(id="p-new"))
+    mocker.patch.object(service, "_create_pipeline", return_value=_pipeline())
 
     with pytest.raises(ValueError, match="Unsupported doc form"):
         service.transform_dataset(dataset, "user-1", sqlite_session)
