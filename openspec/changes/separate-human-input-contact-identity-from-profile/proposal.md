@@ -9,19 +9,21 @@
 - **BREAKING（内部）**：删除 `api/core/human_input_v2/contact_directory`、`api/repositories/human_input_v2/contact_directory` 以及 `ContactDirectoryPolicy`、`ContactDirectorySnapshot`、`ContactResolution`、`ContactDirectoryRepository` 等内部符号。
 - 删除 `contact-directory-governance` 的全部 legacy requirements；将仍有效的 Contact、tenant、IM、Console 与 UI behavior 归入各自已有 capability 或新的 Contact Repository capability。
 - 将未发布的 `HumanInputContact` ORM 改为 `HumanInputContactIdentity` 与 `HumanInputExternalContactProfile`，保留所有现有 UUID `contact_id` 引用。
-- 以 `ContactRepository` 作为 current Contact 的唯一查询与 lifecycle write port；以 `ContactIMBindingRepository` 作为 Contact-facing IM binding query port。
+- 以 `ContactRepository` 作为 tenant-scoped current Contact query、Account provisioning 与 External lifecycle port；以 `EnterpriseContactRepository` 单独暴露 EE Organization candidate query 与 Platform entry mutations；以 `ContactIMBindingRepository` 作为 Contact-facing IM binding query port。
+- `ContactRepository` 与 `EnterpriseContactRepository` 保持独立 Protocol，但由同一个 SQLAlchemy concrete repository 实现，以复用 identity mapping、Platform entry persistence、query helpers 与 injected `Session`。
 - current Contact 只返回 `WORKSPACE`、`PLATFORM` 或 `EXTERNAL`。不可用 Contact 由查询缺失、`None` 或 `available(...)=False` 表达，不再定义 `ABSENT` 状态。
 - `ContactRepository` 直接组合 `HumanInputContactIdentity`、`Account`、`TenantAccountJoin`、`HumanInputPlatformContactWorkspaceEntry` 与 `HumanInputExternalContactProfile`，调用方不得接触这些表的组合规则。
 - Account-backed Contact ID 全局稳定；membership、Platform entry、Account status 或 Account profile 变化不得替换或修改 Contact identity。
 - External Contact profile 继续由 workspace 管理；同 workspace External Email 唯一，但 Account-backed Contact 与 External Contact 可以共享 normalized Email。
 - Repository implementation 接收调用方提供的同一个 SQLAlchemy `Session`。`Session` 直接承担 transaction boundary；不新增 Unit of Work abstraction，Repository 不自行创建 Session 或 commit。
-- recipient、authorization、submission、IM matching、Console Contact API 与 lifecycle code 改为依赖上述两个 Repository，而不是 snapshot、policy 或 Contact ORM。
+- IM synchronization 在 provider directory 读取完成后，使用一个 caller-owned transaction 完成 current Contact/IM facts loading、in-memory plan generation、mutation apply、sync result/change persistence 与 run status update。
+- recipient、authorization、submission、IM matching、Console Contact API 与 lifecycle code 改为依赖各自所需的 Repository Protocol，而不是 snapshot、policy 或 Contact ORM。
 
 ## Capabilities
 
 ### New Capabilities
 
-- `human-input-v2-contact-repository`: 定义 Contact identity/profile schema、`ContactRepository`、`ContactIMBindingRepository`、current Contact 查询语义与 Session transaction contract。
+- `human-input-v2-contact-repository`: 定义 Contact identity/profile schema、`ContactRepository`、`EnterpriseContactRepository`、`ContactIMBindingRepository`、current Contact/EE candidate 查询语义与 Session transaction contract。
 
 ### Modified Capabilities
 
@@ -33,7 +35,7 @@
 ## Impact
 
 - ORM 与 migration：`api/models/human_input_v2.py` 及未发布的 Contact schema revision。
-- Domain 与 repositories：删除旧 Contact package，新增 Contact values、Repository protocols 与 SQLAlchemy adapters。
+- Domain 与 repositories：删除旧 Contact package，新增 Contact values、三个 Repository protocols，以及同时实现 core/enterprise Contact ports 的统一 SQLAlchemy adapter。
 - Current Contact consumers：Console list/detail/options、recipient resolution、form grant、OTP、submission authorization、IM matching、binding read 与 lifecycle hooks。
 - Test suites：schema constraints、Repository query parity、concurrency、tenant isolation、consumer regression 与 import-boundary coverage。
 - External contracts：Console、workflow DSL、grant、OTP、IM、sync history 与 reconciliation 的 `contact_id` shape 保持不变。

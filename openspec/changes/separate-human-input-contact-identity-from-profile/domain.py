@@ -111,8 +111,9 @@ class ContactRepository(Protocol):
         ...
 
 
-# This is equivalent to ContactId in implementation. But we do not guarantee this as a contract.
-CandidateId = NewType("CandidateId", str)
+# CandidateId is ContactId in this implementation. Opaque is a caller contract,
+# not an encryption, signature, or token-encoding requirement.
+CandidateId = ContactId
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,7 +126,7 @@ class OrganizationCandidate:
 
 
 class EnterpriseContactRepository(Protocol):
-    """Only express EE capabilties."""
+    """Expose only EE Contact capabilities."""
     def list_organization_candidates(self, page: int, limit: int, keyword: str = "") -> Sequence[OrganizationCandidate]: ...
 
     def count_organization_candidates(self, keyword: str = "") -> int: ...
@@ -136,7 +137,7 @@ class EnterpriseContactRepository(Protocol):
             added_by_account_id: AccountId,
         ): ...
 
-    def delete_platform_entry(self, tenant_id: TenantId, contant_id: ContactId): ...
+    def delete_platform_entry(self, tenant_id: TenantId, contact_id: ContactId): ...
 
 
 @dataclass(frozen=True, slots=True)

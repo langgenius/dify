@@ -1,8 +1,8 @@
 ## 1. Freeze The Replacement Contracts
 
 - [ ] 1.1 Inventory every production import of the old Contact packages and every direct `HumanInputContact` read/write; classify each path as current Contact query、Contact lifecycle write、IM binding query、current authorization or historical snapshot read.
-- [ ] 1.2 Add failing architecture tests that require current Contact consumers to depend on `ContactRepository` and optionally `ContactIMBindingRepository`, and forbid direct source-table composition outside the SQLAlchemy Contact adapter.
-- [ ] 1.3 Add failing contract tests for `ContactQuery`、`Contact`、`ExternalContact`、batch omission/deduplication、availability mapping、Email multi-match and membership-over-Platform precedence.
+- [ ] 1.2 Add failing architecture tests that require tenant-scoped consumers to depend on `ContactRepository`、EE candidate/Platform consumers to depend on `EnterpriseContactRepository` and binding readers to depend on `ContactIMBindingRepository`; forbid direct source-table composition outside the unified SQLAlchemy Contact implementation.
+- [ ] 1.3 Add failing contract tests for `ContactQuery`、`Contact`、`ExternalContact`、the `CandidateId = ContactId` round-trip、`OrganizationCandidate`、batch omission/deduplication、availability mapping、Email multi-match、candidate pagination and membership-over-Platform precedence.
 - [ ] 1.4 Remove the legacy `contact-directory-governance` requirements, migrate current Contact behavior to the Contact Repository capability, retain cross-tenant Platform candidate search in EE capabilities, and revise dependent active changes so they no longer require mutable Account profile projection、whole-directory snapshot loading、membership-owned Contact identity or removed policy/resolution symbols.
 
 ## 2. Define The Final Unreleased Schema
@@ -15,9 +15,10 @@
 ## 3. Add Contact Values And Repository Ports
 
 - [ ] 3.1 Define `ContactType` with only `WORKSPACE / PLATFORM / EXTERNAL` and add immutable `Contact`、`ExternalContact`、`ContactQuery` and `Page` values.
-- [ ] 3.2 Define `ContactRepository` with count/list/detail/batch/availability/Email query、Account provisioning、External save/delete and Platform entry create/delete methods matching `domain.py`.
-- [ ] 3.3 Define `ContactIMBindingRepository.get_im_bindings` as the Contact-facing binding query port while leaving binding mutations on the existing IM control-plane contract.
-- [ ] 3.4 Implement SQLAlchemy adapters that receive a caller-provided `Session`, may flush, and never create a Session、commit、rollback or introduce another Unit of Work abstraction.
+- [ ] 3.2 Define `ContactRepository` with count/list/detail/batch/availability/Email query、Account provisioning and External save/delete methods matching `domain.py`.
+- [ ] 3.3 Define `EnterpriseContactRepository` with candidate count/list、`CandidateId` create and `ContactId` delete methods, and keep the Protocol unavailable to CE/SaaS/core consumers.
+- [ ] 3.4 Define `ContactIMBindingRepository.get_im_bindings` as the Contact-facing binding query port while leaving binding mutations on the existing IM control-plane contract.
+- [ ] 3.5 Implement one `SQLAlchemyContactRepository` that satisfies both core and enterprise Protocols, receives a caller-provided `Session`, shares mapping/query helpers, may flush, and never creates a Session、commits、rolls back or introduces another Unit of Work abstraction.
 
 ## 4. Implement Current Contact Queries And Lifecycle Writes
 
@@ -28,24 +29,24 @@
 - [ ] 4.5 Implement idempotent Account-backed Contact provisioning with global uniqueness、concurrent conflict translation and same-ID retry coverage.
 - [ ] 4.6 Implement External save as atomic identity/profile create or profile-only update, preserving workspace-local External uniqueness and Account/External same-email coexistence.
 - [ ] 4.7 Implement External delete with complete tenant predicates、profile/identity atomicity、new-ID recreation behavior and unchanged historical references.
-- [ ] 4.8 Implement Platform entry create/delete by `account_id` while persisting the mapped stable `contact_id`; prove membership precedence and identity immutability.
+- [ ] 4.8 Implement Enterprise candidate count/list with shared keyword predicates、pagination and `CandidateId = ContactId` without encryption/signing/token encoding; implement Platform create by revalidating that candidate Contact ID and delete by `ContactId` while persisting the stable `(tenant_id, contact_id)` entry.
 - [ ] 4.9 Implement `ContactIMBindingRepository` using explicit batch queries without adding bindings to `Contact` or triggering hidden lazy loads.
 
 ## 5. Migrate Existing Consumers
 
-- [ ] 5.1 Rewrite Console Contact list、detail、batch、options、External management and Platform management services to compose `ContactRepository` results and optional `ContactIMBindingRepository` results.
+- [ ] 5.1 Rewrite Console Contact list、detail、batch、options and External management services to compose `ContactRepository` results and optional `ContactIMBindingRepository` results; route EE candidate and Platform management through `EnterpriseContactRepository`.
 - [ ] 5.2 Rewrite recipient-resolution application orchestration to batch-load current Contacts through `ContactRepository` and bindings through `ContactIMBindingRepository`, pass immutable values to the pure resolver, remove snapshot/policy inputs and preserve deterministic approval-plan behavior.
 - [ ] 5.3 Rewrite form-grant、OTP and submission-authorization paths to use Repository availability/current Contact reads while retaining frozen historical subject snapshots.
-- [ ] 5.4 Rewrite IM synchronization Email matching and apply preconditions to use `ContactRepository` with the synchronization transaction's existing Session instead of direct Contact/profile joins.
+- [ ] 5.4 Rewrite IM synchronization so that one caller-owned transaction and injected Session load every current `WORKSPACE` and `PLATFORM` Contact plus current IM facts、generate the in-memory plan、apply all mutations、persist sync results/reconciliation changes and update run status; add rollback coverage proving no step commits independently.
 - [ ] 5.5 Rewrite binding detail and delivery-capability reads to use `ContactIMBindingRepository` without changing IM control-plane mutation ownership.
 - [ ] 5.6 Remove ORM relationships and helper mappers that assume Contact identity owns mutable profile fields.
-- [ ] 5.7 Keep EE Platform candidate search outside `ContactRepository`; pass selected Account IDs into tenant-scoped provisioning and Platform entry mutations.
+- [ ] 5.7 Keep EE Platform candidate search outside `ContactRepository`; pass selected `CandidateId` values to Enterprise create and current Platform `ContactId` values to Enterprise delete.
 
 ## 6. Replace Lifecycle Hooks And Delete The Old Implementation
 
 - [ ] 6.1 Connect authoritative Account creation and bounded missing-identity repair to `provision_account_backed_contact`; remove profile write-through and profile-drift repair.
 - [ ] 6.2 Keep Account profile、disable/reactivate、membership and Platform operations independent from identity mutation while making current Repository reads reflect committed source facts immediately.
-- [ ] 6.3 Ensure operations that combine repositories construct them with the same Session and use one caller-owned `session.begin()` transaction; add complete rollback tests.
+- [ ] 6.3 Ensure core and enterprise Contact ports resolve to the same `SQLAlchemyContactRepository` instance or class implementation, bind all participating repositories to the same Session and use one caller-owned `session.begin()` transaction; add complete rollback tests.
 - [ ] 6.4 Delete `api/core/human_input_v2/contact_directory` and `api/repositories/human_input_v2/contact_directory`, including old values、errors、snapshot、policy、ports、mappers and aggregate adapter.
 - [ ] 6.5 Remove remaining production imports、comments、exceptions and branches that reference `ContactDirectoryPolicy`、`ContactDirectorySnapshot`、`ContactResolution`、`ABSENT` or old identity-source values.
 
@@ -53,6 +54,6 @@
 
 - [ ] 7.1 Run focused non-container backend unit suites through `uv run --project api`, including schema、Repository、recipient、authorization、IM matching and architecture coverage.
 - [ ] 7.2 Run backend formatter、lint and type checks for every changed module.
-- [ ] 7.3 Run CI-owned PostgreSQL/MySQL tests for Account provisioning concurrency、External uniqueness races、Session rollback、query parity and tenant isolation.
+- [ ] 7.3 Run CI-owned PostgreSQL/MySQL tests for Account provisioning concurrency、External uniqueness races、IM reconciliation transaction atomicity、Session rollback、query parity and tenant isolation.
 - [ ] 7.4 Run `openspec validate separate-human-input-contact-identity-from-profile --strict` and validate every revised dependent change.
 - [ ] 7.5 Search production code and this change for stale active references to the removed packages、snapshot、policy、resolution enum or mutable Account profile projection before enabling Contact/IM rollout gates.

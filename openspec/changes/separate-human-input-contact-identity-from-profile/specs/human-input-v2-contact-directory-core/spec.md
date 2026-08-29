@@ -14,7 +14,7 @@
 
 ### Requirement: Contact lifecycle MUST enforce directory admission rules
 **Reason**: Admission 不再由旧 policy/snapshot domain 执行。
-**Migration**: `ContactRepository` 与 schema constraints 执行 Account provisioning、External uniqueness、External lifecycle 与 Platform entry invariants。
+**Migration**: `ContactRepository` 与 schema constraints 执行 Account provisioning、External uniqueness 与 External lifecycle；`EnterpriseContactRepository` 执行 EE candidate 与 Platform entry invariants。
 
 ### Requirement: Directory snapshot MUST provide one coherent operation-scoped view
 **Reason**: 全量 directory snapshot 被删除。
