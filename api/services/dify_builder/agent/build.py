@@ -7,8 +7,14 @@ rather than crashing the advance. build_nodes lives in the same module
 
 from typing import Any
 
+from core.app.app_config.entities import ModelConfig
 from core.dify_builder.contract import ResourceOption
-from services.dify_builder.agent import llm, resources
+from core.dify_builder.models import MutationIntent
+from graphon.enums import BUILT_IN_NODE_TYPES
+from services.dify_builder import graph_ops
+from services.dify_builder.agent import graph_translate, llm, resources
+from services.dify_builder.agent.model_resolver import resolve_model_instance
+from services.workflow_generator_service import WorkflowGeneratorService
 
 
 def analyze_goal(model, goal_text: str) -> dict[str, Any]:
@@ -115,3 +121,66 @@ def learn_from_build(
         return llm.invoke_text(model, system=system, user=f"GOAL: {goal_text}\nPLAN: {plan_items}") or fallback
     except Exception:
         return fallback
+
+
+_ALLOWED_NODE_TYPES: set[str] = set(BUILT_IN_NODE_TYPES)
+
+
+def _generator_model_config(tenant_id: str, model_config: dict[str, Any]) -> ModelConfig:
+    if model_config:
+        return ModelConfig.model_validate({
+            "provider": model_config.get("provider", ""),
+            "name": model_config.get("name", ""),
+            "mode": model_config.get("mode", "chat"),
+            "completion_params": model_config.get("completion_params", {}),
+        })
+    inst = resolve_model_instance(tenant_id, None)  # tenant default; read real provider/name off it
+    return ModelConfig.model_validate({
+        "provider": inst.provider, "name": inst.model_name, "mode": "chat", "completion_params": {},
+    })
+
+
+def _model_dict(mc: ModelConfig) -> dict[str, Any]:
+    mode = mc.mode.value if hasattr(mc.mode, "value") else str(mc.mode)
+    return {
+        "provider": mc.provider,
+        "name": mc.name,
+        "mode": mode,
+        "completion_params": dict(mc.completion_params) or {"temperature": 0.7},
+    }
+
+
+def build_nodes(tenant_id: str, model_config: dict[str, Any], plan_items: list[str]) -> list[MutationIntent]:
+    try:
+        mc = _generator_model_config(tenant_id, model_config)
+        result = WorkflowGeneratorService.generate_workflow_graph(
+            tenant_id=tenant_id,
+            mode="workflow",
+            instruction="\n".join(plan_items),
+            model_config=mc,
+            current_graph=None,
+        )
+        graph = result.get("graph") or {}
+        if result.get("error") or not graph.get("nodes"):
+            return []
+        intents = graph_translate.to_intents(graph)
+        _ground(intents, mc, tenant_id, plan_items)
+        applicable, _rejected = graph_ops.filter_applicable({"nodes": [], "edges": []}, intents, _ALLOWED_NODE_TYPES)
+        return applicable
+    except Exception:  # any generation/translation failure -> honest empty build
+        return []
+
+
+def _ground(intents: list[MutationIntent], mc: ModelConfig, tenant_id: str, plan_items: list[str]) -> None:
+    model_dict = _model_dict(mc)
+    datasets = resources.list_tenant_resources(tenant_id).datasets
+    matched = [d.id for d in datasets if any(d.label in item for item in plan_items)]
+    for intent in intents:
+        if intent.op != "create_node":
+            continue
+        config = intent.args.get("config") or {}
+        if intent.args.get("node_type") == "llm":
+            config["model"] = model_dict  # ground the model (real, configured provider)
+        elif intent.args.get("node_type") == "knowledge-retrieval":
+            config["dataset_ids"] = matched  # ground datasets (real ids matched by label)
+        intent.args["config"] = config
