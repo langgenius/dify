@@ -301,7 +301,7 @@ describe('useChatWithHistory', () => {
       expect(mockFetchChatList).toHaveBeenCalledTimes(1)
     })
 
-    it('should not mutate Environment selection when the server returns not found', async () => {
+    it('should clear a stale Environment selection when the server returns not found', async () => {
       window.history.replaceState({}, '', '/environment/workflow/environment-code')
       setConversationIdInfo('environment:environment-code', 'conversation-1')
       mockFetchConversations.mockResolvedValue(createConversationData())
@@ -316,9 +316,12 @@ describe('useChatWithHistory', () => {
       await waitFor(() => {
         expect(mockFetchChatList).toHaveBeenCalledTimes(1)
       })
-      expect(result!.current.currentConversationId).toBe('conversation-1')
-      expect(result!.current.clearChatList).toBe(false)
-      expect(localStorage.getItem(CONVERSATION_ID_INFO)).toContain('conversation-1')
+      await waitFor(() => {
+        expect(result!.current.currentConversationId).toBe('')
+      })
+      expect(result!.current.clearChatList).toBe(true)
+      const storedSelections = JSON.parse(localStorage.getItem(CONVERSATION_ID_INFO)!)
+      expect(storedSelections['environment:environment-code']['user-1']).toBe('')
     })
 
     it('should keep the selected Environment conversation for other errors', async () => {

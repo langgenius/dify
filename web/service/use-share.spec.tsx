@@ -9,6 +9,7 @@ import {
   generationConversationName,
 } from './share'
 import {
+  EnvironmentConversationNotFoundError,
   shareQueryKeys,
   useInvalidateShareConversations,
   useShareChatList,
@@ -207,7 +208,7 @@ describe('useShareChatList', () => {
     expect(mockFetchChatList).not.toHaveBeenCalled()
   })
 
-  it('should expose a missing Environment conversation without translating it', async () => {
+  it('should translate a missing Environment conversation', async () => {
     window.history.replaceState({}, '', '/environment/workflow/environment-code')
     const params = {
       conversationId: 'stale-conversation',
@@ -222,7 +223,7 @@ describe('useShareChatList', () => {
     const { result } = renderShareHook(() => useShareChatList(params))
 
     await waitFor(() => {
-      expect(result.current.error).toBe(response)
+      expect(result.current.error).toBeInstanceOf(EnvironmentConversationNotFoundError)
     })
     expect(mockFetchChatList).toHaveBeenCalledTimes(1)
   })

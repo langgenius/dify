@@ -4,12 +4,30 @@ import { ACCESS_TOKEN_LOCAL_STORAGE_NAME, PASSPORT_LOCAL_STORAGE_NAME } from '@/
 import { getPublic, postPublic } from './base'
 import { getWebAppPassportKey, getWebAppScopeKey, resolveWebAppAddress } from './webapp-address'
 
+const WEB_APP_AUTHORIZATION_RECOVERY_KEY_PREFIX = 'webapp-authorization-recovery-'
+
+function getWebAppAuthorizationRecoveryKey(address: WebAppAddress) {
+  return `${WEB_APP_AUTHORIZATION_RECOVERY_KEY_PREFIX}${getWebAppScopeKey(address)}`
+}
+
 export function setWebAppAccessToken(token: string) {
   localStorage.setItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME, token)
 }
 
 export function setWebAppPassport(address: WebAppAddress, token: string) {
   localStorage.setItem(PASSPORT_LOCAL_STORAGE_NAME(getWebAppPassportKey(address)), token)
+}
+
+export function beginWebAppAuthorizationRecovery(address: WebAppAddress) {
+  const key = getWebAppAuthorizationRecoveryKey(address)
+  if (sessionStorage.getItem(key)) return false
+
+  sessionStorage.setItem(key, 'pending')
+  return true
+}
+
+export function completeWebAppAuthorizationRecovery(address: WebAppAddress) {
+  sessionStorage.removeItem(getWebAppAuthorizationRecoveryKey(address))
 }
 
 export function getWebAppAccessToken() {

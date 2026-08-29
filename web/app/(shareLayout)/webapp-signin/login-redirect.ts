@@ -12,13 +12,28 @@ export type WebAppLoginRedirect = {
   target: LoginRedirectTarget
 }
 
+function addBasePathOnce(href: string, basePath: string) {
+  const normalizedBasePath = basePath === '/' ? '' : basePath.replace(/\/+$/, '')
+  if (!normalizedBasePath) return href
+
+  const url = new URL(href, INTERNAL_PATH_PARSE_BASE)
+  if (url.pathname === normalizedBasePath || url.pathname.startsWith(`${normalizedBasePath}/`))
+    return href
+
+  return `${normalizedBasePath}${url.pathname}${url.search}${url.hash}`
+}
+
 export function navigateAfterWebAppLogin(
   loginRedirect: WebAppLoginRedirect,
   routerReplace: (href: string) => void,
   basePath: string,
 ) {
   if (loginRedirect.address.kind === 'environment') {
-    globalThis.location.replace(loginRedirect.target.href)
+    const href =
+      loginRedirect.target.kind === 'internal'
+        ? addBasePathOnce(loginRedirect.target.href, basePath)
+        : loginRedirect.target.href
+    globalThis.location.replace(href)
     return
   }
 

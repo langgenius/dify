@@ -45,6 +45,13 @@ type ShareQueryOptions = {
   refetchOnReconnect?: boolean
 }
 
+export class EnvironmentConversationNotFoundError extends Error {
+  constructor() {
+    super('Environment conversation not found')
+    this.name = 'EnvironmentConversationNotFoundError'
+  }
+}
+
 export const shareQueryKeys = {
   appAccessMode: (address: WebAppAddress | null, code: string | null) =>
     [NAME_SPACE, 'appAccessMode', address, code] as const,
@@ -138,7 +145,18 @@ export const useShareChatList = (params: ShareChatListParams, options: ShareQuer
     !!params.conversationId
   return useQuery({
     queryKey: shareQueryKeys.chatList(address, params),
-    queryFn: () => fetchChatList(params.conversationId, params.appSourceType, params.appId),
+    queryFn: async () => {
+      try {
+        return await fetchChatList(params.conversationId, params.appSourceType, params.appId)
+      } catch (error) {
+        if (address?.kind === 'environment' && error instanceof Response && error.status === 404) {
+          const data = (await error.clone().json()) as { reason?: string }
+          if (data.reason === 'APPDEPLOY_CONVERSATION_NOT_FOUND')
+            throw new EnvironmentConversationNotFoundError()
+        }
+        throw error
+      }
+    },
     enabled: isEnabled,
     refetchOnReconnect,
     refetchOnWindowFocus,

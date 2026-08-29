@@ -6,14 +6,21 @@ vi.mock('./base', () => ({
   postPublic: vi.fn(),
 }))
 
-const { getOrCreateWebAppVisitorId, getWebAppPassport, setWebAppPassport, webAppLoginStatus } =
-  await import('./webapp-auth')
+const {
+  beginWebAppAuthorizationRecovery,
+  completeWebAppAuthorizationRecovery,
+  getOrCreateWebAppVisitorId,
+  getWebAppPassport,
+  setWebAppPassport,
+  webAppLoginStatus,
+} = await import('./webapp-auth')
 
 describe('webAppLoginStatus', () => {
   beforeEach(() => {
     getPublicMock.mockReset()
     getPublicMock.mockResolvedValue({ logged_in: true, app_logged_in: true })
     localStorage.clear()
+    sessionStorage.clear()
   })
 
   it('keeps environment and ordinary passports for the same code separate', () => {
@@ -45,6 +52,21 @@ describe('webAppLoginStatus', () => {
     expect(getOrCreateWebAppVisitorId(firstEnvironment)).toBe(first)
     expect(getOrCreateWebAppVisitorId(secondEnvironment)).not.toBe(first)
     expect(localStorage.getItem('visitor-environment:environment-1')).toBe(first)
+  })
+
+  it('allows one authorization recovery until an environment request succeeds', () => {
+    const address = { kind: 'environment' as const, code: 'environment-1' }
+
+    expect(beginWebAppAuthorizationRecovery(address)).toBe(true)
+    expect(beginWebAppAuthorizationRecovery(address)).toBe(false)
+
+    setWebAppPassport(address, 'renewed-passport')
+
+    expect(beginWebAppAuthorizationRecovery(address)).toBe(false)
+
+    completeWebAppAuthorizationRecovery(address)
+
+    expect(beginWebAppAuthorizationRecovery(address)).toBe(true)
   })
 
   it('does not add an app code query to environment login status', async () => {

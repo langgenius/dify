@@ -26,6 +26,7 @@ import {
   updateFeedback,
 } from '@/service/share'
 import {
+  EnvironmentConversationNotFoundError,
   useInvalidateShareConversations,
   useShareChatList,
   useShareConversationName,
@@ -223,7 +224,11 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
         refetchOnReconnect: false,
       },
     )
-  const { data: appChatListData, isLoading: appChatListDataLoading } = useShareChatList(
+  const {
+    data: appChatListData,
+    error: appChatListError,
+    isLoading: appChatListDataLoading,
+  } = useShareChatList(
     {
       conversationId: chatShouldReloadKey,
       appSourceType,
@@ -238,6 +243,13 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   const invalidateShareConversations = useInvalidateShareConversations()
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)
+  useEffect(() => {
+    if (!(appChatListError instanceof EnvironmentConversationNotFoundError)) return
+
+    setNewConversationId('')
+    handleConversationIdInfoChange('')
+    setClearChatList(true)
+  }, [appChatListError, handleConversationIdInfoChange])
   const appPrevChatTree = useMemo(
     () =>
       currentConversationId && appChatListData?.data.length

@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 // oxlint-disable-next-line no-restricted-imports -- This spec directly tests the legacy request owner.
-import { request, ssePost } from '../base'
+import { request, ssePost, upload } from '../base'
 
 const mocks = vi.hoisted(() => ({
   isClient: true,
   baseFetch: vi.fn(),
+  beginWebAppAuthorizationRecovery: vi.fn(),
   clearWebAppPassport: vi.fn(),
+  completeWebAppAuthorizationRecovery: vi.fn(),
   refreshAccessTokenOrReLogin: vi.fn(),
   resolveWebAppAddress: vi.fn(),
 }))
@@ -44,7 +46,9 @@ vi.mock('../webapp-address', () => ({
 }))
 
 vi.mock('../webapp-auth', () => ({
+  beginWebAppAuthorizationRecovery: mocks.beginWebAppAuthorizationRecovery,
   clearWebAppPassport: mocks.clearWebAppPassport,
+  completeWebAppAuthorizationRecovery: mocks.completeWebAppAuthorizationRecovery,
   getWebAppPassport: vi.fn(() => ''),
 }))
 
@@ -79,7 +83,10 @@ describe('request 401 handling', () => {
   beforeEach(() => {
     mocks.isClient = true
     mocks.baseFetch.mockReset()
+    mocks.beginWebAppAuthorizationRecovery.mockReset()
+    mocks.beginWebAppAuthorizationRecovery.mockReturnValue(true)
     mocks.clearWebAppPassport.mockReset()
+    mocks.completeWebAppAuthorizationRecovery.mockReset()
     mocks.refreshAccessTokenOrReLogin.mockReset()
     mocks.resolveWebAppAddress.mockReset()
     Object.defineProperty(globalThis, 'location', {
@@ -161,6 +168,26 @@ describe('request 401 handling', () => {
     expect(mocks.refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
   })
 
+  it('should complete authorization recovery after an environment request succeeds', async () => {
+    const address = { kind: 'environment', code: 'environment-code' } as const
+    mocks.resolveWebAppAddress.mockReturnValue(address)
+    mocks.baseFetch.mockResolvedValue({ app_id: 'app-id' })
+
+    await request('/site', {}, { isPublicAPI: true })
+
+    expect(mocks.completeWebAppAuthorizationRecovery).toHaveBeenCalledWith(address)
+  })
+
+  it('should keep authorization recovery pending after passport succeeds', async () => {
+    const address = { kind: 'environment', code: 'environment-code' } as const
+    mocks.resolveWebAppAddress.mockReturnValue(address)
+    mocks.baseFetch.mockResolvedValue({ access_token: 'passport' })
+
+    await request('/passport', {}, { isPublicAPI: true })
+
+    expect(mocks.completeWebAppAuthorizationRecovery).not.toHaveBeenCalled()
+  })
+
   it('should reload an environment webapp after an SSE request becomes unauthorized', async () => {
     const address = { kind: 'environment', code: 'environment-code' } as const
     mocks.resolveWebAppAddress.mockReturnValue(address)
@@ -180,5 +207,91 @@ describe('request 401 handling', () => {
       expect(mocks.clearWebAppPassport).toHaveBeenCalledWith(address)
       expect(globalThis.location.reload).toHaveBeenCalledOnce()
     })
+  })
+
+  it('should stop reloading when environment authorization does not recover', async () => {
+    const address = { kind: 'environment', code: 'environment-code' } as const
+    const response = new Response(
+      JSON.stringify({
+        code: 401,
+        reason: 'APPDEPLOY_UNAUTHORIZED',
+        message: 'Unauthorized',
+      }),
+      { status: 401, headers: { 'Content-Type': 'application/json' } },
+    )
+    mocks.resolveWebAppAddress.mockReturnValue(address)
+    mocks.beginWebAppAuthorizationRecovery.mockReturnValue(false)
+    arrangeClientRequest({ response })
+
+    await expect(request('/site')).rejects.toBe(response)
+
+    expect(mocks.clearWebAppPassport).not.toHaveBeenCalled()
+    expect(globalThis.location.reload).not.toHaveBeenCalled()
+    expect(globalThis.location.href).toContain('/webapp-signin?')
+    expect(globalThis.location.href).toContain('message=Unauthorized')
+  })
+
+  it('should report a public SSE 403 that is not recoverable', async () => {
+    const onError = vi.fn()
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          code: 'web_app_disabled',
+          message: 'webapp is disabled',
+        }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } },
+      ),
+    )
+
+    ssePost('/chat-messages', { body: { query: 'hello' } }, { isPublicAPI: true, onError })
+
+    await vi.waitFor(() => {
+      expect(onError).toHaveBeenCalledWith('webapp is disabled', 'web_app_disabled')
+    })
+    expect(mocks.beginWebAppAuthorizationRecovery).not.toHaveBeenCalled()
+  })
+
+  it('should recover an environment webapp after a plain request is denied', async () => {
+    const address = { kind: 'environment', code: 'environment-code' } as const
+    const response = new Response(
+      JSON.stringify({
+        code: 'web_app_access_denied',
+        message: 'webapp access denied',
+      }),
+      { status: 403, headers: { 'Content-Type': 'application/json' } },
+    )
+    mocks.resolveWebAppAddress.mockReturnValue(address)
+    arrangeClientRequest({ response })
+
+    await expect(request('/messages', {}, { isPublicAPI: true })).rejects.toBe(response)
+
+    expect(mocks.clearWebAppPassport).toHaveBeenCalledWith(address)
+    expect(globalThis.location.reload).toHaveBeenCalledOnce()
+  })
+
+  it('should recover an environment webapp after an upload is denied', async () => {
+    const address = { kind: 'environment', code: 'environment-code' } as const
+    mocks.resolveWebAppAddress.mockReturnValue(address)
+    const xhr = {
+      open: vi.fn(),
+      setRequestHeader: vi.fn(),
+      send: vi.fn(function (this: { onreadystatechange?: () => void }) {
+        this.onreadystatechange?.()
+      }),
+      status: 403,
+      response: {
+        code: 'web_app_access_denied',
+        message: 'webapp access denied',
+      },
+      readyState: 4,
+      upload: {},
+      withCredentials: false,
+      responseType: '',
+    } as unknown as XMLHttpRequest
+
+    await expect(upload({ xhr, data: new FormData() }, true)).rejects.toBe(xhr)
+
+    expect(mocks.clearWebAppPassport).toHaveBeenCalledWith(address)
+    expect(globalThis.location.reload).toHaveBeenCalledOnce()
   })
 })
