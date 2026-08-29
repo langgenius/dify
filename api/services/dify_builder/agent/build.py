@@ -169,14 +169,18 @@ def _ground(intents: list[MutationIntent], mc: ModelConfig, tenant_id: str, plan
         if intent.op != "create_node":
             continue
         config = intent.args.get("config") or {}
-        if intent.args.get("node_type") == "llm":
+        if isinstance(config.get("model"), dict):
             # Ground ONLY provider+name (the real, configured model); preserve whatever
             # mode/completion_params the generator produced -- never fabricate params.
-            model = dict(config.get("model") or {})
+            # Applies to ANY node type that carries a model block (llm,
+            # question-classifier, parameter-extractor, ...), not just "llm" --
+            # otherwise a drifted/hallucinated model on those node types flows
+            # through ungrounded.
+            model = dict(config["model"])
             model["provider"] = mc.provider
             model["name"] = mc.name
             model.setdefault("mode", mode)
             config["model"] = model
-        elif intent.args.get("node_type") == "knowledge-retrieval":
+        if intent.args.get("node_type") == "knowledge-retrieval":
             config["dataset_ids"] = list(matched)  # independent copy per node -- never share one list
         intent.args["config"] = config

@@ -45,9 +45,16 @@ def to_intents(graph: dict[str, Any]) -> list[MutationIntent]:
         src, tgt = edge.get("source"), edge.get("target")
         if not src or not tgt:
             continue
-        connects.append(MutationIntent(op="connect", args={
+        args: dict[str, Any] = {
             "from_node": remap.get(str(src), str(src)),
             "to_node": remap.get(str(tgt), str(tgt)),
-        }))
+        }
+        source_handle = edge.get("sourceHandle")
+        if source_handle:
+            args["source_handle"] = source_handle
+        target_handle = edge.get("targetHandle")
+        if target_handle:
+            args["target_handle"] = target_handle
+        connects.append(MutationIntent(op="connect", args=args))
 
     return creates + connects
