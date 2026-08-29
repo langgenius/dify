@@ -116,6 +116,24 @@ describe('navigateAfterWebAppLogin', () => {
     expect(routerReplace).not.toHaveBeenCalled()
   })
 
+  it.each([
+    ['/environment/chat/environment-app', '/console/environment/chat/environment-app'],
+    ['/console/environment/chat/environment-app', '/console/environment/chat/environment-app'],
+  ])('keeps the deployment base path when reloading %s', (href, expected) => {
+    navigateAfterWebAppLogin(
+      {
+        appCode: 'environment-app',
+        address: { kind: 'environment', code: 'environment-app' },
+        target: { kind: 'internal', href },
+      },
+      routerReplace,
+      '/console',
+    )
+
+    expect(locationReplace).toHaveBeenCalledWith(expected)
+    expect(routerReplace).not.toHaveBeenCalled()
+  })
+
   it('keeps client navigation for an ordinary Web App login', () => {
     navigateAfterWebAppLogin(
       {

@@ -45,12 +45,20 @@ import { basePath } from '@/utils/var'
 import { base, ContentType, getBaseOptions } from './fetch'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
-import { clearWebAppPassport, getWebAppPassport } from './webapp-auth'
+import {
+  beginWebAppAuthorizationRecovery,
+  clearWebAppPassport,
+  completeWebAppAuthorizationRecovery,
+  getWebAppPassport,
+} from './webapp-auth'
 
 const TIME_OUT = 100000
 
+const isWebAppAuthorizationEndpoint = (url: string) =>
+  /\/(?:login(?:\/|\?|$)|passport(?:\?|$))/.test(url)
+
 const recoverEnvironmentWebAppAuthorization = (
-  error: { code?: string; reason?: string },
+  error: { code?: string | number; message?: string; reason?: string },
   url?: string,
 ) => {
   const address = resolveWebAppAddress()
@@ -59,9 +67,14 @@ const recoverEnvironmentWebAppAuthorization = (
     (error.reason !== 'APPDEPLOY_UNAUTHORIZED' &&
       error.code !== 'unauthorized' &&
       error.code !== 'web_app_access_denied') ||
-    (url && /\/(?:login|passport)(?:\?|$)/.test(url))
+    (url && isWebAppAuthorizationEndpoint(url))
   )
     return false
+
+  if (!beginWebAppAuthorizationRecovery(address)) {
+    requiredWebSSOLogin(error.message, 403)
+    return true
+  }
 
   clearWebAppPassport(address)
   window.location.reload()
@@ -122,6 +135,36 @@ const reportStreamResponseError = async (
     onError?.(errorMessage)
     onNotifyError?.(errorMessage)
   }
+}
+
+const handlePublicStreamResponseError = async (
+  response: Response,
+  onError: IOnError | undefined,
+  onNotifyError: IOnError | undefined,
+  silent: boolean | undefined,
+) => {
+  let data: { code?: string; message?: string; reason?: string } | undefined
+  try {
+    data = (await response.clone().json()) as typeof data
+  } catch {}
+
+  if (data) {
+    if (recoverEnvironmentWebAppAuthorization(data)) return
+
+    if (data.code === 'web_app_access_denied') {
+      requiredWebSSOLogin(data.message, 403)
+      return
+    }
+    if (data.code === 'web_sso_auth_required' || data.code === 'unauthorized') {
+      requiredWebSSOLogin()
+      return
+    }
+  }
+
+  if (onNotifyError && !silent) await reportStreamResponseError(response, onError, onNotifyError)
+  else if (!silent)
+    await reportStreamResponseError(response, onError, (message) => toast.error(message))
+  else await reportStreamResponseError(response, onError)
 }
 
 type UnhandledEventError = {
@@ -568,7 +611,16 @@ export const upload = async (
     xhr.onreadystatechange = function () {
       if (xhr.readyState === 4) {
         if (xhr.status === 201) resolve(xhr.response)
-        else reject(xhr)
+        else {
+          if (
+            isPublicAPI &&
+            (xhr.status === 401 || xhr.status === 403) &&
+            typeof xhr.response === 'object' &&
+            xhr.response !== null
+          )
+            recoverEnvironmentWebAppAuthorization(xhr.response)
+          reject(xhr)
+        }
       }
     }
     if (mergedOptions.onprogress) xhr.upload.onprogress = mergedOptions.onprogress
@@ -659,17 +711,7 @@ export const ssePost = async (
       if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
           if (isPublicAPI) {
-            res.json().then((data: { code?: string; message?: string; reason?: string }) => {
-              if (isPublicAPI) {
-                if (recoverEnvironmentWebAppAuthorization(data)) return
-
-                if (data.code === 'web_app_access_denied') requiredWebSSOLogin(data.message, 403)
-
-                if (data.code === 'web_sso_auth_required') requiredWebSSOLogin()
-
-                if (data.code === 'unauthorized') requiredWebSSOLogin()
-              }
-            })
+            void handlePublicStreamResponseError(res, onError, onNotifyError, silent)
           } else {
             refreshAccessTokenOrReLogin(TIME_OUT)
               .then(() => {
@@ -824,17 +866,7 @@ export const sseGet = async (
       if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
           if (isPublicAPI) {
-            res.json().then((data: { code?: string; message?: string; reason?: string }) => {
-              if (isPublicAPI) {
-                if (recoverEnvironmentWebAppAuthorization(data)) return
-
-                if (data.code === 'web_app_access_denied') requiredWebSSOLogin(data.message, 403)
-
-                if (data.code === 'web_sso_auth_required') requiredWebSSOLogin()
-
-                if (data.code === 'unauthorized') requiredWebSSOLogin()
-              }
-            })
+            void handlePublicStreamResponseError(res, onError, onNotifyError, silent)
           } else {
             refreshAccessTokenOrReLogin(TIME_OUT)
               .then(() => {
@@ -1023,15 +1055,21 @@ export const sseGeneratorPost = (
 export const request = async <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   try {
     const otherOptionsForBaseFetch = otherOptions || {}
+    const { isPublicAPI = false, silent } = otherOptionsForBaseFetch
     const [err, resp] = await asyncRunSafe<T>(baseFetch(url, options, otherOptionsForBaseFetch))
-    if (err === null) return resp
+    if (err === null) {
+      const address = resolveWebAppAddress()
+      if (isPublicAPI && address?.kind === 'environment' && !isWebAppAuthorizationEndpoint(url))
+        completeWebAppAuthorizationRecovery(address)
+      return resp
+    }
     const errResp: Response = err as any
-    if (errResp.status === 401) {
+    if (errResp.status === 401 || (errResp.status === 403 && isPublicAPI)) {
       if (!isClient) return Promise.reject(err)
 
       const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.json())
       if (parseErr) {
-        window.location.href = buildSigninUrlWithRedirect()
+        if (errResp.status === 401) window.location.href = buildSigninUrlWithRedirect()
         return Promise.reject(err)
       }
       if (/\/login/.test(url)) return Promise.reject(errRespData)
@@ -1047,12 +1085,12 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         requiredWebSSOLogin()
         return Promise.reject(err)
       }
+      if (errResp.status === 403) return Promise.reject(err)
       if (code === 'unauthorized_and_force_logout') {
         // Cookies will be cleared by the backend
         window.location.reload()
         return Promise.reject(err)
       }
-      const { isPublicAPI = false, silent } = otherOptionsForBaseFetch
       if (isPublicAPI && code === 'unauthorized') {
         requiredWebSSOLogin()
         return Promise.reject(err)
