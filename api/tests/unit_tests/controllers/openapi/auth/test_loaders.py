@@ -8,7 +8,13 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.loaders import load_app, load_caller, load_workspace, load_workspace_role
+from controllers.openapi.auth.loaders import (
+    load_app,
+    load_caller,
+    load_workspace,
+    load_workspace_role,
+    route_has_app,
+)
 from controllers.openapi.auth.subjects import Subject
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from services.account_service import TenantService
@@ -132,13 +138,22 @@ class TestWorkspaceFromRequest:
             load_workspace(ctx)
 
 
+def test_route_has_app_reads_the_path_the_router_stored(sqlite_session: Session) -> None:
+    """The route's own shape, not a loaded datum: nothing has to be fetched for
+    it to answer, and a `workspace_id` route is not an app route.
+    """
+    assert route_has_app(Context(_subject(), sqlite_session, {"app_id": APP_ID})) is True
+    assert route_has_app(Context(_subject(), sqlite_session, {"workspace_id": TENANT_ID})) is False
+
+
 class TestWorkspaceRuleSelection:
     def test_app_id_wins_the_tie_when_both_app_id_and_workspace_id_are_present(
         self, app: Flask, sqlite_session: Session
     ) -> None:
         """Both a nonexistent app tenant and an existing workspace_id tenant are
-        present; `has_app` must select the app-derived rule (and its `Forbidden`
-        status), never fall through to the request-derived `NotFound` rule.
+        present; `route_has_app` must select the app-derived rule (and its
+        `Forbidden` status), never fall through to the request-derived `NotFound`
+        rule.
         """
         persist(sqlite_session, make_app(), make_tenant(tenant_id=OTHER_TENANT_ID))
         ctx = Context(_subject(), sqlite_session, {"app_id": APP_ID, "workspace_id": OTHER_TENANT_ID})

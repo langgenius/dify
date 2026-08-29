@@ -25,6 +25,7 @@ from ._world import (
 )
 
 LOADERS = "controllers.openapi.auth.loaders"
+SUBJECTS = "controllers.openapi.auth.subjects"
 
 
 def _subject() -> Subject:
@@ -95,11 +96,6 @@ def test_reading_a_datum_nothing_loaded_names_the_datum(sqlite_session: Session,
         datum.read(ctx)
 
 
-def test_the_view_args_derived_facts_need_no_loading(sqlite_session: Session) -> None:
-    assert bare_ctx(sqlite_session, app_id=APP_ID).has_app is True
-    assert bare_ctx(sqlite_session, workspace_id=TENANT_ID).has_app is False
-
-
 def test_the_session_and_path_params_are_handed_over_at_construction(sqlite_session: Session) -> None:
     ctx = bare_ctx(sqlite_session, app_id=APP_ID)
 
@@ -107,23 +103,36 @@ def test_the_session_and_path_params_are_handed_over_at_construction(sqlite_sess
     assert dict(ctx.view_args) == {"app_id": APP_ID}
 
 
-def _imports(module: ModuleType) -> set[str]:
-    tree = ast.parse(inspect.getsource(module))
-    from_imports = {node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) and node.module}
-    plain = {alias.name for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names}
+def _imports(module: ModuleType, *, runtime_only: bool = False) -> set[str]:
+    nodes = list(ast.walk(ast.parse(inspect.getsource(module))))
+    if runtime_only:
+        # A `TYPE_CHECKING` block never executes, so nothing in one can close a cycle.
+        guarded = {
+            child
+            for node in nodes
+            if isinstance(node, ast.If) and ast.unparse(node.test) == "TYPE_CHECKING"
+            for child in ast.walk(node)
+        }
+        nodes = [node for node in nodes if node not in guarded]
+    from_imports = {node.module for node in nodes if isinstance(node, ast.ImportFrom) and node.module}
+    plain = {alias.name for node in nodes if isinstance(node, ast.Import) for alias in node.names}
     return from_imports | plain
 
 
 def test_the_auth_import_graph_cannot_cycle() -> None:
-    """The store's whole contract, and the edge that would close the cycle:
-    `context` -> `subjects` -> `loaders` -> `context`. The store reaches no
-    service, and a subject reaches no loader.
+    """A subject loads what it needs to resolve its caller, so `subjects` ->
+    `loaders` -> `context` is a real runtime edge. The one that would close the
+    ring is `context` -> `subjects`, and it is type-only. The store still
+    reaches no service.
     """
-    context_imports = _imports(context_module)
+    assert not [module for module in _imports(context_module) if module.split(".")[0] == "services"]
 
-    assert not [module for module in context_imports if module.split(".")[0] == "services"]
-    assert LOADERS not in context_imports
-    assert LOADERS not in _imports(subjects_module)
+    runtime = _imports(context_module, runtime_only=True)
+
+    assert SUBJECTS not in runtime
+    assert LOADERS not in runtime
+    assert SUBJECTS in _imports(context_module)
+    assert LOADERS in _imports(subjects_module)
 
 
 def test_no_reader_can_hand_a_handler_an_optional() -> None:

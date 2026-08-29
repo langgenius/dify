@@ -27,7 +27,8 @@ from controllers.openapi._models import (
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.data import CallerKind
 from controllers.openapi.auth.requirements import (
-    RBACCheck,
+    CheckAppApiEnabled,
+    RBACScene,
     RequireWorkspaceMembership,
     SubjectCheck,
     TokenScope,
@@ -141,8 +142,10 @@ class AppDescribeApi(AppReadResource):
     @endpoint(
         requirements=(
             _ACCOUNT_SUBJECT,
+            CheckAppApiEnabled(),
+            RequireWorkspaceMembership(),
             TokenScope(Scope.APPS_READ),
-            RBACCheck(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_VIEW_LAYOUT),
+            RBACScene(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_VIEW_LAYOUT),
         ),
         query=AppDescribeQuery,
         returns=(200, AppDescribeResponse, "App description"),

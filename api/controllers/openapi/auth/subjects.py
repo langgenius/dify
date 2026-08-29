@@ -7,38 +7,21 @@ from __future__ import annotations
 
 import uuid
 from abc import ABC, abstractmethod
-from typing import ClassVar, Protocol, override
+from typing import ClassVar, override
 
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, Unauthorized
 
+from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.data import CallerKind, ExternalIdentity
+from controllers.openapi.auth.loaders import load_app, load_workspace, route_has_app
 from libs.oauth_bearer import AuthContext, Scope, SubjectType
-from models.account import Account, Tenant
+from models.account import Account
 from models.enums import EndUserType
-from models.model import App, EndUser
+from models.model import EndUser
 from services.account_service import AccountService
 from services.end_user_service import EndUserService
 from services.enterprise.enterprise_service import WebAppAccessMode
-
-
-class CallerContext(Protocol):
-    """Structural on purpose: the concrete `Context` holds a `Subject`, so a
-    concrete import in either direction would be a cycle.
-    """
-
-    @property
-    def has_app(self) -> bool: ...
-
-    @property
-    def workspace_loaded(self) -> bool: ...
-
-    @property
-    def app(self) -> App: ...
-
-    @property
-    def workspace(self) -> Tenant: ...
-
 
 _SUBJECT_CLASSES: dict[SubjectType, type[Subject]] = {}
 
@@ -76,10 +59,14 @@ class Subject(ABC):
         return self._auth.scopes
 
     @abstractmethod
-    def resolve_caller(self, ctx: CallerContext, session: Session) -> Account | EndUser: ...
+    def resolve_caller(self, ctx: Context, session: Session) -> Account | EndUser:
+        """Loads whatever workspace or app it needs itself, so a subject that
+        lands on a route carrying neither fails where the requirement is,
+        rather than silently resolving a caller bound to nothing.
+        """
 
     @abstractmethod
-    def mounts_caller(self, ctx: CallerContext) -> bool: ...
+    def mounts_caller(self, ctx: Context) -> bool: ...
 
     @abstractmethod
     def webapp_user_id(self, session: Session) -> str | None: ...
@@ -98,16 +85,16 @@ class AccountSubject(Subject):
     )
 
     @override
-    def resolve_caller(self, ctx: CallerContext, session: Session) -> Account:
+    def resolve_caller(self, ctx: Context, session: Session) -> Account:
         account = AccountService.get_account_by_id(str(self.account_id), session=session)
         if account is None:
             raise Unauthorized("account not found")
-        if ctx.has_app or ctx.workspace_loaded:
+        if ctx.workspace_loaded:
             account.set_current_tenant_with_session(ctx.workspace, session=session)
         return account
 
     @override
-    def mounts_caller(self, ctx: CallerContext) -> bool:
+    def mounts_caller(self, ctx: Context) -> bool:
         return True
 
     @override
@@ -132,20 +119,23 @@ class ExternalSsoSubject(Subject):
         return ExternalIdentity(email=self._auth.subject_email, issuer=self._auth.subject_issuer)
 
     @override
-    def resolve_caller(self, ctx: CallerContext, session: Session) -> EndUser:
+    def resolve_caller(self, ctx: Context, session: Session) -> EndUser:
         identity = self.external_identity
         if identity is None:
             raise Unauthorized("missing context for external user resolution")
         return EndUserService.get_or_create_end_user_by_type(
             EndUserType.OPENAPI,
-            tenant_id=str(ctx.workspace.id),
-            app_id=str(ctx.app.id),
+            tenant_id=str(load_workspace(ctx).id),
+            app_id=str(load_app(ctx).id),
             user_id=identity.email,
         )
 
     @override
-    def mounts_caller(self, ctx: CallerContext) -> bool:
-        return ctx.has_app
+    def mounts_caller(self, ctx: Context) -> bool:
+        """An external caller is an end user *of an app*; off an app-scoped
+        route it has no caller to resolve at all.
+        """
+        return route_has_app(ctx)
 
     @override
     def webapp_user_id(self, session: Session) -> str | None:

@@ -6,8 +6,8 @@ than in production. The rows still say what each route answers today.
 
 The matrix is derived from what actually runs, not from what a route declares: a
 route's own requirements are merged with the fixed ones its subject's pipeline
-carries, `RBACCheck`'s role floor stands down when RBAC is enabled *and* the route
-declares a scene, and `RequireWebappAccess` applies the private-app check whether
+carries, a `RoleFloor` stands down when RBAC is enabled *and* it names the
+`RBACScene` beside it, and `RequireWebappAccess` applies the private-app check whether
 or not `webapp_auth.enabled` gates the ACL. Reading declarations alone under-counts
 every one of those.
 
@@ -1396,23 +1396,17 @@ def _spec_for(app: Flask, route: Route) -> EndpointSpec:
 def test_d5_rows_are_marked_and_bounded(matrix_app: Flask) -> None:
     """Every `NON_MEMBER_AND_INSUFFICIENT_SCOPE` row on a route with a live
     membership check for an account bearer carries `accepted_delta` and answers
-    `DENY_NON_MEMBER`; every other row carries none. "Live" is derived from the
-    real `__spec__` plus `Trait.APP_SCOPED` (`CheckAppWorkspaceMembership` is a
-    no-op only where there's no app in the path) — not read back out of this
-    table — so a route that gains or loses a membership check moves itself into
-    or out of the eligible set automatically.
+    `DENY_NON_MEMBER`; every other row carries none. "Live" is read off the real
+    `__spec__`, not back out of this table, so a route that gains or loses a
+    membership check moves itself into or out of the eligible set automatically.
     """
     eligible = {
         route.id
         for route in ROUTES
-        # `ACCOUNT_PRIMARY` first: `permitted_external.describe` is `APP_SCOPED`
-        # too, but its `SubjectCheck` (rank FIRST) rejects an account bearer
-        # before `CheckAppWorkspaceMembership` (rank EARLY) ever runs.
+        # Declaring the check is not enough: on a route no account bearer can
+        # reach, `SubjectCheck` (rank FIRST) answers before it ever runs.
         if Trait.ACCOUNT_PRIMARY in route.traits
-        and (
-            Trait.APP_SCOPED in route.traits
-            or any(isinstance(r, RequireWorkspaceMembership) for r in _spec_for(matrix_app, route).requirements)
-        )
+        and any(isinstance(r, RequireWorkspaceMembership) for r in _spec_for(matrix_app, route).requirements)
     }
     assert len(eligible) == 17
 

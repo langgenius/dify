@@ -25,7 +25,14 @@ from controllers.openapi._audit import emit_app_run
 from controllers.openapi._contract import endpoint
 from controllers.openapi._models import AppRunRequest, TaskStopResponse
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.requirements import RBACCheck, RequireWebappAccess, SubjectCheck, TokenScope
+from controllers.openapi.auth.requirements import (
+    CheckAppApiEnabled,
+    RBACScene,
+    RequireWebappAccess,
+    RequireWorkspaceMembership,
+    SubjectCheck,
+    TokenScope,
+)
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
 from controllers.service_api.app.error import (
     AppUnavailableError,
@@ -67,8 +74,10 @@ logger = logging.getLogger(__name__)
 
 _APP_RUN = (
     SubjectCheck(allowed=(AccountSubject, ExternalSsoSubject)),
+    CheckAppApiEnabled(),
+    RequireWorkspaceMembership(),
     TokenScope(Scope.APPS_RUN),
-    RBACCheck(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
+    RBACScene(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
     RequireWebappAccess(),
 )
 
