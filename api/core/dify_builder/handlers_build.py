@@ -22,7 +22,6 @@ from core.dify_builder.contract import (
     DecisionItem,
     ErrorCard,
     FormCard,
-    FormField,
     NoticeItem,
     PlanCard,
     PublishCard,
@@ -39,6 +38,7 @@ from core.dify_builder.handlers_fix import (
     action_string,
     append_card,
     build_change_set,
+    build_form_fields,
     emit_canvas,
     merge_known_keys,
     mint_checkpoint,
@@ -80,16 +80,6 @@ def _emit_completion(fc: DifyBuilderContext) -> list[ConversationItem]:
     return append_card(fc, SummaryCard(variant="completion", title="Build complete", rows=rows))
 
 
-_REQUIREMENT_FIELDS = [
-    FormField(key="report_types", label="Report types", type="text"),
-    FormField(key="audience", label="Audience", type="text"),
-    FormField(key="currency", label="Currency", type="text"),
-    FormField(key="metrics", label="Metrics", type="text"),
-    FormField(key="output", label="Output", type="textarea"),
-    FormField(key="prefer_audited", label="Prefer audited sources", type="bool"),
-]
-
-
 def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) Entry state. On ``send_goal`` reset the canvas, analyze the
     goal into requirements, and transition to build.goal_analysis emitting its
@@ -102,13 +92,15 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     if ok and text:
         fc.goal_text = text
     emit_canvas(env, "reset_build_canvas")
-    fc.requirements = env.agent.analyze_goal(fc.goal_text)
+    analysis = env.agent.analyze_goal(fc.goal_text)
+    fc.form_fields = list(analysis.get("fields") or [])
+    fc.requirements = dict(analysis.get("values") or {})
 
     form_items = append_card(
         fc,
         FormCard(
             variant="build_requirements",
-            fields=list(_REQUIREMENT_FIELDS),
+            fields=build_form_fields(fc.form_fields),
             values=dict(fc.requirements),
             frozen=False,
         ),
@@ -138,9 +130,6 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     )
 
 
-_REQUIREMENT_KEYS = ("report_types", "audience", "currency", "metrics", "output", "prefer_audited")
-
-
 def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) On ``submit_requirements`` merge the form payload, propose
     plan v1, and transition to build.initial_plan emitting the plan card."""
@@ -149,7 +138,8 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         return StepResult(next=PcState.BUILD_GOAL_ANALYSIS, context=fc)
 
     if turn.action is not None and isinstance(turn.action.payload, dict):
-        fc.requirements = merge_known_keys(fc.requirements, turn.action.payload, _REQUIREMENT_KEYS)
+        keys = [f["key"] for f in fc.form_fields if isinstance(f, dict) and f.get("key")]
+        fc.requirements = merge_known_keys(fc.requirements, turn.action.payload, keys)
 
     fc.plan_items = env.agent.propose_plan_v1(fc.requirements)
     fc.plan_version_tag = "v1"
