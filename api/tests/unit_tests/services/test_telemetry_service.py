@@ -58,11 +58,16 @@ def test_reporting_without_setup_is_skipped(sqlite_session: Session, telemetry_e
 
 
 @pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
-def test_report_install_marks_reported_at(sqlite_session: Session, telemetry_enabled, monkeypatch: pytest.MonkeyPatch):
+def test_report_install_marks_reported_at(
+    sqlite_session: Session,
+    telemetry_enabled,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+):
     setup = DifySetup(version="installed-version", instance_id="d246c3a1-350b-406c-92c7-6043df680758")
     sqlite_session.add(setup)
     sqlite_session.commit()
-    monkeypatch.setattr(telemetry_service.dify_config.project, "version", "running-version")
+    config_overrides(project=telemetry_service.dify_config.project.model_copy(update={"version": "running-version"}))
 
     sent_payloads: list[dict[str, str | int]] = []
 
@@ -190,12 +195,15 @@ def test_report_install_does_not_use_fallback_endpoint_after_http_error(
 
 @pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
 def test_report_heartbeat_retries_pending_install_before_heartbeat(
-    sqlite_session: Session, telemetry_enabled, monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session,
+    telemetry_enabled,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
 ):
     setup = DifySetup(version="installed-version", instance_id="d246c3a1-350b-406c-92c7-6043df680758")
     sqlite_session.add(setup)
     sqlite_session.commit()
-    monkeypatch.setattr(telemetry_service.dify_config.project, "version", "running-version")
+    config_overrides(project=telemetry_service.dify_config.project.model_copy(update={"version": "running-version"}))
 
     sent_payloads: list[dict[str, str | int]] = []
 
