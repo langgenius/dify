@@ -19,10 +19,11 @@ def to_intents(graph: dict[str, Any]) -> list[MutationIntent]:
     edges = graph.get("edges") or []
 
     # rename map: the generator start id -> canonical "start"
+    # Only map the first start node; additional starts keep their original ids
     remap: dict[str, str] = {}
     for node in nodes:
         data = node.get("data") or {}
-        if data.get("type") == "start" and node.get("id"):
+        if data.get("type") == "start" and node.get("id") and not remap:
             remap[str(node["id"])] = _START_ID
 
     creates: list[MutationIntent] = []
