@@ -327,7 +327,7 @@ def node_ids(graph: Graph) -> list[str]:
 
 STRUCTURAL_OPS: frozenset[str] = frozenset({"create_node", "delete_node", "connect", "insert_between"})
 
-_APPLY_FNS = {
+APPLY_FNS: dict[str, Any] = {
     "set_node_config": apply_set_node_config,
     "create_node": apply_create_node,
     "delete_node": apply_delete_node,
@@ -356,18 +356,14 @@ def filter_applicable(
     applicable: list[MutationIntent] = []
     rejected: list[tuple[MutationIntent, str]] = []
     for intent in intents:
-        apply_fn = _APPLY_FNS.get(intent.op)
-        if apply_fn is None:
-            rejected.append((intent, f"unknown mutation op: {intent.op!r}"))
-            continue
-        if allowed_node_types is not None and intent.op in ("create_node", "insert_between"):
-            node_type = intent.args.get("node_type")
-            if node_type not in allowed_node_types:
-                rejected.append((intent, f"node_type not allowed: {node_type!r}"))
-                continue
         try:
             validate_intent_args(intent)
-            working, _changed = apply_fn(working, **intent.args)
+            if allowed_node_types is not None and intent.op in ("create_node", "insert_between"):
+                node_type = intent.args.get("node_type")
+                if node_type not in allowed_node_types:
+                    rejected.append((intent, f"node_type not allowed: {node_type!r}"))
+                    continue
+            working, _changed = APPLY_FNS[intent.op](working, **intent.args)
         except (ValueError, TypeError) as exc:
             rejected.append((intent, str(exc)))
             continue
