@@ -307,6 +307,8 @@ def test_test_and_repair_finds_and_fixes_then_reaches_review():
     assert "test_result" in kinds
     summary = next(i for i in res.items if i.kind == "summary")
     assert summary.payload["variant"] == "review"
+    assistant = next(i for i in res.items if i.kind == "assistant_turn")
+    assert assistant.payload["cards"] == ["error", "change_set", "test_result", "summary"]
     names = [e["event"] for e in events]
     assert "mark_test_error" in names
     assert "apply_error_fix" in names
@@ -329,6 +331,13 @@ def test_test_and_repair_neutral_when_repair_empty():
     result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
     assert result.next == PcState.BUILD_REVIEW
     assert env.dify.applied == []  # no repair applied when propose_build_repair returns []
+    kinds = [i.kind for i in result.items]
+    assert "error" not in kinds
+    assert "change_set" not in kinds
+    assistant = next(i for i in result.items if i.kind == "assistant_turn")
+    assert assistant.payload["cards"] == ["test_result", "summary"]  # no error/change_set attached
+    summary = next(i for i in result.items if i.kind == "summary")
+    assert "No issues found" in summary.payload["items"]
 
 
 def test_review_publish_advances_to_publish():
