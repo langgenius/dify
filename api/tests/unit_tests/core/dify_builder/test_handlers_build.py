@@ -21,6 +21,18 @@ def _actor() -> Actor:
     return Actor(account_id="acc-1", tenant_id="tenant-1")
 
 
+def _session(**overrides) -> Session:
+    fields: dict = {
+        "app_id": "app",
+        "tenant_id": "tenant-1",
+        "owner_account_id": "acc-1",
+        "entry_mode": EntryMode.BUILD,
+        "current_state": PcState.BUILD_CAPABILITY_CHECK,
+    }
+    fields.update(overrides)
+    return Session(**fields)
+
+
 def _new_env(dify=None, emit_canvas=None, agent=None) -> tuple[Env, InMemoryRepository]:
     repo = InMemoryRepository()
     env = Env(
@@ -44,6 +56,39 @@ def _seed_build_session(repo: InMemoryRepository, state: PcState, **fc_kwargs) -
     fc = DifyBuilderContext(goal_text="Build a quarterly report workflow", **fc_kwargs)
     repo.create_session(s, fc, [ConversationItem(kind="user", seq=0)])
     return s
+
+
+def test_build_form_fields_whitelists_and_coerces_type():
+    from core.dify_builder.handlers_fix import build_form_fields
+
+    fields = build_form_fields(
+        [
+            {"key": "a", "label": "A", "type": "select", "options": ["x"], "junk": 1},
+            {"key": "b", "label": "B", "type": "weird"},
+        ]
+    )
+    assert [f.key for f in fields] == ["a", "b"]
+    assert fields[0].type == "select" and fields[0].options == ["x"]
+    assert fields[1].type == "text"  # unknown type coerced to text
+
+
+def test_capability_check_renders_agent_fields():
+    # StubAgent.analyze_goal returns dynamic fields; the form card and
+    # fc.form_fields must reflect them (not a hardcoded constant).
+    from core.dify_builder.handlers_build import handle_capability_check
+
+    env, _ = _new_env()
+    env.agent.analyze_goal = lambda _g: {
+        "fields": [{"key": "categories", "label": "Categories", "type": "text"}],
+        "values": {"categories": "billing, refunds"},
+    }
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_CAPABILITY_CHECK)
+    fc = DifyBuilderContext(goal_text="triage support tickets")
+    result = handle_capability_check(
+        env, Turn(actor=_actor(), action=Action(kind="send_goal", payload={"text": "triage"})), s, fc
+    )
+    assert result.context.form_fields == [{"key": "categories", "label": "Categories", "type": "text"}]
+    assert result.context.requirements == {"categories": "billing, refunds"}
 
 
 def test_capability_check_send_goal_advances_to_goal_analysis():
@@ -83,6 +128,11 @@ def test_goal_analysis_submit_requirements_advances_to_initial_plan_with_plan_v1
         repo,
         PcState.BUILD_GOAL_ANALYSIS,
         requirements={"currency": "USD", "metrics": "revenue"},
+        form_fields=[
+            {"key": "currency", "label": "Currency", "type": "text"},
+            {"key": "audience", "label": "Audience", "type": "text"},
+            {"key": "metrics", "label": "Metrics", "type": "text"},
+        ],
     )
     turn = Turn(
         action=Action(
