@@ -20,12 +20,12 @@ class _FakeInstance:
     def __init__(self, replies):
         self._replies = list(replies)
 
-    def invoke_llm(self, *, prompt_messages, model_parameters=None, stop=None, stream=True, **kw):  # noqa: ARG002
+    def invoke_llm(self, **_kwargs):
         return _Result(self._replies.pop(0))
 
 
 class _BoomInstance:
-    def invoke_llm(self, *, prompt_messages, model_parameters=None, stop=None, stream=True, **kw):  # noqa: ARG002
+    def invoke_llm(self, **_kwargs):
         raise RuntimeError("provider down")
 
 
@@ -55,6 +55,14 @@ def test_analyze_impact_provider_error_degrades():
     assert out["target_node_ids"] == []
 
 
+def test_analyze_impact_non_list_target_node_ids_degrades_without_raising():
+    m = _FakeInstance([json.dumps({
+        "fields": [{"key": "tone", "label": "Tone", "type": "text"}],
+        "values": {"tone": "formal"}, "target_node_ids": 5})])
+    out = edit.analyze_impact(m, "make formal", _GRAPH)
+    assert out["target_node_ids"] == []
+
+
 def test_propose_edit_plan_bullets():
     m = _FakeInstance([json.dumps({"plan": ["Tighten prompt"]})])
     assert edit.propose_edit_plan(m, {"tone": "formal"}, _GRAPH) == ["Tighten prompt"]
@@ -66,6 +74,12 @@ def test_propose_edit_plan_none_model_degrades():
 
 def test_propose_edit_plan_provider_error_degrades():
     out = edit.propose_edit_plan(_BoomInstance(), {"tone": "formal"}, _GRAPH)
+    assert out == ["Apply the requested edit"]
+
+
+def test_propose_edit_plan_non_list_plan_degrades():
+    m = _FakeInstance([json.dumps({"plan": "not-a-list"})])
+    out = edit.propose_edit_plan(m, {"tone": "formal"}, _GRAPH)
     assert out == ["Apply the requested edit"]
 
 
@@ -97,4 +111,10 @@ def test_build_edit_intents_total_reject_reprompts_then_recovers():
 def test_build_edit_intents_total_reject_twice_returns_empty():
     bad = json.dumps({"intents": [{"op": "set_node_config", "args": {"node_id": "ghost", "path": "x", "value": 1}}]})
     out = edit.build_edit_intents(_FakeInstance([bad, bad]), {"tone": "formal"}, _GRAPH)
+    assert out == []
+
+
+def test_build_edit_intents_non_list_intents_degrades_to_empty():
+    m = _FakeInstance([json.dumps({"intents": "oops"})])
+    out = edit.build_edit_intents(m, {"tone": "formal"}, _GRAPH)
     assert out == []
