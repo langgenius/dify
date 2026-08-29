@@ -12,6 +12,7 @@ import copy
 import pytest
 
 from core.dify_builder.models import MutationIntent
+from services.dify_builder import graph_ops
 from services.dify_builder.graph_ops import (
     MUTATION_ARG_KEYS,
     apply_connect,
@@ -475,3 +476,67 @@ def test_node_ids():
     g = {"nodes": [{"id": "a", "data": {"type": "llm"}}, {"id": "b", "data": {"type": "end"}}], "edges": []}
     assert node_ids(g) == ["a", "b"]
     assert node_ids({}) == []
+
+
+# ---- filter_applicable -------------------------------------------------------
+
+
+_G = {
+    "nodes": [
+        {"id": "a", "type": "custom", "data": {"type": "code", "title": "Code"}},
+        {"id": "b", "type": "custom", "data": {"type": "end", "title": "End"}},
+    ],
+    "edges": [{"id": "a-b", "source": "a", "target": "b"}],
+}
+
+
+def test_filter_applicable_all_valid():
+    intents = [MutationIntent(op="set_node_config", args={"node_id": "a", "path": "code", "value": "x"})]
+    ok, bad = graph_ops.filter_applicable(_G, intents)
+    assert ok == intents
+    assert bad == []
+
+
+def test_filter_rejects_unknown_op():
+    intents = [MutationIntent(op="frobnicate", args={})]
+    ok, bad = graph_ops.filter_applicable(_G, intents)
+    assert ok == []
+    assert "unknown mutation op" in bad[0][1]
+
+
+def test_filter_rejects_missing_required_arg():
+    intents = [MutationIntent(op="set_node_config", args={"node_id": "a"})]
+    ok, bad = graph_ops.filter_applicable(_G, intents)
+    assert ok == []
+    assert "missing required arg" in bad[0][1]
+
+
+def test_filter_rejects_extra_arg_key():
+    intents = [MutationIntent(op="delete_node", args={"node_id": "a", "bogus": 1})]
+    ok, bad = graph_ops.filter_applicable(_G, intents)
+    assert ok == []
+    assert "bogus" in bad[0][1]
+
+
+def test_filter_rejects_dangling_ref():
+    intents = [MutationIntent(op="connect", args={"from_node": "a", "to_node": "zzz"})]
+    ok, bad = graph_ops.filter_applicable(_G, intents)
+    assert ok == []
+    assert "node not found" in bad[0][1]
+
+
+def test_filter_rejects_unknown_node_type():
+    intents = [MutationIntent(op="create_node", args={"node_type": "made-up", "config": {}})]
+    ok, bad = graph_ops.filter_applicable(_G, intents, allowed_node_types={"llm", "end"})
+    assert ok == []
+    assert "node_type not allowed" in bad[0][1]
+
+
+def test_filter_create_then_connect_ordering():
+    intents = [
+        MutationIntent(op="create_node", args={"node_type": "llm", "config": {}, "node_id": "c"}),
+        MutationIntent(op="connect", args={"from_node": "c", "to_node": "b"}),
+    ]
+    ok, bad = graph_ops.filter_applicable(_G, intents, allowed_node_types={"llm", "end"})
+    assert ok == intents  # the connect sees the node the prior create added
+    assert bad == []
