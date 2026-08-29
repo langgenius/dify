@@ -1,9 +1,14 @@
-"""The real Dify Builder agent shell (Foundation slice).
+"""The real Dify Builder agent shell.
 
-Owns the resolved model + will own the LLM helper for cognition, but for now
-delegates all 13 DifyBuilderAgent methods to the canned PlaceholderAgent — behavior
-is unchanged this slice. Later slices replace method bodies one at a time with real
-LLM calls (self._model() + services.dify_builder.agent.llm), no structural change.
+Owns the resolved model. Of the Protocol's 14 methods (Fix 4 + Build 7 + Edit 3),
+the 3 Fix methods that reason about a failed run -- ``diagnose``,
+``diagnose_checklist``, ``propose_repair`` -- now use real LLM cognition via
+``services.dify_builder.agent.fix``, resolving the model through
+``_model_or_none`` (which degrades to ``None`` on resolution failure rather than
+crashing the advance; ``fix.*`` handles that). ``generate_mock_inputs`` and every
+Build/Edit method still delegate to the canned ``PlaceholderAgent`` unchanged.
+Later slices replace those remaining method bodies one at a time with real LLM
+calls, no structural change.
 """
 
 from typing import Any

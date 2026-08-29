@@ -128,7 +128,7 @@ def test_diagnose_then_propose_high_risk_stops_at_await_approval():
 def test_handle_propose_empty_intents_shows_notice():
     # propose_repair may legitimately return no intents alongside a high-risk
     # surface-to-human Risk (Task 3) -- the reply must explain that instead of
-    # claiming "0 change(s))".
+    # claiming "0 change(s)".
     env, _ = _new_env()
     s = _session()
     fc = DifyBuilderContext()

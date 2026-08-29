@@ -364,7 +364,7 @@ def filter_applicable(
                     rejected.append((intent, f"node_type not allowed: {node_type!r}"))
                     continue
             working, _changed = APPLY_FNS[intent.op](working, **intent.args)
-        except (ValueError, TypeError) as exc:
+        except Exception as exc:
             rejected.append((intent, str(exc)))
             continue
         applicable.append(intent)
