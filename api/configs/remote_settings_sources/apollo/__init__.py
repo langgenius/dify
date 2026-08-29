@@ -52,5 +52,5 @@ class ApolloSettingsSource(RemoteSettingsSource):
     def get_field_value(self, field: FieldInfo, field_name: str) -> tuple[Any, str, bool]:
         if not isinstance(self.remote_configs, dict):
             raise ValueError(f"remote configs is not dict, but {type(self.remote_configs)}")
-        field_value = self.remote_configs.get(field_name)
-        return field_value, field_name, False
+        field_value, field_key = self._resolve_field_value(self.remote_configs, field, field_name)
+        return field_value, field_key, False
