@@ -14,8 +14,8 @@ Covers:
 """
 
 import threading
-import time
 import uuid
+from collections.abc import Callable
 from contextlib import contextmanager
 from unittest.mock import MagicMock
 
@@ -95,53 +95,95 @@ def _noop_rate_limit_context(rate_limit, request_id):
 # ---------------------------------------------------------------------------
 # _build_streaming_task_on_subscribe
 # ---------------------------------------------------------------------------
+class _FakeTimer:
+    def __init__(self, interval: float, function: Callable[[], bool]) -> None:
+        self.interval = interval
+        self.function = function
+        self.daemon = False
+        self.started = False
+        self.cancelled = False
+
+    def start(self) -> None:
+        self.started = True
+
+    def cancel(self) -> None:
+        self.cancelled = True
+
+
+def _unexpected_timer(interval: float, function: Callable[[], bool]) -> _FakeTimer:
+    raise AssertionError("streams must not create a fallback timer")
+
+
 class TestBuildStreamingTaskOnSubscribe:
-    """Tests for AppGenerateService._build_streaming_task_on_subscribe."""
+    def test_streams_starts_only_when_hook_is_invoked_without_creating_timer(
+        self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+    ):
+        config_overrides(PUBSUB_REDIS_CHANNEL_TYPE="streams")
 
-    def test_streams_mode_starts_immediately(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
-        called = []
-        cb = AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
-        # task started immediately during build
-        assert called == [1]
-        # calling the returned callback is idempotent
-        cb()
-        assert called == [1]  # not called again
+        monkeypatch.setattr(ags_module.threading, "Timer", _unexpected_timer)
+        called: list[int] = []
 
-    def test_pubsub_mode_starts_on_subscribe(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "pubsub")
-        monkeypatch.setattr(ags_module, "SSE_TASK_START_FALLBACK_MS", 60_000)  # large to prevent timer
-        called = []
-        cb = AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
+        on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
+
         assert called == []
-        cb()
-        assert called == [1]
-        # second call is idempotent
-        cb()
+        on_subscribe()
+        on_subscribe()
         assert called == [1]
 
-    def test_sharded_mode_starts_on_subscribe(self, monkeypatch: pytest.MonkeyPatch):
-        """sharded is treated like pubsub (i.e. not 'streams')."""
-        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "sharded")
-        monkeypatch.setattr(ags_module, "SSE_TASK_START_FALLBACK_MS", 60_000)
-        called = []
-        cb = AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
+    @pytest.mark.parametrize("channel_type", ["pubsub", "sharded"])
+    def test_pubsub_transports_keep_subscribe_hook_and_fallback_timer(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        channel_type: str,
+        config_overrides: Callable[..., None],
+    ):
+        config_overrides(PUBSUB_REDIS_CHANNEL_TYPE=channel_type)
+        timers: list[_FakeTimer] = []
+
+        def build_timer(interval: float, function: Callable[[], bool]) -> _FakeTimer:
+            timer = _FakeTimer(interval, function)
+            timers.append(timer)
+            return timer
+
+        monkeypatch.setattr(ags_module.threading, "Timer", build_timer)
+        called: list[int] = []
+
+        on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
+
         assert called == []
-        cb()
+        assert len(timers) == 1
+        assert timers[0].interval == ags_module.SSE_TASK_START_FALLBACK_MS / 1000.0
+        assert timers[0].started is True
+
+        on_subscribe()
+
+        assert called == [1]
+        assert timers[0].cancelled is True
+
+    def test_pubsub_fallback_starts_task_if_hook_is_never_invoked(
+        self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+    ):
+        config_overrides(PUBSUB_REDIS_CHANNEL_TYPE="pubsub")
+        timers: list[_FakeTimer] = []
+
+        def build_timer(interval: float, function: Callable[[], bool]) -> _FakeTimer:
+            timer = _FakeTimer(interval, function)
+            timers.append(timer)
+            return timer
+
+        monkeypatch.setattr(ags_module.threading, "Timer", build_timer)
+        called: list[int] = []
+        on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
+
+        assert timers[0].function() is True
+        on_subscribe()
         assert called == [1]
 
-    def test_pubsub_fallback_timer_fires(self, monkeypatch: pytest.MonkeyPatch):
-        """When nobody subscribes fast enough the fallback timer fires."""
-        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "pubsub")
-        monkeypatch.setattr(ags_module, "SSE_TASK_START_FALLBACK_MS", 50)  # 50 ms
-        called = []
-        _cb = AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
-        time.sleep(0.2)  # give the timer time to fire
-        assert called == [1]
-
-    def test_exception_in_start_task_returns_false(self, monkeypatch: pytest.MonkeyPatch):
-        """When start_task raises, _try_start returns False and next call retries."""
-        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
+    def test_streams_retries_after_enqueue_failure(
+        self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+    ):
+        config_overrides(PUBSUB_REDIS_CHANNEL_TYPE="streams")
+        monkeypatch.setattr(ags_module.threading, "Timer", _unexpected_timer)
         call_count = 0
 
         def _bad():
@@ -150,15 +192,17 @@ class TestBuildStreamingTaskOnSubscribe:
             if call_count == 1:
                 raise RuntimeError("boom")
 
-        cb = AppGenerateService._build_streaming_task_on_subscribe(_bad)
-        # first call inside build raised, but is caught; second call via cb succeeds
+        on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(_bad)
+        on_subscribe()
         assert call_count == 1
-        cb()
+        on_subscribe()
         assert call_count == 2
 
-    def test_concurrent_subscribe_only_starts_once(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "pubsub")
-        monkeypatch.setattr(ags_module, "SSE_TASK_START_FALLBACK_MS", 60_000)
+    def test_concurrent_subscribe_only_starts_once(
+        self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+    ):
+        config_overrides(PUBSUB_REDIS_CHANNEL_TYPE="streams")
+        monkeypatch.setattr(ags_module.threading, "Timer", _unexpected_timer)
         call_count = 0
 
         def _inc():
@@ -178,33 +222,28 @@ class TestBuildStreamingTaskOnSubscribe:
 # _get_max_active_requests
 # ---------------------------------------------------------------------------
 class TestGetMaxActiveRequests:
-    def test_both_zero_returns_zero(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(ags_module.dify_config, "APP_MAX_ACTIVE_REQUESTS", 0)
-        monkeypatch.setattr(ags_module.dify_config, "APP_DEFAULT_ACTIVE_REQUESTS", 0)
+    def test_both_zero_returns_zero(self, config_overrides: Callable[..., None]):
+        config_overrides(APP_MAX_ACTIVE_REQUESTS=0, APP_DEFAULT_ACTIVE_REQUESTS=0)
         app = _make_app(AppMode.CHAT, max_active_requests=0)
         assert AppGenerateService._get_max_active_requests(app) == 0
 
-    def test_app_limit_only(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(ags_module.dify_config, "APP_MAX_ACTIVE_REQUESTS", 0)
-        monkeypatch.setattr(ags_module.dify_config, "APP_DEFAULT_ACTIVE_REQUESTS", 0)
+    def test_app_limit_only(self, config_overrides: Callable[..., None]):
+        config_overrides(APP_MAX_ACTIVE_REQUESTS=0, APP_DEFAULT_ACTIVE_REQUESTS=0)
         app = _make_app(AppMode.CHAT, max_active_requests=5)
         assert AppGenerateService._get_max_active_requests(app) == 5
 
-    def test_config_limit_only(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(ags_module.dify_config, "APP_MAX_ACTIVE_REQUESTS", 10)
-        monkeypatch.setattr(ags_module.dify_config, "APP_DEFAULT_ACTIVE_REQUESTS", 0)
+    def test_config_limit_only(self, config_overrides: Callable[..., None]):
+        config_overrides(APP_MAX_ACTIVE_REQUESTS=10, APP_DEFAULT_ACTIVE_REQUESTS=0)
         app = _make_app(AppMode.CHAT, max_active_requests=0)
         assert AppGenerateService._get_max_active_requests(app) == 10
 
-    def test_both_non_zero_returns_min(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(ags_module.dify_config, "APP_MAX_ACTIVE_REQUESTS", 20)
-        monkeypatch.setattr(ags_module.dify_config, "APP_DEFAULT_ACTIVE_REQUESTS", 0)
+    def test_both_non_zero_returns_min(self, config_overrides: Callable[..., None]):
+        config_overrides(APP_MAX_ACTIVE_REQUESTS=20, APP_DEFAULT_ACTIVE_REQUESTS=0)
         app = _make_app(AppMode.CHAT, max_active_requests=5)
         assert AppGenerateService._get_max_active_requests(app) == 5
 
-    def test_default_active_requests_used_when_app_has_none(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(ags_module.dify_config, "APP_MAX_ACTIVE_REQUESTS", 0)
-        monkeypatch.setattr(ags_module.dify_config, "APP_DEFAULT_ACTIVE_REQUESTS", 15)
+    def test_default_active_requests_used_when_app_has_none(self, config_overrides: Callable[..., None]):
+        config_overrides(APP_MAX_ACTIVE_REQUESTS=0, APP_DEFAULT_ACTIVE_REQUESTS=15)
         app = _make_app(AppMode.CHAT, max_active_requests=0)
         assert AppGenerateService._get_max_active_requests(app) == 15
 
@@ -216,8 +255,8 @@ class TestGenerate:
     """Tests for AppGenerateService.generate covering each mode."""
 
     @pytest.fixture(autouse=True)
-    def _common(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(ags_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    def _common(self, mocker: MockerFixture, config_overrides: Callable[..., None]):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         mocker.patch("services.app_generate_service.RateLimit", _DummyRateLimit)
         # Prevent AppExecutionParams.new from touching real models via isinstance
         mocker.patch(
@@ -368,7 +407,8 @@ class TestGenerate:
         retrieve_spy.assert_not_called()
 
     # -- ADVANCED_CHAT streaming --------------------------------------------
-    def test_advanced_chat_streaming(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
+    def test_advanced_chat_streaming(self, mocker: MockerFixture, config_overrides: Callable[..., None]):
+        config_overrides(PUBSUB_REDIS_CHANNEL_TYPE="streams")
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
         mocker.patch(
@@ -376,9 +416,6 @@ class TestGenerate:
             return_value=MagicMock(workflow_run_id="wfr-1", model_dump_json=MagicMock(return_value="{}")),
         )
         delay_spy = mocker.patch("services.app_generate_service.workflow_based_app_execution_task.delay")
-        # Let _build_streaming_task_on_subscribe call the real on_subscribe
-        # so the inner closure (line 165) actually executes.
-        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
         gen_instance = MagicMock()
         gen_instance.retrieve_events.return_value = iter([])
         gen_instance.convert_to_event_stream.side_effect = lambda x: x
@@ -397,7 +434,10 @@ class TestGenerate:
         )
         # In streaming mode it should go through retrieve_events, not generate
         gen_instance.retrieve_events.assert_called_once()
-        # The inner on_subscribe closure was invoked by _build_streaming_task_on_subscribe
+        # Dispatch is gated on subscribe; simulate the SSE layer entering the
+        # subscription, which is what actually invokes on_subscribe.
+        on_subscribe = gen_instance.retrieve_events.call_args.kwargs["on_subscribe"]
+        on_subscribe()
         delay_spy.assert_called_once()
 
     # -- WORKFLOW blocking --------------------------------------------------
@@ -428,7 +468,8 @@ class TestGenerate:
         assert call_kwargs["pause_state_config"].state_owner_user_id == "owner-id"
 
     # -- WORKFLOW streaming -------------------------------------------------
-    def test_workflow_streaming(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
+    def test_workflow_streaming(self, mocker: MockerFixture, config_overrides: Callable[..., None]):
+        config_overrides(PUBSUB_REDIS_CHANNEL_TYPE="streams")
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
         mocker.patch(
@@ -436,9 +477,6 @@ class TestGenerate:
             return_value=MagicMock(workflow_run_id="wfr-2", model_dump_json=MagicMock(return_value="{}")),
         )
         delay_spy = mocker.patch("services.app_generate_service.workflow_based_app_execution_task.delay")
-        # Let _build_streaming_task_on_subscribe invoke the real on_subscribe
-        # so the inner closure (line 216) actually executes.
-        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
         retrieve_spy = mocker.patch(
             "services.app_generate_service.MessageBasedAppGenerator.retrieve_events",
             return_value=iter([]),
@@ -457,7 +495,10 @@ class TestGenerate:
             session=MagicMock(),
         )
         retrieve_spy.assert_called_once()
-        # The inner on_subscribe closure was invoked by _build_streaming_task_on_subscribe
+        # Dispatch is gated on subscribe; simulate the SSE layer entering the
+        # subscription, which is what actually invokes on_subscribe.
+        on_subscribe = retrieve_spy.call_args.kwargs["on_subscribe"]
+        on_subscribe()
         delay_spy.assert_called_once()
 
     # -- Invalid mode -------------------------------------------------------
@@ -479,15 +520,15 @@ class TestGenerate:
 # ---------------------------------------------------------------------------
 class TestGenerateBilling:
     @pytest.fixture(autouse=True)
-    def _common(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
+    def _common(self, mocker: MockerFixture):
         mocker.patch("services.app_generate_service.RateLimit", _DummyRateLimit)
         mocker.patch(
             "services.app_generate_service.rate_limit_context",
             _noop_rate_limit_context,
         )
 
-    def test_cloud_edition_consumes_quota(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(ags_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    def test_cloud_edition_consumes_quota(self, mocker: MockerFixture, config_overrides: Callable[..., None]):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         quota_charge = MagicMock()
         reserve_mock = mocker.patch(
             "services.app_generate_service.QuotaService.reserve",
@@ -514,12 +555,12 @@ class TestGenerateBilling:
         quota_charge.commit.assert_called_once()
 
     def test_billing_quota_exceeded_raises_rate_limit_error(
-        self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+        self, mocker: MockerFixture, config_overrides: Callable[..., None]
     ):
         from services.errors.app import QuotaExceededError
         from services.errors.llm import InvokeRateLimitError
 
-        monkeypatch.setattr(ags_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         mocker.patch(
             "services.app_generate_service.QuotaService.reserve",
             side_effect=QuotaExceededError(feature="workflow", tenant_id="t", required=1),
@@ -535,8 +576,10 @@ class TestGenerateBilling:
                 session=MagicMock(),
             )
 
-    def test_exception_refunds_quota_and_exits_rate_limit(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(ags_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    def test_exception_refunds_quota_and_exits_rate_limit(
+        self, mocker: MockerFixture, config_overrides: Callable[..., None]
+    ):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         quota_charge = MagicMock()
         mocker.patch(
             "services.app_generate_service.QuotaService.reserve",
@@ -563,10 +606,10 @@ class TestGenerateBilling:
         quota_charge.refund.assert_called_once()
 
     def test_rate_limit_exit_called_in_finally_for_blocking(
-        self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+        self, mocker: MockerFixture, config_overrides: Callable[..., None]
     ):
         """For non-streaming (blocking) calls, rate_limit.exit should be called in finally."""
-        monkeypatch.setattr(ags_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 
         exit_calls: list[str] = []
 
@@ -595,8 +638,8 @@ class TestGenerateBilling:
         # exit is called in finally block for non-streaming
         assert exit_calls == ["dummy-request-id"]
 
-    def test_blocking_failure_exits_rate_limit_once(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(ags_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    def test_blocking_failure_exits_rate_limit_once(self, mocker: MockerFixture, config_overrides: Callable[..., None]):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         quota_charge = MagicMock()
         mocker.patch(
             "services.app_generate_service.QuotaService.reserve",
@@ -627,8 +670,10 @@ class TestGenerateBilling:
         quota_charge.refund.assert_called_once()
         assert exit_calls == ["dummy-request-id"]
 
-    def test_streaming_failure_exits_rate_limit_once(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(ags_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    def test_streaming_failure_exits_rate_limit_once(
+        self, mocker: MockerFixture, config_overrides: Callable[..., None]
+    ):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         quota_charge = MagicMock()
         mocker.patch(
             "services.app_generate_service.QuotaService.reserve",

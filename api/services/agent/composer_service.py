@@ -64,6 +64,7 @@ from services.entities.agent_entities import (
     ComposerVariant,
     WorkflowNodeJobConfig,
 )
+from services.skill_management_service import SkillManagementService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.new_agent_beta_task import register_new_agent_beta_publish_after_commit
 
@@ -279,15 +280,10 @@ class AgentComposerService:
         )
         state["validation"] = cls.collect_validation_findings(payload=payload)
         session.commit()
-        binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+        WorkflowAgentRetirementService.retire_unowned(
             tenant_id=tenant_id,
             agent_ids=retirement_candidates,
             account_id=account_id,
-        )
-        enqueue_agent_resource_collection(
-            tenant_id=tenant_id,
-            binding_ids=binding_ids,
-            home_snapshot_ids=home_snapshot_ids,
         )
         return state
 
@@ -357,6 +353,14 @@ class AgentComposerService:
             icon_type=source_agent.icon_type,
             icon=source_agent.icon,
             icon_background=source_agent.icon_background,
+        )
+        SkillManagementService(session=session).copy_agent_bindings(
+            tenant_id=tenant_id,
+            source_agent_id=source_agent.id,
+            source_snapshot_id=source_version.id,
+            target_agent_id=inline_agent.id,
+            target_snapshot_id=inline_agent.active_config_snapshot_id,
+            user_id=account_id,
         )
         binding.binding_type = WorkflowAgentBindingType.INLINE_AGENT
         binding.agent_id = inline_agent.id
@@ -645,6 +649,13 @@ class AgentComposerService:
         agent.updated_by = account_id
         draft.base_snapshot_id = version.id
         draft.updated_by = account_id
+
+        SkillManagementService(session=session).publish_agent_bindings(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            snapshot_id=version.id,
+            user_id=account_id,
+        )
         if not access_was_ready:
             if not agent.app_id:
                 raise AgentNotFoundError()
@@ -1493,6 +1504,12 @@ class AgentComposerService:
         agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
         agent.active_config_is_published = True
         agent.updated_by = account_id
+        SkillManagementService(session=session).publish_agent_bindings(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            snapshot_id=version.id,
+            user_id=account_id,
+        )
         binding.current_snapshot_id = version.id
         if payload.node_job is not None:
             binding.node_job_config = payload.node_job
@@ -1533,6 +1550,12 @@ class AgentComposerService:
         agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
         agent.active_config_is_published = True
         agent.updated_by = account_id
+        SkillManagementService(session=session).publish_agent_bindings(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            snapshot_id=version.id,
+            user_id=account_id,
+        )
         binding.current_snapshot_id = version.id
         binding.updated_by = account_id
         if payload.node_job is not None:
@@ -1569,6 +1592,17 @@ class AgentComposerService:
             operation=AgentConfigRevisionOperation.SAVE_NEW_AGENT,
             version_note=payload.version_note,
         )
+        source_agent_id = binding.agent_id if binding else None
+        source_snapshot_id = binding.current_snapshot_id if binding else None
+        if source_agent_id and source_snapshot_id and agent.active_config_snapshot_id:
+            SkillManagementService(session=session).copy_agent_bindings(
+                tenant_id=tenant_id,
+                source_agent_id=source_agent_id,
+                source_snapshot_id=source_snapshot_id,
+                target_agent_id=agent.id,
+                target_snapshot_id=agent.active_config_snapshot_id,
+                user_id=account_id,
+            )
         node_job = payload.node_job or WorkflowNodeJobConfig()
         if not binding:
             binding = WorkflowAgentNodeBinding(
@@ -1624,6 +1658,15 @@ class AgentComposerService:
             operation=AgentConfigRevisionOperation.SAVE_TO_ROSTER,
             version_note=payload.version_note,
         )
+        if source_agent.active_config_snapshot_id and roster_agent.active_config_snapshot_id:
+            SkillManagementService(session=session).copy_agent_bindings(
+                tenant_id=tenant_id,
+                source_agent_id=source_agent.id,
+                source_snapshot_id=source_version.id,
+                target_agent_id=roster_agent.id,
+                target_snapshot_id=roster_agent.active_config_snapshot_id,
+                user_id=account_id,
+            )
         binding.binding_type = WorkflowAgentBindingType.ROSTER_AGENT
         binding.agent_id = roster_agent.id
         binding.current_snapshot_id = roster_agent.active_config_snapshot_id
@@ -2150,23 +2193,18 @@ class AgentComposerService:
 
     @staticmethod
     def _declared_outputs_from_binding(binding: WorkflowAgentNodeBinding) -> list[DeclaredOutputConfig]:
-        """Re-hydrate the binding's node_job_config into typed declared outputs.
+        """Re-hydrate the binding's custom-only persisted output declarations.
 
         node_job_config is stored as JSON / LongText; the typed view is needed
-        so the effective_declared_outputs helper can fall back to defaults on
-        an empty list without callers re-implementing the fallback.
+        before the later effective-output projection prepends the system
+        ``text`` output.
         """
         node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
         return list(node_job.declared_outputs)
 
     @staticmethod
     def _serialize_effective_outputs(declared_outputs: list[DeclaredOutputConfig]) -> list[dict[str, Any]]:
-        """JSON-serialize the effective declared outputs (PRD defaults if empty).
-
-        Stage 4 decision D-3 keeps defaults out of the DB; this helper is the
-        single place that injects them into the Composer load response so the
-        wire shape stays consistent whether the user has declared anything yet.
-        """
+        """JSON-serialize system ``text`` followed by custom declarations."""
         return [output.model_dump(mode="json") for output in _effective_declared_outputs(declared_outputs)]
 
     @classmethod
@@ -2179,8 +2217,7 @@ class AgentComposerService:
             "soul_lock": {"locked": False, "can_unlock": False, "reason": "workflow_only_empty"},
             "agent_soul": AgentSoulConfig().model_dump(mode="json"),
             "node_job": WorkflowNodeJobConfig().model_dump(mode="json"),
-            # Stage 4 §4.1 / §10.1 (D-3): empty composer state still surfaces the
-            # PRD defaults so the front-end has stable output names to render.
+            # ``text`` is derived for the editor and is not stored in node_job.
             "effective_declared_outputs": cls._serialize_effective_outputs([]),
             "save_options": [ComposerSaveStrategy.NODE_JOB_ONLY.value, ComposerSaveStrategy.SAVE_TO_ROSTER.value],
             "impact_summary": None,
@@ -2246,10 +2283,7 @@ class AgentComposerService:
             if version
             else AgentSoulConfig().model_dump(mode="json"),
             "node_job": binding.node_job_config_dict,
-            # Stage 4 §4.1 / §10.1 (D-3): when the saved node_job carries no
-            # declared_outputs, surface the PRD defaults so the front-end can
-            # render them as read-only chips. When user-defined outputs exist
-            # this is the same list (so callers don't need to special-case).
+            # Surface system ``text`` followed by the binding's custom outputs.
             "effective_declared_outputs": cls._serialize_effective_outputs(cls._declared_outputs_from_binding(binding)),
             "save_options": save_options,
             "impact_summary": cls.calculate_impact(

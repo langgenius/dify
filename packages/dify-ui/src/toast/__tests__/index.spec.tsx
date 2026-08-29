@@ -1,3 +1,4 @@
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createToast, createToastManager, toast, ToastHost } from '../index'
 
@@ -44,6 +45,178 @@ describe('@langgenius/dify-ui/toast', () => {
 
     await expect.element(screen.getByText('Third toast')).toBeInTheDocument()
     expect(document.body.querySelectorAll('[role="dialog"]')).toHaveLength(3)
+  })
+
+  it('should not intercept pointer events below a collapsed top-anchored stack', async () => {
+    const screen = await render(
+      <>
+        <style>{'[role="dialog"] { transition: none !important; }'}</style>
+        <button
+          type="button"
+          style={{
+            position: 'fixed',
+            top: 0,
+            right: 0,
+            width: 400,
+            height: 300,
+          }}
+        >
+          Underlying action
+        </button>
+        <ToastHost timeout={0} />
+      </>,
+    )
+
+    toast('Older notification')
+    toast('Newest notification')
+
+    const newestToast = screen.getByRole('dialog', { name: 'Newest notification' })
+    await expect.element(newestToast).toBeInTheDocument()
+
+    const toastDialogs = Array.from(document.body.querySelectorAll<HTMLElement>('[role="dialog"]'))
+    const newestBounds = newestToast.element().getBoundingClientRect()
+    const stackBottom = Math.max(
+      ...toastDialogs.map((dialog) => dialog.getBoundingClientRect().bottom),
+    )
+    const elementBelowStack = document.elementFromPoint(
+      newestBounds.left + newestBounds.width / 2,
+      stackBottom + 4,
+    )
+
+    expect(elementBelowStack).toBe(
+      screen.getByRole('button', { name: 'Underlying action' }).element(),
+    )
+  })
+
+  it('should reject a downward swipe and dismiss upward from the top-right viewport', async () => {
+    const baseUIAnimationGlobal = globalThis as BaseUIAnimationGlobal
+    const animationState = baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED
+    baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED = false
+
+    try {
+      const screen = await render(
+        <>
+          <style>
+            {`
+            [role="dialog"]:not([data-ending-style]) {
+              transition: none !important;
+            }
+            [role="dialog"][data-ending-style] {
+              transition: opacity 10000s !important;
+            }
+          `}
+          </style>
+          <button
+            type="button"
+            aria-label="Swipe up destination"
+            style={{
+              position: 'fixed',
+              top: 0,
+              right: 200,
+              zIndex: 1000,
+              width: 20,
+              height: 20,
+            }}
+          />
+          <button
+            type="button"
+            aria-label="Swipe down destination"
+            style={{
+              position: 'fixed',
+              top: 360,
+              right: 200,
+              zIndex: 1000,
+              width: 20,
+              height: 20,
+            }}
+          />
+          <ToastHost timeout={0} offset={{ top: 120 }} />
+        </>,
+      )
+
+      toast('Directional notification')
+
+      const toastDialog = screen.getByRole('dialog', { name: 'Directional notification' })
+      await expect.element(toastDialog).toBeInTheDocument()
+      const toastElement = toastDialog.element()
+      const initialBounds = toastElement.getBoundingClientRect()
+
+      await userEvent.dragAndDrop(toastElement, screen.getByLabelText('Swipe down destination'), {
+        steps: 10,
+      })
+
+      await expect.element(toastDialog).toBeInTheDocument()
+      expect(toastElement).not.toHaveAttribute('data-ending-style')
+      expect(toastElement.getBoundingClientRect().top).toBeCloseTo(initialBounds.top, 0)
+
+      await userEvent.dragAndDrop(toastElement, screen.getByLabelText('Swipe up destination'), {
+        steps: 10,
+      })
+
+      await vi.waitFor(() => {
+        expect(toastElement).toHaveAttribute('data-ending-style')
+        expect(toastElement).toHaveAttribute('data-swipe-direction', 'up')
+      })
+      expect(toastElement.getBoundingClientRect().bottom).toBeLessThan(initialBounds.top)
+    } finally {
+      baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED = animationState
+    }
+  })
+
+  it('should dismiss an expanded background toast from its current row when swiped right', async () => {
+    const baseUIAnimationGlobal = globalThis as BaseUIAnimationGlobal
+    const animationState = baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED
+    baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED = false
+
+    try {
+      const screen = await render(
+        <>
+          <style>
+            {`
+            [role="dialog"][data-ending-style] {
+              transition: opacity 10000s !important;
+            }
+          `}
+          </style>
+          <button
+            type="button"
+            aria-label="Swipe destination"
+            style={{
+              position: 'fixed',
+              top: 100,
+              right: 0,
+              zIndex: 1000,
+              width: 20,
+              height: 20,
+            }}
+          />
+          <ToastHost timeout={0} />
+        </>,
+      )
+
+      toast('Background notification')
+      toast('Front notification')
+
+      const backgroundToast = screen.getByRole('dialog', { name: 'Background notification' })
+      await expect.element(backgroundToast).toBeInTheDocument()
+      await backgroundToast.hover()
+      await expect.element(backgroundToast).toHaveAttribute('data-expanded')
+
+      const toastElement = backgroundToast.element()
+      const bounds = toastElement.getBoundingClientRect()
+
+      await userEvent.dragAndDrop(toastElement, screen.getByLabelText('Swipe destination'), {
+        steps: 10,
+      })
+
+      await vi.waitFor(() => {
+        expect(toastElement).toHaveAttribute('data-ending-style')
+      })
+      expect(toastElement.getBoundingClientRect().top).toBeCloseTo(bounds.top, 0)
+    } finally {
+      await userEvent.unhover(document.body)
+      baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED = animationState
+    }
   })
 
   it('should render a neutral toast when called directly', async () => {

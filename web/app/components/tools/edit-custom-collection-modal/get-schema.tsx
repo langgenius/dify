@@ -51,7 +51,7 @@ const GetSchema: FC<Props> = ({ onChange }) => {
             {t(($) => $['createTool.importFromUrl'], { ns: 'tools' })}
           </span>
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-start" sideOffset={2} popupClassName="w-[300px] p-2">
+        <DropdownMenuContent placement="bottom-start" sideOffset={2} className="w-[300px] p-2">
           <div className="relative">
             <Input
               type="text"
@@ -80,7 +80,7 @@ const GetSchema: FC<Props> = ({ onChange }) => {
           </span>
           <span className="i-ri-arrow-down-s-line size-3" aria-hidden />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={2} popupClassName="min-w-max">
+        <DropdownMenuContent placement="bottom-end" sideOffset={2} className="min-w-max">
           {examples.map((item) => (
             <DropdownMenuItem
               key={item.key}

@@ -26,6 +26,7 @@ from controllers.console.app.workflow import (
     DefaultBlockConfigsResponse,
     WorkflowPaginationResponse,
     WorkflowResponse,
+    WorkflowResponseSource,
 )
 from controllers.console.app.wraps import with_session
 from controllers.console.datasets.wraps import get_rag_pipeline, load_rag_pipeline
@@ -61,6 +62,7 @@ from models import Account
 from models.dataset import Pipeline
 from models.model import EndUser
 from models.workflow import Workflow
+from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.dataset_service import DatasetService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
@@ -201,14 +203,15 @@ class DraftRagPipelineApi(Resource):
         Get draft rag pipeline's workflow
         """
         # fetch draft workflow by app_model
-        rag_pipeline_service = RagPipelineService(db.session())
+        session = db.session()
+        rag_pipeline_service = RagPipelineService(session)
         workflow = rag_pipeline_service.get_draft_workflow(pipeline=pipeline)
 
         if not workflow:
             raise DraftWorkflowNotExist()
 
         # return workflow, if not found, return 404
-        return dump_response(WorkflowResponse, workflow)
+        return dump_response(WorkflowResponse, WorkflowResponseSource(workflow, session=session))
 
     @setup_required
     @login_required
@@ -547,14 +550,15 @@ class PublishedRagPipelineApi(Resource):
         if not pipeline.is_published:
             return None
         # fetch published workflow by pipeline
-        rag_pipeline_service = RagPipelineService(db.session())
+        session = db.session()
+        rag_pipeline_service = RagPipelineService(session)
         workflow = rag_pipeline_service.get_published_workflow(pipeline=pipeline)
 
         # return workflow, if not found, return None
         if workflow is None:
             return None
 
-        return dump_response(WorkflowResponse, workflow)
+        return dump_response(WorkflowResponse, WorkflowResponseSource(workflow, session=session))
 
     @console_ns.response(200, "Success", console_ns.models[RagPipelineWorkflowPublishResponse.__name__])
     @setup_required
@@ -683,7 +687,7 @@ class PublishedAllRagPipelineApi(Resource):
 
             return WorkflowPaginationResponse.model_validate(
                 {
-                    "items": workflows,
+                    "items": [WorkflowResponseSource(workflow, session=session) for workflow in workflows],
                     "page": page,
                     "limit": limit,
                     "has_more": has_more,
@@ -762,7 +766,7 @@ class RagPipelineByIdApi(Resource):
             if not workflow:
                 raise NotFound("Workflow not found")
 
-            return dump_response(WorkflowResponse, workflow)
+            return dump_response(WorkflowResponse, WorkflowResponseSource(workflow, session=session))
 
     @console_ns.response(204, "Workflow deleted successfully")
     @setup_required
@@ -770,8 +774,9 @@ class RagPipelineByIdApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @with_current_user
     @get_rag_pipeline
-    def delete(self, pipeline: Pipeline, workflow_id: str):
+    def delete(self, current_user: Account, pipeline: Pipeline, workflow_id: str):
         """
         Delete a published workflow version that is not currently active on the pipeline.
         """
@@ -783,7 +788,7 @@ class RagPipelineByIdApi(Resource):
 
         with sessionmaker(db.engine).begin() as session:
             try:
-                workflow_service.delete_workflow(
+                retirement_candidates = workflow_service.delete_workflow(
                     session=session,
                     workflow_ref=workflow_ref,
                 )
@@ -794,6 +799,11 @@ class RagPipelineByIdApi(Resource):
             except ValueError as e:
                 raise NotFound(str(e))
 
+        WorkflowAgentRetirementService.retire_unowned(
+            tenant_id=pipeline.tenant_id,
+            agent_ids=retirement_candidates,
+            account_id=current_user.id,
+        )
         return None, 204
 
 

@@ -57,7 +57,7 @@ describe('ServiceApiAccessPointCard', () => {
       />,
     )
 
-    const apiReferenceLink = screen.getByRole('button', { name: /apiInfo\.doc/ })
+    const apiReferenceLink = screen.getByRole('link', { name: /apiInfo\.doc/ })
 
     expect(apiReferenceLink).toHaveAttribute('href', `https://docs.example.test/en${path}`)
     expect(apiReferenceLink).toHaveAttribute('target', '_blank')
@@ -93,8 +93,7 @@ describe('ServiceApiAccessPointCard', () => {
     )
 
     expect(screen.getByRole('button', { name: 'api-secret-keys' })).toBeEnabled()
-    const apiReferenceLink = screen.getByRole('button', { name: /apiInfo\.doc/ })
-    expect(apiReferenceLink).not.toHaveAttribute('aria-disabled')
+    const apiReferenceLink = screen.getByRole('link', { name: /apiInfo\.doc/ })
     expect(apiReferenceLink).toHaveAttribute(
       'href',
       'https://docs.example.test/en/api-reference/guides/workflow',
@@ -126,9 +125,6 @@ describe('ServiceApiAccessPointCard', () => {
     )
 
     expect(screen.getByRole('button', { name: 'api-secret-keys' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /apiInfo\.doc/ })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
+    expect(screen.getByRole('button', { name: /apiInfo\.doc/ })).toBeDisabled()
   })
 })

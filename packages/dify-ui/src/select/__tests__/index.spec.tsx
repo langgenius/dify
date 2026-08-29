@@ -10,6 +10,10 @@ import {
   SelectItemIndicator,
   SelectItemText,
   SelectLabel,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
   SelectValue,
 } from '../index'
@@ -168,7 +172,7 @@ describe('Select wrappers', () => {
               <SelectTrigger aria-label="deployment target">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent popupProps={{ ref: popupRef }}>
+              <SelectContent ref={popupRef}>
                 <SelectItem value="english">
                   <SelectItemText>
                     Production deployment with a long provider and region identifier
@@ -214,7 +218,7 @@ describe('Select wrappers', () => {
               <SelectTrigger aria-label="package version">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent popupClassName="w-[512px]" popupProps={{ ref: popupRef }}>
+              <SelectContent ref={popupRef} className="w-lg">
                 <SelectItem value="stable">
                   <SelectItemText>Stable package version</SelectItemText>
                 </SelectItem>
@@ -232,7 +236,7 @@ describe('Select wrappers', () => {
       }
     })
 
-    it('should render SelectGroupLabel for grouped options without naming the trigger', async () => {
+    it('should render a group label without replacing the trigger name', async () => {
       const screen = await renderWithSafeViewport(
         <Select open defaultValue="seattle">
           <SelectTrigger aria-label="city select">
@@ -240,7 +244,7 @@ describe('Select wrappers', () => {
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
-              <SelectGroupLabel className="custom-label">Popular cities</SelectGroupLabel>
+              <SelectGroupLabel>Popular cities</SelectGroupLabel>
               <SelectItem value="seattle">
                 <SelectItemText>Seattle</SelectItemText>
                 <SelectItemIndicator />
@@ -253,71 +257,45 @@ describe('Select wrappers', () => {
       await expect
         .element(screen.getByRole('combobox', { name: 'city select' }))
         .toBeInTheDocument()
-      await expect.element(screen.getByText('Popular cities')).toHaveClass('custom-label')
+      await expect.element(screen.getByText('Popular cities')).toBeInTheDocument()
     })
 
     it('should use positioning attributes when placement is not provided', async () => {
-      const positionerRef = React.createRef<HTMLDivElement>()
-
-      await renderOpenSelect({
-        contentProps: {
-          positionerProps: { ref: positionerRef },
-        },
-      })
+      const screen = await renderOpenSelect()
 
       await vi.waitFor(() => {
-        expect(positionerRef.current).toHaveAttribute('data-side', 'bottom')
-        expect(positionerRef.current).toHaveAttribute('data-align', 'start')
+        const positioner = screen.getByRole('listbox').element().closest('[data-side]')
+        expect(positioner).toHaveAttribute('data-side', 'bottom')
+        expect(positioner).toHaveAttribute('data-align', 'start')
       })
     })
 
     it('should preserve positioning attributes when placement props are provided', async () => {
-      const positionerRef = React.createRef<HTMLDivElement>()
-
-      await renderOpenSelect({
+      const screen = await renderOpenSelect({
         contentProps: {
           placement: 'top-end',
           sideOffset: 12,
           alignOffset: 6,
-          positionerProps: { ref: positionerRef },
         },
       })
 
       await vi.waitFor(() => {
-        expect(positionerRef.current).toHaveAttribute('data-side', 'top')
-        expect(positionerRef.current).toHaveAttribute('data-align', 'end')
+        const positioner = screen.getByRole('listbox').element().closest('[data-side]')
+        expect(positioner).toHaveAttribute('data-side', 'top')
+        expect(positioner).toHaveAttribute('data-align', 'end')
       })
     })
 
-    it('should forward passthrough props to positioner popup and list when passthrough props are provided', async () => {
+    it('should forward popup props directly', async () => {
       const onPopupClick = vi.fn()
-      const onListFocus = vi.fn()
-      const positionerRef = React.createRef<HTMLDivElement>()
       const popupRef = React.createRef<HTMLDivElement>()
-      const listRef = React.createRef<HTMLDivElement>()
 
       const screen = await render(
         <Select open defaultValue="seattle">
           <SelectTrigger aria-label="city select">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent
-            positionerProps={{
-              id: 'select-positioner',
-              ref: positionerRef,
-            }}
-            popupProps={{
-              id: 'select-popup',
-              ref: popupRef,
-              onClick: onPopupClick,
-            }}
-            listProps={{
-              'aria-label': 'select list',
-              id: 'select-list',
-              ref: listRef,
-              onFocus: onListFocus,
-            }}
-          >
+          <SelectContent id="select-popup" ref={popupRef} onClick={onPopupClick}>
             <SelectItem value="seattle">
               <SelectItemText>Seattle</SelectItemText>
               <SelectItemIndicator />
@@ -326,20 +304,42 @@ describe('Select wrappers', () => {
         </Select>,
       )
 
-      popupRef.current?.click()
-      listRef.current?.dispatchEvent(
-        new FocusEvent('focusin', {
-          bubbles: true,
-        }),
+      await screen.getByRole('listbox').click()
+
+      expect(popupRef.current).toHaveAttribute('id', 'select-popup')
+      await expect.element(screen.getByRole('listbox')).toBeVisible()
+      expect(onPopupClick).toHaveBeenCalledTimes(1)
+    })
+
+    it('should preserve selection behavior when composed through explicit anatomy', async () => {
+      const onValueChange = vi.fn()
+      const screen = await renderWithSafeViewport(
+        <Select open defaultValue="seattle" onValueChange={onValueChange}>
+          <SelectTrigger aria-label="city select">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectPortal>
+            <SelectPositioner>
+              <SelectPopup>
+                <SelectList>
+                  <SelectItem value="seattle">
+                    <SelectItemText>Seattle</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                  <SelectItem value="new-york">
+                    <SelectItemText>New York</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                </SelectList>
+              </SelectPopup>
+            </SelectPositioner>
+          </SelectPortal>
+        </Select>,
       )
 
-      expect(positionerRef.current).toHaveAttribute('id', 'select-positioner')
-      expect(popupRef.current).toHaveAttribute('id', 'select-popup')
-      await expect
-        .element(screen.getByRole('listbox', { name: 'select list' }))
-        .toHaveAttribute('id', 'select-list')
-      expect(onPopupClick).toHaveBeenCalledTimes(1)
-      expect(onListFocus).toHaveBeenCalled()
+      await screen.getByRole('option', { name: 'New York' }).click()
+
+      expect(onValueChange.mock.calls[0]?.[0]).toBe('new-york')
     })
   })
 

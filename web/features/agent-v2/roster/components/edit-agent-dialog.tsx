@@ -1,5 +1,4 @@
 'use client'
-
 import type {
   AgentAppPartial,
   AgentAppUpdatePayload,
@@ -8,12 +7,13 @@ import type { AgentFormValues, AgentIconSelection } from './agent-form'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -25,7 +25,6 @@ import { AgentFormFields } from './agent-form-fields'
 
 type EditAgentDialogProps = {
   agent: AgentAppPartial
-  formKey: number
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -43,10 +42,9 @@ const applyIconPayload = (body: AgentAppUpdatePayload, icon: AgentIconSelection)
   body.icon_background = undefined
 }
 
-export function EditAgentDialog({ agent, formKey, open, onOpenChange }: EditAgentDialogProps) {
+export function EditAgentDialog({ agent, open, onOpenChange }: EditAgentDialogProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
-  const [renderedFormKey, setRenderedFormKey] = useState(formKey)
   const [name, setName] = useState(agent.name)
   const [description, setDescription] = useState(agent.description ?? '')
   const [role, setRole] = useState(agent.role ?? '')
@@ -56,24 +54,8 @@ export function EditAgentDialog({ agent, formKey, open, onOpenChange }: EditAgen
   )
   const updateAgentMutation = useMutation(consoleQuery.agent.byAgentId.put.mutationOptions())
 
-  if (formKey !== renderedFormKey) {
-    setRenderedFormKey(formKey)
-    setName(agent.name)
-    setDescription(agent.description ?? '')
-    setRole(agent.role ?? '')
-    setIconPickerOpen(false)
-    setAgentIcon(createAgentIconSelection(agent))
-  }
-
   const handleOpenChange = (nextOpen: boolean) => {
-    if (nextOpen) {
-      setName(agent.name)
-      setDescription(agent.description ?? '')
-      setRole(agent.role ?? '')
-      setAgentIcon(createAgentIconSelection(agent))
-    } else {
-      setIconPickerOpen(false)
-    }
+    if (!nextOpen) setIconPickerOpen(false)
     onOpenChange(nextOpen)
   }
 
@@ -134,7 +116,17 @@ export function EditAgentDialog({ agent, formKey, open, onOpenChange }: EditAgen
     <>
       <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
         <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-130 flex-col overflow-hidden! p-0!">
-          <DialogCloseButton />
+          <DialogClose
+            render={
+              <IconButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                size="lg"
+                className="absolute inset-e-6 top-6"
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
+          />
           <div className="shrink-0 pt-6 pr-14 pb-3 pl-6">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {t(($) => $['roster.editDialog.title'])}
@@ -143,11 +135,7 @@ export function EditAgentDialog({ agent, formKey, open, onOpenChange }: EditAgen
               {t(($) => $['roster.editDialog.description'])}
             </DialogDescription>
           </div>
-          <Form<AgentFormValues>
-            key={formKey}
-            className="min-h-0 flex-1"
-            onFormSubmit={handleSubmit}
-          >
+          <Form<AgentFormValues> className="min-h-0 flex-1" onFormSubmit={handleSubmit}>
             <AgentFormFields
               description={description}
               icon={agentIcon}

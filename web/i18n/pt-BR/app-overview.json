@@ -68,7 +68,6 @@
   "overview.appInfo.preUseReminder": "Por favor, ative o web app antes de continuar.",
   "overview.appInfo.preview": "Visualização",
   "overview.appInfo.qrcode.download": "Baixar código QR",
-  "overview.appInfo.qrcode.scan": "Digitalizar e compartilhar o aplicativo",
   "overview.appInfo.qrcode.title": "Código QR para compartilhar",
   "overview.appInfo.regenerate": "Regenerar",
   "overview.appInfo.regenerateNotice": "Você deseja regenerar a URL pública? A URL atual deixará de funcionar imediatamente.",

@@ -5,8 +5,13 @@ const supportModelProviders = 'OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face
 
 export const NUM_INFINITE = -1
 export const contactSalesUrl = 'https://vikgc6bnu1s.typeform.com/dify-business'
-export const getStartedWithCommunityUrl = 'https://github.com/langgenius/dify'
-export const getWithPremiumUrl = 'https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6'
+export const SELF_HOSTED_PLAN_URLS = {
+  community: 'https://github.com/langgenius/dify',
+  premium: 'https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6',
+  enterprise: contactSalesUrl,
+} as const
+
+export type SelfHostedPlan = keyof typeof SELF_HOSTED_PLAN_URLS
 
 export const ALL_PLANS: Record<CloudPlan, PlanInfo> = {
   sandbox: {

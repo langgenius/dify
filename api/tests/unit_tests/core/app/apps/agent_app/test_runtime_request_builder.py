@@ -6,6 +6,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
+from dify_agent.layers.config import DifyConfigSkillConfig
 from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_plugin import DifyPluginToolConfig, DifyPluginToolsLayerConfig
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
@@ -26,6 +27,15 @@ from core.app.apps.agent_app.runtime_request_builder import (
 )
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from models.agent_config_entities import AgentSoulConfig
+from tests.unit_tests.config_override import apply_config_overrides
+
+
+@pytest.fixture(autouse=True)
+def _no_runtime_agent_skills(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        "core.app.apps.agent_app.runtime_request_builder.load_runtime_agent_skill_configs",
+        lambda **_kwargs: [],
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -394,7 +404,7 @@ class TestAgentAppRuntimeRequestBuilder:
         assert exc.value.error_code == "agent_model_not_configured"
 
     def test_build_maps_agent_soul_shell_settings_to_shell_layer(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
+        apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
         soul = AgentSoulConfig.model_validate(
             {
                 "model": {
@@ -473,7 +483,7 @@ class TestAgentAppConfigLayer:
         assert names.index(DIFY_CONFIG_LAYER_ID) == names.index(DIFY_SHELL_LAYER_ID) + 1
 
     def test_config_layer_present_when_agent_soul_has_no_config_assets(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
+        apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
         builder = AgentAppRuntimeRequestBuilder(
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
@@ -521,6 +531,32 @@ class TestAgentAppConfigLayer:
             "mentioned_skill_names": ["tender-analyzer"],
             "mentioned_file_names": [],
         }
+
+    def test_config_layer_includes_bound_workspace_skills(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.load_runtime_agent_skill_configs",
+            lambda **_kwargs: [
+                DifyConfigSkillConfig(
+                    name="workspace-skill",
+                    description="Bound workspace skill.",
+                    size=123,
+                    mime_type="application/zip",
+                )
+            ],
+        )
+        soul = _soul_with_model()
+        soul.prompt.system_prompt = "Use [§skill:workspace-skill:Workspace Skill§]."
+        builder = AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(soul))
+
+        config = next(layer for layer in result.request.composition.layers if layer.name == DIFY_CONFIG_LAYER_ID)
+        assert [skill.name for skill in config.config.skills] == ["workspace-skill"]
+        assert config.config.mentioned_skill_names == ["workspace-skill"]
+        prompt_layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
+        assert prompt_layer.config.prefix == "Use workspace-skill."
 
     @pytest.mark.parametrize(
         ("system_prompt", "expected_prefix"),

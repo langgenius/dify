@@ -8,12 +8,12 @@ from typing import Any, cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
     ChatAppGenerateEntity,
     CompletionAppGenerateEntity,
+    get_credit_usage_app_type,
 )
 from core.app.entities.queue_entities import (
     QueueAgentMessageEvent,
@@ -46,7 +46,7 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.app.task_pipeline.message_file_utils import prepare_file_dict
-from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
+from core.base.tts import AppGeneratorTTSPublisher
 from core.db.session_factory import session_factory
 from core.model_manager import ModelInstance
 from core.ops.entities.trace_entity import TraceTaskName
@@ -125,7 +125,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         if self._application_generate_entity.app_config.app_mode != AppMode.COMPLETION:
             # start generate conversation name thread
             self._conversation_name_generate_thread = self._message_cycle_manager.generate_conversation_name(
-                conversation_id=self._conversation_id, query=self._application_generate_entity.query
+                conversation_id=self._conversation_id,
+                query=self._application_generate_entity.query,
+                message_id=self._message_id,
             )
 
         generator = self._wrapper_process_stream_response(trace_manager=self._application_generate_entity.trace_manager)
@@ -208,10 +210,13 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         if publisher is None:
             return None
         audio_msg = publisher.check_and_get_audio()
-        if audio_msg and isinstance(audio_msg, AudioTrunk) and audio_msg.status != "finish":
-            # audio_str = audio_msg.audio.decode('utf-8', errors='ignore')
-            return MessageAudioStreamResponse(audio=audio_msg.audio, task_id=task_id)
-        return None
+        if audio_msg is None:
+            return None
+        if audio_msg.status == "responding":
+            return MessageAudioStreamResponse(audio=audio_msg.audio, audio_type=audio_msg.audio_type, task_id=task_id)
+        if audio_msg.status in {"finish", "error"}:
+            return None
+        raise RuntimeError(f"TTS publisher returned an unknown status: {audio_msg.status}")
 
     def _wrapper_process_stream_response(
         self, trace_manager: TraceQueueManager | None = None
@@ -221,40 +226,50 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         publisher = None
         text_to_speech_dict = cast(dict[str, Any], self._app_config.app_model_config_dict.get("text_to_speech"))
         if (
-            text_to_speech_dict
+            self.stream
+            and text_to_speech_dict
             and text_to_speech_dict.get("autoPlay") == "enabled"
             and text_to_speech_dict.get("enabled")
         ):
             publisher = AppGeneratorTTSPublisher(
-                tenant_id, text_to_speech_dict.get("voice", ""), text_to_speech_dict.get("language", None)
+                tenant_id,
+                text_to_speech_dict.get("voice", ""),
+                text_to_speech_dict.get("language", None),
+                get_credit_usage_app_type(self._app_config.app_mode),
             )
-        for response in self._process_stream_response(publisher=publisher, trace_manager=trace_manager):
-            while True:
-                audio_response = self._listen_audio_msg(publisher, task_id)
-                if audio_response:
+        try:
+            for response in self._process_stream_response(publisher=publisher, trace_manager=trace_manager):
+                while audio_response := self._listen_audio_msg(publisher, task_id):
                     yield audio_response
-                else:
-                    break
-            yield response
+                if publisher and isinstance(response, ErrorStreamResponse):
+                    publisher.cancel()
+                    yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
+                    yield response
+                    return
+                yield response
 
-        start_listener_time = time.time()
-        # timeout
-        while (time.time() - start_listener_time) < TTS_AUTO_PLAY_TIMEOUT:
             if publisher is None:
-                break
-            audio = publisher.check_and_get_audio()
-            if audio is None:
-                # release cpu
-                # sleep 20 ms ( 40ms => 1280 byte audio file,20ms => 640 byte audio file)
-                time.sleep(TTS_AUTO_PLAY_YIELD_CPU_TIME)
-                continue
-            if audio.status == "finish":
-                break
-            else:
-                start_listener_time = time.time()
-                yield MessageAudioStreamResponse(audio=audio.audio, task_id=task_id)
-        if publisher:
-            yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
+                return
+
+            publisher.publish(None)
+            while True:
+                audio = publisher.check_and_get_audio(block=True)
+                assert audio is not None
+                if audio.status == "responding":
+                    yield MessageAudioStreamResponse(audio=audio.audio, audio_type=audio.audio_type, task_id=task_id)
+                    continue
+                if audio.status not in {"finish", "error"}:
+                    raise RuntimeError(f"TTS publisher returned an unknown status: {audio.status}")
+
+                yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
+                if audio.status == "error":
+                    if audio.error is None:
+                        raise RuntimeError("TTS publisher returned an error terminal without an exception")
+                    yield ErrorStreamResponse(err=audio.error, task_id=task_id)
+                return
+        finally:
+            if publisher:
+                publisher.cancel()
 
     def _process_stream_response(
         self, publisher: AppGeneratorTTSPublisher | None, trace_manager: TraceQueueManager | None = None
@@ -273,6 +288,17 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     with session_factory.create_session() as session:
                         err = self.handle_error(event=event, session=session, message_id=self._message_id)
                         session.commit()
+
+                    if trace_manager:
+                        trace_manager.add_trace_task(
+                            TraceTask(
+                                TraceTaskName.MESSAGE_TRACE,
+                                conversation_id=self._conversation_id,
+                                message_id=self._message_id,
+                                trace_session_id=self._application_generate_entity.extras.get("trace_session_id"),
+                            )
+                        )
+
                     yield self.error_to_stream_response(err)
                     break
                 case QueueStopEvent() | QueueMessageEndEvent():
@@ -367,8 +393,6 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     yield self.ping_stream_response()
                 case _:
                     continue
-        if publisher:
-            publisher.publish(None)
         if self._conversation_name_generate_thread:
             logger.debug("Conversation name generation running as daemon thread")
 

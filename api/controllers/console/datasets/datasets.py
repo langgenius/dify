@@ -57,7 +57,6 @@ from services.app_service import AppService
 from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.enterprise import rbac_service as enterprise_rbac_service
-from services.enterprise.rbac_service import RBACResourceWhitelistScope, ReplaceMemberBindings
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 register_response_schema_models(console_ns, ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse)
@@ -492,15 +491,14 @@ class DatasetListApi(Resource):
                 }
             if getattr(whitelist_scope, "unrestricted", False):
                 filtered_dataset_ids = permission_dataset_ids
+                include_own_datasets = "dataset.create_and_management" in permissions.workspace.permission_keys
             else:
+                # A restricted dataset whitelist is the highest-priority visibility gate:
+                # default readonly, per-dataset permission overrides, and own-dataset
+                # management must not expose datasets outside this set.
                 filtered_dataset_ids = set(whitelist_scope.resource_ids)
-                if permission_dataset_ids is not None:
-                    filtered_dataset_ids |= permission_dataset_ids
-                elif has_default_readonly:
-                    filtered_dataset_ids = None
             if filtered_dataset_ids is not None:
                 accessible_dataset_ids = sorted(filtered_dataset_ids)
-            include_own_datasets = "dataset.create_and_management" in permissions.workspace.permission_keys
 
         if query.ids:
             datasets, total = DatasetService.get_datasets_by_ids(
@@ -625,23 +623,6 @@ class DatasetListApi(Resource):
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
-        if dify_config.RBAC_ENABLED:
-            if permission == DatasetPermissionEnum.ALL_TEAM:
-                enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
-                    current_tenant_id,
-                    current_user.id,
-                    dataset.id,
-                    ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
-                )
-                initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, dataset_id=dataset.id)
-            else:
-                enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
-                    current_tenant_id,
-                    current_user.id,
-                    dataset.id,
-                    ReplaceMemberBindings(scope=RBACResourceWhitelistScope.SPECIFIC),
-                )
-
         permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
             current_tenant_id,
             current_user.id,
@@ -653,6 +634,16 @@ class DatasetListApi(Resource):
             dataset_detail_response_source(dataset, session=session), from_attributes=True
         ).model_dump(mode="json")
         item["permission_keys"] = permission_keys_map.get(dataset.id, [])
+
+        if dify_config.RBAC_ENABLED:
+            enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
+                current_tenant_id,
+                current_user.id,
+                dataset.id,
+                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+            )
+            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, dataset_id=dataset.id)
+
         return item, 201
 
 
@@ -680,10 +671,12 @@ class DatasetApi(Resource):
         dataset = DatasetService.get_dataset(dataset_id_str, session)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        try:
-            DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
-            raise Forbidden(str(e))
+
+        if not dify_config.RBAC_ENABLED:
+            try:
+                DatasetService.check_dataset_permission(dataset, current_user, session)
+            except services.errors.account.NoPermissionError as e:
+                raise Forbidden(str(e))
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
             current_tenant_id,
             current_user.id,

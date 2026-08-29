@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PUBLIC_API_PREFIX } from '@/config'
+import {
+  markAppDeletionFailed,
+  markAppDeletionStarted,
+  markAppDeletionSucceeded,
+} from './app-deletion'
 // oxlint-disable-next-line no-restricted-imports
 import { base } from './fetch'
 
@@ -166,6 +171,122 @@ describe('base', () => {
       await expect(base('/imports')).rejects.toBeInstanceOf(Response)
 
       expect(toast.error).not.toHaveBeenCalled()
+    })
+
+    it('should suppress a late workflow 404 for the app being deleted', async () => {
+      const appId = 'deleting-app'
+      markAppDeletionStarted(appId)
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            code: 'not_found',
+            message: 'App not found',
+            status: 404,
+          }),
+          {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      )
+
+      try {
+        await expect(
+          base(`/apps/${appId}/workflows/draft/system-variables`),
+        ).rejects.toBeInstanceOf(Response)
+        expect(toast.error).not.toHaveBeenCalled()
+      } finally {
+        markAppDeletionFailed(appId)
+      }
+    })
+
+    it('should suppress a workflow 404 that settles after app deletion succeeds', async () => {
+      const appId = 'deleted-app'
+      markAppDeletionStarted(appId)
+      markAppDeletionSucceeded(appId)
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            code: 'not_found',
+            message: 'App not found',
+            status: 404,
+          }),
+          {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      )
+
+      await expect(
+        base(`/apps/${appId}/workflows/draft/conversation-variables`),
+      ).rejects.toBeInstanceOf(Response)
+      expect(toast.error).not.toHaveBeenCalled()
+    })
+
+    it('should restore workflow 404 notifications when app deletion fails', async () => {
+      const appId = 'failed-deletion-app'
+      markAppDeletionStarted(appId)
+      markAppDeletionFailed(appId)
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            code: 'not_found',
+            message: 'Visible error',
+            status: 404,
+          }),
+          {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      )
+
+      await expect(base(`/apps/${appId}/workflows/draft/variables`)).rejects.toBeInstanceOf(
+        Response,
+      )
+      expect(toast.error).toHaveBeenCalledWith('Visible error')
+    })
+
+    it.each([
+      {
+        title: 'another app workflow 404',
+        path: '/apps/another-app/workflows/draft/system-variables',
+        status: 404,
+      },
+      {
+        title: 'a non-workflow 404',
+        path: '/apps/deleting-app',
+        status: 404,
+      },
+      {
+        title: 'a workflow 500',
+        path: '/apps/deleting-app/workflows/draft/system-variables',
+        status: 500,
+      },
+    ])('should still display $title while an app is being deleted', async ({ path, status }) => {
+      const appId = 'deleting-app'
+      markAppDeletionStarted(appId)
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            code: 'request_failed',
+            message: 'Visible error',
+            status,
+          }),
+          {
+            status,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      )
+
+      try {
+        await expect(base(path)).rejects.toBeInstanceOf(Response)
+        expect(toast.error).toHaveBeenCalledWith('Visible error')
+      } finally {
+        markAppDeletionFailed(appId)
+      }
     })
   })
 })

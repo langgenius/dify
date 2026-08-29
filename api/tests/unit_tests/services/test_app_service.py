@@ -14,8 +14,17 @@ from enums import DeploymentEdition
 from graphon.model_runtime.entities.model_entities import ModelType
 from models import Account, Tenant
 from models.account import TenantAccountJoin, TenantAccountRole
-from models.agent import Agent, AgentIconType, AgentScope, AgentSource, AgentStatus
+from models.agent import (
+    Agent,
+    AgentIconType,
+    AgentScope,
+    AgentSource,
+    AgentStatus,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
 from models.model import App, AppMode, AppModelConfig, IconType
+from models.workflow import Workflow, WorkflowType
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
 from services.app_service import AppListParams, AppService, CreateAppParams
 
@@ -58,9 +67,18 @@ def _persist_app(session: Session, *, tenant_id: str, name: str = "Visible App")
     return app
 
 
-def _persist_agent_app(session: Session, *, app_name: str = "Old", agent_name: str = "Old") -> tuple[App, Agent]:
-    tenant_id = str(uuid4())
-    creator_id = str(uuid4())
+def _persist_agent_app(
+    session: Session,
+    *,
+    app_name: str = "Old",
+    agent_name: str = "Old",
+    tenant_id: str | None = None,
+    creator_id: str | None = None,
+    active_config_snapshot_id: str | None = None,
+    active_config_is_published: bool = False,
+) -> tuple[App, Agent]:
+    tenant_id = tenant_id or str(uuid4())
+    creator_id = creator_id or str(uuid4())
     app = App(
         id=str(uuid4()),
         tenant_id=tenant_id,
@@ -86,6 +104,8 @@ def _persist_agent_app(session: Session, *, app_name: str = "Old", agent_name: s
         icon="robot",
         icon_background="#fff",
         app_id=app.id,
+        active_config_snapshot_id=active_config_snapshot_id,
+        active_config_is_published=active_config_is_published,
         created_by=creator_id,
     )
     session.add_all([app, agent])
@@ -94,7 +114,10 @@ def _persist_agent_app(session: Session, *, app_name: str = "Old", agent_name: s
 
 
 class TestCreateAppTransactionBoundary:
-    def test_commits_database_state_before_external_side_effects(self, sqlite_session: Session) -> None:
+    def test_commits_database_state_before_external_side_effects(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         account = _persist_account(sqlite_session)
         phase_events: list[str] = []
         event.listen(sqlite_session, "after_commit", lambda _session: phase_events.append("commit"))
@@ -112,7 +135,6 @@ class TestCreateAppTransactionBoundary:
                 "services.app_service.FeatureService.get_system_features",
                 return_value=SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
             ),
-            patch("services.app_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
             app = AppService().create_app(
                 account.current_tenant_id,
@@ -154,7 +176,10 @@ class TestCreateAppTransactionBoundary:
         assert sqlite_session.scalars(select(AppModelConfig)).all() == []
         assert sqlite_session.get(Agent, existing_agent.id) is existing_agent
 
-    def test_falls_back_when_default_model_schema_is_unavailable(self, sqlite_session: Session) -> None:
+    def test_falls_back_when_default_model_schema_is_unavailable(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         account = _persist_account(sqlite_session)
         model_type_instance = MagicMock()
         model_type_instance.get_model_schema.side_effect = ValueError("Base model unknown-model not found")
@@ -175,7 +200,6 @@ class TestCreateAppTransactionBoundary:
                 "services.app_service.FeatureService.get_system_features",
                 return_value=SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
             ),
-            patch("services.app_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
             app = AppService().create_app(
                 account.current_tenant_id,
@@ -484,6 +508,78 @@ class TestAgentAppType:
         params = CreateAppParams(name="Iris", mode="agent")
         assert params.mode == "agent"
 
+    def test_list_filter_and_counts_use_server_owned_publication_state(self, sqlite_session: Session):
+        tenant_id = str(uuid4())
+        creator_id = str(uuid4())
+        published_app, _ = _persist_agent_app(
+            sqlite_session,
+            app_name="Published",
+            agent_name="Published Agent",
+            tenant_id=tenant_id,
+            creator_id=creator_id,
+            active_config_snapshot_id=str(uuid4()),
+            active_config_is_published=True,
+        )
+        draft_app, _ = _persist_agent_app(
+            sqlite_session,
+            app_name="Draft",
+            agent_name="Draft Agent",
+            tenant_id=tenant_id,
+            creator_id=creator_id,
+            active_config_snapshot_id=str(uuid4()),
+        )
+        unpublished_app, _ = _persist_agent_app(
+            sqlite_session,
+            app_name="Unpublished",
+            agent_name="Unpublished Agent",
+            tenant_id=tenant_id,
+            creator_id=creator_id,
+        )
+        _persist_agent_app(
+            sqlite_session,
+            app_name="Other tenant",
+            agent_name="Other Agent",
+            active_config_snapshot_id=str(uuid4()),
+            active_config_is_published=True,
+        )
+
+        service = AppService()
+        published_page = service.get_paginate_apps(
+            creator_id,
+            tenant_id,
+            AppListParams(mode="agent", status="normal", agent_is_published=True),
+            sqlite_session,
+        )
+        draft_page = service.get_paginate_apps(
+            creator_id,
+            tenant_id,
+            AppListParams(mode="agent", status="normal", agent_is_published=False),
+            sqlite_session,
+        )
+        counts = service.get_agent_publication_counts(
+            creator_id,
+            tenant_id,
+            AppListParams(mode="agent", status="normal", agent_is_published=True),
+            sqlite_session,
+        )
+        searched_counts = service.get_agent_publication_counts(
+            creator_id,
+            tenant_id,
+            AppListParams(mode="agent", status="normal", name="Draft", agent_is_published=True),
+            sqlite_session,
+        )
+
+        assert published_page is not None
+        assert {app.id for app in published_page.items} == {published_app.id}
+        assert published_page.total == 1
+        assert draft_page is not None
+        assert {app.id for app in draft_page.items} == {draft_app.id, unpublished_app.id}
+        assert draft_page.total == 2
+        assert counts.published == 1
+        assert counts.drafts == 2
+        assert searched_counts.published == 0
+        assert searched_counts.drafts == 1
+
     def test_bound_agent_id_is_none_for_non_agent_app(self):
         """Non-agent apps short-circuit without touching the DB."""
         from models.model import App, AppMode
@@ -615,6 +711,31 @@ class TestAgentAppType:
 
     def test_delete_agent_app_archives_backing_agent(self, sqlite_session: Session):
         app, backing_agent = _persist_agent_app(sqlite_session)
+        workflow_app = _persist_app(sqlite_session, tenant_id=app.tenant_id, name="Workflow")
+        workflow_app.mode = AppMode.WORKFLOW
+        referencing_workflow = Workflow.new(
+            tenant_id=app.tenant_id,
+            app_id=workflow_app.id,
+            type=WorkflowType.WORKFLOW.value,
+            version=Workflow.VERSION_DRAFT,
+            graph="{}",
+            features="{}",
+            created_by="account-1",
+            environment_variables=[],
+            conversation_variables=[],
+            rag_pipeline_variables=[],
+        )
+        workflow_binding = WorkflowAgentNodeBinding(
+            tenant_id=app.tenant_id,
+            app_id=workflow_app.id,
+            workflow_id=referencing_workflow.id,
+            workflow_version=referencing_workflow.version,
+            node_id="agent-node",
+            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+            agent_id=backing_agent.id,
+            current_snapshot_id="snapshot-1",
+            node_job_config={},
+        )
         workflow_agents = [
             Agent(
                 tenant_id=app.tenant_id,
@@ -630,7 +751,7 @@ class TestAgentAppType:
             )
             for index in range(2)
         ]
-        sqlite_session.add_all(workflow_agents)
+        sqlite_session.add_all([referencing_workflow, workflow_binding, *workflow_agents])
         sqlite_session.commit()
         account_id = str(uuid4())
         events: list[str] = []
@@ -642,7 +763,10 @@ class TestAgentAppType:
             patch("services.app_service.BillingService"),
             patch("services.app_service.EnterpriseService"),
             patch("services.app_service.FeatureService"),
-            patch("services.app_service.remove_app_and_related_data_task"),
+            patch(
+                "services.app_service.remove_app_and_related_data_task.delay",
+                side_effect=lambda **_kwargs: events.append("enqueue-app-cleanup"),
+            ),
             patch(
                 "services.app_service.AgentHomeSnapshotService.retire_all_for_agent",
                 return_value=["home-1"],
@@ -653,9 +777,7 @@ class TestAgentAppType:
             ) as mock_retire_workspaces,
             patch(
                 "services.app_service.WorkflowAgentRetirementService.retire_unowned",
-                side_effect=lambda **_kwargs: (
-                    events.append("retire-workflow-agents") or (["workflow-binding-1"], ["workflow-home-1"])
-                ),
+                side_effect=lambda **_kwargs: events.append("retire-workflow-agents"),
             ) as mock_workflow_retirement,
             patch(
                 "services.app_service.enqueue_agent_resource_collection",
@@ -664,7 +786,13 @@ class TestAgentAppType:
         ):
             AppService().delete_app(app, session=sqlite_session)
 
-        assert events == ["retire-app-workspaces", "commit", "retire-workflow-agents", "enqueue"]
+        assert events == [
+            "retire-app-workspaces",
+            "commit",
+            "enqueue-app-cleanup",
+            "retire-workflow-agents",
+            "enqueue",
+        ]
         sqlite_session.expire_all()
         persisted_agent = sqlite_session.get(Agent, backing_agent.id)
         assert persisted_agent is not None
@@ -672,9 +800,12 @@ class TestAgentAppType:
         assert persisted_agent.status == AgentStatus.ARCHIVED
         assert persisted_agent.archived_by == account_id
         assert persisted_agent.archived_at is not None
+        persisted_workflow_binding = sqlite_session.get(WorkflowAgentNodeBinding, workflow_binding.id)
+        assert persisted_workflow_binding is not None
+        assert persisted_workflow_binding.agent_id == backing_agent.id
         mock_workflow_retirement.assert_called_once_with(
             tenant_id=app.tenant_id,
-            agent_ids=[agent.id for agent in workflow_agents],
+            agent_ids={agent.id for agent in workflow_agents},
             account_id=account_id,
         )
         mock_retire_workspaces.assert_called_once_with(
@@ -690,8 +821,9 @@ class TestAgentAppType:
         mock_enqueue_collection.assert_called_once_with(
             tenant_id=app.tenant_id,
             workspace_ids=["workspace-1"],
-            binding_ids=["workflow-binding-1"],
-            home_snapshot_ids=["home-1", "workflow-home-1"],
+            binding_ids=[],
+            home_snapshot_ids=["home-1"],
+            purge_agent_ids=[backing_agent.id],
         )
 
     def test_delete_app_commit_failure_does_not_retire_workflow_agents_or_enqueue(self, sqlite_session: Session):
@@ -722,9 +854,100 @@ class TestAgentAppType:
             patch("services.app_service.AgentWorkspaceService.retire_all_for_app", return_value=["workspace-1"]),
             patch("services.app_service.WorkflowAgentRetirementService.retire_unowned") as retire_unowned,
             patch("services.app_service.enqueue_agent_resource_collection") as enqueue_collection,
+            patch("services.app_service.remove_app_and_related_data_task.delay") as enqueue_app_cleanup,
         ):
             with pytest.raises(RuntimeError, match="commit failed"):
                 AppService().delete_app(app, session=sqlite_session)
 
+        retire_unowned.assert_not_called()
+        enqueue_collection.assert_not_called()
+        enqueue_app_cleanup.assert_not_called()
+
+    def test_delete_workflow_app_releases_all_bindings_before_retirement(self, sqlite_session: Session):
+        app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
+        app.mode = AppMode.WORKFLOW
+        workflow = Workflow.new(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            type=WorkflowType.WORKFLOW.value,
+            version="historical-version",
+            graph="{}",
+            features="{}",
+            created_by="account-1",
+            environment_variables=[],
+            conversation_variables=[],
+            rag_pipeline_variables=[],
+        )
+        inline_binding = WorkflowAgentNodeBinding(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            workflow_id=workflow.id,
+            workflow_version=workflow.version,
+            node_id="inline-node",
+            binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+            agent_id="inline-agent",
+            current_snapshot_id="snapshot-1",
+            node_job_config={},
+        )
+        roster_binding = WorkflowAgentNodeBinding(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            workflow_id=workflow.id,
+            workflow_version=workflow.version,
+            node_id="roster-node",
+            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+            agent_id="roster-agent",
+            current_snapshot_id="snapshot-2",
+            node_job_config={},
+        )
+        sqlite_session.add_all([workflow, inline_binding, roster_binding])
+        sqlite_session.commit()
+        events: list[str] = []
+
+        def retire_unowned(**kwargs):
+            events.append("retire")
+            assert sqlite_session.get(WorkflowAgentNodeBinding, inline_binding.id) is None
+            assert sqlite_session.get(WorkflowAgentNodeBinding, roster_binding.id) is None
+            assert kwargs["agent_ids"] == {"inline-agent"}
+
+        with (
+            patch("services.app_service.current_user", _account_identity(str(uuid4()))),
+            patch("services.app_service.app_was_deleted.send"),
+            patch("services.app_service.FeatureService"),
+            patch("services.app_service.BillingService"),
+            patch("services.app_service.EnterpriseService"),
+            patch("services.app_service.AgentWorkspaceService.retire_all_for_app", return_value=[]),
+            patch(
+                "services.app_service.remove_app_and_related_data_task.delay",
+                side_effect=lambda **_kwargs: events.append("enqueue-app-cleanup"),
+            ),
+            patch(
+                "services.app_service.WorkflowAgentRetirementService.retire_unowned",
+                side_effect=retire_unowned,
+            ),
+            patch("services.app_service.enqueue_agent_resource_collection"),
+        ):
+            AppService().delete_app(app, session=sqlite_session)
+
+        assert events == ["enqueue-app-cleanup", "retire"]
+        assert sqlite_session.get(WorkflowAgentNodeBinding, inline_binding.id) is None
+        assert sqlite_session.get(WorkflowAgentNodeBinding, roster_binding.id) is None
+
+    def test_delete_app_cleanup_enqueue_failure_propagates_before_retirement(self, sqlite_session: Session):
+        app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
+        error = RuntimeError("broker unavailable")
+
+        with (
+            patch("services.app_service.current_user", _account_identity(str(uuid4()))),
+            patch("services.app_service.app_was_deleted.send"),
+            patch("services.app_service.AgentWorkspaceService.retire_all_for_app", return_value=[]),
+            patch("services.app_service.remove_app_and_related_data_task.delay", side_effect=error),
+            patch("services.app_service.WorkflowAgentRetirementService.retire_unowned") as retire_unowned,
+            patch("services.app_service.enqueue_agent_resource_collection") as enqueue_collection,
+        ):
+            with pytest.raises(RuntimeError) as exc_info:
+                AppService().delete_app(app, session=sqlite_session)
+
+        assert exc_info.value is error
         retire_unowned.assert_not_called()
         enqueue_collection.assert_not_called()

@@ -106,7 +106,7 @@ const PermissionRoleChip = ({
       <PopoverContent
         placement="bottom-start"
         sideOffset={8}
-        popupClassName="overflow-hidden border-components-panel-border bg-components-tooltip-bg p-0 shadow-lg backdrop-blur-[5px]"
+        className="overflow-hidden border-components-panel-border bg-components-tooltip-bg p-0 shadow-lg backdrop-blur-[5px]"
       >
         {permissionSummary}
       </PopoverContent>

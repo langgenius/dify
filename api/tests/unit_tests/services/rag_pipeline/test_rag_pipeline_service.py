@@ -1,11 +1,13 @@
 import json
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from types import SimpleNamespace
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -67,6 +69,22 @@ def rag_pipeline_service(
 
 class MockRepo:
     pass
+
+
+def test_get_published_workflow_by_id_locks_restore_source(mocker: MockerFixture) -> None:
+    session = mocker.Mock(spec=Session)
+    workflow = _make_workflow()
+    workflow.version = "v1"
+    session.scalar.return_value = workflow
+    service = RagPipelineService.__new__(RagPipelineService)
+    service._session = session
+
+    result = service.get_published_workflow_by_id(_make_pipeline(), workflow.id)
+
+    stmt = session.scalar.call_args.args[0]
+    sql = str(stmt.compile(dialect=postgresql.dialect()))
+    assert result is workflow
+    assert "FOR UPDATE" in sql
 
 
 def _make_account(account_id: str = "u1", tenant_id: str = "t1") -> Account:
@@ -232,9 +250,9 @@ def _make_recommended_plugin(plugin_id: str) -> PipelineRecommendedPlugin:
 
 
 def test_get_pipeline_templates_fallbacks_to_builtin_for_non_english_empty_result(
-    mocker: MockerFixture, sqlite_session: Session
+    mocker: MockerFixture, sqlite_session: Session, config_overrides: Callable[..., None]
 ) -> None:
-    mocker.patch("services.rag_pipeline.rag_pipeline.dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE", "remote")
+    config_overrides(HOSTED_FETCH_PIPELINE_TEMPLATES_MODE="remote")
     session = sqlite_session
 
     remote_retrieval = mocker.Mock()
@@ -273,9 +291,12 @@ def test_get_pipeline_templates_customized_mode_uses_customized_factory(
 
 @pytest.mark.parametrize("template_type", ["built-in", "customized"])
 def test_get_pipeline_template_detail_uses_expected_mode(
-    mocker: MockerFixture, template_type: str, sqlite_session: Session
+    mocker: MockerFixture,
+    template_type: str,
+    sqlite_session: Session,
+    config_overrides: Callable[..., None],
 ) -> None:
-    mocker.patch("services.rag_pipeline.rag_pipeline.dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE", "remote")
+    config_overrides(HOSTED_FETCH_PIPELINE_TEMPLATES_MODE="remote")
     session = sqlite_session
     retrieval = mocker.Mock()
     retrieval.get_pipeline_template_detail.return_value = {"id": "tpl-1"}
@@ -1902,8 +1923,10 @@ def test_init_uses_default_sessionmaker_when_none(mocker: MockerFixture, sqlite_
     assert exec_session_maker.kw["expire_on_commit"] is False
 
 
-def test_get_pipeline_templates_builtin_en_us_no_fallback(mocker: MockerFixture, sqlite_session: Session) -> None:
-    mocker.patch("services.rag_pipeline.rag_pipeline.dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE", "remote")
+def test_get_pipeline_templates_builtin_en_us_no_fallback(
+    mocker: MockerFixture, sqlite_session: Session, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(HOSTED_FETCH_PIPELINE_TEMPLATES_MODE="remote")
     session = sqlite_session
     retrieval = mocker.Mock()
     retrieval.get_pipeline_templates.return_value = {"pipeline_templates": []}

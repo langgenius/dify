@@ -4,10 +4,12 @@ from types import FunctionType
 import pytest
 
 from controllers.common.wraps import RBACPermission, RBACResourceScope
+from controllers.console.agent.composer import AgentComposerApi
+from controllers.console.agent.roster import AgentAppApi
 from controllers.console.datasets.data_source import DataSourceApi
+from controllers.console.datasets.rag_pipeline.datasource_auth import DatasourceAuth
 from controllers.console.workspace.model_providers import ModelProviderCredentialApi
-from controllers.console.workspace.models import ModelProviderModelCredentialApi
-from controllers.console.workspace.tool_providers import ToolBuiltinProviderAddApi
+from controllers.console.workspace.tool_providers import ToolBuiltinProviderAddApi, ToolOAuthCustomClient
 
 
 @pytest.mark.parametrize(
@@ -15,6 +17,7 @@ from controllers.console.workspace.tool_providers import ToolBuiltinProviderAddA
     [
         (ToolBuiltinProviderAddApi.post, RBACPermission.CREDENTIAL_CREATE),
         (DataSourceApi.patch, RBACPermission.CREDENTIAL_MANAGE),
+        (DataSourceApi.get, RBACPermission.CREDENTIAL_MANAGE),
     ],
 )
 def test_workspace_credential_mutations_require_management_permission(
@@ -34,7 +37,6 @@ def test_workspace_credential_mutations_require_management_permission(
     "method",
     [
         ModelProviderCredentialApi.get,
-        ModelProviderModelCredentialApi.get,
     ],
 )
 def test_model_provider_credential_get_requires_admin_and_rbac(
@@ -49,4 +51,51 @@ def test_model_provider_credential_get_requires_admin_and_rbac(
     rbac_config = getclosurevars(rbac_wrapper).nonlocals
     assert rbac_config["resource_type"] == RBACResourceScope.WORKSPACE
     assert rbac_config["scene"] == RBACPermission.CREDENTIAL_MANAGE
+    assert rbac_config["resource_required"] is False
+
+
+def test_tool_oauth_custom_client_get_requires_admin_and_rbac() -> None:
+    """GET endpoint that returns custom OAuth client params must enforce
+    the same admin + RBAC gates as its sibling POST and DELETE methods."""
+    method = ToolOAuthCustomClient.get
+
+    legacy_wrapper = unwrap(method, stop=lambda wrapper: "is_admin_or_owner_required" in wrapper.__code__.co_qualname)
+    assert "is_admin_or_owner_required" in legacy_wrapper.__code__.co_qualname
+
+    rbac_wrapper = unwrap(method, stop=lambda wrapper: "rbac_permission_required" in wrapper.__code__.co_qualname)
+    rbac_config = getclosurevars(rbac_wrapper).nonlocals
+    assert rbac_config["resource_type"] == RBACResourceScope.WORKSPACE
+    assert rbac_config["scene"] == RBACPermission.CREDENTIAL_MANAGE
+    assert rbac_config["resource_required"] is False
+
+
+def test_datasource_auth_get_requires_edit_and_rbac() -> None:
+    """GET endpoint that lists datasource credentials must enforce
+    the same edit + RBAC gates as its sibling POST method."""
+    method = DatasourceAuth.get
+
+    edit_wrapper = unwrap(method, stop=lambda wrapper: "edit_permission_required" in wrapper.__code__.co_qualname)
+    assert "edit_permission_required" in edit_wrapper.__code__.co_qualname
+
+    rbac_wrapper = unwrap(method, stop=lambda wrapper: "rbac_permission_required" in wrapper.__code__.co_qualname)
+    rbac_config = getclosurevars(rbac_wrapper).nonlocals
+    assert rbac_config["resource_type"] == RBACResourceScope.DATASET
+    assert rbac_config["scene"] == RBACPermission.CREDENTIAL_MANAGE
+    assert rbac_config["resource_required"] is False
+
+
+@pytest.mark.parametrize(
+    "method",
+    [
+        AgentAppApi.get,
+        AgentComposerApi.get,
+    ],
+)
+def test_agent_app_get_requires_rbac(method: FunctionType) -> None:
+    """GET endpoints that return agent app details or composer state must enforce
+    the same RBAC gates as their sibling PUT/DELETE methods."""
+    rbac_wrapper = unwrap(method, stop=lambda wrapper: "rbac_permission_required" in wrapper.__code__.co_qualname)
+    rbac_config = getclosurevars(rbac_wrapper).nonlocals
+    assert rbac_config["resource_type"] == RBACResourceScope.WORKSPACE
+    assert rbac_config["scene"] == RBACPermission.AGENT_MANAGE
     assert rbac_config["resource_required"] is False

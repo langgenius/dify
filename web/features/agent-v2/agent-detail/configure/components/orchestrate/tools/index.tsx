@@ -333,13 +333,16 @@ function AddToolMenu({
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         render={
-          <ConfigureSectionAddButton ariaLabel={t(($) => $['agentDetail.configure.tools.add'])} />
+          <ConfigureSectionAddButton
+            ariaLabel={t(($) => $['agentDetail.configure.tools.add'])}
+            className="data-popup-open:bg-state-base-hover"
+          />
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        placement="top-end"
         sideOffset={4}
-        popupClassName={
+        className={
           view === 'menu'
             ? 'w-[280px] bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]'
             : 'w-[400px] overflow-hidden border-none bg-transparent p-0 shadow-none'

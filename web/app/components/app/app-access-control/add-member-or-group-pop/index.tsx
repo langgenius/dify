@@ -137,10 +137,10 @@ export default function AddMemberOrGroupDialog({
       <PopoverContent
         placement="bottom-end"
         alignOffset={300}
-        popupClassName="relative flex max-h-[400px] w-[400px] flex-col overflow-hidden bg-components-panel-bg-blur p-0 backdrop-blur-[5px]"
+        className="relative flex max-h-[400px] w-[400px] flex-col overflow-hidden bg-components-panel-bg-blur p-0 backdrop-blur-[5px]"
       >
         <PopoverTitle className="sr-only">{searchLabel}</PopoverTitle>
-        <ScrollArea className="relative min-h-0 flex-1 overflow-hidden">
+        <ScrollArea className="min-h-0 flex-1 overflow-hidden">
           <ScrollAreaViewport
             ref={scrollRootRef}
             role="region"

@@ -13,6 +13,7 @@ from controllers.console.auth.error import (
     EmailRegisterLimitError,
     InvalidEmailError,
     InvalidTokenError,
+    NormalizedEmailAlreadyInUseError,
     PasswordMismatchError,
 )
 from enums import DeploymentEdition
@@ -24,9 +25,16 @@ from libs.password import valid_password
 from models import Account
 from services.account_service import AccountService
 from services.billing_service import BillingService
-from services.errors.account import AccountRegisterError, SeatsLimitExceededError
+from services.errors.account import (
+    AccountNormalizedEmailAlreadyInUseError,
+    AccountRegisterError,
+    SeatsLimitExceededError,
+)
+from services.errors.account import (
+    EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
+)
 
-from ..error import AccountInFreezeError, EmailSendIpLimitError, SeatsLimitExceeded
+from ..error import AccountInFreezeError, EmailDomainSuspendedError, EmailSendIpLimitError, SeatsLimitExceeded
 from ..wraps import email_password_login_enabled, email_register_enabled, model_validate, setup_required
 
 
@@ -99,10 +107,12 @@ class EmailRegisterSendEmailApi(Resource):
         if req_data.language is not None and req_data.language in languages:
             language = req_data.language
 
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(
-            normalized_email
-        ):
-            raise AccountInFreezeError()
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+            freeze_type = BillingService.get_email_freeze_type(normalized_email)
+            if freeze_type:
+                if freeze_type == "email_domain_suspended":
+                    raise EmailDomainSuspendedError()
+                raise AccountInFreezeError()
 
         account = AccountService.get_account_by_email_with_case_fallback(req_data.email, session=db.session())
         token = AccountService.send_email_register_email(email=normalized_email, account=account, language=language)
@@ -213,9 +223,14 @@ class EmailRegisterResetApi(Resource):
                 interface_language=get_valid_language(language),
                 timezone=timezone,
                 ip_address=ip_address,
+                check_normalized_email=True,
                 session=db.session(),
             )
         except SeatsLimitExceededError:
             raise SeatsLimitExceeded()
-        except AccountRegisterError:
-            raise AccountInFreezeError()
+        except EmailDomainSuspendedRegistrationError as exc:
+            raise EmailDomainSuspendedError() from exc
+        except AccountNormalizedEmailAlreadyInUseError as exc:
+            raise NormalizedEmailAlreadyInUseError() from exc
+        except AccountRegisterError as exc:
+            raise AccountInFreezeError() from exc

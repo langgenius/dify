@@ -52,7 +52,7 @@ export function AgentLogsTable({
         </table>
       </div>
 
-      <ScrollArea className="relative min-h-0 flex-1 overflow-hidden">
+      <ScrollArea className="min-h-0 flex-1 overflow-hidden">
         <ScrollAreaViewport
           aria-label={t(($) => $['agentDetail.logs.title'])}
           role="region"

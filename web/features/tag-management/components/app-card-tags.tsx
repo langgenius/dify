@@ -3,6 +3,7 @@ import { TagSelector } from '@/features/tag-management/components/tag-selector'
 
 type AppCardTagsProps = {
   appId: string
+  appName: string
   tags: Tag[]
   canBindOrUnbindTags?: boolean
   onOpenTagManagement?: () => void
@@ -11,6 +12,7 @@ type AppCardTagsProps = {
 
 export const AppCardTags = ({
   appId,
+  appName,
   tags,
   canBindOrUnbindTags,
   onOpenTagManagement = () => {},
@@ -20,6 +22,7 @@ export const AppCardTags = ({
     <TagSelector
       type="app"
       targetId={appId}
+      contextLabel={appName}
       value={tags}
       canBindOrUnbindTags={canBindOrUnbindTags}
       onOpenTagManagement={onOpenTagManagement}

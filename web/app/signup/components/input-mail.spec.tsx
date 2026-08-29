@@ -6,7 +6,7 @@ import { useLocale } from '@/context/i18n'
 import { useSearchParams } from '@/next/navigation'
 import { useSendMail } from '@/service/use-common'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import Form from './input-mail'
+import SignupEmailForm from './input-mail'
 
 const mockSubmitMail = vi.fn()
 const mockOnSuccess = vi.fn()
@@ -61,7 +61,7 @@ const renderForm = ({
     mutateAsync: mockSubmitMail,
     isPending,
   } as unknown as UseSendMailResult)
-  return renderWithConsoleQuery(<Form onSuccess={mockOnSuccess} />, {
+  return renderWithConsoleQuery(<SignupEmailForm onSuccess={mockOnSuccess} />, {
     systemFeatures: { branding: { enabled: brandingEnabled } },
   })
 }

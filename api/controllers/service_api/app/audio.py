@@ -23,6 +23,7 @@ from controllers.service_api.app.error import (
 )
 from controllers.service_api.schema import binary_response, expect_with_user, multipart_file_params
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from core.base.tts.audio_mime import SUPPORTED_TTS_AUDIO_MIME_TYPES
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
@@ -151,8 +152,9 @@ class TextApi(Resource):
         tags=["TTS"],
         responses={
             200: (
-                "Returns the generated audio. Generator responses are streamed by the service as `audio/mpeg`; "
-                "otherwise the provider output is returned directly."
+                "Returns the generated audio. The `Content-Type` header reflects the provider audio container, "
+                "verified from the response bytes when recognizable. The binary response can be AAC, FLAC, MP4, "
+                "MP3, Ogg, WAV, or WebM."
             ),
             400: (
                 "- `app_unavailable` : App unavailable or misconfigured.\n"
@@ -165,7 +167,7 @@ class TextApi(Resource):
         },
     )
     @expect_with_user(service_api_ns, TextToAudioPayload)
-    @binary_response(service_api_ns, "audio/mpeg")
+    @binary_response(service_api_ns, SUPPORTED_TTS_AUDIO_MIME_TYPES)
     @service_api_ns.doc("text_to_audio")
     @service_api_ns.doc(description="Convert text to audio using text-to-speech")
     @service_api_ns.doc(

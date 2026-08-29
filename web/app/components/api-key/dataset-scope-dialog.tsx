@@ -4,14 +4,15 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
+import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -84,9 +85,17 @@ export function DatasetScopeDialog({
             {t(($) => $['apiKeyModal.addSubtitle'], { ns: 'appApi' })}
           </DialogDescription>
         </div>
-        <DialogCloseButton
-          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-          disabled={isCreating}
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+              disabled={isCreating}
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
         />
 
         <div className="flex flex-col gap-3 px-6 py-4">

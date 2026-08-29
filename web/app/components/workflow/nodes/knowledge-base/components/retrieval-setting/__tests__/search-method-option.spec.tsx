@@ -1,7 +1,7 @@
 import type { ComponentType, SVGProps } from 'react'
 import { Field } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { RadioGroup } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { HybridSearchModeEnum, RetrievalSearchMethodEnum, WeightedScoreEnum } from '../../../types'
 import { SearchMethodOption } from '../search-method-option'
@@ -162,8 +162,8 @@ describe('SearchMethodOption', () => {
 
     expect(screen.getByText('Weighted mode'))!.toBeInTheDocument()
     expect(screen.getByText('Rerank mode'))!.toBeInTheDocument()
-    expect(screen.getByText('dataset.weightedScore.semantic'))!.toBeInTheDocument()
-    expect(screen.getByText('dataset.weightedScore.keyword'))!.toBeInTheDocument()
+    expect(screen.getByTitle('dataset.weightedScore.semantic'))!.toBeVisible()
+    expect(screen.getByTitle('dataset.weightedScore.keyword'))!.toBeVisible()
     expect(screen.queryByText('common.modelProvider.rerankModel.key')).not.toBeInTheDocument()
     expect(
       screen.queryByText('datasetSettings.form.retrievalSetting.multiModalTip'),

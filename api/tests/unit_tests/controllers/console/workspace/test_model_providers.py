@@ -1,8 +1,8 @@
 from inspect import unwrap
-from unittest.mock import ANY, patch
+from unittest.mock import patch
 
 import pytest
-from flask import Flask
+from flask import Flask, g
 from pydantic_core import ValidationError
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
@@ -20,6 +20,7 @@ from controllers.console.workspace.model_providers import (
     PreferredProviderTypeUpdateApi,
 )
 from core.entities.provider_entities import CredentialConfiguration
+from enums import DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
@@ -37,6 +38,7 @@ from services.entities.model_provider_entities import (
     SystemConfigurationResponse,
 )
 from services.workspace_service import EffectiveCreditPool
+from tests.unit_tests.config_override import config_overrides_context
 
 VALID_UUID = "123e4567-e89b-12d3-a456-426614174000"
 INVALID_UUID = "123"
@@ -571,13 +573,8 @@ class TestModelProviderPaymentCheckoutUrlApi:
         method = unwrap(api.get)
 
         user = make_account()
-
         with (
             app.test_request_context("/"),
-            patch(
-                "controllers.console.workspace.model_providers.BillingService.is_tenant_owner_or_admin",
-                return_value=None,
-            ) as is_tenant_owner_or_admin,
             patch(
                 "controllers.console.workspace.model_providers.BillingService.get_model_provider_payment_link",
                 return_value={"payment_link": "https://payment.example.com/provider"},
@@ -585,7 +582,6 @@ class TestModelProviderPaymentCheckoutUrlApi:
         ):
             result = method(api, "tenant1", user, provider="anthropic")
 
-        is_tenant_owner_or_admin.assert_called_once_with(user, session=ANY)
         get_model_provider_payment_link.assert_called_once_with(
             provider_name="anthropic",
             tenant_id="tenant1",
@@ -602,18 +598,23 @@ class TestModelProviderPaymentCheckoutUrlApi:
             with pytest.raises(ValueError):
                 method(api, "tenant1", make_account(), provider="openai")
 
-    def test_permission_denied(self, app: Flask):
+    def test_checkout_rejects_non_privileged_role(self, app: Flask):
         api = ModelProviderPaymentCheckoutUrlApi()
-        method = unwrap(api.get)
-
-        user = make_account()
+        account = make_account()
 
         with (
             app.test_request_context("/"),
-            patch(
-                "controllers.console.workspace.model_providers.BillingService.is_tenant_owner_or_admin",
-                side_effect=Forbidden(),
+            config_overrides_context(
+                DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+                LOGIN_DISABLED=True,
+                RBAC_ENABLED=False,
             ),
+            patch(
+                "controllers.console.workspace.model_providers.BillingService.get_model_provider_payment_link",
+            ) as get_model_provider_payment_link,
         ):
+            g._login_user = account
             with pytest.raises(Forbidden):
-                method(api, "tenant1", user, provider="anthropic")
+                api.get(provider="anthropic")
+
+        get_model_provider_payment_link.assert_not_called()
