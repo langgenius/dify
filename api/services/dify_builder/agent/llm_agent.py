@@ -2,20 +2,24 @@
 
 Owns the resolved model. Of the Protocol's 14 methods (Fix 4 + Build 7 + Edit 3),
 the 3 Fix methods that reason about a failed run -- ``diagnose``,
-``diagnose_checklist``, ``propose_repair`` -- now use real LLM cognition via
-``services.dify_builder.agent.fix``, resolving the model through
-``_model_or_none`` (which degrades to ``None`` on resolution failure rather than
-crashing the advance; ``fix.*`` handles that). ``generate_mock_inputs`` and every
-Build/Edit method still delegate to the canned ``PlaceholderAgent`` unchanged.
-Later slices replace those remaining method bodies one at a time with real LLM
-calls, no structural change.
+``diagnose_checklist``, ``propose_repair`` -- and 6 of the 7 Build methods --
+``analyze_goal``, ``propose_plan_v1``, ``discover_resources``, ``bind_resources``,
+``build_nodes``, ``learn_from_build`` -- now use real LLM cognition via
+``services.dify_builder.agent.fix`` / ``services.dify_builder.agent.build``,
+resolving the model through ``_model_or_none`` (which degrades to ``None`` on
+resolution failure rather than crashing the advance; ``fix.*``/``build.*``
+handle that). ``propose_build_repair`` returns ``[]`` -- there is no real
+failure signal to diagnose until the live test step is de-canned (deferred).
+``generate_mock_inputs`` and every Edit method still delegate to the canned
+``PlaceholderAgent`` unchanged. Later slices replace those remaining method
+bodies one at a time with real LLM calls, no structural change.
 """
 
 from typing import Any
 
 from core.dify_builder.placeholder_agent import PlaceholderAgent
 from core.model_manager import ModelInstance
-from services.dify_builder.agent import fix
+from services.dify_builder.agent import build, fix  # `edit` import added in Task B3
 from services.dify_builder.agent.model_resolver import resolve_model_instance
 
 
@@ -53,27 +57,27 @@ class LlmBuilderAgent:
     def generate_mock_inputs(self, schema, prior_failed):
         return self._canned.generate_mock_inputs(schema, prior_failed)
 
-    # -- Build cognition (delegated) --
+    # -- Build cognition (real) --
     def analyze_goal(self, goal_text):
-        return self._canned.analyze_goal(goal_text)
+        return build.analyze_goal(self._model_or_none(), goal_text)
 
     def propose_plan_v1(self, requirements):
-        return self._canned.propose_plan_v1(requirements)
+        return build.propose_plan_v1(self._model_or_none(), requirements)
 
     def discover_resources(self, plan_items):
-        return self._canned.discover_resources(plan_items)
+        return build.discover_resources(self._model_or_none(), self._tenant_id, plan_items)
 
     def bind_resources(self, plan_items, resource_ids, conflict_policy):
-        return self._canned.bind_resources(plan_items, resource_ids, conflict_policy)
+        return build.bind_resources(self._model_or_none(), self._tenant_id, plan_items, resource_ids, conflict_policy)
 
     def build_nodes(self, plan_items):
-        return self._canned.build_nodes(plan_items)
+        return build.build_nodes(self._tenant_id, self._model_config, plan_items)
 
     def propose_build_repair(self, built_node_ids):
-        return self._canned.propose_build_repair(built_node_ids)
+        return []  # no real failure signal until the live test step is de-canned (deferred)
 
     def learn_from_build(self, goal_text, requirements, plan_items, built_node_ids):
-        return self._canned.learn_from_build(goal_text, requirements, plan_items, built_node_ids)
+        return build.learn_from_build(self._model_or_none(), goal_text, requirements, plan_items, built_node_ids)
 
     # -- Edit cognition (delegated) --
     def analyze_impact(self, goal_text, graph):
