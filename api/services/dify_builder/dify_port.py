@@ -70,14 +70,6 @@ from services.workflow_service import WorkflowService
 __all__ = ["WorkflowServiceDifyPort"]
 
 
-_APPLY_FNS: dict[str, Callable[..., tuple[Graph, list[str]]]] = {
-    "set_node_config": graph_ops.apply_set_node_config,
-    "create_node": graph_ops.apply_create_node,
-    "delete_node": graph_ops.apply_delete_node,
-    "connect": graph_ops.apply_connect,
-    "insert_between": graph_ops.apply_insert_between,
-}
-
 _CREATE_NODE_CANVAS_EVENTS: dict[str, CanvasEvent] = {
     BuiltinNodeTypes.START: CanvasEvent.ADD_START_NODE,
     BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL: CanvasEvent.ADD_KNOWLEDGE_NODE,
@@ -214,7 +206,7 @@ class WorkflowServiceDifyPort:
             unique_hash = workflow.unique_hash
             changed_nodes: list[str] = []
             for intent in intents:
-                apply_fn = _APPLY_FNS.get(intent.op)
+                apply_fn = graph_ops.APPLY_FNS.get(intent.op)
                 if apply_fn is None:
                     continue
                 graph_ops.validate_intent_args(intent)
