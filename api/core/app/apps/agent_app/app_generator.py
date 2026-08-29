@@ -66,7 +66,11 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.model import load_annotation_reply_config
-from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
+from services.agent.workspace_service import (
+    AgentWorkspaceBindingGenerationMismatchError,
+    AgentWorkspaceService,
+    WorkspaceOwnerScope,
+)
 from services.conversation_service import ConversationService
 
 logger = logging.getLogger(__name__)
@@ -682,12 +686,34 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             session=session,
         )
         if conversation_binding is not None:
-            AgentWorkspaceService.validate_binding_generation(
-                conversation_binding,
-                base_home_snapshot_id=snapshot.home_snapshot_id,
-                agent_config_version_id=snapshot.id,
-                agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
-            )
+            try:
+                AgentWorkspaceService.validate_binding_generation(
+                    conversation_binding,
+                    base_home_snapshot_id=snapshot.home_snapshot_id,
+                    agent_config_version_id=snapshot.id,
+                    agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+                )
+            except AgentWorkspaceBindingGenerationMismatchError:
+                new_binding = AgentWorkspaceService.create_binding(
+                    session=session,
+                    scope=WorkspaceOwnerScope(
+                        tenant_id=app_model.tenant_id,
+                        app_id=app_model.id,
+                        owner_type=AgentWorkspaceOwnerType.CONVERSATION,
+                        owner_id=conversation.id,
+                    ),
+                    agent_id=agent.id,
+                    base_home_snapshot_id=snapshot.home_snapshot_id,
+                    agent_config_version_id=snapshot.id,
+                    agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+                )
+                AgentWorkspaceService.retire_binding(
+                    session=session,
+                    tenant_id=app_model.tenant_id,
+                    binding_id=conversation_binding.id,
+                )
+                conversation.agent_workspace_binding_id = new_binding.id
+                conversation_binding = new_binding
         return agent, snapshot.id, "snapshot", agent_soul
 
     @staticmethod
