@@ -39,6 +39,7 @@ from controllers.openapi._models import (
     WorkspaceSummaryResponse,
 )
 from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.loaders import load_caller, load_workspace
 from controllers.openapi.auth.requirements import (
     RequireWorkspaceMembership,
     RoleFloor,
@@ -130,7 +131,7 @@ class WorkspaceSwitchApi(Resource):
     @endpoint(requirements=_WORKSPACE_MEMBER_READ, returns=(200, WorkspaceDetailResponse, "Workspace detail"))
     def post(self, ctx: Context, workspace_id: str):
         try:
-            TenantService.switch_tenant(cast(Account, ctx.caller), workspace_id, session=ctx.session)
+            TenantService.switch_tenant(cast(Account, load_caller(ctx)), workspace_id, session=ctx.session)
         except AccountNotLinkTenantError:
             raise NotFound("workspace not found")
 
@@ -156,7 +157,7 @@ class WorkspaceMembersApi(Resource):
         write=False,
     )
     def get(self, ctx: Context, workspace_id: str, *, query: MemberListQuery):
-        members = TenantService.get_tenant_members(ctx.workspace, session=ctx.session)
+        members = TenantService.get_tenant_members(load_workspace(ctx), session=ctx.session)
         total = len(members)
         start = (query.page - 1) * query.limit
         page_items = members[start : start + query.limit]
@@ -174,7 +175,7 @@ class WorkspaceMembersApi(Resource):
         returns=(201, MemberInviteResponse, "Member invited"),
     )
     def post(self, ctx: Context, workspace_id: str, *, body: MemberInvitePayload):
-        tenant = ctx.workspace
+        tenant = load_workspace(ctx)
 
         _check_member_invite_quota(str(tenant.id))
 
@@ -184,7 +185,7 @@ class WorkspaceMembersApi(Resource):
                 email=body.email,
                 language=None,
                 role=body.role,
-                inviter=cast(Account, ctx.caller),
+                inviter=cast(Account, load_caller(ctx)),
                 session=ctx.session,
             )
         except AccountAlreadyInTenantError as exc:
@@ -230,7 +231,7 @@ class WorkspaceMemberApi(Resource):
 
         try:
             TenantService.remove_member_from_tenant(
-                ctx.workspace, member, cast(Account, ctx.caller), session=ctx.session
+                load_workspace(ctx), member, cast(Account, load_caller(ctx)), session=ctx.session
             )
         except CannotOperateSelfError as exc:
             raise BadRequest(str(exc))
@@ -253,7 +254,7 @@ class WorkspaceMemberApi(Resource):
 
         try:
             TenantService.update_member_role(
-                ctx.workspace, member, body.role, cast(Account, ctx.caller), session=ctx.session
+                load_workspace(ctx), member, body.role, cast(Account, load_caller(ctx)), session=ctx.session
             )
         except CannotOperateSelfError as exc:
             raise BadRequest(str(exc))

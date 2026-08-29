@@ -17,7 +17,7 @@ from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurface
 from controllers.openapi._models import FormSubmitResponse, HumanInputFormDefinitionResponse
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.data import CallerKind
-from controllers.openapi.auth.loaders import load_app
+from controllers.openapi.auth.loaders import load_app, load_caller
 from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
     RBACScene,
@@ -107,7 +107,7 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
         if form is None:
             raise HumanInputFormNotFound()
 
-        _ensure_form_belongs_to_app(form, ctx.app)
+        _ensure_form_belongs_to_app(form, load_app(ctx))
         service.ensure_form_active(form)
         return _jsonify_form_definition(form)
 
@@ -126,14 +126,14 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
         if form is None:
             raise HumanInputFormNotFound()
 
-        _ensure_form_belongs_to_app(form, ctx.app)
+        _ensure_form_belongs_to_app(form, load_app(ctx))
 
         submission_user_id: str | None = None
         submission_end_user_id: str | None = None
         if ctx.subject.caller_kind is CallerKind.ACCOUNT:
-            submission_user_id = ctx.caller.id
+            submission_user_id = load_caller(ctx).id
         else:
-            submission_end_user_id = ctx.caller.id
+            submission_end_user_id = load_caller(ctx).id
 
         if form.recipient_type is None:
             logger.warning("Recipient type is None for form, form_token=%s", form_token)

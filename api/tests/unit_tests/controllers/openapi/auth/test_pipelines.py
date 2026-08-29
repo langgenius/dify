@@ -194,7 +194,7 @@ def test_a_subject_that_mounts_no_caller_leaves_the_context_untouched(
 
     _run(_NoFixed(), subject, ctx, sqlite_session, requirements=(ResolveCaller(),))
 
-    assert ctx.caller_loaded is False
+    assert ctx.caller is None
 
 
 def test_app_scoped_route_mounts_an_account_bound_to_the_workspace(
@@ -299,7 +299,7 @@ def test_a_route_whose_requirements_need_no_app_never_fetches_one(
 
     _run(_NoFixed(), subject, ctx, sqlite_session, requirements=(TokenScope(Scope.APPS_RUN),))
 
-    assert ctx.app_loaded is False
+    assert ctx.app is None
 
 
 def test_an_external_sso_app_route_resolves_its_end_user(
@@ -329,7 +329,7 @@ def test_an_external_sso_app_route_resolves_its_end_user(
     with patch(FEATURES, return_value=system_features()):
         _run(ExternalSsoPipeline(), subject, ctx, sqlite_session)
 
-    assert ctx.workspace_loaded is True
+    assert ctx.workspace is not None
     assert ctx.caller is end_user
     assert mounted_users == [end_user]
 
@@ -351,7 +351,7 @@ def test_a_loaded_caller_is_not_mounted_when_the_subject_declines(
 
     _run(AccountPipeline(), subject, ctx, sqlite_session, requirements=(RequireWorkspaceMembership(),))
 
-    assert ctx.caller_loaded is True
+    assert ctx.caller is not None
 
 
 @pytest.mark.parametrize(
@@ -390,4 +390,4 @@ def test_a_refused_sso_request_never_creates_an_end_user(
                 with pytest.raises(Forbidden, match=message):
                     _run(ExternalSsoPipeline(), subject, ctx, sqlite_session, requirements=requirements)
 
-    assert ctx.caller_loaded is False
+    assert ctx.caller is None

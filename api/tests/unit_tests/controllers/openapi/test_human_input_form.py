@@ -56,7 +56,6 @@ def _context(caller: Account | EndUser, caller_kind: CallerKind) -> SimpleNamesp
     )
     return SimpleNamespace(
         app=app_model,
-        app_loaded=True,
         caller=caller,
         subject=SimpleNamespace(caller_kind=caller_kind),
         view_args={"app_id": "app-1", "form_token": "tok-1"},

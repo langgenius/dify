@@ -117,7 +117,7 @@ class TestAccountResolveCaller:
         )
         subject = AccountSubject(make_auth(SubjectType.ACCOUNT))
         ctx = make_ctx(sqlite_session, subject, app_id=APP_ID)
-        ctx.set_workspace(tenant)
+        ctx.workspace = tenant
 
         caller = subject.resolve_caller(ctx, sqlite_session)
 

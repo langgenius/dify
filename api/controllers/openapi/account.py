@@ -16,6 +16,7 @@ from controllers.openapi._models import (
     WorkspacePayload,
 )
 from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.loaders import load_caller
 from controllers.openapi.auth.requirements import CheckSessionOwnership, SubjectCheck, TokenScope
 from controllers.openapi.auth.subjects import AccountSubject
 from extensions.ext_redis import redis_client
@@ -34,7 +35,7 @@ class AccountApi(Resource):
         account_id_str = str(ctx.subject.account_id)
         enforce(LIMIT_ME_PER_ACCOUNT, key=f"account:{account_id_str}")
 
-        account = ctx.caller
+        account = load_caller(ctx)
         memberships = TenantService.get_account_memberships(account_id_str, session=ctx.session)
 
         return AccountResponse(

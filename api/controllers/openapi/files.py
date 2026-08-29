@@ -18,6 +18,7 @@ from controllers.openapi import openapi_ns
 from controllers.openapi._contract import endpoint
 from controllers.openapi._errors import FilenameNotExists
 from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.loaders import load_caller
 from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
     RequireWebappAccess,
@@ -73,7 +74,7 @@ class AppFileUploadApi(Resource):
                 filename=file.filename,
                 content=file.stream.read(),
                 mimetype=file.mimetype,
-                user=ctx.caller,
+                user=load_caller(ctx),
             )
         except ValueError as exc:
             raise BadRequest(str(exc))
