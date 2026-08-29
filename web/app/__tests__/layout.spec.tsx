@@ -73,6 +73,49 @@ describe('Root layout System Features bootstrap', () => {
     })
   })
 
+  it('points the icons at the branding favicon when one is configured', async () => {
+    mocks.getSystemFeatures.mockResolvedValue({
+      branding: {
+        application_title: 'Acme AI',
+        enabled: true,
+        favicon: 'https://cdn.example.com/brand.ico',
+      },
+      deployment_edition: 'CLOUD',
+    })
+    const { generateMetadata } = await import('../layout')
+
+    await expect(generateMetadata()).resolves.toMatchObject({
+      icons: {
+        icon: 'https://cdn.example.com/brand.ico',
+        apple: 'https://cdn.example.com/brand.ico',
+      },
+    })
+  })
+
+  it('falls back to the static favicon without branding', async () => {
+    mocks.getSystemFeatures.mockResolvedValue({
+      branding: { enabled: false },
+      deployment_edition: 'CLOUD',
+    })
+    const { generateMetadata } = await import('../layout')
+
+    await expect(generateMetadata()).resolves.toMatchObject({
+      icons: { icon: '/favicon.ico' },
+    })
+  })
+
+  it('falls back to the static favicon when branding is enabled without one', async () => {
+    mocks.getSystemFeatures.mockResolvedValue({
+      branding: { application_title: 'Acme AI', enabled: true, favicon: '' },
+      deployment_edition: 'CLOUD',
+    })
+    const { generateMetadata } = await import('../layout')
+
+    await expect(generateMetadata()).resolves.toMatchObject({
+      icons: { icon: '/favicon.ico' },
+    })
+  })
+
   it('renders the client recovery path when the server prefetch fails', async () => {
     mocks.getSystemFeatures.mockRejectedValue(new Error('system features unavailable'))
     const { default: RootLayout, generateMetadata } = await import('../layout')

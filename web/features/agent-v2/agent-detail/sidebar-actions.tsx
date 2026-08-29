@@ -113,14 +113,14 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
         </DropdownMenuContent>
       </DropdownMenu>
       <EditAgentDialog
+        key={editSessionKey}
         agent={dialogAgent}
-        formKey={editSessionKey}
         open={isEditOpen}
         onOpenChange={setIsEditOpen}
       />
       <DuplicateAgentDialog
+        key={duplicateSessionKey}
         agent={dialogAgent}
-        formKey={duplicateSessionKey}
         open={isDuplicateOpen}
         onOpenChange={setIsDuplicateOpen}
       />
