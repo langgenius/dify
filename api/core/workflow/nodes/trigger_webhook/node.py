@@ -160,7 +160,11 @@ class TriggerWebhookNode(Node[WebhookData]):
 
             match param_type:
                 case SegmentType.FILE:
-                    # Get File object (already processed by webhook controller)
+                    # Get File object (already processed by webhook controller).
+                    # Fall through to `None` (not the whole `files` mapping) when the
+                    # configured file param is missing, present-but-malformed, or the
+                    # FileVariable cannot be built — matches the missing-value contract
+                    # used by the query param and regular body branches above.
                     files = webhook_data.get("files", {})
                     if files and isinstance(files, dict):
                         file = files.get(param_name)
@@ -169,11 +173,11 @@ class TriggerWebhookNode(Node[WebhookData]):
                             if file_var:
                                 outputs[param_name] = file_var
                             else:
-                                outputs[param_name] = files
+                                outputs[param_name] = None
                         else:
-                            outputs[param_name] = files
+                            outputs[param_name] = None
                     else:
-                        outputs[param_name] = files
+                        outputs[param_name] = None
                 case _:
                     # Get regular body parameter
                     outputs[param_name] = webhook_data.get("body", {}).get(param_name)

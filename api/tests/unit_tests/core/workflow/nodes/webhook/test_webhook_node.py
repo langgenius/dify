@@ -282,6 +282,168 @@ def test_webhook_node_run_with_file_params():
     assert isinstance(result.outputs["upload"], FileVariable)
     assert isinstance(result.outputs["document"], FileVariable)
     assert result.outputs["upload"].value.filename == "image.jpg"
+    # Regression for #41071: a configured file param that is not present in
+    # the incoming `files` mapping must resolve to None (not the whole mapping).
+    assert result.outputs["missing_file"] is None
+
+
+def test_webhook_node_missing_file_param_resolves_to_none():
+    """Regression for #41071: a configured file param that is not present in
+    the incoming `files` mapping must resolve to None, not the whole `files`
+    mapping. Pre-fix the entire mapping was assigned, so the downstream node
+    received `avatar`'s file dict under `attachment`.
+    """
+    file1 = File(
+        file_type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        related_id="file1",
+        filename="image.jpg",
+        mime_type="image/jpeg",
+        storage_key="",
+    )
+
+    data = WebhookData(
+        title="Test Webhook",
+        body=[
+            WebhookBodyParameter(name="avatar", type="file", required=False),
+            WebhookBodyParameter(name="attachment", type="file", required=False),
+        ],
+    )
+
+    variable_pool = build_webhook_variable_pool(
+        {
+            "webhook_data": {
+                "headers": {},
+                "query_params": {},
+                "body": {},
+                "files": {"avatar": file1.to_dict()},
+            }
+        }
+    )
+
+    node = create_webhook_node(data, variable_pool)
+    with patch.object(node._file_reference_factory, "build_from_mapping") as mock_file_factory:
+
+        def _to_file(*, mapping: dict[str, Any]) -> File:
+            return File(
+                file_id=mapping.get("id"),
+                file_type=FileType(mapping["type"]),
+                transfer_method=FileTransferMethod(mapping["transfer_method"]),
+                related_id=mapping.get("related_id"),
+                filename=mapping.get("filename"),
+                extension=mapping.get("extension"),
+                mime_type=mapping.get("mime_type"),
+                size=mapping.get("size", -1),
+                storage_key=mapping.get("storage_key", ""),
+                remote_url=mapping.get("url"),
+            )
+
+        mock_file_factory.side_effect = _to_file
+        result = node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert isinstance(result.outputs["avatar"], FileVariable)
+    assert result.outputs["avatar"].value.filename == "image.jpg"
+    # The configured-but-absent param must be None, not the whole files mapping.
+    assert result.outputs["attachment"] is None
+
+
+def test_webhook_node_file_entry_not_a_dict_resolves_to_none():
+    """Regression for #41071 (case 2 of the issue): if a file entry exists
+    but is not a dict (e.g. the multipart parser returned a string for a
+    non-file part that collided on name), the configured param resolves to
+    None rather than inheriting the whole `files` mapping."""
+    data = WebhookData(
+        title="Test Webhook",
+        body=[WebhookBodyParameter(name="avatar", type="file", required=False)],
+    )
+
+    variable_pool = build_webhook_variable_pool(
+        {
+            "webhook_data": {
+                "headers": {},
+                "query_params": {},
+                "body": {},
+                "files": {"avatar": "not-a-dict"},
+            }
+        }
+    )
+
+    node = create_webhook_node(data, variable_pool)
+    result = node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs["avatar"] is None
+
+
+def test_webhook_node_file_var_build_fails_resolves_to_none():
+    """Regression for #41071 (case 3 of the issue): when the file entry is a
+    valid dict but `build_from_mapping` raises ValueError, the converter logs
+    the failure and returns None. The configured param must be None, not the
+    whole `files` mapping."""
+    file1 = File(
+        file_type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        related_id="file1",
+        filename="image.jpg",
+        mime_type="image/jpeg",
+        storage_key="",
+    )
+
+    data = WebhookData(
+        title="Test Webhook",
+        body=[WebhookBodyParameter(name="avatar", type="file", required=False)],
+    )
+
+    variable_pool = build_webhook_variable_pool(
+        {
+            "webhook_data": {
+                "headers": {},
+                "query_params": {},
+                "body": {},
+                "files": {"avatar": file1.to_dict()},
+            }
+        }
+    )
+
+    node = create_webhook_node(data, variable_pool)
+    with patch.object(node._file_reference_factory, "build_from_mapping") as mock_file_factory:
+        mock_file_factory.side_effect = ValueError("simulated build failure")
+        result = node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs["avatar"] is None
+
+
+def test_webhook_node_files_not_a_dict_resolves_to_none():
+    """Regression for #41071 (outer fallback): if the entire `files` value is
+    not a dict (e.g. None or a list), every configured file param resolves to
+    None rather than inheriting the unexpected value."""
+    data = WebhookData(
+        title="Test Webhook",
+        body=[
+            WebhookBodyParameter(name="avatar", type="file", required=False),
+            WebhookBodyParameter(name="attachment", type="file", required=False),
+        ],
+    )
+
+    variable_pool = build_webhook_variable_pool(
+        {
+            "webhook_data": {
+                "headers": {},
+                "query_params": {},
+                "body": {},
+                "files": None,
+            }
+        }
+    )
+
+    node = create_webhook_node(data, variable_pool)
+    result = node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs["avatar"] is None
+    assert result.outputs["attachment"] is None
 
 
 def test_webhook_node_run_mixed_parameters():
