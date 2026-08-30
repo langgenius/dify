@@ -774,6 +774,8 @@ currently visible.
 - `200`: updated `Source` (`version` bumped), optionally enriched with `syncWorkflow` when a configuration sync was accepted.
 - `400` invalid `metadata.syncPolicy`, provider parameters under `metadata`, credential-shaped provider parameters, or an invalid web Source URL; `404`; `409` concurrent modification (`expectedVersion` mismatch) or protected legacy credential-bearing parameters; `401`/`403`.
 
+The Dify Console Source PATCH facade additionally accepts a complete edit selection and `syncPolicy`. Selection kinds are `website_crawl` with `sourceUrls`, `online_document` with import `items`, and `online_drive` with import `items`. The Console may submit the complete form on every edit: Dify compares the mutable provider configuration and selected resource identities with the current Source, and starts the matching durable import only when either changed. For an import, Dify persists the Source as disabled, uses a version-derived idempotency key, returns the accepted workflow as `sync_workflow`, and lets the existing import reconciler own the `syncing` → `active|error` transition and sync-policy publication. Existing documents remain visible until reconciliation changes them. A selection requires `syncPolicy`; unchanged selections and name-only or policy-only PATCHes do not create import work.
+
 ### `DELETE /knowledge-spaces/{id}/sources/{sourceId}`
 **Description**: Delete a source and, by default, cascade-delete its documents.
 **Auth**: Bearer; scope `knowledge-spaces:write`.

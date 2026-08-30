@@ -2152,6 +2152,51 @@ class KnowledgeFSSourceListResponse(ResponseModel):
     next_cursor: str | None = Field(default=None, validation_alias=AliasChoices("next_cursor", "nextCursor"))
 
 
+class KnowledgeFSSourceEditWebsiteSelectionPayload(BaseModel):
+    kind: Literal["website_crawl"]
+    source_urls: list[str] = Field(min_length=1, max_length=200, alias="sourceUrls")
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
+class KnowledgeFSSourceEditOnlineDocumentSelectionPayload(BaseModel):
+    items: list[KnowledgeFSOnlineDocumentWorkflowImportItemPayload] = Field(min_length=1, max_length=200)
+    kind: Literal["online_document"]
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSSourceEditOnlineDriveSelectionPayload(BaseModel):
+    items: list[KnowledgeFSOnlineDriveWorkflowImportItemPayload] = Field(min_length=1, max_length=200)
+    kind: Literal["online_drive"]
+
+    model_config = ConfigDict(extra="forbid")
+
+
+KnowledgeFSSourceEditSelectionPayload = Annotated[
+    KnowledgeFSSourceEditWebsiteSelectionPayload
+    | KnowledgeFSSourceEditOnlineDocumentSelectionPayload
+    | KnowledgeFSSourceEditOnlineDriveSelectionPayload,
+    Field(discriminator="kind"),
+]
+
+
+class KnowledgeFSSourceEditSyncPolicyPayload(BaseModel):
+    custom_interval_seconds: int | None = Field(default=None, ge=3_600, le=2_592_000, alias="customIntervalSeconds")
+    enabled: bool
+    mode: Literal["manual", "interval", "custom"]
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+    @model_validator(mode="after")
+    def validate_custom_interval(self) -> KnowledgeFSSourceEditSyncPolicyPayload:
+        if self.mode == "custom" and self.custom_interval_seconds is None:
+            raise ValueError("customIntervalSeconds is required for a custom sync policy")
+        if self.mode != "custom" and self.custom_interval_seconds is not None:
+            raise ValueError("customIntervalSeconds is only valid for a custom sync policy")
+        return self
+
+
 class KnowledgeFSSourceUpdatePayload(BaseModel):
     expected_version: int | None = Field(default=None, ge=1, alias="expectedVersion")
     metadata: dict[str, object] | None = None
@@ -2159,7 +2204,9 @@ class KnowledgeFSSourceUpdatePayload(BaseModel):
     provider_parameters: dict[str, bool | FiniteFloat | str] | None = Field(
         default=None, max_length=50, alias="providerParameters"
     )
+    selection: KnowledgeFSSourceEditSelectionPayload | None = None
     sync_after_update: bool | None = Field(default=None, alias="syncAfterUpdate")
+    sync_policy: KnowledgeFSSourceEditSyncPolicyPayload | None = Field(default=None, alias="syncPolicy")
     status: Literal["active", "disabled", "error", "syncing"] | None = None
     uri: str | None = Field(default=None, min_length=1, max_length=4_096)
 
@@ -2178,7 +2225,20 @@ class KnowledgeFSSourceUpdatePayload(BaseModel):
     def validate_update_present(self) -> KnowledgeFSSourceUpdatePayload:
         if self.metadata is not None and "parameters" in self.metadata:
             raise ValueError("Use providerParameters to update provider parameters")
-        if all(value is None for value in (self.metadata, self.name, self.provider_parameters, self.status, self.uri)):
+        if self.selection is not None and self.sync_policy is None:
+            raise ValueError("syncPolicy is required when selection is provided")
+        if all(
+            value is None
+            for value in (
+                self.metadata,
+                self.name,
+                self.provider_parameters,
+                self.selection,
+                self.status,
+                self.sync_policy,
+                self.uri,
+            )
+        ):
             raise ValueError("At least one source update is required")
         return self
 
@@ -2413,6 +2473,14 @@ class KnowledgeFSAsyncCrawlPreviewImportPayload(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
 
+class KnowledgeFSAsyncWebsiteCrawlImportPayload(BaseModel):
+    kind: Literal["website-crawl-import"]
+    source_urls: list[str] = Field(min_length=1, max_length=200, alias="sourceUrls")
+    sync_policy: KnowledgeFSDeferredSyncPolicyPayload = Field(alias="syncPolicy")
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
 class KnowledgeFSAsyncOnlineDocumentImportPayload(BaseModel):
     items: list[KnowledgeFSOnlineDocumentWorkflowImportItemPayload] = Field(min_length=1, max_length=200)
     kind: Literal["online-document-import"]
@@ -2431,6 +2499,7 @@ class KnowledgeFSAsyncOnlineDriveImportPayload(BaseModel):
 
 KnowledgeFSAsyncSourceImport = Annotated[
     KnowledgeFSAsyncCrawlPreviewImportPayload
+    | KnowledgeFSAsyncWebsiteCrawlImportPayload
     | KnowledgeFSAsyncOnlineDocumentImportPayload
     | KnowledgeFSAsyncOnlineDriveImportPayload,
     Field(discriminator="kind"),
@@ -3799,6 +3868,7 @@ __all__ = [
     "KnowledgeFSAsyncOnlineDriveImportPayload",
     "KnowledgeFSAsyncSourceImport",
     "KnowledgeFSAsyncSourceImportPayload",
+    "KnowledgeFSAsyncWebsiteCrawlImportPayload",
     "KnowledgeFSBackgroundTaskFailureResponse",
     "KnowledgeFSBackgroundTaskListQuery",
     "KnowledgeFSBackgroundTaskListResponse",
@@ -3926,6 +3996,11 @@ __all__ = [
     "KnowledgeFSSourceCredentialTestResponse",
     "KnowledgeFSSourceDeletePayload",
     "KnowledgeFSSourceDeleteQuery",
+    "KnowledgeFSSourceEditOnlineDocumentSelectionPayload",
+    "KnowledgeFSSourceEditOnlineDriveSelectionPayload",
+    "KnowledgeFSSourceEditSelectionPayload",
+    "KnowledgeFSSourceEditSyncPolicyPayload",
+    "KnowledgeFSSourceEditWebsiteSelectionPayload",
     "KnowledgeFSSourceFilesQuery",
     "KnowledgeFSSourceFilesResponse",
     "KnowledgeFSSourceImportFilesPayload",

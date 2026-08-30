@@ -1646,6 +1646,26 @@ describe("source handlers without optional collaborators", () => {
     expect(createSync).not.toHaveBeenCalled();
   });
 
+  it("does not enqueue a sync for a configuration update unless explicitly requested", async () => {
+    const createSync = vi.fn();
+    const bare = createBareApp({ sourceProductWorkflowService: { createSync } });
+    const { sourceId, spaceId } = await seedSource(bare, "web");
+
+    const response = await bare.app.request(`/knowledge-spaces/${spaceId}/sources/${sourceId}`, {
+      body: JSON.stringify({ status: "disabled", uri: "https://new.example.com" }),
+      headers: { "content-type": "application/json" },
+      method: "PATCH",
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      id: sourceId,
+      status: "disabled",
+      uri: "https://new.example.com",
+    });
+    expect(createSync).not.toHaveBeenCalled();
+  });
+
   it("enriches a source list with product sync details in bulk lookups", async () => {
     const listSyncPolicies = vi.fn();
     const listLatestSyncCompletions = vi.fn();

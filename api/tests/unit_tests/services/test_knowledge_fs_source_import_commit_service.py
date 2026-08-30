@@ -62,6 +62,37 @@ def test_commit_crawl_preview_selection_makes_source_visible_and_dispatches_reco
     )
 
 
+def test_commit_website_url_selection_uses_same_async_reconciliation() -> None:
+    facade = MagicMock()
+    facade.import_selected_source_crawl.return_value = SimpleNamespace(id="import-1", source_id="source-1")
+    facade.get_source.return_value = SimpleNamespace(
+        id="source-1", metadata={"preview": True}, status="disabled", version=3
+    )
+    payload = KnowledgeFSAsyncSourceImportPayload.model_validate(
+        {
+            "kind": "website-crawl-import",
+            "sourceUrls": ["https://example.com/a"],
+            "syncPolicy": {"enabled": True, "mode": "interval"},
+        }
+    ).root
+
+    with patch("tasks.knowledge_fs_source_import_tasks.finalize_source_import.delay"):
+        commit_source_import(
+            facade=facade,
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            source_id="source-1",
+            payload=payload,
+            idempotency_key="request-1",
+        )
+
+    crawl_payload = facade.import_selected_source_crawl.call_args.kwargs["payload"]
+    assert crawl_payload.source_urls == ["https://example.com/a"]
+    pending = facade.update_source.call_args.kwargs["payload"].metadata["pendingImport"]
+    assert pending["kind"] == "website-crawl-import"
+
+
 def test_commit_online_document_import_uses_same_async_reconciliation() -> None:
     facade = MagicMock()
     facade.import_source_workflow.return_value = SimpleNamespace(id="import-1", source_id="source-1")

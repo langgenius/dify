@@ -333,6 +333,7 @@ describe("source-product workflow provider imports", () => {
   it("imports online-document records with and without optional identity metadata", async () => {
     const source = sourceRecord("online-document-import-source", {
       connectionId: "connection-document-import",
+      metadata: { __knowledgeFsProviderSelection: null },
       type: "connector",
     });
     const getPageContent = vi.fn(

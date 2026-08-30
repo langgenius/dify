@@ -42,6 +42,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSOverviewQueryOutcomesResponse,
     KnowledgeFSPublicFailureResponse,
     KnowledgeFSQueryCreatePayload,
+    KnowledgeFSSourceUpdatePayload,
     KnowledgeFSStreamCapabilityPayload,
 )
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
@@ -615,7 +616,11 @@ def test_console_resources_delegate_one_tenant_scoped_product_operation(
     delegate_name: str,
     expected_fields: dict[str, object],
 ) -> None:
-    payload = SimpleNamespace(members=("member-1",))
+    payload = (
+        KnowledgeFSSourceUpdatePayload(name="Renamed")
+        if class_name == "KnowledgeFSSpaceSourceApi" and method_name == "patch"
+        else SimpleNamespace(members=("member-1",))
+    )
     runtime = SimpleNamespace(
         application=MagicMock(),
         control_plane=MagicMock(),
@@ -643,7 +648,10 @@ def test_console_resources_delegate_one_tenant_scoped_product_operation(
     for field_name, expected in expected_fields.items():
         assert call_fields[field_name] == expected
     if "payload" in call_fields:
-        assert call_fields["payload"] is payload
+        if class_name == "KnowledgeFSSpaceSourceApi" and method_name == "patch":
+            assert call_fields["payload"] == payload
+        else:
+            assert call_fields["payload"] is payload
     if "members" in call_fields:
         assert call_fields["members"] == payload.members
     if "idempotency_key" in call_fields:
@@ -678,6 +686,210 @@ def test_console_space_list_preserves_repeated_creator_filters(monkeypatch: pyte
         query="Support",
     )
     assert result is _RAW_RESULT
+
+
+def test_console_source_update_does_not_start_sync_before_resource_selection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    facade = MagicMock()
+    facade.update_source.return_value = _RAW_RESULT
+    runtime = SimpleNamespace(facade=facade)
+    payload = KnowledgeFSSourceUpdatePayload.model_validate(
+        {
+            "expectedVersion": 3,
+            "status": "disabled",
+            "uri": "https://new.example.com",
+        }
+    )
+    monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: runtime)
+    monkeypatch.setattr(console_resources, "_payload", lambda _: payload)
+    monkeypatch.setattr(console_resources, "dump_response", lambda _schema, raw: raw)
+    app = Flask(__name__)
+
+    with app.test_request_context("/", method="PATCH"):
+        result = _invoke(
+            console_resources,
+            "KnowledgeFSSpaceSourceApi",
+            "patch",
+            "space-1",
+            "source-1",
+        )
+
+    forwarded = facade.update_source.call_args.kwargs["payload"]
+    assert forwarded is not payload
+    assert forwarded.status == "disabled"
+    assert forwarded.sync_after_update is None
+    assert result is _RAW_RESULT
+
+
+@pytest.mark.parametrize(
+    ("selection", "expected_import_kind"),
+    [
+        (
+            {"kind": "website_crawl", "sourceUrls": ["https://new.example.com/a"]},
+            "website-crawl-import",
+        ),
+        (
+            {
+                "kind": "online_document",
+                "items": [
+                    {
+                        "pageId": "page-1",
+                        "providerItemId": "provider-page-1",
+                        "type": "page",
+                        "workspaceId": "workspace-1",
+                    }
+                ],
+            },
+            "online-document-import",
+        ),
+        (
+            {
+                "kind": "online_drive",
+                "items": [{"id": "file-1", "name": "Plan.pdf", "providerItemId": "provider-file-1"}],
+            },
+            "online-drive-import",
+        ),
+    ],
+)
+def test_console_source_update_commits_complete_edit_selection(
+    monkeypatch: pytest.MonkeyPatch,
+    selection: dict[str, object],
+    expected_import_kind: str,
+) -> None:
+    facade = MagicMock()
+    facade.update_source.return_value = SimpleNamespace(version=4)
+    selection_kind = selection["kind"]
+    provider_kind = {"online_document": "online-document", "online_drive": "online-drive"}.get(selection_kind)
+    original = SimpleNamespace(
+        metadata={"providerKind": provider_kind} if provider_kind is not None else {},
+        type="web" if selection_kind == "website_crawl" else "connector",
+        uri="https://old.example.com",
+    )
+    updated = SimpleNamespace(sync_workflow=None)
+    facade.get_source.side_effect = [original, updated]
+    workflow = SimpleNamespace(id="workflow-1")
+    runtime = SimpleNamespace(facade=facade)
+    payload = KnowledgeFSSourceUpdatePayload.model_validate(
+        {
+            "expectedVersion": 3,
+            "name": "Edited source",
+            "selection": selection,
+            "syncPolicy": {"enabled": True, "mode": "interval"},
+        }
+    )
+    commit = MagicMock(return_value=workflow)
+    monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: runtime)
+    monkeypatch.setattr(console_resources, "_payload", lambda _: payload)
+    monkeypatch.setattr(console_resources, "commit_source_import", commit)
+    monkeypatch.setattr(console_resources, "dump_response", lambda _schema, raw: raw)
+    app = Flask(__name__)
+
+    with app.test_request_context("/", method="PATCH"):
+        result = _invoke(
+            console_resources,
+            "KnowledgeFSSpaceSourceApi",
+            "patch",
+            "space-1",
+            "source-1",
+        )
+
+    source_payload = facade.update_source.call_args.kwargs["payload"]
+    assert source_payload.status == "disabled"
+    assert source_payload.sync_after_update is False
+    assert source_payload.selection is None
+    assert source_payload.sync_policy is None
+    import_payload = commit.call_args.kwargs["payload"]
+    assert import_payload.kind == expected_import_kind
+    assert commit.call_args.kwargs["idempotency_key"] == "source-edit:source-1:4"
+    assert updated.sync_workflow is workflow
+    assert result is updated
+
+
+def test_console_source_update_does_not_import_an_unchanged_complete_selection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    facade = MagicMock()
+    source = SimpleNamespace(
+        metadata={"crawled": {"https://example.com/a": {}}},
+        sync_policy=None,
+        type="web",
+        uri="https://example.com",
+        version=3,
+    )
+    facade.get_source.return_value = source
+    facade.get_source_sync_policy.return_value = SimpleNamespace(revision=2)
+    facade.update_source_sync_policy.return_value = SimpleNamespace(revision=3)
+    runtime = SimpleNamespace(facade=facade)
+    payload = KnowledgeFSSourceUpdatePayload.model_validate(
+        {
+            "selection": {"kind": "website_crawl", "sourceUrls": ["https://example.com/a"]},
+            "syncPolicy": {"enabled": True, "mode": "interval"},
+        }
+    )
+    commit = MagicMock()
+    monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: runtime)
+    monkeypatch.setattr(console_resources, "_payload", lambda _: payload)
+    monkeypatch.setattr(console_resources, "commit_source_import", commit)
+    monkeypatch.setattr(console_resources, "dump_response", lambda _schema, raw: raw)
+    app = Flask(__name__)
+
+    with app.test_request_context("/", method="PATCH"):
+        result = _invoke(
+            console_resources,
+            "KnowledgeFSSpaceSourceApi",
+            "patch",
+            "space-1",
+            "source-1",
+        )
+
+    facade.update_source.assert_not_called()
+    commit.assert_not_called()
+    facade.update_source_sync_policy.assert_called_once()
+    assert result is source
+
+
+def test_console_source_update_applies_policy_without_creating_import_work(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    facade = MagicMock()
+    source = SimpleNamespace(version=5, sync_policy=None)
+    facade.get_source.return_value = source
+    facade.get_source_sync_policy.return_value = SimpleNamespace(revision=2)
+    policy = SimpleNamespace(revision=3)
+    facade.update_source_sync_policy.return_value = policy
+    runtime = SimpleNamespace(facade=facade)
+    payload = KnowledgeFSSourceUpdatePayload.model_validate(
+        {"syncPolicy": {"customIntervalSeconds": 7200, "enabled": True, "mode": "custom"}}
+    )
+    commit = MagicMock()
+    monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: runtime)
+    monkeypatch.setattr(console_resources, "_payload", lambda _: payload)
+    monkeypatch.setattr(console_resources, "commit_source_import", commit)
+    monkeypatch.setattr(console_resources, "dump_response", lambda _schema, raw: raw)
+    app = Flask(__name__)
+
+    with app.test_request_context("/", method="PATCH"):
+        result = _invoke(
+            console_resources,
+            "KnowledgeFSSpaceSourceApi",
+            "patch",
+            "space-1",
+            "source-1",
+        )
+
+    facade.update_source.assert_not_called()
+    commit.assert_not_called()
+    policy_payload = facade.update_source_sync_policy.call_args.kwargs["payload"]
+    assert policy_payload.expected_revision == 2
+    assert policy_payload.expected_source_version == 5
+    assert policy_payload.custom_interval_seconds == 7200
+    assert source.sync_policy is policy
+    assert result is source
 
 
 def test_console_metadata_delete_forwards_row_version_cas(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -1143,7 +1143,7 @@ function readFrozenProviderSelection(
   metadata: Readonly<Record<string, unknown>>,
 ): FrozenProviderSelection | undefined {
   const raw = metadata[PROVIDER_SELECTION_METADATA_KEY];
-  if (raw === undefined) return undefined;
+  if (raw === undefined || raw === null) return undefined;
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     throw runtimeError(
       "SOURCE_PROVIDER_SELECTION_INVALID",

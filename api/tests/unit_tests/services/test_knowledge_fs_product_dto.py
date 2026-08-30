@@ -921,14 +921,53 @@ def test_source_update_payload_accepts_mutable_source_configuration() -> None:
 
 
 def test_source_update_payload_serializes_backend_sync_admission_flag() -> None:
-    payload = KnowledgeFSSourceUpdatePayload.model_validate(
-        {"name": "Renamed", "syncAfterUpdate": True}
-    )
+    payload = KnowledgeFSSourceUpdatePayload.model_validate({"name": "Renamed", "syncAfterUpdate": True})
 
     assert payload.model_dump(mode="json", by_alias=True, exclude_none=True) == {
         "name": "Renamed",
         "syncAfterUpdate": True,
     }
+
+
+@pytest.mark.parametrize(
+    "selection",
+    [
+        {"kind": "website_crawl", "sourceUrls": ["https://example.com/a"]},
+        {
+            "kind": "online_document",
+            "items": [
+                {
+                    "pageId": "page-1",
+                    "providerItemId": "provider-page-1",
+                    "type": "page",
+                    "workspaceId": "workspace-1",
+                }
+            ],
+        },
+        {
+            "kind": "online_drive",
+            "items": [{"id": "file-1", "name": "Plan.pdf", "providerItemId": "provider-file-1"}],
+        },
+    ],
+)
+def test_source_update_payload_accepts_a_complete_edit_selection(selection: dict[str, object]) -> None:
+    payload = KnowledgeFSSourceUpdatePayload.model_validate(
+        {
+            "expectedVersion": 3,
+            "selection": selection,
+            "syncPolicy": {"enabled": True, "mode": "interval"},
+        }
+    )
+
+    assert payload.selection is not None
+    assert payload.sync_policy is not None
+
+
+def test_source_update_payload_requires_a_policy_for_a_selection() -> None:
+    with pytest.raises(ValidationError, match="syncPolicy is required"):
+        KnowledgeFSSourceUpdatePayload.model_validate(
+            {"selection": {"kind": "website_crawl", "sourceUrls": ["https://example.com/a"]}}
+        )
 
 
 def test_source_update_payload_requires_provider_parameters_for_parameter_updates() -> None:

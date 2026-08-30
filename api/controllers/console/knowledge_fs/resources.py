@@ -6,6 +6,7 @@ from collections.abc import Callable
 from contextlib import ExitStack
 from datetime import UTC
 from functools import wraps
+from hashlib import sha256
 from http import HTTPStatus
 from typing import Literal
 from urllib.parse import quote, urlencode
@@ -237,6 +238,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSUploadSessionCreatePayload,
     KnowledgeFSUploadSessionCreateResponse,
     KnowledgeFSUploadSessionMutationResponse,
+    normalize_knowledge_fs_source_url,
 )
 from services.knowledge_fs.product_remote import (
     KnowledgeFSOperationUnavailableError,
@@ -742,6 +744,43 @@ def _query_pairs(model: BaseModel) -> tuple[tuple[str, str], ...]:
     return tuple(
         (name, str(value).lower() if isinstance(value, bool) else str(value)) for name, value in values.items()
     )
+
+
+def _source_edit_requires_import(source: KnowledgeFSSourceResponse, payload: KnowledgeFSSourceUpdatePayload) -> bool:
+    selection = payload.selection
+    if selection is None:
+        return False
+    provider_kind = source.metadata.get("providerKind")
+    configured_kind = "website_crawl" if source.type == "web" else None
+    if isinstance(provider_kind, str):
+        configured_kind = {"online-document": "online_document", "online-drive": "online_drive"}.get(provider_kind)
+    if configured_kind is not None and selection.kind != configured_kind:
+        raise ValueError("Source selection kind cannot be changed")
+    if payload.uri is not None and payload.uri != source.uri:
+        return True
+    if payload.provider_parameters is not None and payload.provider_parameters != source.metadata.get("parameters"):
+        return True
+    if payload.metadata is not None and any(
+        key != "syncPolicy" and value != source.metadata.get(key) for key, value in payload.metadata.items()
+    ):
+        return True
+    if selection.kind == "website_crawl":
+        crawled = source.metadata.get("crawled")
+        current_urls = set(crawled) if isinstance(crawled, dict) else set()
+        selected_urls = {normalize_knowledge_fs_source_url(url) for url in selection.source_urls}
+        return selected_urls != current_urls
+
+    marker = source.metadata.get("__knowledgeFsProviderSelection")
+    current_hashes = (
+        set(marker.get("identityHashes", ()))
+        if isinstance(marker, dict) and isinstance(marker.get("identityHashes"), list)
+        else set()
+    )
+    provider_kind = "online-document" if selection.kind == "online_document" else "online-drive"
+    selected_hashes = {
+        sha256(f"{provider_kind}\0{item.provider_item_id}".encode()).hexdigest() for item in selection.items
+    }
+    return selected_hashes != current_hashes
 
 
 def _overview_stats_response(
@@ -2431,14 +2470,111 @@ class KnowledgeFSSpaceSourceApi(Resource):
     def patch(self, control_space_id: str, source_id: str):
         actor_id, tenant_id = _actor()
         payload = _payload(KnowledgeFSSourceUpdatePayload)
-        payload.sync_after_update = True
-        result = _console_services().facade.update_source(
-            tenant_id=tenant_id,
-            account_id=actor_id,
-            control_space_id=control_space_id,
-            source_id=source_id,
-            payload=payload,
+        facade = _console_services().facade
+        selection = payload.selection
+        desired_sync_policy = payload.sync_policy
+        current_source = (
+            facade.get_source(
+                tenant_id=tenant_id,
+                account_id=actor_id,
+                control_space_id=control_space_id,
+                source_id=source_id,
+            )
+            if selection is not None
+            else None
         )
+        requires_import = current_source is not None and _source_edit_requires_import(current_source, payload)
+        source_metadata = payload.metadata
+        if requires_import and selection is not None and selection.kind != "website_crawl":
+            source_metadata = {**(source_metadata or {}), "__knowledgeFsProviderSelection": None}
+        source_payload = payload.model_copy(
+            update={
+                "metadata": source_metadata,
+                "selection": None,
+                "sync_policy": None,
+                **({"status": "disabled", "sync_after_update": False} if requires_import else {}),
+            }
+        )
+        has_source_update = any(
+            value is not None
+            for value in (
+                source_payload.metadata,
+                source_payload.name,
+                source_payload.provider_parameters,
+                source_payload.status,
+                source_payload.uri,
+            )
+        )
+        if has_source_update:
+            result = facade.update_source(
+                tenant_id=tenant_id,
+                account_id=actor_id,
+                control_space_id=control_space_id,
+                source_id=source_id,
+                payload=source_payload,
+            )
+        else:
+            result = facade.get_source(
+                tenant_id=tenant_id,
+                account_id=actor_id,
+                control_space_id=control_space_id,
+                source_id=source_id,
+            )
+
+        if requires_import and selection is not None:
+            if desired_sync_policy is None:
+                raise ValueError("syncPolicy is required when selection is provided")
+            import_payload = KnowledgeFSAsyncSourceImportPayload.model_validate(
+                {
+                    **selection.model_dump(mode="json", by_alias=True),
+                    "kind": {
+                        "website_crawl": "website-crawl-import",
+                        "online_document": "online-document-import",
+                        "online_drive": "online-drive-import",
+                    }[selection.kind],
+                    "syncPolicy": desired_sync_policy.model_dump(mode="json", by_alias=True),
+                }
+            ).root
+            workflow = commit_source_import(
+                facade=facade,
+                tenant_id=tenant_id,
+                account_id=actor_id,
+                control_space_id=control_space_id,
+                source_id=source_id,
+                payload=import_payload,
+                idempotency_key=f"source-edit:{source_id}:{result.version}",
+            )
+            result = facade.get_source(
+                tenant_id=tenant_id,
+                account_id=actor_id,
+                control_space_id=control_space_id,
+                source_id=source_id,
+            )
+            result.sync_workflow = workflow
+        elif desired_sync_policy is not None:
+            try:
+                current_policy = facade.get_source_sync_policy(
+                    tenant_id=tenant_id,
+                    account_id=actor_id,
+                    control_space_id=control_space_id,
+                    source_id=source_id,
+                )
+                expected_revision = current_policy.revision
+            except KnowledgeFSProductResourceNotFoundError:
+                expected_revision = 0
+            result.sync_policy = facade.update_source_sync_policy(
+                tenant_id=tenant_id,
+                account_id=actor_id,
+                control_space_id=control_space_id,
+                source_id=source_id,
+                payload=KnowledgeFSSourceSyncPolicyPayload(
+                    enabled=desired_sync_policy.enabled,
+                    mode=desired_sync_policy.mode,
+                    customIntervalSeconds=desired_sync_policy.custom_interval_seconds,
+                    expectedRevision=expected_revision,
+                    expectedSourceVersion=result.version,
+                ),
+            )
         return dump_response(KnowledgeFSSourceResponse, result)
 
     @console_ns.expect(console_ns.models[KnowledgeFSSourceDeletePayload.__name__])

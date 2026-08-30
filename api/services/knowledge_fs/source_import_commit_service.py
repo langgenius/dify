@@ -7,6 +7,8 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSAsyncOnlineDocumentImportPayload,
     KnowledgeFSAsyncOnlineDriveImportPayload,
     KnowledgeFSAsyncSourceImport,
+    KnowledgeFSAsyncWebsiteCrawlImportPayload,
+    KnowledgeFSCrawlImportPayload,
     KnowledgeFSCrawlPreviewSelectionPayload,
     KnowledgeFSOnlineDocumentWorkflowImportPayload,
     KnowledgeFSOnlineDriveWorkflowImportPayload,
@@ -18,6 +20,7 @@ from services.knowledge_fs.product_remote import KnowledgeFSProductRequestReject
 
 _ASYNC_IMPORT_KINDS = {
     "crawl-preview-selection",
+    "website-crawl-import",
     "online-document-import",
     "online-drive-import",
 }
@@ -53,6 +56,15 @@ def commit_source_import(
             control_space_id=control_space_id,
             run_id=preview_workflow_id,
             payload=KnowledgeFSCrawlPreviewSelectionPayload(pageIds=payload.page_ids),
+            idempotency_key=idempotency_key,
+        )
+    elif isinstance(payload, KnowledgeFSAsyncWebsiteCrawlImportPayload):
+        import_workflow = facade.import_selected_source_crawl(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            source_id=source_id,
+            payload=KnowledgeFSCrawlImportPayload(sourceUrls=payload.source_urls),
             idempotency_key=idempotency_key,
         )
     elif isinstance(payload, KnowledgeFSAsyncOnlineDocumentImportPayload):

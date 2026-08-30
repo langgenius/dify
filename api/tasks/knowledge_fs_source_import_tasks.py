@@ -20,6 +20,7 @@ from services.knowledge_fs.runtime import get_knowledge_fs_runtime
 _ACTIVE_STATES = {"queued", "running", "crawling", "importing", "syncing"}
 _ASYNC_IMPORT_KINDS = {
     "crawl-preview-selection",
+    "website-crawl-import",
     "online-document-import",
     "online-drive-import",
 }
