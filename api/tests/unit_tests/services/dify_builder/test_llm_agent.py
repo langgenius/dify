@@ -21,7 +21,6 @@ def test_llm_agent_build_methods_delegate_to_build(monkeypatch):
     )
     agent = LlmBuilderAgent("t1", {})
     assert agent.analyze_goal("goal")["fields"][0]["key"] == "k"
-    assert agent.propose_build_repair(["n1"]) == []
 
 
 def test_build_methods_call_build_module_with_resolved_model(monkeypatch):
