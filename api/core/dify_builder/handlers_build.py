@@ -56,6 +56,7 @@ from core.dify_builder.state import PcState
 __all__ = [
     "build_registry",
     "handle_await_learning",
+    "handle_await_repair",
     "handle_capability_check",
     "handle_execution",
     "handle_goal_analysis",
@@ -436,6 +437,35 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     )
 
 
+def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
+    """(waiting) Post-failure gate mirroring fix.await_decision. approve_repair
+    applies the staged repair and re-runs the test (build.test_and_repair);
+    keep_draft -> build.review; re_fix -> re-plan (build.initial_plan); undo ->
+    build.reverted. apply_repair runs ONLY here, only on approve."""
+    kind = action_kind(turn)
+    if kind == "approve_repair":
+        result = env.dify.apply_repair(s.app_id, turn.actor, list(fc.staged_repair), on_canvas=env.emit_canvas)
+        fc.last_snapshot_hash = result.new_hash
+        fc.last_structure_fingerprint = result.structure_fingerprint
+        fc.staged_repair = []
+        changes, scope, fc.change_set = build_change_set(
+            result, default_scope="configuration", fallback_diff="repair"
+        )
+        cs_items = append_card(
+            fc, ChangeSetCard(count=len(changes), changes=changes, scope=scope, full_diff_open=False)
+        )
+        decision_items = append_card(fc, DecisionItem(text="Approved the fix; retesting"))
+        return StepResult(next=PcState.BUILD_TEST_AND_REPAIR, context=fc, items=[*cs_items, *decision_items])
+    if kind == "keep_draft":
+        items = append_card(fc, DecisionItem(text="Kept the draft despite the failure"))
+        return StepResult(next=PcState.BUILD_REVIEW, context=fc, items=items)
+    if kind == "undo":
+        perform_revert(env, turn, s, fc)
+        items = append_card(fc, DecisionItem(text="Requested a revert"))
+        return StepResult(next=PcState.BUILD_REVERTED, context=fc, items=items)
+    return StepResult(next=PcState.BUILD_AWAIT_REPAIR, context=fc)
+
+
 def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) Terminal decision. publish_workflow -> build.publish;
     keep_draft -> build.governance_feedback (skips publish); continue_adjusting
@@ -560,6 +590,7 @@ def build_registry() -> dict[PcState, Handler]:
         PcState.BUILD_PLAN_APPROVAL: handle_plan_approval,
         PcState.BUILD_EXECUTION: handle_execution,
         PcState.BUILD_TEST_AND_REPAIR: handle_test_and_repair,
+        PcState.BUILD_AWAIT_REPAIR: handle_await_repair,
         PcState.BUILD_REVIEW: handle_review,
         PcState.BUILD_PUBLISH: handle_publish,
         PcState.BUILD_GOVERNANCE_FEEDBACK: handle_governance_feedback,
