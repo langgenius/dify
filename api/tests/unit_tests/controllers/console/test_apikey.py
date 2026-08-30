@@ -12,7 +12,6 @@ from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
-from configs import dify_config
 from controllers.console.agent.roster import AgentApiKeyListApi
 from controllers.console.apikey import (
     AppApiKeyListResource,
@@ -249,7 +248,12 @@ def test_delete_api_key_rejects_foreign_tenant_token(sqlite_session: Session) ->
     assert session.get(ApiToken, "key-1") is api_key
 
 
-def test_api_key_lists_require_matching_rbac_permission() -> None:
+def test_api_key_lists_require_matching_rbac_permission(config_overrides: Callable[..., None]) -> None:
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        LOGIN_DISABLED=True,
+        RBAC_ENABLED=True,
+    )
     app = Flask(__name__)
     account = _make_account(TenantAccountRole.OWNER)
     api_id = UUID("00000000-0000-0000-0000-000000000001")
@@ -277,9 +281,6 @@ def test_api_key_lists_require_matching_rbac_permission() -> None:
 
     with (
         app.test_request_context("/"),
-        patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-        patch.object(dify_config, "LOGIN_DISABLED", True),
-        patch.object(dify_config, "RBAC_ENABLED", True),
         patch("controllers.console.wraps.current_account_with_tenant", return_value=(account, "tenant-1")),
         patch("controllers.common.wraps.current_account_with_tenant", return_value=(account, "tenant-1")),
         patch.object(BaseApiKeyListResource, "_get_api_key_list") as get_api_key_list,
@@ -300,7 +301,12 @@ def test_api_key_lists_require_matching_rbac_permission() -> None:
     get_api_key_list.assert_not_called()
 
 
-def test_api_key_lists_reject_legacy_read_only_members() -> None:
+def test_api_key_lists_reject_legacy_read_only_members(config_overrides: Callable[..., None]) -> None:
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        LOGIN_DISABLED=True,
+        RBAC_ENABLED=False,
+    )
     app = Flask(__name__)
     account = _make_account(TenantAccountRole.NORMAL)
     api_id = UUID("00000000-0000-0000-0000-000000000001")
@@ -310,9 +316,6 @@ def test_api_key_lists_reject_legacy_read_only_members() -> None:
 
     with (
         app.test_request_context("/"),
-        patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-        patch.object(dify_config, "LOGIN_DISABLED", True),
-        patch.object(dify_config, "RBAC_ENABLED", False),
         patch("libs.login.current_user", current_user),
         patch("controllers.console.wraps.current_account_with_tenant", return_value=(account, "tenant-1")),
         patch.object(BaseApiKeyListResource, "_get_api_key_list") as get_api_key_list,

@@ -41,7 +41,7 @@ export function EditInConsoleLink({
   if (canManageAgents) {
     return (
       <Link
-        className={cn(buttonVariants({ className: layoutClassName }))}
+        className={cn(buttonVariants(), layoutClassName)}
         href={getAgentDetailPath(agentId, 'configure')}
         target="_blank"
         rel="noopener noreferrer"

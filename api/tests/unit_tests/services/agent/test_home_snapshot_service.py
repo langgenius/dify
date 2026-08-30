@@ -6,7 +6,6 @@ import pytest
 from dify_agent.client import DifyAgentHTTPError, DifyAgentNotFoundError, DifyAgentTimeoutError
 from sqlalchemy.orm import Session
 
-from configs import dify_config
 from models.agent import (
     Agent,
     AgentConfigDraft,
@@ -23,6 +22,7 @@ from services.agent.errors import (
 )
 from services.agent.home_snapshot_service import AgentHomeSnapshotService, validate_home_snapshot_binding
 from services.agent.workspace_service import AgentWorkspaceService
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _build_draft(*, home_snapshot_id: str | None = "home-old") -> AgentConfigDraft:
@@ -46,7 +46,7 @@ def _client(*, snapshot_ref: str = "snapshot-ref-1") -> MagicMock:
 
 
 def test_home_snapshot_client_outlasts_the_gateway_snapshot_budget(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(dify_config, "AGENT_BACKEND_BASE_URL", "http://agent.example")
+    apply_config_overrides(monkeypatch, AGENT_BACKEND_BASE_URL="http://agent.example")
 
     client = AgentHomeSnapshotService._client()
 

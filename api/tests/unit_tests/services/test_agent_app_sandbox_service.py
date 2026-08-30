@@ -36,6 +36,7 @@ from services.agent_app_sandbox_service import (
     AgentSandboxInspectorError,
     WorkflowAgentSandboxService,
 )
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _add_normal_conversation(session: Session, *, binding_id: str) -> Conversation:
@@ -687,7 +688,7 @@ def test_workflow_download_resolves_only_exact_active_owner_chain(
         "FileRequestService",
         lambda: SimpleNamespace(request_download=request_download),
     )
-    monkeypatch.setattr(sandbox_module.dify_config, "FILES_URL", "https://files.example")
+    apply_config_overrides(monkeypatch, FILES_URL="https://files.example")
     service = WorkflowAgentSandboxService(client_factory=lambda: nullcontext(cast(Client, client)))
 
     result = service.download_file(
@@ -847,7 +848,7 @@ def test_workflow_download_uses_authenticated_account_and_trusted_file_request(
         "services.agent_app_sandbox_service.FileRequestService",
         lambda: SimpleNamespace(request_download=request_download),
     )
-    monkeypatch.setattr("services.agent_app_sandbox_service.dify_config.FILES_URL", "https://files.example")
+    apply_config_overrides(monkeypatch, FILES_URL="https://files.example")
 
     result = WorkflowAgentSandboxService(client_factory=lambda: nullcontext(client)).download_file(
         tenant_id="tenant-1",
@@ -904,7 +905,7 @@ def test_agent_app_download_uses_complete_account_context_after_session_exit(
         "FileRequestService",
         lambda: SimpleNamespace(request_download=request_download),
     )
-    monkeypatch.setattr(sandbox_module.dify_config, "FILES_URL", "https://files.example")
+    apply_config_overrides(monkeypatch, FILES_URL="https://files.example")
 
     result = AgentAppSandboxService(client_factory=lambda: nullcontext(client)).download_file(
         tenant_id="tenant-1",

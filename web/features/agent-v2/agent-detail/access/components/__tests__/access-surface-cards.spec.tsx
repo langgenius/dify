@@ -443,7 +443,7 @@ describe('Agent access surface cards', () => {
       expect(dialog).toHaveTextContent(/NEXT_PUBLIC_APP_ID=\s*'app-1'/)
       expect(dialog).toHaveTextContent(/NEXT_PUBLIC_API_URL=\s*'https:\/\/api\.example\.test\/v1'/)
       expect(
-        within(dialog).getByRole('button', {
+        within(dialog).getByRole('link', {
           name: /appOverview\.overview\.appInfo\.customize\.way1\.step1Operation/,
         }),
       ).toHaveAttribute('href', 'https://github.com/langgenius/webapp-conversation')

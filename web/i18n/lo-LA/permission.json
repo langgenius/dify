@@ -42,6 +42,7 @@
   "accessRule.summary_one": "{{count}} ຊຸດສິດ",
   "accessRule.summary_other": "{{count}} ຊຸດສິດ",
   "accessRule.updated": "ອັບເດດກົດລະບຽບການເຂົ້າເຖິງສຳເລັດແລ້ວ",
+  "accessRule.workspaceOwner": "ເຈົ້າຂອງພື້ນທີ່ເຮັດວຽກ",
   "common.duplicateAction": "ເຮັດສຳເນົາ",
   "group.app": "ແອັບພລິເຄຊັນ",
   "group.app_acl": "ສິດການເຂົ້າເຖິງແອັບຯ",

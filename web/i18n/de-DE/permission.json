@@ -42,6 +42,7 @@
   "accessRule.summary_one": "{{count}} Berechtigungssatz",
   "accessRule.summary_other": "{{count}} Berechtigungssätze",
   "accessRule.updated": "Zugriffsregel erfolgreich aktualisiert",
+  "accessRule.workspaceOwner": "Workspace-Inhaber",
   "common.duplicateAction": "Duplizieren",
   "group.app": "Anwendungen",
   "group.app_acl": "App-Zugriffsberechtigungen",

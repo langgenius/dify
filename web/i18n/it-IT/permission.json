@@ -42,6 +42,7 @@
   "accessRule.summary_one": "{{count}} set di permessi",
   "accessRule.summary_other": "{{count}} set di permessi",
   "accessRule.updated": "Regola di accesso aggiornata con successo",
+  "accessRule.workspaceOwner": "Proprietario del workspace",
   "common.duplicateAction": "Duplica",
   "group.app": "Applicazioni",
   "group.app_acl": "Permessi di accesso all'app",

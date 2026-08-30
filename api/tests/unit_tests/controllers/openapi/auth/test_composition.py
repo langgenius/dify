@@ -17,6 +17,7 @@ from enums import DeploymentEdition
 from libs.oauth_bearer import Scope, TokenType
 from models.account import TenantAccountRole
 from services.enterprise.enterprise_service import WebAppAccessMode
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def test_account_pipeline_is_auth_pipeline():
@@ -163,10 +164,7 @@ def _selected_webapp_steps(*, scope, app_access_mode):
     features.webapp_auth.enabled = True
     selected = []
     with (
-        patch(
-            "controllers.openapi.auth.conditions.dify_config.DEPLOYMENT_EDITION",
-            DeploymentEdition.ENTERPRISE,
-        ),
+        config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE),
         patch("controllers.openapi.auth.conditions.FeatureService.get_system_features", return_value=features),
     ):
         for step in account_pipeline._auth:

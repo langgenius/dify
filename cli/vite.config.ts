@@ -2,7 +2,9 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite-plus'
 import { resolveBuildInfo } from './scripts/lib/resolve-buildinfo.js'
 
-const buildInfo = resolveBuildInfo()
+const buildInfo = resolveBuildInfo({
+  env: { ...process.env, DIFYCTL_CHANNEL: process.env.DIFYCTL_CHANNEL ?? 'dev' },
+})
 
 export default defineConfig({
   resolve: {

@@ -1,7 +1,8 @@
 'use client'
 
 import type { AccessPoint } from '@/app/components/app/deploy/access-point'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
@@ -85,16 +86,23 @@ export function BuiltInAccessPoints({ appId, highlightedAccessPoint }: BuiltInAc
               })}
             </span>
           </div>
-          <Button
-            variant="primary"
-            size="medium"
-            disabled={!capabilities.canReleaseAndVersion}
-            render={<Link href={`/app/${appId}/workflow`} />}
-            className="flex items-center gap-1"
-          >
-            {t(($) => $['studio.accessPoint.goToPublish'], { ns: 'deployments' })}
-            <span aria-hidden className="i-ri-arrow-right-line size-4" />
-          </Button>
+          {capabilities.canReleaseAndVersion ? (
+            <Link
+              href={`/app/${appId}/workflow`}
+              className={cn(
+                buttonVariants({ variant: 'primary', size: 'medium' }),
+                'flex items-center gap-1',
+              )}
+            >
+              {t(($) => $['studio.accessPoint.goToPublish'], { ns: 'deployments' })}
+              <span aria-hidden className="i-ri-arrow-right-line size-4" />
+            </Link>
+          ) : (
+            <Button variant="primary" size="medium" disabled className="flex items-center gap-1">
+              {t(($) => $['studio.accessPoint.goToPublish'], { ns: 'deployments' })}
+              <span aria-hidden className="i-ri-arrow-right-line size-4" />
+            </Button>
+          )}
         </div>
       )}
 

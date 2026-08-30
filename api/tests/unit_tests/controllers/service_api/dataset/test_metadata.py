@@ -13,6 +13,8 @@ Decorator strategy:
   via ``functools.wraps`` → call the unwrapped method directly.
 - Methods without billing decorators → call directly; only patch ``db``,
   services, and ``current_user``.
+- ``@model_validate`` injects the parsed payload as the first argument after
+  ``self``, so unwrapped calls must pass the validated model explicitly.
 """
 
 import uuid
@@ -20,10 +22,11 @@ from inspect import unwrap
 from unittest.mock import ANY, patch
 
 import pytest
-from flask import Flask
+from flask import Flask, request
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
+from controllers.common.controller_schemas import MetadataUpdatePayload
 from controllers.service_api.dataset import metadata as metadata_module
 from controllers.service_api.dataset.metadata import (
     DatasetMetadataBuiltInFieldActionServiceApi,
@@ -35,6 +38,7 @@ from controllers.service_api.dataset.metadata import (
 from models.account import Account, Tenant
 from models.dataset import Dataset
 from models.enums import PermissionEnum
+from services.entities.knowledge_entities.knowledge_entities import MetadataArgs
 from services.errors.metadata import MetadataResourceNotFoundError
 
 
@@ -98,7 +102,10 @@ class TestDatasetMetadataCreatePost(_UsesSQLiteSession):
 
     @staticmethod
     def _call_post(api, session: Session, **kwargs):
-        return unwrap(api.post)(api, session, **kwargs)
+        # `post` is wrapped in @model_validate, so the unwrapped view expects the
+        # validated model where the decorator would have injected it.
+        metadata_args = MetadataArgs.model_validate(request.get_json() or {})
+        return unwrap(api.post)(api, metadata_args, session, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
@@ -230,7 +237,8 @@ class TestDatasetMetadataServiceApiPatch(_UsesSQLiteSession):
 
     @staticmethod
     def _call_patch(api, session: Session, **kwargs):
-        return unwrap(api.patch)(api, session, **kwargs)
+        payload = MetadataUpdatePayload.model_validate(request.get_json() or {})
+        return unwrap(api.patch)(api, payload, session, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
