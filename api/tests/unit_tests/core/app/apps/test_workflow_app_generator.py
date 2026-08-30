@@ -265,6 +265,7 @@ def test_generate_includes_parent_trace_context_in_extras(
         args={
             "inputs": {"query": "hello"},
             "files": [],
+            "is_bulk_execution": True,
             "external_trace_id": "trace-1",
             "parent_trace_context": {
                 "parent_workflow_run_id": "outer-workflow-run-1",
@@ -280,6 +281,7 @@ def test_generate_includes_parent_trace_context_in_extras(
     assert result == {"data": {}}
     application_generate_entity = captured["application_generate_entity"]
     assert isinstance(application_generate_entity, WorkflowAppGenerateEntity)
+    assert application_generate_entity.is_bulk_execution is True
     extras = application_generate_entity.extras
     assert extras["external_trace_id"] == "trace-1"
     assert extras["parent_trace_context"].model_dump() == {

@@ -29,6 +29,7 @@ class SystemVariableKey(StrEnum):
     WORKFLOW_ID = "workflow_id"
     WORKFLOW_EXECUTION_ID = "workflow_run_id"
     TIMESTAMP = "timestamp"
+    IS_BULK_EXECUTION = "is_bulk_execution"
     DOCUMENT_ID = "document_id"
     ORIGINAL_DOCUMENT_ID = "original_document_id"
     BATCH = "batch"

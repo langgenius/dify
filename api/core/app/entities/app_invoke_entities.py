@@ -339,6 +339,7 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
     # app config
     app_config: WorkflowUIBasedAppConfig = None  # type: ignore
     workflow_execution_id: str
+    is_bulk_execution: bool = False
 
     class SingleIterationRunEntity(BaseModel):
         """

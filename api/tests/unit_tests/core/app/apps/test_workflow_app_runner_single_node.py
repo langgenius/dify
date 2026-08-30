@@ -118,6 +118,64 @@ def test_run_uses_single_node_execution_branch(
     assert entry_kwargs["graph_runtime_state"] is graph_runtime_state
 
 
+@pytest.mark.parametrize("is_bulk_execution", [False, True])
+def test_run_adds_bulk_execution_system_variable(is_bulk_execution: bool) -> None:
+    app_config = MagicMock()
+    app_config.app_id = "app"
+    app_config.tenant_id = "tenant"
+    app_config.workflow_id = "workflow"
+
+    app_generate_entity = MagicMock(spec=WorkflowAppGenerateEntity)
+    app_generate_entity.app_config = app_config
+    app_generate_entity.inputs = {}
+    app_generate_entity.files = []
+    app_generate_entity.user_id = "user"
+    app_generate_entity.invoke_from = InvokeFrom.SERVICE_API
+    app_generate_entity.workflow_execution_id = "execution-id"
+    app_generate_entity.is_bulk_execution = is_bulk_execution
+    app_generate_entity.task_id = "task-id"
+    app_generate_entity.call_depth = 0
+    app_generate_entity.trace_manager = None
+    app_generate_entity.extras = {}
+    app_generate_entity.single_iteration_run = None
+    app_generate_entity.single_loop_run = None
+
+    workflow = Workflow(
+        tenant_id="tenant",
+        app_id="app",
+        id="workflow",
+        type="workflow",
+        version="v1",
+        graph=json.dumps({"nodes": [{"id": "start", "data": {"type": "start"}}], "edges": []}),
+    )
+    workflow.environment_variables = []
+
+    runner = WorkflowAppRunner(
+        application_generate_entity=app_generate_entity,
+        queue_manager=MagicMock(spec=AppQueueManager),
+        variable_loader=MagicMock(),
+        workflow=workflow,
+        system_user_id="system-user",
+        workflow_execution_repository=MagicMock(),
+        workflow_node_execution_repository=MagicMock(),
+    )
+
+    mock_workflow_entry = MagicMock()
+    mock_workflow_entry.graph_engine = MagicMock()
+    mock_workflow_entry.run.return_value = iter([])
+
+    with (
+        patch("core.app.apps.workflow.app_runner.RedisChannel"),
+        patch("core.app.apps.workflow.app_runner.redis_client"),
+        patch("core.app.apps.workflow.app_runner.WorkflowEntry", return_value=mock_workflow_entry) as entry_class,
+        patch.object(runner, "_init_graph", return_value=MagicMock()),
+    ):
+        runner.run()
+
+    variable_pool = entry_class.call_args.kwargs["variable_pool"]
+    assert variable_pool.get(["sys", "is_bulk_execution"]).value is is_bulk_execution
+
+
 def test_single_node_run_validates_target_node_config(monkeypatch: pytest.MonkeyPatch) -> None:
     runner = WorkflowBasedAppRunner(
         queue_manager=MagicMock(spec=AppQueueManager),
@@ -190,6 +248,7 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases() -> None:
     app_generate_entity.user_id = "user"
     app_generate_entity.invoke_from = InvokeFrom.SERVICE_API
     app_generate_entity.workflow_execution_id = "execution-id"
+    app_generate_entity.is_bulk_execution = False
     app_generate_entity.task_id = "task-id"
     app_generate_entity.call_depth = 0
     app_generate_entity.trace_manager = None

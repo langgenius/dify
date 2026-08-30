@@ -475,6 +475,7 @@ export type WorkflowRunRequest = {
   inputs: {
     [key: string]: unknown
   }
+  is_bulk_execution?: boolean
 }
 
 export type SimpleResultResponse = {

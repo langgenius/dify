@@ -181,6 +181,7 @@ type RenderSenderOptions = {
   controlSend?: number
   inputs?: Record<string, ResultInputValue>
   isPC?: boolean
+  isCallBatchAPI?: boolean
   isWorkflow?: boolean
   runState?: ResultRunStateController
   taskId?: number
@@ -192,6 +193,7 @@ const renderSender = ({
   controlSend = 0,
   inputs = { name: 'Alice' },
   isPC = true,
+  isCallBatchAPI = false,
   isWorkflow = false,
   runState,
   taskId,
@@ -210,7 +212,7 @@ const renderSender = ({
         controlRetry: props.controlRetry,
         controlSend: props.controlSend,
         inputs,
-        isCallBatchAPI: false,
+        isCallBatchAPI,
         isPC,
         isWorkflow,
         notify,
@@ -321,6 +323,9 @@ describe('useResultSender', () => {
       }),
     )
     expect(buildResultRequestDataMock).toHaveBeenCalled()
+    expect(buildResultRequestDataMock).toHaveBeenCalledWith(
+      expect.objectContaining({ isBulkExecution: false }),
+    )
     expect(harness.runState.prepareForNewRun).toHaveBeenCalledTimes(1)
     expect(harness.runState.setRespondingTrue).toHaveBeenCalledTimes(1)
     expect(harness.runState.clearMoreLikeThis).toHaveBeenCalledTimes(1)
@@ -364,6 +369,18 @@ describe('useResultSender', () => {
     expect(harness.runState.resetRunState).toHaveBeenCalled()
     expect(harness.runState.setMessageId).toHaveBeenCalledWith('message-1')
     expect(onCompleted).toHaveBeenCalledWith('Replaced', 7, true)
+  })
+
+  it('should mark batch workflow requests as bulk executions', async () => {
+    const { result } = renderSender({ isCallBatchAPI: true, isWorkflow: true })
+
+    await act(async () => {
+      expect(await result.current.handleSend()).toBe(true)
+    })
+
+    expect(buildResultRequestDataMock).toHaveBeenCalledWith(
+      expect.objectContaining({ isBulkExecution: true }),
+    )
   })
 
   it('should trigger workflow sends on retry and report workflow request failures', async () => {

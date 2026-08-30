@@ -187,6 +187,7 @@ export const zWorkflowRunPayload = z.object({
     )
     .nullish(),
   inputs: z.record(z.string(), z.unknown()),
+  is_bulk_execution: z.boolean().optional().default(false),
 })
 
 export const zJsonValue = z

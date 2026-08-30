@@ -41,7 +41,9 @@ def _build_workflow_app_config(app_mode: AppMode) -> WorkflowUIBasedAppConfig:
     )
 
 
-def _create_workflow_generate_entity(trace_manager: TraceQueueManager | None = None) -> WorkflowAppGenerateEntity:
+def _create_workflow_generate_entity(
+    trace_manager: TraceQueueManager | None = None, *, is_bulk_execution: bool = False
+) -> WorkflowAppGenerateEntity:
     return WorkflowAppGenerateEntity(
         task_id="workflow-task",
         app_config=_build_workflow_app_config(AppMode.WORKFLOW),
@@ -53,6 +55,7 @@ def _create_workflow_generate_entity(trace_manager: TraceQueueManager | None = N
         call_depth=1,
         trace_manager=trace_manager,
         workflow_execution_id="workflow-exec-id",
+        is_bulk_execution=is_bulk_execution,
         extras={"external_trace_id": "trace-id"},
     )
 
@@ -77,7 +80,7 @@ def _create_advanced_chat_generate_entity(
 
 
 def test_workflow_app_generate_entity_roundtrip_excludes_trace_manager():
-    entity = _create_workflow_generate_entity(trace_manager=TraceQueueManagerStub())
+    entity = _create_workflow_generate_entity(trace_manager=TraceQueueManagerStub(), is_bulk_execution=True)
 
     serialized = entity.model_dump_json()
     payload = json.loads(serialized)
@@ -87,6 +90,7 @@ def test_workflow_app_generate_entity_roundtrip_excludes_trace_manager():
     restored = WorkflowAppGenerateEntity.model_validate_json(serialized)
 
     assert restored.model_dump() == entity.model_dump()
+    assert restored.is_bulk_execution is True
     assert restored.trace_manager is None
 
 

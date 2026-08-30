@@ -192,6 +192,10 @@ class WorkflowRunPayload(BaseModel):
             "the returned `id` as `upload_file_id` with `transfer_method: local_file`."
         ),
     )
+    is_bulk_execution: bool = Field(
+        default=False,
+        description="Whether this workflow run is part of a bulk execution.",
+    )
 
 
 class WorkflowUpdatePayload(BaseModel):

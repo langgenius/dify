@@ -35,6 +35,7 @@ type ValidateResultRequestParams = {
 type BuildResultRequestDataParams = {
   completionFiles: VisionFile[]
   inputs: Record<string, ResultInputValue>
+  isBulkExecution: boolean
   promptConfig: PromptConfig | null
   visionConfig: VisionSettings
 }
@@ -129,6 +130,7 @@ export const validateResultRequest = ({
 export const buildResultRequestData = ({
   completionFiles,
   inputs,
+  isBulkExecution,
   promptConfig,
   visionConfig,
 }: BuildResultRequestDataParams) => {
@@ -152,6 +154,7 @@ export const buildResultRequestData = ({
 
   return {
     inputs: processedInputs,
+    is_bulk_execution: isBulkExecution,
     ...(visionConfig.enabled && completionFiles.length > 0
       ? {
           files: completionFiles.map((item) => {
