@@ -1,7 +1,6 @@
 """Unit tests for SegmentService behaviors in dataset_service."""
 
 from collections.abc import Callable
-
 from datetime import datetime
 
 from sqlalchemy.orm import Session
