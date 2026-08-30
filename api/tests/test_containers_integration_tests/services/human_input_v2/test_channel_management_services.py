@@ -9,7 +9,6 @@ import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.helper import encrypter
-from core.human_input_v2.email_channel import ResendCandidate
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration import (
     ConfirmedIMConfiguration,
@@ -29,7 +28,7 @@ from core.human_input_v2.shared import (
 )
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from repositories.human_input_v2.email_channel import SQLAlchemyEmailChannelRepository
+from repositories.human_input_v2.email_channel import ResendCandidate, SQLAlchemyEmailChannelRepository
 from repositories.human_input_v2.im_integration import (
     SQLAlchemyIMControlPlaneRepository,
     SQLAlchemyOrganizationIMWriteUnitOfWork,

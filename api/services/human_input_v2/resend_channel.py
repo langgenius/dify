@@ -8,13 +8,13 @@ from typing import Any, Never, Protocol
 import httpx
 
 from core.helper import ssrf_proxy
-from core.human_input_v2.email_channel import (
+from core.human_input_v2.shared import NormalizedEmail
+from libs.uuid_utils import uuidv7
+from repositories.human_input_v2.email_channel import (
     EmailProviderOperationError,
     EmailProviderValidationError,
     ResendCandidate,
 )
-from core.human_input_v2.shared import NormalizedEmail
-from libs.uuid_utils import uuidv7
 
 _RESEND_API_ORIGIN = "https://api.resend.com"
 _USER_AGENT = "Dify-Human-Input/1.0"

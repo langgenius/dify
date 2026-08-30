@@ -20,7 +20,6 @@ from controllers.common.schema import (
 )
 from controllers.console import console_ns
 from controllers.console.wraps import with_current_tenant_id, with_current_user
-from core.human_input_v2.email_channel import EmailChannelView, EmailConfigurationSnapshot
 from core.human_input_v2.entities import (
     EmailProviderType,
     HumanInputDeliveryChannel,
@@ -38,6 +37,7 @@ from core.human_input_v2.shared import (
 from fields.base import ResponseModel
 from fields.timestamp import Timestamp
 from models.account import Account
+from repositories.human_input_v2.email_channel import EmailChannelView, EmailConfigurationSnapshot
 from services.human_input_v2.email_channel_management_composition import (
     build_human_input_email_channel_management_service,
 )

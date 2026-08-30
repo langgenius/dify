@@ -7,12 +7,12 @@ from dataclasses import dataclass
 import httpx
 import pytest
 
-from core.human_input_v2.email_channel import (
+from core.human_input_v2.shared import NormalizedEmail
+from repositories.human_input_v2.email_channel import (
     EmailProviderOperationError,
     EmailProviderValidationError,
     ResendCandidate,
 )
-from core.human_input_v2.shared import NormalizedEmail
 from services.human_input_v2.resend_channel import ResendProviderGateway
 
 

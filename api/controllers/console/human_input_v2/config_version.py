@@ -6,10 +6,10 @@ import base64
 import json
 from typing import Literal
 
-from core.human_input_v2.email_channel import EmailConfigurationSnapshot
 from core.human_input_v2.entities import HumanInputDeliveryChannel
 from core.human_input_v2.im_integration import IntegrationRevisionToken
 from core.human_input_v2.shared import EmailProviderId, IntegrationId
+from repositories.human_input_v2.email_channel import EmailConfigurationSnapshot
 
 _FORMAT_VERSION = 1
 type _ConfigVersionChannel = Literal[

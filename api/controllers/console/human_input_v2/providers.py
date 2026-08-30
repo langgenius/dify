@@ -6,7 +6,6 @@ from typing import Annotated, Literal
 
 from pydantic import Field, SecretStr, field_validator
 
-from core.human_input_v2.email_channel import ResendCandidate
 from core.human_input_v2.entities import EmailProviderType, IMProvider
 from core.human_input_v2.im_integration.adapters.credentials import (
     DingTalkCredentials,
@@ -18,6 +17,7 @@ from core.human_input_v2.im_integration.adapters.credentials import (
 )
 from core.human_input_v2.shared import NormalizedEmail
 from libs.helper import EmailStr
+from repositories.human_input_v2.email_channel import ResendCandidate
 
 from ._common import StrictModel
 

@@ -3,9 +3,9 @@ import importlib.util
 
 import pytest
 
-from core.human_input_v2.email_channel import EmailConfigurationSnapshot
 from core.human_input_v2.im_integration import IntegrationRevisionToken
 from core.human_input_v2.shared import EmailProviderId, IntegrationId
+from repositories.human_input_v2.email_channel import EmailConfigurationSnapshot
 
 
 def _config_version_module():

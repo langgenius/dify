@@ -20,7 +20,6 @@ from controllers.console.human_input_v2.providers import (
 from controllers.console.human_input_v2.providers import (
     IMProviderCredentialsInput as ConsoleIMProviderCredentials,
 )
-from core.human_input_v2.email_channel import ResendCandidate
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
     DingTalkCredentials,
@@ -33,6 +32,7 @@ from core.human_input_v2.im_integration.adapters import (
 from core.human_input_v2.im_integration.adapters.credentials import (
     IMProviderCredentials as ProviderIMProviderCredentials,
 )
+from repositories.human_input_v2.email_channel import ResendCandidate
 
 _IM_CASES = (
     (

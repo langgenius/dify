@@ -5,7 +5,6 @@ from datetime import datetime
 from pydantic import NaiveDatetime
 
 from core.human_input_v2.approval import EmailProviderConfiguration
-from core.human_input_v2.email_channel import EmailChannelConfiguration
 from core.human_input_v2.shared import (
     AccountId,
     EmailProviderId,
@@ -14,6 +13,8 @@ from core.human_input_v2.shared import (
 )
 from libs.datetime_utils import ensure_naive_utc
 from models.human_input_v2 import HumanInputEmailProvider, ResendEmailProviderEncryptedCredentials
+
+from .entities import EmailChannelConfiguration
 
 
 def _timestamp(value: datetime) -> NaiveDatetime:

@@ -5,13 +5,13 @@ import pytest
 
 from core.helper import encrypter
 from core.human_input_v2.delivery_runtime import ConfigurationSnapshotIdentity, DeliveryPreparationError
-from core.human_input_v2.email_channel import EmailChannelConfiguration
 from core.human_input_v2.entities import EmailProviderType
 from core.human_input_v2.shared import (
     EmailProviderId,
     NormalizedEmail,
     TenantId,
 )
+from repositories.human_input_v2.email_channel import EmailChannelConfiguration
 from services.human_input_v2.delivery_runtime import TenantEmailConfigurationSnapshotResolver
 
 _NOW = datetime(2026, 7, 31, 8)

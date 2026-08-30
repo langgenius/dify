@@ -7,12 +7,6 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.human_input_v2.email_channel import (
-    CreateEmailConfigurationStatus,
-    DeleteEmailConfigurationStatus,
-    EmailChannelConfiguration,
-    UpdateEmailConfigurationStatus,
-)
 from core.human_input_v2.shared import (
     AccountId,
     EmailProviderId,
@@ -21,6 +15,12 @@ from core.human_input_v2.shared import (
 )
 from libs.datetime_utils import naive_utc_now
 from models.account import Tenant
+from repositories.human_input_v2.email_channel import (
+    CreateEmailConfigurationStatus,
+    DeleteEmailConfigurationStatus,
+    EmailChannelConfiguration,
+    UpdateEmailConfigurationStatus,
+)
 from repositories.human_input_v2.email_channel.repository import SQLAlchemyEmailChannelRepository
 
 

@@ -9,9 +9,9 @@ from core.human_input_v2.delivery_runtime import (
     ProviderCredential,
     ResolvedEmailChannelSnapshot,
 )
-from core.human_input_v2.email_channel import EmailChannelRepository
 from core.human_input_v2.entities import EmailProviderType
 from core.human_input_v2.shared import TenantId
+from repositories.human_input_v2.email_channel import EmailChannelRepository
 
 
 class TenantEmailConfigurationSnapshotResolver:

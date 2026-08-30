@@ -29,10 +29,6 @@ from controllers.console.human_input_v2.config_version import (
 )
 from controllers.console.wraps import _is_setup_completed
 from core.helper import encrypter
-from core.human_input_v2.email_channel import (
-    EmailChannelConfiguration,
-    ResendCandidate,
-)
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration import (
     ConfirmedIMConfiguration,
@@ -60,7 +56,11 @@ from models.human_input_v2 import (
     HumanInputIMIdentity,
     HumanInputIMIntegration,
 )
-from repositories.human_input_v2.email_channel import SQLAlchemyEmailChannelRepository
+from repositories.human_input_v2.email_channel import (
+    EmailChannelConfiguration,
+    ResendCandidate,
+    SQLAlchemyEmailChannelRepository,
+)
 from repositories.human_input_v2.im_integration import (
     SQLAlchemyIMControlPlaneRepository,
     SQLAlchemyOrganizationIMWriteUnitOfWork,

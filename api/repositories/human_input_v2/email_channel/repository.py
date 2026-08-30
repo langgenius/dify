@@ -4,36 +4,38 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import timedelta
+from typing import override
 
 from pydantic import NaiveDatetime
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.human_input_v2.email_channel import (
-    CreateEmailConfigurationResult,
-    CreateEmailConfigurationStatus,
-    DeleteEmailConfigurationResult,
-    DeleteEmailConfigurationStatus,
-    EmailChannelConfiguration,
-    EmailChannelPersistenceError,
-    EmailConfigurationSnapshot,
-    UpdateEmailConfigurationResult,
-    UpdateEmailConfigurationStatus,
-)
 from core.human_input_v2.shared import TenantId
 from models.account import Tenant
 from models.human_input_v2 import HumanInputEmailProvider
 
+from .entities import EmailChannelConfiguration, EmailConfigurationSnapshot
 from .mappers import email_configuration_from_record, email_configuration_to_record
+from .ports import (
+    CreateEmailConfigurationResult,
+    CreateEmailConfigurationStatus,
+    DeleteEmailConfigurationResult,
+    DeleteEmailConfigurationStatus,
+    EmailChannelPersistenceError,
+    EmailChannelRepository,
+    UpdateEmailConfigurationResult,
+    UpdateEmailConfigurationStatus,
+)
 
 
-class SQLAlchemyEmailChannelRepository:
+class SQLAlchemyEmailChannelRepository(EmailChannelRepository):
     """Own Email row locking, conflicts, CAS, and ORM lifetime."""
 
     def __init__(self, session_maker: sessionmaker[Session]) -> None:
         self._session_maker = session_maker
 
+    @override
     def load(self, tenant_id: TenantId) -> EmailChannelConfiguration | None:
         try:
             with self._session_maker() as session:
@@ -44,6 +46,7 @@ class SQLAlchemyEmailChannelRepository:
         except SQLAlchemyError as error:
             raise EmailChannelPersistenceError("failed to load Email channel configuration") from error
 
+    @override
     def create(self, configuration: EmailChannelConfiguration) -> CreateEmailConfigurationResult:
         try:
             with self._session_maker() as session, session.begin():
@@ -69,6 +72,7 @@ class SQLAlchemyEmailChannelRepository:
         except SQLAlchemyError as error:
             raise EmailChannelPersistenceError("failed to create Email channel configuration") from error
 
+    @override
     def update(
         self,
         configuration: EmailChannelConfiguration,
@@ -114,6 +118,7 @@ class SQLAlchemyEmailChannelRepository:
         except SQLAlchemyError as error:
             raise EmailChannelPersistenceError("failed to update Email channel configuration") from error
 
+    @override
     def delete(
         self,
         tenant_id: TenantId,

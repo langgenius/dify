@@ -9,12 +9,6 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.human_input_v2.email_channel import (
-    CreateEmailConfigurationStatus,
-    DeleteEmailConfigurationStatus,
-    EmailChannelConfiguration,
-    UpdateEmailConfigurationStatus,
-)
 from core.human_input_v2.shared import (
     AccountId,
     EmailProviderId,
@@ -23,6 +17,12 @@ from core.human_input_v2.shared import (
 )
 from models.account import Tenant
 from models.human_input_v2 import HumanInputEmailProvider
+from repositories.human_input_v2.email_channel import (
+    CreateEmailConfigurationStatus,
+    DeleteEmailConfigurationStatus,
+    EmailChannelConfiguration,
+    UpdateEmailConfigurationStatus,
+)
 from repositories.human_input_v2.email_channel.mappers import (
     email_configuration_from_record,
     email_configuration_to_record,

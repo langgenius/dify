@@ -9,7 +9,11 @@ from typing import Protocol
 from pydantic import NaiveDatetime
 
 from core.helper import encrypter
-from core.human_input_v2.email_channel import (
+from core.human_input_v2.entities import EmailProviderType
+from core.human_input_v2.shared import AccountId, EmailProviderId, NormalizedEmail, TenantId, WorkspaceScope
+from libs.datetime_utils import naive_utc_now
+from libs.uuid_utils import uuidv7
+from repositories.human_input_v2.email_channel import (
     CreateEmailConfigurationStatus,
     DeleteEmailConfigurationStatus,
     EmailChannelConfiguration,
@@ -21,10 +25,6 @@ from core.human_input_v2.email_channel import (
     ResendCandidate,
     UpdateEmailConfigurationStatus,
 )
-from core.human_input_v2.entities import EmailProviderType
-from core.human_input_v2.shared import AccountId, EmailProviderId, NormalizedEmail, TenantId, WorkspaceScope
-from libs.datetime_utils import naive_utc_now
-from libs.uuid_utils import uuidv7
 from services.human_input_v2.errors import (
     ChannelAlreadyConfiguredError,
     ChannelNotFoundError,

@@ -6,7 +6,15 @@ from datetime import datetime
 import pytest
 
 from core.helper import encrypter
-from core.human_input_v2.email_channel import (
+from core.human_input_v2.entities import EmailProviderType
+from core.human_input_v2.shared import (
+    AccountId,
+    EmailProviderId,
+    NormalizedEmail,
+    TenantId,
+    WorkspaceScope,
+)
+from repositories.human_input_v2.email_channel import (
     CreateEmailConfigurationResult,
     CreateEmailConfigurationStatus,
     DeleteEmailConfigurationResult,
@@ -17,14 +25,6 @@ from core.human_input_v2.email_channel import (
     ResendCandidate,
     UpdateEmailConfigurationResult,
     UpdateEmailConfigurationStatus,
-)
-from core.human_input_v2.entities import EmailProviderType
-from core.human_input_v2.shared import (
-    AccountId,
-    EmailProviderId,
-    NormalizedEmail,
-    TenantId,
-    WorkspaceScope,
 )
 from services.human_input_v2.email_channel_management_service import HumanInputEmailChannelManagementService
 from services.human_input_v2.errors import (

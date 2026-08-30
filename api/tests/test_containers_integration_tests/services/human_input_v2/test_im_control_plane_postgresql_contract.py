@@ -9,7 +9,6 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.human_input_v2.email_channel import EmailChannelConfiguration
 from core.human_input_v2.entities import IMBindingScope, IMProvider
 from core.human_input_v2.im_integration import (
     ActiveRunDecisionKind,
@@ -47,6 +46,7 @@ from core.human_input_v2.shared import (
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.human_input_v2 import HumanInputIMBinding, HumanInputIMIdentity, HumanInputIMIntegration
+from repositories.human_input_v2.email_channel import EmailChannelConfiguration
 from repositories.human_input_v2.email_channel.repository import SQLAlchemyEmailChannelRepository
 from repositories.human_input_v2.im_integration.mappers import (
     binding_to_record,

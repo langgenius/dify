@@ -18,12 +18,12 @@ from werkzeug.exceptions import Forbidden
 
 from controllers.console.human_input_v2.config_version import encode_email_config_version
 from controllers.console.wraps import _is_setup_completed
-from core.human_input_v2.email_channel import EmailChannelView, EmailConfigurationSnapshot
 from core.human_input_v2.entities import EmailProviderType, IMIntegrationStatus, IMProvider
 from core.human_input_v2.im_integration import IMIntegrationView, IntegrationRevisionToken
 from core.human_input_v2.shared import EmailProviderId, IntegrationId
 from libs.exception import BaseHTTPException
 from models.account import Account, AccountStatus, TenantAccountRole
+from repositories.human_input_v2.email_channel import EmailChannelView, EmailConfigurationSnapshot
 from services.human_input_v2.errors import (
     ChannelAlreadyConfiguredError,
     ChannelNotFoundError,
