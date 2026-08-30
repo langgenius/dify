@@ -53,9 +53,6 @@ from core.human_input_v2.entities import (
     IMBindingScope as _IMBindingScope,
 )
 from core.human_input_v2.entities import (
-    IMIntegrationStatus as _IMIntegrationStatus,
-)
-from core.human_input_v2.entities import (
     IMProvider as _IMProvider,
 )
 from core.human_input_v2.entities import (
@@ -547,101 +544,6 @@ class HumanInputPlatformContactWorkspaceEntry(DefaultFieldsDCMixin, TypeBase):
         StringUUID,
         nullable=False,
         comment="Logical foreign key to accounts.id for the administrator who added this directory entry.",
-    )
-
-
-class HumanInputIMIntegration(DefaultFieldsDCMixin, TypeBase):
-    """Single organization-level IM control-plane configuration.
-
-    The complete credential payload must be protected as one versioned opaque
-    envelope before persistence. CE/SaaS rows are tenant-scoped. EE uses a null
-    ``tenant_id`` because the deployment is the conceptual Organization boundary;
-    creation must lock the stable ``DifySetup`` owner before checking for an
-    existing null-owned row. Configuration writes use ``config_version`` for
-    explicit compare-and-swap; connectivity diagnostics do not advance that
-    revision. Asynchronous work must capture the revision that produced it and
-    reject stale current-state writes.
-    """
-
-    __tablename__ = "human_input_im_integrations"
-    __table_args__ = (
-        sa.UniqueConstraint("tenant_id", name="human_input_im_integrations_tenant_uq"),
-        sa.CheckConstraint("config_version > 0", name="config_version_positive"),
-        {"comment": "Organization-level Human Input IM integration configuration."},
-    )
-
-    provider: Mapped[_IMProvider] = mapped_column(
-        EnumText(_IMProvider), nullable=False, comment="Configured IM provider discriminator."
-    )
-    encrypted_credentials: Mapped[IMEncryptedCredentials] = mapped_column(
-        FrozenPydanticModelColumn(IMEncryptedCredentials),
-        nullable=False,
-        comment="Versioned opaque encrypted IM credential envelope stored as JSON.",
-    )
-    tenant_id: Mapped[str | None] = mapped_column(
-        StringUUID,
-        nullable=True,
-        default=None,
-        comment="Logical foreign key to tenants.id in CE/SaaS; null for the EE deployment-wide integration.",
-    )
-    provider_tenant_id: Mapped[str] = mapped_column(
-        sa.String(255),
-        nullable=False,
-        kw_only=True,
-        comment=(
-            "Provider-side Organization or workspace identity. Credential rotation preserves current identities and "
-            "bindings only when the provider adapter confirms this value is unchanged."
-        ),
-    )
-    app_identifier: Mapped[str] = mapped_column(
-        sa.String(255),
-        nullable=False,
-        kw_only=True,
-        comment="Safe provider application identifier used by credential-free channel projections.",
-    )
-    status: Mapped[_IMIntegrationStatus] = mapped_column(
-        EnumText(_IMIntegrationStatus),
-        nullable=False,
-        default=_IMIntegrationStatus.CONFIGURED,
-        comment="Last persisted provider connectivity result.",
-    )
-    config_version: Mapped[int] = mapped_column(
-        sa.Integer,
-        nullable=False,
-        default=1,
-        comment="Monotonic integration configuration revision used for compare-and-swap and stale-work rejection.",
-    )
-    configured_by_account_id: Mapped[str | None] = mapped_column(
-        StringUUID,
-        nullable=True,
-        default=None,
-        comment="Logical foreign key to accounts.id for the latest configuration write.",
-    )
-    callback_url: Mapped[str | None] = mapped_column(
-        sa.String(1024), nullable=True, default=None, comment="Provider callback URL, when callback delivery is used."
-    )
-    safe_status_reason: Mapped[str | None] = mapped_column(
-        LongText, nullable=True, default=None, comment="Operator-safe connection or permission diagnostic."
-    )
-    last_checked_at: Mapped[datetime | None] = mapped_column(
-        sa.DateTime, nullable=True, default=None, comment="Timestamp of the latest connection validation."
-    )
-
-    identities: Mapped[list[HumanInputIMIdentity]] = relationship(
-        lambda: HumanInputIMIdentity,
-        primaryjoin=lambda: HumanInputIMIntegration.id == orm.foreign(HumanInputIMIdentity.integration_id),
-        back_populates="integration",
-        viewonly=True,
-        lazy="raise",
-        init=False,
-    )
-    sync_runs: Mapped[list[HumanInputIMSyncRun]] = relationship(
-        lambda: HumanInputIMSyncRun,
-        primaryjoin=lambda: HumanInputIMIntegration.id == orm.foreign(HumanInputIMSyncRun.integration_id),
-        back_populates="integration",
-        viewonly=True,
-        lazy="raise",
-        init=False,
     )
 
 
