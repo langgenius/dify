@@ -220,7 +220,8 @@ def test_apply_changes_run_affected_tests_advances_to_test():
 
     events: list[dict] = []
     env, repo = _new_env(emit_canvas=events.append)
-    s = _seed_edit_session(repo, PcState.EDIT_APPLY_CHANGES, edit_target_node_ids=["llm"])
+    # test_input_ref already prepared -- run_affected_tests must skip the testdata gate.
+    s = _seed_edit_session(repo, PcState.EDIT_APPLY_CHANGES, edit_target_node_ids=["llm"], test_input_ref="ti-1")
     turn = Turn(action=Action(kind="run_affected_tests", base_version=1), actor=_actor())
     res = handle_apply_changes(env, turn, *repo.get_session(s.id))
     assert res.next == PcState.EDIT_TEST_AFFECTED_PATHS
@@ -530,6 +531,7 @@ def test_edit_registry_covers_all_non_terminal_edit_states():
         PcState.EDIT_IMPACT_ANALYSIS,
         PcState.EDIT_PLAN_APPROVAL,
         PcState.EDIT_APPLY_CHANGES,
+        PcState.EDIT_AWAIT_TESTDATA,
         PcState.EDIT_TEST_AFFECTED_PATHS,
         PcState.EDIT_AWAIT_REPAIR,
         PcState.EDIT_REVIEW,
@@ -577,10 +579,15 @@ def test_full_edit_flow_goal_to_publish():
     llm = next(n for n in graph["nodes"] if n["id"] == "llm")
     assert llm["data"]["risk_threshold"] == "high"
 
-    # 4) run_affected_tests -> edit.test_affected_paths (working, auto) -> rest at edit.review
+    # 4) run_affected_tests -> edit.await_testdata (gate; no test input prepared yet)
     out = runner.advance(
         s.id, Turn(action=Action(kind="run_affected_tests", base_version=out.version), actor=_actor())
     )
+    assert out.current_state == PcState.EDIT_AWAIT_TESTDATA
+
+    # 4b) provide_testdata (mock) -> edit.test_affected_paths (working, auto) -> rest at edit.review
+    testdata_action = Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version)
+    out = runner.advance(s.id, Turn(action=testdata_action, actor=_actor()))
     assert out.current_state == PcState.EDIT_REVIEW
 
     # 5) publish_workflow -> edit.publish (terminal)
@@ -624,6 +631,9 @@ def test_full_edit_flow_keep_draft_completes_without_publish():
     out = runner.advance(s.id, Turn(action=Action(kind="submit_edit_rules", base_version=out.version), actor=_actor()))
     out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
     out = runner.advance(s.id, Turn(action=Action(kind="run_affected_tests", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.EDIT_AWAIT_TESTDATA  # gate; no test input prepared yet
+    testdata_action = Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version)
+    out = runner.advance(s.id, Turn(action=testdata_action, actor=_actor()))
     assert out.current_state == PcState.EDIT_REVIEW
 
     out = runner.advance(s.id, Turn(action=Action(kind="keep_draft", base_version=out.version), actor=_actor()))
@@ -650,6 +660,9 @@ def test_continue_adjusting_then_reapprove_is_idempotent():
     out = runner.advance(s.id, Turn(action=Action(kind="submit_edit_rules", base_version=out.version), actor=_actor()))
     out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
     out = runner.advance(s.id, Turn(action=Action(kind="run_affected_tests", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.EDIT_AWAIT_TESTDATA  # gate; no test input prepared yet
+    testdata_action = Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version)
+    out = runner.advance(s.id, Turn(action=testdata_action, actor=_actor()))
     assert out.current_state == PcState.EDIT_REVIEW
 
     # continue_adjusting (-> re_fix) -> edit.impact_analysis
@@ -662,6 +675,46 @@ def test_continue_adjusting_then_reapprove_is_idempotent():
     out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.EDIT_APPLY_CHANGES
     assert len(dify.graph["nodes"]) == 4  # no duplicate nodes; config-only edits
+
+
+def test_run_affected_tests_routes_to_testdata_gate_when_no_input():
+    from core.dify_builder.handlers_edit import handle_apply_changes
+
+    env, _ = _new_env()
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_APPLY_CHANGES)
+    result = handle_apply_changes(
+        env,
+        Turn(actor=_actor(), action=Action(kind="run_affected_tests")),
+        s,
+        DifyBuilderContext(test_input_ref=""),
+    )
+    assert result.next == PcState.EDIT_AWAIT_TESTDATA
+    assert any(i.kind == "form" and i.payload["variant"] == "testdata" for i in result.items)
+
+
+def test_edit_await_testdata_mock_prepares_and_advances():
+    from core.dify_builder.handlers_edit import handle_await_testdata
+
+    env, _ = _new_env()
+    env.agent.generate_mock_inputs = lambda _schema, _prior: {"q": "x"}
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_AWAIT_TESTDATA)
+    result = handle_await_testdata(
+        env,
+        Turn(actor=_actor(), action=Action(kind="provide_testdata", payload={"mode": "mock"})),
+        s,
+        DifyBuilderContext(),
+    )
+    assert result.next == PcState.EDIT_TEST_AFFECTED_PATHS
+    assert result.context.test_input_ref
+
+
+def test_edit_await_testdata_is_waiting_and_projected():
+    from core.dify_builder.state import PcState, is_waiting
+    from services.dify_builder.service import Phase, _actions_for, _phase_for
+
+    assert is_waiting(PcState.EDIT_AWAIT_TESTDATA)
+    assert _phase_for(PcState.EDIT_AWAIT_TESTDATA) == Phase.TEST
+    assert [a.id for a in _actions_for(PcState.EDIT_AWAIT_TESTDATA)] == ["provide_testdata"]
 
 
 def test_revert_then_retry_after_revert_reapprove_is_idempotent():
