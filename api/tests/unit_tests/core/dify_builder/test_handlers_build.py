@@ -286,7 +286,8 @@ def test_test_and_repair_pass_goes_to_review_with_real_run():
     from core.dify_builder.handlers_build import handle_test_and_repair
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
-    env, _ = _new_env()
+    events: list[dict] = []
+    env, _ = _new_env(emit_canvas=events.append)
     env.dify = FakeBuildDifyPort()  # verify_pass=True by default
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
     fc = DifyBuilderContext(built_node_ids=["llm"])
@@ -297,8 +298,13 @@ def test_test_and_repair_pass_goes_to_review_with_real_run():
     assert result.context.test_input_ref  # inputs generated + persisted
     test_result = next(i for i in result.items if i.kind == "test_result")
     assert test_result.payload["tone"] == "success"
+    summary = next(i for i in result.items if i.kind == "summary")
+    assert summary.payload["variant"] == "review"
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
     assert assistant.payload["cards"] == ["test_result", "summary"]
+    names = [e["event"] for e in events]
+    assert "mark_test_success" in names
+    assert "mark_review_ready" in names
 
 
 def test_test_and_repair_fail_routes_to_await_repair_with_staged_repair():
@@ -371,6 +377,26 @@ def test_test_and_repair_reuses_persisted_inputs_on_retest():
     ref = fc.test_input_ref
     handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
     assert fc.test_input_ref == ref  # reused, not regenerated
+
+
+def test_test_and_repair_run_draft_raises_routes_to_await_repair_failed():
+    """run_draft raising must not crash the advance -- the try/except degrade
+    path converts the exception into a failed run and still routes to the
+    build.await_repair gate."""
+    from core.dify_builder.handlers_build import handle_test_and_repair
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()
+    env.dify.run_draft = lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("boom"))
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    fc = DifyBuilderContext(built_node_ids=["llm"])
+
+    result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.BUILD_AWAIT_REPAIR
+    assert result.run is not None
+    assert result.run.status == "failed"
 
 
 def test_await_repair_approve_applies_and_retests():
@@ -606,6 +632,42 @@ def test_reverted_retry_returns_to_initial_plan():
     assert res.next == PcState.BUILD_INITIAL_PLAN
     assert res.context.plan_version_tag == "v1"
     assert any(i.kind == "plan" for i in res.items)
+
+
+def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id():
+    """Both re-plan/revert escape paths (review's continue_adjusting and
+    reverted's retry_after_revert) must clear fc.test_input_ref and
+    fc.verify_run_id -- otherwise the retest after a rebuild reuses the
+    FIRST build's stale mock inputs instead of regenerating fresh
+    schema-shaped ones."""
+    from core.dify_builder.handlers_build import handle_reverted, handle_review
+
+    env, repo = _new_env()
+    s = _seed_build_session(
+        repo,
+        PcState.BUILD_REVIEW,
+        requirements={"currency": "USD"},
+        built_node_ids=["start"],
+        test_input_ref="ti-old",
+        verify_run_id="run-old",
+    )
+    turn = Turn(action=Action(kind="re_fix", base_version=1), actor=_actor())
+    res = handle_review(env, turn, *repo.get_session(s.id))
+    assert res.context.test_input_ref == ""
+    assert res.context.verify_run_id == ""
+
+    env2, repo2 = _new_env()
+    s2 = _seed_build_session(
+        repo2,
+        PcState.BUILD_REVERTED,
+        requirements={"currency": "USD"},
+        test_input_ref="ti-old",
+        verify_run_id="run-old",
+    )
+    turn2 = Turn(action=Action(kind="re_fix", base_version=1), actor=_actor())
+    res2 = handle_reverted(env2, turn2, *repo2.get_session(s2.id))
+    assert res2.context.test_input_ref == ""
+    assert res2.context.verify_run_id == ""
 
 
 def test_build_registry_covers_all_non_terminal_build_states():

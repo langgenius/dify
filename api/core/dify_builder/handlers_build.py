@@ -499,8 +499,8 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
 def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) Post-failure gate mirroring fix.await_decision. approve_repair
     applies the staged repair and re-runs the test (build.test_and_repair);
-    keep_draft -> build.review; re_fix -> re-plan (build.initial_plan); undo ->
-    build.reverted. apply_repair runs ONLY here, only on approve."""
+    keep_draft -> build.review; undo -> build.reverted. apply_repair runs ONLY
+    here, only on approve."""
     kind = action_kind(turn)
     if kind == "approve_repair":
         result = env.dify.apply_repair(s.app_id, turn.actor, list(fc.staged_repair), on_canvas=env.emit_canvas)
@@ -543,6 +543,8 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         emit_canvas(env, "cancel_publish")
         fc.plan_items = env.agent.propose_plan_v1(fc.requirements)
         fc.plan_version_tag = "v1"
+        fc.test_input_ref = ""
+        fc.verify_run_id = ""
         decision_items = append_card(fc, DecisionItem(text="Continue adjusting"))
         plan_items = append_card(fc, PlanCard(title="Build plan", version_tag="v1", items=list(fc.plan_items)))
         turn_items = append_card(
@@ -624,6 +626,8 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
         return StepResult(next=PcState.BUILD_REVERTED, context=fc)
     fc.plan_items = env.agent.propose_plan_v1(fc.requirements)
     fc.plan_version_tag = "v1"
+    fc.test_input_ref = ""
+    fc.verify_run_id = ""
     plan_items = append_card(fc, PlanCard(title="Build plan", version_tag="v1", items=list(fc.plan_items)))
     turn_items = append_card(
         fc,
