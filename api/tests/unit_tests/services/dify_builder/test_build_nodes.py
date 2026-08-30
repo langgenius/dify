@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import patch
 
 from services.dify_builder.agent import build, resources
@@ -166,3 +167,35 @@ def test_build_nodes_dataset_ids_are_independent_lists_per_node():
     assert kb_configs[0]["dataset_ids"] == ["kb-real"]
     assert kb_configs[1]["dataset_ids"] == ["kb-real"]
     assert kb_configs[0]["dataset_ids"] is not kb_configs[1]["dataset_ids"]
+
+
+def test_build_nodes_logs_when_generator_reports_error(caplog):
+    with patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")), \
+         patch(
+             "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
+             return_value={"graph": {}, "error": "generator boom", "errors": []},
+         ), \
+         caplog.at_level(logging.WARNING, logger="services.dify_builder.agent.build"):
+        out = build.build_nodes("t1", {}, ["do a thing"])
+
+    assert out == []
+    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1
+    assert "no graph" in warnings[0].getMessage()
+    assert "generator boom" in warnings[0].getMessage()
+
+
+def test_build_nodes_logs_traceback_when_generation_raises(caplog):
+    with patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")), \
+         patch(
+             "services.dify_builder.agent.build.WorkflowGeneratorService.generate_workflow_graph",
+             side_effect=RuntimeError("kaboom"),
+         ), \
+         caplog.at_level(logging.ERROR, logger="services.dify_builder.agent.build"):
+        out = build.build_nodes("t1", {}, ["do a thing"])
+
+    assert out == []
+    errors = [r for r in caplog.records if r.levelno == logging.ERROR]
+    assert len(errors) == 1
+    assert "generation failed" in errors[0].getMessage()
+    assert errors[0].exc_info is not None
