@@ -46,10 +46,6 @@ class HumanInputIMChannel(DefaultFieldsDCMixin, TypeBase):
             "webhook_id",
             name="human_input_im_channels_webhook_id_uq",
         ),
-        sa.CheckConstraint(
-            "config_version > 0",
-            name="human_input_im_channels_config_version_positive",
-        ),
         {
             "comment": (
                 "Current Organization-owned Human Input IM Channel configuration. "

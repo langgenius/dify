@@ -2,17 +2,17 @@
 
 ### Requirement: IM Channel persistence MUST use one owner-free Repository value
 
-`IMChannelRepository` MUST map each current `HumanInputIMChannel` row to an immutable `IMChannel`。`IMChannel` MUST contain Channel ID、timestamps、Provider、Provider tenant ID、canonical `IMEncryptedCredentials`、safe app identifier、`webhook_id`、numeric configuration version and credential-safe status。It MUST NOT contain raw `owner_key`、Dify owner、configuring actor、callback URL、ORM record or another domain's records。
+`IMChannelReader` and `IMChannelWriter` MUST map persisted `HumanInputIMChannel` rows to immutable `IMChannel` values。`IMChannel` MUST contain Channel ID、timestamps、Provider、Provider tenant ID、canonical `IMEncryptedCredentials`、safe app identifier、`webhook_id`、numeric configuration version and credential-safe status。It MUST NOT contain raw `owner_key`、Dify owner、configuring actor、callback URL、ORM record or another domain's records。
 
 #### Scenario: Workspace Channel is loaded
 
-- **WHEN** `WorkspaceIMChannelRepository.get()` loads its current row
+- **WHEN** `WorkspaceIMChannelReader.get()` loads its current row
 - **THEN** it MUST return an owner-free `IMChannel`
 - **AND** it MUST NOT expose `TenantId` or raw `owner_key`
 
 #### Scenario: Deployment Channel is loaded
 
-- **WHEN** `DeploymentIMChannelRepository.get()` loads its current row
+- **WHEN** `DeploymentIMChannelReader.get()` loads its current row
 - **THEN** it MUST return the same `IMChannel` shape as the Workspace implementation
 - **AND** it MUST NOT expose deployment persistence metadata
 
@@ -36,49 +36,63 @@
 
 - **WHEN** two transactions create Channels for different owner keys
 - **THEN** both rows MAY commit
-- **AND** neither Repository MUST read or mutate the other owner slot
+- **AND** no Reader or Writer MUST read or mutate the other owner slot
 
-### Requirement: IMChannelRepository MUST bind owner and actor at construction
+### Requirement: IM Channel readers and writers MUST bind persistence context at construction
 
-`WorkspaceIMChannelRepository` MUST receive a caller-owned `Session`、trusted `TenantId` and configuring `AccountId`。It MUST derive `workspace:<tenant_id>` internally and write the constructor-bound Account ID on create、update and replacement。`DeploymentIMChannelRepository` MUST receive only a caller-owned `Session`，derive `deployment` internally and write `configured_by_account_id = NULL`。Operation methods MUST NOT accept owner、scope、edition、actor or raw `owner_key`。
+`WorkspaceIMChannelReader` MUST receive a caller-owned `Session` and trusted `TenantId` without an actor。`WorkspaceIMChannelWriter` MUST additionally receive the configuring `AccountId`。Both MUST derive `workspace:<tenant_id>` internally。`DeploymentIMChannelReader` and `DeploymentIMChannelWriter` MUST receive only a caller-owned `Session` and derive `deployment` internally。Workspace writes MUST persist the constructor-bound Account ID；Deployment writes MUST persist `configured_by_account_id = NULL`。Reader and Writer methods MUST NOT accept owner、scope、edition、actor or raw `owner_key`。
 
-#### Scenario: Workspace Repository writes
+#### Scenario: Workspace Reader reads
 
-- **WHEN** a Workspace Repository creates、updates or replaces a Channel
+- **WHEN** a Workspace Reader loads the current Channel
+- **THEN** its constructor MUST require `Session` and `TenantId` only
+- **AND** the caller MUST NOT supply or fabricate a configuring Account ID
+
+#### Scenario: Workspace Writer writes
+
+- **WHEN** a Workspace Writer creates、updates or replaces a Channel
 - **THEN** the row MUST use its constructor-derived owner key
 - **AND** `configured_by_account_id` MUST equal its constructor-bound Account ID
 
-#### Scenario: Deployment Repository writes
+#### Scenario: Deployment Writer writes
 
-- **WHEN** a Deployment Repository creates、updates or replaces a Channel
+- **WHEN** a Deployment Writer creates、updates or replaces a Channel
 - **THEN** the row MUST use `owner_key = deployment`
 - **AND** `configured_by_account_id` MUST be null
 
+#### Scenario: Deployment Reader reads
+
+- **WHEN** a Deployment Reader loads the current Channel
+- **THEN** its constructor MUST require only the caller-owned Session
+- **AND** it MUST NOT accept an actor
+
 #### Scenario: Cross-owner Channel ID is supplied
 
-- **WHEN** a Repository receives a Channel ID that exists under another owner key
+- **WHEN** a Writer receives a Channel ID that exists under another owner key
 - **THEN** it MUST return the same missing or stale outcome as an unknown Channel ID
 - **AND** it MUST NOT read、return or mutate the foreign-owner row
 
-### Requirement: IMChannelRepository MUST expose persistence operations only
+### Requirement: IM Channel read and write ports MUST remain separate
 
-`IMChannelRepository` MUST expose exactly `get`、`create`、`update`、`replace` and `delete`。It MUST receive already constructed `IMChannel` values。It MUST NOT define candidate tests、Provider preparation、management services、business transition decisions、Webhook reverse lookup or runtime composition。
+`IMChannelReader` MUST expose exactly `get`。`IMChannelWriter` MUST expose exactly `create`、`update`、`replace` and `delete`。The Writer MUST receive already constructed `IMChannel` values。Neither Protocol MUST define candidate tests、Provider preparation、management services、business transition decisions、Webhook reverse lookup or runtime composition。
 
-#### Scenario: Repository Protocol is inspected
+#### Scenario: Persistence ports do not absorb application responsibilities
 
-- **WHEN** contract tests inspect `IMChannelRepository`
-- **THEN** its methods MUST match the Repository reference contract
-- **AND** no method MUST accept Provider credentials DTOs、Provider clients、transport versions or another domain's value
+- **WHEN** contract tests inspect `IMChannelReader` and `IMChannelWriter`
+- **THEN** `IMChannelReader` MUST expose exactly `get`
+- **AND** `IMChannelWriter` MUST expose exactly `create`、`update`、`replace` and `delete`
+- **AND** their method signatures MUST use only IM Channel persistence values
+- **AND** they MUST NOT accept Provider clients、Provider credential DTOs、transport versions or another domain's values
 
 #### Scenario: Caller selects a write operation
 
 - **WHEN** caller invokes `update` or `replace`
-- **THEN** Repository MUST execute that persistence operation
+- **THEN** Writer MUST execute that persistence operation
 - **AND** it MUST NOT decide whether the caller should have selected the other operation
 
 ### Requirement: Create MUST classify only owner-slot conflict as already configured
 
-Create MUST insert the supplied Channel with the constructor-bound owner key and configuring actor。It MUST require the initial positive configuration version。Only a violation of `human_input_im_channels_owner_key_uq` MUST raise `IMChannelAlreadyConfiguredError`。A `webhook_id` collision or another integrity failure MUST raise `IMChannelPersistenceError`。
+Create MUST insert the supplied Channel with the constructor-bound owner key and configuring actor。It MUST require the initial positive configuration version。Only a violation of `human_input_im_channels_owner_key_uq` MUST raise `IMChannelAlreadyConfiguredError`。Writer MUST let every other SQLAlchemy、mapping、validation and integrity exception propagate unchanged。
 
 #### Scenario: First Channel is created
 
@@ -90,12 +104,11 @@ Create MUST insert the supplied Channel with the constructor-bound owner key and
 
 - **WHEN** create violates the owner-key unique constraint
 - **THEN** Repository MUST raise `IMChannelAlreadyConfiguredError`
-- **AND** it MUST NOT report the failure as a generic persistence error
 
 #### Scenario: Webhook ID collides
 
 - **WHEN** create violates the global `webhook_id` unique constraint
-- **THEN** Repository MUST raise `IMChannelPersistenceError`
+- **THEN** Repository MUST propagate the original integrity exception
 - **AND** it MUST NOT report that the owner is already configured
 
 ### Requirement: Existing-resource writes MUST use owner, Channel ID and scalar version CAS
@@ -131,7 +144,7 @@ Update、replacement and delete MUST compare the constructor-bound owner key、c
 
 ### Requirement: SQLAlchemy Session MUST remain caller-owned
 
-Workspace and Deployment Repositories MUST receive a caller-provided SQLAlchemy `Session`。Methods MAY query、execute conditional DML and flush。They MUST NOT create a Session、commit、rollback、begin nested transaction、construct a lock、perform external I/O or dispatch a task。
+Workspace and Deployment Readers and Writers MUST receive a caller-provided SQLAlchemy `Session`。Readers MAY query；Writers MAY execute conditional DML and flush。They MUST NOT create a Session、commit、rollback、begin nested transaction、construct a lock、perform external I/O or dispatch a task。
 
 #### Scenario: Caller rolls back a create
 
@@ -141,12 +154,12 @@ Workspace and Deployment Repositories MUST receive a caller-provided SQLAlchemy 
 #### Scenario: Replacement insertion fails
 
 - **WHEN** replacement conditionally removes the current row but replacement insertion fails
-- **THEN** `IMChannelPersistenceError` MUST propagate to the caller
+- **THEN** the original exception MUST propagate to the caller
 - **AND** caller rollback MUST restore the previous row
 
-### Requirement: IMChannelRepository MUST persist only HumanInputIMChannel
+### Requirement: IMChannelWriter MUST persist only HumanInputIMChannel
 
-Repository implementations MUST query、insert、update or delete only `HumanInputIMChannel`。They MUST NOT import、query、mutate or delete Identity、Binding、Sync/Reconciliation、Contact、Inbox、Provider SDK、controller、service or task modules。
+Reader and Writer implementations MUST query、insert、update or delete only `HumanInputIMChannel`。They MUST NOT import、query、mutate or delete Identity、Binding、Sync/Reconciliation、Contact、Inbox、Provider SDK、controller、service or task modules。
 
 #### Scenario: Replacement is executed
 
@@ -160,7 +173,7 @@ Repository implementations MUST query、insert、update or delete only `HumanInp
 
 ### Requirement: Credentials MUST remain opaque to Channel persistence
 
-`IMChannel` and `HumanInputIMChannel` MUST reuse the canonical `IMEncryptedCredentials` model and `FrozenPydanticModelColumn` contract unchanged。Repository and mapper code MUST pass that value without decrypting it、parsing provider-specific fields or performing Provider I/O。
+`IMChannel` and `HumanInputIMChannel` MUST reuse the canonical `IMEncryptedCredentials` model and `FrozenPydanticModelColumn` contract unchanged。Reader、Writer and private mapping code MUST pass that value without decrypting it、parsing provider-specific fields or performing Provider I/O。
 
 #### Scenario: Credentials are mapped
 
@@ -172,15 +185,15 @@ Repository implementations MUST query、insert、update or delete only `HumanInp
 
 `HumanInputIMChannel.webhook_id` MUST be non-null and globally unique。`IMChannel` MUST expose the persisted `WebhookId`。This change MUST NOT define an unbound `webhook_id` lookup port、owner-recovery value or Webhook runtime contract。
 
-#### Scenario: Repository package is inspected
+#### Scenario: Channel webhook ID is persisted
 
-- **WHEN** architecture tests inspect the IM Channel Repository package
-- **THEN** it MUST NOT define `IMWebhookChannelRepository` or `LocatedIMChannel`
-- **AND** owner-key parsing MUST remain absent from owner-bound Repository methods
+- **WHEN** a Writer persists an `IMChannel`
+- **THEN** `HumanInputIMChannel.webhook_id` MUST equal the Channel's non-null `WebhookId`
+- **AND** persistence MUST reject another Channel row with the same `webhook_id`
 
 ### Requirement: Channel persistence types MUST remain with the Repository contract
 
-Existing shared `IMProvider`、`TenantId` and `AccountId` definitions MUST remain under `core/human_input_v2/`。Channel-owned `IMChannelStatus`、`IMChannelId`、`WebhookId`、`IMChannel` and persistence errors MUST reside under `repositories/human_input_v2/im_channel/` with `IMChannelRepository`、mappers and concrete adapters。Controller and service modules MUST NOT define duplicate or pass-through copies。
+Existing shared `IMProvider`、`TenantId` and `AccountId` definitions MUST remain under `core/human_input_v2/`。Channel-owned `IMChannelStatus`、`IMChannelId`、`WebhookId`、`IMChannel`、stable write conflicts、`IMChannelReader` and `IMChannelWriter` MUST reside in `repositories/human_input_v2/im_channel_repository.py`。Workspace and Deployment SQLAlchemy readers、writers and their private mapping helpers MUST reside in `repositories/human_input_v2/sqlalchemy_im_channel_repository.py`。A separate mapper module MUST NOT be introduced。Controller and service modules MUST NOT define duplicate or pass-through copies。
 
 #### Scenario: Shared Provider enum is used
 

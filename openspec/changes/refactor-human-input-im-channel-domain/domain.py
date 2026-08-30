@@ -1,7 +1,8 @@
 # Reference production placement:
 # - existing cross-capability primitives: api/core/human_input_v2/
-# - Channel persistence values and ports: api/repositories/human_input_v2/im_channel/
-# - SQLAlchemy adapters: api/repositories/human_input_v2/im_channel/repository.py
+# - Channel persistence values and ports: api/repositories/human_input_v2/im_channel_repository.py
+# - SQLAlchemy adapters and private mapping helpers:
+#   api/repositories/human_input_v2/sqlalchemy_im_channel_repository.py
 
 from __future__ import annotations
 
@@ -45,29 +46,29 @@ class IMChannel:
     status_reason: str | None = None
 
 
-class IMChannelAlreadyConfiguredError(RuntimeError):
+class IMChannelAlreadyConfiguredError(Exception):
     """The constructor-bound owner key already has a current Channel."""
 
 
-class StaleIMChannelWriteError(RuntimeError):
+class StaleIMChannelWriteError(Exception):
     """The current Channel ID or numeric configuration version changed."""
 
 
-class IMChannelPersistenceError(RuntimeError):
-    """A Channel persistence failure not represented by a stable write conflict."""
+class IMChannelReader(Protocol):
+    """Read the current Channel for one owner-bound persistence slot."""
+
+    def get(self) -> IMChannel | None:
+        """Return the current Channel for the bound owner, if configured."""
+        ...
 
 
-class IMChannelRepository(Protocol):
-    """Channel persistence for one owner and caller-owned SQLAlchemy Session.
+class IMChannelWriter(Protocol):
+    """Channel writes for one owner and caller-owned SQLAlchemy Session.
 
     Concrete constructors bind the owner key and configuring actor. Operation
     methods persist already constructed Channel values and perform no business
     orchestration, Provider I/O, or credential transformation.
     """
-
-    def get(self) -> IMChannel | None:
-        """Return the current Channel for the bound owner, if configured."""
-        ...
 
     def create(self, channel: IMChannel) -> IMChannel:
         """Insert the first Channel for the bound owner."""
@@ -103,9 +104,9 @@ __all__ = [
     "IMChannel",
     "IMChannelAlreadyConfiguredError",
     "IMChannelId",
-    "IMChannelPersistenceError",
-    "IMChannelRepository",
+    "IMChannelReader",
     "IMChannelStatus",
+    "IMChannelWriter",
     "StaleIMChannelWriteError",
     "WebhookId",
 ]

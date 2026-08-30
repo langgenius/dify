@@ -2,13 +2,13 @@
 
 ### Requirement: HITLv2 MUST use canonical tenant owner terminology
 
-HITLv2 values、model attributes and ports that directly carry Dify `Tenant.id` MUST use `TenantId` / `tenant_id`。`WorkspaceId` / `workspace_id` MUST NOT remain as aliases。`IMChannel` is owner-free；`WorkspaceIMChannelRepository` accepts `TenantId` only in its constructor and derives private persistence key `workspace:<tenant_id>`。
+HITLv2 values、model attributes and ports that directly carry Dify `Tenant.id` MUST use `TenantId` / `tenant_id`。`WorkspaceId` / `workspace_id` MUST NOT remain as aliases。`IMChannel` is owner-free；`WorkspaceIMChannelReader` and `WorkspaceIMChannelWriter` accept `TenantId` only in their constructors and derive private persistence key `workspace:<tenant_id>`。
 
-#### Scenario: Workspace IM Channel Repository is constructed
+#### Scenario: Workspace IM Channel persistence adapter is constructed
 
-- **WHEN** persistence composition constructs `WorkspaceIMChannelRepository` for one Dify Tenant
+- **WHEN** persistence composition constructs `WorkspaceIMChannelReader` or `WorkspaceIMChannelWriter` for one Dify Tenant
 - **THEN** its constructor MUST accept `TenantId`
-- **AND** `IMChannel` returned by the Repository MUST remain owner-free
+- **AND** `IMChannel` returned by the Reader or Repository MUST remain owner-free
 - **AND** raw `owner_key` MUST remain private persistence data
 
 ### Requirement: IM Channel owner key MUST remain distinct from Provider tenant identity
