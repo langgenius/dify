@@ -477,38 +477,119 @@ def test_check_receiver_status_fail(streams):
 
 
 @pytest.mark.timeout(10)
-def test_receive_loop_unknown_request_id(streams):
-    read_stream, write_stream = streams
-    session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
+def test_receive_loop_unknown_request_id(streams, caplog: pytest.LogCaptureFixture):
+    """Regression for #41482: an orphaned JSON-RPC response (unknown request ID)
+    must be logged as a warning and the receiver must continue running, not
+    raise through `_handle_incoming` and tear down the session."""
+    with caplog.at_level(logging.WARNING, logger="core.mcp.session.base_session"):
+        read_stream, write_stream = streams
+        session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
 
-    with session:
-        resp = JSONRPCResponse(jsonrpc="2.0", id=999, result={"ok": True})
-        read_stream.put(SessionMessage(message=JSONRPCMessage(resp)))
+        with session:
+            resp = JSONRPCResponse(jsonrpc="2.0", id=999, result={"ok": True})
+            read_stream.put(SessionMessage(message=JSONRPCMessage(resp)))
+            time.sleep(0.5)
 
-        for _ in range(30):
-            if any(isinstance(x, RuntimeError) and "Server Error" in str(x) for x in session.handled_incoming):
-                break
-            time.sleep(0.1)
-
-    assert any("Server Error" in str(x) for x in session.handled_incoming)
+        # The orphaned response must NOT have been routed through
+        # `_handle_incoming` (which under the default ClientSession handler
+        # converts the exception to a ValueError and tears down the loop).
+        assert not any(isinstance(x, RuntimeError) and "Server Error" in str(x) for x in session.handled_incoming)
+        assert "unknown request ID" in caplog.text
 
 
 @pytest.mark.timeout(10)
-def test_receive_loop_http_error_unknown_id(streams):
-    read_stream, write_stream = streams
-    session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
+def test_receive_loop_http_error_unknown_id(streams, caplog: pytest.LogCaptureFixture):
+    """Regression for #41482: a bare HTTPStatusError with no waiting response
+    queue must be logged as a warning and the receiver must continue running."""
+    with caplog.at_level(logging.WARNING, logger="core.mcp.session.base_session"):
+        read_stream, write_stream = streams
+        session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
 
-    with session:
-        response = Response(status_code=401, request=Request("GET", "http://test"))
-        error = HTTPStatusError("Unauthorized", request=response.request, response=response)
-        read_stream.put(error)
+        with session:
+            response = Response(status_code=401, request=Request("GET", "http://test"))
+            error = HTTPStatusError("Unauthorized", request=response.request, response=response)
+            read_stream.put(error)
+            time.sleep(0.5)
 
-        for _ in range(30):
-            if any(isinstance(x, RuntimeError) and "unknown request ID" in str(x) for x in session.handled_incoming):
-                break
-            time.sleep(0.1)
+        assert not any(isinstance(x, RuntimeError) and "unknown request ID" in str(x) for x in session.handled_incoming)
+        assert "Received response with an unknown request ID" in caplog.text
 
-    assert any("unknown request ID" in str(x) for x in session.handled_incoming)
+
+@pytest.mark.timeout(10)
+def test_receive_loop_orphaned_response_does_not_block_subsequent_messages(streams, caplog: pytest.LogCaptureFixture):
+    """Regression for #41482: after an orphaned response is dropped, the
+    receiver must continue processing the next valid message. Pre-fix the
+    receiver raised through `_handle_incoming`, logged `Error in message
+    processing loop`, and stopped, so the queued notification was never
+    delivered."""
+    with caplog.at_level(logging.WARNING, logger="core.mcp.session.base_session"):
+        read_stream, write_stream = streams
+        session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
+
+        notif_payload = {
+            "jsonrpc": "2.0",
+            "method": "test/notification",
+            "params": {"message": "after-orphan"},
+        }
+
+        with session:
+            # Orphaned response first.
+            resp = JSONRPCResponse(jsonrpc="2.0", id=999, result={"ok": True})
+            read_stream.put(SessionMessage(message=JSONRPCMessage(resp)))
+            # Then a valid notification.
+            read_stream.put(SessionMessage(message=JSONRPCMessage.model_validate(notif_payload)))
+
+            for _ in range(30):
+                if session.received_notifications:
+                    break
+                time.sleep(0.1)
+
+        assert session.received_notifications, (
+            "Receiver stopped after orphaned response; the next valid notification was never delivered."
+        )
+        assert "unknown request ID" in caplog.text
+
+
+@pytest.mark.timeout(10)
+def test_receive_loop_non_jsonrpc_response_is_dropped(streams, caplog: pytest.LogCaptureFixture):
+    """Regression for #41482 (third path): a `SessionMessage` whose root is not
+    a `JSONRPCResponse`/`JSONRPCError`/`JSONRPCRequest`/`JSONRPCNotification`
+    (e.g. a malformed or unsupported envelope) must be dropped with a warning,
+    not routed through `_handle_incoming`. Pre-fix the receiver tore down
+    the loop in that branch as well."""
+    from core.mcp.types import JSONRPCMessage
+
+    with caplog.at_level(logging.WARNING, logger="core.mcp.session.base_session"):
+        read_stream, write_stream = streams
+        session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
+
+        with session:
+            # Build a JSONRPCMessage whose root is a JSONRPCResult (a valid
+            # MCP type but not a Response/Error/Request/Notification) — falls
+            # through every concrete case into the `case _:` fallback.
+            result = JSONRPCResponse.model_construct(jsonrpc="2.0", id=42, result={"ok": True})
+            # Replace the root type by constructing a SessionMessage with a
+            # bare JSONRPCMessage that won't match any of the typed cases.
+            # We achieve this by directly using JSONRPCMessage with a root
+            # that is none of the four expected types — easiest is to use a
+            # response whose root we re-cast.
+            read_stream.put(SessionMessage(message=JSONRPCMessage(root=result)))
+
+            notif_payload = {
+                "jsonrpc": "2.0",
+                "method": "test/notification",
+                "params": {"message": "after-malformed"},
+            }
+            read_stream.put(SessionMessage(message=JSONRPCMessage.model_validate(notif_payload)))
+
+            for _ in range(30):
+                if session.received_notifications:
+                    break
+                time.sleep(0.1)
+
+        # Receiver must still be alive to deliver the next message.
+        assert session.received_notifications
+        assert "Server error" in caplog.text
 
 
 @pytest.mark.timeout(10)

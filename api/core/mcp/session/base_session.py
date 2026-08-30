@@ -333,9 +333,19 @@ class BaseSession[
                                     )
                                 )
                         else:
-                            self._handle_incoming(
-                                RuntimeError(f"Received response with an unknown request ID: {message}")
+                            # Orphaned response/error: the request ID is no longer
+                            # in `_response_streams` (timed out, cancelled, or
+                            # already fulfilled). The default `ClientSession`
+                            # handler converts this to a ValueError that escapes
+                            # `_receive_loop` and terminates the receiver — every
+                            # subsequent valid MCP message is then dropped. Log
+                            # and continue instead; transport errors that are not
+                            # orphaned responses keep the existing path.
+                            logger.warning(
+                                "Received response with an unknown request ID, dropping: %s",
+                                message,
                             )
+                            continue
                     case Exception():
                         self._handle_incoming(message)
                     case SessionMessage(message=JSONRPCMessage(root=JSONRPCRequest())):
@@ -382,14 +392,25 @@ class BaseSession[
                     case _:  # Response or error
                         response_root = message.message.root
                         if not isinstance(response_root, (JSONRPCResponse, JSONRPCError)):
-                            self._handle_incoming(RuntimeError(f"Server Error: {message}"))
+                            # Bare HTTPStatusError (or any non-JSON-RPC message)
+                            # that has no waiting response queue. Logging here
+                            # instead of routing through `_handle_incoming` keeps
+                            # the receiver alive for subsequent valid messages.
+                            logger.warning("Server error, dropping: %s", message)
                             continue
 
                         response_queue = self._response_streams.get(response_root.id)
                         if response_queue is not None:
                             response_queue.put(response_root)
                         else:
-                            self._handle_incoming(RuntimeError(f"Server Error: {message}"))
+                            # Orphaned JSON-RPC response/error (unknown request
+                            # ID). Log and continue so the receiver keeps
+                            # processing subsequent messages.
+                            logger.warning(
+                                "Server error with an unknown request ID, dropping: %s",
+                                message,
+                            )
+                            continue
             except queue.Empty:
                 continue
             except Exception:
