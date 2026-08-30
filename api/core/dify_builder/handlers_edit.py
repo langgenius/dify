@@ -18,6 +18,7 @@ from core.dify_builder.contract import (
     ChangeSetCard,
     CheckpointCard,
     DecisionItem,
+    ErrorCard,
     FormCard,
     PlanCard,
     PublishCard,
@@ -35,11 +36,13 @@ from core.dify_builder.handlers_fix import (
     build_change_set,
     build_form_fields,
     emit_canvas,
+    first_failed_node,
     merge_known_keys,
     mint_checkpoint,
     perform_revert,
+    start_schema,
 )
-from core.dify_builder.models import DifyBuilderContext, Session, Turn
+from core.dify_builder.models import DifyBuilderContext, Run, Session, TestInput, Turn
 from core.dify_builder.runner import Env, Handler, StepResult
 from core.dify_builder.state import PcState
 
@@ -272,53 +275,130 @@ def handle_apply_changes(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
 
 
 def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
-    """(working, auto) Canned affected-path test: emit a success test_result +
-    the review summary + change_set, transition to edit.review. No live
-    run_draft (spec: canned)."""
-    emit_canvas(env, "mark_test_success")
-    test_result_items = append_card(
+    """(working, auto) Live affected-path test via run_draft. Success ->
+    edit.review; failure -> real diagnose + propose_repair, staged for the
+    edit.await_repair approval gate. No auto-apply (human-gated)."""
+    graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
+    if fc.test_input_ref == "":
+        inputs = env.agent.generate_mock_inputs(start_schema(graph), {})
+        ti = TestInput(session_id=s.id, source="mock", inputs=inputs)
+        env.repo.save_test_input(ti)
+        fc.test_input_ref = ti.id
+    else:
+        inputs = env.repo.get_test_input(fc.test_input_ref).inputs
+
+    emit = env.emit if env.emit is not None else (lambda _e: None)
+    try:
+        raw = env.dify.run_draft(s.app_id, turn.actor, inputs, emit)
+        status, per_node, dify_run_id = raw.status, raw.per_node, raw.dify_run_id
+    except Exception:  # never crash the advance -- surface as a failed run
+        status, per_node, dify_run_id = "failed", [], ""
+
+    run = Run(
+        id=str(uuid.uuid4()),
+        kind="verify",
+        dify_run_id=dify_run_id,
+        status=status,
+        per_node=per_node,
+        inputs_ref=fc.test_input_ref,
+        immutable=True,
+    )
+
+    if status == "succeeded":
+        emit_canvas(env, "mark_test_success")
+        test_items = append_card(
+            fc,
+            TestResultCard(
+                title="Affected-path tests",
+                subtitle="All checks passed",
+                tone="success",
+                stats=[TestStat(value="1", label="runs"), TestStat(value="0", label="errors")],
+                run_ids=[run.id],
+            ),
+        )
+        emit_canvas(env, "mark_review_ready")
+        summary_items = append_card(
+            fc,
+            SummaryCard(
+                variant="review",
+                title="Review",
+                items=["Applied the change plan", "Affected paths tested", "Tests passing"],
+            ),
+        )
+        turn_items = append_card(
+            fc,
+            AssistantTurnItem(
+                turn_id=str(uuid.uuid4()),
+                stage_id="edit.review",
+                trace=Trace(status="completed", steps=[]),
+                reply_text="Tests passed; ready for review.",
+                cards=["test_result", "summary"],
+            ),
+        )
+        return StepResult(
+            next=PcState.EDIT_REVIEW,
+            context=fc,
+            items=[*test_items, *summary_items, *turn_items],
+            run=run,
+            run_id_sink=[run.id],
+        )
+
+    # failure: real diagnosis + proposed repair, staged for the approval gate
+    run.culprit_node_id = first_failed_node(per_node)
+    fc.verify_run_id = run.id
+    emit_canvas(env, "mark_test_error")
+    diagnosis = env.agent.diagnose(run, graph, per_node)
+    intents, risk = env.agent.propose_repair(diagnosis, graph)
+    fc.diagnosis = diagnosis
+    fc.staged_repair = list(intents)
+    fc.risk = risk
+    test_items = append_card(
         fc,
         TestResultCard(
             title="Affected-path tests",
-            subtitle="All checks passed",
-            tone="success",
-            stats=[TestStat(value="1", label="runs"), TestStat(value="0", label="errors")],
-            run_ids=[],
+            subtitle="Failed",
+            tone="error",
+            stats=[TestStat(value="1", label="runs"), TestStat(value="1", label="errors")],
+            run_ids=[run.id],
         ),
     )
-    changed = list(fc.change_set.changed_nodes) if fc.change_set else []
-    change_set_items = append_card(
+    error_items = append_card(
         fc,
-        ChangeSetCard(
-            count=len(changed),
-            changes=[f"edited {nid}" for nid in changed],
-            scope="configuration",
-            full_diff_open=False,
+        ErrorCard(
+            title="Test failed",
+            body=diagnosis.root_cause or "The run failed.",
+            tone="danger",
+            node_id=diagnosis.culprit_node_id,
         ),
     )
-    emit_canvas(env, "mark_review_ready")
-    summary_items = append_card(
-        fc,
-        SummaryCard(
-            variant="review",
-            title="Review",
-            items=["Applied the change plan", "Affected paths tested", "Tests passing"],
-        ),
+    proposed = [f"{i.op} {i.args.get('node_id', '')}".strip() for i in intents]
+    cs_items = (
+        append_card(
+            fc, ChangeSetCard(count=len(intents), changes=proposed, scope="configuration", full_diff_open=False)
+        )
+        if intents
+        else []
     )
     turn_items = append_card(
         fc,
         AssistantTurnItem(
             turn_id=str(uuid.uuid4()),
-            stage_id="edit.review",
+            stage_id="edit.await_repair",
             trace=Trace(status="completed", steps=[]),
-            reply_text="Tests passed; ready for review.",
-            cards=["test_result", "change_set", "summary"],
+            reply_text=(
+                "Test failed — here's a proposed fix to review."
+                if intents
+                else "Test failed — no safe automatic fix; edit or keep draft."
+            ),
+            cards=["test_result", "error"] + (["change_set"] if intents else []),
         ),
     )
     return StepResult(
-        next=PcState.EDIT_REVIEW,
+        next=PcState.EDIT_AWAIT_REPAIR,
         context=fc,
-        items=[*test_result_items, *change_set_items, *summary_items, *turn_items],
+        items=[*test_items, *error_items, *cs_items, *turn_items],
+        run=run,
+        run_id_sink=[run.id],
     )
 
 
