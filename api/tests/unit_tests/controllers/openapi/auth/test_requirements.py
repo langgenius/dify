@@ -13,7 +13,6 @@ from werkzeug.exceptions import Forbidden, NotFound
 from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
     CheckSessionOwnership,
-    LicenseCheck,
     Rank,
     RBACScene,
     Requirement,
@@ -21,6 +20,7 @@ from controllers.openapi.auth.requirements import (
     RequireWorkspaceMembership,
     RoleFloor,
     SubjectCheck,
+    assert_license_valid,
 )
 from controllers.openapi.auth.subjects import AccountSubject
 from core.rbac import RBACPermission, RBACResourceScope
@@ -100,30 +100,26 @@ def test_subject_check_emits_the_wrong_surface_audit(app: Flask, sqlite_session:
         (LicenseStatus.NONE, False),
     ],
 )
-def test_license_check_denies_only_dead_licences(status: LicenseStatus, denied: bool, sqlite_session: Session) -> None:
-    subject = account_subject()
-
+def test_assert_license_valid_denies_only_dead_licences(status: LicenseStatus, denied: bool) -> None:
     with patch(FEATURES, return_value=system_features(license_status=status)):
         if denied:
             with pytest.raises(Forbidden, match="license_invalid"):
-                LicenseCheck().run(subject, make_ctx(sqlite_session), sqlite_session)
+                assert_license_valid()
         else:
-            LicenseCheck().run(subject, make_ctx(sqlite_session), sqlite_session)
+            assert_license_valid()
 
 
-def test_license_check_re_reads_the_licence_on_every_run(sqlite_session: Session) -> None:
-    """A requirement is a process-lifetime singleton, so a memoised verdict
-    would outlive the licence that produced it.
+def test_assert_license_valid_re_reads_the_licence_on_every_call() -> None:
+    """Both callers - the router's endpoint gate and the external-SSO pipeline -
+    are process-lifetime, so a memoised verdict would outlive the licence that
+    produced it.
     """
-    requirement = LicenseCheck()
-    subject = account_subject()
-
     with patch(FEATURES, return_value=system_features(license_status=LicenseStatus.ACTIVE)):
-        requirement.run(subject, make_ctx(sqlite_session), sqlite_session)
+        assert_license_valid()
 
     with patch(FEATURES, return_value=system_features(license_status=LicenseStatus.EXPIRED)):
         with pytest.raises(Forbidden, match="license_invalid"):
-            requirement.run(subject, make_ctx(sqlite_session), sqlite_session)
+            assert_license_valid()
 
 
 @pytest.mark.parametrize(
