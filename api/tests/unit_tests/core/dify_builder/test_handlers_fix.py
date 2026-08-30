@@ -519,3 +519,21 @@ def test_fix_registry_has_exactly_twelve_states():
     }
     # checklist.propose reuses the run-fix propose handler, as Go does.
     assert registry[PcState.CHECKLIST_PROPOSE] is handle_propose
+
+
+# ---- start_schema -----------------------------------------------------------
+
+
+def test_start_schema_reads_start_node_variables():
+    from core.dify_builder.handlers_fix import start_schema
+    graph = {"nodes": [
+        {"id": "s", "data": {"type": "start", "variables": [{"variable": "query", "type": "text-input"}]}},
+        {"id": "llm", "data": {"type": "llm"}},
+    ], "edges": []}
+    assert start_schema(graph) == {"variables": [{"variable": "query", "type": "text-input"}]}
+
+
+def test_start_schema_empty_when_no_start_or_no_vars():
+    from core.dify_builder.handlers_fix import start_schema
+    assert start_schema({"nodes": [{"id": "llm", "data": {"type": "llm"}}], "edges": []}) == {"variables": []}
+    assert start_schema({"nodes": [{"id": "s", "data": {"type": "start"}}], "edges": []}) == {"variables": []}

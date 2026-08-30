@@ -50,6 +50,7 @@ from core.dify_builder.models import (
     Run,
     Session,
     Snapshot,
+    StartSchema,
     TestInput,
     Turn,
 )
@@ -81,6 +82,7 @@ __all__ = [
     "merge_known_keys",
     "mint_checkpoint",
     "perform_revert",
+    "start_schema",
 ]
 
 
@@ -217,6 +219,17 @@ def first_failed_node(nodes: list[NodeOutput]) -> str:
         if n.status == "failed":
             return n.node_id
     return ""
+
+
+def start_schema(graph: Graph) -> StartSchema:
+    """The start node's declared input variables, as the opaque StartSchema the
+    agent interprets: {"variables": [...]}. Empty list when there is no start
+    node or it declares none. Pure dict access -- stays in core (no graph_ops)."""
+    for node in graph.get("nodes", []):
+        data = node.get("data") or {}
+        if data.get("type") == "start":
+            return {"variables": list(data.get("variables") or [])}
+    return {"variables": []}
 
 
 def _mode_or_default(mode: str) -> str:
