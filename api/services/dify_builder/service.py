@@ -114,6 +114,7 @@ _PHASE_FOR: dict[PcState, Phase] = {
     PcState.EDIT_IMPACT_ANALYSIS: Phase.CLARIFY,
     PcState.EDIT_PLAN_APPROVAL: Phase.PLAN,
     PcState.EDIT_APPLY_CHANGES: Phase.MODIFY,
+    PcState.EDIT_AWAIT_TESTDATA: Phase.TEST,
     PcState.EDIT_TEST_AFFECTED_PATHS: Phase.TEST,
     PcState.EDIT_AWAIT_REPAIR: Phase.TEST,
     PcState.EDIT_REVIEW: Phase.REVIEW,
@@ -223,6 +224,9 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
                  next_state="edit.test_affected_paths", canvas_event="start_test_run"),
         UiAction(id="revert", label="Revert", kind=ActionKind.DESTRUCTIVE,
                  next_state="edit.reverted", canvas_event="revert_checkpoint"),
+    ],
+    PcState.EDIT_AWAIT_TESTDATA: [
+        UiAction(id="provide_testdata", label="Provide test data", kind=ActionKind.PRIMARY),
     ],
     PcState.EDIT_AWAIT_REPAIR: [
         UiAction(id="approve_plan", label="Apply the fix", kind=ActionKind.PRIMARY,
