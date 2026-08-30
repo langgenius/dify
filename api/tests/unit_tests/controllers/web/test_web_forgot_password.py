@@ -7,7 +7,6 @@ from collections.abc import Iterator
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
-from enums.deployment_edition import DeploymentEdition
 from flask import Flask
 
 from controllers.web.forgot_password import (
@@ -15,6 +14,7 @@ from controllers.web.forgot_password import (
     ForgotPasswordResetApi,
     ForgotPasswordSendEmailApi,
 )
+from enums import DeploymentEdition
 from models.account import Account
 from models.engine import db
 from services.entities.feature_entities import SystemFeatureModel
