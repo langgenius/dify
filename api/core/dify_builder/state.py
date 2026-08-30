@@ -39,6 +39,7 @@ class PcState(StrEnum):
     BUILD_PLAN_APPROVAL = "build.plan_approval"
     BUILD_EXECUTION = "build.execution"
     BUILD_TEST_AND_REPAIR = "build.test_and_repair"
+    BUILD_AWAIT_REPAIR = "build.await_repair"
     BUILD_REVIEW = "build.review"
     BUILD_PUBLISH = "build.publish"
     BUILD_GOVERNANCE_FEEDBACK = "build.governance_feedback"
@@ -89,6 +90,7 @@ _WAITING = frozenset(
         PcState.BUILD_RESOURCE_RECOMMENDATION,
         PcState.BUILD_PLAN_APPROVAL,
         PcState.BUILD_EXECUTION,
+        PcState.BUILD_AWAIT_REPAIR,
         PcState.BUILD_REVIEW,
         PcState.BUILD_AWAIT_LEARNING,
         PcState.BUILD_REVERTED,

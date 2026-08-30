@@ -341,6 +341,68 @@ def test_test_and_repair_neutral_when_repair_empty():
     assert "No issues found" in summary.payload["items"]
 
 
+def test_await_repair_approve_applies_and_retests():
+    from core.dify_builder.handlers_build import handle_await_repair
+    from core.dify_builder.models import MutationIntent
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()
+    env.dify.graph = {"nodes": [{"id": "llm", "data": {}}], "edges": []}  # target node must pre-exist
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_AWAIT_REPAIR)
+    fc = DifyBuilderContext(
+        staged_repair=[
+            MutationIntent(op="set_node_config", args={"node_id": "llm", "path": "prompt_template", "value": []})
+        ],
+        test_input_ref="ti-1",
+    )
+    result = handle_await_repair(env, Turn(actor=_actor(), action=Action(kind="approve_repair")), s, fc)
+    assert result.next == PcState.BUILD_TEST_AND_REPAIR
+    assert env.dify.applied  # the staged repair was applied
+    assert result.context.staged_repair == []  # cleared after apply
+
+
+def test_await_repair_keep_draft_goes_to_review():
+    from core.dify_builder.handlers_build import handle_await_repair
+
+    env, _ = _new_env()
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_AWAIT_REPAIR)
+    result = handle_await_repair(env, Turn(actor=_actor(), action=Action(kind="keep_draft")), s, DifyBuilderContext())
+    assert result.next == PcState.BUILD_REVIEW
+
+
+def test_await_repair_undo_reverts():
+    from core.dify_builder.handlers_build import handle_await_repair
+
+    events: list[dict] = []
+    env, repo = _new_env(emit_canvas=events.append)
+    s = _seed_build_session(repo, PcState.BUILD_AWAIT_REPAIR, built_node_ids=["start", "llm", "end"])
+    turn = Turn(action=Action(kind="undo", base_version=1), actor=_actor())
+    res = handle_await_repair(env, turn, *repo.get_session(s.id))
+    assert res.next == PcState.BUILD_REVERTED
+    assert any(i.kind == "decision" for i in res.items)
+    assert {"event": "revert_checkpoint"} in events
+
+
+def test_await_repair_ignores_unknown_action():
+    from core.dify_builder.handlers_build import handle_await_repair
+
+    env, repo = _new_env()
+    s = _seed_build_session(repo, PcState.BUILD_AWAIT_REPAIR, built_node_ids=["llm"])
+    turn = Turn(action=Action(kind="message", base_version=1), actor=_actor())
+    res = handle_await_repair(env, turn, *repo.get_session(s.id))
+    assert res.next == PcState.BUILD_AWAIT_REPAIR
+
+
+def test_build_await_repair_is_waiting_and_projected():
+    from core.dify_builder.state import PcState, is_waiting
+    from services.dify_builder.service import Phase, _actions_for, _phase_for
+
+    assert is_waiting(PcState.BUILD_AWAIT_REPAIR)
+    assert _phase_for(PcState.BUILD_AWAIT_REPAIR) == Phase.TEST
+    assert [a.id for a in _actions_for(PcState.BUILD_AWAIT_REPAIR)]  # non-empty buttons
+
+
 def test_review_publish_advances_to_publish():
     from core.dify_builder.handlers_build import handle_review
 
@@ -525,6 +587,7 @@ def test_build_registry_covers_all_non_terminal_build_states():
         PcState.BUILD_PLAN_APPROVAL,
         PcState.BUILD_EXECUTION,
         PcState.BUILD_TEST_AND_REPAIR,
+        PcState.BUILD_AWAIT_REPAIR,
         PcState.BUILD_REVIEW,
         PcState.BUILD_PUBLISH,
         PcState.BUILD_GOVERNANCE_FEEDBACK,
