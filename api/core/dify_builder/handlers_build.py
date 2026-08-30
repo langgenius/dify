@@ -45,6 +45,7 @@ from core.dify_builder.handlers_fix import (
     mint_checkpoint,
     perform_revert,
     start_schema,
+    testdata_form_fields,
 )
 from core.dify_builder.models import (
     ConversationItem,
@@ -62,6 +63,7 @@ __all__ = [
     "build_registry",
     "handle_await_learning",
     "handle_await_repair",
+    "handle_await_testdata",
     "handle_capability_check",
     "handle_execution",
     "handle_goal_analysis",
@@ -354,16 +356,39 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
 
 
 def handle_execution(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
-    """(waiting) At rest after the build. ``run_test`` -> build.test_and_repair;
-    ``revert`` (resolved to ``undo``) -> build.reverted: restores the pre-build
-    draft from the checkpoint and invalidates the approvals made since it (via
-    perform_revert)."""
+    """(waiting) At rest after the build. ``run_test`` -> build.await_testdata
+    when no test input is prepared yet (gate), else straight to
+    build.test_and_repair; ``revert`` (resolved to ``undo``) -> build.reverted:
+    restores the pre-build draft from the checkpoint and invalidates the
+    approvals made since it (via perform_revert)."""
     kind = action_kind(turn)
     if kind == "undo":
         perform_revert(env, turn, s, fc)
         items = append_card(fc, DecisionItem(text="Requested a revert"))
         return StepResult(next=PcState.BUILD_REVERTED, context=fc, items=items)
     if kind == "run_test":
+        if fc.test_input_ref == "":
+            graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
+            form_items = append_card(
+                fc,
+                FormCard(
+                    variant="testdata",
+                    fields=testdata_form_fields(start_schema(graph)),
+                    values={},
+                    frozen=False,
+                ),
+            )
+            turn_items = append_card(
+                fc,
+                AssistantTurnItem(
+                    turn_id=str(uuid.uuid4()),
+                    stage_id="build.await_testdata",
+                    trace=Trace(status="completed", steps=[]),
+                    reply_text="Provide test inputs (or use mock data) to run the test.",
+                    cards=["form"],
+                ),
+            )
+            return StepResult(next=PcState.BUILD_AWAIT_TESTDATA, context=fc, items=[*form_items, *turn_items])
         emit_canvas(env, "start_test_run")
         items = append_card(
             fc,
@@ -377,6 +402,24 @@ def handle_execution(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -
         )
         return StepResult(next=PcState.BUILD_TEST_AND_REPAIR, context=fc, items=items)
     return StepResult(next=PcState.BUILD_EXECUTION, context=fc)
+
+
+def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
+    """(waiting) Prepare inputs for the live test run. mock -> schema-shaped
+    generate_mock_inputs; provide/upload -> the payload's inputs dict (may carry
+    file refs). Persists a TestInput and advances to build.test_and_repair."""
+    mode, _ = action_string(turn, "mode")
+    if mode == "mock":
+        graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
+        inputs = env.agent.generate_mock_inputs(start_schema(graph), {})
+    else:
+        inputs = {}
+        if turn.action is not None and isinstance(turn.action.payload.get("inputs"), dict):
+            inputs = turn.action.payload["inputs"]
+    ti = TestInput(session_id=s.id, source=mode or "upload", inputs=inputs)
+    env.repo.save_test_input(ti)
+    fc.test_input_ref = ti.id
+    return StepResult(next=PcState.BUILD_TEST_AND_REPAIR, context=fc)
 
 
 def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
@@ -664,6 +707,7 @@ def build_registry() -> dict[PcState, Handler]:
         PcState.BUILD_RESOURCE_RECOMMENDATION: handle_resource_recommendation,
         PcState.BUILD_PLAN_APPROVAL: handle_plan_approval,
         PcState.BUILD_EXECUTION: handle_execution,
+        PcState.BUILD_AWAIT_TESTDATA: handle_await_testdata,
         PcState.BUILD_TEST_AND_REPAIR: handle_test_and_repair,
         PcState.BUILD_AWAIT_REPAIR: handle_await_repair,
         PcState.BUILD_REVIEW: handle_review,
