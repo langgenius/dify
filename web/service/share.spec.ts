@@ -16,7 +16,7 @@ vi.mock('./base', () => ({
 }))
 
 vi.mock('./webapp-auth', () => ({
-  getOrCreateWebAppVisitorId: vi.fn(() => 'visitor-1'),
+  getOrCreateWebAppUserId: vi.fn(() => 'webapp-user-1'),
   getWebAppAccessToken: vi.fn(() => ''),
 }))
 
@@ -40,7 +40,7 @@ describe('fetchAccessToken', () => {
     const secondRequest = fetchAccessToken({ appCode: 'environment-app' })
 
     expect(getMock).toHaveBeenCalledTimes(1)
-    expect(getMock).toHaveBeenCalledWith('/passport?user_id=visitor-1', expect.anything())
+    expect(getMock).toHaveBeenCalledWith('/passport?user_id=webapp-user-1', expect.anything())
 
     resolveRequest({ access_token: 'passport' })
     await expect(Promise.all([firstRequest, secondRequest])).resolves.toEqual([
@@ -62,6 +62,15 @@ describe('fetchAccessToken', () => {
     ])
 
     expect(getMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('passes an embedded user id to the environment passport', async () => {
+    window.history.replaceState({}, '', '/environment/workflow/environment-app')
+    getMock.mockResolvedValue({ access_token: 'passport' })
+
+    await fetchAccessToken({ appCode: 'environment-app', userId: 'iframe-user-123' })
+
+    expect(getMock).toHaveBeenCalledWith('/passport?user_id=iframe-user-123', expect.anything())
   })
 
   it('starts a new environment passport request after a failure', async () => {
