@@ -709,7 +709,9 @@ describe('ssePost and sseGet', () => {
     await ssePost('/workflows/run', { body: { inputs: {} } }, { isPublicAPI: true })
     await postPublic('/workflows/tasks/task-1/stop')
 
-    expect(fetchSpy.mock.calls[0]![0]).toBe(`${PUBLIC_API_PREFIX}/environment/workflow-app/workflows/run`)
+    expect(fetchSpy.mock.calls[0]![0]).toBe(
+      `${PUBLIC_API_PREFIX}/environment/workflow-app/workflows/run`,
+    )
     const stopRequest = fetchSpy.mock.calls[1]![0]
     expect(stopRequest).toBeInstanceOf(Request)
     if (!(stopRequest instanceof Request)) throw new TypeError('Expected a request')

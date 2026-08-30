@@ -3,7 +3,7 @@
 import inspect
 import os
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -131,7 +131,7 @@ def _persist_tool_file(session: Session, *, owner_id: str, tenant_id: str = TENA
 
 
 @pytest.fixture
-def sqlite_db(sqlite_engine: Engine):
+def sqlite_db(sqlite_engine: Engine) -> Iterator[None]:
     with patch(f"{SERVICE_MODULE}.db", MagicMock(engine=sqlite_engine)):
         yield
 
@@ -147,13 +147,21 @@ def test_mint_creates_exactly_one_end_user_and_reuses_it(app: Flask, sqlite_sess
     assert end_users[0].session_id == FileGrantService.session_id_for_subject(SUBJECT)
     assert end_users[0].external_user_id == SUBJECT
 
-    first_claims = jwt.decode(first["grant"], SECRET_KEY, algorithms=["HS256"], audience=FILE_GRANT_AUDIENCE)
-    second_claims = jwt.decode(second["grant"], SECRET_KEY, algorithms=["HS256"], audience=FILE_GRANT_AUDIENCE)
+    first_grant = first["grant"]
+    second_grant = second["grant"]
+    assert isinstance(first_grant, str)
+    assert isinstance(second_grant, str)
+    first_claims = jwt.decode(first_grant, SECRET_KEY, algorithms=["HS256"], audience=FILE_GRANT_AUDIENCE)
+    second_claims = jwt.decode(second_grant, SECRET_KEY, algorithms=["HS256"], audience=FILE_GRANT_AUDIENCE)
     assert first_claims["sub"] == second_claims["sub"] == end_users[0].id
     assert first_claims["tenant_id"] == TENANT_ID
     assert first_claims["app_id"] == APP_ID
     assert first_claims["scopes"] == ["upload"]
-    assert second["expires_at"] > first["expires_at"]
+    first_expires_at = first["expires_at"]
+    second_expires_at = second["expires_at"]
+    assert isinstance(first_expires_at, int)
+    assert isinstance(second_expires_at, int)
+    assert second_expires_at > first_expires_at
 
 
 @pytest.mark.usefixtures("granted_config", "seeded_app", "sqlite_db")
@@ -193,7 +201,9 @@ def test_mint_accepts_a_session_ttl_exactly_at_the_cap(app: Flask) -> None:
 
     response = _mint(app, _payload(ttl_seconds=MAX_SESSION_GRANT_TTL_SECONDS))
 
-    assert MAX_SESSION_GRANT_TTL_SECONDS <= response["expires_at"] - before <= MAX_SESSION_GRANT_TTL_SECONDS + 5
+    expires_at = response["expires_at"]
+    assert isinstance(expires_at, int)
+    assert MAX_SESSION_GRANT_TTL_SECONDS <= expires_at - before <= MAX_SESSION_GRANT_TTL_SECONDS + 5
 
 
 @pytest.mark.usefixtures("granted_config", "seeded_app", "sqlite_db")
@@ -210,7 +220,9 @@ def test_mint_accepts_a_run_ttl_until_deadline_plus_grace(app: Flask) -> None:
         ),
     )
 
-    assert MAX_RUN_GRANT_TTL_SECONDS <= response["expires_at"] - now <= MAX_RUN_GRANT_TTL_SECONDS + 5
+    expires_at = response["expires_at"]
+    assert isinstance(expires_at, int)
+    assert MAX_RUN_GRANT_TTL_SECONDS <= expires_at - now <= MAX_RUN_GRANT_TTL_SECONDS + 5
 
 
 @pytest.mark.usefixtures("granted_config", "seeded_app", "sqlite_db")
@@ -269,7 +281,9 @@ def test_mint_caps_a_run_grant_at_deadline_plus_grace(app: Flask) -> None:
         ),
     )
 
-    assert run_deadline + RUN_GRANT_EXPIRY_GRACE_SECONDS <= response["expires_at"] <= (
+    expires_at = response["expires_at"]
+    assert isinstance(expires_at, int)
+    assert run_deadline + RUN_GRANT_EXPIRY_GRACE_SECONDS <= expires_at <= (
         run_deadline + RUN_GRANT_EXPIRY_GRACE_SECONDS + 1
     )
 
@@ -388,7 +402,9 @@ def test_mint_reports_optional_files_item_by_item(app: Flask, sqlite_session: Se
         ),
     )
 
-    present, absent = response["optional_files"]
+    optional_files = response["optional_files"]
+    assert isinstance(optional_files, list)
+    present, absent = optional_files
     assert present["ok"] is True
     assert present["name"] == "report.pdf"
     assert present["url"].startswith(f"https://files.example.com/files/appdeploy/{upload_file.id}/content?token=")
@@ -436,7 +452,9 @@ def test_end_user_service_never_retypes_an_app_deploy_row(
     EndUserService.get_or_create_end_user_by_type(EndUserType.SERVICE_API, TENANT_ID, APP_ID, session_id)
 
     sqlite_session.expire_all()
-    assert sqlite_session.get(EndUser, owner_id).type == EndUserType.APP_DEPLOY
+    persisted_owner = sqlite_session.get(EndUser, owner_id)
+    assert persisted_owner is not None
+    assert persisted_owner.type == EndUserType.APP_DEPLOY
 
 
 SKIPPED_DIRECTORY_NAMES = frozenset({".git", ".venv", "__pycache__", "migrations", "node_modules", "tests"})

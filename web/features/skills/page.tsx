@@ -34,7 +34,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useQueryState } from 'nuqs'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
@@ -133,7 +133,7 @@ function SkillPlaceholderState({
       aria-labelledby="skill-placeholder-title"
       className="relative col-span-full min-h-[calc(100vh-142px)] overflow-hidden"
     >
-      <div className="pointer-events-none absolute inset-0 grid grid-cols-[repeat(auto-fill,minmax(296px,345px))] grid-rows-4 content-start gap-6">
+      <div className="pointer-events-none absolute inset-0 grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] grid-rows-4 gap-3">
         {placeholderCardIds.map((id) => (
           <div key={id} className="rounded-xl bg-background-default-lighter opacity-75" />
         ))}
@@ -384,6 +384,7 @@ function SkillCard({
   const { t: tCommon } = useTranslation('common')
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
+  const nameId = useId()
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const duplicateMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions(),
@@ -431,16 +432,20 @@ function SkillCard({
   }
 
   return (
-    <article className="group relative col-span-1 h-42 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out hover:shadow-lg">
+    <article
+      aria-labelledby={nameId}
+      className="group relative col-span-1 h-42 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:rounded-xl after:content-[''] hover:shadow-lg has-[>div>a:focus-visible]:after:inset-ring-2 has-[>div>a:focus-visible]:after:inset-ring-state-accent-solid"
+    >
       <div className="flex h-full min-w-0 flex-col">
         <Link
           href={`/skills/${skill.id}`}
+          aria-labelledby={nameId}
           className="block min-w-0 shrink-0 cursor-pointer outline-hidden"
         >
           <div className="flex items-center gap-3 px-4 pt-4 pb-2">
             <SkillIcon />
             <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
-              <h2 className="truncate system-md-semibold text-text-secondary">
+              <h2 id={nameId} className="truncate system-md-semibold text-text-secondary">
                 {skill.display_name}
               </h2>
               {!skill.name.startsWith('untitled-skill-') && (
@@ -456,6 +461,61 @@ function SkillCard({
             </div>
           </div>
         </Link>
+        {(canEdit || canDelete || !!skill.latest_published_version_id) && (
+          <div
+            className={cn(
+              'pointer-events-none absolute top-2 right-2 z-20 flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 opacity-0 shadow-lg backdrop-blur-xs transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-data-popup-open:pointer-events-auto has-data-popup-open:opacity-100',
+            )}
+          >
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger
+                aria-label={t(($) => $['skillManagement.moreActions'], {
+                  name: skill.display_name,
+                })}
+                className="flex size-8 cursor-pointer items-center justify-center rounded-lg p-1.5 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <span className="sr-only">
+                  {t(($) => $['skillManagement.moreActions'], { name: skill.display_name })}
+                </span>
+                <span aria-hidden className="i-ri-more-fill size-4.5 text-text-tertiary" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
+                {canEdit && (
+                  <DropdownMenuItem className="gap-2" onClick={handleDuplicate}>
+                    <span
+                      aria-hidden
+                      className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary"
+                    />
+                    <span>{tCommon(($) => $['operation.duplicate'])}</span>
+                  </DropdownMenuItem>
+                )}
+                {skill.latest_published_version_id && (
+                  <DropdownMenuItem className="gap-2" onClick={handleExport}>
+                    <span
+                      aria-hidden
+                      className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary"
+                    />
+                    <span>{tCommon(($) => $['operation.export'])}</span>
+                  </DropdownMenuItem>
+                )}
+                {canDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      variant="destructive"
+                      className="gap-2"
+                      onClick={() => setIsDeleteOpen(true)}
+                    >
+                      <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+                      <span>{tCommon(($) => $['operation.delete'])}</span>
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
         <div className="relative flex h-6 shrink-0 items-start px-3">
           <SkillCardTags
             skillId={skill.id}
@@ -492,60 +552,6 @@ function SkillCard({
           <div className="flex h-5 items-center bg-background-section-burn pr-2 pl-0.5 system-2xs-medium-uppercase text-text-tertiary">
             {t(($) => $['skillManagement.draft'])}
           </div>
-        </div>
-      )}
-      {(canEdit || canDelete || !!skill.latest_published_version_id) && (
-        <div
-          className={cn(
-            'pointer-events-none absolute right-2 z-20 flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 opacity-0 shadow-lg backdrop-blur-xs transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-data-popup-open:pointer-events-auto has-data-popup-open:opacity-100',
-            isDraft ? 'top-7' : 'top-2',
-          )}
-        >
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger
-              aria-label={t(($) => $['skillManagement.moreActions'], { name: skill.display_name })}
-              className="flex size-8 cursor-pointer items-center justify-center rounded-lg p-1.5 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <span className="sr-only">
-                {t(($) => $['skillManagement.moreActions'], { name: skill.display_name })}
-              </span>
-              <span aria-hidden className="i-ri-more-fill size-4.5 text-text-tertiary" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
-              {canEdit && (
-                <DropdownMenuItem className="gap-2" onClick={handleDuplicate}>
-                  <span
-                    aria-hidden
-                    className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary"
-                  />
-                  <span>{tCommon(($) => $['operation.duplicate'])}</span>
-                </DropdownMenuItem>
-              )}
-              {skill.latest_published_version_id && (
-                <DropdownMenuItem className="gap-2" onClick={handleExport}>
-                  <span
-                    aria-hidden
-                    className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary"
-                  />
-                  <span>{tCommon(($) => $['operation.export'])}</span>
-                </DropdownMenuItem>
-              )}
-              {canDelete && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    className="gap-2"
-                    onClick={() => setIsDeleteOpen(true)}
-                  >
-                    <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-                    <span>{tCommon(($) => $['operation.delete'])}</span>
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
       )}
       <DeleteSkillDialog skill={skill} open={isDeleteOpen} onOpenChange={setIsDeleteOpen} />
@@ -639,6 +645,7 @@ function SkillsToolbar({
       <SearchInput
         aria-label={t(($) => $['skillManagement.searchLabel'])}
         className="h-8 w-50 min-w-0 shrink"
+        placeholder={t(($) => $['skillManagement.searchPlaceholder'])}
         value={keyword}
         onValueChange={(value) => {
           void setKeyword(value)
@@ -896,7 +903,7 @@ export default function SkillsPage() {
       </div>
 
       <div className="min-h-0 flex-1">
-        <ScrollArea className="relative h-full min-h-0 min-w-0 overflow-hidden">
+        <ScrollArea className="h-full min-h-0 min-w-0 overflow-hidden">
           <ScrollAreaViewport
             ref={listViewportRef}
             tabIndex={-1}

@@ -273,7 +273,8 @@ export const useUpdateWorkflow = () => {
       if (params.appId) syncAppWorkflowVersionCaches(queryClient, params.appId, updatedWorkflow)
 
       const environmentDeploymentsQueryKey =
-        params.appId && (params.appMode === AppModeEnum.WORKFLOW || params.appMode === AppModeEnum.ADVANCED_CHAT)
+        params.appId &&
+        (params.appMode === AppModeEnum.WORKFLOW || params.appMode === AppModeEnum.ADVANCED_CHAT)
           ? syncWorkflowDeploymentCaches(queryClient, params.appId, updatedWorkflow)
           : undefined
       const invalidations = [

@@ -78,6 +78,8 @@
   "studio.noCredentialsYet": "尚無憑證",
   "studio.noCredentialsYetDescription": "在整合或節點設定中新增憑證",
   "studio.precheck.description": "它包含尚未支援的節點類型：",
+  "studio.precheck.from": "來自",
+  "studio.precheck.nodeCount_other": "{{count}} 個節點",
   "studio.precheck.supportMessage": "未來版本將支援這些節點類型。",
   "studio.precheck.title": "此版本無法部署到此環境",
   "studio.publisher.deployingVersion": "部署中：{{version}}",

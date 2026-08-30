@@ -68,7 +68,6 @@
   "overview.appInfo.preUseReminder": "يرجى تمكين تطبيق الويب قبل المتابعة.",
   "overview.appInfo.preview": "معاينة",
   "overview.appInfo.qrcode.download": "تحميل رمز الاستجابة السريعة",
-  "overview.appInfo.qrcode.scan": "مسح للمشاركة",
   "overview.appInfo.qrcode.title": "رمز الاستجابة السريعة للرابط",
   "overview.appInfo.regenerate": "إعادة إنشاء",
   "overview.appInfo.regenerateNotice": "هل تريد إعادة إنشاء عنوان URL العام؟ سيتوقف عنوان URL الحالي عن العمل فورًا.",

@@ -78,6 +78,8 @@
   "studio.noCredentialsYet": "認証情報はまだありません",
   "studio.noCredentialsYetDescription": "連携またはノード設定で認証情報を追加してください",
   "studio.precheck.description": "まだサポートされていないノードタイプが含まれています：",
+  "studio.precheck.from": "参照元",
+  "studio.precheck.nodeCount_other": "{{count}} ノード",
   "studio.precheck.supportMessage": "これらのノードタイプは今後のリリースでサポートされる予定です。",
   "studio.precheck.title": "このバージョンはこの環境にデプロイできません",
   "studio.publisher.deployingVersion": "デプロイ中：{{version}}",

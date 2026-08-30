@@ -44,8 +44,12 @@ function getStatusLabel(
     case DeploymentStatusEnum.DEPLOYMENT_STATUS_UNKNOWN:
     case DeploymentStatusEnum.DEPLOYMENT_STATUS_UNSPECIFIED:
       return t(($) => $['status.RUNTIME_INSTANCE_STATUS_UNSPECIFIED'])
-    default:
+    case DeploymentStatusEnum.DEPLOYMENT_STATUS_UNDEPLOYED:
       return t(($) => $['status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED'])
+    default: {
+      const exhaustiveStatus: never = status
+      return exhaustiveStatus
+    }
   }
 }
 

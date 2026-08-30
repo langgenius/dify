@@ -1,3 +1,4 @@
+from typing import Literal
 from uuid import UUID
 
 from flask import abort, request
@@ -76,14 +77,23 @@ from services.agent.observability_service import (
     AgentStatisticsQueryParams,
 )
 from services.agent.roster_service import AgentRosterService
-from services.app_service import AppListParams, AppService, CreateAppParams
+from services.app_service import AgentAppPublicationCounts, AppListParams, AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
 from services.feature_service import FeatureService
 
+AgentPublicationStatus = Literal["published", "drafts"]
+
 
 class AgentInviteOptionsQuery(RosterListQuery):
     app_id: str | None = Field(default=None, description="Workflow app id for in-current-workflow markers")
+
+
+class AgentAppListQuery(AppListQuery):
+    publication_status: AgentPublicationStatus | None = Field(
+        default=None,
+        description="Filter by published or draft Agent configuration status",
+    )
 
 
 class AgentIdPath(BaseModel):
@@ -299,7 +309,19 @@ class AgentSimpleResultResponse(BaseModel):
     result: str
 
 
+class AgentPublicationCountsResponse(ResponseModel):
+    published: int = Field(
+        ge=0,
+        description="Published Agent Apps in the current list scope, excluding the publication status filter",
+    )
+    drafts: int = Field(
+        ge=0,
+        description="Draft Agent Apps in the current list scope, excluding the publication status filter",
+    )
+
+
 class AgentAppPagination(GenericAppPagination):
+    publication_counts: AgentPublicationCountsResponse
     data: list[AgentAppPartial] = Field(  # type: ignore[assignment]  # pyrefly: ignore[bad-override-mutable-attribute]
         validation_alias=AliasChoices("items", "data")
     )
@@ -314,6 +336,7 @@ register_schema_models(
     AgentBuildDraftCheckoutPayload,
     ComposerSavePayload,
     AgentApiStatusPayload,
+    AgentAppListQuery,
     AgentInviteOptionsQuery,
     AgentLogsQuery,
     AgentStatisticsQuery,
@@ -323,6 +346,7 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
+    AgentPublicationCountsResponse,
     AgentAppPagination,
     AgentApiAccessResponse,
     AgentAppPublishedReferenceResponse,
@@ -408,7 +432,14 @@ def _serialize_agent_app_detail(
     return payload
 
 
-def _serialize_agent_app_pagination(session: Session, app_pagination, *, tenant_id: str, current_user: Account) -> dict:
+def _serialize_agent_app_pagination(
+    session: Session,
+    app_pagination,
+    *,
+    tenant_id: str,
+    current_user: Account,
+    publication_counts: AgentAppPublicationCounts,
+) -> dict:
     """Serialize Agent App lists with roster-shaped items.
 
     Each item starts from the shared App list shape, then drops
@@ -441,8 +472,17 @@ def _serialize_agent_app_pagination(session: Session, app_pagination, *, tenant_
         account_id=current_user.id,
     )
     payload = AgentAppPagination.model_validate(
-        app_pagination,
-        from_attributes=True,
+        {
+            "page": app_pagination.page,
+            "limit": app_pagination.per_page,
+            "total": app_pagination.total,
+            "has_more": app_pagination.has_next,
+            "data": app_pagination.items,
+            "publication_counts": {
+                "published": publication_counts.published,
+                "drafts": publication_counts.drafts,
+            },
+        },
         context={"session": session},
     ).model_dump(mode="json")
     for item in payload["data"]:
@@ -562,7 +602,7 @@ def _query_values(name: str, alias_name: str | None = None) -> list[str]:
 
 @console_ns.route("/agent")
 class AgentAppListApi(Resource):
-    @console_ns.doc(params=query_params_from_model(AppListQuery))
+    @console_ns.doc(params=query_params_from_model(AgentAppListQuery))
     @console_ns.response(200, "Agent app list", console_ns.models[AgentAppPagination.__name__])
     @setup_required
     @login_required
@@ -572,7 +612,9 @@ class AgentAppListApi(Resource):
     @with_current_tenant_id
     @with_session
     def get(self, session: Session, current_tenant_id: str, current_user: Account):
-        args = query_params_from_request(AppListQuery, list_fields=APP_LIST_QUERY_ARRAY_FIELDS)
+        args = query_params_from_request(AgentAppListQuery, list_fields=APP_LIST_QUERY_ARRAY_FIELDS)
+        agent_is_published = None if args.publication_status is None else args.publication_status == "published"
+
         params = AppListParams(
             page=args.page,
             limit=args.limit,
@@ -583,11 +625,29 @@ class AgentAppListApi(Resource):
             creator_ids=args.creator_ids,
             is_created_by_me=args.is_created_by_me,
             status="normal",
+            agent_is_published=agent_is_published,
         )
 
-        app_pagination = AppService().get_paginate_apps(current_user.id, current_tenant_id, params, session)
+        app_service = AppService()
+        publication_counts = app_service.get_agent_publication_counts(
+            current_user.id,
+            current_tenant_id,
+            params,
+            session,
+        )
+        app_pagination = app_service.get_paginate_apps(current_user.id, current_tenant_id, params, session)
         if app_pagination is None:
-            empty = AgentAppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
+            empty = AgentAppPagination(
+                page=args.page,
+                limit=args.limit,
+                total=0,
+                has_more=False,
+                publication_counts=AgentPublicationCountsResponse(
+                    published=publication_counts.published,
+                    drafts=publication_counts.drafts,
+                ),
+                data=[],
+            )
             return empty.model_dump(mode="json")
 
         return _serialize_agent_app_pagination(
@@ -595,6 +655,7 @@ class AgentAppListApi(Resource):
             app_pagination,
             tenant_id=current_tenant_id,
             current_user=current_user,
+            publication_counts=publication_counts,
         )
 
     @console_ns.expect(console_ns.models[AgentAppCreatePayload.__name__])
@@ -632,6 +693,7 @@ class AgentAppApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
     @enterprise_license_required
     @with_current_user
     @with_current_tenant_id

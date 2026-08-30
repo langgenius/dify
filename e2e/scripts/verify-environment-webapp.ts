@@ -19,6 +19,11 @@ type PassportPayload = {
   access_token: string
 }
 
+type IssuePassportOptions = {
+  current?: string
+  userID?: string
+}
+
 type NetworkRecord = {
   method: string
   path: string
@@ -66,12 +71,14 @@ const issuePassport = async (
   context: BrowserContext,
   origin: string,
   appCode: string,
-  current?: string,
+  options: IssuePassportOptions = {},
 ) => {
+  const passportURL = new URL(`/api/environment/${appCode}/passport`, origin)
+  if (options.userID) passportURL.searchParams.set('user_id', options.userID)
   const { response, payload } = await getJSON<PassportPayload>(
     context.request,
-    `${origin}/api/environment/${appCode}/passport`,
-    environmentHeaders(appCode, current),
+    passportURL.href,
+    environmentHeaders(appCode, options.current),
   )
   expect(response.status()).toBe(200)
   expect(payload.access_token).toBeTruthy()
@@ -224,28 +231,41 @@ const main = async () => {
     )
     expect(renewedPagePassport).toBeTruthy()
 
-    const ownerPassport = await issuePassport(
-      ownerContext,
-      url.origin,
-      appCode,
-      renewedPagePassport!,
-    )
+    const ownerPassport = await issuePassport(ownerContext, url.origin, appCode, {
+      current: renewedPagePassport!,
+    })
     const ownerSite = await loadSite(ownerContext, url.origin, appCode, ownerPassport)
     expect(ownerSite.end_user_id).toBe(browserSite.end_user_id)
-    const refreshedPassport = await issuePassport(ownerContext, url.origin, appCode, ownerPassport)
+    const refreshedPassport = await issuePassport(ownerContext, url.origin, appCode, {
+      current: ownerPassport,
+    })
     const refreshedSite = await loadSite(ownerContext, url.origin, appCode, refreshedPassport)
     expect(refreshedSite.end_user_id).toBe(ownerSite.end_user_id)
 
-    const otherPassport = await issuePassport(otherContext, url.origin, appCode)
+    const otherUserID = `environment-harness-${randomUUID()}`
+    const otherPassport = await issuePassport(otherContext, url.origin, appCode, {
+      userID: otherUserID,
+    })
     const otherSite = await loadSite(otherContext, url.origin, appCode, otherPassport)
     expect(otherSite.end_user_id).not.toBe(ownerSite.end_user_id)
+    const renewedOtherPassport = await issuePassport(otherContext, url.origin, appCode, {
+      userID: otherUserID,
+    })
+    const renewedOtherSite = await loadSite(otherContext, url.origin, appCode, renewedOtherPassport)
+    expect(renewedOtherSite.end_user_id).toBe(otherSite.end_user_id)
+    const switchedUserPassport = await issuePassport(otherContext, url.origin, appCode, {
+      current: renewedOtherPassport,
+      userID: `environment-harness-${randomUUID()}`,
+    })
+    const switchedUserSite = await loadSite(otherContext, url.origin, appCode, switchedUserPassport)
+    expect(switchedUserSite.end_user_id).not.toBe(otherSite.end_user_id)
     const ownership = await verifyConversationOwnership(
       ownerContext,
       otherContext,
       url.origin,
       appCode,
       refreshedPassport,
-      otherPassport,
+      switchedUserPassport,
       ownerSite.end_user_id,
     )
 
@@ -253,7 +273,7 @@ const main = async () => {
       page,
       appCode,
       browserSite,
-      otherSite.end_user_id,
+      switchedUserSite.end_user_id,
     )
     const reloadStart = network.length
     await page.reload({ waitUntil: 'networkidle', timeout: 30_000 })
@@ -262,7 +282,7 @@ const main = async () => {
       expect(reloadNetwork.some(({ path }) => path.includes(conversationID))).toBe(false)
     expect(reloadNetwork.some(({ path }) => path.startsWith('/api/messages'))).toBe(false)
     const environmentChatRequests = reloadNetwork.filter(({ path }) =>
-      /\/(messages|conversations)(\?|$)/.test(path),
+      /\/(?:messages|conversations)(?:\?|$)/.test(path),
     )
     expect(
       environmentChatRequests.every(({ path }) => path.startsWith(`/api/environment/${appCode}/`)),
@@ -287,7 +307,9 @@ const main = async () => {
           appCode,
           appID: ownerSite.app_id,
           ownerEndUserID: ownerSite.end_user_id,
-          otherEndUserID: otherSite.end_user_id,
+          otherEndUserID: switchedUserSite.end_user_id,
+          customUserIDEndUserStable: true,
+          explicitUserIDOverridesPassport: true,
           passportLossEndUserStable: true,
           refreshedEndUserStable: true,
           conversationOwnership: ownership,

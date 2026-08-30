@@ -4,6 +4,7 @@ import type {
   EnvironmentDeployment,
   EnvironmentDeploymentOperation,
   GetWorkflowDeploymentOptionsResponse,
+  WorkflowReference,
   WorkflowVersion,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
@@ -30,7 +31,12 @@ import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console
 import { AppACLPermission } from '@/utils/permission'
 import AppDeploy from '..'
 import { EnvironmentTable } from '../environment-table'
-import { AppDeployStateBoundary, getEnvironmentDeploymentActions } from '../state'
+import { DeploymentStatus as DeploymentStatusView } from '../shared/deployment-status'
+import { AppDeployStateBoundary } from '../state'
+import {
+  getEnvironmentDeploymentActions,
+  shouldPollEnvironmentDeployment,
+} from '../utils/environment-deployment'
 
 const APP_ID = 'app-1'
 const ACTIVITY_AT = 1_784_941_200
@@ -115,6 +121,24 @@ const SUCCESSFUL_WORKFLOW_DEPLOYMENT_PRECHECK = {
   unsupported_nodes: [],
 }
 
+const ROOT_WORKFLOW_REFERENCE: WorkflowReference = {
+  app_id: APP_ID,
+  icon: '💰',
+  icon_background: '#FDF2FA',
+  icon_type: 'emoji',
+  name: 'Finance APP',
+  workflow_id: 'workflow-version-6',
+}
+
+const SUBWORKFLOW_REFERENCE: WorkflowReference = {
+  app_id: 'app-workflow-tool',
+  icon: '🐍',
+  icon_background: '#F3FEE7',
+  icon_type: 'emoji',
+  name: 'Workflow as Tool',
+  workflow_id: 'workflow-tool',
+}
+
 const WORKFLOW_DEPLOYMENT_OPTIONS: GetWorkflowDeploymentOptionsResponse = {
   credential_slots: [
     {
@@ -151,32 +175,64 @@ const WORKFLOW_DEPLOYMENT_OPTIONS: GetWorkflowDeploymentOptionsResponse = {
       category: PluginCategory.PLUGIN_CATEGORY_TOOL,
       last_deployed_credential_id: 'github-oauth',
       provider_id: 'github',
+      workflow_as_tool_dependency: {
+        paths: [{ workflows: [ROOT_WORKFLOW_REFERENCE, SUBWORKFLOW_REFERENCE] }],
+      },
     },
   ],
-  environment_variable_slots: [
+  environment_variable_groups: [
     {
-      configured_value: '2',
-      description: 'Server port',
-      has_configured_value: true,
-      has_last_deployed_value: true,
-      key: 'PORT',
-      value_type: EnvVarValueType.ENV_VAR_VALUE_TYPE_NUMBER,
+      environment_variable_slots: [
+        {
+          configured_value: 2,
+          description: 'Server port',
+          has_configured_value: true,
+          has_last_deployed_value: true,
+          key: 'PORT',
+          value_type: EnvVarValueType.ENV_VAR_VALUE_TYPE_NUMBER,
+        },
+        {
+          configured_value: 'sk-123************bc',
+          description: 'API credential',
+          has_configured_value: true,
+          has_last_deployed_value: true,
+          key: 'API_KEY',
+          value_type: EnvVarValueType.ENV_VAR_VALUE_TYPE_SECRET,
+        },
+        {
+          description: '',
+          has_configured_value: false,
+          has_last_deployed_value: true,
+          key: 'name',
+          last_deployed_value: 'environment variable 01',
+          value_type: EnvVarValueType.ENV_VAR_VALUE_TYPE_STRING,
+        },
+      ],
+      from_app: ROOT_WORKFLOW_REFERENCE,
     },
     {
-      configured_value: 'sk-123************bc',
-      description: 'API credential',
-      has_configured_value: true,
-      has_last_deployed_value: true,
-      key: 'API_KEY',
-      value_type: EnvVarValueType.ENV_VAR_VALUE_TYPE_SECRET,
-    },
-    {
-      description: '',
-      has_configured_value: false,
-      has_last_deployed_value: true,
-      key: 'name',
-      last_deployed_value: 'environment variable 01',
-      value_type: EnvVarValueType.ENV_VAR_VALUE_TYPE_STRING,
+      environment_variable_slots: [
+        {
+          configured_value: 8080,
+          description: 'Workflow tool port',
+          has_configured_value: true,
+          has_last_deployed_value: false,
+          key: 'PORT',
+          value_type: EnvVarValueType.ENV_VAR_VALUE_TYPE_NUMBER,
+        },
+        {
+          configured_value: 'sk-child********bc',
+          description: 'Workflow tool API credential',
+          has_configured_value: true,
+          has_last_deployed_value: false,
+          key: 'API_KEY',
+          value_type: EnvVarValueType.ENV_VAR_VALUE_TYPE_SECRET,
+        },
+      ],
+      from_workflow_as_tool: {
+        paths: [{ workflows: [ROOT_WORKFLOW_REFERENCE, SUBWORKFLOW_REFERENCE] }],
+        workflow: SUBWORKFLOW_REFERENCE,
+      },
     },
   ],
 }
@@ -713,14 +769,23 @@ vi.mock('react-i18next', async () => {
     'deployments.studio.undeployConfirmDesc':
       'The app will stop running in this environment, and all of its access points will become unavailable.',
     'deployments.studio.undeployConfirmTitle': 'Undeploy {{versionName}} from {{envName}}',
+    'deployments.status.RUNTIME_INSTANCE_STATUS_DEPLOYING': 'Deploying',
+    'deployments.status.RUNTIME_INSTANCE_STATUS_FAILED': 'Deploy failed',
+    'deployments.status.RUNTIME_INSTANCE_STATUS_INVALID': 'Invalid',
     'deployments.status.RUNTIME_INSTANCE_STATUS_READY': 'Running',
+    'deployments.status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED': 'Not deployed',
+    'deployments.status.RUNTIME_INSTANCE_STATUS_UNDEPLOYING': 'Undeploying',
+    'deployments.status.RUNTIME_INSTANCE_STATUS_UNSPECIFIED': 'Unknown',
     'deployments.studio.activity.deploySucceeded': 'Deploy {{target}} succeeded',
     'deployments.studio.activity.meta': '{{name}} · {{time}}',
     'deployments.studio.versionValue': 'Version value',
     'deployments.studio.environmentsInUse': '{{used}} of {{total}} environments in use',
     'deployments.studio.environmentVariablesDescription':
       "Use the value from the version you're deploying, keep the last deployed value, or enter a custom one.",
+    'deployments.studio.precheck.from': 'From',
+    'deployments.studio.precheck.nodeCount_other': '{{count}} nodes',
     'deployments.studio.updatedAtBy': 'Updated at {{time}} by {{name}}',
+    'workflow.common.workflowAsTool': 'Workflow as Tool',
     'workflow.common.publishedBy': 'Published {{time}} by {{author}}',
   })
 })
@@ -842,6 +907,36 @@ describe('AppDeploy', () => {
       expect(getEnvironmentDeploymentActions(row)).toEqual(actions)
     },
   )
+
+  it.each([
+    [DeploymentStatus.DEPLOYMENT_STATUS_UNSPECIFIED, 'Unknown'],
+    [DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYED, 'Not deployed'],
+    [DeploymentStatus.DEPLOYMENT_STATUS_RUNNING, 'Running'],
+    [DeploymentStatus.DEPLOYMENT_STATUS_STARTING, 'Deploying'],
+    [DeploymentStatus.DEPLOYMENT_STATUS_STOPPING, 'Undeploying'],
+    [DeploymentStatus.DEPLOYMENT_STATUS_SUSPENDED, 'Unknown'],
+    [DeploymentStatus.DEPLOYMENT_STATUS_ERROR, 'Invalid'],
+    [DeploymentStatus.DEPLOYMENT_STATUS_UNKNOWN, 'Unknown'],
+  ] as const)('renders contract deployment status %s as %s', (status, label) => {
+    render(<DeploymentStatusView status={status} />)
+
+    expect(screen.getByText(label)).toBeInTheDocument()
+  })
+
+  it.each([
+    DeploymentStatus.DEPLOYMENT_STATUS_STARTING,
+    DeploymentStatus.DEPLOYMENT_STATUS_STOPPING,
+  ])('continues polling transitional status %s without a latest operation', (status) => {
+    expect(
+      shouldPollEnvironmentDeployment(
+        environmentDeployment({
+          id: 'transitioning',
+          name: 'Transitioning',
+          status,
+        }),
+      ),
+    ).toBe(true)
+  })
 
   it('disables Deploy latest and retries after the latest workflow request fails', async () => {
     const user = userEvent.setup()
@@ -1140,6 +1235,15 @@ describe('AppDeploy', () => {
       within(configurationDialog).getByRole('combobox', { name: 'Moonshot' }),
     ).toHaveTextContent('Enterprise deployment key')
     expect(
+      within(configurationDialog).queryByRole('button', { name: /Moonshot: From/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(configurationDialog).getByRole('button', {
+        name: 'Github: From Workflow as Tool',
+      }),
+    ).toBeInTheDocument()
+    expect(within(configurationDialog).getByText('From Workflow as Tool')).toBeInTheDocument()
+    expect(
       within(configurationDialog).getByRole('button', { name: 'common.appMenus.deploy' }),
     ).toBeEnabled()
     expect(
@@ -1148,19 +1252,35 @@ describe('AppDeploy', () => {
       ),
     ).toBeInTheDocument()
 
-    const portSource = within(configurationDialog).getByRole('combobox', { name: /PORT/ })
+    const rootVariables = within(
+      within(configurationDialog).getByRole('group', { name: 'Finance APP' }),
+    )
+    const subworkflowVariables = within(
+      within(configurationDialog).getByRole('group', { name: 'Workflow as Tool' }),
+    )
+    const portSource = rootVariables.getByRole('combobox', { name: /PORT/ })
     expect(portSource).toHaveTextContent('Version value')
-    const portInput = within(configurationDialog).getByRole('textbox', { name: 'PORT' })
+    const portInput = rootVariables.getByRole('textbox', { name: 'PORT' })
     expect(portInput).toBeDisabled()
     expect(portInput).toHaveAttribute('placeholder', '2')
-    expect(within(configurationDialog).getByRole('textbox', { name: 'API_KEY' })).toHaveAttribute(
+    expect(rootVariables.getByRole('textbox', { name: 'API_KEY' })).toHaveAttribute(
       'placeholder',
       'sk-123************bc',
     )
-    expect(within(configurationDialog).getByRole('textbox', { name: 'name' })).toHaveAttribute(
+    expect(rootVariables.getByRole('textbox', { name: 'name' })).toHaveAttribute(
       'placeholder',
       'environment variable 01',
     )
+    expect(subworkflowVariables.getByRole('textbox', { name: 'PORT' })).toHaveAttribute(
+      'placeholder',
+      '8080',
+    )
+
+    await user.hover(subworkflowVariables.getByRole('button', { name: 'Workflow as Tool' }))
+    const sourcePreview = await screen.findByRole('dialog', { name: 'Workflow as Tool' })
+    expect(
+      within(sourcePreview).getByRole('link', { name: /Finance APP.*Workflow as Tool/ }),
+    ).toHaveAttribute('href', '/app/app-workflow-tool/workflow')
 
     await user.click(portSource)
     expect(
@@ -1196,7 +1316,7 @@ describe('AppDeploy', () => {
     ).toBeInTheDocument()
   })
 
-  it('reconciles an environment variable source removed by refreshed deployment options', async () => {
+  it('requires a value after refreshed deployment options reconcile the source to custom', async () => {
     const user = userEvent.setup()
     const deploymentRequests: Request[] = []
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -1222,7 +1342,10 @@ describe('AppDeploy', () => {
     const configurationDialog = await screen.findByRole('dialog', {
       name: 'deployments.studio.deployConfiguration',
     })
-    await user.click(within(configurationDialog).getByRole('combobox', { name: /PORT/ }))
+    const rootVariables = within(
+      within(configurationDialog).getByRole('group', { name: 'Finance APP' }),
+    )
+    await user.click(rootVariables.getByRole('combobox', { name: /PORT/ }))
     await user.click(
       await screen.findByRole('option', {
         name: 'deployments.deployDrawer.envVarSource.lastDeployment',
@@ -1236,37 +1359,105 @@ describe('AppDeploy', () => {
     act(() => {
       view.queryClient.setQueryData(deploymentOptionsQuery.queryKey, {
         ...WORKFLOW_DEPLOYMENT_OPTIONS,
-        environment_variable_slots: WORKFLOW_DEPLOYMENT_OPTIONS.environment_variable_slots.map(
-          (slot) =>
-            slot.key === 'PORT'
-              ? {
-                  ...slot,
-                  has_configured_value: false,
-                  has_last_deployed_value: false,
-                }
-              : slot,
+        environment_variable_groups: WORKFLOW_DEPLOYMENT_OPTIONS.environment_variable_groups.map(
+          (group) => ({
+            ...group,
+            environment_variable_slots: group.from_app
+              ? group.environment_variable_slots.map((slot) =>
+                  slot.key === 'PORT'
+                    ? {
+                        ...slot,
+                        has_configured_value: false,
+                        has_last_deployed_value: false,
+                      }
+                    : slot,
+                )
+              : group.environment_variable_slots,
+          }),
         ),
       })
     })
 
     await waitFor(() => {
-      expect(within(configurationDialog).getByRole('combobox', { name: /PORT/ })).toHaveTextContent(
+      expect(rootVariables.getByRole('combobox', { name: /PORT/ })).toHaveTextContent(
         'deployments.deployDrawer.envVarSource.literal',
       )
     })
-    expect(within(configurationDialog).getByRole('spinbutton', { name: 'PORT' })).toBeEnabled()
+    const customPortInput = rootVariables.getByRole('spinbutton', { name: 'PORT' })
+    expect(customPortInput).toBeEnabled()
 
+    await user.click(
+      within(configurationDialog).getByRole('button', { name: 'common.appMenus.deploy' }),
+    )
+    expect(deploymentRequests).toHaveLength(0)
+    expect(toast.error).toHaveBeenCalledWith('Finance APP · PORT: workflow.env.modal.valueRequired')
+
+    await user.type(customPortInput, '3000')
     await user.click(
       within(configurationDialog).getByRole('button', { name: 'common.appMenus.deploy' }),
     )
     await waitFor(() => expect(deploymentRequests).toHaveLength(1))
 
     const body = await deploymentRequests[0]!.json()
-    expect(body.environment_variables).toContainEqual({
+    expect(body.environment_variable_groups[0].environment_variables).toContainEqual({
       key: 'PORT',
-      value: '',
+      value: 3000,
       value_source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_CUSTOM,
     })
+  })
+
+  it('shows a toast instead of submitting when a credential is missing', async () => {
+    const user = userEvent.setup()
+    const deploymentRequests: Request[] = []
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init)
+      if (!request.url.includes('/deployment:deploy'))
+        throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+
+      deploymentRequests.push(request.clone())
+      return new Response(JSON.stringify({ message: 'Stop after capturing the request' }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 502,
+      })
+    })
+    const view = render(<AppDeploy />)
+    const deploymentOptionsQuery = workflowDeploymentOptionsQueryOptions(
+      'workflow-version-6',
+      'dev',
+    )
+    act(() => {
+      view.queryClient.setQueryData(deploymentOptionsQuery.queryKey, {
+        ...WORKFLOW_DEPLOYMENT_OPTIONS,
+        credential_slots: WORKFLOW_DEPLOYMENT_OPTIONS.credential_slots.map((slot) =>
+          slot.provider_id === 'moonshot'
+            ? { ...slot, last_deployed_credential_id: undefined }
+            : slot,
+        ),
+      })
+    })
+
+    await user.click(screen.getByRole('button', { name: 'common.appMenus.deploy' }))
+    await user.click(screen.getByRole('menuitem', { name: /Dev/ }))
+    const versionDialog = await screen.findByRole('dialog', {
+      name: 'deployments.versions.deployTo:{"name":"Dev"}',
+    })
+    await user.click(within(versionDialog).getByRole('button', { name: /Release 6/ }))
+
+    const configurationDialog = await screen.findByRole('dialog', {
+      name: 'deployments.studio.deployConfiguration',
+    })
+    const deployButton = within(configurationDialog).getByRole('button', {
+      name: 'common.appMenus.deploy',
+    })
+    expect(
+      within(configurationDialog).getByRole('combobox', { name: 'Moonshot' }),
+    ).toHaveTextContent('deployments.deployDrawer.selectCredential')
+    expect(deployButton).toBeEnabled()
+
+    await user.click(deployButton)
+
+    expect(deploymentRequests).toHaveLength(0)
+    expect(toast.error).toHaveBeenCalledWith('Moonshot: deployments.deployDrawer.selectCredential')
   })
 
   it('deploys the selected workflow configuration and refreshes the deployment list', async () => {
@@ -1346,15 +1537,18 @@ describe('AppDeploy', () => {
     const configurationDialog = await screen.findByRole('dialog', {
       name: 'deployments.studio.deployConfiguration',
     })
+    const rootVariables = within(
+      within(configurationDialog).getByRole('group', { name: 'Finance APP' }),
+    )
     await user.click(within(configurationDialog).getByRole('combobox', { name: 'Moonshot' }))
     await user.click(await screen.findByRole('option', { name: 'Development key' }))
-    await user.click(within(configurationDialog).getByRole('combobox', { name: /PORT/ }))
+    await user.click(rootVariables.getByRole('combobox', { name: /PORT/ }))
     await user.click(
       await screen.findByRole('option', {
         name: 'deployments.deployDrawer.envVarSource.literal',
       }),
     )
-    await user.type(within(configurationDialog).getByRole('spinbutton', { name: 'PORT' }), '3000')
+    await user.type(rootVariables.getByRole('spinbutton', { name: 'PORT' }), '3000')
     await user.click(
       within(configurationDialog).getByRole('button', { name: 'common.appMenus.deploy' }),
     )
@@ -1391,19 +1585,37 @@ describe('AppDeploy', () => {
           provider_id: 'github',
         },
       ],
-      environment_variables: [
+      environment_variable_groups: [
         {
-          key: 'PORT',
-          value: '3000',
-          value_source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_CUSTOM,
+          environment_variables: [
+            {
+              key: 'PORT',
+              value: 3000,
+              value_source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_CUSTOM,
+            },
+            {
+              key: 'API_KEY',
+              value_source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_CONFIGURED,
+            },
+            {
+              key: 'name',
+              value_source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED,
+            },
+          ],
+          workflow_id: 'workflow-version-6',
         },
         {
-          key: 'API_KEY',
-          value_source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_CONFIGURED,
-        },
-        {
-          key: 'name',
-          value_source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED,
+          environment_variables: [
+            {
+              key: 'PORT',
+              value_source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_CONFIGURED,
+            },
+            {
+              key: 'API_KEY',
+              value_source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_CONFIGURED,
+            },
+          ],
+          workflow_id: 'workflow-tool',
         },
       ],
     })
@@ -1700,6 +1912,45 @@ describe('AppDeploy', () => {
         name: 'deployments.studio.changeVersion · Pre-release',
       }),
     ).toBeInTheDocument()
+  })
+
+  it('keeps deployment configuration and entered values open after an outside press', async () => {
+    const user = userEvent.setup()
+    render(<AppDeploy />)
+
+    const preReleaseRow = within(screen.getByRole('row', { name: /Pre-release/ }))
+    await user.click(
+      preReleaseRow.getByRole('button', {
+        name: 'deployments.studio.deployLatest',
+      }),
+    )
+
+    const configurationDialog = await screen.findByRole('dialog', {
+      name: 'deployments.studio.deployConfiguration',
+    })
+    const rootVariables = within(
+      within(configurationDialog).getByRole('group', { name: 'Finance APP' }),
+    )
+    await user.click(rootVariables.getByRole('combobox', { name: /PORT/ }))
+    await user.click(
+      await screen.findByRole('option', {
+        name: 'deployments.deployDrawer.envVarSource.literal',
+      }),
+    )
+    const customPortInput = rootVariables.getByRole('spinbutton', { name: 'PORT' })
+    await user.type(customPortInput, '3000')
+
+    await user.click(document.body)
+
+    expect(configurationDialog).toBeInTheDocument()
+    expect(customPortInput).toHaveValue(3000)
+
+    await user.click(within(configurationDialog).getByRole('button', { name: 'Cancel' }))
+    expect(
+      screen.queryByRole('dialog', {
+        name: 'deployments.studio.deployConfiguration',
+      }),
+    ).not.toBeInTheDocument()
   })
 
   it('opens the failed version configuration for retry without a version-selection step', async () => {

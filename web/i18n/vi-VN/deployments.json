@@ -78,6 +78,8 @@
   "studio.noCredentialsYet": "Chưa có thông tin xác thực",
   "studio.noCredentialsYetDescription": "Thêm thông tin xác thực trong phần Tích hợp hoặc cài đặt nút",
   "studio.precheck.description": "Phiên bản này chứa các loại nút chưa được hỗ trợ:",
+  "studio.precheck.from": "Từ",
+  "studio.precheck.nodeCount_other": "{{count}} nút",
   "studio.precheck.supportMessage": "Các loại nút này sẽ được hỗ trợ trong một bản phát hành trong tương lai.",
   "studio.precheck.title": "Không thể triển khai phiên bản này vào môi trường này",
   "studio.publisher.deployingVersion": "Đang triển khai: {{version}}",

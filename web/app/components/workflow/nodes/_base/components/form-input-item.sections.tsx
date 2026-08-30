@@ -61,7 +61,7 @@ export const MultiSelectField: FC<MultiSelectFieldProps> = ({
 
   return (
     <Select multiple value={value} onValueChange={onChange} disabled={disabled || isLoading}>
-      <div className="grow">
+      <div className="min-w-0 grow">
         <SelectTrigger aria-label={placeholder || selectedLabel || 'Options'}>
           <span className={cn('flex min-w-0 items-center', textClassName)}>
             {isLoading && <LoadingIndicator />}

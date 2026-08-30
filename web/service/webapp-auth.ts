@@ -39,12 +39,12 @@ export function getWebAppPassport(address: WebAppAddress | null) {
   return localStorage.getItem(PASSPORT_LOCAL_STORAGE_NAME(getWebAppPassportKey(address))) || ''
 }
 
-export function getOrCreateWebAppVisitorId(address: WebAppAddress) {
+export function getOrCreateWebAppUserId(address: WebAppAddress) {
   if (address.kind !== 'environment') return ''
 
   const key = `visitor-${getWebAppScopeKey(address)}`
-  const visitorId = localStorage.getItem(key)
-  if (visitorId) return visitorId
+  const userId = localStorage.getItem(key)
+  if (userId) return userId
 
   const created = uuidV4()
   localStorage.setItem(key, created)

@@ -4,22 +4,23 @@ import type { WorkflowVersion } from '@dify/contracts/enterprise-app-deploy/type
 import type { Node } from '@/app/components/workflow/types'
 import { DeploymentStatus as DeploymentStatusEnum } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { useQuery } from '@tanstack/react-query'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useMCPServerDetail } from '@/service/use-tools'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
-import { ACCESS_POINT_ORDER, getAccessPointHref } from '../access-point'
 import { AccessPointIcon } from '../shared/access-point-icon'
 import { DeploymentStatus } from '../shared/deployment-status'
 import { VersionLabel } from '../shared/version-label'
+import { ACCESS_POINT_ORDER, getAccessPointHref } from '../utils/access-point'
 
 function Divider() {
   return <div className="i-custom-vender-deploy-line-5 h-10 w-3" />
 }
 
-export function BuiltInEnvironmentCard() {
+export const BuiltInEnvironmentCard = memo(() => {
   const { t } = useTranslation('deployments')
   const { formatTime } = useTimestamp()
   const appDetail = useAppStore((state) => state.appDetail)
@@ -111,4 +112,6 @@ export function BuiltInEnvironmentCard() {
       </div>
     </section>
   )
-}
+})
+
+BuiltInEnvironmentCard.displayName = 'BuiltInEnvironmentCard'

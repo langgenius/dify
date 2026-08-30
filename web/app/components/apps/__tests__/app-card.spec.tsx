@@ -386,15 +386,18 @@ vi.mock('@/features/tag-management/components/app-card-tags', () => ({
   AppCardTags: ({
     tags,
     canBindOrUnbindTags,
+    appName,
   }: {
     tags?: { id: string; name: string }[]
     canBindOrUnbindTags?: boolean
+    appName: string
   }) => {
     return React.createElement(
       'div',
       {
         'aria-label': 'tag-selector',
         'data-can-bind-or-unbind-tags': String(Boolean(canBindOrUnbindTags)),
+        'data-app-name': appName,
       },
       tags?.map((tag: { id: string; name: string }) =>
         React.createElement('span', { key: tag.id }, tag.name),
@@ -472,6 +475,8 @@ describe('AppCard', () => {
 
       const card = screen.getByRole('button', { name: 'Preview Only App' })
       expect(card).toHaveClass('opacity-60')
+      expect(screen.getByRole('listitem')).toContainElement(card)
+      expect(card).toHaveAccessibleDescription('Only visible metadata')
       expect(card).not.toHaveAttribute('aria-disabled')
       expect(screen.getByText('Only visible metadata')).toBeInTheDocument()
       expect(screen.getByText('Readonly Author')).toBeInTheDocument()
@@ -552,6 +557,17 @@ describe('AppCard', () => {
       const emojiIcon = container.querySelector(`em-emoji[id="${mockApp.icon}"]`)
       const imageIcon = container.querySelector('img')
       expect(emojiIcon || imageIcon).toBeTruthy()
+      expect(emojiIcon?.parentElement).toHaveAttribute('aria-hidden', 'true')
+    })
+
+    it('should treat a redundant image icon as decorative', () => {
+      const imageApp = createMockApp({
+        icon_type: 'image',
+        icon_url: 'https://example.com/app-icon.png',
+      })
+      const { container } = render(<AppCard app={imageApp} />)
+
+      expect(container.querySelector('img')).toHaveAttribute('alt', '')
     })
 
     it('should render app type icon', () => {
@@ -579,7 +595,7 @@ describe('AppCard', () => {
       }
       render(<AppCard app={appWithTags} />)
       // Verify the tag selector component renders
-      expect(screen.getByLabelText('tag-selector')).toBeInTheDocument()
+      expect(screen.getByLabelText('tag-selector')).toHaveAttribute('data-app-name', 'Test App')
     })
 
     it('should display refreshed tag names from app props when tag ids stay the same', () => {
@@ -670,6 +686,10 @@ describe('AppCard', () => {
       const cardLink = screen.getByRole('link', { name: 'Test App' })
 
       expect(cardLink).toHaveAttribute('href', '/app/test-app-id/configuration')
+      expect(cardLink).toHaveAccessibleName('Test App')
+      expect(cardLink).toHaveAccessibleDescription('Test app description')
+      expect(cardLink).toHaveAttribute('aria-describedby')
+      expect(screen.getByRole('listitem')).toContainElement(cardLink)
     })
 
     it('should expose a visible focus ring on the card link', () => {
@@ -684,7 +704,7 @@ describe('AppCard', () => {
       const user = userEvent.setup()
       render(<AppCard app={mockApp} />)
 
-      const starToggle = screen.getByRole('button', { name: 'app.studio.starApp' })
+      const starToggle = screen.getByRole('button', { name: 'app.studio.starApp: Test App' })
       expect(starToggle).toHaveAttribute('aria-pressed', 'false')
 
       await user.click(starToggle)
@@ -702,8 +722,12 @@ describe('AppCard', () => {
       const starredApp = createMockApp({ is_starred: true })
       render(<AppCard app={starredApp} />)
 
-      const starToggle = screen.getByRole('button', { name: 'app.studio.starApp' })
+      const starToggle = screen.getByRole('button', { name: 'app.studio.starApp: Test App' })
       expect(starToggle).toHaveAttribute('aria-pressed', 'true')
+
+      await user.hover(starToggle)
+
+      expect(await screen.findByText('app.studio.starApp')).toBeInTheDocument()
 
       await user.click(starToggle)
 

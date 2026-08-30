@@ -116,7 +116,11 @@ vi.mock('@/app/components/base/app-icon', () => ({
 }))
 
 vi.mock('@/features/tag-management/components/skill-card-tags', () => ({
-  SkillCardTags: ({ tags }: { tags: string[] }) => <div>{tags.join(', ')}</div>,
+  SkillCardTags: ({ tags }: { tags: string[] }) => (
+    <button type="button" aria-label={tags.join(', ')}>
+      {tags.join(', ')}
+    </button>
+  ),
 }))
 
 vi.mock('../skill-list-tag-management-modal', () => ({
@@ -310,6 +314,7 @@ describe('SkillsPage', () => {
     renderSkillsPage()
 
     const skillLink = await screen.findByRole('link', { name: /Refund approval/ })
+    expect(screen.getByRole('article', { name: 'Refund approval' })).toBeInTheDocument()
     expect(skillLink).toHaveAttribute('href', '/skills/skill-1')
     expect(screen.getByText('refund-approval')).toBeInTheDocument()
     expect(screen.getByText('Handle refund requests.')).toBeInTheDocument()
@@ -320,6 +325,23 @@ describe('SkillsPage', () => {
     expect(
       screen.getByText('skill.skillManagement.publishedAt:{"time":"2 hours ago"}'),
     ).toBeInTheDocument()
+  })
+
+  it('tabs from the card More action to its tag trigger', async () => {
+    const user = userEvent.setup()
+    renderSkillsPage()
+
+    const skillLink = await screen.findByRole('link', { name: /Refund approval/ })
+    const moreButton = screen.getByRole('button', {
+      name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
+    })
+    const tagTrigger = screen.getByRole('button', { name: 'support' })
+
+    skillLink.focus()
+    await user.tab()
+    expect(moreButton).toHaveFocus()
+    await user.tab()
+    expect(tagTrigger).toHaveFocus()
   })
 
   it('renders draft update time as relative time', async () => {
@@ -358,6 +380,16 @@ describe('SkillsPage', () => {
         },
       })
     })
+  })
+
+  it('uses the localized Skills search hint as the search placeholder', async () => {
+    renderSkillsPage()
+
+    expect(
+      await screen.findByRole('searchbox', {
+        name: 'skill.skillManagement.searchLabel',
+      }),
+    ).toHaveAttribute('placeholder', 'skill.skillManagement.searchPlaceholder')
   })
 
   it('clears stale tag names from the URL-backed filter state', async () => {

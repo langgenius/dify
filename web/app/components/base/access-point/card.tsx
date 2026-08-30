@@ -5,6 +5,7 @@ import type { AccessPointStatus } from './status'
 import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot, StatusDotSkeleton } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useId } from 'react'
 
 type AccessPointCardProps = {
@@ -22,6 +23,7 @@ type AccessPointCardProps = {
   onEnabledChange?: (enabled: boolean) => void
   showStatus?: boolean
   switchDisabled?: boolean
+  switchDisabledReason?: string
   switchLabel?: string
 }
 
@@ -39,6 +41,7 @@ export function AccessPointCard({
   status,
   statusLabel,
   switchDisabled = false,
+  switchDisabledReason,
   switchLabel,
   title,
 }: AccessPointCardProps) {
@@ -46,7 +49,22 @@ export function AccessPointCard({
   const isEnabled = status === 'inService'
   const isLoading = status === 'loading'
   const showSwitch = (status === 'disabled' || status === 'inService') && Boolean(onEnabledChange)
+  const hasSwitchDisabledReason = switchDisabled && Boolean(switchDisabledReason)
   const Heading = headingLevel === 3 ? 'h3' : 'h2'
+  const switchControl = (
+    <Switch
+      checked={isEnabled}
+      disabled={switchDisabled && !hasSwitchDisabledReason}
+      loading={busy}
+      {...(hasSwitchDisabledReason
+        ? { readOnly: true, 'aria-disabled': true, 'data-disabled': '' }
+        : {})}
+      aria-label={switchLabel || title}
+      onCheckedChange={(enabled) => {
+        if (!switchDisabled) onEnabledChange?.(enabled)
+      }}
+    />
+  )
 
   return (
     <section
@@ -89,15 +107,15 @@ export function AccessPointCard({
               )}
               {statusLabel}
             </span>
-            {showSwitch && (
-              <Switch
-                checked={isEnabled}
-                disabled={switchDisabled}
-                loading={busy}
-                aria-label={switchLabel || title}
-                onCheckedChange={onEnabledChange}
-              />
-            )}
+            {showSwitch &&
+              (hasSwitchDisabledReason ? (
+                <Tooltip>
+                  <TooltipTrigger render={switchControl} />
+                  <TooltipContent role="tooltip">{switchDisabledReason}</TooltipContent>
+                </Tooltip>
+              ) : (
+                switchControl
+              ))}
           </>
         )}
       </header>

@@ -78,6 +78,8 @@
   "studio.noCredentialsYet": "Учётных данных пока нет",
   "studio.noCredentialsYetDescription": "Добавьте учётные данные в разделе «Интеграции» или в настройках узла",
   "studio.precheck.description": "Она содержит типы узлов, которые пока не поддерживаются:",
+  "studio.precheck.from": "Из",
+  "studio.precheck.nodeCount_other": "{{count}} узлов",
   "studio.precheck.supportMessage": "Поддержка этих типов узлов появится в одном из будущих выпусков.",
   "studio.precheck.title": "Эту версию нельзя развернуть в этой среде",
   "studio.publisher.deployingVersion": "Развертывание: {{version}}",

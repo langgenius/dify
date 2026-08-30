@@ -23,6 +23,7 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { Input } from '@langgenius/dify-ui/input'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiAddLine, RiDeleteBinLine, RiEditLine } from '@remixicon/react'
@@ -31,7 +32,6 @@ import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
-import Input from '@/app/components/base/input'
 import { CreateMetadataModal } from '@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal'
 import { getIconClassName } from '../utils/get-icon'
 import Field from './field'
@@ -303,7 +303,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
                         <Input
                           aria-label={t(($) => $[`${i18nPrefix}.name`], { ns: 'dataset' })}
                           value={templeName}
-                          onChange={(e) => setTempleName(e.target.value)}
+                          onValueChange={setTempleName}
                           placeholder={t(($) => $[`${i18nPrefix}.namePlaceholder`], {
                             ns: 'dataset',
                           })}

@@ -9,12 +9,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import {
-  fetchAppDetail,
-  updateAppSiteAccessToken,
-  updateAppSiteConfig,
-  updateAppSiteStatus,
-} from '@/service/apps'
+import { fetchAppDetail, updateAppSiteAccessToken, updateAppSiteConfig } from '@/service/apps'
 import { consoleQuery } from '@/service/client'
 import { asyncRunSafe } from '@/utils'
 
@@ -32,7 +27,7 @@ export function useAccessPointActions(appId: string, canEdit: boolean) {
     }
   }, [appId, setAppDetail])
 
-  const handleResult = useCallback(
+  const handleActionResult = useCallback(
     (error: Error | null, message?: I18nKeysByPrefix<'common', 'actionMsg.'>) => {
       const type = error ? 'error' : 'success'
       const resolvedMessage = message ?? (error ? 'modifiedUnsuccessfully' : 'modifiedSuccessfully')
@@ -46,33 +41,6 @@ export function useAccessPointActions(appId: string, canEdit: boolean) {
       })
     },
     [refreshAppDetail, t],
-  )
-
-  const changeSiteStatus = useCallback(
-    async (enabled: boolean) => {
-      if (!canEdit) return
-      const [error] = await asyncRunSafe<App>(
-        updateAppSiteStatus({
-          url: `/apps/${appId}/site-enable`,
-          body: { enable_site: enabled },
-        }) as Promise<App>,
-      )
-      handleResult(error)
-    },
-    [appId, canEdit, handleResult],
-  )
-
-  const changeApiStatus = useCallback(
-    async (enabled: boolean) => {
-      const [error] = await asyncRunSafe<App>(
-        updateAppSiteStatus({
-          url: `/apps/${appId}/api-enable`,
-          body: { enable_api: enabled },
-        }) as Promise<App>,
-      )
-      handleResult(error)
-    },
-    [appId, handleResult],
   )
 
   const saveSiteConfig = useCallback(
@@ -89,9 +57,9 @@ export function useAccessPointActions(appId: string, canEdit: boolean) {
         void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
         void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
       }
-      handleResult(error)
+      handleActionResult(error)
     },
-    [appId, canEdit, handleResult, queryClient],
+    [appId, canEdit, handleActionResult, queryClient],
   )
 
   const regenerateSiteCode = useCallback(async () => {
@@ -101,13 +69,10 @@ export function useAccessPointActions(appId: string, canEdit: boolean) {
         url: `/apps/${appId}/site/access-token-reset`,
       }) as Promise<UpdateAppSiteCodeResponse>,
     )
-    handleResult(error, error ? 'generatedUnsuccessfully' : 'generatedSuccessfully')
-  }, [appId, canEdit, handleResult])
+    handleActionResult(error, error ? 'generatedUnsuccessfully' : 'generatedSuccessfully')
+  }, [appId, canEdit, handleActionResult])
 
   return {
-    changeApiStatus,
-    changeSiteStatus,
-    handleResult,
     refreshAppDetail,
     regenerateSiteCode,
     saveSiteConfig,

@@ -78,6 +78,8 @@
   "studio.noCredentialsYet": "Noch keine Anmeldedaten",
   "studio.noCredentialsYetDescription": "Fügen Sie Anmeldedaten in Integrationen oder den Knoteneinstellungen hinzu",
   "studio.precheck.description": "Sie enthält Knotentypen, die noch nicht unterstützt werden:",
+  "studio.precheck.from": "Von",
+  "studio.precheck.nodeCount_other": "{{count}} Knoten",
   "studio.precheck.supportMessage": "Die Unterstützung für diese Knotentypen wird in einer zukünftigen Version verfügbar sein.",
   "studio.precheck.title": "Diese Version kann nicht in dieser Umgebung bereitgestellt werden",
   "studio.publisher.deployingVersion": "Wird bereitgestellt: {{version}}",

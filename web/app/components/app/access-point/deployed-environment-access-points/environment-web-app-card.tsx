@@ -98,9 +98,8 @@ export function EnvironmentWebAppCard({
     subjectsQuery.data.subjects.length > 0
   const siteMutation = useMutation(
     consoleQuery.enterprise.appDeploy.accessService.updateEnvironmentSite.mutationOptions({
-      onSuccess: (updatedSite) => {
-        queryClient.setQueryData(siteQueryOptions.queryKey, updatedSite)
-        toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+      scope: {
+        id: `environment-web-app-toggle:${appId}:${environmentId}`,
       },
       onError: () => {
         toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
@@ -122,7 +121,11 @@ export function EnvironmentWebAppCard({
     ),
   )
   const webAppUrl = getEnvironmentWebAppUrl(site, appInfo?.mode)
-  const running = Boolean(siteQuery.isSuccess && site?.enabled)
+  const pendingEnabled = siteMutation.variables?.body.enabled
+  const optimisticEnabled =
+    siteMutation.isPending && pendingEnabled !== undefined ? pendingEnabled : Boolean(site?.enabled)
+  const running = siteQuery.isSuccess && optimisticEnabled
+  const actionsAvailable = running && !siteMutation.isPending
   const status = siteQuery.isPending
     ? 'loading'
     : siteQuery.isError
@@ -180,13 +183,12 @@ export function EnvironmentWebAppCard({
         switchDisabled={!canManage}
         switchLabel={t(($) => $['overview.appInfo.title'], { ns: 'appOverview' })}
         onEnabledChange={siteQuery.isSuccess ? handleEnabledChange : undefined}
-        busy={siteMutation.isPending}
         actions={
           <>
             <Button
               className="flex items-center gap-1 px-3"
               variant="secondary"
-              disabled={!running || !apiQuery.isSuccess}
+              disabled={!actionsAvailable || !apiQuery.isSuccess}
               onClick={() => setShowCustomize(true)}
             >
               <span aria-hidden className="i-custom-vender-deploy-code-block size-4" />
@@ -219,7 +221,7 @@ export function EnvironmentWebAppCard({
           showQrCode
           showRegenerate
           openLabel={t(($) => $['studio.accessPoint.open'], { ns: 'deployments' })}
-          openUrl={webAppUrl}
+          openUrl={site?.enabled && !siteMutation.isPending ? webAppUrl : undefined}
           regenerateLabel={t(($) => $['overview.appInfo.regenerate'], {
             ns: 'appOverview',
           })}

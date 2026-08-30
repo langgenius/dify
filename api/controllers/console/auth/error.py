@@ -175,6 +175,11 @@ class EmailAlreadyInUseError(BaseHTTPException):
     code = 400
 
 
+class NormalizedEmailAlreadyInUseError(EmailAlreadyInUseError):
+    error_code = "normalized_email_already_in_use"
+    description = "An account with an equivalent email address already exists."
+
+
 class OwnerTransferLimitError(BaseHTTPException):
     error_code = "owner_transfer_limit"
     description = "Too many failed owner transfer attempts. Please try again in 24 hours."

@@ -78,6 +78,8 @@
   "studio.noCredentialsYet": "아직 자격 증명이 없습니다",
   "studio.noCredentialsYetDescription": "통합 또는 노드 설정에서 자격 증명을 추가하세요",
   "studio.precheck.description": "아직 지원되지 않는 노드 유형이 포함되어 있습니다:",
+  "studio.precheck.from": "출처",
+  "studio.precheck.nodeCount_other": "노드 {{count}}개",
   "studio.precheck.supportMessage": "이러한 노드 유형은 향후 릴리스에서 지원될 예정입니다.",
   "studio.precheck.title": "이 버전은 이 환경에 배포할 수 없습니다",
   "studio.publisher.deployingVersion": "배포 중: {{version}}",

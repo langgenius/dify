@@ -78,6 +78,8 @@
   "studio.noCredentialsYet": "Belum ada kredensial",
   "studio.noCredentialsYetDescription": "Tambahkan kredensial di Integrasi atau pengaturan node",
   "studio.precheck.description": "Versi ini berisi jenis node yang belum didukung:",
+  "studio.precheck.from": "Dari",
+  "studio.precheck.nodeCount_other": "{{count}} simpul",
   "studio.precheck.supportMessage": "Dukungan untuk jenis node ini akan tersedia dalam rilis mendatang.",
   "studio.precheck.title": "Versi ini tidak dapat diterapkan ke lingkungan ini",
   "studio.publisher.deployingVersion": "Menerapkan: {{version}}",

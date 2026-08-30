@@ -6,7 +6,7 @@ import { skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithQuery } from 'jotai-tanstack-query'
 import { selectAtom, useHydrateAtoms } from 'jotai/utils'
-import { shouldPollEnvironmentDeployment } from '@/app/components/app/deploy/state'
+import { shouldPollEnvironmentDeployment } from '@/app/components/app/deploy/utils/environment-deployment'
 import { consoleQuery } from '@/service/client'
 
 export const BUILT_IN_ENVIRONMENT_ID = 'built-in'

@@ -2,6 +2,7 @@
 
 import time
 from collections.abc import Callable
+from typing import cast
 
 import jwt
 import pytest
@@ -28,9 +29,9 @@ def _view(grant: FileGrantClaims) -> FileGrantClaims:
 
 
 def _call(app: Flask, authorization: str | None) -> FileGrantClaims:
-    headers = {"Authorization": authorization} if authorization is not None else {}
+    headers: dict[str, str] = {"Authorization": authorization} if authorization is not None else {}
     with app.test_request_context("/", method="POST", headers=headers):
-        return _view()
+        return cast(Callable[[], FileGrantClaims], _view)()
 
 
 def _grant(*scopes: FileGrantScope, ttl_seconds: int = 600) -> str:

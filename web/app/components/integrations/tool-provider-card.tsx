@@ -128,25 +128,25 @@ function IntegrationsToolProviderCard({
         </div>
       </div>
       <div className="flex h-6.5 w-full items-center gap-2 px-3 pt-1.5 pb-1">
-        <div className="flex h-4 min-w-0 shrink-0 items-center gap-0.5 system-xs-regular">
+        <div className="flex h-4 min-w-0 flex-1 items-center gap-0.5 system-xs-regular">
           {!!org && (
             <>
-              <div className="truncate text-text-tertiary" title={org}>
+              <div className="min-w-0 flex-1 truncate text-text-tertiary" title={org}>
                 {org}
               </div>
-              <div className="text-text-quaternary">/</div>
+              <div className="shrink-0 text-text-quaternary">/</div>
             </>
           )}
-          <div className="truncate text-text-tertiary" title={name}>
+          <div className="min-w-0 flex-1 truncate text-text-tertiary" title={name}>
             {name}
           </div>
         </div>
         {toolsCount > 0 && (
           <>
             <div className="shrink-0 system-xs-regular text-text-quaternary">·</div>
-            <div className="flex min-w-0 flex-1 items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1">
               <RiLoginCircleLine className="size-3 shrink-0 text-text-tertiary" />
-              <div className="truncate system-xs-regular text-text-tertiary">
+              <div className="system-xs-regular text-text-tertiary">
                 {t(($) => $['mcp.toolsCount'], { ns: 'tools', count: toolsCount })}
               </div>
             </div>

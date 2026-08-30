@@ -1,6 +1,6 @@
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import type { EnvironmentDeploymentAction } from '../state'
-import type { DeploymentVersion } from '../version'
+import type { EnvironmentDeploymentAction } from '../utils/environment-deployment'
+import type { DeploymentVersion } from '../utils/version'
 import type { UndeployHandler } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -16,7 +16,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { Fragment, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
-import { getEnvironmentDeploymentActions } from '../state'
+import { getEnvironmentDeploymentActions } from '../utils/environment-deployment'
 import { UndeployConfirmDialog } from './undeploy-confirm-dialog'
 
 function rowActionLabel(

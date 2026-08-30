@@ -1,6 +1,6 @@
 'use client'
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
@@ -91,9 +91,12 @@ const ChangePasswordForm = () => {
             </h1>
           </div>
           <div className="mx-auto mt-6 w-full">
-            <Button variant="primary" className="w-full text-sm!">
-              <a href="https://dify.ai">{t(($) => $.explore, { ns: 'login' })}</a>
-            </Button>
+            <a
+              href="https://dify.ai"
+              className={cn(buttonVariants({ variant: 'primary' }), 'w-full text-sm!')}
+            >
+              {t(($) => $.explore, { ns: 'login' })}
+            </a>
           </div>
         </div>
       )}
@@ -171,9 +174,12 @@ const ChangePasswordForm = () => {
             </h1>
           </div>
           <div className="mx-auto mt-6 w-full">
-            <Button variant="primary" className="w-full">
-              <a href={`${basePath}/signin`}>{t(($) => $.passwordChanged, { ns: 'login' })}</a>
-            </Button>
+            <a
+              href={`${basePath}/signin`}
+              className={cn(buttonVariants({ variant: 'primary' }), 'w-full')}
+            >
+              {t(($) => $.passwordChanged, { ns: 'login' })}
+            </a>
           </div>
         </div>
       )}

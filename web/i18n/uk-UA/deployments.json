@@ -78,6 +78,8 @@
   "studio.noCredentialsYet": "Облікових даних ще немає",
   "studio.noCredentialsYetDescription": "Додайте облікові дані в розділі «Інтеграції» або в налаштуваннях вузла",
   "studio.precheck.description": "Вона містить типи вузлів, які ще не підтримуються:",
+  "studio.precheck.from": "З",
+  "studio.precheck.nodeCount_other": "{{count}} вузлів",
   "studio.precheck.supportMessage": "Підтримка цих типів вузлів з’явиться в одному з майбутніх випусків.",
   "studio.precheck.title": "Цю версію не можна розгорнути в цьому середовищі",
   "studio.publisher.deployingVersion": "Розгортання: {{version}}",

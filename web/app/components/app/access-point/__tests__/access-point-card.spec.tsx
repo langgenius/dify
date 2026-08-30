@@ -1,5 +1,6 @@
 import type { AccessPointStatus } from '@/app/components/base/access-point/status'
 import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { render } from '@/test/console/render'
 
@@ -47,5 +48,35 @@ describe('AccessPointCard', () => {
     if (busy) expect(card).toHaveAttribute('aria-busy', 'true')
     else expect(card).not.toHaveAttribute('aria-busy')
     expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+  })
+
+  it('keeps an unavailable switch focusable and explains why it is disabled', async () => {
+    const user = userEvent.setup()
+    const onEnabledChange = vi.fn()
+    render(
+      <AccessPointCard
+        title="Web App"
+        description="Web application access"
+        icon="i-ri-robot-2-line"
+        status="disabled"
+        statusLabel="Disabled"
+        switchDisabled
+        switchDisabledReason="Publish first"
+        switchLabel="Toggle Web App"
+        onEnabledChange={onEnabledChange}
+      >
+        Access URL
+      </AccessPointCard>,
+    )
+
+    const accessSwitch = screen.getByRole('switch', { name: 'Toggle Web App' })
+    expect(accessSwitch).toHaveAttribute('aria-disabled', 'true')
+
+    await user.tab()
+    expect(accessSwitch).toHaveFocus()
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Publish first')
+
+    await user.click(accessSwitch)
+    expect(onEnabledChange).not.toHaveBeenCalled()
   })
 })

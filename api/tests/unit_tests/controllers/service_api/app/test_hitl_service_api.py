@@ -141,7 +141,7 @@ def _build_advanced_chat_paused_blocking_response() -> AdvancedChatPausedBlockin
         paused_nodes=["node-1"],
         reasons=[
             {
-                "type": DifyHITLEventType.HUMAN_INPUT_REQUIRED.value,
+                "TYPE": DifyHITLEventType.HUMAN_INPUT_REQUIRED.value,
                 "form_id": "form-1",
                 "expiration_time": 100,
             }
@@ -312,7 +312,7 @@ class TestHitlServiceApi:
         end_user = SimpleNamespace(id="end-user-1")
 
         with app.test_request_context("/workflow/run-1/events?user=u1&continue_on_pause=true", method="GET"):
-            response = handler(api, app_model=app_model, end_user=end_user, task_id="run-1")
+            response = handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
 
         assert response.get_data(as_text=True) == "data: streamed\n\n"
         msg_generator.retrieve_events.assert_called_once_with(
@@ -357,7 +357,7 @@ class TestHitlServiceApi:
             "/workflow/run-1/events?user=u1&include_state_snapshot=true&continue_on_pause=true",
             method="GET",
         ):
-            response = handler(api, app_model=app_model, end_user=end_user, task_id="run-1")
+            response = handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
 
         assert response.get_data(as_text=True) == "data: snapshot\n\n"
         msg_generator.retrieve_events.assert_not_called()
@@ -433,7 +433,7 @@ class TestHitlServiceApi:
         assert response["event"] == "workflow_paused"
         assert response["workflow_run_id"] == "run-1"
         assert response["answer"] == "partial"
-        assert response["data"]["reasons"][0]["type"] == DifyHITLEventType.HUMAN_INPUT_REQUIRED
+        assert response["data"]["reasons"][0]["TYPE"] == DifyHITLEventType.HUMAN_INPUT_REQUIRED
         assert response["data"]["reasons"][0]["expiration_time"] == 100
         assert "human_input_forms" not in response["data"]
 
@@ -524,7 +524,7 @@ class TestHitlServiceApi:
                     outputs={},
                     reasons=[
                         {
-                            "type": DifyHITLEventType.HUMAN_INPUT_REQUIRED.value,
+                            "TYPE": DifyHITLEventType.HUMAN_INPUT_REQUIRED.value,
                             "form_id": "form-1",
                             "node_id": "node-1",
                             "expiration_time": 123,

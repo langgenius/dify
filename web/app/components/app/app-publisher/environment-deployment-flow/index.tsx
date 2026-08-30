@@ -2,10 +2,10 @@
 
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { ReactNode } from 'react'
-import type { DeploymentVersion } from '@/app/components/app/deploy/version'
+import type { DeploymentVersion } from '@/app/components/app/deploy/utils/version'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { EnvironmentDeploymentFlow } from '@/app/components/app/deploy/environment-deployment-flow'
+import { EnvironmentDeploymentFlow } from '@/app/components/app/deploy/shared/environment-deployment-flow'
 import Loading from '@/app/components/base/loading'
 import {
   publisherEnvironmentDeploymentPollingAtom,
@@ -24,6 +24,7 @@ type PublisherEnvironmentFlowProps = {
   isDeploymentError: boolean
   isDeploymentLoading: boolean
   latestVersion?: DeploymentVersion | null
+  onConfigurationOpenChange?: (open: boolean) => void
   onGoToPublish: () => void
 }
 
@@ -37,6 +38,7 @@ export function PublisherEnvironmentFlow({
   isDeploymentError,
   isDeploymentLoading,
   latestVersion,
+  onConfigurationOpenChange,
   onGoToPublish,
 }: PublisherEnvironmentFlowProps) {
   const { t } = useTranslation()
@@ -68,6 +70,7 @@ export function PublisherEnvironmentFlow({
       disabled={deploymentPolling?.environmentId === environmentId}
       environmentId={environmentId}
       environmentName={environmentName}
+      onConfigurationOpenChange={onConfigurationOpenChange}
       onDeploymentStarted={(operationId) => {
         startDeploymentPolling({ environmentId, operationId })
       }}

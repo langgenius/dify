@@ -1,10 +1,14 @@
 'use client'
 
-import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import type { DeploymentDialogRequest } from './deployment-dialog/types'
+import type {
+  AppEnvironment,
+  EnvironmentDeployment,
+} from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { DeploymentDialogRequest } from './types'
+import type { DeploymentVersion } from './utils/version'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
@@ -12,15 +16,19 @@ import { getEnterpriseDocUrl, useLocale } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getDocLanguage } from '@/i18n-config/language'
+import dynamic from '@/next/dynamic'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { BuiltInEnvironmentCard } from './built-in-environment-card'
-import { DeploymentDialog } from './deployment-dialog'
 import { EnvironmentTable } from './environment-table'
 import { useRefreshAppEnvironmentsAfterDeploymentPolling } from './hooks/use-refresh-app-environments-after-deployment-polling'
 import { useUndeployWorkflow } from './hooks/use-undeploy-workflow'
 import { AppDeployStateBoundary } from './state'
-import { toDeploymentVersion } from './version'
+import { toDeploymentVersion } from './utils/version'
+
+const DeploymentDialog = dynamic(() =>
+  import('./deployment-dialog').then((module) => module.DeploymentDialog),
+)
 
 function AppDeployContent({ appId }: { appId: string }) {
   const { t } = useTranslation('deployments')
@@ -33,33 +41,64 @@ function AppDeployContent({ appId }: { appId: string }) {
   useRefreshAppEnvironmentsAfterDeploymentPolling(appId)
   const undeployWorkflow = useUndeployWorkflow(appId)
 
-  const handleRedeploy = (deployment: EnvironmentDeployment) => {
-    const deploymentState = deployment.deployment
-    const version =
-      deploymentState?.latest_operation?.target_version ?? deploymentState?.current_version
-    const environment = deployment.environment.display_name
-    const environmentId = deployment.environment.id
-
-    if (!version) {
+  const handleDeployToEnvironment = useCallback((environment: AppEnvironment) => {
+    setDeploymentRequest({
+      environment: environment.display_name,
+      environmentId: environment.id,
+      kind: 'deploy',
+    })
+  }, [])
+  const handleChangeVersion = useCallback((deployment: EnvironmentDeployment) => {
+    setDeploymentRequest({
+      currentVersionId: deployment.deployment?.current_version?.id,
+      environment: deployment.environment.display_name,
+      environmentId: deployment.environment.id,
+      kind: 'changeVersion',
+    })
+  }, [])
+  const handleDeployLatest = useCallback(
+    (deployment: EnvironmentDeployment, latestVersion: DeploymentVersion) => {
       setDeploymentRequest({
+        currentVersionId: deployment.deployment?.current_version?.id,
+        environment: deployment.environment.display_name,
+        environmentId: deployment.environment.id,
+        initialVersion: latestVersion,
+        kind: 'deployLatest',
+      })
+    },
+    [],
+  )
+  const handleRedeploy = useCallback(
+    (deployment: EnvironmentDeployment) => {
+      const deploymentState = deployment.deployment
+      const version =
+        deploymentState?.latest_operation?.target_version ?? deploymentState?.current_version
+      const environment = deployment.environment.display_name
+      const environmentId = deployment.environment.id
+
+      if (!version) {
+        setDeploymentRequest({
+          environment,
+          environmentId,
+          kind: 'changeVersion',
+        })
+        return
+      }
+
+      setDeploymentRequest({
+        currentVersionId: deploymentState?.current_version?.id,
         environment,
         environmentId,
-        kind: 'changeVersion',
+        initialVersion: toDeploymentVersion(
+          version,
+          tWorkflow(($) => $['versionHistory.defaultName']),
+        ),
+        kind: 'redeploy',
       })
-      return
-    }
-
-    setDeploymentRequest({
-      currentVersionId: deploymentState?.current_version?.id,
-      environment,
-      environmentId,
-      initialVersion: toDeploymentVersion(
-        version,
-        tWorkflow(($) => $['versionHistory.defaultName']),
-      ),
-      kind: 'redeploy',
-    })
-  }
+    },
+    [tWorkflow],
+  )
+  const handleCloseDeploymentDialog = useCallback(() => setDeploymentRequest(undefined), [])
 
   return (
     <>
@@ -87,40 +126,21 @@ function AppDeployContent({ appId }: { appId: string }) {
           <BuiltInEnvironmentCard />
           <EnvironmentTable
             appId={appId}
-            onDeployToEnvironment={(environment) =>
-              setDeploymentRequest({
-                environment: environment.display_name,
-                environmentId: environment.id,
-                kind: 'deploy',
-              })
-            }
-            onChangeVersion={(deployment) =>
-              setDeploymentRequest({
-                currentVersionId: deployment.deployment?.current_version?.id,
-                environment: deployment.environment.display_name,
-                environmentId: deployment.environment.id,
-                kind: 'changeVersion',
-              })
-            }
-            onDeployLatest={(deployment, latestVersion) => {
-              setDeploymentRequest({
-                currentVersionId: deployment.deployment?.current_version?.id,
-                environment: deployment.environment.display_name,
-                environmentId: deployment.environment.id,
-                initialVersion: latestVersion,
-                kind: 'deployLatest',
-              })
-            }}
+            onDeployToEnvironment={handleDeployToEnvironment}
+            onChangeVersion={handleChangeVersion}
+            onDeployLatest={handleDeployLatest}
             onRedeploy={handleRedeploy}
             onUndeploy={undeployWorkflow}
           />
         </div>
       </main>
-      <DeploymentDialog
-        appId={appId}
-        request={deploymentRequest}
-        onClose={() => setDeploymentRequest(undefined)}
-      />
+      {deploymentRequest && (
+        <DeploymentDialog
+          appId={appId}
+          request={deploymentRequest}
+          onClose={handleCloseDeploymentDialog}
+        />
+      )}
     </>
   )
 }
@@ -141,7 +161,11 @@ export default function AppDeploy() {
     workspacePermissionKeys,
   }).canDeploy
 
-  if ((appDetail.mode !== AppModeEnum.WORKFLOW && appDetail.mode !== AppModeEnum.ADVANCED_CHAT) || !canDeploy) return null
+  if (
+    (appDetail.mode !== AppModeEnum.WORKFLOW && appDetail.mode !== AppModeEnum.ADVANCED_CHAT) ||
+    !canDeploy
+  )
+    return null
 
   return (
     <AppDeployStateBoundary appId={appDetail.id}>

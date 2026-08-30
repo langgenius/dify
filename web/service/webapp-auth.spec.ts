@@ -9,7 +9,7 @@ vi.mock('./base', () => ({
 const {
   beginWebAppAuthorizationRecovery,
   completeWebAppAuthorizationRecovery,
-  getOrCreateWebAppVisitorId,
+  getOrCreateWebAppUserId,
   getWebAppPassport,
   setWebAppPassport,
   webAppLoginStatus,
@@ -42,15 +42,15 @@ describe('webAppLoginStatus', () => {
     expect(localStorage.getItem('passport-workflow-app')).toBe('passport')
   })
 
-  it('keeps a stable visitor id for each environment', () => {
+  it('keeps a stable user id for each environment', () => {
     const firstEnvironment = { kind: 'environment' as const, code: 'environment-1' }
     const secondEnvironment = { kind: 'environment' as const, code: 'environment-2' }
 
-    const first = getOrCreateWebAppVisitorId(firstEnvironment)
+    const first = getOrCreateWebAppUserId(firstEnvironment)
 
     expect(first).toMatch(/^[0-9a-f-]{36}$/i)
-    expect(getOrCreateWebAppVisitorId(firstEnvironment)).toBe(first)
-    expect(getOrCreateWebAppVisitorId(secondEnvironment)).not.toBe(first)
+    expect(getOrCreateWebAppUserId(firstEnvironment)).toBe(first)
+    expect(getOrCreateWebAppUserId(secondEnvironment)).not.toBe(first)
     expect(localStorage.getItem('visitor-environment:environment-1')).toBe(first)
   })
 

@@ -45,7 +45,7 @@ describe('FieldInfo', () => {
     it('should render input field by default in edit mode', () => {
       render(<FieldInfo label="Title" value="Test" showEdit={true} inputType="input" />)
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', { name: 'Title' })
       expect(input).toBeInTheDocument()
       expect(input).toHaveValue('Test')
     })
@@ -53,7 +53,7 @@ describe('FieldInfo', () => {
     it('should render textarea when inputType is textarea', () => {
       render(<FieldInfo label="Desc" value="Long text" showEdit={true} inputType="textarea" />)
 
-      const textarea = screen.getByRole('textbox')
+      const textarea = screen.getByRole('textbox', { name: 'Desc' })
       expect(textarea).toBeInTheDocument()
       expect(textarea).toHaveValue('Long text')
     })
@@ -73,8 +73,7 @@ describe('FieldInfo', () => {
         />,
       )
 
-      // SimpleSelect renders a button-like trigger
-      expect(screen.getByText('English')).toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Language' })).toHaveTextContent('English')
     })
 
     it('should call onUpdate when input value changes', () => {
@@ -83,7 +82,9 @@ describe('FieldInfo', () => {
         <FieldInfo label="Title" value="" showEdit={true} inputType="input" onUpdate={onUpdate} />,
       )
 
-      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'New' } })
+      fireEvent.change(screen.getByRole('textbox', { name: 'Title' }), {
+        target: { value: 'New' },
+      })
 
       expect(onUpdate).toHaveBeenCalledWith('New')
     })
@@ -100,7 +101,9 @@ describe('FieldInfo', () => {
         />,
       )
 
-      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Updated' } })
+      fireEvent.change(screen.getByRole('textbox', { name: 'Desc' }), {
+        target: { value: 'Updated' },
+      })
 
       expect(onUpdate).toHaveBeenCalledWith('Updated')
     })
@@ -110,7 +113,7 @@ describe('FieldInfo', () => {
     it('should render with default value prop', () => {
       render(<FieldInfo label="Field" showEdit={true} inputType="input" defaultValue="default" />)
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'Field' })).toBeInTheDocument()
     })
   })
 })

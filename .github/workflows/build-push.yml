@@ -8,7 +8,7 @@ on:
       - 'build/**'
       - 'release/e-*'
       - 'hotfix/**'
-      - 'feat/app-multi-env-v2-chatflow-support'
+      - 'feat/appdeploy-file-grant'
     tags:
       - '*'
 

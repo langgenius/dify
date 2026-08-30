@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -199,6 +200,17 @@ function renderCard(ui: ReactElement) {
   return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 }
 
+function createDeferredPromise<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve
+    reject = promiseReject
+  })
+
+  return { promise, reject, resolve }
+}
+
 describe('environment access point cards', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -337,6 +349,42 @@ describe('environment access point cards', () => {
     })
   })
 
+  it('optimistically serializes environment Web app changes without a success toast', async () => {
+    const user = userEvent.setup()
+    const firstToggle = createDeferredPromise<typeof site>()
+    const secondToggle = createDeferredPromise<typeof site>()
+    mocks.updateSite
+      .mockReturnValueOnce(firstToggle.promise)
+      .mockReturnValueOnce(secondToggle.promise)
+    renderCard(<EnvironmentWebAppCard appId="app-1" environmentId="staging" canEdit canManage />)
+
+    const accessSwitch = await screen.findByRole('switch')
+    await user.click(accessSwitch)
+
+    expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
+    expect(mocks.updateSite).toHaveBeenCalledTimes(1)
+
+    await user.click(accessSwitch)
+
+    expect(accessSwitch).toHaveAttribute('aria-checked', 'true')
+    expect(mocks.updateSite).toHaveBeenCalledTimes(1)
+
+    firstToggle.resolve({ ...site, enabled: false })
+
+    await waitFor(() => {
+      expect(mocks.updateSite).toHaveBeenCalledTimes(2)
+    })
+    expect(mocks.updateSite.mock.calls[1]?.[0]).toEqual({
+      body: { enabled: true },
+      params: environmentParams,
+    })
+
+    secondToggle.resolve({ ...site, enabled: true })
+
+    await screen.findByRole('link', { name: /studio\.accessPoint\.open/ })
+    expect(toast.success).not.toHaveBeenCalled()
+  })
+
   it('opens Customize and Settings with environment endpoint data', async () => {
     const user = userEvent.setup()
     renderCard(<EnvironmentWebAppCard appId="app-1" environmentId="staging" canEdit canManage />)
@@ -365,7 +413,7 @@ describe('environment access point cards', () => {
       }),
     )
     expect(screen.getByRole('button', { name: 'environment-api-keys' })).toBeInTheDocument()
-    const apiReferenceLink = screen.getByRole('button', { name: /apiInfo\.doc/ })
+    const apiReferenceLink = screen.getByRole('link', { name: /apiInfo\.doc/ })
     expect(apiReferenceLink).toHaveAttribute(
       'href',
       'https://docs.example.test/en/api-reference/guides/workflow',
@@ -385,6 +433,27 @@ describe('environment access point cards', () => {
     })
   })
 
+  it('rolls back a failed environment Service API change and shows only an error toast', async () => {
+    const user = userEvent.setup()
+    const toggle = createDeferredPromise<typeof api>()
+    mocks.updateApi.mockReturnValueOnce(toggle.promise)
+    renderCard(<EnvironmentServiceApiCard appId="app-1" environmentId="staging" canManage />)
+
+    await screen.findByText(api.base_url)
+    const accessSwitch = screen.getByRole('switch')
+    await user.click(accessSwitch)
+
+    expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
+
+    toggle.reject(new Error('request failed'))
+
+    await waitFor(() => {
+      expect(accessSwitch).toHaveAttribute('aria-checked', 'true')
+    })
+    expect(toast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+    expect(toast.success).not.toHaveBeenCalled()
+  })
+
   it('keeps environment API keys and external documentation available when the API is stopped', async () => {
     mocks.getApi.mockResolvedValue({
       ...api,
@@ -395,8 +464,7 @@ describe('environment access point cards', () => {
 
     await screen.findByText(api.base_url)
     expect(await screen.findByRole('button', { name: 'environment-api-keys' })).toBeEnabled()
-    const apiReferenceLink = screen.getByRole('button', { name: /apiInfo\.doc/ })
-    expect(apiReferenceLink).not.toHaveAttribute('aria-disabled')
+    const apiReferenceLink = screen.getByRole('link', { name: /apiInfo\.doc/ })
     expect(apiReferenceLink).toHaveAttribute(
       'href',
       'https://docs.example.test/en/api-reference/guides/workflow',
@@ -421,9 +489,6 @@ describe('environment access point cards', () => {
     expect(card).not.toHaveAttribute('aria-busy')
     expect(screen.queryByText('common.loading')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'environment-api-keys' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /apiInfo\.doc/ })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
+    expect(screen.getByRole('button', { name: /apiInfo\.doc/ })).toBeDisabled()
   })
 })

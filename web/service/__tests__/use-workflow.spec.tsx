@@ -141,142 +141,145 @@ describe('useUpdateWorkflow', () => {
   it.each([AppModeEnum.WORKFLOW, AppModeEnum.ADVANCED_CHAT])(
     'should synchronize every cached app deployment reference to the updated workflow version (%s)',
     async (appMode) => {
-    const queryClient = createQueryClient()
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
-    const oldVersion: WorkflowVersion = {
-      id: 'workflow-1',
-      marked_comment: 'Old notes',
-      marked_name: 'Old release',
-      version: '2026-08-21.1',
-      version_number: 1,
-    }
-    const unrelatedVersion: WorkflowVersion = {
-      id: 'workflow-2',
-      marked_comment: 'Keep these notes',
-      marked_name: 'Keep this release',
-      version: '2026-08-20.1',
-      version_number: 2,
-    }
-    const updatedWorkflow = createWorkflow({
-      marked_comment: '',
-      marked_name: '',
-      updated_at: 1_710_000_300,
-    })
-    const workflowVersionsQuery = appWorkflowVersionsInfiniteQueryOptions('app-1')
-    const publishedWorkflowQuery = appWorkflowQueryOptions('app-1')
-    const deploymentsQuery =
-      consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions({
-        input: {
-          params: {
-            app_id: 'app-1',
-          },
-        },
+      const queryClient = createQueryClient()
+      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+      const oldVersion: WorkflowVersion = {
+        id: 'workflow-1',
+        marked_comment: 'Old notes',
+        marked_name: 'Old release',
+        version: '2026-08-21.1',
+        version_number: 1,
+      }
+      const unrelatedVersion: WorkflowVersion = {
+        id: 'workflow-2',
+        marked_comment: 'Keep these notes',
+        marked_name: 'Keep this release',
+        version: '2026-08-20.1',
+        version_number: 2,
+      }
+      const updatedWorkflow = createWorkflow({
+        marked_comment: '',
+        marked_name: '',
+        updated_at: 1_710_000_300,
       })
-    const deploymentDetailQuery =
-      consoleQuery.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryOptions({
-        input: {
-          params: {
-            app_id: 'app-1',
-            environment_id: 'staging',
-          },
-        },
-      })
-    const stagingDeployment = createEnvironmentDeployment({
-      currentVersion: oldVersion,
-      environmentId: 'staging',
-      targetVersion: oldVersion,
-    })
-    const productionDeployment = createEnvironmentDeployment({
-      currentVersion: unrelatedVersion,
-      environmentId: 'production',
-      targetVersion: oldVersion,
-    })
-
-    queryClient.setQueryData(publishedWorkflowQuery.queryKey, createWorkflow())
-    queryClient.setQueryData<InfiniteData<WorkflowPaginationResponse>>(
-      workflowVersionsQuery.queryKey,
-      {
-        pageParams: [1],
-        pages: [
+      const workflowVersionsQuery = appWorkflowVersionsInfiniteQueryOptions('app-1')
+      const publishedWorkflowQuery = appWorkflowQueryOptions('app-1')
+      const deploymentsQuery =
+        consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions(
           {
-            has_more: false,
-            items: [createWorkflow(), createWorkflow({ id: 'workflow-2' })],
-            limit: 10,
-            page: 1,
+            input: {
+              params: {
+                app_id: 'app-1',
+              },
+            },
           },
-        ],
-      },
-    )
-    queryClient.setQueryData<ListEnvironmentDeploymentsResponse>(deploymentsQuery.queryKey, {
-      environment_deployments: [stagingDeployment, productionDeployment],
-    })
-    queryClient.setQueryData<GetEnvironmentDeploymentResponse>(deploymentDetailQuery.queryKey, {
-      environment_deployment: stagingDeployment,
-    })
-    mockPatch.mockResolvedValueOnce(updatedWorkflow)
-    const { result } = renderHook(() => useUpdateWorkflow(), {
-      wrapper: createWrapper(queryClient),
-    })
-
-    await act(async () => {
-      await result.current.mutateAsync({
-        appId: 'app-1',
-        appMode,
-        url: '/apps/app-1/workflows/workflow-1',
-        title: '',
-        releaseNotes: '',
+        )
+      const deploymentDetailQuery =
+        consoleQuery.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryOptions({
+          input: {
+            params: {
+              app_id: 'app-1',
+              environment_id: 'staging',
+            },
+          },
+        })
+      const stagingDeployment = createEnvironmentDeployment({
+        currentVersion: oldVersion,
+        environmentId: 'staging',
+        targetVersion: oldVersion,
       })
-    })
+      const productionDeployment = createEnvironmentDeployment({
+        currentVersion: unrelatedVersion,
+        environmentId: 'production',
+        targetVersion: oldVersion,
+      })
 
-    expect(queryClient.getQueryData<WorkflowResponse>(publishedWorkflowQuery.queryKey)).toEqual(
-      updatedWorkflow,
-    )
-    expect(
-      queryClient.getQueryData<InfiniteData<WorkflowPaginationResponse>>(
+      queryClient.setQueryData(publishedWorkflowQuery.queryKey, createWorkflow())
+      queryClient.setQueryData<InfiniteData<WorkflowPaginationResponse>>(
         workflowVersionsQuery.queryKey,
-      )?.pages[0]?.items,
-    ).toEqual([updatedWorkflow, createWorkflow({ id: 'workflow-2' })])
+        {
+          pageParams: [1],
+          pages: [
+            {
+              has_more: false,
+              items: [createWorkflow(), createWorkflow({ id: 'workflow-2' })],
+              limit: 10,
+              page: 1,
+            },
+          ],
+        },
+      )
+      queryClient.setQueryData<ListEnvironmentDeploymentsResponse>(deploymentsQuery.queryKey, {
+        environment_deployments: [stagingDeployment, productionDeployment],
+      })
+      queryClient.setQueryData<GetEnvironmentDeploymentResponse>(deploymentDetailQuery.queryKey, {
+        environment_deployment: stagingDeployment,
+      })
+      mockPatch.mockResolvedValueOnce(updatedWorkflow)
+      const { result } = renderHook(() => useUpdateWorkflow(), {
+        wrapper: createWrapper(queryClient),
+      })
 
-    const deployments = queryClient.getQueryData<ListEnvironmentDeploymentsResponse>(
-      deploymentsQuery.queryKey,
-    )?.environment_deployments
-    expect(deployments?.[0]?.deployment?.current_version).toEqual({
-      ...oldVersion,
-      marked_comment: '',
-      marked_name: '',
-    })
-    expect(deployments?.[0]?.deployment?.latest_operation?.target_version).toEqual({
-      ...oldVersion,
-      marked_comment: '',
-      marked_name: '',
-    })
-    expect(deployments?.[1]?.deployment?.current_version).toBe(unrelatedVersion)
-    expect(deployments?.[1]?.deployment?.latest_operation?.target_version).toEqual({
-      ...oldVersion,
-      marked_comment: '',
-      marked_name: '',
-    })
+      await act(async () => {
+        await result.current.mutateAsync({
+          appId: 'app-1',
+          appMode,
+          url: '/apps/app-1/workflows/workflow-1',
+          title: '',
+          releaseNotes: '',
+        })
+      })
 
-    expect(
-      queryClient.getQueryData<GetEnvironmentDeploymentResponse>(deploymentDetailQuery.queryKey)
-        ?.environment_deployment.deployment?.current_version,
-    ).toEqual({
-      ...oldVersion,
-      marked_comment: '',
-      marked_name: '',
-    })
-    expect(
-      queryClient.getQueryData<GetEnvironmentDeploymentResponse>(deploymentDetailQuery.queryKey)
-        ?.environment_deployment.deployment?.latest_operation?.target_version,
-    ).toEqual({
-      ...oldVersion,
-      marked_comment: '',
-      marked_name: '',
-    })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: deploymentsQuery.queryKey,
-    })
-  })
+      expect(queryClient.getQueryData<WorkflowResponse>(publishedWorkflowQuery.queryKey)).toEqual(
+        updatedWorkflow,
+      )
+      expect(
+        queryClient.getQueryData<InfiniteData<WorkflowPaginationResponse>>(
+          workflowVersionsQuery.queryKey,
+        )?.pages[0]?.items,
+      ).toEqual([updatedWorkflow, createWorkflow({ id: 'workflow-2' })])
+
+      const deployments = queryClient.getQueryData<ListEnvironmentDeploymentsResponse>(
+        deploymentsQuery.queryKey,
+      )?.environment_deployments
+      expect(deployments?.[0]?.deployment?.current_version).toEqual({
+        ...oldVersion,
+        marked_comment: '',
+        marked_name: '',
+      })
+      expect(deployments?.[0]?.deployment?.latest_operation?.target_version).toEqual({
+        ...oldVersion,
+        marked_comment: '',
+        marked_name: '',
+      })
+      expect(deployments?.[1]?.deployment?.current_version).toBe(unrelatedVersion)
+      expect(deployments?.[1]?.deployment?.latest_operation?.target_version).toEqual({
+        ...oldVersion,
+        marked_comment: '',
+        marked_name: '',
+      })
+
+      expect(
+        queryClient.getQueryData<GetEnvironmentDeploymentResponse>(deploymentDetailQuery.queryKey)
+          ?.environment_deployment.deployment?.current_version,
+      ).toEqual({
+        ...oldVersion,
+        marked_comment: '',
+        marked_name: '',
+      })
+      expect(
+        queryClient.getQueryData<GetEnvironmentDeploymentResponse>(deploymentDetailQuery.queryKey)
+          ?.environment_deployment.deployment?.latest_operation?.target_version,
+      ).toEqual({
+        ...oldVersion,
+        marked_comment: '',
+        marked_name: '',
+      })
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: deploymentsQuery.queryKey,
+      })
+    },
+  )
 
   it('should keep the latest published workflow when editing an older app version', async () => {
     const queryClient = createQueryClient()
