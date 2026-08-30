@@ -34,3 +34,9 @@ Run direct Python commands through `uv run --project api`. Docker-backed integra
   - EE-to-Dify internal APIs belong in `controllers/inner/human_input_v2/`.
   - Web App APIs and other APIs that do not require Console authentication belong under `controllers/web/human_input_v2/`.
 - Keep API DTOs in their owning controller module or package. Use a single module such as `controllers/web/human_input_v2.py` for a small API surface; promote it to a package and split by feature only when the module size warrants it.
+
+## Exception Hierarchy
+
+- Do not derive new exception types from `RuntimeError`.
+- Define each new domain's root exception as a direct subclass of `Exception`, and derive narrower exceptions in that domain from its root exception.
+- Derive HTTP-layer exceptions directly from `BaseHTTPException`.
