@@ -100,6 +100,7 @@ _PHASE_FOR: dict[PcState, Phase] = {
     PcState.BUILD_RESOURCE_RECOMMENDATION: Phase.RESOURCES,
     PcState.BUILD_PLAN_APPROVAL: Phase.PLAN,
     PcState.BUILD_EXECUTION: Phase.MODIFY,
+    PcState.BUILD_AWAIT_TESTDATA: Phase.TEST,
     PcState.BUILD_TEST_AND_REPAIR: Phase.TEST,
     PcState.BUILD_AWAIT_REPAIR: Phase.TEST,
     PcState.BUILD_REVIEW: Phase.REVIEW,
@@ -173,6 +174,9 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
                  next_state="build.test_and_repair", canvas_event="start_test_run"),
         UiAction(id="revert", label="Revert", kind=ActionKind.DESTRUCTIVE,
                  next_state="build.reverted", canvas_event="revert_checkpoint"),
+    ],
+    PcState.BUILD_AWAIT_TESTDATA: [
+        UiAction(id="provide_testdata", label="Provide test data", kind=ActionKind.PRIMARY),
     ],
     PcState.BUILD_AWAIT_REPAIR: [
         UiAction(id="approve_plan", label="Apply the fix", kind=ActionKind.PRIMARY,
