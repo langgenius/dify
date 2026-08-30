@@ -100,6 +100,15 @@ class TestModelConfigConverter:
         assert result.parameters == {"temperature": 0.7}
         assert result.stop == ["\n"]
 
+    def test_convert_success_with_model_config_stop_attribute(self, mock_app_config, patch_provider_manager):
+        mock_app_config.model.stop = ["###", "END"]
+        mock_app_config.model.parameters = {"temperature": 0.7}
+
+        result = ModelConfigConverter.convert(mock_app_config)
+
+        assert result.parameters == {"temperature": 0.7}
+        assert result.stop == ["###", "END"]
+
     def test_convert_mode_from_schema_valid(self, mock_app_config, mock_provider_bundle, mocker: MockerFixture):
         mock_app_config.model.mode = None
 
