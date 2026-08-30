@@ -2,9 +2,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
-  DropdownMenuPopup,
-  DropdownMenuPortal,
-  DropdownMenuPositioner,
+  DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
@@ -58,18 +56,14 @@ const Actions = ({
           >
             <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
           </DropdownMenuTrigger>
-          <DropdownMenuPortal>
-            <DropdownMenuPositioner placement="bottom-end" sideOffset={4}>
-              <DropdownMenuPopup className="min-w-[160px]">
-                <Operations
-                  openEditModal={openEditModal}
-                  onExport={handleExportDSL}
-                  onDelete={handleDelete}
-                  onClose={() => setIsMoreOperationsOpen(false)}
-                />
-              </DropdownMenuPopup>
-            </DropdownMenuPositioner>
-          </DropdownMenuPortal>
+          <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-[160px]">
+            <Operations
+              openEditModal={openEditModal}
+              onExport={handleExportDSL}
+              onDelete={handleDelete}
+              onClose={() => setIsMoreOperationsOpen(false)}
+            />
+          </DropdownMenuContent>
         </DropdownMenu>
       )}
     </div>
