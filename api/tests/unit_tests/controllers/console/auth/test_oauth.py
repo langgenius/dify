@@ -6,7 +6,7 @@ from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy.orm import Session
 
 from controllers.console.auth.oauth import (
     OAuthCallback,
@@ -233,6 +233,7 @@ class TestOAuthCallback:
             timezone=None,
             language=None,
             ip_address="203.0.113.10",
+            session=ANY,
         )
         mock_redirect.assert_called_once_with("http://localhost:3000?oauth_new_user=true")
 
@@ -507,11 +508,10 @@ class TestAccountGeneration:
             )
         )
         sqlite_session.commit()
-        database_session = scoped_session(sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False))
 
-        with patch("controllers.console.auth.oauth.db.session", database_session), app.test_request_context("/"):
+        with app.test_request_context("/"):
             # Test OpenID found
-            result = _get_account_by_openid_or_email("github", user_info)
+            result = _get_account_by_openid_or_email("github", user_info, session=sqlite_session)
             assert result is not None
             assert result.id == account.id
             mock_get_account.assert_not_called()
@@ -519,10 +519,9 @@ class TestAccountGeneration:
             # Test fallback to email lookup
             mock_get_account.return_value = account
 
-            result = _get_account_by_openid_or_email("google", user_info)
+            result = _get_account_by_openid_or_email("google", user_info, session=sqlite_session)
             assert result is account
             mock_get_account.assert_called_once()
-        database_session.remove()
 
     @pytest.mark.parametrize(
         ("allow_register", "existing_account", "should_create"),
@@ -558,9 +557,9 @@ class TestAccountGeneration:
         with app.test_request_context(headers={"Accept-Language": "en-US,en;q=0.9"}):
             if not allow_register and not existing_account:
                 with pytest.raises(AccountRegisterError):
-                    _generate_account("github", user_info)
+                    _generate_account("github", user_info, session=MagicMock())
             else:
-                result, oauth_new_user = _generate_account("github", user_info)
+                result, oauth_new_user = _generate_account("github", user_info, session=MagicMock())
                 assert result == mock_account
                 assert oauth_new_user == should_create
 
@@ -605,7 +604,7 @@ class TestAccountGeneration:
 
         with app.test_request_context("/"):
             with pytest.raises(expected_error):
-                _generate_account("github", user_info)
+                _generate_account("github", user_info, session=MagicMock())
 
         mock_get_freeze_type.assert_called_once_with("test@example.com")
 
@@ -628,7 +627,7 @@ class TestAccountGeneration:
         mock_register_service.register.return_value = Account(name="Test User", email="upper@example.com")
 
         with app.test_request_context(headers={"Accept-Language": "en-US"}):
-            _generate_account("github", user_info)
+            _generate_account("github", user_info, session=MagicMock())
 
         mock_register_service.register.assert_called_once_with(
             email="upper@example.com",
@@ -661,7 +660,7 @@ class TestAccountGeneration:
         mock_register_service.register.return_value = Account(name="Test User", email="test@example.com")
 
         with app.test_request_context(headers={"Accept-Language": "zh-Hans,zh;q=0.9"}):
-            _generate_account("github", user_info, timezone="Asia/Shanghai")
+            _generate_account("github", user_info, timezone="Asia/Shanghai", session=MagicMock())
 
         mock_register_service.register.assert_called_once_with(
             email="test@example.com",
@@ -694,7 +693,7 @@ class TestAccountGeneration:
         mock_register_service.register.return_value = Account(name="Test User", email="test@example.com")
 
         with app.test_request_context(headers={"Accept-Language": "en-US,en;q=0.9"}):
-            _generate_account("github", user_info, language="zh-Hans")
+            _generate_account("github", user_info, language="zh-Hans", session=MagicMock())
 
         mock_register_service.register.assert_called_once_with(
             email="test@example.com",
@@ -727,7 +726,7 @@ class TestAccountGeneration:
         mock_feature_service.is_workspace_creation_allowed.return_value = True
 
         with app.test_request_context(headers={"Accept-Language": "en-US,en;q=0.9"}):
-            result, oauth_new_user = _generate_account("github", user_info)
+            result, oauth_new_user = _generate_account("github", user_info, session=MagicMock())
 
             assert result == mock_account
             assert oauth_new_user is False
