@@ -5,6 +5,7 @@ Each degrades to an honest result on model-None / provider-error / parse-fail
 rather than crashing the advance. build_nodes lives in the same module
 (added in Task A6)."""
 
+import logging
 from typing import Any
 
 from core.app.app_config.entities import ModelConfig
@@ -15,6 +16,8 @@ from services.dify_builder import graph_ops
 from services.dify_builder.agent import graph_translate, llm, resources
 from services.dify_builder.agent.model_resolver import resolve_model_instance
 from services.workflow_generator_service import WorkflowGeneratorService
+
+logger = logging.getLogger(__name__)
 
 
 def analyze_goal(model, goal_text: str) -> dict[str, Any]:
@@ -152,12 +155,23 @@ def build_nodes(tenant_id: str, model_config: dict[str, Any], plan_items: list[s
         )
         graph = result.get("graph") or {}
         if result.get("error") or not graph.get("nodes"):
+            logger.warning(
+                "Dify Builder: build_nodes produced no graph for tenant %s (%d plan items): error=%s",
+                tenant_id,
+                len(plan_items),
+                result.get("error"),
+            )
             return []
         intents = graph_translate.to_intents(graph)
         _ground(intents, mc, tenant_id, plan_items)
         applicable, _rejected = graph_ops.filter_applicable({"nodes": [], "edges": []}, intents, _ALLOWED_NODE_TYPES)
         return applicable
     except Exception:  # any generation/translation failure -> honest empty build
+        logger.exception(
+            "Dify Builder: build_nodes generation failed for tenant %s (%d plan items); returning empty build",
+            tenant_id,
+            len(plan_items),
+        )
         return []
 
 
