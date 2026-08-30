@@ -179,7 +179,10 @@ export function createGraphIndexWriter({
             updatedAt: timestamp,
           }),
         );
-      const storedEntities = await graph.upsertEntities(entityInputs);
+      const graphBatchSize = Math.min(maxBatchSize, graph.maxBatchSize);
+      const storedEntities = await persistGraphBatches(entityInputs, graphBatchSize, (batch) =>
+        graph.upsertEntities(batch),
+      );
       // Back-reference: record on each source node the graph entity ids it now maps to, so
       // retrieval can seed graph expansion from a node's matched entities. `updateMetadataMany`
       // replaces metadata, so merge onto the node's current metadata. This runs as the last
@@ -294,7 +297,9 @@ export function createGraphIndexWriter({
             updatedAt: timestamp,
           }),
         );
-      const storedRelations = await graph.upsertRelations(relationInputs);
+      const storedRelations = await persistGraphBatches(relationInputs, graphBatchSize, (batch) =>
+        graph.upsertRelations(batch),
+      );
 
       return {
         entities: storedEntities.map(cloneGraphEntity),
@@ -362,6 +367,20 @@ export function createGraphIndexWriter({
   };
 
   return writer;
+}
+
+async function persistGraphBatches<T>(
+  input: readonly T[],
+  maxBatchSize: number,
+  persist: (batch: readonly T[]) => Promise<readonly T[]>,
+): Promise<T[]> {
+  const persisted: T[] = [];
+
+  for (let offset = 0; offset < input.length; offset += maxBatchSize) {
+    persisted.push(...(await persist(input.slice(offset, offset + maxBatchSize))));
+  }
+
+  return persisted;
 }
 
 type GraphQualityFlag = {

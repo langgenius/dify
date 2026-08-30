@@ -375,7 +375,7 @@ describe("createDocumentCompilationWorker lease integration", () => {
     let smokeCalls = 0;
     const outlines = createInMemoryDocumentOutlineRepository({ maxOutlines: 2 });
     const knowledgePaths = createInMemoryKnowledgePathRepository({
-      maxBatchSize: 10,
+      maxBatchSize: 2,
       maxListLimit: 10,
       maxPaths: 10,
     });

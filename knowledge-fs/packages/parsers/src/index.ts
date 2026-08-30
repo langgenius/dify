@@ -193,6 +193,7 @@ const defaultMaxResponseBytes = 32 * 1024 * 1024;
 const defaultMaxConcurrency = 2;
 const defaultMaxRetries = 0;
 const defaultRequestTimeoutMs = 120_000;
+const maxRequestTimeoutMs = 1_800_000;
 const defaultMaxRows = 20_000;
 const defaultRetryDelayMs = 100;
 const defaultNow = () => new Date().toISOString();
@@ -3600,10 +3601,10 @@ function validateUnstructuredResourceOptions({
   if (
     !Number.isSafeInteger(requestTimeoutMs) ||
     requestTimeoutMs < 1 ||
-    requestTimeoutMs > 600_000
+    requestTimeoutMs > maxRequestTimeoutMs
   ) {
     throw new ProviderInputError(
-      "Unstructured parser requestTimeoutMs must be an integer between 1 and 600000",
+      `Unstructured parser requestTimeoutMs must be an integer between 1 and ${maxRequestTimeoutMs}`,
     );
   }
 }

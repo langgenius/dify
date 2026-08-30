@@ -618,7 +618,8 @@ export function createDocumentCompilationWorker({
               documentOutlineIds = [persistedOutline.id];
               if (knowledgePaths && generateKnowledgePathId) {
                 await assertWritable();
-                const persistedPaths = await knowledgePaths.upsertMany(
+                const persistedPaths = await upsertKnowledgePathsInBatches(
+                  knowledgePaths,
                   buildCompilationKnowledgePaths({
                     asset: activeAsset,
                     generateId: generateKnowledgePathId,
@@ -729,7 +730,8 @@ export function createDocumentCompilationWorker({
             documentOutlineIds = [persistedOutline.id];
             if (knowledgePaths && generateKnowledgePathId) {
               await assertWritable();
-              const persistedPaths = await knowledgePaths.upsertMany(
+              const persistedPaths = await upsertKnowledgePathsInBatches(
+                knowledgePaths,
                 buildCompilationKnowledgePaths({
                   asset: activeAsset,
                   generateId: generateKnowledgePathId,
@@ -1351,6 +1353,21 @@ function buildCompilationKnowledgePaths({
       tenantId,
     }),
   ];
+}
+
+async function upsertKnowledgePathsInBatches(
+  repository: KnowledgePathRepository,
+  paths: readonly KnowledgePath[],
+): Promise<KnowledgePath[]> {
+  const persisted: KnowledgePath[] = [];
+
+  for (let offset = 0; offset < paths.length; offset += repository.maxBatchSize) {
+    persisted.push(
+      ...(await repository.upsertMany(paths.slice(offset, offset + repository.maxBatchSize))),
+    );
+  }
+
+  return persisted;
 }
 
 function componentReferences(

@@ -22,7 +22,8 @@
     "@knowledge/generation": "workspace:*",
     "@knowledge/parsers": "workspace:*",
     "hono": "^4.12.25",
-    "sharp": "^0.35.3"
+    "sharp": "^0.35.3",
+    "undici": "^8.10.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

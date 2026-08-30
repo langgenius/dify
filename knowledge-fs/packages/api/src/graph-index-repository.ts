@@ -56,6 +56,7 @@ export interface GraphRelation {
 }
 
 export interface GraphIndexRepository {
+  readonly maxBatchSize: number;
   deleteComponentsBySourceNodesAcrossGenerations(
     input: DeleteGraphComponentsBySourceNodesAcrossGenerationsInput,
   ): Promise<DeleteGraphComponentsBySourceNodesResult>;
@@ -179,6 +180,7 @@ export function createInMemoryGraphIndexRepository({
   const relations = new Map<string, GraphRelation>();
 
   return {
+    maxBatchSize,
     deleteComponentsBySourceNodesAcrossGenerations: async (input) => {
       validateGraphPruneSourceNodesAcrossGenerationsInput(input);
       return deleteInMemoryGraphComponentsBySourceNodes({
@@ -519,6 +521,7 @@ export function createDatabaseGraphIndexRepository({
   });
 
   return {
+    maxBatchSize,
     deleteComponentsBySourceNodesAcrossGenerations: async (input) =>
       database.transaction((transaction) =>
         deleteDatabaseGraphComponentsBySourceNodesAcrossGenerations(database, transaction, input),

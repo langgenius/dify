@@ -126,6 +126,7 @@ function fakeGraph(
   traverse: (startEntityId: string) => GraphTraversalResult,
 ): GraphIndexRepository {
   return {
+    maxBatchSize: 1,
     deleteComponentsBySourceNodesAcrossGenerations: async () => {
       throw new Error(
         "deleteComponentsBySourceNodesAcrossGenerations is not used by graph expansion",

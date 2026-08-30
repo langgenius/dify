@@ -3128,13 +3128,13 @@ describe("parser adapters", () => {
       "maxConcurrency must be an integer between 1 and 32",
     );
     expect(() => createUnstructuredParserClient({ ...base, requestTimeoutMs: 0 })).toThrow(
-      "requestTimeoutMs must be an integer between 1 and 600000",
+      "requestTimeoutMs must be an integer between 1 and 1800000",
     );
-    expect(() => createUnstructuredParserClient({ ...base, requestTimeoutMs: 600_001 })).toThrow(
-      "requestTimeoutMs must be an integer between 1 and 600000",
+    expect(() => createUnstructuredParserClient({ ...base, requestTimeoutMs: 1_800_001 })).toThrow(
+      "requestTimeoutMs must be an integer between 1 and 1800000",
     );
     expect(() => createUnstructuredParserClient({ ...base, requestTimeoutMs: 1.5 })).toThrow(
-      "requestTimeoutMs must be an integer between 1 and 600000",
+      "requestTimeoutMs must be an integer between 1 and 1800000",
     );
   });
 

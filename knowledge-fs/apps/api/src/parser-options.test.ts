@@ -1,10 +1,51 @@
 import { describe, expect, it } from "vitest";
 
-import { createApiDocumentParser } from "./parser-options";
+import type { Dispatcher } from "undici";
+
+import { createApiDocumentParser, createNodeUnstructuredFetch } from "./parser-options";
 
 const encoder = new TextEncoder();
 
 describe("createApiDocumentParser", () => {
+  it("translates native requests onto a matching Node transport with aligned timeouts", async () => {
+    let dispatcherOptions: Readonly<{ bodyTimeout: number; headersTimeout: number }> | undefined;
+    let requestDispatcher: Dispatcher | undefined;
+    let receivedBody: BodyInit | null | undefined;
+    let receivedInput: RequestInfo | URL | undefined;
+    let receivedMethod: string | undefined;
+    const dispatcher = {} as Dispatcher;
+    const nodeFetch = createNodeUnstructuredFetch({
+      createDispatcher: (options) => {
+        dispatcherOptions = options;
+        return dispatcher;
+      },
+      fetch: async (input, init) => {
+        receivedBody = init?.body;
+        receivedInput = input;
+        receivedMethod = init?.method;
+        requestDispatcher = (init as (RequestInit & { dispatcher?: Dispatcher }) | undefined)
+          ?.dispatcher;
+        return new Response("[]");
+      },
+      requestTimeoutMs: 600_000,
+    });
+    const request = new Request("https://unstructured.example.test/general/v0/general", {
+      body: "document",
+      method: "POST",
+    });
+
+    await nodeFetch(request);
+
+    expect(dispatcherOptions).toEqual({
+      bodyTimeout: 600_000,
+      headersTimeout: 600_000,
+    });
+    expect(receivedInput).toBe(request.url);
+    expect(receivedMethod).toBe("POST");
+    expect(receivedBody).toBe(request.body);
+    expect(requestDispatcher).toBe(dispatcher);
+  });
+
   it("keeps Markdown and structured data on native parsers", async () => {
     let fetchCalls = 0;
     const parser = createApiDocumentParser({
@@ -162,8 +203,11 @@ describe("createApiDocumentParser", () => {
     ).toThrow("UNSTRUCTURED_MAX_CONCURRENCY must be between 1 and 32");
     expect(() =>
       createApiDocumentParser({
-        env: { UNSTRUCTURED_API_URL: "http://parser", UNSTRUCTURED_REQUEST_TIMEOUT_MS: "600001" },
+        env: {
+          UNSTRUCTURED_API_URL: "http://parser",
+          UNSTRUCTURED_REQUEST_TIMEOUT_MS: "1800001",
+        },
       }),
-    ).toThrow("UNSTRUCTURED_REQUEST_TIMEOUT_MS must be between 1 and 600000");
+    ).toThrow("UNSTRUCTURED_REQUEST_TIMEOUT_MS must be between 1 and 1800000");
   });
 });

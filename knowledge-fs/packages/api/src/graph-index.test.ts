@@ -315,14 +315,14 @@ function createFakeGraphTraversalExecutor() {
 describe("graph index persistence", () => {
   const graphTimestamp = "2026-05-12T12:00:00.000Z";
 
-  it("indexes graph-eligible entities and relations without writing ineligible outputs", async () => {
+  it("indexes eligible graph outputs in repository-sized batches", async () => {
     const nodes = createInMemoryKnowledgeNodeRepository({
       maxBatchSize: 4,
       maxListLimit: 4,
       maxNodes: 4,
     });
     const graph = createInMemoryGraphIndexRepository({
-      maxBatchSize: 8,
+      maxBatchSize: 1,
       maxEntities: 8,
       maxRelations: 8,
       now: () => "2026-05-12T12:00:00.000Z",
@@ -359,6 +359,13 @@ describe("graph index persistence", () => {
             quality: { graphEligible: true },
             subject: "Acme Corp",
             type: "mentions",
+          },
+          {
+            confidence: 0.9,
+            object: "Refund Policy",
+            quality: { graphEligible: true },
+            subject: "Acme Corp",
+            type: "references",
           },
           {
             confidence: 0.42,
@@ -405,7 +412,7 @@ describe("graph index persistence", () => {
     expect(result.missingNodeIds).toEqual(["018f0d60-7a49-7cc2-9c1b-5b36f18f2c99"]);
     expect(result.stats).toEqual({
       entitiesIndexed: 2,
-      relationsIndexed: 1,
+      relationsIndexed: 2,
       skippedEntities: 1,
       skippedRelations: 1,
     });
