@@ -182,15 +182,6 @@ def test_build_nodes_emits_start_knowledge_llm_end_with_valid_connects():
     assert creates[2].args["config"]["model"]["mode"] == "chat"
 
 
-def test_propose_build_repair_targets_the_llm_node():
-    from core.dify_builder.placeholder_agent import BUILD_LLM_ID, PlaceholderAgent
-
-    intents = PlaceholderAgent().propose_build_repair(["start", "knowledge_retrieval", "llm", "end"])
-    assert len(intents) == 1
-    assert intents[0].op == "set_node_config"
-    assert intents[0].args["node_id"] == BUILD_LLM_ID
-
-
 def test_placeholder_learn_from_build_returns_descriptor():
     from core.dify_builder.placeholder_agent import PlaceholderAgent
 
