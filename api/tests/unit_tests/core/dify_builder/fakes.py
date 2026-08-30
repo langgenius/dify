@@ -429,6 +429,8 @@ class FakeBuildDifyPort:
         self.hash: str = "h0"
         self.applied: list[MutationIntent] = []
         self.published: bool = False
+        self.verify_pass: bool = True
+        self.run_draft_inputs: Inputs = {}
 
     def read_graph(self, _app_id: str, _actor: Actor) -> tuple[Graph, str]:
         return copy.deepcopy(self.graph), self.hash
@@ -468,9 +470,17 @@ class FakeBuildDifyPort:
         )
 
     def run_draft(
-        self, _app_id: str, _actor: Actor, _inputs: Inputs, _on_event: Callable[[NodeEvent], None]
+        self, _app_id: str, _actor: Actor, inputs: Inputs, on_event: Callable[[NodeEvent], None]
     ) -> Run:
-        return Run(dify_run_id="build-run-1", status="succeeded")
+        self.run_draft_inputs = copy.deepcopy(inputs)
+        on_event(NodeEvent(node_id="llm", status="running"))
+        if self.verify_pass:
+            on_event(NodeEvent(node_id="llm", status="success"))
+            return Run(dify_run_id="build-run-1", status="succeeded",
+                       per_node=[NodeOutput(node_id="llm", status="success")])
+        on_event(NodeEvent(node_id="llm", status="failed", error="boom"))
+        return Run(dify_run_id="build-run-1", status="failed",
+                   per_node=[NodeOutput(node_id="llm", status="failed", error="boom")])
 
     def publish(self, _app_id: str, _actor: Actor) -> None:
         self.published = True

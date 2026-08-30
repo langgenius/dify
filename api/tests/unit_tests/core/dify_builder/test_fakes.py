@@ -459,3 +459,22 @@ def test_fake_build_dify_port_apply_repair_sets_structure_fingerprint():
     result = port.apply_repair("app", _actor(), [intent])
     assert result.structure_fingerprint == structural_fingerprint(port.graph)
     assert result.structure_fingerprint != ""
+
+
+def test_fake_build_dify_port_run_draft_pass_and_fail():
+    from core.dify_builder.models import NodeEvent
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    events = []
+    port = FakeBuildDifyPort()
+    actor = Actor(account_id="a", tenant_id="t")
+    run = port.run_draft("app", actor, {"q": "x"}, events.append)
+    assert run.status == "succeeded"
+    assert run.per_node
+    assert run.per_node[0].status == "success"
+    port.verify_pass = False
+    run2 = port.run_draft("app", actor, {"q": "x"}, events.append)
+    assert run2.status == "failed"
+    assert run2.per_node[0].status == "failed"
+    assert run2.per_node[0].error
+    assert any(isinstance(e, NodeEvent) for e in events)
