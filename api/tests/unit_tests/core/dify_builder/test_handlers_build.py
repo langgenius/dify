@@ -257,6 +257,41 @@ def test_plan_approval_ignores_non_approve_action():
     assert res.next == PcState.BUILD_PLAN_APPROVAL
 
 
+def test_plan_approval_deletes_pre_existing_start_on_from_scratch_build():
+    from core.dify_builder.handlers_build import handle_plan_approval
+    from core.dify_builder.models import MutationIntent
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()
+    # seed a draft that already has a start node with id "start"
+    env.dify.graph = {
+        "nodes": [{"id": "start", "data": {"type": "start", "title": "Old", "variables": []}}],
+        "edges": [],
+    }
+    # generator returns a graph whose start id is "node1" (a document variable)
+    env.agent.build_nodes = lambda _plan: [
+        MutationIntent(
+            op="create_node",
+            args={
+                "node_type": "start",
+                "node_id": "node1",
+                "config": {"title": "Start", "variables": [{"variable": "document", "type": "file"}]},
+            },
+        ),
+        MutationIntent(op="create_node", args={"node_type": "end", "node_id": "node2", "config": {}}),
+        MutationIntent(op="connect", args={"from_node": "node1", "to_node": "node2"}),
+    ]
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_PLAN_APPROVAL)
+    fc = DifyBuilderContext(plan_items=["x"])
+    handle_plan_approval(env, Turn(actor=_actor(), action=Action(kind="approve_repair")), s, fc)
+    ids = {n["id"] for n in env.dify.graph["nodes"]}
+    types = {(n.get("data") or {}).get("type") for n in env.dify.graph["nodes"]}
+    assert "start" not in ids
+    assert "node1" in ids  # old start gone, generator's start kept
+    assert types == {"start", "end"}  # exactly one start
+
+
 def test_execution_run_test_advances_to_test_and_repair():
     from core.dify_builder.handlers_build import handle_execution
 
