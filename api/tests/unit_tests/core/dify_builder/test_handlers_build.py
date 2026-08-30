@@ -417,6 +417,79 @@ def test_test_and_repair_reuses_persisted_inputs_on_retest():
     assert fc.test_input_ref == ref  # reused, not regenerated
 
 
+def test_test_and_repair_reuses_gate_prepared_input_ref():
+    """When the testdata gate already prepared a TestInput (fc.test_input_ref
+    set), handle_test_and_repair must read that ref straight from the repo --
+    not derive a fresh mock inline. run_draft must see exactly those inputs."""
+    from core.dify_builder.handlers_build import handle_test_and_repair
+    from core.dify_builder.models import TestInput
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    ti = TestInput(session_id=s.id, source="upload", inputs={"document": "gate-prepared.pdf"})
+    env.repo.save_test_input(ti)
+    fc = DifyBuilderContext(built_node_ids=["llm"], test_input_ref=ti.id)
+
+    result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
+
+    assert result.context.test_input_ref == ti.id  # the gate's ref, not a new one
+    assert env.dify.run_draft_inputs == {"document": "gate-prepared.pdf"}
+
+
+def test_test_and_repair_input_failure_routes_to_testdata_gate():
+    """An INPUT-caused run failure (missing/invalid test data, per
+    is_input_failure's signal match) must clear the stale input ref and route
+    back to the testdata gate -- not the config-repair gate."""
+    from core.dify_builder.handlers_build import handle_test_and_repair
+    from core.dify_builder.models import TestInput
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()
+    env.dify.verify_pass = False
+    env.dify.fail_error = "File variable not found for selector: ['start', 'document']"
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+    fc = DifyBuilderContext(test_input_ref="ti-1")
+
+    result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.BUILD_AWAIT_TESTDATA
+    assert result.context.test_input_ref == ""  # stale input cleared
+    assert result.context.verify_run_id == ""
+    kinds = [i.kind for i in result.items]
+    assert "form" in kinds
+    assert "change_set" not in kinds  # gate, not repair
+    test_result = next(i for i in result.items if i.kind == "test_result")
+    assert test_result.payload["tone"] == "error"
+    assistant = next(i for i in result.items if i.kind == "assistant_turn")
+    assert assistant.payload["stage_id"] == "build.await_testdata"
+
+
+def test_test_and_repair_config_failure_still_routes_to_repair_gate():
+    """A config-caused run failure (the fake's default error, which matches no
+    input-failure signal) must still route to the config-repair gate,
+    unchanged."""
+    from core.dify_builder.handlers_build import handle_test_and_repair
+    from core.dify_builder.models import TestInput
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
+
+    env, _ = _new_env(agent=StubAgent())
+    env.dify = FakeBuildDifyPort()
+    env.dify.verify_pass = False  # default error "boom" -> config, not input
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+    fc = DifyBuilderContext(test_input_ref="ti-1")
+
+    result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.BUILD_AWAIT_REPAIR
+    assert result.context.staged_repair  # StubAgent proposes a repair
+    assert result.context.test_input_ref == "ti-1"  # untouched on the config path
+
+
 def test_test_and_repair_run_draft_raises_routes_to_await_repair_failed():
     """run_draft raising must not crash the advance -- the try/except degrade
     path converts the exception into a failed run and still routes to the
