@@ -292,7 +292,16 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     exists in the current draft graph. Everything survives the first build
     (nothing exists yet); a re-approve after a loop-back filters everything
     out (it all already exists), so apply_repair([]) is a no-op rather than
-    raising on a colliding node id."""
+    raising on a colliding node id.
+
+    From-scratch delete-placeholder branch: when the draft has no non-start
+    nodes yet (nothing has been built), any start node(s) already on the
+    draft (e.g. the canvas's default placeholder start) are deleted before
+    the generator's intents are applied, so the generator's own start node
+    is the only one left. (Final-review fix, Minor #2): ids about to be
+    deleted are excluded from the already-present comparison, so a generator
+    create_node/connect that happens to reuse a just-deleted placeholder id
+    still gets applied instead of being silently dropped."""
     kind = action_kind(turn)
     if kind != "approve_repair":
         return StepResult(next=PcState.BUILD_PLAN_APPROVAL, context=fc)
@@ -301,26 +310,38 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     intents = env.agent.build_nodes(list(fc.plan_items))
 
     current_graph, _current_hash = env.dify.read_graph(s.app_id, turn.actor)
-    existing_node_ids = {n.get("id") for n in current_graph.get("nodes", [])}
+    current_nodes = current_graph.get("nodes", [])
+    existing_node_ids = {n.get("id") for n in current_nodes}
     existing_edges = {(e.get("source"), e.get("target")) for e in current_graph.get("edges", [])}
 
-    def _already_present(intent) -> bool:
-        if intent.op == "create_node":
-            return intent.args.get("node_id") in existing_node_ids
-        if intent.op == "connect":
-            return (intent.args.get("from_node"), intent.args.get("to_node")) in existing_edges
-        return False
-
-    existing_non_start = [
-        n for n in current_graph.get("nodes", []) if (n.get("data") or {}).get("type") != "start"
-    ]
+    existing_non_start = [n for n in current_nodes if (n.get("data") or {}).get("type") != "start"]
     delete_intents: list[MutationIntent] = []
     if not existing_non_start:  # from-scratch build: drop the draft's placeholder start(s)
         delete_intents = [
             MutationIntent(op="delete_node", args={"node_id": n["id"]})
-            for n in current_graph.get("nodes", [])
+            for n in current_nodes
             if (n.get("data") or {}).get("type") == "start" and n.get("id")
         ]
+
+    # M2 fix (final review, Minor/latent): ids about to be deleted must NOT
+    # count as "already present" for the create/connect filter below -- else
+    # a generator create_node/connect that reuses a just-deleted placeholder
+    # id (e.g. both named "start") is dropped, and the node vanishes (delete
+    # with no re-create). Only affects the from-scratch branch: on loop-back
+    # delete_intents is empty, so these sets are identical to the originals
+    # and behavior there is unchanged.
+    deleted_node_ids = {intent.args["node_id"] for intent in delete_intents}
+    creatable_existing_node_ids = existing_node_ids - deleted_node_ids
+    creatable_existing_edges = {
+        (src, dst) for (src, dst) in existing_edges if src not in deleted_node_ids and dst not in deleted_node_ids
+    }
+
+    def _already_present(intent) -> bool:
+        if intent.op == "create_node":
+            return intent.args.get("node_id") in creatable_existing_node_ids
+        if intent.op == "connect":
+            return (intent.args.get("from_node"), intent.args.get("to_node")) in creatable_existing_edges
+        return False
 
     to_apply = delete_intents + [intent for intent in intents if not _already_present(intent)]
 

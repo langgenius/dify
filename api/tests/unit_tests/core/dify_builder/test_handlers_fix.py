@@ -553,6 +553,21 @@ def test_is_input_failure_matches_input_signals():
     assert is_input_failure(Run(per_node=[])) is False
 
 
+def test_is_input_failure_does_not_misclassify_a_config_required_field_error():
+    # I1 (final review, Important): "required" alone is too broad -- it also
+    # fires on config/runtime faults that have nothing to do with test inputs,
+    # misrouting them to the testdata gate where the diagnosed auto-repair is
+    # never offered. Only genuinely input/file-shaped signals should match.
+    from core.dify_builder.handlers_fix import is_input_failure
+    from core.dify_builder.models import NodeOutput, Run
+    cfg = Run(
+        per_node=[
+            NodeOutput(node_id="n1", status="failed", error="Node config invalid: field 'timeout' is required")
+        ]
+    )
+    assert is_input_failure(cfg) is False
+
+
 def test_testdata_form_fields_preserves_file_type():
     from core.dify_builder.handlers_fix import testdata_form_fields
     schema = {"variables": [
