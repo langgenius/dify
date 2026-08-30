@@ -391,7 +391,7 @@ class PlanCard(_Card):
 @dataclass
 class FormCard(_Card):
     """Editable, re-submittable input card. ``variant`` in
-    build_requirements|edit_rules.
+    build_requirements|edit_rules|testdata.
     """
 
     kind: ClassVar[CardKind] = CardKind.FORM
