@@ -3089,6 +3089,13 @@ async function executeBulkAction(
       }),
     );
     if (!updated) throw runtimeError("SOURCE_NOT_FOUND", "Source not found");
+    await input.repository.rebindSyncPolicySourceVersion({
+      expectedSourceVersion: source.version,
+      knowledgeSpaceId: updated.knowledgeSpaceId,
+      sourceId: updated.id,
+      sourceVersion: updated.version,
+      tenantId: run.tenantId,
+    });
     return;
   }
   throw runtimeError(

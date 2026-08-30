@@ -2184,6 +2184,36 @@ describe("database source-product workflow repository edge coverage", () => {
     expect(insert?.params[13]).toBeNull();
   });
 
+  it("rebinds a sync policy source version without changing its schedule or revision", async () => {
+    const calls: DatabaseExecuteInput[] = [];
+    const repository = createDatabaseSourceProductWorkflowRepository({
+      database: testDatabase("postgres", async (input) => {
+        calls.push(input);
+        if (input.tableName === "source_sync_policies" && input.operation === "select") {
+          return { rows: [syncPolicyRow()], rowsAffected: 1 };
+        }
+        return { rows: [], rowsAffected: input.operation === "select" ? 0 : 1 };
+      }),
+    });
+
+    await expect(
+      repository.rebindSyncPolicySourceVersion({
+        expectedSourceVersion: 1,
+        knowledgeSpaceId,
+        sourceId,
+        sourceVersion: 4,
+        tenantId,
+      }),
+    ).resolves.toEqual({ ...syncPolicy(), expectedSourceVersion: 4 });
+
+    const update = calls.find(
+      (call) => call.tableName === "source_sync_policies" && call.operation === "update",
+    );
+    expect(update?.params).toEqual([4, "sync-policy-a", 1]);
+    expect(update?.sql).not.toContain('"next_run_at" =');
+    expect(update?.sql).not.toContain('"revision" =');
+  });
+
   it("disables invalid due policies and handles scheduler races", async () => {
     await expect(
       createDatabaseSourceProductWorkflowRepository({
@@ -2191,11 +2221,17 @@ describe("database source-product workflow repository edge coverage", () => {
       }).enqueueDueSyncRuns({ limit: 1, maxExecutionAttempts: 2, now }),
     ).resolves.toEqual([]);
 
+    const disabledSourceCalls: DatabaseExecuteInput[] = [];
     await expect(
       createDatabaseSourceProductWorkflowRepository({
-        database: duePolicyDatabase({ sourceStatus: "disabled" }),
+        database: duePolicyDatabase({ calls: disabledSourceCalls, sourceStatus: "disabled" }),
       }).enqueueDueSyncRuns({ limit: 1, maxExecutionAttempts: 2, now }),
     ).resolves.toEqual([]);
+    expect(
+      disabledSourceCalls.some(
+        (call) => call.tableName === "source_sync_policies" && call.operation === "update",
+      ),
+    ).toBe(false);
 
     await expect(
       createDatabaseSourceProductWorkflowRepository({
@@ -2421,6 +2457,7 @@ function bulkMutationDatabase(
 
 function duePolicyDatabase(
   options: {
+    readonly calls?: DatabaseExecuteInput[] | undefined;
     readonly currentPolicy?: DatabaseRow | undefined;
     readonly missingSource?: boolean | undefined;
     readonly missingSpace?: boolean | undefined;
@@ -2431,6 +2468,7 @@ function duePolicyDatabase(
 ): DatabaseAdapter {
   const candidate = syncPolicyRow();
   return testDatabase(dialect, async (input) => {
+    options.calls?.push(input);
     if (input.tableName === "source_sync_policies") {
       if (input.operation === "update") {
         return { rows: [], rowsAffected: options.policyUpdateRowsAffected ?? 1 };

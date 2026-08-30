@@ -393,6 +393,29 @@ describe("knowledge space source CRUD", () => {
     }
   });
 
+  it("rejects source identity changes through metadata patches", async () => {
+    const app = createApp();
+    const spaceId = await createSpace(app);
+    const sourceId = await createWebSource(app, spaceId);
+
+    for (const [key, value] of [
+      ["datasource", "other-datasource"],
+      ["pluginId", "other/plugin"],
+      ["provider", "other-provider"],
+      ["providerId", "other-provider-id"],
+      ["providerKind", "online-drive"],
+    ] as const) {
+      const response = await app.request(`/knowledge-spaces/${spaceId}/sources/${sourceId}`, {
+        body: JSON.stringify({ metadata: { [key]: value } }),
+        headers: json(writeToken),
+        method: "PATCH",
+      });
+
+      expect(response.status).toBe(400);
+      await expect(response.json()).resolves.toEqual({ error: `Source ${key} cannot be changed` });
+    }
+  });
+
   it("rejects credentials disguised as provider parameters", async () => {
     const app = createApp();
     const spaceId = await createSpace(app);

@@ -2430,12 +2430,14 @@ class KnowledgeFSSpaceSourceApi(Resource):
     @_knowledge_fs_errors
     def patch(self, control_space_id: str, source_id: str):
         actor_id, tenant_id = _actor()
+        payload = _payload(KnowledgeFSSourceUpdatePayload)
+        payload.sync_after_update = True
         result = _console_services().facade.update_source(
             tenant_id=tenant_id,
             account_id=actor_id,
             control_space_id=control_space_id,
             source_id=source_id,
-            payload=_payload(KnowledgeFSSourceUpdatePayload),
+            payload=payload,
         )
         return dump_response(KnowledgeFSSourceResponse, result)
 

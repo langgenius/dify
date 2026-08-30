@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from "node:util";
 import type { OpenAPIHono } from "@hono/zod-openapi";
 
 import {
@@ -20,6 +21,7 @@ import { type KnowledgeFsPublicFailure, knowledgeFsFailureForCode } from "./know
 import type { KnowledgeSpaceRepository } from "./knowledge-space-repository";
 import type { OnlineDocumentConnector } from "./online-document-connector";
 import type { OnlineDriveConnector } from "./online-drive-connector";
+import type { LooseOpenApiContext } from "./openapi-handler-utils";
 import type { SourceConnectionService } from "./source-connection";
 import {
   SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED,
@@ -41,6 +43,7 @@ import type {
 import { safeSourceOperationError, sourceOperationFailureMetadata } from "./source-operation-error";
 import {
   type SourceProductWorkflowRepository,
+  type SourceProductWorkflowService,
   type SourceWorkflowRun,
   toPublicSourceWorkflowRun,
 } from "./source-product-workflow";
@@ -88,6 +91,12 @@ export interface RegisterSourceHandlersOptions {
         "listLatestSyncCompletions" | "listLatestSyncRuns" | "listSyncPolicies"
       >
     | undefined;
+  readonly sourceSyncPolicyVersionBinder?:
+    | Pick<SourceProductWorkflowRepository, "rebindSyncPolicySourceVersion">
+    | undefined;
+  readonly sourceProductWorkflowService?:
+    | Pick<SourceProductWorkflowService, "createSync">
+    | undefined;
   readonly sources: SourceRepository;
   readonly spaces: KnowledgeSpaceRepository;
   readonly websiteCrawlConnector?: WebsiteCrawlConnector | undefined;
@@ -105,6 +114,8 @@ export function registerSourceHandlers({
   sourceCredentials,
   sourceDocumentMaterializer,
   sourceProductWorkflows,
+  sourceProductWorkflowService,
+  sourceSyncPolicyVersionBinder,
   sources,
   spaces,
   websiteCrawlConnector,
@@ -340,6 +351,23 @@ export function registerSourceHandlers({
       return context.json({ error: "Provider parameters cannot contain credentials" }, 400);
     }
 
+    const immutableMetadataKeys = [
+      "datasource",
+      "pluginId",
+      "provider",
+      "providerId",
+      "providerKind",
+    ] as const;
+    const requestsConfigurationSync =
+      body.syncAfterUpdate === true &&
+      (body.providerParameters !== undefined ||
+        body.uri !== undefined ||
+        (body.metadata !== undefined &&
+          Object.keys(body.metadata).some((key) => key !== "syncPolicy")));
+    if (requestsConfigurationSync && !sourceProductWorkflowService) {
+      return context.json({ error: "Source workflow service is unavailable" }, 503);
+    }
+
     if (body.metadata?.syncPolicy !== undefined) {
       try {
         parseSourceSyncPolicy(body.metadata.syncPolicy);
@@ -354,6 +382,8 @@ export function registerSourceHandlers({
 
     try {
       let source = null;
+      let configurationChanged = false;
+      let previousSourceVersion: number | undefined;
       const maxAttempts = body.expectedVersion === undefined ? 3 : 1;
 
       for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
@@ -364,6 +394,16 @@ export function registerSourceHandlers({
         }
         if (!candidatePermissionScopeAllows(fresh.permissionScope, candidateGrants)) {
           break;
+        }
+
+        for (const key of immutableMetadataKeys) {
+          if (
+            body.metadata &&
+            Object.prototype.hasOwnProperty.call(body.metadata, key) &&
+            body.metadata[key] !== fresh.metadata[key]
+          ) {
+            return context.json({ error: `Source ${key} cannot be changed` }, 400);
+          }
         }
 
         if (body.expectedVersion !== undefined && body.expectedVersion !== fresh.version) {
@@ -416,6 +456,15 @@ export function registerSourceHandlers({
               }
             }
           }
+          configurationChanged =
+            (uri !== undefined && uri !== fresh.uri) ||
+            (body.providerParameters !== undefined &&
+              !isDeepStrictEqual(metadata?.parameters, fresh.metadata.parameters)) ||
+            (body.metadata !== undefined &&
+              Object.entries(body.metadata).some(
+                ([key]) =>
+                  key !== "syncPolicy" && !isDeepStrictEqual(metadata?.[key], fresh.metadata[key]),
+              ));
           source = await sources.update({
             expectedVersion: fresh.version,
             id: params.sourceId,
@@ -433,6 +482,7 @@ export function registerSourceHandlers({
             ...(body.status === undefined ? {} : { status: body.status }),
             ...(uri === undefined ? {} : { uri }),
           });
+          if (source) previousSourceVersion = fresh.version;
           break;
         } catch (error) {
           if (
@@ -449,6 +499,29 @@ export function registerSourceHandlers({
 
       if (!source) {
         return context.json({ error: "Source not found" }, 404);
+      }
+      if (previousSourceVersion !== undefined && sourceSyncPolicyVersionBinder) {
+        await sourceSyncPolicyVersionBinder.rebindSyncPolicySourceVersion({
+          expectedSourceVersion: previousSourceVersion,
+          knowledgeSpaceId: params.id,
+          sourceId: source.id,
+          sourceVersion: source.version,
+          tenantId: subject.tenantId,
+        });
+      }
+
+      if (body.syncAfterUpdate && configurationChanged && source.status !== "disabled") {
+        const workflow = await sourceProductWorkflowService?.createSync({
+          ...sourceWorkflowPrincipal(context),
+          idempotencyKey: `source-config-update:${source.id}:${source.version}`,
+          knowledgeSpaceId: params.id,
+          sourceId: source.id,
+        });
+        if (!workflow) throw new Error("Source workflow service became unavailable");
+        return context.json(
+          { ...toSourceResponse(source), syncWorkflow: toPublicSourceWorkflowRun(workflow) },
+          200,
+        );
       }
 
       return context.json(toSourceResponse(source), 200);
@@ -1234,6 +1307,24 @@ export function registerSourceHandlers({
       return context.json({ code: failure.code, error: failure.message }, 502);
     }
   });
+}
+
+function sourceWorkflowPrincipal(context: Pick<LooseOpenApiContext, "get">) {
+  const apiKey = context.get("authenticatedApiKey");
+  const capabilityGrant = context.get("capabilityV2Grant");
+  return {
+    ...(apiKey ? { apiKey } : {}),
+    ...(capabilityGrant
+      ? {
+          capability: {
+            contentScopeIds: capabilityGrant.contentScopeIds,
+            grantId: capabilityGrant.grantId,
+          },
+        }
+      : {}),
+    callerKind: context.get("callerKind") ?? "interactive",
+    subject: context.get("subject"),
+  } as const;
 }
 
 function sourceStatusWithSyncWorkflow(source: Source, run?: SourceWorkflowRun): Source["status"] {

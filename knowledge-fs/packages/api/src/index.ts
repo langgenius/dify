@@ -2174,6 +2174,8 @@ export function createKnowledgeGateway({
     ...(sourceCredentials ? { sourceCredentials } : {}),
     ...(sourceProduct ? { sourceConnections: sourceProduct.connections } : {}),
     ...(sourceProduct ? { sourceProductWorkflows: sourceProduct.repository } : {}),
+    ...(sourceProductWorkflows ? { sourceProductWorkflowService: sourceProductWorkflows } : {}),
+    ...(sourceProduct ? { sourceSyncPolicyVersionBinder: sourceProduct.repository } : {}),
     legacyMutationEndpointsEnabled: sourceProduct === undefined,
     sourceDocumentMaterializer,
     sources: sourceRepository,

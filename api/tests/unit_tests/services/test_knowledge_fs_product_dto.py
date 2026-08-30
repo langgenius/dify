@@ -920,6 +920,17 @@ def test_source_update_payload_accepts_mutable_source_configuration() -> None:
     }
 
 
+def test_source_update_payload_serializes_backend_sync_admission_flag() -> None:
+    payload = KnowledgeFSSourceUpdatePayload.model_validate(
+        {"name": "Renamed", "syncAfterUpdate": True}
+    )
+
+    assert payload.model_dump(mode="json", by_alias=True, exclude_none=True) == {
+        "name": "Renamed",
+        "syncAfterUpdate": True,
+    }
+
+
 def test_source_update_payload_requires_provider_parameters_for_parameter_updates() -> None:
     with pytest.raises(ValidationError):
         KnowledgeFSSourceUpdatePayload.model_validate({"metadata": {"parameters": {"limit": 50}}})

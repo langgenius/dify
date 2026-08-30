@@ -1118,6 +1118,26 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
         if (result.rowsAffected !== 1) policyConflict();
         return policy;
       }),
+    rebindSyncPolicySourceVersion: (input) =>
+      database.transaction(async (tx) => {
+        const policy = await getPolicy(database, tx, input, true);
+        if (!policy) return null;
+        if (policy.expectedSourceVersion !== input.expectedSourceVersion) {
+          throw new SourceWorkflowError(
+            "SOURCE_SYNC_POLICY_SOURCE_CONFLICT",
+            "Source sync policy changed concurrently",
+          );
+        }
+        const updated = await tx.execute({
+          maxRows: 0,
+          operation: "update",
+          params: [input.sourceVersion, policy.id, input.expectedSourceVersion],
+          sql: `UPDATE ${q(database, policyTable)} SET ${q(database, "expected_source_version")} = ${p(database, 1)} WHERE ${q(database, "id")} = ${p(database, 2)} AND ${q(database, "expected_source_version")} = ${p(database, 3)};`,
+          tableName: policyTable,
+        });
+        if (updated.rowsAffected !== 1) policyConflict();
+        return { ...policy, expectedSourceVersion: input.sourceVersion };
+      }),
     listDueSyncPolicies: async ({ cursor, limit, now }) => {
       listLimit(limit);
       const readLimit = limit + 1;
@@ -1273,14 +1293,14 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
             policy.nextRunAt > now
           )
             continue;
-          if (
-            !sourceRow ||
-            numberColumn(sourceRow, "version") !== policy.expectedSourceVersion ||
-            stringColumn(sourceRow, "status") === "disabled"
-          ) {
+          if (!sourceRow || numberColumn(sourceRow, "version") !== policy.expectedSourceVersion) {
             await disableSyncPolicy(database, tx, policy, now);
             continue;
           }
+          // Disabling a Source pauses scheduling; it does not destroy the user's durable policy.
+          // Keep nextRunAt unchanged so an overdue policy is admitted on the first scheduler pass
+          // after the Source is enabled again.
+          if (stringColumn(sourceRow, "status") === "disabled") continue;
           const scheduledFor = policy.nextRunAt;
           const run: SourceWorkflowRun = {
             ...(isCapabilitySyncPolicy(policy)

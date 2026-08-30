@@ -2159,6 +2159,7 @@ class KnowledgeFSSourceUpdatePayload(BaseModel):
     provider_parameters: dict[str, bool | FiniteFloat | str] | None = Field(
         default=None, max_length=50, alias="providerParameters"
     )
+    sync_after_update: bool | None = Field(default=None, alias="syncAfterUpdate")
     status: Literal["active", "disabled", "error", "syncing"] | None = None
     uri: str | None = Field(default=None, min_length=1, max_length=4_096)
 

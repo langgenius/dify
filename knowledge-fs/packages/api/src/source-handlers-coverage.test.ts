@@ -16,6 +16,7 @@ import {
   type SourceCredentialTester,
   type SourceDocumentMaterializer,
   type SourceProductWorkflowRepository,
+  type SourceProductWorkflowService,
   type SourceRepository,
   type SourceSecretStore,
   type WebsiteCrawlConnector,
@@ -1420,6 +1421,11 @@ describe("source handlers without optional collaborators", () => {
       SourceProductWorkflowRepository,
       "listLatestSyncCompletions" | "listLatestSyncRuns" | "listSyncPolicies"
     >;
+    sourceProductWorkflowService?: Pick<SourceProductWorkflowService, "createSync">;
+    sourceSyncPolicyVersionBinder?: Pick<
+      SourceProductWorkflowRepository,
+      "rebindSyncPolicySourceVersion"
+    >;
     sources?: SourceRepository;
     websiteCrawlConnector?: WebsiteCrawlConnector;
   }
@@ -1472,6 +1478,12 @@ describe("source handlers without optional collaborators", () => {
       ...(options.sourceProductWorkflows
         ? { sourceProductWorkflows: options.sourceProductWorkflows }
         : {}),
+      ...(options.sourceProductWorkflowService
+        ? { sourceProductWorkflowService: options.sourceProductWorkflowService }
+        : {}),
+      ...(options.sourceSyncPolicyVersionBinder
+        ? { sourceSyncPolicyVersionBinder: options.sourceSyncPolicyVersionBinder }
+        : {}),
       sources,
       spaces,
       ...(options.websiteCrawlConnector
@@ -1500,6 +1512,139 @@ describe("source handlers without optional collaborators", () => {
 
     return { sourceId: source.id, spaceId: space.id };
   }
+
+  it.each([
+    ["website", "web", { uri: "https://docs.example.com" }],
+    ["online document", "connector", { providerParameters: { database: "docs" } }],
+    ["online drive", "connector", { providerParameters: { folder: "reports" } }],
+  ] as const)(
+    "enqueues a durable sync after a %s configuration update",
+    async (_kind, sourceType, update) => {
+      const createSync = vi.fn(async ({ knowledgeSpaceId, sourceId, idempotencyKey }) => ({
+        checkpoint: "queued" as const,
+        createdAt: "2026-08-30T00:00:00.000Z",
+        executionAttempts: 0,
+        id: "00000000-0000-4000-8000-000000000501",
+        idempotencyKey,
+        knowledgeSpaceId,
+        kind: "sync" as const,
+        maxExecutionAttempts: 5,
+        payload: {},
+        progressCompleted: 0,
+        progressFailed: 0,
+        progressSkipped: 0,
+        rowVersion: 1,
+        sourceId,
+        state: "queued" as const,
+        tenantId: "tenant-1",
+        updatedAt: "2026-08-30T00:00:00.000Z",
+      }));
+      const bare = createBareApp({ sourceProductWorkflowService: { createSync } });
+      const { sourceId, spaceId } = await seedSource(bare, sourceType);
+
+      const response = await bare.app.request(`/knowledge-spaces/${spaceId}/sources/${sourceId}`, {
+        body: JSON.stringify({ ...update, syncAfterUpdate: true }),
+        headers: { "content-type": "application/json" },
+        method: "PATCH",
+      });
+
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toMatchObject({
+        id: sourceId,
+        syncWorkflow: { kind: "sync", sourceId, state: "queued" },
+      });
+      expect(createSync).toHaveBeenCalledOnce();
+      expect(createSync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          idempotencyKey: `source-config-update:${sourceId}:2`,
+          knowledgeSpaceId: spaceId,
+          sourceId,
+        }),
+      );
+    },
+  );
+
+  it.each([
+    ["website", "web", { uri: "https://docs.example.com" }],
+    ["online document", "connector", { providerParameters: { database: "docs" } }],
+    ["online drive", "connector", { providerParameters: { folder: "reports" } }],
+  ] as const)(
+    "rebinds an existing sync policy after a disabled %s configuration update without syncing",
+    async (_kind, sourceType, update) => {
+      const createSync = vi.fn();
+      const rebindSyncPolicySourceVersion = vi.fn(async () => null);
+      const bare = createBareApp({
+        sourceProductWorkflowService: { createSync },
+        sourceSyncPolicyVersionBinder: { rebindSyncPolicySourceVersion },
+      });
+      const { sourceId, spaceId } = await seedSource(bare, sourceType);
+
+      const disable = await bare.app.request(`/knowledge-spaces/${spaceId}/sources/${sourceId}`, {
+        body: JSON.stringify({ status: "disabled", syncAfterUpdate: true }),
+        headers: { "content-type": "application/json" },
+        method: "PATCH",
+      });
+      expect(disable.status).toBe(200);
+
+      const updateWhileDisabled = await bare.app.request(
+        `/knowledge-spaces/${spaceId}/sources/${sourceId}`,
+        {
+          body: JSON.stringify({ ...update, syncAfterUpdate: true }),
+          headers: { "content-type": "application/json" },
+          method: "PATCH",
+        },
+      );
+      expect(updateWhileDisabled.status).toBe(200);
+      expect(createSync).not.toHaveBeenCalled();
+      expect(rebindSyncPolicySourceVersion).toHaveBeenNthCalledWith(1, {
+        expectedSourceVersion: 1,
+        knowledgeSpaceId: spaceId,
+        sourceId,
+        sourceVersion: 2,
+        tenantId: "tenant-1",
+      });
+      expect(rebindSyncPolicySourceVersion).toHaveBeenNthCalledWith(2, {
+        expectedSourceVersion: 2,
+        knowledgeSpaceId: spaceId,
+        sourceId,
+        sourceVersion: 3,
+        tenantId: "tenant-1",
+      });
+    },
+  );
+
+  it.each([
+    ["name", { name: "Renamed" }],
+    ["sync policy", { metadata: { syncPolicy: { everyHours: 24 } } }],
+  ] as const)("does not enqueue a sync for a %s-only update", async (_kind, update) => {
+    const createSync = vi.fn();
+    const bare = createBareApp({ sourceProductWorkflowService: { createSync } });
+    const { sourceId, spaceId } = await seedSource(bare, "web");
+
+    const response = await bare.app.request(`/knowledge-spaces/${spaceId}/sources/${sourceId}`, {
+      body: JSON.stringify({ ...update, syncAfterUpdate: true }),
+      headers: { "content-type": "application/json" },
+      method: "PATCH",
+    });
+
+    expect(response.status).toBe(200);
+    expect(createSync).not.toHaveBeenCalled();
+  });
+
+  it("does not enqueue a sync when submitted configuration is unchanged", async () => {
+    const createSync = vi.fn();
+    const bare = createBareApp({ sourceProductWorkflowService: { createSync } });
+    const { sourceId, spaceId } = await seedSource(bare, "web");
+
+    const response = await bare.app.request(`/knowledge-spaces/${spaceId}/sources/${sourceId}`, {
+      body: JSON.stringify({ syncAfterUpdate: true, uri: "https://example.com" }),
+      headers: { "content-type": "application/json" },
+      method: "PATCH",
+    });
+
+    expect(response.status).toBe(200);
+    expect(createSync).not.toHaveBeenCalled();
+  });
 
   it("enriches a source list with product sync details in bulk lookups", async () => {
     const listSyncPolicies = vi.fn();

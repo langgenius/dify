@@ -391,6 +391,14 @@ export interface SourceProductWorkflowRepository {
     readonly run: NewSourceWorkflowRun;
   }): Promise<SourceWorkflowRun>;
   upsertSyncPolicy(input: SourceSyncPolicyRecord): Promise<SourceSyncPolicyRecord>;
+  /** Rebinds an unchanged policy to a successful Source CAS without changing its schedule. */
+  rebindSyncPolicySourceVersion(input: {
+    readonly expectedSourceVersion: number;
+    readonly knowledgeSpaceId: string;
+    readonly sourceId: string;
+    readonly sourceVersion: number;
+    readonly tenantId: string;
+  }): Promise<SourceSyncPolicyRecord | null>;
   listDueSyncPolicies(input: {
     readonly cursor?: string | undefined;
     readonly limit: number;

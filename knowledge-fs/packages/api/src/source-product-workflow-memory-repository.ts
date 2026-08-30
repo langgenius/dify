@@ -646,6 +646,26 @@ export function createInMemorySourceProductWorkflowRepository(input?: {
       policies.set(key, clonePolicy(policy));
       return clonePolicy(policy);
     },
+    rebindSyncPolicySourceVersion: async ({
+      expectedSourceVersion,
+      knowledgeSpaceId,
+      sourceId,
+      sourceVersion,
+      tenantId,
+    }) => {
+      const key = `${tenantId}\0${knowledgeSpaceId}\0${sourceId}`;
+      const policy = policies.get(key);
+      if (!policy) return null;
+      if (policy.expectedSourceVersion !== expectedSourceVersion) {
+        throw new SourceWorkflowError(
+          "SOURCE_SYNC_POLICY_SOURCE_CONFLICT",
+          "Source sync policy changed concurrently",
+        );
+      }
+      const rebound = { ...policy, expectedSourceVersion: sourceVersion };
+      policies.set(key, rebound);
+      return clonePolicy(rebound);
+    },
     getSyncPolicy: async ({ knowledgeSpaceId, sourceId, tenantId }) => {
       const policy = policies.get(`${tenantId}\0${knowledgeSpaceId}\0${sourceId}`);
       return policy ? clonePolicy(policy) : null;

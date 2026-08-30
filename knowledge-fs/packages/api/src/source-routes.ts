@@ -159,7 +159,7 @@ export const updateSourceRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: SourceResponseSchema } },
+      content: { "application/json": { schema: SourceListItemResponseSchema } },
       description: "Updated source",
     },
     400: InvalidRequestResponse,
@@ -168,6 +168,10 @@ export const updateSourceRoute = createRoute({
       ...SourceVersionConflictResponse,
       description:
         "Source was modified concurrently, or protected legacy credential-bearing parameters cannot be replaced",
+    },
+    503: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Source workflow service unavailable",
     },
     401: UnauthorizedResponse,
     403: ForbiddenResponse,

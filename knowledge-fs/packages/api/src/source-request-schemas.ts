@@ -69,6 +69,12 @@ export const UpdateSourceSchema = z
         return keys.length <= 50 && keys.every((key) => key.length >= 1 && key.length <= 255);
       }, "Provider parameters must contain at most 50 bounded keys")
       .optional(),
+    /**
+     * Product gateways set this when a successful configuration update must enqueue a durable
+     * Source sync. Internal reconciliation writes leave it unset so metadata-only lifecycle
+     * updates do not recursively create sync work.
+     */
+    syncAfterUpdate: z.boolean().optional(),
     status: z.enum(["active", "syncing", "error", "disabled"]).optional(),
     uri: z.string().min(1).max(SOURCE_URI_MAX_LENGTH).optional(),
   })
