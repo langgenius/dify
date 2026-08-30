@@ -106,6 +106,22 @@ describe('HomeHeader', () => {
     expect(screen.queryByText('mainNav.marketplace')).not.toBeInTheDocument()
   })
 
+  it('selects neither catalog tab on non-catalog pages', () => {
+    render(
+      <HomeHeader
+        activeTab={null}
+        catalogLabels={{
+          plugins: 'Plugins',
+          templates: 'Templates',
+        }}
+        isMarketplacePlatform
+      />,
+    )
+
+    expect(screen.getByRole('link', { name: 'Plugins' })).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('link', { name: 'Templates' })).not.toHaveAttribute('aria-current')
+  })
+
   it('shows Templates with only the active background on the Templates catalog', () => {
     render(
       <HomeHeader

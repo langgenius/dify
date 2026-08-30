@@ -18,9 +18,19 @@ type HomeSearchProps = {
    * should keep this enabled.
    */
   enableSearchShortcut?: boolean
+  /**
+   * Pull the search row up over the hero. Search-results (and any other
+   * page without a hero) must leave this off so the field stays below the
+   * header instead of covering the brand.
+   */
+  overlapHero?: boolean
 }
 
-const HomeSearch = ({ children, enableSearchShortcut = true }: HomeSearchProps) => {
+const HomeSearch = ({
+  children,
+  enableSearchShortcut = true,
+  overlapHero = true,
+}: HomeSearchProps) => {
   const searchRef = useRef<HTMLDivElement>(null)
   const { t } = useTranslation('plugin')
 
@@ -47,7 +57,11 @@ const HomeSearch = ({ children, enableSearchShortcut = true }: HomeSearchProps) 
 
   return (
     <div
-      className={cn('pointer-events-none -mt-9 flex shrink-0 justify-center', styles.search)}
+      className={cn(
+        'pointer-events-none flex shrink-0 justify-center',
+        overlapHero && '-mt-9',
+        styles.search,
+      )}
       style={{ height: HOME_SEARCH_HEIGHT_PX }}
     >
       <div

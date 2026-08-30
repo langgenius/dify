@@ -113,6 +113,44 @@ describe('Marketplace mobile search layout', () => {
     ).toBeCloseTo(6, 0)
   })
 
+  it('keeps a search-results search below the header when there is no hero to overlap', async () => {
+    await page.viewport(1280, 900)
+    const screen = await render(
+      <div id={MARKETPLACE_CONTAINER_ID} style={{ height: 320, overflowY: 'auto' }}>
+        <HomeShell
+          banners={[]}
+          header={
+            <HomeHeader actions={<button type="button">Sign in</button>} isMarketplacePlatform />
+          }
+          hero={null}
+          isMarketplacePlatform
+          navigation={null}
+          page="plugins"
+          search={
+            <HomeSearch enableSearchShortcut={false} overlapHero={false}>
+              <input
+                aria-label="Search plugins or templates"
+                style={{ display: 'block', height: 36, width: '100%' }}
+              />
+            </HomeSearch>
+          }
+        >
+          <div aria-hidden style={{ height: 640, flexShrink: 0 }} />
+        </HomeShell>
+      </div>,
+    )
+
+    const header = screen.getByRole('banner').element()
+    const searchInput = screen
+      .getByRole('textbox', { name: 'Search plugins or templates' })
+      .element()
+
+    expect(searchInput.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      header.getBoundingClientRect().bottom - 1,
+    )
+    expect(searchInput.getBoundingClientRect().width).toBeGreaterThan(300)
+  })
+
   it('does not jump the page when the stuck desktop search is focused or typed into', async () => {
     await page.viewport(1280, 900)
     const screen = await renderMarketplaceHome()

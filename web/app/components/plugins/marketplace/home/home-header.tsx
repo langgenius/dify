@@ -13,7 +13,7 @@ import { HomeStickyCatalogTabs } from './home-sticky-state-provider'
 import styles from './home-sticky.module.css'
 
 type HomeHeaderProps = {
-  activeTab?: HomeCatalogTab
+  activeTab?: HomeCatalogTab | null
   actions?: React.ReactNode
   catalogLabels?: HomeCatalogTabLabels
   isMarketplacePlatform: boolean
