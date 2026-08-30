@@ -1829,14 +1829,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/create-from-pipeline/list/template-card/operations.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 3
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 3
-    }
-  },
   "web/app/components/datasets/create/file-preview/index.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 1
@@ -2211,12 +2203,6 @@
   "web/app/components/datasets/external-knowledge-base/create/ExternalApiSelect.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 1
-    },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 3
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 3
     }
   },
   "web/app/components/datasets/external-knowledge-base/create/ExternalApiSelection.tsx": {
