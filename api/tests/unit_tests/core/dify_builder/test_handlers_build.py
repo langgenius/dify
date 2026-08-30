@@ -282,63 +282,50 @@ def test_execution_revert_records_intent_only():
     assert {"event": "revert_checkpoint"} in events
 
 
-def test_test_and_repair_finds_and_fixes_then_reaches_review():
-    from core.dify_builder.handlers_build import handle_plan_approval, handle_test_and_repair
+def test_test_and_repair_pass_goes_to_review_with_real_run():
+    from core.dify_builder.handlers_build import handle_test_and_repair
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
-    events: list[dict] = []
-    dify = FakeBuildDifyPort()
-    env, repo = _new_env(dify=dify, emit_canvas=events.append)
-    # first build the graph so the llm node exists for the repair to target.
-    s = _seed_build_session(
-        repo, PcState.BUILD_PLAN_APPROVAL, plan_items=["Retrieve", "Summarize"], plan_version_tag="v2"
-    )
-    approve_turn = Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor())
-    built = handle_plan_approval(env, approve_turn, *repo.get_session(s.id))
-    fc = built.context
-
-    events.clear()
-    res = handle_test_and_repair(env, Turn(actor=_actor()), repo.get_session(s.id)[0], fc)
-
-    assert res.next == PcState.BUILD_REVIEW
-    assert res.context.last_structure_fingerprint != ""
-    kinds = [i.kind for i in res.items]
-    assert kinds.count("error") == 1
-    assert "change_set" in kinds
-    assert "test_result" in kinds
-    summary = next(i for i in res.items if i.kind == "summary")
-    assert summary.payload["variant"] == "review"
-    assistant = next(i for i in res.items if i.kind == "assistant_turn")
-    assert assistant.payload["cards"] == ["error", "change_set", "test_result", "summary"]
-    names = [e["event"] for e in events]
-    assert "mark_test_error" in names
-    assert "apply_error_fix" in names
-    assert "mark_test_success" in names
-    assert "mark_review_ready" in names
-    # the repair actually mutated the llm node's prompt_template.
-    llm = next(n for n in dify.graph["nodes"] if n["id"] == "llm")
-    assert llm["data"]["prompt_template"][0]["text"] == "You are a financial report assistant."
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()  # verify_pass=True by default
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    fc = DifyBuilderContext(built_node_ids=["llm"])
+    result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
+    assert result.next == PcState.BUILD_REVIEW
+    assert result.run is not None
+    assert result.run.status == "succeeded"
+    assert result.context.test_input_ref  # inputs generated + persisted
 
 
-def test_test_and_repair_neutral_when_repair_empty():
+def test_test_and_repair_fail_routes_to_await_repair_with_staged_repair():
     from core.dify_builder.handlers_build import handle_test_and_repair
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
     env, _ = _new_env()
     env.dify = FakeBuildDifyPort()
-    env.agent.propose_build_repair = lambda _ids: []
+    env.dify.verify_pass = False
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
     fc = DifyBuilderContext(built_node_ids=["llm"])
     result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
-    assert result.next == PcState.BUILD_REVIEW
-    assert env.dify.applied == []  # no repair applied when propose_build_repair returns []
-    kinds = [i.kind for i in result.items]
-    assert "error" not in kinds
-    assert "change_set" not in kinds
-    assistant = next(i for i in result.items if i.kind == "assistant_turn")
-    assert assistant.payload["cards"] == ["test_result", "summary"]  # no error/change_set attached
-    summary = next(i for i in result.items if i.kind == "summary")
-    assert "No issues found" in summary.payload["items"]
+    assert result.next == PcState.BUILD_AWAIT_REPAIR
+    assert result.run is not None
+    assert result.run.status == "failed"
+    # StubAgent.propose_repair returns a repair -> staged
+    assert result.context.staged_repair
+
+
+def test_test_and_repair_reuses_persisted_inputs_on_retest():
+    from core.dify_builder.handlers_build import handle_test_and_repair
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    fc = DifyBuilderContext(built_node_ids=["llm"], test_input_ref="")
+    handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
+    ref = fc.test_input_ref
+    handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
+    assert fc.test_input_ref == ref  # reused, not regenerated
 
 
 def test_await_repair_approve_applies_and_retests():
@@ -650,6 +637,8 @@ def test_full_build_flow_goal_to_complete():
     assert out.current_state == PcState.BUILD_COMPLETE
 
     # ordered card stream: every Build card kind appears, seq-ordered.
+    # No "error" kind here: the live test_and_repair run passes (FakeBuildDifyPort
+    # defaults verify_pass=True), so no diagnosis/error card is ever staged.
     items = repo.list_conversation(s.id)
     kinds = [i.kind for i in items]
     expected_kinds = [
@@ -660,7 +649,6 @@ def test_full_build_flow_goal_to_complete():
         "resource_select",
         "checkpoint",
         "change_set",
-        "error",
         "test_result",
         "summary",
         "publish",
