@@ -351,6 +351,54 @@ def test_edit_test_run_draft_raises_routes_to_await_repair_failed():
     assert result.run.status == "failed"
 
 
+def test_edit_test_input_failure_routes_to_testdata_gate():
+    """An INPUT-caused run failure (missing/invalid test data, per
+    is_input_failure's signal match) must clear the stale input ref and route
+    back to the testdata gate -- not the config-repair gate."""
+    from core.dify_builder.handlers_edit import handle_test_affected_paths
+    from core.dify_builder.models import TestInput
+
+    env, _ = _new_env()
+    env.dify.verify_pass = False
+    env.dify.fail_error = "File variable not found for selector: ['start', 'document']"
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
+    env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+    fc = DifyBuilderContext(edit_target_node_ids=["llm"], test_input_ref="ti-1")
+
+    result = handle_test_affected_paths(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.EDIT_AWAIT_TESTDATA
+    assert result.context.test_input_ref == ""  # stale input cleared
+    assert result.context.verify_run_id == ""
+    kinds = [i.kind for i in result.items]
+    assert "form" in kinds
+    assert "change_set" not in kinds  # gate, not repair
+    test_result = next(i for i in result.items if i.kind == "test_result")
+    assert test_result.payload["tone"] == "error"
+    assistant = next(i for i in result.items if i.kind == "assistant_turn")
+    assert assistant.payload["stage_id"] == "edit.await_testdata"
+
+
+def test_edit_test_config_failure_still_routes_to_repair_gate():
+    """A config-caused run failure (the fake's default error, which matches no
+    input-failure signal) must still route to the config-repair gate,
+    unchanged."""
+    from core.dify_builder.handlers_edit import handle_test_affected_paths
+    from core.dify_builder.models import TestInput
+
+    env, _ = _new_env(agent=StubAgent())
+    env.dify.verify_pass = False  # default error "boom" -> config, not input
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
+    env.repo.save_test_input(TestInput(id="ti-1", session_id=s.id, source="mock", inputs={}))
+    fc = DifyBuilderContext(edit_target_node_ids=["llm"], test_input_ref="ti-1")
+
+    result = handle_test_affected_paths(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.EDIT_AWAIT_REPAIR
+    assert result.context.staged_repair  # StubAgent proposes a repair
+    assert result.context.test_input_ref == "ti-1"  # untouched on the config path
+
+
 def test_review_publish_reaches_terminal_edit_publish_with_publish_card():
     from core.dify_builder.handlers_edit import handle_review
 
