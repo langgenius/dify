@@ -1,17 +1,17 @@
 """The real Dify Builder agent shell.
 
-Owns the resolved model. Of the Protocol's 14 methods (Fix 4 + Build 7 + Edit 3),
-13 now use real LLM cognition: the 3 Fix methods that reason about a failed run --
+Owns the resolved model. All of the Protocol's 13 methods (Fix 4 + Build 6 + Edit 3)
+use real cognition: the 3 Fix methods that reason about a failed run --
 ``diagnose``, ``diagnose_checklist``, ``propose_repair`` -- via
-``services.dify_builder.agent.fix``; 6 of the 7 Build methods -- ``analyze_goal``,
+``services.dify_builder.agent.fix``; the 6 Build methods -- ``analyze_goal``,
 ``propose_plan_v1``, ``discover_resources``, ``bind_resources``, ``build_nodes``,
-``learn_from_build`` -- via ``services.dify_builder.agent.build``; and all 3 Edit
-methods -- ``analyze_impact``, ``propose_edit_plan``, ``build_edit_intents`` -- via
-``services.dify_builder.agent.edit``; and ``generate_mock_inputs`` via
-``services.dify_builder.agent.mock_inputs``. Each resolves the model through
-``_model_or_none`` (which degrades to ``None`` on resolution failure rather than
-crashing the advance; ``fix.*``/``build.*``/``edit.*``/``mock_inputs.*`` handle that).
-``propose_build_repair`` remains deferred and returns ``[]`` pending the live-test step.
+``learn_from_build`` -- via ``services.dify_builder.agent.build`` (``bind_resources``
+is deterministic, not LLM-driven); and all 3 Edit methods -- ``analyze_impact``,
+``propose_edit_plan``, ``build_edit_intents`` -- via ``services.dify_builder.agent.edit``;
+and ``generate_mock_inputs`` via ``services.dify_builder.agent.mock_inputs``. Each
+resolves the model through ``_model_or_none`` (which degrades to ``None`` on resolution
+failure rather than crashing the advance; ``fix.*``/``build.*``/``edit.*``/``mock_inputs.*``
+handle that).
 """
 
 from typing import Any
@@ -69,9 +69,6 @@ class LlmBuilderAgent:
 
     def build_nodes(self, plan_items):
         return build.build_nodes(self._tenant_id, self._model_config, plan_items)
-
-    def propose_build_repair(self, built_node_ids):
-        return []  # no real failure signal until the live test step is de-canned (deferred)
 
     def learn_from_build(self, goal_text, requirements, plan_items, built_node_ids):
         return build.learn_from_build(self._model_or_none(), goal_text, requirements, plan_items, built_node_ids)
