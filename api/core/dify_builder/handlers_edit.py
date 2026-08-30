@@ -468,6 +468,8 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         emit_canvas(env, "cancel_publish")
         for node_id in fc.edit_target_node_ids:
             emit_canvas(env, "highlight_edit_target", node_id=node_id)
+        fc.test_input_ref = ""
+        fc.verify_run_id = ""
         decision_items = append_card(fc, DecisionItem(text="Continue adjusting"))
         form_items = append_card(
             fc,
@@ -526,6 +528,8 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
     fc.plan_items = env.agent.propose_edit_plan(dict(fc.edit_rules), graph)
     fc.plan_version_tag = "v1"
+    fc.test_input_ref = ""
+    fc.verify_run_id = ""
     checkpoint_id = mint_checkpoint(env, s, fc, graph, graph_hash, PcState.EDIT_PLAN_APPROVAL)
     plan_items = append_card(fc, PlanCard(title="Change plan", version_tag="v1", items=list(fc.plan_items)))
     checkpoint_items = append_card(
