@@ -243,7 +243,8 @@ def test_apply_changes_revert_records_intent_only():
 def test_edit_test_pass_goes_to_review_with_real_run():
     from core.dify_builder.handlers_edit import handle_test_affected_paths
 
-    env, _ = _new_env()  # FakeEditDifyPort.verify_pass True by default
+    events: list[dict] = []
+    env, _ = _new_env(emit_canvas=events.append)  # FakeEditDifyPort.verify_pass True by default
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
     fc = DifyBuilderContext(edit_target_node_ids=["llm"])
     result = handle_test_affected_paths(env, Turn(actor=_actor()), s, fc)
@@ -254,8 +255,13 @@ def test_edit_test_pass_goes_to_review_with_real_run():
     assert result.context.test_input_ref  # inputs generated + persisted
     test_result = next(i for i in result.items if i.kind == "test_result")
     assert test_result.payload["tone"] == "success"
+    summary = next(i for i in result.items if i.kind == "summary")
+    assert summary.payload["variant"] == "review"
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
     assert assistant.payload["cards"] == ["test_result", "summary"]
+    names = [e["event"] for e in events]
+    assert "mark_test_success" in names
+    assert "mark_review_ready" in names
 
 
 def test_edit_test_fail_routes_to_await_repair():
