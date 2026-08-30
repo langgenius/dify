@@ -47,12 +47,14 @@ class PcState(StrEnum):
     BUILD_COMPLETE = "build.complete"
     BUILD_REVERTED = "build.reverted"
 
-    # Edit (spec §7.2) — 8 states.
+    # Edit (spec §7.2) — 9 states (EDIT_AWAIT_REPAIR added post-spec for the
+    # live-test de-canning slice; mirrors BUILD_AWAIT_REPAIR).
     EDIT_CAPABILITY_CHECK = "edit.capability_check"
     EDIT_IMPACT_ANALYSIS = "edit.impact_analysis"
     EDIT_PLAN_APPROVAL = "edit.plan_approval"
     EDIT_APPLY_CHANGES = "edit.apply_changes"
     EDIT_TEST_AFFECTED_PATHS = "edit.test_affected_paths"
+    EDIT_AWAIT_REPAIR = "edit.await_repair"
     EDIT_REVIEW = "edit.review"
     EDIT_PUBLISH = "edit.publish"
     EDIT_REVERTED = "edit.reverted"
@@ -98,6 +100,7 @@ _WAITING = frozenset(
         PcState.EDIT_IMPACT_ANALYSIS,
         PcState.EDIT_PLAN_APPROVAL,
         PcState.EDIT_APPLY_CHANGES,
+        PcState.EDIT_AWAIT_REPAIR,
         PcState.EDIT_REVIEW,
         PcState.EDIT_REVERTED,
     }
