@@ -41,6 +41,7 @@ from core.dify_builder.handlers_fix import (
     build_form_fields,
     emit_canvas,
     first_failed_node,
+    is_input_failure,
     merge_known_keys,
     mint_checkpoint,
     perform_revert,
@@ -428,13 +429,13 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     build.await_repair approval gate. No auto-apply (human-gated)."""
     graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
 
-    if fc.test_input_ref == "":
+    if fc.test_input_ref:
+        inputs = env.repo.get_test_input(fc.test_input_ref).inputs
+    else:  # defensive: the gate normally prepares inputs first
         inputs = env.agent.generate_mock_inputs(start_schema(graph), {})
         ti = TestInput(session_id=s.id, source="mock", inputs=inputs)
         env.repo.save_test_input(ti)
         fc.test_input_ref = ti.id
-    else:
-        inputs = env.repo.get_test_input(fc.test_input_ref).inputs
 
     emit = env.emit if env.emit is not None else (lambda _e: None)
     try:
@@ -496,6 +497,52 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     run.culprit_node_id = first_failed_node(per_node)
     fc.verify_run_id = run.id
     emit_canvas(env, "mark_test_error")
+
+    if is_input_failure(run):
+        # the run failed on its INPUT, not the config -- route back to the
+        # testdata gate instead of the config-repair gate; clear the stale
+        # input ref (and the verify_run_id we just set) so a fresh
+        # provide_testdata cycle starts clean.
+        fc.test_input_ref = ""
+        fc.verify_run_id = ""
+        test_items = append_card(
+            fc,
+            TestResultCard(
+                title="Test run",
+                subtitle="Failed",
+                tone="error",
+                stats=[TestStat(value="1", label="runs"), TestStat(value="1", label="errors")],
+                run_ids=[run.id],
+            ),
+        )
+        form_items = append_card(
+            fc,
+            FormCard(
+                variant="testdata",
+                fields=testdata_form_fields(start_schema(graph)),
+                values={},
+                frozen=False,
+            ),
+        )
+        turn_items = append_card(
+            fc,
+            AssistantTurnItem(
+                turn_id=str(uuid.uuid4()),
+                stage_id="build.await_testdata",
+                trace=Trace(status="completed", steps=[]),
+                reply_text="The run failed on its inputs — provide test data and retry.",
+                cards=["test_result", "form"],
+            ),
+        )
+        return StepResult(
+            next=PcState.BUILD_AWAIT_TESTDATA,
+            context=fc,
+            items=[*test_items, *form_items, *turn_items],
+            run=run,
+            run_id_sink=[run.id],
+        )
+
+    # config failure: existing diagnose + propose_repair -> BUILD_AWAIT_REPAIR
     diagnosis = env.agent.diagnose(run, graph, per_node)
     intents, risk = env.agent.propose_repair(diagnosis, graph)
     fc.diagnosis = diagnosis
