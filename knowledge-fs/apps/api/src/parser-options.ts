@@ -11,6 +11,7 @@ export interface ApiParserEnv {
   readonly NODE_ENV?: string | undefined;
   readonly UNSTRUCTURED_API_KEY?: string | undefined;
   readonly UNSTRUCTURED_API_URL?: string | undefined;
+  readonly UNSTRUCTURED_DEFAULT_LANGUAGE?: string | undefined;
   readonly UNSTRUCTURED_MAX_CONCURRENCY?: string | undefined;
   readonly UNSTRUCTURED_MAX_RESPONSE_BYTES?: string | undefined;
   readonly UNSTRUCTURED_MAX_RETRIES?: string | undefined;
@@ -60,6 +61,9 @@ function createApiUnstructuredParser({
   }
 
   return createUnstructuredParserClient({
+    ...(env.UNSTRUCTURED_DEFAULT_LANGUAGE?.trim()
+      ? { defaultLanguage: env.UNSTRUCTURED_DEFAULT_LANGUAGE.trim() }
+      : {}),
     endpoint,
     ...(env.UNSTRUCTURED_API_KEY?.trim() ? { apiKey: env.UNSTRUCTURED_API_KEY.trim() } : {}),
     ...(fetchImpl ? { fetch: fetchImpl } : {}),

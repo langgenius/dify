@@ -459,6 +459,8 @@ const documentSemanticChunker = createLlmSemanticChunker({
     : {}),
   maxConcurrentWindows: ingestionModelRuntimeOptions.semanticExtractionMaxConcurrency,
   maxNodes: 20_000,
+  maxProviderOutputRetries: 1,
+  maxWindowChars: ingestionModelRuntimeOptions.semanticChunkingMaxWindowChars,
   metrics: operationalMetrics.ingestionModelCalls,
   modelRequestGate: ingestionModelRuntimeOptions.modelRequestGate,
   reasoningProviderFactory: profileReasoningCapability.providerFactory,

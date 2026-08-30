@@ -235,7 +235,11 @@ describe("index projection builders", () => {
     });
 
     expect(embedCalls).toEqual([
-      { inputType: "search_document", model: "model-a", texts: ["合同ABC-123续约 terms"] },
+      {
+        inputType: "search_document",
+        model: "model-a",
+        texts: ["Intro\n\n合同ABC-123续约 terms"],
+      },
     ]);
     expect(result[0]).toMatchObject({
       id: "018f0d60-7a49-7cc2-9c1b-5b36f18f9000",
@@ -298,7 +302,7 @@ describe("index projection builders", () => {
         inputType: "search_document",
         model: "tenant-model",
         tenantId: "tenant-1",
-        texts: ["合同ABC-123续约 terms"],
+        texts: ["Intro\n\n合同ABC-123续约 terms"],
       },
     ]);
     expect(projection).toMatchObject({
@@ -527,13 +531,67 @@ describe("index projection builders", () => {
     expect(projection).toMatchObject({
       metadata: {
         ftsLanguageStrategy: "mixed-cjk-latin-v1",
-        ftsText: "合 同 abc 123 续 约 terms",
+        ftsText: "intro 合 同 abc 123 续 约 terms",
+        indexingStrategy: "section-context-v1",
         parser: "database-fts",
       },
       model: "database-fts@1",
       status: "ready",
       type: "fts",
     });
+  });
+
+  it("indexes semantic section paths and summaries while preserving the node source text", async () => {
+    const embedCalls: EmbedTextsInput[] = [];
+    const embeddings: EmbeddingProvider = {
+      embed: async (input) => {
+        embedCalls.push(input);
+        return {
+          dense: [[0.1, 0.2]],
+          metadata: { model: "model-a@1", provider: "static" },
+          model: "model-a@1",
+        };
+      },
+      kind: "static",
+      models: async () => [],
+    };
+    const denseRepository = createRecordingProjectionRepository();
+    const ftsRepository = createRecordingProjectionRepository();
+    const node = knowledgeNode({
+      metadata: {
+        chunkIndex: 0,
+        semanticChunking: {
+          section: {
+            path: ["Safety", "Tunnel"],
+            summary: "Checks excavation support and edge protection.",
+          },
+        },
+      },
+      sourceLocation: {
+        endOffset: 12,
+        sectionPath: ["Safety", "Tunnel", "Initial support"],
+        startOffset: 0,
+      },
+      text: "Verify the current work face.",
+    });
+
+    await createDenseVectorProjectionBuilder({
+      embeddings,
+      maxBatchSize: 1,
+      projections: denseRepository.repository,
+    }).build({ model: "model-a", nodes: [node], projectionVersion: 1 });
+    const [fts] = await createFtsProjectionBuilder({
+      maxBatchSize: 1,
+      projections: ftsRepository.repository,
+    }).build({ nodes: [node], projectionVersion: 1 });
+
+    expect(embedCalls[0]?.texts).toEqual([
+      "Safety > Tunnel > Initial support\n\nChecks excavation support and edge protection.\n\nVerify the current work face.",
+    ]);
+    expect(fts?.metadata.ftsText).toBe(
+      "safety tunnel initial support checks excavation support and edge protection verify the current work face",
+    );
+    expect(node.text).toBe("Verify the current work face.");
   });
 
   it("skips FTS projections for nodes without searchable text", async () => {

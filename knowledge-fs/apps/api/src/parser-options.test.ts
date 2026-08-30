@@ -79,6 +79,31 @@ describe("createApiDocumentParser", () => {
     });
   });
 
+  it("forwards the configured default language to Unstructured", async () => {
+    let requestedLanguage: FormDataEntryValue | null = null;
+    const parser = createApiDocumentParser({
+      env: {
+        UNSTRUCTURED_API_URL: "https://unstructured.example.test",
+        UNSTRUCTURED_DEFAULT_LANGUAGE: "zh-CN",
+      },
+      fetch: async (input) => {
+        const request = input instanceof Request ? input : new Request(input);
+        requestedLanguage = (await request.formData()).get("languages");
+        return new Response("[]", { headers: { "content-type": "application/json" } });
+      },
+    });
+
+    await parser.parse({
+      body: encoder.encode("%PDF-1.7"),
+      documentAssetId: "00000000-0000-4000-8000-000000000007",
+      filename: "report.pdf",
+      mimeType: "application/pdf",
+      version: 1,
+    });
+
+    expect(requestedLanguage).toBe("zho");
+  });
+
   it("can derive the local Unstructured URL from UNSTRUCTURED_PORT outside production", async () => {
     let requestedUrl = "";
     const parser = createApiDocumentParser({

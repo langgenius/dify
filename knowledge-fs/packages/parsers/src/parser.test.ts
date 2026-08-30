@@ -1342,7 +1342,7 @@ describe("parser adapters", () => {
       metadata: {
         filename: "report.pdf",
         mimeType: "application/pdf",
-        parserVersion: "unstructured@9",
+        parserVersion: "unstructured@10",
       },
       parser: "unstructured",
       version: 1,
@@ -1408,6 +1408,54 @@ describe("parser adapters", () => {
         type: "table",
       },
     ]);
+  });
+
+  it("normalizes spacing between Chinese OCR characters without rewriting words", async () => {
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async () =>
+        new Response(
+          JSON.stringify([
+            {
+              metadata: { languages: ["zho"], page_number: 1 },
+              text: "随 道 工 程 。源 道 初 期 支 护 与 开 挖 作 业",
+              type: "NarrativeText",
+            },
+            {
+              metadata: {
+                languages: ["zho"],
+                page_number: 1,
+                text_as_html: "<table><tr><td>施 工 条 件</td><td>临 时 用 电</td></tr></table>",
+              },
+              text: "施 工 条 件 临 时 用 电",
+              type: "Table",
+            },
+            {
+              metadata: { languages: ["zho"], page_number: 1 },
+              text: "随着道路工程推进",
+              type: "NarrativeText",
+            },
+          ]),
+          { headers: { "content-type": "application/json" }, status: 200 },
+        ),
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c51",
+      now: () => createdAt,
+    });
+
+    const artifact = await parser.parse({
+      body: new Uint8Array([1, 2, 3]),
+      documentAssetId,
+      filename: "tunnel.pdf",
+      mimeType: "application/pdf",
+      version: 1,
+    });
+
+    expect(artifact.elements.map((element) => element.text)).toEqual([
+      "随道工程 。源道初期支护与开挖作业",
+      "column_1: 施工条件 | column_2: 临时用电",
+      "随着道路工程推进",
+    ]);
+    expect(artifact.metadata.parserVersion).toBe("unstructured@10");
   });
 
   it("projects an Unstructured spreadsheet table into independently retrievable records", async () => {
@@ -1539,7 +1587,7 @@ describe("parser adapters", () => {
           version: 1,
         }),
       ).resolves.toMatchObject({
-        metadata: { parserVersion: "unstructured@9" },
+        metadata: { parserVersion: "unstructured@10" },
         parser: "unstructured",
       });
     },
@@ -1632,6 +1680,7 @@ describe("parser adapters", () => {
     });
     const parseWithHints = (parserHints: {
       readonly imagesHandledExternally?: boolean;
+      readonly language?: string;
       readonly layoutComplexity?: "complex" | "simple";
       readonly requiresImages?: boolean;
       readonly requiresOcr?: boolean;
@@ -1646,12 +1695,13 @@ describe("parser adapters", () => {
         version: 1,
       });
 
-    const [fast, ocr, tables, providerImages, externalImages] = await Promise.all([
+    const [fast, ocr, tables, providerImages, externalImages, chinese] = await Promise.all([
       parseWithHints({ layoutComplexity: "simple" }),
       parseWithHints({ requiresOcr: true }),
       parseWithHints({ requiresTables: true }),
       parseWithHints({ requiresImages: true }),
       parseWithHints({ imagesHandledExternally: true, requiresImages: true }),
+      parseWithHints({ language: "zh-CN" }),
     ]);
 
     expect(
@@ -1661,8 +1711,9 @@ describe("parser adapters", () => {
         tables.artifactHash,
         providerImages.artifactHash,
         externalImages.artifactHash,
+        chinese.artifactHash,
       ]).size,
-    ).toBe(5);
+    ).toBe(6);
   });
 
   it.each([

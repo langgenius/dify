@@ -14,6 +14,7 @@ describe("createApiIngestionModelRuntimeOptions", () => {
     expect(options.outlineSummaryMaxConcurrency).toBe(8);
     expect(options.semanticExtractionBatchSize).toBe(8);
     expect(options.semanticExtractionMaxConcurrency).toBe(4);
+    expect(options.semanticChunkingMaxWindowChars).toBe(4_800);
   });
 
   it("accepts bounded concurrency overrides", () => {
@@ -26,6 +27,7 @@ describe("createApiIngestionModelRuntimeOptions", () => {
       KNOWLEDGE_OUTLINE_SUMMARY_MAX_CONCURRENCY: "12",
       KNOWLEDGE_SEMANTIC_EXTRACTION_BATCH_SIZE: "10",
       KNOWLEDGE_SEMANTIC_EXTRACTION_MAX_CONCURRENCY: "6",
+      KNOWLEDGE_SEMANTIC_CHUNKING_MAX_WINDOW_CHARS: "2400",
     });
 
     expect(options.globalConcurrency).toBe(24);
@@ -36,6 +38,7 @@ describe("createApiIngestionModelRuntimeOptions", () => {
     expect(options.outlineSummaryMaxConcurrency).toBe(12);
     expect(options.semanticExtractionBatchSize).toBe(10);
     expect(options.semanticExtractionMaxConcurrency).toBe(6);
+    expect(options.semanticChunkingMaxWindowChars).toBe(2_400);
   });
 
   it("creates an isolated hard budget for each document", () => {
@@ -84,6 +87,7 @@ describe("createApiIngestionModelRuntimeOptions", () => {
     ["KNOWLEDGE_OUTLINE_SUMMARY_BATCH_MAX_INPUT_CHARS", "200001"],
     ["KNOWLEDGE_SEMANTIC_EXTRACTION_BATCH_SIZE", "33"],
     ["KNOWLEDGE_SEMANTIC_EXTRACTION_MAX_CONCURRENCY", "0"],
+    ["KNOWLEDGE_SEMANTIC_CHUNKING_MAX_WINDOW_CHARS", "200001"],
   ] as const)("rejects invalid %s=%s", (name, value) => {
     expect(() => createApiIngestionModelRuntimeOptions({ [name]: value })).toThrow(name);
   });

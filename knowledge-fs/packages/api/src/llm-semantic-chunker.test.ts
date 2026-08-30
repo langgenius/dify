@@ -303,7 +303,7 @@ describe("LLM semantic chunker", () => {
         completed: true,
         entityCount: 2,
         model: "reasoner-model",
-        promptVersion: "semantic-chunking-v5",
+        promptVersion: "semantic-chunking-v6",
       },
       relationExtraction: { completed: true, relationCount: 1 },
       semanticChunking: {
@@ -352,6 +352,9 @@ describe("LLM semantic chunker", () => {
     });
     expect(provider.calls[0]?.messages[0]?.content).toContain(
       "prefer natural topic boundaries over filling chunks",
+    );
+    expect(provider.calls[0]?.messages[0]?.content).toContain(
+      "keep the complete list together under its heading",
     );
   });
 
@@ -557,7 +560,7 @@ describe("LLM semantic chunker", () => {
       windowPlanning: {
         atomicDocument: false,
         sourceSectionPathCount: 2,
-        version: "v5",
+        version: "v6",
       },
     });
   });
@@ -633,11 +636,59 @@ describe("LLM semantic chunker", () => {
       parseArtifact.elements.map((element) => element.text?.trim() ?? "").join("\n"),
     );
     expect(nodes[0]?.metadata.semanticChunking).toMatchObject({
-      windowPlanning: { version: "v5" },
+      windowPlanning: { version: "v6" },
     });
     expect(v2Nodes[0]?.metadata.semanticChunking).toMatchObject({
       windowPlanning: { version: "v2" },
     });
+  });
+
+  it("extends a fixed core boundary to keep a numbered list in one window", async () => {
+    const parseArtifact = artifact([
+      ...Array.from({ length: 24 }, (_, index) => ({
+        id: `preamble-${index}`,
+        metadata: {},
+        sectionPath: ["Preamble"],
+        text: `Preamble ${index}.`,
+        type: "paragraph" as const,
+      })),
+      {
+        id: "list-heading",
+        metadata: {},
+        sectionPath: ["Negative list"],
+        text: "施工企业安全穿透式管理负面清单",
+        type: "paragraph" as const,
+      },
+      ...Array.from({ length: 9 }, (_, index) => ({
+        id: `list-item-${index + 1}`,
+        metadata: {},
+        sectionPath: ["Negative list"],
+        text: `${index + 1}. 第 ${index + 1} 项负面情形。`,
+        type: "paragraph" as const,
+      })),
+    ]);
+    const provider = new ScriptedProvider([echoEachUnit]);
+    const nodes = await createLlmSemanticChunker({
+      reasoningProviderFactory: () => provider,
+    }).chunk({
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      parseArtifact,
+      retrievalProfile: profile(),
+    });
+
+    expect(preflightLlmSemanticWindows({ parseArtifact })).toEqual({
+      maximumWindowCount: 1,
+      unitCount: 43,
+    });
+    expect(provider.calls).toHaveLength(1);
+    const prompt = JSON.parse(
+      provider.calls[0]?.messages.find((message) => message.role === "user")?.content ?? "{}",
+    ) as PromptPayload;
+    expect(prompt.units).toHaveLength(43);
+    expect(prompt.units.at(-1)?.text).toBe("第 9 项负面情形。");
+    expect(nodes.map((node) => node.text).join("")).toBe(
+      parseArtifact.elements.map((element) => element.text?.trim() ?? "").join(""),
+    );
   });
 
   it("runs fixed-core semantic windows concurrently while preserving document order", async () => {
@@ -870,7 +921,7 @@ describe("LLM semantic chunker", () => {
       windowPlanning: {
         atomicDocument: true,
         sourceSectionPathCount: 1,
-        version: "v5",
+        version: "v6",
       },
     });
     expect(nodes[0]?.metadata.extractedEntities).toEqual([
@@ -2351,6 +2402,18 @@ describe("LLM semantic chunker", () => {
     expect(() =>
       createLlmSemanticChunker({ reasoningProviderFactory: factory, temperature: -1 }),
     ).toThrow("temperature must be non-negative");
+    expect(() =>
+      createLlmSemanticChunker({
+        maxProviderOutputRetries: 4,
+        reasoningProviderFactory: factory,
+      }),
+    ).toThrow("maxProviderOutputRetries must be at most 3");
+    expect(() =>
+      createLlmSemanticChunker({
+        maxProviderOutputRetries: -1,
+        reasoningProviderFactory: factory,
+      }),
+    ).toThrow("maxProviderOutputRetries must be a non-negative integer");
     for (const [name, options] of [
       ["maxEntitiesPerChunk", { maxEntitiesPerChunk: 0 }],
       ["maxNodes", { maxNodes: 0 }],
@@ -2834,6 +2897,29 @@ describe("LLM semantic chunker", () => {
           ]),
       }).chunk(input),
     ).rejects.toThrow("contiguously without gaps or overlap");
+  });
+
+  it("retries one invalid provider response before committing the window", async () => {
+    const provider = new ScriptedProvider([() => ({ chunks: "invalid" }), echoWholeWindow]);
+    const nodes = await createLlmSemanticChunker({
+      maxProviderOutputRetries: 1,
+      reasoningProviderFactory: () => provider,
+    }).chunk({
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      parseArtifact: artifact([
+        {
+          id: "retry-provider-output",
+          metadata: {},
+          sectionPath: [],
+          text: "Alpha. Beta.",
+          type: "paragraph",
+        },
+      ]),
+      retrievalProfile: profile(),
+    });
+
+    expect(nodes).toHaveLength(1);
+    expect(provider.calls).toHaveLength(2);
   });
 
   it("accepts JSON wrapped in provider prose but strictly caps joint extraction arrays", async () => {
