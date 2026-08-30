@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from http import HTTPStatus
+from typing import Never
 
 from flask import abort, request
 from flask_restx import Resource
+from sqlalchemy.orm import Session
 
+from configs import dify_config
 from controllers.common.human_input_v2_contracts import (
     AddPlatformContactsRequest,
     AddPlatformContactsResponse,
@@ -60,14 +63,25 @@ from controllers.common.schema import (
     register_response_schema_models,
     register_schema_models,
 )
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
     is_admin_or_owner_required,
+    only_edition_enterprise,
     setup_required,
     with_current_tenant_id,
     with_current_user,
+)
+from core.human_input_v2.contact import (
+    CandidateId,
+    Contact,
+    ContactError,
+    ContactErrorCode,
+    ContactQuery,
+    ContactType,
+    ExternalContact,
 )
 from core.human_input_v2.im_integration import (
     ContactIMBindingView,
@@ -78,11 +92,19 @@ from core.human_input_v2.im_integration import (
     SyncResultFact,
 )
 from core.human_input_v2.shared import AccountId, ContactId, IMBindingId, IMIdentityId, TenantId, WorkspaceScope
-from graphon.file import helpers as file_helpers
-from libs.helper import dump_response
+from enums import DeploymentEdition
+from libs.datetime_utils import naive_utc_now
+from libs.helper import build_avatar_url, dump_response
 from libs.login import login_required
+from libs.uuid_utils import uuidv7
 from models.account import Account
+from repositories.human_input_v2.contact import (
+    SQLAlchemyContactIMBindingRepository,
+    SQLAlchemyContactRepository,
+)
+from services.enterprise.human_input_contact_composition import build_enterprise_contact_management_service
 from services.human_input_v2.composition import build_human_input_node_data_migration_service
+from services.human_input_v2.contact_service import ContactManagementService, ContactWithIMBindings
 from services.human_input_v2.im_contact_sync.composition import build_im_contact_sync_application
 from services.human_input_v2.im_contact_sync.errors import IMWriteUnavailableError
 from services.human_input_v2.im_contact_sync.service import (
@@ -143,10 +165,6 @@ register_response_schema_models(
     NodeDataMigrationResponse,
     NodeDataMigrationFailureResponse,
 )
-
-
-def _raise_stub_not_implemented() -> None:
-    abort(HTTPStatus.NOT_IMPLEMENTED, "Human Input v2 stub endpoint is not implemented yet.")
 
 
 _IM_BINDING_ERROR_STATUS = {
@@ -232,9 +250,7 @@ def _directory_entry_payload(result: SyncResultFact) -> dict[str, object] | None
 
 
 def _avatar_url(avatar_file_id: str | None) -> str:
-    if avatar_file_id is None:
-        return ""
-    return file_helpers.get_signed_file_url(upload_file_id=avatar_file_id) or ""
+    return build_avatar_url(avatar_file_id) or ""
 
 
 def _sync_contact_payload(contact: SyncContactSnapshot, fallback_created_at) -> dict[str, object]:
@@ -303,6 +319,62 @@ def _contact_binding_payload(contact: ContactIMBindingView) -> dict[str, object]
     }
 
 
+def _contact_avatar_url(contact: Contact) -> str:
+    return _avatar_url(contact.avatar_file_id)
+
+
+def _contact_payload(view: ContactWithIMBindings) -> dict[str, object]:
+    contact = view.contact
+    return {
+        "id": contact.id,
+        "type": contact.type,
+        "name": contact.name,
+        "email": contact.email,
+        "avatar_url": _contact_avatar_url(contact),
+        "im_bindings": [
+            {"id": binding.id, "provider": binding.provider, "scope": binding.scope} for binding in view.im_bindings
+        ],
+        "created_at": contact.created_at,
+    }
+
+
+def _contact_option_payload(contact: Contact) -> dict[str, object]:
+    return {
+        "id": contact.id,
+        "type": contact.type,
+        "name": contact.name,
+        "avatar_url": _contact_avatar_url(contact) or None,
+        "email": contact.email,
+    }
+
+
+def _contact_summary_payload(view: ContactWithIMBindings) -> dict[str, object]:
+    contact = view.contact
+    return {
+        "id": contact.id,
+        "name": contact.name,
+        "avatar_url": _contact_avatar_url(contact),
+        "created_at": contact.created_at,
+    }
+
+
+def _contact_service(session: Session) -> ContactManagementService:
+    repository = SQLAlchemyContactRepository(session)
+    return ContactManagementService(
+        repository,
+        SQLAlchemyContactIMBindingRepository(session),
+    )
+
+
+def _raise_contact_error(error: ContactError) -> Never:
+    if error.code in {ContactErrorCode.NOT_FOUND, ContactErrorCode.ACCOUNT_NOT_FOUND}:
+        abort(HTTPStatus.NOT_FOUND, str(error))
+    if error.code is ContactErrorCode.CONFLICT:
+        abort(HTTPStatus.CONFLICT, str(error))
+    abort(HTTPStatus.UNPROCESSABLE_ENTITY, str(error))
+    raise AssertionError("unreachable")
+
+
 @console_ns.route("/workspaces/current/human-input/contacts")
 class WorkspaceContactsApi(Resource):
     @console_ns.doc(params=query_params_from_model(ContactListQuery))
@@ -312,9 +384,29 @@ class WorkspaceContactsApi(Resource):
     @account_initialization_required
     @is_admin_or_owner_required
     @with_current_tenant_id
-    def get(self, tenant_id: str):
-        ContactListQuery.model_validate(request.args.to_dict(flat=True))
-        _raise_stub_not_implemented()
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str):
+        query = ContactListQuery.model_validate(request.args.to_dict(flat=True))
+        contact_query = ContactQuery(
+            keyword=query.keyword or "",
+            contact_type=ContactType(query.group.value) if query.group is not None else None,
+        )
+        service = _contact_service(session)
+        page, views = service.list_contacts(
+            TenantId(tenant_id),
+            page=query.page,
+            limit=query.limit,
+            query=contact_query,
+        )
+        return dump_response(
+            ListContactsResponse,
+            {
+                "data": [_contact_payload(view) for view in views],
+                "page": page.page,
+                "limit": page.limit,
+                "total": service.count_contacts(TenantId(tenant_id), contact_query),
+            },
+        )
 
 
 @console_ns.route("/workspaces/current/human-input/contacts/<uuid:contact_id>")
@@ -328,8 +420,13 @@ class WorkspaceContactApi(Resource):
     @account_initialization_required
     @is_admin_or_owner_required
     @with_current_tenant_id
-    def get(self, tenant_id: str, contact_id: str):
-        _raise_stub_not_implemented()
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str, contact_id: str):
+        contact = _contact_service(session).get_contact(TenantId(tenant_id), ContactId(contact_id))
+        if contact is None:
+            abort(HTTPStatus.NOT_FOUND, "Contact not found")
+        assert contact is not None
+        return dump_response(GetContactResponse, {"contact": _contact_payload(contact)})
 
 
 @console_ns.route("/workspaces/current/human-input/contact-options")
@@ -340,8 +437,7 @@ class WorkspaceContactOptionsApi(Resource):
         params=query_params_from_model(ContactOptionsQuery),
         description=(
             "List editor-safe Contact options for static recipient selection. "
-            "The projection omits email, IM bindings, and management metadata; contacts that resolve as ABSENT "
-            "or are otherwise unavailable in the current workspace are omitted."
+            "The projection omits IM bindings and management metadata; unavailable Contacts are omitted."
         ),
     )
     @console_ns.response(200, "Success", console_ns.models[ListContactOptionsResponse.__name__])
@@ -350,9 +446,25 @@ class WorkspaceContactOptionsApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @with_current_tenant_id
-    def get(self, tenant_id: str):
-        ContactOptionsQuery.model_validate(request.args.to_dict(flat=True))
-        _raise_stub_not_implemented()
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str):
+        query = ContactOptionsQuery.model_validate(request.args.to_dict(flat=True))
+        service = _contact_service(session)
+        page = service.list_contact_options(
+            TenantId(tenant_id),
+            page=query.page,
+            limit=query.limit,
+            keyword=query.keyword or "",
+        )
+        return dump_response(
+            ListContactOptionsResponse,
+            {
+                "data": [_contact_option_payload(contact) for contact in page.items],
+                "page": page.page,
+                "limit": page.limit,
+                "total": service.count_contacts(TenantId(tenant_id), ContactQuery(keyword=query.keyword or "")),
+            },
+        )
 
 
 @console_ns.route("/workspaces/current/human-input/organization-candidates")
@@ -363,10 +475,34 @@ class WorkspaceOrganizationCandidatesApi(Resource):
     @login_required
     @account_initialization_required
     @is_admin_or_owner_required
+    @only_edition_enterprise
     @with_current_tenant_id
-    def get(self, tenant_id: str):
-        OrganizationCandidatesQuery.model_validate(request.args.to_dict(flat=True))
-        _raise_stub_not_implemented()
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str):
+        query = OrganizationCandidatesQuery.model_validate(request.args.to_dict(flat=True))
+        service = build_enterprise_contact_management_service(session)
+        candidates = service.list_organization_candidates(
+            page=query.page,
+            limit=query.limit,
+            keyword=query.keyword or "",
+        )
+        return dump_response(
+            ListOrganizationCandidatesResponse,
+            {
+                "data": [
+                    {
+                        "id": candidate.id,
+                        "name": candidate.name,
+                        "email": candidate.email,
+                        "avatar_url": _avatar_url(candidate.avatar_file_id) or None,
+                    }
+                    for candidate in candidates
+                ],
+                "page": query.page,
+                "limit": query.limit,
+                "total": service.count_organization_candidates(query.keyword or ""),
+            },
+        )
 
 
 @console_ns.route("/workspaces/current/human-input/contacts/platform")
@@ -377,10 +513,22 @@ class WorkspacePlatformContactsApi(Resource):
     @login_required
     @account_initialization_required
     @is_admin_or_owner_required
+    @only_edition_enterprise
+    @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str):
-        AddPlatformContactsRequest.model_validate(console_ns.payload or {})
-        _raise_stub_not_implemented()
+    @with_session
+    def post(self, session: Session, tenant_id: str, current_user: Account):
+        request_body = AddPlatformContactsRequest.model_validate(console_ns.payload or {})
+        try:
+            with session.begin():
+                contacts = build_enterprise_contact_management_service(session).add_platform_contacts(
+                    TenantId(tenant_id),
+                    [CandidateId(candidate_id) for candidate_id in request_body.candidate_ids],
+                    AccountId(current_user.id),
+                )
+        except ContactError as error:
+            _raise_contact_error(error)
+        return dump_response(AddPlatformContactsResponse, {"data": [_contact_payload(contact) for contact in contacts]})
 
 
 @console_ns.route("/workspaces/current/human-input/contacts/external")
@@ -392,9 +540,22 @@ class WorkspaceExternalContactsApi(Resource):
     @account_initialization_required
     @is_admin_or_owner_required
     @with_current_tenant_id
-    def post(self, tenant_id: str):
-        ExternalContactCreateRequest.model_validate(console_ns.payload or {})
-        _raise_stub_not_implemented()
+    @with_session
+    def post(self, session: Session, tenant_id: str):
+        request_body = ExternalContactCreateRequest.model_validate(console_ns.payload or {})
+        try:
+            with session.begin():
+                contact = _contact_service(session).create_external_contact(
+                    TenantId(tenant_id),
+                    contact_id=ContactId(str(uuidv7())),
+                    name=request_body.name,
+                    email=str(request_body.email),
+                    avatar_file_id=request_body.avatar or None,
+                    now=naive_utc_now(),
+                )
+        except ContactError as error:
+            _raise_contact_error(error)
+        return dump_response(ExternalContactCreateResponse, {"contact": _contact_payload(contact)})
 
 
 @console_ns.route("/workspaces/current/human-input/contacts/external/<uuid:contact_id>")
@@ -406,9 +567,35 @@ class WorkspaceExternalContactApi(Resource):
     @account_initialization_required
     @is_admin_or_owner_required
     @with_current_tenant_id
-    def patch(self, tenant_id: str, contact_id: str):
-        ExternalContactUpdateRequest.model_validate(console_ns.payload or {})
-        _raise_stub_not_implemented()
+    @with_session
+    def patch(self, session: Session, tenant_id: str, contact_id: str):
+        request_body = ExternalContactUpdateRequest.model_validate(console_ns.payload or {})
+        service = _contact_service(session)
+        try:
+            with session.begin():
+                current = service.get_contact(TenantId(tenant_id), ContactId(contact_id))
+                if current is None or current.contact.type is not ContactType.EXTERNAL:
+                    abort(HTTPStatus.NOT_FOUND, "External Contact not found")
+                assert current is not None
+                current_contact = current.contact
+                if current_contact.email is None:
+                    raise RuntimeError("External Contact is missing its required Email")
+                avatar_file_id = current_contact.avatar_file_id
+                if "avatar" in request_body.model_fields_set:
+                    avatar_file_id = request_body.avatar or None
+                contact = service.update_external_contact(
+                    TenantId(tenant_id),
+                    external_contact=ExternalContact(
+                        id=current_contact.id,
+                        name=request_body.name or current_contact.name,
+                        email=str(request_body.email) if request_body.email is not None else current_contact.email,
+                        avatar_file_id=avatar_file_id,
+                        created_at=current_contact.created_at,
+                    ),
+                )
+        except ContactError as error:
+            _raise_contact_error(error)
+        return dump_response(ExternalContactUpdateResponse, {"contact": _contact_payload(contact)})
 
 
 @console_ns.route("/workspaces/current/human-input/contacts/remove")
@@ -420,9 +607,24 @@ class WorkspaceContactsRemoveApi(Resource):
     @account_initialization_required
     @is_admin_or_owner_required
     @with_current_tenant_id
-    def post(self, tenant_id: str):
-        RemoveContactsRequest.model_validate(console_ns.payload or {})
-        _raise_stub_not_implemented()
+    @with_session
+    def post(self, session: Session, tenant_id: str):
+        request_body = RemoveContactsRequest.model_validate(console_ns.payload or {})
+        try:
+            with session.begin():
+                contact_ids = [ContactId(contact_id) for contact_id in request_body.contact_ids]
+                if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
+                    removed_ids = build_enterprise_contact_management_service(session).remove_contacts(
+                        TenantId(tenant_id),
+                        contact_ids,
+                    )
+                else:
+                    removed_ids = _contact_service(session).remove_contacts(TenantId(tenant_id), contact_ids)
+        except ContactError as error:
+            _raise_contact_error(error)
+        except ValueError as error:
+            abort(HTTPStatus.UNPROCESSABLE_ENTITY, str(error))
+        return dump_response(RemoveContactsResponse, {"removed_contact_ids": removed_ids})
 
 
 @console_ns.route("/workspaces/current/human-input/im-sync-runs")
@@ -700,9 +902,17 @@ class BatchGetContactsAPI(Resource):
     @account_initialization_required
     @is_admin_or_owner_required
     @with_current_tenant_id
-    def get(self, tenant_id: str):
-        query_params_from_request(BatchGetContactsQuery, list_fields=("contact_ids",))
-        _raise_stub_not_implemented()
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str):
+        query = query_params_from_request(BatchGetContactsQuery, list_fields=("contact_ids",))
+        contacts = _contact_service(session).get_contacts(
+            TenantId(tenant_id),
+            [ContactId(contact_id) for contact_id in query.contact_ids],
+        )
+        return dump_response(
+            BatchGetContactsResponse,
+            {"data": [_contact_summary_payload(contact) for contact in contacts]},
+        )
 
 
 @console_ns.route("/workspaces/current/human-input/contact-options/batch")
@@ -713,7 +923,7 @@ class BatchGetContactOptionsAPI(Resource):
         params=query_params_from_model(BatchGetContactOptionsQuery),
         description=(
             "Resolve Contact IDs persisted in workflow recipient configuration. "
-            "Contacts that resolve as ABSENT or are otherwise unavailable in the current workspace are omitted."
+            "Contacts unavailable in the current workspace are omitted."
         ),
     )
     @console_ns.response(200, "Success", console_ns.models[BatchGetContactOptionsResponse.__name__])
@@ -722,9 +932,17 @@ class BatchGetContactOptionsAPI(Resource):
     @account_initialization_required
     @edit_permission_required
     @with_current_tenant_id
-    def get(self, tenant_id: str):
-        query_params_from_request(BatchGetContactOptionsQuery, list_fields=("contact_ids",))
-        _raise_stub_not_implemented()
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str):
+        query = query_params_from_request(BatchGetContactOptionsQuery, list_fields=("contact_ids",))
+        contacts = _contact_service(session).get_contact_options(
+            TenantId(tenant_id),
+            [ContactId(contact_id) for contact_id in query.contact_ids],
+        )
+        return dump_response(
+            BatchGetContactOptionsResponse,
+            {"data": [_contact_option_payload(contact) for contact in contacts]},
+        )
 
 
 @console_ns.route("/workspaces/current/human-input/node-data-migration")

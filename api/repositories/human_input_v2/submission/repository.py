@@ -1,11 +1,10 @@
 """Form-locked SQLAlchemy adapter for Human Input v2 first-success submission.
 
-One repeatable-read transaction locks the tenant-owned Form, loads the target
-grant, endpoint, and current identity facts, then keeps that immutable context
-authoritative for the write set. The commit path never reloads Contact or IM
-binding state. Audit insert, unique Submission insert, and Form transition share
-one savepoint so a unique-form race becomes a stable loser result without
-retaining its audit.
+One repeatable-read transaction locks the tenant-owned Form and loads the target
+grant, endpoint, and current EndUser facts. Contact and IM current-state loading
+is intentionally deferred and therefore fails closed. Audit insert, unique
+Submission insert, and Form transition share one savepoint so a unique-form race
+becomes a stable loser result without retaining its audit.
 """
 
 from __future__ import annotations
@@ -20,10 +19,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.human_input_v2.approval import (
     AuthorizationContext,
     AuthorizedSubmissionCommit,
-    ContactApprovalSubject,
-    CurrentContactAuthorizationFacts,
     CurrentEndUserAuthorizationFacts,
-    CurrentIMAuthorizationFacts,
     EndUserApprovalSubject,
     FormAuthorizationAuditEvent,
     FormAuthorizationAuditEventType,
@@ -31,27 +27,13 @@ from core.human_input_v2.approval import (
     SubmissionAttemptScope,
     SubmissionCommitResult,
     SubmissionCommitStatus,
-    VerifiedIMIdentityProof,
 )
-from core.human_input_v2.entities import HumanInputV2FormStatus, IMBindingScope
+from core.human_input_v2.entities import HumanInputV2FormStatus
 from core.human_input_v2.shared import (
-    AccountId,
     AppId,
-    ContactId,
     EndUserId,
-    IMBindingId,
-    IMIdentityId,
-    IntegrationId,
-    NormalizedEmail,
 )
-from models.account import Account, AccountStatus, TenantAccountJoin
 from models.human_input_v2 import (
-    HumanInputContact,
-    HumanInputContactIdentitySource,
-    HumanInputIMBinding,
-    HumanInputIMIdentity,
-    HumanInputIMIntegration,
-    HumanInputPlatformContactWorkspaceEntry,
     HumanInputV2Form,
     HumanInputV2FormApproverGrant,
     HumanInputV2FormDeliveryEndpoint,
@@ -77,7 +59,10 @@ class SQLAlchemySubmissionRepository:
 
     _session_maker: sessionmaker[Session]
 
-    def __init__(self, session_maker: sessionmaker[Session]) -> None:
+    def __init__(
+        self,
+        session_maker: sessionmaker[Session],
+    ) -> None:
         self._session_maker = session_maker
 
     @contextmanager
@@ -113,7 +98,11 @@ class SQLAlchemySubmissionTransaction:
     _form_record: HumanInputV2Form | None
     _context: AuthorizationContext | None
 
-    def __init__(self, session: Session, scope: SubmissionAttemptScope) -> None:
+    def __init__(
+        self,
+        session: Session,
+        scope: SubmissionAttemptScope,
+    ) -> None:
         self._session = session
         self._scope = scope
         self._form_record = None
@@ -137,6 +126,7 @@ class SQLAlchemySubmissionTransaction:
 
         if self._context is not None:
             return self._context
+        del proof
         form_record = self._session.scalar(self.locked_form_statement(self._scope))
         if form_record is None:
             raise SubmissionScopeNotFoundError("form owner scope does not exist")
@@ -153,16 +143,14 @@ class SQLAlchemySubmissionTransaction:
         form = form_from_record(form_record, (grant_record,))
         grant = grant_from_record(grant_record)
         endpoint = endpoint_from_record(endpoint_record) if endpoint_record is not None else None
-        current_contact = self._load_current_contact(grant)
         current_end_user = self._load_current_end_user(grant, form.app_id)
-        current_im = self._load_current_im_binding(proof, current_contact)
         context = AuthorizationContext(
             form=form,
             grant=grant,
             endpoint=endpoint,
-            current_contact=current_contact,
+            current_contact=None,
             current_end_user=current_end_user,
-            current_im_binding=current_im,
+            current_im_binding=None,
         )
         self._form_record = form_record
         self._context = context
@@ -249,47 +237,6 @@ class SQLAlchemySubmissionTransaction:
             raise SubmissionScopeNotFoundError("delivery endpoint owner scope does not exist")
         return endpoint_record
 
-    def _load_current_contact(self, grant) -> CurrentContactAuthorizationFacts | None:
-        if not isinstance(grant.subject, ContactApprovalSubject):
-            return None
-        tenant_id = str(self._scope.form_ref.tenant_id)
-        membership_exists = sa.exists().where(
-            TenantAccountJoin.tenant_id == tenant_id,
-            TenantAccountJoin.account_id == HumanInputContact.account_id,
-        )
-        platform_exists = sa.exists().where(
-            HumanInputPlatformContactWorkspaceEntry.tenant_id == tenant_id,
-            HumanInputPlatformContactWorkspaceEntry.contact_id == HumanInputContact.id,
-        )
-        row = self._session.execute(
-            select(HumanInputContact, Account.status, membership_exists, platform_exists)
-            .outerjoin(Account, Account.id == HumanInputContact.account_id)
-            .where(
-                HumanInputContact.id == str(grant.subject.contact_id),
-                sa.or_(HumanInputContact.tenant_id == tenant_id, HumanInputContact.tenant_id.is_(None)),
-            )
-        ).one_or_none()
-        if row is None:
-            return None
-        contact_record, account_status, has_membership, has_platform_entry = row
-        identity_source = contact_record.identity_source
-        if identity_source is HumanInputContactIdentitySource.EXTERNAL:
-            workspace_available = contact_record.tenant_id == tenant_id
-        elif identity_source is HumanInputContactIdentitySource.WORKSPACE_MEMBER:
-            workspace_available = contact_record.tenant_id == tenant_id and has_membership
-        else:
-            workspace_available = has_membership or has_platform_entry
-        normalized_email = (
-            NormalizedEmail(contact_record.normalized_email) if contact_record.normalized_email is not None else None
-        )
-        return CurrentContactAuthorizationFacts(
-            contact_id=ContactId(contact_record.id),
-            account_id=AccountId(contact_record.account_id) if contact_record.account_id is not None else None,
-            normalized_email=normalized_email,
-            account_active=contact_record.account_id is None or account_status is AccountStatus.ACTIVE,
-            workspace_available=bool(workspace_available),
-        )
-
     def _load_current_end_user(self, grant, app_id: AppId) -> CurrentEndUserAuthorizationFacts | None:
         if not isinstance(grant.subject, EndUserApprovalSubject):
             return None
@@ -308,83 +255,6 @@ class SQLAlchemySubmissionTransaction:
             end_user_id=EndUserId(row.id),
             app_id=AppId(row.app_id),
             workspace_available=True,
-        )
-
-    def _load_current_im_binding(
-        self,
-        proof: object,
-        current_contact: CurrentContactAuthorizationFacts | None,
-    ) -> CurrentIMAuthorizationFacts | None:
-        if not isinstance(proof, VerifiedIMIdentityProof) or current_contact is None:
-            return None
-        tenant_id = str(self._scope.form_ref.tenant_id)
-        integration = self._session.scalar(
-            select(HumanInputIMIntegration).where(
-                HumanInputIMIntegration.id == str(proof.integration_id),
-                HumanInputIMIntegration.provider == proof.provider,
-                sa.or_(HumanInputIMIntegration.tenant_id == tenant_id, HumanInputIMIntegration.tenant_id.is_(None)),
-            )
-        )
-        if integration is None:
-            return None
-        priority = sa.case((HumanInputIMBinding.scope == IMBindingScope.WORKSPACE, 0), else_=1)
-        binding_row = self._session.execute(
-            select(HumanInputIMBinding, HumanInputIMIdentity)
-            .outerjoin(
-                HumanInputIMIdentity,
-                HumanInputIMIdentity.id == HumanInputIMBinding.im_identity_id,
-            )
-            .where(
-                HumanInputIMBinding.integration_id == integration.id,
-                HumanInputIMBinding.provider == proof.provider,
-                HumanInputIMBinding.contact_id == str(current_contact.contact_id),
-                sa.or_(
-                    sa.and_(
-                        HumanInputIMBinding.scope == IMBindingScope.WORKSPACE,
-                        HumanInputIMBinding.scope_id == tenant_id,
-                    ),
-                    sa.and_(
-                        HumanInputIMBinding.scope == IMBindingScope.ORGANIZATION,
-                        HumanInputIMBinding.scope_id == integration.id,
-                    ),
-                ),
-            )
-            .order_by(priority, HumanInputIMBinding.id)
-            .limit(1)
-        ).one_or_none()
-        binding_id: IMBindingId | None = None
-        if binding_row is not None:
-            binding_record, identity_record = binding_row
-            if binding_record.integration_id != integration.id or binding_record.provider is not proof.provider:
-                return None
-            if (
-                identity_record is None
-                or identity_record.integration_id != integration.id
-                or identity_record.provider is not proof.provider
-            ):
-                return None
-            binding_id = IMBindingId(binding_record.id)
-        elif current_contact.normalized_email is not None:
-            identity_record = self._session.scalar(
-                select(HumanInputIMIdentity).where(
-                    HumanInputIMIdentity.integration_id == integration.id,
-                    HumanInputIMIdentity.provider == proof.provider,
-                    HumanInputIMIdentity.normalized_email == str(current_contact.normalized_email),
-                )
-            )
-            if identity_record is None:
-                return None
-        else:
-            return None
-        return CurrentIMAuthorizationFacts(
-            integration_id=IntegrationId(integration.id),
-            provider=integration.provider,
-            provider_tenant_id=integration.provider_tenant_id,
-            contact_id=current_contact.contact_id,
-            account_id=current_contact.account_id,
-            identity_id=IMIdentityId(identity_record.id),
-            binding_id=binding_id,
-            provider_user_id=identity_record.provider_user_id,
         )
 
     def _require_loaded_context(self) -> AuthorizationContext:

@@ -37,7 +37,7 @@ from .form import (
 )
 from .grants import ApproverGrant, DeliveryEndpointRef
 from .otp import ContactOTPSubject, EmailAddressOTPSubject, VerifiedEmailOTPProof
-from .recipient_resolution import ContactApprovalSubject, EmailAddressApprovalSubject, EndUserApprovalSubject
+from .recipient_plan import ContactApprovalSubject, EmailAddressApprovalSubject, EndUserApprovalSubject
 
 
 @dataclass(frozen=True, slots=True)

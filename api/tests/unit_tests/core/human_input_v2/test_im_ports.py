@@ -23,7 +23,6 @@ def test_repository_port_is_transaction_oriented_instead_of_table_crud() -> None
         "create_integration",
         "compare_and_swap_configuration",
         "compare_and_swap_delete",
-        "resolve_effective_binding",
         "append_sync_results",
     } <= control_plane_methods
     assert not {

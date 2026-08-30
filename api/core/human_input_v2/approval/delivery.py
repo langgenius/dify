@@ -40,7 +40,7 @@ from core.human_input_v2.shared import (
 from libs.datetime_utils import ensure_naive_utc
 
 from .grants import ApproverGrantRef, DeliveryEndpointRef
-from .recipient_resolution import (
+from .recipient_plan import (
     ConsoleEndpointPlan,
     DeliveryEndpointPlan,
     EmailEndpointPlan,

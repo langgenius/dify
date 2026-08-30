@@ -503,6 +503,13 @@ class AccountService:
         )
 
         session.add(account)
+        session.flush()
+        # Account creation and Contact identity provisioning share this caller
+        # Session, so an Account can never commit without its stable Contact ID.
+        from core.human_input_v2.shared import AccountId
+        from repositories.human_input_v2.contact import SQLAlchemyContactRepository
+
+        SQLAlchemyContactRepository(session).provision_account_backed_contact(AccountId(account.id))
         session.commit()
         return account
 
@@ -1395,6 +1402,12 @@ class TenantService:
             ta = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole(role))
             session.add(ta)
 
+        # Membership creation is the bounded repair point for pre-existing
+        # Accounts whose immutable Contact identity is unexpectedly missing.
+        from core.human_input_v2.shared import AccountId
+        from repositories.human_input_v2.contact import SQLAlchemyContactRepository
+
+        SQLAlchemyContactRepository(session).provision_account_backed_contact(AccountId(account.id))
         session.commit()
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             BillingService.clean_billing_info_cache(tenant.id)
@@ -1954,6 +1967,7 @@ class RegisterService:
         :param ip_address: ip address
         :param language: language
         """
+        account: Account | None = None
         try:
             account = AccountService.create_account(
                 email=email,
@@ -1973,8 +1987,15 @@ class RegisterService:
             session.add(dify_setup)
             session.commit()
         except Exception as e:
+            from core.human_input_v2.shared import AccountId
+            from repositories.human_input_v2.contact import SQLAlchemyContactRepository
+
             session.execute(delete(DifySetup))
             session.execute(delete(TenantAccountJoin))
+            if account is not None:
+                SQLAlchemyContactRepository(session).delete_account_identity_after_failed_creation(
+                    AccountId(account.id)
+                )
             session.execute(delete(Account))
             session.execute(delete(Tenant))
             session.commit()

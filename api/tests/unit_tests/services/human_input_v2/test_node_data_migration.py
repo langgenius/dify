@@ -694,5 +694,5 @@ def test_composition_injects_sql_lookup_and_core_converter_has_no_infrastructure
     assert isinstance(service._member_email_lookup, SQLAlchemyWorkspaceMemberEmailLookup)
 
     converter_source = inspect.getsource(migration_module)
-    for forbidden_import in ("flask", "sqlalchemy", "models", "repositories", "recipient_resolution"):
+    for forbidden_import in ("flask", "sqlalchemy", "models", "repositories"):
         assert forbidden_import not in converter_source

@@ -22,7 +22,6 @@ from core.human_input_v2.shared import (
     TenantId,
 )
 
-from .binding_resolution import BindingResolutionResult
 from .integration import (
     ConfigurationTransition,
     IMIntegration,
@@ -179,17 +178,6 @@ class IMControlPlaneRepository(IMSyncRepository, Protocol):
         organization_scope: DirectoryScope,
     ) -> None | StaleRevision:
         """Delete current configuration and current children under complete CAS."""
-        ...
-
-    def resolve_effective_binding(
-        self,
-        *,
-        integration_id: IntegrationId,
-        provider: IMProvider,
-        tenant_id: TenantId,
-        contact_id: ContactId,
-    ) -> BindingResolutionResult:
-        """Load and resolve one credential-free effective binding snapshot."""
         ...
 
     def append_sync_results(self, results: tuple[SyncResultFact, ...]) -> None:

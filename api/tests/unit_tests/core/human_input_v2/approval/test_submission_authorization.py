@@ -34,7 +34,7 @@ from core.human_input_v2.approval import (
     VerifiedIMIdentityProof,
     VerifiedTrustedEndUserProof,
 )
-from core.human_input_v2.approval.recipient_resolution import CanonicalSubjectKey, SubjectSnapshot
+from core.human_input_v2.approval.recipient_plan import CanonicalSubjectKey, SubjectSnapshot
 from core.human_input_v2.entities import HumanInputV2FormKind, HumanInputV2FormStatus, IMProvider
 from core.human_input_v2.shared import (
     AccountId,

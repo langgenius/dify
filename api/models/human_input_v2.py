@@ -1,4 +1,4 @@
-"""Persistence models for Human Input v2 contacts, IM intake, delivery, and approval runtime.
+"""Persistence models for Human Input v2 IM intake, delivery, and approval runtime.
 
 The models intentionally use logical references instead of database foreign keys.
 Every relationship therefore requires an explicit eager-loading strategy, and
@@ -7,11 +7,7 @@ comments name the referenced ``table.column`` for every logical foreign key.
 Human Input v2 forms and every form-scoped child use a dedicated table namespace;
 they never reference the legacy ``human_input_forms`` aggregate. Runtime forms
 bind to the shared workflow pause infrastructure through ``workflow_pause_id``.
-Contacts represent the conceptual Organization boundary through ``tenant_id``:
-EE Organization rows use a null value, while workspace-owned rows reference
-``tenants.id``. Their immutable ``identity_source`` selects the lifecycle policy;
-workspace-local Contact type remains a query projection. IM child rows use their
-integration as the concrete persistence boundary.
+IM child rows use their integration as the concrete persistence boundary.
 """
 
 from __future__ import annotations
@@ -26,7 +22,7 @@ from sqlalchemy import orm
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship
 
 from core.human_input import ButtonStyle
-from core.human_input_v2.approval.recipient_resolution import RecipientSourceKind as _RecipientSourceKind
+from core.human_input_v2.approval.recipient_plan import RecipientSourceKind as _RecipientSourceKind
 from core.human_input_v2.entities import (
     EmailProviderType as _EmailProviderType,
 )
@@ -372,124 +368,144 @@ class FormAuditEventPayload(_ImmutableJSONObject):
     """Event-specific immutable audit context not used for primary queries."""
 
 
-class HumanInputContactIdentitySource(StrEnum):
-    """Immutable persistence discriminator for Contact lifecycle ownership.
+class ContactSubjectType(StrEnum):
+    """Immutable Contact subject discriminator, never a current Contact type."""
 
-    This model-layer enum is intentionally separate from ``HumanInputContactType``.
-    The identity source is persisted once and determines who owns creation and
-    deletion of the Contact: an EE Organization Account, a CE/SaaS workspace
-    membership, or a workspace-managed External Contact. It does not vary by
-    workspace.
-
-    ``HumanInputContactType`` is an external, workspace-relative projection. One
-    ``ORGANIZATION_ACCOUNT`` Contact can resolve to ``WORKSPACE`` in one
-    workspace, ``PLATFORM`` in another, and be absent elsewhere. Promote and
-    Demote therefore change membership and the Platform allow-list, never this
-    enum. This enum must not be serialized as the external Contact type.
-    """
-
-    ORGANIZATION_ACCOUNT = "organization_account"
-    WORKSPACE_MEMBER = "workspace_member"
+    ACCOUNT = "account"
     EXTERNAL = "external"
 
 
-class HumanInputContact(DefaultFieldsDCMixin, TypeBase):
-    """Canonical contact identity shared by directory, delivery, and authorization.
+class HumanInputContactIdentity(DefaultFieldsDCMixin, TypeBase):
+    """Immutable Contact identity shared by every durable Contact reference.
 
-    ``identity_source`` and the owner columns define the immutable lifecycle
-    source of the identity. Workspace membership and Platform availability are
-    external facts and never mutate this source. Because both supported
-    databases allow duplicate nulls in unique constraints, EE Organization
-    contact uniqueness and Organization/External Email claims must also be
-    protected by a contact write transaction that locks the deployment's stable
-    ``DifySetup`` row before conflict checks.
+    Account profile, membership, Platform visibility, and authorization state
+    deliberately remain with their source owners. External mutable facts live
+    in exactly one ``HumanInputExternalContactProfile``.
     """
 
-    __tablename__ = "human_input_contacts"
+    __tablename__ = "human_input_contact_identities"
     __table_args__ = (
+        sa.CheckConstraint(
+            "(subject_type = 'account' AND account_id IS NOT NULL) OR "
+            "(subject_type = 'external' AND account_id IS NULL)",
+            name="human_input_contact_identities_subject_type_ck",
+        ),
         sa.UniqueConstraint(
-            "tenant_id",
             "account_id",
-            name="human_input_contacts_tenant_account_uq",
+            name="human_input_contact_identities_account_id_uq",
         ),
-        sa.UniqueConstraint(
-            "tenant_id",
-            "normalized_email",
-            name="human_input_contacts_tenant_email_uq",
-        ),
-        sa.CheckConstraint(
-            "(identity_source = 'organization_account' AND tenant_id IS NULL AND account_id IS NOT NULL) OR "
-            "(identity_source = 'workspace_member' AND tenant_id IS NOT NULL AND account_id IS NOT NULL) OR "
-            "(identity_source = 'external' AND tenant_id IS NOT NULL AND account_id IS NULL)",
-            name="identity_owner",
-        ),
-        sa.CheckConstraint(
-            "identity_source <> 'external' OR (email IS NOT NULL AND normalized_email IS NOT NULL)",
-            name="external_email",
-        ),
-        sa.CheckConstraint(
-            "(email IS NULL AND normalized_email IS NULL) OR (email IS NOT NULL AND normalized_email IS NOT NULL)",
-            name="email_normalization_pair",
-        ),
-        sa.Index("human_input_contacts_tenant_normalized_name_idx", "tenant_id", "normalized_name"),
         {
             "comment": (
-                "Canonical Human Input contact identities. EE Organization Account contacts have tenant_id IS NULL; "
-                "workspace-owned contacts have tenant_id = tenants.id; CE and SaaS must not create contacts with "
-                "tenant_id IS NULL."
+                "Immutable Human Input Contact identities. Mutable Account and External Contact profile facts "
+                "live with their source owners."
             )
         },
     )
 
-    name: Mapped[str] = mapped_column(sa.String(255), nullable=False, comment="Display name shown in contact surfaces.")
-    normalized_name: Mapped[str] = mapped_column(
-        sa.String(255), nullable=False, comment="Lower-cased search value maintained by the application."
-    )
-    identity_source: Mapped[HumanInputContactIdentitySource] = mapped_column(
-        EnumText(HumanInputContactIdentitySource),
+    subject_type: Mapped[ContactSubjectType] = mapped_column(
+        EnumText(ContactSubjectType),
         nullable=False,
-        comment="Immutable identity source that determines the Contact lifecycle owner.",
-    )
-    tenant_id: Mapped[str | None] = mapped_column(
-        StringUUID,
-        nullable=True,
-        default=None,
-        comment=(
-            "Ownership boundary: null only for EE Organization contacts; otherwise the owning tenants.id for "
-            "workspace-owned contacts. CE and SaaS must never persist a null value."
-        ),
+        comment="Immutable Account or External subject discriminator.",
     )
     account_id: Mapped[str | None] = mapped_column(
         StringUUID,
         nullable=True,
         default=None,
-        comment="Logical foreign key to accounts.id for an account-backed contact.",
+        comment="Logical accounts.id reference for Account subjects only.",
     )
-    email: Mapped[str | None] = mapped_column(
-        sa.String(320), nullable=True, default=None, comment="Current deliverable email address, when available."
+
+    external_profile: Mapped[HumanInputExternalContactProfile | None] = relationship(
+        lambda: HumanInputExternalContactProfile,
+        primaryjoin=lambda: sa.and_(
+            HumanInputContactIdentity.id == orm.foreign(HumanInputExternalContactProfile.contact_id),
+            HumanInputContactIdentity.subject_type == ContactSubjectType.EXTERNAL,
+        ),
+        back_populates="identity",
+        viewonly=True,
+        lazy="raise",
+        init=False,
     )
-    normalized_email: Mapped[str | None] = mapped_column(
-        sa.String(320), nullable=True, default=None, comment="Full lower-cased email used for equality matching."
+
+
+class HumanInputExternalContactProfile(TypeBase):
+    """Current workspace-owned profile for one External Contact identity."""
+
+    __tablename__ = "human_input_external_contact_profiles"
+    __table_args__ = (
+        sa.UniqueConstraint(
+            "tenant_id",
+            "normalized_email",
+            name="hiecp_tenant_normalized_email_uq",
+        ),
+        sa.Index(
+            "hiecp_tenant_normalized_name_idx",
+            "tenant_id",
+            "normalized_name",
+        ),
+        {
+            "comment": (
+                "Current workspace-owned External Contact profiles. Deletion removes both this profile and its "
+                "Contact identity."
+            )
+        },
+    )
+
+    contact_id: Mapped[str] = mapped_column(
+        StringUUID,
+        primary_key=True,
+        comment="Logical human_input_contact_identities.id reference for one External subject.",
+    )
+    tenant_id: Mapped[str] = mapped_column(
+        StringUUID,
+        nullable=False,
+        comment="Owning tenants.id used by every current External Contact lookup.",
+    )
+    name: Mapped[str] = mapped_column(
+        sa.String(255),
+        nullable=False,
+        comment="Workspace-managed display name.",
+    )
+    normalized_name: Mapped[str] = mapped_column(
+        sa.String(255),
+        nullable=False,
+        comment="Canonical search value maintained by External Contact writes.",
+    )
+    email: Mapped[str] = mapped_column(
+        sa.String(320),
+        nullable=False,
+        comment="Workspace-managed deliverable Email address.",
+    )
+    normalized_email: Mapped[str] = mapped_column(
+        sa.String(320),
+        nullable=False,
+        comment="Canonical Email equality value maintained by External Contact writes.",
     )
     avatar_file_id: Mapped[str | None] = mapped_column(
         StringUUID,
         nullable=True,
         default=None,
-        comment="Logical foreign key to upload_files.id for an external contact avatar.",
+        comment="Logical upload_files.id reference owned by the same workspace.",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        insert_default=naive_utc_now,
+        init=False,
+        server_default=sa.func.current_timestamp(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        insert_default=naive_utc_now,
+        init=False,
+        server_default=sa.func.current_timestamp(),
+        onupdate=sa.func.current_timestamp(),
     )
 
-    platform_workspace_entries: Mapped[list[HumanInputPlatformContactWorkspaceEntry]] = relationship(
-        lambda: HumanInputPlatformContactWorkspaceEntry,
-        primaryjoin=lambda: HumanInputContact.id == orm.foreign(HumanInputPlatformContactWorkspaceEntry.contact_id),
-        back_populates="contact",
-        viewonly=True,
-        lazy="raise",
-        init=False,
-    )
-    im_bindings: Mapped[list[HumanInputIMBinding]] = relationship(
-        lambda: HumanInputIMBinding,
-        primaryjoin=lambda: HumanInputContact.id == orm.foreign(HumanInputIMBinding.contact_id),
-        back_populates="contact",
+    identity: Mapped[HumanInputContactIdentity] = relationship(
+        lambda: HumanInputContactIdentity,
+        primaryjoin=lambda: orm.foreign(HumanInputExternalContactProfile.contact_id) == HumanInputContactIdentity.id,
+        back_populates="external_profile",
         viewonly=True,
         lazy="raise",
         init=False,
@@ -502,9 +518,9 @@ class HumanInputPlatformContactWorkspaceEntry(DefaultFieldsDCMixin, TypeBase):
     The entry does not own the Contact and does not duplicate workspace
     membership or the externally resolved Contact type. Its existence means that
     an EE Organization Account contact without current membership is explicitly
-    available in one workspace. The Contact Directory service must ensure the
-    referenced Contact has ``ORGANIZATION_ACCOUNT`` as its identity source and
-    serialize Promote/Demote with the corresponding membership mutation.
+    available in one workspace. The Enterprise Contact repository must ensure the
+    referenced Contact is an Account subject. Membership changes never mutate
+    the Contact identity.
     """
 
     __tablename__ = "human_input_platform_contact_workspace_entries"
@@ -526,21 +542,12 @@ class HumanInputPlatformContactWorkspaceEntry(DefaultFieldsDCMixin, TypeBase):
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, comment="Logical foreign key to tenants.id.")
     contact_id: Mapped[str] = mapped_column(
-        StringUUID, nullable=False, comment="Logical foreign key to human_input_contacts.id."
+        StringUUID, nullable=False, comment="Logical foreign key to human_input_contact_identities.id."
     )
     added_by_account_id: Mapped[str] = mapped_column(
         StringUUID,
         nullable=False,
         comment="Logical foreign key to accounts.id for the administrator who added this directory entry.",
-    )
-
-    contact: Mapped[HumanInputContact] = relationship(
-        lambda: HumanInputContact,
-        primaryjoin=lambda: orm.foreign(HumanInputPlatformContactWorkspaceEntry.contact_id) == HumanInputContact.id,
-        back_populates="platform_workspace_entries",
-        viewonly=True,
-        lazy="raise",
-        init=False,
     )
 
 
@@ -954,7 +961,7 @@ class HumanInputIMBinding(DefaultFieldsDCMixin, TypeBase):
         ),
     )
     contact_id: Mapped[str] = mapped_column(
-        StringUUID, nullable=False, comment="Logical foreign key to human_input_contacts.id."
+        StringUUID, nullable=False, comment="Logical foreign key to human_input_contact_identities.id."
     )
     im_identity_id: Mapped[str] = mapped_column(
         StringUUID, nullable=False, comment="Logical foreign key to human_input_im_identities.id."
@@ -969,14 +976,6 @@ class HumanInputIMBinding(DefaultFieldsDCMixin, TypeBase):
         comment="Logical foreign key to accounts.id for the administrator who created the override.",
     )
 
-    contact: Mapped[HumanInputContact] = relationship(
-        lambda: HumanInputContact,
-        primaryjoin=lambda: orm.foreign(HumanInputIMBinding.contact_id) == HumanInputContact.id,
-        back_populates="im_bindings",
-        viewonly=True,
-        lazy="raise",
-        init=False,
-    )
     identity: Mapped[HumanInputIMIdentity] = relationship(
         lambda: HumanInputIMIdentity,
         primaryjoin=lambda: orm.foreign(HumanInputIMBinding.im_identity_id) == HumanInputIMIdentity.id,
@@ -1145,7 +1144,7 @@ class HumanInputIMSyncResult(DefaultFieldsDCMixin, TypeBase):
         StringUUID,
         nullable=True,
         default=None,
-        comment="Logical foreign key to human_input_contacts.id, when a contact was matched.",
+        comment="Logical foreign key to human_input_contact_identities.id, when a contact was matched.",
     )
     im_identity_id: Mapped[str | None] = mapped_column(
         StringUUID,
@@ -1198,13 +1197,6 @@ class HumanInputIMSyncResult(DefaultFieldsDCMixin, TypeBase):
         lambda: HumanInputIMSyncRun,
         primaryjoin=lambda: orm.foreign(HumanInputIMSyncResult.sync_run_id) == HumanInputIMSyncRun.id,
         back_populates="results",
-        viewonly=True,
-        lazy="raise",
-        init=False,
-    )
-    contact: Mapped[HumanInputContact | None] = relationship(
-        lambda: HumanInputContact,
-        primaryjoin=lambda: orm.foreign(HumanInputIMSyncResult.contact_id) == HumanInputContact.id,
         viewonly=True,
         lazy="raise",
         init=False,
@@ -1379,7 +1371,7 @@ class HumanInputV2FormApproverGrant(DefaultFieldsDCMixin, TypeBase):
 
     Contact-backed grants are revalidated through the current Contact lifecycle.
     End-user and email-address grants cover subjects that intentionally do not
-    belong to the Contact Directory. ``subject_snapshot`` is display-only and
+    reference a Contact identity. ``subject_snapshot`` is display-only and
     never substitutes for current-state authorization checks.
     """
 
@@ -1433,7 +1425,7 @@ class HumanInputV2FormApproverGrant(DefaultFieldsDCMixin, TypeBase):
         StringUUID,
         nullable=True,
         default=None,
-        comment="Logical foreign key to human_input_contacts.id for a contact-backed grant.",
+        comment="Logical foreign key to human_input_contact_identities.id for a contact-backed grant.",
     )
     end_user_id: Mapped[str | None] = mapped_column(
         StringUUID,
@@ -1451,13 +1443,6 @@ class HumanInputV2FormApproverGrant(DefaultFieldsDCMixin, TypeBase):
     form: Mapped[HumanInputV2Form] = relationship(
         lambda: HumanInputV2Form,
         primaryjoin=lambda: orm.foreign(HumanInputV2FormApproverGrant.form_id) == HumanInputV2Form.id,
-        viewonly=True,
-        lazy="raise",
-        init=False,
-    )
-    contact: Mapped[HumanInputContact | None] = relationship(
-        lambda: HumanInputContact,
-        primaryjoin=lambda: orm.foreign(HumanInputV2FormApproverGrant.contact_id) == HumanInputContact.id,
         viewonly=True,
         lazy="raise",
         init=False,
@@ -1750,7 +1735,7 @@ class HumanInputV2FormOTPChallenge(DefaultFieldsDCMixin, TypeBase):
         StringUUID,
         nullable=True,
         default=None,
-        comment="Logical foreign key to human_input_contacts.id for the captured Contact incarnation.",
+        comment="Logical foreign key to human_input_contact_identities.id for the captured Contact incarnation.",
     )
     send_count: Mapped[int] = mapped_column(
         sa.Integer, nullable=False, default=1, comment="Number of OTP emails issued for this form approver grant."
@@ -1777,13 +1762,6 @@ class HumanInputV2FormOTPChallenge(DefaultFieldsDCMixin, TypeBase):
         primaryjoin=lambda: (
             orm.foreign(HumanInputV2FormOTPChallenge.approver_grant_id) == HumanInputV2FormApproverGrant.id
         ),
-        viewonly=True,
-        lazy="raise",
-        init=False,
-    )
-    contact: Mapped[HumanInputContact | None] = relationship(
-        lambda: HumanInputContact,
-        primaryjoin=lambda: orm.foreign(HumanInputV2FormOTPChallenge.contact_id) == HumanInputContact.id,
         viewonly=True,
         lazy="raise",
         init=False,
@@ -2134,6 +2112,7 @@ class HumanInputV2FormUploadFile(DefaultFieldsDCMixin, TypeBase):
 
 __all__ = [
     "AccountSessionAuthorizationProof",
+    "ContactSubjectType",
     "EmailOTPAuthorizationProof",
     "FormApproverGrantMatchedSource",
     "FormApproverGrantMatchedSources",
@@ -2143,9 +2122,9 @@ __all__ = [
     "FormCanonicalValues",
     "FormDeliveryProviderResponse",
     "FormInputSnapshot",
-    "HumanInputContact",
-    "HumanInputContactIdentitySource",
+    "HumanInputContactIdentity",
     "HumanInputEmailProvider",
+    "HumanInputExternalContactProfile",
     "HumanInputIMBinding",
     "HumanInputIMIdentity",
     "HumanInputIMIntegration",

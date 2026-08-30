@@ -152,7 +152,12 @@ def upgrade() -> None:
         ),
         sa.Column("scope", sa.String(length=20), nullable=False, comment="Organization or workspace scope."),
         sa.Column("scope_id", models.types.StringUUID(), nullable=False, comment="Scope owner identity."),
-        sa.Column("contact_id", models.types.StringUUID(), nullable=False, comment="Logical human_input_contacts.id."),
+        sa.Column(
+            "contact_id",
+            models.types.StringUUID(),
+            nullable=False,
+            comment="Logical human_input_contact_identities.id.",
+        ),
         sa.Column(
             "im_identity_id",
             models.types.StringUUID(),

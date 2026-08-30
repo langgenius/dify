@@ -23,7 +23,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.human_input_v2.approval import (
     ApproverGrantRef,
     Clock,
-    ContactOTPSubject,
     CurrentEmailOTPIdentity,
     EmailAddressOTPSubject,
     OTPChallenge,
@@ -34,9 +33,8 @@ from core.human_input_v2.approval import (
     OTPVerificationDecision,
 )
 from core.human_input_v2.entities import HumanInputApproverGrantSubjectType
-from core.human_input_v2.shared import ContactId, NormalizedEmail, OTPChallengeId
+from core.human_input_v2.shared import NormalizedEmail, OTPChallengeId
 from models.human_input_v2 import (
-    HumanInputContact,
     HumanInputV2FormApproverGrant,
     HumanInputV2FormOTPChallenge,
 )
@@ -294,25 +292,11 @@ class SQLAlchemyOTPChallengeRepository:
         grant_record: HumanInputV2FormApproverGrant,
         grant_ref: ApproverGrantRef,
     ) -> CurrentEmailOTPIdentity:
+        del session
         if grant_record.subject_type is HumanInputApproverGrantSubjectType.CONTACT:
             if grant_record.contact_id is None:
                 raise ValueError("contact grant is missing contact_id")
-            contact = session.scalar(
-                select(HumanInputContact).where(
-                    HumanInputContact.id == grant_record.contact_id,
-                    sa.or_(
-                        HumanInputContact.tenant_id == str(grant_ref.form_ref.tenant_id),
-                        HumanInputContact.tenant_id.is_(None),
-                    ),
-                )
-            )
-            if contact is None or contact.normalized_email is None:
-                return CurrentEmailOTPIdentity(grant_ref, None, None)
-            return CurrentEmailOTPIdentity(
-                grant_ref,
-                ContactOTPSubject(contact_id=ContactId(contact.id)),
-                NormalizedEmail(contact.normalized_email),
-            )
+            return CurrentEmailOTPIdentity(grant_ref, None, None)
         if grant_record.subject_type is HumanInputApproverGrantSubjectType.EMAIL_ADDRESS:
             if grant_record.normalized_email is None:
                 raise ValueError("email-address grant is missing normalized_email")

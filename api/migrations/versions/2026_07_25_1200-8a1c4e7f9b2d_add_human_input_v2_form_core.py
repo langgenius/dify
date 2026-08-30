@@ -121,7 +121,12 @@ def upgrade() -> None:
             nullable=False,
             comment="Immutable display-only subject snapshot serialized as JSON text.",
         ),
-        sa.Column("contact_id", models.types.StringUUID(), nullable=True, comment="Logical human_input_contacts.id."),
+        sa.Column(
+            "contact_id",
+            models.types.StringUUID(),
+            nullable=True,
+            comment="Logical human_input_contact_identities.id.",
+        ),
         sa.Column("end_user_id", models.types.StringUUID(), nullable=True, comment="Logical end_users.id."),
         sa.Column("normalized_email", sa.String(length=320), nullable=True, comment="Normalized Email subject."),
         *_default_fields("human_input_v2_form_approver_grants"),

@@ -23,8 +23,6 @@ from libs.uuid_utils import uuidv7
 from models.human_input_v2 import (
     FormApproverGrantMatchedSources,
     FormApproverGrantSubjectSnapshot,
-    HumanInputContact,
-    HumanInputContactIdentitySource,
     HumanInputV2Form,
     HumanInputV2FormApproverGrant,
     HumanInputV2FormDefinition,
@@ -70,21 +68,11 @@ def test_concurrent_resend_leaves_exactly_one_usable_challenge(flask_req_ctx) ->
     tenant_id = str(uuidv7())
     form_id = str(uuidv7())
     grant_id = str(uuidv7())
-    contact_id = str(uuidv7())
     initial_challenge_id = str(uuidv7())
     replacement_ids = (str(uuidv7()), str(uuidv7()))
     issued_at = naive_utc_now()
     grant_ref = FormRef(TenantId(tenant_id), FormId(form_id)).grant(ApproverGrantId(grant_id))
-    contact_email = f"otp-{uuidv7()}@example.com"
-    contact = HumanInputContact(
-        name="Concurrent OTP Reviewer",
-        normalized_name="concurrent otp reviewer",
-        identity_source=HumanInputContactIdentitySource.EXTERNAL,
-        tenant_id=tenant_id,
-        email=contact_email,
-        normalized_email=contact_email,
-    )
-    contact.id = contact_id
+    email = f"otp-{uuidv7()}@example.com"
     form = HumanInputV2Form(
         tenant_id=tenant_id,
         app_id=str(uuidv7()),
@@ -101,15 +89,15 @@ def test_concurrent_resend_leaves_exactly_one_usable_challenge(flask_req_ctx) ->
     grant = HumanInputV2FormApproverGrant(
         tenant_id=tenant_id,
         form_id=form_id,
-        subject_type=HumanInputApproverGrantSubjectType.CONTACT,
-        subject_key=f"contact:{contact_id}",
+        subject_type=HumanInputApproverGrantSubjectType.EMAIL_ADDRESS,
+        subject_key="email_address:" + "a" * 64,
         matched_sources=FormApproverGrantMatchedSources(),
-        subject_snapshot=FormApproverGrantSubjectSnapshot(email=contact.email),
-        contact_id=contact_id,
+        subject_snapshot=FormApproverGrantSubjectSnapshot(email=email),
+        normalized_email=email,
     )
     grant.id = grant_id
     with session_maker.begin() as session:
-        session.add_all([contact, form, grant])
+        session.add_all([form, grant])
 
     audit_writer = _TransactionOnlyAuditWriter()
     SQLAlchemyOTPChallengeRepository(
@@ -169,4 +157,3 @@ def test_concurrent_resend_leaves_exactly_one_usable_challenge(flask_req_ctx) ->
                 sa.delete(HumanInputV2FormApproverGrant).where(HumanInputV2FormApproverGrant.id == grant_id)
             )
             session.execute(sa.delete(HumanInputV2Form).where(HumanInputV2Form.id == form_id))
-            session.execute(sa.delete(HumanInputContact).where(HumanInputContact.id == contact_id))

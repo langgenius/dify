@@ -20,7 +20,7 @@ from core.human_input_v2.shared import (
     TenantId,
 )
 
-from .recipient_resolution import (
+from .recipient_plan import (
     ApprovalSubject,
     CanonicalSubjectKey,
     ContactApprovalSubject,

@@ -10,7 +10,7 @@ from flask.testing import FlaskClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.human_input_v2.contact_directory import Contact
+from core.human_input_v2.contact import Contact, ContactType
 from core.human_input_v2.entities import (
     IMProvider,
     IMSyncRemovalReason,
@@ -37,8 +37,12 @@ from core.human_input_v2.shared import (
     IntegrationId,
     TenantId,
 )
-from models.human_input_v2 import HumanInputIMBinding, HumanInputIMSyncRun
-from repositories.human_input_v2.contact_directory.mappers import contact_to_record
+from models.human_input_v2 import (
+    ContactSubjectType,
+    HumanInputContactIdentity,
+    HumanInputIMBinding,
+    HumanInputIMSyncRun,
+)
 from repositories.human_input_v2.im_integration.mappers import (
     identity_to_record,
     integration_to_record,
@@ -63,13 +67,22 @@ _SYNC_RUNS_PATH = "/console/api/workspaces/current/human-input/im-sync-runs"
 def _seed_control_plane(session: Session):
     account, tenant = create_console_account_and_tenant(session)
     tenant_id = TenantId(tenant.id)
-    contact = Contact.workspace_member(
-        contact_id=_CONTACT_ID,
-        tenant_id=tenant_id,
-        account_id=AccountId(account.id),
+    account.name = "Reviewer"
+    account.email = "reviewer@example.com"
+    contact_identity = HumanInputContactIdentity(
+        subject_type=ContactSubjectType.ACCOUNT,
+        account_id=account.id,
+    )
+    contact_identity.id = str(_CONTACT_ID)
+    contact_identity.created_at = _NOW
+    contact_identity.updated_at = _NOW
+    contact = Contact(
+        id=_CONTACT_ID,
+        type=ContactType.WORKSPACE,
         name="Reviewer",
         email="reviewer@example.com",
-        now=_NOW,
+        avatar_file_id=None,
+        created_at=_NOW,
     )
     integration = IMIntegration.create(
         integration_id=_INTEGRATION_ID,
@@ -95,7 +108,7 @@ def _seed_control_plane(session: Session):
     )
     session.add_all(
         (
-            contact_to_record(contact),
+            contact_identity,
             integration_to_record(integration),
             identity_to_record(primary_identity),
             identity_to_record(secondary_identity),

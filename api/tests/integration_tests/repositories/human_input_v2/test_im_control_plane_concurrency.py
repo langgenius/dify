@@ -7,7 +7,6 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy.orm import sessionmaker
 
-from core.human_input_v2.contact_directory import Contact
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration import (
     ActiveRunDecisionKind,
@@ -15,26 +14,21 @@ from core.human_input_v2.im_integration import (
     ConfigurationTransition,
     EncryptedCredentials,
     IMIntegration,
-    MatchKind,
-    ProviderDirectoryEntry,
     ProviderTenantIdentity,
-    ReconciliationAction,
     ReconciliationPlan,
     StaleRevision,
 )
-from core.human_input_v2.shared import AccountId, ContactId, IMSyncRunId, IntegrationId, TenantId
+from core.human_input_v2.shared import AccountId, IMSyncRunId, IntegrationId, TenantId
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.human_input_v2 import (
-    HumanInputContact,
     HumanInputIMBinding,
     HumanInputIMIdentity,
     HumanInputIMIntegration,
     HumanInputIMSyncResult,
     HumanInputIMSyncRun,
 )
-from repositories.human_input_v2.contact_directory.mappers import contact_to_record
 from repositories.human_input_v2.im_integration.repository import SQLAlchemyIMControlPlaneRepository
 
 
@@ -59,8 +53,6 @@ def _integration(integration_id: str, tenant_id: str | None) -> IMIntegration:
 def _cleanup(
     session_maker,
     integration_ids: tuple[str, ...],
-    *,
-    contact_ids: tuple[str, ...] = (),
 ) -> None:
     with session_maker.begin() as session:
         run_ids = session.scalars(
@@ -72,8 +64,6 @@ def _cleanup(
         session.execute(sa.delete(HumanInputIMIdentity).where(HumanInputIMIdentity.integration_id.in_(integration_ids)))
         session.execute(sa.delete(HumanInputIMSyncRun).where(HumanInputIMSyncRun.integration_id.in_(integration_ids)))
         session.execute(sa.delete(HumanInputIMIntegration).where(HumanInputIMIntegration.id.in_(integration_ids)))
-        if contact_ids:
-            session.execute(sa.delete(HumanInputContact).where(HumanInputContact.id.in_(contact_ids)))
 
 
 def test_concurrent_deployment_integration_creation_has_exactly_one_winner(flask_req_ctx, setup_account) -> None:
@@ -179,93 +169,6 @@ def test_concurrent_sync_triggers_create_at_most_one_active_run(flask_req_ctx) -
         assert count == 1
     finally:
         _cleanup(session_maker, (integration_id,))
-
-
-def test_concurrent_worker_retry_applies_one_sync_run_idempotently(flask_req_ctx) -> None:
-    _require_postgresql()
-    session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-    integration_id = str(uuidv7())
-    repository = SQLAlchemyIMControlPlaneRepository(session_maker)
-    integration = repository.create_integration(_integration(integration_id, str(uuidv7())))
-    run_decision = repository.create_or_get_active_run(
-        integration.revision,
-        sync_run_id=IMSyncRunId(str(uuidv7())),
-        started_by_account_id=None,
-        now=naive_utc_now(),
-    )
-    assert run_decision.run is not None
-    contact_id = ContactId(str(uuidv7()))
-    contact = Contact.organization_account(
-        contact_id=contact_id,
-        account_id=AccountId(str(uuidv7())),
-        name="Concurrent Retry Reviewer",
-        email=f"concurrent-retry-{uuidv7()}@example.com",
-        now=naive_utc_now(),
-    )
-    with session_maker.begin() as session:
-        session.add(contact_to_record(contact))
-    entry = ProviderDirectoryEntry.create(
-        provider_user_id=f"provider-user-{uuidv7()}",
-        display_name=contact.name,
-        email=contact.email,
-        raw_payload={"source": "concurrent-retry"},
-    )
-    plan = ReconciliationPlan(
-        sync_run_id=run_decision.run.id,
-        integration_revision=integration.revision,
-        provider=integration.provider_tenant.provider,
-        actions=(
-            ReconciliationAction(
-                entry=entry,
-                match_kind=MatchKind.NORMALIZED_EMAIL,
-                identity_id=None,
-                binding_id=None,
-                contact_id=contact.id,
-            ),
-        ),
-        removed_identity_ids=(),
-    )
-    barrier = Barrier(2)
-
-    def apply(_index: int):
-        barrier.wait()
-        return SQLAlchemyIMControlPlaneRepository(session_maker).apply_reconciliation(plan, now=naive_utc_now())
-
-    try:
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            results = list(executor.map(apply, range(2)))
-
-        assert [result.status for result in results].count(ApplyReconciliationStatus.APPLIED) == 1
-        assert [result.status for result in results].count(ApplyReconciliationStatus.ALREADY_APPLIED) == 1
-        assert all(len(result.results) == 1 for result in results)
-        assert results[0].results[0].id == results[1].results[0].id
-        with session_maker() as session:
-            assert (
-                session.scalar(
-                    sa.select(sa.func.count(HumanInputIMIdentity.id)).where(
-                        HumanInputIMIdentity.integration_id == integration_id
-                    )
-                )
-                == 1
-            )
-            assert (
-                session.scalar(
-                    sa.select(sa.func.count(HumanInputIMBinding.id)).where(
-                        HumanInputIMBinding.integration_id == integration_id
-                    )
-                )
-                == 1
-            )
-            assert (
-                session.scalar(
-                    sa.select(sa.func.count(HumanInputIMSyncResult.id)).where(
-                        HumanInputIMSyncResult.sync_run_id == str(plan.sync_run_id)
-                    )
-                )
-                == 1
-            )
-    finally:
-        _cleanup(session_maker, (integration_id,), contact_ids=(str(contact_id),))
 
 
 def test_stale_reconciliation_records_diagnostic_without_current_mutation(flask_req_ctx) -> None:

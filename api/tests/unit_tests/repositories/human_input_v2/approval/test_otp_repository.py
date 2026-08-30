@@ -13,7 +13,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.approval import (
-    ContactOTPSubject,
+    EmailAddressOTPSubject,
     FormRef,
     OTPChallengeRejectionReason,
     OTPCodeHash,
@@ -26,16 +26,17 @@ from core.human_input_v2.entities import (
 )
 from core.human_input_v2.shared import (
     ApproverGrantId,
-    ContactId,
     FormId,
+    NormalizedEmail,
     OTPChallengeId,
     TenantId,
 )
 from models.human_input_v2 import (
+    ContactSubjectType,
     FormApproverGrantMatchedSources,
     FormApproverGrantSubjectSnapshot,
-    HumanInputContact,
-    HumanInputContactIdentitySource,
+    HumanInputContactIdentity,
+    HumanInputExternalContactProfile,
     HumanInputV2Form,
     HumanInputV2FormApproverGrant,
     HumanInputV2FormDefinition,
@@ -135,7 +136,7 @@ def repository_context(
 ]:
     _AUDIT_TABLE.create(sqlite_engine)
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    _seed_contact_form_and_grant(session_maker)
+    _seed_email_form_and_grant(session_maker)
     clock = _MutableClock()
     hasher = _DeterministicHasher()
     repository = SQLAlchemyOTPChallengeRepository(
@@ -147,16 +148,7 @@ def repository_context(
     return repository, session_maker, clock, hasher
 
 
-def _seed_contact_form_and_grant(session_maker: sessionmaker[Session]) -> None:
-    contact = HumanInputContact(
-        name="Reviewer",
-        normalized_name="reviewer",
-        identity_source=HumanInputContactIdentitySource.EXTERNAL,
-        tenant_id="workspace-1",
-        email="reviewer@example.com",
-        normalized_email="reviewer@example.com",
-    )
-    contact.id = "contact-1"
+def _seed_email_form_and_grant(session_maker: sessionmaker[Session]) -> None:
     form = HumanInputV2Form(
         tenant_id="workspace-1",
         app_id="app-1",
@@ -173,15 +165,15 @@ def _seed_contact_form_and_grant(session_maker: sessionmaker[Session]) -> None:
     grant = HumanInputV2FormApproverGrant(
         tenant_id="workspace-1",
         form_id="form-1",
-        subject_type=HumanInputApproverGrantSubjectType.CONTACT,
-        subject_key="contact:contact-1",
+        subject_type=HumanInputApproverGrantSubjectType.EMAIL_ADDRESS,
+        subject_key="email_address:" + "a" * 64,
         matched_sources=FormApproverGrantMatchedSources(),
         subject_snapshot=FormApproverGrantSubjectSnapshot(email="reviewer@example.com"),
-        contact_id="contact-1",
+        normalized_email="reviewer@example.com",
     )
     grant.id = "grant-1"
     with session_maker.begin() as session:
-        session.add_all([contact, form, grant])
+        session.add_all([form, grant])
 
 
 def _issue_initial(repository: SQLAlchemyOTPChallengeRepository, *, token_hash: str = "a" * 64):
@@ -211,7 +203,7 @@ def test_initial_issue_persists_current_challenge_and_secret_free_audit_without_
 
     challenge = _issue_initial(repository)
 
-    assert challenge.subject == ContactOTPSubject(ContactId("contact-1"))
+    assert challenge.subject == EmailAddressOTPSubject(NormalizedEmail("reviewer@example.com"))
     assert challenge.send_count == 1
     assert hasher.hash_calls == [_RAW_CODE]
     assert repository.load(challenge.ref) == challenge
@@ -334,7 +326,7 @@ def test_verification_persists_attempts_and_returns_limited_proof_without_form_t
     assert verified.rejection is None
     assert verified.challenge.attempt_count == 2
     assert verified.proof is not None
-    assert verified.proof.subject == ContactOTPSubject(ContactId("contact-1"))
+    assert verified.proof.subject == EmailAddressOTPSubject(NormalizedEmail("reviewer@example.com"))
     assert hasher.verify_calls == ["000000", _RAW_CODE]
     with session_maker() as session:
         record = session.get_one(HumanInputV2FormOTPChallenge, "challenge-1")
@@ -388,40 +380,6 @@ def test_explicit_invalidation_is_grant_scoped_and_preserves_counters(repository
         assert session.get_one(HumanInputV2FormOTPChallenge, "challenge-1").status is (
             HumanInputOTPChallengeStatus.INVALIDATED
         )
-
-
-@pytest.mark.parametrize("identity_change", ["email", "delete", "recreate"])
-def test_verification_rejects_changed_deleted_and_same_email_recreated_contact(
-    repository_context,
-    identity_change: str,
-) -> None:
-    repository, session_maker, _clock, hasher = repository_context
-    challenge = _issue_initial(repository)
-    with session_maker.begin() as session:
-        contact = session.get_one(HumanInputContact, "contact-1")
-        if identity_change == "email":
-            contact.email = "changed@example.com"
-            contact.normalized_email = "changed@example.com"
-        else:
-            session.delete(contact)
-            session.flush()
-            if identity_change == "recreate":
-                recreated = HumanInputContact(
-                    name="Replacement",
-                    normalized_name="replacement",
-                    identity_source=HumanInputContactIdentitySource.EXTERNAL,
-                    tenant_id="workspace-1",
-                    email="reviewer@example.com",
-                    normalized_email="reviewer@example.com",
-                )
-                recreated.id = "contact-2"
-                session.add(recreated)
-
-    decision = repository.verify(challenge.ref, plaintext_code=_RAW_CODE)
-
-    assert decision.rejection is OTPChallengeRejectionReason.STALE_IDENTITY
-    assert decision.challenge.status is HumanInputOTPChallengeStatus.INVALIDATED
-    assert hasher.verify_calls == []
 
 
 def test_owner_mismatch_fails_closed_without_loading_or_mutating_challenge(repository_context) -> None:
@@ -522,10 +480,29 @@ def test_initial_issue_rejects_existing_challenge_without_hashing_or_audit(repos
         assert _audit_count(session) == 1
 
 
-def test_initial_issue_rejects_contact_without_current_email_identity(repository_context) -> None:
+def test_initial_issue_fails_closed_for_contact_grant_even_when_current_contact_has_email(repository_context) -> None:
     repository, session_maker, _clock, hasher = repository_context
     with session_maker.begin() as session:
-        session.delete(session.get_one(HumanInputContact, "contact-1"))
+        identity = HumanInputContactIdentity(subject_type=ContactSubjectType.EXTERNAL)
+        identity.id = "contact-1"
+        identity.created_at = _NOW
+        identity.updated_at = _NOW
+        profile = HumanInputExternalContactProfile(
+            contact_id="contact-1",
+            tenant_id="workspace-1",
+            name="Reviewer",
+            normalized_name="reviewer",
+            email="reviewer@example.com",
+            normalized_email="reviewer@example.com",
+        )
+        profile.created_at = _NOW
+        profile.updated_at = _NOW
+        grant = session.get_one(HumanInputV2FormApproverGrant, "grant-1")
+        grant.subject_type = HumanInputApproverGrantSubjectType.CONTACT
+        grant.subject_key = "contact:contact-1"
+        grant.contact_id = "contact-1"
+        grant.normalized_email = None
+        session.add_all((identity, profile))
 
     with pytest.raises(ValueError, match="no current Email identity"):
         _issue_initial(repository)
@@ -552,45 +529,12 @@ def test_replace_verify_and_invalidate_fail_closed_when_challenge_is_missing(rep
     assert repository.invalidate_current(_GRANT_REF) is None
 
 
-def test_replacement_invalidates_stale_contact_email_without_hashing_or_audit(repository_context) -> None:
-    repository, session_maker, clock, hasher = repository_context
-    _issue_initial(repository)
-    clock.advance(timedelta(seconds=60))
-    with session_maker.begin() as session:
-        contact = session.get_one(HumanInputContact, "contact-1")
-        contact.email = "changed@example.com"
-        contact.normalized_email = "changed@example.com"
-    previous_hash_calls = len(hasher.hash_calls)
-
-    decision = repository.replace_current(
-        _GRANT_REF,
-        challenge_id=OTPChallengeId("challenge-2"),
-        audit_event_id="audit-2",
-        challenge_token_hash="b" * 64,
-        plaintext_code=_RAW_CODE,
-    )
-
-    assert decision.rejection is OTPChallengeRejectionReason.STALE_IDENTITY
-    assert decision.previous.status is HumanInputOTPChallengeStatus.INVALIDATED
-    assert len(hasher.hash_calls) == previous_hash_calls
-    with session_maker() as session:
-        assert session.scalar(sa.select(sa.func.count(HumanInputV2FormOTPChallenge.id))) == 1
-        assert _audit_count(session) == 1
-
-
-def test_email_address_grant_issues_without_contact_lookup(repository_context) -> None:
-    repository, session_maker, _clock, _hasher = repository_context
-    with session_maker.begin() as session:
-        grant = session.get_one(HumanInputV2FormApproverGrant, "grant-1")
-        grant.subject_type = HumanInputApproverGrantSubjectType.EMAIL_ADDRESS
-        grant.subject_key = "email_address:" + "a" * 64
-        grant.contact_id = None
-        grant.normalized_email = "standalone@example.com"
-
+def test_email_address_grant_remains_usable(repository_context) -> None:
+    repository, _session_maker, _clock, _hasher = repository_context
     challenge = _issue_initial(repository)
 
-    assert challenge.normalized_email.value == "standalone@example.com"
-    assert not isinstance(challenge.subject, ContactOTPSubject)
+    assert challenge.normalized_email == NormalizedEmail("reviewer@example.com")
+    assert challenge.subject == EmailAddressOTPSubject(challenge.normalized_email)
 
 
 def _assert_only_initial_pending(session_maker: sessionmaker[Session]) -> None:

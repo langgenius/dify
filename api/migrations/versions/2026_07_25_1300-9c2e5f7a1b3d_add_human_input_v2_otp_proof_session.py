@@ -62,7 +62,7 @@ def upgrade() -> None:
             "contact_id",
             models.types.StringUUID(),
             nullable=True,
-            comment="Logical human_input_contacts.id captured for a Contact incarnation.",
+            comment="Logical human_input_contact_identities.id captured for a Contact incarnation.",
         ),
         sa.Column("send_count", sa.Integer(), nullable=False, comment="One-based send count for the grant scope."),
         sa.Column("attempt_count", sa.Integer(), nullable=False, comment="Consumed verification attempts."),

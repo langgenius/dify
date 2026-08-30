@@ -24,7 +24,7 @@ from core.human_input_v2.shared import (
 
 from .delivery import DeliveryAttempt, DeliveryEndpoint
 from .grants import ApproverGrant, FormRef
-from .recipient_resolution import ResolvedApprovalPlan
+from .recipient_plan import ResolvedApprovalPlan
 
 
 class InvalidApproverGrantError(ValueError):

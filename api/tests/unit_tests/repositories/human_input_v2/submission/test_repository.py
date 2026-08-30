@@ -18,13 +18,16 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.human_input import ButtonStyle
 from core.human_input_v2 import MarkdownText, ResolvedForm, ResolvedFormAction
 from core.human_input_v2.approval import (
-    AccountSubmissionActor,
     ApproverGrant,
     AuthorizationContext,
     AuthorizedSubmissionCommit,
     CanonicalSubjectKey,
     ContactApprovalSubject,
+    ContactOTPSubject,
     DeliveryEndpoint,
+    EmailAddressApprovalSubject,
+    EmailAddressOTPSubject,
+    EmailAddressSubmissionActor,
     EndUserApprovalSubject,
     FormAuthorizationAuditEvent,
     FormAuthorizationAuditEventType,
@@ -34,9 +37,11 @@ from core.human_input_v2.approval import (
     RetryableSubmissionPersistenceError,
     SubjectSnapshot,
     SubmissionAttemptScope,
+    SubmissionAuthorizationRejection,
     SubmissionAuthorizer,
     SubmissionCommitStatus,
     VerifiedAccountSessionProof,
+    VerifiedEmailOTPProof,
     VerifiedIMIdentityProof,
     VerifiedTrustedEndUserProof,
 )
@@ -44,8 +49,6 @@ from core.human_input_v2.entities import (
     HumanInputDeliveryChannel,
     HumanInputV2FormKind,
     HumanInputV2FormStatus,
-    IMBindingScope,
-    IMIntegrationStatus,
     IMProvider,
 )
 from core.human_input_v2.shared import (
@@ -60,25 +63,18 @@ from core.human_input_v2.shared import (
     IMBindingId,
     IMIdentityId,
     IntegrationId,
+    NormalizedEmail,
+    OTPChallengeId,
     SubmissionId,
     TenantId,
 )
-from models.account import Account, AccountStatus, TenantAccountJoin, TenantAccountRole
 from models.enums import EndUserType
 from models.human_input_v2 import (
-    HumanInputContact,
-    HumanInputContactIdentitySource,
-    HumanInputIMBinding,
-    HumanInputIMIdentity,
-    HumanInputIMIntegration,
-    HumanInputPlatformContactWorkspaceEntry,
     HumanInputV2Form,
     HumanInputV2FormApproverGrant,
     HumanInputV2FormAuditEvent,
     HumanInputV2FormDeliveryEndpoint,
     HumanInputV2FormSubmission,
-    IMEncryptedCredentials,
-    IMIdentityRawPayload,
 )
 from models.model import EndUser
 from repositories.human_input_v2.form.mappers import endpoint_to_record, form_to_record, grant_to_record
@@ -105,6 +101,10 @@ _END_USER_ID = EndUserId("end-user-1")
 _END_USER_FORM_REF = FormRef(_TENANT_ID, FormId("form-2"))
 _END_USER_GRANT_ID = ApproverGrantId("grant-2")
 _END_USER_SCOPE = SubmissionAttemptScope(_END_USER_FORM_REF, _END_USER_GRANT_ID, None)
+_EMAIL = NormalizedEmail("one-time@example.com")
+_EMAIL_FORM_REF = FormRef(_TENANT_ID, FormId("form-3"))
+_EMAIL_GRANT_ID = ApproverGrantId("grant-3")
+_EMAIL_SCOPE = SubmissionAttemptScope(_EMAIL_FORM_REF, _EMAIL_GRANT_ID, None)
 
 
 @pytest.fixture
@@ -112,13 +112,6 @@ def repository_context(
     sqlite_engine: Engine,
 ) -> Iterator[tuple[SQLAlchemySubmissionRepository, sessionmaker[Session]]]:
     tables = [
-        Account.__table__,
-        TenantAccountJoin.__table__,
-        HumanInputContact.__table__,
-        HumanInputPlatformContactWorkspaceEntry.__table__,
-        HumanInputIMIntegration.__table__,
-        HumanInputIMIdentity.__table__,
-        HumanInputIMBinding.__table__,
         EndUser.__table__,
         HumanInputV2Form.__table__,
         HumanInputV2FormApproverGrant.__table__,
@@ -128,7 +121,7 @@ def repository_context(
     ]
     HumanInputV2Form.metadata.create_all(sqlite_engine, tables=tables)
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    _seed_current_account_im_form(session_maker)
+    _seed_authorization_forms(session_maker)
     return SQLAlchemySubmissionRepository(session_maker), session_maker
 
 
@@ -222,86 +215,49 @@ def _end_user_form(grant: ApproverGrant) -> HumanInputForm:
     )
 
 
-def _set_record_identity(record, record_id: str) -> None:
-    record.id = record_id
-    record.created_at = _NOW
-    record.updated_at = _NOW
+def _email_grant() -> ApproverGrant:
+    subject = EmailAddressApprovalSubject(_EMAIL)
+    return ApproverGrant(
+        ref=_EMAIL_FORM_REF.grant(_EMAIL_GRANT_ID),
+        subject=subject,
+        subject_key=CanonicalSubjectKey.for_email(subject.normalized_email),
+        matched_sources=(),
+        subject_snapshot=SubjectSnapshot(None, _EMAIL.value),
+        created_at=_NOW,
+        updated_at=_NOW,
+    )
 
 
-def _seed_current_account_im_form(session_maker: sessionmaker[Session]) -> None:
+def _email_form(grant: ApproverGrant) -> HumanInputForm:
+    return HumanInputForm(
+        ref=_EMAIL_FORM_REF,
+        app_id=AppId("app-1"),
+        resolved_form=ResolvedForm(
+            title="Review",
+            blocks=(MarkdownText("Approve"),),
+            user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+            legacy_form_content="Approve",
+        ),
+        display_in_ui=True,
+        node_timeout_at=_NOW + timedelta(hours=1),
+        global_expires_at=_NOW + timedelta(hours=2),
+        kind=HumanInputV2FormKind.RUNTIME,
+        status=HumanInputV2FormStatus.WAITING,
+        workflow_pause_id="pause-3",
+        node_execution_id="node-execution-3",
+        grants=(grant,),
+        created_at=_NOW,
+        updated_at=_NOW,
+    )
+
+
+def _seed_authorization_forms(session_maker: sessionmaker[Session]) -> None:
     grant = _grant()
     end_user_grant = _end_user_grant()
+    email_grant = _email_grant()
     with session_maker() as session, session.begin():
-        session.execute(
-            sa.insert(Account.__table__).values(
-                id=str(_ACCOUNT_ID),
-                name="Reviewer",
-                email="reviewer@example.com",
-                status=AccountStatus.ACTIVE.value,
-            )
-        )
-        session.execute(
-            sa.insert(TenantAccountJoin.__table__).values(
-                id="membership-1",
-                tenant_id=str(_TENANT_ID),
-                account_id=str(_ACCOUNT_ID),
-                role=TenantAccountRole.NORMAL.value,
-            )
-        )
-        contact = HumanInputContact(
-            name="Reviewer",
-            normalized_name="reviewer",
-            identity_source=HumanInputContactIdentitySource.ORGANIZATION_ACCOUNT,
-            tenant_id=None,
-            account_id=str(_ACCOUNT_ID),
-            email="reviewer@example.com",
-            normalized_email="reviewer@example.com",
-            avatar_file_id=None,
-        )
-        _set_record_identity(contact, str(_CONTACT_ID))
-        integration = HumanInputIMIntegration(
-            provider=IMProvider.SLACK,
-            encrypted_credentials=IMEncryptedCredentials(ciphertext="opaque-slack-ciphertext"),
-            tenant_id=str(_TENANT_ID),
-            provider_tenant_id="provider-tenant-1",
-            app_identifier="client-1",
-            status=IMIntegrationStatus.CONNECTED,
-            config_version=1,
-            configured_by_account_id=str(_ACCOUNT_ID),
-            callback_url=None,
-            safe_status_reason=None,
-            last_checked_at=_NOW,
-        )
-        _set_record_identity(integration, str(_INTEGRATION_ID))
-        identity = HumanInputIMIdentity(
-            integration_id=str(_INTEGRATION_ID),
-            provider=IMProvider.SLACK,
-            provider_user_id="provider-user-1",
-            display_name="Reviewer",
-            normalized_name="reviewer",
-            email="reviewer@example.com",
-            normalized_email="reviewer@example.com",
-            raw_payload=IMIdentityRawPayload({}),
-            last_seen_sync_run_id=None,
-            last_seen_at=_NOW,
-        )
-        _set_record_identity(identity, str(_IDENTITY_ID))
-        binding = HumanInputIMBinding(
-            integration_id=str(_INTEGRATION_ID),
-            scope=IMBindingScope.WORKSPACE,
-            scope_id=str(_TENANT_ID),
-            contact_id=str(_CONTACT_ID),
-            im_identity_id=str(_IDENTITY_ID),
-            provider=IMProvider.SLACK,
-            bound_by_account_id=str(_ACCOUNT_ID),
-        )
-        _set_record_identity(binding, str(_BINDING_ID))
         session.add_all(
             [
-                contact,
-                integration,
-                identity,
-                binding,
                 form_to_record(_form(grant)),
                 grant_to_record(grant),
                 endpoint_to_record(_endpoint(grant)),
@@ -315,49 +271,10 @@ def _seed_current_account_im_form(session_maker: sessionmaker[Session]) -> None:
                 ),
                 form_to_record(_end_user_form(end_user_grant)),
                 grant_to_record(end_user_grant),
+                form_to_record(_email_form(email_grant)),
+                grant_to_record(email_grant),
             ]
         )
-
-
-def _add_feishu_workspace_binding(session: Session, *, binding_id: str = "000-feishu-binding") -> None:
-    integration = HumanInputIMIntegration(
-        provider=IMProvider.FEISHU,
-        encrypted_credentials=IMEncryptedCredentials(ciphertext="opaque-feishu-ciphertext"),
-        tenant_id=None,
-        provider_tenant_id="feishu-provider-tenant-1",
-        app_identifier="feishu-app-1",
-        status=IMIntegrationStatus.CONNECTED,
-        config_version=1,
-        configured_by_account_id=str(_ACCOUNT_ID),
-        callback_url=None,
-        safe_status_reason=None,
-        last_checked_at=_NOW,
-    )
-    _set_record_identity(integration, "integration-feishu")
-    identity = HumanInputIMIdentity(
-        integration_id=integration.id,
-        provider=IMProvider.FEISHU,
-        provider_user_id="feishu-provider-user-1",
-        display_name="Feishu Reviewer",
-        normalized_name="feishu reviewer",
-        email="reviewer@example.com",
-        normalized_email="reviewer@example.com",
-        raw_payload=IMIdentityRawPayload({}),
-        last_seen_sync_run_id=None,
-        last_seen_at=_NOW,
-    )
-    _set_record_identity(identity, "identity-feishu")
-    binding = HumanInputIMBinding(
-        integration_id=integration.id,
-        scope=IMBindingScope.WORKSPACE,
-        scope_id=str(_TENANT_ID),
-        contact_id=str(_CONTACT_ID),
-        im_identity_id=identity.id,
-        provider=IMProvider.FEISHU,
-        bound_by_account_id=str(_ACCOUNT_ID),
-    )
-    _set_record_identity(binding, binding_id)
-    session.add_all([integration, identity, binding])
 
 
 def _im_proof() -> VerifiedIMIdentityProof:
@@ -371,11 +288,23 @@ def _im_proof() -> VerifiedIMIdentityProof:
     )
 
 
-def _authorized(context: AuthorizationContext, proof: object = None):
-    candidate = proof if proof is not None else VerifiedAccountSessionProof(_ACCOUNT_ID)
+def _end_user_proof() -> VerifiedTrustedEndUserProof:
+    return VerifiedTrustedEndUserProof(end_user_id=_END_USER_ID, app_id=AppId("app-1"))
+
+
+def _email_proof() -> VerifiedEmailOTPProof:
+    return VerifiedEmailOTPProof(
+        challenge_ref=_EMAIL_FORM_REF.grant(_EMAIL_GRANT_ID).challenge(OTPChallengeId("challenge-email")),
+        subject=EmailAddressOTPSubject(_EMAIL),
+        normalized_email=_EMAIL,
+        verified_at=_NOW,
+    )
+
+
+def _authorized(context: AuthorizationContext, proof: object):
     decision = SubmissionAuthorizer.authorize(
         context=context,
-        proof=candidate,
+        proof=proof,
         selected_action_id="approve",
         now=_NOW,
     )
@@ -504,32 +433,34 @@ def test_transaction_does_not_translate_non_serialization_database_failure_to_re
     assert not isinstance(raised.value, RetryableSubmissionPersistenceError)
 
 
-def test_context_load_is_coherent_bounded_and_tenant_scoped(repository_context) -> None:
+def test_contact_and_im_authorization_facts_fail_closed_at_context_boundary(repository_context) -> None:
     repository, session_maker = repository_context
-    statements: list[str] = []
-
-    def record_statement(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
-        statements.append(statement)
-
-    engine = session_maker.kw["bind"]
-    event.listen(engine, "before_cursor_execute", record_statement)
-    try:
-        with repository.transaction(_SCOPE) as transaction:
-            context = transaction.load_authorization_context(proof=_im_proof())
-    finally:
-        event.remove(engine, "before_cursor_execute", record_statement)
+    with repository.transaction(_SCOPE) as transaction:
+        context = transaction.load_authorization_context(proof=_im_proof())
 
     assert context.form.ref == _FORM_REF
     assert context.grant.id == _GRANT_ID
     assert context.endpoint is not None
     assert context.endpoint.id == _ENDPOINT_ID
-    assert context.current_contact is not None
-    assert context.current_contact.account_id == _ACCOUNT_ID
-    assert context.current_contact.account_active is True
-    assert context.current_contact.workspace_available is True
-    assert context.current_im_binding is not None
-    assert context.current_im_binding.binding_id == _BINDING_ID
-    assert len(statements) <= 6
+    assert context.current_contact is None
+    assert context.current_end_user is None
+    assert context.current_im_binding is None
+
+    contact_otp_proof = VerifiedEmailOTPProof(
+        challenge_ref=_FORM_REF.grant(_GRANT_ID).challenge(OTPChallengeId("challenge-contact")),
+        subject=ContactOTPSubject(_CONTACT_ID),
+        normalized_email=NormalizedEmail("reviewer@example.com"),
+        verified_at=_NOW,
+    )
+    for proof in (VerifiedAccountSessionProof(_ACCOUNT_ID), contact_otp_proof, _im_proof()):
+        decision = SubmissionAuthorizer.authorize(
+            context=context,
+            proof=proof,
+            selected_action_id="approve",
+            now=_NOW,
+        )
+        assert decision.authorized is None
+        assert decision.rejection is SubmissionAuthorizationRejection.STALE_IDENTITY
 
     cross_tenant = SubmissionAttemptScope(
         FormRef(TenantId("workspace-2"), _FORM_REF.form_id),
@@ -608,250 +539,35 @@ def test_context_loads_current_app_scoped_end_user_facts(repository_context) -> 
     assert _authorized(context, proof).actor.end_user_id == _END_USER_ID
 
 
-def test_im_context_uses_current_email_identity_when_no_explicit_binding_exists(repository_context) -> None:
-    repository, session_maker = repository_context
-    with session_maker.begin() as session:
-        session.execute(sa.delete(HumanInputIMBinding).where(HumanInputIMBinding.id == str(_BINDING_ID)))
-    proof = VerifiedIMIdentityProof(
-        integration_id=_INTEGRATION_ID,
-        identity_id=_IDENTITY_ID,
-        binding_id=None,
-        provider=IMProvider.SLACK,
-        provider_tenant_id="provider-tenant-1",
-        provider_user_id="provider-user-1",
-    )
+def test_context_keeps_email_address_grant_available_without_contact_facts(repository_context) -> None:
+    repository, _session_maker = repository_context
+    proof = _email_proof()
 
-    with repository.transaction(_SCOPE) as transaction:
+    with repository.transaction(_EMAIL_SCOPE) as transaction:
         context = transaction.load_authorization_context(proof=proof)
 
-    assert context.current_im_binding is not None
-    assert context.current_im_binding.identity_id == _IDENTITY_ID
-    assert context.current_im_binding.binding_id is None
-    assert _authorized(context, proof).actor == AccountSubmissionActor(_ACCOUNT_ID)
-
-
-def test_unrelated_provider_workspace_binding_does_not_shadow_requested_workspace_binding(repository_context) -> None:
-    repository, session_maker = repository_context
-    with session_maker.begin() as session:
-        _add_feishu_workspace_binding(session)
-
-    with repository.transaction(_SCOPE) as transaction:
-        context = transaction.load_authorization_context(proof=_im_proof())
-
-    assert context.current_im_binding is not None
-    assert context.current_im_binding.integration_id == _INTEGRATION_ID
-    assert context.current_im_binding.provider is IMProvider.SLACK
-    assert context.current_im_binding.binding_id == _BINDING_ID
-
-
-def test_unrelated_provider_workspace_binding_does_not_shadow_requested_organization_binding(
-    repository_context,
-) -> None:
-    repository, session_maker = repository_context
-    with session_maker.begin() as session:
-        requested_binding = session.get_one(HumanInputIMBinding, str(_BINDING_ID))
-        requested_binding.scope = IMBindingScope.ORGANIZATION
-        requested_binding.scope_id = str(_INTEGRATION_ID)
-        _add_feishu_workspace_binding(session)
-
-    with repository.transaction(_SCOPE) as transaction:
-        context = transaction.load_authorization_context(proof=_im_proof())
-
-    assert context.current_im_binding is not None
-    assert context.current_im_binding.integration_id == _INTEGRATION_ID
-    assert context.current_im_binding.provider is IMProvider.SLACK
-    assert context.current_im_binding.binding_id == _BINDING_ID
-
-
-def test_unrelated_provider_workspace_binding_allows_requested_email_fallback(repository_context) -> None:
-    repository, session_maker = repository_context
-    with session_maker.begin() as session:
-        session.delete(session.get_one(HumanInputIMBinding, str(_BINDING_ID)))
-        _add_feishu_workspace_binding(session)
-    proof = VerifiedIMIdentityProof(
-        integration_id=_INTEGRATION_ID,
-        identity_id=_IDENTITY_ID,
-        binding_id=None,
-        provider=IMProvider.SLACK,
-        provider_tenant_id="provider-tenant-1",
-        provider_user_id="provider-user-1",
-    )
-
-    with repository.transaction(_SCOPE) as transaction:
-        context = transaction.load_authorization_context(proof=proof)
-
-    assert context.current_im_binding is not None
-    assert context.current_im_binding.integration_id == _INTEGRATION_ID
-    assert context.current_im_binding.provider is IMProvider.SLACK
-    assert context.current_im_binding.identity_id == _IDENTITY_ID
-    assert context.current_im_binding.binding_id is None
-
-
-def test_invalid_workspace_binding_does_not_fall_back_to_valid_organization_binding(repository_context) -> None:
-    repository, session_maker = repository_context
-    with session_maker.begin() as session:
-        workspace_binding = session.get_one(HumanInputIMBinding, str(_BINDING_ID))
-        workspace_binding.im_identity_id = "missing-workspace-identity"
-        organization_binding = HumanInputIMBinding(
-            integration_id=str(_INTEGRATION_ID),
-            scope=IMBindingScope.ORGANIZATION,
-            scope_id=str(_INTEGRATION_ID),
-            contact_id=str(_CONTACT_ID),
-            im_identity_id=str(_IDENTITY_ID),
-            provider=IMProvider.SLACK,
-            bound_by_account_id=str(_ACCOUNT_ID),
-        )
-        _set_record_identity(organization_binding, "binding-organization")
-        session.add(organization_binding)
-
-    with repository.transaction(_SCOPE) as transaction:
-        context = transaction.load_authorization_context(proof=_im_proof())
-
+    assert context.current_contact is None
+    assert context.current_end_user is None
     assert context.current_im_binding is None
-
-
-def test_invalid_workspace_binding_does_not_fall_back_to_matching_email_identity(repository_context) -> None:
-    repository, session_maker = repository_context
-    with session_maker.begin() as session:
-        workspace_binding = session.get_one(HumanInputIMBinding, str(_BINDING_ID))
-        workspace_binding.im_identity_id = "missing-workspace-identity"
-
-    with repository.transaction(_SCOPE) as transaction:
-        context = transaction.load_authorization_context(proof=_im_proof())
-
-    assert context.current_im_binding is None
-
-
-def test_wrong_provider_binding_is_ignored_before_requested_email_fallback(repository_context) -> None:
-    repository, session_maker = repository_context
-    with session_maker.begin() as session:
-        workspace_binding = session.get_one(HumanInputIMBinding, str(_BINDING_ID))
-        workspace_binding.provider = IMProvider.FEISHU
-    proof = VerifiedIMIdentityProof(
-        integration_id=_INTEGRATION_ID,
-        identity_id=_IDENTITY_ID,
-        binding_id=None,
-        provider=IMProvider.SLACK,
-        provider_tenant_id="provider-tenant-1",
-        provider_user_id="provider-user-1",
-    )
-
-    with repository.transaction(_SCOPE) as transaction:
-        context = transaction.load_authorization_context(proof=proof)
-
-    assert context.current_im_binding is not None
-    assert context.current_im_binding.identity_id == _IDENTITY_ID
-    assert context.current_im_binding.binding_id is None
-
-
-def test_workspace_binding_rejects_identity_owned_by_another_integration(repository_context) -> None:
-    repository, session_maker = repository_context
-    with session_maker.begin() as session:
-        identity = session.get_one(HumanInputIMIdentity, str(_IDENTITY_ID))
-        identity.integration_id = "integration-other"
-
-    with repository.transaction(_SCOPE) as transaction:
-        context = transaction.load_authorization_context(proof=_im_proof())
-
-    assert context.current_im_binding is None
-
-
-def test_im_context_rejects_integration_owned_by_another_workspace_before_fallback(repository_context) -> None:
-    repository, session_maker = repository_context
-    cross_workspace_integration_id = IntegrationId("integration-cross-workspace")
-    with session_maker.begin() as session:
-        integration = HumanInputIMIntegration(
-            provider=IMProvider.SLACK,
-            encrypted_credentials=IMEncryptedCredentials(ciphertext="opaque-cross-workspace-ciphertext"),
-            tenant_id="workspace-2",
-            provider_tenant_id="provider-tenant-cross-workspace",
-            app_identifier="client-cross-workspace",
-            status=IMIntegrationStatus.CONNECTED,
-            config_version=1,
-            configured_by_account_id=str(_ACCOUNT_ID),
-            callback_url=None,
-            safe_status_reason=None,
-            last_checked_at=_NOW,
-        )
-        _set_record_identity(integration, str(cross_workspace_integration_id))
-        identity = HumanInputIMIdentity(
-            integration_id=str(cross_workspace_integration_id),
-            provider=IMProvider.SLACK,
-            provider_user_id="provider-user-cross-workspace",
-            display_name="Cross Workspace Reviewer",
-            normalized_name="cross workspace reviewer",
-            email="reviewer@example.com",
-            normalized_email="reviewer@example.com",
-            raw_payload=IMIdentityRawPayload({}),
-            last_seen_sync_run_id=None,
-            last_seen_at=_NOW,
-        )
-        _set_record_identity(identity, "identity-cross-workspace")
-        session.add_all([integration, identity])
-    proof = VerifiedIMIdentityProof(
-        integration_id=cross_workspace_integration_id,
-        identity_id=IMIdentityId("identity-cross-workspace"),
-        binding_id=None,
-        provider=IMProvider.SLACK,
-        provider_tenant_id="provider-tenant-cross-workspace",
-        provider_user_id="provider-user-cross-workspace",
-    )
-
-    with repository.transaction(_SCOPE) as transaction:
-        context = transaction.load_authorization_context(proof=proof)
-
-    assert context.current_im_binding is None
-
-
-def test_valid_workspace_binding_wins_over_valid_organization_binding(repository_context) -> None:
-    repository, session_maker = repository_context
-    with session_maker.begin() as session:
-        organization_identity = HumanInputIMIdentity(
-            integration_id=str(_INTEGRATION_ID),
-            provider=IMProvider.SLACK,
-            provider_user_id="provider-user-organization",
-            display_name="Organization Reviewer",
-            normalized_name="organization reviewer",
-            email="organization@example.com",
-            normalized_email="organization@example.com",
-            raw_payload=IMIdentityRawPayload({}),
-            last_seen_sync_run_id=None,
-            last_seen_at=_NOW,
-        )
-        _set_record_identity(organization_identity, "identity-organization")
-        organization_binding = HumanInputIMBinding(
-            integration_id=str(_INTEGRATION_ID),
-            scope=IMBindingScope.ORGANIZATION,
-            scope_id=str(_INTEGRATION_ID),
-            contact_id=str(_CONTACT_ID),
-            im_identity_id=organization_identity.id,
-            provider=IMProvider.SLACK,
-            bound_by_account_id=str(_ACCOUNT_ID),
-        )
-        _set_record_identity(organization_binding, "binding-organization")
-        session.add_all([organization_identity, organization_binding])
-
-    with repository.transaction(_SCOPE) as transaction:
-        context = transaction.load_authorization_context(proof=_im_proof())
-
-    assert context.current_im_binding is not None
-    assert context.current_im_binding.binding_id == _BINDING_ID
-    assert context.current_im_binding.identity_id == _IDENTITY_ID
+    assert _authorized(context, proof).actor == EmailAddressSubmissionActor(_EMAIL)
 
 
 def test_authorized_commit_persists_audit_submission_and_form_transition_atomically(repository_context) -> None:
     repository, session_maker = repository_context
+    proof = _end_user_proof()
 
-    with repository.transaction(_SCOPE) as transaction:
-        context = transaction.load_authorization_context(proof=_im_proof())
-        result = transaction.commit_authorized_submission_once(_commit(_authorized(context, _im_proof())))
+    with repository.transaction(_END_USER_SCOPE) as transaction:
+        context = transaction.load_authorization_context(proof=proof)
+        result = transaction.commit_authorized_submission_once(_commit(_authorized(context, proof)))
 
     assert result.status is SubmissionCommitStatus.COMMITTED
     assert result.submission is not None
     with session_maker() as session:
         assert session.scalar(select(sa.func.count(HumanInputV2FormAuditEvent.id))) == 1
         assert session.scalar(select(sa.func.count(HumanInputV2FormSubmission.id))) == 1
-        assert session.get_one(HumanInputV2Form, str(_FORM_REF.form_id)).status is HumanInputV2FormStatus.SUBMITTED
+        assert session.get_one(HumanInputV2Form, str(_END_USER_FORM_REF.form_id)).status is (
+            HumanInputV2FormStatus.SUBMITTED
+        )
         audit = session.get_one(HumanInputV2FormAuditEvent, "audit-1")
         assert audit.event_type == FormAuthorizationAuditEventType.SUBMISSION_AUTHORIZED.value
         assert audit.authorization_proof is not None
@@ -908,6 +624,7 @@ def test_rejection_audit_is_append_only_and_requires_the_complete_owner_scope(re
 @pytest.mark.parametrize("failure_point", ["audit", "submission", "transition"])
 def test_any_authorized_write_failure_rolls_back_every_write(repository_context, failure_point: str) -> None:
     repository, session_maker = repository_context
+    proof = _end_user_proof()
     trigger_name = f"fail_{failure_point}"
     if failure_point == "audit":
         trigger_sql = (
@@ -928,9 +645,9 @@ def test_any_authorized_write_failure_rolls_back_every_write(repository_context,
         connection.exec_driver_sql(trigger_sql)
 
     def commit_with_injected_failure() -> None:
-        with repository.transaction(_SCOPE) as transaction:
-            context = transaction.load_authorization_context(proof=_im_proof())
-            transaction.commit_authorized_submission_once(_commit(_authorized(context, _im_proof())))
+        with repository.transaction(_END_USER_SCOPE) as transaction:
+            context = transaction.load_authorization_context(proof=proof)
+            transaction.commit_authorized_submission_once(_commit(_authorized(context, proof)))
 
     with pytest.raises(SubmissionPersistenceError):
         commit_with_injected_failure()
@@ -938,24 +655,25 @@ def test_any_authorized_write_failure_rolls_back_every_write(repository_context,
     with session_maker() as session:
         assert session.scalar(select(sa.func.count(HumanInputV2FormAuditEvent.id))) == 0
         assert session.scalar(select(sa.func.count(HumanInputV2FormSubmission.id))) == 0
-        assert session.get_one(HumanInputV2Form, "form-1").status is HumanInputV2FormStatus.WAITING
+        assert session.get_one(HumanInputV2Form, "form-2").status is HumanInputV2FormStatus.WAITING
 
 
 def test_unique_form_conflict_translates_to_stable_already_completed(repository_context) -> None:
     repository, session_maker = repository_context
-    with repository.transaction(_SCOPE) as transaction:
-        context = transaction.load_authorization_context(proof=_im_proof())
-        authorized = _authorized(context, _im_proof())
+    proof = _end_user_proof()
+    with repository.transaction(_END_USER_SCOPE) as transaction:
+        context = transaction.load_authorization_context(proof=proof)
+        authorized = _authorized(context, proof)
     existing_audit = FormAuthorizationAuditEvent(
         id=AuditEventId("existing-audit"),
         event_type=FormAuthorizationAuditEventType.SUBMISSION_AUTHORIZED,
-        form_ref=_FORM_REF,
-        approver_grant_id=_GRANT_ID,
-        endpoint_id=_ENDPOINT_ID,
-        channel=HumanInputDeliveryChannel.IM,
+        form_ref=_END_USER_FORM_REF,
+        approver_grant_id=_END_USER_GRANT_ID,
+        endpoint_id=None,
+        channel=None,
         reason_code=None,
         reason_message=None,
-        authorization_proof=_im_proof(),
+        authorization_proof=proof,
         payload={"selected_action_id": "approve"},
         occurred_at=_NOW,
         created_at=_NOW,
@@ -967,18 +685,18 @@ def test_unique_form_conflict_translates_to_stable_already_completed(repository_
         session.add(
             submission_to_record(
                 existing_submission.to_submission(
-                    form_ref=_FORM_REF,
-                    approver_grant_id=_GRANT_ID,
-                    endpoint_id=_ENDPOINT_ID,
+                    form_ref=_END_USER_FORM_REF,
+                    approver_grant_id=_END_USER_GRANT_ID,
+                    endpoint_id=None,
                     submitted_at=_NOW,
                 )
             )
         )
 
-    with repository.transaction(_SCOPE) as transaction:
-        context = transaction.load_authorization_context(proof=_im_proof())
+    with repository.transaction(_END_USER_SCOPE) as transaction:
+        context = transaction.load_authorization_context(proof=proof)
         result = transaction.commit_authorized_submission_once(
-            _commit(_authorized(context, _im_proof()), submission_id="loser", audit_id="loser-audit")
+            _commit(_authorized(context, proof), submission_id="loser", audit_id="loser-audit")
         )
 
     assert result.status is SubmissionCommitStatus.ALREADY_COMPLETED
@@ -988,8 +706,9 @@ def test_unique_form_conflict_translates_to_stable_already_completed(repository_
         assert session.scalar(select(sa.func.count(HumanInputV2FormAuditEvent.id))) == 1
 
 
-def test_commit_uses_loaded_snapshot_without_second_contact_or_binding_query(repository_context) -> None:
+def test_commit_uses_loaded_end_user_snapshot_without_identity_reload(repository_context) -> None:
     repository, session_maker = repository_context
+    proof = _end_user_proof()
     statements: list[str] = []
 
     def record_statement(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
@@ -998,14 +717,14 @@ def test_commit_uses_loaded_snapshot_without_second_contact_or_binding_query(rep
     engine = session_maker.kw["bind"]
     event.listen(engine, "before_cursor_execute", record_statement)
     try:
-        with repository.transaction(_SCOPE) as transaction:
-            context = transaction.load_authorization_context(proof=_im_proof())
-            authorized = _authorized(context, _im_proof())
+        with repository.transaction(_END_USER_SCOPE) as transaction:
+            context = transaction.load_authorization_context(proof=proof)
+            authorized = _authorized(context, proof)
             statements.clear()
             transaction.commit_authorized_submission_once(_commit(authorized))
     finally:
         event.remove(engine, "before_cursor_execute", record_statement)
 
-    assert not any("human_input_contacts" in statement for statement in statements)
+    assert not any("human_input_contact_identities" in statement for statement in statements)
     assert not any("human_input_im_bindings" in statement for statement in statements)
     assert not any("human_input_im_identities" in statement for statement in statements)

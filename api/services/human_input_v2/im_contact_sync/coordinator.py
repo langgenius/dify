@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
-from types import TracebackType
+from collections.abc import Callable, Generator
+from contextlib import AbstractContextManager, contextmanager
 from typing import Protocol
 
+import sqlalchemy as sa
 from pydantic import NaiveDatetime
+from sqlalchemy import event
+from sqlalchemy.orm import Session
 
 from core.human_input_v2.im_integration import (
     ApplyReconciliationResult,
@@ -31,6 +34,7 @@ from core.human_input_v2.shared import (
     WorkspaceScope,
 )
 from libs.datetime_utils import naive_utc_now
+from repositories.human_input_v2.organization_write_unit_of_work import OwnedOrganizationWriteLock
 from services.human_input_v2.im_credential_codec import IMCredentialError
 
 from .locking import OrganizationIMWriteLockLostError, OrganizationIMWriteLockUnavailableError
@@ -71,18 +75,12 @@ class _ProtectedReconciliationRepository(Protocol):
     ) -> ApplyReconciliationResult: ...
 
 
-class _ReconciliationUnitOfWork(Protocol):
-    def __enter__(self) -> _ProtectedReconciliationRepository: ...
-
-    def __exit__(
-        self,
-        exception_type: type[BaseException] | None,
-        exception: BaseException | None,
-        traceback: TracebackType | None,
-    ) -> None: ...
-
-
-type _ReconciliationUnitOfWorkFactory = Callable[[DirectoryScope], _ReconciliationUnitOfWork]
+type _ReconciliationSessionFactory = Callable[[], AbstractContextManager[Session]]
+type _ReconciliationWriteLockFactory = Callable[[DirectoryScope], OwnedOrganizationWriteLock]
+type _ReconciliationRepositoryFactory = Callable[
+    [Session, OwnedOrganizationWriteLock],
+    _ProtectedReconciliationRepository,
+]
 
 
 class IMContactSyncCoordinator:
@@ -92,14 +90,18 @@ class IMContactSyncCoordinator:
         self,
         repository: IMSyncRepository,
         adapter_factory: Callable[[IMIntegration], IMProviderAdapter],
-        unit_of_work_factory: _ReconciliationUnitOfWorkFactory,
+        session_factory: _ReconciliationSessionFactory,
+        write_lock_factory: _ReconciliationWriteLockFactory,
+        reconciliation_repository_factory: _ReconciliationRepositoryFactory,
         *,
         planner: _ReconciliationPlanner | None = None,
         clock: Callable[[], NaiveDatetime] = naive_utc_now,
     ) -> None:
         self._repository = repository
         self._adapter_factory = adapter_factory
-        self._unit_of_work_factory = unit_of_work_factory
+        self._session_factory = session_factory
+        self._write_lock_factory = write_lock_factory
+        self._reconciliation_repository_factory = reconciliation_repository_factory
         self._planner = planner or SyncReconciler()
         self._clock = clock
 
@@ -183,7 +185,7 @@ class IMContactSyncCoordinator:
     ) -> IMSyncRun:
         run_ref = ReconciliationRunRef(run.id, run.integration_revision, run.provider)
         try:
-            with self._unit_of_work_factory(organization_scope) as protected_repository:
+            with self._reconciliation_transaction(organization_scope) as protected_repository:
                 reconciliation_input = protected_repository.load_reconciliation_input(
                     run_ref,
                     directory.entries,
@@ -235,11 +237,38 @@ class IMContactSyncCoordinator:
         message: str,
     ) -> IMSyncRun:
         try:
-            with self._unit_of_work_factory(organization_scope) as protected_repository:
+            with self._reconciliation_transaction(organization_scope) as protected_repository:
                 protected_repository.fail_run(sync_run_id, status, now=self._clock(), message=message)
         except (OrganizationIMWriteLockUnavailableError, OrganizationIMWriteLockLostError) as error:
             raise IMSyncRetryableError("Organization IM write lock requires retry") from error
         return self._require_run(sync_run_id)
+
+    @contextmanager
+    def _reconciliation_transaction(
+        self,
+        organization_scope: DirectoryScope,
+    ) -> Generator[_ProtectedReconciliationRepository]:
+        """Acquire the Organization lock before opening one caller-owned transaction."""
+
+        write_lock = self._write_lock_factory(organization_scope)
+        with write_lock:
+            with self._session_factory() as session:
+
+                def ensure_lock_owned_before_commit(_session: Session) -> None:
+                    write_lock.ensure_owned()
+
+                event.listen(session, "before_commit", ensure_lock_owned_before_commit)
+                try:
+                    with session.begin():
+                        if session.get_bind().dialect.name == "sqlite":
+                            # SQLite SAVEPOINT does not start the outer transaction in
+                            # legacy mode, so make the caller-owned rollback boundary real.
+                            session.execute(sa.text("BEGIN"))
+                        protected_repository = self._reconciliation_repository_factory(session, write_lock)
+                        yield protected_repository
+                        write_lock.ensure_owned()
+                finally:
+                    event.remove(session, "before_commit", ensure_lock_owned_before_commit)
 
     def _require_run(self, sync_run_id: IMSyncRunId) -> IMSyncRun:
         run = self._repository.load_sync_run(sync_run_id)

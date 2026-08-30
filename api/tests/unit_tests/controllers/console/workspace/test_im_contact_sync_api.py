@@ -12,8 +12,6 @@ from types import SimpleNamespace
 import pytest
 from flask import Flask
 from pydantic import ValidationError
-from sqlalchemy import Engine, func, select
-from sqlalchemy.orm import sessionmaker
 
 from controllers.console.workspace.human_input import (
     WorkspaceContactIMBindingsApi,
@@ -23,7 +21,6 @@ from controllers.console.workspace.human_input import (
     WorkspaceLatestIMSyncRunApi,
     WorkspaceLatestIMSyncRunResultsApi,
 )
-from core.human_input_v2.contact_directory import Contact
 from core.human_input_v2.entities import (
     HumanInputContactType,
     IMBindingScope,
@@ -34,15 +31,11 @@ from core.human_input_v2.entities import (
 )
 from core.human_input_v2.im_integration import (
     ContactIMBindingView,
-    EncryptedCredentials,
     IMBinding,
     IMBindingCommandError,
     IMBindingCommandErrorCode,
-    IMIdentity,
-    IMIntegration,
     IMSyncRun,
     IntegrationRevisionToken,
-    ProviderTenantIdentity,
     SyncContactSnapshot,
     SynchronizedIMIdentity,
     SynchronizedIMIdentityPage,
@@ -61,16 +54,6 @@ from core.human_input_v2.shared import (
     TenantId,
     WorkspaceScope,
 )
-from models.human_input_v2 import (
-    HumanInputContact,
-    HumanInputIMBinding,
-    HumanInputIMIdentity,
-    HumanInputIMIntegration,
-)
-from repositories.human_input_v2.contact_directory.mappers import contact_to_record
-from repositories.human_input_v2.im_integration.mappers import identity_to_record, integration_to_record
-from repositories.human_input_v2.im_integration.unit_of_work import SQLAlchemyOrganizationIMWriteUnitOfWork
-from services.human_input_v2.im_contact_sync.binding_service import ContactIMBindingService
 from services.human_input_v2.im_contact_sync.errors import IMWriteUnavailableError
 from services.human_input_v2.im_contact_sync.service import (
     IMIntegrationNotConfiguredError,
@@ -189,25 +172,6 @@ class _BindingService:
 
     def reset_workspace_override(self, **_kwargs):
         return _contact_view(IMBindingScope.ORGANIZATION)
-
-
-class _OwnedWriteLock:
-    def __init__(self) -> None:
-        self.held = False
-
-    def __enter__(self):
-        self.held = True
-        return self
-
-    def __exit__(self, *_unused: object) -> None:
-        self.held = False
-
-    def ensure_owned(self) -> None:
-        if not self.held:
-            raise RuntimeError("lock is not held")
-
-    def extend(self) -> None:
-        self.ensure_owned()
 
 
 @pytest.fixture
@@ -489,87 +453,6 @@ def test_binding_and_override_handlers_return_current_contact_projection(
     ]
     assert reset["contact"]["im_bindings"][0]["scope"] == "organization"
     assert deleted == {}
-
-
-def test_organization_binding_controller_uses_sqlite_backed_guarded_service(
-    app: Flask,
-    sqlite_engine: Engine,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    tables = [
-        HumanInputContact.__table__,
-        HumanInputIMIntegration.__table__,
-        HumanInputIMIdentity.__table__,
-        HumanInputIMBinding.__table__,
-    ]
-    HumanInputIMIntegration.metadata.create_all(sqlite_engine, tables=tables)
-    sessions = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    tenant_id = TenantId("workspace-1")
-    contact_id = ContactId("00000000-0000-0000-0000-000000000001")
-    integration = IMIntegration.create(
-        integration_id=IntegrationId("integration-1"),
-        tenant_id=tenant_id,
-        provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
-        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-ciphertext"),
-        app_identifier="app-1",
-        configured_by_account_id=AccountId("account-1"),
-        callback_url=None,
-        now=_NOW,
-    )
-    contact = Contact.workspace_member(
-        contact_id=contact_id,
-        tenant_id=tenant_id,
-        account_id=AccountId("account-1"),
-        name="Reviewer",
-        email="reviewer@example.com",
-        now=_NOW,
-    )
-    identity = IMIdentity.create(
-        identity_id=IMIdentityId("identity-1"),
-        integration_id=integration.id,
-        provider=IMProvider.FEISHU,
-        provider_user_id="provider-user-1",
-        display_name="Reviewer",
-        email="reviewer@example.com",
-        raw_payload={},
-        last_seen_sync_run_id=None,
-        last_seen_at=_NOW,
-        now=_NOW,
-    )
-    with sessions.begin() as session:
-        session.add_all(
-            [
-                integration_to_record(integration),
-                contact_to_record(contact),
-                identity_to_record(identity),
-            ]
-        )
-    lock = _OwnedWriteLock()
-    binding_service = ContactIMBindingService(
-        lambda _scope: SQLAlchemyOrganizationIMWriteUnitOfWork(sessions, lock),
-        binding_id_factory=lambda: IMBindingId("binding-organization"),
-        clock=lambda: _NOW,
-    )
-    monkeypatch.setattr(
-        _CONTROLLER_MODULE,
-        "build_im_contact_sync_application",
-        lambda: SimpleNamespace(binding_service=binding_service),
-    )
-
-    with app.test_request_context(method="PUT", json={"identity_id": "identity-1"}):
-        response = unwrap(WorkspaceContactIMBindingsApi.put)(
-            WorkspaceContactIMBindingsApi(),
-            "workspace-1",
-            SimpleNamespace(id="account-1"),
-            str(contact_id),
-        )
-
-    assert response["contact"]["type"] == "workspace"
-    assert response["contact"]["im_bindings"] == [
-        {"id": "binding-organization", "provider": "feishu", "scope": "organization"}
-    ]
-    with sessions() as session:
-        assert session.scalar(select(func.count(HumanInputIMBinding.id))) == 1
 
 
 @pytest.mark.parametrize(

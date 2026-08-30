@@ -20,82 +20,86 @@ depends_on = None
 
 def upgrade() -> None:
     op.create_table(
-        "human_input_contacts",
-        sa.Column("name", sa.String(length=255), nullable=False, comment="Display name shown in contact surfaces."),
+        "human_input_contact_identities",
         sa.Column(
-            "normalized_name",
-            sa.String(length=255),
-            nullable=False,
-            comment="Lower-cased search value maintained by the application.",
-        ),
-        sa.Column(
-            "identity_source",
+            "subject_type",
             sa.String(length=20),
             nullable=False,
-            comment="Immutable identity source that determines the Contact lifecycle owner.",
-        ),
-        sa.Column(
-            "tenant_id",
-            models.types.StringUUID(),
-            nullable=True,
-            comment=(
-                "Ownership boundary: null only for EE Organization contacts; otherwise the owning tenants.id for "
-                "workspace-owned contacts. CE and SaaS must never persist a null value."
-            ),
+            comment="Immutable Account or External subject discriminator.",
         ),
         sa.Column(
             "account_id",
             models.types.StringUUID(),
             nullable=True,
-            comment="Logical foreign key to accounts.id for an account-backed contact.",
+            comment="Logical accounts.id reference for Account subjects only.",
+        ),
+        sa.Column("id", models.types.StringUUID(), nullable=False),
+        sa.Column("created_at", sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
+        sa.PrimaryKeyConstraint("id", name="human_input_contact_identities_pkey"),
+        sa.UniqueConstraint("account_id", name="human_input_contact_identities_account_id_uq"),
+        sa.CheckConstraint(
+            "(subject_type = 'account' AND account_id IS NOT NULL) OR "
+            "(subject_type = 'external' AND account_id IS NULL)",
+            name="human_input_contact_identities_subject_type_ck",
+        ),
+        comment=(
+            "Immutable Human Input Contact identities. Mutable Account and External Contact profile facts live "
+            "with their source owners."
+        ),
+    )
+
+    op.create_table(
+        "human_input_external_contact_profiles",
+        sa.Column(
+            "contact_id",
+            models.types.StringUUID(),
+            nullable=False,
+            comment="Logical human_input_contact_identities.id reference for one External subject.",
+        ),
+        sa.Column(
+            "tenant_id",
+            models.types.StringUUID(),
+            nullable=False,
+            comment="Owning tenants.id used by every current External Contact lookup.",
+        ),
+        sa.Column("name", sa.String(length=255), nullable=False, comment="Workspace-managed display name."),
+        sa.Column(
+            "normalized_name",
+            sa.String(length=255),
+            nullable=False,
+            comment="Canonical search value maintained by External Contact writes.",
         ),
         sa.Column(
             "email",
             sa.String(length=320),
-            nullable=True,
-            comment="Current deliverable email address, when available.",
+            nullable=False,
+            comment="Workspace-managed deliverable Email address.",
         ),
         sa.Column(
             "normalized_email",
             sa.String(length=320),
-            nullable=True,
-            comment="Full lower-cased email used for equality matching.",
+            nullable=False,
+            comment="Canonical Email equality value maintained by External Contact writes.",
         ),
         sa.Column(
             "avatar_file_id",
             models.types.StringUUID(),
             nullable=True,
-            comment="Logical foreign key to upload_files.id for an external contact avatar.",
+            comment="Logical upload_files.id reference owned by the same workspace.",
         ),
-        sa.Column("id", models.types.StringUUID(), nullable=False),
         sa.Column("created_at", sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
-        sa.PrimaryKeyConstraint("id", name="human_input_contacts_pkey"),
-        sa.UniqueConstraint("tenant_id", "account_id", name="human_input_contacts_tenant_account_uq"),
-        sa.UniqueConstraint("tenant_id", "normalized_email", name="human_input_contacts_tenant_email_uq"),
-        sa.CheckConstraint(
-            "(identity_source = 'organization_account' AND tenant_id IS NULL AND account_id IS NOT NULL) OR "
-            "(identity_source = 'workspace_member' AND tenant_id IS NOT NULL AND account_id IS NOT NULL) OR "
-            "(identity_source = 'external' AND tenant_id IS NOT NULL AND account_id IS NULL)",
-            name="identity_owner",
-        ),
-        sa.CheckConstraint(
-            "identity_source <> 'external' OR (email IS NOT NULL AND normalized_email IS NOT NULL)",
-            name="external_email",
-        ),
-        sa.CheckConstraint(
-            "(email IS NULL AND normalized_email IS NULL) OR (email IS NOT NULL AND normalized_email IS NOT NULL)",
-            name="email_normalization_pair",
-        ),
+        sa.PrimaryKeyConstraint("contact_id", name="human_input_external_contact_profiles_pkey"),
+        sa.UniqueConstraint("tenant_id", "normalized_email", name="hiecp_tenant_normalized_email_uq"),
         comment=(
-            "Canonical Human Input contact identities. EE Organization Account contacts have tenant_id IS NULL; "
-            "workspace-owned contacts have tenant_id = tenants.id; CE and SaaS must not create contacts with "
-            "tenant_id IS NULL."
+            "Current workspace-owned External Contact profiles. Deletion removes both this profile and its "
+            "Contact identity."
         ),
     )
     op.create_index(
-        "human_input_contacts_tenant_normalized_name_idx",
-        "human_input_contacts",
+        "hiecp_tenant_normalized_name_idx",
+        "human_input_external_contact_profiles",
         ["tenant_id", "normalized_name"],
     )
 
@@ -106,7 +110,7 @@ def upgrade() -> None:
             "contact_id",
             models.types.StringUUID(),
             nullable=False,
-            comment="Logical foreign key to human_input_contacts.id.",
+            comment="Logical foreign key to human_input_contact_identities.id.",
         ),
         sa.Column(
             "added_by_account_id",
@@ -138,4 +142,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_table("human_input_platform_contact_workspace_entries")
-    op.drop_table("human_input_contacts")
+    op.drop_table("human_input_external_contact_profiles")
+    op.drop_table("human_input_contact_identities")

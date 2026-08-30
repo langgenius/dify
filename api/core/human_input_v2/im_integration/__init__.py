@@ -8,12 +8,6 @@ domain decisions and transaction-oriented ports.
 """
 
 from .binding_commands import ContactIMBindingView, IMBindingCommandError, IMBindingCommandErrorCode
-from .binding_resolution import (
-    BindingResolutionKind,
-    BindingResolutionResult,
-    EffectiveBindingResolver,
-    EffectiveIMBindingSnapshot,
-)
 from .change_log import (
     IMBindingChangeSnapshot,
     IMIdentityChangeSnapshot,
@@ -94,8 +88,6 @@ __all__ = [
     "ActiveRunDecisionKind",
     "ApplyReconciliationResult",
     "ApplyReconciliationStatus",
-    "BindingResolutionKind",
-    "BindingResolutionResult",
     "BlockedReconciliation",
     "ConfigurationTransition",
     "ConfigurationTransitionKind",
@@ -107,8 +99,6 @@ __all__ = [
     "CurrentIMIdentityState",
     "CurrentStateInvalidation",
     "DeleteIMBinding",
-    "EffectiveBindingResolver",
-    "EffectiveIMBindingSnapshot",
     "EncryptedCredentials",
     "ExistingIMIdentityRef",
     "IMBinding",

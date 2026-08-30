@@ -219,7 +219,7 @@ def test_upgrade_enforces_positive_revision_and_scoped_binding_owner() -> None:
 def test_downgrade_removes_only_im_control_plane_tables() -> None:
     engine = sa.create_engine("sqlite:///:memory:")
     with engine.begin() as connection:
-        connection.execute(sa.text("CREATE TABLE human_input_contacts (id VARCHAR(36) PRIMARY KEY)"))
+        connection.execute(sa.text("CREATE TABLE human_input_contact_identities (id VARCHAR(36) PRIMARY KEY)"))
         connection.execute(sa.text("CREATE TABLE unrelated_state (id INTEGER PRIMARY KEY)"))
         connection.execute(sa.text("INSERT INTO unrelated_state (id) VALUES (1)"))
     module = _load_migration_module()
@@ -228,7 +228,7 @@ def test_downgrade_removes_only_im_control_plane_tables() -> None:
     _run_migration_step(module, engine, "downgrade")
 
     inspector = sa.inspect(engine)
-    assert set(inspector.get_table_names()) == {"human_input_contacts", "unrelated_state"}
+    assert set(inspector.get_table_names()) == {"human_input_contact_identities", "unrelated_state"}
     with engine.begin() as connection:
         assert connection.scalar(sa.text("SELECT id FROM unrelated_state")) == 1
 

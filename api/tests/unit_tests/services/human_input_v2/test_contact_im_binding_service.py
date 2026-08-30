@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.human_input_v2.contact_directory import Contact
+from core.human_input_v2.contact import Contact, ContactType
 from core.human_input_v2.entities import HumanInputContactType, IMBindingScope, IMIntegrationStatus, IMProvider
 from core.human_input_v2.im_integration import IMBindingCommandError, IMBindingCommandErrorCode, IMIdentity
 from core.human_input_v2.shared import (
@@ -20,16 +20,16 @@ from core.human_input_v2.shared import (
     IntegrationId,
     TenantId,
 )
+from models.account import Account, AccountStatus
 from models.human_input_v2 import (
-    HumanInputContact,
-    HumanInputContactIdentitySource,
+    ContactSubjectType,
+    HumanInputContactIdentity,
     HumanInputIMBinding,
     HumanInputIMIdentity,
     HumanInputIMIntegration,
     HumanInputPlatformContactWorkspaceEntry,
     IMEncryptedCredentials,
 )
-from repositories.human_input_v2.contact_directory.mappers import contact_to_record
 from repositories.human_input_v2.im_integration.mappers import identity_to_record
 from repositories.human_input_v2.im_integration.unit_of_work import SQLAlchemyOrganizationIMWriteUnitOfWork
 from services.human_input_v2.im_contact_sync.binding_service import ContactIMBindingService
@@ -62,12 +62,42 @@ class _OwnedWriteLock:
         self.ensure_owned()
 
 
+class _DeploymentContacts:
+    def list_contacts(self, page: int, limit: int) -> tuple[Contact, ...]:
+        del page, limit
+        return (self.get_contact(_CONTACT_ID),)
+
+    def get_contact(self, contact_id: ContactId) -> Contact | None:
+        if contact_id != _CONTACT_ID:
+            return None
+        return Contact(
+            id=_CONTACT_ID,
+            type=ContactType.PLATFORM,
+            name="Reviewer",
+            email="reviewer@example.com",
+            avatar_file_id=None,
+            created_at=_NOW,
+        )
+
+
+def _unit_of_work(
+    sessions: sessionmaker[Session],
+    lock: _OwnedWriteLock,
+) -> SQLAlchemyOrganizationIMWriteUnitOfWork:
+    return SQLAlchemyOrganizationIMWriteUnitOfWork(
+        sessions,
+        lock,
+        deployment_contact_reader_factory=lambda _session: _DeploymentContacts(),
+    )
+
+
 @pytest.fixture
 def binding_context(
     sqlite_engine: Engine,
 ) -> tuple[sessionmaker[Session], _OwnedWriteLock]:
     tables = [
-        HumanInputContact.__table__,
+        Account.__table__,
+        HumanInputContactIdentity.__table__,
         HumanInputPlatformContactWorkspaceEntry.__table__,
         HumanInputIMIntegration.__table__,
         HumanInputIMIdentity.__table__,
@@ -75,13 +105,15 @@ def binding_context(
     ]
     HumanInputIMIntegration.metadata.create_all(sqlite_engine, tables=tables)
     sessions = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    contact = Contact.organization_account(
-        contact_id=_CONTACT_ID,
-        account_id=AccountId("account-1"),
-        name="Reviewer",
-        email="reviewer@example.com",
-        now=_NOW,
+    account = Account(name="Reviewer", email="reviewer@example.com", status=AccountStatus.ACTIVE)
+    account.id = "account-1"
+    contact_identity = HumanInputContactIdentity(
+        subject_type=ContactSubjectType.ACCOUNT,
+        account_id=account.id,
     )
+    contact_identity.id = str(_CONTACT_ID)
+    contact_identity.created_at = _NOW
+    contact_identity.updated_at = _NOW
     identity = IMIdentity.create(
         identity_id=_IDENTITY_ID,
         integration_id=_INTEGRATION_ID,
@@ -114,7 +146,8 @@ def binding_context(
         session.add_all(
             [
                 integration,
-                contact_to_record(contact),
+                account,
+                contact_identity,
                 identity_to_record(identity),
                 platform_entry,
             ]
@@ -125,7 +158,7 @@ def binding_context(
 def test_organization_binding_create_and_delete_are_scope_guarded(binding_context) -> None:
     sessions, lock = binding_context
 
-    with SQLAlchemyOrganizationIMWriteUnitOfWork(sessions, lock) as repository:
+    with _unit_of_work(sessions, lock) as repository:
         binding = repository.create_organization_binding(
             organization_scope=DeploymentScope(),
             integration_id=_INTEGRATION_ID,
@@ -139,7 +172,7 @@ def test_organization_binding_create_and_delete_are_scope_guarded(binding_contex
     assert binding.scope is IMBindingScope.ORGANIZATION
     assert binding.scope_id == str(_INTEGRATION_ID)
     assert binding.provider is IMProvider.FEISHU
-    with SQLAlchemyOrganizationIMWriteUnitOfWork(sessions, lock) as repository:
+    with _unit_of_work(sessions, lock) as repository:
         repository.delete_organization_binding(
             organization_scope=DeploymentScope(),
             integration_id=_INTEGRATION_ID,
@@ -154,7 +187,7 @@ def test_organization_binding_create_and_delete_are_scope_guarded(binding_contex
 def test_binding_service_resolves_current_integration_and_returns_contact_projection(binding_context) -> None:
     sessions, lock = binding_context
     service = ContactIMBindingService(
-        lambda _scope: SQLAlchemyOrganizationIMWriteUnitOfWork(sessions, lock),
+        lambda _scope: _unit_of_work(sessions, lock),
         binding_id_factory=lambda: IMBindingId("binding-organization"),
         clock=lambda: _NOW,
     )
@@ -209,7 +242,7 @@ def test_organization_binding_rejects_identity_provider_mismatch_without_writing
         identity.provider = IMProvider.SLACK
 
     with pytest.raises(IMBindingCommandError) as error_info:
-        with SQLAlchemyOrganizationIMWriteUnitOfWork(sessions, lock) as repository:
+        with _unit_of_work(sessions, lock) as repository:
             repository.create_organization_binding(
                 organization_scope=DeploymentScope(),
                 integration_id=_INTEGRATION_ID,
@@ -225,31 +258,10 @@ def test_organization_binding_rejects_identity_provider_mismatch_without_writing
         assert session.scalar(select(func.count(HumanInputIMBinding.id))) == 0
 
 
-def test_organization_binding_rejects_contact_outside_organization(binding_context) -> None:
-    sessions, lock = binding_context
-    with sessions.begin() as session:
-        contact = session.get_one(HumanInputContact, str(_CONTACT_ID))
-        contact.identity_source = HumanInputContactIdentitySource.WORKSPACE_MEMBER
-        contact.tenant_id = str(_TENANT_ID)
-
-    with pytest.raises(IMBindingCommandError) as error_info:
-        with SQLAlchemyOrganizationIMWriteUnitOfWork(sessions, lock) as repository:
-            repository.create_organization_binding(
-                organization_scope=DeploymentScope(),
-                integration_id=_INTEGRATION_ID,
-                contact_id=_CONTACT_ID,
-                identity_id=_IDENTITY_ID,
-                binding_id=IMBindingId("binding-invalid-contact"),
-                bound_by_account_id=None,
-                now=_NOW,
-            )
-    assert error_info.value.code is IMBindingCommandErrorCode.CONTACT_NOT_FOUND
-
-
 def test_workspace_override_set_replaces_and_reset_removes_only_workspace_scope(binding_context) -> None:
     sessions, lock = binding_context
     service = ContactIMBindingService(
-        lambda _scope: SQLAlchemyOrganizationIMWriteUnitOfWork(sessions, lock),
+        lambda _scope: _unit_of_work(sessions, lock),
         binding_id_factory=iter(
             (
                 IMBindingId("binding-organization"),
@@ -303,7 +315,7 @@ def test_workspace_override_rejects_contact_not_available_in_workspace(binding_c
     with sessions.begin() as session:
         session.delete(session.get_one(HumanInputPlatformContactWorkspaceEntry, "platform-entry-1"))
     service = ContactIMBindingService(
-        lambda _scope: SQLAlchemyOrganizationIMWriteUnitOfWork(sessions, lock),
+        lambda _scope: _unit_of_work(sessions, lock),
         binding_id_factory=lambda: IMBindingId("binding-workspace"),
         clock=lambda: _NOW,
     )

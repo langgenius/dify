@@ -18,14 +18,10 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
-from core.human_input_v2.contact_directory import ContactSnapshot
 from core.human_input_v2.entities import IMIdentityBindingStatus, IMProvider, IMSyncResultType
 from core.human_input_v2.im_integration import (
     ActiveRunDecision,
-    BindingResolutionKind,
-    BindingResolutionResult,
     ConfigurationTransition,
-    EffectiveBindingResolver,
     IMControlPlanePersistenceError,
     IMIntegration,
     IMIntegrationState,
@@ -40,7 +36,6 @@ from core.human_input_v2.im_integration import (
 )
 from core.human_input_v2.shared import (
     AccountId,
-    ContactId,
     DeploymentScope,
     DirectoryScope,
     IMIdentityId,
@@ -50,14 +45,12 @@ from core.human_input_v2.shared import (
     WorkspaceScope,
 )
 from models.human_input_v2 import (
-    HumanInputContact,
     HumanInputIMBinding,
     HumanInputIMIdentity,
     HumanInputIMIntegration,
     HumanInputIMSyncResult,
     HumanInputIMSyncRun,
 )
-from repositories.human_input_v2.contact_directory.mappers import contact_from_record
 
 from .mappers import (
     binding_from_record,
@@ -375,65 +368,6 @@ class SQLAlchemyIMControlPlaneRepository:
                 page=page,
                 limit=limit,
                 total=total,
-            )
-
-    def resolve_effective_binding(
-        self,
-        *,
-        integration_id: IntegrationId,
-        provider: IMProvider,
-        tenant_id: TenantId,
-        contact_id: ContactId,
-    ) -> BindingResolutionResult:
-        """Validate Integration ownership before loading consumer-safe binding facts."""
-
-        with self._session_maker() as session, session.begin():
-            integration_record = session.scalar(
-                select(HumanInputIMIntegration).where(
-                    HumanInputIMIntegration.id == str(integration_id),
-                    sa.or_(
-                        HumanInputIMIntegration.tenant_id == str(tenant_id),
-                        HumanInputIMIntegration.tenant_id.is_(None),
-                    ),
-                )
-            )
-            if integration_record is None or integration_record.provider is not provider:
-                return BindingResolutionResult(BindingResolutionKind.INVALID_BINDING, None)
-            integration = integration_from_record(integration_record)
-            contact_record = session.scalar(
-                select(HumanInputContact).where(
-                    HumanInputContact.id == str(contact_id),
-                    sa.or_(HumanInputContact.tenant_id == str(tenant_id), HumanInputContact.tenant_id.is_(None)),
-                )
-            )
-            if contact_record is None:
-                return BindingResolutionResult(BindingResolutionKind.NOT_AVAILABLE, None)
-            contact = ContactSnapshot(contact_from_record(contact_record), True)
-            identities = tuple(
-                identity_from_record(record)
-                for record in session.scalars(
-                    select(HumanInputIMIdentity).where(
-                        HumanInputIMIdentity.integration_id == str(integration_id),
-                        HumanInputIMIdentity.provider == provider,
-                    )
-                ).all()
-            )
-            bindings = tuple(
-                binding_from_record(record)
-                for record in session.scalars(
-                    select(HumanInputIMBinding).where(
-                        HumanInputIMBinding.integration_id == str(integration_id),
-                        HumanInputIMBinding.provider == provider,
-                    )
-                ).all()
-            )
-            return EffectiveBindingResolver.resolve(
-                integration_revision=integration.revision,
-                provider_tenant=integration.provider_tenant,
-                tenant_id=tenant_id,
-                contact=contact,
-                identities=identities,
-                bindings=bindings,
             )
 
     def append_sync_results(self, results: tuple[SyncResultFact, ...]) -> None:

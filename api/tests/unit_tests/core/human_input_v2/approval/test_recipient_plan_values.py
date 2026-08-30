@@ -9,7 +9,6 @@ from core.human_input_v2.approval import (
     CanonicalSubjectKey,
     ConsoleEndpointPlan,
     ContactApprovalSubject,
-    DeliveryCapabilitySnapshot,
     EmailAddressApprovalSubject,
     EmailEndpointPlan,
     EndUserApprovalSubject,
@@ -158,7 +157,7 @@ def test_value_invariants_reject_mutable_collections_and_inconsistent_subject_ke
         )
 
 
-def test_plan_and_capability_invariants_require_deeply_immutable_consistent_values() -> None:
+def test_plan_invariants_require_deeply_immutable_consistent_values() -> None:
     source = MatchedRecipientSource(RecipientSourceKind.STATIC_CONTACT, 0, "contact-1")
     approver = ResolvedApprover(
         ContactApprovalSubject(ContactId("contact-1")),
@@ -174,10 +173,6 @@ def test_plan_and_capability_invariants_require_deeply_immutable_consistent_valu
         ResolvedApprovalPlan((approver,), (), RecipientResolutionFailureReason.NO_VALID_RECIPIENTS)
     with pytest.raises(ValueError, match="must have a failure"):
         ResolvedApprovalPlan((), (), None)
-    with pytest.raises(TypeError, match="immutable tuple"):
-        DeliveryCapabilitySnapshot(im_bindings=[])
-    with pytest.raises(TypeError, match="immutable frozensets"):
-        DeliveryCapabilitySnapshot(contact_web_ids=set())
 
 
 def test_interaction_endpoints_and_unbound_im_endpoint_have_stable_primitive_shapes() -> None:

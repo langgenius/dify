@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from types import TracebackType
+from typing import Protocol
 
 import sqlalchemy as sa
 from pydantic import NaiveDatetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.human_input_v2.contact import Contact, ContactQuery, ContactType
 from core.human_input_v2.entities import (
     HumanInputContactType,
     IMBindingScope,
@@ -74,19 +77,16 @@ from core.human_input_v2.shared import (
     WorkspaceScope,
 )
 from libs.uuid_utils import uuidv7
-from models.account import Account, AccountStatus, TenantAccountJoin
 from models.human_input_v2 import (
-    HumanInputContact,
-    HumanInputContactIdentitySource,
     HumanInputIMBinding,
     HumanInputIMIdentity,
     HumanInputIMIntegration,
     HumanInputIMReconciliationChange,
     HumanInputIMSyncResult,
     HumanInputIMSyncRun,
-    HumanInputPlatformContactWorkspaceEntry,
     IMIdentityRawPayload,
 )
+from repositories.human_input_v2.contact import SQLAlchemyContactIMBindingRepository, SQLAlchemyContactRepository
 from repositories.human_input_v2.organization_write_unit_of_work import (
     OwnedOrganizationWriteLock,
     SQLAlchemyOrganizationWriteUnitOfWork,
@@ -108,23 +108,46 @@ class _PreconditionFailedError(RuntimeError):
     pass
 
 
+class DeploymentContactReader(Protocol):
+    """EE-provided deployment Contact read capability."""
+
+    def list_contacts(self, page: int, limit: int) -> Sequence[Contact]: ...
+
+    def get_contact(self, contact_id: ContactId) -> Contact | None: ...
+
+
 class SQLAlchemyOrganizationIMWriteUnitOfWork:
     """Expose reconciliation-protected mutations only while lock and transaction are active."""
 
-    def __init__(self, session_maker: sessionmaker[Session], write_lock: OwnedOrganizationWriteLock) -> None:
+    def __init__(
+        self,
+        session_maker: sessionmaker[Session],
+        write_lock: OwnedOrganizationWriteLock,
+        deployment_contact_reader_factory: Callable[[Session], DeploymentContactReader] | None = None,
+    ) -> None:
         self._write_lock = write_lock
         self._session_unit_of_work = SQLAlchemyOrganizationWriteUnitOfWork(session_maker, write_lock)
-        self._protected_repository: _SQLAlchemyProtectedIMRepository | None = None
+        self._deployment_contact_reader_factory = deployment_contact_reader_factory
+        self._protected_repository: SQLAlchemySessionBoundIMRepository | None = None
 
     @property
-    def protected_repository(self) -> _SQLAlchemyProtectedIMRepository:
+    def protected_repository(self) -> SQLAlchemySessionBoundIMRepository:
         if self._protected_repository is None:
             raise RuntimeError("protected repository requires an active guarded unit of work")
         return self._protected_repository
 
-    def __enter__(self) -> _SQLAlchemyProtectedIMRepository:
+    def __enter__(self) -> SQLAlchemySessionBoundIMRepository:
         session = self._session_unit_of_work.__enter__()
-        self._protected_repository = _SQLAlchemyProtectedIMRepository(session, self._write_lock)
+        deployment_contacts = (
+            self._deployment_contact_reader_factory(session)
+            if self._deployment_contact_reader_factory is not None
+            else None
+        )
+        self._protected_repository = SQLAlchemySessionBoundIMRepository(
+            session,
+            self._write_lock,
+            deployment_contacts,
+        )
         return self._protected_repository
 
     def __exit__(
@@ -139,12 +162,20 @@ class SQLAlchemyOrganizationIMWriteUnitOfWork:
             self._protected_repository = None
 
 
-class _SQLAlchemyProtectedIMRepository:
-    """Session-bound protected mutation surface; constructed only by the guarded UoW."""
+class SQLAlchemySessionBoundIMRepository:
+    """Protected mutation surface bound to an already locked caller Session."""
 
-    def __init__(self, session: Session, write_lock: OwnedOrganizationWriteLock) -> None:
+    def __init__(
+        self,
+        session: Session,
+        write_lock: OwnedOrganizationWriteLock,
+        deployment_contacts: DeploymentContactReader | None = None,
+    ) -> None:
         self._session = session
         self._write_lock = write_lock
+        self._deployment_contacts = deployment_contacts
+        self._contact_repository = SQLAlchemyContactRepository(session)
+        self._contact_im_binding_repository = SQLAlchemyContactIMBindingRepository(session)
 
     def create_integration(
         self,
@@ -333,7 +364,7 @@ class _SQLAlchemyProtectedIMRepository:
         persisted_tenant_id = (
             TenantId(integration_record.tenant_id) if integration_record.tenant_id is not None else None
         )
-        _SQLAlchemyProtectedIMRepository._ensure_scope_matches_tenant_id(
+        SQLAlchemySessionBoundIMRepository._ensure_scope_matches_tenant_id(
             organization_scope,
             persisted_tenant_id,
         )
@@ -560,27 +591,16 @@ class _SQLAlchemyProtectedIMRepository:
 
         self._write_lock.ensure_owned()
         contact = self._require_contact_available_in_workspace(tenant_id, contact_id)
-        contact_type = self._resolve_contact_type(tenant_id, contact)
-        workspace_binding = self._session.scalar(
-            select(HumanInputIMBinding).where(
-                HumanInputIMBinding.integration_id == str(integration_id),
-                HumanInputIMBinding.scope == IMBindingScope.WORKSPACE,
-                HumanInputIMBinding.scope_id == str(tenant_id),
-                HumanInputIMBinding.contact_id == str(contact_id),
-            )
-        )
-        organization_binding = self._session.scalar(
-            select(HumanInputIMBinding).where(
-                HumanInputIMBinding.integration_id == str(integration_id),
-                HumanInputIMBinding.scope == IMBindingScope.ORGANIZATION,
-                HumanInputIMBinding.scope_id == str(integration_id),
-                HumanInputIMBinding.contact_id == str(contact_id),
-            )
-        )
-        effective_binding = workspace_binding or organization_binding
+        binding_values = self._contact_im_binding_repository.get_im_bindings(tenant_id, (contact_id,))
+        effective_binding = None
+        for binding_value in binding_values:
+            binding_record = self._session.get(HumanInputIMBinding, str(binding_value.id))
+            if binding_record is not None and binding_record.integration_id == str(integration_id):
+                effective_binding = binding_record
+                break
         return ContactIMBindingView(
             id=ContactId(contact.id),
-            type=contact_type,
+            type=HumanInputContactType(contact.type.value),
             name=contact.name,
             email=contact.email,
             avatar_file_id=contact.avatar_file_id,
@@ -629,28 +649,19 @@ class _SQLAlchemyProtectedIMRepository:
         self,
         organization_scope: DirectoryScope,
         contact_id: ContactId,
-    ) -> HumanInputContact:
-        contact = self._session.get(HumanInputContact, str(contact_id))
+    ) -> None:
         if isinstance(organization_scope, WorkspaceScope):
-            valid = (
-                contact is not None
-                and contact.tenant_id == str(organization_scope.id)
-                and contact.identity_source is HumanInputContactIdentitySource.WORKSPACE_MEMBER
-            )
+            contact = self._contact_repository.get_contacts_by_id(organization_scope.id, contact_id)
+            valid = contact is not None and contact.type is ContactType.WORKSPACE
         elif isinstance(organization_scope, DeploymentScope):
-            valid = (
-                contact is not None
-                and contact.tenant_id is None
-                and contact.identity_source is HumanInputContactIdentitySource.ORGANIZATION_ACCOUNT
-            )
+            valid = self._require_deployment_contacts().get_contact(contact_id) is not None
         else:
             raise TypeError("unsupported Organization write scope")
-        if not valid or contact is None:
+        if not valid:
             raise IMBindingCommandError(
                 IMBindingCommandErrorCode.CONTACT_NOT_FOUND,
                 "Contact was not found in the current Organization",
             )
-        return contact
 
     @staticmethod
     def _ensure_workspace_belongs_to_scope(
@@ -672,68 +683,14 @@ class _SQLAlchemyProtectedIMRepository:
         self,
         tenant_id: TenantId,
         contact_id: ContactId,
-    ) -> HumanInputContact:
-        contact = self._session.get(HumanInputContact, str(contact_id))
-        if contact is None:
-            raise IMBindingCommandError(
-                IMBindingCommandErrorCode.CONTACT_NOT_FOUND,
-                "Contact was not found in the current workspace",
-            )
-        if contact.tenant_id == str(tenant_id):
-            return contact
-        if (
-            contact.tenant_id is not None
-            or contact.identity_source is not HumanInputContactIdentitySource.ORGANIZATION_ACCOUNT
-            or contact.account_id is None
-        ):
-            raise IMBindingCommandError(
-                IMBindingCommandErrorCode.CONTACT_NOT_FOUND,
-                "Contact was not found in the current workspace",
-            )
-        membership_exists = self._session.scalar(
-            select(TenantAccountJoin.account_id)
-            .where(
-                TenantAccountJoin.tenant_id == str(tenant_id),
-                TenantAccountJoin.account_id == contact.account_id,
-            )
-            .limit(1)
-        )
-        platform_entry_exists = self._session.scalar(
-            select(HumanInputPlatformContactWorkspaceEntry.id)
-            .where(
-                HumanInputPlatformContactWorkspaceEntry.tenant_id == str(tenant_id),
-                HumanInputPlatformContactWorkspaceEntry.contact_id == str(contact_id),
-            )
-            .limit(1)
-        )
-        if membership_exists is None and platform_entry_exists is None:
+    ) -> Contact:
+        contact = self._contact_repository.get_contacts_by_id(tenant_id, contact_id)
+        if contact is None or contact.type is ContactType.EXTERNAL:
             raise IMBindingCommandError(
                 IMBindingCommandErrorCode.CONTACT_NOT_FOUND,
                 "Contact was not found in the current workspace",
             )
         return contact
-
-    def _resolve_contact_type(
-        self,
-        tenant_id: TenantId,
-        contact: HumanInputContact,
-    ) -> HumanInputContactType:
-        if contact.tenant_id == str(tenant_id):
-            if contact.identity_source is HumanInputContactIdentitySource.EXTERNAL:
-                return HumanInputContactType.EXTERNAL
-            return HumanInputContactType.WORKSPACE
-        if contact.account_id is not None:
-            membership_exists = self._session.scalar(
-                select(TenantAccountJoin.account_id)
-                .where(
-                    TenantAccountJoin.tenant_id == str(tenant_id),
-                    TenantAccountJoin.account_id == contact.account_id,
-                )
-                .limit(1)
-            )
-            if membership_exists is not None:
-                return HumanInputContactType.WORKSPACE
-        return HumanInputContactType.PLATFORM
 
     def load_reconciliation_input(
         self,
@@ -766,7 +723,7 @@ class _SQLAlchemyProtectedIMRepository:
             if integration_record.tenant_id is not None:
                 raise ValueError("Contact scope does not own IM Integration")
         else:
-            raise TypeError("unsupported Contact Directory scope")
+            raise TypeError("unsupported Contact scope")
 
         identity_records = self._session.scalars(
             select(HumanInputIMIdentity)
@@ -786,18 +743,18 @@ class _SQLAlchemyProtectedIMRepository:
             if identity_ids
             else ()
         )
-        contact_records = self._load_contact_match_records(contact_scope)
+        contacts = self._load_contacts_for_email_matching(contact_scope)
         contact_states: list[ContactEmailMatchState] = []
-        for record in contact_records:
-            if record.normalized_email is None:
-                raise ValueError("email-match Contact is missing normalized email")
+        for contact in contacts:
+            if contact.email is None:
+                continue
             contact_states.append(
                 ContactEmailMatchState(
-                    ContactId(record.id),
-                    record.name,
-                    record.email,
-                    NormalizedEmail(record.normalized_email),
-                    record.avatar_file_id,
+                    contact.id,
+                    contact.name,
+                    contact.email,
+                    NormalizedEmail(contact.email),
+                    contact.avatar_file_id,
                 )
             )
         return ReconciliationInput(
@@ -828,38 +785,37 @@ class _SQLAlchemyProtectedIMRepository:
             contacts_for_email_matching=tuple(contact_states),
         )
 
-    def _load_contact_match_records(
+    def _load_contacts_for_email_matching(
         self,
         contact_scope: DirectoryScope,
-    ) -> tuple[HumanInputContact, ...]:
-        statement = (
-            select(HumanInputContact)
-            .join(Account, Account.id == HumanInputContact.account_id)
-            .where(
-                Account.status == AccountStatus.ACTIVE,
-                HumanInputContact.normalized_email.is_not(None),
-            )
-            .order_by(HumanInputContact.id)
-        )
+    ) -> tuple[Contact, ...]:
+        contacts: list[Contact] = []
+        page = 1
+        page_limit = 500
         if isinstance(contact_scope, WorkspaceScope):
-            statement = statement.join(
-                TenantAccountJoin,
-                sa.and_(
-                    TenantAccountJoin.tenant_id == str(contact_scope.id),
-                    TenantAccountJoin.account_id == HumanInputContact.account_id,
-                ),
-            ).where(
-                HumanInputContact.tenant_id == str(contact_scope.id),
-                HumanInputContact.identity_source == HumanInputContactIdentitySource.WORKSPACE_MEMBER,
-            )
-        elif isinstance(contact_scope, DeploymentScope):
-            statement = statement.where(
-                HumanInputContact.tenant_id.is_(None),
-                HumanInputContact.identity_source == HumanInputContactIdentitySource.ORGANIZATION_ACCOUNT,
-            )
-        else:
-            raise TypeError("unsupported Contact Directory scope")
-        return tuple(self._session.scalars(statement).all())
+            for contact_type in (ContactType.WORKSPACE, ContactType.PLATFORM):
+                page = 1
+                while True:
+                    contact_page = self._contact_repository.list_contact(
+                        contact_scope.id,
+                        page,
+                        page_limit,
+                        ContactQuery(contact_type=contact_type),
+                    )
+                    contacts.extend(contact_page.items)
+                    if len(contact_page.items) < page_limit:
+                        break
+                    page += 1
+            return tuple(contacts)
+        if isinstance(contact_scope, DeploymentScope):
+            while True:
+                deployment_page = self._require_deployment_contacts().list_contacts(page, page_limit)
+                contacts.extend(contact for contact in deployment_page if contact.email is not None)
+                if len(deployment_page) < page_limit:
+                    break
+                page += 1
+            return tuple(contacts)
+        raise TypeError("unsupported Contact scope")
 
     def apply_plan(self, plan: ReconciliationPlan, *, now: NaiveDatetime) -> ApplyReconciliationResult:
         self._write_lock.ensure_owned()
@@ -914,6 +870,7 @@ class _SQLAlchemyProtectedIMRepository:
                 sync_results = self._materialize_results(
                     plan,
                     now,
+                    integration.tenant_id,
                     identity_id_by_new_ref,
                     binding_id_by_identity_contact,
                 )
@@ -1219,6 +1176,7 @@ class _SQLAlchemyProtectedIMRepository:
         self,
         plan: ReconciliationPlan,
         now: NaiveDatetime,
+        integration_tenant_id: str | None,
         identity_id_by_new_ref: dict[NewIMIdentityRef, IMIdentityId],
         binding_id_by_identity_contact: dict[tuple[IMIdentityId, ContactId], IMBindingId],
     ) -> tuple[SyncResultFact, ...]:
@@ -1239,8 +1197,8 @@ class _SQLAlchemyProtectedIMRepository:
             identity_record = (
                 self._session.get(HumanInputIMIdentity, str(identity_id)) if identity_id is not None else None
             )
-            contact_record = (
-                self._session.get(HumanInputContact, str(planned.contact_id))
+            contact = (
+                self._load_sync_result_contact(planned.contact_id, integration_tenant_id)
                 if planned.contact_id is not None
                 else None
             )
@@ -1270,13 +1228,13 @@ class _SQLAlchemyProtectedIMRepository:
                     directory_entry_payload=None,
                     contact_snapshot=(
                         SyncContactSnapshot(
-                            ContactId(contact_record.id),
-                            contact_record.name,
-                            contact_record.email,
-                            contact_record.avatar_file_id,
-                            contact_record.created_at,
+                            contact.id,
+                            contact.name,
+                            contact.email,
+                            contact.avatar_file_id,
+                            contact.created_at,
                         )
-                        if contact_record is not None
+                        if contact is not None
                         else None
                     ),
                     identity_snapshot=(
@@ -1295,6 +1253,15 @@ class _SQLAlchemyProtectedIMRepository:
                 )
             )
         return tuple(results)
+
+    def _load_sync_result_contact(
+        self,
+        contact_id: ContactId,
+        integration_tenant_id: str | None,
+    ) -> Contact | None:
+        if integration_tenant_id is not None:
+            return self._contact_repository.get_contacts_by_id(TenantId(integration_tenant_id), contact_id)
+        return self._require_deployment_contacts().get_contact(contact_id)
 
     def _append_identity_change(
         self,
@@ -1390,36 +1357,28 @@ class _SQLAlchemyProtectedIMRepository:
         precondition: ContactEmailMatchState,
         integration_tenant_id: str | None,
     ) -> None:
-        statement = (
-            select(HumanInputContact.id)
-            .join(Account, Account.id == HumanInputContact.account_id)
-            .where(
-                HumanInputContact.id == str(precondition.contact_id),
-                HumanInputContact.name == precondition.display_name,
-                _nullable_equal(HumanInputContact.email, precondition.email),
-                HumanInputContact.normalized_email == str(precondition.normalized_email),
-                _nullable_equal(HumanInputContact.avatar_file_id, precondition.avatar_file_id),
-                Account.status == AccountStatus.ACTIVE,
-            )
-        )
         if integration_tenant_id is None:
-            statement = statement.where(
-                HumanInputContact.tenant_id.is_(None),
-                HumanInputContact.identity_source == HumanInputContactIdentitySource.ORGANIZATION_ACCOUNT,
-            )
+            contact = self._require_deployment_contacts().get_contact(precondition.contact_id)
         else:
-            statement = statement.join(
-                TenantAccountJoin,
-                sa.and_(
-                    TenantAccountJoin.tenant_id == integration_tenant_id,
-                    TenantAccountJoin.account_id == HumanInputContact.account_id,
-                ),
-            ).where(
-                HumanInputContact.tenant_id == integration_tenant_id,
-                HumanInputContact.identity_source == HumanInputContactIdentitySource.WORKSPACE_MEMBER,
+            contact = self._contact_repository.get_contacts_by_id(
+                TenantId(integration_tenant_id),
+                precondition.contact_id,
             )
-        if self._session.scalar(statement.limit(1)) is None:
+        if (
+            contact is None
+            or contact.type is ContactType.EXTERNAL
+            or contact.name != precondition.display_name
+            or contact.email != precondition.email
+            or contact.email is None
+            or NormalizedEmail(contact.email) != precondition.normalized_email
+            or contact.avatar_file_id != precondition.avatar_file_id
+        ):
             raise _PreconditionFailedError("automatic binding Contact precondition changed")
+
+    def _require_deployment_contacts(self) -> DeploymentContactReader:
+        if self._deployment_contacts is None:
+            raise RuntimeError("Deployment Contact reads require the Enterprise composition boundary")
+        return self._deployment_contacts
 
     @staticmethod
     def _resolve_identity_ref(
@@ -1518,6 +1477,16 @@ class _SQLAlchemyProtectedIMRepository:
         run_record.error_message = diagnostic_message
         run_record.updated_at = now
         return ApplyReconciliationResult(status, sync_run_id, now, 1, 0, ())
+
+
+def create_session_bound_reconciliation_repository(
+    session: Session,
+    write_lock: OwnedOrganizationWriteLock,
+    deployment_contacts: DeploymentContactReader | None = None,
+) -> SQLAlchemySessionBoundIMRepository:
+    """Bind reconciliation repositories to the caller-owned Session."""
+
+    return SQLAlchemySessionBoundIMRepository(session, write_lock, deployment_contacts)
 
 
 def _nullable_equal(column, value: str | None):

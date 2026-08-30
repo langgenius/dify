@@ -166,6 +166,7 @@ class ContactOption(ResponseModel):
     type: HumanInputContactType = Field(description="Resolved contact type in the current workspace scope.")
     name: str = Field(description="Display name shown in the contact picker.")
     avatar_url: str | None = Field(default=None, description="Signed avatar URL if one is available.")
+    email: str | None = Field(default=None, description="Current deliverable Email, when available.")
 
 
 class ExternalContactCreateResponse(ResponseModel):

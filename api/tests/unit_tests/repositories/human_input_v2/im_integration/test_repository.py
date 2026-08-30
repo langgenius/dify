@@ -8,10 +8,8 @@ import pytest
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.human_input_v2.contact_directory import Contact
 from core.human_input_v2.entities import IMBindingScope, IMProvider, IMSyncResultType
 from core.human_input_v2.im_integration import (
-    BindingResolutionKind,
     EncryptedCredentials,
     IMBinding,
     IMIdentity,
@@ -32,14 +30,12 @@ from core.human_input_v2.shared import (
     TenantId,
 )
 from models.human_input_v2 import (
-    HumanInputContact,
     HumanInputIMBinding,
     HumanInputIMIdentity,
     HumanInputIMIntegration,
     HumanInputIMSyncResult,
     HumanInputIMSyncRun,
 )
-from repositories.human_input_v2.contact_directory.mappers import contact_to_record
 from repositories.human_input_v2.im_integration.mappers import (
     binding_to_record,
     identity_to_record,
@@ -61,7 +57,6 @@ def repository_context(
     HumanInputIMIntegration.metadata.create_all(
         sqlite_engine,
         tables=[
-            HumanInputContact.__table__,
             HumanInputIMIntegration.__table__,
             HumanInputIMIdentity.__table__,
             HumanInputIMBinding.__table__,
@@ -207,53 +202,6 @@ def test_integration_state_reports_missing_owner(repository_context) -> None:
 
     with pytest.raises(ValueError, match="integration not found"):
         repository.load_integration_state(IntegrationId("integration-missing"))
-
-
-def test_effective_binding_maps_only_persisted_owner_scoped_facts(repository_context) -> None:
-    repository, sessions = repository_context
-    contact = Contact.external(
-        contact_id=ContactId("contact-1"),
-        tenant_id=_TENANT_ID,
-        name="Reviewer",
-        email="reviewer@example.com",
-        now=_NOW,
-    )
-    with sessions.begin() as session:
-        session.add_all(
-            (
-                integration_to_record(_integration()),
-                contact_to_record(contact),
-                identity_to_record(_identity()),
-                binding_to_record(_binding()),
-            )
-        )
-
-    resolved = repository.resolve_effective_binding(
-        integration_id=_INTEGRATION_ID,
-        provider=IMProvider.FEISHU,
-        tenant_id=_TENANT_ID,
-        contact_id=contact.id,
-    )
-    cross_workspace = repository.resolve_effective_binding(
-        integration_id=_INTEGRATION_ID,
-        provider=IMProvider.FEISHU,
-        tenant_id=TenantId("workspace-other"),
-        contact_id=contact.id,
-    )
-    missing_contact = repository.resolve_effective_binding(
-        integration_id=_INTEGRATION_ID,
-        provider=IMProvider.FEISHU,
-        tenant_id=_TENANT_ID,
-        contact_id=ContactId("contact-missing"),
-    )
-
-    assert resolved.kind is BindingResolutionKind.ORGANIZATION_BINDING
-    assert resolved.binding is not None
-    assert resolved.binding.binding_id == IMBindingId("binding-1")
-    assert cross_workspace.kind is BindingResolutionKind.INVALID_BINDING
-    assert cross_workspace.binding is None
-    assert missing_contact.kind is BindingResolutionKind.NOT_AVAILABLE
-    assert missing_contact.binding is None
 
 
 def test_explicit_diagnostic_append_uses_its_own_transaction(repository_context) -> None:
