@@ -1,3 +1,5 @@
+import logging
+
 from core.dify_builder.models import Diagnosis
 from core.dify_builder.ports import DifyBuilderAgent
 from services.dify_builder.agent import build as build_mod
@@ -200,3 +202,22 @@ def test_edit_methods_call_edit_module_with_resolved_model(monkeypatch):
 
     agent.build_edit_intents({"tone": "formal"}, graph)
     assert seen["build_edit_intents"] == ("MODEL", {"tone": "formal"}, graph)
+
+
+def test_model_or_none_logs_resolution_failure_once(caplog):
+    def _raise():
+        raise RuntimeError("no credentials")
+
+    agent = LlmBuilderAgent("t1", {"provider": "p", "name": "m", "mode": "chat", "completion_params": {}})
+    agent._model = _raise  # type: ignore[method-assign]  # force resolution to fail
+
+    with caplog.at_level(logging.WARNING, logger="services.dify_builder.agent.llm_agent"):
+        first = agent._model_or_none()
+        second = agent._model_or_none()
+
+    assert first is None
+    assert second is None
+    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1
+    assert "model resolution failed" in warnings[0].getMessage()
+    assert warnings[0].exc_info is not None
