@@ -31,7 +31,7 @@ class PcState(StrEnum):
     SUCCESS = "success"
     FAILED = "failed"
 
-    # Build (spec §7.1) — 12 states.
+    # Build (spec §7.1) — 14 states.
     BUILD_CAPABILITY_CHECK = "build.capability_check"
     BUILD_GOAL_ANALYSIS = "build.goal_analysis"
     BUILD_INITIAL_PLAN = "build.initial_plan"

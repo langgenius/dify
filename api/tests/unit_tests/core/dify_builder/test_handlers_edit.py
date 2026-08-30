@@ -332,6 +332,24 @@ def test_edit_test_reuses_persisted_inputs_on_retest():
     assert fc.test_input_ref == ref  # reused, not regenerated
 
 
+def test_edit_test_run_draft_raises_routes_to_await_repair_failed():
+    """run_draft raising must not crash the advance -- the try/except degrade
+    path converts the exception into a failed run and still routes to the
+    edit.await_repair gate."""
+    from core.dify_builder.handlers_edit import handle_test_affected_paths
+
+    env, _ = _new_env()
+    env.dify.run_draft = lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("boom"))
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS)
+    fc = DifyBuilderContext(edit_target_node_ids=["llm"])
+
+    result = handle_test_affected_paths(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.EDIT_AWAIT_REPAIR
+    assert result.run is not None
+    assert result.run.status == "failed"
+
+
 def test_review_publish_reaches_terminal_edit_publish_with_publish_card():
     from core.dify_builder.handlers_edit import handle_review
 
@@ -405,6 +423,42 @@ def test_reverted_retry_returns_to_plan_approval_with_fresh_checkpoint():
     assert res.context.plan_version_tag == "v1"
     assert res.context.checkpoint_id
     assert {i.kind for i in res.items} >= {"plan", "checkpoint", "assistant_turn"}
+
+
+def test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id():
+    """Both re-plan/revert escape paths (review's continue_adjusting and
+    reverted's retry_after_revert) must clear fc.test_input_ref and
+    fc.verify_run_id -- otherwise the retest after a rebuild reuses the
+    FIRST build's stale mock inputs instead of regenerating fresh
+    schema-shaped ones."""
+    from core.dify_builder.handlers_edit import handle_reverted, handle_review
+
+    env, repo = _new_env()
+    s = _seed_edit_session(
+        repo,
+        PcState.EDIT_REVIEW,
+        edit_rules={"risk_threshold": "high"},
+        edit_target_node_ids=["llm"],
+        test_input_ref="ti-old",
+        verify_run_id="run-old",
+    )
+    turn = Turn(action=Action(kind="re_fix", base_version=1), actor=_actor())
+    res = handle_review(env, turn, *repo.get_session(s.id))
+    assert res.context.test_input_ref == ""
+    assert res.context.verify_run_id == ""
+
+    env2, repo2 = _new_env()
+    s2 = _seed_edit_session(
+        repo2,
+        PcState.EDIT_REVERTED,
+        edit_rules={"risk_threshold": "high"},
+        test_input_ref="ti-old",
+        verify_run_id="run-old",
+    )
+    turn2 = Turn(action=Action(kind="re_fix", base_version=1), actor=_actor())
+    res2 = handle_reverted(env2, turn2, *repo2.get_session(s2.id))
+    assert res2.context.test_input_ref == ""
+    assert res2.context.verify_run_id == ""
 
 
 def test_edit_await_repair_approve_applies_and_retests():
