@@ -4898,6 +4898,46 @@ class TestRetrieveCoverage:
         assert len(files or []) == 1
         hit_callback.return_retriever_resource_info.assert_called_once()
 
+    def test_multiple_strategy_preserves_disabled_score_threshold(self, retrieval: DatasetRetrieval) -> None:
+        config = DatasetEntity(
+            dataset_ids=["d1"],
+            retrieve_config=DatasetRetrieveConfigEntity(
+                retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE,
+                top_k=4,
+                reranking_model={"reranking_provider_name": "cohere", "reranking_model_name": "rerank-v3"},
+                metadata_filtering_mode="disabled",
+            ),
+        )
+        model_config = self._build_model_config()
+
+        with (
+            patch("core.rag.retrieval.dataset_retrieval.ModelManager.for_tenant") as mock_model_manager,
+            patch.object(retrieval, "_get_available_datasets", return_value=[SimpleNamespace(id="d1")]),
+            patch.object(retrieval, "get_metadata_filter_condition", return_value=(None, None)),
+            patch.object(retrieval, "multiple_retrieve", return_value=[]) as mock_multiple_retrieve,
+        ):
+            bound_model_instance = Mock()
+            bound_model_instance.model_name = "gpt-4"
+            bound_model_instance.credentials = {}
+            bound_model_instance.provider_model_bundle = Mock()
+            bound_model_instance.model_type_instance.get_model_schema.return_value = SimpleNamespace(features=[])
+            mock_model_manager.return_value.get_model_instance.return_value = bound_model_instance
+            retrieval.retrieve(
+                MagicMock(),
+                app_id="app-1",
+                user_id="user-1",
+                tenant_id="tenant-1",
+                model_config=model_config,
+                config=config,
+                query="python",
+                invoke_from=InvokeFrom.WEB_APP,
+                show_retrieve_source=False,
+                hit_callback=Mock(),
+                message_id="m1",
+            )
+
+        assert mock_multiple_retrieve.call_args.args[7] is None
+
 
 class TestSingleAndMultipleRetrieveCoverage:
     @pytest.fixture(autouse=True)
@@ -4958,7 +4998,19 @@ class TestSingleAndMultipleRetrieveCoverage:
         mock_end.assert_called_once()
         assert retrieval.llm_usage.total_tokens == 2
 
-    def test_single_retrieve_dify_path_and_filters(self, retrieval: DatasetRetrieval) -> None:
+    @pytest.mark.parametrize(
+        ("score_threshold_enabled", "expected_score_threshold"),
+        [
+            pytest.param(True, 0.0, id="zero-threshold"),
+            pytest.param(False, None, id="disabled-threshold"),
+        ],
+    )
+    def test_single_retrieve_dify_path_and_filters(
+        self,
+        retrieval: DatasetRetrieval,
+        score_threshold_enabled: bool,
+        expected_score_threshold: float | None,
+    ) -> None:
         dataset_id = str(uuid4())
         tenant_id = str(uuid4())
         document_id = str(uuid4())
@@ -4977,8 +5029,8 @@ class TestSingleAndMultipleRetrieveCoverage:
                 "reranking_mode": "reranking_model",
                 "weights": {"vector_setting": {}},
                 "top_k": 3,
-                "score_threshold_enabled": True,
-                "score_threshold": 0.2,
+                "score_threshold_enabled": score_threshold_enabled,
+                "score_threshold": 0.0,
             },
         )
         app = Flask(__name__)
@@ -5014,6 +5066,7 @@ class TestSingleAndMultipleRetrieveCoverage:
 
         assert results == [result_doc]
         assert mock_retrieve.call_args.kwargs["document_ids_filter"] == [document_id]
+        assert mock_retrieve.call_args.kwargs["score_threshold"] == expected_score_threshold
         assert retrieval.llm_usage.total_tokens == 1
 
     def test_single_retrieve_returns_empty_when_no_dataset_selected(self, retrieval: DatasetRetrieval) -> None:
@@ -5538,7 +5591,7 @@ class TestInternalHooksCoverage:
                 "search_method": "semantic_search",
                 "top_k": 4,
                 "score_threshold": 0.3,
-                "score_threshold_enabled": True,
+                "score_threshold_enabled": False,
                 "reranking_enable": True,
                 "reranking_model": {"reranking_provider_name": "x", "reranking_model_name": "y"},
                 "reranking_mode": "reranking_model",
@@ -5585,6 +5638,7 @@ class TestInternalHooksCoverage:
                 attachment_ids=["att-1"],
             )
         assert mock_retrieve.call_count == 2
+        assert mock_retrieve.call_args.kwargs["score_threshold"] is None
         assert len(all_documents) >= 3
 
     def test_to_dataset_retriever_tool_paths(self, retrieval: DatasetRetrieval) -> None:

@@ -458,7 +458,7 @@ class TestAgentAppRuntimeRequestBuilder:
         assert knowledge_set["query"] == {"mode": "generated_query", "value": None}
         assert knowledge_set["retrieval"]["mode"] == "multiple"
         assert knowledge_set["retrieval"]["top_k"] == 3
-        assert knowledge_set["retrieval"]["score_threshold"] == 0.0
+        assert knowledge_set["retrieval"]["score_threshold"] is None
 
     def test_build_raises_when_model_missing(self):
         builder = AgentAppRuntimeRequestBuilder(

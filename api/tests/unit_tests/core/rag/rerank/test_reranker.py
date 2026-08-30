@@ -17,6 +17,7 @@ from operator import itemgetter
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
 from core.model_manager import ModelInstance
@@ -879,6 +880,33 @@ class TestWeightRerankRunner:
 
         # Assert: Only documents above threshold are returned
         assert all(doc.metadata["score"] >= 0.5 for doc in result)
+
+    @pytest.mark.parametrize(
+        ("score_threshold", "expected_ids"),
+        [
+            pytest.param(0.0, ["positive", "zero"], id="zero-threshold"),
+            pytest.param(None, ["positive", "zero", "negative"], id="disabled-threshold"),
+        ],
+    )
+    def test_score_threshold_distinguishes_zero_from_disabled(
+        self,
+        mocker: MockerFixture,
+        weights_config: Weights,
+        score_threshold: float | None,
+        expected_ids: list[str],
+    ) -> None:
+        documents = [
+            Document(page_content="Positive", metadata={"doc_id": "positive"}),
+            Document(page_content="Zero", metadata={"doc_id": "zero"}),
+            Document(page_content="Negative", metadata={"doc_id": "negative"}),
+        ]
+        runner = WeightRerankRunner(tenant_id="tenant123", weights=weights_config)
+        mocker.patch.object(runner, "_calculate_keyword_score", return_value=[0.0, 0.0, 0.0])
+        mocker.patch.object(runner, "_calculate_cosine", return_value=[0.5, 0.0, -0.5])
+
+        result = runner.run(query="test", documents=documents, score_threshold=score_threshold)
+
+        assert [document.metadata["doc_id"] for document in result] == expected_ids
 
     def test_top_k_selection_weighted(
         self,

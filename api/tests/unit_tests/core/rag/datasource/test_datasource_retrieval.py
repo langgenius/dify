@@ -205,7 +205,7 @@ class TestRetrievalServiceInternals:
                 exceptions,
                 query=None,
                 top_k=4,
-                score_threshold=0.0,
+                score_threshold=None,
                 reranking_model=None,
                 reranking_mode="reranking_model",
                 weights=None,
@@ -226,6 +226,7 @@ class TestRetrievalServiceInternals:
         assert len(results) == 2
         assert {doc.metadata["doc_id"] for doc in results} == {"att-1", "att-2"}
         assert mock_retrieve.call_count == 2
+        assert all(call.kwargs["score_threshold"] is None for call in mock_retrieve.call_args_list)
 
     @patch("core.rag.datasource.retrieval_service.ExternalDatasetService.fetch_external_knowledge_retrieval")
     @patch("core.rag.datasource.retrieval_service.MetadataFilteringCondition.model_validate")
@@ -375,7 +376,7 @@ class TestRetrievalServiceInternals:
             dataset_id=internal_dataset.id,
             query="query",
             top_k=4,
-            score_threshold=0.5,
+            score_threshold=None,
             reranking_model=None,
             all_documents=all_documents,
             retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
@@ -388,6 +389,7 @@ class TestRetrievalServiceInternals:
         assert exceptions == []
         mock_vector_class.assert_called_once_with(dataset=internal_dataset, session=vector_session)
         vector_instance.search_by_vector.assert_called_once()
+        assert vector_instance.search_by_vector.call_args.kwargs["score_threshold"] == 0.0
 
     @patch("core.rag.datasource.retrieval_service.Vector")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
@@ -1067,6 +1069,60 @@ class TestRetrievalServiceInternals:
         assert len(all_documents) == 4
         assert any(doc.metadata["doc_id"] == "processed-doc" for doc in all_documents)
         processor_instance.invoke.assert_called_once()
+        assert processor_instance.invoke.call_args.kwargs["score_threshold"] is None
+
+    @pytest.mark.parametrize(
+        ("score_threshold", "expected_ids"),
+        [
+            pytest.param(0.0, ["positive", "zero"], id="zero-threshold"),
+            pytest.param(None, ["positive", "zero", "negative"], id="disabled-threshold"),
+        ],
+    )
+    def test_retrieve_internal_hybrid_fallback_distinguishes_zero_from_disabled_threshold(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        internal_dataset,
+        internal_flask_app,
+        vector_session,
+        score_threshold: float | None,
+        expected_ids: list[str],
+    ) -> None:
+        executor = _ImmediateExecutor()
+        monkeypatch.setattr(retrieval_service_module, "ThreadPoolExecutor", lambda *args, **kwargs: executor)
+        monkeypatch.setattr(
+            retrieval_service_module.concurrent.futures,
+            "as_completed",
+            lambda futures, timeout=None: iter(futures),
+        )
+        documents = [
+            create_mock_document("positive", "positive", 0.5),
+            create_mock_document("zero", "zero", 0.0),
+            create_mock_document("negative", "negative", -0.5),
+        ]
+
+        with (
+            patch("core.rag.datasource.retrieval_service.RetrievalService.embedding_search") as mock_embedding_search,
+            patch("core.rag.datasource.retrieval_service.RetrievalService.full_text_index_search"),
+            patch("core.rag.datasource.retrieval_service.DataPostProcessor") as mock_processor_class,
+        ):
+            mock_embedding_search.side_effect = lambda **kwargs: kwargs["all_documents"].extend(documents)
+            processor_instance = Mock()
+            processor_instance.rerank_runner = None
+            processor_instance.invoke.side_effect = lambda **kwargs: kwargs["documents"]
+            mock_processor_class.return_value = processor_instance
+
+            all_documents: list[Document] = []
+            RetrievalService()._retrieve(
+                flask_app=internal_flask_app,
+                retrieval_method=RetrievalMethod.HYBRID_SEARCH,
+                dataset=internal_dataset,
+                all_documents=all_documents,
+                exceptions=[],
+                query="query",
+                score_threshold=score_threshold,
+            )
+
+        assert [document.metadata["doc_id"] for document in all_documents] == expected_ids
 
     @patch("core.rag.datasource.retrieval_service.sign_upload_file_preview_url", return_value="signed://file")
     def test_get_segment_attachment_info_success(self, mock_sign):

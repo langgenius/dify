@@ -272,12 +272,23 @@ def test_single_dataset_retriever_returns_empty_when_metadata_filter_finds_no_do
     retrieve_mock.assert_not_called()
 
 
-def test_single_dataset_retriever_non_economy_run_sorts_context_and_resources(sqlite_session: Session):
+@pytest.mark.parametrize(
+    ("score_threshold_enabled", "expected_score_threshold"),
+    [
+        pytest.param(True, 0.2, id="enabled-threshold"),
+        pytest.param(False, None, id="disabled-threshold"),
+    ],
+)
+def test_single_dataset_retriever_non_economy_run_sorts_context_and_resources(
+    sqlite_session: Session,
+    score_threshold_enabled: bool,
+    expected_score_threshold: float | None,
+):
     dataset = _persist_dataset(
         sqlite_session,
         retrieval_model={
             "search_method": "semantic_search",
-            "score_threshold_enabled": True,
+            "score_threshold_enabled": score_threshold_enabled,
             "score_threshold": 0.2,
             "reranking_enable": True,
             "reranking_model": {"reranking_provider_name": "provider", "reranking_model_name": "model"},
@@ -357,7 +368,7 @@ def test_single_dataset_retriever_non_economy_run_sorts_context_and_resources(sq
             "get_metadata_filter_condition",
             return_value=(None, None),
         ),
-        patch.object(single_retriever_module.RetrievalService, "retrieve", return_value=documents),
+        patch.object(single_retriever_module.RetrievalService, "retrieve", return_value=documents) as retrieve_mock,
         patch.object(
             single_retriever_module.RetrievalService,
             "format_retrieval_documents",
@@ -370,6 +381,7 @@ def test_single_dataset_retriever_non_economy_run_sorts_context_and_resources(sq
     assert result == "signed high\nsummary low\nquestion:signed low answer:low answer"
     assert callback.documents == documents
     assert callback.resources is not None
+    assert retrieve_mock.call_args.kwargs["score_threshold"] == expected_score_threshold
     resource_info = callback.resources
     assert [item.position for item in resource_info] == [1, 2]
     assert resource_info[0].segment_id == high_segment.id
@@ -425,16 +437,25 @@ def test_multi_dataset_retriever_retriever_returns_early_when_dataset_is_missing
     retrieve_mock.assert_not_called()
 
 
+@pytest.mark.parametrize(
+    ("score_threshold_enabled", "expected_score_threshold"),
+    [
+        pytest.param(True, 0.4, id="enabled-threshold"),
+        pytest.param(False, None, id="disabled-threshold"),
+    ],
+)
 def test_multi_dataset_retriever_retriever_non_economy_uses_retrieval_model(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
+    score_threshold_enabled: bool,
+    expected_score_threshold: float | None,
 ):
     dataset = _persist_dataset(
         sqlite_session,
         retrieval_model={
             "search_method": "semantic_search",
             "top_k": 6,
-            "score_threshold_enabled": True,
+            "score_threshold_enabled": score_threshold_enabled,
             "score_threshold": 0.4,
             "reranking_enable": False,
             "reranking_mode": None,
@@ -477,7 +498,7 @@ def test_multi_dataset_retriever_retriever_non_economy_uses_retrieval_model(
         dataset_id=dataset.id,
         query="hello",
         top_k=6,
-        score_threshold=0.4,
+        score_threshold=expected_score_threshold,
         reranking_model=None,
         reranking_mode="reranking_model",
         weights={"balanced": True},
