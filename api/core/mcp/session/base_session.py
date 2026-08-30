@@ -333,9 +333,10 @@ class BaseSession[
                                     )
                                 )
                         else:
-                            self._handle_incoming(
-                                RuntimeError(f"Received response with an unknown request ID: {message}")
-                            )
+                            # No request is waiting on this transport error: the request it belonged to
+                            # has already returned or timed out. Dropping it must not tear down the
+                            # receiver, otherwise every later message on this session is lost too.
+                            logger.warning("Discarding HTTP error with no request awaiting a response: %s", message)
                     case Exception():
                         self._handle_incoming(message)
                     case SessionMessage(message=JSONRPCMessage(root=JSONRPCRequest())):
@@ -389,7 +390,13 @@ class BaseSession[
                         if response_queue is not None:
                             response_queue.put(response_root)
                         else:
-                            self._handle_incoming(RuntimeError(f"Server Error: {message}"))
+                            # Orphaned response: duplicate, late, or for a request that already timed
+                            # out. Log and keep going so one stray message cannot kill the session.
+                            logger.warning(
+                                "Discarding response with an unknown or expired request ID %s: %s",
+                                response_root.id,
+                                message,
+                            )
             except queue.Empty:
                 continue
             except Exception:

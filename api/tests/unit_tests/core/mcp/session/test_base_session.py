@@ -476,39 +476,92 @@ def test_check_receiver_status_fail(streams):
     executor.shutdown()
 
 
-@pytest.mark.timeout(10)
-def test_receive_loop_unknown_request_id(streams):
-    read_stream, write_stream = streams
-    session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
+def _keep_alive_notification():
+    return SessionMessage(
+        message=JSONRPCMessage(
+            JSONRPCNotification(jsonrpc="2.0", method="test/notification", params={"message": "still alive"})
+        )
+    )
 
-    with session:
-        resp = JSONRPCResponse(jsonrpc="2.0", id=999, result={"ok": True})
-        read_stream.put(SessionMessage(message=JSONRPCMessage(resp)))
 
-        for _ in range(30):
-            if any(isinstance(x, RuntimeError) and "Server Error" in str(x) for x in session.handled_incoming):
-                break
-            time.sleep(0.1)
-
-    assert any("Server Error" in str(x) for x in session.handled_incoming)
+def _wait_for_notification(session, timeout=3.0):
+    deadline = time.time() + timeout
+    while not session.received_notifications and time.time() < deadline:
+        time.sleep(0.05)
 
 
 @pytest.mark.timeout(10)
-def test_receive_loop_http_error_unknown_id(streams):
+def test_receive_loop_unknown_request_id(streams, caplog: pytest.LogCaptureFixture):
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
 
+    with caplog.at_level(logging.WARNING, logger="core.mcp.session.base_session"):
+        with session:
+            resp = JSONRPCResponse(jsonrpc="2.0", id=999, result={"ok": True})
+            read_stream.put(SessionMessage(message=JSONRPCMessage(resp)))
+            # Queued behind the orphan: it only arrives if the receiver survived.
+            read_stream.put(_keep_alive_notification())
+            _wait_for_notification(session)
+
+    assert "unknown or expired request ID 999" in caplog.text
+    # The orphan must not reach the message handler, which raises in ClientSession.
+    assert not any(isinstance(x, Exception) for x in session.handled_incoming)
+    assert len(session.received_notifications) == 1
+    session.check_receiver_status()
+
+
+@pytest.mark.timeout(10)
+def test_receive_loop_http_error_unknown_id(streams, caplog: pytest.LogCaptureFixture):
+    read_stream, write_stream = streams
+    session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
+
+    with caplog.at_level(logging.WARNING, logger="core.mcp.session.base_session"):
+        with session:
+            response = Response(status_code=401, request=Request("GET", "http://test"))
+            error = HTTPStatusError("Unauthorized", request=response.request, response=response)
+            read_stream.put(error)
+            read_stream.put(_keep_alive_notification())
+            _wait_for_notification(session)
+
+    assert "Discarding HTTP error with no request awaiting a response" in caplog.text
+    assert not any(isinstance(x, Exception) for x in session.handled_incoming)
+    assert len(session.received_notifications) == 1
+    session.check_receiver_status()
+
+
+@pytest.mark.timeout(10)
+def test_receive_loop_survives_orphan_when_handler_raises(streams):
+    """Regression test for #41482.
+
+    ClientSession's default message handler re-raises any Exception it is handed. Routing an
+    orphaned response through _handle_incoming therefore escaped _receive_loop and killed the
+    receiver for the rest of the session.
+    """
+    read_stream, write_stream = streams
+
+    class RaisingSession(MockSession):
+        def _handle_incoming(self, item):
+            super()._handle_incoming(item)
+            if isinstance(item, Exception):
+                raise ValueError(str(item))
+
+    session = RaisingSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
+
     with session:
-        response = Response(status_code=401, request=Request("GET", "http://test"))
-        error = HTTPStatusError("Unauthorized", request=response.request, response=response)
-        read_stream.put(error)
+        read_stream.put(SessionMessage(message=JSONRPCMessage(JSONRPCResponse(jsonrpc="2.0", id=999, result={}))))
+        read_stream.put(
+            SessionMessage(
+                message=JSONRPCMessage(
+                    JSONRPCError(jsonrpc="2.0", id=998, error=ErrorData(code=-32000, message="late"))
+                )
+            )
+        )
+        read_stream.put(_keep_alive_notification())
+        _wait_for_notification(session)
 
-        for _ in range(30):
-            if any(isinstance(x, RuntimeError) and "unknown request ID" in str(x) for x in session.handled_incoming):
-                break
-            time.sleep(0.1)
-
-    assert any("unknown request ID" in str(x) for x in session.handled_incoming)
+    assert len(session.received_notifications) == 1
+    # Raises whatever killed the receiver, if anything did.
+    session.check_receiver_status()
 
 
 @pytest.mark.timeout(10)
