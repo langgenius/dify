@@ -13,7 +13,6 @@ IM child rows use their integration as the concrete persistence boundary.
 from __future__ import annotations
 
 from datetime import datetime
-from enum import StrEnum
 from typing import Annotated, Literal
 
 import sqlalchemy as sa

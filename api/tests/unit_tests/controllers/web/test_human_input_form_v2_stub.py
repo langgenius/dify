@@ -11,11 +11,7 @@ from controllers.web import human_input_form_access_request as human_input_form_
 
 
 def _registered_urls(module) -> set[str]:
-    return {
-        url
-        for _resource, resource_urls, _route_doc, _kwargs in module.web_ns.resources
-        for url in resource_urls
-    }
+    return {url for _resource, resource_urls, _route_doc, _kwargs in module.web_ns.resources for url in resource_urls}
 
 
 def test_v1_and_v2_public_form_routes_are_distinct() -> None:
