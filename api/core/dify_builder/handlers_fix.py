@@ -79,10 +79,12 @@ __all__ = [
     "handle_propose",
     "handle_publish",
     "handle_verify",
+    "is_input_failure",
     "merge_known_keys",
     "mint_checkpoint",
     "perform_revert",
     "start_schema",
+    "testdata_form_fields",
 ]
 
 
@@ -230,6 +232,41 @@ def start_schema(graph: Graph) -> StartSchema:
         if data.get("type") == "start":
             return {"variables": list(data.get("variables") or [])}
     return {"variables": []}
+
+
+_INPUT_FAILURE_SIGNALS = ("variable not found", "file variable", "required", "not provided", "missing input")
+
+
+def is_input_failure(run: Run) -> bool:
+    """Heuristic: True if a failed node's error looks like a missing/invalid test
+    INPUT (vs a config bug) -- so the flow can route back to the testdata gate
+    instead of the config-repair gate. Signal-substring match on node errors."""
+    for n in run.per_node:
+        if n.status == "failed" and n.error:
+            low = n.error.lower()
+            if any(sig in low for sig in _INPUT_FAILURE_SIGNALS):
+                return True
+    return False
+
+
+def testdata_form_fields(schema: StartSchema) -> list[FormField]:
+    """Map a StartSchema's declared variables to FormFields for the testdata
+    gate, PRESERVING each variable's declared type (incl. 'file') -- unlike
+    build_form_fields, which clamps to the 4 requirement-form types."""
+    fields: list[FormField] = []
+    for v in schema.get("variables", []):
+        if not isinstance(v, dict) or not v.get("variable"):
+            continue
+        options = v.get("options") if isinstance(v.get("options"), list) else []
+        fields.append(
+            FormField(
+                key=str(v["variable"]),
+                label=str(v.get("label") or v["variable"]),
+                type=str(v.get("type") or "text"),
+                options=[str(o) for o in options],
+            )
+        )
+    return fields
 
 
 def _mode_or_default(mode: str) -> str:

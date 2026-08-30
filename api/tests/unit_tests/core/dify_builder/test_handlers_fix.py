@@ -537,3 +537,29 @@ def test_start_schema_empty_when_no_start_or_no_vars():
     from core.dify_builder.handlers_fix import start_schema
     assert start_schema({"nodes": [{"id": "llm", "data": {"type": "llm"}}], "edges": []}) == {"variables": []}
     assert start_schema({"nodes": [{"id": "s", "data": {"type": "start"}}], "edges": []}) == {"variables": []}
+
+
+# ---- is_input_failure / testdata_form_fields -------------------------------
+
+
+def test_is_input_failure_matches_input_signals():
+    from core.dify_builder.handlers_fix import is_input_failure
+    from core.dify_builder.models import NodeOutput, Run
+    fail = Run(per_node=[NodeOutput(node_id="node2", status="failed",
+                                    error="File variable not found for selector: ['start', 'document']")])
+    assert is_input_failure(fail) is True
+    cfg = Run(per_node=[NodeOutput(node_id="llm", status="failed", error="model provider error: 500")])
+    assert is_input_failure(cfg) is False
+    assert is_input_failure(Run(per_node=[])) is False
+
+
+def test_testdata_form_fields_preserves_file_type():
+    from core.dify_builder.handlers_fix import testdata_form_fields
+    schema = {"variables": [
+        {"variable": "document", "label": "Document", "type": "file", "required": True},
+        {"variable": "topic", "type": "paragraph"},
+    ]}
+    fields = testdata_form_fields(schema)
+    assert [f.key for f in fields] == ["document", "topic"]
+    assert fields[0].type == "file"          # NOT clamped to "text"
+    assert fields[1].label == "topic"        # falls back to the variable name
