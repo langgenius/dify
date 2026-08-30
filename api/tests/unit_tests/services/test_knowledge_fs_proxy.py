@@ -223,14 +223,15 @@ def _set_config(
     timeout_seconds: float = 7.5,
     jwt_secret: str | None = _JWT_SECRET,
 ) -> None:
+    from tests.unit_tests.config_override import apply_config_overrides
+
     values = {
         "KNOWLEDGE_FS_BASE_URL": base_url,
         "KNOWLEDGE_FS_SSE_READ_TIMEOUT_SECONDS": sse_read_timeout_seconds,
         "KNOWLEDGE_FS_TIMEOUT_SECONDS": timeout_seconds,
         "KNOWLEDGE_FS_JWT_SECRET": SecretStr(jwt_secret) if jwt_secret is not None else None,
     }
-    for name, value in values.items():
-        monkeypatch.setattr(f"services.knowledge_fs_proxy.dify_config.{name}", value, raising=False)
+    apply_config_overrides(monkeypatch, **values)
 
 
 def _processing_task_events_path() -> str:
