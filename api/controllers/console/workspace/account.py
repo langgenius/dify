@@ -292,9 +292,8 @@ class AccountInitApi(Resource):
     @console_ns.expect(console_ns.models[AccountInitPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(require_initialized=False)
-    def post(self, request_context: RequestContext):
-        payload = console_ns.payload or {}
-        args = AccountInitPayload.model_validate(payload)
+    @model_validate(AccountInitPayload)
+    def post(self, args: AccountInitPayload, request_context: RequestContext):
 
         try:
             application_services().accounts.initialization.initialize(
@@ -344,9 +343,8 @@ class AccountNameApi(Resource):
     @console_ns.expect(console_ns.models[AccountNamePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission()
-    def post(self, request_context: RequestContext):
-        payload = console_ns.payload or {}
-        args = AccountNamePayload.model_validate(payload)
+    @model_validate(AccountNamePayload)
+    def post(self, args: AccountNamePayload, request_context: RequestContext):
         return _update_account_profile(request_context, AccountProfileChanges(name=args.name))
 
 
@@ -371,9 +369,8 @@ class AccountAvatarApi(Resource):
     @console_ns.doc(description="Deprecated. Use PATCH /account/profile instead.")
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission()
-    def post(self, request_context: RequestContext):
-        payload = console_ns.payload or {}
-        args = AccountAvatarPayload.model_validate(payload)
+    @model_validate(AccountAvatarPayload)
+    def post(self, args: AccountAvatarPayload, request_context: RequestContext):
         return _update_account_profile(request_context, AccountProfileChanges(avatar=args.avatar))
 
 
@@ -387,9 +384,8 @@ class AccountInterfaceLanguageApi(Resource):
     @console_ns.expect(console_ns.models[AccountInterfaceLanguagePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission()
-    def post(self, request_context: RequestContext):
-        payload = console_ns.payload or {}
-        args = AccountInterfaceLanguagePayload.model_validate(payload)
+    @model_validate(AccountInterfaceLanguagePayload)
+    def post(self, args: AccountInterfaceLanguagePayload, request_context: RequestContext):
         return _update_account_profile(
             request_context,
             AccountProfileChanges(interface_language=args.interface_language),
@@ -406,9 +402,8 @@ class AccountInterfaceThemeApi(Resource):
     @console_ns.expect(console_ns.models[AccountInterfaceThemePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission()
-    def post(self, request_context: RequestContext):
-        payload = console_ns.payload or {}
-        args = AccountInterfaceThemePayload.model_validate(payload)
+    @model_validate(AccountInterfaceThemePayload)
+    def post(self, args: AccountInterfaceThemePayload, request_context: RequestContext):
         return _update_account_profile(
             request_context,
             AccountProfileChanges(interface_theme=args.interface_theme),
@@ -425,9 +420,8 @@ class AccountTimezoneApi(Resource):
     @console_ns.expect(console_ns.models[AccountTimezonePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission()
-    def post(self, request_context: RequestContext):
-        payload = console_ns.payload or {}
-        args = AccountTimezonePayload.model_validate(payload)
+    @model_validate(AccountTimezonePayload)
+    def post(self, args: AccountTimezonePayload, request_context: RequestContext):
         return _update_account_profile(request_context, AccountProfileChanges(timezone=args.timezone))
 
 
@@ -436,9 +430,8 @@ class AccountPasswordApi(Resource):
     @console_ns.expect(console_ns.models[AccountPasswordPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission()
-    def post(self, request_context: RequestContext):
-        payload = console_ns.payload or {}
-        args = AccountPasswordPayload.model_validate(payload)
+    @model_validate(AccountPasswordPayload)
+    def post(self, args: AccountPasswordPayload, request_context: RequestContext):
 
         try:
             assert args.password is not None
@@ -498,9 +491,8 @@ class AccountDeleteApi(Resource):
     @console_ns.expect(console_ns.models[AccountDeletePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
-    def post(self, request_context: RequestContext):
-        payload = console_ns.payload or {}
-        args = AccountDeletePayload.model_validate(payload)
+    @model_validate(AccountDeletePayload)
+    def post(self, args: AccountDeletePayload, request_context: RequestContext):
 
         try:
             application_services().accounts.deletion.request_deletion(
@@ -519,9 +511,8 @@ class AccountDeleteUpdateFeedbackApi(Resource):
     @console_ns.expect(console_ns.models[AccountDeletionFeedbackPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
-    def post(self):
-        payload = console_ns.payload or {}
-        args = AccountDeletionFeedbackPayload.model_validate(payload)
+    @model_validate(AccountDeletionFeedbackPayload)
+    def post(self, args: AccountDeletionFeedbackPayload):
 
         application_services().accounts.deletion_feedback.submit(email=args.email, feedback=args.feedback)
 
@@ -547,9 +538,8 @@ class EducationApi(Resource):
     @console_ns.expect(console_ns.models[EducationActivatePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationActivateResponse.__name__])
     @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
-    def post(self, request_context: RequestContext):
-        payload = console_ns.payload or {}
-        args = EducationActivatePayload.model_validate(payload)
+    @model_validate(EducationActivatePayload)
+    def post(self, args: EducationActivatePayload, request_context: RequestContext):
         try:
             activation = application_services().accounts.education.activate(
                 request_context,
@@ -574,9 +564,8 @@ class EducationAutoCompleteApi(Resource):
     @console_ns.doc(params=query_params_from_model(EducationAutocompleteQuery))
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationAutocompleteResponse.__name__])
     @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
-    def get(self, request_context: RequestContext):
-        payload = request.args.to_dict(flat=True)
-        args = EducationAutocompleteQuery.model_validate(payload)
+    @model_validate(EducationAutocompleteQuery)
+    def get(self, args: EducationAutocompleteQuery, request_context: RequestContext):
 
         return dump_response(
             EducationAutocompleteResponse,
@@ -594,9 +583,8 @@ class ChangeEmailSendEmailApi(Resource):
     @console_ns.expect(console_ns.models[ChangeEmailSendPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     @console_account_admission(require_change_email_enabled=True)
-    def post(self, request_context: RequestContext):
-        payload = console_ns.payload or {}
-        args = ChangeEmailSendPayload.model_validate(payload)
+    @model_validate(ChangeEmailSendPayload)
+    def post(self, args: ChangeEmailSendPayload, request_context: RequestContext):
 
         ip_address = extract_remote_ip(request)
         language = "zh-Hans" if args.language == "zh-Hans" else "en-US"
@@ -627,9 +615,8 @@ class ChangeEmailCheckApi(Resource):
     @console_ns.expect(console_ns.models[ChangeEmailValidityPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[VerificationTokenResponse.__name__])
     @console_account_admission(require_change_email_enabled=True)
-    def post(self, request_context: RequestContext):
-        payload = console_ns.payload or {}
-        args = ChangeEmailValidityPayload.model_validate(payload)
+    @model_validate(ChangeEmailValidityPayload)
+    def post(self, args: ChangeEmailValidityPayload, request_context: RequestContext):
 
         try:
             verification = application_services().accounts.change_email.verify_code(
@@ -656,9 +643,8 @@ class ChangeEmailResetApi(Resource):
     @console_ns.expect(console_ns.models[ChangeEmailResetPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission(require_change_email_enabled=True)
-    def post(self, request_context: RequestContext):
-        payload = console_ns.payload or {}
-        args = ChangeEmailResetPayload.model_validate(payload)
+    @model_validate(ChangeEmailResetPayload)
+    def post(self, args: ChangeEmailResetPayload, request_context: RequestContext):
         try:
             updated_account = application_services().accounts.change_email.reset(
                 request_context,
@@ -684,9 +670,8 @@ class CheckEmailUnique(Resource):
     @console_ns.expect(console_ns.models[CheckEmailUniquePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
-    def post(self):
-        payload = console_ns.payload or {}
-        args = CheckEmailUniquePayload.model_validate(payload)
+    @model_validate(CheckEmailUniquePayload)
+    def post(self, args: CheckEmailUniquePayload):
         try:
             application_services().accounts.change_email.ensure_available(args.email)
         except account_errors.AccountEmailDomainSuspendedError:
