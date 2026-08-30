@@ -292,6 +292,50 @@ def test_plan_approval_deletes_pre_existing_start_on_from_scratch_build():
     assert types == {"start", "end"}  # exactly one start
 
 
+def test_plan_approval_survives_generator_reusing_the_deleted_placeholder_start_id():
+    """M2 fix (final review, Minor/latent): on a from-scratch build, delete_intents
+    drops the draft's placeholder start(s) by id, and _already_present filters
+    generator creates against the PRE-delete existing_node_ids. If the generator's
+    create_node happens to reuse a just-deleted placeholder id, the old code path
+    would see that id in existing_node_ids and drop the create -- delete with no
+    re-create, so the node silently vanishes from the final graph. The deleted
+    ids must be excluded from the _already_present comparison set."""
+    from core.dify_builder.handlers_build import handle_plan_approval
+    from core.dify_builder.models import MutationIntent
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()
+    # seed a draft whose placeholder start id is "start"
+    env.dify.graph = {
+        "nodes": [{"id": "start", "data": {"type": "start", "title": "Old", "variables": []}}],
+        "edges": [],
+    }
+    # generator reuses the SAME id ("start") for its own start node
+    env.agent.build_nodes = lambda _plan: [
+        MutationIntent(
+            op="create_node",
+            args={
+                "node_type": "start",
+                "node_id": "start",
+                "config": {"title": "Start", "variables": [{"variable": "document", "type": "file"}]},
+            },
+        ),
+        MutationIntent(op="create_node", args={"node_type": "end", "node_id": "node2", "config": {}}),
+        MutationIntent(op="connect", args={"from_node": "start", "to_node": "node2"}),
+    ]
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_PLAN_APPROVAL)
+    fc = DifyBuilderContext(plan_items=["x"])
+    handle_plan_approval(env, Turn(actor=_actor(), action=Action(kind="approve_repair")), s, fc)
+
+    ids = {n["id"] for n in env.dify.graph["nodes"]}
+    types = {(n.get("data") or {}).get("type") for n in env.dify.graph["nodes"]}
+    assert "start" in ids, "the create_node reusing the deleted placeholder's id must survive"
+    assert "node2" in ids
+    assert types == {"start", "end"}  # exactly one start, no vanished node
+    assert len(env.dify.graph["edges"]) == 1
+
+
 def test_execution_run_test_advances_to_test_and_repair():
     from core.dify_builder.handlers_build import handle_execution
 

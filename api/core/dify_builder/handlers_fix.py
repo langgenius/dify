@@ -234,13 +234,24 @@ def start_schema(graph: Graph) -> StartSchema:
     return {"variables": []}
 
 
-_INPUT_FAILURE_SIGNALS = ("variable not found", "file variable", "required", "not provided", "missing input")
+_INPUT_FAILURE_SIGNALS = ("file variable", "not provided", "missing input")
 
 
 def is_input_failure(run: Run) -> bool:
     """Heuristic: True if a failed node's error looks like a missing/invalid test
     INPUT (vs a config bug) -- so the flow can route back to the testdata gate
-    instead of the config-repair gate. Signal-substring match on node errors."""
+    instead of the config-repair gate. Signal-substring match on node errors.
+
+    Final-review fix (Important #1): the bare ``"required"`` and generic
+    ``"variable not found"`` signals were dropped -- both also appear in
+    config/runtime faults unrelated to test inputs (e.g. "field 'timeout' is
+    required"), which misrouted those failures to the testdata gate, where
+    the diagnosed auto-repair is never offered. The spec safe default for an
+    ambiguous failure is the config-repair path, so this tuple favors
+    PRECISION: only signals specific enough to input/file problems remain --
+    ``"file variable"`` alone still matches the real file-input E2E error,
+    "File variable not found for selector: [...]".
+    """
     for n in run.per_node:
         if n.status == "failed" and n.error:
             low = n.error.lower()
