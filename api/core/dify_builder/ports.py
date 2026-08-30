@@ -89,8 +89,6 @@ class DifyBuilderAgent(Protocol):
 
     def build_nodes(self, plan_items: list[str]) -> list[MutationIntent]: ...
 
-    def propose_build_repair(self, built_node_ids: list[str]) -> list[MutationIntent]: ...
-
     def learn_from_build(
         self,
         goal_text: str,

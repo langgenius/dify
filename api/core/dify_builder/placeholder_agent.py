@@ -171,20 +171,6 @@ class PlaceholderAgent:
             MutationIntent(op="connect", args={"from_node": BUILD_LLM_ID, "to_node": BUILD_END_ID}),
         ]
 
-    def propose_build_repair(self, built_node_ids: list[str]) -> list[MutationIntent]:
-        # Canned "found a config bug, fixed it" repair on the LLM node --
-        # structurally like Fix's propose_repair, applied via apply_repair.
-        return [
-            MutationIntent(
-                op="set_node_config",
-                args={
-                    "node_id": BUILD_LLM_ID,
-                    "path": "prompt_template",
-                    "value": [{"role": "system", "text": "You are a financial report assistant."}],
-                },
-            )
-        ]
-
     def learn_from_build(
         self,
         goal_text: str,
