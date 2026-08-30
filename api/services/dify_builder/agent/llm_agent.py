@@ -14,11 +14,14 @@ failure rather than crashing the advance; ``fix.*``/``build.*``/``edit.*``/``moc
 handle that).
 """
 
+import logging
 from typing import Any
 
 from core.model_manager import ModelInstance
 from services.dify_builder.agent import build, edit, fix, mock_inputs
 from services.dify_builder.agent.model_resolver import resolve_model_instance
+
+logger = logging.getLogger(__name__)
 
 
 class LlmBuilderAgent:
@@ -26,6 +29,7 @@ class LlmBuilderAgent:
         self._tenant_id = tenant_id
         self._model_config = model_config or {}
         self._model_instance: ModelInstance | None = None
+        self._resolution_failed = False
 
     def _model(self) -> ModelInstance:
         """Lazily resolve + memoize the chosen model. Used by cognition (next slice)."""
@@ -34,11 +38,20 @@ class LlmBuilderAgent:
         return self._model_instance
 
     def _model_or_none(self) -> ModelInstance | None:
-        """The resolved model, or None if it can't resolve — fix.* degrades on None
-        rather than crashing the advance."""
+        """The resolved model, or None if it can't resolve — cognition degrades on
+        None rather than crashing the advance. Logs the resolution failure once per
+        agent instance (per advance) so a misconfigured llm-mode tenant is visible."""
         try:
             return self._model()
-        except Exception:  # any resolution failure -> degrade path (fix.* handles None)
+        except Exception:
+            if not self._resolution_failed:
+                self._resolution_failed = True
+                logger.warning(
+                    "Dify Builder: model resolution failed for tenant %s in llm mode; "
+                    "degrading to heuristic cognition",
+                    self._tenant_id,
+                    exc_info=True,
+                )
             return None
 
     # -- Fix cognition (delegated) --
