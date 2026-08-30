@@ -41,6 +41,7 @@ from core.dify_builder.handlers_fix import (
     mint_checkpoint,
     perform_revert,
     start_schema,
+    testdata_form_fields,
 )
 from core.dify_builder.models import DifyBuilderContext, Run, Session, TestInput, Turn
 from core.dify_builder.runner import Env, Handler, StepResult
@@ -50,6 +51,7 @@ __all__ = [
     "edit_registry",
     "handle_apply_changes",
     "handle_await_repair",
+    "handle_await_testdata",
     "handle_capability_check",
     "handle_impact_analysis",
     "handle_plan_approval",
@@ -249,16 +251,39 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
 
 
 def handle_apply_changes(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
-    """(waiting) At rest after the edit. ``run_affected_tests`` -> edit.test_
-    affected_paths; ``revert`` (resolved to ``undo``) -> edit.reverted: restores
-    the pre-edit draft from the checkpoint and invalidates the approvals made
-    since it (via perform_revert)."""
+    """(waiting) At rest after the edit. ``run_affected_tests`` -> edit.await_
+    testdata when no test input is prepared yet (gate), else straight to edit.
+    test_affected_paths; ``revert`` (resolved to ``undo``) -> edit.reverted:
+    restores the pre-edit draft from the checkpoint and invalidates the
+    approvals made since it (via perform_revert)."""
     kind = action_kind(turn)
     if kind == "undo":
         perform_revert(env, turn, s, fc)
         items = append_card(fc, DecisionItem(text="Requested a revert"))
         return StepResult(next=PcState.EDIT_REVERTED, context=fc, items=items)
     if kind == "run_affected_tests":
+        if fc.test_input_ref == "":
+            graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
+            form_items = append_card(
+                fc,
+                FormCard(
+                    variant="testdata",
+                    fields=testdata_form_fields(start_schema(graph)),
+                    values={},
+                    frozen=False,
+                ),
+            )
+            turn_items = append_card(
+                fc,
+                AssistantTurnItem(
+                    turn_id=str(uuid.uuid4()),
+                    stage_id="edit.await_testdata",
+                    trace=Trace(status="completed", steps=[]),
+                    reply_text="Provide test inputs (or use mock data) to run the affected-path test.",
+                    cards=["form"],
+                ),
+            )
+            return StepResult(next=PcState.EDIT_AWAIT_TESTDATA, context=fc, items=[*form_items, *turn_items])
         emit_canvas(env, "start_test_run")
         items = append_card(
             fc,
@@ -272,6 +297,24 @@ def handle_apply_changes(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         )
         return StepResult(next=PcState.EDIT_TEST_AFFECTED_PATHS, context=fc, items=items)
     return StepResult(next=PcState.EDIT_APPLY_CHANGES, context=fc)
+
+
+def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
+    """(waiting) Prepare inputs for the affected-path test. mock -> schema-shaped
+    generate_mock_inputs; provide/upload -> the payload's inputs dict (may carry
+    file refs). Persists a TestInput and advances to edit.test_affected_paths."""
+    mode, _ = action_string(turn, "mode")
+    if mode == "mock":
+        graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
+        inputs = env.agent.generate_mock_inputs(start_schema(graph), {})
+    else:
+        inputs = {}
+        if turn.action is not None and isinstance(turn.action.payload.get("inputs"), dict):
+            inputs = turn.action.payload["inputs"]
+    ti = TestInput(session_id=s.id, source=mode or "upload", inputs=inputs)
+    env.repo.save_test_input(ti)
+    fc.test_input_ref = ti.id
+    return StepResult(next=PcState.EDIT_TEST_AFFECTED_PATHS, context=fc)
 
 
 def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
@@ -558,6 +601,7 @@ def edit_registry() -> dict[PcState, Handler]:
         PcState.EDIT_IMPACT_ANALYSIS: handle_impact_analysis,
         PcState.EDIT_PLAN_APPROVAL: handle_plan_approval,
         PcState.EDIT_APPLY_CHANGES: handle_apply_changes,
+        PcState.EDIT_AWAIT_TESTDATA: handle_await_testdata,
         PcState.EDIT_TEST_AFFECTED_PATHS: handle_test_affected_paths,
         PcState.EDIT_AWAIT_REPAIR: handle_await_repair,
         PcState.EDIT_REVIEW: handle_review,
