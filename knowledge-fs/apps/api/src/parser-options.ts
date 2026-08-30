@@ -6,6 +6,23 @@ import {
   createParserRouter,
   createUnstructuredParserClient,
 } from "@knowledge/parsers";
+import { Agent, type Dispatcher, fetch as undiciFetch } from "undici";
+
+const defaultUnstructuredRequestTimeoutMs = 120_000;
+const maxUnstructuredRequestTimeoutMs = 1_800_000;
+
+interface NodeUnstructuredFetchOptions {
+  readonly createDispatcher?: (
+    options: Readonly<{ bodyTimeout: number; headersTimeout: number }>,
+  ) => Dispatcher;
+  readonly fetch?: typeof fetch;
+  readonly requestTimeoutMs: number;
+}
+
+type DispatcherRequestInit = RequestInit & {
+  readonly dispatcher: Dispatcher;
+  readonly duplex?: "half";
+};
 
 export interface ApiParserEnv {
   readonly NODE_ENV?: string | undefined;
@@ -60,13 +77,26 @@ function createApiUnstructuredParser({
     };
   }
 
+  const requestTimeoutMs =
+    env.UNSTRUCTURED_REQUEST_TIMEOUT_MS === undefined
+      ? defaultUnstructuredRequestTimeoutMs
+      : parseBoundedPositiveInteger(
+          env.UNSTRUCTURED_REQUEST_TIMEOUT_MS,
+          "UNSTRUCTURED_REQUEST_TIMEOUT_MS",
+          maxUnstructuredRequestTimeoutMs,
+        );
+
   return createUnstructuredParserClient({
     ...(env.UNSTRUCTURED_DEFAULT_LANGUAGE?.trim()
       ? { defaultLanguage: env.UNSTRUCTURED_DEFAULT_LANGUAGE.trim() }
       : {}),
     endpoint,
     ...(env.UNSTRUCTURED_API_KEY?.trim() ? { apiKey: env.UNSTRUCTURED_API_KEY.trim() } : {}),
-    ...(fetchImpl ? { fetch: fetchImpl } : {}),
+    fetch:
+      fetchImpl ??
+      createNodeUnstructuredFetch({
+        requestTimeoutMs,
+      }),
     ...(env.UNSTRUCTURED_MAX_CONCURRENCY !== undefined
       ? {
           maxConcurrency: parseBoundedPositiveInteger(
@@ -100,16 +130,40 @@ function createApiUnstructuredParser({
           ),
         }
       : {}),
-    ...(env.UNSTRUCTURED_REQUEST_TIMEOUT_MS !== undefined
-      ? {
-          requestTimeoutMs: parseBoundedPositiveInteger(
-            env.UNSTRUCTURED_REQUEST_TIMEOUT_MS,
-            "UNSTRUCTURED_REQUEST_TIMEOUT_MS",
-            600_000,
-          ),
-        }
-      : {}),
+    requestTimeoutMs,
   });
+}
+
+export function createNodeUnstructuredFetch({
+  createDispatcher = (options) => new Agent(options),
+  fetch: fetchImpl = undiciFetch as unknown as typeof fetch,
+  requestTimeoutMs,
+}: NodeUnstructuredFetchOptions): typeof fetch {
+  const dispatcher = createDispatcher({
+    bodyTimeout: requestTimeoutMs,
+    headersTimeout: requestTimeoutMs,
+  });
+
+  return (input, init) => {
+    if (input instanceof Request) {
+      const body = init?.body ?? input.body;
+
+      return fetchImpl(input.url, {
+        ...init,
+        body,
+        dispatcher,
+        ...(body ? { duplex: "half" } : {}),
+        headers: init?.headers ?? input.headers,
+        method: init?.method ?? input.method,
+        signal: init?.signal ?? input.signal,
+      } as DispatcherRequestInit);
+    }
+
+    return fetchImpl(input, {
+      ...init,
+      dispatcher,
+    } as DispatcherRequestInit);
+  };
 }
 
 function resolveUnstructuredApiUrl(env: ApiParserEnv): string | undefined {

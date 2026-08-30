@@ -73,6 +73,7 @@ export interface DeleteKnowledgePathsByDocumentAssetInput {
 }
 
 export interface KnowledgePathRepository {
+  readonly maxBatchSize: number;
   create(input: KnowledgePath): Promise<KnowledgePath>;
   deleteByDocumentAsset(input: DeleteKnowledgePathsByDocumentAssetInput): Promise<number>;
   deleteSemanticView(input: DeleteSemanticViewPathsInput): Promise<number>;
@@ -129,6 +130,7 @@ export function createInMemoryKnowledgePathRepository({
   const paths = new Map<string, KnowledgePath>();
 
   return {
+    maxBatchSize,
     create: async (input) => {
       const path = cloneKnowledgePath(KnowledgePathSchema.parse(input));
       const key = knowledgePathKey(
@@ -343,6 +345,7 @@ export function createDatabaseKnowledgePathRepository({
   const tableName = "knowledge_paths";
 
   return {
+    maxBatchSize,
     create: async (input) => {
       const path = cloneKnowledgePath(KnowledgePathSchema.parse(input));
       return path.publicationGenerationId

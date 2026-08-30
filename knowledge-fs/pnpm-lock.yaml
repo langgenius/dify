@@ -104,6 +104,9 @@ importers:
       sharp:
         specifier: 0.35.3
         version: 0.35.3(@types/node@22.19.18)
+      undici:
+        specifier: ^8.10.0
+        version: 8.10.0
     devDependencies:
       '@types/node':
         specifier: ^22.10.2
@@ -2207,6 +2210,10 @@ packages:
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
 
+  undici@8.10.0:
+    resolution: {integrity: sha512-HvltHd7avK13QIw/oLe4qoOLyoVSoafqJ2jYOrtMRBkbYT31eiBQ8O0ehRKZiEZCMEyLFQNIADpgCWC5fALvYQ==}
+    engines: {node: '>=22.19.0'}
+
   unicode-segmenter@0.15.0:
     resolution: {integrity: sha512-Xmvwqx4F8nGuCv2eGPJVJq73NMTfpqx2Xe9/v5hQoyAUnERVhX+sRkyYVdYoBUbnTok2FTBOlstUeQ5sRleXSA==}
 
@@ -3882,6 +3889,8 @@ snapshots:
   typescript@5.9.3: {}
 
   undici-types@6.21.0: {}
+
+  undici@8.10.0: {}
 
   unicode-segmenter@0.15.0: {}
 
