@@ -31,7 +31,8 @@ class PcState(StrEnum):
     SUCCESS = "success"
     FAILED = "failed"
 
-    # Build (spec §7.1) — 14 states.
+    # Build (spec §7.1) — 15 states (BUILD_AWAIT_TESTDATA added post-spec for
+    # the testdata-gate slice).
     BUILD_CAPABILITY_CHECK = "build.capability_check"
     BUILD_GOAL_ANALYSIS = "build.goal_analysis"
     BUILD_INITIAL_PLAN = "build.initial_plan"
@@ -48,8 +49,9 @@ class PcState(StrEnum):
     BUILD_COMPLETE = "build.complete"
     BUILD_REVERTED = "build.reverted"
 
-    # Edit (spec §7.2) — 9 states (EDIT_AWAIT_REPAIR added post-spec for the
-    # live-test de-canning slice; mirrors BUILD_AWAIT_REPAIR).
+    # Edit (spec §7.2) — 10 states (EDIT_AWAIT_REPAIR added post-spec for the
+    # live-test de-canning slice, mirrors BUILD_AWAIT_REPAIR; EDIT_AWAIT_TESTDATA
+    # added post-spec for the testdata-gate slice).
     EDIT_CAPABILITY_CHECK = "edit.capability_check"
     EDIT_IMPACT_ANALYSIS = "edit.impact_analysis"
     EDIT_PLAN_APPROVAL = "edit.plan_approval"
