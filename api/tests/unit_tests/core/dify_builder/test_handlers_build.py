@@ -297,7 +297,10 @@ def test_execution_run_test_advances_to_test_and_repair():
 
     events: list[dict] = []
     env, repo = _new_env(emit_canvas=events.append)
-    s = _seed_build_session(repo, PcState.BUILD_EXECUTION, built_node_ids=["start", "llm", "end"])
+    # test_input_ref already prepared -- run_test must skip the testdata gate.
+    s = _seed_build_session(
+        repo, PcState.BUILD_EXECUTION, built_node_ids=["start", "llm", "end"], test_input_ref="ti-1"
+    )
     turn = Turn(action=Action(kind="run_test", base_version=1), actor=_actor())
     res = handle_execution(env, turn, *repo.get_session(s.id))
     assert res.next == PcState.BUILD_TEST_AND_REPAIR
@@ -715,6 +718,7 @@ def test_build_registry_covers_all_non_terminal_build_states():
         PcState.BUILD_RESOURCE_RECOMMENDATION,
         PcState.BUILD_PLAN_APPROVAL,
         PcState.BUILD_EXECUTION,
+        PcState.BUILD_AWAIT_TESTDATA,
         PcState.BUILD_TEST_AND_REPAIR,
         PcState.BUILD_AWAIT_REPAIR,
         PcState.BUILD_REVIEW,
@@ -763,8 +767,13 @@ def test_full_build_flow_goal_to_complete():
     assert len(graph["nodes"]) == 4
     assert len(graph["edges"]) == 3
 
-    # 6) run_test -> build.test_and_repair (working, auto) -> rest at build.review
+    # 6) run_test -> build.await_testdata (gate; no test input prepared yet)
     out = runner.advance(s.id, Turn(action=Action(kind="run_test", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_AWAIT_TESTDATA
+
+    # 6b) provide_testdata (mock) -> build.test_and_repair (working, auto) -> rest at build.review
+    testdata_action = Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version)
+    out = runner.advance(s.id, Turn(action=testdata_action, actor=_actor()))
     assert out.current_state == PcState.BUILD_REVIEW
 
     # 7) publish_workflow -> build.publish (auto) -> governance_feedback (auto)
@@ -822,6 +831,9 @@ def test_full_build_flow_keep_draft_reaches_complete_without_publish():
     out = runner.advance(s.id, Turn(action=confirm_action, actor=_actor()))
     out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
     out = runner.advance(s.id, Turn(action=Action(kind="run_test", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_AWAIT_TESTDATA
+    testdata_action = Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version)
+    out = runner.advance(s.id, Turn(action=testdata_action, actor=_actor()))
     assert out.current_state == PcState.BUILD_REVIEW
 
     out = runner.advance(s.id, Turn(action=Action(kind="keep_draft", base_version=out.version), actor=_actor()))
@@ -866,6 +878,9 @@ def test_review_continue_adjusting_then_reapprove_is_idempotent():
     assert len(dify.graph["edges"]) == 3
 
     out = runner.advance(s.id, Turn(action=Action(kind="run_test", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_AWAIT_TESTDATA
+    testdata_action = Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version)
+    out = runner.advance(s.id, Turn(action=testdata_action, actor=_actor()))
     assert out.current_state == PcState.BUILD_REVIEW
 
     # loop back: continue_adjusting (-> re_fix) -> build.initial_plan (re-plan)
@@ -889,6 +904,89 @@ def test_review_continue_adjusting_then_reapprove_is_idempotent():
     # built_node_ids reflects the full set (all 4 exist), not an empty/partial
     # subset just because nothing new was actually applied this time.
     assert set(fc.built_node_ids) == {"start", "knowledge_retrieval", "llm", "end"}
+
+
+def test_run_test_routes_to_testdata_gate_when_no_input():
+    from core.dify_builder.handlers_build import handle_execution
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()
+    env.dify.graph = {
+        "nodes": [
+            {
+                "id": "start",
+                "data": {"type": "start", "variables": [{"variable": "document", "type": "file"}]},
+            }
+        ],
+        "edges": [],
+    }
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_EXECUTION)
+    fc = DifyBuilderContext(test_input_ref="")
+    result = handle_execution(env, Turn(actor=_actor(), action=Action(kind="run_test")), s, fc)
+    assert result.next == PcState.BUILD_AWAIT_TESTDATA
+    form = next(i for i in result.items if i.kind == "form")
+    assert form.payload["variant"] == "testdata"
+    assert form.payload["fields"][0]["type"] == "file"
+
+
+def test_run_test_skips_gate_when_input_prepared():
+    from core.dify_builder.handlers_build import handle_execution
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_EXECUTION)
+    result = handle_execution(
+        env, Turn(actor=_actor(), action=Action(kind="run_test")), s, DifyBuilderContext(test_input_ref="ti-1")
+    )
+    assert result.next == PcState.BUILD_TEST_AND_REPAIR
+
+
+def test_await_testdata_mock_prepares_input_and_advances():
+    from core.dify_builder.handlers_build import handle_await_testdata
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()
+    env.agent.generate_mock_inputs = lambda _schema, _prior: {"topic": "hi"}
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_AWAIT_TESTDATA)
+    fc = DifyBuilderContext()
+    result = handle_await_testdata(
+        env, Turn(actor=_actor(), action=Action(kind="provide_testdata", payload={"mode": "mock"})), s, fc
+    )
+    assert result.next == PcState.BUILD_TEST_AND_REPAIR
+    assert result.context.test_input_ref  # persisted
+    assert env.repo.get_test_input(result.context.test_input_ref).inputs == {"topic": "hi"}
+
+
+def test_await_testdata_provided_inputs_used():
+    from core.dify_builder.handlers_build import handle_await_testdata
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_AWAIT_TESTDATA)
+    fc = DifyBuilderContext()
+    result = handle_await_testdata(
+        env,
+        Turn(
+            actor=_actor(),
+            action=Action(kind="provide_testdata", payload={"inputs": {"document": {"upload_file_id": "f-1"}}}),
+        ),
+        s,
+        fc,
+    )
+    assert env.repo.get_test_input(result.context.test_input_ref).inputs == {"document": {"upload_file_id": "f-1"}}
+
+
+def test_build_await_testdata_is_waiting_and_projected():
+    from core.dify_builder.state import PcState, is_waiting
+    from services.dify_builder.service import Phase, _actions_for, _phase_for
+
+    assert is_waiting(PcState.BUILD_AWAIT_TESTDATA)
+    assert _phase_for(PcState.BUILD_AWAIT_TESTDATA) == Phase.TEST
+    assert [a.id for a in _actions_for(PcState.BUILD_AWAIT_TESTDATA)] == ["provide_testdata"]
 
 
 def test_execution_revert_then_retry_after_revert_reapprove_is_idempotent():
