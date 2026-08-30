@@ -1,4 +1,4 @@
-def test_to_intents_translates_nodes_then_edges_and_normalizes_start():
+def test_to_intents_translates_nodes_then_edges_preserving_ids():
     from services.dify_builder.agent.graph_translate import to_intents
 
     graph = {
@@ -12,12 +12,35 @@ def test_to_intents_translates_nodes_then_edges_and_normalizes_start():
     }
     intents = to_intents(graph)
     ops = [(i.op, i.args.get("node_id") or (i.args.get("from_node"), i.args.get("to_node"))) for i in intents]
-    assert ops == [("create_node", "start"), ("create_node", "n_llm"), ("connect", ("start", "n_llm"))]
+    assert ops == [("create_node", "n_start"), ("create_node", "n_llm"), ("connect", ("n_start", "n_llm"))]
     # config carries data minus the type key; create_node args expose node_type
     start = intents[0]
     assert start.args["node_type"] == "start"
     assert "type" not in start.args["config"]
     assert start.args["config"]["title"] == "Start"
+
+
+def test_to_intents_preserves_original_start_id_and_references():
+    from services.dify_builder.agent.graph_translate import to_intents
+    graph = {
+        "nodes": [
+            {"id": "node1", "type": "custom", "data": {"type": "start", "title": "Start",
+                "variables": [{"variable": "document", "type": "file", "required": True}]}},
+            {"id": "node2", "type": "custom", "data": {"type": "document-extractor", "title": "Extract",
+                "variable_selector": ["node1", "document"]}},
+        ],
+        "edges": [{"id": "e1", "source": "node1", "target": "node2", "type": "custom"}],
+    }
+    intents = to_intents(graph)
+    creates = {i.args["node_id"]: i for i in intents if i.op == "create_node"}
+    # start keeps its original id -> the document-extractor's selector stays valid
+    assert "node1" in creates
+    assert "start" not in creates
+    assert creates["node1"].args["node_type"] == "start"
+    assert creates["node2"].args["config"]["variable_selector"] == ["node1", "document"]
+    connect = next(i for i in intents if i.op == "connect")
+    assert connect.args["from_node"] == "node1"
+    assert connect.args["to_node"] == "node2"
 
 
 def test_to_intents_skips_malformed_nodes():
@@ -26,9 +49,10 @@ def test_to_intents_skips_malformed_nodes():
     assert to_intents(graph) == []  # no type / no id -> dropped
 
 
-def test_to_intents_multiple_start_nodes_only_first_normalized():
+def test_to_intents_preserves_ids_and_order_for_multiple_nodes():
     from services.dify_builder.agent.graph_translate import to_intents
-    # Graph with two start-type nodes: only first should be renamed to "start", second keeps original id
+    # Graph with two start-type nodes: neither is renamed, and creates/connects
+    # are emitted in the generator's original node/edge order.
     graph = {
         "nodes": [
             {"id": "s1", "type": "custom", "data": {"type": "start", "title": "Start 1"}},
@@ -45,23 +69,18 @@ def test_to_intents_multiple_start_nodes_only_first_normalized():
     # Extract node_ids from create_node intents
     create_node_ids = [i.args["node_id"] for i in intents if i.op == "create_node"]
 
-    # Exactly one "start" and one "s2" (original id), plus "n_llm"
-    assert "start" in create_node_ids, "First start node should be normalized to 'start'"
-    assert "s2" in create_node_ids, "Second start node should keep original id 's2'"
-    assert "n_llm" in create_node_ids, "LLM node should be present"
+    # Both original ids are preserved, in node order, and "start" is never synthesized
+    assert create_node_ids == ["s1", "s2", "n_llm"], "Original ids should be preserved in node order"
+    assert "start" not in create_node_ids, "No node should be renamed to the synthetic 'start' id"
 
-    # Count to ensure no duplicates
-    assert create_node_ids.count("start") == 1, "Only one 'start' node_id should exist"
-    assert len(create_node_ids) == 3, "Should have exactly 3 create_node intents"
-
-    # Verify edges are remapped correctly
+    # Verify edges keep their original endpoints, in edge order
     connects = [i for i in intents if i.op == "connect"]
     assert len(connects) == 2, "Should have 2 connect intents"
 
-    # First edge should connect from "start" (remapped s1) to "n_llm"
-    assert connects[0].args["from_node"] == "start", "Edge from s1 should be remapped to 'start'"
-    # Second edge should connect from "s2" (not remapped) to "n_llm"
-    assert connects[1].args["from_node"] == "s2", "Edge from s2 should keep 's2'"
+    assert connects[0].args["from_node"] == "s1", "Edge from s1 should keep original id 's1'"
+    assert connects[0].args["to_node"] == "n_llm"
+    assert connects[1].args["from_node"] == "s2", "Edge from s2 should keep original id 's2'"
+    assert connects[1].args["to_node"] == "n_llm"
 
 
 def test_to_intents_carries_branch_handles_through_connect():
@@ -94,4 +113,4 @@ def test_to_intents_connect_without_handles_has_no_handle_keys():
     }
     intents = to_intents(graph)
     connect = next(i for i in intents if i.op == "connect")
-    assert connect.args == {"from_node": "start", "to_node": "n2"}
+    assert connect.args == {"from_node": "n1", "to_node": "n2"}
