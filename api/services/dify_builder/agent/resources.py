@@ -5,6 +5,7 @@ models, datasets, and tools normalized to id+label. Each source degrades to
 an empty list on failure so a missing provider never breaks the advance.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -15,6 +16,8 @@ from core.workflow.generator.tool_catalogue import build_tool_catalogue
 from extensions.ext_database import db
 from models.dataset import Dataset
 from services.model_provider_service import ModelProviderService
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -45,10 +48,15 @@ def _list_tools(tenant_id: str) -> list[dict]:
     return list(build_tool_catalogue(tenant_id))
 
 
-def _safe(build) -> list:
+def _safe(build, source: str) -> list:
     try:
         return build()
     except Exception:  # a missing/mis-configured source degrades to empty, never raises
+        logger.warning(
+            "Dify Builder: resource source %r failed for the current tenant; treating as empty",
+            source,
+            exc_info=True,
+        )
         return []
 
 
@@ -72,7 +80,7 @@ def list_tenant_resources(tenant_id: str) -> TenantResources:
             for t in _list_tools(tenant_id)
         ]
 
-    models = _safe(build_models)
-    datasets = _safe(build_datasets)
-    tools = _safe(build_tools)
+    models = _safe(build_models, "models")
+    datasets = _safe(build_datasets, "datasets")
+    tools = _safe(build_tools, "tools")
     return TenantResources(models=models, datasets=datasets, tools=tools)

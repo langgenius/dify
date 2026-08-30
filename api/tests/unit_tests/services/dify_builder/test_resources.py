@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import patch
 
 
@@ -71,3 +72,28 @@ def test_malformed_tool_record_degrades():
     assert out.tools == []
     assert out.models == []
     assert out.datasets == []
+
+
+def test_list_tenant_resources_logs_when_a_source_fails(caplog):
+    from services.dify_builder.agent import resources
+
+    class _Model:
+        def __init__(self, m):
+            self.model = m
+
+    class _ProvResp:
+        def __init__(self, p, ms):
+            self.provider, self.models = p, [_Model(m) for m in ms]
+
+    with patch.object(resources, "_list_models", return_value=[_ProvResp("anthropic", ["claude-opus-4-8"])]), \
+         patch.object(resources, "_list_datasets", side_effect=RuntimeError("db down")), \
+         patch.object(resources, "_list_tools", return_value=[]), \
+         caplog.at_level(logging.WARNING, logger="services.dify_builder.agent.resources"):
+        out = resources.list_tenant_resources("t1")
+
+    assert out.datasets == []
+    assert out.models[0].id == "anthropic/claude-opus-4-8"
+    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1
+    assert "datasets" in warnings[0].getMessage()
+    assert warnings[0].exc_info is not None
