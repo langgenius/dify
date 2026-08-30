@@ -352,6 +352,7 @@ def _make_segment(
     index_node_id: str = "node-1",
     dataset_id: str = "dataset-1",
     document_id: str = "doc-1",
+    answer: str | None = None,
 ) -> DocumentSegment:
     segment = DocumentSegment(
         tenant_id="tenant-id",
@@ -364,7 +365,7 @@ def _make_segment(
         created_by="account-id",
         enabled=enabled,
         keywords=keywords or [],
-        answer=None,
+        answer=answer,
         index_node_id=index_node_id,
         disabled_at=None,
         disabled_by=None,

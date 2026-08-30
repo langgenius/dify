@@ -1014,6 +1014,41 @@ class TestSegmentServiceAdditionalRegenerationBranches:
         vector_service.update_segment_vector.assert_not_called()
         vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, session=session)
 
+    def test_update_segment_same_content_preserves_existing_answer_when_omitted_for_qa_segments(self, account_context):
+        session = MagicMock()
+        existing_answer = "existing answer"
+        segment = _make_segment(
+            content="question",
+            answer=existing_answer,
+            word_count=len("question") + len(existing_answer),
+            keywords=["old-kw"],
+        )
+        document = _make_document(doc_form=IndexStructureType.QA_INDEX, word_count=50)
+        dataset = _make_dataset()
+        refreshed_segment = SimpleNamespace(id=segment.id)
+
+        with (
+            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.dataset_service.VectorService") as vector_service,
+        ):
+            mock_redis.get.return_value = None
+            session.get.return_value = refreshed_segment
+
+            result = SegmentService.update_segment(
+                SegmentUpdateArgs(content="question", keywords=["new-kw"]),
+                segment,
+                document,
+                dataset,
+                session,
+            )
+
+        assert result is refreshed_segment
+        assert segment.answer == existing_answer
+        assert segment.word_count == len("question") + len(existing_answer)
+        assert document.word_count == 50
+        vector_service.update_segment_vector.assert_called_once_with(["new-kw"], segment, dataset, session=session)
+        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, session=session)
+
     def test_update_segment_content_change_uses_answer_when_counting_tokens_for_qa_segments(self, account_context):
         session = MagicMock()
         segment = _make_segment(content="old", word_count=3)
@@ -1049,6 +1084,84 @@ class TestSegmentServiceAdditionalRegenerationBranches:
         assert segment.tokens == 21
         assert segment.word_count == len("new question") + len("new answer")
         vector_service.update_segment_vector.assert_called_once_with(["kw-1"], segment, dataset, session=session)
+        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, session=session)
+
+    def test_update_segment_content_change_preserves_answer_in_high_quality_for_qa_segments(self, account_context):
+        session = MagicMock()
+        existing_answer = "existing answer"
+        segment = _make_segment(
+            content="old question",
+            answer=existing_answer,
+            word_count=len("old question") + len(existing_answer),
+        )
+        document = _make_document(doc_form=IndexStructureType.QA_INDEX, word_count=50)
+        dataset = _make_dataset(indexing_technique="high_quality")
+        refreshed_segment = SimpleNamespace(id=segment.id)
+        embedding_model = MagicMock()
+        embedding_model.get_text_embedding_num_tokens.return_value = [30]
+
+        with (
+            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.dataset_service.ModelManager") as model_manager_cls,
+            patch("services.dataset_service.VectorService") as vector_service,
+            patch("services.dataset_service.helper.generate_text_hash", return_value="hash-qa"),
+            patch("services.dataset_service.naive_utc_now", return_value="now"),
+        ):
+            mock_redis.get.return_value = None
+            model_manager_cls.for_tenant.return_value.get_model_instance.return_value = embedding_model
+            session.scalar.return_value = None
+            session.get.return_value = refreshed_segment
+
+            result = SegmentService.update_segment(
+                SegmentUpdateArgs(content="new question"),
+                segment,
+                document,
+                dataset,
+                session,
+            )
+
+        assert result is refreshed_segment
+        embedding_model.get_text_embedding_num_tokens.assert_called_once_with(texts=["new questionexisting answer"])
+        assert segment.answer == existing_answer
+        assert segment.word_count == len("new question") + len(existing_answer)
+        assert document.word_count == 50 + (len("new question") - len("old question"))
+        vector_service.update_segment_vector.assert_called_once_with(None, segment, dataset, session=session)
+        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, session=session)
+
+    def test_update_segment_content_change_preserves_answer_in_economy_for_qa_segments(self, account_context):
+        session = MagicMock()
+        existing_answer = "existing answer"
+        segment = _make_segment(
+            content="old question",
+            answer=existing_answer,
+            word_count=len("old question") + len(existing_answer),
+        )
+        document = _make_document(doc_form=IndexStructureType.QA_INDEX, word_count=50)
+        dataset = _make_dataset(indexing_technique="economy")
+        refreshed_segment = SimpleNamespace(id=segment.id)
+
+        with (
+            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.dataset_service.VectorService") as vector_service,
+            patch("services.dataset_service.helper.generate_text_hash", return_value="hash-qa"),
+            patch("services.dataset_service.naive_utc_now", return_value="now"),
+        ):
+            mock_redis.get.return_value = None
+            session.get.return_value = refreshed_segment
+
+            result = SegmentService.update_segment(
+                SegmentUpdateArgs(content="new question"),
+                segment,
+                document,
+                dataset,
+                session,
+            )
+
+        assert result is refreshed_segment
+        assert segment.answer == existing_answer
+        assert segment.word_count == len("new question") + len(existing_answer)
+        assert document.word_count == 50 + (len("new question") - len("old question"))
+        vector_service.update_segment_vector.assert_called_once_with(None, segment, dataset, session=session)
         vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, session=session)
 
     def test_update_segment_content_change_parent_child_uses_default_embedding_and_ignores_summary_failures(
