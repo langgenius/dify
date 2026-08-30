@@ -11,15 +11,13 @@ from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from sqlalchemy.orm import Session
 
-from core.human_input_v2.entities import IMIntegrationStatus, IMProvider, IMSyncResultType
+from core.human_input_v2.entities import IMSyncResultType
 from models.human_input_v2 import (
     HumanInputIMBinding,
     HumanInputIMIdentity,
-    HumanInputIMIntegration,
     HumanInputIMReconciliationChange,
     HumanInputIMSyncResult,
     HumanInputIMSyncRun,
-    IMEncryptedCredentials,
     IMSyncDirectoryEntryPayload,
 )
 
@@ -78,7 +76,6 @@ def test_upgrade_matches_all_im_model_columns_constraints_and_indexes() -> None:
 
     inspector = sa.inspect(engine)
     model_by_table = {
-        HumanInputIMIntegration.__tablename__: HumanInputIMIntegration,
         HumanInputIMIdentity.__tablename__: HumanInputIMIdentity,
         HumanInputIMBinding.__tablename__: HumanInputIMBinding,
         HumanInputIMSyncRun.__tablename__: HumanInputIMSyncRun,
@@ -91,10 +88,6 @@ def test_upgrade_matches_all_im_model_columns_constraints_and_indexes() -> None:
             column.name for column in model.__table__.columns
         }
 
-    integration_checks = {
-        constraint["name"] for constraint in inspector.get_check_constraints("human_input_im_integrations")
-    }
-    assert integration_checks == {"config_version_positive"}
     identity_checks = {
         constraint["name"] for constraint in inspector.get_check_constraints("human_input_im_identities")
     }
@@ -122,17 +115,6 @@ def test_upgrade_persists_and_loads_structured_json_values() -> None:
     _run_migration_step(_load_migration_module(_CHANGE_LOG_MIGRATION_PATH), engine, "upgrade")
 
     with Session(engine) as session, session.begin():
-        integration = HumanInputIMIntegration(
-            provider=IMProvider.FEISHU,
-            encrypted_credentials=IMEncryptedCredentials(ciphertext="opaque-ciphertext"),
-            tenant_id="workspace-1",
-            provider_tenant_id="provider-tenant-1",
-            app_identifier="app-1",
-            status=IMIntegrationStatus.CONFIGURED,
-            config_version=1,
-        )
-        integration.id = "integration-1"
-        session.add(integration)
         result = HumanInputIMSyncResult(
             integration_id="integration-1",
             sync_run_id="run-1",
@@ -143,13 +125,7 @@ def test_upgrade_persists_and_loads_structured_json_values() -> None:
         session.add(result)
 
     with Session(engine) as session:
-        stored_integration = session.get_one(HumanInputIMIntegration, "integration-1")
         stored_result = session.get_one(HumanInputIMSyncResult, "result-1")
-        assert stored_integration.encrypted_credentials == IMEncryptedCredentials(
-            version=1,
-            ciphertext="opaque-ciphertext",
-        )
-        assert stored_integration.app_identifier == "app-1"
         assert stored_result.directory_entry_payload == IMSyncDirectoryEntryPayload({"provider": "value"})
 
 
@@ -195,24 +171,6 @@ def test_published_upgrade_email_constraint_requires_email_normalization_pairs()
                 identity_id="identity-orphan-normalization",
                 email=None,
                 normalized_email="reviewer@example.com",
-            )
-
-
-def test_upgrade_enforces_positive_revision_and_scoped_binding_owner() -> None:
-    engine = sa.create_engine("sqlite:///:memory:")
-    module = _load_migration_module()
-    _run_migration_step(module, engine, "upgrade")
-
-    with pytest.raises(sa.exc.IntegrityError):
-        with engine.begin() as connection:
-            connection.execute(
-                sa.text(
-                    "INSERT INTO human_input_im_integrations "
-                    "(id, provider, encrypted_credentials, tenant_id, provider_tenant_id, app_identifier, status, "
-                    "config_version) VALUES ('integration-1', 'feishu', :encrypted_credentials, 'workspace-1', "
-                    "'provider-tenant-1', 'app-1', 'configured', 0)"
-                ),
-                {"encrypted_credentials": '{"version":1,"ciphertext":"opaque"}'},
             )
 
 

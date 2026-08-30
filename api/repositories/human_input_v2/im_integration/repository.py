@@ -1,11 +1,4 @@
-"""SQLAlchemy IM Control Plane adapter.
-
-Read-only queries own short sessions without acquiring the Organization write
-lock. Every configuration and active-run mutation requires an explicit stable
-Organization scope and delegates to the guarded write unit of work. ORM records
-never cross these boundaries, and aggregate relationships are loaded explicitly
-because their model relationships use ``lazy="raise"``.
-"""
+"""SQLAlchemy IM synchronization query and diagnostic adapter."""
 
 from __future__ import annotations
 
@@ -15,20 +8,13 @@ from typing import Protocol
 import sqlalchemy as sa
 from pydantic import NaiveDatetime
 from sqlalchemy import select
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session, selectinload, sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.entities import IMIdentityBindingStatus, IMProvider, IMSyncResultType
 from core.human_input_v2.im_integration import (
     ActiveRunDecision,
-    ConfigurationTransition,
-    IMControlPlanePersistenceError,
-    IMIntegration,
-    IMIntegrationState,
     IMSyncRun,
-    IntegrationDeletion,
     IntegrationRevisionToken,
-    StaleRevision,
     SynchronizedIMIdentity,
     SynchronizedIMIdentityPage,
     SyncResultFact,
@@ -36,26 +22,19 @@ from core.human_input_v2.im_integration import (
 )
 from core.human_input_v2.shared import (
     AccountId,
-    DeploymentScope,
     DirectoryScope,
     IMIdentityId,
     IMSyncRunId,
     IntegrationId,
-    TenantId,
-    WorkspaceScope,
 )
 from models.human_input_v2 import (
     HumanInputIMBinding,
     HumanInputIMIdentity,
-    HumanInputIMIntegration,
     HumanInputIMSyncResult,
     HumanInputIMSyncRun,
 )
 
 from .mappers import (
-    binding_from_record,
-    identity_from_record,
-    integration_from_record,
     sync_result_from_record,
     sync_result_to_record,
     sync_run_from_record,
@@ -63,27 +42,6 @@ from .mappers import (
 
 
 class _ProtectedIMWriter(Protocol):
-    def create_integration(
-        self,
-        integration: IMIntegration,
-        *,
-        organization_scope: DirectoryScope,
-    ) -> IMIntegration: ...
-
-    def compare_and_swap_configuration(
-        self,
-        transition: ConfigurationTransition,
-        *,
-        organization_scope: DirectoryScope,
-    ) -> IMIntegration | StaleRevision: ...
-
-    def compare_and_swap_delete(
-        self,
-        deletion: IntegrationDeletion,
-        *,
-        organization_scope: DirectoryScope,
-    ) -> None | StaleRevision: ...
-
     def create_or_get_active_run(
         self,
         integration_revision: IntegrationRevisionToken,
@@ -111,7 +69,7 @@ class _OrganizationIMWriteUnitOfWorkFactory(Protocol):
 
 
 class SQLAlchemyIMControlPlaneRepository:
-    """Transactional adapter for configuration, sync, and binding invariants."""
+    """Legacy-named adapter retaining only IM synchronization capabilities."""
 
     _session_maker: sessionmaker[Session]
 
@@ -122,86 +80,6 @@ class SQLAlchemyIMControlPlaneRepository:
     ) -> None:
         self._session_maker = session_maker
         self._write_unit_of_work_factory = write_unit_of_work_factory
-
-    def load_current_integration(self, tenant_id: TenantId | None) -> IMIntegration | None:
-        """Load only the exact owner scope used by management."""
-
-        owner_predicate = (
-            HumanInputIMIntegration.tenant_id.is_(None)
-            if tenant_id is None
-            else HumanInputIMIntegration.tenant_id == str(tenant_id)
-        )
-        try:
-            with self._session_maker() as session:
-                record = session.scalar(select(HumanInputIMIntegration).where(owner_predicate).limit(1))
-                return integration_from_record(record) if record is not None else None
-        except SQLAlchemyError as error:
-            raise IMControlPlanePersistenceError("failed to load IM Integration") from error
-
-    def create_integration(
-        self,
-        integration: IMIntegration,
-        *,
-        organization_scope: DirectoryScope,
-    ) -> IMIntegration:
-        """Route configuration creation through the explicit Organization guard."""
-
-        self._ensure_scope_matches_owner(organization_scope, integration.tenant_id)
-        try:
-            with self._write_unit_of_work_factory(organization_scope) as protected_repository:
-                return protected_repository.create_integration(
-                    integration,
-                    organization_scope=organization_scope,
-                )
-        except SQLAlchemyError as error:
-            raise IMControlPlanePersistenceError("failed to create IM Integration") from error
-
-    @staticmethod
-    def _ensure_scope_matches_owner(scope: DirectoryScope, tenant_id: TenantId | None) -> None:
-        if isinstance(scope, WorkspaceScope):
-            if tenant_id != scope.id:
-                raise ValueError("Organization write scope does not match IM Integration owner")
-            return
-        if isinstance(scope, DeploymentScope):
-            if tenant_id is not None:
-                raise ValueError("Organization write scope does not match IM Integration owner")
-            return
-        raise TypeError("unsupported Organization write scope")
-
-    def compare_and_swap_configuration(
-        self,
-        transition: ConfigurationTransition,
-        *,
-        organization_scope: DirectoryScope,
-    ) -> IMIntegration | StaleRevision:
-        """Route configuration CAS through the explicit Organization guard."""
-
-        self._ensure_scope_matches_owner(organization_scope, transition.integration.tenant_id)
-        try:
-            with self._write_unit_of_work_factory(organization_scope) as protected_repository:
-                return protected_repository.compare_and_swap_configuration(
-                    transition,
-                    organization_scope=organization_scope,
-                )
-        except SQLAlchemyError as error:
-            raise IMControlPlanePersistenceError("failed to persist IM Integration configuration") from error
-
-    def compare_and_swap_delete(
-        self,
-        deletion: IntegrationDeletion,
-        *,
-        organization_scope: DirectoryScope,
-    ) -> None | StaleRevision:
-        """Route configuration deletion through the explicit Organization guard."""
-
-        try:
-            with self._write_unit_of_work_factory(organization_scope) as protected_repository:
-                return protected_repository.compare_and_swap_delete(
-                    deletion,
-                    organization_scope=organization_scope,
-                )
-        except SQLAlchemyError as error:
-            raise IMControlPlanePersistenceError("failed to delete IM Integration") from error
 
     def create_or_get_active_run(
         self,
@@ -221,32 +99,6 @@ class SQLAlchemyIMControlPlaneRepository:
                 sync_run_id=sync_run_id,
                 started_by_account_id=started_by_account_id,
                 now=now,
-            )
-
-    def load_integration_state(self, integration_id: IntegrationId) -> IMIntegrationState:
-        """Eagerly load and map an Integration with all modeled child relationships."""
-
-        with self._session_maker() as session, session.begin():
-            record = session.scalar(
-                select(HumanInputIMIntegration)
-                .where(HumanInputIMIntegration.id == str(integration_id))
-                .options(
-                    selectinload(HumanInputIMIntegration.identities).selectinload(HumanInputIMIdentity.bindings),
-                    selectinload(HumanInputIMIntegration.sync_runs).selectinload(HumanInputIMSyncRun.results),
-                )
-            )
-            if record is None:
-                raise ValueError("integration not found")
-            identity_records = tuple(record.identities)
-            run_records = tuple(record.sync_runs)
-            return IMIntegrationState(
-                integration=integration_from_record(record),
-                identities=tuple(identity_from_record(item) for item in identity_records),
-                bindings=tuple(
-                    binding_from_record(binding) for identity in identity_records for binding in identity.bindings
-                ),
-                sync_runs=tuple(sync_run_from_record(item) for item in run_records),
-                sync_results=tuple(sync_result_from_record(result) for run in run_records for result in run.results),
             )
 
     def load_sync_run(self, sync_run_id: IMSyncRunId) -> IMSyncRun | None:

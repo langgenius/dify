@@ -24,8 +24,6 @@ from core.human_input_v2.im_integration import (
     ActiveRunDecisionKind,
     ApplyReconciliationResult,
     ApplyReconciliationStatus,
-    ConfigurationTransition,
-    ConfigurationTransitionKind,
     ContactEmailMatchState,
     ContactIMBindingView,
     CreateIMBinding,
@@ -40,13 +38,10 @@ from core.human_input_v2.im_integration import (
     IMIdentityChangeSnapshot,
     IMIdentityUpsert,
     IMIdentityUpsertKind,
-    IMIntegration,
-    IMIntegrationAlreadyExistsError,
     IMReconciliationChange,
     IMReconciliationOperation,
     IMReconciliationSubjectKind,
     IMSyncRun,
-    IntegrationDeletion,
     IntegrationRevisionToken,
     NewIMIdentityRef,
     ReconciliationInput,
@@ -54,7 +49,6 @@ from core.human_input_v2.im_integration import (
     ReconciliationRunRef,
     ReplaceIMBinding,
     ResolvedReconciliationWarning,
-    StaleRevision,
     SyncContactSnapshot,
     SyncIdentitySnapshot,
     SyncResultFact,
@@ -98,8 +92,6 @@ from repositories.human_input_v2.sqlalchemy_contact_repository import (
 from .mappers import (
     binding_from_record,
     binding_to_record,
-    integration_from_record,
-    integration_to_record,
     reconciliation_change_to_record,
     sync_result_to_record,
     sync_run_from_record,
@@ -180,104 +172,6 @@ class SQLAlchemySessionBoundIMRepository:
         self._contact_repository = SQLAlchemyContactRepository(session)
         self._contact_im_binding_repository = SQLAlchemyContactIMBindingRepository(session)
 
-    def create_integration(
-        self,
-        integration: IMIntegration,
-        *,
-        organization_scope: DirectoryScope,
-    ) -> IMIntegration:
-        """Create one owner-scoped Integration inside the guarded transaction."""
-
-        self._write_lock.ensure_owned()
-        self._ensure_scope_matches_tenant_id(organization_scope, integration.tenant_id)
-        owner_predicate = (
-            HumanInputIMIntegration.tenant_id.is_(None)
-            if integration.tenant_id is None
-            else HumanInputIMIntegration.tenant_id == str(integration.tenant_id)
-        )
-        existing_id = self._session.scalar(select(HumanInputIMIntegration.id).where(owner_predicate).limit(1))
-        if existing_id is not None:
-            raise IMIntegrationAlreadyExistsError
-        record = integration_to_record(integration)
-        self._session.add(record)
-        self._session.flush()
-        return integration_from_record(record)
-
-    def compare_and_swap_configuration(
-        self,
-        transition: ConfigurationTransition,
-        *,
-        organization_scope: DirectoryScope,
-    ) -> IMIntegration | StaleRevision:
-        """Persist one aggregate-decided configuration transition under the Organization guard."""
-
-        self._write_lock.ensure_owned()
-        self._ensure_scope_matches_tenant_id(organization_scope, transition.integration.tenant_id)
-        current_record = self._session.scalar(
-            select(HumanInputIMIntegration).where(
-                HumanInputIMIntegration.id == str(transition.expected_revision.integration_id),
-                HumanInputIMIntegration.config_version == transition.expected_revision.config_version,
-            )
-        )
-        if current_record is None:
-            return StaleRevision(
-                transition.expected_revision,
-                self._current_revision(transition.expected_revision.integration_id),
-            )
-        self._ensure_scope_owns_record(organization_scope, current_record)
-        if transition.kind is ConfigurationTransitionKind.CREDENTIAL_ROTATION:
-            self._copy_integration_values(current_record, transition.integration)
-            self._session.flush()
-            return integration_from_record(current_record)
-
-        integration_id = str(transition.expected_revision.integration_id)
-        self._session.execute(
-            sa.delete(HumanInputIMBinding).where(HumanInputIMBinding.integration_id == integration_id)
-        )
-        self._session.execute(
-            sa.delete(HumanInputIMIdentity).where(HumanInputIMIdentity.integration_id == integration_id)
-        )
-        self._session.delete(current_record)
-        self._session.flush()
-        replacement_record = integration_to_record(transition.integration)
-        self._session.add(replacement_record)
-        self._session.flush()
-        return integration_from_record(replacement_record)
-
-    def compare_and_swap_delete(
-        self,
-        deletion: IntegrationDeletion,
-        *,
-        organization_scope: DirectoryScope,
-    ) -> None | StaleRevision:
-        """Delete current configuration and children under the guarded exact-revision CAS."""
-
-        self._write_lock.ensure_owned()
-        current_record = self._session.scalar(
-            select(HumanInputIMIntegration).where(
-                HumanInputIMIntegration.id == str(deletion.expected_revision.integration_id),
-                HumanInputIMIntegration.config_version == deletion.expected_revision.config_version,
-            )
-        )
-        if current_record is None:
-            return StaleRevision(
-                deletion.expected_revision,
-                self._current_revision(deletion.expected_revision.integration_id),
-            )
-        self._ensure_scope_owns_record(organization_scope, current_record)
-        integration_id = str(deletion.expected_revision.integration_id)
-        if deletion.invalidation.invalidate_bindings:
-            self._session.execute(
-                sa.delete(HumanInputIMBinding).where(HumanInputIMBinding.integration_id == integration_id)
-            )
-        if deletion.invalidation.invalidate_identities:
-            self._session.execute(
-                sa.delete(HumanInputIMIdentity).where(HumanInputIMIdentity.integration_id == integration_id)
-            )
-        self._session.delete(current_record)
-        self._session.flush()
-        return None
-
     def create_or_get_active_run(
         self,
         integration_revision: IntegrationRevisionToken,
@@ -338,12 +232,6 @@ class SQLAlchemySessionBoundIMRepository:
         self._session.flush()
         return ActiveRunDecision(ActiveRunDecisionKind.CREATED, sync_run_from_record(run_record))
 
-    def _current_revision(self, integration_id: IntegrationId) -> IntegrationRevisionToken | None:
-        record = self._session.get(HumanInputIMIntegration, str(integration_id))
-        if record is None:
-            return None
-        return IntegrationRevisionToken(IntegrationId(record.id), record.config_version)
-
     @staticmethod
     def _ensure_scope_matches_tenant_id(
         organization_scope: DirectoryScope,
@@ -371,22 +259,6 @@ class SQLAlchemySessionBoundIMRepository:
             organization_scope,
             persisted_tenant_id,
         )
-
-    @staticmethod
-    def _copy_integration_values(record: HumanInputIMIntegration, integration: IMIntegration) -> None:
-        mapped = integration_to_record(integration)
-        record.provider = mapped.provider
-        record.encrypted_credentials = mapped.encrypted_credentials
-        record.tenant_id = mapped.tenant_id
-        record.provider_tenant_id = mapped.provider_tenant_id
-        record.app_identifier = mapped.app_identifier
-        record.status = mapped.status
-        record.config_version = mapped.config_version
-        record.configured_by_account_id = mapped.configured_by_account_id
-        record.callback_url = mapped.callback_url
-        record.safe_status_reason = mapped.safe_status_reason
-        record.last_checked_at = mapped.last_checked_at
-        record.updated_at = mapped.updated_at
 
     def create_organization_binding(
         self,
@@ -561,27 +433,6 @@ class SQLAlchemySessionBoundIMRepository:
             return
         self._session.delete(record)
         self._session.flush()
-
-    def require_current_integration(self, organization_scope: DirectoryScope) -> IMIntegration:
-        """Load the current owner-scoped Integration inside the guarded transaction."""
-
-        self._write_lock.ensure_owned()
-        if isinstance(organization_scope, WorkspaceScope):
-            owner_predicate = HumanInputIMIntegration.tenant_id == str(organization_scope.id)
-        elif isinstance(organization_scope, DeploymentScope):
-            owner_predicate = HumanInputIMIntegration.tenant_id.is_(None)
-        else:
-            raise IMBindingCommandError(
-                IMBindingCommandErrorCode.INVALID_SCOPE,
-                "Unsupported Organization scope",
-            )
-        record = self._session.scalar(select(HumanInputIMIntegration).where(owner_predicate).limit(1))
-        if record is None:
-            raise IMBindingCommandError(
-                IMBindingCommandErrorCode.INTEGRATION_NOT_CONFIGURED,
-                "Organization has no IM Integration",
-            )
-        return integration_from_record(record)
 
     def load_contact_im_binding_view(
         self,

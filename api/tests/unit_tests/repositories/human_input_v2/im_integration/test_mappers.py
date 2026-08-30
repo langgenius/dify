@@ -11,19 +11,16 @@ from core.human_input_v2.entities import (
     IMSyncResultType,
 )
 from core.human_input_v2.im_integration import (
-    EncryptedCredentials,
     IMBinding,
     IMBindingChangeSnapshot,
     IMIdentity,
     IMIdentityChangeSnapshot,
-    IMIntegration,
     IMReconciliationChange,
     IMReconciliationOperation,
     IMReconciliationSubjectKind,
     IMSyncRun,
     IntegrationRevisionToken,
     OpaqueProviderPayload,
-    ProviderTenantIdentity,
     SyncContactSnapshot,
     SyncIdentitySnapshot,
     SyncResultFact,
@@ -38,16 +35,12 @@ from core.human_input_v2.shared import (
     IMSyncRunId,
     IntegrationId,
     NormalizedEmail,
-    TenantId,
 )
-from models.human_input_v2 import IMEncryptedCredentials
 from repositories.human_input_v2.im_integration.mappers import (
     binding_from_record,
     binding_to_record,
     identity_from_record,
     identity_to_record,
-    integration_from_record,
-    integration_to_record,
     reconciliation_change_from_record,
     reconciliation_change_to_record,
     sync_result_from_record,
@@ -58,19 +51,6 @@ from repositories.human_input_v2.im_integration.mappers import (
 
 _NOW = datetime(2026, 7, 25, 8)
 _INTEGRATION_ID = IntegrationId("integration-1")
-
-
-def _integration() -> IMIntegration:
-    return IMIntegration.create(
-        integration_id=_INTEGRATION_ID,
-        tenant_id=TenantId("workspace-1"),
-        provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
-        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-ciphertext"),
-        app_identifier="app-1",
-        configured_by_account_id=AccountId("account-1"),
-        callback_url="https://example.com/callback",
-        now=_NOW,
-    )
 
 
 def _identity() -> IMIdentity:
@@ -147,51 +127,6 @@ def _result() -> SyncResultFact:
         created_at=_NOW,
         updated_at=_NOW,
     )
-
-
-def test_integration_mapping_round_trips_without_leaking_orm_identity() -> None:
-    integration = _integration()
-
-    record = integration_to_record(integration)
-
-    assert record.encrypted_credentials == IMEncryptedCredentials(
-        version=1,
-        ciphertext="opaque-ciphertext",
-    )
-    assert record.app_identifier == "app-1"
-    assert integration_from_record(record) == integration
-
-
-def test_dify_owner_provider_namespace_and_native_tenant_id_remain_independent() -> None:
-    integration = IMIntegration.create(
-        integration_id=_INTEGRATION_ID,
-        tenant_id=TenantId("dify-tenant-1"),
-        provider_tenant=ProviderTenantIdentity(IMProvider.MS_TEAMS, "provider-tenant-1"),
-        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-teams-ciphertext"),
-        app_identifier="22222222-2222-2222-2222-222222222222",
-        configured_by_account_id=AccountId("account-1"),
-        callback_url="https://example.com/callback",
-        now=_NOW,
-    )
-
-    record = integration_to_record(integration)
-
-    assert record.tenant_id == "dify-tenant-1"
-    assert record.provider_tenant_id == "provider-tenant-1"
-    assert record.app_identifier == "22222222-2222-2222-2222-222222222222"
-    assert record.encrypted_credentials == IMEncryptedCredentials(
-        version=1,
-        ciphertext="opaque-teams-ciphertext",
-    )
-    assert integration_from_record(record) == integration
-
-
-def test_integration_mapping_rejects_missing_provider_tenant_identity() -> None:
-    record = integration_to_record(_integration())
-    record.provider_tenant_id = None
-
-    with pytest.raises(ValueError, match="provider_tenant_id"):
-        integration_from_record(record)
 
 
 def test_identity_mapping_round_trips_structured_raw_payload() -> None:

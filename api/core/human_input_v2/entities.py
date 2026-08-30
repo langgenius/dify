@@ -100,17 +100,6 @@ class IMBindingScope(StrEnum):
     ORGANIZATION = "organization"
 
 
-class IMIntegrationStatus(StrEnum):
-    """Connectivity state of an organization-level IM integration."""
-
-    NOT_CONFIGURED = "not_configured"
-    CONFIGURED = "configured"
-    CONNECTED = "connected"
-    PERMISSION_ISSUE = "permission_issue"
-    CALLBACK_ERROR = "callback_error"
-    CONNECTION_ERROR = "connection_error"
-
-
 class IMIdentityBindingStatus(StrEnum):
     """Whether a synchronized IM identity is currently bound."""
 
@@ -182,7 +171,6 @@ __all__ = [
     "IMBindingScope",
     "IMIdentityBindingStatus",
     "IMIdentityId",
-    "IMIntegrationStatus",
     "IMProvider",
     "IMSyncRemovalReason",
     "IMSyncResultType",

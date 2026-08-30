@@ -19,22 +19,14 @@ from core.human_input_v2.shared import (
     IMIdentityId,
     IMSyncRunId,
     IntegrationId,
-    TenantId,
 )
 
 from .integration import (
-    ConfigurationTransition,
-    IMIntegration,
-    IntegrationDeletion,
     IntegrationRevisionToken,
     StaleRevision,
 )
 from .sync_reconciliation import ReconciliationReasonCode
 from .sync_records import IMSyncRun, SynchronizedIMIdentityPage, SyncResultFact, SyncResultPage
-
-
-class IMControlPlanePersistenceError(RuntimeError):
-    """Credential-free failure raised by an IM persistence adapter."""
 
 
 class ActiveRunDecisionKind(StrEnum):
@@ -102,10 +94,6 @@ class ApplyReconciliationResult:
 class IMSyncRepository(Protocol):
     """Transport-neutral command and query persistence required by IM sync."""
 
-    def load_current_integration(self, tenant_id: TenantId | None) -> IMIntegration | None:
-        """Load the exact tenant or deployment-owned current configuration."""
-        ...
-
     def create_or_get_active_run(
         self,
         integration_revision: IntegrationRevisionToken,
@@ -149,37 +137,6 @@ class IMSyncRepository(Protocol):
         """Search current identities without exposing raw payload or ORM state."""
         ...
 
-
-class IMControlPlaneRepository(IMSyncRepository, Protocol):
-    """Atomic persistence capabilities required by the complete IM domain."""
-
-    def create_integration(
-        self,
-        integration: IMIntegration,
-        *,
-        organization_scope: DirectoryScope,
-    ) -> IMIntegration:
-        """Create the first integration configuration for its owner scope."""
-        ...
-
-    def compare_and_swap_configuration(
-        self,
-        transition: ConfigurationTransition,
-        *,
-        organization_scope: DirectoryScope,
-    ) -> IMIntegration | StaleRevision:
-        """Atomically apply rotation or replacement and its invalidation plan."""
-        ...
-
-    def compare_and_swap_delete(
-        self,
-        deletion: IntegrationDeletion,
-        *,
-        organization_scope: DirectoryScope,
-    ) -> None | StaleRevision:
-        """Delete current configuration and current children under complete CAS."""
-        ...
-
     def append_sync_results(self, results: tuple[SyncResultFact, ...]) -> None:
         """Append diagnostic result facts without changing current state."""
         ...
@@ -190,8 +147,6 @@ __all__ = [
     "ActiveRunDecisionKind",
     "ApplyReconciliationResult",
     "ApplyReconciliationStatus",
-    "IMControlPlanePersistenceError",
-    "IMControlPlaneRepository",
     "IMSyncRepository",
     "ResolvedReconciliationWarning",
 ]

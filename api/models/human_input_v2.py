@@ -790,14 +790,6 @@ class HumanInputIMIdentity(DefaultFieldsDCMixin, TypeBase):
         sa.DateTime, nullable=True, default=None, comment="Timestamp when the identity was last observed."
     )
 
-    integration: Mapped[HumanInputIMIntegration] = relationship(
-        lambda: HumanInputIMIntegration,
-        primaryjoin=lambda: orm.foreign(HumanInputIMIdentity.integration_id) == HumanInputIMIntegration.id,
-        back_populates="identities",
-        viewonly=True,
-        lazy="raise",
-        init=False,
-    )
     bindings: Mapped[list[HumanInputIMBinding]] = relationship(
         lambda: HumanInputIMBinding,
         primaryjoin=lambda: HumanInputIMIdentity.id == orm.foreign(HumanInputIMBinding.im_identity_id),
@@ -885,15 +877,6 @@ class HumanInputIMBinding(DefaultFieldsDCMixin, TypeBase):
         lazy="raise",
         init=False,
     )
-    integration: Mapped[HumanInputIMIntegration] = relationship(
-        lambda: HumanInputIMIntegration,
-        primaryjoin=lambda: orm.foreign(HumanInputIMBinding.integration_id) == HumanInputIMIntegration.id,
-        viewonly=True,
-        lazy="raise",
-        init=False,
-    )
-
-
 class HumanInputIMSyncRun(DefaultFieldsDCMixin, TypeBase):
     """One manually triggered organization IM directory synchronization.
 
@@ -968,14 +951,6 @@ class HumanInputIMSyncRun(DefaultFieldsDCMixin, TypeBase):
         LongText, nullable=True, default=None, comment="Operator-safe terminal failure summary."
     )
 
-    integration: Mapped[HumanInputIMIntegration] = relationship(
-        lambda: HumanInputIMIntegration,
-        primaryjoin=lambda: orm.foreign(HumanInputIMSyncRun.integration_id) == HumanInputIMIntegration.id,
-        back_populates="sync_runs",
-        viewonly=True,
-        lazy="raise",
-        init=False,
-    )
     results: Mapped[list[HumanInputIMSyncResult]] = relationship(
         lambda: HumanInputIMSyncResult,
         primaryjoin=lambda: HumanInputIMSyncRun.id == orm.foreign(HumanInputIMSyncResult.sync_run_id),
@@ -2028,7 +2003,6 @@ __all__ = [
     "HumanInputExternalContactProfile",
     "HumanInputIMBinding",
     "HumanInputIMIdentity",
-    "HumanInputIMIntegration",
     "HumanInputIMSyncResult",
     "HumanInputIMSyncRun",
     "HumanInputPlatformContactWorkspaceEntry",

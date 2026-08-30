@@ -13,10 +13,6 @@ from .adapters import credentials as adapter_credentials
 from .integration import EncryptedCredentials
 
 
-class IMIntegrationAlreadyExistsError(RuntimeError):
-    """The effective Directory scope already owns its singleton Integration."""
-
-
 class IMProviderConfigurationFailureKind(StrEnum):
     INVALID_CREDENTIALS = "invalid_credentials"
     CONNECTION_FAILURE = "connection_failure"
@@ -71,7 +67,6 @@ class IMProviderConfigurationPort(Protocol):
 
 __all__ = [
     "ConfirmedIMConfiguration",
-    "IMIntegrationAlreadyExistsError",
     "IMProviderConfigurationFailureKind",
     "IMProviderConfigurationPort",
     "IMProviderTestResult",

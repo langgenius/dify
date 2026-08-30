@@ -6,18 +6,15 @@ from pydantic import NaiveDatetime
 
 from core.human_input_v2.entities import IMBindingScope, IMSyncRemovalReason
 from core.human_input_v2.im_integration import (
-    EncryptedCredentials,
     IMBinding,
     IMBindingChangeSnapshot,
     IMIdentity,
     IMIdentityChangeSnapshot,
-    IMIntegration,
     IMReconciliationChange,
     IMReconciliationSubjectKind,
     IMSyncRun,
     IntegrationRevisionToken,
     OpaqueProviderPayload,
-    ProviderTenantIdentity,
     SyncContactSnapshot,
     SyncIdentitySnapshot,
     SyncResultFact,
@@ -33,18 +30,15 @@ from core.human_input_v2.shared import (
     IMSyncRunId,
     IntegrationId,
     NormalizedEmail,
-    TenantId,
 )
 from libs.datetime_utils import ensure_naive_utc
 from models.human_input_v2 import (
     HumanInputIMBinding,
     HumanInputIMIdentity,
-    HumanInputIMIntegration,
     HumanInputIMReconciliationChange,
     HumanInputIMSyncResult,
     HumanInputIMSyncRun,
     IMBindingReconciliationSnapshot,
-    IMEncryptedCredentials,
     IMIdentityRawPayload,
     IMIdentityReconciliationSnapshot,
     IMSyncContactSnapshot,
@@ -57,60 +51,6 @@ def _timestamp(value: datetime) -> NaiveDatetime:
     """Interpret database-naive timestamps as UTC, matching Dify persistence."""
 
     return ensure_naive_utc(value)
-
-
-def integration_from_record(record: HumanInputIMIntegration) -> IMIntegration:
-    """Map one Integration record into its CAS aggregate."""
-
-    if record.provider_tenant_id is None:
-        raise ValueError("integration record is missing provider_tenant_id")
-    return IMIntegration(
-        id=IntegrationId(record.id),
-        tenant_id=TenantId(record.tenant_id) if record.tenant_id is not None else None,
-        provider_tenant=ProviderTenantIdentity(record.provider, record.provider_tenant_id),
-        encrypted_credentials=EncryptedCredentials(
-            version=record.encrypted_credentials.version,
-            ciphertext=record.encrypted_credentials.ciphertext,
-        ),
-        app_identifier=record.app_identifier,
-        configured_by_account_id=(
-            AccountId(record.configured_by_account_id) if record.configured_by_account_id is not None else None
-        ),
-        callback_url=record.callback_url,
-        config_version=record.config_version,
-        status=record.status,
-        safe_status_reason=record.safe_status_reason,
-        last_checked_at=_timestamp(record.last_checked_at) if record.last_checked_at is not None else None,
-        created_at=_timestamp(record.created_at),
-        updated_at=_timestamp(record.updated_at),
-    )
-
-
-def integration_to_record(integration: IMIntegration) -> HumanInputIMIntegration:
-    """Map one Integration aggregate into a detached persistence record."""
-
-    record = HumanInputIMIntegration(
-        provider=integration.provider_tenant.provider,
-        encrypted_credentials=IMEncryptedCredentials(
-            version=integration.encrypted_credentials.version,
-            ciphertext=integration.encrypted_credentials.ciphertext,
-        ),
-        tenant_id=str(integration.tenant_id) if integration.tenant_id is not None else None,
-        provider_tenant_id=integration.provider_tenant.provider_tenant_id,
-        app_identifier=integration.app_identifier,
-        status=integration.status,
-        config_version=integration.config_version,
-        configured_by_account_id=(
-            str(integration.configured_by_account_id) if integration.configured_by_account_id is not None else None
-        ),
-        callback_url=integration.callback_url,
-        safe_status_reason=integration.safe_status_reason,
-        last_checked_at=integration.last_checked_at if integration.last_checked_at is not None else None,
-    )
-    record.id = str(integration.id)
-    record.created_at = integration.created_at
-    record.updated_at = integration.updated_at
-    return record
 
 
 def identity_from_record(record: HumanInputIMIdentity) -> IMIdentity:

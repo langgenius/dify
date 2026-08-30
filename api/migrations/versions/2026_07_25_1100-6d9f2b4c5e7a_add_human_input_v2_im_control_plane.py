@@ -29,60 +29,6 @@ def _default_fields(table_name: str) -> tuple[sa.Column, sa.Column, sa.Column, s
 
 def upgrade() -> None:
     op.create_table(
-        "human_input_im_integrations",
-        sa.Column("provider", sa.String(length=20), nullable=False, comment="Configured IM provider discriminator."),
-        sa.Column(
-            "encrypted_credentials",
-            models.types.LongText(),
-            nullable=False,
-            comment="Versioned opaque encrypted IM credential envelope serialized as JSON text.",
-        ),
-        sa.Column(
-            "tenant_id",
-            models.types.StringUUID(),
-            nullable=True,
-            comment="Logical tenants.id owner in CE/SaaS; null for an EE deployment-wide integration.",
-        ),
-        sa.Column(
-            "provider_tenant_id",
-            sa.String(length=255),
-            nullable=False,
-            comment="Confirmed provider-side organization or workspace identity.",
-        ),
-        sa.Column(
-            "app_identifier",
-            sa.String(length=255),
-            nullable=False,
-            comment="Safe provider application identifier used by credential-free channel projections.",
-        ),
-        sa.Column("status", sa.String(length=20), nullable=False, comment="Last connectivity diagnostic status."),
-        sa.Column(
-            "config_version",
-            sa.Integer(),
-            nullable=False,
-            comment="Monotonic configuration revision used with the integration ID for CAS.",
-        ),
-        sa.Column(
-            "configured_by_account_id",
-            models.types.StringUUID(),
-            nullable=True,
-            comment="Logical accounts.id for the latest configuration writer.",
-        ),
-        sa.Column("callback_url", sa.String(length=1024), nullable=True, comment="Configured callback URL."),
-        sa.Column(
-            "safe_status_reason",
-            models.types.LongText(),
-            nullable=True,
-            comment="Operator-safe connection diagnostic.",
-        ),
-        sa.Column("last_checked_at", sa.DateTime(), nullable=True, comment="Latest connectivity check timestamp."),
-        *_default_fields("human_input_im_integrations"),
-        sa.UniqueConstraint("tenant_id", name="human_input_im_integrations_tenant_uq"),
-        sa.CheckConstraint("config_version > 0", name="config_version_positive"),
-        comment="Organization-level Human Input IM integration configuration.",
-    )
-
-    op.create_table(
         "human_input_im_identities",
         sa.Column(
             "integration_id",
@@ -328,4 +274,3 @@ def downgrade() -> None:
     op.drop_table("human_input_im_sync_runs")
     op.drop_table("human_input_im_bindings")
     op.drop_table("human_input_im_identities")
-    op.drop_table("human_input_im_integrations")
