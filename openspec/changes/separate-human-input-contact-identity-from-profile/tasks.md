@@ -2,7 +2,7 @@
 
 - [x] 1.1 Inventory every production import of the old Contact packages and every direct `HumanInputContact` read/write; classify each path as current Contact query、Contact lifecycle write、IM binding query、current authorization or historical snapshot read.
 - [ ] 1.2 Add failing architecture tests that require tenant-scoped consumers to depend on `ContactRepository`、EE candidate/Platform consumers to depend on `EnterpriseContactRepository` and binding readers to depend on `ContactIMBindingRepository`; forbid direct source-table composition outside the unified SQLAlchemy Contact implementation.
-- [ ] 1.3 Add failing contract tests for `ContactQuery`、`Contact`、`ExternalContact`、the `CandidateId = ContactId` round-trip、`OrganizationCandidate`、batch omission/deduplication、availability mapping、Email multi-match、candidate pagination and membership-over-Platform precedence.
+- [x] 1.3 Add failing contract tests for `ContactQuery`、`Contact`、`ExternalContact`、the `CandidateId = ContactId` round-trip、`OrganizationCandidate`、batch omission/deduplication、availability mapping、Email multi-match、candidate pagination and membership-over-Platform precedence.
 - [x] 1.4 Remove the legacy `contact-directory-governance` requirements, migrate current Contact behavior to the Contact Repository capability, and retain cross-tenant Platform candidate search in EE capabilities.
 
 ## 2. Define The Final Unreleased Schema
@@ -23,8 +23,8 @@
 ## 4. Implement Current Contact Queries And Lifecycle Writes
 
 - [x] 4.1 Implement one reusable query builder that joins Contact identity to current Account or External profile facts and applies Account active status、tenant ownership、membership and Platform entry predicates.
-- [ ] 4.2 Implement `count_contact` and `list_contact` with identical `ContactQuery` filtering before count/pagination and add keyword、type、page-boundary and query-plan tests.
-- [ ] 4.3 Implement detail、batch and availability queries with tenant isolation、missing/unavailable omission、duplicate-ID deduplication and unspecified-order contract tests.
+- [x] 4.2 Implement `count_contact` and `list_contact` with identical `ContactQuery` filtering before count/pagination and add keyword、type、page-boundary and query-plan tests.
+- [x] 4.3 Implement detail、batch and availability queries with tenant isolation、missing/unavailable omission、duplicate-ID deduplication and unspecified-order contract tests.
 - [x] 4.4 Implement Email batch matching that reads Account Email and External normalized Email from their owners and returns both Contacts when one Email matches both identities.
 - [x] 4.5 Implement idempotent Account-backed Contact provisioning with global uniqueness、concurrent conflict translation and same-ID retry coverage.
 - [x] 4.6 Implement External save as atomic identity/profile create or profile-only update, preserving workspace-local External uniqueness and Account/External same-email coexistence.
