@@ -431,6 +431,7 @@ class FakeBuildDifyPort:
         self.published: bool = False
         self.verify_pass: bool = True
         self.run_draft_inputs: Inputs = {}
+        self.fail_error: str = "boom"
 
     def read_graph(self, _app_id: str, _actor: Actor) -> tuple[Graph, str]:
         return copy.deepcopy(self.graph), self.hash
@@ -478,9 +479,9 @@ class FakeBuildDifyPort:
             on_event(NodeEvent(node_id="llm", status="success"))
             return Run(dify_run_id="build-run-1", status="succeeded",
                        per_node=[NodeOutput(node_id="llm", status="success")])
-        on_event(NodeEvent(node_id="llm", status="failed", error="boom"))
+        on_event(NodeEvent(node_id="llm", status="failed", error=self.fail_error))
         return Run(dify_run_id="build-run-1", status="failed",
-                   per_node=[NodeOutput(node_id="llm", status="failed", error="boom")])
+                   per_node=[NodeOutput(node_id="llm", status="failed", error=self.fail_error)])
 
     def publish(self, _app_id: str, _actor: Actor) -> None:
         self.published = True
