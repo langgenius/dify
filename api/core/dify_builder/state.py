@@ -54,6 +54,7 @@ class PcState(StrEnum):
     EDIT_IMPACT_ANALYSIS = "edit.impact_analysis"
     EDIT_PLAN_APPROVAL = "edit.plan_approval"
     EDIT_APPLY_CHANGES = "edit.apply_changes"
+    EDIT_AWAIT_TESTDATA = "edit.await_testdata"
     EDIT_TEST_AFFECTED_PATHS = "edit.test_affected_paths"
     EDIT_AWAIT_REPAIR = "edit.await_repair"
     EDIT_REVIEW = "edit.review"
@@ -102,6 +103,7 @@ _WAITING = frozenset(
         PcState.EDIT_IMPACT_ANALYSIS,
         PcState.EDIT_PLAN_APPROVAL,
         PcState.EDIT_APPLY_CHANGES,
+        PcState.EDIT_AWAIT_TESTDATA,
         PcState.EDIT_AWAIT_REPAIR,
         PcState.EDIT_REVIEW,
         PcState.EDIT_REVERTED,
