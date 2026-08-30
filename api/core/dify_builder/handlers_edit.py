@@ -28,6 +28,7 @@ from core.dify_builder.contract import (
     TestStat,
     Trace,
     TraceStep,
+    UserItem,
 )
 from core.dify_builder.handlers_fix import (
     action_kind,
@@ -85,6 +86,7 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     for node_id in fc.edit_target_node_ids:
         emit_canvas(env, "highlight_edit_target", node_id=node_id)
 
+    user_items = append_card(fc, UserItem(text=fc.goal_text))
     summary_items = append_card(
         fc,
         SummaryCard(
@@ -129,7 +131,7 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     return StepResult(
         next=PcState.EDIT_IMPACT_ANALYSIS,
         context=fc,
-        items=[*summary_items, *form_items, *challenge_items, *change_set_items, *turn_items],
+        items=[*user_items, *summary_items, *form_items, *challenge_items, *change_set_items, *turn_items],
     )
 
 
@@ -413,9 +415,7 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
         fc.last_snapshot_hash = result.new_hash
         fc.last_structure_fingerprint = result.structure_fingerprint
         fc.staged_repair = []
-        changes, scope, fc.change_set = build_change_set(
-            result, default_scope="configuration", fallback_diff="repair"
-        )
+        changes, scope, fc.change_set = build_change_set(result, default_scope="configuration", fallback_diff="repair")
         cs_items = append_card(
             fc, ChangeSetCard(count=len(changes), changes=changes, scope=scope, full_diff_open=False)
         )
@@ -545,9 +545,7 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
             cards=["plan", "checkpoint"],
         ),
     )
-    return StepResult(
-        next=PcState.EDIT_PLAN_APPROVAL, context=fc, items=[*plan_items, *checkpoint_items, *turn_items]
-    )
+    return StepResult(next=PcState.EDIT_PLAN_APPROVAL, context=fc, items=[*plan_items, *checkpoint_items, *turn_items])
 
 
 def edit_registry() -> dict[PcState, Handler]:

@@ -62,6 +62,24 @@ def test_create_returns_201_and_view(monkeypatch):
     assert called.kwargs["actor"] == actor
 
 
+def test_create_fix_passes_conversational_goal(monkeypatch):
+    svc = MagicMock()
+    svc.create_fix_session.return_value = _session_view()
+    monkeypatch.setattr(mod, "build_service", lambda: svc)
+
+    mod._create(
+        {
+            "scenario": "fix",
+            "app_id": "a1",
+            "failed_run_id": "TR-1",
+            "goal_text": "Fix the latest failed run",
+        },
+        _actor(),
+    )
+
+    assert svc.create_fix_session.call_args.kwargs["goal_text"] == "Fix the latest failed run"
+
+
 def test_create_build_scenario_calls_create_build_session(monkeypatch):
     svc = MagicMock()
     svc.create_build_session.return_value = _session_view()
@@ -216,6 +234,42 @@ def test_message_rejects_non_dict_body(monkeypatch):
     svc.submit_message.assert_not_called()
 
 
+def test_stream_subscribes_before_reading_snapshot(monkeypatch):
+    order = []
+    subscription = MagicMock()
+    svc = MagicMock()
+
+    def subscribe(session_id):
+        order.append(("subscribe", session_id))
+        return subscription
+
+    def get_session_view(session_id, actor):  # noqa: ARG001
+        order.append(("view", session_id))
+        return _session_view(session_id)
+
+    svc.get_session_view.side_effect = get_session_view
+    monkeypatch.setattr(mod.progress_bus, "subscribe", subscribe)
+    monkeypatch.setattr(mod, "build_service", lambda: svc)
+
+    response = mod._stream("s1", _actor())
+
+    assert order == [("subscribe", "s1"), ("view", "s1")]
+    assert response.mimetype == "text/event-stream"
+
+
+def test_stream_closes_subscription_when_snapshot_fails(monkeypatch):
+    subscription = MagicMock()
+    svc = MagicMock()
+    svc.get_session_view.side_effect = NotFoundError("hidden")
+    monkeypatch.setattr(mod.progress_bus, "subscribe", lambda _session_id: subscription)
+    monkeypatch.setattr(mod, "build_service", lambda: svc)
+
+    result = mod._stream("missing", _actor())
+
+    assert result == ({"code": "not_found"}, 404)
+    subscription.close.assert_called_once_with()
+
+
 # --- dify_builder_required gate -----------------------------------------
 #
 # NOTE: the brief/dispatch assumed `@with_current_user`/`@with_current_tenant_id`
@@ -285,15 +339,11 @@ def test_decorator_stack_injects_positionally_in_method_order(monkeypatch):
     captured = {}
 
     def fake_view(self, current_tenant_id, current_user, **kwargs):
-        captured.update(
-            self=self, current_tenant_id=current_tenant_id, current_user=current_user, kwargs=kwargs
-        )
+        captured.update(self=self, current_tenant_id=current_tenant_id, current_user=current_user, kwargs=kwargs)
         return {"ok": True}, 200
 
     # innermost → outermost, mirroring the real stack order (gate is closest to the method)
-    composed = wraps_mod.with_current_user(
-        wraps_mod.with_current_tenant_id(mod.dify_builder_required(fake_view))
-    )
+    composed = wraps_mod.with_current_user(wraps_mod.with_current_tenant_id(mod.dify_builder_required(fake_view)))
     sentinel_self = object()
     result = composed(sentinel_self, session_id="s1")
 
@@ -315,8 +365,6 @@ def test_decorator_stack_gate_blocks_when_feature_off(monkeypatch):
     def fake_view(_self, _current_tenant_id, _current_user, **_kwargs):
         raise AssertionError("view must not run when the feature is off")
 
-    composed = wraps_mod.with_current_user(
-        wraps_mod.with_current_tenant_id(mod.dify_builder_required(fake_view))
-    )
+    composed = wraps_mod.with_current_user(wraps_mod.with_current_tenant_id(mod.dify_builder_required(fake_view)))
     result = composed(object(), session_id="s1")
     assert result == ({"code": "feature_unavailable"}, 403)

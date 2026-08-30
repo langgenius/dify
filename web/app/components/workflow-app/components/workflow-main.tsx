@@ -12,7 +12,6 @@ import { useReactFlow } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
-import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
@@ -34,6 +33,7 @@ import { useWorkflowRefreshDraft } from '../hooks/use-workflow-refresh-draft'
 import { useWorkflowRunByCanEdit } from '../hooks/use-workflow-run'
 import { useWorkflowStartRunByCanEdit } from '../hooks/use-workflow-start-run'
 import WorkflowChildren from './workflow-children'
+import WorkflowWorkspace from './workflow-workspace'
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 type WorkflowDataUpdatePayload = Pick<
@@ -522,21 +522,19 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   ])
 
   return (
-    <div ref={containerRef} className="relative size-full">
-      <WorkflowWithInnerContext
-        nodes={nodes}
-        edges={edges}
-        viewport={viewport}
-        onWorkflowDataUpdate={handleWorkflowDataUpdate}
-        hooksStore={hooksStore as unknown as Partial<HooksStoreShape>}
-        isCollaborationEnabled={isCollaborationEnabled}
-        cursors={filteredCursors}
-        myUserId={myUserId}
-        onlineUsers={onlineUsers}
-      >
-        <WorkflowChildren />
-      </WorkflowWithInnerContext>
-      {isCollaborationEnabled &&
+    <WorkflowWorkspace
+      nodes={nodes}
+      edges={edges}
+      viewport={viewport}
+      canvasRef={containerRef}
+      onWorkflowDataUpdate={handleWorkflowDataUpdate}
+      hooksStore={hooksStore as unknown as Partial<HooksStoreShape>}
+      isCollaborationEnabled={isCollaborationEnabled}
+      cursors={filteredCursors}
+      myUserId={myUserId}
+      onlineUsers={onlineUsers}
+      canvasOverlay={
+        isCollaborationEnabled &&
         (collaborationGraphState.appId !== appId || !collaborationGraphState.isReady) && (
           <div
             data-testid="collaboration-graph-loading"
@@ -554,8 +552,11 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
               <span>{t(($) => $['common.syncingData'], { ns: 'workflow' })}</span>
             </div>
           </div>
-        )}
-    </div>
+        )
+      }
+    >
+      <WorkflowChildren />
+    </WorkflowWorkspace>
   )
 }
 

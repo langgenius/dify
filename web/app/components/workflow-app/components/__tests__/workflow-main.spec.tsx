@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ReactNode, Ref } from 'react'
 import type { WorkflowProps } from '@/app/components/workflow'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -89,10 +89,12 @@ const collaborationListeners = vi.hoisted(() => ({
 
 let capturedContextProps: Record<string, unknown> | null = null
 
-type MockWorkflowWithInnerContextProps = Pick<
+type MockWorkflowWorkspaceProps = Pick<
   WorkflowProps,
   'nodes' | 'edges' | 'viewport' | 'onWorkflowDataUpdate' | 'cursors' | 'myUserId' | 'onlineUsers'
 > & {
+  canvasOverlay?: ReactNode
+  canvasRef?: Ref<HTMLDivElement>
   hooksStore?: Record<string, unknown>
   children?: ReactNode
 }
@@ -195,18 +197,20 @@ vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
 }))
 
-vi.mock('@/app/components/workflow', () => ({
-  WorkflowWithInnerContext: ({
+vi.mock('../workflow-workspace', () => ({
+  default: ({
     nodes,
     edges,
     viewport,
     onWorkflowDataUpdate,
+    canvasOverlay,
+    canvasRef,
     hooksStore,
     cursors,
     myUserId,
     onlineUsers,
     children,
-  }: MockWorkflowWithInnerContextProps) => {
+  }: MockWorkflowWorkspaceProps) => {
     capturedContextProps = {
       nodes,
       edges,
@@ -217,7 +221,7 @@ vi.mock('@/app/components/workflow', () => ({
       onlineUsers,
     }
     return (
-      <div data-testid="workflow-inner-context">
+      <div ref={canvasRef} data-testid="workflow-inner-context">
         <button
           type="button"
           onClick={() =>
@@ -272,6 +276,7 @@ vi.mock('@/app/components/workflow', () => ({
           update-empty-payload
         </button>
         {children}
+        {canvasOverlay}
       </div>
     )
   },

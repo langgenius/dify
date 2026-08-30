@@ -210,6 +210,7 @@ describe('Header layout components', () => {
             left: <div>left-slot</div>,
             middle: <div>middle-slot</div>,
             chatVariableTrigger: <div>chat-trigger</div>,
+            trailing: <div>trailing-slot</div>,
           }}
         />,
         {
@@ -219,6 +220,7 @@ describe('Header layout components', () => {
             showVariableInspectPanel: true,
             showChatVariablePanel: true,
             showGlobalVariablePanel: true,
+            showDifyBuilderPanel: true,
           },
         },
       )
@@ -228,6 +230,7 @@ describe('Header layout components', () => {
       expect(screen.getByText('left-slot')).toBeInTheDocument()
       expect(screen.getByText('middle-slot')).toBeInTheDocument()
       expect(screen.getByText('chat-trigger')).toBeInTheDocument()
+      expect(screen.getByText('trailing-slot')).toBeInTheDocument()
       expect(screen.getByTestId('env-button')).toHaveTextContent('true')
       expect(screen.getByTestId('global-variable-button')).toHaveTextContent('true')
       expect(mockRunAndHistory).toHaveBeenCalledTimes(1)
@@ -244,6 +247,7 @@ describe('Header layout components', () => {
       expect(store.getState().showVariableInspectPanel).toBe(false)
       expect(store.getState().showChatVariablePanel).toBe(false)
       expect(store.getState().showGlobalVariablePanel).toBe(false)
+      expect(store.getState().showDifyBuilderPanel).toBe(true)
     })
 
     it('should hide env and global variable buttons when the controls are disabled', () => {
@@ -263,19 +267,24 @@ describe('Header layout components', () => {
 
   describe('HeaderInRestoring', () => {
     it('should cancel restoring mode and reopen the editor state', () => {
-      const { store } = renderWorkflowComponent(<HeaderInRestoring />, {
-        initialStoreState: {
-          isRestoring: true,
-          showWorkflowVersionHistoryPanel: true,
-        },
-        hooksStoreProps: {
-          configsMap: {
-            flowType: FlowType.appFlow,
-            flowId: 'flow-1',
-            fileSettings: {},
+      const { store } = renderWorkflowComponent(
+        <HeaderInRestoring trailing={<div>trailing-slot</div>} />,
+        {
+          initialStoreState: {
+            isRestoring: true,
+            showWorkflowVersionHistoryPanel: true,
+          },
+          hooksStoreProps: {
+            configsMap: {
+              flowType: FlowType.appFlow,
+              flowId: 'flow-1',
+              fileSettings: {},
+            },
           },
         },
-      })
+      )
+
+      expect(screen.getByText('trailing-slot')).toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'workflow.common.exitVersions' }))
 
@@ -409,7 +418,10 @@ describe('Header layout components', () => {
   describe('HeaderInHistory', () => {
     it('should render the history trigger with text and return to edit mode', () => {
       const { store } = renderWorkflowComponent(
-        <HeaderInHistory viewHistoryProps={{ historyUrl: '/history' } as never} />,
+        <HeaderInHistory
+          viewHistoryProps={{ historyUrl: '/history' } as never}
+          trailing={<div>trailing-slot</div>}
+        />,
         {
           initialStoreState: {
             historyWorkflowData: {
@@ -421,6 +433,7 @@ describe('Header layout components', () => {
 
       expect(screen.getByText('running-title')).toBeInTheDocument()
       expect(screen.getByTestId('view-history')).toHaveTextContent('with-text')
+      expect(screen.getByText('trailing-slot')).toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'workflow.common.goBackToEdit' }))
 

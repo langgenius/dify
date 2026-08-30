@@ -169,10 +169,6 @@ const createHumanInputFilledFormData = (
 describe('WorkflowPreview', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    Object.defineProperty(window, 'innerWidth', {
-      configurable: true,
-      value: 1200,
-    })
   })
 
   it('should keep the input tab active, switch to result after running, and close the preview panel', async () => {
@@ -442,13 +438,13 @@ describe('WorkflowPreview', () => {
 
     const resizeHandle = container.querySelector('.cursor-col-resize') as HTMLElement
 
-    fireEvent.mouseDown(resizeHandle)
-    fireEvent.mouseMove(window, { clientX: 700 })
-    fireEvent.mouseMove(window, { clientX: 100 })
-    fireEvent.mouseUp(window)
+    fireEvent.mouseDown(resizeHandle, { clientX: 700 })
+    fireEvent.mouseMove(document, { clientX: 600 })
+    fireEvent.mouseMove(document, { clientX: 0 })
+    fireEvent.mouseUp(document)
 
     await waitFor(() => {
-      expect(store.getState().previewPanelWidth).toBe(500)
+      expect(store.getState().previewPanelWidth).toBe(600)
     })
   })
 })

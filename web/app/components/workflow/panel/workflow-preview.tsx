@@ -3,12 +3,13 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import copy from 'copy-to-clipboard'
-import { memo, useCallback, useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ReasoningPanel from '@/app/components/base/chat/chat/answer/reasoning-panel'
 import Loading from '@/app/components/base/loading'
 import { submitHumanInputForm } from '@/service/workflow'
 import { useWorkflowInteractions } from '../hooks/use-workflow-panel-interactions'
+import { useResizePanel } from '../nodes/_base/hooks/use-resize-panel'
 import ResultPanel from '../run/result-panel'
 import ResultText from '../run/result-text'
 import TracingPanel from '../run/tracing-panel'
@@ -60,39 +61,21 @@ const WorkflowPreview = () => {
     if (status === WorkflowRunningStatus.Paused) switchTab('RESULT')
   }, [workflowRunningData])
 
-  const [isResizing, setIsResizing] = useState(false)
-
-  const startResizing = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    setIsResizing(true)
-  }, [])
-
-  const stopResizing = useCallback(() => {
-    setIsResizing(false)
-  }, [])
-
-  const resize = useCallback(
-    (e: MouseEvent) => {
-      if (isResizing) {
-        const newWidth = window.innerWidth - e.clientX
-        // width constraints: 400 <= width <= maxAllowed (canvas - reserved 400)
-        const reservedCanvasWidth = 400
-        const maxAllowed = workflowCanvasWidth ? workflowCanvasWidth - reservedCanvasWidth : 1024
-
-        if (newWidth >= 400 && newWidth <= maxAllowed) setPreviewPanelWidth(newWidth)
-      }
-    },
-    [isResizing, workflowCanvasWidth, setPreviewPanelWidth],
+  const maxPanelWidth = useMemo(() => {
+    if (!workflowCanvasWidth) return 1024
+    return Math.max(workflowCanvasWidth - 400, 400)
+  }, [workflowCanvasWidth])
+  const handleResize = useCallback(
+    (width: number) => setPreviewPanelWidth(width),
+    [setPreviewPanelWidth],
   )
-
-  useEffect(() => {
-    window.addEventListener('mousemove', resize)
-    window.addEventListener('mouseup', stopResizing)
-    return () => {
-      window.removeEventListener('mousemove', resize)
-      window.removeEventListener('mouseup', stopResizing)
-    }
-  }, [resize, stopResizing])
+  const { triggerRef, containerRef } = useResizePanel({
+    direction: 'horizontal',
+    triggerDirection: 'left',
+    minWidth: 400,
+    maxWidth: maxPanelWidth,
+    onResize: handleResize,
+  })
 
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: HumanInputFormSubmitData) => {
@@ -107,12 +90,13 @@ const WorkflowPreview = () => {
 
   return (
     <div
+      ref={containerRef}
       className="relative flex h-full flex-col rounded-l-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
       style={{ width: `${panelWidth}px` }}
     >
       <div
+        ref={triggerRef}
         className="absolute top-1/2 bottom-0 left-0.75 z-50 h-6 w-0.75 cursor-col-resize rounded-sm bg-gray-300"
-        onMouseDown={startResizing}
       />
       <div className="flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary">
         {`Test Run${formatWorkflowRunIdentifier(workflowRunningData?.result.finished_at, workflowRunningData?.result.status)}`}

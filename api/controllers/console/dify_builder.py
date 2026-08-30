@@ -30,20 +30,27 @@ argument.
 import functools
 import logging
 from collections.abc import Callable
+from typing import Any, Literal
 
-from flask import Response, request
+from flask import Response
 from flask_restx import Resource
+from pydantic import BaseModel, Field
 
+from controllers.common.fields import EventStreamResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.wraps import (
     account_initialization_required,
+    model_validate,
     setup_required,
     with_current_tenant_id,
     with_current_user,
 )
 from core.dify_builder.models import Action, Actor
+from fields.base import ResponseModel
+from libs.helper import dump_response
 from libs.login import login_required
 from services.dify_builder import progress_bus
-from services.dify_builder.service import resolve_action_kind
+from services.dify_builder.service import SessionView, resolve_action_kind
 from services.dify_builder.wiring import (
     build_service,
     dify_builder_error_response,
@@ -55,6 +62,122 @@ from services.feature_service import FeatureService
 from . import console_ns
 
 logger = logging.getLogger(__name__)
+
+
+class DifyBuilderModelConfigPayload(BaseModel):
+    provider: str
+    name: str
+    mode: str = ""
+    completion_params: dict[str, Any] = Field(default_factory=dict)
+
+
+class DifyBuilderChecklistErrorPayload(BaseModel):
+    node_id: str = ""
+    node_type: str = ""
+    title: str = ""
+    messages: list[str] = Field(default_factory=list)
+    unconnected: bool = False
+    plugin_missing: bool = False
+
+
+class DifyBuilderCreateSessionPayload(BaseModel):
+    app_id: str
+    scenario: Literal["build", "edit", "fix"] = "fix"
+    goal_text: str = ""
+    failed_run_id: str | None = None
+    checklist_errors: list[DifyBuilderChecklistErrorPayload] = Field(default_factory=list)
+    selected_model: DifyBuilderModelConfigPayload | None = Field(default=None, alias="model_config")
+
+
+class DifyBuilderActionPayload(BaseModel):
+    action_id: str | None = None
+    kind: str | None = None
+    payload: dict[str, Any] = Field(default_factory=dict)
+    base_version: int
+
+
+class DifyBuilderMessagePayload(BaseModel):
+    text: str
+    base_version: int
+
+
+class DifyBuilderAgentPingPayload(BaseModel):
+    selected_model: DifyBuilderModelConfigPayload | None = Field(default=None, alias="model_config")
+
+
+class DifyBuilderConversationItemResponse(ResponseModel):
+    seq: int
+    kind: str
+    payload: dict[str, Any]
+    at_version: int
+
+
+class DifyBuilderActionResponse(ResponseModel):
+    id: str
+    label: str
+    kind: str
+    payload_kind: str | None = None
+    next_state: str | None = None
+    canvas_event: str | None = None
+
+
+class DifyBuilderCheckpointResponse(ResponseModel):
+    checkpoint_id: str
+    label: str
+    created_at: str
+
+
+class DifyBuilderRecoveryResponse(ResponseModel):
+    recovery_class: str
+    message: str
+    can_continue: bool
+    can_restart: bool
+
+
+class DifyBuilderSessionModelResponse(ResponseModel):
+    provider: str
+    name: str
+    mode: str = ""
+    completion_params: dict[str, Any] = Field(default_factory=dict)
+
+
+class DifyBuilderSessionViewResponse(ResponseModel):
+    session_id: str
+    app_id: str
+    version: int
+    state: str
+    canvas_read_only: bool
+    run_status: str
+    interrupted: bool
+    conversation: list[DifyBuilderConversationItemResponse]
+    entry_mode: str
+    phase: str
+    actions: list[DifyBuilderActionResponse]
+    checkpoint: DifyBuilderCheckpointResponse | None = None
+    recovery: DifyBuilderRecoveryResponse | None = None
+    model: DifyBuilderSessionModelResponse | None = None
+
+
+class DifyBuilderAgentPingResponse(ResponseModel):
+    ok: bool
+    model: dict[str, str] | None = None
+    reply: str | None = None
+    error: str | None = None
+
+
+register_schema_models(
+    console_ns,
+    DifyBuilderCreateSessionPayload,
+    DifyBuilderActionPayload,
+    DifyBuilderMessagePayload,
+    DifyBuilderAgentPingPayload,
+)
+register_response_schema_models(
+    console_ns,
+    DifyBuilderSessionViewResponse,
+    DifyBuilderAgentPingResponse,
+    EventStreamResponse,
+)
 
 
 def dify_builder_required(func: Callable) -> Callable:
@@ -71,11 +194,11 @@ def _actor(current_user, current_tenant_id: str) -> Actor:
     return Actor(account_id=current_user.id, tenant_id=current_tenant_id)
 
 
-def _respond(fn: Callable[[], object]) -> tuple[dict, int]:
+def _respond(fn: Callable[[], SessionView]) -> tuple[dict, int]:
     """Run a usecase call, serialize its SessionView, map known dify_builder errors
     to (body, status). Unknown exceptions propagate to Flask's error handler."""
     try:
-        return session_view_to_dict(fn()), 200
+        return dump_response(DifyBuilderSessionViewResponse, session_view_to_dict(fn())), 200
     except Exception as exc:  # re-raised below if not a known dify_builder error
         mapped = dify_builder_error_response(exc)
         if mapped is None:
@@ -111,6 +234,7 @@ def _create(body, actor: Actor) -> tuple[dict, int]:
                 failed_run_id=body.get("failed_run_id") or None,
                 checklist_errors=body.get("checklist_errors") or None,
                 model_config=body.get("model_config"),
+                goal_text=body.get("goal_text", ""),
             )
         )
     # create returns 201 on success; map-through keeps error statuses.
@@ -154,6 +278,25 @@ def _ping(body, actor: Actor) -> tuple[dict, int]:
         return {"ok": False, "error": str(exc)}, 200
 
 
+def _stream(session_id: str, actor: Actor):
+    # Subscribe before reading the authoritative snapshot so no progress
+    # event can land in the gap between those two operations.
+    subscription = progress_bus.subscribe(session_id)
+    try:
+        view = build_service().get_session_view(session_id, actor)
+    except Exception as exc:  # re-raised below if not a known dify_builder error
+        subscription.close()
+        mapped = dify_builder_error_response(exc)
+        if mapped is None:
+            raise
+        return mapped
+    return Response(
+        stream_frames(session_view_to_dict(view), subscription),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+    )
+
+
 @console_ns.route("/dify-builder/sessions")
 class DifyBuilderSessionsApi(Resource):
     @setup_required
@@ -162,8 +305,11 @@ class DifyBuilderSessionsApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @dify_builder_required
-    def post(self, current_tenant_id, current_user):
-        return _create(request.get_json(silent=True), _actor(current_user, current_tenant_id))
+    @model_validate(DifyBuilderCreateSessionPayload)
+    @console_ns.expect(console_ns.models[DifyBuilderCreateSessionPayload.__name__])
+    @console_ns.response(201, "Session created", console_ns.models[DifyBuilderSessionViewResponse.__name__])
+    def post(self, payload, current_tenant_id, current_user):
+        return _create(payload.model_dump(mode="json", by_alias=True), _actor(current_user, current_tenant_id))
 
 
 @console_ns.route("/dify-builder/sessions/<string:session_id>")
@@ -174,6 +320,7 @@ class DifyBuilderSessionApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @dify_builder_required
+    @console_ns.response(200, "Session view", console_ns.models[DifyBuilderSessionViewResponse.__name__])
     def get(self, current_tenant_id, current_user, session_id):
         return _view(session_id, _actor(current_user, current_tenant_id))
 
@@ -186,8 +333,11 @@ class DifyBuilderActionsApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @dify_builder_required
-    def post(self, current_tenant_id, current_user, session_id):
-        return _action(session_id, request.get_json(silent=True), _actor(current_user, current_tenant_id))
+    @model_validate(DifyBuilderActionPayload)
+    @console_ns.expect(console_ns.models[DifyBuilderActionPayload.__name__])
+    @console_ns.response(200, "Session view", console_ns.models[DifyBuilderSessionViewResponse.__name__])
+    def post(self, payload, current_tenant_id, current_user, session_id):
+        return _action(session_id, payload.model_dump(mode="json"), _actor(current_user, current_tenant_id))
 
 
 @console_ns.route("/dify-builder/sessions/<string:session_id>/messages")
@@ -198,8 +348,11 @@ class DifyBuilderMessagesApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @dify_builder_required
-    def post(self, current_tenant_id, current_user, session_id):
-        return _message(session_id, request.get_json(silent=True), _actor(current_user, current_tenant_id))
+    @model_validate(DifyBuilderMessagePayload)
+    @console_ns.expect(console_ns.models[DifyBuilderMessagePayload.__name__])
+    @console_ns.response(200, "Session view", console_ns.models[DifyBuilderSessionViewResponse.__name__])
+    def post(self, payload, current_tenant_id, current_user, session_id):
+        return _message(session_id, payload.model_dump(mode="json"), _actor(current_user, current_tenant_id))
 
 
 @console_ns.route("/dify-builder/sessions/<string:session_id>/stream")
@@ -210,22 +363,9 @@ class DifyBuilderStreamApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @dify_builder_required
+    @console_ns.response(200, "SSE event stream", console_ns.models[EventStreamResponse.__name__])
     def get(self, current_tenant_id, current_user, session_id):
-        actor = _actor(current_user, current_tenant_id)
-        # owner check + authoritative snapshot; non-owner/missing → NotFoundError → 404 (generic)
-        try:
-            view = build_service().get_session_view(session_id, actor)
-        except Exception as exc:  # re-raised below if not a known dify_builder error
-            mapped = dify_builder_error_response(exc)
-            if mapped is None:
-                raise
-            return mapped
-        subscription = progress_bus.subscribe(session_id)
-        return Response(
-            stream_frames(session_view_to_dict(view), subscription),
-            mimetype="text/event-stream",
-            headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
-        )
+        return _stream(session_id, _actor(current_user, current_tenant_id))
 
 
 @console_ns.route("/dify-builder/agent/ping")
@@ -236,5 +376,8 @@ class DifyBuilderAgentPingApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @dify_builder_required
-    def post(self, current_tenant_id, current_user):
-        return _ping(request.get_json(silent=True), _actor(current_user, current_tenant_id))
+    @model_validate(DifyBuilderAgentPingPayload)
+    @console_ns.expect(console_ns.models[DifyBuilderAgentPingPayload.__name__])
+    @console_ns.response(200, "Agent status", console_ns.models[DifyBuilderAgentPingResponse.__name__])
+    def post(self, payload, current_tenant_id, current_user):
+        return _ping(payload.model_dump(mode="json", by_alias=True), _actor(current_user, current_tenant_id))

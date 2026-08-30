@@ -1,7 +1,6 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiHistoryLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -25,8 +24,9 @@ import RestoringTitle from './restoring-title'
 
 export type HeaderInRestoringProps = {
   onRestoreSettled?: () => void
+  trailing?: React.ReactNode
 }
-const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
+const HeaderInRestoring = ({ onRestoreSettled, trailing }: HeaderInRestoringProps) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
   const [isRestorePlanUpgradeModalOpen, setIsRestorePlanUpgradeModalOpen] = useState(false)
@@ -186,10 +186,11 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
           )}
         >
           <div className="flex items-center gap-x-0.5">
-            <RiHistoryLine className="size-4" />
+            <span aria-hidden className="i-ri-history-line size-4" />
             <span className="px-0.5">{t(($) => $['common.exitVersions'], { ns: 'workflow' })}</span>
           </div>
         </Button>
+        {trailing}
       </div>
       {isRestorePlanUpgradeModalOpen && (
         <PlanUpgradeModal

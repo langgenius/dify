@@ -81,6 +81,8 @@ def test_capability_check_send_edit_goal_advances_to_impact_analysis():
     assert fc.edit_rules  # analyze_impact populated the rules
     assert "llm" in fc.edit_target_node_ids
     kinds = [i.kind for i in repo.list_conversation(s.id)]
+    assert kinds.count("user") == 2
+    assert repo.list_conversation(s.id)[1].payload == {"text": "Add a review gate"}
     assert "summary" in kinds  # context summary
     assert "form" in kinds
     assert "challenge" in kinds
@@ -485,9 +487,7 @@ def test_edit_await_repair_keep_draft_goes_to_review():
 
     env, _ = _new_env()
     s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_AWAIT_REPAIR)
-    result = handle_await_repair(
-        env, Turn(actor=_actor(), action=Action(kind="keep_draft")), s, DifyBuilderContext()
-    )
+    result = handle_await_repair(env, Turn(actor=_actor(), action=Action(kind="keep_draft")), s, DifyBuilderContext())
     assert result.next == PcState.EDIT_REVIEW
 
 
@@ -497,9 +497,7 @@ def test_edit_await_repair_undo_reverts():
     events: list[dict] = []
     env, repo = _new_env(emit_canvas=events.append)
     s = _seed_edit_session(repo, PcState.EDIT_AWAIT_REPAIR, edit_target_node_ids=["llm"])
-    result = handle_await_repair(
-        env, Turn(actor=_actor(), action=Action(kind="undo")), *repo.get_session(s.id)
-    )
+    result = handle_await_repair(env, Turn(actor=_actor(), action=Action(kind="undo")), *repo.get_session(s.id))
     assert result.next == PcState.EDIT_REVERTED
     assert any(i.kind == "decision" for i in result.items)
 
@@ -568,9 +566,7 @@ def test_full_edit_flow_goal_to_publish():
     assert out.current_state == PcState.EDIT_PLAN_APPROVAL
 
     # 3) approve_plan (-> approve_repair) -> THE EDIT -> edit.apply_changes
-    out = runner.advance(
-        s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor())
-    )
+    out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.EDIT_APPLY_CHANGES
     # the existing llm node was reconfigured with the submitted rule value.
     graph, _hash = dify.read_graph("app", _actor())
@@ -578,15 +574,11 @@ def test_full_edit_flow_goal_to_publish():
     assert llm["data"]["risk_threshold"] == "high"
 
     # 4) run_affected_tests -> edit.test_affected_paths (working, auto) -> rest at edit.review
-    out = runner.advance(
-        s.id, Turn(action=Action(kind="run_affected_tests", base_version=out.version), actor=_actor())
-    )
+    out = runner.advance(s.id, Turn(action=Action(kind="run_affected_tests", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.EDIT_REVIEW
 
     # 5) publish_workflow -> edit.publish (terminal)
-    out = runner.advance(
-        s.id, Turn(action=Action(kind="publish_workflow", base_version=out.version), actor=_actor())
-    )
+    out = runner.advance(s.id, Turn(action=Action(kind="publish_workflow", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.EDIT_PUBLISH
     assert dify.published is True
 

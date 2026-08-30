@@ -89,6 +89,7 @@ const WorkflowPanelOnRight = () => {
     </>
   )
 }
+
 const WorkflowPanel = () => {
   const appDetail = useAppStore((s) => s.appDetail)
   const versionHistoryPanelProps = useMemo(() => {

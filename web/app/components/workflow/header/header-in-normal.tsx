@@ -16,7 +16,6 @@ import OnlineUsers from './online-users'
 import RunAndHistory from './run-and-history'
 import ScrollToSelectedNodeButton from './scroll-to-selected-node-button'
 import { VersionHistoryButton } from './version-history-button'
-import DifyBuilderButton from './dify-builder-button'
 
 export type HeaderInNormalProps = {
   components?: {
@@ -24,11 +23,11 @@ export type HeaderInNormalProps = {
     left?: React.ReactNode
     middle?: React.ReactNode
     chatVariableTrigger?: React.ReactNode
+    trailing?: React.ReactNode
   }
   controls?: {
     showEnvButton?: boolean
     showGlobalVariableButton?: boolean
-    showDifyBuilderButton?: boolean
   }
   runAndHistoryProps?: RunAndHistoryProps
 }
@@ -43,14 +42,12 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
   const setShowVariableInspectPanel = useStore((s) => s.setShowVariableInspectPanel)
   const setShowChatVariablePanel = useStore((s) => s.setShowChatVariablePanel)
   const setShowGlobalVariablePanel = useStore((s) => s.setShowGlobalVariablePanel)
-  const setShowDifyBuilderPanel = useStore((s) => s.setShowDifyBuilderPanel)
   const nodes = useNodes<StartNodeType>()
   const selectedNode = nodes.find((node) => node.data.selected)
   const { handleBackupDraft } = useWorkflowRun()
   const { closeAllInputFieldPanels } = useInputFieldPanel()
   const showEnvButton = controls?.showEnvButton !== false
   const showGlobalVariableButton = controls?.showGlobalVariableButton !== false
-  const showDifyBuilderButton = controls?.showDifyBuilderButton === true
   const showContextButtons =
     !!components?.chatVariableTrigger || showEnvButton || showGlobalVariableButton
 
@@ -65,7 +62,6 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
     setShowVariableInspectPanel(false)
     setShowChatVariablePanel(false)
     setShowGlobalVariablePanel(false)
-    setShowDifyBuilderPanel(false)
     closeAllInputFieldPanels()
   }, [
     workflowStore,
@@ -78,22 +74,18 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
     setShowVariableInspectPanel,
     setShowChatVariablePanel,
     setShowGlobalVariablePanel,
-    setShowDifyBuilderPanel,
     closeAllInputFieldPanels,
   ])
 
   return (
-    <div className="flex w-full items-center justify-between">
-      <div>{components?.title ?? <EditingTitle />}</div>
-      <div>
-        <ScrollToSelectedNodeButton />
-      </div>
-      <div className="flex items-center gap-2">
+    <div className="flex w-full min-w-0 items-center">
+      <div className="min-w-0 flex-1 overflow-hidden">{components?.title ?? <EditingTitle />}</div>
+      <div className="ml-auto flex shrink-0 items-center gap-2">
         <OnlineUsers />
+        <ScrollToSelectedNodeButton />
         {components?.left}
         <Divider type="vertical" className="mx-auto h-3.5" />
         <RunAndHistory {...runAndHistoryProps} />
-        {showDifyBuilderButton && <DifyBuilderButton disabled={nodesReadOnly} />}
         {showContextButtons && (
           <div className="shrink-0 cursor-pointer rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs backdrop-blur-[10px]">
             {components?.chatVariableTrigger}
@@ -103,6 +95,7 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
         )}
         {components?.middle}
         {canReleaseAndVersion && <VersionHistoryButton onClick={onStartRestoring} />}
+        {components?.trailing}
       </div>
     </div>
   )

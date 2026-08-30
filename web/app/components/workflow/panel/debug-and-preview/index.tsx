@@ -58,9 +58,9 @@ const DebugAndPreview = () => {
   const maxPanelWidth = useMemo(() => {
     if (!workflowCanvasWidth) return 720
 
-    if (!selectedNode) return workflowCanvasWidth - 400
+    if (!selectedNode) return Math.max(workflowCanvasWidth - 400, 400)
 
-    return workflowCanvasWidth - 400 - 400
+    return Math.max(workflowCanvasWidth - 400 - nodePanelWidth, 400)
   }, [workflowCanvasWidth, selectedNode, nodePanelWidth])
   const { triggerRef, containerRef } = useResizePanel({
     direction: 'horizontal',

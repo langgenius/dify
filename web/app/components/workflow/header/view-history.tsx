@@ -132,7 +132,6 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
                       historyWorkflowData: item,
                       showInputsPanel: false,
                       showEnvPanel: false,
-                      showDifyBuilderPanel: false,
                     })
                     closeAllInputFieldPanels()
                     handleBackupDraft()

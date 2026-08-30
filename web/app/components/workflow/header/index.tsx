@@ -25,7 +25,7 @@ const Header = ({
   const { normal, restoring, viewHistory } = useWorkflowMode()
 
   return (
-    <div className="absolute top-7 left-0 z-10 flex h-0 w-full items-center justify-between bg-mask-top2bottom-gray-50-to-transparent px-3">
+    <div className="absolute top-7 left-0 z-10 flex h-0 w-full min-w-0 items-center justify-between bg-mask-top2bottom-gray-50-to-transparent px-3">
       {normal && <HeaderInNormal {...normalProps} />}
       {viewHistory && <HeaderInHistory {...viewHistoryProps} />}
       {restoring && <HeaderInRestoring {...restoringProps} />}

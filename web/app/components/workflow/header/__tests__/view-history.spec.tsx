@@ -182,6 +182,7 @@ describe('ViewHistory', () => {
         historyWorkflowData: failedRun,
         showInputsPanel: true,
         showEnvPanel: true,
+        showDifyBuilderPanel: true,
         controlMode: ControlMode.Pointer,
       },
     })
@@ -197,6 +198,7 @@ describe('ViewHistory', () => {
     expect(store.getState().historyWorkflowData).toEqual(succeededRun)
     expect(store.getState().showInputsPanel).toBe(false)
     expect(store.getState().showEnvPanel).toBe(false)
+    expect(store.getState().showDifyBuilderPanel).toBe(true)
     expect(store.getState().controlMode).toBe(ControlMode.Hand)
     expect(mockCloseAllInputFieldPanels).toHaveBeenCalledTimes(1)
     expect(mockHandleBackupDraft).toHaveBeenCalledTimes(1)

@@ -16,13 +16,6 @@ const VersionHistoryPanel = dynamic(
   },
 )
 
-const DifyBuilderPanel = dynamic(
-  () => import('@/app/components/workflow/panel/dify-builder-panel'),
-  {
-    ssr: false,
-  },
-)
-
 export type PanelProps = {
   components?: {
     left?: React.ReactNode
@@ -103,7 +96,6 @@ const Panel: FC<PanelProps> = ({ components, versionHistoryPanelProps }) => {
   const showEnvPanel = useStore((s) => s.showEnvPanel)
   const isRestoring = useStore((s) => s.isRestoring)
   const showWorkflowVersionHistoryPanel = useStore((s) => s.showWorkflowVersionHistoryPanel)
-  const showDifyBuilderPanel = useStore((s) => s.showDifyBuilderPanel)
 
   // widths used for adaptive layout
   const workflowCanvasWidth = useStore((s) => s.workflowCanvasWidth)
@@ -136,15 +128,6 @@ const Panel: FC<PanelProps> = ({ components, versionHistoryPanelProps }) => {
 
   return (
     <>
-      {showDifyBuilderPanel && (
-        <div
-          data-workflow-left-panel
-          tabIndex={-1}
-          className={cn('absolute top-14 left-0 bottom-1 z-10 flex outline-hidden')}
-        >
-          <DifyBuilderPanel />
-        </div>
-      )}
       <div
         ref={rightPanelRef}
         data-workflow-right-panel
@@ -154,7 +137,7 @@ const Panel: FC<PanelProps> = ({ components, versionHistoryPanelProps }) => {
       >
         {components?.left}
         {!!selectedNode && <NodePanel {...selectedNode} />}
-        <div className="relative" ref={otherPanelRef}>
+        <div className="relative flex h-full" ref={otherPanelRef}>
           {components?.right}
           {showWorkflowVersionHistoryPanel && versionHistoryPanelProps && (
             <VersionHistoryPanel {...versionHistoryPanelProps} />

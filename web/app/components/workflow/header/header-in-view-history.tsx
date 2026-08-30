@@ -2,7 +2,6 @@ import type { ViewHistoryProps } from './view-history'
 import { Button } from '@langgenius/dify-ui/button'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import Divider from '../../base/divider'
 import { useWorkflowRun } from '../hooks/use-workflow-run'
 import { useWorkflowStore } from '../store'
@@ -11,8 +10,9 @@ import ViewHistory from './view-history'
 
 export type HeaderInHistoryProps = {
   viewHistoryProps?: ViewHistoryProps
+  trailing?: React.ReactNode
 }
-const HeaderInHistory = ({ viewHistoryProps }: HeaderInHistoryProps) => {
+const HeaderInHistory = ({ viewHistoryProps, trailing }: HeaderInHistoryProps) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
 
@@ -32,9 +32,10 @@ const HeaderInHistory = ({ viewHistoryProps }: HeaderInHistoryProps) => {
         <ViewHistory {...viewHistoryProps} withText />
         <Divider type="vertical" className="mx-auto h-3.5" />
         <Button variant="primary" onClick={handleGoBackToEdit}>
-          <ArrowNarrowLeft className="size-4" />
+          <span aria-hidden className="i-custom-vender-line-arrows-arrow-narrow-left size-4" />
           {t(($) => $['common.goBackToEdit'], { ns: 'workflow' })}
         </Button>
+        {trailing}
       </div>
     </>
   )

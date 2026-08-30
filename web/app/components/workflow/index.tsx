@@ -133,6 +133,7 @@ export type WorkflowProps = {
   edges: Edge[]
   viewport?: Viewport
   children?: React.ReactNode
+  className?: string
   onWorkflowDataUpdate?: (v: WorkflowDataUpdatePayload) => void
   isCollaborationEnabled?: boolean
   cursors?: Record<string, CursorPosition>
@@ -177,6 +178,7 @@ export const Workflow: FC<WorkflowProps> = memo(
     edges: originalEdges,
     viewport,
     children,
+    className,
     onWorkflowDataUpdate,
     isCollaborationEnabled = false,
     cursors,
@@ -655,6 +657,7 @@ export const Workflow: FC<WorkflowProps> = memo(
           'relative isolate h-full w-full min-w-240 overflow-hidden',
           workflowReadOnly && 'workflow-panel-animation',
           nodeAnimation && 'workflow-node-animation',
+          className,
         )}
         ref={workflowContainerRef}
       >

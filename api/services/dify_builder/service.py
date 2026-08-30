@@ -18,14 +18,17 @@ from core.dify_builder.contract import Action as UiAction
 from core.dify_builder.contract import (
     ActionKind,
     CheckpointRef,
+    NoticeItem,
     Phase,
+    PreflightContextCard,
+    PreflightIssue,
     RecoveryRef,
     RunContextCard,
     RunStatus,
     SessionModel,
     UserItem,
 )
-from core.dify_builder.errors import BusyError, ConflictError, NotFoundError
+from core.dify_builder.errors import BadRequestError, BusyError, ConflictError, NotFoundError
 from core.dify_builder.models import (
     Action,
     Actor,
@@ -149,53 +152,104 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
     ],
     # Build (Slice 2). next_state/canvas_event carry the frozen state-map hints.
     PcState.BUILD_CAPABILITY_CHECK: [
-        UiAction(id="send_goal", label="Send goal", kind=ActionKind.PRIMARY,
-                 next_state="build.goal_analysis", canvas_event="reset_build_canvas"),
+        UiAction(
+            id="send_goal",
+            label="Send goal",
+            kind=ActionKind.PRIMARY,
+            next_state="build.goal_analysis",
+            canvas_event="reset_build_canvas",
+        ),
     ],
     PcState.BUILD_GOAL_ANALYSIS: [
-        UiAction(id="submit_requirements", label="Submit requirements", kind=ActionKind.PRIMARY,
-                 next_state="build.initial_plan"),
+        UiAction(
+            id="submit_requirements",
+            label="Submit requirements",
+            kind=ActionKind.PRIMARY,
+            next_state="build.initial_plan",
+        ),
     ],
     PcState.BUILD_INITIAL_PLAN: [
-        UiAction(id="find_resources", label="Find resources", kind=ActionKind.PRIMARY,
-                 next_state="build.resource_recommendation"),
+        UiAction(
+            id="find_resources",
+            label="Find resources",
+            kind=ActionKind.PRIMARY,
+            next_state="build.resource_recommendation",
+        ),
     ],
     PcState.BUILD_RESOURCE_RECOMMENDATION: [
-        UiAction(id="confirm_resources", label="Confirm resources", kind=ActionKind.PRIMARY,
-                 next_state="build.plan_approval"),
+        UiAction(
+            id="confirm_resources", label="Confirm resources", kind=ActionKind.PRIMARY, next_state="build.plan_approval"
+        ),
     ],
     PcState.BUILD_PLAN_APPROVAL: [
-        UiAction(id="approve_plan", label="Approve plan", kind=ActionKind.PRIMARY,
-                 next_state="build.execution", canvas_event="create_checkpoint"),
+        UiAction(
+            id="approve_plan",
+            label="Approve plan",
+            kind=ActionKind.PRIMARY,
+            next_state="build.execution",
+            canvas_event="create_checkpoint",
+        ),
     ],
     PcState.BUILD_EXECUTION: [
-        UiAction(id="run_test", label="Run test", kind=ActionKind.PRIMARY,
-                 next_state="build.test_and_repair", canvas_event="start_test_run"),
-        UiAction(id="revert", label="Revert", kind=ActionKind.DESTRUCTIVE,
-                 next_state="build.reverted", canvas_event="revert_checkpoint"),
+        UiAction(
+            id="run_test",
+            label="Run test",
+            kind=ActionKind.PRIMARY,
+            next_state="build.test_and_repair",
+            canvas_event="start_test_run",
+        ),
+        UiAction(
+            id="revert",
+            label="Revert",
+            kind=ActionKind.DESTRUCTIVE,
+            next_state="build.reverted",
+            canvas_event="revert_checkpoint",
+        ),
     ],
     PcState.BUILD_AWAIT_REPAIR: [
-        UiAction(id="approve_plan", label="Apply the fix", kind=ActionKind.PRIMARY,
-                 next_state="build.test_and_repair"),
-        UiAction(id="keep_draft", label="Keep draft", kind=ActionKind.SECONDARY,
-                 next_state="build.review"),
-        UiAction(id="revert", label="Revert", kind=ActionKind.DESTRUCTIVE,
-                 next_state="build.reverted", canvas_event="revert_checkpoint"),
+        UiAction(id="approve_plan", label="Apply the fix", kind=ActionKind.PRIMARY, next_state="build.test_and_repair"),
+        UiAction(id="keep_draft", label="Keep draft", kind=ActionKind.SECONDARY, next_state="build.review"),
+        UiAction(
+            id="revert",
+            label="Revert",
+            kind=ActionKind.DESTRUCTIVE,
+            next_state="build.reverted",
+            canvas_event="revert_checkpoint",
+        ),
     ],
     PcState.BUILD_REVIEW: [
-        UiAction(id="publish_workflow", label="Publish", kind=ActionKind.PRIMARY,
-                 next_state="build.publish", canvas_event="publish_workflow"),
-        UiAction(id="keep_draft", label="Keep draft", kind=ActionKind.SECONDARY,
-                 next_state="build.governance_feedback", canvas_event="cancel_publish"),
-        UiAction(id="continue_adjusting", label="Continue adjusting", kind=ActionKind.SECONDARY,
-                 next_state="build.initial_plan", canvas_event="cancel_publish"),
+        UiAction(
+            id="publish_workflow",
+            label="Publish",
+            kind=ActionKind.PRIMARY,
+            next_state="build.publish",
+            canvas_event="publish_workflow",
+        ),
+        UiAction(
+            id="keep_draft",
+            label="Keep draft",
+            kind=ActionKind.SECONDARY,
+            next_state="build.governance_feedback",
+            canvas_event="cancel_publish",
+        ),
+        UiAction(
+            id="continue_adjusting",
+            label="Continue adjusting",
+            kind=ActionKind.SECONDARY,
+            next_state="build.initial_plan",
+            canvas_event="cancel_publish",
+        ),
         UiAction(id="view_changes", label="View changes", kind=ActionKind.SECONDARY),
-        UiAction(id="revert", label="Revert", kind=ActionKind.DESTRUCTIVE,
-                 next_state="build.reverted", canvas_event="revert_checkpoint"),
+        UiAction(
+            id="revert",
+            label="Revert",
+            kind=ActionKind.DESTRUCTIVE,
+            next_state="build.reverted",
+            canvas_event="revert_checkpoint",
+        ),
     ],
     PcState.BUILD_REVERTED: [
-        UiAction(id="retry_after_revert", label="Retry", kind=ActionKind.PRIMARY,
-                 next_state="build.initial_plan"),
+        UiAction(id="retry_after_revert", label="Retry", kind=ActionKind.PRIMARY, next_state="build.initial_plan"),
     ],
     PcState.BUILD_AWAIT_LEARNING: [
         UiAction(id="accept_learning", label="Add to skills", kind=ActionKind.PRIMARY),
@@ -203,45 +257,84 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
     ],
     # Edit (Slice 3). next_state/canvas_event carry the frozen state-map hints.
     PcState.EDIT_CAPABILITY_CHECK: [
-        UiAction(id="send_edit_goal", label="Send", kind=ActionKind.PRIMARY,
-                 next_state="edit.impact_analysis"),
+        UiAction(id="send_edit_goal", label="Send", kind=ActionKind.PRIMARY, next_state="edit.impact_analysis"),
     ],
     PcState.EDIT_IMPACT_ANALYSIS: [
-        UiAction(id="submit_edit_rules", label="Submit rules", kind=ActionKind.PRIMARY,
-                 next_state="edit.plan_approval"),
+        UiAction(
+            id="submit_edit_rules", label="Submit rules", kind=ActionKind.PRIMARY, next_state="edit.plan_approval"
+        ),
     ],
     PcState.EDIT_PLAN_APPROVAL: [
-        UiAction(id="approve_plan", label="Approve changes", kind=ActionKind.PRIMARY,
-                 next_state="edit.apply_changes", canvas_event="create_checkpoint"),
+        UiAction(
+            id="approve_plan",
+            label="Approve changes",
+            kind=ActionKind.PRIMARY,
+            next_state="edit.apply_changes",
+            canvas_event="create_checkpoint",
+        ),
     ],
     PcState.EDIT_APPLY_CHANGES: [
-        UiAction(id="run_affected_tests", label="Run affected tests", kind=ActionKind.PRIMARY,
-                 next_state="edit.test_affected_paths", canvas_event="start_test_run"),
-        UiAction(id="revert", label="Revert", kind=ActionKind.DESTRUCTIVE,
-                 next_state="edit.reverted", canvas_event="revert_checkpoint"),
+        UiAction(
+            id="run_affected_tests",
+            label="Run affected tests",
+            kind=ActionKind.PRIMARY,
+            next_state="edit.test_affected_paths",
+            canvas_event="start_test_run",
+        ),
+        UiAction(
+            id="revert",
+            label="Revert",
+            kind=ActionKind.DESTRUCTIVE,
+            next_state="edit.reverted",
+            canvas_event="revert_checkpoint",
+        ),
     ],
     PcState.EDIT_AWAIT_REPAIR: [
-        UiAction(id="approve_plan", label="Apply the fix", kind=ActionKind.PRIMARY,
-                 next_state="edit.test_affected_paths"),
-        UiAction(id="keep_draft", label="Keep draft", kind=ActionKind.SECONDARY,
-                 next_state="edit.review"),
-        UiAction(id="revert", label="Revert", kind=ActionKind.DESTRUCTIVE,
-                 next_state="edit.reverted", canvas_event="revert_checkpoint"),
+        UiAction(
+            id="approve_plan", label="Apply the fix", kind=ActionKind.PRIMARY, next_state="edit.test_affected_paths"
+        ),
+        UiAction(id="keep_draft", label="Keep draft", kind=ActionKind.SECONDARY, next_state="edit.review"),
+        UiAction(
+            id="revert",
+            label="Revert",
+            kind=ActionKind.DESTRUCTIVE,
+            next_state="edit.reverted",
+            canvas_event="revert_checkpoint",
+        ),
     ],
     PcState.EDIT_REVIEW: [
-        UiAction(id="publish_workflow", label="Publish", kind=ActionKind.PRIMARY,
-                 next_state="edit.publish", canvas_event="publish_workflow"),
-        UiAction(id="keep_draft", label="Keep draft", kind=ActionKind.SECONDARY,
-                 next_state="edit.publish", canvas_event="cancel_publish"),
-        UiAction(id="continue_adjusting", label="Continue adjusting", kind=ActionKind.SECONDARY,
-                 next_state="edit.impact_analysis", canvas_event="cancel_publish"),
+        UiAction(
+            id="publish_workflow",
+            label="Publish",
+            kind=ActionKind.PRIMARY,
+            next_state="edit.publish",
+            canvas_event="publish_workflow",
+        ),
+        UiAction(
+            id="keep_draft",
+            label="Keep draft",
+            kind=ActionKind.SECONDARY,
+            next_state="edit.publish",
+            canvas_event="cancel_publish",
+        ),
+        UiAction(
+            id="continue_adjusting",
+            label="Continue adjusting",
+            kind=ActionKind.SECONDARY,
+            next_state="edit.impact_analysis",
+            canvas_event="cancel_publish",
+        ),
         UiAction(id="view_changes", label="View changes", kind=ActionKind.SECONDARY),
-        UiAction(id="revert", label="Revert", kind=ActionKind.DESTRUCTIVE,
-                 next_state="edit.reverted", canvas_event="revert_checkpoint"),
+        UiAction(
+            id="revert",
+            label="Revert",
+            kind=ActionKind.DESTRUCTIVE,
+            next_state="edit.reverted",
+            canvas_event="revert_checkpoint",
+        ),
     ],
     PcState.EDIT_REVERTED: [
-        UiAction(id="retry_after_revert", label="Retry", kind=ActionKind.PRIMARY,
-                 next_state="edit.plan_approval"),
+        UiAction(id="retry_after_revert", label="Retry", kind=ActionKind.PRIMARY, next_state="edit.plan_approval"),
     ],
 }
 
@@ -329,6 +422,7 @@ class DifyBuilderService:
         failed_run_id: str | None = None,
         checklist_errors: list[ChecklistError] | None = None,
         model_config: dict | None = None,
+        goal_text: str = "",
     ) -> SessionView:
         """Port of Go ``CreateFixSession``, extended to record the failed run.
 
@@ -346,7 +440,10 @@ class DifyBuilderService:
         if checklist_errors:
             entry_mode, state = EntryMode.FIX_CHECKLIST, PcState.CHECKLIST_DIAGNOSE
             fc = DifyBuilderContext(
-                source="checklist", checklist_errors=checklist_errors, model_config=model_config or {}
+                source="checklist",
+                checklist_errors=checklist_errors,
+                goal_text=goal_text,
+                model_config=model_config or {},
             )
         else:
             entry_mode, state = EntryMode.FIX, PcState.FIX_DIAGNOSE
@@ -357,7 +454,12 @@ class DifyBuilderService:
                 status="failed",
                 immutable=True,
             )
-            fc = DifyBuilderContext(failed_run_id=failed_run.id, source="run", model_config=model_config or {})
+            fc = DifyBuilderContext(
+                failed_run_id=failed_run.id,
+                source="run",
+                goal_text=goal_text,
+                model_config=model_config or {},
+            )
 
         s = Session(
             app_id=app_id,
@@ -366,10 +468,32 @@ class DifyBuilderService:
             entry_mode=entry_mode,
             current_state=state,
         )
-        run_context = RunContextCard(
-            run_id=failed_run_id or "", title="", error_code="", message="", trace_ref=""
-        )
-        items = [run_context.to_item(seq=0, at_version=0)]
+        cards: list[UserItem | PreflightContextCard | RunContextCard] = [UserItem(text=goal_text)] if goal_text else []
+        if checklist_errors:
+            issues = [
+                PreflightIssue(
+                    node_id=error.node_id,
+                    label="; ".join(error.messages) or error.title,
+                    kind=(
+                        "availability"
+                        if error.plugin_missing
+                        else "connection"
+                        if error.unconnected
+                        else "required_config"
+                    ),
+                )
+                for error in checklist_errors
+            ]
+            cards.append(
+                PreflightContextCard(
+                    node_count=len({error.node_id for error in checklist_errors}),
+                    issue_count=len(issues),
+                    issues=issues,
+                )
+            )
+        else:
+            cards.append(RunContextCard(run_id=failed_run_id or "", title="", error_code="", message="", trace_ref=""))
+        items = [card.to_item(seq=seq, at_version=0) for seq, card in enumerate(cards)]
         self._repo.create_session(s, fc, items)  # assigns s.id, s.version = 1
         if failed_run is not None:
             # Persist the failed-run record BEFORE dispatch so the enqueued
@@ -450,7 +574,12 @@ class DifyBuilderService:
             checkpoint=checkpoint,
             recovery=recovery_ref,
             model=(
-                SessionModel(provider=fc.model_config.get("provider", ""), name=fc.model_config.get("name", ""))
+                SessionModel(
+                    provider=fc.model_config.get("provider", ""),
+                    name=fc.model_config.get("name", ""),
+                    mode=fc.model_config.get("mode", ""),
+                    completion_params=fc.model_config.get("completion_params", {}),
+                )
                 if fc.model_config
                 else None
             ),
@@ -458,7 +587,7 @@ class DifyBuilderService:
 
     def submit_action(self, session_id: str, actor: Actor, action: Action) -> SessionView:
         """Port of Go ``SubmitAction``."""
-        s, _fc = self._repo.get_session(session_id)
+        s, fc = self._repo.get_session(session_id)
         if s.owner_account_id != actor.account_id:
             raise NotFoundError("session not found")
         if action.kind in _CLIENT_ONLY_ACTIONS:
@@ -468,6 +597,21 @@ class DifyBuilderService:
             return self.get_session_view(session_id, actor)
         if action.base_version != s.version:
             raise ConflictError(f"stale base_version {action.base_version} for session {session_id}")
+        if action.kind == "update_model":
+            if is_working(s.current_state) or self._session_lock.exists(session_id):
+                raise BusyError(f"session {session_id} is busy")
+            model_config = action.payload.get("model_config")
+            if not isinstance(model_config, dict) or not model_config:
+                raise BadRequestError("model_config is required")
+            validate_model_config(actor.tenant_id, model_config)
+            fc.model_config = model_config
+            item = NoticeItem(text=f"Model changed to {model_config.get('name', '')}").to_item(
+                seq=fc.next_seq,
+                at_version=s.version + 1,
+            )
+            fc.next_seq += 1
+            self._repo.compare_and_advance(session_id, s.version, s.current_state, fc, [item])
+            return self.get_session_view(session_id, actor)
         self.dispatch(session_id, action, actor)
         return self.get_session_view(session_id, actor)
 

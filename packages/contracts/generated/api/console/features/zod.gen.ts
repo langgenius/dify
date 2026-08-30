@@ -100,6 +100,7 @@ export const zFeatureModel = z.object({
   }),
   can_replace_logo: z.boolean().default(false),
   dataset_operator_enabled: z.boolean().default(false),
+  dify_builder_enabled: z.boolean().default(false),
   docs_processing: z.string().default('standard'),
   documents_upload_quota: zLimitationModel.default({ limit: 50, size: 0 }),
   education: zEducationModel.default({ activated: false, enabled: false }),
@@ -111,6 +112,7 @@ export const zFeatureModel = z.object({
   members: zLimitationModel.default({ limit: 1, size: 0 }),
   model_load_balancing_enabled: z.boolean().default(false),
   next_credit_reset_date: z.int().default(0),
+  skill_learning_policy: z.string().default('ask'),
   trigger_event: zQuota.default({
     limit: 3000,
     reset_date: 0,
