@@ -8,6 +8,7 @@ from core.dify_builder.models import (
     ConversationItem,
     DifyBuilderContext,
     EntryMode,
+    MutationIntent,
     Session,
     Turn,
 )
@@ -332,6 +333,67 @@ def test_reverted_retry_returns_to_plan_approval_with_fresh_checkpoint():
     assert {i.kind for i in res.items} >= {"plan", "checkpoint", "assistant_turn"}
 
 
+def test_edit_await_repair_approve_applies_and_retests():
+    from core.dify_builder.handlers_edit import handle_await_repair
+
+    env, _ = _new_env()
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_AWAIT_REPAIR)
+    fc = DifyBuilderContext(
+        staged_repair=[
+            MutationIntent(
+                op="set_node_config",
+                args={"node_id": "llm", "path": "prompt_template", "value": []},
+            )
+        ],
+        test_input_ref="ti-1",
+    )
+    result = handle_await_repair(env, Turn(actor=_actor(), action=Action(kind="approve_repair")), s, fc)
+    assert result.next == PcState.EDIT_TEST_AFFECTED_PATHS
+    assert result.context.staged_repair == []
+
+
+def test_edit_await_repair_keep_draft_goes_to_review():
+    from core.dify_builder.handlers_edit import handle_await_repair
+
+    env, _ = _new_env()
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_AWAIT_REPAIR)
+    result = handle_await_repair(
+        env, Turn(actor=_actor(), action=Action(kind="keep_draft")), s, DifyBuilderContext()
+    )
+    assert result.next == PcState.EDIT_REVIEW
+
+
+def test_edit_await_repair_undo_reverts():
+    from core.dify_builder.handlers_edit import handle_await_repair
+
+    events: list[dict] = []
+    env, repo = _new_env(emit_canvas=events.append)
+    s = _seed_edit_session(repo, PcState.EDIT_AWAIT_REPAIR, edit_target_node_ids=["llm"])
+    result = handle_await_repair(
+        env, Turn(actor=_actor(), action=Action(kind="undo")), *repo.get_session(s.id)
+    )
+    assert result.next == PcState.EDIT_REVERTED
+    assert any(i.kind == "decision" for i in result.items)
+
+
+def test_edit_await_repair_default_stays():
+    from core.dify_builder.handlers_edit import handle_await_repair
+
+    env, _ = _new_env()
+    s = _session(entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_AWAIT_REPAIR)
+    result = handle_await_repair(env, Turn(actor=_actor(), action=Action(kind="message")), s, DifyBuilderContext())
+    assert result.next == PcState.EDIT_AWAIT_REPAIR
+
+
+def test_edit_await_repair_is_waiting_and_projected():
+    from core.dify_builder.state import PcState, is_waiting
+    from services.dify_builder.service import Phase, _actions_for, _phase_for
+
+    assert is_waiting(PcState.EDIT_AWAIT_REPAIR)
+    assert _phase_for(PcState.EDIT_AWAIT_REPAIR) == Phase.TEST
+    assert [a.id for a in _actions_for(PcState.EDIT_AWAIT_REPAIR)]
+
+
 def test_edit_registry_covers_all_non_terminal_edit_states():
     from core.dify_builder.handlers_edit import edit_registry
 
@@ -341,6 +403,7 @@ def test_edit_registry_covers_all_non_terminal_edit_states():
         PcState.EDIT_PLAN_APPROVAL,
         PcState.EDIT_APPLY_CHANGES,
         PcState.EDIT_TEST_AFFECTED_PATHS,
+        PcState.EDIT_AWAIT_REPAIR,
         PcState.EDIT_REVIEW,
         PcState.EDIT_REVERTED,
     }
