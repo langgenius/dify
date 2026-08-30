@@ -295,13 +295,18 @@ def test_test_and_repair_pass_goes_to_review_with_real_run():
     assert result.run is not None
     assert result.run.status == "succeeded"
     assert result.context.test_input_ref  # inputs generated + persisted
+    test_result = next(i for i in result.items if i.kind == "test_result")
+    assert test_result.payload["tone"] == "success"
+    assistant = next(i for i in result.items if i.kind == "assistant_turn")
+    assert assistant.payload["cards"] == ["test_result", "summary"]
 
 
 def test_test_and_repair_fail_routes_to_await_repair_with_staged_repair():
     from core.dify_builder.handlers_build import handle_test_and_repair
-    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
 
-    env, _ = _new_env()
+    events: list[dict] = []
+    env, _ = _new_env(agent=StubAgent(), emit_canvas=events.append)
     env.dify = FakeBuildDifyPort()
     env.dify.verify_pass = False
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
@@ -312,6 +317,46 @@ def test_test_and_repair_fail_routes_to_await_repair_with_staged_repair():
     assert result.run.status == "failed"
     # StubAgent.propose_repair returns a repair -> staged
     assert result.context.staged_repair
+    # card content: a red test_result, an error card carrying the real
+    # diagnosis (StubAgent.diagnose's culprit/root_cause), and a change_set
+    # since a repair was proposed -- the assistant_turn's cards list reflects
+    # exactly that trio.
+    test_result = next(i for i in result.items if i.kind == "test_result")
+    assert test_result.payload["tone"] == "error"
+    error_card = next(i for i in result.items if i.kind == "error")
+    assert error_card.payload["body"] == "Output node requires 'metrics'"
+    assert error_card.payload["node_id"] == "output"
+    assistant = next(i for i in result.items if i.kind == "assistant_turn")
+    assert assistant.payload["cards"] == ["test_result", "error", "change_set"]
+    assert {"event": "mark_test_error"} in events
+
+
+def test_test_and_repair_fail_with_no_proposed_repair_still_routes_to_gate():
+    """When propose_repair finds no safe fix (empty intents), the fail path
+    must still route to the gate, but WITHOUT a change_set card, and with the
+    "no safe automatic fix" reply_text variant -- the `if intents` branch the
+    handler takes to decide between the two card/reply-text shapes."""
+    from core.dify_builder.handlers_build import handle_test_and_repair
+    from core.dify_builder.models import Risk
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+    env, _ = _new_env()
+    env.dify = FakeBuildDifyPort()
+    env.dify.verify_pass = False
+    env.agent.propose_repair = lambda _diagnosis, _graph: (
+        [],
+        Risk(level="high", reason="no fix", has_external_side_effect=False),
+    )
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    fc = DifyBuilderContext(built_node_ids=["llm"])
+    result = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
+    assert result.next == PcState.BUILD_AWAIT_REPAIR
+    assert result.context.staged_repair == []
+    kinds = [i.kind for i in result.items]
+    assert "change_set" not in kinds
+    assistant = next(i for i in result.items if i.kind == "assistant_turn")
+    assert assistant.payload["cards"] == ["test_result", "error"]
+    assert assistant.payload["reply_text"] == "Test failed — no safe automatic fix; edit or keep draft."
 
 
 def test_test_and_repair_reuses_persisted_inputs_on_retest():
