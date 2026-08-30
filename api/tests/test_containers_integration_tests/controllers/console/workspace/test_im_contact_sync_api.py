@@ -10,7 +10,6 @@ from flask.testing import FlaskClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.human_input_v2.contact import Contact, ContactType
 from core.human_input_v2.entities import (
     IMProvider,
     IMSyncRemovalReason,
@@ -43,6 +42,7 @@ from models.human_input_v2 import (
     HumanInputIMBinding,
     HumanInputIMSyncRun,
 )
+from repositories.human_input_v2.contact import Contact, ContactType
 from repositories.human_input_v2.im_integration.mappers import (
     identity_to_record,
     integration_to_record,

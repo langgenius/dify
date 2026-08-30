@@ -9,7 +9,6 @@ import pytest
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.human_input_v2.contact import ContactQuery, ContactType
 from core.human_input_v2.shared import AccountId, ContactId, TenantId
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.human_input_v2 import (
@@ -18,7 +17,8 @@ from models.human_input_v2 import (
     HumanInputExternalContactProfile,
     HumanInputPlatformContactWorkspaceEntry,
 )
-from repositories.human_input_v2.contact import SQLAlchemyContactRepository
+from repositories.human_input_v2.contact import ContactQuery, ContactType
+from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 
 _NOW = datetime(2026, 8, 30, 8)
 _TENANT_A = TenantId("00000000-0000-0000-0000-000000000101")

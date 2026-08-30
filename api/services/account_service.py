@@ -507,7 +507,7 @@ class AccountService:
         # Account creation and Contact identity provisioning share this caller
         # Session, so an Account can never commit without its stable Contact ID.
         from core.human_input_v2.shared import AccountId
-        from repositories.human_input_v2.contact import SQLAlchemyContactRepository
+        from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 
         SQLAlchemyContactRepository(session).provision_account_backed_contact(AccountId(account.id))
         session.commit()
@@ -1405,7 +1405,7 @@ class TenantService:
         # Membership creation is the bounded repair point for pre-existing
         # Accounts whose immutable Contact identity is unexpectedly missing.
         from core.human_input_v2.shared import AccountId
-        from repositories.human_input_v2.contact import SQLAlchemyContactRepository
+        from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 
         SQLAlchemyContactRepository(session).provision_account_backed_contact(AccountId(account.id))
         session.commit()
@@ -1988,7 +1988,7 @@ class RegisterService:
             session.commit()
         except Exception as e:
             from core.human_input_v2.shared import AccountId
-            from repositories.human_input_v2.contact import SQLAlchemyContactRepository
+            from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 
             session.execute(delete(DifySetup))
             session.execute(delete(TenantAccountJoin))

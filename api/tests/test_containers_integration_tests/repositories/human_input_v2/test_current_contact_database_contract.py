@@ -15,7 +15,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from testcontainers.mysql import MySqlContainer
 from testcontainers.postgres import PostgresContainer
 
-from core.human_input_v2.contact import ContactError, ContactErrorCode, ContactQuery, ContactType, ExternalContact
 from core.human_input_v2.entities import IMIntegrationStatus, IMProvider, IMSyncRunStatus
 from core.human_input_v2.im_integration import (
     ApplyReconciliationStatus,
@@ -42,9 +41,16 @@ from models.human_input_v2 import (
     HumanInputPlatformContactWorkspaceEntry,
     IMEncryptedCredentials,
 )
-from repositories.human_input_v2.contact import SQLAlchemyContactRepository
+from repositories.human_input_v2.contact import (
+    ContactError,
+    ContactErrorCode,
+    ContactQuery,
+    ContactType,
+    ExternalContact,
+)
 from repositories.human_input_v2.im_integration.mappers import sync_run_to_record
 from repositories.human_input_v2.im_integration.unit_of_work import SQLAlchemySessionBoundIMRepository
+from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 
 _NOW = datetime(2026, 8, 30, 8)
 _TENANT_A = TenantId("00000000-0000-0000-0000-000000000101")

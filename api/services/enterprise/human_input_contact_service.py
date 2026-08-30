@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from core.human_input_v2.contact import (
+from core.human_input_v2.shared import AccountId, ContactId, TenantId
+from repositories.human_input_v2.contact import (
     Contact,
     ContactRepository,
     ContactType,
@@ -12,7 +13,6 @@ from core.human_input_v2.contact import (
     ExternalContact,
     OrganizationCandidate,
 )
-from core.human_input_v2.shared import AccountId, ContactId, TenantId
 from services.human_input_v2.contact_service import ContactManagementService, ContactWithIMBindings
 
 _CANDIDATE_PAGE_LIMIT = 500

@@ -74,15 +74,6 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
-from core.human_input_v2.contact import (
-    CandidateId,
-    Contact,
-    ContactError,
-    ContactErrorCode,
-    ContactQuery,
-    ContactType,
-    ExternalContact,
-)
 from core.human_input_v2.im_integration import (
     ContactIMBindingView,
     IMBindingCommandError,
@@ -99,6 +90,15 @@ from libs.login import login_required
 from libs.uuid_utils import uuidv7
 from models.account import Account
 from repositories.human_input_v2.contact import (
+    CandidateId,
+    Contact,
+    ContactError,
+    ContactErrorCode,
+    ContactQuery,
+    ContactType,
+    ExternalContact,
+)
+from repositories.human_input_v2.sqlalchemy_contact_repository import (
     SQLAlchemyContactIMBindingRepository,
     SQLAlchemyContactRepository,
 )

@@ -8,7 +8,6 @@ import pytest
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.human_input_v2.contact import Contact, ContactType
 from core.human_input_v2.entities import HumanInputContactType, IMBindingScope, IMIntegrationStatus, IMProvider
 from core.human_input_v2.im_integration import IMBindingCommandError, IMBindingCommandErrorCode, IMIdentity
 from core.human_input_v2.shared import (
@@ -30,6 +29,7 @@ from models.human_input_v2 import (
     HumanInputPlatformContactWorkspaceEntry,
     IMEncryptedCredentials,
 )
+from repositories.human_input_v2.contact import Contact, ContactType
 from repositories.human_input_v2.im_integration.mappers import identity_to_record
 from repositories.human_input_v2.im_integration.unit_of_work import SQLAlchemyOrganizationIMWriteUnitOfWork
 from services.human_input_v2.im_contact_sync.binding_service import ContactIMBindingService

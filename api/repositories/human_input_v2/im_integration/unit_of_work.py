@@ -11,7 +11,6 @@ from pydantic import NaiveDatetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.human_input_v2.contact import Contact, ContactQuery, ContactType
 from core.human_input_v2.entities import (
     HumanInputContactType,
     IMBindingScope,
@@ -86,10 +85,14 @@ from models.human_input_v2 import (
     HumanInputIMSyncRun,
     IMIdentityRawPayload,
 )
-from repositories.human_input_v2.contact import SQLAlchemyContactIMBindingRepository, SQLAlchemyContactRepository
+from repositories.human_input_v2.contact import Contact, ContactQuery, ContactType
 from repositories.human_input_v2.organization_write_unit_of_work import (
     OwnedOrganizationWriteLock,
     SQLAlchemyOrganizationWriteUnitOfWork,
+)
+from repositories.human_input_v2.sqlalchemy_contact_repository import (
+    SQLAlchemyContactIMBindingRepository,
+    SQLAlchemyContactRepository,
 )
 
 from .mappers import (

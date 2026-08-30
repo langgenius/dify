@@ -1046,13 +1046,13 @@ def test_decoder_discovery_and_decode_do_not_cross_runtime_dependency_boundaries
         "services.human_input",
         "core.workflow",
         "core.human_input_v2.approval",
-        "core.human_input_v2.contact",
+        "repositories.human_input_v2.contact",
         "core.human_input_v2.im_integration.binding",
         "repositories",
     )
     current_dependency_prefixes = {
         "core.human_input_v2.approval",
-        "core.human_input_v2.contact",
+        "repositories.human_input_v2.contact",
         "core.human_input_v2.im_integration.binding",
     }
     assert current_dependency_prefixes.issubset(forbidden_module_prefixes)

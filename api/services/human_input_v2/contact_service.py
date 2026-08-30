@@ -7,7 +7,8 @@ from dataclasses import dataclass
 
 from pydantic import NaiveDatetime
 
-from core.human_input_v2.contact import (
+from core.human_input_v2.shared import ContactId, TenantId
+from repositories.human_input_v2.contact import (
     Contact,
     ContactIMBindingRepository,
     ContactQuery,
@@ -17,7 +18,6 @@ from core.human_input_v2.contact import (
     IMBinding,
     Page,
 )
-from core.human_input_v2.shared import ContactId, TenantId
 
 
 @dataclass(frozen=True, slots=True)

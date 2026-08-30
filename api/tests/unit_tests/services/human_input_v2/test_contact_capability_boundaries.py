@@ -6,7 +6,8 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import get_type_hints
 
-from core.human_input_v2.contact import (
+from core.human_input_v2.shared import AccountId, ContactId, TenantId
+from repositories.human_input_v2.contact import (
     CandidateId,
     Contact,
     ContactIMBindingRepository,
@@ -19,7 +20,6 @@ from core.human_input_v2.contact import (
     OrganizationCandidate,
     Page,
 )
-from core.human_input_v2.shared import AccountId, ContactId, TenantId
 from services.enterprise.human_input_contact_service import EnterpriseContactManagementService
 from services.human_input_v2.contact_service import ContactManagementService
 

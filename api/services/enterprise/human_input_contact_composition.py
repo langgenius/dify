@@ -2,7 +2,10 @@
 
 from sqlalchemy.orm import Session
 
-from repositories.human_input_v2.contact import SQLAlchemyContactIMBindingRepository, SQLAlchemyContactRepository
+from repositories.human_input_v2.sqlalchemy_contact_repository import (
+    SQLAlchemyContactIMBindingRepository,
+    SQLAlchemyContactRepository,
+)
 from services.human_input_v2.contact_service import ContactManagementService
 
 from .human_input_contact_service import EnterpriseContactManagementService, EnterpriseOrganizationContactReader

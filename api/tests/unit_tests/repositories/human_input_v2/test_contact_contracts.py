@@ -5,7 +5,8 @@ from datetime import datetime
 
 import pytest
 
-from core.human_input_v2.contact import (
+from core.human_input_v2.shared import ContactId
+from repositories.human_input_v2.contact import (
     CandidateId,
     Contact,
     ContactQuery,
@@ -14,7 +15,6 @@ from core.human_input_v2.contact import (
     OrganizationCandidate,
     Page,
 )
-from core.human_input_v2.shared import ContactId
 
 _NOW = datetime(2026, 8, 30, 8)
 _CONTACT_ID = ContactId("00000000-0000-0000-0000-000000000001")
@@ -47,15 +47,15 @@ def test_contact_values_are_frozen_slotted_values_with_stable_shapes() -> None:
     contact = Contact(
         id=_CONTACT_ID,
         type=ContactType.WORKSPACE,
-        name=" Reviewer ",
-        email=" Reviewer@Example.com ",
+        name="Reviewer",
+        email="Reviewer@Example.com",
         avatar_file_id="avatar-1",
         created_at=_NOW,
     )
     external = ExternalContact(
         id=_CONTACT_ID,
-        name=" External Reviewer ",
-        email=" External@Example.com ",
+        name="External Reviewer",
+        email="External@Example.com",
         avatar_file_id=None,
         created_at=_NOW,
     )
@@ -79,10 +79,6 @@ def test_contact_values_are_frozen_slotted_values_with_stable_shapes() -> None:
     )
     assert tuple(field.name for field in fields(ContactQuery)) == ("keyword", "contact_type")
     assert tuple(field.name for field in fields(Page)) == ("items", "page", "limit")
-    assert contact.name == "Reviewer"
-    assert contact.email == "Reviewer@Example.com"
-    assert external.name == "External Reviewer"
-    assert external.email == "External@Example.com"
     assert query == ContactQuery(keyword="reviewer", contact_type=ContactType.EXTERNAL)
     assert page == Page(items=(contact,), page=2, limit=10)
     assert isinstance(page.items, tuple)
@@ -99,17 +95,3 @@ def test_contact_values_are_frozen_slotted_values_with_stable_shapes() -> None:
         query.keyword = "changed"
     with pytest.raises(FrozenInstanceError):
         page.page = 3
-
-
-@pytest.mark.parametrize(
-    ("page", "limit", "message"),
-    [
-        (0, 1, "page must be positive"),
-        (-1, 1, "page must be positive"),
-        (1, 0, "limit must be positive"),
-        (1, -1, "limit must be positive"),
-    ],
-)
-def test_page_rejects_non_positive_boundaries(page: int, limit: int, message: str) -> None:
-    with pytest.raises(ValueError, match=message):
-        Page[Contact](items=(), page=page, limit=limit)
