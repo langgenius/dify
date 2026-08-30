@@ -493,9 +493,7 @@ def test_receive_loop_unknown_request_id(streams, caplog: pytest.LogCaptureFixtu
                     break
                 time.sleep(0.1)
 
-    assert any(
-        "Received response with an unknown or expired request ID 999" in r.message for r in caplog.records
-    )
+    assert any("Received response with an unknown or expired request ID 999" in r.message for r in caplog.records)
     assert session.check_receiver_status() is None
 
 
