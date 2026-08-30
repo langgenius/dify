@@ -7,18 +7,17 @@ Owns the resolved model. Of the Protocol's 14 methods (Fix 4 + Build 7 + Edit 3)
 ``propose_plan_v1``, ``discover_resources``, ``bind_resources``, ``build_nodes``,
 ``learn_from_build`` -- via ``services.dify_builder.agent.build``; and all 3 Edit
 methods -- ``analyze_impact``, ``propose_edit_plan``, ``build_edit_intents`` -- via
-``services.dify_builder.agent.edit``. Each resolves the model through
+``services.dify_builder.agent.edit``; and ``generate_mock_inputs`` via
+``services.dify_builder.agent.mock_inputs``. Each resolves the model through
 ``_model_or_none`` (which degrades to ``None`` on resolution failure rather than
-crashing the advance; ``fix.*``/``build.*``/``edit.*`` handle that).
-``generate_mock_inputs`` and ``propose_build_repair`` remain deferred;
-``propose_build_repair`` returns ``[]`` pending the live-test step.
+crashing the advance; ``fix.*``/``build.*``/``edit.*``/``mock_inputs.*`` handle that).
+``propose_build_repair`` remains deferred and returns ``[]`` pending the live-test step.
 """
 
 from typing import Any
 
-from core.dify_builder.placeholder_agent import PlaceholderAgent
 from core.model_manager import ModelInstance
-from services.dify_builder.agent import build, edit, fix
+from services.dify_builder.agent import build, edit, fix, mock_inputs
 from services.dify_builder.agent.model_resolver import resolve_model_instance
 
 
@@ -26,7 +25,6 @@ class LlmBuilderAgent:
     def __init__(self, tenant_id: str, model_config: dict[str, Any] | None = None) -> None:
         self._tenant_id = tenant_id
         self._model_config = model_config or {}
-        self._canned = PlaceholderAgent()
         self._model_instance: ModelInstance | None = None
 
     def _model(self) -> ModelInstance:
@@ -54,7 +52,7 @@ class LlmBuilderAgent:
         return fix.propose_repair(self._model_or_none(), diagnosis, graph)
 
     def generate_mock_inputs(self, schema, prior_failed):
-        return self._canned.generate_mock_inputs(schema, prior_failed)
+        return mock_inputs.generate(self._model_or_none(), schema, prior_failed)
 
     # -- Build cognition (real) --
     def analyze_goal(self, goal_text):
