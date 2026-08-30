@@ -29,6 +29,7 @@ import {
   assertObservedEmbeddingDimension,
 } from "./knowledge-space-embedding-resolver";
 import { normalizeMixedLanguageFtsText } from "./retrieval-text-utils";
+import { TEXT_INDEXING_STRATEGY } from "./text-indexing-strategy";
 
 export interface BuildDenseVectorProjectionInput {
   /** Immutable profile captured by a compilation/profile-migration attempt. */
@@ -258,6 +259,7 @@ export function createDenseVectorProjectionBuilder({
             })
           : new Map<string, IndexProjection>();
       const nodesToEmbed = parsedNodes.filter((node) => !reusableByNodeId.has(node.id));
+      const embeddingTexts = nodesToEmbed.map(textIndexContentForNode);
       if (nodesToEmbed.length === 0) {
         recordIngestionModelCallMetric(metrics, {
           cacheHits: parsedNodes.length,
@@ -273,8 +275,8 @@ export function createDenseVectorProjectionBuilder({
         );
       }
       modelBudget?.reserve({
-        estimatedTokens: nodesToEmbed.reduce(
-          (total, node) => total + estimateDocumentModelTokens(node.text),
+        estimatedTokens: embeddingTexts.reduce(
+          (total, text) => total + estimateDocumentModelTokens(text),
           0,
         ),
         itemCount: nodesToEmbed.length,
@@ -287,7 +289,7 @@ export function createDenseVectorProjectionBuilder({
           inputType: "search_document",
           model: resolvedEmbedding?.model ?? model,
           ...(signal ? { signal } : {}),
-          texts: nodesToEmbed.map((node) => node.text),
+          texts: embeddingTexts,
           ...(tenantId ? { tenantId } : {}),
         });
       } catch (error) {
@@ -373,6 +375,7 @@ export function createDenseVectorProjectionBuilder({
             dimension: responseDimension,
             documentAssetId: node.documentAssetId,
             embeddingProvider: result.metadata.provider,
+            indexingStrategy: TEXT_INDEXING_STRATEGY,
             embeddingModel: result.model,
             ...(resolvedEmbedding
               ? {
@@ -457,7 +460,8 @@ async function loadReusableDenseProjections({
       projection.type !== "dense-vector" ||
       projection.metadata.artifactHash !== node.artifactHash ||
       projection.metadata.documentAssetId !== node.documentAssetId ||
-      projection.metadata.parseArtifactId !== node.parseArtifactId
+      projection.metadata.parseArtifactId !== node.parseArtifactId ||
+      projection.metadata.indexingStrategy !== TEXT_INDEXING_STRATEGY
     ) {
       throw new Error(
         `Persisted generation-scoped dense projection id=${projection.id} cannot be reused`,
@@ -498,10 +502,11 @@ export function createFtsProjectionBuilder({
 
       const parsedNodes = nodes.map((node) => cloneKnowledgeNode(KnowledgeNodeSchema.parse(node)));
       const ftsProjections = parsedNodes.flatMap((node) => {
-        const ftsText = normalizeMixedLanguageFtsText(node.text);
-        if (!ftsText) {
+        const sourceFtsText = normalizeMixedLanguageFtsText(node.text);
+        if (!sourceFtsText) {
           return [];
         }
+        const ftsText = normalizeMixedLanguageFtsText(textIndexContentForNode(node));
 
         return [
           IndexProjectionSchema.parse({
@@ -520,6 +525,7 @@ export function createFtsProjectionBuilder({
               documentAssetId: node.documentAssetId,
               ftsLanguageStrategy: "mixed-cjk-latin-v1",
               ftsText,
+              indexingStrategy: TEXT_INDEXING_STRATEGY,
               ...multimodalProjectionMetadata(node),
               parseArtifactId: node.parseArtifactId,
               parser: "database-fts",
@@ -564,7 +570,9 @@ export function createFtsProjectionBuilder({
             projection.type !== "fts" ||
             projection.metadata.artifactHash !== incoming.metadata.artifactHash ||
             projection.metadata.documentAssetId !== incoming.metadata.documentAssetId ||
-            projection.metadata.parseArtifactId !== incoming.metadata.parseArtifactId
+            projection.metadata.parseArtifactId !== incoming.metadata.parseArtifactId ||
+            projection.metadata.indexingStrategy !== TEXT_INDEXING_STRATEGY ||
+            projection.metadata.ftsText !== incoming.metadata.ftsText
           ) {
             throw new Error(
               `Persisted generation-scoped FTS projection id=${projection.id} cannot be reused`,
@@ -592,6 +600,28 @@ export function createFtsProjectionBuilder({
         .then((items) => items.map(cloneIndexProjection));
     },
   };
+}
+
+/**
+ * Add trusted semantic navigation context to search indexes without changing the cited source
+ * text stored on the knowledge node. Table rows and list continuations commonly omit their parent
+ * heading, so indexing only `node.text` makes them impossible to recall from a heading-led query.
+ */
+function textIndexContentForNode(node: KnowledgeNode): string {
+  const sectionPath = node.sourceLocation.sectionPath
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .join(" > ");
+  const semanticChunking = isPlainObject(node.metadata.semanticChunking)
+    ? node.metadata.semanticChunking
+    : undefined;
+  const section =
+    semanticChunking && isPlainObject(semanticChunking.section)
+      ? semanticChunking.section
+      : undefined;
+  const summary = section && typeof section.summary === "string" ? section.summary.trim() : "";
+
+  return [sectionPath, summary, node.text.trim()].filter(Boolean).join("\n\n");
 }
 
 export function createVisualEmbeddingProjectionBuilder({

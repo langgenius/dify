@@ -135,6 +135,7 @@ export interface NativeParserOptions {
 
 export interface UnstructuredParserClientOptions extends NativeParserOptions {
   readonly apiKey?: string;
+  readonly defaultLanguage?: string;
   readonly endpoint: string;
   readonly fetch?: typeof fetch;
   readonly maxResponseBytes?: number;
@@ -303,6 +304,7 @@ export function createNativeStructuredDataParser(
 
 export function createUnstructuredParserClient({
   apiKey,
+  defaultLanguage,
   endpoint,
   fetch: fetchImpl = fetch,
   maxConcurrency = defaultMaxConcurrency,
@@ -323,9 +325,12 @@ export function createUnstructuredParserClient({
       requestGate.run(async () => {
         const deadline = createUnstructuredRequestDeadline(input.signal, requestTimeoutMs);
         try {
-          const parserVersion = options.parserVersion ?? "unstructured@9";
+          const parserVersion = options.parserVersion ?? "unstructured@10";
           const partitionStrategy = unstructuredPartitionStrategy(input);
           const providerImageBlockTypes = unstructuredProviderImageBlockTypes(input);
+          const providerLanguage = unstructuredLanguage(
+            input.parserHints?.language ?? defaultLanguage,
+          );
           assertInputBounds(input.body, options.maxInputBytes ?? defaultMaxInputBytes);
           const response = await fetchWithRetries({
             buildRequest: () => {
@@ -337,6 +342,7 @@ export function createUnstructuredParserClient({
               form.set("files", new File([fileBody], input.filename, { type: input.mimeType }));
               form.set("coordinates", "true");
               form.set("strategy", partitionStrategy);
+              if (providerLanguage) form.set("languages", providerLanguage);
               if (providerImageBlockTypes.length > 0) {
                 for (const blockType of providerImageBlockTypes) {
                   form.append("extract_image_block_types", blockType);
@@ -388,6 +394,7 @@ export function createUnstructuredParserClient({
             artifactHashContext: unstructuredArtifactHashContext(input, {
               partitionStrategy,
               providerImageBlockTypes,
+              providerLanguage,
             }),
             elements,
             input,
@@ -436,6 +443,28 @@ function shouldRequestProviderImages(input: ParseDocumentInput): boolean {
   return unstructuredProviderImageBlockTypes(input).length > 0;
 }
 
+function unstructuredLanguage(language: string | undefined): string | undefined {
+  const normalized = language?.trim().toLowerCase();
+  if (!normalized) return undefined;
+
+  const baseLanguage = normalized.split("-", 1)[0] ?? normalized;
+  return (
+    {
+      ar: "ara",
+      de: "deu",
+      en: "eng",
+      es: "spa",
+      fr: "fra",
+      hi: "hin",
+      ja: "jpn",
+      ko: "kor",
+      pt: "por",
+      ru: "rus",
+      zh: "zho",
+    }[baseLanguage] ?? normalized
+  );
+}
+
 function unstructuredProviderImageBlockTypes(
   input: ParseDocumentInput,
 ): readonly ("Image" | "Table")[] {
@@ -472,6 +501,7 @@ function unstructuredArtifactHashContext(
   request: {
     readonly partitionStrategy: "auto" | "fast" | "hi_res";
     readonly providerImageBlockTypes: readonly ("Image" | "Table")[];
+    readonly providerLanguage?: string | undefined;
   },
 ): string {
   const hints = input.parserHints;
@@ -491,6 +521,7 @@ function unstructuredArtifactHashContext(
       coordinates: true,
       imageBlockTypes: request.providerImageBlockTypes,
       imagePayload: request.providerImageBlockTypes.length > 0,
+      language: request.providerLanguage ?? null,
       strategy: request.partitionStrategy,
     },
   });
@@ -2307,7 +2338,10 @@ function unstructuredElementsToElements(
     const type = unstructuredType(sourceElement.type);
     const tableProjection =
       type === "table" ? unstructuredTableProjection(sourceElement.metadata) : undefined;
-    const text = tableProjection?.text ?? normalizeText(sourceElement.text ?? "");
+    const providerText = tableProjection?.text ?? normalizeText(sourceElement.text ?? "");
+    const text = hasChineseOcrLanguage(sourceElement.metadata)
+      ? normalizeChineseOcrText(providerText)
+      : providerText;
 
     if (!text && !hasUnstructuredVisualMetadata(sourceElement.metadata, type)) {
       continue;
@@ -2347,6 +2381,26 @@ function unstructuredElementsToElements(
   }
 
   return elements;
+}
+
+function hasChineseOcrLanguage(metadata: Readonly<Record<string, unknown>>): boolean {
+  const languages = metadata.languages;
+  return (
+    Array.isArray(languages) &&
+    languages.some(
+      (language) =>
+        typeof language === "string" &&
+        (language.trim().toLowerCase() === "zho" ||
+          language.trim().toLowerCase().startsWith("zh-")),
+    )
+  );
+}
+
+function normalizeChineseOcrText(text: string): string {
+  return text.replace(
+    /(?<=[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff])[\t \u3000]+(?=[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff])/gu,
+    "",
+  );
 }
 
 function unstructuredCategoryDepth(

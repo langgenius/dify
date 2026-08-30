@@ -42,6 +42,7 @@ import type {
   ProjectionSetPublicationMemberRepository,
 } from "./projection-publication-member-repository";
 import type { ProjectionSetPublicationRepository } from "./projection-publication-repository";
+import { TEXT_INDEXING_STRATEGY } from "./text-indexing-strategy";
 
 export interface DocumentCompilationFingerprintVersions {
   readonly chunkerVersion: string;
@@ -655,11 +656,11 @@ function projectionFingerprintConfig(
   const visual = isVisualProjection(projection);
   const strategy =
     projection.type === "fts"
-      ? "mixed-cjk-latin-fts-v1"
+      ? `mixed-cjk-latin-fts-v1:${TEXT_INDEXING_STRATEGY}`
       : visual
         ? "visual-dense-v1"
         : projection.type === "dense-vector"
-          ? "text-dense-v1"
+          ? `text-dense-v1:${TEXT_INDEXING_STRATEGY}`
           : `${projection.type}-v1`;
   return {
     indexVersion:

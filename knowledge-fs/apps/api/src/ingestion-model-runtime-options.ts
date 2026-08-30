@@ -15,6 +15,7 @@ export interface ApiIngestionModelRuntimeEnv {
   readonly KNOWLEDGE_OUTLINE_SUMMARY_MAX_CONCURRENCY?: string | undefined;
   readonly KNOWLEDGE_SEMANTIC_EXTRACTION_BATCH_SIZE?: string | undefined;
   readonly KNOWLEDGE_SEMANTIC_EXTRACTION_MAX_CONCURRENCY?: string | undefined;
+  readonly KNOWLEDGE_SEMANTIC_CHUNKING_MAX_WINDOW_CHARS?: string | undefined;
 }
 
 export interface ApiIngestionModelRuntimeOptions {
@@ -28,6 +29,7 @@ export interface ApiIngestionModelRuntimeOptions {
   readonly outlineSummaryMaxConcurrency: number;
   readonly semanticExtractionBatchSize: number;
   readonly semanticExtractionMaxConcurrency: number;
+  readonly semanticChunkingMaxWindowChars: number;
 }
 
 export interface ApiIngestionModelRuntimeMetrics {
@@ -48,8 +50,10 @@ const MAX_OUTLINE_SUMMARY_BATCH_SIZE = 32;
 const MAX_OUTLINE_SUMMARY_CONCURRENCY = 32;
 const DEFAULT_SEMANTIC_EXTRACTION_BATCH_SIZE = 8;
 const DEFAULT_SEMANTIC_EXTRACTION_MAX_CONCURRENCY = 4;
+const DEFAULT_SEMANTIC_CHUNKING_MAX_WINDOW_CHARS = 4_800;
 const MAX_SEMANTIC_EXTRACTION_BATCH_SIZE = 32;
 const MAX_SEMANTIC_EXTRACTION_CONCURRENCY = 32;
+const MAX_SEMANTIC_CHUNKING_MAX_WINDOW_CHARS = 200_000;
 
 /**
  * Builds the shared ingestion-time model budget. The per-document outline bound protects fairness
@@ -108,6 +112,12 @@ export function createApiIngestionModelRuntimeOptions(
     name: "KNOWLEDGE_SEMANTIC_EXTRACTION_MAX_CONCURRENCY",
     value: env.KNOWLEDGE_SEMANTIC_EXTRACTION_MAX_CONCURRENCY,
   });
+  const semanticChunkingMaxWindowChars = boundedPositiveIntegerEnv({
+    fallback: DEFAULT_SEMANTIC_CHUNKING_MAX_WINDOW_CHARS,
+    max: MAX_SEMANTIC_CHUNKING_MAX_WINDOW_CHARS,
+    name: "KNOWLEDGE_SEMANTIC_CHUNKING_MAX_WINDOW_CHARS",
+    value: env.KNOWLEDGE_SEMANTIC_CHUNKING_MAX_WINDOW_CHARS,
+  });
 
   return {
     createDocumentModelBudget: () =>
@@ -126,6 +136,7 @@ export function createApiIngestionModelRuntimeOptions(
     outlineSummaryMaxConcurrency,
     semanticExtractionBatchSize,
     semanticExtractionMaxConcurrency,
+    semanticChunkingMaxWindowChars,
   };
 }
 

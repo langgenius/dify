@@ -8842,7 +8842,7 @@ describe("createKnowledgeGateway", () => {
     expect(embedding.calls[0]).toEqual({
       inputType: "search_document",
       model: "static-upgrade@2026-05-01",
-      texts: ["First chunk", "Second chunk"],
+      texts: ["Intro\n\nFirst chunk", "Intro\n\nSecond chunk"],
     });
     expect(evaluationCalls[0]).toEqual({
       denseProjectionModel: "static-upgrade@2026-05-01",
@@ -9132,7 +9132,7 @@ describe("createKnowledgeGateway", () => {
       {
         inputType: "search_document",
         model: "static-dense",
-        texts: ["First chunk", "Second chunk"],
+        texts: ["Intro\n\nFirst chunk", "Intro\n\nSecond chunk"],
       },
     ]);
     expect(projections).toEqual([
@@ -9141,7 +9141,7 @@ describe("createKnowledgeGateway", () => {
         knowledgeSpaceId: firstNode.knowledgeSpaceId,
         metadata: expect.objectContaining({
           artifactHash: firstNode.artifactHash,
-          denseVector: [0.1, 11],
+          denseVector: [0.1, 18],
           dimension: 2,
           embeddingProvider: "static",
           modelVersion: "static-dense",
@@ -9153,7 +9153,7 @@ describe("createKnowledgeGateway", () => {
         type: "dense-vector",
       }),
       expect.objectContaining({
-        metadata: expect.objectContaining({ denseVector: [1.1, 12] }),
+        metadata: expect.objectContaining({ denseVector: [1.1, 19] }),
         nodeId: secondNode.id,
       }),
     ]);
@@ -9187,7 +9187,7 @@ describe("createKnowledgeGateway", () => {
           type: "dense-vector",
         })
       ).items[0]?.metadata,
-    ).toEqual(expect.objectContaining({ denseVector: [0.1, 11] }));
+    ).toEqual(expect.objectContaining({ denseVector: [0.1, 18] }));
     await expect(
       memoryRepository.listReadyBySpace({
         knowledgeSpaceId: firstNode.knowledgeSpaceId,
@@ -9394,7 +9394,7 @@ describe("createKnowledgeGateway", () => {
     );
     expect(fake.calls[0]?.sql).toContain("dense_vector");
     expect(fake.calls[0]?.sql).not.toContain("First chunk");
-    expect(fake.calls[0]?.params).toContain("[0.1,11]");
+    expect(fake.calls[0]?.params).toContain("[0.1,18]");
     expect(fake.calls[0]?.params).toContain(JSON.stringify(firstProjection.metadata));
     await expect(
       databaseRepository.listReadyBySpace({
@@ -9635,7 +9635,8 @@ describe("createKnowledgeGateway", () => {
         metadata: expect.objectContaining({
           artifactHash: firstNode.artifactHash,
           ftsLanguageStrategy: "mixed-cjk-latin-v1",
-          ftsText: "contract abc 123 renewal terms",
+          ftsText: "intro contract abc 123 renewal terms",
+          indexingStrategy: "section-context-v1",
           parser: "database-fts",
         }),
         model: "database-fts@1",
@@ -9646,7 +9647,7 @@ describe("createKnowledgeGateway", () => {
       }),
       expect.objectContaining({
         metadata: expect.objectContaining({
-          ftsText: "error code e 42 remediation",
+          ftsText: "intro error code e 42 remediation",
         }),
         nodeId: secondNode.id,
       }),
@@ -9680,7 +9681,7 @@ describe("createKnowledgeGateway", () => {
     );
     expect(fake.calls[0]?.sql).toContain("to_tsvector('simple'");
     expect(fake.calls[0]?.sql).not.toContain("Contract ABC-123");
-    expect(fake.calls[0]?.params).toContain("contract abc 123 renewal terms");
+    expect(fake.calls[0]?.params).toContain("intro contract abc 123 renewal terms");
     expect(fake.calls[0]?.params).toContain(JSON.stringify(firstProjection.metadata));
     const tidbFake = createFakeIndexProjectionExecutor();
     const tidbRepository = createDatabaseIndexProjectionRepository({
@@ -9695,7 +9696,7 @@ describe("createKnowledgeGateway", () => {
     await expect(tidbRepository.createMany([firstProjection])).resolves.toEqual([firstProjection]);
     expect(tidbFake.calls[0]?.sql).toContain("INSERT INTO `index_projections`");
     expect(tidbFake.calls[0]?.sql).not.toContain("to_tsvector");
-    expect(tidbFake.calls[0]?.params).toContain("contract abc 123 renewal terms");
+    expect(tidbFake.calls[0]?.params).toContain("intro contract abc 123 renewal terms");
   });
 
   it("idempotently reindexes parse artifacts so interrupted projection builds can be repaired", async () => {
@@ -9980,7 +9981,8 @@ describe("createKnowledgeGateway", () => {
     expect(projections[0]?.metadata).toEqual(
       expect.objectContaining({
         ftsLanguageStrategy: "mixed-cjk-latin-v1",
-        ftsText: "合 同 abc 123 续 约 terms",
+        ftsText: "intro 合 同 abc 123 续 约 terms",
+        indexingStrategy: "section-context-v1",
       }),
     );
   });

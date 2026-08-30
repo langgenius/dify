@@ -62,14 +62,16 @@ const DEFAULT_MAX_ENTITIES_PER_CHUNK = 100;
 const DEFAULT_MAX_RELATIONS_PER_CHUNK = 100;
 const DEFAULT_MAX_OUTPUT_TOKENS = 6_000;
 const DEFAULT_MAX_RESPONSE_CHARS = 1_000_000;
-const DEFAULT_PROMPT_VERSION = "semantic-chunking-v5";
+const DEFAULT_PROMPT_VERSION = "semantic-chunking-v6";
 const SEMANTIC_CHUNKING_V2_PROMPT_VERSION = "semantic-chunking-v2";
 const SEMANTIC_CHUNKING_V3_PROMPT_VERSION = "semantic-chunking-v3";
 const SEMANTIC_CHUNKING_V4_PROMPT_VERSION = "semantic-chunking-v4";
+const SEMANTIC_CHUNKING_V5_PROMPT_VERSION = "semantic-chunking-v5";
 const V3_MAX_CORE_UNITS_PER_WINDOW = 32;
 const V3_MAX_LOOK_AHEAD_UNITS_PER_WINDOW = 8;
 const DEFAULT_MAX_CONCURRENT_WINDOWS = 4;
 const MAX_CONCURRENT_WINDOWS = 32;
+const MAX_PROVIDER_OUTPUT_RETRIES = 3;
 const SEMANTIC_CHUNKING_STRATEGY = "llm-semantic-v1";
 const SEMANTIC_CHUNKING_SCHEMA_VERSION = 1;
 /**
@@ -152,6 +154,7 @@ export interface LlmSemanticChunkerOptions {
   readonly maxEntitiesPerChunk?: number | undefined;
   readonly maxNodes?: number | undefined;
   readonly maxOutputTokens?: number | undefined;
+  readonly maxProviderOutputRetries?: number | undefined;
   readonly maxRelationsPerChunk?: number | undefined;
   readonly maxResponseChars?: number | undefined;
   readonly maxWindowChars?: number | undefined;
@@ -310,7 +313,7 @@ interface SemanticWindowTableSchema {
   readonly sourceElementId: string;
 }
 
-type SemanticWindowPlanningVersion = "v1" | "v2" | "v3" | "v4" | "v5";
+type SemanticWindowPlanningVersion = "v1" | "v2" | "v3" | "v4" | "v5" | "v6";
 
 interface SemanticWindowPlanningPolicy {
   readonly atomicDocument: boolean;
@@ -395,6 +398,7 @@ export function createLlmSemanticChunker({
   maxEntitiesPerChunk = DEFAULT_MAX_ENTITIES_PER_CHUNK,
   maxNodes = DEFAULT_MAX_NODES,
   maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS,
+  maxProviderOutputRetries = 0,
   maxRelationsPerChunk = DEFAULT_MAX_RELATIONS_PER_CHUNK,
   maxResponseChars = DEFAULT_MAX_RESPONSE_CHARS,
   maxWindowChars = DEFAULT_MAX_WINDOW_CHARS,
@@ -410,6 +414,7 @@ export function createLlmSemanticChunker({
   validatePositiveInteger("maxEntitiesPerChunk", maxEntitiesPerChunk);
   validatePositiveInteger("maxNodes", maxNodes);
   validatePositiveInteger("maxOutputTokens", maxOutputTokens);
+  validateNonnegativeInteger("maxProviderOutputRetries", maxProviderOutputRetries);
   validatePositiveInteger("maxRelationsPerChunk", maxRelationsPerChunk);
   validatePositiveInteger("maxResponseChars", maxResponseChars);
   validatePositiveInteger("maxWindowChars", maxWindowChars);
@@ -419,6 +424,11 @@ export function createLlmSemanticChunker({
   if (maxConcurrentWindows > MAX_CONCURRENT_WINDOWS) {
     throw new Error(
       `LLM semantic chunking maxConcurrentWindows must be at most ${MAX_CONCURRENT_WINDOWS}`,
+    );
+  }
+  if (maxProviderOutputRetries > MAX_PROVIDER_OUTPUT_RETRIES) {
+    throw new Error(
+      `LLM semantic chunking maxProviderOutputRetries must be at most ${MAX_PROVIDER_OUTPUT_RETRIES}`,
     );
   }
   if (!promptVersion.trim()) {
@@ -479,7 +489,7 @@ export function createLlmSemanticChunker({
       let nextUnitIndex = 0;
       let windowIndex = 0;
 
-      const processWindow = async (window: SemanticWindow) => {
+      const processWindowAttempt = async (window: SemanticWindow, retryCount: number) => {
         input.signal?.throwIfAborted();
         const messages = semanticChunkingMessages({
           enableGraph: input.enableGraph !== false,
@@ -597,7 +607,7 @@ export function createLlmSemanticChunker({
             itemCount: window.units.length,
             outcome: "succeeded",
             providerCalls: checkpointHit ? 0 : 1,
-            retries: 0,
+            retries: retryCount,
             stage: "semantic-chunking",
             ...(checkpointHit ? {} : ingestionModelUsageFromMetadata(resolvedCompletion.metadata)),
           });
@@ -609,13 +619,30 @@ export function createLlmSemanticChunker({
             itemCount: window.units.length,
             outcome: "failed",
             providerCalls: checkpointHit ? 0 : 1,
-            retries: 0,
+            retries: retryCount,
             stage: "semantic-chunking",
             ...(checkpointHit || !completion
               ? {}
               : ingestionModelUsageFromMetadata(completion.metadata)),
           });
           throw error;
+        }
+      };
+
+      const processWindow = async (window: SemanticWindow) => {
+        let retryCount = 0;
+        while (true) {
+          try {
+            return await processWindowAttempt(window, retryCount);
+          } catch (error) {
+            if (
+              retryCount >= maxProviderOutputRetries ||
+              !isRetryableSemanticProviderOutputError(error)
+            ) {
+              throw error;
+            }
+            retryCount += 1;
+          }
         }
       };
 
@@ -1805,7 +1832,7 @@ function semanticRanges(
   element: MaterializedElement,
   planningVersion: SemanticWindowPlanningVersion,
 ): SemanticRange[] {
-  if (planningVersion === "v5" && element.elementType === "table") {
+  if ((planningVersion === "v5" || planningVersion === "v6") && element.elementType === "table") {
     return semanticTableRanges(element);
   }
   if (element.elementType !== "paragraph" && element.elementType !== "list") {
@@ -2112,7 +2139,8 @@ function resolveSemanticWindowPlanningPolicy({
 }
 
 function semanticWindowPlanningVersion(promptVersion: string): SemanticWindowPlanningVersion {
-  if (promptVersion === DEFAULT_PROMPT_VERSION) return "v5";
+  if (promptVersion === DEFAULT_PROMPT_VERSION) return "v6";
+  if (promptVersion === SEMANTIC_CHUNKING_V5_PROMPT_VERSION) return "v5";
   if (promptVersion === SEMANTIC_CHUNKING_V4_PROMPT_VERSION) return "v4";
   if (promptVersion === SEMANTIC_CHUNKING_V3_PROMPT_VERSION) return "v3";
   if (promptVersion === SEMANTIC_CHUNKING_V2_PROMPT_VERSION) return "v2";
@@ -2120,11 +2148,11 @@ function semanticWindowPlanningVersion(promptVersion: string): SemanticWindowPla
 }
 
 function usesBoundedCoreUnits(version: SemanticWindowPlanningVersion): boolean {
-  return version === "v3" || version === "v4" || version === "v5";
+  return version === "v3" || version === "v4" || version === "v5" || version === "v6";
 }
 
 function usesFixedCoreBoundary(version: SemanticWindowPlanningVersion): boolean {
-  return version === "v4" || version === "v5";
+  return version === "v4" || version === "v5" || version === "v6";
 }
 
 function materializeSemanticWindow({
@@ -2152,13 +2180,14 @@ function materializeSemanticWindow({
   const coreUnits: AtomicUnit[] = [];
   let cursor = startUnitIndex;
   while (cursor < units.length) {
+    const candidate = units[cursor] as AtomicUnit;
     if (
       usesBoundedCoreUnits(planningPolicy.version) &&
-      coreUnits.length >= V3_MAX_CORE_UNITS_PER_WINDOW
+      coreUnits.length >= V3_MAX_CORE_UNITS_PER_WINDOW &&
+      !(planningPolicy.version === "v6" && continuesNumberedList(coreUnits.at(-1), candidate))
     ) {
       break;
     }
-    const candidate = units[cursor] as AtomicUnit;
     if (planningPolicy.version === "v1" && !isLegacyWindowCompatible(first, candidate)) {
       break;
     }
@@ -2231,6 +2260,25 @@ function materializeSemanticWindow({
   };
 }
 
+function continuesNumberedList(previous: AtomicUnit | undefined, candidate: AtomicUnit): boolean {
+  if (!previous) return false;
+  if (previous.sourceElement.elementId === candidate.sourceElement.elementId) return true;
+  const previousOrdinal = numberedListOrdinal(previous.sourceElement.text);
+  const candidateOrdinal = numberedListOrdinal(candidate.sourceElement.text);
+  return (
+    previousOrdinal !== undefined &&
+    candidateOrdinal !== undefined &&
+    candidateOrdinal === previousOrdinal + 1
+  );
+}
+
+function numberedListOrdinal(text: string): number | undefined {
+  const match = /^\s*(\d{1,4})\s*[.)、．]\s*/u.exec(text);
+  if (!match?.[1]) return undefined;
+  const ordinal = Number.parseInt(match[1], 10);
+  return Number.isSafeInteger(ordinal) ? ordinal : undefined;
+}
+
 function semanticPromptUnit(
   unit: AtomicUnit,
   planningVersion: SemanticWindowPlanningVersion,
@@ -2261,7 +2309,7 @@ function semanticPromptUnit(
           sourceSectionPath: [...unit.sectionPath],
         }
       : {}),
-    ...(planningVersion === "v5" && unit.tableRecord
+    ...((planningVersion === "v5" || planningVersion === "v6") && unit.tableRecord
       ? {
           tableMode: unit.tableRecord.mode,
           tableRecordCount: unit.tableRecord.count,
@@ -2350,6 +2398,7 @@ function semanticChunkingMessages({
               "Never emit a chunk that starts wholly in lookAheadUnits. Units not consumed from look-ahead will be reconsidered in the next request.",
             ]),
         "Ranges may be smaller than the maximum; prefer natural topic boundaries over filling chunks.",
+        "When a contiguous numbered or bulleted list fits within the chunk limit, keep the complete list together under its heading.",
         `Every range must contain at most ${maxChunkChars} Unicode graphemes including separators.`,
         `Return at most ${maxEntitiesPerChunk} entities and ${maxRelationsPerChunk} relations per chunk.`,
         "Allowed entity types: date, metric, organization, person, policy, product, term.",
@@ -2365,7 +2414,7 @@ function semanticChunkingMessages({
                 : [
                     "A unit marked boundaryPolicy=isolated must occupy a chunk containing only units from that same table or image element.",
                   ]),
-              ...(window.planningVersion === "v5"
+              ...(window.planningVersion === "v5" || window.planningVersion === "v6"
                 ? [
                     "Table records carry tableMode/tableRecordIndex/tableRecordCount; resolve their bounded columns from tableSchemas by sourceElementId.",
                     "For tableMode=record-list or matrix, return exactly one chunk per table record; hard-split units with the same tableRecordIndex may stay together, but never combine different records.",
@@ -2404,7 +2453,7 @@ function semanticChunkingMessages({
           semanticPromptUnit(unit, window.planningVersion),
         ),
         sectionPath: window.sectionPath,
-        ...(window.planningVersion === "v5"
+        ...(window.planningVersion === "v5" || window.planningVersion === "v6"
           ? {
               tableSchemas: semanticWindowTableSchemas([...window.units, ...window.lookAheadUnits]),
             }
@@ -2620,6 +2669,14 @@ function parseSemanticChunkingOutput(text: string): LlmSemanticChunkingOutput {
   }
 }
 
+function isRetryableSemanticProviderOutputError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.message === "LLM semantic chunking provider returned invalid JSON" ||
+      error.message === "LLM semantic chunking provider returned an invalid response schema")
+  );
+}
+
 function normalizeTableRecordBoundaries({
   maxChunkChars,
   output,
@@ -2629,7 +2686,12 @@ function normalizeTableRecordBoundaries({
   readonly output: LlmSemanticChunkingOutput;
   readonly window: SemanticWindow;
 }): LlmSemanticChunkingOutput {
-  if (window.planningVersion !== "v5" || window.atomicDocument) return output;
+  if (
+    (window.planningVersion !== "v5" && window.planningVersion !== "v6") ||
+    window.atomicDocument
+  ) {
+    return output;
+  }
 
   const eligibleUnits = [...window.units, ...window.lookAheadUnits];
   const unitIndex = new Map(eligibleUnits.map((unit, index) => [unit.id, index]));

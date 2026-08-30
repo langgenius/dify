@@ -118,8 +118,18 @@ describe("document compilation candidate runtime factories", () => {
     );
     expect(resolved.material.projections).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ model: vectorSpaceId, type: "dense-vector" }),
-        expect.objectContaining({ model: "database-fts@1", type: "fts" }),
+        expect.objectContaining({
+          indexVersion: "dify-model-runtime-embedding-v1",
+          model: vectorSpaceId,
+          strategy: "text-dense-v1:section-context-v1",
+          type: "dense-vector",
+        }),
+        expect.objectContaining({
+          indexVersion: "database-fts-v1",
+          model: "database-fts@1",
+          strategy: "mixed-cjk-latin-fts-v1:section-context-v1",
+          type: "fts",
+        }),
       ]),
     );
   });
