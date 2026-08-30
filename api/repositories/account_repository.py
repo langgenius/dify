@@ -136,11 +136,21 @@ class SQLAlchemyAccountRepository(AccountRepository):
             if account.email.lower() != expected_old_email.lower():
                 return AccountEmailResetResult(status=AccountEmailResetStatus.EMAIL_CHANGED)
             normalized_new_email = normalize_email(new_email)
+            # The index on normalized_email is deliberately not unique, so equivalent
+            # rows can predate this guard. Ask about them first: an account normalizing
+            # its own address must still lose to one already holding the exact address.
+            duplicate_stmt = (
+                select(Account.id)
+                .where(Account.normalized_email == normalized_new_email, Account.id != account_id)
+                .limit(1)
+            )
+            if session.scalar(duplicate_stmt) is not None:
+                return AccountEmailResetResult(status=AccountEmailResetStatus.EMAIL_IN_USE)
+
             if account.normalized_email == normalized_new_email:
-                # Same mailbox. An identical address is not a change, and a
-                # difference in stored casing alone is not one either: the account
-                # keeps the inbox its providers are linked to, so the integration
-                # cleanup below must not run.
+                # Same mailbox. An identical address is not a change, and a difference
+                # in stored casing alone is not one either: the account keeps the inbox
+                # its providers are linked to, so the integration cleanup must not run.
                 if account.email == new_email:
                     return AccountEmailResetResult(status=AccountEmailResetStatus.EMAIL_IN_USE)
                 account.email = new_email
@@ -149,14 +159,6 @@ class SQLAlchemyAccountRepository(AccountRepository):
                     status=AccountEmailResetStatus.UPDATED,
                     account=self._to_snapshot(account),
                 )
-
-            duplicate_stmt = (
-                select(Account.id)
-                .where(Account.normalized_email == normalized_new_email, Account.id != account_id)
-                .limit(1)
-            )
-            if session.scalar(duplicate_stmt) is not None:
-                return AccountEmailResetResult(status=AccountEmailResetStatus.EMAIL_IN_USE)
 
             account.email = new_email
             account.normalized_email = normalized_new_email

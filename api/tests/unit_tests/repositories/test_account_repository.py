@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Account, AccountIntegrate, AccountStatus, InvitationCode, InvitationCodeStatus
@@ -292,6 +293,32 @@ def test_reset_email_allows_normalizing_the_accounts_own_address(
     # The mailbox did not change, so the linked providers stay valid.
     sqlite_session.expire_all()
     assert sqlite_session.get(AccountIntegrate, integration_id) is not None
+
+
+def test_reset_email_rejects_an_address_an_equivalent_account_already_holds(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """`account_normalized_email_idx` is not unique, so two equivalent rows can predate this guard.
+
+    The account normalizing its own address must still lose to the one already holding the exact
+    address, or both rows end up with the same `email` and `get_account_by_email_with_case_fallback`
+    starts raising `MultipleResultsFound` for either of them.
+    """
+    _persist_account(sqlite_session, email="F.oo@gmail.com")
+    _persist_account(sqlite_session, account_id="account-2", email="foo@gmail.com")
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    result = repository.reset_email(
+        "account-1",
+        expected_old_email="F.oo@gmail.com",
+        new_email="foo@gmail.com",
+    )
+
+    assert result.status == AccountEmailResetStatus.EMAIL_IN_USE
+    sqlite_session.expire_all()
+    holders = sqlite_session.scalars(select(Account).where(Account.email == "foo@gmail.com")).all()
+    assert len(holders) == 1
 
 
 def test_reset_email_rejects_a_normalized_variant_of_another_account_email(
