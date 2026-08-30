@@ -9,12 +9,16 @@ from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, Unauthorized
 
+from configs import dify_config
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.pipelines import AccountPipeline, ExternalSsoPipeline, Pipeline
+from controllers.openapi.auth.pipelines import (
+    AccountPipeline,
+    ExternalSsoPipeline,
+    Pipeline,
+    _RequiresEnterprise,
+)
 from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
-    EditionCheck,
-    LicenseCheck,
     Rank,
     Requirement,
     RequireWebappAccess,
@@ -33,6 +37,7 @@ from services.account_service import AccountService, TenantService
 from services.app_service import AppService
 from services.end_user_service import EndUserService
 from services.enterprise.enterprise_service import WebAppAccessMode
+from services.entities.feature_entities import LicenseStatus
 
 from ._world import (
     APP_ID,
@@ -114,7 +119,7 @@ def test_requirements_run_in_rank_order(sqlite_session: Session) -> None:
 
 def test_equal_ranks_keep_declared_order(sqlite_session: Session) -> None:
     """Endpoint-declared before pipeline-fixed at equal rank — the property
-    that keeps `SubjectCheck` ahead of `EditionCheck`, and the reason the sort
+    that keeps `SubjectCheck` ahead of `_RequiresEnterprise`, and the reason the sort
     has to stay stable.
     """
     log: list[str] = []
@@ -144,16 +149,46 @@ def test_fixed_requirements_reproduce_the_two_pipelines() -> None:
     """
     assert [type(requirement) for requirement in AccountPipeline.fixed] == [ResolveCaller]
     assert [type(requirement) for requirement in ExternalSsoPipeline.fixed] == [
-        EditionCheck,
-        LicenseCheck,
+        _RequiresEnterprise,
         ResolveCaller,
     ]
     assert ResolveCaller.rank is Rank.NORMAL
-    edition_check = ExternalSsoPipeline.fixed[0]
-    assert isinstance(edition_check, EditionCheck)
-    assert edition_check.editions == frozenset({DeploymentEdition.ENTERPRISE})
+    assert _RequiresEnterprise.rank is Rank.FIRST
     assert isinstance(AccountPipeline.fixed, tuple)
     assert isinstance(ExternalSsoPipeline.fixed, tuple)
+
+
+@pytest.mark.parametrize("edition", [DeploymentEdition.COMMUNITY, DeploymentEdition.ENTERPRISE])
+def test_the_external_sso_gate_refuses_a_non_enterprise_edition(
+    edition: DeploymentEdition, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The gate that keeps a `dfoe_` token issued before a downgrade from working
+    on the routes an account shares with it - the ones no `edition=` can cover,
+    because the account still has to reach them.
+    """
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", edition)
+    subject = sso_subject()
+
+    with patch(FEATURES, return_value=system_features(license_status=LicenseStatus.ACTIVE)):
+        if edition is DeploymentEdition.ENTERPRISE:
+            _RequiresEnterprise().run(subject, make_ctx(sqlite_session, subject), sqlite_session)
+        else:
+            with pytest.raises(Forbidden, match="external_sso_requires_ee"):
+                _RequiresEnterprise().run(subject, make_ctx(sqlite_session, subject), sqlite_session)
+
+
+def test_the_external_sso_gate_checks_the_edition_before_the_licence(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Same order as the router's endpoint-level gate: a CE deployment answers
+    about the edition and never reaches the licence.
+    """
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    subject = sso_subject()
+
+    with patch(FEATURES, side_effect=never_reached):
+        with pytest.raises(Forbidden, match="external_sso_requires_ee"):
+            _RequiresEnterprise().run(subject, make_ctx(sqlite_session, subject), sqlite_session)
 
 
 @pytest.mark.parametrize("view_raises", [False, True])

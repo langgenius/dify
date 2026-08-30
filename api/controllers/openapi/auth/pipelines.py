@@ -2,19 +2,21 @@ from __future__ import annotations
 
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from typing import Any, ClassVar
+from typing import Any, ClassVar, override
 
 from flask import current_app
 from flask_login import user_logged_in
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import Forbidden
 
+from configs import dify_config
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_caller
 from controllers.openapi.auth.requirements import (
-    EditionCheck,
-    LicenseCheck,
+    Rank,
     Requirement,
     ResolveCaller,
+    assert_license_valid,
 )
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import Subject
@@ -39,7 +41,7 @@ class Pipeline:
     ) -> Any:
         """Endpoint-declared requirements are merged ahead of the fixed ones,
         so a stable sort leaves them first at equal rank — which is what keeps
-        `SubjectCheck` ahead of `EditionCheck` and `LicenseCheck`.
+        `SubjectCheck` ahead of `_RequiresEnterprise`.
         """
         for requirement in sorted(spec.requirements + self.fixed, key=lambda item: item.rank):
             requirement.run(subject, ctx, session)
@@ -51,10 +53,28 @@ class AccountPipeline(Pipeline):
     fixed = (ResolveCaller(),)
 
 
+class _RequiresEnterprise(Requirement):
+    """A gate on the token kind, not on a route, so no endpoint declares it and
+    it stays private to this module.
+
+    Its rank puts it behind the route's own `SubjectCheck` at the same band, so
+    a token the route never accepted is refused as the wrong subject rather than
+    the wrong edition — and the wrong-surface audit still fires. Edition before
+    licence, mirroring the router's endpoint-level gate.
+    """
+
+    rank = Rank.FIRST
+
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
+            raise Forbidden("external_sso_requires_ee")
+        assert_license_valid()
+
+
 class ExternalSsoPipeline(Pipeline):
     fixed = (
-        EditionCheck(frozenset({DeploymentEdition.ENTERPRISE})),
-        LicenseCheck(),
+        _RequiresEnterprise(),
         ResolveCaller(),
     )
 

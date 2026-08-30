@@ -73,33 +73,13 @@ class SubjectCheck(Requirement):
         raise Forbidden("unsupported_token_type")
 
 
-class EditionCheck(Requirement):
-    rank = Rank.FIRST
-
-    def __init__(self, editions: frozenset[DeploymentEdition]) -> None:
-        self.editions = frozenset(editions)
-
-    @override
-    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        if dify_config.DEPLOYMENT_EDITION not in self.editions:
-            raise Forbidden("external_sso_requires_ee")
-
-
 def assert_license_valid() -> None:
-    """Shared with the router's endpoint-level gate, which has to answer
-    before `extract_bearer` and so cannot be a requirement. One function, so
-    the requirement and that gate cannot drift apart.
+    """Shared by the router's endpoint-level gate, which has to answer before
+    `extract_bearer`, and by `ExternalSsoPipeline`'s own gate. One function, so
+    the two cannot drift apart.
     """
     if FeatureService.get_system_features().license.status in _DEAD_LICENSE_STATUSES:
         raise Forbidden("license_invalid")
-
-
-class LicenseCheck(Requirement):
-    rank = Rank.FIRST
-
-    @override
-    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        assert_license_valid()
 
 
 class CheckAppApiEnabled(Requirement):
