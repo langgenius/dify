@@ -477,38 +477,46 @@ def test_check_receiver_status_fail(streams):
 
 
 @pytest.mark.timeout(10)
-def test_receive_loop_unknown_request_id(streams):
+def test_receive_loop_unknown_request_id(streams, caplog: pytest.LogCaptureFixture):
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
 
-    with session:
-        resp = JSONRPCResponse(jsonrpc="2.0", id=999, result={"ok": True})
-        read_stream.put(SessionMessage(message=JSONRPCMessage(resp)))
+    with caplog.at_level(logging.WARNING, logger="core.mcp.session.base_session"):
+        with session:
+            resp = JSONRPCResponse(jsonrpc="2.0", id=999, result={"ok": True})
+            read_stream.put(SessionMessage(message=JSONRPCMessage(resp)))
 
-        for _ in range(30):
-            if any(isinstance(x, RuntimeError) and "Server Error" in str(x) for x in session.handled_incoming):
-                break
-            time.sleep(0.1)
+            for _ in range(30):
+                if any(
+                    "Received response with an unknown or expired request ID 999" in r.message for r in caplog.records
+                ):
+                    break
+                time.sleep(0.1)
 
-    assert any("Server Error" in str(x) for x in session.handled_incoming)
+    assert any(
+        "Received response with an unknown or expired request ID 999" in r.message for r in caplog.records
+    )
+    assert session.check_receiver_status() is None
 
 
 @pytest.mark.timeout(10)
-def test_receive_loop_http_error_unknown_id(streams):
+def test_receive_loop_http_error_unknown_id(streams, caplog: pytest.LogCaptureFixture):
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
 
-    with session:
-        response = Response(status_code=401, request=Request("GET", "http://test"))
-        error = HTTPStatusError("Unauthorized", request=response.request, response=response)
-        read_stream.put(error)
+    with caplog.at_level(logging.WARNING, logger="core.mcp.session.base_session"):
+        with session:
+            response = Response(status_code=401, request=Request("GET", "http://test"))
+            error = HTTPStatusError("Unauthorized", request=response.request, response=response)
+            read_stream.put(error)
 
-        for _ in range(30):
-            if any(isinstance(x, RuntimeError) and "unknown request ID" in str(x) for x in session.handled_incoming):
-                break
-            time.sleep(0.1)
+            for _ in range(30):
+                if any("Received response with an unknown request ID" in r.message for r in caplog.records):
+                    break
+                time.sleep(0.1)
 
-    assert any("unknown request ID" in str(x) for x in session.handled_incoming)
+    assert any("Received response with an unknown request ID" in r.message for r in caplog.records)
+    assert session.check_receiver_status() is None
 
 
 @pytest.mark.timeout(10)
@@ -614,3 +622,64 @@ def test_send_request_session_timeout_retry_6(streams):
     with patch.object(session, "check_receiver_status", side_effect=[None, RuntimeError("timeout_broken")]):
         with pytest.raises(RuntimeError, match="timeout_broken"):
             session.send_request(request, MockResult)
+
+
+@pytest.mark.timeout(5)
+def test_orphaned_jsonrpc_response_does_not_crash_receive_loop(streams, caplog: pytest.LogCaptureFixture):
+    read_stream, write_stream = streams
+    session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
+
+    # 1. Put an orphaned JSON-RPC response (ID 999 not in _response_streams)
+    orphaned_resp = JSONRPCResponse(jsonrpc="2.0", id=999, result={"ok": True})
+    read_stream.put(SessionMessage(message=JSONRPCMessage(orphaned_resp)))
+
+    # 2. Put a subsequent valid notification to verify the loop remains alive
+    valid_notif = JSONRPCNotification(
+        jsonrpc="2.0",
+        method="test/notification",
+        params={"message": "still alive"},
+    )
+    read_stream.put(SessionMessage(message=JSONRPCMessage(valid_notif)))
+
+    with caplog.at_level(logging.WARNING, logger="core.mcp.session.base_session"):
+        with session:
+            deadline = time.time() + 2.0
+            while not session.received_notifications and time.time() < deadline:
+                time.sleep(0.05)
+
+    assert any(
+        "Received response with an unknown or expired request ID 999" in record.message for record in caplog.records
+    )
+    assert len(session.received_notifications) == 1
+    assert session.check_receiver_status() is None
+
+
+@pytest.mark.timeout(5)
+def test_orphaned_http_status_error_does_not_crash_receive_loop(streams, caplog: pytest.LogCaptureFixture):
+    read_stream, write_stream = streams
+    session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
+
+    req = Request("GET", "http://example.com")
+    resp = Response(500, request=req)
+    http_error = HTTPStatusError("Internal Server Error", request=req, response=resp)
+
+    # Put orphaned HTTPStatusError
+    read_stream.put(http_error)
+
+    # Followed by valid notification
+    valid_notif = JSONRPCNotification(
+        jsonrpc="2.0",
+        method="test/notification",
+        params={"message": "still alive after http error"},
+    )
+    read_stream.put(SessionMessage(message=JSONRPCMessage(valid_notif)))
+
+    with caplog.at_level(logging.WARNING, logger="core.mcp.session.base_session"):
+        with session:
+            deadline = time.time() + 2.0
+            while not session.received_notifications and time.time() < deadline:
+                time.sleep(0.05)
+
+    assert any("Received response with an unknown request ID" in record.message for record in caplog.records)
+    assert len(session.received_notifications) == 1
+    assert session.check_receiver_status() is None
