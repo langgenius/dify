@@ -46,6 +46,7 @@ from core.dify_builder.state import PcState
 __all__ = [
     "edit_registry",
     "handle_apply_changes",
+    "handle_await_repair",
     "handle_capability_check",
     "handle_impact_analysis",
     "handle_plan_approval",
@@ -321,6 +322,35 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     )
 
 
+def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
+    """(waiting) Post-failure gate for Edit, mirroring Build's await_repair.
+    approve_repair applies the staged repair and re-runs the affected-path
+    tests (edit.test_affected_paths); keep_draft -> edit.review; undo ->
+    edit.reverted. apply_repair runs ONLY here, only on approve."""
+    kind = action_kind(turn)
+    if kind == "approve_repair":
+        result = env.dify.apply_repair(s.app_id, turn.actor, list(fc.staged_repair), on_canvas=env.emit_canvas)
+        fc.last_snapshot_hash = result.new_hash
+        fc.last_structure_fingerprint = result.structure_fingerprint
+        fc.staged_repair = []
+        changes, scope, fc.change_set = build_change_set(
+            result, default_scope="configuration", fallback_diff="repair"
+        )
+        cs_items = append_card(
+            fc, ChangeSetCard(count=len(changes), changes=changes, scope=scope, full_diff_open=False)
+        )
+        decision_items = append_card(fc, DecisionItem(text="Approved the fix; retesting"))
+        return StepResult(next=PcState.EDIT_TEST_AFFECTED_PATHS, context=fc, items=[*cs_items, *decision_items])
+    if kind == "keep_draft":
+        items = append_card(fc, DecisionItem(text="Kept the draft despite the failure"))
+        return StepResult(next=PcState.EDIT_REVIEW, context=fc, items=items)
+    if kind == "undo":
+        perform_revert(env, turn, s, fc)
+        items = append_card(fc, DecisionItem(text="Requested a revert"))
+        return StepResult(next=PcState.EDIT_REVERTED, context=fc, items=items)
+    return StepResult(next=PcState.EDIT_AWAIT_REPAIR, context=fc)
+
+
 def _completion_rows(fc: DifyBuilderContext, status: str) -> list[SummaryRow]:
     return [
         SummaryRow(label="Change", value="; ".join(fc.plan_items) or "config edit"),
@@ -445,6 +475,7 @@ def edit_registry() -> dict[PcState, Handler]:
         PcState.EDIT_PLAN_APPROVAL: handle_plan_approval,
         PcState.EDIT_APPLY_CHANGES: handle_apply_changes,
         PcState.EDIT_TEST_AFFECTED_PATHS: handle_test_affected_paths,
+        PcState.EDIT_AWAIT_REPAIR: handle_await_repair,
         PcState.EDIT_REVIEW: handle_review,
         PcState.EDIT_REVERTED: handle_reverted,
     }
