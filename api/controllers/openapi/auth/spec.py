@@ -15,7 +15,8 @@ from enums import DeploymentEdition
 class EndpointSpec:
     """`edition` is the endpoint-level gate — a 404 raised before any bearer
     is read, because the route is not exposed on this edition at all. It is
-    not `EditionCheck`, which 403s a token kind after authentication.
+    not `ExternalSsoPipeline`'s own gate, which 403s a token kind after
+    authentication.
 
     `write` mirrors `with_session`'s write/read split: true (the default)
     commits the router's session on success and rolls it back on failure;
