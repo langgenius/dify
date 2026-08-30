@@ -49,6 +49,7 @@ from core.dify_builder.handlers_fix import (
 from core.dify_builder.models import (
     ConversationItem,
     DifyBuilderContext,
+    MutationIntent,
     Run,
     Session,
     TestInput,
@@ -307,7 +308,18 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
             return (intent.args.get("from_node"), intent.args.get("to_node")) in existing_edges
         return False
 
-    to_apply = [intent for intent in intents if not _already_present(intent)]
+    existing_non_start = [
+        n for n in current_graph.get("nodes", []) if (n.get("data") or {}).get("type") != "start"
+    ]
+    delete_intents: list[MutationIntent] = []
+    if not existing_non_start:  # from-scratch build: drop the draft's placeholder start(s)
+        delete_intents = [
+            MutationIntent(op="delete_node", args={"node_id": n["id"]})
+            for n in current_graph.get("nodes", [])
+            if (n.get("data") or {}).get("type") == "start" and n.get("id")
+        ]
+
+    to_apply = delete_intents + [intent for intent in intents if not _already_present(intent)]
 
     result = env.dify.apply_repair(s.app_id, turn.actor, to_apply, on_canvas=env.emit_canvas)
     fc.last_snapshot_hash = result.new_hash
