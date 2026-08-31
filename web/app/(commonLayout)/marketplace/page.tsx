@@ -3,9 +3,7 @@ import { MARKETPLACE_CONTAINER_ID } from '@/app/components/plugins/marketplace/c
 import { EmbeddedMarketplace } from '@/app/components/plugins/marketplace/embedded'
 import MarketplaceInstallPermissionProvider from '@/app/components/plugins/marketplace/marketplace-install-permission-provider'
 
-// This route must not render async Server Components. Under the client console
-// shell, Flight double-resolves streamed children and throws
-// `reason.enqueueModel` on cloud.dify.dev. Data fetching stays on the client.
+// Sync route: async pages under this client shell Flight-double-resolve.
 const MarketplacePage = () => {
   return (
     <div

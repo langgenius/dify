@@ -36,18 +36,10 @@ function getMarketplaceHeaders() {
   })
 }
 
-// The Marketplace API is public and unauthenticated, so a healthy search
-// answers in well under a second; the backend bounds its own Meilisearch and
-// Postgres reads to a few seconds. Without a deadline here, a stalled
-// connection leaves the TanStack query pending forever — which is precisely
-// what the Marketplace's "search spins and never settles" report is: nothing
-// ever rejects the promise, so no error state and no retry can happen.
+// 15s deadline so a stalled Marketplace fetch can error/retry.
 const MARKETPLACE_REQUEST_TIMEOUT_MS = 15_000
 
-// Composes, never replaces: react-query aborts the caller's signal when the
-// query key changes, and losing that would leave superseded searches racing.
-// Hand-rolled instead of AbortSignal.any, which the Marketplace's browser
-// support baseline predates.
+// Combine the caller's abort with the deadline; AbortSignal.any is too new.
 function withRequestDeadline(callerSignal: AbortSignal | null | undefined): AbortSignal {
   const deadline = AbortSignal.timeout(MARKETPLACE_REQUEST_TIMEOUT_MS)
   if (!callerSignal) return deadline

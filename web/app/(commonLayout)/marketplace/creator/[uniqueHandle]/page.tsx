@@ -15,8 +15,7 @@ type CreatorProfilePageProps = {
   searchParams: Promise<CreatorPageSearchParams>
 }
 
-// Keep the route module synchronous. An async page under the client console
-// shell makes Flight double-resolve this segment (`reason.enqueueModel`).
+// Sync route: async pages under this client shell Flight-double-resolve.
 export default function CreatorProfilePage(props: CreatorProfilePageProps) {
   return (
     <div

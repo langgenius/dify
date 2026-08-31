@@ -37,8 +37,7 @@ const parsePage = (value?: string) => {
   return Number.isInteger(parsed) && parsed >= 1 ? parsed : 1
 }
 
-// Keep the route module synchronous so Flight does not double-resolve this
-// segment under the client console shell.
+// Sync route: async pages under this client shell Flight-double-resolve.
 export default function TemplatesPage(props: TemplatesPageProps) {
   return (
     <div
