@@ -1,19 +1,19 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type {
-  Action,
-  ChecklistErrorPayload,
-  ConversationItem,
-} from '@/app/components/dify-builder/types'
+import type { Action, ConversationItem } from '@/app/components/dify-builder/contract/types'
+import type { ChecklistErrorPayload } from '@/app/components/dify-builder/types'
+import { ScopeProvider } from 'jotai-scope'
 import { useState } from 'react'
+import { difyBuilderSessionScopedAtoms } from '@/app/components/dify-builder/state'
 import { useDifyBuilderSession } from '@/app/components/dify-builder/use-dify-builder-session'
 import { API_PREFIX } from '@/config'
 
 // Throwaway developer tool for driving the dify-builder Fix backend by hand.
 // No i18n, no design polish, no reusable UI components on purpose.
 // Session/stream request logic lives in `app/components/dify-builder/use-dify-builder-session.ts`,
-// shared with the in-editor Dify Builder panel (see `app/components/workflow/panel/dify-builder-panel`).
+// shared with the in-editor App Builder panel (see
+// `app/components/workflow-app/components/dify-builder`).
 //
 // Slice 0 Task 7: action buttons are data-driven off `view.actions` (backend-provided
 // id/label/kind), not a hardcoded list — see `handleAction` below.
@@ -33,8 +33,8 @@ function renderConversationItem(entry: ConversationItem, showFullDiff: boolean):
           change_set · {p.scope} · {p.count} change(s)
           {showFullDiff && p.changes.length > 0 && (
             <ul>
-              {p.changes.map((change, i) => (
-                <li key={i}>{change}</li>
+              {p.changes.map((change) => (
+                <li key={change}>{change}</li>
               ))}
             </ul>
           )}
@@ -58,8 +58,8 @@ function renderConversationItem(entry: ConversationItem, showFullDiff: boolean):
           {p.title ? ` · ${p.title}` : ''}
           {p.items && p.items.length > 0 && (
             <ul>
-              {p.items.map((item, i) => (
-                <li key={i}>{item}</li>
+              {p.items.map((item) => (
+                <li key={item}>{item}</li>
               ))}
             </ul>
           )}
@@ -100,6 +100,14 @@ function renderConversationItem(entry: ConversationItem, showFullDiff: boolean):
 }
 
 export default function DifyBuilderDebugPage() {
+  return (
+    <ScopeProvider atoms={difyBuilderSessionScopedAtoms} name="DifyBuilderDebug">
+      <DifyBuilderDebugPageContent />
+    </ScopeProvider>
+  )
+}
+
+function DifyBuilderDebugPageContent() {
   const [baseUrl, setBaseUrl] = useState(API_PREFIX)
   const [appId, setAppId] = useState('')
   const [failedRunId, setFailedRunId] = useState('')

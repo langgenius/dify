@@ -15,7 +15,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from core.dify_builder.contract import ActionKind
-from core.dify_builder.errors import BusyError, ConflictError, NotFoundError
+from core.dify_builder.errors import BadRequestError, BusyError, ConflictError, NotFoundError
 from core.dify_builder.models import (
     Action,
     Actor,
@@ -121,9 +121,7 @@ def test_create_fix_session_dispatches_request_fix_and_holds_lock(
     assert token == f"tok-{view.session_id}"
 
 
-def test_create_fix_session_records_failed_run(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository
-) -> None:
+def test_create_fix_session_records_failed_run(service: DifyBuilderService, repo: SqlDifyBuilderRepository) -> None:
     """The bridge: ``failed_run_id`` is a Dify workflow-run id, which
     create_fix_session records as an immutable ``original-failed``
     ``DifyBuilderRun``; ``fc.failed_run_id`` points at that row so the async
@@ -161,9 +159,7 @@ def test_create_fix_session_checklist_entry(service: DifyBuilderService) -> None
     assert view.canvas_read_only is True
 
 
-def test_submit_action_while_lock_held_raises_busy(
-    service: DifyBuilderService, enqueued: list[tuple]
-) -> None:
+def test_submit_action_while_lock_held_raises_busy(service: DifyBuilderService, enqueued: list[tuple]) -> None:
     actor = _actor()
     view = service.create_fix_session(APP_ID, actor, failed_run_id="TR-1")
     assert len(enqueued) == 1
@@ -361,9 +357,7 @@ def test_waiting_state_actions_resolve_to_handled_kinds() -> None:
     }
     for state, handled in handled_kinds.items():
         actions = service_module._ACTIONS_FOR[state]
-        resolved = {
-            resolve_action_kind(a.id) for a in actions if a.id not in service_module._CLIENT_ONLY_ACTIONS
-        }
+        resolved = {resolve_action_kind(a.id) for a in actions if a.id not in service_module._CLIENT_ONLY_ACTIONS}
         assert resolved <= handled, f"{state}: resolved kinds {resolved} not handled by its handler ({handled})"
 
 
@@ -388,6 +382,56 @@ def test_submit_action_view_changes_is_a_noop_not_keep_draft(
     assert view.version == s.version  # no CAS/dispatch advance happened
     assert view.run_status != "complete"
     assert enqueued == []  # never reached enqueue_fn -- proves it's a no-op, not a dispatched keep_draft
+
+
+def test_submit_action_update_model_persists_without_dispatch(
+    service: DifyBuilderService,
+    repo: SqlDifyBuilderRepository,
+    enqueued: list[tuple],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    s = _seed_session_at(repo, PcState.FIX_AWAIT_VERIFY)
+    model_config = {
+        "provider": "openai",
+        "name": "gpt-4o",
+        "mode": "chat",
+        "completion_params": {"temperature": 0.2},
+    }
+    validated: list[tuple[str, dict]] = []
+    monkeypatch.setattr(
+        service_module,
+        "validate_model_config",
+        lambda tenant_id, config: validated.append((tenant_id, config)),
+    )
+
+    view = service.submit_action(
+        s.id,
+        _actor(),
+        Action(kind="update_model", payload={"model_config": model_config}, base_version=s.version),
+    )
+
+    assert validated == [(TENANT_ID, model_config)]
+    assert view.version == s.version + 1
+    assert view.model is not None
+    assert view.model.provider == "openai"
+    assert view.model.name == "gpt-4o"
+    assert view.model.mode == "chat"
+    assert view.model.completion_params == {"temperature": 0.2}
+    assert view.conversation[-1].payload["text"] == "Model changed to gpt-4o"
+    assert enqueued == []
+
+
+def test_submit_action_update_model_rejects_missing_config(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
+    s = _seed_session_at(repo, PcState.FIX_AWAIT_VERIFY)
+
+    with pytest.raises(BadRequestError, match="model_config is required"):
+        service.submit_action(
+            s.id,
+            _actor(),
+            Action(kind="update_model", payload={}, base_version=s.version),
+        )
 
 
 def test_dispatch_releases_lock_when_enqueue_fails(repo: SqlDifyBuilderRepository) -> None:
@@ -432,6 +476,11 @@ def test_submit_message_constructs_message_action(repo: SqlDifyBuilderRepository
     assert action.kind == "message"
     assert action.payload == {"text": "hello"}
     assert action.base_version == 1
+
+
+def test_submit_message_rejects_blank_text(service: DifyBuilderService) -> None:
+    with pytest.raises(BadRequestError, match="message text is required"):
+        service.submit_message("session-1", _actor(), "   ", base_version=1)
 
 
 def test_actions_for_await_learning() -> None:
@@ -535,15 +584,18 @@ def test_build_waiting_state_actions_resolve_to_handled_kinds() -> None:
     }
     for state, kinds in handled.items():
         actions = service_module._ACTIONS_FOR[state]
-        resolved = {
-            resolve_action_kind(a.id) for a in actions if a.id not in service_module._CLIENT_ONLY_ACTIONS
-        }
+        resolved = {resolve_action_kind(a.id) for a in actions if a.id not in service_module._CLIENT_ONLY_ACTIONS}
         assert resolved <= kinds, f"{state}: resolved {resolved} not handled by its handler ({kinds})"
 
 
 def test_sql_repo_invalidate_conversation_items(repo: SqlDifyBuilderRepository) -> None:
-    s = Session(app_id=APP_ID, tenant_id=TENANT_ID, owner_account_id=ACCOUNT_ID,
-                entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_REVIEW)
+    s = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.EDIT,
+        current_state=PcState.EDIT_REVIEW,
+    )
     items = [
         ConversationItem(seq=0, kind="assistant_turn", payload={"turn_id": "t0"}),
         ConversationItem(seq=1, kind="assistant_turn", payload={"turn_id": "t1"}),
@@ -632,38 +684,47 @@ def test_edit_waiting_state_actions_resolve_to_handled_kinds() -> None:
     }
     for state, kinds in handled.items():
         actions = service_module._ACTIONS_FOR[state]
-        resolved = {
-            resolve_action_kind(a.id) for a in actions if a.id not in service_module._CLIENT_ONLY_ACTIONS
-        }
+        resolved = {resolve_action_kind(a.id) for a in actions if a.id not in service_module._CLIENT_ONLY_ACTIONS}
         assert resolved <= kinds, f"{state}: resolved {resolved} not handled by its handler ({kinds})"
 
 
 def test_get_session_view_surfaces_checkpoint_when_set(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository
 ) -> None:
-    s = Session(app_id=APP_ID, tenant_id=TENANT_ID, owner_account_id=ACCOUNT_ID,
-                entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_EXECUTION)
+    s = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_EXECUTION,
+    )
     repo.create_session(s, DifyBuilderContext(checkpoint_id="cp-123"), [ConversationItem(kind="user", seq=0)])
     view = service.get_session_view(s.id, _actor())
     assert view.checkpoint is not None
     assert view.checkpoint.checkpoint_id == "cp-123"
 
 
-def test_get_session_view_no_checkpoint_when_unset(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository
-) -> None:
-    s = Session(app_id=APP_ID, tenant_id=TENANT_ID, owner_account_id=ACCOUNT_ID,
-                entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_INITIAL_PLAN)
+def test_get_session_view_no_checkpoint_when_unset(service: DifyBuilderService, repo: SqlDifyBuilderRepository) -> None:
+    s = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_INITIAL_PLAN,
+    )
     repo.create_session(s, DifyBuilderContext(), [ConversationItem(kind="user", seq=0)])
     view = service.get_session_view(s.id, _actor())
     assert view.checkpoint is None
 
 
-def test_get_session_view_run_status_paused(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository
-) -> None:
-    s = Session(app_id=APP_ID, tenant_id=TENANT_ID, owner_account_id=ACCOUNT_ID,
-                entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_REVIEW)
+def test_get_session_view_run_status_paused(service: DifyBuilderService, repo: SqlDifyBuilderRepository) -> None:
+    s = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.EDIT,
+        current_state=PcState.EDIT_REVIEW,
+    )
     repo.create_session(s, DifyBuilderContext(paused=True), [ConversationItem(kind="user", seq=0)])
     view = service.get_session_view(s.id, _actor())
     assert view.run_status == "paused"
@@ -704,19 +765,27 @@ def test_recovery_ref_for():
 def test_get_session_view_surfaces_recovery_when_set(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository
 ) -> None:
-    s = Session(app_id=APP_ID, tenant_id=TENANT_ID, owner_account_id=ACCOUNT_ID,
-                entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_EXECUTION)
+    s = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_EXECUTION,
+    )
     repo.create_session(s, DifyBuilderContext(recovery_class="config_only"), [ConversationItem(kind="user", seq=0)])
     view = service.get_session_view(s.id, _actor())
     assert view.recovery is not None
     assert view.recovery.recovery_class == "config_only"
 
 
-def test_get_session_view_no_recovery_when_unset(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository
-) -> None:
-    s = Session(app_id=APP_ID, tenant_id=TENANT_ID, owner_account_id=ACCOUNT_ID,
-                entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_INITIAL_PLAN)
+def test_get_session_view_no_recovery_when_unset(service: DifyBuilderService, repo: SqlDifyBuilderRepository) -> None:
+    s = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_INITIAL_PLAN,
+    )
     repo.create_session(s, DifyBuilderContext(), [ConversationItem(kind="user", seq=0)])
     view = service.get_session_view(s.id, _actor())
     assert view.recovery is None

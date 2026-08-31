@@ -226,4 +226,28 @@ describe('WorkflowChecklist', () => {
     expect(await screen.findByRole('button', { name: 'workflow.panel.checklist 2' })).toBeDisabled()
     expect(screen.queryByText('Broken Node')).not.toBeInTheDocument()
   })
+
+  it('should start a checklist fix from the entry at the bottom of the list', async () => {
+    const user = userEvent.setup()
+    const { store } = renderChecklist({ disabled: false })
+
+    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.fixWithAppBuilder' }))
+
+    expect(mockStartChecklistFix).toHaveBeenCalledWith(
+      'app-1',
+      [
+        expect.objectContaining({ node_id: 'plugin-1', plugin_missing: true }),
+        expect.objectContaining({
+          node_id: 'node-1',
+          messages: ['Needs configuration'],
+        }),
+      ],
+      undefined,
+    )
+    expect(store.get(difyBuilderChecklistErrorsAtom)).toEqual([
+      expect.objectContaining({ node_id: 'plugin-1', plugin_missing: true }),
+      expect.objectContaining({ node_id: 'node-1', messages: ['Needs configuration'] }),
+    ])
+  })
 })
