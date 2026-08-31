@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import cast, override
+from typing import override
 from unittest.mock import patch
 
 import pytest
@@ -25,13 +25,12 @@ from controllers.openapi.auth.requirements import (
     RequireWorkspaceMembership,
     ResolveCaller,
     SubjectCheck,
-    TokenScope,
 )
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import AccountSubject, Subject
 from enums import DeploymentEdition
-from libs.oauth_bearer import AuthContext, Scope, SubjectType, try_get_auth_ctx
-from models import Account, EndUser
+from libs.oauth_bearer import AuthContext, SubjectType, try_get_auth_ctx
+from models import EndUser
 from models.enums import EndUserType
 from services.account_service import AccountService, TenantService
 from services.app_service import AppService
@@ -232,32 +231,6 @@ def test_a_subject_that_mounts_no_caller_leaves_the_context_untouched(
     assert ctx.caller is None
 
 
-def test_app_scoped_route_mounts_an_account_bound_to_the_workspace(
-    sqlite_session: Session,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """H17 — an account that mounts with no current tenant fails silently,
-    without an exception, so the guard has to be an assertion.
-    """
-    persist(sqlite_session, make_app(), make_tenant(), make_account(), make_membership())
-    mounted: list[object] = []
-    monkeypatch.setattr(MOUNT, mounted.append)
-    subject = account_subject()
-
-    _run(
-        AccountPipeline(),
-        subject,
-        make_ctx(sqlite_session, subject, app_id=APP_ID),
-        sqlite_session,
-        requirements=(RequireWorkspaceMembership(),),
-    )
-
-    assert len(mounted) == 1
-    account = mounted[0]
-    assert isinstance(account, Account)
-    assert account.current_tenant_id == TENANT_ID
-
-
 def test_a_caller_that_cannot_be_resolved_leaves_the_auth_ctx_unset(
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
@@ -274,18 +247,6 @@ def test_a_caller_that_cannot_be_resolved_leaves_the_auth_ctx_unset(
         _run(AccountPipeline(), subject, make_ctx(sqlite_session, subject), sqlite_session)
 
     assert try_get_auth_ctx() is None
-
-
-def test_endpoint_spec_keeps_requirements_as_a_tuple() -> None:
-    """A list survives `__init__` and only fails where `Pipeline.run`
-    concatenates, so the coercion belongs at construction.
-    """
-    declared = [CheckAppApiEnabled()]
-
-    spec = EndpointSpec(requirements=cast(tuple[Requirement, ...], declared))
-
-    assert spec.requirements == tuple(declared)
-    assert isinstance(spec.requirements, tuple)
 
 
 def test_the_requirements_that_share_a_datum_fetch_it_once(
@@ -314,27 +275,6 @@ def test_the_requirements_that_share_a_datum_fetch_it_once(
         )
 
     assert (app_fetch.call_count, workspace_fetch.call_count, caller_fetch.call_count) == (1, 1, 1)
-
-
-def test_a_route_whose_requirements_need_no_app_never_fetches_one(
-    sqlite_session: Session,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """`app_id` in the path says the app *can* be resolved, never that it is.
-    Nothing fetches a datum no requirement asked for.
-
-    The subject declines the mount, which is what lets a pipeline carry no
-    `ResolveCaller` — the only shape in which an `app_id` can reach the mount
-    with the app still unfetched.
-    """
-    monkeypatch.setattr(AppService, "get_app_by_id", never_reached)
-    subject = account_subject()
-    monkeypatch.setattr(subject, "mounts_caller", lambda _ctx: False)
-    ctx = make_ctx(sqlite_session, subject, app_id=APP_ID)
-
-    _run(_NoFixed(), subject, ctx, sqlite_session, requirements=(TokenScope(Scope.APPS_RUN),))
-
-    assert ctx.app is None
 
 
 def test_an_external_sso_app_route_resolves_its_end_user(

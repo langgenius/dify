@@ -14,7 +14,7 @@ from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 import libs.rate_limit as rate_limit_module
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.pipelines import AccountPipeline
-from controllers.openapi.auth.requirements import CheckAppApiEnabled, Requirement, SubjectCheck
+from controllers.openapi.auth.requirements import CheckAppApiEnabled, Requirement
 from controllers.openapi.auth.router import AuthRouter, subject_router
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import AccountSubject
@@ -111,14 +111,6 @@ def test_a_dead_licence_403s_an_unauthenticated_caller_on_an_ee_endpoint(
 
     with app.test_request_context("/openapi/v1/permitted-external-apps"):
         with pytest.raises(Forbidden, match="license_invalid"):
-            view()
-
-
-def test_a_missing_bearer_401s(app: Flask) -> None:
-    view = _guard(_nothing)
-
-    with app.test_request_context("/openapi/v1/account"):
-        with pytest.raises(Unauthorized, match="bearer required"):
             view()
 
 
@@ -341,38 +333,6 @@ def test_path_params_reach_the_context(
     with app.test_request_context(f"/openapi/v1/apps/{APP_ID}", headers={"Authorization": "Bearer tok"}):
         request.view_args = {"app_id": APP_ID}
         with pytest.raises(Forbidden, match="service_api_disabled"):
-            view()
-
-
-def test_an_sso_token_is_refused_on_a_community_deployment(
-    app: Flask,
-    config_overrides: Callable[..., None],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-    _authenticates(monkeypatch, make_auth(SubjectType.EXTERNAL_SSO))
-    view = _guard(_nothing)
-
-    with app.test_request_context("/openapi/v1/account", headers={"Authorization": "Bearer tok"}):
-        with pytest.raises(Forbidden, match="external_sso_requires_ee"):
-            view()
-
-
-def test_the_endpoint_subject_check_answers_before_the_pipeline_edition_check(
-    app: Flask,
-    config_overrides: Callable[..., None],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Today's token-type gate runs before the route's edition gate, so an SSO
-    token on an account-only route is `unsupported_token_type` even on a
-    deployment where the SSO pipeline itself is unavailable.
-    """
-    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-    _authenticates(monkeypatch, make_auth(SubjectType.EXTERNAL_SSO))
-    view = _guard(_nothing, requirements=(SubjectCheck(allowed=[AccountSubject]),))
-
-    with app.test_request_context("/openapi/v1/account", headers={"Authorization": "Bearer tok"}):
-        with pytest.raises(Forbidden, match="unsupported_token_type"):
             view()
 
 

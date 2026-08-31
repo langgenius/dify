@@ -13,11 +13,9 @@ from werkzeug.exceptions import Forbidden, NotFound
 from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
     CheckSessionOwnership,
-    Rank,
     RBACScene,
     Requirement,
     RequireWebappAccess,
-    RequireWorkspaceMembership,
     RoleFloor,
     SubjectCheck,
     assert_license_valid,
@@ -37,7 +35,6 @@ from ._world import (
     APP_ID,
     CLIENT_ID,
     SESSION_ID,
-    SSO_EMAIL,
     TENANT_ID,
     TOKEN_ID,
     account_subject,
@@ -59,18 +56,6 @@ ACCESS_MODE = f"{WEBAPP_AUTH}.get_app_access_mode_by_id"
 WEBAPP_PERMISSION = f"{WEBAPP_AUTH}.is_user_allowed_to_access_webapp"
 ENFORCE_RBAC = "controllers.openapi.auth.requirements.enforce_rbac_access"
 APP_FETCH = "controllers.openapi.auth.loaders.AppService.get_app_by_id"
-
-
-def test_membership_runs_before_permission() -> None:
-    """The executable form of the 404-before-403 rule: a non-member must be
-    refused before RBAC can confirm the workspace exists. `EARLY < NORMAL` makes
-    it structural, independent of any call site's declared order — which is what
-    lets every route declare its own membership check without also having to
-    order it against the permission checks beside it.
-    """
-    assert SubjectCheck.rank < RequireWorkspaceMembership.rank < RBACScene.rank
-    assert RequireWorkspaceMembership.rank is Rank.EARLY
-    assert RoleFloor.rank is RBACScene.rank
 
 
 def test_subject_check_emits_the_wrong_surface_audit(app: Flask, sqlite_session: Session) -> None:
@@ -148,14 +133,6 @@ def test_an_app_requirement_off_an_app_route_is_a_wiring_bug(
         requirement.run(subject, make_ctx(sqlite_session, subject=subject), sqlite_session)
 
 
-class TestMembership:
-    def test_skips_a_non_account_caller(self, sqlite_session: Session) -> None:
-        subject = sso_subject()
-        ctx = make_ctx(sqlite_session, subject=subject, app_id=APP_ID)
-
-        RequireWorkspaceMembership().run(subject, ctx, sqlite_session)
-
-
 class TestRBACScene:
     admin_only = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})
 
@@ -164,6 +141,10 @@ class TestRBACScene:
         return RBACScene(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_VIEW_LAYOUT)
 
     def test_skips_a_non_account_caller(self, sqlite_session: Session, config_overrides: Callable[..., None]) -> None:
+        """No matrix row reaches this: on the routes an SSO token can address,
+        RBAC either stands down or no scene is declared, so an SSO caller falling
+        into account-scoped RBAC is invisible there.
+        """
         config_overrides(RBAC_ENABLED=True)
         subject = sso_subject()
 
@@ -203,9 +184,10 @@ class TestRBACScene:
     def test_is_inert_wherever_rbac_is_off(
         self, app: Flask, sqlite_session: Session, config_overrides: Callable[..., None], rbac_enabled: bool
     ) -> None:
-        """Standing down there is what lets a `RoleFloor` beside it take over,
-        and it has to be inert without loading anything — an account with no
-        membership at all still passes.
+        """No matrix row reaches this: every row runs against a stubbed RBAC
+        backend, so a scene that enforced where RBAC is switched off would still
+        be admitted there. Standing down is also what lets a `RoleFloor` beside
+        it take over.
         """
         config_overrides(RBAC_ENABLED=rbac_enabled)
         persist(sqlite_session, make_app(), make_tenant(), make_account())
@@ -222,23 +204,10 @@ class TestRBACScene:
 class TestRoleFloor:
     admin_only = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})
 
-    def test_a_floor_naming_no_scene_survives_rbac(
-        self, app: Flask, sqlite_session: Session, config_overrides: Callable[..., None]
-    ) -> None:
-        """`workspaces.py`'s member-management routes declare a floor and no
-        scene: nothing has taken the job over, so the stand-down never fires for
-        them and an RBAC deployment keeps the guard.
-        """
-        config_overrides(RBAC_ENABLED=True)
-        persist(sqlite_session, make_tenant(), make_account(), make_membership(TenantAccountRole.NORMAL))
-        subject = account_subject()
-        ctx = make_ctx(sqlite_session, subject=subject, workspace_id=TENANT_ID)
-
-        with app.test_request_context(f"/openapi/v1/workspaces/{TENANT_ID}/members"):
-            with pytest.raises(Forbidden, match="insufficient workspace role"):
-                RoleFloor(self.admin_only).run(subject, ctx, sqlite_session)
-
     def test_skips_a_non_account_caller(self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+        """No matrix row reaches this either — and the floor must not even fetch
+        the app to decide it.
+        """
         monkeypatch.setattr(APP_FETCH, never_reached)
         subject = sso_subject()
 
@@ -293,6 +262,10 @@ class TestRequireWebappAccess:
     def test_no_ops_outside_enterprise(
         self, sqlite_session: Session, config_overrides: Callable[..., None], monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        """The named guard for the CE contract: the access-mode service is never
+        reached at all. Dropping the early return is otherwise only caught
+        incidentally, by an unrelated test that happens not to stub it.
+        """
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         monkeypatch.setattr(ACCESS_MODE, never_reached)
         persist(sqlite_session, make_app())
@@ -319,23 +292,6 @@ class TestRequireWebappAccess:
             with patch(ACCESS_MODE, return_value=settings, side_effect=failure):
                 with pytest.raises(Forbidden, match="app or access mode not loaded"):
                     RequireWebappAccess().run(subject, ctx, sqlite_session)
-
-    def test_the_acl_is_gated_on_webapp_auth_but_the_private_check_is_not(self, sqlite_session: Session) -> None:
-        """Collapsing the two into one `webapp_auth.enabled` gate would let any
-        SSO caller into a private app.
-        """
-        persist(sqlite_session, make_app(), make_account(email=SSO_EMAIL))
-        subject = sso_subject()
-        ctx = make_ctx(sqlite_session, subject=subject, app_id=APP_ID)
-
-        with patch(FEATURES, return_value=system_features(webapp_auth=False)):
-            with patch(ACCESS_MODE, return_value=webapp_settings(WebAppAccessMode.PRIVATE.value)):
-                with patch(WEBAPP_PERMISSION, return_value=True):
-                    RequireWebappAccess().run(subject, ctx, sqlite_session)
-
-                with patch(WEBAPP_PERMISSION, return_value=False):
-                    with pytest.raises(Forbidden, match="user_not_allowed_for_private_app"):
-                        RequireWebappAccess().run(subject, ctx, sqlite_session)
 
     def test_refuses_a_private_app_when_the_user_cannot_be_resolved(self, sqlite_session: Session) -> None:
         persist(sqlite_session, make_app())
