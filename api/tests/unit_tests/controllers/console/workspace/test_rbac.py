@@ -389,6 +389,49 @@ class TestResourceAccessScopeBindings:
 
         mock_sync_task.delay.assert_not_called()
 
+    def test_agent_whitelist_forwards_to_agent_access(self, app):
+        result = rbac_mod.svc.ResourceWhitelist(account_ids=["acct-2"], automatic_include_workspace_members=False)
+        with (
+            app.test_request_context("/workspaces/current/rbac/agents/agent-1/whitelist"),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.AgentAccess.whitelist",
+                return_value=result,
+            ) as mock_get,
+        ):
+            response = inspect.unwrap(rbac_mod.RBACAgentWhitelistApi.get)(
+                rbac_mod.RBACAgentWhitelistApi(),
+                "agent-1",
+            )
+
+        assert response == {"account_ids": ["acct-2"]}
+        mock_get.assert_called_once_with("tenant-1", "acct-1", "agent-1")
+
+    def test_agent_whitelist_put_forwards_to_agent_access(self, app):
+        result = rbac_mod.svc.ResourceWhitelist(account_ids=["acct-1"], automatic_include_workspace_members=True)
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/agents/agent-1/whitelist",
+                method="PUT",
+                json={"automatic_include_workspace_members": True},
+            ),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.AgentAccess.replace_whitelist",
+                return_value=result,
+            ) as mock_put,
+        ):
+            response = inspect.unwrap(rbac_mod.RBACAgentWhitelistApi.put)(
+                rbac_mod.RBACAgentWhitelistApi(),
+                "agent-1",
+            )
+
+        assert response == {"account_ids": ["acct-1"]}
+        mock_put.assert_called_once()
+        args = mock_put.call_args.args
+        assert args[:3] == ("tenant-1", "acct-actor", "agent-1")
+        assert args[3].automatic_include_workspace_members is True
+
     def test_app_whitelist_config_returns_switch_state_only(self, app):
         result = rbac_mod.svc.ResourceWhitelistConfig(automatic_include_workspace_members=True)
         with (
@@ -424,6 +467,24 @@ class TestResourceAccessScopeBindings:
 
         assert response == {"automatic_include_workspace_members": False}
         mock_get.assert_called_once_with("tenant-1", "acct-1", "dataset-1")
+
+    def test_agent_whitelist_config_returns_switch_state_only(self, app):
+        result = rbac_mod.svc.ResourceWhitelistConfig(automatic_include_workspace_members=True)
+        with (
+            app.test_request_context("/workspaces/current/rbac/agents/agent-1/whitelist_config"),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.AgentAccess.whitelist_config",
+                return_value=result,
+            ) as mock_get,
+        ):
+            response = inspect.unwrap(rbac_mod.RBACAgentWhitelistConfigApi.get)(
+                rbac_mod.RBACAgentWhitelistConfigApi(),
+                "agent-1",
+            )
+
+        assert response == {"automatic_include_workspace_members": True}
+        mock_get.assert_called_once_with("tenant-1", "acct-1", "agent-1")
 
     def test_app_user_access_policy_assignment_forwards_ids(self, app):
         with (

@@ -7,6 +7,7 @@ from pydantic import AliasChoices, BaseModel, Field, field_validator
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -78,9 +79,11 @@ from services.agent.observability_service import (
 )
 from services.agent.roster_service import AgentRosterService
 from services.app_service import AgentAppPublicationCounts, AppListParams, AppService, CreateAppParams
+from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
 from services.feature_service import FeatureService
+from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 AgentPublicationStatus = Literal["published", "drafts"]
 
@@ -429,6 +432,14 @@ def _serialize_agent_app_detail(
     payload["debug_conversation_message_count"] = message_count
     payload["role"] = agent.role or ""
     payload["access_ready"] = agent_has_workflow_callable_active_snapshot(session=session, agent=agent)
+    if dify_config.RBAC_ENABLED:
+        permission_keys_map = enterprise_rbac_service.RBACService.AgentPermissions.batch_get(
+            str(app_model.tenant_id),
+            current_user.id,
+            [str(agent.id)],
+            session=session,
+        )
+        payload["permission_keys"] = permission_keys_map.get(str(agent.id), [])
     return payload
 
 
@@ -454,6 +465,15 @@ def _serialize_agent_app_pagination(
         tenant_id=tenant_id,
         app_ids=app_ids,
     )
+    agent_ids = [str(agent.id) for agent in agents_by_app_id.values()]
+    permission_keys_by_agent_id: dict[str, list[str]] = {}
+    if dify_config.RBAC_ENABLED:
+        permission_keys_by_agent_id = enterprise_rbac_service.RBACService.AgentPermissions.batch_get(
+            tenant_id,
+            current_user.id,
+            agent_ids,
+            session=session,
+        )
     active_config_is_published_by_agent_id = roster_service.load_active_config_is_published_by_agent_id(
         tenant_id=tenant_id,
         agents=list(agents_by_app_id.values()),
@@ -496,6 +516,7 @@ def _serialize_agent_app_pagination(
             item["id"] = agent.id
             item["debug_conversation_id"] = debug_conversation_ids_by_agent_id.get(agent.id)
             item["role"] = agent.role or ""
+            item["permission_keys"] = permission_keys_by_agent_id.get(str(agent.id), [])
             item["active_config_is_published"] = active_config_is_published_by_agent_id.get(agent.id, False)
             item["reference_count"] = reference_counts_by_agent_id.get(agent.id, 0)
             published_references = published_references_by_agent_id.get(agent.id, [])
@@ -565,6 +586,29 @@ def _serialize_agent_api_access(session: Session, app_model: App) -> dict:
         api_key_count=_agent_api_key_count(session, app_model),
     )
     return response.model_dump(mode="json")
+
+
+def _initialize_created_agent_rbac_access(
+    session: Session,
+    *,
+    tenant_id: str,
+    account_id: str,
+    app_model: App,
+) -> None:
+    if not dify_config.RBAC_ENABLED:
+        return
+
+    agent = _agent_roster_service(session).get_app_backing_agent(tenant_id=tenant_id, app_id=str(app_model.id))
+    if not agent:
+        raise AgentNotFoundError()
+
+    enterprise_rbac_service.RBACService.AgentAccess.replace_whitelist(
+        tenant_id,
+        account_id,
+        str(agent.id),
+        enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+    )
+    initialize_created_app_rbac_access_task.delay(tenant_id, account_id, agent_id=str(agent.id))
 
 
 def _agent_observability_service(session: Session) -> AgentObservabilityService:
@@ -684,6 +728,12 @@ class AgentAppListApi(Resource):
         )
 
         app = AppService().create_app(current_tenant_id, params, current_user, session=session)
+        _initialize_created_agent_rbac_access(
+            session,
+            tenant_id=current_tenant_id,
+            account_id=current_user.id,
+            app_model=app,
+        )
         return _serialize_agent_app_detail(session, app, current_user=current_user), 201
 
 
@@ -956,6 +1006,12 @@ class AgentAppCopyApi(Resource):
             icon_type=req_data.icon_type,
             icon=req_data.icon,
             icon_background=req_data.icon_background,
+        )
+        _initialize_created_agent_rbac_access(
+            session,
+            tenant_id=tenant_id,
+            account_id=current_user.id,
+            app_model=copied_app,
         )
         return _serialize_agent_app_detail(session, copied_app, current_user=current_user), 201
 

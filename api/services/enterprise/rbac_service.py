@@ -58,6 +58,7 @@ class RBACResourceType(StrEnum):
 
     APP = "app"
     DATASET = "dataset"
+    AGENT = "agent"
 
 
 class RBACRoleType(StrEnum):
@@ -339,6 +340,12 @@ class AppendDatasetWhitelistMembersBatchItem(_RBACModel):
     policy_id: str
 
 
+class AppendAgentWhitelistMembersBatchItem(_RBACModel):
+    agent_id: str
+    account_ids: list[str] = Field(default_factory=list)
+    policy_id: str
+
+
 class MemberRolesResponse(_RBACModel):
     account_id: str
     roles: list[RBACRole] = Field(default_factory=list)
@@ -369,6 +376,7 @@ class MyPermissionsResponse(_RBACModel):
     workspace: WorkspacePermissionSnapshot = Field(default_factory=WorkspacePermissionSnapshot)
     app: ResourcePermissionSnapshot = Field(default_factory=ResourcePermissionSnapshot)
     dataset: ResourcePermissionSnapshot = Field(default_factory=ResourcePermissionSnapshot)
+    agent: ResourcePermissionSnapshot = Field(default_factory=ResourcePermissionSnapshot)
 
 
 # Fallback permission snapshots for legacy Dify tenant roles when external RBAC is disabled.
@@ -405,6 +413,7 @@ _LEGACY_WORKSPACE_OWNER_KEYS: list[str] = [
     "tool.manage",
     "mcp.manage",
     "agent.manage",
+    "agent.create",
 ]
 
 _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
@@ -437,6 +446,7 @@ _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
     "tool.manage",
     "mcp.manage",
     "agent.manage",
+    "agent.create",
 ]
 
 _LEGACY_WORKSPACE_EDITOR_KEYS: list[str] = [
@@ -456,6 +466,7 @@ _LEGACY_WORKSPACE_EDITOR_KEYS: list[str] = [
     "snippets.create_and_modify",
     "tool.manage",
     "agent.manage",
+    "agent.create",
 ]
 
 _LEGACY_WORKSPACE_NORMAL_KEYS: list[str] = [
@@ -576,21 +587,55 @@ _LEGACY_DATASET_DATASET_OPERATOR_KEYS: list[str] = [
     "dataset.acl.pipeline_release",
 ]
 
+_LEGACY_AGENT_OWNER_KEYS: list[str] = [
+    "agent.acl.preview",
+    "agent.acl.edit",
+    "agent.acl.release_and_version",
+    "agent.acl.access_point_manage",
+    "agent.acl.log_manage",
+    "agent.acl.monitor",
+    "agent.acl.access_config",
+    "agent.acl.import_export_dsl",
+    "agent.acl.delete",
+]
+
+_LEGACY_AGENT_ADMIN_KEYS: list[str] = [
+    "agent.acl.preview",
+    "agent.acl.edit",
+    "agent.acl.release_and_version",
+    "agent.acl.access_point_manage",
+    "agent.acl.log_manage",
+    "agent.acl.monitor",
+    "agent.acl.access_config",
+    "agent.acl.import_export_dsl",
+    "agent.acl.delete",
+]
+
+_LEGACY_AGENT_EDITOR_KEYS: list[str] = [
+    "agent.acl.preview",
+    "agent.acl.edit",
+    "agent.acl.release_and_version",
+    "agent.acl.access_point_manage",
+]
+
 _LEGACY_MY_PERMISSIONS: dict[TenantAccountRole, dict[str, list[str]]] = {
     TenantAccountRole.OWNER: {
         "workspace": _LEGACY_WORKSPACE_OWNER_KEYS,
         "app": _LEGACY_APP_OWNER_KEYS,
         "dataset": _LEGACY_DATASET_OWNER_KEYS,
+        "agent": _LEGACY_AGENT_OWNER_KEYS,
     },
     TenantAccountRole.ADMIN: {
         "workspace": _LEGACY_WORKSPACE_ADMIN_KEYS,
         "app": _LEGACY_APP_ADMIN_KEYS,
         "dataset": _LEGACY_DATASET_ADMIN_KEYS,
+        "agent": _LEGACY_AGENT_ADMIN_KEYS,
     },
     TenantAccountRole.EDITOR: {
         "workspace": _LEGACY_WORKSPACE_EDITOR_KEYS,
         "app": _LEGACY_APP_EDITOR_KEYS,
         "dataset": _LEGACY_DATASET_EDITOR_KEYS,
+        "agent": _LEGACY_AGENT_EDITOR_KEYS,
     },
     TenantAccountRole.NORMAL: {
         "workspace": _LEGACY_WORKSPACE_NORMAL_KEYS,
@@ -611,6 +656,7 @@ def _legacy_role_permission_keys(role: TenantAccountRole) -> list[str]:
                 *permissions.get("workspace", []),
                 *permissions.get("app", []),
                 *permissions.get("dataset", []),
+                *permissions.get("agent", []),
             ]
         )
     )
@@ -667,6 +713,7 @@ def _legacy_my_permissions(tenant_id: str, account_id: str | None, *, session: S
         workspace=WorkspacePermissionSnapshot(permission_keys=list(permissions.get("workspace", []))),
         app=ResourcePermissionSnapshot(default_permission_keys=list(permissions.get("app", []))),
         dataset=ResourcePermissionSnapshot(default_permission_keys=list(permissions.get("dataset", []))),
+        agent=ResourcePermissionSnapshot(default_permission_keys=list(permissions.get("agent", []))),
     )
 
 
@@ -681,6 +728,8 @@ def _legacy_resource_permission_keys_batch(
     snapshot = _legacy_my_permissions(tenant_id, account_id, session=session)
     if resource_type == RBACResourceType.APP:
         permission_keys = snapshot.app.default_permission_keys
+    elif resource_type == RBACResourceType.AGENT:
+        permission_keys = snapshot.agent.default_permission_keys
     else:
         permission_keys = snapshot.dataset.default_permission_keys
     return {str(resource_id): list(permission_keys) for resource_id in resource_ids}
@@ -1606,6 +1655,81 @@ class RBACService:
             return AccessMatrixItem.model_validate(data or {})
 
     # ------------------------------------------------------------------
+    # Per-agent access.
+    # ------------------------------------------------------------------
+    class AgentAccess:
+        @staticmethod
+        def replace_user_access_policies(
+            tenant_id: str,
+            account_id: str | None,
+            agent_id: str,
+            target_account_id: str | None,
+            payload: ReplaceUserAccessPolicies,
+        ) -> ReplaceUserAccessPoliciesResponse:
+            data = _inner_call(
+                "PUT",
+                f"{_INNER_PREFIX}/agents/user-access-policies",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params={"agent_id": agent_id, "account_id": target_account_id},
+                json=payload.model_dump(mode="json", exclude_unset=True),
+            )
+            return ReplaceUserAccessPoliciesResponse.model_validate(data or {})
+
+        @staticmethod
+        def whitelist(tenant_id: str, account_id: str | None, agent_id: str) -> ResourceWhitelist:
+            data = _inner_call(
+                "GET",
+                f"{_INNER_PREFIX}/agents/whitelist",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params={"agent_id": agent_id},
+            )
+            return ResourceWhitelist.model_validate(data or {})
+
+        @staticmethod
+        def whitelist_config(tenant_id: str, account_id: str | None, agent_id: str) -> ResourceWhitelistConfig:
+            data = _inner_call(
+                "GET",
+                f"{_INNER_PREFIX}/agents/whitelist",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params={"agent_id": agent_id},
+            )
+            return ResourceWhitelistConfig.model_validate(data or {})
+
+        @staticmethod
+        def replace_whitelist(
+            tenant_id: str,
+            account_id: str | None,
+            agent_id: str,
+            payload: ReplaceMemberBindings,
+        ) -> ResourceWhitelist:
+            data = _inner_call(
+                "PUT",
+                f"{_INNER_PREFIX}/agents/whitelist",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params={"agent_id": agent_id},
+                json=payload.model_dump(mode="json"),
+            )
+            return ResourceWhitelist.model_validate(data or {})
+
+        @staticmethod
+        def append_whitelist_members_batch(
+            tenant_id: str,
+            account_id: str | None,
+            data: Sequence[AppendAgentWhitelistMembersBatchItem],
+        ) -> None:
+            _inner_call(
+                "POST",
+                f"{_INNER_PREFIX}/agents/whitelist/members/batch",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                json={"data": [item.model_dump(mode="json") for item in data]},
+            )
+
+    # ------------------------------------------------------------------
     # Workspace-level access (screenshot 2: Settings > Access Rules).
     # ------------------------------------------------------------------
     class WorkspaceAccess:
@@ -1957,6 +2081,30 @@ class RBACService:
             )
             return _parse_resource_permission_keys_batch(data, resource_id_key="dataset_id")
 
+    class AgentPermissions:
+        @staticmethod
+        def batch_get(
+            tenant_id: str,
+            account_id: str | None,
+            agent_ids: list[str],
+            *,
+            session: Session,
+        ) -> dict[str, list[str]]:
+            if not agent_ids:
+                return {}
+            if not dify_config.RBAC_ENABLED:
+                return _legacy_resource_permission_keys_batch(
+                    tenant_id, account_id, agent_ids, RBACResourceType.AGENT, session=session
+                )
+            data = _inner_call(
+                "POST",
+                f"{_INNER_PREFIX}/agents/permission-keys/batch",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                json={"agent_ids": agent_ids},
+            )
+            return _parse_resource_permission_keys_batch(data, resource_id_key="agent_id")
+
     class MyPermissions:
         @staticmethod
         def get(
@@ -2001,7 +2149,12 @@ def _parse_resource_permission_keys_batch(data: Any, *, resource_id_key: str) ->
         if items is None:
             items = data.get("items")
         if items is None:
-            items = data.get("apps") if resource_id_key == "app_id" else data.get("datasets")
+            collection_key_by_resource_id_key = {
+                "app_id": "apps",
+                "dataset_id": "datasets",
+                "agent_id": "agents",
+            }
+            items = data.get(collection_key_by_resource_id_key.get(resource_id_key, ""))
         if isinstance(items, dict):
             items = [{"resource_id": key, "permission_keys": value} for key, value in items.items()]
     elif isinstance(data, list):
