@@ -86,6 +86,14 @@ function stringContainsTruncationClass(value) {
   return value.split(/\s+/u).some((token) => token && isTruncationClassToken(token))
 }
 
+function hasActiveLineClampDeclaration(cssText) {
+  const lineClampPattern = /(?:-webkit-)?line-clamp\s*:\s*([^;}]+)/giu
+  return [...cssText.matchAll(lineClampPattern)].some((match) => {
+    const value = (match[1] ?? '').trim()
+    return value !== '' && !/^(?:0|none|unset)\b/iu.test(value)
+  })
+}
+
 function getTruncatingCssModuleClassNames(cssText) {
   const classNames = new Set()
   const classBlockPattern = /\.([A-Z_a-z][\w-]*)\s*\{([^{}]*)\}/gu
@@ -93,7 +101,7 @@ function getTruncatingCssModuleClassNames(cssText) {
   for (const match of cssText.matchAll(classBlockPattern)) {
     const [, className, body = ''] = match
     const hasTextEllipsis = /text-overflow\s*:\s*ellipsis\b/iu.test(body)
-    const hasLineClamp = /(?:-webkit-)?line-clamp\s*:\s*(?!0\b|none\b|unset\b)[^;}]+/iu.test(body)
+    const hasLineClamp = hasActiveLineClampDeclaration(body)
     const hasTruncationApply = [...body.matchAll(/@apply\s+([^;}]+)/gu)].some((applyMatch) =>
       stringContainsTruncationClass(applyMatch[1] ?? ''),
     )

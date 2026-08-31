@@ -178,6 +178,9 @@ it('resolves truncation classes imported from CSS modules', () => {
       export const Example = ({ name }) => <>
         <span className={styles.singleLine}>{name}</span>
         <span className={styles.multipleLines}>{name}</span>
+        <span className={styles.noClamp}>{name}</span>
+        <span className={styles.zeroClamp}>{name}</span>
+        <span className={styles.unsetClamp}>{name}</span>
         <span className={styles.regular}>{name}</span>
       </>
     `,
