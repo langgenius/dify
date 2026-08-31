@@ -42,6 +42,7 @@
   "accessRule.summary_one": "{{count}} 件の権限セット",
   "accessRule.summary_other": "{{count}} 件の権限セット",
   "accessRule.updated": "アクセスルールを更新しました",
+  "accessRule.workspaceOwner": "ワークスペースのオーナー",
   "common.duplicateAction": "複製",
   "group.app": "アプリ",
   "group.app_acl": "アプリアクセス権限",

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -54,6 +54,11 @@ from services.entities.account_entities import AccountEmailRegistrationVerificat
 from services.entities.feature_entities import SystemFeatureModel
 
 
+@pytest.fixture(autouse=True)
+def _cloud_edition(config_overrides: Callable[..., None]) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+
+
 @contextmanager
 def _request(
     app: Flask,
@@ -70,7 +75,6 @@ def _request(
     )
     with (
         patch("controllers.console.auth.email_register.application_services", return_value=services),
-        patch("controllers.console.flask_admission.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch("controllers.console.flask_admission.FeatureService.get_system_features", return_value=features),
         patch("controllers.console.auth.email_register.extract_remote_ip", return_value="127.0.0.1"),
         app.test_request_context(path, method="POST", json=payload),
@@ -284,10 +288,7 @@ def test_invalid_password_is_sanitized_by_real_error_handler(caplog: pytest.LogC
     )
     password_marker = "SecretMarker"
 
-    with (
-        patch("controllers.console.flask_admission.FeatureService.get_system_features", return_value=features),
-        patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-    ):
+    with patch("controllers.console.flask_admission.FeatureService.get_system_features", return_value=features):
         response = app.test_client().post(
             "/console/api/email-register",
             json={

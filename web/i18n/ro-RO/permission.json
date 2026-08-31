@@ -42,6 +42,7 @@
   "accessRule.summary_one": "{{count}} set de permisiuni",
   "accessRule.summary_other": "{{count}} seturi de permisiuni",
   "accessRule.updated": "Regula de acces a fost actualizată cu succes",
+  "accessRule.workspaceOwner": "Proprietarul spațiului de lucru",
   "common.duplicateAction": "Duplică",
   "group.app": "Aplicații",
   "group.app_acl": "Permisiuni de acces ale aplicației",

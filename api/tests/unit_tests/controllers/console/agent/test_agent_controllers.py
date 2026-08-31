@@ -74,6 +74,7 @@ from services.entities.agent_entities import (
     WorkflowAgentComposerQuery,
     WorkflowComposerCopyFromRosterPayload,
 )
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _persist_conversation_message(
@@ -325,6 +326,11 @@ def test_agent_app_list_and_create_use_agent_route(
                 items=[_app_detail_obj(id="app-list", bound_agent_id="agent-list")],
             )
 
+        def get_agent_publication_counts(self, user_id: str, tenant_id: str, params, session):
+            del session
+            captured["counts"] = {"user_id": user_id, "tenant_id": tenant_id, "params": params}
+            return roster_controller.AgentAppPublicationCounts(published=1, drafts=0)
+
         def create_app(self, tenant_id: str, params, current_user: object, *, session: object) -> object:
             captured["create"] = {"tenant_id": tenant_id, "params": params, "current_user": current_user}
             return _app_detail_obj(id="app-created", bound_agent_id="agent-created")
@@ -408,7 +414,8 @@ def test_agent_app_list_and_create_use_agent_route(
         lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
     )
     with app.test_request_context(
-        "/console/api/agent?page=1&limit=10&mode=workflow&sort_by=recently_created&is_created_by_me=true"
+        "/console/api/agent?page=1&limit=10&mode=workflow&sort_by=recently_created"
+        "&is_created_by_me=true&publication_status=published"
     ):
         listed = unwrap(AgentAppListApi.get)(
             AgentAppListApi(), sqlite_session, "tenant-1", _account(account_id=account_id)
@@ -416,6 +423,7 @@ def test_agent_app_list_and_create_use_agent_route(
     assert listed["page"] == 1
     assert listed["limit"] == 10
     assert listed["total"] == 1
+    assert listed["publication_counts"] == {"published": 1, "drafts": 0}
     assert listed["data"][0]["id"] == "agent-list"
     assert listed["data"][0]["app_id"] == "app-list"
     assert listed["data"][0]["debug_conversation_id"] == "debug-conversation-list"
@@ -438,7 +446,11 @@ def test_agent_app_list_and_create_use_agent_route(
     assert list_params.mode == "agent"
     assert list_params.sort_by == "recently_created"
     assert list_params.is_created_by_me is True
+    assert list_params.agent_is_published is True
     assert list_params.status == "normal"
+    count_call = cast(dict[str, object], captured["counts"])
+    count_params = cast(Any, count_call["params"])
+    assert count_params.agent_is_published is True
     with app.test_request_context(
         "/console/api/agent",
         json={"name": "Iris", "description": "Agent app", "role": "Coordinator", "icon_type": "emoji", "icon": "robot"},
@@ -853,7 +865,7 @@ def test_agent_api_access_uses_agent_id_and_returns_service_api_metadata(monkeyp
     monkeypatch.setattr(roster_controller, "_resolve_agent_app_model", lambda _session, **kwargs: app_model)
     monkeypatch.setattr(roster_controller, "_agent_api_key_count", lambda _session, _app: 2)
     monkeypatch.setattr(roster_controller, "_agent_app_access_ready", lambda _session, _app: True)
-    monkeypatch.setattr("models.model.dify_config.SERVICE_API_URL", "https://api.example.test/v1")
+    apply_config_overrides(monkeypatch, SERVICE_API_URL="https://api.example.test/v1")
     response = unwrap(AgentApiAccessApi.get)(AgentApiAccessApi(), MagicMock(), "tenant-1", agent_id)
     assert response == {
         "access_ready": True,

@@ -3,7 +3,7 @@ import type { StepByStepTourSessionState } from '@/app/components/step-by-step-t
 import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
 import { keepPreviousData } from '@tanstack/react-query'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import * as React from 'react'
@@ -398,12 +398,11 @@ vi.mock('../app-card', () => ({
     stepByStepTourCardHighlightPart?: string
   }) => {
     return React.createElement(
-      'div',
+      'li',
       {
         'data-testid': `app-card-${app.id}`,
         'data-step-by-step-tour-target': stepByStepTourCardTarget,
         'data-step-by-step-tour-highlight-part': stepByStepTourCardHighlightPart,
-        role: 'article',
       },
       app.name,
       React.createElement('button', {
@@ -415,20 +414,27 @@ vi.mock('../app-card', () => ({
     )
   },
   default: ({ app }: { app: { id: string; name: string } }) => {
-    return React.createElement(
-      'div',
-      { 'data-testid': `app-card-${app.id}`, role: 'article' },
-      app.name,
-    )
+    return React.createElement('li', { 'data-testid': `app-card-${app.id}` }, app.name)
   },
 }))
 
-vi.mock('../app-card/action-bar', () => ({
-  AppCardActionBar: ({ app }: { app: { id: string; name: string } }) => {
-    return React.createElement('button', {
-      'aria-label': `Actions for ${app.name}`,
-      type: 'button',
-    })
+vi.mock('../app-card/interactions', () => ({
+  AppCardInteractions: ({
+    app,
+    children,
+  }: {
+    app: { id: string; name: string }
+    children: React.ReactElement
+  }) => {
+    return React.createElement(
+      React.Fragment,
+      null,
+      children,
+      React.createElement('button', {
+        'aria-label': `Actions for ${app.name}`,
+        type: 'button',
+      }),
+    )
   },
 }))
 
@@ -439,7 +445,6 @@ vi.mock('../empty', () => ({
       {
         'data-testid': 'empty-state',
         'data-step-by-step-tour-target': stepByStepTourTarget,
-        role: 'status',
       },
       'No apps found',
     )
@@ -626,7 +631,7 @@ describe('List', () => {
     it('should render filters and search before the right aligned actions', () => {
       renderList()
 
-      const creatorsButton = screen.getByRole('button', { name: 'Creators' })
+      const creatorsButton = screen.getByRole('combobox', { name: 'Creators' })
       const searchInput = screen.getByRole('searchbox', {
         name: 'app.gotoAnything.actions.searchApplications',
       })
@@ -635,6 +640,7 @@ describe('List', () => {
       const createButton = screen.getByRole('button', { name: 'common.operation.create' })
 
       expect(snippetsLink).toHaveAttribute('href', '/snippets')
+      expect(sortButton).toHaveTextContent('Sort by Last modified')
       expect(
         creatorsButton.compareDocumentPosition(sortButton) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy()
@@ -689,14 +695,21 @@ describe('List', () => {
 
       renderList()
 
-      const starredLabel = screen.getByText('Starred')
-      const starredCard = screen.getByRole('link', { name: /Starred App/ })
-      const allAppsLabel = screen.getByText('All Apps')
+      const starredLabel = screen.getByRole('heading', { level: 2, name: 'Starred' })
+      const starredList = screen.getByRole('list', { name: 'Starred' })
+      const starredCard = screen.getByRole('link', { name: 'Starred App' })
+      const allAppsLabel = screen.getByRole('heading', { level: 2, name: 'All Apps' })
+      const allAppsList = screen.getByRole('list', { name: 'All Apps' })
       const firstAppCard = screen.getByTestId('app-card-app-1')
       const actionBar = screen.getByRole('button', { name: 'Actions for Starred App' })
 
       expect(starredCard).toBeInTheDocument()
       expect(actionBar).toBeInTheDocument()
+      expect(screen.getAllByRole('list')).toHaveLength(2)
+      expect(starredList).toContainElement(starredCard)
+      expect(within(starredList).getAllByRole('listitem')).toHaveLength(1)
+      expect(firstAppCard.parentElement).toBe(allAppsList)
+      expect(within(allAppsList).getAllByRole('listitem')).toHaveLength(2)
       expect(
         starredLabel.compareDocumentPosition(starredCard) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy()
@@ -739,7 +752,7 @@ describe('List', () => {
 
       const firstWorkspaceCard = screen.getByTestId('app-card-app-1')
       const firstWorkspaceActionBar = screen.getByTestId('app-card-action-bar-app-1')
-      const starredCard = screen.getByRole('link', { name: /Starred App/ })
+      const starredCard = screen.getByRole('link', { name: 'Starred App' })
       const starredActionBar = screen.getByRole('button', {
         name: 'Actions for Starred App',
       })
@@ -791,7 +804,7 @@ describe('List', () => {
 
       renderList()
 
-      const starredCard = screen.getByRole('link', { name: /Starred App/ })
+      const starredCard = screen.getByRole('link', { name: 'Starred App' })
       const firstWorkspaceCard = screen.getByTestId('app-card-app-1')
       const firstWorkspaceActionBar = screen.getByTestId('app-card-action-bar-app-1')
 
@@ -862,6 +875,9 @@ describe('List', () => {
     it('should render drop DSL hint when app creation permission is available', () => {
       renderList()
       expect(screen.getByText('app.newApp.dropDSLToCreateApp'))!.toBeInTheDocument()
+      expect(
+        screen.queryByRole('region', { name: 'app.newApp.dropDSLToCreateApp' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should render first empty state when there are no apps and no active filters', () => {
@@ -933,9 +949,42 @@ describe('List', () => {
       renderList('?keywords=missing+app')
 
       expect(screen.getByTestId('empty-state'))!.toBeInTheDocument()
+      expect(screen.getByRole('status')).toHaveTextContent('app.filterEmpty.noApps')
+      expect(screen.getByRole('status')).toHaveClass('sr-only')
+      expect(screen.getByTestId('empty-state').closest('[aria-busy]')).toHaveAttribute(
+        'aria-busy',
+        'false',
+      )
       expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
+    })
+
+    it('should keep the result status quiet while placeholder results are fetching', () => {
+      mockAppData = { pages: [{ data: [], total: 0 }] }
+      mockServiceState.isFetching = true
+      mockServiceState.isPlaceholderData = true
+
+      renderList('?keywords=missing+app')
+
+      expect(screen.getByRole('status')).toBeEmptyDOMElement()
+      expect(screen.getByTestId('empty-state').closest('[aria-busy]')).toHaveAttribute(
+        'aria-busy',
+        'true',
+      )
+    })
+
+    it('should keep the settled empty status during a background refetch', () => {
+      mockAppData = { pages: [{ data: [], total: 0 }] }
+      mockServiceState.isFetching = true
+
+      renderList('?keywords=missing+app')
+
+      expect(screen.getByRole('status')).toHaveTextContent('app.filterEmpty.noApps')
+      expect(screen.getByTestId('empty-state').closest('[aria-busy]')).toHaveAttribute(
+        'aria-busy',
+        'true',
+      )
     })
 
     it('should leave the first empty state as soon as a filter changes', () => {
@@ -1073,11 +1122,12 @@ describe('List', () => {
       expect(scrollTo).toHaveBeenCalledWith({ top: 0 })
     })
 
-    it('should build paged query input from active filters', () => {
+    it('should build paged query input from active filters', async () => {
+      const user = userEvent.setup()
       renderList('?keywords=sales&category=workflow')
-      fireEvent.click(screen.getByRole('button', { name: 'Creators' }))
-      fireEvent.click(screen.getByText('Alice'))
-      fireEvent.click(screen.getByText('common.tag.placeholder'))
+      await user.click(screen.getByRole('combobox', { name: 'Creators' }))
+      await user.click(screen.getByRole('option', { name: /Alice/ }))
+      await user.click(screen.getByText('common.tag.placeholder'))
 
       const options = mockAppListInfiniteOptions.mock.calls.at(-1)?.[0] as AppListInfiniteOptions
 
@@ -1096,11 +1146,12 @@ describe('List', () => {
       expect(options.getNextPageParam({ has_more: false, page: 2 })).toBeUndefined()
     })
 
-    it('should build starred query input from active filters with the starred limit', () => {
+    it('should build starred query input from active filters with the starred limit', async () => {
+      const user = userEvent.setup()
       renderList('?keywords=sales&category=workflow')
-      fireEvent.click(screen.getByRole('button', { name: 'Creators' }))
-      fireEvent.click(screen.getByText('Alice'))
-      fireEvent.click(screen.getByText('common.tag.placeholder'))
+      await user.click(screen.getByRole('combobox', { name: 'Creators' }))
+      await user.click(screen.getByRole('option', { name: /Alice/ }))
+      await user.click(screen.getByText('common.tag.placeholder'))
 
       const options = mockAppStarredListQueryOptions.mock.calls.at(
         -1,
@@ -1140,13 +1191,15 @@ describe('List', () => {
   })
 
   describe('Creators Filter', () => {
-    it('should handle creator selection', () => {
+    it('should handle creator selection', async () => {
+      const user = userEvent.setup()
       renderList()
 
-      fireEvent.click(screen.getByRole('button', { name: 'Creators' }))
-      fireEvent.click(screen.getByRole('button', { name: /Bob/ }))
+      const trigger = screen.getByRole('combobox', { name: 'Creators' })
+      await user.click(trigger)
+      await user.click(screen.getByRole('option', { name: /Bob/ }))
 
-      expect(screen.getByRole('button', { name: /Creators.*\+1/ })).toBeInTheDocument()
+      expect(trigger).toHaveTextContent('+1')
     })
   })
 

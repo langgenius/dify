@@ -7,7 +7,6 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from configs import dify_config
 from models.agent import (
     AgentConfigVersionKind,
     AgentHomeSnapshot,
@@ -22,6 +21,7 @@ from services.agent.workspace_service import (
     AgentWorkspaceService,
     WorkspaceOwnerScope,
 )
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _scope() -> WorkspaceOwnerScope:
@@ -94,8 +94,11 @@ def _binding(
 
 
 def test_workspace_client_honors_the_configured_snapshot_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(dify_config, "AGENT_BACKEND_BASE_URL", "http://agent.example")
-    monkeypatch.setattr(dify_config, "AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS", 123.5)
+    apply_config_overrides(
+        monkeypatch,
+        AGENT_BACKEND_BASE_URL="http://agent.example",
+        AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS=123.5,
+    )
 
     client = AgentWorkspaceService._client()
 

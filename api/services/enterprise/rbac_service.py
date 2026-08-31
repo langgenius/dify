@@ -239,6 +239,32 @@ class ResourceWhitelistConfig(_RBACModel):
     automatic_include_workspace_members: bool
 
 
+class ResourceWhitelistConfigResource(_RBACModel):
+    resource_type: RBACResourceType
+    resource_id: str
+
+
+class ResourceWhitelistConfigItem(_RBACModel):
+    resource_type: RBACResourceType
+    resource_id: str
+    automatic_include_workspace_members: bool = False
+    account_ids: list[str] = Field(default_factory=list)
+    rbac_whitelist_scope: str | None = Field(
+        default=None, validation_alias=AliasChoices("rbac_whitelist_scope", "scope")
+    )
+
+    @field_validator("account_ids", mode="before")
+    @classmethod
+    def _coerce_account_ids(cls, value: Any) -> list[str]:
+        if value is None:
+            return []
+        return value
+
+
+class ResourceWhitelistConfigsResponse(_RBACModel):
+    data: list[ResourceWhitelistConfigItem] = Field(default_factory=list)
+
+
 class _LegacyResourceWhitelistConfig(_RBACModel):
     """RBAC service's pre-toggle whitelist payload, used only by data migrations."""
 
@@ -299,6 +325,18 @@ class ReplaceUserAccessPolicies(_RBACModel):
 
 class ReplaceUserAccessPoliciesResponse(_RBACModel):
     access_policies: list[AccessPolicy] = Field(default_factory=list)
+
+
+class AppendAppWhitelistMembersBatchItem(_RBACModel):
+    app_id: str
+    account_ids: list[str] = Field(default_factory=list)
+    policy_id: str
+
+
+class AppendDatasetWhitelistMembersBatchItem(_RBACModel):
+    dataset_id: str
+    account_ids: list[str] = Field(default_factory=list)
+    policy_id: str
 
 
 class MemberRolesResponse(_RBACModel):
@@ -1124,6 +1162,25 @@ class RBACService:
             return AccessPolicyBindingState.model_validate(data or {})
 
     # ------------------------------------------------------------------
+    # Mixed-resource whitelist config helpers.
+    # ------------------------------------------------------------------
+    class ResourceWhitelistConfigs:
+        @staticmethod
+        def batch_get(
+            tenant_id: str,
+            account_id: str | None,
+            resources: Sequence[ResourceWhitelistConfigResource],
+        ) -> ResourceWhitelistConfigsResponse:
+            data = _inner_call(
+                "POST",
+                f"{_INNER_PREFIX}/whitelist/configs",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                json={"resources": [resource.model_dump(mode="json") for resource in resources]},
+            )
+            return ResourceWhitelistConfigsResponse.model_validate(data or {})
+
+    # ------------------------------------------------------------------
     # Per-app access (screenshot 1: App Access Config).
     # ------------------------------------------------------------------
     class AppAccess:
@@ -1225,6 +1282,20 @@ class RBACService:
                 json=payload.model_dump(mode="json"),
             )
             return ResourceWhitelist.model_validate(data or {})
+
+        @staticmethod
+        def append_whitelist_members_batch(
+            tenant_id: str,
+            account_id: str | None,
+            data: Sequence[AppendAppWhitelistMembersBatchItem],
+        ) -> None:
+            _inner_call(
+                "POST",
+                f"{_INNER_PREFIX}/apps/whitelist/members/batch",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                json={"data": [item.model_dump(mode="json") for item in data]},
+            )
 
         @staticmethod
         def matrix(tenant_id: str, account_id: str | None, app_id: str) -> AppAccessMatrix:
@@ -1423,6 +1494,20 @@ class RBACService:
                 json=payload.model_dump(mode="json"),
             )
             return ResourceWhitelist.model_validate(data or {})
+
+        @staticmethod
+        def append_whitelist_members_batch(
+            tenant_id: str,
+            account_id: str | None,
+            data: Sequence[AppendDatasetWhitelistMembersBatchItem],
+        ) -> None:
+            _inner_call(
+                "POST",
+                f"{_INNER_PREFIX}/datasets/whitelist/members/batch",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                json={"data": [item.model_dump(mode="json") for item in data]},
+            )
 
         @staticmethod
         def matrix(tenant_id: str, account_id: str | None, dataset_id: str) -> DatasetAccessMatrix:

@@ -460,3 +460,20 @@ forbidden_modules =
     services.billing_service
     sqlalchemy
     werkzeug
+
+[importlinter:contract:workflow-run-archive-application-boundary]
+name = Workflow run archive application service and task domain are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.retention.workflow_run.archive_download_task
+    services.retention.workflow_run.archive_log_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
