@@ -33,6 +33,12 @@ from services.account_activation_adapters import (
     RegisterServiceInvitationTokenStore,
 )
 from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
+from services.account_email_registration_adapters import (
+    AccountServiceRegistrationGateway,
+    BillingAccountRegistrationPolicyGateway,
+    RedisEmailRegistrationSecurityGateway,
+    TokenManagerEmailRegistrationTokenGateway,
+)
 from services.account_forgot_password_adapters import (
     RateLimiterForgotPasswordSendLimiter,
     RedisForgotPasswordSecurityGateway,
@@ -390,6 +396,13 @@ def test_build_application_services_wires_account_profile_repository(
     assert services.accounts.initialization._accounts is accounts
     assert not services.accounts.initialization._invitation_required
     assert services.accounts.change_email._accounts is accounts
+    email_registration = services.accounts.email_registration
+    assert email_registration._accounts is accounts
+    assert isinstance(email_registration._tokens, TokenManagerEmailRegistrationTokenGateway)
+    assert isinstance(email_registration._security, RedisEmailRegistrationSecurityGateway)
+    assert isinstance(email_registration._account_policy, BillingAccountRegistrationPolicyGateway)
+    assert isinstance(email_registration._registration, AccountServiceRegistrationGateway)
+    assert email_registration._registration._session_factory is sqlite_session_factory
     assert services.accounts.education._accounts is accounts
     assert services.accounts.deletion._accounts is accounts
     assert services.accounts.deletion._memberships is services.workspace_queries._workspaces

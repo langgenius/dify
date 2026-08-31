@@ -58,7 +58,7 @@ class FakeAccounts:
         self.requested_ids.append(account_id)
         return self.account
 
-    def get_by_email_with_case_fallback(self, email: str) -> AccountSnapshot | None:
+    def find_by_email(self, email: str) -> AccountSnapshot | None:
         self.requested_emails.append(email)
         return self.account
 

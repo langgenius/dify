@@ -109,7 +109,7 @@ class AccountForgotPasswordService:
             raise ForgotPasswordSendIPLimitedError
 
         normalized_email = email.lower()
-        account = self._accounts.get_by_email_with_case_fallback(email)
+        account = self._accounts.find_by_email(email)
         destination = account.email if account is not None else normalized_email
         registration_allowed = self._registration.is_registration_allowed()
         if self._send_limits.is_limited(destination):
@@ -175,7 +175,7 @@ class AccountForgotPasswordService:
             raise InvalidForgotPasswordTokenError
 
         if token_data.account_id is None:
-            account = self._accounts.get_by_email_with_case_fallback(token_data.email)
+            account = self._accounts.find_by_email(token_data.email)
         else:
             account = self._accounts.get(token_data.account_id)
         if account is None or account.email.lower() != token_data.email.lower():

@@ -32,7 +32,7 @@ class SQLAlchemyAccountRepository(AccountRepository):
             return self._to_snapshot(account) if account is not None else None
 
     @override
-    def get_by_email_with_case_fallback(self, email: str) -> AccountSnapshot | None:
+    def find_by_email(self, email: str) -> AccountSnapshot | None:
         with self._session_factory() as session:
             account = session.execute(select(Account).where(Account.email == email)).scalar_one_or_none()
             if account is None and email != email.lower():
