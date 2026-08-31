@@ -49,6 +49,12 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
   const [isHovering, setIsHovering] = useState(false)
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [showTestEmailModal, setShowTestEmailModal] = useState(false)
+  const [testEmailModalKey, setTestEmailModalKey] = useState(0)
+
+  const openTestEmailModal = useCallback(() => {
+    setTestEmailModalKey((key) => key + 1)
+    setShowTestEmailModal(true)
+  }, [])
 
   const handleEnableStatusChange = (enabled: boolean) => {
     onChange({
@@ -128,7 +134,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
                       render={
                         <IconButton
                           aria-label={emailSenderTooltipContent}
-                          onClick={() => setShowTestEmailModal(true)}
+                          onClick={openTestEmailModal}
                         >
                           <span aria-hidden className="i-ri-send-plane-2-line size-4" />
                         </IconButton>
@@ -201,6 +207,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
         }}
       />
       <TestEmailSender
+        key={testEmailModalKey}
         nodeId={nodeId}
         deliveryId={method.id}
         open={showTestEmailModal}
