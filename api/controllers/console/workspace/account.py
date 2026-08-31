@@ -294,7 +294,6 @@ class AccountInitApi(Resource):
     @console_account_admission(require_initialized=False)
     @model_validate(AccountInitPayload)
     def post(self, args: AccountInitPayload, request_context: RequestContext):
-
         try:
             application_services().accounts.initialization.initialize(
                 request_context,
@@ -432,7 +431,6 @@ class AccountPasswordApi(Resource):
     @console_account_admission()
     @model_validate(AccountPasswordPayload)
     def post(self, args: AccountPasswordPayload, request_context: RequestContext):
-
         try:
             assert args.password is not None
             account = application_services().accounts.password.change(
@@ -493,7 +491,6 @@ class AccountDeleteApi(Resource):
     @console_account_admission()
     @model_validate(AccountDeletePayload)
     def post(self, args: AccountDeletePayload, request_context: RequestContext):
-
         try:
             application_services().accounts.deletion.request_deletion(
                 request_context,
@@ -513,7 +510,6 @@ class AccountDeleteUpdateFeedbackApi(Resource):
     @setup_required
     @model_validate(AccountDeletionFeedbackPayload)
     def post(self, args: AccountDeletionFeedbackPayload):
-
         application_services().accounts.deletion_feedback.submit(email=args.email, feedback=args.feedback)
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
@@ -566,7 +562,6 @@ class EducationAutoCompleteApi(Resource):
     @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
     @model_validate(EducationAutocompleteQuery)
     def get(self, args: EducationAutocompleteQuery, request_context: RequestContext):
-
         return dump_response(
             EducationAutocompleteResponse,
             application_services().accounts.education.autocomplete(
@@ -585,7 +580,6 @@ class ChangeEmailSendEmailApi(Resource):
     @console_account_admission(require_change_email_enabled=True)
     @model_validate(ChangeEmailSendPayload)
     def post(self, args: ChangeEmailSendPayload, request_context: RequestContext):
-
         ip_address = extract_remote_ip(request)
         language = "zh-Hans" if args.language == "zh-Hans" else "en-US"
         try:
@@ -617,7 +611,6 @@ class ChangeEmailCheckApi(Resource):
     @console_account_admission(require_change_email_enabled=True)
     @model_validate(ChangeEmailValidityPayload)
     def post(self, args: ChangeEmailValidityPayload, request_context: RequestContext):
-
         try:
             verification = application_services().accounts.change_email.verify_code(
                 request_context,

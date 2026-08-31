@@ -439,6 +439,30 @@ class TestAccountAvatarApiGet:
         assert exc_info.value.code == 422
 
 
+class TestConvertedPostDecorator:
+    def test_rejects_an_invalid_body_through_the_decorator(self, app: Flask):
+        """The decorator validates the JSON body before the view runs, for the POST handlers too."""
+        account = make_account()
+
+        with (
+            app.test_request_context("/account/name", method="POST", json={}),
+            patch("controllers.console.wraps._is_setup_completed", return_value=True),
+            config_overrides_context(LOGIN_DISABLED=True),
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(account, "workspace-1"),
+            ),
+            patch(
+                "controllers.console.flask_admission.current_account_with_tenant",
+                return_value=SimpleNamespace(account=account, tenant_id="workspace-1"),
+            ),
+        ):
+            with pytest.raises(UnprocessableEntity) as exc_info:
+                AccountNameApi().post()
+
+        assert exc_info.value.code == 422
+
+
 class TestAccountPasswordApi:
     def test_password_success(self, app: Flask):
         api = AccountPasswordApi()
