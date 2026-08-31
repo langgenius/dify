@@ -12,6 +12,7 @@ export function RetrievalModeSegmentedControl({
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledBy,
   appearance = 'default',
+  className,
   disabled = false,
   value,
   onChange,
@@ -19,6 +20,7 @@ export function RetrievalModeSegmentedControl({
   'aria-label'?: string
   'aria-labelledby'?: string
   appearance?: 'composer' | 'default'
+  className?: string
   disabled?: boolean
   value: RetrievalMode
   onChange: (value: RetrievalMode) => void
@@ -31,6 +33,7 @@ export function RetrievalModeSegmentedControl({
       aria-labelledby={ariaLabelledBy}
       className={cn(
         appearance === 'composer' && 'flex min-w-46.5 gap-0.5 bg-background-section-burn',
+        className,
       )}
       value={value}
       onValueChange={onChange}

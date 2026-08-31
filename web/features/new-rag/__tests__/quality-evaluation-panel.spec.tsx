@@ -187,6 +187,12 @@ describe('QualityEvaluationPanel', () => {
     expect(dialog).toHaveAccessibleDescription(
       'dataset.newKnowledge.qualityPage.evaluation.dialogDescription',
     )
+    expect(
+      screen.getByRole('radio', {
+        name: 'dataset.newKnowledge.settings.retrievalMode.fast',
+      }),
+    ).toBeChecked()
+    expect(screen.getAllByRole('radio')).toHaveLength(3)
   })
 
   it('queues every active golden question and opens the persisted evidence report', async () => {
@@ -208,7 +214,7 @@ describe('QualityEvaluationPanel', () => {
     await waitFor(() =>
       expect(serviceMock.createReplay).toHaveBeenCalledWith(
         expect.objectContaining({
-          body: { selection: 'all-active' },
+          body: { mode: 'fast', selection: 'all-active' },
           headers: { 'Idempotency-Key': expect.any(String) },
           params: { control_space_id: 'space-1' },
         }),
@@ -216,11 +222,17 @@ describe('QualityEvaluationPanel', () => {
       ),
     )
     expect(await screen.findByText('Who can change workspace permissions?')).toBeVisible()
-    expect(screen.getByText('1/2')).toBeVisible()
-    expect(screen.getByText('dataset.newKnowledge.qualityPage.matchPolicy.any')).toBeVisible()
+    expect(screen.getByText('1 of 2')).toBeVisible()
     expect(serviceMock.getReplay).toHaveBeenCalledWith({
       params: { control_space_id: 'space-1', run_id: 'run-1' },
     })
+
+    await user.click(screen.getByRole('button', { name: 'workflow.singleRun.reRun' }))
+    expect(
+      screen.getByRole('dialog', {
+        name: 'dataset.newKnowledge.qualityPage.evaluation.dialogTitle',
+      }),
+    ).toBeVisible()
   })
 
   it('opens evidence hit details and identifies matched and missing passages', async () => {

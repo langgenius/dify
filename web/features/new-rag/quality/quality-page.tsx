@@ -205,6 +205,8 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   const [deleteSubmitting, setDeleteSubmitting] = useState(false)
   const [dialogError, setDialogError] = useState<string>()
   const [dialogSubmitting, setDialogSubmitting] = useState(false)
+  const [evaluationActionSlot, setEvaluationActionSlot] = useState<HTMLDivElement | null>(null)
+  const [selectedEvaluationRunId, setSelectedEvaluationRunId] = useState<string>()
   const [importOpen, setImportOpen] = useState(false)
   const [pendingBadCaseId, setPendingBadCaseId] = useState<string>()
   const promotedGoldenQuestionIdsRef = useRef(new Map<string, string>())
@@ -262,6 +264,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   const partiallySelected = selected.size > 0 && !allSelected
   const setTab = (tab: 'bad' | 'evaluation' | 'golden') => {
     if (tab !== 'golden') setSelected(new Set())
+    if (tab !== 'evaluation') setSelectedEvaluationRunId(undefined)
     router.replace(
       tab === 'bad'
         ? `${newKnowledgeQualityPath(knowledgeSpaceId)}?tab=bad-cases`
@@ -474,36 +477,44 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
 
   return (
     <main className="relative min-h-full min-w-0 flex-1 px-6 pt-3 pb-20">
-      <header>
-        <h1 className="system-xl-semibold text-text-primary">
-          {t(($) => $['newKnowledge.qualityPage.title'])}
-        </h1>
-        <p className="mt-1 system-xs-regular text-text-tertiary">
-          {t(($) => $['newKnowledge.qualityPage.description'])}
-        </p>
-      </header>
+      {!selectedEvaluationRunId && (
+        <header>
+          <h1 className="system-xl-semibold text-text-primary">
+            {t(($) => $['newKnowledge.qualityPage.title'])}
+          </h1>
+          <p className="mt-1 system-xs-regular text-text-tertiary">
+            {t(($) => $['newKnowledge.qualityPage.description'])}
+          </p>
+        </header>
+      )}
       <Tabs value={activeTab} onValueChange={(value) => setTab(value as typeof activeTab)}>
-        <div className="mt-2.5 flex h-14 items-end justify-between">
-          <QualityTabList />
-          {canEdit && activeTab === 'golden' && goldenQuestions.length > 0 && (
-            <div className="flex gap-2">
-              <Button className="gap-1" onClick={() => setImportOpen(true)}>
-                <span aria-hidden className="i-ri-download-line size-4" />
-                {t(($) => $['newKnowledge.qualityPage.importCsv'])}
-              </Button>
-              <Button
-                variant="primary"
-                className="gap-1"
-                onClick={() =>
-                  setDialog({ key: `create-${Date.now()}`, mode: 'create', value: emptyDraft })
-                }
-              >
-                <span aria-hidden className="i-ri-add-line size-4" />
-                {t(($) => $['newKnowledge.qualityPage.addGolden'])}
-              </Button>
+        {!selectedEvaluationRunId && (
+          <div className="mt-2.5 flex h-14 items-end justify-between">
+            <QualityTabList />
+            <div
+              ref={activeTab === 'evaluation' ? setEvaluationActionSlot : undefined}
+              className="flex gap-2"
+            >
+              {canEdit && activeTab === 'golden' && goldenQuestions.length > 0 && (
+                <>
+                  <Button onClick={() => setImportOpen(true)}>
+                    <span aria-hidden className="i-ri-download-line size-4" />
+                    {t(($) => $['newKnowledge.qualityPage.importCsv'])}
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={() =>
+                      setDialog({ key: `create-${Date.now()}`, mode: 'create', value: emptyDraft })
+                    }
+                  >
+                    <span aria-hidden className="i-ri-add-line size-4" />
+                    {t(($) => $['newKnowledge.qualityPage.addGolden'])}
+                  </Button>
+                </>
+              )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         <TabsPanel value="golden" tabIndex={-1}>
           <QualityQueryState
@@ -816,7 +827,13 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
         </TabsPanel>
 
         <TabsPanel value="evaluation" tabIndex={-1}>
-          <QualityEvaluationPanel canEdit={canEdit} knowledgeSpaceId={knowledgeSpaceId} />
+          <QualityEvaluationPanel
+            actionSlot={evaluationActionSlot}
+            canEdit={canEdit}
+            knowledgeSpaceId={knowledgeSpaceId}
+            selectedRunId={selectedEvaluationRunId}
+            onSelectedRunIdChange={setSelectedEvaluationRunId}
+          />
         </TabsPanel>
 
         {canEdit && activeTab === 'golden' && selected.size > 0 && (
