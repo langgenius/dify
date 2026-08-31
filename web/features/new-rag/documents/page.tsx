@@ -2,7 +2,7 @@
 
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -13,24 +13,20 @@ import {
   workspacePermissionKeysErrorAtom,
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
-import { consoleClient, consoleQuery } from '@/service/client'
-import { downloadBlob } from '@/utils/download'
+import { consoleQuery } from '@/service/client'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { KnowledgeModelReadinessBanner } from '../components/knowledge-model-readiness-banner'
 import { KnowledgeModelSetupDialog } from '../components/knowledge-model-setup-dialog'
 import { knowledgeFsTaskFailureMessageKey } from '../knowledge-fs-task-error'
-import { createRequestId } from '../request-id'
 import { newKnowledgeDocumentDetailPath } from '../routes'
 import { sourceFromApi } from '../sources/source-models'
 import { useKnowledgeModelSetupGuard } from '../use-knowledge-model-setup-guard'
-import { DocumentBulkActions, DocumentsEmpty, DocumentsList } from './list'
+import { useDocumentBulkSelection } from './bulk/selection-state'
+import { DocumentBulkActionsToolbar } from './bulk/toolbar'
+import { DocumentsEmpty, DocumentsList } from './list'
 import { DocumentMetadataDrawer } from './metadata/drawer'
 import {
-  documentCanDownload,
-  documentCanReindex,
-  documentCanToggleAvailability,
   documentDisplayStatus,
-  documentShowsAvailabilityAction,
   newestTaskByDocument,
   sourceName,
   taskNeedsAttention,
@@ -56,8 +52,6 @@ import {
   DocumentUploadSurface,
 } from './upload/surface'
 
-const KNOWLEDGE_FS_BATCH_DOCUMENT_MAX_DOCUMENTS = 100
-
 export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
@@ -73,8 +67,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     hasDocumentDownloadPermission &&
     !workspacePermissionKeysLoading &&
     !workspacePermissionKeysError
-  const bulkReindexPendingRef = useRef(false)
-  const bulkActionPendingRef = useRef(false)
   const [filter, setFilter] = useQueryState('status', documentFilterParser)
   const [search, setSearch] = useQueryState('query', documentSearchParser)
   const [metadataRequest, setMetadataRequest] = useQueryState('metadata', documentMetadataParser)
@@ -85,18 +77,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     },
     [setMetadataRequest],
   )
-  const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(() => new Set())
   const [tasksOpen, setTasksOpen] = useState(false)
   const [blockingDependencyRetries, setBlockingDependencyRetries] = useState({
     sources: false,
     tasks: false,
   })
-  const [bulkActionPending, setBulkActionPending] = useState<
-    'availability' | 'download' | 'reindex' | 'remove' | undefined
-  >()
-  const { mutateAsync: reindexDocuments } = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions(),
-  )
   const {
     configureModelSetup,
     ensureModelReady,
@@ -275,55 +260,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   )
   const taskResultsIncomplete = Boolean(!tasksQuery.data || tasksQuery.isPending)
   const filterActive = filter !== 'all' || Boolean(search.trim())
-  const availableDocumentIds = useMemo(
-    () =>
-      new Set(
-        documents
-          .filter((document) => document.status !== 'deleting')
-          .map((document) => document.id),
-      ),
-    [documents],
-  )
-  const validSelectedDocumentIds = useMemo(
-    () =>
-      new Set(
-        [...selectedDocumentIds].filter((documentId) => availableDocumentIds.has(documentId)),
-      ),
-    [availableDocumentIds, selectedDocumentIds],
-  )
-  const selectedDocuments = useMemo(
-    () => documents.filter((document) => validSelectedDocumentIds.has(document.id)),
-    [documents, validSelectedDocumentIds],
-  )
-  const selectedDocumentStatuses = useMemo(
-    () =>
-      selectedDocuments.map((document) => documentStatuses.get(document.id) ?? ('queued' as const)),
-    [documentStatuses, selectedDocuments],
-  )
-  const availabilityTargetEnabled =
-    selectedDocuments.length > 0 && selectedDocuments.every((document) => !document.enabled)
-  const bulkSelectionInvalid =
-    selectedDocuments.length !== validSelectedDocumentIds.size ||
-    selectedDocuments.length > KNOWLEDGE_FS_BATCH_DOCUMENT_MAX_DOCUMENTS
-  const availabilityDisabled =
-    bulkSelectionInvalid ||
-    selectedDocumentStatuses.some((status) => !documentCanToggleAvailability(status))
-  const bulkAvailabilityActionVisible = selectedDocumentStatuses.every(
-    documentShowsAvailabilityAction,
-  )
-  const bulkReindexDisabled = selectedDocumentStatuses.some((status) => !documentCanReindex(status))
-  const downloadableSelectedDocumentIds = useMemo(() => {
-    if (
-      bulkSelectionInvalid ||
-      taskResultsIncomplete ||
-      selectedDocuments.some((document) => {
-        const status = documentStatuses.get(document.id)
-        return !status || !documentCanDownload(document, status)
-      })
-    )
-      return []
-    return selectedDocuments.map((document) => document.id)
-  }, [bulkSelectionInvalid, documentStatuses, selectedDocuments, taskResultsIncomplete])
   const filteredDocuments = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase()
     return documents.filter((document) => {
@@ -414,9 +350,13 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             : filteredResultsIncomplete
               ? t(($) => $['newKnowledge.partialDocumentResults'])
               : undefined
-  const selectableFilteredDocuments = filteredDocuments.filter(
-    (document) => document.status !== 'deleting',
-  )
+  const bulkSelection = useDocumentBulkSelection({
+    canSelect: canWrite && !selectionDisabled,
+    documents,
+    filteredDocuments,
+    statuses: documentStatuses,
+    taskResultsIncomplete,
+  })
   const attentionTasks = drawerTasks.filter(taskNeedsAttention)
   const hasTaskError = attentionTasks.some(
     (task) => task.state === 'failed' || task.state === 'canceled',
@@ -440,13 +380,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         ? t(($) => $['newKnowledge.taskAttentionCount'], { count: attentionTasks.length })
         : t(($) => $['newKnowledge.taskAttentionClear'])
   }${incompleteTaskHistoryHint}`
-  const allFilteredSelected =
-    selectableFilteredDocuments.length > 0 &&
-    selectableFilteredDocuments.every((document) => validSelectedDocumentIds.has(document.id))
-  const someFilteredSelected = selectableFilteredDocuments.some((document) =>
-    validSelectedDocumentIds.has(document.id),
-  )
-  const bulkActionsVisible = canWrite && validSelectedDocumentIds.size > 0
+  const bulkActionsVisible = canWrite && bulkSelection.selectedDocumentIds.size > 0
 
   useEffect(() => {
     if (!mainRetryFocusRequestedRef.current) return
@@ -521,235 +455,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       }),
     ])
   }, [knowledgeSpaceId, queryClient])
-
-  const handleReindexDocuments = useCallback(async () => {
-    if (
-      !canWrite ||
-      selectionDisabled ||
-      !validSelectedDocumentIds.size ||
-      bulkReindexDisabled ||
-      bulkReindexPendingRef.current ||
-      bulkActionPendingRef.current
-    )
-      return
-    bulkReindexPendingRef.current = true
-    bulkActionPendingRef.current = true
-    setBulkActionPending('reindex')
-    try {
-      if ((await ensureModelReady({ capability: 'index', intent: 'reindex' })).status !== 'ready')
-        return
-      const selectedIds = [...validSelectedDocumentIds].sort()
-      const result = await reindexDocuments({
-        body: { documentIds: selectedIds },
-        params: { control_space_id: knowledgeSpaceId },
-      })
-      const missingIds = result.items
-        .filter((item) => item.status === 'not_found')
-        .flatMap((item) => (item.document_id ? [item.document_id] : []))
-      const disabledIds = result.items
-        .filter((item) => item.status === 'disabled')
-        .flatMap((item) => (item.document_id ? [item.document_id] : []))
-      const queuedCount = result.items.filter((item) => item.status === 'queued').length
-      if (!queuedCount) {
-        setSelectedDocumentIds(new Set(disabledIds))
-        toast.error(
-          disabledIds.length
-            ? t(($) => $['newKnowledge.documentsReindexFailed'])
-            : t(($) => $['newKnowledge.documentsReindexPartial'], {
-                missing: missingIds.length,
-                queued: 0,
-              }),
-        )
-        refreshDocumentsAndTasks()
-        return
-      }
-      setSelectedDocumentIds(new Set([...missingIds, ...disabledIds]))
-      if (disabledIds.length) toast.warning(t(($) => $['newKnowledge.documentsReindexFailed']))
-      else if (missingIds.length)
-        toast.warning(
-          t(($) => $['newKnowledge.documentsReindexPartial'], {
-            missing: missingIds.length,
-            queued: queuedCount,
-          }),
-        )
-      else toast.success(t(($) => $['newKnowledge.documentsReindexStarted']))
-      refreshDocumentsAndTasks()
-    } catch (error) {
-      if (responseStatus(error) === 403) handleWritePermissionDenied()
-      else toast.error(t(($) => $['newKnowledge.documentsReindexFailed']))
-    } finally {
-      bulkReindexPendingRef.current = false
-      bulkActionPendingRef.current = false
-      setBulkActionPending(undefined)
-    }
-  }, [
-    canWrite,
-    bulkReindexDisabled,
-    ensureModelReady,
-    handleWritePermissionDenied,
-    knowledgeSpaceId,
-    refreshDocumentsAndTasks,
-    reindexDocuments,
-    selectionDisabled,
-    t,
-    validSelectedDocumentIds,
-  ])
-
-  const handleUpdateDocumentsAvailability = useCallback(async () => {
-    if (
-      !canWrite ||
-      selectionDisabled ||
-      !validSelectedDocumentIds.size ||
-      availabilityDisabled ||
-      bulkActionPendingRef.current
-    )
-      return
-    if (!selectedDocuments.length) return
-    bulkActionPendingRef.current = true
-    setBulkActionPending('availability')
-    try {
-      const result = await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.patch(
-        {
-          body: {
-            documents: selectedDocuments.map((document) => ({
-              documentId: document.id,
-              expectedRowVersion: document.rowVersion,
-            })),
-            enabled: availabilityTargetEnabled,
-          },
-          params: { control_space_id: knowledgeSpaceId },
-        },
-      )
-      const failedIds = result.items.flatMap((item) =>
-        item.status === 'conflict' || item.status === 'not_found' ? [item.document_id] : [],
-      )
-      setSelectedDocumentIds(new Set(failedIds))
-      if (failedIds.length) toast.warning(t(($) => $['newKnowledge.documentsErrorDescription']))
-      refreshDocuments()
-    } catch (error) {
-      if (responseStatus(error) === 403) handleWritePermissionDenied()
-      else toast.error(t(($) => $['newKnowledge.documentsErrorDescription']))
-    } finally {
-      bulkActionPendingRef.current = false
-      setBulkActionPending(undefined)
-    }
-  }, [
-    canWrite,
-    availabilityDisabled,
-    availabilityTargetEnabled,
-    handleWritePermissionDenied,
-    knowledgeSpaceId,
-    refreshDocuments,
-    selectedDocuments,
-    selectionDisabled,
-    t,
-    validSelectedDocumentIds,
-  ])
-
-  const handleDownloadDocuments = useCallback(async () => {
-    if (!canDownload || !downloadableSelectedDocumentIds.length || bulkActionPendingRef.current)
-      return
-    bulkActionPendingRef.current = true
-    setBulkActionPending('download')
-    try {
-      const file =
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.downloadZip.post({
-          body: { document_ids: downloadableSelectedDocumentIds },
-          params: { control_space_id: knowledgeSpaceId },
-        })
-      downloadBlob({
-        data: file,
-        fileName:
-          typeof File !== 'undefined' && file instanceof File && file.name
-            ? file.name
-            : 'knowledge-documents.zip',
-      })
-    } catch {
-      toast.error(tCommon(($) => $['actionMsg.downloadUnsuccessfully']))
-    } finally {
-      bulkActionPendingRef.current = false
-      setBulkActionPending(undefined)
-    }
-  }, [canDownload, downloadableSelectedDocumentIds, knowledgeSpaceId, tCommon])
-
-  const handleRemoveDocuments = useCallback(async () => {
-    if (
-      !canWrite ||
-      selectionDisabled ||
-      !validSelectedDocumentIds.size ||
-      bulkActionPendingRef.current
-    )
-      return false
-    const selectedDocuments = documents.filter((document) =>
-      validSelectedDocumentIds.has(document.id),
-    )
-    if (!selectedDocuments.length) return false
-    bulkActionPendingRef.current = true
-    setBulkActionPending('remove')
-    try {
-      await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.bulk.delete({
-        body: {
-          documents: selectedDocuments.map((document) => ({
-            documentId: document.id,
-            expectedRevision: document.rowVersion,
-          })),
-        },
-        headers: { 'Idempotency-Key': createRequestId() },
-        params: { control_space_id: knowledgeSpaceId },
-      })
-      setSelectedDocumentIds(new Set())
-      refreshDocumentsAndTasks()
-      return true
-    } catch (error) {
-      if (responseStatus(error) === 403) handleWritePermissionDenied()
-      else toast.error(t(($) => $['newKnowledge.documentsErrorDescription']))
-      return false
-    } finally {
-      bulkActionPendingRef.current = false
-      setBulkActionPending(undefined)
-    }
-  }, [
-    canWrite,
-    documents,
-    handleWritePermissionDenied,
-    knowledgeSpaceId,
-    refreshDocumentsAndTasks,
-    selectionDisabled,
-    t,
-    validSelectedDocumentIds,
-  ])
-
-  const toggleDocument = useCallback(
-    (documentId: string) => {
-      if (!canWrite || selectionDisabled) return
-      setSelectedDocumentIds((current) => {
-        const next = new Set(current)
-        if (next.has(documentId)) next.delete(documentId)
-        else next.add(documentId)
-        return next
-      })
-    },
-    [canWrite, selectionDisabled],
-  )
-
-  const handleDocumentRemoved = useCallback((documentId: string) => {
-    setSelectedDocumentIds((current) => {
-      const next = new Set(current)
-      next.delete(documentId)
-      return next
-    })
-  }, [])
-
-  const toggleAllFiltered = () => {
-    if (!canWrite || selectionDisabled) return
-    setSelectedDocumentIds((current) => {
-      const next = new Set(current)
-      if (allFilteredSelected)
-        selectableFilteredDocuments.forEach((document) => next.delete(document.id))
-      else selectableFilteredDocuments.forEach((document) => next.add(document.id))
-      return next
-    })
-  }
 
   const retryDependencyQueries = () => {
     if (taskQueryBlockingError || sourceQueryBlockingError)
@@ -957,7 +662,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                 ) : (
                   <DocumentsList
                     activeTaskCount={activeTasks.length}
-                    allSelected={allFilteredSelected}
+                    allSelected={bulkSelection.allFilteredSelected}
                     attentionTaskBadge={attentionTaskBadge}
                     canDownload={canDownload}
                     canEdit={canWrite}
@@ -971,35 +676,35 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                       newKnowledgeDocumentDetailPath(knowledgeSpaceId, documentId)
                     }
                     hasNextPage={Boolean(hasNextDocumentPage || hasRelevantNextSourcePage)}
-                    hasSelectableDocuments={Boolean(selectableFilteredDocuments.length)}
+                    hasSelectableDocuments={bulkSelection.hasSelectableDocuments}
                     hasTaskError={hasTaskError}
                     isFetchNextPageError={documentsQuery.isFetchNextPageError}
                     isFetchingNextDocumentPage={isFetchingNextDocumentPage}
                     isFetchingNextPage={isFetchingNextResultsPage}
                     knowledgeSpaceId={knowledgeSpaceId}
                     onAddDocument={() => upload.openUpload()}
-                    onDocumentRemoved={handleDocumentRemoved}
+                    onDocumentRemoved={bulkSelection.remove}
                     onFilterChange={setFilter}
                     onLoadMore={loadMoreResults}
                     onOpenMetadata={() => setMetadataOpen(true)}
                     onOpenTasks={() => setTasksOpen(true)}
                     onSearchChange={setSearch}
-                    onSelectAll={toggleAllFiltered}
-                    onSelectDocument={toggleDocument}
+                    onSelectAll={bulkSelection.toggleAllFiltered}
+                    onSelectDocument={bulkSelection.toggle}
                     onTaskUpdated={handleTaskUpdated}
                     onWriteDenied={handleWritePermissionDenied}
                     readOnlyReasonId={upload.readOnlyReasonId}
                     resultsIncomplete={filteredResultsIncomplete}
                     search={search}
                     selectionDisabled={selectionDisabled}
-                    selectedDocumentIds={validSelectedDocumentIds}
+                    selectedDocumentIds={bulkSelection.selectedDocumentIds}
                     showTasks={Boolean(
                       tasks.length ||
                       tasksQuery.error ||
                       tasksQuery.isFetchNextPageError ||
                       hasNextTaskPage,
                     )}
-                    someSelected={someFilteredSelected}
+                    someSelected={bulkSelection.someFilteredSelected}
                     sourcesPending={sourceResultsIncomplete}
                     sourceNames={sourceNames}
                     statusPending={dependencyResultsIncomplete}
@@ -1018,21 +723,15 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         </DocumentUploadSurface>
         <DocumentPermissionRecoveryBulkRegion>
           {bulkActionsVisible && (
-            <DocumentBulkActions
-              actionPending={bulkActionPending}
-              availabilityDisabled={availabilityDisabled}
-              availabilityTargetEnabled={availabilityTargetEnabled}
+            <DocumentBulkActionsToolbar
+              canDownload={canDownload}
+              canWrite={canWrite}
               disabled={selectionDisabled}
               disabledReason={reindexUnavailableReason}
-              downloadDisabled={!canDownload || !downloadableSelectedDocumentIds.length}
-              onClear={() => setSelectedDocumentIds(new Set())}
-              onDownload={() => void handleDownloadDocuments()}
-              onReindex={() => void handleReindexDocuments()}
-              onRemove={handleRemoveDocuments}
-              onUpdateAvailability={() => void handleUpdateDocumentsAvailability()}
-              reindexDisabled={bulkReindexDisabled}
-              selectedCount={validSelectedDocumentIds.size}
-              showAvailabilityAction={bulkAvailabilityActionVisible}
+              ensureModelReady={ensureModelReady}
+              knowledgeSpaceId={knowledgeSpaceId}
+              onWriteDenied={handleWritePermissionDenied}
+              selection={bulkSelection}
             />
           )}
         </DocumentPermissionRecoveryBulkRegion>
