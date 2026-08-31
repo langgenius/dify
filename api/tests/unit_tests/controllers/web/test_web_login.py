@@ -2,9 +2,10 @@
 
 from dataclasses import dataclass
 from inspect import unwrap
+from typing import override
 
 import pytest
-from flask import Flask
+from flask import Flask, Response
 
 from controllers.console.auth.error import AuthenticationFailedError, EmailCodeError
 from controllers.console.error import AccountBannedError
@@ -172,7 +173,16 @@ def test_email_login_endpoints_delegate_to_application_service(
 
 def test_email_login_translates_invalid_code(monkeypatch: pytest.MonkeyPatch, context: RequestContext) -> None:
     class InvalidCodeService(EmailLoginStub):
-        def login_with_email_code(self, *args, **kwargs) -> str:
+        @override
+        def login_with_email_code(
+            self,
+            context: RequestContext,
+            *,
+            email: str,
+            code: str,
+            token: str,
+        ) -> str:
+            del context, email, code, token
             raise WebInvalidCodeError
 
     bind_service(monkeypatch, InvalidCodeService())
@@ -192,7 +202,7 @@ def test_logout_only_serializes_response_and_clears_cookie(
 ) -> None:
     cleared: list[tuple[str | None, str]] = []
 
-    def clear_cookie(response, *, samesite: str) -> None:
+    def clear_cookie(response: Response, *, samesite: str) -> None:
         cleared.append((response.get_json()["result"], samesite))
 
     monkeypatch.setattr(login, "clear_webapp_access_token_from_cookie", clear_cookie)

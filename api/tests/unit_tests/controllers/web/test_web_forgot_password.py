@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from inspect import unwrap
+from typing import override
 
 import pytest
 
@@ -112,20 +113,33 @@ def test_forgot_password_translates_service_errors(
     http_error: type[Exception],
 ) -> None:
     class ErrorService(ForgotPasswordStub):
-        def send_reset_password_email(self, *args, **kwargs) -> str:
+        @override
+        def send_reset_password_email(
+            self,
+            context: RequestContext,
+            *,
+            email: str,
+            language: str | None,
+        ) -> str:
             if method == "send":
                 raise service_error
-            return super().send_reset_password_email(*args, **kwargs)
+            return super().send_reset_password_email(context, email=email, language=language)
 
-        def verify_reset_password_code(self, *args, **kwargs) -> str:
+        @override
+        def verify_reset_password_code(self, *, email: str, code: str, token: str) -> str:
             if method == "check":
                 raise service_error
-            return super().verify_reset_password_code(*args, **kwargs)
+            return super().verify_reset_password_code(email=email, code=code, token=token)
 
-        def reset_password(self, *args, **kwargs) -> None:
+        @override
+        def reset_password(self, *, token: str, new_password: str, password_confirmation: str) -> None:
             if method == "reset":
                 raise service_error
-            super().reset_password(*args, **kwargs)
+            super().reset_password(
+                token=token,
+                new_password=new_password,
+                password_confirmation=password_confirmation,
+            )
 
     bind_service(monkeypatch, ErrorService())
 

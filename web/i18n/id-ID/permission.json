@@ -42,6 +42,7 @@
   "accessRule.summary_one": "{{count}} set izin",
   "accessRule.summary_other": "{{count}} set izin",
   "accessRule.updated": "Aturan akses berhasil diperbarui",
+  "accessRule.workspaceOwner": "Pemilik Workspace",
   "common.duplicateAction": "Duplikat",
   "group.app": "Aplikasi",
   "group.app_acl": "Izin akses aplikasi",

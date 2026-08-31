@@ -3,7 +3,6 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import EmbeddingProcess from '../index'
 
-const mockPush = vi.fn()
 const mockInvalidDocumentList = vi.fn()
 let mockEnableBilling = false
 let mockPlanType = 'sandbox'
@@ -16,10 +15,6 @@ let mockPollingState: {
   isEmbedding: false,
   isEmbeddingCompleted: false,
 }
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: mockPush }),
-}))
 
 vi.mock('@/next/link', () => ({
   default: ({
@@ -184,14 +179,15 @@ describe('EmbeddingProcess', () => {
     ).toBeInTheDocument()
   })
 
-  it('invalidates the document list before navigating to it', async () => {
+  it('links to the document list and invalidates its cache on activation', async () => {
     const user = userEvent.setup()
     render(<EmbeddingProcess datasetId="dataset-1" batchId="batch-1" />)
 
-    await user.click(screen.getByRole('button', { name: 'datasetCreation.stepThree.navTo' }))
+    const link = screen.getByRole('link', { name: 'datasetCreation.stepThree.navTo' })
+    expect(link).toHaveAttribute('href', '/datasets/dataset-1/documents')
+    await user.click(link)
 
     expect(mockInvalidDocumentList).toHaveBeenCalledOnce()
-    expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/documents')
   })
 
   it('links to the dataset API reference', () => {

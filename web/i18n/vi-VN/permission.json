@@ -42,6 +42,7 @@
   "accessRule.summary_one": "{{count}} bộ quyền",
   "accessRule.summary_other": "{{count}} bộ quyền",
   "accessRule.updated": "Đã cập nhật quy tắc truy cập thành công",
+  "accessRule.workspaceOwner": "Chủ sở hữu workspace",
   "common.duplicateAction": "Nhân bản",
   "group.app": "Ứng dụng",
   "group.app_acl": "Quyền truy cập ứng dụng",

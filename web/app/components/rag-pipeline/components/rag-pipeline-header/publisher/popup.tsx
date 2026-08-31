@@ -8,7 +8,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -37,7 +37,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
-import { useParams, useRouter } from '@/next/navigation'
+import { useParams } from '@/next/navigation'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { useInvalid } from '@/service/use-base'
 import { publishedPipelineInfoQueryKeyPrefix } from '@/service/use-pipeline'
@@ -68,7 +68,6 @@ export function Popup({
     select: ({ deployment_edition }) => deployment_edition,
   })
   const { datasetId } = useParams()
-  const { push } = useRouter()
   const publishedAt = useStore((s) => s.publishedAt)
   const draftUpdatedAt = useStore((s) => s.draftUpdatedAt)
   const pipelineId = useStore((s) => s.pipelineId)
@@ -195,11 +194,6 @@ export function Popup({
     ignoreInputs: true,
     preventDefault: true,
   })
-  const goToAddDocuments = useCallback(() => {
-    if (isAddDocumentsDisabled) return
-
-    push(`/datasets/${datasetId}/documents/create-from-pipeline`)
-  }, [datasetId, isAddDocumentsDisabled, push])
   const handleClickPublishAsKnowledgePipeline = useCallback(() => {
     onRequestClose?.()
     if (!isAllowPublishAsCustomKnowledgePipelineTemplate) {
@@ -263,23 +257,54 @@ export function Popup({
         </Button>
       </div>
       <div className="border-t-[0.5px] border-t-divider-regular p-4 pt-3">
-        <Button
-          className="mb-1 w-full hover:bg-state-accent-hover hover:text-text-accent"
-          variant="tertiary"
-          onClick={goToAddDocuments}
-          disabled={isAddDocumentsDisabled}
-        >
-          <div className="flex grow items-center">
-            <RiPlayCircleLine className="mr-2 size-4" />
-            {t(($) => $['common.goToAddDocuments'], { ns: 'pipeline' })}
-          </div>
-          <RiArrowRightUpLine className="size-4 shrink-0" />
-        </Button>
-        <Link href={apiReferenceUrl} target="_blank" rel="noopener noreferrer">
+        {isAddDocumentsDisabled ? (
+          <Button
+            className="mb-1 w-full hover:bg-state-accent-hover hover:text-text-accent"
+            variant="tertiary"
+            disabled
+          >
+            <div className="flex grow items-center">
+              <RiPlayCircleLine className="mr-2 size-4" />
+              {t(($) => $['common.goToAddDocuments'], { ns: 'pipeline' })}
+            </div>
+            <RiArrowRightUpLine className="size-4 shrink-0" />
+          </Button>
+        ) : (
+          <Link
+            href={`/datasets/${datasetId}/documents/create-from-pipeline`}
+            className={cn(
+              buttonVariants({ variant: 'tertiary' }),
+              'mb-1 w-full hover:bg-state-accent-hover hover:text-text-accent',
+            )}
+          >
+            <div className="flex grow items-center">
+              <RiPlayCircleLine className="mr-2 size-4" />
+              {t(($) => $['common.goToAddDocuments'], { ns: 'pipeline' })}
+            </div>
+            <RiArrowRightUpLine className="size-4 shrink-0" />
+          </Link>
+        )}
+        {publishedAt ? (
+          <Link
+            href={apiReferenceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              buttonVariants({ variant: 'tertiary' }),
+              'w-full hover:bg-state-accent-hover hover:text-text-accent',
+            )}
+          >
+            <div className="flex grow items-center">
+              <RiTerminalBoxLine className="mr-2 size-4" />
+              {t(($) => $['common.accessAPIReference'], { ns: 'workflow' })}
+            </div>
+            <RiArrowRightUpLine className="size-4 shrink-0" />
+          </Link>
+        ) : (
           <Button
             className="w-full hover:bg-state-accent-hover hover:text-text-accent"
             variant="tertiary"
-            disabled={!publishedAt}
+            disabled
           >
             <div className="flex grow items-center">
               <RiTerminalBoxLine className="mr-2 size-4" />
@@ -287,7 +312,7 @@ export function Popup({
             </div>
             <RiArrowRightUpLine className="size-4 shrink-0" />
           </Button>
-        </Link>
+        )}
         <Divider className="my-2" />
         <Button
           className="w-full hover:bg-state-accent-hover hover:text-text-accent"

@@ -1,6 +1,7 @@
 'use client'
 import type { Plugin } from '@/app/components/plugins/types'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
 import { useTheme } from 'next-themes'
 import * as React from 'react'
@@ -50,13 +51,6 @@ const CardWrapperComponent = ({
     () => plugin.tags.map((tag) => getTagLabel(tag.name)),
     [plugin.tags, getTagLabel],
   )
-  const handleOpenMarketplaceDetail = () => {
-    window.open(
-      getPluginLinkInMarketplace(plugin, marketplaceLinkParams),
-      '_blank',
-      'noopener,noreferrer',
-    )
-  }
   const showInstallAction = !!showInstallButton && canInstallPlugin
 
   if (showInstallAction) {
@@ -85,13 +79,15 @@ const CardWrapperComponent = ({
               ? t(($) => $['task.installed'], { ns: 'plugin' })
               : t(($) => $['detailPanel.operation.install'], { ns: 'plugin' })}
           </Button>
-          <Button
-            className="min-w-0 flex-1 shadow-xs backdrop-blur-[5px]"
-            onClick={handleOpenMarketplaceDetail}
+          <a
+            href={getPluginLinkInMarketplace(plugin, marketplaceLinkParams)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(buttonVariants(), 'min-w-0 flex-1 shadow-xs backdrop-blur-[5px]')}
           >
             {t(($) => $['detailPanel.operation.detail'], { ns: 'plugin' })}
             <span aria-hidden className="i-ri-arrow-right-up-line size-4" />
-          </Button>
+          </a>
         </div>
         {isShowInstallFromMarketplace && (
           <InstallFromMarketplace

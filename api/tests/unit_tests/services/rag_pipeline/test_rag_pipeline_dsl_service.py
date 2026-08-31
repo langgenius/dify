@@ -11,7 +11,7 @@ import json
 from collections.abc import Generator
 from contextlib import contextmanager
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any
 from unittest.mock import MagicMock, Mock, call
 
 import pytest
@@ -93,6 +93,27 @@ def _workflow(session: Session, pipeline: Pipeline, *, graph: dict[str, Any] | N
     pipeline.workflow_id = workflow.id
     session.add(workflow)
     session.commit()
+    return workflow
+
+
+def _workflow_for_dependencies(
+    *, graph: dict[str, Any], environment_variables: list[LLMEnvironmentVariable] | None = None
+) -> Workflow:
+    workflow = Workflow(
+        id="workflow-dependencies",
+        tenant_id="tenant-1",
+        app_id="pipeline-1",
+        type=WorkflowType.RAG_PIPELINE,
+        kind=WorkflowKind.STANDARD,
+        version=Workflow.VERSION_DRAFT,
+        graph=json.dumps(graph),
+        features="{}",
+        created_by="account-1",
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
+    workflow.environment_variables = environment_variables or []
     return workflow
 
 
@@ -240,8 +261,8 @@ def test_extract_dependencies_from_model_config_covers_models_rerankers_and_tool
 def test_extract_workflow_dependencies_uses_llm_environment_variable_provider(
     monkeypatch: pytest.MonkeyPatch, service: RagPipelineDslService
 ) -> None:
-    workflow = SimpleNamespace(
-        graph_dict={
+    workflow = _workflow_for_dependencies(
+        graph={
             "nodes": [
                 {
                     "id": "llm-node",
@@ -271,7 +292,7 @@ def test_extract_workflow_dependencies_uses_llm_environment_variable_provider(
         analyze_dependency,
     )
 
-    result = service._extract_dependencies_from_workflow(cast(Workflow, workflow))
+    result = service._extract_dependencies_from_workflow(workflow)
 
     assert result == ["new-provider"]
     analyze_dependency.assert_called_once_with("new-provider")
@@ -283,8 +304,8 @@ def test_extract_workflow_dependencies_tolerates_unresolved_llm_environment_refe
     service: RagPipelineDslService,
     model_selector: list[str],
 ) -> None:
-    workflow = SimpleNamespace(
-        graph_dict={
+    workflow = _workflow_for_dependencies(
+        graph={
             "nodes": [
                 {
                     "id": "llm-node",
@@ -300,7 +321,6 @@ def test_extract_workflow_dependencies_tolerates_unresolved_llm_environment_refe
                 }
             ]
         },
-        environment_variables=[],
     )
     analyze_dependency = Mock(side_effect=lambda provider: provider)
     monkeypatch.setattr(
@@ -309,7 +329,7 @@ def test_extract_workflow_dependencies_tolerates_unresolved_llm_environment_refe
         analyze_dependency,
     )
 
-    result = service._extract_dependencies_from_workflow(cast(Workflow, workflow))
+    result = service._extract_dependencies_from_workflow(workflow)
 
     assert result == ["old-provider"]
     analyze_dependency.assert_called_once_with("old-provider")

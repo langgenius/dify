@@ -42,6 +42,7 @@
   "accessRule.summary_one": "{{count}} набір дозволів",
   "accessRule.summary_other": "{{count}} наборів дозволів",
   "accessRule.updated": "Правило доступу успішно оновлено",
+  "accessRule.workspaceOwner": "Власник робочого простору",
   "common.duplicateAction": "Дублювати",
   "group.app": "Застосунки",
   "group.app_acl": "Дозволи доступу до застосунку",

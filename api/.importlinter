@@ -207,6 +207,7 @@ source_modules =
     services.account_avatar_service
     services.account_change_email_ports
     services.account_change_email_service
+    services.account_email_registration_service
     services.account_deletion_service
     services.account_deletion_feedback_service
     services.account_education_service
@@ -487,4 +488,21 @@ forbidden_modules =
     repositories
     services.billing_service
     sqlalchemy
+    werkzeug
+
+[importlinter:contract:workflow-run-archive-application-boundary]
+name = Workflow run archive application service and task domain are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.retention.workflow_run.archive_download_task
+    services.retention.workflow_run.archive_log_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
     werkzeug

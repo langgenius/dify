@@ -3,6 +3,7 @@
   "api_extension.manage": "Gestionează configurația extensiei API",
   "app.access_config": "Configurează permisiunile de acces ale aplicației",
   "app.acl.access_config": "Vizualizează și gestionează permisiunile de acces",
+  "app.acl.access_point_manage": "Vizualizează și gestionează punctele de acces",
   "app.acl.delete": "Șterge aplicația",
   "app.acl.deploy": "Implementează aplicația",
   "app.acl.edit": "Editează informațiile aplicației și orchestrează aplicația",
