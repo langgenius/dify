@@ -8,6 +8,7 @@ from configs import dify_config
 from core.rbac import RBACPermission, RBACResourceScope
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant
+from models.agent import Agent
 from models.dataset import Dataset
 from models.model import App
 from services.agent.roster_service import AgentRosterService
@@ -129,6 +130,15 @@ def _is_resource_owned_by_current_user(
         )
         return maintainer == account_id
 
+    if resource_type == RBACResourceScope.AGENT:
+        created_by = db.session.scalar(
+            select(Agent.created_by).where(
+                Agent.id == resource_id,
+                Agent.tenant_id == tenant_id,
+            )
+        )
+        return created_by == account_id
+
     return False
 
 
@@ -178,4 +188,11 @@ def _extract_resource_id(
                 raise NotFound("Dataset not found for pipeline")
             return str(dataset.id)  # pyrefly: ignore[unnecessary-type-conversion]
         raise ValueError("Missing dataset_id or pipeline_id in request path")
+
+    if resource_type == RBACResourceScope.AGENT:
+        agent_id = matched_args.get("agent_id") or matched_args.get("resource_id")
+        if agent_id:
+            return str(agent_id)
+        raise ValueError("Missing agent_id in request path")
+
     raise ValueError(f"Unknown resource_type: {resource_type}")

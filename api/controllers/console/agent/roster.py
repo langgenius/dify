@@ -651,7 +651,6 @@ class AgentAppListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -711,7 +710,7 @@ class AgentAppListApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_CREATE, resource_required=False)
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -743,7 +742,7 @@ class AgentAppApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.AGENT, RBACPermission.AGENT_PREVIEW)
     @enterprise_license_required
     @with_current_user
     @with_current_tenant_id
@@ -760,7 +759,7 @@ class AgentAppApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.AGENT, RBACPermission.AGENT_EDIT)
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -793,7 +792,7 @@ class AgentAppApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.AGENT, RBACPermission.AGENT_DELETE)
     @with_current_tenant_id
     @with_session
     def delete(self, session: Session, tenant_id: str, agent_id: UUID):
@@ -814,6 +813,7 @@ class AgentDebugConversationRefreshApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.AGENT, RBACPermission.AGENT_TEST_AND_RUN)
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -839,7 +839,7 @@ class AgentPublishApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.AGENT, RBACPermission.AGENT_RELEASE_AND_VERSION)
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -869,7 +869,7 @@ class AgentBuildDraftCheckoutApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.AGENT, RBACPermission.AGENT_EDIT)
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
@@ -899,6 +899,7 @@ class AgentBuildDraftApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.AGENT, RBACPermission.AGENT_EDIT)
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
@@ -916,6 +917,7 @@ class AgentBuildDraftApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.AGENT, RBACPermission.AGENT_EDIT)
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -941,6 +943,7 @@ class AgentBuildDraftApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.AGENT, RBACPermission.AGENT_EDIT)
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
@@ -960,7 +963,7 @@ class AgentBuildDraftApplyApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.AGENT, RBACPermission.AGENT_EDIT)
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
@@ -983,7 +986,7 @@ class AgentAppCopyApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_CREATE, resource_required=False)
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -1022,7 +1025,7 @@ class AgentApiAccessApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.AGENT, RBACPermission.AGENT_ACCESS_POINT_VIEW)
     @with_current_tenant_id
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str, agent_id: UUID):
@@ -1039,8 +1042,7 @@ class AgentApiStatusApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
+    @rbac_permission_required(RBACResourceScope.AGENT, RBACPermission.AGENT_ACCESS_POINT_MANAGE)
     @with_current_tenant_id
     @with_session
     @model_validate(AgentApiStatusPayload)
@@ -1058,10 +1060,9 @@ class AgentApiKeyListApi(BaseApiKeyListResource):
     token_prefix = "app-"
 
     @console_ns.response(200, "Agent service API keys", console_ns.models[ApiKeyList.__name__])
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
     @with_current_tenant_id
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
+    @rbac_permission_required(RBACResourceScope.AGENT, RBACPermission.AGENT_ACCESS_POINT_VIEW)
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str, agent_id: UUID) -> dict[str, object]:
         app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
@@ -1071,8 +1072,7 @@ class AgentApiKeyListApi(BaseApiKeyListResource):
     @console_ns.response(400, "Maximum keys exceeded")
     @with_current_tenant_id
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
+    @rbac_permission_required(RBACResourceScope.AGENT, RBACPermission.AGENT_ACCESS_POINT_MANAGE)
     @with_session
     def post(self, session: Session, tenant_id: str, agent_id: UUID) -> tuple[dict[str, object], int]:
         app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
@@ -1091,8 +1091,7 @@ class AgentApiKeyApi(BaseApiKeyResource):
     @console_ns.response(204, "Agent service API key deleted")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
+    @rbac_permission_required(RBACResourceScope.AGENT, RBACPermission.AGENT_ACCESS_POINT_MANAGE)
     @with_session
     def delete(
         self,
@@ -1137,7 +1136,7 @@ class AgentLogsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.AGENT, RBACPermission.AGENT_LOG_MANAGE)
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
@@ -1176,7 +1175,7 @@ class AgentLogMessagesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.AGENT, RBACPermission.AGENT_LOG_MANAGE)
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
@@ -1215,7 +1214,7 @@ class AgentLogSourcesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.AGENT, RBACPermission.AGENT_LOG_MANAGE)
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
@@ -1236,7 +1235,7 @@ class AgentStatisticsSummaryApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.AGENT, RBACPermission.AGENT_MONITOR)
     @with_current_user
     @with_current_tenant_id
     @with_session(write=False)
@@ -1269,7 +1268,7 @@ class AgentRosterVersionsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.AGENT, RBACPermission.AGENT_RELEASE_AND_VERSION)
     @with_current_tenant_id
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str, agent_id: UUID):
@@ -1285,7 +1284,7 @@ class AgentRosterVersionDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.AGENT, RBACPermission.AGENT_RELEASE_AND_VERSION)
     @with_current_tenant_id
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str, agent_id: UUID, version_id: UUID):
@@ -1306,7 +1305,7 @@ class AgentRosterVersionRestoreApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.AGENT, RBACPermission.AGENT_RELEASE_AND_VERSION)
     @with_current_user
     @with_current_tenant_id
     @with_session

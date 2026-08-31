@@ -851,21 +851,21 @@ class TestMyPermissions:
                 svc._LEGACY_WORKSPACE_EDITOR_KEYS,
                 svc._LEGACY_APP_EDITOR_KEYS,
                 svc._LEGACY_DATASET_EDITOR_KEYS,
-                svc._LEGACY_AGENT_EDITOR_KEYS,
+                svc._LEGACY_AGENT_EDITOR_DEFAULT_KEYS,
             ),
             (
                 "normal",
                 svc._LEGACY_WORKSPACE_NORMAL_KEYS,
                 svc._LEGACY_APP_NORMAL_KEYS,
                 [],
-                [],
+                svc._LEGACY_AGENT_NORMAL_KEYS,
             ),
             (
                 "dataset_operator",
                 svc._LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS,
                 [],
                 svc._LEGACY_DATASET_DATASET_OPERATOR_KEYS,
-                [],
+                svc._LEGACY_AGENT_NORMAL_KEYS,
             ),
         ],
     )
@@ -1025,7 +1025,7 @@ class TestMemberRoles:
         assert "dataset.acl.preview" in out.roles[0].permission_keys
         assert "agent.create" in out.roles[0].permission_keys
         assert "agent.acl.preview" in out.roles[0].permission_keys
-        assert "agent.acl.log_manage" not in out.roles[0].permission_keys
+        assert "agent.acl.log_manage" in out.roles[0].permission_keys
         assert "app.acl.deploy" not in out.roles[0].permission_keys
 
     def test_replace(self, mock_send: MagicMock, sqlite_session: Session):
@@ -1241,9 +1241,10 @@ class TestResourcePermissions:
 
         mock_send.assert_not_called()
         assert out == {
-            "agent-1": svc._LEGACY_AGENT_EDITOR_KEYS,
-            "agent-2": svc._LEGACY_AGENT_EDITOR_KEYS,
+            "agent-1": svc._LEGACY_AGENT_EDITOR_DEFAULT_KEYS,
+            "agent-2": svc._LEGACY_AGENT_EDITOR_DEFAULT_KEYS,
         }
+        assert all("agent.acl.log_manage" not in permission_keys for permission_keys in out.values())
 
 
 class TestListOption:
