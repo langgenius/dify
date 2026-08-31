@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import datetime
 from inspect import getsource, unwrap
 from types import SimpleNamespace
@@ -307,7 +308,11 @@ def account_id() -> str:
 
 
 def test_agent_app_list_and_create_use_agent_route(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, sqlite_session: Session
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    account_id: str,
+    sqlite_session: Session,
+    config_overrides: Callable[..., None],
 ) -> None:
     captured: dict[str, object] = {}
     replace_whitelist = MagicMock()
@@ -416,7 +421,7 @@ def test_agent_app_list_and_create_use_agent_route(
         "get_system_features",
         lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
     )
-    monkeypatch.setattr(roster_controller.dify_config, "RBAC_ENABLED", True)
+    config_overrides(RBAC_ENABLED=True)
     monkeypatch.setattr(
         roster_controller.enterprise_rbac_service.RBACService.AppAccess,
         "replace_whitelist",
@@ -509,7 +514,11 @@ def test_agent_app_list_and_create_use_agent_route(
 
 
 def test_agent_app_create_skips_rbac_access_initialization_when_rbac_is_disabled(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, sqlite_session: Session
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    account_id: str,
+    sqlite_session: Session,
+    config_overrides: Callable[..., None],
 ) -> None:
     replace_whitelist = MagicMock()
     initialize_access = MagicMock()
@@ -546,7 +555,7 @@ def test_agent_app_create_skips_rbac_access_initialization_when_rbac_is_disabled
         "get_system_features",
         lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
     )
-    monkeypatch.setattr(roster_controller.dify_config, "RBAC_ENABLED", False)
+    config_overrides(RBAC_ENABLED=False)
     monkeypatch.setattr(
         roster_controller.enterprise_rbac_service.RBACService.AppAccess,
         "replace_whitelist",
