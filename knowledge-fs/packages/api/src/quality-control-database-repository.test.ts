@@ -76,9 +76,22 @@ describe("database quality-control repository", () => {
       );
       expect(call?.sql).toMatch(/permission\.(?:"tenant_id"|`tenant_id`)\s*=\s*(?:\$1|\?)/u);
       expect(call?.sql).toContain(dialect === "postgres" ? "jsonb_typeof" : "JSON_CONTAINS");
+      expect(call?.sql).not.toContain("readable_space");
+      expect(call?.sql).not.toContain("scoped_bundle_space");
+      expect(call?.sql).not.toContain("readable_document");
+      expect(call?.sql).toContain(dialect === "postgres" ? 'space."id" = $2' : "space.`id` = ?");
+      expect(call?.sql).toContain("target_type");
+      expect(call?.sql).toContain("'knowledge_space'");
+      expect(call?.sql.match(/knowledge_spaces/gu)).toHaveLength(1);
+      expect(call?.sql).toContain(
+        dialect === "postgres"
+          ? '(trace."evidence_bundle_id" IS NULL OR bundle."id" IS NOT NULL)'
+          : "(trace.`evidence_bundle_id` IS NULL OR bundle.`id` IS NOT NULL)",
+      );
       expect(
         call?.sql.indexOf(dialect === "postgres" ? "jsonb_typeof" : "JSON_CONTAINS"),
       ).toBeLessThan(call?.sql.indexOf("LIMIT") ?? 0);
+      expect(call?.sql.indexOf("active_deletion")).toBeLessThan(call?.sql.indexOf("LIMIT") ?? 0);
     },
   );
 

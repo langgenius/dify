@@ -1,8 +1,7 @@
-import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { render } from '@/test/console/render'
+import { renderWithNuqs as render } from '@/test/nuqs-testing'
 import { QualityPage } from '../quality/quality-page'
 
 vi.mock('../quality/quality-evaluation-panel', () => ({
@@ -40,9 +39,6 @@ vi.mock('../knowledge-space-context', () => ({
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => routerMock,
-  useSearchParams: () => ({
-    get: (key: string) => (key === 'tab' ? navigationMock.tab : undefined),
-  }),
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -137,10 +133,12 @@ function renderPage() {
       queries: { retry: false },
     },
   })
-  const Wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <QualityPage knowledgeSpaceId="space-1" />
+    </QueryClientProvider>,
+    { searchParams: navigationMock.tab ? `?tab=${navigationMock.tab}` : '' },
   )
-  return render(<QualityPage knowledgeSpaceId="space-1" />, { wrapper: Wrapper })
 }
 
 describe('QualityPage', () => {
@@ -268,7 +266,7 @@ describe('QualityPage', () => {
 
   it('uses tab primitive relationships and keeps route state in sync', async () => {
     const user = userEvent.setup()
-    renderPage()
+    const { onUrlUpdate } = renderPage()
 
     const goldenTab = await screen.findByRole('tab', {
       name: 'dataset.newKnowledge.qualityPage.goldenTab',
@@ -280,7 +278,9 @@ describe('QualityPage', () => {
     expect(badCasesTab).toHaveAttribute('tabindex', '-1')
     await user.click(badCasesTab)
 
-    expect(routerMock.replace).toHaveBeenCalledWith('/datasets/new/space-1/quality?tab=bad-cases')
+    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+    expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('tab')).toBe('bad-cases')
+    expect(onUrlUpdate.mock.calls.at(-1)?.[0].options.history).toBe('replace')
   })
 
   it('renders an empty golden-question annotation without an empty interactive control', async () => {

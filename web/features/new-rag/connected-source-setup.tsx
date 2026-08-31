@@ -272,7 +272,7 @@ async function findSourceByClientRequestId(knowledgeSpaceId: string, clientReque
       query: cursor ? { cursor } : {},
     })
     const match = response.data
-      .map(sourceFromApi)
+      .map((source) => sourceFromApi(source))
       .find((source) => source.metadata.clientRequestId === clientRequestId)
     if (match) return match
     const nextCursor = response.next_cursor ?? undefined

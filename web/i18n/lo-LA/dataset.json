@@ -367,6 +367,8 @@
   "newKnowledge.providerNotConfiguredDescription": "ເພີ່ມລະຫັດ API ຫຼື URL ຈຸດສິ້ນສຸດເພື່ອລວບລວມຂໍ້ມູນເວັບໄຊທ໌ດ້ວຍ {{provider}}.",
   "newKnowledge.providerUnavailable": "ຜູ້ໃຫ້ບໍລິການນີ້ບໍ່ສາມາດໃຊ້ໄດ້.",
   "newKnowledge.quality": "ຄຸນະພາບ",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_one": "ດຳເນີນຄຳຖາມອ້າງອີງທີ່ໃຊ້ງານຢູ່ {{count}} ຂໍ້ຄືນໃໝ່ໃນພື້ນຫຼັງ. ຮ່າງ ແລະ ຄຳຖາມທີ່ເກົ່າຈະຖືກຂ້າມ.",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_other": "ດຳເນີນຄຳຖາມອ້າງອີງທີ່ໃຊ້ງານຢູ່ {{count}} ຂໍ້ຄືນໃໝ່ໃນພື້ນຫຼັງ. ຮ່າງ ແລະ ຄຳຖາມທີ່ເກົ່າຈະຖືກຂ້າມ.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "ປຽບທຽບທຸກວັກຫຼັກຖານທີ່ຄາດໄວ້ກັບວັກທີ່ການປະເມີນນີ້ຄົ້ນພົບ.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsLoadError": "ບໍ່ສາມາດໂຫຼດລາຍລະອຽດຫຼັກຖານໄດ້. ລອງໃໝ່.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsTitle": "ລາຍລະອຽດການພົບຫຼັກຖານ",

@@ -193,7 +193,7 @@ const defaultMaxResponseBytes = 32 * 1024 * 1024;
 const defaultMaxConcurrency = 2;
 const defaultMaxRetries = 0;
 const defaultRequestTimeoutMs = 120_000;
-const maxRequestTimeoutMs = 1_800_000;
+const maxRequestTimeoutMs = 3_600_000;
 const defaultMaxRows = 20_000;
 const defaultRetryDelayMs = 100;
 const defaultNow = () => new Date().toISOString();
@@ -409,7 +409,10 @@ export function createUnstructuredParserClient({
           if (deadline.expired()) {
             throw new ProviderRequestError(
               `Unstructured parser request timed out after requestTimeoutMs=${requestTimeoutMs}`,
-              { cause: error, retryable: true },
+              // A client-side abort does not prove that the synchronous Unstructured worker
+              // stopped processing. Retrying automatically can overlap the orphaned server-side
+              // job and multiply its CPU and memory pressure.
+              { cause: error, retryable: false },
             );
           }
           if (input.signal?.aborted) {

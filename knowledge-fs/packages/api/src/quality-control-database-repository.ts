@@ -7,6 +7,7 @@ import type {
   DatabaseRow,
 } from "@knowledge/core";
 
+import { answerTraceKnowledgeSpaceVisibilitySql } from "./answer-trace-repository";
 import { resolveCapabilityJobPublicationGrant } from "./capability-job-fence";
 import { numberColumn, optionalStringColumn, stringColumn } from "./database-row-utils";
 import {
@@ -1102,11 +1103,13 @@ async function listTraces(
     );
   }
   params.push(input.limit + 1);
+  const readableSpace = answerTraceKnowledgeSpaceVisibilitySql(database, "space");
+  const scopedEvidenceBundle = `(trace.${q(database, "evidence_bundle_id")} IS NULL OR bundle.${q(database, "id")} IS NOT NULL)`;
   const result = await database.execute({
     maxRows: input.limit + 1,
     operation: "select",
     params,
-    sql: `SELECT trace.*, bundle.${q(database, "state")} AS ${q(database, "evidence_state")}, bundle.${q(database, "items")} AS ${q(database, "evidence_items")} FROM ${q(database, "answer_traces")} trace INNER JOIN ${q(database, "knowledge_spaces")} space ON space.${q(database, "tenant_id")} = ${p(database, 1)} AND space.${q(database, "id")} = trace.${q(database, "knowledge_space_id")} AND space.${q(database, "lifecycle_state")} = 'active' AND space.${q(database, "deletion_job_id")} IS NULL ${authorizationJoin} LEFT JOIN ${q(database, "evidence_bundles")} bundle ON bundle.${q(database, "tenant_id")} = ${p(database, 1)} AND bundle.${q(database, "knowledge_space_id")} = trace.${q(database, "knowledge_space_id")} AND bundle.${q(database, "id")} = trace.${q(database, "evidence_bundle_id")} WHERE ${traceTenantFilter}trace.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${authorizationFilter}${filters.length ? ` AND ${filters.join(" AND ")}` : ""} ORDER BY trace.${q(database, "created_at")} DESC, trace.${q(database, "id")} DESC LIMIT ${p(database, params.length)};`,
+    sql: `SELECT trace.*, bundle.${q(database, "state")} AS ${q(database, "evidence_state")}, bundle.${q(database, "items")} AS ${q(database, "evidence_items")} FROM ${q(database, "answer_traces")} trace INNER JOIN ${q(database, "knowledge_spaces")} space ON space.${q(database, "tenant_id")} = ${p(database, 1)} AND space.${q(database, "id")} = ${p(database, 2)} AND trace.${q(database, "knowledge_space_id")} = space.${q(database, "id")} AND ${readableSpace} ${authorizationJoin} LEFT JOIN ${q(database, "evidence_bundles")} bundle ON bundle.${q(database, "tenant_id")} = ${p(database, 1)} AND bundle.${q(database, "knowledge_space_id")} = trace.${q(database, "knowledge_space_id")} AND bundle.${q(database, "id")} = trace.${q(database, "evidence_bundle_id")} WHERE ${traceTenantFilter}trace.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${authorizationFilter} AND ${scopedEvidenceBundle}${filters.length ? ` AND ${filters.join(" AND ")}` : ""} ORDER BY trace.${q(database, "created_at")} DESC, trace.${q(database, "id")} DESC LIMIT ${p(database, params.length)};`,
     tableName: "answer_traces",
   });
   const pageRows = result.rows.slice(0, input.limit);

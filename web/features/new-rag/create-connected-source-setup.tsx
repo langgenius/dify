@@ -11,7 +11,6 @@ import type {
   NewKnowledgeSourceDraft,
 } from './routes'
 import type { InstalledSourceProviderOption } from './source-provider-options'
-import type { DataSourceCredential } from '@/app/components/header/account-setting/data-source-page-new/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -48,6 +47,14 @@ type NextPageRequest = {
   prefix?: string
 }
 
+export type ConnectedSourcePreviewBinding = {
+  credentialId: string
+  datasource: string
+  pluginId: string
+  provider: string
+  providerDisplayName: string
+}
+
 const MAX_SELECTION = 200
 const ROOT_PAGE_SCOPE = 'root'
 const SELECTION_LIMIT_ID = 'create-connected-source-selection-limit'
@@ -69,21 +76,22 @@ function resourceIcon(resource: PreviewResource) {
 }
 
 export function CreateConnectedSourceSetup({
-  credential,
   disabled,
   draft,
+  previewBinding,
   providerOption,
   onDraftChange,
   onInitialSourceChange,
 }: {
-  credential: DataSourceCredential
   disabled: boolean
   draft: ConnectedDraft
+  previewBinding: ConnectedSourcePreviewBinding
   providerOption: InstalledSourceProviderOption
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
   onInitialSourceChange: (source?: InitialSource) => void
 }) {
   const { t } = useTranslation('dataset')
+  const { credentialId, datasource, pluginId, provider, providerDisplayName } = previewBinding
   const [resources, setResources] = useState<PreviewResource[]>([])
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
@@ -134,12 +142,12 @@ export function CreateConnectedSourceSetup({
       return
     }
     const binding = {
-      credentialId: credential.id,
-      datasource: providerOption.datasource.identity.name,
-      pluginId: providerOption.plugin.plugin_id,
-      provider: providerOption.plugin.provider,
-      providerDisplayName: providerOption.label,
+      credentialId,
+      datasource,
       parameters,
+      pluginId,
+      provider,
+      providerDisplayName,
     }
     if (!driveTransport) {
       onInitialSourceChange({
@@ -190,15 +198,15 @@ export function CreateConnectedSourceSetup({
       sync_policy: draft.syncPolicy,
     })
   }, [
-    credential.id,
     draft,
     driveTransport,
     onInitialSourceChange,
-    providerOption.datasource.identity.name,
-    providerOption.label,
-    providerOption.plugin.plugin_id,
-    providerOption.plugin.provider,
     parameters,
+    credentialId,
+    datasource,
+    pluginId,
+    provider,
+    providerDisplayName,
     selectableResources,
     selected,
   ])
@@ -225,8 +233,8 @@ export function CreateConnectedSourceSetup({
       try {
         const response = await consoleClient.knowledgeFs.sourceProviderPreview.post({
           body: {
-            credentialId: credential.id,
-            datasource: providerOption.datasource.identity.name,
+            credentialId,
+            datasource,
             kind: driveTransport ? 'online_drive' : 'online_document',
             parameters: {
               ...parameters,
@@ -234,8 +242,8 @@ export function CreateConnectedSourceSetup({
               ...(prefix ? { prefix } : {}),
               ...(nextPage ? { next_page_parameters: nextPage } : {}),
             },
-            pluginId: providerOption.plugin.plugin_id,
-            provider: providerOption.plugin.provider,
+            pluginId,
+            provider,
           },
         })
         const nextResources: PreviewResource[] = driveTransport
@@ -283,7 +291,7 @@ export function CreateConnectedSourceSetup({
         setLoadingMore(false)
       }
     },
-    [credential.id, driveTransport, parameters, parametersValid, providerOption],
+    [driveTransport, parameters, parametersValid, credentialId, datasource, pluginId, provider],
   )
 
   const toggle = (key: string) => {

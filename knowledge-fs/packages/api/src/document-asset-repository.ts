@@ -34,6 +34,8 @@ export interface CreateDocumentAssetInput {
 export interface DocumentAssetRepository {
   create(input: CreateDocumentAssetInput): Promise<DocumentAsset>;
   get(input: DocumentAssetLookupInput): Promise<DocumentAsset | null>;
+  /** Bounded active-only lookup used when one request references several historical documents. */
+  getManyByIds?(input: DocumentAssetBulkLookupInput): Promise<DocumentAsset[]>;
   /** Internal durable-deletion lookup; includes a row already fenced as deleting. */
   getForDeletion(input: DocumentAssetLookupInput): Promise<DocumentAsset | null>;
   getStorageUsage(input: DocumentStorageUsageInput): Promise<DocumentStorageUsage>;
@@ -53,6 +55,11 @@ export interface ListDocumentAssetsBySourceInput {
 
 export interface DocumentAssetLookupInput {
   readonly id: string;
+  readonly knowledgeSpaceId: string;
+}
+
+export interface DocumentAssetBulkLookupInput {
+  readonly ids: readonly string[];
   readonly knowledgeSpaceId: string;
 }
 
@@ -106,6 +113,8 @@ export interface DatabaseDocumentAssetRepositoryOptions {
   readonly generateId?: () => string;
   readonly now?: () => string;
 }
+
+const MaxDocumentAssetBulkLookupIds = 1_000;
 
 export class DocumentAssetCapacityExceededError extends Error {
   constructor(maxAssets: number) {
@@ -172,6 +181,17 @@ export function createInMemoryDocumentAssetRepository({
       return asset && asset.knowledgeSpaceId === knowledgeSpaceId && (await isReadable(asset))
         ? cloneDocumentAsset(asset)
         : null;
+    },
+    getManyByIds: async ({ ids, knowledgeSpaceId }) => {
+      validateDocumentAssetBulkLookup(ids);
+      const selected: DocumentAsset[] = [];
+      for (const id of new Set(ids)) {
+        const asset = assets.get(id);
+        if (asset?.knowledgeSpaceId === knowledgeSpaceId && (await isReadable(asset))) {
+          selected.push(cloneDocumentAsset(asset));
+        }
+      }
+      return selected;
     },
     getForDeletion: async ({ id, knowledgeSpaceId }) => {
       const asset = assets.get(id);
@@ -330,6 +350,7 @@ export function createDatabaseDocumentAssetRepository({
       });
     },
     get: async (input) => databaseDocumentAssetGet(database, input),
+    getManyByIds: async (input) => databaseDocumentAssetsGetManyByIds(database, input),
     getForDeletion: async (input) => databaseDocumentAssetGetForDeletion(database, input),
     getStorageUsage: async ({ knowledgeSpaceId }) => {
       const documentAlias = "document_asset";
@@ -565,6 +586,47 @@ async function databaseDocumentAssetGet(
   return result.rows[0] ? mapDocumentAssetRow(result.rows[0]) : null;
 }
 
+async function databaseDocumentAssetsGetManyByIds(
+  database: DatabaseAdapter,
+  input: DocumentAssetBulkLookupInput,
+): Promise<DocumentAsset[]> {
+  validateDocumentAssetBulkLookup(input.ids);
+  const ids = [...new Set(input.ids)];
+  if (ids.length === 0) return [];
+
+  const documentAlias = "document_asset";
+  const result = await database.execute({
+    maxRows: ids.length,
+    operation: "select",
+    params: [input.knowledgeSpaceId, ...ids],
+    sql: `SELECT ${documentAlias}.* FROM ${quoteDatabaseIdentifier(
+      database,
+      "document_assets",
+    )} ${documentAlias} WHERE ${documentAlias}.${quoteDatabaseIdentifier(
+      database,
+      "knowledge_space_id",
+    )} = ${databasePlaceholder(database, 1)} AND ${documentAlias}.${quoteDatabaseIdentifier(
+      database,
+      "id",
+    )} IN (${ids
+      .map((_, index) => databasePlaceholder(database, index + 2))
+      .join(", ")}) AND ${documentAlias}.${quoteDatabaseIdentifier(
+      database,
+      "lifecycle_state",
+    )} = 'active' AND ${documentAlias}.${quoteDatabaseIdentifier(
+      database,
+      "deletion_job_id",
+    )} IS NULL AND ${readableDocumentParentSourcePredicateSql(
+      database,
+      documentAlias,
+      "bulk_get_parent_source",
+    )} LIMIT ${ids.length};`,
+    tableName: "document_assets",
+  });
+
+  return result.rows.map(mapDocumentAssetRow);
+}
+
 async function databaseDocumentAssetGetForDeletion(
   database: DatabaseAdapter,
   input: DocumentAssetLookupInput,
@@ -615,5 +677,11 @@ function cloneDocumentAsset(asset: DocumentAsset): DocumentAsset {
 function validateDocumentAssetListLimit(limit: number): void {
   if (!Number.isInteger(limit) || limit < 1) {
     throw new Error("Document asset list limit must be at least 1");
+  }
+}
+
+function validateDocumentAssetBulkLookup(ids: readonly string[]): void {
+  if (ids.length > MaxDocumentAssetBulkLookupIds) {
+    throw new Error(`Document asset bulk lookup exceeds max ids=${MaxDocumentAssetBulkLookupIds}`);
   }
 }

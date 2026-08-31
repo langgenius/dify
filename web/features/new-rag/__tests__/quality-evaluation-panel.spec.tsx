@@ -8,6 +8,7 @@ import { QualityEvaluationPanel } from '../quality/quality-evaluation-panel'
 const serviceMock = vi.hoisted(() => ({
   createReplay: vi.fn(),
   getReplay: vi.fn(),
+  listGoldenQuestions: vi.fn(),
   listReplays: vi.fn(),
 }))
 
@@ -20,6 +21,14 @@ vi.mock('@/service/client', () => ({
     knowledgeFs: {
       spaces: {
         byControlSpaceId: {
+          goldenQuestions: {
+            get: {
+              queryOptions: ({ input }: { input: unknown }) => ({
+                queryFn: () => serviceMock.listGoldenQuestions(input),
+                queryKey: ['quality', 'golden-questions', input],
+              }),
+            },
+          },
           quality: {
             replayRuns: {
               byRunId: {
@@ -145,6 +154,13 @@ function renderPanel() {
 describe('QualityEvaluationPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    serviceMock.listGoldenQuestions.mockResolvedValue({
+      data: Array.from({ length: 6 }, (_, index) => ({
+        id: `golden-${index + 1}`,
+        status: 'active',
+      })),
+      next_cursor: null,
+    })
     serviceMock.listReplays.mockResolvedValue({ data: [], next_cursor: null })
     serviceMock.createReplay.mockResolvedValue({ ...completedRun, state: 'queued' })
     serviceMock.getReplay.mockResolvedValue(completedRun)
@@ -161,6 +177,40 @@ describe('QualityEvaluationPanel', () => {
         name: 'dataset.newKnowledge.qualityPage.evaluation.run',
       }),
     ).toBeEnabled()
+  })
+
+  it('shows evaluation creation time as a relative list label', async () => {
+    const now = Date.parse(completedRun.created_at) + 2 * 60 * 60 * 1000
+    const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(now)
+    serviceMock.listReplays.mockResolvedValue({
+      data: [
+        { ...completedRun, created_at: new Date(now).toISOString(), id: 'run-now' },
+        completedRun,
+      ],
+      next_cursor: null,
+    })
+
+    renderPanel()
+
+    expect(await screen.findByText('dataset.newKnowledge.retrievalTest.justNow')).toBeVisible()
+    expect(await screen.findByText('2 hours ago')).toBeVisible()
+    dateNowSpy.mockRestore()
+  })
+
+  it('separates the report date and time with a middle dot', async () => {
+    const user = userEvent.setup()
+    const createdAt = new Date(completedRun.created_at)
+    const expected = `${new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(createdAt)} · ${new Intl.DateTimeFormat(undefined, { timeStyle: 'short' }).format(createdAt)}`
+    serviceMock.listReplays.mockResolvedValue({ data: [completedRun], next_cursor: null })
+
+    renderPanel()
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'dataset.newKnowledge.qualityPage.evaluation.viewReport',
+      }),
+    )
+
+    expect(await screen.findByText(expected)).toBeVisible()
   })
 
   it('opens evaluation settings in an accessible centered modal', async () => {
@@ -185,7 +235,37 @@ describe('QualityEvaluationPanel', () => {
       '-translate-y-1/2',
     )
     expect(dialog).toHaveAccessibleDescription(
-      'dataset.newKnowledge.qualityPage.evaluation.dialogDescription',
+      'dataset.newKnowledge.qualityPage.evaluation.dialogDescription_other:{"count":6}',
+    )
+    expect(
+      screen.getByRole('radio', {
+        name: 'dataset.newKnowledge.settings.retrievalMode.fast',
+      }),
+    ).toBeChecked()
+    expect(screen.getAllByRole('radio')).toHaveLength(3)
+  })
+
+  it('uses singular copy for one active golden question', async () => {
+    const user = userEvent.setup()
+    serviceMock.listGoldenQuestions.mockResolvedValue({
+      data: [{ id: 'golden-1', status: 'active' }],
+      next_cursor: null,
+    })
+    renderPanel()
+
+    await screen.findByText('dataset.newKnowledge.qualityPage.evaluation.emptyTitle')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.qualityPage.evaluation.run',
+      }),
+    )
+
+    expect(
+      screen.getByRole('dialog', {
+        name: 'dataset.newKnowledge.qualityPage.evaluation.dialogTitle',
+      }),
+    ).toHaveAccessibleDescription(
+      'dataset.newKnowledge.qualityPage.evaluation.dialogDescription_one:{"count":1}',
     )
   })
 
@@ -208,7 +288,7 @@ describe('QualityEvaluationPanel', () => {
     await waitFor(() =>
       expect(serviceMock.createReplay).toHaveBeenCalledWith(
         expect.objectContaining({
-          body: { selection: 'all-active' },
+          body: { mode: 'fast', selection: 'all-active' },
           headers: { 'Idempotency-Key': expect.any(String) },
           params: { control_space_id: 'space-1' },
         }),
@@ -216,11 +296,17 @@ describe('QualityEvaluationPanel', () => {
       ),
     )
     expect(await screen.findByText('Who can change workspace permissions?')).toBeVisible()
-    expect(screen.getByText('1/2')).toBeVisible()
-    expect(screen.getByText('dataset.newKnowledge.qualityPage.matchPolicy.any')).toBeVisible()
+    expect(screen.getByText('1 of 2')).toBeVisible()
     expect(serviceMock.getReplay).toHaveBeenCalledWith({
       params: { control_space_id: 'space-1', run_id: 'run-1' },
     })
+
+    await user.click(screen.getByRole('button', { name: 'workflow.singleRun.reRun' }))
+    expect(
+      screen.getByRole('dialog', {
+        name: 'dataset.newKnowledge.qualityPage.evaluation.dialogTitle',
+      }),
+    ).toBeVisible()
   })
 
   it('opens evidence hit details and identifies matched and missing passages', async () => {

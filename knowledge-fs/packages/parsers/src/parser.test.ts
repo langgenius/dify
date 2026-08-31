@@ -3038,15 +3038,21 @@ describe("parser adapters", () => {
       requestTimeoutMs: 1,
     });
 
-    await expect(
-      parser.parse({
-        body: new Uint8Array([1]),
-        documentAssetId,
-        filename: "timeout.pdf",
-        mimeType: "application/pdf",
-        version: 1,
-      }),
-    ).rejects.toThrow("Unstructured parser request timed out after requestTimeoutMs=1");
+    const result = parser.parse({
+      body: new Uint8Array([1]),
+      documentAssetId,
+      filename: "timeout.pdf",
+      mimeType: "application/pdf",
+      version: 1,
+    });
+
+    await expect(result).rejects.toThrow(
+      "Unstructured parser request timed out after requestTimeoutMs=1",
+    );
+    await expect(result).rejects.toMatchObject({
+      code: "provider_request_failed",
+      retryable: false,
+    });
   });
 
   it("rejects a successful Unstructured response completed after its deadline", async () => {
@@ -3128,13 +3134,16 @@ describe("parser adapters", () => {
       "maxConcurrency must be an integer between 1 and 32",
     );
     expect(() => createUnstructuredParserClient({ ...base, requestTimeoutMs: 0 })).toThrow(
-      "requestTimeoutMs must be an integer between 1 and 1800000",
+      "requestTimeoutMs must be an integer between 1 and 3600000",
     );
-    expect(() => createUnstructuredParserClient({ ...base, requestTimeoutMs: 1_800_001 })).toThrow(
-      "requestTimeoutMs must be an integer between 1 and 1800000",
+    expect(() =>
+      createUnstructuredParserClient({ ...base, requestTimeoutMs: 3_600_000 }),
+    ).not.toThrow();
+    expect(() => createUnstructuredParserClient({ ...base, requestTimeoutMs: 3_600_001 })).toThrow(
+      "requestTimeoutMs must be an integer between 1 and 3600000",
     );
     expect(() => createUnstructuredParserClient({ ...base, requestTimeoutMs: 1.5 })).toThrow(
-      "requestTimeoutMs must be an integer between 1 and 1800000",
+      "requestTimeoutMs must be an integer between 1 and 3600000",
     );
   });
 
@@ -3408,7 +3417,7 @@ describe("parser adapters", () => {
     });
     await expect(stalledHeadersResult).rejects.toMatchObject({
       code: "provider_request_failed",
-      retryable: true,
+      retryable: false,
     });
 
     const stalledBody = createUnstructuredParserClient({
@@ -3439,7 +3448,7 @@ describe("parser adapters", () => {
     });
     await expect(stalledBodyResult).rejects.toMatchObject({
       code: "provider_request_failed",
-      retryable: true,
+      retryable: false,
     });
   });
 

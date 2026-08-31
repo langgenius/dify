@@ -485,60 +485,17 @@ async function readStoredAnswerTraceForCreate(
   return mapAnswerTraceRows(traceRow, orderedRows);
 }
 
-function answerTraceReadVisibilitySql(database: DatabaseAdapter): string {
+export function answerTraceReadVisibilitySql(
+  database: DatabaseAdapter,
+  traceRelation = "answer_traces",
+): string {
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
-  const trace = q("answer_traces");
-  const activeDocument = (documentAssetId: string) =>
-    `EXISTS (SELECT 1 FROM ${q("document_assets")} readable_document WHERE readable_document.${q(
-      "knowledge_space_id",
-    )} = ${trace}.${q("knowledge_space_id")} AND ${
-      database.dialect === "postgres"
-        ? `CAST(readable_document.${q("id")} AS TEXT)`
-        : `CAST(readable_document.${q("id")} AS CHAR(36))`
-    } = ${documentAssetId} AND readable_document.${q(
-      "lifecycle_state",
-    )} = 'active' AND readable_document.${q("deletion_job_id")} IS NULL)`;
-
-  const persistedCitationRows =
-    database.dialect === "postgres"
-      ? `jsonb_array_elements(CASE WHEN jsonb_typeof(readable_bundle.${q(
-          "items",
-        )}) = 'array' THEN readable_bundle.${q(
-          "items",
-        )} ELSE '[]'::jsonb END) AS readable_item(value) CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(readable_item.value -> 'citations') = 'array' THEN readable_item.value -> 'citations' ELSE '[]'::jsonb END) AS readable_citation(value)`
-      : `JSON_TABLE(readable_bundle.${q(
-          "items",
-        )}, '$[*].citations[*]' COLUMNS (document_asset_id VARCHAR(36) PATH '$.documentAssetId')) AS readable_citation`;
-  const persistedDocumentId =
-    database.dialect === "postgres"
-      ? `readable_citation.value ->> 'documentAssetId'`
-      : "readable_citation.document_asset_id";
-  const inlineCitationRows =
-    database.dialect === "postgres"
-      ? `jsonb_array_elements(CASE WHEN jsonb_typeof(readable_step.${q(
-          "metadata",
-        )} -> 'evidenceBundle' -> 'items') = 'array' THEN readable_step.${q(
-          "metadata",
-        )} -> 'evidenceBundle' -> 'items' ELSE '[]'::jsonb END) AS inline_item(value) CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(inline_item.value -> 'citations') = 'array' THEN inline_item.value -> 'citations' ELSE '[]'::jsonb END) AS inline_citation(value)`
-      : `JSON_TABLE(readable_step.${q(
-          "metadata",
-        )}, '$.evidenceBundle.items[*].citations[*]' COLUMNS (document_asset_id VARCHAR(36) PATH '$.documentAssetId')) AS inline_citation`;
-  const inlineDocumentId =
-    database.dialect === "postgres"
-      ? `inline_citation.value ->> 'documentAssetId'`
-      : "inline_citation.document_asset_id";
-
+  const trace = q(traceRelation);
   const readableSpace = `EXISTS (SELECT 1 FROM ${q(
     "knowledge_spaces",
   )} readable_space WHERE readable_space.${q("id")} = ${trace}.${q(
     "knowledge_space_id",
-  )} AND readable_space.${q("lifecycle_state")} = 'active' AND NOT EXISTS (SELECT 1 FROM ${q(
-    "deletion_jobs",
-  )} active_deletion WHERE active_deletion.${q("tenant_id")} = readable_space.${q(
-    "tenant_id",
-  )} AND active_deletion.${q("knowledge_space_id")} = readable_space.${q(
-    "id",
-  )} AND active_deletion.${q("active_slot")} = 1))`;
+  )} AND ${answerTraceKnowledgeSpaceVisibilitySql(database, "readable_space")})`;
   const scopedBundle = `(${trace}.${q("evidence_bundle_id")} IS NULL OR EXISTS (SELECT 1 FROM ${q(
     "evidence_bundles",
   )} scoped_bundle INNER JOIN ${q(
@@ -550,19 +507,31 @@ function answerTraceReadVisibilitySql(database: DatabaseAdapter): string {
   )} WHERE scoped_bundle.${q("id")} = ${trace}.${q(
     "evidence_bundle_id",
   )} AND scoped_bundle.${q("knowledge_space_id")} = ${trace}.${q("knowledge_space_id")}))`;
-  const noStalePersistedCitation = `NOT EXISTS (SELECT 1 FROM ${q(
-    "evidence_bundles",
-  )} readable_bundle CROSS JOIN ${persistedCitationRows} WHERE (readable_bundle.${q(
+  return `(${readableSpace} AND ${scopedBundle})`;
+}
+
+/**
+ * Constant-time knowledge-space admission for Trace reads. The active deletion lookup is covered
+ * by deletion_jobs_target_active_uq. Callers that already joined the space can reuse this
+ * predicate instead of adding a correlated space subquery for every Trace row.
+ */
+export function answerTraceKnowledgeSpaceVisibilitySql(
+  database: DatabaseAdapter,
+  spaceRelation = "knowledge_spaces",
+): string {
+  const q = (value: string) => quoteDatabaseIdentifier(database, value);
+  const space = q(spaceRelation);
+  return `${space}.${q("lifecycle_state")} = 'active' AND ${space}.${q(
+    "deletion_job_id",
+  )} IS NULL AND NOT EXISTS (SELECT 1 FROM ${q(
+    "deletion_jobs",
+  )} active_deletion WHERE active_deletion.${q("tenant_id")} = ${space}.${q(
+    "tenant_id",
+  )} AND active_deletion.${q("knowledge_space_id")} = ${space}.${q(
     "id",
-  )} = ${trace}.${q("evidence_bundle_id")} OR readable_bundle.${q(
-    "trace_id",
-  )} = ${trace}.${q("id")}) AND NOT (${activeDocument(persistedDocumentId)}))`;
-  const noStaleInlineCitation = `NOT EXISTS (SELECT 1 FROM ${q(
-    "answer_trace_steps",
-  )} readable_step CROSS JOIN ${inlineCitationRows} WHERE readable_step.${q(
-    "trace_id",
-  )} = ${trace}.${q("id")} AND NOT (${activeDocument(inlineDocumentId)}))`;
-  return `(${readableSpace} AND ${scopedBundle} AND ${noStalePersistedCitation} AND ${noStaleInlineCitation})`;
+  )} AND active_deletion.${q("active_slot")} = 1 AND active_deletion.${q(
+    "target_type",
+  )} = 'knowledge_space' AND active_deletion.${q("target_id")} = ${space}.${q("id")})`;
 }
 
 function answerTraceEmbeddedEvidenceBundle(trace: AnswerTrace): EvidenceBundle | undefined {

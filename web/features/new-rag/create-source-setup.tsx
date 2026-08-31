@@ -625,9 +625,15 @@ export function CreateSourceSetup({
       ) : draft.sourceType !== 'websiteCrawl' && installedProviderOption && credential ? (
         <CreateConnectedSourceSetup
           key={`${draft.sourceType}:${installedProviderOption.key}:${credential.id}`}
-          credential={credential}
           disabled={disabled}
           draft={draft}
+          previewBinding={{
+            credentialId: credential.id,
+            datasource: installedProviderOption.datasource.identity.name,
+            pluginId: installedProviderOption.plugin.plugin_id,
+            provider: installedProviderOption.plugin.provider,
+            providerDisplayName: installedProviderOption.label,
+          }}
           providerOption={installedProviderOption}
           onDraftChange={updateDraftWithoutReset}
           onInitialSourceChange={onInitialSourceChange}

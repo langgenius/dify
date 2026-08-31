@@ -6,6 +6,7 @@ import type {
 export type RetrievalTestMode = 'deep' | 'fast' | 'research'
 
 export type RetrievalEvidence = {
+  availability?: 'available' | 'unavailable'
   chunkId?: string
   documentAssetId?: string
   documentId?: string
@@ -18,6 +19,7 @@ export type RetrievalEvidence = {
   score?: number
   text: string
   title: string
+  unavailableReason?: string
 }
 
 export type RetrievalTestRecord =
@@ -96,6 +98,8 @@ function evidenceFromValue(
   const metadata = objectValue(record.metadata) ?? {}
   const document = objectValue(record.document) ?? objectValue(metadata.document) ?? {}
   const citation = Array.isArray(record.citations) ? (objectValue(record.citations[0]) ?? {}) : {}
+  const availabilityValue = firstString(record.availability, metadata.availability)
+  const availability = availabilityValue === 'unavailable' ? 'unavailable' : 'available'
   const text = firstString(
     record.text,
     record.content,
@@ -198,10 +202,10 @@ function evidenceFromValue(
     typeof record.resource_type === 'string' ||
     /chunk|evidence|result|record|source|partial/.test(context),
   )
-  if (!text || !hasEvidenceSignal) return undefined
+  if ((!text && availability !== 'unavailable') || !hasEvidenceSignal) return undefined
   const id =
     firstString(record.id, chunkId, record.target_id, record.targetId, metadata.id) ??
-    `${context}-${index}-${text.slice(0, 24)}`
+    `${context}-${index}-${(text ?? 'unavailable').slice(0, 24)}`
   const images = [
     ...stringArray(record.images),
     ...stringArray(record.files),
@@ -211,6 +215,7 @@ function evidenceFromValue(
   ]
 
   return {
+    availability,
     chunkId,
     documentAssetId,
     documentId,
@@ -235,8 +240,14 @@ function evidenceFromValue(
         : undefined,
     ),
     score,
-    text,
+    text: text ?? '',
     title: title ?? `Chunk ${index + 1}`,
+    unavailableReason: firstString(
+      record.unavailable_reason,
+      record.unavailableReason,
+      metadata.unavailable_reason,
+      metadata.unavailableReason,
+    ),
   }
 }
 

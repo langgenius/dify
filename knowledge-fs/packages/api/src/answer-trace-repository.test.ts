@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import { AnswerTraceSemanticConflictError } from "./answer-trace-idempotency";
 import {
   AnswerTraceCapacityExceededError,
+  answerTraceReadVisibilitySql,
   createDatabaseAnswerTraceRepository,
   createInMemoryAnswerTraceRepository,
 } from "./answer-trace-repository";
@@ -36,6 +37,28 @@ function createFakeAnswerTraceExecutor() {
 }
 
 describe("AnswerTrace repositories", () => {
+  it.each(["postgres", "tidb"] as const)(
+    "scopes %s trace visibility only to whole-space deletion",
+    (kind) => {
+      const database = createSchemaDatabaseAdapter({
+        executor: async () => ({ rows: [], rowsAffected: 0 }),
+        kind,
+      });
+      const sql = answerTraceReadVisibilitySql(database, "trace");
+      const quoted = (name: string) => (kind === "postgres" ? `"${name}"` : `\`${name}\``);
+
+      expect(sql).toContain(`${quoted("trace")}.${quoted("knowledge_space_id")}`);
+      expect(sql).toContain(
+        `active_deletion.${quoted("active_slot")} = 1 AND active_deletion.${quoted("target_type")} = 'knowledge_space'`,
+      );
+      expect(sql).toContain(
+        `active_deletion.${quoted("target_id")} = ${quoted("readable_space")}.${quoted("id")}`,
+      );
+      expect(sql).not.toContain("readable_document");
+      expect(sql).not.toContain("document_assets");
+    },
+  );
+
   it("stores bounded in-memory traces with tenant scope and clone isolation", async () => {
     const repository = createInMemoryAnswerTraceRepository({ maxSteps: 2, maxTraces: 1 });
     const trace = AnswerTraceSchema.parse({
@@ -289,7 +312,7 @@ describe("AnswerTrace repositories", () => {
     }
     expect(traceReadCall.sql).not.toContain(trace.id);
     expect(traceReadCall.sql).toContain("deletion_jobs");
-    expect(traceReadCall.sql).toContain("document_assets");
+    expect(traceReadCall.sql).not.toContain("document_assets");
     expect(traceReadCall.sql).toContain("evidence_bundles");
     expect(traceReadCall.sql).toContain("lifecycle_state");
     expect(readCalls[1]).toEqual(

@@ -74,6 +74,32 @@ describe('retrieval test model', () => {
     ])
   })
 
+  it('keeps an unavailable evidence tombstone without requiring deleted content', () => {
+    expect(
+      extractRetrievalEvidence({
+        data: [
+          {
+            kind: 'resource',
+            metadata: {
+              availability: 'unavailable',
+              unavailableReason: 'document-deleted-or-unavailable',
+            },
+            name: 'node-deleted',
+            resourceType: 'node',
+            targetId: 'node-deleted',
+          },
+        ],
+      }),
+    ).toEqual([
+      expect.objectContaining({
+        availability: 'unavailable',
+        chunkId: 'node-deleted',
+        text: '',
+        unavailableReason: 'document-deleted-or-unavailable',
+      }),
+    ])
+  })
+
   it('walks nested research evidence bundles and deduplicates repeated chunks', () => {
     const evidence = extractRetrievalEvidence({
       data: [

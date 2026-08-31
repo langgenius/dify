@@ -9,7 +9,7 @@ import {
 import { Agent, type Dispatcher, fetch as undiciFetch } from "undici";
 
 const defaultUnstructuredRequestTimeoutMs = 120_000;
-const maxUnstructuredRequestTimeoutMs = 1_800_000;
+const maxUnstructuredRequestTimeoutMs = 3_600_000;
 
 interface NodeUnstructuredFetchOptions {
   readonly createDispatcher?: (
