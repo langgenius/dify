@@ -32,7 +32,7 @@ export function AccessPointIcon({
 }: {
   active: boolean
   accessPoint: AccessPoint
-  href: string
+  href?: string
 }) {
   const { t } = useTranslation('agentV2')
   const labels = useAccessPointLabels()
@@ -40,9 +40,10 @@ export function AccessPointIcon({
     ? t(($) => $['agentDetail.access.status.inService'])
     : t(($) => $['agentDetail.access.status.outOfService'])
   const label = `${labels[accessPoint]} · ${status}`
+  const canNavigate = active && Boolean(href)
   const triggerClassName = cn(
     'flex size-5 shrink-0 items-center justify-center rounded-md border border-divider-regular text-text-secondary shadow-xs outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-    active ? 'cursor-pointer hover:bg-state-base-hover' : 'cursor-not-allowed opacity-30',
+    canNavigate ? 'cursor-pointer hover:bg-state-base-hover' : 'cursor-not-allowed opacity-30',
   )
   const icon = (
     <span aria-hidden className={cn(ACCESS_POINT_ICON_CLASS_NAMES[accessPoint], 'size-3')} />
@@ -52,7 +53,7 @@ export function AccessPointIcon({
     <Tooltip>
       <TooltipTrigger
         render={
-          active ? (
+          active && href ? (
             <Link href={href} aria-label={label} className={triggerClassName}>
               {icon}
             </Link>
