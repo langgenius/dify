@@ -22,7 +22,9 @@ vi.mock('@/app/components/workflow/nodes/_base/components/node-handle', () => ({
 
 vi.mock('@/app/components/workflow/nodes/_base/components/readonly-input-with-select-var', () => ({
   __esModule: true,
-  default: ({ value }: { value: string }) => <div>{value}</div>,
+  default: ({ value, title }: { value: string; title?: string }) => (
+    <div title={title}>{value}</div>
+  ),
 }))
 
 const mockUseTextGeneration = vi.mocked(useTextGenerationCurrentProviderAndModelAndModelList)
@@ -111,7 +113,7 @@ describe('question-classifier/node', () => {
       />,
     )
 
-    expect(screen.getByText(`${longName.slice(0, 50)}...`)).toBeInTheDocument()
+    expect(screen.getByText(`${longName.slice(0, 50)}...`)).toHaveAttribute('title', longName)
     await user.hover(screen.getByRole('button', { name: longName }))
     expect(await screen.findByText(longName)).toBeInTheDocument()
 

@@ -35,7 +35,7 @@ const TruncatedClassItem: FC<TruncatedClassItemProps> = ({ topic, index, nodeId,
         value={truncatedText}
         nodeId={nodeId}
         className="truncate"
-        title={truncatedText}
+        title={topic.name}
       />
     </div>
   )
