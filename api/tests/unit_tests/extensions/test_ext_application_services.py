@@ -383,6 +383,8 @@ def test_build_application_services_wires_account_profile_repository(
     assert email_registration._registration._session_factory is sqlite_session_factory
     assert services.accounts.education._accounts is accounts
     assert services.accounts.deletion._accounts is accounts
+    assert services.notifications._accounts is accounts
+    assert services.step_by_step_tour._accounts is accounts
     assert services.accounts.deletion._memberships is services.workspace_queries._workspaces
     integrations = services.accounts.integrations._integrations
     assert isinstance(integrations, SQLAlchemyAccountIntegrationRepository)
