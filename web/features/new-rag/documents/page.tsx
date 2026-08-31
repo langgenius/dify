@@ -1,11 +1,8 @@
 'use client'
 
-import type { DocumentUploadFormHandle } from '../upload/form'
 import type { DocumentAction } from './actions-dropdown'
 import type { DocumentProcessingTask } from './models'
-import type { UploadExclusionReasonKey } from './upload/model'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -18,7 +15,6 @@ import {
   workspacePermissionKeysErrorAtom,
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
-import { knowledgeFsUploadEnabledAtom } from '@/features/system-features/state'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { downloadBlob } from '@/utils/download'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
@@ -28,12 +24,8 @@ import { knowledgeFsTaskFailureMessageKey } from '../knowledge-fs-task-error'
 import { createRequestId } from '../request-id'
 import { newKnowledgeDocumentDetailPath } from '../routes'
 import { sourceFromApi } from '../sources/source-models'
-import { DocumentUploadForm } from '../upload/form'
-import { uploadKnowledgeFsDocuments } from '../upload/knowledge-fs-upload'
-import { documentUploadIssue } from '../upload/policy'
-import { useKnowledgeFileSizeLimit } from '../upload/use-file-size-limit'
 import { useKnowledgeModelSetupGuard } from '../use-knowledge-model-setup-guard'
-import { DocumentBulkActions, DocumentDropOverlay, DocumentsEmpty, DocumentsList } from './list'
+import { DocumentBulkActions, DocumentsEmpty, DocumentsList } from './list'
 import { DocumentMetadataDrawer } from './metadata/drawer'
 import {
   documentCanDownload,
@@ -55,46 +47,28 @@ import {
 } from './permission-recovery/recovery-boundary'
 import { useDocumentPermissionRecovery } from './permission-recovery/use-permission-recovery'
 import { documentSourcesInfiniteOptions, logicalDocumentsInfiniteOptions } from './queries'
-import {
-  documentFilterParser,
-  documentMetadataParser,
-  documentSearchParser,
-  documentUploadParser,
-} from './query-state'
+import { documentFilterParser, documentMetadataParser, documentSearchParser } from './query-state'
 import { responseStatus } from './request-error'
 import { useAuxiliaryTaskReadGuard } from './tasks/auxiliary-read-guard'
 import { ProcessingTasksDrawer } from './tasks/drawer'
 import { TaskEventObserver } from './tasks/event-observer'
 import { MAX_AUTO_CURSOR_PAGES, queryKeyMatchesKnowledgeSpace } from './tasks/recovery'
 import { useTaskRuntime } from './tasks/use-task-runtime'
-import { DocumentStagingCanceledError } from './upload/model'
-import { useDocumentUploadSession } from './upload/use-document-upload-session'
+import {
+  DocumentUploadContent,
+  DocumentUploadHeader,
+  DocumentUploadSurface,
+} from './upload/surface'
 
 const KNOWLEDGE_FS_BATCH_DOCUMENT_MAX_DOCUMENTS = 100
 
 export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
-  const fileSizeLimitMb = useKnowledgeFileSizeLimit()
-  const {
-    beginUpload,
-    completeUploads,
-    discardAllStagedFiles,
-    discardStagedFile,
-    endUpload,
-    prepareUploads,
-    progress: stagedUploadProgress,
-    resetProgress: resetUploadProgress,
-    stageFiles,
-    updateProgress: updateUploadProgress,
-    uploading,
-    uploadProgress,
-  } = useDocumentUploadSession(knowledgeSpaceId)
   const queryClient = useQueryClient()
   const datasetDefaultPermissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
   const workspacePermissionKeysLoading = useAtomValue(workspacePermissionKeysLoadingAtom)
   const workspacePermissionKeysError = useAtomValue(workspacePermissionKeysErrorAtom)
-  const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
   const hasDocumentDownloadPermission = hasPermission(
     datasetDefaultPermissionKeys,
     DatasetACLPermission.DocumentDownload,
@@ -108,7 +82,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const bulkActionPendingRef = useRef(false)
   const [filter, setFilter] = useQueryState('status', documentFilterParser)
   const [search, setSearch] = useQueryState('query', documentSearchParser)
-  const [uploadRequest, setUploadRequest] = useQueryState('upload', documentUploadParser)
   const [metadataRequest, setMetadataRequest] = useQueryState('metadata', documentMetadataParser)
   const metadataOpen = metadataRequest === '1'
   const setMetadataOpen = useCallback(
@@ -118,10 +91,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     [setMetadataRequest],
   )
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(() => new Set())
-  const [uploadFormInitialFiles, setUploadFormInitialFiles] = useState<File[]>([])
-  const uploadFormRef = useRef<DocumentUploadFormHandle>(null)
-  const [isFileDragActive, setIsFileDragActive] = useState(false)
-  const fileDragDepthRef = useRef(0)
   const [tasksOpen, setTasksOpen] = useState(false)
   const [blockingDependencyRetries, setBlockingDependencyRetries] = useState({
     sources: false,
@@ -218,39 +187,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     sourcePermissionDenied,
     taskPermissionDenied,
   })
-  const canUpload = canWrite && uploadAvailable
-  const uploadFormOpen = canUpload && uploadRequest === '1'
-  const openUploadForm = useCallback(
-    (files: File[] = []) => {
-      fileDragDepthRef.current = 0
-      setIsFileDragActive(false)
-      resetUploadProgress()
-      setUploadFormInitialFiles(files)
-      void setUploadRequest('1')
-    },
-    [resetUploadProgress, setUploadRequest],
+  const uploadPermission = useMemo(
+    () => ({ canRead, canWrite, denyWrite: handleWritePermissionDenied }),
+    [canRead, canWrite, handleWritePermissionDenied],
   )
-  const closeUploadForm = useCallback(() => {
-    resetUploadProgress()
-    setUploadFormInitialFiles([])
-    void setUploadRequest(null)
-  }, [resetUploadProgress, setUploadRequest])
-  const cancelUploadForm = useCallback(() => {
-    discardAllStagedFiles()
-    closeUploadForm()
-  }, [closeUploadForm, discardAllStagedFiles])
-  useEffect(() => {
-    if (uploadRequest !== '1' || canUpload) return
-    discardAllStagedFiles()
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Consume the route-owned one-shot signal after authorization resolves.
-    void setUploadRequest(null)
-  }, [canUpload, discardAllStagedFiles, setUploadRequest, uploadRequest])
-  const documentWriteRestrictionReasonId = canWrite ? undefined : 'documents-readonly-reason'
-  const documentUploadRestrictionReasonId = !uploadAvailable
-    ? 'documents-upload-unavailable'
-    : documentWriteRestrictionReasonId
-  const documentsSectionRef = useRef<HTMLElement>(null)
-  const documentsTitleRef = useRef<HTMLHeadingElement>(null)
   const mainRetryFocusRequestedRef = useRef(false)
   const documentsRetryButtonRef = useRef<HTMLButtonElement>(null)
   const dependencyRetryButtonRef = useRef<HTMLButtonElement>(null)
@@ -533,7 +473,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       return
     }
     mainRetryFocusRequestedRef.current = false
-    documentsTitleRef.current?.focus()
+    document.getElementById('new-knowledge-documents-title')?.focus()
   }, [canRead, documentsQuery.error, mainRecoveryIdentity, mainRecoveryVisible])
 
   useEffect(() => {
@@ -598,112 +538,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       }),
     ])
   }, [knowledgeSpaceId, queryClient])
-
-  const handleUploadFiles = useCallback(
-    async (files: File[]): Promise<boolean> => {
-      if (!canUpload || !files.length || !beginUpload()) return false
-      const uploadableFiles: File[] = []
-      const localExclusions: Array<{
-        filename: string
-        reasonKey: UploadExclusionReasonKey
-      }> = []
-      for (const file of files) {
-        const issue = documentUploadIssue(file, fileSizeLimitMb)
-        if (issue) localExclusions.push({ filename: file.name, reasonKey: issue })
-        else uploadableFiles.push(file)
-      }
-      const formatExclusionDetails = (
-        exclusions: Array<{ filename: string; reasonKey: UploadExclusionReasonKey }>,
-      ) => {
-        const detailItems = exclusions.slice(0, 3).map(({ filename, reasonKey }) => {
-          const reason =
-            reasonKey === 'fileSize'
-              ? t(($) => $['newKnowledge.documentUploadExclusion.fileSize'], {
-                  size: fileSizeLimitMb,
-                })
-              : t(($) => $[`newKnowledge.documentUploadExclusion.${reasonKey}`])
-          return `${filename} (${reason})`
-        })
-        if (exclusions.length > detailItems.length)
-          detailItems.push(
-            t(($) => $['newKnowledge.documentUploadExclusion.more'], {
-              count: exclusions.length - detailItems.length,
-            }),
-          )
-        return detailItems.join('; ')
-      }
-      if (!uploadableFiles.length) {
-        toast.error(
-          t(($) => $['newKnowledge.documentUploadRejected'], {
-            details: formatExclusionDetails(localExclusions),
-          }),
-        )
-        endUpload()
-        return false
-      }
-      try {
-        if ((await ensureModelReady({ capability: 'ingest', intent: 'upload' })).status !== 'ready')
-          return false
-        let acceptedCount = 0
-        const exclusions = [...localExclusions]
-        await stageFiles(uploadableFiles)
-        const uploads = prepareUploads(uploadableFiles)
-        await uploadKnowledgeFsDocuments(
-          knowledgeSpaceId,
-          uploads,
-          uploadProgress,
-          updateUploadProgress,
-        )
-        completeUploads()
-        acceptedCount = uploadableFiles.length
-        const exclusionDetails = formatExclusionDetails(exclusions)
-        if (!acceptedCount) {
-          toast.error(
-            t(($) => $['newKnowledge.documentUploadRejected'], {
-              details: exclusionDetails,
-            }),
-          )
-          return false
-        }
-        if (exclusions.length)
-          toast.warning(
-            t(($) => $['newKnowledge.documentUploadPartial'], {
-              accepted: acceptedCount,
-              details: exclusionDetails,
-              excluded: exclusions.length,
-            }),
-          )
-        else toast.success(t(($) => $['newKnowledge.documentUploadStarted']))
-        refreshDocumentsAndTasks()
-        return true
-      } catch (error) {
-        if (responseStatus(error) === 403) {
-          cancelUploadForm()
-          handleWritePermissionDenied()
-        } else toast.error(t(($) => $['newKnowledge.documentUploadFailed']))
-        return false
-      } finally {
-        endUpload()
-      }
-    },
-    [
-      beginUpload,
-      canUpload,
-      cancelUploadForm,
-      completeUploads,
-      endUpload,
-      ensureModelReady,
-      fileSizeLimitMb,
-      handleWritePermissionDenied,
-      knowledgeSpaceId,
-      prepareUploads,
-      refreshDocumentsAndTasks,
-      stageFiles,
-      t,
-      updateUploadProgress,
-      uploadProgress,
-    ],
-  )
 
   const handleReindexDocuments = useCallback(async () => {
     if (
@@ -1218,78 +1052,13 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         readSurfaceOpen={tasksOpen || metadataOpen}
         recoverySurface={recoverySurface}
       >
-        <section
-          ref={documentsSectionRef}
-          className={cn(
-            'relative flex min-h-full w-full flex-col gap-4 px-6 pt-3',
-            bulkActionsVisible ? 'pb-[calc(7rem+env(safe-area-inset-bottom,0px))]' : 'pb-6',
-          )}
-          onDragEnter={(event) => {
-            const types = Array.from(event.dataTransfer.types ?? [])
-            if (types.length && !types.includes('Files')) return
-            event.preventDefault()
-            if (!canUpload || uploading) return
-            fileDragDepthRef.current += 1
-            setIsFileDragActive(true)
-          }}
-          onDragLeave={() => {
-            if (!fileDragDepthRef.current) return
-            fileDragDepthRef.current -= 1
-            if (!fileDragDepthRef.current) setIsFileDragActive(false)
-          }}
-          onDragOver={(event) => {
-            const types = Array.from(event.dataTransfer.types ?? [])
-            if (types.length && !types.includes('Files')) return
-            event.preventDefault()
-            event.dataTransfer.dropEffect = canUpload && !uploading ? 'copy' : 'none'
-          }}
-          onDrop={(event) => {
-            const types = Array.from(event.dataTransfer.types ?? [])
-            if (types.length && !types.includes('Files')) return
-            event.preventDefault()
-            fileDragDepthRef.current = 0
-            setIsFileDragActive(false)
-            if (!canUpload || uploading) return
-            const files = [...event.dataTransfer.files]
-            if (!files.length) return
-            if (uploadFormOpen) uploadFormRef.current?.addFiles(files)
-            else openUploadForm(files)
-          }}
+        <DocumentUploadSurface
+          bulkActionsVisible={bulkActionsVisible}
+          knowledgeSpaceId={knowledgeSpaceId}
+          onUploadStarted={refreshDocumentsAndTasks}
+          permission={uploadPermission}
         >
-          {!uploadAvailable && (
-            <span id="documents-upload-unavailable" className="sr-only">
-              {t(($) => $['cornerLabel.unavailable'])}
-            </span>
-          )}
-          <header>
-            <h2
-              ref={documentsTitleRef}
-              id="new-knowledge-documents-title"
-              className="title-xl-semi-bold leading-6 text-text-primary"
-              tabIndex={-1}
-            >
-              {t(($) =>
-                uploadFormOpen ? $['newKnowledge.addDocument'] : $['newKnowledge.documents'],
-              )}
-            </h2>
-            <p className="mt-1 system-xs-regular text-text-tertiary">
-              {t(($) =>
-                uploadFormOpen
-                  ? $['newKnowledge.uploadFilesDescription']
-                  : $['newKnowledge.documentsDescription'],
-              )}
-            </p>
-            {canRead && !canWrite && (
-              <p
-                id="documents-readonly-reason"
-                className="mt-2 inline-flex items-center gap-1.5 system-xs-regular text-text-warning"
-                role="status"
-              >
-                <span aria-hidden className="i-ri-lock-line size-3.5" />
-                {t(($) => $['newKnowledge.documentPermissionRestricted'])}
-              </p>
-            )}
-          </header>
+          <DocumentUploadHeader />
           <KnowledgeModelReadinessBanner capability="index" knowledgeSpaceId={knowledgeSpaceId} />
           {documentsQuery.error &&
             documentsQuery.data &&
@@ -1428,102 +1197,81 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                 {tCommon(($) => $['operation.retry'])}
               </Button>
             </div>
-          ) : uploadFormOpen ? (
-            <DocumentUploadForm
-              ref={uploadFormRef}
-              fileSizeLimitMb={fileSizeLimitMb}
-              initialFiles={uploadFormInitialFiles}
-              uploadProgress={stagedUploadProgress}
-              uploading={uploading}
-              onCancel={cancelUploadForm}
-              onFilesAdded={async (files) => {
-                try {
-                  await stageFiles(files)
-                } catch (error) {
-                  if (error instanceof DocumentStagingCanceledError) return
-                  toast.error(t(($) => $['newKnowledge.documentUploadFailed']))
-                  throw error
-                }
-              }}
-              onFileRemoved={discardStagedFile}
-              onSubmit={async (files) => {
-                const uploaded = await handleUploadFiles(files)
-                if (uploaded) closeUploadForm()
-                return uploaded
-              }}
-            />
-          ) : !documents.length ? (
-            <DocumentsEmpty
-              canEdit={canUpload}
-              onAddDocument={() => openUploadForm()}
-              onOpenMetadata={() => setMetadataOpen(true)}
-              readOnlyReasonId={documentUploadRestrictionReasonId}
-              uploading={uploading}
-            />
           ) : (
-            <DocumentsList
-              activeTaskCount={activeTasks.length}
-              allSelected={allFilteredSelected}
-              attentionTaskBadge={attentionTaskBadge}
-              canDownload={canDownload}
-              canEdit={canWrite}
-              canUpload={canUpload}
-              completingResults={completingFilteredResults}
-              documents={filteredDocuments}
-              failureReasons={documentFailureReasons}
-              filter={filter}
-              getDocumentHref={(documentId) =>
-                newKnowledgeDocumentDetailPath(knowledgeSpaceId, documentId)
+            <DocumentUploadContent>
+              {(upload) =>
+                !documents.length ? (
+                  <DocumentsEmpty
+                    canEdit={upload.canUpload}
+                    onAddDocument={() => upload.openUpload()}
+                    onOpenMetadata={() => setMetadataOpen(true)}
+                    readOnlyReasonId={upload.uploadRestrictionReasonId}
+                    uploading={upload.uploading}
+                  />
+                ) : (
+                  <DocumentsList
+                    activeTaskCount={activeTasks.length}
+                    allSelected={allFilteredSelected}
+                    attentionTaskBadge={attentionTaskBadge}
+                    canDownload={canDownload}
+                    canEdit={canWrite}
+                    canUpload={upload.canUpload}
+                    completingResults={completingFilteredResults}
+                    documents={filteredDocuments}
+                    failureReasons={documentFailureReasons}
+                    filter={filter}
+                    getDocumentHref={(documentId) =>
+                      newKnowledgeDocumentDetailPath(knowledgeSpaceId, documentId)
+                    }
+                    hasNextPage={Boolean(hasNextDocumentPage || hasRelevantNextSourcePage)}
+                    hasSelectableDocuments={Boolean(selectableFilteredDocuments.length)}
+                    hasTaskError={hasTaskError}
+                    isFetchNextPageError={documentsQuery.isFetchNextPageError}
+                    isFetchingNextDocumentPage={isFetchingNextDocumentPage}
+                    isFetchingNextPage={isFetchingNextResultsPage}
+                    onAddDocument={() => upload.openUpload()}
+                    onFilterChange={setFilter}
+                    onLoadMore={loadMoreResults}
+                    onDownloadDocument={handleDownloadDocument}
+                    onOpenMetadata={() => setMetadataOpen(true)}
+                    onOpenTasks={() => setTasksOpen(true)}
+                    onRemoveDocument={handleRemoveDocument}
+                    onRenameDocument={handleRenameDocument}
+                    onReindexDocument={(documentId) => void handleReindexDocument(documentId)}
+                    onRetryDocument={handleRetryDocument}
+                    onSearchChange={setSearch}
+                    onSelectAll={toggleAllFiltered}
+                    onSelectDocument={toggleDocument}
+                    onToggleDocumentAvailability={handleToggleDocumentAvailability}
+                    pendingDocumentAction={pendingDocumentAction}
+                    readOnlyReasonId={upload.readOnlyReasonId}
+                    resultsIncomplete={filteredResultsIncomplete}
+                    retryableDocumentIds={retryableDocumentIds}
+                    search={search}
+                    selectionDisabled={selectionDisabled}
+                    selectedDocumentIds={validSelectedDocumentIds}
+                    showTasks={Boolean(
+                      tasks.length ||
+                      tasksQuery.error ||
+                      tasksQuery.isFetchNextPageError ||
+                      hasNextTaskPage,
+                    )}
+                    someSelected={someFilteredSelected}
+                    sourcesPending={sourceResultsIncomplete}
+                    sourceNames={sourceNames}
+                    statusPending={dependencyResultsIncomplete}
+                    statuses={documentStatuses}
+                    tasksPending={taskResultsIncomplete}
+                    tasksButtonLabel={tasksButtonLabel}
+                    tasksLiveStatus={tasksLiveStatus}
+                    uploadRestrictionReasonId={upload.uploadRestrictionReasonId}
+                    uploading={upload.uploading}
+                  />
+                )
               }
-              hasNextPage={Boolean(hasNextDocumentPage || hasRelevantNextSourcePage)}
-              hasSelectableDocuments={Boolean(selectableFilteredDocuments.length)}
-              hasTaskError={hasTaskError}
-              isFetchNextPageError={documentsQuery.isFetchNextPageError}
-              isFetchingNextDocumentPage={isFetchingNextDocumentPage}
-              isFetchingNextPage={isFetchingNextResultsPage}
-              onAddDocument={() => openUploadForm()}
-              onFilterChange={setFilter}
-              onLoadMore={loadMoreResults}
-              onDownloadDocument={handleDownloadDocument}
-              onOpenMetadata={() => setMetadataOpen(true)}
-              onOpenTasks={() => setTasksOpen(true)}
-              onRemoveDocument={handleRemoveDocument}
-              onRenameDocument={handleRenameDocument}
-              onReindexDocument={(documentId) => void handleReindexDocument(documentId)}
-              onRetryDocument={handleRetryDocument}
-              onSearchChange={setSearch}
-              onSelectAll={toggleAllFiltered}
-              onSelectDocument={toggleDocument}
-              onToggleDocumentAvailability={handleToggleDocumentAvailability}
-              pendingDocumentAction={pendingDocumentAction}
-              readOnlyReasonId={documentWriteRestrictionReasonId}
-              resultsIncomplete={filteredResultsIncomplete}
-              retryableDocumentIds={retryableDocumentIds}
-              search={search}
-              selectionDisabled={selectionDisabled}
-              selectedDocumentIds={validSelectedDocumentIds}
-              showTasks={Boolean(
-                tasks.length ||
-                tasksQuery.error ||
-                tasksQuery.isFetchNextPageError ||
-                hasNextTaskPage,
-              )}
-              someSelected={someFilteredSelected}
-              sourcesPending={sourceResultsIncomplete}
-              sourceNames={sourceNames}
-              statusPending={dependencyResultsIncomplete}
-              statuses={documentStatuses}
-              tasksPending={taskResultsIncomplete}
-              tasksButtonLabel={tasksButtonLabel}
-              tasksLiveStatus={tasksLiveStatus}
-              uploadRestrictionReasonId={documentUploadRestrictionReasonId}
-              uploading={uploading}
-            />
+            </DocumentUploadContent>
           )}
-          {isFileDragActive && canUpload && (
-            <DocumentDropOverlay fileSizeLimitMb={fileSizeLimitMb} />
-          )}
-        </section>
+        </DocumentUploadSurface>
         <DocumentPermissionRecoveryBulkRegion>
           {bulkActionsVisible && (
             <DocumentBulkActions
