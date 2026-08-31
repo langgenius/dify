@@ -23,7 +23,13 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-export type DocumentAction = 'download' | 'remove' | 'rename' | 'retry' | 'toggle-availability'
+export type DocumentAction =
+  | 'download'
+  | 'reindex'
+  | 'remove'
+  | 'rename'
+  | 'retry'
+  | 'toggle-availability'
 
 export function DocumentActionsDropdown({
   canEdit,

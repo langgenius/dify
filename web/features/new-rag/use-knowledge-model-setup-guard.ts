@@ -81,3 +81,7 @@ export function useKnowledgeModelSetupGuard(knowledgeSpaceId: string) {
     setModelSetupDialogOpen,
   }
 }
+
+export type EnsureKnowledgeModelReady = ReturnType<
+  typeof useKnowledgeModelSetupGuard
+>['ensureModelReady']

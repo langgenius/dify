@@ -1,7 +1,5 @@
 'use client'
 
-import type { DocumentAction } from './actions-dropdown'
-import type { DocumentProcessingTask } from './models'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -33,13 +31,11 @@ import {
   documentCanToggleAvailability,
   documentDisplayStatus,
   documentShowsAvailabilityAction,
-  documentTitle,
   newestTaskByDocument,
   sourceName,
-  taskCanRetry,
   taskNeedsAttention,
 } from './model'
-import { backgroundTaskFromApi, logicalDocumentListFromApi } from './models'
+import { logicalDocumentListFromApi } from './models'
 import {
   DocumentPermissionRecoveryBoundary,
   DocumentPermissionRecoveryBulkRegion,
@@ -77,8 +73,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     hasDocumentDownloadPermission &&
     !workspacePermissionKeysLoading &&
     !workspacePermissionKeysError
-  const reindexPendingRef = useRef(false)
-  const documentActionPendingRef = useRef(false)
+  const bulkReindexPendingRef = useRef(false)
   const bulkActionPendingRef = useRef(false)
   const [filter, setFilter] = useQueryState('status', documentFilterParser)
   const [search, setSearch] = useQueryState('query', documentSearchParser)
@@ -98,9 +93,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   })
   const [bulkActionPending, setBulkActionPending] = useState<
     'availability' | 'download' | 'reindex' | 'remove' | undefined
-  >()
-  const [pendingDocumentAction, setPendingDocumentAction] = useState<
-    { action: DocumentAction; documentId: string } | undefined
   >()
   const { mutateAsync: reindexDocuments } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions(),
@@ -255,15 +247,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     hasRelevantNextSourcePage && (sourcesQuery.data?.pages.length ?? 0) < MAX_AUTO_CURSOR_PAGES,
   )
   const taskByDocument = useMemo(() => newestTaskByDocument(tasks), [tasks])
-  const retryableDocumentIds = useMemo(
-    () =>
-      new Set(
-        [...taskByDocument].flatMap(([documentId, task]) =>
-          taskCanRetry(task) ? [documentId] : [],
-        ),
-      ),
-    [taskByDocument],
-  )
   const documentStatuses = useMemo(
     () =>
       new Map(
@@ -545,11 +528,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       selectionDisabled ||
       !validSelectedDocumentIds.size ||
       bulkReindexDisabled ||
-      reindexPendingRef.current ||
+      bulkReindexPendingRef.current ||
       bulkActionPendingRef.current
     )
       return
-    reindexPendingRef.current = true
+    bulkReindexPendingRef.current = true
     bulkActionPendingRef.current = true
     setBulkActionPending('reindex')
     try {
@@ -595,7 +578,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       if (responseStatus(error) === 403) handleWritePermissionDenied()
       else toast.error(t(($) => $['newKnowledge.documentsReindexFailed']))
     } finally {
-      reindexPendingRef.current = false
+      bulkReindexPendingRef.current = false
       bulkActionPendingRef.current = false
       setBulkActionPending(undefined)
     }
@@ -611,167 +594,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     t,
     validSelectedDocumentIds,
   ])
-
-  const handleReindexDocument = useCallback(
-    async (documentId: string) => {
-      const status = documentStatuses.get(documentId)
-      if (!canWrite || !status || !documentCanReindex(status) || reindexPendingRef.current) return
-      reindexPendingRef.current = true
-      try {
-        if ((await ensureModelReady({ capability: 'index', intent: 'reindex' })).status !== 'ready')
-          return
-        const result = await reindexDocuments({
-          body: { documentIds: [documentId] },
-          params: { control_space_id: knowledgeSpaceId },
-        })
-        const item = result.items[0]
-        if (!item || item.status === 'not_found')
-          toast.error(
-            t(($) => $['newKnowledge.documentsReindexPartial'], {
-              missing: 1,
-              queued: 0,
-            }),
-          )
-        else if (item.status === 'disabled')
-          toast.error(t(($) => $['newKnowledge.documentsReindexFailed']))
-        else toast.success(t(($) => $['newKnowledge.documentsReindexStarted']))
-        refreshDocumentsAndTasks()
-      } catch (error) {
-        if (responseStatus(error) === 403) handleWritePermissionDenied()
-        else toast.error(t(($) => $['newKnowledge.documentsReindexFailed']))
-      } finally {
-        reindexPendingRef.current = false
-      }
-    },
-    [
-      canWrite,
-      documentStatuses,
-      ensureModelReady,
-      handleWritePermissionDenied,
-      knowledgeSpaceId,
-      refreshDocumentsAndTasks,
-      reindexDocuments,
-      t,
-    ],
-  )
-
-  const handleRenameDocument = useCallback(
-    async (documentId: string, title: string) => {
-      if (!canWrite || documentActionPendingRef.current) return false
-      const currentDocument = documents.find((document) => document.id === documentId)
-      const normalizedTitle = title.trim()
-      if (
-        !currentDocument ||
-        !normalizedTitle ||
-        normalizedTitle === documentTitle(currentDocument)
-      )
-        return false
-      documentActionPendingRef.current = true
-      setPendingDocumentAction({ action: 'rename', documentId })
-      try {
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch({
-          body: {
-            expectedRowVersion: currentDocument.rowVersion,
-            patch: { displayName: normalizedTitle },
-          },
-          params: { control_space_id: knowledgeSpaceId, document_id: documentId },
-        })
-        refreshDocuments()
-        return true
-      } catch (error) {
-        if (responseStatus(error) === 403) handleWritePermissionDenied()
-        else toast.error(t(($) => $['newKnowledge.settings.saveFailed']))
-        return false
-      } finally {
-        documentActionPendingRef.current = false
-        setPendingDocumentAction(undefined)
-      }
-    },
-    [canWrite, documents, handleWritePermissionDenied, knowledgeSpaceId, refreshDocuments, t],
-  )
-
-  const handleDownloadDocument = useCallback(
-    async (documentId: string) => {
-      if (!canDownload || documentActionPendingRef.current) return false
-      const currentDocument = documents.find((document) => document.id === documentId)
-      const status = documentStatuses.get(documentId)
-      if (
-        taskResultsIncomplete ||
-        !currentDocument ||
-        !status ||
-        !documentCanDownload(currentDocument, status)
-      )
-        return false
-      documentActionPendingRef.current = true
-      setPendingDocumentAction({ action: 'download', documentId })
-      try {
-        const file =
-          await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.download.get(
-            {
-              params: { control_space_id: knowledgeSpaceId, document_id: documentId },
-            },
-          )
-        downloadBlob({
-          data: file,
-          fileName:
-            typeof File !== 'undefined' && file instanceof File && file.name
-              ? file.name
-              : currentDocument.title,
-        })
-        return true
-      } catch {
-        toast.error(tCommon(($) => $['actionMsg.downloadUnsuccessfully']))
-        return false
-      } finally {
-        documentActionPendingRef.current = false
-        setPendingDocumentAction(undefined)
-      }
-    },
-    [canDownload, documentStatuses, documents, knowledgeSpaceId, taskResultsIncomplete, tCommon],
-  )
-
-  const handleToggleDocumentAvailability = useCallback(
-    async (documentId: string) => {
-      if (!canWrite || documentActionPendingRef.current) return false
-      const currentDocument = documents.find((document) => document.id === documentId)
-      const status = documentStatuses.get(documentId)
-      if (!currentDocument || !status || !documentCanToggleAvailability(status)) return false
-      documentActionPendingRef.current = true
-      setPendingDocumentAction({ action: 'toggle-availability', documentId })
-      try {
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.patch(
-          {
-            body: {
-              enabled: !currentDocument.enabled,
-              expectedRowVersion: currentDocument.rowVersion,
-            },
-            params: { control_space_id: knowledgeSpaceId, document_id: documentId },
-          },
-        )
-        refreshDocuments()
-        return true
-      } catch (error) {
-        if (responseStatus(error) === 403) handleWritePermissionDenied()
-        else if (responseStatus(error) === 409) {
-          refreshDocuments()
-          toast.warning(t(($) => $['newKnowledge.taskActionFailed']))
-        } else toast.error(t(($) => $['newKnowledge.documentsErrorDescription']))
-        return false
-      } finally {
-        documentActionPendingRef.current = false
-        setPendingDocumentAction(undefined)
-      }
-    },
-    [
-      canWrite,
-      documentStatuses,
-      documents,
-      handleWritePermissionDenied,
-      knowledgeSpaceId,
-      refreshDocuments,
-      t,
-    ],
-  )
 
   const handleUpdateDocumentsAvailability = useCallback(async () => {
     if (
@@ -897,90 +719,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     validSelectedDocumentIds,
   ])
 
-  const handleRemoveDocument = useCallback(
-    async (documentId: string) => {
-      if (!canWrite || documentActionPendingRef.current) return false
-      const currentDocument = documents.find((document) => document.id === documentId)
-      if (!currentDocument) return false
-      documentActionPendingRef.current = true
-      setPendingDocumentAction({ action: 'remove', documentId })
-      try {
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.delete(
-          {
-            body: { expectedRevision: currentDocument.rowVersion },
-            headers: { 'Idempotency-Key': createRequestId() },
-            params: { control_space_id: knowledgeSpaceId, document_id: documentId },
-          },
-        )
-        setSelectedDocumentIds((current) => {
-          const next = new Set(current)
-          next.delete(documentId)
-          return next
-        })
-        refreshDocumentsAndTasks()
-        return true
-      } catch (error) {
-        if (responseStatus(error) === 403) handleWritePermissionDenied()
-        else toast.error(t(($) => $['newKnowledge.documentsErrorDescription']))
-        return false
-      } finally {
-        documentActionPendingRef.current = false
-        setPendingDocumentAction(undefined)
-      }
-    },
-    [
-      canWrite,
-      documents,
-      handleWritePermissionDenied,
-      knowledgeSpaceId,
-      refreshDocumentsAndTasks,
-      t,
-    ],
-  )
-
-  const handleRetryDocument = useCallback(
-    async (documentId: string) => {
-      if (!canWrite || documentActionPendingRef.current) return false
-      const task = taskByDocument.get(documentId)
-      if (!task || !taskCanRetry(task)) return false
-      documentActionPendingRef.current = true
-      setPendingDocumentAction({ action: 'retry', documentId })
-      try {
-        const updated = backgroundTaskFromApi(
-          await consoleClient.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.retry.post(
-            {
-              params: {
-                control_space_id: knowledgeSpaceId,
-                task_id: task.id,
-                task_kind: task.taskKind,
-              },
-            },
-          ),
-        )
-        if (updated.documentId && updated.documentRevision)
-          handleTaskUpdated(updated as DocumentProcessingTask)
-        refreshDocumentsAndTasks()
-        return true
-      } catch (error) {
-        if (responseStatus(error) === 403) handleWritePermissionDenied()
-        else toast.error(t(($) => $['newKnowledge.taskActionFailed']))
-        return false
-      } finally {
-        documentActionPendingRef.current = false
-        setPendingDocumentAction(undefined)
-      }
-    },
-    [
-      canWrite,
-      handleTaskUpdated,
-      handleWritePermissionDenied,
-      knowledgeSpaceId,
-      refreshDocumentsAndTasks,
-      t,
-      taskByDocument,
-    ],
-  )
-
   const toggleDocument = useCallback(
     (documentId: string) => {
       if (!canWrite || selectionDisabled) return
@@ -993,6 +731,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     },
     [canWrite, selectionDisabled],
   )
+
+  const handleDocumentRemoved = useCallback((documentId: string) => {
+    setSelectedDocumentIds((current) => {
+      const next = new Set(current)
+      next.delete(documentId)
+      return next
+    })
+  }, [])
 
   const toggleAllFiltered = () => {
     if (!canWrite || selectionDisabled) return
@@ -1218,6 +964,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                     canUpload={upload.canUpload}
                     completingResults={completingFilteredResults}
                     documents={filteredDocuments}
+                    ensureModelReady={ensureModelReady}
                     failureReasons={documentFailureReasons}
                     filter={filter}
                     getDocumentHref={(documentId) =>
@@ -1229,24 +976,20 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                     isFetchNextPageError={documentsQuery.isFetchNextPageError}
                     isFetchingNextDocumentPage={isFetchingNextDocumentPage}
                     isFetchingNextPage={isFetchingNextResultsPage}
+                    knowledgeSpaceId={knowledgeSpaceId}
                     onAddDocument={() => upload.openUpload()}
+                    onDocumentRemoved={handleDocumentRemoved}
                     onFilterChange={setFilter}
                     onLoadMore={loadMoreResults}
-                    onDownloadDocument={handleDownloadDocument}
                     onOpenMetadata={() => setMetadataOpen(true)}
                     onOpenTasks={() => setTasksOpen(true)}
-                    onRemoveDocument={handleRemoveDocument}
-                    onRenameDocument={handleRenameDocument}
-                    onReindexDocument={(documentId) => void handleReindexDocument(documentId)}
-                    onRetryDocument={handleRetryDocument}
                     onSearchChange={setSearch}
                     onSelectAll={toggleAllFiltered}
                     onSelectDocument={toggleDocument}
-                    onToggleDocumentAvailability={handleToggleDocumentAvailability}
-                    pendingDocumentAction={pendingDocumentAction}
+                    onTaskUpdated={handleTaskUpdated}
+                    onWriteDenied={handleWritePermissionDenied}
                     readOnlyReasonId={upload.readOnlyReasonId}
                     resultsIncomplete={filteredResultsIncomplete}
-                    retryableDocumentIds={retryableDocumentIds}
                     search={search}
                     selectionDisabled={selectionDisabled}
                     selectedDocumentIds={validSelectedDocumentIds}
@@ -1261,6 +1004,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                     sourceNames={sourceNames}
                     statusPending={dependencyResultsIncomplete}
                     statuses={documentStatuses}
+                    tasksByDocument={taskByDocument}
                     tasksPending={taskResultsIncomplete}
                     tasksButtonLabel={tasksButtonLabel}
                     tasksLiveStatus={tasksLiveStatus}

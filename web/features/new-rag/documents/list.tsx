@@ -1,8 +1,8 @@
 'use client'
 
-import type { DocumentAction } from './actions-dropdown'
+import type { EnsureKnowledgeModelReady } from '../use-knowledge-model-setup-guard'
 import type { DocumentDisplayStatus } from './model'
-import type { LogicalDocument } from './models'
+import type { DocumentProcessingTask, LogicalDocument } from './models'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -43,7 +43,9 @@ import {
   documentCanToggleAvailability,
   documentShowsAvailabilityAction,
   sourceName,
+  taskCanRetry,
 } from './model'
+import { useDocumentRowActions } from './row-actions/use-document-row-actions'
 
 export type DocumentFilter = DocumentDisplayStatus | 'all'
 
@@ -180,45 +182,41 @@ const DocumentRow = memo(
     failureReason,
     formatTimeFromNow,
     canDownload,
-    onDownload,
-    onRemove,
-    onRename,
+    ensureModelReady,
+    knowledgeSpaceId,
+    onDocumentRemoved,
     onSelectedChange,
-    onReindex,
-    onRetry,
-    onToggleAvailability,
-    pendingAction,
+    onTaskUpdated,
+    onWriteDenied,
     readOnlyReasonId,
-    retryable,
     selected,
     selectionDisabled,
     source,
     sourcePending,
     status,
     statusPending,
+    task,
     tasksPending,
   }: {
     canDownload: boolean
     document: LogicalDocument
     documentHref: string
+    ensureModelReady: EnsureKnowledgeModelReady
     failureReason?: string
     formatTimeFromNow: (time: number) => string
-    onDownload: (documentId: string) => Promise<boolean>
-    onRemove: (documentId: string) => Promise<boolean>
-    onRename: (documentId: string, title: string) => Promise<boolean>
+    knowledgeSpaceId: string
+    onDocumentRemoved: (documentId: string) => void
     onSelectedChange: (documentId: string) => void
-    onReindex: (documentId: string) => void
-    onRetry: (documentId: string) => Promise<boolean>
-    onToggleAvailability: (documentId: string) => Promise<boolean>
-    pendingAction?: DocumentAction
+    onTaskUpdated: (task: DocumentProcessingTask) => void
+    onWriteDenied: () => void
     readOnlyReasonId?: string
-    retryable: boolean
     selected: boolean
     selectionDisabled: boolean
     source?: string
     sourcePending: boolean
     status: DocumentDisplayStatus
     statusPending: boolean
+    task?: DocumentProcessingTask
     tasksPending: boolean
   }) => {
     const { t } = useTranslation('dataset')
@@ -226,6 +224,20 @@ const DocumentRow = memo(
     const titleId = `new-document-${document.id}`
     const revision = document.activeRevision ?? document.active?.revision
     const updatedTime = Date.parse(document.updatedAt)
+    const { download, pendingAction, reindex, remove, rename, retry, toggleAvailability } =
+      useDocumentRowActions({
+        canDownload,
+        canWrite: !selectionDisabled,
+        document,
+        ensureModelReady,
+        knowledgeSpaceId,
+        onDocumentRemoved,
+        onTaskUpdated,
+        onWriteDenied,
+        status,
+        task,
+        taskResultsIncomplete: tasksPending,
+      })
 
     return (
       <tr className="h-12 border-t border-divider-subtle">
@@ -297,16 +309,16 @@ const DocumentRow = memo(
             documentEnabled={document.enabled}
             documentTitle={document.title}
             downloadDisabled={tasksPending || !documentCanDownload(document, status)}
-            onDownload={() => onDownload(document.id)}
-            onRemove={() => onRemove(document.id)}
-            onRename={(title) => onRename(document.id, title)}
-            onReindex={() => onReindex(document.id)}
-            onRetry={() => onRetry(document.id)}
-            onToggleAvailability={() => onToggleAvailability(document.id)}
+            onDownload={download}
+            onRemove={remove}
+            onRename={rename}
+            onReindex={() => void reindex()}
+            onRetry={retry}
+            onToggleAvailability={toggleAvailability}
             pendingAction={pendingAction}
             removeDisabled={document.status === 'deleting'}
             reindexDisabled={selectionDisabled || !documentCanReindex(status)}
-            retryDisabled={selectionDisabled || !retryable}
+            retryDisabled={selectionDisabled || !task || !taskCanRetry(task)}
             showAvailabilityAction={documentShowsAvailabilityAction(status)}
             showRetry={status === 'failed'}
             toggleAvailabilityDisabled={
@@ -384,6 +396,7 @@ export function DocumentsList({
   canUpload,
   completingResults,
   documents,
+  ensureModelReady,
   failureReasons,
   filter,
   getDocumentHref,
@@ -393,24 +406,20 @@ export function DocumentsList({
   isFetchNextPageError,
   isFetchingNextDocumentPage,
   isFetchingNextPage,
+  knowledgeSpaceId,
   onAddDocument,
+  onDocumentRemoved,
   onFilterChange,
   onLoadMore,
-  onDownloadDocument,
   onOpenMetadata,
   onOpenTasks,
-  onRemoveDocument,
-  onRenameDocument,
-  onReindexDocument,
-  onRetryDocument,
   onSearchChange,
   onSelectAll,
   onSelectDocument,
-  onToggleDocumentAvailability,
-  pendingDocumentAction,
+  onTaskUpdated,
+  onWriteDenied,
   readOnlyReasonId,
   resultsIncomplete,
-  retryableDocumentIds,
   search,
   selectionDisabled,
   selectedDocumentIds,
@@ -420,6 +429,7 @@ export function DocumentsList({
   sourceNames,
   statusPending,
   statuses,
+  tasksByDocument,
   tasksPending,
   tasksButtonLabel,
   tasksLiveStatus,
@@ -434,6 +444,7 @@ export function DocumentsList({
   canUpload: boolean
   completingResults: boolean
   documents: LogicalDocument[]
+  ensureModelReady: EnsureKnowledgeModelReady
   failureReasons: Map<string, string>
   filter: DocumentFilter
   getDocumentHref: (documentId: string) => string
@@ -443,24 +454,20 @@ export function DocumentsList({
   isFetchNextPageError: boolean
   isFetchingNextDocumentPage: boolean
   isFetchingNextPage: boolean
+  knowledgeSpaceId: string
   onAddDocument: () => void
+  onDocumentRemoved: (documentId: string) => void
   onFilterChange: (filter: DocumentFilter) => void
   onLoadMore: () => void
-  onDownloadDocument: (documentId: string) => Promise<boolean>
   onOpenMetadata: () => void
   onOpenTasks: () => void
-  onRemoveDocument: (documentId: string) => Promise<boolean>
-  onRenameDocument: (documentId: string, title: string) => Promise<boolean>
-  onReindexDocument: (documentId: string) => void
-  onRetryDocument: (documentId: string) => Promise<boolean>
   onSearchChange: (search: string) => void
   onSelectAll: () => void
   onSelectDocument: (documentId: string) => void
-  onToggleDocumentAvailability: (documentId: string) => Promise<boolean>
-  pendingDocumentAction?: { action: DocumentAction; documentId: string }
+  onTaskUpdated: (task: DocumentProcessingTask) => void
+  onWriteDenied: () => void
   readOnlyReasonId?: string
   resultsIncomplete: boolean
-  retryableDocumentIds: Set<string>
   search: string
   selectionDisabled: boolean
   selectedDocumentIds: Set<string>
@@ -470,6 +477,7 @@ export function DocumentsList({
   sourceNames: Map<string, string>
   statusPending: boolean
   statuses: Map<string, DocumentDisplayStatus>
+  tasksByDocument: Map<string, DocumentProcessingTask>
   tasksPending: boolean
   tasksButtonLabel: string
   tasksLiveStatus: string
@@ -624,20 +632,14 @@ export function DocumentsList({
                   canDownload={canDownload}
                   document={document}
                   documentHref={getDocumentHref(document.id)}
+                  ensureModelReady={ensureModelReady}
                   failureReason={failureReasons.get(document.id)}
                   formatTimeFromNow={formatTimeFromNow}
-                  onDownload={onDownloadDocument}
-                  onRemove={onRemoveDocument}
-                  onRename={onRenameDocument}
+                  knowledgeSpaceId={knowledgeSpaceId}
+                  onDocumentRemoved={onDocumentRemoved}
                   onSelectedChange={onSelectDocument}
-                  onReindex={onReindexDocument}
-                  onRetry={onRetryDocument}
-                  onToggleAvailability={onToggleDocumentAvailability}
-                  pendingAction={
-                    pendingDocumentAction?.documentId === document.id
-                      ? pendingDocumentAction.action
-                      : undefined
-                  }
+                  onTaskUpdated={onTaskUpdated}
+                  onWriteDenied={onWriteDenied}
                   readOnlyReasonId={
                     !canEdit
                       ? readOnlyReasonId
@@ -645,7 +647,6 @@ export function DocumentsList({
                         ? PARTIAL_RESULTS_DESCRIPTION_ID
                         : undefined
                   }
-                  retryable={retryableDocumentIds.has(document.id)}
                   selected={selectedDocumentIds.has(document.id)}
                   selectionDisabled={!canEdit || selectionDisabled}
                   source={
@@ -660,6 +661,7 @@ export function DocumentsList({
                     tasksPending ||
                     (statusPending && document.sourceId && !sourceNames.has(document.sourceId)),
                   )}
+                  task={tasksByDocument.get(document.id)}
                   tasksPending={tasksPending}
                 />
               ))}
