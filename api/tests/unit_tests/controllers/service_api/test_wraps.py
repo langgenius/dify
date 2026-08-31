@@ -30,6 +30,7 @@ from models.account import TenantAccountRole
 from models.dataset import Dataset, RateLimitLog
 from models.enums import ApiTokenType
 from models.model import ApiToken, App, AppMode, IconType
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _configure_current_app_mock(mock_current_app):
@@ -361,7 +362,7 @@ class TestCloudEditionBillingResourceCheck:
         # Act
         with (
             app.test_request_context("/", method="GET"),
-            patch("controllers.service_api.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+            config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
         ):
             result = add_segment()
 
@@ -391,7 +392,7 @@ class TestCloudEditionBillingResourceCheck:
 
         with (
             app.test_request_context("/", method="GET"),
-            patch("controllers.service_api.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+            config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
             pytest.raises(ServiceUnavailable) as exc_info,
         ):
             upload_document()
@@ -421,7 +422,7 @@ class TestCloudEditionBillingResourceCheck:
 
         with (
             app.test_request_context("/", method="GET"),
-            patch("controllers.service_api.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+            config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
         ):
             result = upload_document()
 

@@ -28,9 +28,16 @@ from services.account_activation_adapters import (
     BillingAccountActivationEligibility,
     BillingWorkspaceMembershipCache,
     DeploymentWorkspaceInvitePolicy,
+    RBACWorkspaceMemberAccessSync,
     RegisterServiceInvitationTokenStore,
 )
 from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
+from services.account_email_registration_adapters import (
+    AccountServiceRegistrationGateway,
+    BillingAccountRegistrationPolicyGateway,
+    RedisEmailRegistrationSecurityGateway,
+    TokenManagerEmailRegistrationTokenGateway,
+)
 from services.app_site_service import AppSiteService
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
 from services.billing_portal_service import BillingPortalService
@@ -46,6 +53,7 @@ from services.retention.workflow_run.archive_log_service import WorkflowRunArchi
 from services.tag_application_service import TagApplicationService
 from services.webapp_access_query_service import WebAppAccessUnavailableError
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @pytest.mark.parametrize(
@@ -103,12 +111,11 @@ def test_init_app_registers_services_for_the_current_app(
 ) -> None:
     app = Flask(__name__)
     monkeypatch.setattr(ext_application_services, "get_session_maker", lambda: sqlite_session_factory)
-    monkeypatch.setattr(
-        ext_application_services.dify_config,
-        "DEPLOYMENT_EDITION",
-        DeploymentEdition.COMMUNITY,
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+        INIT_PASSWORD="expected",
     )
-    monkeypatch.setattr(ext_application_services.dify_config, "INIT_PASSWORD", "expected")
 
     ext_application_services.init_app(app)
 
@@ -367,6 +374,13 @@ def test_build_application_services_wires_account_profile_repository(
     assert services.accounts.initialization._accounts is accounts
     assert not services.accounts.initialization._invitation_required
     assert services.accounts.change_email._accounts is accounts
+    email_registration = services.accounts.email_registration
+    assert email_registration._accounts is accounts
+    assert isinstance(email_registration._tokens, TokenManagerEmailRegistrationTokenGateway)
+    assert isinstance(email_registration._security, RedisEmailRegistrationSecurityGateway)
+    assert isinstance(email_registration._account_policy, BillingAccountRegistrationPolicyGateway)
+    assert isinstance(email_registration._registration, AccountServiceRegistrationGateway)
+    assert email_registration._registration._session_factory is sqlite_session_factory
     assert services.accounts.education._accounts is accounts
     assert services.accounts.deletion._accounts is accounts
     assert services.accounts.deletion._memberships is services.workspace_queries._workspaces
@@ -420,6 +434,7 @@ def test_build_application_services_wires_account_activation(
     assert activation._eligibility._enabled is billing_enabled
     assert isinstance(activation._membership_cache, BillingWorkspaceMembershipCache)
     assert activation._membership_cache._enabled is billing_enabled
+    assert isinstance(activation._member_access_sync, RBACWorkspaceMemberAccessSync)
 
 
 def test_build_application_services_wires_data_source_api_key_auth(
@@ -475,11 +490,7 @@ def test_build_application_services_uses_passed_edition_for_webapp_auth(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    monkeypatch.setattr(
-        ext_application_services.dify_config,
-        "DEPLOYMENT_EDITION",
-        DeploymentEdition.COMMUNITY,
-    )
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 
     with patch("extensions.ext_application_services.DeploymentWebPassportAuthGateway") as auth_gateway:
         ext_application_services.build_application_services(
@@ -679,7 +690,7 @@ def test_build_application_services_wires_dynamic_recommended_catalog(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(ext_application_services.dify_config, "HOSTED_FETCH_APP_TEMPLATES_MODE", "builtin")
+    apply_config_overrides(monkeypatch, HOSTED_FETCH_APP_TEMPLATES_MODE="builtin")
     services = ext_application_services.build_application_services(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
@@ -704,7 +715,7 @@ def test_build_application_services_wires_dynamic_recommended_catalog(
         )
     assert result.recommended_apps
 
-    monkeypatch.setattr(ext_application_services.dify_config, "HOSTED_FETCH_APP_TEMPLATES_MODE", "invalid")
+    apply_config_overrides(monkeypatch, HOSTED_FETCH_APP_TEMPLATES_MODE="invalid")
     with pytest.raises(ValueError, match="invalid fetch recommended apps mode: invalid"):
         services.recommended_app_queries.list_recommended(
             requested_language="en-US",

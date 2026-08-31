@@ -46,6 +46,7 @@ from models import Account, DifySetup
 from models.account import AccountStatus, TenantAccountRole
 from models.dataset import Dataset, RateLimitLog
 from services.entities.feature_entities import LicenseStatus
+from tests.unit_tests.config_override import config_overrides_context
 
 
 @pytest.fixture(autouse=True)
@@ -214,6 +215,68 @@ class TestCurrentContextInjection:
         login_required.assert_called_once()
         account_initialization_required.assert_called_once()
 
+    def test_console_email_registration_admission_checks_features_once(self):
+        with (
+            patch(
+                "controllers.console.flask_admission.setup_required", side_effect=lambda view: view
+            ) as setup_required,
+            patch(
+                "controllers.console.flask_admission.SystemFeatureService.is_email_password_login_enabled",
+                return_value=True,
+            ) as is_email_password_login_enabled,
+            patch(
+                "controllers.console.flask_admission.SystemFeatureService.is_registration_allowed",
+                return_value=True,
+            ) as is_registration_allowed,
+        ):
+
+            class Handler:
+                @flask_admission.console_email_registration_admission
+                def post(self):
+                    return "ok"
+
+            with Flask(__name__).test_request_context():
+                result = Handler().post()
+
+        assert result == "ok"
+        setup_required.assert_called_once()
+        is_email_password_login_enabled.assert_called_once_with()
+        is_registration_allowed.assert_called_once_with()
+
+    @pytest.mark.parametrize(
+        ("enable_email_password_login", "is_allow_register"),
+        [
+            pytest.param(False, True, id="password-login-disabled"),
+            pytest.param(True, False, id="registration-disabled"),
+        ],
+    )
+    def test_console_email_registration_admission_rejects_disabled_features(
+        self,
+        enable_email_password_login: bool,
+        is_allow_register: bool,
+    ) -> None:
+        with (
+            patch("controllers.console.flask_admission.setup_required", side_effect=lambda view: view),
+            patch(
+                "controllers.console.flask_admission.SystemFeatureService.is_email_password_login_enabled",
+                return_value=enable_email_password_login,
+            ),
+            patch(
+                "controllers.console.flask_admission.SystemFeatureService.is_registration_allowed",
+                return_value=is_allow_register,
+            ),
+        ):
+
+            class Handler:
+                @flask_admission.console_email_registration_admission
+                def post(self):
+                    return "ok"
+
+            with Flask(__name__).test_request_context(), pytest.raises(HTTPException) as exc_info:
+                Handler().post()
+
+        assert exc_info.value.code == 403
+
     def test_console_account_admission_preserves_route_kwarg_named_request_context(self):
         current_user = make_account()
 
@@ -247,10 +310,7 @@ class TestCurrentContextInjection:
                 return request_context
 
         with (
-            patch(
-                "controllers.console.flask_admission.dify_config.DEPLOYMENT_EDITION",
-                DeploymentEdition.COMMUNITY,
-            ),
+            config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY),
             Flask(__name__).test_request_context(),
             pytest.raises(HTTPException) as exc_info,
         ):
@@ -266,7 +326,7 @@ class TestCurrentContextInjection:
             patch("controllers.console.flask_admission.setup_required", side_effect=lambda view: view),
             patch("controllers.console.flask_admission.login_required", side_effect=lambda view: view),
             patch("controllers.console.flask_admission.account_initialization_required", side_effect=lambda view: view),
-            patch("controllers.console.flask_admission.dify_config.RBAC_ENABLED", False),
+            config_overrides_context(RBAC_ENABLED=False),
             patch(
                 "controllers.console.flask_admission.current_account_with_tenant",
                 return_value=AccountWithTenant(account=current_user, tenant_id="tenant-123"),
@@ -292,7 +352,7 @@ class TestCurrentContextInjection:
             patch("controllers.console.flask_admission.setup_required", side_effect=lambda view: view),
             patch("controllers.console.flask_admission.login_required", side_effect=lambda view: view),
             patch("controllers.console.flask_admission.account_initialization_required", side_effect=lambda view: view),
-            patch("controllers.console.flask_admission.dify_config.RBAC_ENABLED", True),
+            config_overrides_context(RBAC_ENABLED=True),
             patch(
                 "controllers.console.flask_admission.current_account_with_tenant",
                 return_value=AccountWithTenant(account=current_user, tenant_id="tenant-123"),

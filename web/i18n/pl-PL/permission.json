@@ -42,6 +42,7 @@
   "accessRule.summary_one": "{{count}} zestaw uprawnień",
   "accessRule.summary_other": "{{count}} zestawów uprawnień",
   "accessRule.updated": "Pomyślnie zaktualizowano regułę dostępu",
+  "accessRule.workspaceOwner": "Właściciel obszaru roboczego",
   "common.duplicateAction": "Duplikuj",
   "group.app": "Aplikacje",
   "group.app_acl": "Uprawnienia dostępu do aplikacji",

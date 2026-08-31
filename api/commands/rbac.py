@@ -662,6 +662,149 @@ def migrate_resource_whitelist_scopes_to_automatic_include(
 
 
 @click.command(
+    "rbac-migrate-resource-whitelist-scopes",
+    help=(
+        "Migrate RBAC app/dataset whitelist configs whose old scope is only_me to "
+        "automatic_include_workspace_members=true and sync workspace members into the whitelist."
+    ),
+)
+@click.option("--tenant-id", help="Only migrate resources in a single workspace.")
+@click.option(
+    "--resource-type",
+    type=click.Choice(["app", "dataset", "all"]),
+    default="all",
+    show_default=True,
+    help="Resource type to migrate.",
+)
+@click.option("--resource-id", help="Only migrate a single resource. Requires --resource-type app or dataset.")
+@click.option("--batch-size", default=500, show_default=True, type=click.IntRange(min=1))
+@click.option(
+    "--member-batch-size",
+    default=_RBAC_RESOURCE_ACCESS_POLICY_BATCH_SIZE,
+    show_default=True,
+    type=click.IntRange(min=1),
+    help="Workspace members written per default-policy call.",
+)
+@click.option(
+    "--dry-run/--apply",
+    default=True,
+    show_default=True,
+    help="Preview the migration without writing RBAC bindings. Use --apply to write changes.",
+)
+def migrate_only_me_resource_whitelist_scopes_to_automatic_include(
+    tenant_id: str | None,
+    resource_type: str,
+    resource_id: str | None,
+    batch_size: int,
+    member_batch_size: int,
+    dry_run: bool,
+) -> None:
+    """Backfill automatic workspace-member inclusion for old RBAC only_me resource scopes."""
+    if resource_id and resource_type == "all":
+        raise click.BadParameter("--resource-id requires --resource-type app or dataset", param_hint="--resource-id")
+
+    click.echo(click.style("Starting RBAC only_me resource whitelist scope migration.", fg="green"))
+
+    scanned_count = 0
+    only_me_count = 0
+    migrated_count = 0
+    member_policy_batch_count = 0
+    owner_account_ids_by_tenant_id: dict[str, str] = {}
+
+    for (
+        current_resource_type,
+        workspace_id,
+        current_resource_id,
+        maintainer_account_id,
+    ) in _iter_selected_rbac_resource_rows(
+        resource_type,
+        tenant_id=tenant_id,
+        resource_id=resource_id,
+        batch_size=batch_size,
+    ):
+        scanned_count += 1
+        with session_factory.create_session() as session:
+            operator_account_id = maintainer_account_id or owner_account_ids_by_tenant_id.get(workspace_id)
+            if not operator_account_id:
+                operator_account_id = _owner_account_id(workspace_id, session=session)
+                owner_account_ids_by_tenant_id[workspace_id] = operator_account_id
+
+        legacy_config = _resource_legacy_whitelist_config(
+            current_resource_type,
+            tenant_id=workspace_id,
+            operator_account_id=operator_account_id,
+            resource_id=current_resource_id,
+        )
+        scope = _normalize_rbac_whitelist_scope(legacy_config.rbac_whitelist_scope)
+        if scope is not RBACResourceWhitelistScope.ONLY_ME:
+            continue
+
+        only_me_count += 1
+        _emit_resource_whitelist_scope_migration_event(
+            {
+                "event": "only_me_resource_whitelist_scope_migration_proposed_change",
+                "dry_run": dry_run,
+                "tenant_id": workspace_id,
+                "operator_account_id": operator_account_id,
+                "resource_type": current_resource_type,
+                "resource_id": current_resource_id,
+                "before": {
+                    "rbac_whitelist_scope": scope.value,
+                    "legacy_account_ids": sorted(set(legacy_config.account_ids)),
+                },
+                "after": {
+                    "automatic_include_workspace_members": True,
+                    "default_policy_member_source": "workspace_members",
+                },
+            }
+        )
+
+        if dry_run:
+            continue
+
+        _replace_resource_whitelist(
+            current_resource_type,
+            tenant_id=workspace_id,
+            operator_account_id=operator_account_id,
+            resource_id=current_resource_id,
+            automatic_include_workspace_members=True,
+        )
+        migrated_count += 1
+
+        for batch in _workspace_member_account_id_batches(workspace_id, member_batch_size):
+            _replace_resource_default_access_policies(
+                current_resource_type,
+                tenant_id=workspace_id,
+                operator_account_id=operator_account_id,
+                resource_id=current_resource_id,
+                account_ids=batch,
+            )
+            member_policy_batch_count += 1
+
+    if scanned_count == 0:
+        click.echo(click.style("No RBAC resources found for migration.", fg="yellow"))
+        return
+
+    if dry_run:
+        click.echo(
+            click.style(
+                f"Dry run completed. Scanned {scanned_count} RBAC resources, found {only_me_count} only_me resources. "
+                "No RBAC bindings were written.",
+                fg="yellow",
+            )
+        )
+    else:
+        click.echo(
+            click.style(
+                "RBAC only_me resource whitelist scope migration completed. "
+                f"Scanned {scanned_count} resources, migrated {migrated_count}, "
+                f"wrote {member_policy_batch_count} default-policy batches.",
+                fg="green",
+            )
+        )
+
+
+@click.command(
     "rbac-migrate-dataset-permissions",
     help=(
         "Migrate legacy dataset permission scopes and partial members into RBAC dataset access bindings. "

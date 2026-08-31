@@ -22,6 +22,24 @@ from libs.login import current_account_with_tenant, login_required
 from machinery.context import RequestContext
 from machinery.errors import AdmissionConfigurationError
 from models.account import TenantAccountRole
+from services.system_feature_service import SystemFeatureService
+
+
+def console_email_registration_admission[T, **P, R](
+    view: Callable[Concatenate[T, P], R],
+) -> Callable[Concatenate[T, P], R | Response]:
+    """Apply the complete admission policy for anonymous email registration."""
+
+    @wraps(view)
+    def check_registration_features(self: T, /, *args: P.args, **kwargs: P.kwargs) -> R:
+        if (
+            not SystemFeatureService.is_email_password_login_enabled()
+            or not SystemFeatureService.is_registration_allowed()
+        ):
+            abort(403)
+        return view(self, *args, **kwargs)
+
+    return setup_required(check_registration_features)
 
 
 def console_account_admission[T, **P, R](

@@ -1,5 +1,6 @@
 """Unit tests for the thin inner-mail Flask adapter and its admission boundary."""
 
+from collections.abc import Callable
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -9,7 +10,6 @@ from flask import Flask
 from pydantic import ValidationError
 from werkzeug.exceptions import NotFound
 
-from configs import dify_config
 from controllers.inner_api.mail import BaseMail, BillingMail, EnterpriseMail, InnerMailPayload
 from controllers.inner_api.wraps import InnerApiUnauthorizedError
 from services.entities.mail_entities import InnerMailMessage
@@ -107,26 +107,21 @@ class TestBaseMail:
         mail_service.send.assert_called_once_with(expected)
 
 
-def test_disabled_inner_api_returns_not_found_before_setup(app: Flask) -> None:
-    with (
-        patch(
-            "controllers.console.wraps._is_setup_completed",
-            side_effect=AssertionError("setup must not run before Inner API authentication"),
-        ),
-        patch.object(dify_config, "INNER_API", False),
+def test_disabled_inner_api_returns_not_found_before_setup(app: Flask, config_overrides: Callable[..., None]) -> None:
+    config_overrides(INNER_API=False)
+    with patch(
+        "controllers.console.wraps._is_setup_completed",
+        side_effect=AssertionError("setup must not run before Inner API authentication"),
     ):
         with app.test_request_context(), pytest.raises(NotFound):
             EnterpriseMail().post()
 
 
-def test_invalid_inner_api_key_is_rejected_before_setup(app: Flask) -> None:
-    with (
-        patch(
-            "controllers.console.wraps._is_setup_completed",
-            side_effect=AssertionError("setup must not run before Inner API authentication"),
-        ),
-        patch.object(dify_config, "INNER_API", True),
-        patch.object(dify_config, "INNER_API_KEY", "valid-key"),
+def test_invalid_inner_api_key_is_rejected_before_setup(app: Flask, config_overrides: Callable[..., None]) -> None:
+    config_overrides(INNER_API=True, INNER_API_KEY="valid-key")
+    with patch(
+        "controllers.console.wraps._is_setup_completed",
+        side_effect=AssertionError("setup must not run before Inner API authentication"),
     ):
         with (
             app.test_request_context(headers={"X-Inner-Api-Key": "invalid-key"}),

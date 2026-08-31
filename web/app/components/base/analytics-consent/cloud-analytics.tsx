@@ -1,6 +1,7 @@
 import { COOKIEYES_SITE_KEY, IS_PROD, WEB_PREFIX } from '@/config'
 import { getCachedSystemFeatures } from '@/features/system-features/server'
 import { headers } from '@/next/headers'
+import { AnalyticsDisabled } from './analytics-disabled'
 import { CloudAnalyticsLayoutBoundary } from './cloud-analytics-layout-boundary'
 import { isCloudAnalyticsRequest } from './request-boundary'
 
@@ -19,7 +20,7 @@ export async function CloudAnalytics() {
     webPrefix: WEB_PREFIX,
   })
 
-  if (!enabled) return null
+  if (!enabled) return <AnalyticsDisabled />
 
   const nonce = requestHeaders.get('x-nonce') ?? undefined
 

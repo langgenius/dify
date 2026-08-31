@@ -38,6 +38,7 @@ from services.entities.model_provider_entities import (
     SystemConfigurationResponse,
 )
 from services.workspace_service import EffectiveCreditPool
+from tests.unit_tests.config_override import config_overrides_context
 
 VALID_UUID = "123e4567-e89b-12d3-a456-426614174000"
 INVALID_UUID = "123"
@@ -603,9 +604,11 @@ class TestModelProviderPaymentCheckoutUrlApi:
 
         with (
             app.test_request_context("/"),
-            patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch.object(dify_config, "LOGIN_DISABLED", True),
-            patch.object(dify_config, "RBAC_ENABLED", False),
+            config_overrides_context(
+                DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+                LOGIN_DISABLED=True,
+                RBAC_ENABLED=False,
+            ),
             patch(
                 "controllers.console.workspace.model_providers.BillingService.get_model_provider_payment_link",
             ) as get_model_provider_payment_link,

@@ -19,6 +19,7 @@ from services.data_source_oauth_service import (
     InvalidDataSourceOAuthProviderError,
 )
 from services.entities.data_source_oauth_entities import DataSourceOAuthCallback
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _request_context() -> RequestContext:
@@ -72,10 +73,7 @@ def test_callback_parses_query_and_returns_flask_redirect() -> None:
 
     with (
         app.test_request_context("/?code=code-1"),
-        patch(
-            "controllers.console.auth.data_source_oauth.dify_config.CONSOLE_WEB_URL",
-            "https://console.example/root?lang=en#top",
-        ),
+        config_overrides_context(CONSOLE_WEB_URL="https://console.example/root?lang=en#top"),
         patch(
             "controllers.console.auth.data_source_oauth.application_services",
             return_value=_services(service),

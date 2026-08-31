@@ -11,6 +11,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 import services
 from controllers.common.controller_schemas import ConversationRenamePayload
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.schema import expect_user_json, expect_with_user
@@ -293,15 +294,14 @@ class ConversationRenameApi(Resource):
         service_api_ns.models[SimpleConversation.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
-    def post(self, app_model: App, end_user: EndUser, conversation_id: UUID):
+    @model_validate(ConversationRenamePayload)
+    def post(self, payload: ConversationRenamePayload, app_model: App, end_user: EndUser, conversation_id: UUID):
         """Rename a conversation or auto-generate a name."""
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         conversation_id_str = str(conversation_id)
-
-        payload = ConversationRenamePayload.model_validate(service_api_ns.payload or {})
 
         try:
             session = db.session()
@@ -408,7 +408,15 @@ class ConversationVariableDetailApi(Resource):
         service_api_ns.models[ConversationVariableResponse.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
-    def put(self, app_model: App, end_user: EndUser, conversation_id: UUID, variable_id: UUID):
+    @model_validate(ConversationVariableUpdatePayload)
+    def put(
+        self,
+        payload: ConversationVariableUpdatePayload,
+        app_model: App,
+        end_user: EndUser,
+        conversation_id: UUID,
+        variable_id: UUID,
+    ):
         """Update a conversation variable's value.
 
         Allows updating the value of a specific conversation variable.
@@ -420,8 +428,6 @@ class ConversationVariableDetailApi(Resource):
 
         conversation_id_str = str(conversation_id)
         variable_id_str = str(variable_id)
-
-        payload = ConversationVariableUpdatePayload.model_validate(service_api_ns.payload or {})
 
         try:
             variable = ConversationService.update_conversation_variable(

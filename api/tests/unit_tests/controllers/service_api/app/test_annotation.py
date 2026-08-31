@@ -18,7 +18,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock
 
 import pytest
-from flask import Flask
+from flask import Flask, request
 from flask_restx.api import HTTPStatus
 from pydantic import ValidationError
 
@@ -170,7 +170,8 @@ class TestAnnotationReplyActionApi:
             method="POST",
             json={"score_threshold": 0.5, "embedding_provider_name": "p", "embedding_model_name": "m"},
         ):
-            response, status = handler(api, app_model=app_model, action="enable")
+            payload = AnnotationReplyActionPayload.model_validate(request.get_json() or {})
+            response, status = handler(api, payload, app_model=app_model, action="enable")
         assert status == 200
         assert response == {"job_id": "job-1", "job_status": "waiting"}
         enable_mock.assert_called_once()
@@ -186,7 +187,8 @@ class TestAnnotationReplyActionApi:
             method="POST",
             json={"score_threshold": 0.5, "embedding_provider_name": "p", "embedding_model_name": "m"},
         ):
-            response, status = handler(api, app_model=app_model, action="disable")
+            payload = AnnotationReplyActionPayload.model_validate(request.get_json() or {})
+            response, status = handler(api, payload, app_model=app_model, action="disable")
         assert status == 200
         assert response == {"job_id": "job-1", "job_status": "waiting"}
         disable_mock.assert_called_once()
@@ -273,7 +275,8 @@ class TestAnnotationListApi:
         handler = unwrap(api.post)
         app_model = SimpleNamespace(id="app")
         with app.test_request_context("/apps/annotations", method="POST", json={"question": "q", "answer": "a"}):
-            response, status = handler(api, MagicMock(), app_model=app_model)
+            payload = AnnotationCreatePayload.model_validate(request.get_json() or {})
+            response, status = handler(api, payload, MagicMock(), app_model=app_model)
         assert status == HTTPStatus.CREATED
         assert response["question"] == "q"
 
@@ -291,7 +294,8 @@ class TestAnnotationUpdateDeleteApi:
         delete_handler = unwrap(api.delete)
         app_model = SimpleNamespace(id="app", tenant_id="tenant")
         with app.test_request_context("/apps/annotations/1", method="PUT", json={"question": "q", "answer": "a"}):
-            response = put_handler(api, MagicMock(), app_model=app_model, annotation_id="1")
+            payload = AnnotationCreatePayload.model_validate(request.get_json() or {})
+            response = put_handler(api, payload, MagicMock(), app_model=app_model, annotation_id="1")
         assert response["answer"] == "a"
         with app.test_request_context("/apps/annotations/1", method="DELETE"):
             response, status = delete_handler(api, MagicMock(), app_model=app_model, annotation_id="1")

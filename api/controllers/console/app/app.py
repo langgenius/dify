@@ -642,13 +642,13 @@ class AppListApi(Resource):
         )
 
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
-            str(current_tenant_id),
+            current_tenant_id,
             current_user_id,
             session=session,
         )
         if dify_config.RBAC_ENABLED:
             access_filter = resolve_app_access_filter(
-                str(current_tenant_id),
+                current_tenant_id,
                 current_user_id,
                 session=session,
                 permissions=permissions,
@@ -675,7 +675,7 @@ class AppListApi(Resource):
             pagination_model = pagination_model.model_copy(
                 update={
                     "data": [
-                        item.model_copy(update={"permission_keys": permission_keys_map.get(str(item.id), [])})
+                        item.model_copy(update={"permission_keys": permission_keys_map.get(item.id, [])})
                         for item in pagination_model.data
                     ]
                 }
@@ -712,7 +712,7 @@ class AppListApi(Resource):
         app_service = AppService()
         app = app_service.create_app(current_tenant_id, params, current_user, session=session)
         permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
-            str(current_tenant_id),
+            current_tenant_id,
             current_user.id,
             [str(app.id)],
             session=session,
@@ -882,7 +882,7 @@ class AppApi(Resource):
             app_model.access_mode = app_setting.access_mode
 
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
-            str(current_tenant_id),
+            current_tenant_id,
             current_user.id,
             app_id=str(app_model.id),
             session=session,
@@ -1020,7 +1020,7 @@ class AppCopyApi(Resource):
                 raise NotFound("App not found")
 
             permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
-                str(current_tenant_id),
+                current_tenant_id,
                 current_user.id,
                 [str(app.id)],
                 session=session,
@@ -1088,7 +1088,7 @@ class AppPublishToCreatorsPlatformApi(Resource):
         # TODO: Move this configuration and OAuth orchestration into the Creators Platform application service
         # when that domain is refactored. This controller-level integration is a temporary compatibility bridge.
         oauth_code = None
-        client_id = str(dify_config.CREATORS_PLATFORM_OAUTH_CLIENT_ID or "")
+        client_id = dify_config.CREATORS_PLATFORM_OAUTH_CLIENT_ID or ""
         if client_id:
             authorization = application_services().oauth_server.issue_authorization_code(
                 client_id=client_id,

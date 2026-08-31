@@ -18,6 +18,7 @@ from enums import DeploymentEdition
 from models.account import Account
 from models.engine import db
 from services.entities.feature_entities import SystemFeatureModel
+from tests.unit_tests.config_override import config_overrides_context
 
 
 @pytest.fixture
@@ -39,7 +40,7 @@ def _patch_wraps():
     )
     with (
         patch("controllers.console.wraps.db") as mock_db,
-        patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE),
+        config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE),
         patch(
             "controllers.console.wraps.SystemFeatureService.is_email_password_login_enabled",
             return_value=wraps_features.enable_email_password_login,

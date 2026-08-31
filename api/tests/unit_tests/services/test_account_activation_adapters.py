@@ -4,6 +4,7 @@ from services.account_activation_adapters import (
     BillingAccountActivationEligibility,
     BillingWorkspaceMembershipCache,
     DeploymentWorkspaceInvitePolicy,
+    RBACWorkspaceMemberAccessSync,
     RegisterServiceInvitationTokenStore,
 )
 from services.entities.account_activation_entities import InvitationLookup, InvitationToken
@@ -72,3 +73,21 @@ def test_workspace_policy_delegates_to_existing_policy_owner() -> None:
         DeploymentWorkspaceInvitePolicy().ensure_allowed("workspace-1")
 
     ensure_allowed.assert_called_once_with("workspace-1")
+
+
+def test_rbac_member_access_sync_skips_gateway_when_disabled() -> None:
+    with patch(
+        "tasks.initialize_created_app_rbac_access_task.sync_joined_workspace_member_rbac_access_task.delay"
+    ) as delay:
+        RBACWorkspaceMemberAccessSync(enabled=False).sync("workspace-1", "account-1")
+
+    delay.assert_not_called()
+
+
+def test_rbac_member_access_sync_enqueues_joined_member_sync_when_enabled() -> None:
+    with patch(
+        "tasks.initialize_created_app_rbac_access_task.sync_joined_workspace_member_rbac_access_task.delay"
+    ) as delay:
+        RBACWorkspaceMemberAccessSync(enabled=True).sync("workspace-1", "account-1")
+
+    delay.assert_called_once_with("workspace-1", "account-1", operator_account_id=None)

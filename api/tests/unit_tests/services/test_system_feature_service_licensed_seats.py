@@ -1,5 +1,7 @@
 """Tests for SystemFeatureService licensed-seat parsing."""
 
+from collections.abc import Callable
+
 import pytest
 
 from enums import DeploymentEdition
@@ -10,9 +12,11 @@ from services.system_feature_service import SystemFeatureService
 _ENTERPRISE_INFO = {"License": {"licensedSeats": {"enabled": True, "limit": 3, "used": 1}}}
 
 
-def test_get_license_parses_licensed_seats(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_license_parses_licensed_seats(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
     """The authenticated license accessor copies the licensed-seat quota out of the enterprise payload."""
-    monkeypatch.setattr("services.system_feature_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
     monkeypatch.setattr(
         feature_service_module.EnterpriseService,
         "get_info",
@@ -27,9 +31,9 @@ def test_get_license_parses_licensed_seats(monkeypatch: pytest.MonkeyPatch) -> N
     assert license_model.seats.size == 1
 
 
-def test_get_license_non_enterprise_is_unconstrained(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_license_non_enterprise_is_unconstrained(config_overrides: Callable[..., None]) -> None:
     """Non-enterprise deployments have no license; seat allocation is unconstrained."""
-    monkeypatch.setattr("services.system_feature_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 
     license_model = SystemFeatureService.get_license()
 

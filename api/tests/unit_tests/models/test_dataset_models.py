@@ -47,6 +47,7 @@ from models.enums import (
     SegmentStatus,
 )
 from models.model import App, AppMode, IconType, UploadFile
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _make_dataset(
@@ -1171,9 +1172,12 @@ class TestDocumentSegmentIndexing:
 
         monkeypatch.setattr("models.dataset.time.time", lambda: 1700000000)
         monkeypatch.setattr("models.dataset.os.urandom", lambda _: b"\x01" * 16)
-        monkeypatch.setattr("models.dataset.dify_config.SECRET_KEY", "unit-secret")
-        monkeypatch.setattr("models.dataset.dify_config.FILES_URL", "https://files.example.com")
-        monkeypatch.setattr("models.dataset.dify_config.CONSOLE_API_URL", "https://console.example.com")
+        apply_config_overrides(
+            monkeypatch,
+            SECRET_KEY="unit-secret",
+            FILES_URL="https://files.example.com",
+            CONSOLE_API_URL="https://console.example.com",
+        )
 
         # Act
         attachments = segment.get_attachments(session=sqlite_session)
@@ -1611,3 +1615,48 @@ class TestModelIntegration:
         assert result["indexing_status"] == IndexingStatus.COMPLETED
         assert result["segment_count"] == 5
         assert result["hit_count"] == 10
+
+
+class TestChildChunkSessionAccessors:
+    """Regression coverage for the ``ChildChunk`` accessors refactored to take a caller-provided session.
+
+    ``ChildChunk.dataset`` / ``document`` / ``segment`` were ``@property`` accessors reaching for the
+    global ``db.session`` internally; they are now plain methods accepting a ``Session`` explicitly.
+    """
+
+    def test_accessors_resolve_related_rows_via_caller_session(self, sqlite_session: Session):
+        dataset = _make_dataset(dataset_id=str(uuid4()), tenant_id=str(uuid4()))
+        document = _make_document(document_id=str(uuid4()), dataset_id=dataset.id, tenant_id=dataset.tenant_id)
+        segment = _make_segments(document, [0])[0]
+        child_chunk = ChildChunk(
+            tenant_id=segment.tenant_id,
+            dataset_id=segment.dataset_id,
+            document_id=segment.document_id,
+            segment_id=segment.id,
+            position=1,
+            content="chunk",
+            word_count=1,
+            created_by="account-1",
+        )
+        sqlite_session.add_all([dataset, document, segment, child_chunk])
+        sqlite_session.flush()
+
+        assert child_chunk.dataset(session=sqlite_session) is dataset
+        assert child_chunk.document(session=sqlite_session) is document
+        assert child_chunk.segment(session=sqlite_session) is segment
+
+    def test_accessors_return_none_when_related_rows_are_absent(self, sqlite_session: Session):
+        child_chunk = ChildChunk(
+            tenant_id=str(uuid4()),
+            dataset_id=str(uuid4()),
+            document_id=str(uuid4()),
+            segment_id=str(uuid4()),
+            position=1,
+            content="chunk",
+            word_count=1,
+            created_by="account-1",
+        )
+
+        assert child_chunk.dataset(session=sqlite_session) is None
+        assert child_chunk.document(session=sqlite_session) is None
+        assert child_chunk.segment(session=sqlite_session) is None
