@@ -42,6 +42,7 @@ from services.account_activation_adapters import (
     BillingAccountActivationEligibility,
     BillingWorkspaceMembershipCache,
     DeploymentWorkspaceInvitePolicy,
+    RBACWorkspaceMemberAccessSync,
     RegisterServiceInvitationTokenStore,
 )
 from services.account_activation_service import AccountActivationService
@@ -360,6 +361,9 @@ def build_application_services(
             ),
             membership_cache=BillingWorkspaceMembershipCache(
                 enabled=deployment_edition == DeploymentEdition.CLOUD,
+            ),
+            member_access_sync=RBACWorkspaceMemberAccessSync(
+                enabled=dify_config.RBAC_ENABLED,
             ),
         ),
         app_definitions=AppDefinitionQueryService(

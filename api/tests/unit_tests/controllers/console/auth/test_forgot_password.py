@@ -22,6 +22,7 @@ from enums import DeploymentEdition
 from services import account_errors
 from services.entities.account_entities import ForgotPasswordVerification
 from services.entities.feature_entities import SystemFeatureModel
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 class FakeForgotPasswordService:
@@ -74,7 +75,7 @@ class FakeForgotPasswordService:
 
 @pytest.fixture(autouse=True)
 def admit_forgot_password_requests(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(wraps.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         wraps.FeatureService,
         "get_system_features",

@@ -122,6 +122,14 @@ logger = logging.getLogger(__name__)
 _change_email_token_adapter: TypeAdapter[ChangeEmailTokenData] = TypeAdapter(ChangeEmailTokenData)
 
 
+class EnterpriseWorkspaceMemberAccountNotFoundError(Exception):
+    pass
+
+
+class EnterpriseWorkspaceMemberWorkspaceNotFoundError(Exception):
+    pass
+
+
 class InvitationDetailDict(TypedDict):
     account: Account
     data: InvitationData
@@ -173,15 +181,22 @@ class AccountService:
     EMAIL_REGISTER_MAX_ERROR_LIMITS = 5
 
     @staticmethod
+    def _resolve_role_id_by_tag(tenant_id: str, account_id: str, tag: str) -> str:
+        options = ListOption(page_number=1, results_per_page=100)
+        roles = RBACService.Roles.list(tenant_id, account_id, options=options).data
+        for rbac_role in roles:
+            if rbac_role.is_builtin and rbac_role.category == "global_system_default" and rbac_role.role_tag == tag:
+                return str(rbac_role.id)
+
+        raise ValueError(f"Builtin RBAC role not found for tag {tag!r} in tenant {tenant_id}")
+
+    @staticmethod
     def _resolve_legacy_role_id(tenant_id: str, account_id: str, role: TenantAccountRole) -> str:
         """Resolve a legacy workspace role to the corresponding RBAC role id.
 
         Looks up the builtin RBAC role whose tag matches the legacy role name
         (e.g. ``TenantAccountRole.ADMIN`` → builtin role with tag ``"admin"``).
         """
-        options = ListOption(page_number=1, results_per_page=100)
-        roles = RBACService.Roles.list(tenant_id, account_id, options=options).data
-
         expected_tag = {
             TenantAccountRole.OWNER: "owner",
             TenantAccountRole.ADMIN: "admin",
@@ -189,15 +204,7 @@ class AccountService:
             TenantAccountRole.NORMAL: "normal",
             TenantAccountRole.DATASET_OPERATOR: "dataset_operator",
         }[role]
-        for rbac_role in roles:
-            if (
-                rbac_role.is_builtin
-                and rbac_role.category == "global_system_default"
-                and rbac_role.role_tag == expected_tag
-            ):
-                return str(rbac_role.id)
-
-        raise ValueError(f"Builtin RBAC role not found for {role.value} in tenant {tenant_id}")
+        return AccountService._resolve_role_id_by_tag(tenant_id, account_id, expected_tag)
 
     @staticmethod
     def get_workspace_permission_keys(tenant_id: str, account_id: str, *, session: Session) -> set[str]:
@@ -1329,7 +1336,12 @@ class TenantService:
 
     @staticmethod
     def create_tenant_member(
-        tenant: Tenant, account: Account, session: Session, role: str = "normal"
+        tenant: Tenant,
+        account: Account,
+        session: Session,
+        role: str = "normal",
+        *,
+        operator_account_id: str | None = None,
     ) -> TenantAccountJoin:
         """Create tenant member"""
         if role == TenantAccountRole.OWNER:
@@ -1344,14 +1356,66 @@ class TenantService:
         )
         if ta:
             ta.role = TenantAccountRole(role)
+            membership_created = False
         else:
             ta = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole(role))
             session.add(ta)
+            membership_created = True
 
         session.commit()
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             BillingService.clean_billing_info_cache(tenant.id)
+        if (
+            membership_created
+            and dify_config.RBAC_ENABLED
+            and TenantAccountRole(role) != TenantAccountRole.OWNER
+            and account.status != AccountStatus.PENDING
+        ):
+            from tasks.initialize_created_app_rbac_access_task import sync_joined_workspace_member_rbac_access_task
+
+            sync_joined_workspace_member_rbac_access_task.delay(
+                str(tenant.id),
+                str(account.id),
+                operator_account_id=operator_account_id,
+            )
         return ta
+
+    @staticmethod
+    def join_enterprise_workspace_member(
+        *,
+        workspace_id: str,
+        account_id: str,
+        email: str,
+        role: TenantAccountRole,
+        operator_account_id: str | None,
+        session: Session | None = None,
+    ) -> TenantAccountJoin:
+        session = session or db.session()
+        tenant = session.scalar(
+            select(Tenant).where(
+                Tenant.id == workspace_id,
+                Tenant.status == TenantStatus.NORMAL,
+            )
+        )
+        if tenant is None:
+            raise EnterpriseWorkspaceMemberWorkspaceNotFoundError
+
+        account = session.scalar(
+            select(Account).where(
+                Account.id == account_id,
+                Account.email == email,
+            )
+        )
+        if account is None:
+            raise EnterpriseWorkspaceMemberAccountNotFoundError
+
+        return TenantService.create_tenant_member(
+            tenant,
+            account,
+            session=session,
+            role=role.value,
+            operator_account_id=operator_account_id,
+        )
 
     @staticmethod
     def get_join_tenants(account: Account, *, session: Session) -> list[Tenant]:
@@ -1802,28 +1866,39 @@ class TenantService:
             raise RoleAlreadyAssignedError("The provided role is already assigned to the member.")
 
         if new_role == "owner":
-            # Find the current owner and change their role to 'admin'
+            if dify_config.RBAC_ENABLED:
+                old_owner_id = AccountService.get_rbac_workspace_owner_account_id(
+                    str(tenant.id), operator.id, session=session
+                )
+                owner_role_id = AccountService._resolve_legacy_role_id(
+                    tenant_id=str(tenant.id),
+                    account_id=operator.id,
+                    role=TenantAccountRole.OWNER,
+                )
+                no_access_role_id = AccountService._resolve_role_id_by_tag(
+                    tenant_id=str(tenant.id),
+                    account_id=operator.id,
+                    tag="no_access",
+                )
+                current_roles = RBACService.MemberRoles.get(
+                    str(tenant.id), operator.id, old_owner_id, session=session
+                ).roles
+                remaining_role_ids = [str(r.id) for r in current_roles if str(r.id) != owner_role_id]
+                RBACService.MemberRoles.replace(
+                    tenant_id=str(tenant.id),
+                    account_id=operator.id,
+                    member_account_id=old_owner_id,
+                    role_ids=remaining_role_ids or [no_access_role_id],
+                    session=session,
+                )
+
             current_owner_join = session.scalar(
                 select(TenantAccountJoin)
                 .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.role == "owner")
                 .limit(1)
             )
-            if not dify_config.RBAC_ENABLED:
-                if current_owner_join:
-                    current_owner_join.role = TenantAccountRole.ADMIN
-            elif current_owner_join:
-                admin_role_id = AccountService._resolve_legacy_role_id(
-                    tenant_id=str(tenant.id),
-                    account_id=operator.id,
-                    role=TenantAccountRole.ADMIN,
-                )
-                RBACService.MemberRoles.replace(
-                    tenant_id=str(tenant.id),
-                    account_id=operator.id,
-                    member_account_id=str(current_owner_join.account_id),
-                    role_ids=[admin_role_id],
-                    session=session,
-                )
+            if current_owner_join:
+                current_owner_join.role = TenantAccountRole.NORMAL
 
         # Update the role of the target member
         if dify_config.RBAC_ENABLED:
@@ -1839,6 +1914,8 @@ class TenantService:
                 role_ids=[resolved_role_id],
                 session=session,
             )
+            if new_tenant_role == TenantAccountRole.OWNER:
+                target_member_join.role = new_tenant_role
         else:
             target_member_join.role = new_tenant_role
         session.commit()
@@ -2028,7 +2105,13 @@ class RegisterService:
                 check_normalized_email=True,
                 session=session,
             )
-            TenantService.create_tenant_member(tenant, account, session, tenant_join_role)
+            TenantService.create_tenant_member(
+                tenant,
+                account,
+                session,
+                tenant_join_role,
+                operator_account_id=inviter.id,
+            )
             TenantService.switch_tenant(account, tenant.id, session=session)
             requires_setup = True
         else:
@@ -2041,7 +2124,13 @@ class RegisterService:
             requires_setup = account.status == AccountStatus.PENDING
 
             if not ta and (account.status == AccountStatus.PENDING or dify_config.RBAC_ENABLED):
-                TenantService.create_tenant_member(tenant, account, session, tenant_join_role)
+                TenantService.create_tenant_member(
+                    tenant,
+                    account,
+                    session,
+                    tenant_join_role,
+                    operator_account_id=inviter.id,
+                )
 
             # Support resend invitation email when the account is pending status
             if account.status != AccountStatus.PENDING:

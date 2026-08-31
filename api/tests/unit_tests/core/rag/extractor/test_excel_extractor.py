@@ -9,6 +9,7 @@ import core.rag.extractor.excel_extractor as excel_module
 from core.rag.extractor.excel_extractor import ExcelExtractor
 from models.base import TypeBase
 from models.model import UploadFile
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @pytest.fixture
@@ -77,8 +78,7 @@ def _patch_image_persistence(monkeypatch: pytest.MonkeyPatch):
         saves.append((key, data))
 
     monkeypatch.setattr(excel_module.storage, "save", save)
-    monkeypatch.setattr(excel_module.dify_config, "FILES_URL", "http://files.local", raising=False)
-    monkeypatch.setattr(excel_module.dify_config, "STORAGE_TYPE", "local", raising=False)
+    apply_config_overrides(monkeypatch, FILES_URL="http://files.local", STORAGE_TYPE="local")
 
     return saves
 

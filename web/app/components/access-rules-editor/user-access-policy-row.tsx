@@ -28,6 +28,7 @@ type UserAccessPolicyRowProps = {
   disabled: boolean
   membershipChangesDisabled?: boolean
   selectionDisabled?: boolean
+  isProtected?: boolean
   isMaintainer?: boolean
   selected?: boolean
   className?: string
@@ -42,6 +43,7 @@ function UserAccessPolicyRow({
   disabled,
   membershipChangesDisabled = false,
   selectionDisabled = false,
+  isProtected = false,
   isMaintainer = false,
   selected = false,
   className,
@@ -53,12 +55,13 @@ function UserAccessPolicyRow({
   const accountId = setting.account.account_id
   const selectedPolicy = setting.access_policies[0]
   const selectedPolicyId = selectedPolicy?.id ?? DEFAULT_ACCESS_POLICY_ID
-  const isPolicySelectDisabled = disabled || isMaintainer || !onChange
-  const isRemoveDisabled = disabled || membershipChangesDisabled || isMaintainer || !onRemove
+  const isPolicySelectDisabled = disabled || isProtected || !onChange
+  const isRemoveDisabled = disabled || membershipChangesDisabled || isProtected || !onRemove
   const isSelectionDisabled =
-    disabled || membershipChangesDisabled || selectionDisabled || isMaintainer || !onSelectedChange
+    disabled || membershipChangesDisabled || selectionDisabled || isProtected || !onSelectedChange
   const defaultAccessPolicyName = t(($) => $['accessRule.defaultPermission'], { ns: 'permission' })
   const accountEmail = setting.account.email || setting.account.account_name
+  const isWorkspaceOwner = setting.roles.some((role) => role.role_tag === 'owner')
 
   const handlePolicyChange = useCallback(
     (nextPolicyId: string | null) => {
@@ -96,8 +99,13 @@ function UserAccessPolicyRow({
               {setting.account.account_name}
             </span>
             {isMaintainer && (
-              <span className="max-w-24 shrink-0 truncate rounded-[5px] border border-text-accent-secondary px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
+              <span className="max-w-32 shrink-0 truncate rounded-[5px] border border-text-accent-secondary px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
                 {t(($) => $['accessRule.maintainer'], { ns: 'permission' })}
+              </span>
+            )}
+            {isWorkspaceOwner && (
+              <span className="max-w-32 shrink-0 truncate rounded-[5px] border border-text-accent-secondary px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
+                {t(($) => $['accessRule.workspaceOwner'], { ns: 'permission' })}
               </span>
             )}
           </div>
@@ -113,7 +121,7 @@ function UserAccessPolicyRow({
             })}
             size="small"
             disabled={isPolicySelectDisabled}
-            className="w-30.25"
+            className="w-full max-w-50"
           >
             <SelectValue>
               {selectedPolicyId === DEFAULT_ACCESS_POLICY_ID

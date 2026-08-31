@@ -131,7 +131,6 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
     requestKey: number
   } | null>(null)
   const [isOutputVariablesCollapsed, setIsOutputVariablesCollapsed] = useState(true)
-  const [saveToRosterSessionKey, setSaveToRosterSessionKey] = useState(0)
   const { handleNodeDataUpdate, handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
   const openInlineAgentPanelNodeId = useStore((state) => state.openInlineAgentPanelNodeId)
   const setOpenInlineAgentPanelNodeId = useStore((state) => state.setOpenInlineAgentPanelNodeId)
@@ -186,7 +185,12 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   const isAgentBindingPending =
     isInlineAgentPending || isInlineAgentWaitingForCreation || isCreatingInlineAgent
   const canStartFromScratch = inputs.agent_binding?.binding_type !== 'inline_agent'
-  const canSaveInlineToRoster = isInlineAgentReady && !!inlineAgent
+  const saveToRosterTarget =
+    configsMap?.flowId &&
+    (configsMap.flowType === FlowType.appFlow || configsMap.flowType === FlowType.snippet)
+      ? { flowId: configsMap.flowId, flowType: configsMap.flowType }
+      : null
+  const canSaveInlineToRoster = isInlineAgentReady && !!inlineAgent && !!saveToRosterTarget
   const inlineComposerStateForPanel = inlineAgentQuery.data
   const displayedAgent =
     rosterAgentQuery.data ??
@@ -378,14 +382,11 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   ])
 
   const handleSaveInlineToRosterOpen = useCallback(() => {
-    setSaveToRosterSessionKey((key) => key + 1)
     setIsSaveToRosterDialogOpen(true)
   }, [])
 
   const handleInlineSavedToRoster = useCallback(
-    (binding: AgentComposerBindingResponse) => {
-      if (binding.binding_type !== 'roster_agent' || !binding.agent_id) return
-
+    (agentId: string) => {
       setOpenInlineAgentPanelNodeId(undefined)
       setIsInlineAgentPanelOpenedFromTrigger(false)
       setIsRosterAgentPanelOpen(true)
@@ -395,7 +396,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
         delete draft._openInlineAgentPanel
         draft.agent_binding = {
           binding_type: 'roster_agent',
-          agent_id: binding.agent_id!,
+          agent_id: agentId,
         }
       })
       inputsRef.current = newInputs
@@ -698,17 +699,17 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           onSaveInlineToRoster={canSaveInlineToRoster ? handleSaveInlineToRosterOpen : undefined}
           onStartFromScratch={canStartFromScratch ? handleStartFromScratch : undefined}
         />
-        <SaveInlineAgentToRosterDialog
-          key={saveToRosterSessionKey}
-          flowId={configsMap?.flowId}
-          flowType={configsMap?.flowType}
-          formKey={saveToRosterSessionKey}
-          initialAgent={inlineAgent}
-          nodeId={id}
-          open={isSaveToRosterDialogOpen}
-          onOpenChange={setIsSaveToRosterDialogOpen}
-          onSaved={handleInlineSavedToRoster}
-        />
+        {saveToRosterTarget && inlineAgent && (
+          <SaveInlineAgentToRosterDialog
+            flowId={saveToRosterTarget.flowId}
+            flowType={saveToRosterTarget.flowType}
+            initialAgent={inlineAgent}
+            nodeId={id}
+            open={isSaveToRosterDialogOpen}
+            onOpenChange={setIsSaveToRosterDialogOpen}
+            onSaved={handleInlineSavedToRoster}
+          />
+        )}
       </div>
       <div
         aria-disabled={isInlineAgentPending}

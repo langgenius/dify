@@ -42,6 +42,7 @@
   "accessRule.summary_one": "{{count}} 個權限集",
   "accessRule.summary_other": "{{count}} 個權限集",
   "accessRule.updated": "訪問規則已更新",
+  "accessRule.workspaceOwner": "工作空間擁有者",
   "common.duplicateAction": "建立副本",
   "group.app": "應用",
   "group.app_acl": "應用訪問權限",

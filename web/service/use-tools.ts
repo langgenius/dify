@@ -17,10 +17,15 @@ import { useInvalid } from './use-base'
 const NAME_SPACE = 'tools'
 
 const useAllToolProvidersKey = [NAME_SPACE, 'allToolProviders']
-export const useAllToolProviders = (enabled = true) => {
+type ToolProviderListType = 'builtin' | 'model' | 'api' | 'workflow' | 'mcp'
+
+export const useAllToolProviders = (enabled = true, type?: ToolProviderListType) => {
   return useQuery<Collection[]>({
-    queryKey: useAllToolProvidersKey,
-    queryFn: () => get<Collection[]>('/workspaces/current/tool-providers'),
+    queryKey: type ? [...useAllToolProvidersKey, type] : useAllToolProvidersKey,
+    queryFn: () =>
+      type
+        ? get<Collection[]>('/workspaces/current/tool-providers', { params: { type } })
+        : get<Collection[]>('/workspaces/current/tool-providers'),
     enabled,
   })
 }

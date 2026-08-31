@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from flask import Flask
+from flask import Flask, request
 from werkzeug.exceptions import NotFound
 
 from controllers.common.human_input import HumanInputFormSubmitPayload
@@ -184,7 +184,8 @@ class TestWorkflowHumanInputFormApi:
             method="POST",
             json={"inputs": {"name": "Alice"}, "action": "approve", "user": "external-1"},
         ):
-            response, status = handler(api, app_model=app_model, end_user=end_user, form_token="token-1")
+            payload = HumanInputFormSubmitPayload.model_validate(request.get_json() or {})
+            response, status = handler(api, payload, app_model=app_model, end_user=end_user, form_token="token-1")
 
         assert response == {}
         assert status == 200
@@ -238,7 +239,8 @@ class TestWorkflowHumanInputFormApi:
             method="POST",
             json={"inputs": inputs, "action": "approve", "user": "external-1"},
         ):
-            response, status = handler(api, app_model=app_model, end_user=end_user, form_token="token-1")
+            payload = HumanInputFormSubmitPayload.model_validate(request.get_json() or {})
+            response, status = handler(api, payload, app_model=app_model, end_user=end_user, form_token="token-1")
 
         assert response == {}
         assert status == 200
@@ -294,7 +296,8 @@ class TestWorkflowHumanInputFormApi:
             method="POST",
             json={"inputs": {"name": "Alice"}, "action": "approve", "user": "external-1"},
         ):
+            payload = HumanInputFormSubmitPayload.model_validate(request.get_json() or {})
             with pytest.raises(NotFound):
-                handler(api, app_model=app_model, end_user=end_user, form_token="token-1")
+                handler(api, payload, app_model=app_model, end_user=end_user, form_token="token-1")
 
         service_mock.submit_form_by_token.assert_not_called()

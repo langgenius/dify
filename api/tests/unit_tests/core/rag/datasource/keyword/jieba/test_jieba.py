@@ -289,7 +289,9 @@ def test_get_dataset_keyword_table_returns_existing_table_data(patched_runtime):
 
 def test_get_dataset_keyword_table_creates_table_when_missing(monkeypatch: pytest.MonkeyPatch, patched_runtime):
     keyword = Jieba(_dataset(dataset_keyword_table=None))
-    monkeypatch.setattr(jieba_module.dify_config, "KEYWORD_DATA_SOURCE_TYPE", "database")
+    from tests.unit_tests.config_override import apply_config_overrides
+
+    apply_config_overrides(monkeypatch, KEYWORD_DATA_SOURCE_TYPE="database")
     result = keyword._get_dataset_keyword_table(patched_runtime.session)
 
     assert result == {}
