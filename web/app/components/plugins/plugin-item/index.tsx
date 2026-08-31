@@ -47,8 +47,10 @@ const PluginItem: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
-  const currentPluginID = usePluginPageContext((v) => v.currentPluginID)
-  const setCurrentPluginID = usePluginPageContext((v) => v.setCurrentPluginID)
+  const selectedPluginID = usePluginPageContext((v) =>
+    v.selectedItem?.type === 'plugin' ? v.selectedItem.id : undefined,
+  )
+  const setSelectedItem = usePluginPageContext((v) => v.setSelectedItem)
   const { refreshPluginList } = useRefreshPluginList()
 
   const {
@@ -119,13 +121,13 @@ const PluginItem: FC<Props> = ({
     <div
       className={cn(
         'group/plugin-item relative overflow-hidden rounded-xl border-[1.5px] border-background-section-burn p-1',
-        currentPluginID === plugin_id && 'border-components-option-card-option-selected-border',
+        selectedPluginID === plugin_id && 'border-components-option-card-option-selected-border',
         source === PluginSource.debugging
           ? 'bg-[repeating-linear-gradient(-45deg,rgba(16,24,40,0.04),rgba(16,24,40,0.04)_5px,rgba(0,0,0,0.02)_5px,rgba(0,0,0,0.02)_10px)]'
           : 'bg-background-section-burn',
       )}
       onClick={() => {
-        setCurrentPluginID(plugin.plugin_id)
+        setSelectedItem({ type: 'plugin', id: plugin.plugin_id })
       }}
     >
       <div

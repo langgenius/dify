@@ -77,6 +77,7 @@ from services.app_site_service import (
     AppSiteCommandResult,
     AppSiteNotFoundError,
 )
+from tests.unit_tests.config_override import apply_config_overrides
 
 APP_ID = "11111111-1111-1111-1111-111111111111"
 TENANT_ID = "22222222-2222-2222-2222-222222222222"
@@ -261,8 +262,11 @@ class TestAppEndpoints:
         oauth_server.issue_authorization_code.return_value = MagicMock(code="oauth-code-1")
         services = MagicMock(oauth_server=oauth_server)
 
-        monkeypatch.setattr(app_module.dify_config, "CREATORS_PLATFORM_FEATURES_ENABLED", True)
-        monkeypatch.setattr(app_module.dify_config, "CREATORS_PLATFORM_OAUTH_CLIENT_ID", "client-1")
+        apply_config_overrides(
+            monkeypatch,
+            CREATORS_PLATFORM_FEATURES_ENABLED=True,
+            CREATORS_PLATFORM_OAUTH_CLIENT_ID="client-1",
+        )
         monkeypatch.setattr(app_module, "application_services", lambda: services)
         monkeypatch.setattr(app_module.AppDslService, "export_dsl", MagicMock(return_value="app: demo"))
 

@@ -32,9 +32,9 @@ from collections.abc import Iterator
 import pytest
 from flask import Blueprint
 
-from configs import dify_config
 from dify_app import DifyApp
 from extensions import ext_blueprints
+from tests.unit_tests.config_override import apply_config_overrides
 
 # Modules whose `bp` attribute is consumed by `ext_blueprints.init_app`.
 # Keep in sync with the imports inside `init_app`.
@@ -90,7 +90,7 @@ def test_openapi_blueprint_registered_with_cors_when_enabled(
     fresh_blueprints: dict[str, Blueprint],
 ) -> None:
     """Enabled gate: blueprint mounted, CORS wired, `/openapi/v1/*` rules live."""
-    monkeypatch.setattr(dify_config, "OPENAPI_ENABLED", True)
+    apply_config_overrides(monkeypatch, OPENAPI_ENABLED=True)
 
     app = _build_app()
     ext_blueprints.init_app(app)
@@ -111,7 +111,7 @@ def test_openapi_blueprint_absent_when_disabled(
     fresh_blueprints: dict[str, Blueprint],
 ) -> None:
     """Disabled gate: no blueprint, no CORS, no `/openapi/v1/*` URL rules."""
-    monkeypatch.setattr(dify_config, "OPENAPI_ENABLED", False)
+    apply_config_overrides(monkeypatch, OPENAPI_ENABLED=False)
 
     app = _build_app()
     ext_blueprints.init_app(app)

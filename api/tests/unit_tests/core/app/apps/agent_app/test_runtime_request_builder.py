@@ -27,6 +27,7 @@ from core.app.apps.agent_app.runtime_request_builder import (
 )
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from models.agent_config_entities import AgentSoulConfig
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @pytest.fixture(autouse=True)
@@ -403,7 +404,7 @@ class TestAgentAppRuntimeRequestBuilder:
         assert exc.value.error_code == "agent_model_not_configured"
 
     def test_build_maps_agent_soul_shell_settings_to_shell_layer(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
+        apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
         soul = AgentSoulConfig.model_validate(
             {
                 "model": {
@@ -482,7 +483,7 @@ class TestAgentAppConfigLayer:
         assert names.index(DIFY_CONFIG_LAYER_ID) == names.index(DIFY_SHELL_LAYER_ID) + 1
 
     def test_config_layer_present_when_agent_soul_has_no_config_assets(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
+        apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
         builder = AgentAppRuntimeRequestBuilder(
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )

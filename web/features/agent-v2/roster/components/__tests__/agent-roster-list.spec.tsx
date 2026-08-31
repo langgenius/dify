@@ -130,9 +130,11 @@ describe('AgentRosterList', () => {
   it('exposes each agent card with the agent name', () => {
     renderList([createAgent()])
 
-    const card = screen.getByRole('article', { name: 'Research Agent' })
+    const list = screen.getByRole('list')
+    const card = within(list).getByRole('listitem', { name: 'Research Agent' })
     const cardLink = within(card).getByRole('link', { name: 'Research Agent' })
 
+    expect(card.parentElement).toBe(list)
     expect(cardLink).toHaveAttribute('href', '/agents/agent-1/configure')
     expect(cardLink).toHaveAccessibleDescription('Find and summarize market materials.')
   })
@@ -222,7 +224,7 @@ describe('AgentRosterList', () => {
       footer: { status: 'error', onRetry: onLoadMore },
     })
 
-    expect(screen.getByRole('article', { name: 'Research Agent' })).toBeInTheDocument()
+    expect(screen.getByRole('listitem', { name: 'Research Agent' })).toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent('agentV2.roster.loadingError')
 
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
@@ -234,7 +236,7 @@ describe('AgentRosterList', () => {
     const onRetry = vi.fn()
     renderList([createAgent()], { footer: { status: 'error', onRetry } })
 
-    expect(screen.getByRole('article', { name: 'Research Agent' })).toBeInTheDocument()
+    expect(screen.getByRole('listitem', { name: 'Research Agent' })).toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent('agentV2.roster.loadingError')
 
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
@@ -272,7 +274,7 @@ describe('AgentRosterList', () => {
   it('announces zero workflow references without exposing an inactive button', () => {
     renderList([createAgent()])
 
-    const card = screen.getByRole('article', { name: 'Research Agent' })
+    const card = screen.getByRole('listitem', { name: 'Research Agent' })
     expect(within(card).getByText(/^agentV2\.roster\.references\.trigger/)).toHaveClass('sr-only')
     expect(
       within(card).queryByRole('button', { name: /agentV2\.roster\.references\.trigger/ }),
@@ -296,7 +298,7 @@ describe('AgentRosterList', () => {
       }),
     ])
 
-    const card = screen.getByRole('article', { name: 'Research Agent' })
+    const card = screen.getByRole('listitem', { name: 'Research Agent' })
     const cardLink = within(card).getByRole('link', { name: 'Research Agent' })
     const references = within(card).getByRole('button', {
       name: /agentV2\.roster\.references\.trigger.*1/,
@@ -342,6 +344,33 @@ describe('AgentRosterList', () => {
     expect(descriptionInput).toHaveValue('Find and summarize market materials.')
     expect(descriptionInput).not.toBeRequired()
     expect(duplicateAgentMutationFn).not.toHaveBeenCalled()
+  })
+
+  it('opens the same duplicate action from the card context menu', async () => {
+    const user = userEvent.setup()
+    renderList([createAgent()])
+
+    const cardLink = screen.getByRole('link', { name: 'Research Agent' })
+    await user.pointer({ target: cardLink, keys: '[MouseRight]' })
+    await user.click(await screen.findByRole('menuitem', { name: /common\.operation\.duplicate/ }))
+
+    expect(
+      await screen.findByRole('dialog', { name: 'agentV2.roster.duplicateDialog.title' }),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps the more button outside the card context menu trigger', async () => {
+    const user = userEvent.setup()
+    renderList([createAgent()])
+
+    await user.pointer({
+      target: screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }),
+      keys: '[MouseRight]',
+    })
+
+    expect(
+      screen.queryByRole('menuitem', { name: /common\.operation\.duplicate/ }),
+    ).not.toBeInTheDocument()
   })
 
   it('exports the Agent App DSL with the backing App id', async () => {
@@ -544,6 +573,7 @@ describe('AgentRosterList', () => {
         screen.queryByRole('dialog', { name: 'agentV2.roster.editDialog.title' }),
       ).not.toBeInTheDocument()
     })
+    expect(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ })).toHaveFocus()
 
     await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
     await user.click(screen.getByRole('menuitem', { name: /agentV2\.roster\.editInfo/ }))
