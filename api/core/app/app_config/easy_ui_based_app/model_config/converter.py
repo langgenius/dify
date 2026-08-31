@@ -58,7 +58,7 @@ class ModelConfigConverter:
 
         # model config
         completion_params = model_config.parameters.copy() if model_config.parameters else {}
-        stop = list(getattr(model_config, "stop", None) or [])
+        stop = list(model_config.stop) if model_config.stop else []
         if "stop" in completion_params:
             stop = completion_params.pop("stop")
 
