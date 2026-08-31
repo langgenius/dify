@@ -191,7 +191,6 @@ describe('registration tracking', () => {
       expect(listener).not.toHaveBeenCalled()
       unsubscribe()
     })
-
   })
 
   describe('flushRegistrationSuccess', () => {
