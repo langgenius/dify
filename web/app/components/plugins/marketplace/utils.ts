@@ -1,6 +1,5 @@
 import type {
   CollectionsAndPluginsSearchParams,
-  MarketplaceCollection,
   MarketplacePlugin,
   MarketplaceTemplate,
   PluginsSearchParams,

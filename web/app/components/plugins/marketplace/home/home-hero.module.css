@@ -32,8 +32,8 @@
     ),
     linear-gradient(to bottom, var(--color-divider-subtle) 1px, transparent 1px);
   background-size:
-    41px 100%,
-    100% 41px;
+    var(--hero-grid-pitch, 41px) 100%,
+    100% var(--hero-grid-pitch, 41px);
   background-position:
     calc(50% + 0.5px) top,
     left 40px;

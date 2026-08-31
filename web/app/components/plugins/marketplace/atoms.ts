@@ -3,8 +3,8 @@ import type { ActivePluginType } from './constants'
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect } from 'react'
-import { DEFAULT_SORT, PLUGIN_CATEGORY_WITH_COLLECTIONS } from './constants'
-import { marketplaceSearchParamsParsers } from './search-params'
+import { DEFAULT_SORT } from './constants'
+import { marketplaceSearchParamsParsers, shouldSearchMarketplacePlugins } from './search-params'
 
 const marketplaceSortAtom = atom<PluginsSort>(DEFAULT_SORT)
 export function useMarketplaceSort() {
@@ -50,9 +50,12 @@ export function useMarketplaceSearchMode(
 
   const searchMode = useAtomValue(searchModeAtom)
   const isSearchMode =
-    !!searchPluginText ||
-    filterPluginTags.length > 0 ||
-    (searchMode ?? !PLUGIN_CATEGORY_WITH_COLLECTIONS.has(activePluginType))
+    searchMode === true ||
+    shouldSearchMarketplacePlugins({
+      category: activePluginType,
+      q: searchPluginText,
+      tags: filterPluginTags,
+    })
   return isSearchMode
 }
 

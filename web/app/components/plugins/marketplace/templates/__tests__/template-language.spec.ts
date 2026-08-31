@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 import {
   filterTemplatesForLocale,
   getTemplateCollectionText,
-  hasManualTemplateLanguages,
   parseListParam,
 } from '../template-language'
 
@@ -96,12 +95,5 @@ describe('parseListParam', () => {
     expect(parseListParam(undefined)).toEqual([])
     expect(parseListParam('en,zh-Hans')).toEqual(['en', 'zh-Hans'])
     expect(parseListParam(['ja', ' other '])).toEqual(['ja', 'other'])
-  })
-})
-
-describe('hasManualTemplateLanguages', () => {
-  it('is true only when at least one language is selected', () => {
-    expect(hasManualTemplateLanguages([])).toBe(false)
-    expect(hasManualTemplateLanguages(['en'])).toBe(true)
   })
 })

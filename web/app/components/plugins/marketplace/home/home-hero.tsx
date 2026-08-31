@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from '#i18n'
 import brain2FillIcon from './assets/brain-2-fill.svg'
@@ -9,7 +9,7 @@ import plugFillIcon from './assets/plug-fill.svg'
 import puzzleFillIcon from './assets/puzzle-fill.svg'
 import sparklingFillIcon from './assets/sparkling-fill.svg'
 import voiceAiFillIcon from './assets/voice-ai-fill.svg'
-import { HERO_ICON_SIZE_PX } from './home-constants'
+import { HERO_GRID_PITCH_PX, HERO_ICON_SIZE_PX } from './home-constants'
 import styles from './home-hero.module.css'
 
 type HomeHeroProps = {
@@ -29,16 +29,20 @@ const heroIconSrc = (icon: { src: string } | string) => (typeof icon === 'string
 // Positions are Figma offsets from the 1512px canvas center, with the top
 // icon row shifted to y=0 so the marks sit in HomeHero instead of the header.
 const heroDecorationIcons: HeroDecorationIcon[] = [
-  { src: heroIconSrc(sparklingFillIcon), left: -450, top: 41 },
+  { src: heroIconSrc(sparklingFillIcon), left: -450, top: HERO_GRID_PITCH_PX },
   { src: heroIconSrc(plugFillIcon), left: -286, top: 0 },
-  { src: heroIconSrc(puzzleFillIcon), left: -327, top: 123 },
-  { src: heroIconSrc(brain2FillIcon), left: 247, top: 82 },
-  { src: heroIconSrc(imageCircleAiLineIcon), left: 370, top: 123 },
+  { src: heroIconSrc(puzzleFillIcon), left: -327, top: HERO_GRID_PITCH_PX * 3 },
+  { src: heroIconSrc(brain2FillIcon), left: 247, top: HERO_GRID_PITCH_PX * 2 },
+  { src: heroIconSrc(imageCircleAiLineIcon), left: 370, top: HERO_GRID_PITCH_PX * 3 },
   { src: heroIconSrc(voiceAiFillIcon), left: 411, top: 0 },
 ]
 
+const heroGridStyle = {
+  '--hero-grid-pitch': `${HERO_GRID_PITCH_PX}px`,
+} as CSSProperties
+
 const HeroDecorations = () => (
-  <div aria-hidden className={styles.decorations}>
+  <div aria-hidden className={styles.decorations} style={heroGridStyle}>
     <div className={styles.grid} />
     <div className={styles.glow} />
     {heroDecorationIcons.map((icon) => (
@@ -72,10 +76,8 @@ const HomeHero = ({ isMarketplacePlatform, subtitle, title }: HomeHeroProps) => 
     >
       <HeroDecorations />
       <div
-        className={cn(
-          'relative flex w-full max-w-[726px] flex-col items-center pt-[41px]',
-          styles.frame,
-        )}
+        className={cn('relative flex w-full max-w-[726px] flex-col items-center', styles.frame)}
+        style={{ paddingTop: HERO_GRID_PITCH_PX }}
       >
         <div
           className={cn('flex w-full flex-col items-center gap-2 text-center', styles.copyBlock)}

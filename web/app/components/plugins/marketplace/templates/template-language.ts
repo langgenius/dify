@@ -13,10 +13,6 @@ export function parseListParam(value?: string | string[]) {
   return parts.map((part) => part.trim()).filter(Boolean)
 }
 
-export function hasManualTemplateLanguages(languages: string[]) {
-  return languages.length > 0
-}
-
 const getLanguagePrefix = (locale: string) => locale.toLowerCase().split(/[-_]/)[0] ?? ''
 
 /**

@@ -18,7 +18,11 @@ export const marketplaceSearchParamsParsers = {
 
 export type MarketplaceSearchParams = inferParserType<typeof marketplaceSearchParamsParsers>
 
-export const shouldSearchMarketplacePlugins = ({ category, q, tags }: MarketplaceSearchParams) =>
+export const shouldSearchMarketplacePlugins = ({
+  category,
+  q,
+  tags,
+}: Pick<MarketplaceSearchParams, 'category' | 'q' | 'tags'>) =>
   Boolean(q || tags.length > 0 || !PLUGIN_CATEGORY_WITH_COLLECTIONS.has(category))
 
 export const getMarketplacePluginsSearchParams = (
