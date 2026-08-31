@@ -251,6 +251,7 @@
     gap: 2px;
   }
 
+  :global([data-marketplace-standalone]) .blogTag,
   :global([data-marketplace-standalone]) .blogTitle,
   :global([data-marketplace-standalone]) .blogSubtitle {
     overflow: hidden;

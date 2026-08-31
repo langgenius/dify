@@ -76,11 +76,12 @@ describe('Marketplace home trending layout', () => {
       'On September 10, 2026, LangGenius K.K. will host its flagship annual conference in Tokyo.'
     const descriptionText =
       'It is a full day dedicated to turning generative AI from isolated pilots into real operations. Registration is open now for the second year of the conference.'
+    const longTag = 'IF Con Tokyo 2026 Annual Conference Extra Long Label'
     const longTitle = 'IF Con Tokyo 2026: Turn “What If” into Production'
     const longBlog: PluginBanner = {
       id: 'blog-long',
       style_type: 'blog',
-      title: 'IF Con Tokyo 2026',
+      title: longTag,
       sort: 0,
       language: 'en',
       content: {
@@ -97,11 +98,20 @@ describe('Marketplace home trending layout', () => {
       </div>,
     )
 
+    const slide = screen.getByRole('link').element()
+    const tag = screen.getByText(longTag).element()
     const title = screen.getByRole('heading', { name: longTitle }).element()
     const subtitle = screen.getByText(subtitleText).element()
     const description = screen.getByText(descriptionText).element()
+    const slideBox = slide.getBoundingClientRect()
+    const titleBox = title.getBoundingClientRect()
 
+    expect(getComputedStyle(tag).whiteSpace).toBe('nowrap')
+    expect(getComputedStyle(tag).textOverflow).toBe('ellipsis')
     expect(getComputedStyle(title).whiteSpace).toBe('nowrap')
+    expect(getComputedStyle(title).textOverflow).toBe('ellipsis')
+    expect(titleBox.left - slideBox.left).toBeCloseTo(20, 0)
+    expect(slideBox.right - titleBox.right).toBeCloseTo(20, 0)
     expect(getComputedStyle(subtitle).whiteSpace).toBe('nowrap')
     expect(getComputedStyle(subtitle).textOverflow).toBe('ellipsis')
     expect(getComputedStyle(description).webkitLineClamp).toBe('2')

@@ -336,8 +336,13 @@ function BlogBannerSlide({
         )}
       >
         <div className="flex min-h-0 w-full flex-1 flex-col items-start gap-2">
-          <div className="flex w-full items-center justify-between gap-2">
-            <p className="shrink-0 rounded-sm bg-state-success-hover-alt px-1.5 py-0.5 text-[10px] leading-3 font-semibold tracking-[-0.2px] text-text-success">
+          <div className="flex w-full min-w-0 items-center justify-between gap-2">
+            <p
+              className={cn(
+                'max-w-full min-w-0 rounded-sm bg-state-success-hover-alt px-1.5 py-0.5 text-[10px] leading-3 font-semibold tracking-[-0.2px] text-text-success',
+                isMarketplacePlatform && styles.blogTag,
+              )}
+            >
               {banner.title}
             </p>
             {isMarketplacePlatform && (
@@ -356,7 +361,7 @@ function BlogBannerSlide({
           <div className="flex min-h-0 w-full max-w-[800px] flex-1 flex-col items-start gap-3">
             <h2
               className={cn(
-                'shrink-0 text-xl leading-6 font-semibold tracking-[-0.4px] text-text-primary',
+                'w-full min-w-0 shrink-0 text-xl leading-6 font-semibold tracking-[-0.4px] text-text-primary',
                 isMarketplacePlatform && styles.blogTitle,
               )}
             >
