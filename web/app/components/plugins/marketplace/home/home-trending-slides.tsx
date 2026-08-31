@@ -452,8 +452,7 @@ function ImageBannerSlide({
           height={200}
           alt=""
           aria-hidden
-          className="size-full object-cover"
-          style={{ objectPosition: banner.style_type === 'ad' ? 'left center' : undefined }}
+          className="size-full object-cover object-left"
         />
       </picture>
     </Link>

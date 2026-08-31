@@ -34,6 +34,20 @@ const adBanner: PluginBanner = {
     alt_text: 'Partner campaign',
   },
 }
+const eventBanner: PluginBanner = {
+  id: 'event',
+  style_type: 'event',
+  title: 'Launch event',
+  sort: 2,
+  language: 'en',
+  content: {
+    images: {
+      desktop: '/api/v1/banners/images/banners/event.png',
+    },
+    link: 'https://dify.ai/event',
+    alt_text: 'Launch event',
+  },
+}
 const carouselBanners = [
   createBlogBanner('first', 'First banner', 0),
   createBlogBanner('second', 'Second banner', 1),
@@ -61,21 +75,29 @@ describe('Marketplace home trending layout', () => {
     expect(adSlide.getBoundingClientRect().height).toBe(blogSlide.getBoundingClientRect().height)
   })
 
-  it('keeps the ad artwork left-aligned so responsive cropping stays on the right', async () => {
+  it('keeps event and ad artwork left-aligned so responsive cropping stays on the right', async () => {
     await page.viewport(600, 900)
     const screen = await render(
-      <div data-marketplace-standalone className="w-[560px]">
+      <div data-marketplace-standalone className="w-full">
         <HomeBannerSlide banner={adBanner} isMarketplacePlatform page="plugins" />
+        <HomeBannerSlide banner={eventBanner} isMarketplacePlatform page="plugins" />
       </div>,
     )
 
-    const artwork = screen
-      .getByRole('link', { name: 'Partner campaign' })
-      .element()
-      .querySelector('img')
+    const assertLeftCoverCrop = () => {
+      for (const name of ['Partner campaign', 'Launch event']) {
+        const artwork = screen.getByRole('link', { name }).element().querySelector('img')
 
-    expect(artwork).not.toBeNull()
-    expect(getComputedStyle(artwork!).objectPosition).toBe('0% 50%')
+        expect(artwork).not.toBeNull()
+        expect(getComputedStyle(artwork!).objectFit).toBe('cover')
+        expect(getComputedStyle(artwork!).objectPosition).toBe('0% 50%')
+      }
+    }
+
+    assertLeftCoverCrop()
+
+    await page.viewport(1000, 900)
+    assertLeftCoverCrop()
   })
 
   it('keeps the blog artwork left corners rounded when its image is cropped', async () => {

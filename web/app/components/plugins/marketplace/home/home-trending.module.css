@@ -77,6 +77,12 @@
   max-width: 400px;
 }
 
+/* Crop from the right so left-side artwork stays visible when the frame
+   is narrower than the image (PC resize and mobile cover). */
+.imageSlide :is(picture, img) {
+  object-position: left;
+}
+
 .readMoreMobile {
   display: none;
 }
@@ -241,7 +247,8 @@
     gap: 4px;
   }
 
-  /* Event/ad mobile: match the fixed 197px artwork + 160px copy height. */
+  /* Event/ad mobile: match the fixed 197px artwork + 160px copy height.
+     Cover + left so shrinking the frame crops the right, not the copy. */
   :global([data-marketplace-standalone]) .imageSlide {
     height: 357px;
   }
@@ -250,7 +257,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: center;
+    object-position: left;
   }
 
   :global([data-marketplace-standalone]) .readMoreDesktop {
