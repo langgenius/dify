@@ -1,6 +1,5 @@
 'use client'
 
-import { cn } from '@langgenius/dify-ui/cn'
 import { Tabs, TabsPanel } from '@langgenius/dify-ui/tabs'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useState } from 'react'
@@ -32,12 +31,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   }
 
   return (
-    <main
-      className={cn(
-        'relative min-h-full min-w-0 flex-1 px-8 pb-20',
-        selectedEvaluationRunId ? 'pt-3' : 'pt-8',
-      )}
-    >
+    <main className="relative min-h-full min-w-0 flex-1 px-6 pt-3 pb-20">
       {!selectedEvaluationRunId && (
         <header>
           <h1 className="system-xl-semibold text-text-primary">
