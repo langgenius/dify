@@ -87,8 +87,17 @@
   object-position: left;
 }
 
-.readMoreMobile {
-  display: none;
+/* Desktop and mobile: keep the green label on one line. The title wraps. */
+.blogTag {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.blogTitle {
+  overflow-wrap: break-word;
+  white-space: normal;
 }
 
 .updatesDescription {
@@ -252,16 +261,10 @@
     gap: 2px;
   }
 
-  :global([data-marketplace-standalone]) .blogTag,
   :global([data-marketplace-standalone]) .blogSubtitle {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  :global([data-marketplace-standalone]) .blogTitle {
-    overflow-wrap: break-word;
-    white-space: normal;
   }
 
   :global([data-marketplace-standalone]) .updatesDescription {
@@ -287,10 +290,6 @@
 
   :global([data-marketplace-standalone]) .readMoreDesktop {
     display: none;
-  }
-
-  :global([data-marketplace-standalone]) .readMoreMobile {
-    display: flex;
   }
 }
 

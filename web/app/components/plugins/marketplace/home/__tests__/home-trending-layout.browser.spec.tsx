@@ -54,6 +54,12 @@ const carouselBanners = [
   createBlogBanner('third', 'Third banner', 2),
 ]
 
+const visibleReadMore = (slide: Element) =>
+  [...slide.querySelectorAll('[aria-hidden]')].find((el) => {
+    const text = el.textContent ?? ''
+    return /Read more|trendingReadMore/.test(text) && el.getBoundingClientRect().height > 0
+  }) ?? null
+
 describe('Marketplace home trending layout', () => {
   it('keeps standalone mobile blog banners at the stacked 357px height', async () => {
     await page.viewport(600, 900)
@@ -117,6 +123,36 @@ describe('Marketplace home trending layout', () => {
     expect(getComputedStyle(subtitle).textOverflow).toBe('ellipsis')
     expect(getComputedStyle(description).webkitLineClamp).toBe('2')
     expect(description.getBoundingClientRect().height).toBeCloseTo(40, 0)
+    expect(visibleReadMore(slide)).toBeNull()
+  })
+
+  it('clamps the desktop blog tag to one line and lets the title wrap', async () => {
+    await page.viewport(1200, 900)
+    const longTag =
+      "Dify Raises $30M: Tomorrow's Organizations Will Be Built by People and Agents — extra-long green label"
+    const longTitle =
+      "Dify Raises $30M: Tomorrow's Organizations Will Be Built by People and AgentsDify Raises $30M: Tomorrow's Organizations Will Be Built by People and Agents"
+    const longBlog: PluginBanner = {
+      ...createBlogBanner('blog-desktop-long', longTitle, 0),
+      title: longTag,
+    }
+    const screen = await render(
+      <div className="w-[1100px]">
+        <HomeBannerSlide banner={longBlog} isMarketplacePlatform page="plugins" />
+      </div>,
+    )
+
+    const tag = screen.getByText(longTag).element()
+    const title = screen.getByRole('heading', { name: longTitle }).element()
+    const tagBox = tag.getBoundingClientRect()
+    const titleBox = title.getBoundingClientRect()
+
+    expect(getComputedStyle(tag).whiteSpace).toBe('nowrap')
+    expect(getComputedStyle(tag).textOverflow).toBe('ellipsis')
+    expect(tagBox.height).toBeLessThanOrEqual(20)
+    expect(getComputedStyle(title).whiteSpace).toBe('normal')
+    expect(titleBox.height).toBeGreaterThan(24)
+    expect(visibleReadMore(screen.getByRole('link').element())).not.toBeNull()
   })
 
   it('shows the standalone mobile event poster at the 800:721 delivery ratio', async () => {

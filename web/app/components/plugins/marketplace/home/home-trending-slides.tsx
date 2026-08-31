@@ -336,7 +336,7 @@ function BlogBannerSlide({
         )}
       >
         <div className="flex min-h-0 w-full flex-1 flex-col items-start gap-2">
-          <div className="flex w-full min-w-0 items-center justify-between gap-2">
+          <div className="flex w-full min-w-0 items-center">
             <p
               className={cn(
                 'max-w-full min-w-0 rounded-sm bg-state-success-hover-alt px-1.5 py-0.5 text-[10px] leading-3 font-semibold tracking-[-0.2px] text-text-success',
@@ -345,18 +345,6 @@ function BlogBannerSlide({
             >
               {banner.title}
             </p>
-            {isMarketplacePlatform && (
-              <span
-                aria-hidden
-                className={cn(
-                  styles.readMoreMobile,
-                  'shrink-0 items-center gap-1 text-[13px] leading-[normal] font-medium text-text-accent underline decoration-[10%] underline-offset-2',
-                )}
-              >
-                <span>{t(($) => $['marketplace.home.trendingReadMore'])}</span>
-                <span className="i-ri-arrow-right-s-line size-4" />
-              </span>
-            )}
           </div>
           <div className="flex min-h-0 w-full max-w-[800px] flex-1 flex-col items-start gap-3">
             <h2
