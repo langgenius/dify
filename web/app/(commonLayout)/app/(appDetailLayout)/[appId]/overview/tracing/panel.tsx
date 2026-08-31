@@ -34,11 +34,11 @@ import {
   LangsmithIcon,
   MlflowIcon,
   OpikIcon,
-  OTelIcon,
   PhoenixIcon,
   TencentIcon,
   WeaveIcon,
 } from '@/app/components/base/icons/src/public/tracing'
+import OTelIcon from '@/app/components/base/icons/src/public/tracing/OTelIcon'
 import Loading from '@/app/components/base/loading'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'

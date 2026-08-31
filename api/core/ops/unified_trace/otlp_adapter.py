@@ -63,7 +63,7 @@ class OTLPUnifiedAdapter:
         self._tracer = cast(trace_sdk.Tracer, provider.get_tracer(f"unified_{self.provider_name}_{scope_key}"))
         self._propagator = TraceContextTextMapPropagator()
         self._scope = destination_scope(
-            self.provider_name, endpoint if endpoint is not None else getattr(config, "endpoint", ""), scope_key
+            self.provider_name, endpoint if endpoint is not None else config.endpoint, scope_key
         )
 
     @property
@@ -78,7 +78,7 @@ class OTLPUnifiedAdapter:
 
     def build_exporter(self, config) -> OTLPSpanExporter:
         return OTLPSpanExporter(
-            endpoint=getattr(config, "endpoint", ""),
+            endpoint=config.endpoint,
             headers=self.build_headers(config),
             timeout=30,
         )

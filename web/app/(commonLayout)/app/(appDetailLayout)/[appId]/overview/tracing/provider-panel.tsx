@@ -13,11 +13,11 @@ import {
   LangsmithIconBig,
   MlflowIconBig,
   OpikIconBig,
-  OTelIconBig,
   PhoenixIconBig,
   TencentIconBig,
   WeaveIconBig,
 } from '@/app/components/base/icons/src/public/tracing'
+import OTelIconBig from '@/app/components/base/icons/src/public/tracing/OTelIconBig'
 import { Eye as View } from '@/app/components/base/icons/src/vender/solid/general'
 import { TracingProvider } from './type'
 

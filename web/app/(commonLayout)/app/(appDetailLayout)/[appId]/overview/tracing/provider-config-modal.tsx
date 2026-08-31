@@ -342,16 +342,14 @@ const ProviderConfigModal: FC<Props> = ({
       if (!errorMessage && !postData.headers.includes('*')) {
         try {
           JSON.parse(postData.headers || '{}')
-        }
-        catch {
+        } catch {
           errorMessage = t(($) => $['tracing.otel.invalidJson'], { ns: 'app' })
         }
       }
       if (!errorMessage) {
         try {
           JSON.parse(postData.resource_attributes || '{}')
-        }
-        catch {
+        } catch {
           errorMessage = t(($) => $['tracing.otel.invalidJson'], { ns: 'app' })
         }
       }

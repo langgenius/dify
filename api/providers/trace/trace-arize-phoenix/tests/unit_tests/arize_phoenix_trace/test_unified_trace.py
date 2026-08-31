@@ -51,13 +51,11 @@ def adapter(monkeypatch: pytest.MonkeyPatch):
     tracer.start_span.side_effect = otel_spans
     exporter = MagicMock()
     exporter.export.return_value = SpanExportResult.SUCCESS
-    monkeypatch.setattr(
-        "dify_trace_arize_phoenix.unified_trace.setup_unified_tracer",
-        lambda config: (tracer, exporter),
-    )
+    monkeypatch.setattr(UnifiedPhoenixAdapter, "build_exporter", lambda _self, _config: exporter)
     value = UnifiedPhoenixAdapter(
         PhoenixConfig(api_key="secret", project="project-a", endpoint="https://phoenix.example")
     )
+    value._tracer = tracer
     value._propagator = MagicMock()
     return value, tracer, otel_spans
 
@@ -179,7 +177,7 @@ def test_emit_does_not_publish_parent_context_when_export_fails(adapter):
     publish = MagicMock()
     tool = span(id="tool-exec", kind=CanonicalSpanKind.TOOL, can_parent_workflow=True)
 
-    with pytest.raises(RetryableTraceDispatchError, match="Phoenix span export failed"):
+    with pytest.raises(RetryableTraceDispatchError, match="phoenix span export failed"):
         subject.emit(trace(tool), None, publish)
 
     publish.assert_not_called()
@@ -190,7 +188,7 @@ def test_emit_maps_exporter_exception_to_retryable_failure(adapter):
     subject._exporter.export.side_effect = ConnectionError("network unavailable")
     publish = MagicMock()
 
-    with pytest.raises(RetryableTraceDispatchError, match="Phoenix span export failed"):
+    with pytest.raises(RetryableTraceDispatchError, match="phoenix span export failed"):
         subject.emit(trace(), None, publish)
 
     publish.assert_not_called()

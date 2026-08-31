@@ -147,7 +147,12 @@ const providerFieldLabels = [
   [TracingProvider.tencent, ['Token', 'Endpoint', 'Service Name']],
   [
     TracingProvider.otel,
-    ['Endpoint', 'app.tracing.otel.headers', 'app.tracing.otel.serviceName', 'app.tracing.otel.resourceAttributes'],
+    [
+      'Endpoint',
+      'app.tracing.otel.headers',
+      'app.tracing.otel.serviceName',
+      'app.tracing.otel.resourceAttributes',
+    ],
   ],
 ] as const
 

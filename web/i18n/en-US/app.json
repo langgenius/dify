@@ -263,6 +263,12 @@
   "tracing.mlflow.title": "MLflow",
   "tracing.opik.description": "Opik is an open-source platform for evaluating, testing, and monitoring LLM applications.",
   "tracing.opik.title": "Opik",
+  "tracing.otel.description": "Export Dify traces to your own OpenTelemetry Collector over OTLP/HTTP, so they land in Jaeger, Tempo, SigNoz, Grafana, or any OTLP-compatible backend.",
+  "tracing.otel.headers": "Headers (JSON)",
+  "tracing.otel.invalidJson": "Headers and Resource Attributes must be valid JSON objects.",
+  "tracing.otel.resourceAttributes": "Resource Attributes (JSON)",
+  "tracing.otel.serviceName": "Service Name",
+  "tracing.otel.title": "OTel",
   "tracing.phoenix.description": "Open-source & OpenTelemetry-based observability, evaluation, prompt engineering and experimentation platform for your LLM workflows and agents.",
   "tracing.phoenix.title": "Phoenix",
   "tracing.tencent.description": "Tencent Application Performance Monitoring provides comprehensive tracing and multi-dimensional analysis for LLM applications.",
@@ -284,11 +290,5 @@
   "types.all": "All",
   "types.chatbot": "Chatbot",
   "types.completion": "Completion",
-  "types.workflow": "Workflow",
-  "tracing.otel.title": "OTel",
-  "tracing.otel.description": "Export Dify traces to your own OpenTelemetry Collector over OTLP/HTTP, so they land in Jaeger, Tempo, SigNoz, Grafana, or any OTLP-compatible backend.",
-  "tracing.otel.headers": "Headers (JSON)",
-  "tracing.otel.serviceName": "Service Name",
-  "tracing.otel.resourceAttributes": "Resource Attributes (JSON)",
-  "tracing.otel.invalidJson": "Headers and Resource Attributes must be valid JSON objects."
+  "types.workflow": "Workflow"
 }
