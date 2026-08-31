@@ -18,7 +18,7 @@ import {
   upload,
 } from './base'
 import { resolveWebAppAddress } from './webapp-address'
-import { getOrCreateWebAppUserId, getWebAppAccessToken } from './webapp-auth'
+import { getOrCreateWebAppSessionId, getWebAppAccessToken } from './webapp-auth'
 
 export enum AppSourceType {
   webApp = 'webApp',
@@ -433,7 +433,7 @@ export const fetchAccessToken = (params: { userId?: string; appCode: string }) =
 
   const environmentParams = {
     ...params,
-    userId: params.userId || getOrCreateWebAppUserId(address),
+    userId: params.userId || getOrCreateWebAppSessionId(address),
   }
 
   const currentRequest = environmentPassportRequests.get(address.code)
