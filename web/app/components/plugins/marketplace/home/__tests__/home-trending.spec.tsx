@@ -3,10 +3,16 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { trackEvent } from '@/app/components/base/amplitude'
+import { trackMarketplaceSiteEvent } from '@/utils/marketplace-site-track'
 import HomeTrending from '../home-trending'
 
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
+}))
+
+vi.mock('@/utils/marketplace-site-track', () => ({
+  rememberMarketplaceSiteReferrer: vi.fn(),
+  trackMarketplaceSiteEvent: vi.fn(),
 }))
 
 vi.mock('#i18n', async () => {
@@ -110,6 +116,7 @@ const banners: PluginBanner[] = [
 ]
 
 const mockTrackEvent = vi.mocked(trackEvent)
+const mockTrackMarketplaceSiteEvent = vi.mocked(trackMarketplaceSiteEvent)
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -745,5 +752,64 @@ describe('HomeTrending', () => {
       language: 'en',
       style_type: 'event',
     })
+  })
+
+  it('dual-writes banner impressions to Amplitude and marketplace site tracking', () => {
+    vi.useFakeTimers()
+    const observers: Array<{ callback: IntersectionObserverCallback }> = []
+    class MockIntersectionObserver {
+      disconnect = vi.fn()
+      observe = vi.fn()
+      root: Element | Document | null = null
+      rootMargin = '0px'
+      takeRecords = () => []
+      thresholds = [0.5]
+      unobserve = vi.fn()
+
+      constructor(callback: IntersectionObserverCallback) {
+        observers.push({ callback })
+      }
+    }
+    vi.stubGlobal('IntersectionObserver', MockIntersectionObserver)
+
+    try {
+      const blogBanner = banners[1]
+      if (!blogBanner) throw new Error('Expected a blog banner fixture')
+
+      render(<HomeTrending banners={[blogBanner]} isMarketplacePlatform page="plugins" />)
+
+      const observer = observers.at(-1)
+      if (!observer) throw new Error('Expected IntersectionObserver to be registered')
+
+      act(() => {
+        observer.callback(
+          [
+            {
+              intersectionRatio: 0.5,
+              isIntersecting: true,
+            } as IntersectionObserverEntry,
+          ],
+          {} as IntersectionObserver,
+        )
+      })
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
+
+      const properties = {
+        banner_id: 'blog',
+        sort: 1,
+        page: 'plugins',
+        language: 'en',
+        style_type: 'blog',
+      }
+      expect(mockTrackEvent).toHaveBeenCalledWith('marketplace_banner_impression', properties)
+      expect(mockTrackMarketplaceSiteEvent).toHaveBeenCalledWith(
+        'marketplace_banner_impression',
+        properties,
+      )
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

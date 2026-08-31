@@ -11,6 +11,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from '#i18n'
 import { trackEvent } from '@/app/components/base/amplitude'
+import { trackMarketplaceSiteEvent } from '@/utils/marketplace-site-track'
 import TrendingNavigation from './home-trending-navigation'
 import { HomeBannerSlide } from './home-trending-slides'
 import styles from './home-trending.module.css'
@@ -50,13 +51,15 @@ function TrackedBannerSlide({
   useBannerViewability(
     slideRef,
     () => {
-      trackEvent('marketplace_banner_impression', {
+      const properties = {
         banner_id: banner.id,
         sort: banner.sort,
         page,
         language: banner.language,
         style_type: banner.style_type,
-      })
+      }
+      trackEvent('marketplace_banner_impression', properties)
+      trackMarketplaceSiteEvent('marketplace_banner_impression', properties)
     },
     isActive,
   )
