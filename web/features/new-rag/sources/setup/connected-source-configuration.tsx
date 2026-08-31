@@ -5,26 +5,26 @@ import type {
   KnowledgeFsInitialSourcePreviewFileResponse,
   KnowledgeFsSpaceCreatePayload,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { InstalledSourceProviderOption } from './provider-options'
 import type {
   NewKnowledgeOnlineDocumentsSourceDraft,
   NewKnowledgeOnlineDriveSourceDraft,
   NewKnowledgeSourceDraft,
-} from '../sources/create/source-draft'
-import type { InstalledSourceProviderOption } from '../sources/source-provider-options'
+} from './source-draft'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { consoleClient } from '@/service/client'
-import { DatasourceParameterForm } from '../sources/datasource-parameter-form'
+import { DatasourceParameterForm } from './datasource-parameter-form'
 import {
   datasourceParameterSchemas,
   invalidDatasourceParameters,
   missingRequiredDatasourceParameters,
   withDatasourceParameterDefaults,
-} from '../sources/datasource-parameter-model'
-import { SourceNameField, SourceSyncPolicyField } from '../sources/source-setup-fields'
+} from './datasource-parameter-model'
+import { SourceNameField, SourceSyncPolicyField } from './fields'
 
 type ConnectedDraft = NewKnowledgeOnlineDocumentsSourceDraft | NewKnowledgeOnlineDriveSourceDraft
 type InitialSource = NonNullable<KnowledgeFsSpaceCreatePayload['initial_source']>
@@ -47,7 +47,7 @@ type NextPageRequest = {
   prefix?: string
 }
 
-export type ConnectedSourcePreviewBinding = {
+export type ConnectedSourceConfigurationBinding = {
   credentialId: string
   datasource: string
   pluginId: string
@@ -75,7 +75,7 @@ function resourceIcon(resource: PreviewResource) {
     : 'i-ri-file-3-line text-text-tertiary'
 }
 
-export function CreateConnectedSourceSetup({
+export function ConnectedSourceConfiguration({
   disabled,
   draft,
   previewBinding,
@@ -85,7 +85,7 @@ export function CreateConnectedSourceSetup({
 }: {
   disabled: boolean
   draft: ConnectedDraft
-  previewBinding: ConnectedSourcePreviewBinding
+  previewBinding: ConnectedSourceConfigurationBinding
   providerOption: InstalledSourceProviderOption
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
   onInitialSourceChange: (source?: InitialSource) => void

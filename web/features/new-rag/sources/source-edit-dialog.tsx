@@ -2,11 +2,14 @@
 
 import type { KnowledgeFsSpaceCreatePayload } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type {
+  DatasourceParameters,
+  DatasourceParameterSchema,
+} from './setup/datasource-parameter-model'
+import type {
   NewKnowledgeOnlineDocumentsSourceDraft,
   NewKnowledgeOnlineDriveSourceDraft,
   NewKnowledgeSourceDraft,
-} from './create/source-draft'
-import type { DatasourceParameters, DatasourceParameterSchema } from './datasource-parameter-model'
+} from './setup/source-draft'
 import type { SourceEditValues } from './source-list-model'
 import type { CrawlPreviewPage, Source, SourceSyncPolicy } from './source-models'
 import { Button } from '@langgenius/dify-ui/button'
@@ -18,20 +21,25 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { useDataSourceList } from '@/service/use-pipeline'
-import { CreateConnectedSourceSetup } from '../create/connected-source-setup'
-import { CrawlPreviewPageSelection } from './crawl-selection-form'
-import {
-  NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH,
-  normalizeWebsiteSourceUrl,
-} from './create/source-draft'
-import { WebsiteDatasourceParameterForm } from './datasource-parameter-form'
+import { ConnectedSourceConfiguration } from './setup/connected-source-configuration'
+import { CrawlPreviewPageSelection } from './setup/crawl-selection'
+import { WebsiteDatasourceParameterForm } from './setup/datasource-parameter-form'
 import {
   datasourceParameterRecord,
   invalidDatasourceParameters,
   missingRequiredDatasourceParameters,
   websiteDatasourceParameterSchemas,
   withDatasourceParameterDefaults,
-} from './datasource-parameter-model'
+} from './setup/datasource-parameter-model'
+import {
+  discoverSourceProviderOptions,
+  normalizeSourceProviderName,
+} from './setup/provider-options'
+import {
+  NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH,
+  normalizeWebsiteSourceUrl,
+} from './setup/source-draft'
+import { SyncPolicyField } from './setup/sync-policy-field'
 import {
   metadataString,
   sourceCustomIntervalHours,
@@ -40,11 +48,6 @@ import {
   syncPolicyConfiguration,
 } from './source-list-model'
 import { sourceConnectionListFromApi } from './source-models'
-import {
-  discoverSourceProviderOptions,
-  normalizeSourceProviderName,
-} from './source-provider-options'
-import { SyncPolicyField } from './sync-policy-field'
 
 const MIN_CUSTOM_INTERVAL_HOURS = 1
 const MAX_CUSTOM_INTERVAL_HOURS = 720
@@ -311,7 +314,7 @@ function ConnectedSourceEditDialogContent({
                 : t(($) => $['newKnowledge.providerUnavailable'])}
             </p>
           ) : (
-            <CreateConnectedSourceSetup
+            <ConnectedSourceConfiguration
               disabled={pending}
               draft={draft}
               previewBinding={previewBinding}

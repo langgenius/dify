@@ -16,6 +16,7 @@ import { Infotip } from '@/app/components/base/infotip'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { knowledgeFsTaskFailureMessageKey } from '../knowledge-fs-task-error'
+import { SourceProviderIcon } from './setup/fields'
 import { SourceActions } from './source-actions'
 import { sourceTableGridClass } from './source-list-layout'
 import {
@@ -34,7 +35,6 @@ import {
   sourceWorkflowFromApi,
   sourceWorkflowIsActive,
 } from './source-models'
-import { SourceProviderIcon } from './source-setup-fields'
 
 const statusDotStatus: Record<SourceDisplayStatus, StatusDotStatus> = {
   active: 'success',

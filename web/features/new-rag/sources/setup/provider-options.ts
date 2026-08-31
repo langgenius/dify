@@ -1,4 +1,4 @@
-import type { NewKnowledgeSourceDraft, NewKnowledgeSourceType } from './create/source-draft'
+import type { NewKnowledgeSourceDraft, NewKnowledgeSourceType } from './source-draft'
 import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 
 type Datasource = DataSourceItem['declaration']['datasources'][number]

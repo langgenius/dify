@@ -1,7 +1,7 @@
 import type {
   NewKnowledgeSourceProvider,
   NewKnowledgeSourceType,
-} from './sources/create/source-draft'
+} from './sources/setup/source-draft'
 
 export type NewKnowledgeStartMode = 'empty' | 'source' | 'upload'
 

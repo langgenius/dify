@@ -1,5 +1,5 @@
-import type { Source, SourceWorkflowRun } from '../source-models'
-import type { SyncPolicyValue } from '../sync-policy-field'
+import type { SyncPolicyValue } from '../../setup/sync-policy-field'
+import type { Source, SourceWorkflowRun } from '../../source-models'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'

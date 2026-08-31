@@ -1,13 +1,13 @@
 import type { DatasourceProviderAuthListResponse } from '@dify/contracts/api/console/auth/types.gen'
+import type { NewKnowledgeSourceDraft } from '../../setup/source-draft'
 import type { SourceConnection, SourceProvider } from '../../source-models'
-import type { NewKnowledgeSourceDraft } from '../source-draft'
 import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { StrictMode } from 'react'
 import { render } from '@/test/console/render'
+import { newKnowledgeSourceDraftStorageKey } from '../../setup/source-draft'
 import { AddSourcePage } from '../page'
-import { newKnowledgeSourceDraftStorageKey } from '../source-draft'
 
 type GetKnowledgeSpacesByIdSourceConnectionsResponse = {
   items: SourceConnection[]
@@ -32,8 +32,8 @@ const connectFirecrawlButtonName = 'dataset.newKnowledge.connectProvider:{"provi
 
 vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
 
-vi.mock('../connected-source-setup', () => ({
-  ConnectedSourceSetup: ({
+vi.mock('../connected-source-workflow', () => ({
+  ConnectedSourceWorkflow: ({
     draft,
     onDraftChange,
     onExit,

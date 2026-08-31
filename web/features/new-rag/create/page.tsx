@@ -5,7 +5,7 @@ import type {
   KnowledgeFsSpaceCreateResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { NewKnowledgeStartMode } from '../routes'
-import type { NewKnowledgeSourceDraft } from '../sources/create/source-draft'
+import type { NewKnowledgeSourceDraft } from '../sources/setup/source-draft'
 import type {
   KnowledgeFsUploadPhase,
   KnowledgeFsUploadProgress,
@@ -54,7 +54,7 @@ import {
   newKnowledgeListPath,
   newKnowledgeSettingsPath,
 } from '../routes'
-import { createNewKnowledgeSourceDraft } from '../sources/create/source-draft'
+import { createNewKnowledgeSourceDraft } from '../sources/setup/source-draft'
 import {
   discardKnowledgeFsStagedUpload,
   stageKnowledgeFsDocument,

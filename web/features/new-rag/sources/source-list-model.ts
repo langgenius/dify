@@ -1,6 +1,6 @@
 import type { KnowledgeFsSourceUpdatePayload } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { Source, SourceSyncPolicy } from './source-models'
-import { normalizeSourceProviderName, sourceProviderPresentation } from './source-provider-options'
+import { normalizeSourceProviderName, sourceProviderPresentation } from './setup/provider-options'
 
 const MIN_CUSTOM_INTERVAL_HOURS = 1
 

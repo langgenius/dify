@@ -1,12 +1,9 @@
 'use client'
 
 import type { DatasourceProviderAuthListResponse } from '@dify/contracts/api/console/auth/types.gen'
+import type { InstalledSourceProviderOption, SourceProviderOption } from '../setup/provider-options'
+import type { NewKnowledgeSourceDraft, NewKnowledgeSourceType } from '../setup/source-draft'
 import type { SourceConnection as Connection, SourceProvider as Provider } from '../source-models'
-import type {
-  InstalledSourceProviderOption,
-  SourceProviderOption,
-} from '../source-provider-options'
-import type { NewKnowledgeSourceDraft, NewKnowledgeSourceType } from './source-draft'
 import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
@@ -42,31 +39,31 @@ import {
 import {
   datasourceParameterDefaults,
   websiteDatasourceParameterSchemas,
-} from '../datasource-parameter-model'
-import {
-  sourceConnectionFromApi,
-  sourceConnectionListFromApi,
-  sourceProviderListFromApi,
-} from '../source-models'
-import {
-  discoverSourceProviderOptions,
-  sourceProviderOptionForDraft,
-} from '../source-provider-options'
+} from '../setup/datasource-parameter-model'
 import {
   SourceProviderIcon,
   SourceProviderNotInstalledCard,
   SourceProviderSelector,
   SourceSyncPolicyField,
   SourceTypeSelector,
-} from '../source-setup-fields'
-import { WebsiteCrawlPreview } from '../website-crawl-preview'
-import { AddSourceExitDialog } from './components/exit-dialog'
-import { ConnectedSourceSetup } from './connected-source-setup'
+} from '../setup/fields'
+import {
+  discoverSourceProviderOptions,
+  sourceProviderOptionForDraft,
+} from '../setup/provider-options'
 import {
   createNewKnowledgeSourceDraft,
   newKnowledgeSourceDraftStorageKey,
   parseNewKnowledgeSourceDraft,
-} from './source-draft'
+} from '../setup/source-draft'
+import {
+  sourceConnectionFromApi,
+  sourceConnectionListFromApi,
+  sourceProviderListFromApi,
+} from '../source-models'
+import { AddSourceExitDialog } from './components/exit-dialog'
+import { ConnectedSourceWorkflow } from './connected-source-workflow'
+import { WebsiteCrawlPreview } from './website-crawl-preview'
 
 type ProviderField = Provider['configuration'][number]
 type ConnectionAuthKind = 'api-key' | 'endpoint'
@@ -1369,7 +1366,7 @@ function AddSourcePageContent({
               )}
             </>
           ) : (
-            <ConnectedSourceSetup
+            <ConnectedSourceWorkflow
               draft={sourceDraft}
               knowledgeSpaceId={knowledgeSpaceId}
               onCompleted={() => {

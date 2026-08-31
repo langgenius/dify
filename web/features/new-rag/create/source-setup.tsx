@@ -1,7 +1,7 @@
 'use client'
 
 import type { KnowledgeFsSpaceCreatePayload } from '@dify/contracts/api/console/knowledge-fs/types.gen'
-import type { NewKnowledgeSourceDraft } from '../sources/create/source-draft'
+import type { NewKnowledgeSourceDraft } from '../sources/setup/source-draft'
 import type { CrawlPreviewPage } from '../sources/source-models'
 import type {
   DataSourceAuth,
@@ -16,8 +16,9 @@ import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { consoleClient } from '@/service/client'
 import { useGetDataSourceListAuth } from '@/service/use-datasource'
 import { useDataSourceList } from '@/service/use-pipeline'
-import { CrawlPreviewPageSelection } from '../sources/crawl-selection-form'
-import { WebsiteDatasourceParameterForm } from '../sources/datasource-parameter-form'
+import { ConnectedSourceConfiguration } from '../sources/setup/connected-source-configuration'
+import { CrawlPreviewPageSelection } from '../sources/setup/crawl-selection'
+import { WebsiteDatasourceParameterForm } from '../sources/setup/datasource-parameter-form'
 import {
   datasourceIncludeSubpages,
   datasourceParameterDefaults,
@@ -26,11 +27,7 @@ import {
   missingRequiredDatasourceParameters,
   websiteDatasourceParameterSchemas,
   withDatasourceParameterDefaults,
-} from '../sources/datasource-parameter-model'
-import {
-  discoverSourceProviderOptions,
-  sourceProviderOptionForDraft,
-} from '../sources/source-provider-options'
+} from '../sources/setup/datasource-parameter-model'
 import {
   SourceNameField,
   SourceProviderCredentialRequiredCard,
@@ -39,8 +36,11 @@ import {
   SourceProviderRadioGroup,
   SourceSyncPolicyField,
   SourceTypeSelector,
-} from '../sources/source-setup-fields'
-import { CreateConnectedSourceSetup } from './connected-source-setup'
+} from '../sources/setup/fields'
+import {
+  discoverSourceProviderOptions,
+  sourceProviderOptionForDraft,
+} from '../sources/setup/provider-options'
 
 const CRAWL_PREVIEW_SKELETONS = [
   { id: 'short', sourceWidth: 'w-22.5', titleWidth: 'w-37.5' },
@@ -623,7 +623,7 @@ export function CreateSourceSetup({
           />
         </div>
       ) : draft.sourceType !== 'websiteCrawl' && installedProviderOption && credential ? (
-        <CreateConnectedSourceSetup
+        <ConnectedSourceConfiguration
           key={`${draft.sourceType}:${installedProviderOption.key}:${credential.id}`}
           disabled={disabled}
           draft={draft}

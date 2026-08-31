@@ -9,7 +9,7 @@ import type {
 import type {
   NewKnowledgeOnlineDocumentsSourceDraft,
   NewKnowledgeOnlineDriveSourceDraft,
-} from '../source-draft'
+} from '../../setup/source-draft'
 import type {
   DataSourceAuth,
   DataSourceCredential,
@@ -21,7 +21,7 @@ import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { render } from '@/test/console/render'
 import { createTestQueryClient } from '@/test/query-client'
-import { ConnectedSourceSetup } from '../connected-source-setup'
+import { ConnectedSourceWorkflow } from '../connected-source-workflow'
 
 type ProviderQueryOptions = {
   input: unknown
@@ -491,7 +491,7 @@ function renderSetup(draft: ConnectedDraft = defaultDraft) {
   const onExit = vi.fn()
   const content = (nextDraft: ConnectedDraft) => (
     <QueryClientProvider client={queryClient}>
-      <ConnectedSourceSetup
+      <ConnectedSourceWorkflow
         draft={nextDraft}
         knowledgeSpaceId="space-1"
         onCompleted={onCompleted}
@@ -524,7 +524,7 @@ function renderStatefulSetup(draft: ConnectedDraft = defaultDraft) {
     const [currentDraft, setCurrentDraft] = useState(draft)
     return (
       <QueryClientProvider client={queryClient}>
-        <ConnectedSourceSetup
+        <ConnectedSourceWorkflow
           draft={currentDraft}
           knowledgeSpaceId="space-1"
           onCompleted={onCompleted}
@@ -542,7 +542,7 @@ function renderStatefulSetup(draft: ConnectedDraft = defaultDraft) {
   return { ...render(<StatefulSetup />), onDraftChange }
 }
 
-describe('ConnectedSourceSetup', () => {
+describe('ConnectedSourceWorkflow', () => {
   beforeEach(() => {
     for (const mock of Object.values(clientMock)) mock.mockReset()
     openMock.mockReset()

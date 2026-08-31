@@ -1,4 +1,4 @@
-import type { Source, SourceWorkflowRun } from '../source-models'
+import type { Source, SourceWorkflowRun } from '../../source-models'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'

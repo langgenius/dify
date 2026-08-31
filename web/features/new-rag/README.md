@@ -4,7 +4,8 @@ This feature owns the KnowledgeFS-backed knowledge list, creation flows, sources
 
 - Route surfaces live in `create/`, `documents/`, `sources/`, `retrieval/`, `quality/`, `settings/`, `space/`, and `overview/`; feature tests stay beside their owning surface.
 - `list/` owns the KnowledgeFS list integration used by the existing dataset list, while `upload/` owns upload behavior shared by creation and document-management flows.
-- `routes.ts` owns navigation only; source draft schemas and persistence belong to `sources/create/`.
+- `routes.ts` owns navigation only; shared source drafts, provider discovery, datasource parameters, and setup fields belong to `sources/setup/`.
+- `create/`, `sources/create/`, and source editing own their distinct submission lifecycles; setup modules do not submit those workflows.
 - `sources/connections/` owns provider identity matching and connection ranking across source flows.
 - `documents/` owns document list and detail behavior, query options, permission recovery, task recovery, and metadata editing.
 - Shared KnowledgeFS read contracts used by other features live under `service/knowledge-fs/`; feature-specific editing policy remains here.

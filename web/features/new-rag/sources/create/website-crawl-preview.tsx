@@ -1,11 +1,11 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { NewKnowledgeWebsiteSourceDraft } from './create/source-draft'
-import type { DatasourceParameters } from './datasource-parameter-model'
-import type { CrawlPreviewPage as PreviewPage, Source, SourceWorkflowRun } from './source-models'
-import type { InstalledSourceProviderOption } from './source-provider-options'
-import type { SyncPolicyValue } from './sync-policy-field'
+import type { DatasourceParameters } from '../setup/datasource-parameter-model'
+import type { InstalledSourceProviderOption } from '../setup/provider-options'
+import type { NewKnowledgeWebsiteSourceDraft } from '../setup/source-draft'
+import type { SyncPolicyValue } from '../setup/sync-policy-field'
+import type { CrawlPreviewPage as PreviewPage, Source, SourceWorkflowRun } from '../source-models'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -26,14 +26,9 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/client'
-import { createRequestId } from '../request-id'
-import { newKnowledgeDetailPath } from '../routes'
-import { CrawlSelectionForm } from './crawl-selection-form'
-import {
-  NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH,
-  normalizeWebsiteSourceUrl,
-} from './create/source-draft'
-import { WebsiteDatasourceParameterForm } from './datasource-parameter-form'
+import { createRequestId } from '../../request-id'
+import { newKnowledgeDetailPath } from '../../routes'
+import { WebsiteDatasourceParameterForm } from '../setup/datasource-parameter-form'
 import {
   datasourceIncludeSubpages,
   datasourceParameterDefaults,
@@ -41,8 +36,13 @@ import {
   missingRequiredDatasourceParameters,
   websiteDatasourceParameterSchemas,
   withDatasourceParameterDefaults,
-} from './datasource-parameter-model'
-import { crawlPreviewPageListFromApi, sourceFromApi, sourceWorkflowFromApi } from './source-models'
+} from '../setup/datasource-parameter-model'
+import {
+  NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH,
+  normalizeWebsiteSourceUrl,
+} from '../setup/source-draft'
+import { crawlPreviewPageListFromApi, sourceFromApi, sourceWorkflowFromApi } from '../source-models'
+import { CrawlSelectionForm } from './crawl-selection-form'
 
 type ConnectionReference = {
   id: string

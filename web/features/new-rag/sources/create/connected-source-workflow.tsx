@@ -4,14 +4,17 @@ import type {
   KnowledgeFsSourceFileResponse,
   KnowledgeFsSourcePageResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
-import type { DatasourceParameters, DatasourceParameterSchema } from '../datasource-parameter-model'
-import type { Source, SourceConnection, SourceProvider } from '../source-models'
-import type { SourceProviderOption } from '../source-provider-options'
+import type {
+  DatasourceParameters,
+  DatasourceParameterSchema,
+} from '../setup/datasource-parameter-model'
+import type { SourceProviderOption } from '../setup/provider-options'
 import type {
   NewKnowledgeOnlineDocumentsSourceDraft,
   NewKnowledgeOnlineDriveSourceDraft,
   NewKnowledgeSourceDraft,
-} from './source-draft'
+} from '../setup/source-draft'
+import type { Source, SourceConnection, SourceProvider } from '../source-models'
 import type {
   DataSourceAuth,
   DataSourceCredential,
@@ -34,14 +37,28 @@ import {
   sourceConnectionMatchesDatasource,
   sourceProviderUsesManagedConfiguration,
 } from '../connections/model'
-import { DatasourceParameterForm } from '../datasource-parameter-form'
+import { DatasourceParameterForm } from '../setup/datasource-parameter-form'
 import {
   datasourceParameterDefaults,
   datasourceParameterSchemas,
   invalidDatasourceParameters,
   missingRequiredDatasourceParameters,
   withDatasourceParameterDefaults,
-} from '../datasource-parameter-model'
+} from '../setup/datasource-parameter-model'
+import {
+  SourceNameField,
+  SourceProviderCredentialRequiredCard,
+  SourceProviderIcon,
+  SourceProviderNotInstalledCard,
+  SourceProviderSelector,
+  SourceSyncPolicyField,
+} from '../setup/fields'
+import {
+  discoverSourceProviderOptions,
+  normalizeSourceProviderName,
+  sourceProviderOptionForDraft,
+} from '../setup/provider-options'
+import { NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH } from '../setup/source-draft'
 import {
   sourceConnectionFromApi,
   sourceConnectionListFromApi,
@@ -50,20 +67,6 @@ import {
   sourceProviderListFromApi,
   sourceWorkflowFromApi,
 } from '../source-models'
-import {
-  discoverSourceProviderOptions,
-  normalizeSourceProviderName,
-  sourceProviderOptionForDraft,
-} from '../source-provider-options'
-import {
-  SourceNameField,
-  SourceProviderCredentialRequiredCard,
-  SourceProviderIcon,
-  SourceProviderNotInstalledCard,
-  SourceProviderSelector,
-  SourceSyncPolicyField,
-} from '../source-setup-fields'
-import { NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH } from './source-draft'
 
 type ConnectedSourceDraft =
   | NewKnowledgeOnlineDocumentsSourceDraft
@@ -1500,7 +1503,7 @@ function AppliedResourceConfiguration({
   )
 }
 
-export function ConnectedSourceSetup({
+export function ConnectedSourceWorkflow({
   draft,
   knowledgeSpaceId,
   onCompleted,

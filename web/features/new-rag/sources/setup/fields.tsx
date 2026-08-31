@@ -1,8 +1,8 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { NewKnowledgeSourceDraft, NewKnowledgeSourceType } from './create/source-draft'
-import type { InstalledSourceProviderOption, SourceProviderOption } from './source-provider-options'
+import type { InstalledSourceProviderOption, SourceProviderOption } from './provider-options'
+import type { NewKnowledgeSourceDraft, NewKnowledgeSourceType } from './source-draft'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
@@ -12,7 +12,7 @@ import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { useTranslation } from 'react-i18next'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import Link from '@/next/link'
-import { NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH } from './create/source-draft'
+import { NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH } from './source-draft'
 import { SyncPolicyField } from './sync-policy-field'
 
 const sourceTypeOptions = [

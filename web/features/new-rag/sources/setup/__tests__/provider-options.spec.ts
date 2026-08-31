@@ -1,4 +1,4 @@
-import { sourceProviderPresentation } from '../source-provider-options'
+import { sourceProviderPresentation } from '../provider-options'
 
 describe('sourceProviderPresentation', () => {
   it.each([
