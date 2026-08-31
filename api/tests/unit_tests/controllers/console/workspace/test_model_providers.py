@@ -1,4 +1,5 @@
 from inspect import unwrap
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -34,6 +35,7 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from models import Account
+from models.account import TenantAccountRole
 from models.provider import ProviderType
 from services.entities.model_provider_entities import (
     CustomConfigurationResponse,
@@ -642,25 +644,42 @@ class TestModelProviderPaymentCheckoutUrlApi:
 
 
 class TestModelValidateDecorator:
-    def test_invalid_query_is_rejected_before_the_handler_runs(self, app: Flask):
-        """The tests above unwrap the view, so this is what covers the decorator itself."""
-        api = ModelProviderListApi()
+    """The tests above unwrap the view, so this is what covers the decorators themselves."""
+
+    @pytest.mark.parametrize(
+        ("api_cls", "verb", "url", "body", "kwargs"),
+        [
+            (ModelProviderListApi, "GET", "/?model_type=not-a-model-type", None, {}),
+            (ModelProviderCredentialApi, "GET", "/?credential_id=not-a-uuid", None, {"provider": "openai"}),
+            (ModelProviderCredentialApi, "POST", "/", {}, {"provider": "openai"}),
+            (ModelProviderCredentialApi, "PUT", "/", {}, {"provider": "openai"}),
+            (ModelProviderCredentialApi, "DELETE", "/", {}, {"provider": "openai"}),
+            (ModelProviderCredentialSwitchApi, "POST", "/", {}, {"provider": "openai"}),
+            (ModelProviderValidateApi, "POST", "/", {}, {"provider": "openai"}),
+            (PreferredProviderTypeUpdateApi, "POST", "/", {}, {"provider": "openai"}),
+        ],
+    )
+    def test_invalid_input_is_rejected_before_the_handler_runs(
+        self, app: Flask, api_cls, verb: str, url: str, body, kwargs
+    ):
+        api = api_cls()
+        account = make_account()
+        account.role = TenantAccountRole.OWNER
 
         with (
-            app.test_request_context("/?model_type=not-a-model-type"),
+            app.test_request_context(url, method=verb, json=body),
             config_overrides_context(LOGIN_DISABLED=True, RBAC_ENABLED=False),
             patch("controllers.console.wraps._is_setup_completed", return_value=True),
             patch(
                 "controllers.console.wraps.current_account_with_tenant",
-                return_value=(make_account(), "tenant1"),
+                return_value=(account, "tenant1"),
             ),
-            patch(
-                "controllers.console.workspace.model_providers.ModelProviderService.get_provider_list",
-            ) as get_provider_list,
+            patch("libs.login.current_user", SimpleNamespace(_get_current_object=lambda: account)),
+            patch("controllers.console.workspace.model_providers.ModelProviderService") as service,
         ):
-            g._login_user = make_account()
+            g._login_user = account
             with pytest.raises(UnprocessableEntity) as exc_info:
-                api.get()
+                getattr(api, verb.lower())(**kwargs)
 
         assert exc_info.value.code == 422
-        get_provider_list.assert_not_called()
+        service.assert_not_called()

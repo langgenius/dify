@@ -157,7 +157,6 @@ class ModelProviderListApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserModelList)
     def get(self, args: ParserModelList, tenant_id: str):
-
         model_provider_service = ModelProviderService()
         provider_list = model_provider_service.get_provider_list(tenant_id=tenant_id, model_type=args.model_type)
 
@@ -214,9 +213,8 @@ class ModelProviderCredentialApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserCredentialId)
     def get(self, args: ParserCredentialId, tenant_id: str, provider: str):
-        # if credential_id is not provided, return current used credential
-
         model_provider_service = ModelProviderService()
+        # if credential_id is not provided, return current used credential
         credentials = model_provider_service.get_provider_credential(
             tenant_id=tenant_id, provider=provider, credential_id=args.credential_id
         )
@@ -233,7 +231,6 @@ class ModelProviderCredentialApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserCredentialCreate)
     def post(self, args: ParserCredentialCreate, current_tenant_id: str, provider: str):
-
         model_provider_service = ModelProviderService()
 
         try:
@@ -258,7 +255,6 @@ class ModelProviderCredentialApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserCredentialUpdate)
     def put(self, args: ParserCredentialUpdate, current_tenant_id: str, provider: str):
-
         model_provider_service = ModelProviderService()
 
         try:
@@ -284,7 +280,6 @@ class ModelProviderCredentialApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserCredentialDelete)
     def delete(self, args: ParserCredentialDelete, current_tenant_id: str, provider: str):
-
         model_provider_service = ModelProviderService()
         model_provider_service.remove_provider_credential(
             tenant_id=current_tenant_id, provider=provider, credential_id=args.credential_id
@@ -305,7 +300,6 @@ class ModelProviderCredentialSwitchApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserCredentialSwitch)
     def post(self, args: ParserCredentialSwitch, current_tenant_id: str, provider: str):
-
         service = ModelProviderService()
         service.switch_active_provider_credential(
             tenant_id=current_tenant_id,
@@ -329,7 +323,6 @@ class ModelProviderValidateApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserCredentialValidate)
     def post(self, args: ParserCredentialValidate, current_tenant_id: str, provider: str):
-
         tenant_id = current_tenant_id
 
         model_provider_service = ModelProviderService()
@@ -384,7 +377,6 @@ class PreferredProviderTypeUpdateApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserPreferredProviderType)
     def post(self, args: ParserPreferredProviderType, tenant_id: str, provider: str):
-
         model_provider_service = ModelProviderService()
         model_provider_service.switch_preferred_provider(
             tenant_id=tenant_id, provider=provider, preferred_provider_type=args.preferred_provider_type
