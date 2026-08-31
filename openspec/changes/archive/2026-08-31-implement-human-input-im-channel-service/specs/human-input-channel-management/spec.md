@@ -8,7 +8,7 @@ The Console controller MUST call the Email Management owner and `IMChannelServic
 - **THEN** controller MUST aggregate current Email and IM Channel views
 - **AND** it MUST NOT construct a not-configured Channel for each Provider
 
-#### Scenario: Available Providers are listed
+#### Scenario: Available providers are listed
 - **WHEN** an authenticated caller requests available Channel Providers
 - **THEN** controller MUST aggregate only Providers returned by Email owner and `IMChannelService`
 - **AND** Provider availability MUST remain separate from persisted Channel state
@@ -21,7 +21,11 @@ The Console controller MUST call the Email Management owner and `IMChannelServic
 ### Requirement: Authenticated request scope MUST determine channel ownership
 The confirmed Console Channel routes are CE/SaaS Workspace APIs。Channel composition MUST derive trusted Workspace context from the authenticated Console route。Every IM Provider、collection、read、test and mutation handler MUST bind current `TenantId`、Dify `AccountId`、Session factory and Key Provider before constructing one request-scoped `WorkspaceIMChannelService`。The Service MUST initialize its Workspace Reader、Writer and tenant credential codec internally。Provider payloads and Service operation methods MUST NOT select or override owner。EE management MUST use a later deployment-bound Dify inner API rather than edition branches in this controller。
 
-#### Scenario: Workspace IM command is delegated
+#### Scenario: Email command is delegated
+- **WHEN** an Email command is handled
+- **THEN** the Console controller MUST scope the Email owner call to the trusted current Workspace
+
+#### Scenario: IM command is delegated
 - **WHEN** a Workspace owner or administrator manages an IM Channel
 - **THEN** composition MUST construct an owner-bound Service before invoking the operation
 - **AND** operation arguments MUST NOT contain scope、Tenant or actor
@@ -31,33 +35,15 @@ The confirmed Console Channel routes are CE/SaaS Workspace APIs。Channel compos
 - **THEN** the controller MUST validate transport parameters and construct the owner-bound Workspace Service from trusted current context
 - **AND** it MUST delegate resource existence and Channel decisions to the Service without reading persistence or performing Provider I/O
 
+#### Scenario: Cross-scope record is encountered
+- **WHEN** an Email or IM Channel ID is not current for the trusted Workspace owner
+- **THEN** the owner-bound application owner MUST return not found or stale according to operation state
+- **AND** it MUST NOT inspect、expose or mutate another owner's Channel
+
 #### Scenario: EE management is exposed
 - **WHEN** a later EE integration manages a deployment-owned Channel
 - **THEN** it MUST call a separate Dify inner API and deployment-bound Service construction path
 - **AND** the Workspace Console controller MUST NOT branch on edition
-
-### Requirement: Edition and Channel API ownership mismatch MUST return HTTP 501
-Workspace Console Channel APIs and deployment-bound EE inner APIs MUST fail closed when invoked in the wrong deployment edition。The edition gate MUST run at transport admission before setup、authentication、DTO parsing、trusted owner resolution or Service construction。It MUST return HTTP `501 Not Implemented` and MUST NOT pass edition into application or persistence operations。
-
-#### Scenario: Enterprise calls the Workspace Console API
-- **WHEN** any canonical Workspace Channel collection、item、test or replacement path is requested on Enterprise
-- **THEN** transport admission MUST return HTTP `501` before authentication or application dispatch
-- **AND** it MUST NOT resolve Workspace ownership or access deployment-owned Channel state
-
-#### Scenario: Community or Cloud calls the EE inner API
-- **WHEN** a future deployment-bound EE Channel inner path is requested on Community or Cloud
-- **THEN** transport admission MUST return HTTP `501` before inner authentication or application dispatch
-- **AND** it MUST NOT resolve deployment ownership or access Workspace-owned Channel state
-
-#### Scenario: API and edition match
-- **WHEN** a Workspace Channel path is requested on Community or Cloud，or an EE Channel inner path is requested on Enterprise
-- **THEN** the edition gate MUST continue into that API's own authentication and owner-bound composition
-- **AND** Service operations MUST remain edition-agnostic
-
-#### Scenario: Cross-owner Channel ID is supplied
-- **WHEN** item operation supplies a Channel ID not current in the bound Repository
-- **THEN** management MUST return not found or stale according to operation state
-- **AND** it MUST NOT inspect another owner
 
 ### Requirement: Email and one active IM channel MUST coexist independently
 Channel Management MUST allow one Workspace Email Channel and at most one current IM Channel in the effective trusted owner context to coexist。Email and IM application owners MUST enforce their cardinality independently。The collection MUST represent persisted resources rather than one slot per Provider。
@@ -96,6 +82,31 @@ Every IM create、ordinary update or replacement MUST validate complete credenti
 - **THEN** management MUST return credential-free success
 - **AND** it MUST NOT read persisted credentials or persist state
 
+## ADDED Requirements
+
+### Requirement: Edition and Channel API ownership mismatch MUST return HTTP 501
+Workspace Console Channel APIs and deployment-bound EE inner APIs MUST fail closed when invoked in the wrong deployment edition。The edition gate MUST run at transport admission before setup、authentication、DTO parsing、trusted owner resolution or Service construction。It MUST return HTTP `501 Not Implemented` and MUST NOT pass edition into application or persistence operations。
+
+#### Scenario: Enterprise calls the Workspace Console API
+- **WHEN** any canonical Workspace Channel collection、item、test or replacement path is requested on Enterprise
+- **THEN** transport admission MUST return HTTP `501` before authentication or application dispatch
+- **AND** it MUST NOT resolve Workspace ownership or access deployment-owned Channel state
+
+#### Scenario: Community or Cloud calls the EE inner API
+- **WHEN** a future deployment-bound EE Channel inner path is requested on Community or Cloud
+- **THEN** transport admission MUST return HTTP `501` before inner authentication or application dispatch
+- **AND** it MUST NOT resolve deployment ownership or access Workspace-owned Channel state
+
+#### Scenario: API and edition match
+- **WHEN** a Workspace Channel path is requested on Community or Cloud，or an EE Channel inner path is requested on Enterprise
+- **THEN** the edition gate MUST continue into that API's own authentication and owner-bound composition
+- **AND** Service operations MUST remain edition-agnostic
+
+#### Scenario: Cross-owner Channel ID is supplied
+- **WHEN** item operation supplies a Channel ID not current in the bound Repository
+- **THEN** management MUST return not found or stale according to operation state
+- **AND** it MUST NOT inspect another owner
+
 ### Requirement: IM Channel Webhook projection MUST remain credential-free
 `IMChannelService` MUST derive `IMChannelView.webhook_url` from effective deployment transport mode、`IMProvider.supports_webhook()`、current `TRIGGER_URL` and persisted `webhook_id`。The Console controller MUST only map that field into canonical `ChannelSummary`。Projection MUST NOT decrypt credentials、construct an adapter or call a Provider。
 
@@ -113,8 +124,6 @@ Every IM create、ordinary update or replacement MUST validate complete credenti
 - **WHEN** operator changes `TRIGGER_URL`
 - **THEN** the next summary MUST contain the new origin
 - **AND** management MUST NOT update the Channel row、configuration version or credential envelope
-
-## ADDED Requirements
 
 ### Requirement: IM Channel commands MUST use IMChannelService
 Console controller MUST delegate IM candidate test、create、ordinary update、explicit replacement and delete to `IMChannelService`。Controller MUST NOT construct Repository values、call Repository、perform Provider I/O、choose update versus replacement or own database transaction。
