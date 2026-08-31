@@ -214,7 +214,7 @@ def make_workflow(
     created_by: str = "account-1",
     environment_variables: Sequence[VariableBase] = (),
     conversation_variables: Sequence[VariableBase] = (),
-    rag_pipeline_variables: list[dict] | None = None,
+    rag_pipeline_variables: list[dict[str, object]] | None = None,
     marked_name: str = "",
     marked_comment: str = "",
     version_number: int | None = None,
