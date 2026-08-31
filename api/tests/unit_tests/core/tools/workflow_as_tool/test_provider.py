@@ -31,8 +31,8 @@ from models.account import Account
 from models.base import TypeBase
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
-from models.workflow import Workflow, WorkflowType
-from tests.unit_tests.model_factories import make_account, make_app
+from models.workflow import Workflow
+from tests.unit_tests.model_factories import make_account, make_app, make_workflow
 
 
 @pytest.fixture
@@ -80,17 +80,12 @@ def _account() -> Account:
 
 
 def _workflow(app: App, account: Account | None = None) -> Workflow:
-    return Workflow.new(
+    return make_workflow(
         tenant_id=app.tenant_id,
         app_id=app.id,
-        type=WorkflowType.WORKFLOW.value,
         version="1",
-        graph=json.dumps({"nodes": []}),
-        features="{}",
+        graph={"nodes": []},
         created_by=account.id if account else str(uuid.uuid4()),
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
     )
 
 

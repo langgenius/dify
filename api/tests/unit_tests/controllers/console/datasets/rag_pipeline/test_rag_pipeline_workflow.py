@@ -35,7 +35,7 @@ from services.errors.llm import InvokeRateLimitError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.model_factories import make_account, make_tenant
+from tests.unit_tests.model_factories import make_account, make_dataset, make_tenant
 
 DEFAULT_WORKFLOW_TENANT_ID = "00000000-0000-0000-0000-000000000001"
 DEFAULT_WORKFLOW_APP_ID = "00000000-0000-0000-0000-000000000002"
@@ -85,10 +85,9 @@ def _pipeline() -> Pipeline:
 
 
 def _dataset(*, tenant_id: str = DEFAULT_WORKFLOW_TENANT_ID, maintainer: str = DEFAULT_WORKFLOW_CREATED_BY) -> Dataset:
-    return Dataset(
-        id=DEFAULT_DATASET_ID,
+    return make_dataset(
+        dataset_id=DEFAULT_DATASET_ID,
         tenant_id=tenant_id,
-        name="Dataset",
         created_by=maintainer,
         maintainer=maintainer,
         permission=PermissionEnum.ONLY_ME,

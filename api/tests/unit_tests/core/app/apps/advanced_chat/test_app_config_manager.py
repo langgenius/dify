@@ -1,10 +1,9 @@
-import json
 from unittest.mock import patch
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
-from tests.unit_tests.model_factories import make_app
+from tests.unit_tests.model_factories import make_app, make_workflow
 
 
 def _app() -> App:
@@ -12,16 +11,7 @@ def _app() -> App:
 
 
 def _workflow() -> Workflow:
-    return Workflow(
-        id="wf-1",
-        tenant_id="tenant-1",
-        app_id="app-1",
-        type=WorkflowType.CHAT,
-        version=Workflow.VERSION_DRAFT,
-        graph="{}",
-        features=json.dumps({}),
-        created_by="account-1",
-    )
+    return make_workflow(workflow_id="wf-1", workflow_type=WorkflowType.CHAT, graph="{}")
 
 
 class TestAdvancedChatAppConfigManager:

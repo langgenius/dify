@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from types import SimpleNamespace
 
 import pytest
@@ -55,22 +54,13 @@ from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
 from models.model import AppMode, EndUser
-from models.workflow import Workflow, WorkflowAppLog, WorkflowType
-from tests.unit_tests.model_factories import make_end_user
+from models.workflow import Workflow, WorkflowAppLog
+from tests.unit_tests.model_factories import make_end_user, make_workflow
 from tests.workflow_test_utils import build_test_variable_pool
 
 
 def _workflow() -> Workflow:
-    return Workflow(
-        id="workflow-id",
-        tenant_id="tenant",
-        app_id="app",
-        type=WorkflowType.WORKFLOW,
-        version=Workflow.VERSION_DRAFT,
-        graph="{}",
-        features=json.dumps({}),
-        created_by="user",
-    )
+    return make_workflow(workflow_id="workflow-id", tenant_id="tenant", app_id="app", graph="{}", created_by="user")
 
 
 def _end_user(*, end_user_id: str = "user", session_id: str = "session") -> EndUser:

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -18,12 +17,10 @@ from controllers.web.human_input_file_upload import (
     InvalidUploadTokenForbiddenError,
     InvalidUploadTokenUnauthorizedError,
 )
-from extensions.storage.storage_type import StorageType
 from models import Account
-from models.enums import CreatorUserRole
 from models.model import UploadFile
 from services.human_input_file_upload_service import HumanInputUploadContext
-from tests.unit_tests.model_factories import make_account
+from tests.unit_tests.model_factories import make_account, make_upload_file
 
 
 @pytest.fixture
@@ -49,22 +46,14 @@ def _upload_context() -> HumanInputUploadContext:
 
 
 def _upload_file() -> UploadFile:
-    upload_file = UploadFile(
-        tenant_id="tenant-1",
-        storage_type=StorageType.LOCAL,
+    return make_upload_file(
+        file_id="file-1",
         key="upload/sample.txt",
         name="sample.txt",
         size=7,
-        extension="txt",
-        mime_type="text/plain",
-        created_by_role=CreatorUserRole.ACCOUNT,
         created_by="end-user-1",
-        created_at=datetime(2024, 1, 1),
-        used=False,
         source_url="signed-source-url",
     )
-    upload_file.id = "file-1"
-    return upload_file
 
 
 def _patch_upload_service(monkeypatch: pytest.MonkeyPatch, service: MagicMock) -> tuple[MagicMock, dict[str, object]]:

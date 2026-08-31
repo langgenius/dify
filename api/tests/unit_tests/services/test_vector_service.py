@@ -14,12 +14,12 @@ from sqlalchemy.orm import Session
 
 import services.vector_service as vector_service_module
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from extensions.storage.storage_type import StorageType
 from models import UploadFile
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
-from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, ProcessRuleMode
+from models.enums import DataSourceType, DocumentCreatedFrom, ProcessRuleMode
 from services.vector_service import VectorService
+from tests.unit_tests.model_factories import make_upload_file
 
 
 @dataclass(frozen=True)
@@ -107,21 +107,15 @@ def _make_segment(
 
 
 def _upload_file(*, file_id: str = "file-1", name: str = "img.png", tenant_id: str = "tenant-1") -> UploadFile:
-    upload_file = UploadFile(
+    return make_upload_file(
+        file_id=file_id,
         tenant_id=tenant_id,
-        storage_type=StorageType.LOCAL,
         key=f"uploads/{file_id}",
         name=name,
-        size=10,
         extension="png",
         mime_type="image/png",
-        created_by_role=CreatorUserRole.ACCOUNT,
-        created_by="account-1",
         created_at=datetime(2026, 1, 1),
-        used=False,
     )
-    upload_file.id = file_id
-    return upload_file
 
 
 def _make_child_chunk(

@@ -8,26 +8,13 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.workflow.snippet_start import SNIPPET_VIRTUAL_START_NODE_ID
 from models.account import Account
 from models.snippet import CustomizedSnippet, SnippetType
-from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionModel, WorkflowType
+from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionModel
 from services.snippet_generate_service import SnippetGenerateService
-from tests.unit_tests.model_factories import make_account
+from tests.unit_tests.model_factories import make_account, make_workflow
 
 
 def _workflow(graph: dict) -> Workflow:
-    return Workflow(
-        id="workflow-1",
-        tenant_id="tenant-1",
-        app_id="snippet-1",
-        type=WorkflowType.WORKFLOW,
-        kind=WorkflowKind.SNIPPET,
-        version=Workflow.VERSION_DRAFT,
-        graph=json.dumps(graph),
-        features="{}",
-        created_by="account-1",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
-    )
+    return make_workflow(workflow_id="workflow-1", app_id="snippet-1", kind=WorkflowKind.SNIPPET, graph=graph)
 
 
 def _snippet(*, input_fields: list[dict] | None = None) -> CustomizedSnippet:

@@ -35,7 +35,7 @@ from services.entities.knowledge_entities.rag_pipeline_entities import (
 )
 from services.errors.account import NoPermissionError
 from services.errors.dataset import DatasetNameDuplicateError
-from tests.unit_tests.model_factories import make_account, make_tenant
+from tests.unit_tests.model_factories import make_account, make_dataset, make_tenant
 
 from .dataset_service_test_helpers import (
     MagicMock,
@@ -71,8 +71,8 @@ def _dataset(
     indexing_technique: str = IndexTechniqueType.ECONOMY,
     chunk_structure: str | None = "text_model",
 ) -> Dataset:
-    return Dataset(
-        id=dataset_id,
+    return make_dataset(
+        dataset_id=dataset_id,
         tenant_id=tenant_id,
         name=name,
         description="",

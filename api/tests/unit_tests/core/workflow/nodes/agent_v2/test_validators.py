@@ -1,4 +1,3 @@
-import json
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -11,15 +10,11 @@ from core.workflow.nodes.agent_v2.validators import (
 from models.agent import Agent, AgentConfigSnapshot, AgentStatus, WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig, WorkflowNodeJobConfig
 from models.workflow import Workflow
+from tests.unit_tests.model_factories import make_workflow
 
 
 def _workflow(graph: dict) -> Workflow:
-    return Workflow(
-        id="workflow-1",
-        tenant_id="tenant-1",
-        app_id="app-1",
-        graph=json.dumps(graph),
-    )
+    return make_workflow(workflow_id="workflow-1", graph=graph)
 
 
 def _binding(node_job: WorkflowNodeJobConfig) -> WorkflowAgentNodeBinding:

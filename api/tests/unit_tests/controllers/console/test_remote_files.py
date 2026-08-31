@@ -12,13 +12,12 @@ from flask import Flask
 
 from controllers.common.errors import FileTooLargeError, RemoteFileUploadError, UnsupportedFileTypeError
 from controllers.console import remote_files as remote_files_module
-from extensions.storage.storage_type import StorageType
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
-from models.enums import CreatorUserRole
 from models.model import UploadFile
 from services.errors.file import FileTooLargeError as ServiceFileTooLargeError
 from services.errors.file import UnsupportedFileTypeError as ServiceUnsupportedFileTypeError
+from tests.unit_tests.model_factories import make_upload_file
 
 
 def _make_account(account_id: str = "u1") -> Account:
@@ -41,21 +40,16 @@ def _upload_file(
     mime_type: str = "text/plain",
     created_at: datetime | None = None,
 ) -> UploadFile:
-    upload_file = UploadFile(
-        tenant_id="tenant-1",
-        storage_type=StorageType.LOCAL,
+    return make_upload_file(
+        file_id=file_id,
         key=f"upload/{name}",
         name=name,
         size=size,
         extension=extension,
         mime_type=mime_type,
-        created_by_role=CreatorUserRole.ACCOUNT,
         created_by="u1",
         created_at=created_at or datetime(2024, 1, 1, tzinfo=UTC),
-        used=False,
     )
-    upload_file.id = file_id
-    return upload_file
 
 
 class _FakeResponse:

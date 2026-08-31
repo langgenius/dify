@@ -49,7 +49,7 @@ from services.app_ref_service import AppRef, MessageRef
 from services.errors.audio import SpeechToTextDisabledServiceError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.llm import InvokeRateLimitError
-from tests.unit_tests.model_factories import make_app
+from tests.unit_tests.model_factories import make_app, make_upload_file
 
 unwrap: Any = inspect_unwrap
 
@@ -85,21 +85,15 @@ def _app(*, app_id: str, mode: AppMode, tenant_id: str = "tenant-1") -> App:
 
 
 def _upload_file(*, file_id: str = "upload-file-id", tenant_id: str = "app-tenant-id") -> UploadFile:
-    upload_file = UploadFile(
+    return make_upload_file(
+        file_id=file_id,
         tenant_id=tenant_id,
         storage_type="opendal",
         key="trial/file.txt",
         name="file.txt",
         size=1,
-        extension="txt",
-        mime_type="text/plain",
-        created_by_role="account",
         created_by="u1",
-        created_at=datetime(2024, 1, 1),
-        used=False,
     )
-    upload_file.id = file_id
-    return upload_file
 
 
 def _file_data() -> Any:

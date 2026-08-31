@@ -6,13 +6,14 @@ from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import DataSourceType, DocumentCreatedFrom
+from models.enums import DataSourceType
 from tasks.sync_website_document_indexing_task import sync_website_document_indexing_task
+from tests.unit_tests.model_factories import make_dataset, make_document
 
 
 def _dataset(tenant_id: str) -> Dataset:
-    return Dataset(
-        id=str(uuid.uuid4()),
+    return make_dataset(
+        dataset_id=str(uuid.uuid4()),
         tenant_id=tenant_id,
         name="Website dataset",
         data_source_type=DataSourceType.WEBSITE_CRAWL,
@@ -21,15 +22,12 @@ def _dataset(tenant_id: str) -> Dataset:
 
 
 def _document(dataset: Dataset) -> Document:
-    return Document(
-        id=str(uuid.uuid4()),
+    return make_document(
+        document_id=str(uuid.uuid4()),
         tenant_id=dataset.tenant_id,
         dataset_id=dataset.id,
-        position=1,
         data_source_type=DataSourceType.WEBSITE_CRAWL,
-        batch="batch-1",
         name="Website document",
-        created_from=DocumentCreatedFrom.WEB,
         created_by=str(uuid.uuid4()),
         doc_form=IndexStructureType.PARAGRAPH_INDEX,
     )

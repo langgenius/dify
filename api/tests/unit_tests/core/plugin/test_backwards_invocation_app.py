@@ -13,8 +13,8 @@ from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from models import Account, Tenant, TenantAccountJoin
 from models.enums import EndUserType
 from models.model import App, AppMode, AppModelConfig, EndUser
-from models.workflow import Workflow, WorkflowType
-from tests.unit_tests.model_factories import make_app, make_end_user
+from models.workflow import Workflow
+from tests.unit_tests.model_factories import make_app, make_end_user, make_workflow
 
 
 class _Chunk(BaseModel):
@@ -48,16 +48,7 @@ def _app(
 
 
 def _workflow(*, workflow_id: str = "workflow-1", app_id: str = "app-1", tenant_id: str = "tenant-1") -> Workflow:
-    return Workflow(
-        id=workflow_id,
-        tenant_id=tenant_id,
-        app_id=app_id,
-        type=WorkflowType.WORKFLOW,
-        version=Workflow.VERSION_DRAFT,
-        graph="{}",
-        _features="{}",
-        created_by="account-1",
-    )
+    return make_workflow(workflow_id=workflow_id, tenant_id=tenant_id, app_id=app_id, graph="{}")
 
 
 def _end_user(

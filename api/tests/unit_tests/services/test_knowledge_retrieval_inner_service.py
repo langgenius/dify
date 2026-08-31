@@ -16,7 +16,7 @@ from services.errors.knowledge_retrieval import (
     InnerKnowledgeRetrieveDatasetTenantMismatchError,
 )
 from services.knowledge_retrieval_inner_service import InnerKnowledgeRetrievalService
-from tests.unit_tests.model_factories import make_app
+from tests.unit_tests.model_factories import make_app, make_dataset
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 OTHER_TENANT_ID = "22222222-2222-2222-2222-222222222222"
@@ -38,8 +38,8 @@ def _app(*, tenant_id: str = TENANT_ID) -> App:
 
 
 def _dataset(*, dataset_id: str, tenant_id: str = TENANT_ID, enable_api: bool = True) -> Dataset:
-    return Dataset(
-        id=dataset_id,
+    return make_dataset(
+        dataset_id=dataset_id,
         tenant_id=tenant_id,
         name=f"Dataset {dataset_id[-1]}",
         description="",

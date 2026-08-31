@@ -37,7 +37,7 @@ from models.enums import PermissionEnum, SegmentStatus, SegmentType
 from models.model import UploadFile
 from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError
 from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingServiceError
-from tests.unit_tests.model_factories import make_account
+from tests.unit_tests.model_factories import make_account, make_dataset, make_document, make_upload_file
 
 
 def _segment():
@@ -96,10 +96,9 @@ def _dataset(
     embedding_model_provider: str | None = None,
     embedding_model: str | None = None,
 ) -> Dataset:
-    return Dataset(
-        id=dataset_id,
+    return make_dataset(
+        dataset_id=dataset_id,
         tenant_id=tenant_id,
-        name="Dataset",
         description="",
         provider="vendor",
         permission=PermissionEnum.ONLY_ME,
@@ -117,14 +116,10 @@ def _document(
     tenant_id: str = "tenant-1",
     doc_form: IndexStructureType = IndexStructureType.PARAGRAPH_INDEX,
 ) -> Document:
-    return Document(
-        id=document_id,
+    return make_document(
+        document_id=document_id,
         tenant_id=tenant_id,
         dataset_id=dataset_id,
-        position=1,
-        data_source_type="upload_file",
-        batch="batch-1",
-        name="Document",
         created_from="api",
         created_by="u1",
         doc_form=doc_form,
@@ -132,21 +127,17 @@ def _document(
 
 
 def _upload_file(*, name: str = "test.csv", file_id: str = "test-file-id") -> UploadFile:
-    upload_file = UploadFile(
-        tenant_id="tenant-1",
+    return make_upload_file(
+        file_id=file_id,
         storage_type="opendal",
         key="test-key",
         name=name,
         size=0,
         extension=name.rsplit(".", maxsplit=1)[-1],
         mime_type="text/csv",
-        created_by_role="account",
         created_by="u1",
         created_at=datetime.now(),
-        used=False,
     )
-    upload_file.id = file_id
-    return upload_file
 
 
 class SQLiteControllerTest:

@@ -1,4 +1,3 @@
-import json
 from collections.abc import Callable
 from types import SimpleNamespace
 from typing import cast
@@ -13,13 +12,13 @@ from core.rbac import RBACPermission, RBACResourceScope
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from models import Account, App, AppMode
 from models.model import AppModelConfig, AppModelConfigDict, IconType
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow
 from services.app_dsl_service import AppDslService, PendingData
 from services.entities.dsl_entities import ImportStatus
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
 from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_account, make_app, make_tenant
+from tests.unit_tests.model_factories import make_account, make_app, make_tenant, make_workflow
 
 _OVERWRITE_APP_ID = "11111111-1111-4111-8111-111111111111"
 _TENANT_ID = "22222222-2222-4222-8222-222222222222"
@@ -85,18 +84,7 @@ def _app(
 def _workflow(
     *, graph: dict[str, object], environment_variables: list[LLMEnvironmentVariable] | None = None
 ) -> Workflow:
-    workflow = Workflow(
-        id="workflow-1",
-        tenant_id="tenant-1",
-        app_id="app-1",
-        type=WorkflowType.WORKFLOW,
-        version="draft",
-        graph=json.dumps(graph),
-        _features="{}",
-        created_by="account-1",
-    )
-    workflow.environment_variables = environment_variables or []
-    return workflow
+    return make_workflow(workflow_id="workflow-1", graph=graph, environment_variables=environment_variables or [])
 
 
 def test_extract_workflow_dependencies_uses_llm_environment_variable_provider(monkeypatch: pytest.MonkeyPatch) -> None:

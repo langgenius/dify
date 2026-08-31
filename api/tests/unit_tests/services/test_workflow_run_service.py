@@ -15,7 +15,7 @@ from models.enums import ConversationFromSource, CreatorUserRole, EndUserType
 from models.model import AppMode
 from services import workflow_run_service as service_module
 from services.workflow_run_service import WorkflowRunService
-from tests.unit_tests.model_factories import make_account, make_end_user, make_tenant
+from tests.unit_tests.model_factories import make_account, make_end_user, make_message, make_tenant
 
 
 @pytest.fixture
@@ -75,9 +75,10 @@ def _workflow_run(
 
 
 def _message(*, message_id: str, workflow_run_id: str, conversation_id: str) -> Message:
-    message = Message(
-        app_id="app-1",
+    return make_message(
+        message_id=message_id,
         conversation_id=conversation_id,
+        inputs={},
         query="query",
         message={"role": "user", "content": "query"},
         answer="answer",
@@ -85,11 +86,8 @@ def _message(*, message_id: str, workflow_run_id: str, conversation_id: str) -> 
         answer_unit_price=Decimal("0.0001"),
         currency="USD",
         from_source=ConversationFromSource.API,
+        workflow_run_id=workflow_run_id,
     )
-    message.id = message_id
-    message._inputs = {}
-    message.workflow_run_id = workflow_run_id
-    return message
 
 
 class TestWorkflowRunServiceInitialization:

@@ -48,12 +48,10 @@ from controllers.service_api.dataset.document import (
 )
 from controllers.service_api.dataset.error import ArchivedDocumentImmutableError
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from extensions.storage.storage_type import StorageType
 from models.account import Account
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import (
     ApiTokenType,
-    CreatorUserRole,
     DataSourceType,
     DocumentCreatedFrom,
     DocumentDocType,
@@ -65,7 +63,7 @@ from services.dataset_ref_service import DatasetRef
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import ProcessRule, RetrievalModel
 from services.errors.file import FileTooLargeError as FileTooLargeServiceError
-from tests.unit_tests.model_factories import make_account
+from tests.unit_tests.model_factories import make_account, make_upload_file
 
 
 def _document_data_source_info() -> dict[str, str]:
@@ -77,21 +75,13 @@ def _account() -> Account:
 
 
 def _upload_file() -> UploadFile:
-    upload_file = UploadFile(
-        tenant_id="tenant-1",
-        storage_type=StorageType.LOCAL,
+    return make_upload_file(
         key="documents/file.txt",
         name="file.txt",
-        size=10,
-        extension="txt",
-        mime_type="text/plain",
-        created_by_role=CreatorUserRole.ACCOUNT,
         created_by="user-1",
         created_at=datetime.now(UTC),
         used=True,
     )
-    upload_file.id = str(uuid.uuid4())
-    return upload_file
 
 
 def _unwrap_non_wrapped_controller(view):

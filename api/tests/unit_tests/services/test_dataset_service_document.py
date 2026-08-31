@@ -11,7 +11,7 @@ from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import UploadFile
 from models.source import DataSourceOauthBinding
 from services.dataset_ref_service import DatasetRefService
-from tests.unit_tests.model_factories import make_account, make_tenant
+from tests.unit_tests.model_factories import make_account, make_tenant, make_upload_file
 
 from .dataset_service_test_helpers import (
     Account,
@@ -119,21 +119,16 @@ def _document_row(
 
 
 def _upload_file(*, file_id: str, tenant_id: str = "tenant-1", name: str = "upload.txt") -> UploadFile:
-    upload_file = UploadFile(
+    return make_upload_file(
+        file_id=file_id,
         tenant_id=tenant_id,
         storage_type="opendal",
         key=f"key-{file_id}",
         name=name,
         size=1,
-        extension="txt",
-        mime_type="text/plain",
-        created_by_role="account",
         created_by="user-1",
         created_at=datetime(2026, 1, 1),
-        used=False,
     )
-    upload_file.id = file_id
-    return upload_file
 
 
 def _process_rule(

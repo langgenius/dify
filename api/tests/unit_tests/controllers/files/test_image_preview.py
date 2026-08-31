@@ -7,9 +7,8 @@ import pytest
 from werkzeug.exceptions import NotFound
 
 import controllers.files.image_preview as module
-from extensions.storage.storage_type import StorageType
-from models.enums import CreatorUserRole
 from models.model import UploadFile
+from tests.unit_tests.model_factories import make_upload_file
 
 
 @pytest.fixture(autouse=True)
@@ -25,21 +24,15 @@ def mock_db():
 def _upload_file(
     *, mime_type: str = "text/plain", size: int = 10, name: str = "test.txt", extension: str = "txt"
 ) -> UploadFile:
-    upload_file = UploadFile(
-        tenant_id="tenant-1",
-        storage_type=StorageType.LOCAL,
+    return make_upload_file(
+        file_id="file-id",
         key="uploads/file-id",
         name=name,
         size=size,
         extension=extension,
         mime_type=mime_type,
-        created_by_role=CreatorUserRole.ACCOUNT,
-        created_by="account-1",
         created_at=datetime.now(UTC),
-        used=False,
     )
-    upload_file.id = "file-id"
-    return upload_file
 
 
 def fake_request(args: dict):

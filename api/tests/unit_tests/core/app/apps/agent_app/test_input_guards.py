@@ -23,7 +23,7 @@ from core.app.entities.queue_entities import (
 )
 from core.moderation.base import ModerationError
 from models.model import App, AppMode, Message, MessageAnnotation
-from tests.unit_tests.model_factories import make_app
+from tests.unit_tests.model_factories import make_app, make_message
 
 
 class _FakeQueueManager:
@@ -51,7 +51,7 @@ def _app() -> App:
 
 
 def _message() -> Message:
-    return Message(id="msg-1", app_id="app-1", conversation_id="conversation-1")
+    return make_message(message_id="msg-1")
 
 
 def _patch_moderation(monkeypatch: pytest.MonkeyPatch, *, returns=None, raises: Exception | None = None) -> None:

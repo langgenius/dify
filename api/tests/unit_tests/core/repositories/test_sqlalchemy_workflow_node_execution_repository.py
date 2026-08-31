@@ -26,14 +26,13 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import (
     _find_first,
     _replace_or_append_offload,
 )
-from extensions.storage.storage_type import StorageType
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from models import Account, EndUser
 from models.enums import CreatorUserRole, ExecutionOffLoadType
 from models.model import UploadFile
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
-from tests.unit_tests.model_factories import make_account, make_tenant
+from tests.unit_tests.model_factories import make_account, make_tenant, make_upload_file
 
 
 def _account(*, tenant_id: str = "tenant-1", user_id: str = "user-1") -> Account:
@@ -50,18 +49,14 @@ def _end_user(*, tenant_id: str = "tenant-1", user_id: str = "end-user-1") -> En
 
 
 def _upload_file(*, key: str = "storage-key") -> UploadFile:
-    return UploadFile(
-        tenant_id="tenant-1",
-        storage_type=StorageType.LOCAL,
+    return make_upload_file(
         key=key,
         name="offload.json",
         size=1,
         extension="json",
         mime_type="application/json",
-        created_by_role=CreatorUserRole.ACCOUNT,
         created_by="user-1",
         created_at=datetime.now(UTC),
-        used=False,
     )
 
 

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import urllib.parse
-from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -13,10 +12,9 @@ from sqlalchemy import Engine
 
 from controllers.common.errors import FileTooLargeError, RemoteFileUploadError
 from controllers.web.remote_files import RemoteFileInfoApi, RemoteFileUploadApi
-from extensions.storage.storage_type import StorageType
 from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser, UploadFile
-from tests.unit_tests.model_factories import make_end_user
+from tests.unit_tests.model_factories import make_end_user, make_upload_file
 
 
 def _app_model() -> App:
@@ -37,9 +35,8 @@ def _end_user() -> EndUser:
 
 
 def _upload_file() -> UploadFile:
-    upload_file = UploadFile(
-        tenant_id="tenant-1",
-        storage_type=StorageType.LOCAL,
+    return make_upload_file(
+        file_id="f-1",
         key="upload/file.pdf",
         name="file.pdf",
         size=100,
@@ -47,11 +44,7 @@ def _upload_file() -> UploadFile:
         mime_type="application/pdf",
         created_by_role=CreatorUserRole.END_USER,
         created_by="eu-1",
-        created_at=datetime(2024, 1, 1),
-        used=False,
     )
-    upload_file.id = "f-1"
-    return upload_file
 
 
 # ---------------------------------------------------------------------------

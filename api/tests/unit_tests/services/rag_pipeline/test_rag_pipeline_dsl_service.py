@@ -39,7 +39,7 @@ from services.rag_pipeline.rag_pipeline_dsl_service import (
     RagPipelineDslService,
     RagPipelinePendingData,
 )
-from tests.unit_tests.model_factories import make_account, make_tenant
+from tests.unit_tests.model_factories import make_account, make_dataset, make_tenant, make_workflow
 
 
 @pytest.fixture
@@ -77,19 +77,12 @@ def _pipeline(
 
 
 def _workflow(session: Session, pipeline: Pipeline, *, graph: dict[str, Any] | None = None) -> Workflow:
-    workflow = Workflow(
-        id=f"workflow-{pipeline.id}",
+    workflow = make_workflow(
+        workflow_id=f"workflow-{pipeline.id}",
         tenant_id=pipeline.tenant_id,
         app_id=pipeline.id,
-        type=WorkflowType.RAG_PIPELINE,
-        kind=WorkflowKind.STANDARD,
-        version=Workflow.VERSION_DRAFT,
-        graph=json.dumps(graph or {"nodes": [], "edges": []}),
-        features="{}",
-        created_by="account-1",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        workflow_type=WorkflowType.RAG_PIPELINE,
+        graph=graph,
     )
     pipeline.workflow_id = workflow.id
     session.add(workflow)
@@ -125,13 +118,13 @@ def _dataset(
     name: str = "Dataset",
     chunk_structure: str = "text_model",
 ) -> Dataset:
-    dataset = Dataset(
+    dataset = make_dataset(
+        dataset_id=None,
         tenant_id=pipeline.tenant_id,
         name=name,
         description="description",
         data_source_type=DataSourceType.UPLOAD_FILE,
         indexing_technique="high_quality",
-        created_by="account-1",
         maintainer="account-1",
         chunk_structure=chunk_structure,
         pipeline_id=pipeline.id,

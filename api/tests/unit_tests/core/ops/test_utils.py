@@ -19,6 +19,7 @@ from core.ops.utils import (
 )
 from models.enums import ConversationFromSource
 from models.model import Message
+from tests.unit_tests.model_factories import make_message
 
 
 class _DatabaseBinding:
@@ -39,10 +40,11 @@ def message_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) ->
 
 
 def _message(message_id: str) -> Message:
-    message = Message(
-        id=message_id,
+    return make_message(
+        message_id=message_id,
         app_id="app-id",
         conversation_id="conversation-id",
+        inputs={},
         query="question",
         message={"role": "user", "content": "question"},
         answer="answer",
@@ -51,8 +53,6 @@ def _message(message_id: str) -> Message:
         currency="USD",
         from_source=ConversationFromSource.API,
     )
-    message._inputs = {}
-    return message
 
 
 class TestValidateUrl:

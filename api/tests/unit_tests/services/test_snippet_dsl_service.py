@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from graphon.nodes import BuiltinNodeTypes
 from models import Account
 from models.snippet import CustomizedSnippet, SnippetType
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow
 from services.snippet_dsl_service import (
     ImportMode,
     ImportStatus,
@@ -17,7 +17,7 @@ from services.snippet_dsl_service import (
     SnippetPendingData,
     _check_version_compatibility,
 )
-from tests.unit_tests.model_factories import make_account, make_tenant
+from tests.unit_tests.model_factories import make_account, make_tenant, make_workflow
 
 SQLITE_MODELS = (CustomizedSnippet,)
 pytestmark = [
@@ -64,16 +64,7 @@ def _snippet(
 
 
 def _workflow(*, graph: dict | None = None) -> Workflow:
-    return Workflow(
-        id="workflow-1",
-        tenant_id="tenant-1",
-        app_id="snippet-1",
-        type=WorkflowType.WORKFLOW,
-        version="draft",
-        graph=json.dumps(graph or {"nodes": [], "edges": []}),
-        _features="{}",
-        created_by="account-1",
-    )
+    return make_workflow(workflow_id="workflow-1", app_id="snippet-1", graph=graph)
 
 
 @pytest.mark.parametrize(

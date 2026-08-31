@@ -81,6 +81,7 @@ from services.errors.audio import (
     SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
+from tests.unit_tests.model_factories import make_message
 
 APP_ID = "11111111-1111-1111-1111-111111111111"
 TENANT_ID = "22222222-2222-2222-2222-222222222222"
@@ -92,10 +93,11 @@ OTHER_ID = "77777777-7777-7777-7777-777777777777"
 
 
 def _message(*, answer: str = "Message answer") -> Message:
-    message = Message(
-        id=MESSAGE_ID,
+    return make_message(
+        message_id=MESSAGE_ID,
         app_id=APP_ID,
         conversation_id=CONVERSATION_ID,
+        inputs={},
         query="Question",
         message={"role": "user", "content": "Question"},
         answer=answer,
@@ -107,8 +109,6 @@ def _message(*, answer: str = "Message answer") -> Message:
         from_end_user_id=END_USER_ID,
         from_account_id=ACCOUNT_ID,
     )
-    message._inputs = {}
-    return message
 
 
 class AudioServiceTestDataFactory:

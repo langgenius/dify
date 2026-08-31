@@ -30,7 +30,7 @@ from models.workflow import (
 from services.agent import observability_service as observability_service_module
 from services.agent.observability_service import AgentLogQueryParams, AgentObservabilityService
 from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_app
+from tests.unit_tests.model_factories import make_app, make_conversation, make_message
 
 
 def _app(*, app_id: str = "app-1", name: str = "Iris", mode: AppMode = AppMode.AGENT_CHAT) -> App:
@@ -38,8 +38,8 @@ def _app(*, app_id: str = "app-1", name: str = "Iris", mode: AppMode = AppMode.A
 
 
 def _conversation(*, conversation_id: str = "conversation-1", app_id: str = "app-1") -> Conversation:
-    return Conversation(
-        id=conversation_id,
+    return make_conversation(
+        conversation_id=conversation_id,
         app_id=app_id,
         mode=AppMode.AGENT_CHAT,
         name="Debug conversation",
@@ -57,8 +57,8 @@ def _message(
     created_at: datetime | None = None,
 ) -> Message:
     timestamp = created_at or naive_utc_now()
-    return Message(
-        id=message_id,
+    return make_message(
+        message_id=message_id,
         app_id=app_id,
         conversation_id=conversation_id,
         inputs={},

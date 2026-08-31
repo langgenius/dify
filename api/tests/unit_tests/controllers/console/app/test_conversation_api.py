@@ -24,7 +24,7 @@ from models.enums import (
 from models.model import AppMode, Conversation
 from models.workflow import WorkflowRun, WorkflowType
 from services.errors.conversation import ConversationNotExistsError
-from tests.unit_tests.model_factories import make_app
+from tests.unit_tests.model_factories import make_app, make_conversation
 
 
 def _make_account() -> Account:
@@ -38,14 +38,9 @@ def _app(*, mode: AppMode = AppMode.CHAT) -> App:
 
 
 def _conversation(*, conversation_id: str = "c1", app_id: str = "app-1") -> Conversation:
-    conversation = Conversation(
+    return make_conversation(
+        conversation_id=conversation_id,
         app_id=app_id,
-        app_model_config_id=None,
-        model_provider=None,
-        override_model_configs=None,
-        model_id=None,
-        mode=AppMode.CHAT,
-        name="Conversation",
         inputs={},
         introduction="",
         system_instruction="",
@@ -53,11 +48,8 @@ def _conversation(*, conversation_id: str = "c1", app_id: str = "app-1") -> Conv
         status="normal",
         invoke_from=InvokeFrom.EXPLORE,
         from_source=ConversationFromSource.CONSOLE,
-        from_end_user_id=None,
         from_account_id="u1",
     )
-    conversation.id = conversation_id
-    return conversation
 
 
 def test_completion_conversation_list_returns_paginated_result(

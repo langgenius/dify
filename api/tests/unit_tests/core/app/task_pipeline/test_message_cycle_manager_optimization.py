@@ -20,8 +20,8 @@ from graphon.file import FileTransferMethod, FileType
 from models import model as model_module
 from models.base import TypeBase
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
-from models.model import App, AppMode, Conversation, MessageAnnotation, MessageFile
-from tests.unit_tests.model_factories import make_app
+from models.model import App, Conversation, MessageAnnotation, MessageFile
+from tests.unit_tests.model_factories import make_app, make_conversation
 
 
 @dataclass(frozen=True)
@@ -51,16 +51,14 @@ def _app(*, app_id: str = "app-id", tenant_id: str = "tenant-1") -> App:
 
 
 def _conversation(*, conversation_id: str = "conv-1", app_id: str = "app-id") -> Conversation:
-    conversation = Conversation(
+    return make_conversation(
+        conversation_id=conversation_id,
         app_id=app_id,
-        mode=AppMode.CHAT,
         name="",
         status="normal",
         from_source=ConversationFromSource.API,
         inputs={},
     )
-    conversation.id = conversation_id
-    return conversation
 
 
 def _message_file(
