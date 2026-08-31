@@ -14,6 +14,7 @@ import pytest
 from flask import Flask
 from pydantic import ValidationError
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.inner_api.workspace.workspace import (
     EnterpriseWorkspace,
@@ -29,6 +30,7 @@ from services.account_service import (
     EnterpriseWorkspaceMemberAccountNotFoundError,
     EnterpriseWorkspaceMemberWorkspaceNotFoundError,
 )
+from tests.unit_tests.config_override import config_overrides_context
 
 
 @pytest.fixture
@@ -145,10 +147,9 @@ class TestEnterpriseWorkspace:
 
         # Act — unwrap to bypass auth/setup decorators (tested in test_auth_wraps.py)
         unwrapped_post = inspect.unwrap(api_instance.post)
-        with app.test_request_context():
-            with patch("controllers.inner_api.workspace.workspace.inner_api_ns") as mock_ns:
-                mock_ns.payload = {"name": "My Workspace", "owner_email": "owner@example.com"}
-                result = unwrapped_post(api_instance)
+        payload = {"name": "My Workspace", "owner_email": "owner@example.com"}
+        with app.test_request_context(json=payload):
+            result = unwrapped_post(api_instance, WorkspaceCreatePayload.model_validate(payload))
 
         # Assert
         assert result["message"] == "enterprise workspace created."
@@ -168,10 +169,9 @@ class TestEnterpriseWorkspace:
         """Test that post() returns 404 when the owner account does not exist"""
         # Act
         unwrapped_post = inspect.unwrap(api_instance.post)
-        with app.test_request_context():
-            with patch("controllers.inner_api.workspace.workspace.inner_api_ns") as mock_ns:
-                mock_ns.payload = {"name": "My Workspace", "owner_email": "missing@example.com"}
-                result = unwrapped_post(api_instance)
+        payload = {"name": "My Workspace", "owner_email": "missing@example.com"}
+        with app.test_request_context(json=payload):
+            result = unwrapped_post(api_instance, WorkspaceCreatePayload.model_validate(payload))
 
         # Assert
         assert result == ({"message": "owner account not found."}, 404)
@@ -214,10 +214,9 @@ class TestEnterpriseWorkspaceNoOwnerEmail:
 
         # Act — unwrap to bypass auth/setup decorators (tested in test_auth_wraps.py)
         unwrapped_post = inspect.unwrap(api_instance.post)
-        with app.test_request_context():
-            with patch("controllers.inner_api.workspace.workspace.inner_api_ns") as mock_ns:
-                mock_ns.payload = {"name": "My Workspace"}
-                result = unwrapped_post(api_instance)
+        payload = {"name": "My Workspace"}
+        with app.test_request_context(json=payload):
+            result = unwrapped_post(api_instance, WorkspaceOwnerlessPayload.model_validate(payload))
 
         # Assert
         assert result["message"] == "enterprise workspace created."
@@ -251,16 +250,15 @@ class TestEnterpriseWorkspaceMember:
         mock_tenant_svc.join_enterprise_workspace_member.return_value = membership
 
         unwrapped_post = inspect.unwrap(api_instance.post)
-        with app.test_request_context():
-            with patch("controllers.inner_api.workspace.workspace.inner_api_ns") as mock_ns:
-                mock_ns.payload = {
-                    "workspace_id": "workspace-id",
-                    "account_id": "account-id",
-                    "email": "member@example.com",
-                    "role": "normal",
-                    "operator_account_id": "operator-id",
-                }
-                result = unwrapped_post(api_instance)
+        payload = {
+            "workspace_id": "workspace-id",
+            "account_id": "account-id",
+            "email": "member@example.com",
+            "role": "normal",
+            "operator_account_id": "operator-id",
+        }
+        with app.test_request_context(json=payload):
+            result = unwrapped_post(api_instance, WorkspaceMemberPayload.model_validate(payload))
 
         assert result["message"] == "enterprise workspace member joined."
         assert result["member"] == {
@@ -281,15 +279,14 @@ class TestEnterpriseWorkspaceMember:
         mock_tenant_svc.join_enterprise_workspace_member.side_effect = EnterpriseWorkspaceMemberWorkspaceNotFoundError
 
         unwrapped_post = inspect.unwrap(api_instance.post)
-        with app.test_request_context():
-            with patch("controllers.inner_api.workspace.workspace.inner_api_ns") as mock_ns:
-                mock_ns.payload = {
-                    "workspace_id": "missing-workspace",
-                    "account_id": "account-id",
-                    "email": "member@example.com",
-                    "role": "normal",
-                }
-                result = unwrapped_post(api_instance)
+        payload = {
+            "workspace_id": "missing-workspace",
+            "account_id": "account-id",
+            "email": "member@example.com",
+            "role": "normal",
+        }
+        with app.test_request_context(json=payload):
+            result = unwrapped_post(api_instance, WorkspaceMemberPayload.model_validate(payload))
 
         assert result == ({"message": "workspace not found."}, 404)
         mock_tenant_svc.join_enterprise_workspace_member.assert_called_once()
@@ -299,15 +296,14 @@ class TestEnterpriseWorkspaceMember:
         mock_tenant_svc.join_enterprise_workspace_member.side_effect = EnterpriseWorkspaceMemberAccountNotFoundError
 
         unwrapped_post = inspect.unwrap(api_instance.post)
-        with app.test_request_context():
-            with patch("controllers.inner_api.workspace.workspace.inner_api_ns") as mock_ns:
-                mock_ns.payload = {
-                    "workspace_id": "workspace-id",
-                    "account_id": "missing-account",
-                    "email": "member@example.com",
-                    "role": "normal",
-                }
-                result = unwrapped_post(api_instance)
+        payload = {
+            "workspace_id": "workspace-id",
+            "account_id": "missing-account",
+            "email": "member@example.com",
+            "role": "normal",
+        }
+        with app.test_request_context(json=payload):
+            result = unwrapped_post(api_instance, WorkspaceMemberPayload.model_validate(payload))
 
         assert result == ({"message": "account not found."}, 404)
         mock_tenant_svc.join_enterprise_workspace_member.assert_called_once()
@@ -315,29 +311,46 @@ class TestEnterpriseWorkspaceMember:
     @pytest.mark.usefixtures("database_session")
     def test_post_rejects_owner_role(self, api_instance, app: Flask):
         unwrapped_post = inspect.unwrap(api_instance.post)
-        with app.test_request_context():
-            with patch("controllers.inner_api.workspace.workspace.inner_api_ns") as mock_ns:
-                mock_ns.payload = {
-                    "workspace_id": "workspace-id",
-                    "account_id": "account-id",
-                    "email": "member@example.com",
-                    "role": "owner",
-                }
-                result = unwrapped_post(api_instance)
+        payload = {
+            "workspace_id": "workspace-id",
+            "account_id": "account-id",
+            "email": "member@example.com",
+            "role": "owner",
+        }
+        with app.test_request_context(json=payload):
+            result = unwrapped_post(api_instance, WorkspaceMemberPayload.model_validate(payload))
 
         assert result == ({"message": "cannot join workspace as owner."}, 400)
 
     @pytest.mark.usefixtures("database_session")
     def test_post_rejects_invalid_role(self, api_instance, app: Flask):
         unwrapped_post = inspect.unwrap(api_instance.post)
-        with app.test_request_context():
-            with patch("controllers.inner_api.workspace.workspace.inner_api_ns") as mock_ns:
-                mock_ns.payload = {
-                    "workspace_id": "workspace-id",
-                    "account_id": "account-id",
-                    "email": "member@example.com",
-                    "role": "not-a-role",
-                }
-                result = unwrapped_post(api_instance)
+        payload = {
+            "workspace_id": "workspace-id",
+            "account_id": "account-id",
+            "email": "member@example.com",
+            "role": "not-a-role",
+        }
+        with app.test_request_context(json=payload):
+            result = unwrapped_post(api_instance, WorkspaceMemberPayload.model_validate(payload))
 
         assert result == ({"message": "invalid workspace member role."}, 400)
+
+
+class TestModelValidateDecorator:
+    """The handler tests unwrap the view, so this is what covers the decorator itself."""
+
+    def test_invalid_body_is_rejected_before_the_handler_runs(self, app: Flask):
+        api_instance = EnterpriseWorkspace()
+
+        with (
+            config_overrides_context(INNER_API=True, INNER_API_KEY="inner-key"),
+            app.test_request_context(json={}, headers={"X-Inner-Api-Key": "inner-key"}),
+            patch("controllers.console.wraps._is_setup_completed", return_value=True),
+            patch("controllers.inner_api.workspace.workspace.TenantService") as tenant_service,
+        ):
+            with pytest.raises(UnprocessableEntity) as exc_info:
+                api_instance.post()
+
+        assert exc_info.value.code == 422
+        tenant_service.create_owner_tenant.assert_not_called()

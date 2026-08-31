@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from controllers.common.schema import register_schema_models
-from controllers.console.wraps import setup_required
+from controllers.console.wraps import model_validate, setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
 from events.tenant_event import tenant_was_created
@@ -54,8 +54,8 @@ class EnterpriseWorkspace(Resource):
             404: "Owner account not found or service not available",
         }
     )
-    def post(self):
-        args = WorkspaceCreatePayload.model_validate(inner_api_ns.payload or {})
+    @model_validate(WorkspaceCreatePayload)
+    def post(self, args: WorkspaceCreatePayload):
 
         account = db.session.scalar(select(Account).where(Account.email == args.owner_email).limit(1))
         if account is None:
@@ -97,8 +97,8 @@ class EnterpriseWorkspaceNoOwnerEmail(Resource):
             404: "Service not available",
         }
     )
-    def post(self):
-        args = WorkspaceOwnerlessPayload.model_validate(inner_api_ns.payload or {})
+    @model_validate(WorkspaceOwnerlessPayload)
+    def post(self, args: WorkspaceOwnerlessPayload):
 
         tenant = TenantService.create_tenant(args.name, is_from_dashboard=True, session=db.session())
 
@@ -136,8 +136,8 @@ class EnterpriseWorkspaceMember(Resource):
             404: "Workspace or account not found",
         }
     )
-    def post(self):
-        args = WorkspaceMemberPayload.model_validate(inner_api_ns.payload or {})
+    @model_validate(WorkspaceMemberPayload)
+    def post(self, args: WorkspaceMemberPayload):
 
         try:
             role = TenantAccountRole(args.role)
