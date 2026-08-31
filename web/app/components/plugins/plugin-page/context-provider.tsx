@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { PluginPageTab } from './context'
+import type { PluginPageSelection, PluginPageTab } from './context'
 import type { FilterState } from './filter-management'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { parseAsStringEnum, useQueryState } from 'nuqs'
@@ -38,7 +38,7 @@ export const PluginPageContextProvider = ({
       searchQuery: '',
     },
   )
-  const [currentPluginID, setCurrentPluginID] = useState<string | undefined>()
+  const [selectedItem, setSelectedItem] = useState<PluginPageSelection | undefined>()
 
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -56,8 +56,8 @@ export const PluginPageContextProvider = ({
     <PluginPageContext.Provider
       value={{
         containerRef,
-        currentPluginID,
-        setCurrentPluginID,
+        selectedItem,
+        setSelectedItem,
         filters,
         setFilters,
         activeTab,

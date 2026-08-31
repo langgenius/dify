@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import pytest
 
 from enums import DeploymentEdition
@@ -11,10 +13,10 @@ def test_system_feature_model_disables_knowledge_fs_by_default() -> None:
 
 @pytest.mark.parametrize("enabled", [False, True])
 def test_get_system_features_reads_knowledge_fs_flag(
-    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
     enabled: bool,
 ) -> None:
-    monkeypatch.setattr("services.feature_service.dify_config.KNOWLEDGE_FS_ENABLED", enabled)
+    config_overrides(KNOWLEDGE_FS_ENABLED=enabled)
 
     result = FeatureService.get_system_features()
 

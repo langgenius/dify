@@ -10,6 +10,7 @@ from app_factory import create_flask_app_with_configs
 from enums import DeploymentEdition
 from libs.external_api import ExternalApi
 from services.entities.feature_entities import LicenseStatus
+from tests.unit_tests.config_override import config_overrides_context
 
 INVALID_STATUSES = [LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST]
 VALID_STATUSES = [LicenseStatus.ACTIVE, LicenseStatus.EXPIRING]
@@ -20,11 +21,11 @@ def _license(status: LicenseStatus | None):
 
 
 def _enterprise():
-    return patch("app_factory.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
+    return config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
 
 
 def _community():
-    return patch("app_factory.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    return config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 
 
 @pytest.fixture

@@ -841,9 +841,8 @@ class LLMGenerator:
         model_config: ModelConfig,
         ideal_output: str | None,
         workflow_service: WorkflowServiceInterface,
+        session: Session,
     ):
-        session = db.session()
-
         app: App | None = session.scalar(select(App).where(App.id == flow_id, App.tenant_id == tenant_id).limit(1))
         if not app:
             raise ValueError("App not found.")
