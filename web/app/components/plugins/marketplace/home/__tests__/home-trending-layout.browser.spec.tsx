@@ -106,6 +106,40 @@ describe('Marketplace home trending layout', () => {
     }
   })
 
+  it('keeps blog artwork at 400px on desktop so shrinking clips the right', async () => {
+    await page.viewport(1200, 900)
+    const screen = await render(
+      <div className="w-[900px]">
+        <HomeBannerSlide banner={blogBanner} isMarketplacePlatform page="plugins" />
+      </div>,
+    )
+
+    const artwork = screen.getByRole('link').element().querySelector('img')
+
+    expect(artwork).not.toBeNull()
+    expect(artwork!.getBoundingClientRect().width).toBe(400)
+    expect(getComputedStyle(artwork!).objectFit).toBe('cover')
+    expect(getComputedStyle(artwork!).objectPosition).toBe('0% 50%')
+  })
+
+  it('keeps desktop event artwork at least 1200px wide so overflow clips the right', async () => {
+    await page.viewport(1000, 900)
+    const screen = await render(
+      <div data-marketplace-standalone className="w-[900px]">
+        <HomeBannerSlide banner={eventBanner} isMarketplacePlatform page="plugins" />
+      </div>,
+    )
+
+    const artwork = screen
+      .getByRole('link', { name: 'Launch event' })
+      .element()
+      .querySelector('img')
+
+    expect(artwork).not.toBeNull()
+    expect(artwork!.getBoundingClientRect().width).toBeGreaterThanOrEqual(1200)
+    expect(getComputedStyle(artwork!).objectPosition).toBe('0% 50%')
+  })
+
   it('keeps the blog artwork left corners rounded when its image is cropped', async () => {
     const screen = await render(
       <div className="w-[600px]">

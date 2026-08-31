@@ -396,7 +396,7 @@ function BlogBannerSlide({
         className={cn(
           styles.updatesArt,
           isMarketplacePlatform && styles.stackedVisual,
-          'h-[200px] shrink-0 rounded-2xl object-cover',
+          'h-[200px] shrink-0 rounded-2xl object-cover object-left',
         )}
       />
     </Link>

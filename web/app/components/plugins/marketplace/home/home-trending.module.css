@@ -73,8 +73,12 @@
 }
 
 .updatesArt {
-  width: 33.3333%;
+  /* Keep the 400×200 art at design size on PC so shrinking the frame
+     clips overflow on the right instead of scaling the bitmap. */
+  width: 400px;
   max-width: 400px;
+  flex-shrink: 0;
+  object-position: left;
 }
 
 /* Desktop: crop from the right so left-side artwork stays visible when the
@@ -270,13 +274,18 @@
   }
 }
 
+@media (min-width: 880px) {
+  /* Event/ad: keep the 6:1 bitmap at least 1200px wide so a narrower
+     overflow-hidden frame clips the right, not the left. */
+  .imageSlide img {
+    min-width: 1200px;
+    max-width: none;
+  }
+}
+
 @media (min-width: 1232px) {
   .marketplaceCopy {
     width: 443px;
-  }
-
-  .updatesArt {
-    width: 400px;
   }
 }
 
