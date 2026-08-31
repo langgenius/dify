@@ -320,7 +320,7 @@ async function findProvisionalSource(knowledgeSpaceId: string, clientRequestId: 
       query: { ...(cursor ? { cursor } : {}) },
     })
     const source = response.data
-      .map(sourceFromApi)
+      .map((source) => sourceFromApi(source))
       .find((candidate) => candidate.metadata.clientRequestId === clientRequestId)
     if (source) return source
     const nextCursor = response.next_cursor ?? undefined

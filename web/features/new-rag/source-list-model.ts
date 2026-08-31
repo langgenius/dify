@@ -1,3 +1,4 @@
+import type { KnowledgeFsSourceUpdatePayload } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { Source, SourceSyncPolicy } from './source-models'
 import { normalizeSourceProviderName, sourceProviderPresentation } from './source-provider-options'
 
@@ -82,29 +83,7 @@ export function syncPolicyConfiguration(
   return { enabled: true, mode } as const
 }
 
-export function sourceSyncPolicyChanged(
-  source: Source,
-  mode: SourceSyncPolicy['mode'],
-  customIntervalHours: number,
-) {
-  if (mode !== sourceSyncMode(source)) return true
-  return (
-    mode === 'custom' && customIntervalHours * 3600 !== source.syncPolicy?.customIntervalSeconds
-  )
-}
-
-export type SourceEditValues = {
-  expectedVersion?: number
-  metadata?: Record<string, unknown>
-  name?: string
-  providerParameters?: Record<string, boolean | number | string>
-  syncPolicy?: {
-    customIntervalHours: number
-    expectedRevision: number
-    mode: SourceSyncPolicy['mode']
-  }
-  uri?: string
-}
+export type SourceEditValues = Omit<KnowledgeFsSourceUpdatePayload, 'status' | 'syncAfterUpdate'>
 
 export function createIdempotencyKey() {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`

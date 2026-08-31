@@ -74,20 +74,6 @@ const sourceApiResponse = vi.hoisted(() => (source: Source) => ({
   version: source.version ?? null,
 }))
 
-const syncPolicyApiResponse = vi.hoisted(() => (policy: SourceSyncPolicy) => ({
-  created_at: policy.createdAt,
-  custom_interval_seconds: policy.customIntervalSeconds ?? null,
-  enabled: policy.enabled,
-  expected_source_version: policy.expectedSourceVersion,
-  id: policy.id,
-  knowledge_space_id: policy.knowledgeSpaceId,
-  mode: policy.mode,
-  next_run_at: policy.nextRunAt ?? null,
-  revision: policy.revision,
-  source_id: policy.sourceId,
-  updated_at: policy.updatedAt,
-}))
-
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: { error: toastErrorMock, info: toastInfoMock },
 }))
@@ -129,12 +115,43 @@ const sourcesQuery = vi.hoisted(() => ({
   isPending: false,
   refetch: vi.fn(),
 }))
+const connectionsQuery = vi.hoisted(() => ({
+  data: undefined as
+    | {
+        pages: Array<{
+          data: Array<{
+            auth_kind: 'endpoint'
+            configuration: Record<string, boolean | number | string>
+            created_at: string
+            id: string
+            knowledge_space_id: string
+            name: string
+            provider_id: string
+            scopes: string[]
+            status: 'active'
+            updated_at: string
+            version: number
+          }>
+          next_cursor: null
+        }>
+      }
+    | undefined,
+  error: null as unknown,
+  fetchNextPage: vi.fn(),
+  hasNextPage: false,
+  isError: false,
+  isFetchingNextPage: false,
+  isPending: false,
+}))
 
 const infiniteOptionsMock = vi.hoisted(() => vi.fn((_options: SourcesInfiniteOptions) => ({})))
 const clientMock = vi.hoisted(() => ({
   deleteSource: vi.fn(),
+  deletePreviewJob: vi.fn(),
+  getPreviewJob: vi.fn(),
   patchSource: vi.fn(),
-  putSyncPolicy: vi.fn(),
+  previewConnectedSource: vi.fn(),
+  startPreviewJob: vi.fn(),
   retrySourceWorkflow: vi.fn(),
   syncSource: vi.fn(),
 }))
@@ -150,17 +167,20 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   const original = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...original,
-    useInfiniteQuery: () => ({
-      ...sourcesQuery,
-      data: sourcesQuery.data
-        ? {
-            pages: sourcesQuery.data.pages.map((page) => ({
-              data: page.items.map(sourceApiResponse),
-              next_cursor: page.nextCursor ?? null,
-            })),
-          }
-        : undefined,
-    }),
+    useInfiniteQuery: (options: { scope?: string }) =>
+      options.scope === 'source-connections'
+        ? connectionsQuery
+        : {
+            ...sourcesQuery,
+            data: sourcesQuery.data
+              ? {
+                  pages: sourcesQuery.data.pages.map((page) => ({
+                    data: page.items.map(sourceApiResponse),
+                    next_cursor: page.nextCursor ?? null,
+                  })),
+                }
+              : undefined,
+          },
     useQuery: () => ({
       data: {
         active_profile_available: settingsState.configurationState === 'active',
@@ -199,6 +219,16 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('@/service/client', () => ({
   consoleClient: {
     knowledgeFs: {
+      sourceProviderPreview: {
+        jobs: {
+          byJobId: {
+            delete: clientMock.deletePreviewJob,
+            get: clientMock.getPreviewJob,
+          },
+          post: clientMock.startPreviewJob,
+        },
+        post: clientMock.previewConnectedSource,
+      },
       spaces: {
         byControlSpaceId: {
           sources: {
@@ -207,10 +237,6 @@ vi.mock('@/service/client', () => ({
               patch: async (input: unknown) =>
                 sourceApiResponse(await clientMock.patchSource(input)),
               sync: { post: clientMock.syncSource },
-              syncPolicy: {
-                put: async (input: unknown) =>
-                  syncPolicyApiResponse(await clientMock.putSyncPolicy(input)),
-              },
             },
             get: {
               infiniteOptions: infiniteOptionsMock,
@@ -235,6 +261,11 @@ vi.mock('@/service/client', () => ({
               queryOptions: ({ input }: { input: unknown }) => ({
                 queryKey: ['knowledge-fs', 'settings', input],
               }),
+            },
+          },
+          sourceConnections: {
+            get: {
+              infiniteOptions: () => ({ scope: 'source-connections' }),
             },
           },
           sources: {
@@ -323,6 +354,163 @@ const firecrawlDatasourcePlugin: DataSourceItem = {
   provider: 'firecrawl',
 }
 
+const notionDatasourcePlugin: DataSourceItem = {
+  declaration: {
+    credentials_schema: [],
+    datasources: [
+      {
+        description: { en_US: 'Notion', zh_Hans: 'Notion' },
+        identity: {
+          author: 'langgenius',
+          label: { en_US: 'Notion', zh_Hans: 'Notion' },
+          name: 'notion',
+          provider: 'notion_datasource',
+        },
+        parameters: [
+          {
+            label: { en_US: 'Workspace' },
+            name: 'workspace',
+            required: true,
+            type: 'string',
+          },
+        ],
+      },
+    ],
+    identity: {
+      author: 'langgenius',
+      description: { en_US: 'Notion', zh_Hans: 'Notion' },
+      icon: 'icon.svg',
+      label: { en_US: 'Notion', zh_Hans: 'Notion' },
+      name: 'notion_datasource',
+      tags: [],
+    },
+    provider_type: 'online_document',
+  },
+  is_authorized: true,
+  plugin_id: 'langgenius/notion_datasource',
+  plugin_unique_identifier: 'langgenius/notion_datasource:1.0.0@local',
+  provider: 'notion_datasource',
+}
+
+const googleDriveDatasourcePlugin: DataSourceItem = {
+  declaration: {
+    credentials_schema: [],
+    datasources: [
+      {
+        description: { en_US: 'Google Drive', zh_Hans: 'Google Drive' },
+        identity: {
+          author: 'langgenius',
+          label: { en_US: 'Google Drive', zh_Hans: 'Google Drive' },
+          name: 'google_drive',
+          provider: 'google_drive',
+        },
+        parameters: [
+          {
+            label: { en_US: 'Folder' },
+            name: 'folder',
+            required: true,
+            type: 'string',
+          },
+        ],
+      },
+    ],
+    identity: {
+      author: 'langgenius',
+      description: { en_US: 'Google Drive', zh_Hans: 'Google Drive' },
+      icon: 'icon.svg',
+      label: { en_US: 'Google Drive', zh_Hans: 'Google Drive' },
+      name: 'google_drive',
+      tags: [],
+    },
+    provider_type: 'online_drive',
+  },
+  is_authorized: true,
+  plugin_id: 'langgenius/google_drive',
+  plugin_unique_identifier: 'langgenius/google_drive:1.0.0@local',
+  provider: 'google_drive',
+}
+
+const sourceConnectionResponse = {
+  auth_kind: 'endpoint' as const,
+  configuration: {
+    credentialId: 'credential-1',
+    datasource: 'crawl',
+    pluginId: 'langgenius/firecrawl_datasource',
+    provider: 'firecrawl',
+    providerKind: 'website',
+  },
+  created_at: '2026-07-20T10:00:00Z',
+  id: 'connection-1',
+  knowledge_space_id: 'space-1',
+  name: 'Firecrawl',
+  provider_id: 'plugin-daemon-website',
+  scopes: [],
+  status: 'active' as const,
+  updated_at: '2026-07-20T10:00:00Z',
+  version: 1,
+}
+
+function useWebsitePreview(
+  pages = [{ source_url: 'https://docs.example.com/guide', title: 'Guide' }],
+) {
+  connectionsQuery.data = { pages: [{ data: [sourceConnectionResponse], next_cursor: null }] }
+  clientMock.startPreviewJob.mockResolvedValue({ job_id: 'preview-job-1' })
+  clientMock.getPreviewJob.mockResolvedValue({
+    result: { pages },
+    status: 'completed',
+  })
+}
+
+function useConnectedSourceConnection() {
+  connectionsQuery.data = {
+    pages: [
+      {
+        data: [
+          {
+            ...sourceConnectionResponse,
+            configuration: {
+              credentialId: 'credential-notion',
+              datasource: 'notion',
+              pluginId: 'langgenius/notion_datasource',
+              provider: 'notion_datasource',
+              providerKind: 'online-document',
+            },
+            id: 'connection-notion',
+            name: 'Notion',
+            provider_id: 'plugin-daemon-online-document',
+          },
+        ],
+        next_cursor: null,
+      },
+    ],
+  }
+}
+
+function useDriveSourceConnection() {
+  connectionsQuery.data = {
+    pages: [
+      {
+        data: [
+          {
+            ...sourceConnectionResponse,
+            configuration: {
+              credentialId: 'credential-drive',
+              datasource: 'google_drive',
+              pluginId: 'langgenius/google_drive',
+              provider: 'google_drive',
+              providerKind: 'online-drive',
+            },
+            id: 'connection-drive',
+            name: 'Google Drive',
+            provider_id: 'plugin-daemon-online-drive',
+          },
+        ],
+        next_cursor: null,
+      },
+    ],
+  }
+}
+
 const workflow = (state = 'queued') => ({
   canceled_at: null,
   checkpoint: 'sync',
@@ -377,11 +565,18 @@ describe('SourcesPage', () => {
     sourcesQuery.isFetchNextPageError = false
     sourcesQuery.isFetchingNextPage = false
     sourcesQuery.isPending = false
+    connectionsQuery.data = undefined
+    connectionsQuery.error = null
+    connectionsQuery.hasNextPage = false
+    connectionsQuery.isError = false
+    connectionsQuery.isFetchingNextPage = false
+    connectionsQuery.isPending = false
     datasourcePluginsQuery.data = []
     datasourcePluginsQuery.isError = false
     datasourcePluginsQuery.isPending = false
     navigationMock.awaitInitialSource = null
     clientMock.deleteSource.mockResolvedValue({ status: 'accepted' })
+    clientMock.deletePreviewJob.mockResolvedValue({ status: 'canceled' })
     clientMock.patchSource.mockResolvedValue(source({}))
     clientMock.retrySourceWorkflow.mockResolvedValue(workflow())
     invalidateQueriesMock.mockResolvedValue(undefined)
@@ -1216,11 +1411,17 @@ describe('SourcesPage', () => {
       revision: 2,
       updatedAt: '2026-07-20T10:01:00Z',
     }
-    sourcesQuery.data = { pages: [{ items: [source({ syncPolicy: manualPolicy })] }] }
+    sourcesQuery.data = {
+      pages: [{ items: [source({ syncPolicy: manualPolicy, type: 'upload', uri: 'upload://1' })] }],
+    }
     clientMock.patchSource.mockResolvedValue(
-      source({ name: 'Renamed documentation', syncPolicy: manualPolicy, version: 4 }),
+      source({
+        name: 'Renamed documentation',
+        syncPolicy: dailyPolicy,
+        type: 'upload',
+        version: 4,
+      }),
     )
-    clientMock.putSyncPolicy.mockResolvedValue(dailyPolicy)
 
     render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
@@ -1241,17 +1442,10 @@ describe('SourcesPage', () => {
 
     await waitFor(() =>
       expect(clientMock.patchSource).toHaveBeenCalledWith({
-        body: { expectedVersion: 3, name: 'Renamed documentation' },
-        params: { control_space_id: 'space-1', source_id: 'source-1' },
-      }),
-    )
-    await waitFor(() =>
-      expect(clientMock.putSyncPolicy).toHaveBeenCalledWith({
         body: {
-          enabled: true,
-          expectedRevision: 1,
-          expectedSourceVersion: 4,
-          mode: 'interval',
+          expectedVersion: 3,
+          name: 'Renamed documentation',
+          syncPolicy: { enabled: true, mode: 'interval' },
         },
         params: { control_space_id: 'space-1', source_id: 'source-1' },
       }),
@@ -1267,7 +1461,11 @@ describe('SourcesPage', () => {
   it('edits website source parameters from the row menu', async () => {
     const user = userEvent.setup()
     datasourcePluginsQuery.data = [firecrawlDatasourcePlugin]
+    useWebsitePreview([
+      { source_url: 'https://handbook.example.com/getting-started', title: 'Getting started' },
+    ])
     const websiteSource = source({
+      connectionId: 'connection-1',
       metadata: {
         crawlOptions: { includeSubpages: true, limit: 100 },
         parameters: {
@@ -1315,21 +1513,25 @@ describe('SourcesPage', () => {
     expect(maxPages).toHaveValue(100)
     await user.clear(maxPages)
     await user.type(maxPages, '50')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+    await user.click(await screen.findByRole('checkbox', { name: /Getting started/ }))
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     await waitFor(() =>
       expect(clientMock.patchSource).toHaveBeenCalledWith({
         body: {
           expectedVersion: 3,
-          metadata: {
-            crawlOptions: { includeSubpages: true, limit: 50 },
-            datasourceParameterMode: 'exact',
-          },
+          name: 'Product documentation',
           providerParameters: {
             crawl_subpages: true,
             limit: 50,
             url: 'https://handbook.example.com',
           },
+          selection: {
+            kind: 'website_crawl',
+            sourceUrls: ['https://handbook.example.com/getting-started'],
+          },
+          syncPolicy: { enabled: false, mode: 'manual' },
           uri: 'https://handbook.example.com/',
         },
         params: { control_space_id: 'space-1', source_id: 'source-1' },
@@ -1337,14 +1539,172 @@ describe('SourcesPage', () => {
     )
   })
 
-  it('clears the website parameter dirty state after restoring the opening values', async () => {
+  it('submits an online document selection in the source PATCH', async () => {
+    const user = userEvent.setup()
+    datasourcePluginsQuery.data = [notionDatasourcePlugin]
+    useConnectedSourceConnection()
+    clientMock.previewConnectedSource.mockResolvedValue({
+      documents: [
+        {
+          last_edited_time: '2026-08-30T10:00:00Z',
+          name: 'Product plan',
+          page_id: 'page-1',
+          provider_item_id: 'opaque-provider-page-1',
+          type: 'page',
+          workspace_id: 'workspace-1',
+          workspace_name: 'Product',
+        },
+      ],
+      next_page_parameters: null,
+    })
+    const connectorSource = source({
+      connectionId: 'connection-notion',
+      metadata: {
+        parameters: { workspace: 'product' },
+        providerId: 'plugin-daemon-online-document',
+        providerKind: 'online-document',
+        providerName: 'Notion',
+      },
+      type: 'connector',
+      uri: 'notion://connection-notion',
+    })
+    sourcesQuery.data = { pages: [{ items: [connectorSource] }] }
+    clientMock.patchSource.mockResolvedValue(
+      source({
+        ...connectorSource,
+        status: 'syncing',
+        syncWorkflow: sourceWorkflow(),
+        version: 4,
+      }),
+    )
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+    await user.click(await screen.findByRole('checkbox', { name: 'Product plan' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    await waitFor(() =>
+      expect(clientMock.patchSource).toHaveBeenCalledWith({
+        body: {
+          expectedVersion: 3,
+          name: 'Product documentation',
+          providerParameters: { workspace: 'product' },
+          selection: {
+            items: [
+              {
+                lastEditedTime: '2026-08-30T10:00:00Z',
+                name: 'Product plan',
+                pageId: 'page-1',
+                providerItemId: 'opaque-provider-page-1',
+                type: 'page',
+                workspaceId: 'workspace-1',
+              },
+            ],
+            kind: 'online_document',
+          },
+          syncPolicy: { enabled: false, mode: 'manual' },
+        },
+        params: { control_space_id: 'space-1', source_id: 'source-1' },
+      }),
+    )
+    expect(clientMock.previewConnectedSource).toHaveBeenCalledWith({
+      body: {
+        credentialId: 'credential-notion',
+        datasource: 'notion',
+        kind: 'online_document',
+        parameters: { workspace: 'product' },
+        pluginId: 'langgenius/notion_datasource',
+        provider: 'notion_datasource',
+      },
+    })
+  })
+
+  it('submits an online drive selection with the provider resource identity', async () => {
+    const user = userEvent.setup()
+    datasourcePluginsQuery.data = [googleDriveDatasourcePlugin]
+    useDriveSourceConnection()
+    clientMock.previewConnectedSource.mockResolvedValue({
+      files: [
+        {
+          bucket: 'project-files',
+          id: 'file-1',
+          mime_type: 'application/pdf',
+          name: 'Project plan.pdf',
+          provider_item_id: 'opaque-provider-file-1',
+          size: 1024,
+          type: 'application/pdf',
+        },
+      ],
+      next_page_parameters: null,
+    })
+    const connectorSource = source({
+      connectionId: 'connection-drive',
+      metadata: {
+        parameters: { folder: 'project-a' },
+        providerId: 'plugin-daemon-online-drive',
+        providerKind: 'online-drive',
+        providerName: 'Google Drive',
+      },
+      type: 'connector',
+      uri: 'gdrive://connection-drive',
+    })
+    sourcesQuery.data = { pages: [{ items: [connectorSource] }] }
+    clientMock.patchSource.mockResolvedValue(
+      source({ ...connectorSource, status: 'syncing', syncWorkflow: sourceWorkflow(), version: 4 }),
+    )
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+    await user.click(await screen.findByRole('checkbox', { name: 'Project plan.pdf' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    await waitFor(() =>
+      expect(clientMock.patchSource).toHaveBeenCalledWith({
+        body: {
+          expectedVersion: 3,
+          name: 'Product documentation',
+          providerParameters: { folder: 'project-a' },
+          selection: {
+            items: [
+              {
+                bucket: 'project-files',
+                id: 'file-1',
+                mimeType: 'application/pdf',
+                name: 'Project plan.pdf',
+                providerItemId: 'opaque-provider-file-1',
+              },
+            ],
+            kind: 'online_drive',
+          },
+          syncPolicy: { enabled: false, mode: 'manual' },
+        },
+        params: { control_space_id: 'space-1', source_id: 'source-1' },
+      }),
+    )
+  })
+
+  it('requires a current website preview selection before saving', async () => {
     const user = userEvent.setup()
     datasourcePluginsQuery.data = [firecrawlDatasourcePlugin]
+    useWebsitePreview()
     sourcesQuery.data = {
       pages: [
         {
           items: [
             source({
+              connectionId: 'connection-1',
               metadata: {
                 datasourceParameterMode: 'exact',
                 parameters: { url: 'https://docs.example.com/' },
@@ -1371,10 +1731,13 @@ describe('SourcesPage', () => {
     expect(saveButton).toBeDisabled()
 
     await user.click(followLinks)
-    expect(saveButton).toBeEnabled()
-    await user.click(followLinks)
-
     expect(saveButton).toBeDisabled()
+    await user.click(followLinks)
+    expect(saveButton).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+    await user.click(await screen.findByRole('checkbox', { name: /Guide/ }))
+    expect(saveButton).toBeEnabled()
   })
 
   it('keeps the opening edit snapshot when the source refreshes in the background', async () => {
@@ -1398,6 +1761,8 @@ describe('SourcesPage', () => {
         providerName: 'Firecrawl',
       },
       syncPolicy: manualPolicy,
+      type: 'upload',
+      uri: 'upload://1',
     })
     sourcesQuery.data = { pages: [{ items: [websiteSource] }] }
     clientMock.patchSource.mockResolvedValue(
@@ -1423,6 +1788,8 @@ describe('SourcesPage', () => {
                 providerName: 'Firecrawl',
               },
               syncPolicy: { ...manualPolicy, revision: 6 },
+              type: 'upload',
+              uri: 'upload://1',
               version: 4,
             }),
           ],
@@ -1432,7 +1799,6 @@ describe('SourcesPage', () => {
     rerender(<SourcesPage knowledgeSpaceId="space-1" />)
 
     const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
-    expect(saveButton).toBeDisabled()
     const nameInput = screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })
     await user.clear(nameInput)
     await user.type(nameInput, 'Renamed documentation')
@@ -1442,17 +1808,10 @@ describe('SourcesPage', () => {
 
     await waitFor(() =>
       expect(clientMock.patchSource).toHaveBeenCalledWith({
-        body: { expectedVersion: 3, name: 'Renamed documentation' },
-        params: { control_space_id: 'space-1', source_id: 'source-1' },
-      }),
-    )
-    await waitFor(() =>
-      expect(clientMock.putSyncPolicy).toHaveBeenCalledWith({
         body: {
-          enabled: true,
-          expectedRevision: 5,
-          expectedSourceVersion: 4,
-          mode: 'interval',
+          expectedVersion: 3,
+          name: 'Renamed documentation',
+          syncPolicy: { enabled: true, mode: 'interval' },
         },
         params: { control_space_id: 'space-1', source_id: 'source-1' },
       }),
@@ -1462,7 +1821,9 @@ describe('SourcesPage', () => {
   it('removes a cleared optional website provider parameter', async () => {
     const user = userEvent.setup()
     datasourcePluginsQuery.data = [firecrawlDatasourcePlugin]
+    useWebsitePreview()
     const websiteSource = source({
+      connectionId: 'connection-1',
       metadata: {
         datasourceParameterMode: 'exact',
         parameters: {
@@ -1499,21 +1860,25 @@ describe('SourcesPage', () => {
     const includedPaths = screen.getByRole('textbox', { name: 'Included paths' })
     expect(includedPaths).toHaveValue('/private/**')
     await user.clear(includedPaths)
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+    await user.click(await screen.findByRole('checkbox', { name: /Guide/ }))
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     await waitFor(() =>
       expect(clientMock.patchSource).toHaveBeenCalledWith({
         body: {
           expectedVersion: 3,
-          metadata: {
-            crawlOptions: { includeSubpages: true, limit: 100 },
-            datasourceParameterMode: 'exact',
-          },
+          name: 'Product documentation',
           providerParameters: {
             crawl_subpages: true,
             limit: 100,
             url: 'https://docs.example.com/',
           },
+          selection: {
+            kind: 'website_crawl',
+            sourceUrls: ['https://docs.example.com/guide'],
+          },
+          syncPolicy: { enabled: false, mode: 'manual' },
           uri: 'https://docs.example.com/',
         },
         params: { control_space_id: 'space-1', source_id: 'source-1' },
@@ -1533,10 +1898,6 @@ describe('SourcesPage', () => {
       },
     })
     sourcesQuery.data = { pages: [{ items: [websiteSource] }] }
-    clientMock.patchSource.mockResolvedValue(
-      source({ name: 'Renamed documentation', metadata: websiteSource.metadata, version: 4 }),
-    )
-
     render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
       screen.getByRole('button', {
@@ -1554,14 +1915,7 @@ describe('SourcesPage', () => {
     })
     await user.clear(nameInput)
     await user.type(nameInput, 'Renamed documentation')
-    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-
-    await waitFor(() =>
-      expect(clientMock.patchSource).toHaveBeenCalledWith({
-        body: { expectedVersion: 3, name: 'Renamed documentation' },
-        params: { control_space_id: 'space-1', source_id: 'source-1' },
-      }),
-    )
+    expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
   })
 
   it('reports provider declaration failures without falling back to legacy fields', async () => {

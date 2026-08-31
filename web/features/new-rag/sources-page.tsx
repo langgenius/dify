@@ -180,7 +180,9 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
       },
     }),
   )
-  const remoteSources = sourcesQuery.data?.pages.flatMap((page) => page.data.map(sourceFromApi))
+  const remoteSources = sourcesQuery.data?.pages.flatMap((page) =>
+    page.data.map((source) => sourceFromApi(source)),
+  )
   const currentSources = useMemo(
     () =>
       (remoteSources ?? [])

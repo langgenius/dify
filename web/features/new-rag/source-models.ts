@@ -264,7 +264,10 @@ export function sourceStatusWithSyncWorkflow(
   return sourceWorkflowStatus(syncWorkflow.state)
 }
 
-export function sourceFromApi(source: KnowledgeFsSourceResponse): Source {
+export function sourceFromApi(
+  source: KnowledgeFsSourceResponse,
+  { useResponseStatus = false }: { useResponseStatus?: boolean } = {},
+): Source {
   const syncWorkflow = source.sync_workflow
     ? sourceWorkflowFromApi(source.sync_workflow)
     : undefined
@@ -278,7 +281,9 @@ export function sourceFromApi(source: KnowledgeFsSourceResponse): Source {
     metadata: source.metadata,
     name: source.name,
     permissionScope: source.permission_scope,
-    status: sourceStatusWithSyncWorkflow(source.status, syncWorkflow),
+    status: useResponseStatus
+      ? source.status
+      : sourceStatusWithSyncWorkflow(source.status, syncWorkflow),
     syncWorkflow,
     syncPolicy: source.sync_policy ? sourceSyncPolicyFromApi(source.sync_policy) : undefined,
     type: source.type,

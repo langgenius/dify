@@ -968,7 +968,20 @@ export type KnowledgeFsSourceUpdatePayload = {
   providerParameters?: {
     [key: string]: boolean | number | string
   } | null
+  selection?:
+    | ({
+        kind: 'website_crawl'
+      } & KnowledgeFsSourceEditWebsiteSelectionPayload)
+    | ({
+        kind: 'online_document'
+      } & KnowledgeFsSourceEditOnlineDocumentSelectionPayload)
+    | ({
+        kind: 'online_drive'
+      } & KnowledgeFsSourceEditOnlineDriveSelectionPayload)
+    | null
   status?: 'active' | 'disabled' | 'error' | 'syncing' | null
+  syncAfterUpdate?: boolean | null
+  syncPolicy?: KnowledgeFsSourceEditSyncPolicyPayload | null
   uri?: string | null
 }
 
@@ -976,6 +989,9 @@ export type KnowledgeFsAsyncSourceImportPayload =
   | ({
       kind: 'crawl-preview-selection'
     } & KnowledgeFsAsyncCrawlPreviewImportPayload)
+  | ({
+      kind: 'website-crawl-import'
+    } & KnowledgeFsAsyncWebsiteCrawlImportPayload)
   | ({
       kind: 'online-document-import'
     } & KnowledgeFsAsyncOnlineDocumentImportPayload)
@@ -1856,10 +1872,37 @@ export type KnowledgeFsCrawlPreviewPageResponse = {
   title?: string | null
 }
 
+export type KnowledgeFsSourceEditWebsiteSelectionPayload = {
+  kind: 'website_crawl'
+  sourceUrls: Array<string>
+}
+
+export type KnowledgeFsSourceEditOnlineDocumentSelectionPayload = {
+  items: Array<KnowledgeFsOnlineDocumentWorkflowImportItemPayload>
+  kind: 'online_document'
+}
+
+export type KnowledgeFsSourceEditOnlineDriveSelectionPayload = {
+  items: Array<KnowledgeFsOnlineDriveWorkflowImportItemPayload>
+  kind: 'online_drive'
+}
+
+export type KnowledgeFsSourceEditSyncPolicyPayload = {
+  customIntervalSeconds?: number | null
+  enabled: boolean
+  mode: 'custom' | 'interval' | 'manual'
+}
+
 export type KnowledgeFsAsyncCrawlPreviewImportPayload = {
   kind: 'crawl-preview-selection'
   pageIds: Array<string>
   previewWorkflowId: string
+  syncPolicy: KnowledgeFsDeferredSyncPolicyPayload
+}
+
+export type KnowledgeFsAsyncWebsiteCrawlImportPayload = {
+  kind: 'website-crawl-import'
+  sourceUrls: Array<string>
   syncPolicy: KnowledgeFsDeferredSyncPolicyPayload
 }
 

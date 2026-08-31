@@ -1814,6 +1814,31 @@ export const zKnowledgeFsLogicalDocumentResponse = z.object({
 })
 
 /**
+ * KnowledgeFSOnlineDocumentWorkflowImportItemPayload
+ */
+export const zKnowledgeFsOnlineDocumentWorkflowImportItemPayload = z.object({
+  etag: z.string().max(1024).nullish(),
+  lastEditedTime: z.string().max(128).nullish(),
+  name: z.string().max(500).nullish(),
+  pageId: z.string().min(1).max(1024),
+  providerItemId: z.string().min(1).max(1024),
+  type: z.string().min(1).max(128),
+  workspaceId: z.string().min(1).max(1024),
+})
+
+/**
+ * KnowledgeFSOnlineDriveWorkflowImportItemPayload
+ */
+export const zKnowledgeFsOnlineDriveWorkflowImportItemPayload = z.object({
+  bucket: z.string().max(1024).nullish(),
+  etag: z.string().max(1024).nullish(),
+  id: z.string().min(1).max(1024),
+  mimeType: z.string().max(255).nullish(),
+  name: z.string().min(1).max(500),
+  providerItemId: z.string().min(1).max(1024),
+})
+
+/**
  * KnowledgeFSProductScoreThreshold
  */
 export const zKnowledgeFsProductScoreThreshold = z.object({
@@ -2338,6 +2363,39 @@ export const zKnowledgeFsSourceDeleteQuery = z.object({
 })
 
 /**
+ * KnowledgeFSSourceEditOnlineDocumentSelectionPayload
+ */
+export const zKnowledgeFsSourceEditOnlineDocumentSelectionPayload = z.object({
+  items: z.array(zKnowledgeFsOnlineDocumentWorkflowImportItemPayload).min(1).max(200),
+  kind: z.literal('online_document'),
+})
+
+/**
+ * KnowledgeFSSourceEditOnlineDriveSelectionPayload
+ */
+export const zKnowledgeFsSourceEditOnlineDriveSelectionPayload = z.object({
+  items: z.array(zKnowledgeFsOnlineDriveWorkflowImportItemPayload).min(1).max(200),
+  kind: z.literal('online_drive'),
+})
+
+/**
+ * KnowledgeFSSourceEditSyncPolicyPayload
+ */
+export const zKnowledgeFsSourceEditSyncPolicyPayload = z.object({
+  customIntervalSeconds: z.int().gte(3600).lte(2592000).nullish(),
+  enabled: z.boolean(),
+  mode: z.enum(['custom', 'interval', 'manual']),
+})
+
+/**
+ * KnowledgeFSSourceEditWebsiteSelectionPayload
+ */
+export const zKnowledgeFsSourceEditWebsiteSelectionPayload = z.object({
+  kind: z.literal('website_crawl'),
+  sourceUrls: z.array(z.string()).min(1).max(200),
+})
+
+/**
  * KnowledgeFSSourceFileResponse
  */
 export const zKnowledgeFsSourceFileResponse = z.object({
@@ -2549,7 +2607,18 @@ export const zKnowledgeFsSourceUpdatePayload = z.object({
   providerParameters: z
     .record(z.string(), z.union([z.boolean(), z.number(), z.string()]))
     .nullish(),
+  selection: z
+    .discriminatedUnion('kind', [
+      zKnowledgeFsSourceEditWebsiteSelectionPayload.extend({ kind: z.literal('website_crawl') }),
+      zKnowledgeFsSourceEditOnlineDocumentSelectionPayload.extend({
+        kind: z.literal('online_document'),
+      }),
+      zKnowledgeFsSourceEditOnlineDriveSelectionPayload.extend({ kind: z.literal('online_drive') }),
+    ])
+    .nullish(),
   status: z.enum(['active', 'disabled', 'error', 'syncing']).nullish(),
+  syncAfterUpdate: z.boolean().nullish(),
+  syncPolicy: zKnowledgeFsSourceEditSyncPolicyPayload.nullish(),
   uri: z.string().min(1).max(4096).nullish(),
 })
 

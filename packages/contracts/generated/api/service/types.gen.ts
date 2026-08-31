@@ -1580,6 +1580,25 @@ export type KnowledgeFsLogicalDocumentResponse = {
   }
 }
 
+export type KnowledgeFsOnlineDocumentWorkflowImportItemPayload = {
+  etag?: string | null
+  lastEditedTime?: string | null
+  name?: string | null
+  pageId: string
+  providerItemId: string
+  type: string
+  workspaceId: string
+}
+
+export type KnowledgeFsOnlineDriveWorkflowImportItemPayload = {
+  bucket?: string | null
+  etag?: string | null
+  id: string
+  mimeType?: string | null
+  name: string
+  providerItemId: string
+}
+
 export type KnowledgeFsProductRerankProfile = {
   enabled: boolean
   model?: KnowledgeFsProfileModelSelection | null
@@ -1995,6 +2014,27 @@ export type KnowledgeFsSourceDeleteQuery = {
   documents?: 'cascade' | 'keep'
 }
 
+export type KnowledgeFsSourceEditOnlineDocumentSelectionPayload = {
+  items: Array<KnowledgeFsOnlineDocumentWorkflowImportItemPayload>
+  kind: 'online_document'
+}
+
+export type KnowledgeFsSourceEditOnlineDriveSelectionPayload = {
+  items: Array<KnowledgeFsOnlineDriveWorkflowImportItemPayload>
+  kind: 'online_drive'
+}
+
+export type KnowledgeFsSourceEditSyncPolicyPayload = {
+  customIntervalSeconds?: number | null
+  enabled: boolean
+  mode: 'custom' | 'interval' | 'manual'
+}
+
+export type KnowledgeFsSourceEditWebsiteSelectionPayload = {
+  kind: 'website_crawl'
+  sourceUrls: Array<string>
+}
+
 export type KnowledgeFsSourceFileBucketResponse = {
   bucket?: string | null
   continuation_token?: string | null
@@ -2194,7 +2234,20 @@ export type KnowledgeFsSourceUpdatePayload = {
   providerParameters?: {
     [key: string]: boolean | number | string
   } | null
+  selection?:
+    | ({
+        kind: 'website_crawl'
+      } & KnowledgeFsSourceEditWebsiteSelectionPayload)
+    | ({
+        kind: 'online_document'
+      } & KnowledgeFsSourceEditOnlineDocumentSelectionPayload)
+    | ({
+        kind: 'online_drive'
+      } & KnowledgeFsSourceEditOnlineDriveSelectionPayload)
+    | null
   status?: 'active' | 'disabled' | 'error' | 'syncing' | null
+  syncAfterUpdate?: boolean | null
+  syncPolicy?: KnowledgeFsSourceEditSyncPolicyPayload | null
   uri?: string | null
 }
 

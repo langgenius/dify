@@ -24,7 +24,6 @@ import {
   sourceLastSyncAt,
   sourceProviderDetails,
   sourceSyncPolicyTranslationKey,
-  syncPolicyConfiguration,
 } from './source-list-model'
 import {
   initialSourceWorkflowId,
@@ -32,7 +31,6 @@ import {
   sourceDisplayStatus,
   sourceFromApi,
   sourceStatusWithSyncWorkflow,
-  sourceSyncPolicyFromApi,
   sourceWorkflowFromApi,
   sourceWorkflowIsActive,
 } from './source-models'
@@ -230,71 +228,19 @@ export function SourceRow({
       },
     )
 
-  const editSource = ({
-    expectedVersion,
-    metadata,
-    name,
-    providerParameters,
-    syncPolicy: nextSyncPolicy,
-    uri,
-  }: SourceEditValues) => {
-    const sourcePatchRequested =
-      name !== undefined ||
-      metadata !== undefined ||
-      providerParameters !== undefined ||
-      uri !== undefined
-
-    return runAction(
+  const editSource = (values: SourceEditValues) =>
+    runAction(
       'edit',
-      async () => {
-        let updatedSource = source
-        if (sourcePatchRequested)
-          updatedSource = sourceFromApi(
-            await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch({
-              body: {
-                ...(expectedVersion === undefined ? {} : { expectedVersion }),
-                ...(metadata === undefined ? {} : { metadata }),
-                ...(name === undefined ? {} : { name }),
-                ...(providerParameters === undefined ? {} : { providerParameters }),
-                ...(uri === undefined ? {} : { uri }),
-              },
-              params: { control_space_id: knowledgeSpaceId, source_id: source.id },
-            }),
-          )
-        if (nextSyncPolicy) {
-          const expectedSourceVersion = sourcePatchRequested
-            ? updatedSource.version
-            : expectedVersion
-          if (expectedSourceVersion === undefined) throw new Error('Source version is required')
-          const syncPolicy = sourceSyncPolicyFromApi(
-            await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.syncPolicy.put(
-              {
-                body: {
-                  ...syncPolicyConfiguration(
-                    nextSyncPolicy.mode,
-                    nextSyncPolicy.customIntervalHours,
-                  ),
-                  expectedRevision: nextSyncPolicy.expectedRevision,
-                  expectedSourceVersion,
-                },
-                params: { control_space_id: knowledgeSpaceId, source_id: source.id },
-              },
-            ),
-          )
-          updatedSource = { ...updatedSource, syncPolicy }
-        }
-        return updatedSource
-      },
-      (updatedSource) => {
-        onSourceChange({
-          ...updatedSource,
-          lastSyncedAt: updatedSource.lastSyncedAt ?? source.lastSyncedAt,
-          syncPolicy: updatedSource.syncPolicy ?? source.syncPolicy,
-          syncWorkflow: updatedSource.syncWorkflow ?? source.syncWorkflow,
-        })
-      },
+      async () =>
+        sourceFromApi(
+          await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch({
+            body: values,
+            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+          }),
+          { useResponseStatus: true },
+        ),
+      onSourceChange,
     )
-  }
 
   const removeSource = () =>
     runAction(

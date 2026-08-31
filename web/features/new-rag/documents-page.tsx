@@ -665,7 +665,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   }, [taskDataUpdateCount, tasksQuery.data, tasksQuery.dataUpdatedAt])
   const baseTaskById = useMemo(() => new Map(baseTasks.map((task) => [task.id, task])), [baseTasks])
   const sources = useMemo(
-    () => sourcesQuery.data?.pages.flatMap((page) => page.data.map(sourceFromApi)) ?? [],
+    () =>
+      sourcesQuery.data?.pages.flatMap((page) =>
+        page.data.map((source) => sourceFromApi(source)),
+      ) ?? [],
     [sourcesQuery.data],
   )
   const sourceNames = useMemo(
