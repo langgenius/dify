@@ -180,6 +180,7 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
   // Mutation handlers (not memoized — only used in conditionally-rendered modal)
   const handleCreate = async (data: WorkflowToolProviderRequest & { workflow_app_id: string }) => {
     try {
+      await handlePublish()
       await createWorkflowToolProvider(data)
       invalidateAllWorkflowTools()
       onRefreshData?.()
