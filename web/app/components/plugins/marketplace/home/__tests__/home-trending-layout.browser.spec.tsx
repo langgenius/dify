@@ -108,10 +108,11 @@ describe('Marketplace home trending layout', () => {
 
     expect(getComputedStyle(tag).whiteSpace).toBe('nowrap')
     expect(getComputedStyle(tag).textOverflow).toBe('ellipsis')
-    expect(getComputedStyle(title).whiteSpace).toBe('nowrap')
-    expect(getComputedStyle(title).textOverflow).toBe('ellipsis')
+    expect(getComputedStyle(title).whiteSpace).toBe('normal')
+    expect(titleBox.height).toBeGreaterThan(24)
     expect(titleBox.left - slideBox.left).toBeCloseTo(20, 0)
     expect(slideBox.right - titleBox.right).toBeCloseTo(20, 0)
+    expect(slideBox.height).toBeGreaterThan(357)
     expect(getComputedStyle(subtitle).whiteSpace).toBe('nowrap')
     expect(getComputedStyle(subtitle).textOverflow).toBe('ellipsis')
     expect(getComputedStyle(description).webkitLineClamp).toBe('2')

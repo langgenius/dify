@@ -241,7 +241,8 @@
 
   :global([data-marketplace-standalone]) .stackedCopy {
     flex: none;
-    height: 160px;
+    height: auto;
+    min-height: 160px;
     padding: 20px;
     overflow: hidden;
   }
@@ -252,11 +253,15 @@
   }
 
   :global([data-marketplace-standalone]) .blogTag,
-  :global([data-marketplace-standalone]) .blogTitle,
   :global([data-marketplace-standalone]) .blogSubtitle {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  :global([data-marketplace-standalone]) .blogTitle {
+    overflow-wrap: break-word;
+    white-space: normal;
   }
 
   :global([data-marketplace-standalone]) .updatesDescription {
