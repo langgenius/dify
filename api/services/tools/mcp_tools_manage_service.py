@@ -6,6 +6,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 from urllib.parse import urlparse
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 from sqlalchemy import or_, select
@@ -32,6 +33,14 @@ UNCHANGED_SERVER_URL_PLACEHOLDER = "[__HIDDEN__]"
 CLIENT_NAME = "Dify"
 EMPTY_TOOLS_JSON = "[]"
 EMPTY_CREDENTIALS_JSON = "{}"
+
+
+def _is_uuid_string(value: str) -> bool:
+    try:
+        UUID(value)
+    except ValueError:
+        return False
+    return True
 
 
 class OAuthDataType(StrEnum):
@@ -90,7 +99,7 @@ class MCPToolManageService:
         Get MCP provider by ID or server identifier.
 
         Args:
-            provider_id: Provider ID (UUID)
+            provider_id: Provider ID (UUID) or server identifier
             server_identifier: Server identifier
             tenant_id: Tenant ID
 
@@ -101,18 +110,45 @@ class MCPToolManageService:
             ValueError: If provider not found
         """
         if server_identifier:
-            stmt = select(MCPToolProvider).where(
-                MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.server_identifier == server_identifier
+            provider = self._session.scalar(
+                select(MCPToolProvider).where(
+                    MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.server_identifier == server_identifier
+                )
             )
         else:
-            stmt = select(MCPToolProvider).where(
-                MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.id == provider_id
-            )
+            provider = self._get_provider_by_id_or_server_identifier(provider_id, tenant_id)
 
-        provider = self._session.scalar(stmt)
         if not provider:
             raise ValueError("MCP tool not found")
         return provider
+
+    def _get_provider_by_id_or_server_identifier(
+        self, identifier: str | None, tenant_id: str
+    ) -> MCPToolProvider | None:
+        """
+        Resolve a provider from an identifier that may be either form.
+
+        Detail responses expose ``server_identifier`` as the entity ``id``, so the frontend
+        round-trips that value back into endpoints that nominally take a provider UUID.
+        Passing it straight to the ``id`` column makes PostgreSQL fail the UUID cast, so
+        only query by ``id`` when the value actually parses as a UUID, and fall back to
+        ``server_identifier`` otherwise.
+        """
+        if not identifier:
+            return None
+
+        if _is_uuid_string(identifier):
+            provider = self._session.scalar(
+                select(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.id == identifier)
+            )
+            if provider:
+                return provider
+
+        return self._session.scalar(
+            select(MCPToolProvider).where(
+                MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.server_identifier == identifier
+            )
+        )
 
     def get_provider_entity(self, provider_id: str, tenant_id: str, by_server_id: bool = False) -> MCPProviderEntity:
         """Get provider entity by ID or server identifier."""
@@ -213,7 +249,7 @@ class MCPToolManageService:
             stmt = select(MCPToolProvider).where(
                 MCPToolProvider.tenant_id == tenant_id,
                 MCPToolProvider.name == name,
-                MCPToolProvider.id != provider_id,
+                MCPToolProvider.id != mcp_provider.id,
             )
             existing_provider = self._session.scalar(stmt)
             if existing_provider:
