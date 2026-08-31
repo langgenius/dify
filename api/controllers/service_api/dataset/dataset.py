@@ -25,7 +25,7 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.common.session import with_session
-from controllers.console.wraps import edit_permission_required
+from controllers.console.wraps import edit_permission_required, model_validate
 from controllers.service_api import service_api_ns
 from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
 from controllers.service_api.wraps import (
@@ -669,14 +669,13 @@ class DatasetApi(DatasetApiResource):
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     @with_session
-    def patch(self, session: Session, _, dataset_id: UUID):
+    @model_validate(DatasetUpdatePayload)
+    def patch(self, payload: DatasetUpdatePayload, session: Session, _, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str, session)
         if dataset is None:
             raise NotFound("Dataset not found.")
 
-        payload_dict = service_api_ns.payload or {}
-        payload = DatasetUpdatePayload.model_validate(payload_dict)
         update_data = payload.model_dump(exclude_unset=True)
         if payload.permission is not None:
             update_data["permission"] = str(payload.permission)
@@ -944,13 +943,13 @@ class DatasetTagsApi(DatasetApiResource):
         service_api_ns.models[KnowledgeTagResponse.__name__],
     )
     @with_session
-    def post(self, session: Session, _):
+    @model_validate(TagCreatePayload)
+    def post(self, payload: TagCreatePayload, session: Session, _):
         """Add a knowledge type tag."""
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        payload = TagCreatePayload.model_validate(service_api_ns.payload or {})
         tag = TagService.save_tags(SaveTagPayload(name=payload.name, type=TagType.KNOWLEDGE), session)
 
         response = KnowledgeTagResponse(id=tag.id, name=tag.name, type=tag.type, binding_count="0")
@@ -982,12 +981,12 @@ class DatasetTagsApi(DatasetApiResource):
         service_api_ns.models[KnowledgeTagResponse.__name__],
     )
     @with_session
-    def patch(self, session: Session, _):
+    @model_validate(TagUpdatePayload)
+    def patch(self, payload: TagUpdatePayload, session: Session, _):
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        payload = TagUpdatePayload.model_validate(service_api_ns.payload or {})
         tag_id = payload.tag_id
         tag = TagService.update_tags(
             UpdateTagServicePayload(name=payload.name), tag_id, session, tag_type=TagType.KNOWLEDGE
@@ -1019,9 +1018,9 @@ class DatasetTagsApi(DatasetApiResource):
     )
     @edit_permission_required
     @with_session
-    def delete(self, session: Session, _):
+    @model_validate(TagDeletePayload)
+    def delete(self, payload: TagDeletePayload, session: Session, _):
         """Delete a knowledge type tag."""
-        payload = TagDeletePayload.model_validate(service_api_ns.payload or {})
         TagService.delete_tag(payload.tag_id, session, tag_type=TagType.KNOWLEDGE)
 
         return "", 204
@@ -1049,13 +1048,13 @@ class DatasetTagBindingApi(DatasetApiResource):
         }
     )
     @with_session
-    def post(self, session: Session, _):
+    @model_validate(TagBindingPayload)
+    def post(self, payload: TagBindingPayload, session: Session, _):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        payload = TagBindingPayload.model_validate(service_api_ns.payload or {})
         TagService.save_tag_binding(
             TagBindingCreatePayload(tag_ids=payload.tag_ids, target_id=payload.target_id, type=TagType.KNOWLEDGE),
             session,
@@ -1086,13 +1085,13 @@ class DatasetTagUnbindingApi(DatasetApiResource):
         }
     )
     @with_session
-    def post(self, session: Session, _):
+    @model_validate(TagUnbindingPayload)
+    def post(self, payload: TagUnbindingPayload, session: Session, _):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        payload = TagUnbindingPayload.model_validate(service_api_ns.payload or {})
         TagService.delete_tag_binding(
             TagBindingDeletePayload(tag_ids=payload.tag_ids, target_id=payload.target_id, type=TagType.KNOWLEDGE),
             session,

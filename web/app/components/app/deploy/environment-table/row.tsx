@@ -10,6 +10,7 @@ import { EnvironmentRowActions } from './row-actions'
 
 export function EnvironmentRow({
   appId,
+  canAccessPoint = false,
   row,
   onChangeVersion,
   onDeployLatest,
@@ -17,6 +18,7 @@ export function EnvironmentRow({
   onUndeploy,
 }: {
   appId: string
+  canAccessPoint?: boolean
   row: EnvironmentDeployment
   onChangeVersion?: (deployment: EnvironmentDeployment) => void
   onDeployLatest?: (deployment: EnvironmentDeployment) => void
@@ -63,7 +65,11 @@ export function EnvironmentRow({
               key={accessPoint}
               accessPoint={accessPoint}
               active={isAccessPointActive(accessPoint)}
-              href={getAccessPointHref(appId, row.environment.id, accessPoint)}
+              href={
+                canAccessPoint
+                  ? getAccessPointHref(appId, row.environment.id, accessPoint)
+                  : undefined
+              }
             />
           ))}
         </div>

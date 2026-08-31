@@ -17,7 +17,7 @@ import Link from '@/next/link'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { hasOnlyAppPreviewPermission } from '@/utils/permission'
 import { formatTime } from '@/utils/time'
-import { AppCardActionBar } from './app-card/action-bar'
+import { AppCardInteractions } from './app-card/interactions'
 
 type StarredAppCardProps = {
   app: AppPartial
@@ -55,10 +55,8 @@ export const StarredAppCard = memo(
       isRbacEnabled,
     })
     const cardClassName = cn(
-      'flex h-18 min-w-0 items-center gap-3 overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg px-4 py-3 shadow-xs outline-hidden transition-shadow duration-200',
-      isPreviewOnly
-        ? 'cursor-not-allowed opacity-60 focus-visible:ring-2 focus-visible:ring-state-accent-solid'
-        : 'hover:shadow-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+      'flex h-18 min-w-0 items-center gap-3 rounded-xl px-4 py-3 outline-hidden',
+      isPreviewOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
     )
     const showPreviewOnlyAccessWarning = useCallback(() => {
       toast.warning(t(($) => $.noAccessResourcePermission, { ns: 'app' }))
@@ -73,6 +71,7 @@ export const StarredAppCard = memo(
             icon={app.icon ?? undefined}
             background={app.icon_background}
             imageUrl={app.icon_url}
+            decorative
           />
           <AppTypeIcon
             type={app.mode}
@@ -106,7 +105,13 @@ export const StarredAppCard = memo(
     )
 
     return (
-      <div className="group relative">
+      <li
+        className={cn(
+          "group relative isolate overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid has-[>button:focus-visible]:after:inset-ring-2 has-[>button:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none",
+          !isPreviewOnly &&
+            'hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5 has-data-popup-open:bg-components-card-bg-alt has-data-popup-open:shadow-md has-data-popup-open:shadow-shadow-shadow-5 [@media(hover:none)]:bg-components-card-bg-alt',
+        )}
+      >
         {isPreviewOnly ? (
           <button
             type="button"
@@ -119,17 +124,19 @@ export const StarredAppCard = memo(
             {cardContent}
           </button>
         ) : (
-          <Link
-            href={href}
-            data-step-by-step-tour-target={stepByStepTourCardTarget}
-            data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
-            className={cardClassName}
-          >
-            {cardContent}
-          </Link>
+          <AppCardInteractions app={app}>
+            <Link
+              href={href}
+              aria-labelledby={appNameId}
+              data-step-by-step-tour-target={stepByStepTourCardTarget}
+              data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
+              className={cardClassName}
+            >
+              {cardContent}
+            </Link>
+          </AppCardInteractions>
         )}
-        {!isPreviewOnly && <AppCardActionBar app={app} />}
-      </div>
+      </li>
     )
   },
 )

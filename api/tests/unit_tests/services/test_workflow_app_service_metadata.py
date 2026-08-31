@@ -2,10 +2,12 @@
 
 import json
 import uuid
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy.orm import Session
 
+from models.account import Account
 from models.enums import AppTriggerType, CreatorUserRole
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom
 from services.workflow_app_service import LogView, WorkflowAppService
@@ -24,10 +26,31 @@ class TestLogView:
         )
         log.id = "log-1"
 
-        view = LogView(log=log, details={"trigger_metadata": {"type": "plugin"}})
+        view = LogView(log=log, details={"trigger_metadata": {"type": "plugin"}}, session=MagicMock())
 
         assert view.details == {"trigger_metadata": {"type": "plugin"}}
         assert view.id == "log-1"
+
+    def test_account_accessors_resolve_via_wrapped_session(self, sqlite_session: Session) -> None:
+        account = Account(name="Test Account", email="test@example.com")
+        sqlite_session.add(account)
+        sqlite_session.flush()
+        log = WorkflowAppLog(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_id="workflow-1",
+            workflow_run_id="run-1",
+            created_from=WorkflowAppLogCreatedFrom.WEB_APP,
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=account.id,
+        )
+
+        view = LogView(log=log, details=None, session=sqlite_session)
+
+        resolved = view.created_by_account
+        assert resolved is not None
+        assert resolved.id == account.id
+        assert view.created_by_end_user is None
 
 
 class TestHandleTriggerMetadata:

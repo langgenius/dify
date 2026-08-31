@@ -22,6 +22,7 @@ from services.errors.account import AccountRegisterError
 from services.errors.account import (
     EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
 )
+from tests.unit_tests.config_override import config_overrides_context
 
 
 @pytest.fixture(autouse=True)
@@ -586,7 +587,7 @@ class TestAccountGeneration:
             ("freeze", AccountRegisterError),
         ],
     )
-    @patch("controllers.console.auth.oauth.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     @patch("controllers.console.auth.oauth.BillingService.get_email_freeze_type")
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
     @patch("controllers.console.auth.oauth.FeatureService")

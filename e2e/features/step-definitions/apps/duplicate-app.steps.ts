@@ -20,10 +20,13 @@ When('I open the options menu for the last created E2E app', async function (thi
   const page = this.getPage()
   await waitForAppsConsole(page, 30_000)
   const studio = page.getByRole('region', { name: 'Studio' })
-  const appLink = studio.getByRole('link', { name: appName, exact: true })
+  const appCard = studio.getByRole('listitem').filter({
+    has: page.getByRole('link', { name: appName, exact: true }),
+  })
+  const appLink = appCard.getByRole('link', { name: appName, exact: true })
   await expect(appLink).toBeVisible()
   await appLink.hover()
-  await studio.getByRole('button', { name: `More actions for ${appName}`, exact: true }).click()
+  await appCard.getByRole('button', { name: `More actions for ${appName}`, exact: true }).click()
 })
 
 When('I click {string} in the app options menu', async function (this: DifyWorld, label: string) {

@@ -32,6 +32,14 @@ class SQLAlchemyAccountRepository(AccountRepository):
             return self._to_snapshot(account) if account is not None else None
 
     @override
+    def find_by_email(self, email: str) -> AccountSnapshot | None:
+        with self._session_factory() as session:
+            account = session.scalar(select(Account).where(Account.email == email).limit(1))
+            if account is None and email != email.lower():
+                account = session.scalar(select(Account).where(Account.email == email.lower()).limit(1))
+            return self._to_snapshot(account) if account is not None else None
+
+    @override
     def get_credentials(self, account_id: str) -> AccountCredentials | None:
         with self._session_factory() as session:
             account = session.get(Account, account_id)

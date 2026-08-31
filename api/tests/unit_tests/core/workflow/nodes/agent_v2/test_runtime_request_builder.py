@@ -39,6 +39,7 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @pytest.fixture(autouse=True)
@@ -464,7 +465,7 @@ def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metada
 
 
 def test_build_maps_agent_soul_shell_settings_to_shell_layer(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr("core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
+    apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
     context = _context()
     snapshot = AgentConfigSnapshot(
         id="snapshot-1",
@@ -673,7 +674,7 @@ def test_build_shell_layer_config_maps_cli_tool_inline_secret_value_to_env():
 
 
 def test_builds_workflow_run_request_with_dify_plugin_tools_layer(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr("core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
+    apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
     context = _context()
     snapshot = AgentConfigSnapshot(
         id="snapshot-1",
@@ -1470,7 +1471,7 @@ def test_build_config_layer_config_returns_empty_config_for_empty_agent_soul():
 
 
 def test_workflow_run_request_has_config_layer_with_empty_agent_soul(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr("core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
+    apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
 
     result = WorkflowAgentRuntimeRequestBuilder().build(_context())
 

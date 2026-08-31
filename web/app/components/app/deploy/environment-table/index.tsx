@@ -23,6 +23,7 @@ import { EnvironmentRow } from './row'
 
 type EnvironmentTableProps = {
   appId: string
+  canAccessPoint?: boolean
   onChangeVersion?: (deployment: EnvironmentDeployment) => void
   onDeployLatest?: (deployment: EnvironmentDeployment) => void
   onDeployToEnvironment?: (environment: AppEnvironment) => void
@@ -32,6 +33,7 @@ type EnvironmentTableProps = {
 
 export function EnvironmentTable({
   appId,
+  canAccessPoint = false,
   onChangeVersion,
   onDeployLatest,
   onDeployToEnvironment,
@@ -139,6 +141,7 @@ export function EnvironmentTable({
                 <EnvironmentRow
                   key={row.environment.id}
                   appId={appId}
+                  canAccessPoint={canAccessPoint}
                   row={row}
                   onChangeVersion={onChangeVersion}
                   onDeployLatest={onDeployLatest}
