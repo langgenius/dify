@@ -55,49 +55,55 @@ const carouselBanners = [
 ]
 
 describe('Marketplace home trending layout', () => {
-  it('keeps standalone mobile ad and blog banners at the same fixed height', async () => {
+  it('keeps standalone mobile blog banners at the stacked 357px height', async () => {
     await page.viewport(600, 900)
     await render(
       <div data-marketplace-standalone className="w-[560px]">
         <div data-testid="blog-banner">
           <HomeBannerSlide banner={blogBanner} isMarketplacePlatform page="plugins" />
         </div>
-        <div data-testid="ad-banner">
-          <HomeBannerSlide banner={adBanner} isMarketplacePlatform page="plugins" />
-        </div>
       </div>,
     )
 
     const blogSlide = document.querySelector<HTMLElement>('[data-testid="blog-banner"] > a')!
-    const adSlide = document.querySelector<HTMLElement>('[data-testid="ad-banner"] > a')!
 
     expect(blogSlide.getBoundingClientRect().height).toBe(357)
-    expect(adSlide.getBoundingClientRect().height).toBe(blogSlide.getBoundingClientRect().height)
   })
 
-  it('keeps event and ad artwork left-aligned so responsive cropping stays on the right', async () => {
+  it('shows the standalone mobile event poster at the 800:721 delivery ratio', async () => {
     await page.viewport(600, 900)
     const screen = await render(
-      <div data-marketplace-standalone className="w-full">
+      <div data-marketplace-standalone className="w-[360px]">
+        <HomeBannerSlide banner={eventBanner} isMarketplacePlatform page="plugins" />
+      </div>,
+    )
+
+    const slide = screen.getByRole('link', { name: 'Launch event' }).element()
+    const box = slide.getBoundingClientRect()
+    const artwork = slide.querySelector('img')
+
+    expect(box.height).toBeCloseTo((box.width * 721) / 800, 1)
+    expect(artwork).not.toBeNull()
+    expect(getComputedStyle(artwork!).objectFit).toBe('contain')
+    expect(getComputedStyle(artwork!).objectPosition).toBe('0% 50%')
+  })
+
+  it('keeps event and ad artwork left-aligned so desktop cropping stays on the right', async () => {
+    await page.viewport(1000, 900)
+    const screen = await render(
+      <div data-marketplace-standalone className="w-[960px]">
         <HomeBannerSlide banner={adBanner} isMarketplacePlatform page="plugins" />
         <HomeBannerSlide banner={eventBanner} isMarketplacePlatform page="plugins" />
       </div>,
     )
 
-    const assertLeftCoverCrop = () => {
-      for (const name of ['Partner campaign', 'Launch event']) {
-        const artwork = screen.getByRole('link', { name }).element().querySelector('img')
+    for (const name of ['Partner campaign', 'Launch event']) {
+      const artwork = screen.getByRole('link', { name }).element().querySelector('img')
 
-        expect(artwork).not.toBeNull()
-        expect(getComputedStyle(artwork!).objectFit).toBe('cover')
-        expect(getComputedStyle(artwork!).objectPosition).toBe('0% 50%')
-      }
+      expect(artwork).not.toBeNull()
+      expect(getComputedStyle(artwork!).objectFit).toBe('cover')
+      expect(getComputedStyle(artwork!).objectPosition).toBe('0% 50%')
     }
-
-    assertLeftCoverCrop()
-
-    await page.viewport(1000, 900)
-    assertLeftCoverCrop()
   })
 
   it('keeps the blog artwork left corners rounded when its image is cropped', async () => {
