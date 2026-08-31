@@ -4349,11 +4349,6 @@
       "count": 4
     }
   },
-  "web/app/components/workflow/nodes/trigger-schedule/panel.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/trigger-webhook/components/generic-table.tsx": {
     "no-restricted-imports": {
       "count": 1
