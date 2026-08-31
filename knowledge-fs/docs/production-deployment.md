@@ -64,7 +64,7 @@ the service:
 | `UNSTRUCTURED_API_URL` | Parser endpoint for complex formats. |
 | `UNSTRUCTURED_API_KEY` | Optional parser authentication. |
 | `UNSTRUCTURED_MAX_CONCURRENCY` | Process-wide parser request limit; defaults to `2`. |
-| `UNSTRUCTURED_REQUEST_TIMEOUT_MS` | Total timeout for one parser request and response body; defaults to `120000` and accepts up to `1800000` for long OCR documents. |
+| `UNSTRUCTURED_REQUEST_TIMEOUT_MS` | Total timeout for one parser request and response body; defaults to `120000` and accepts up to `3600000` for long OCR documents. |
 | `UNSTRUCTURED_MAX_RESPONSE_BYTES` | Maximum parser response body; defaults to `33554432` (32 MiB). |
 
 Compose injects `DIFY_INNER_API_URL` and `DIFY_INNER_API_KEY`; do not duplicate them in the

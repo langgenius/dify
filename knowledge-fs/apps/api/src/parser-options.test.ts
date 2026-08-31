@@ -205,9 +205,17 @@ describe("createApiDocumentParser", () => {
       createApiDocumentParser({
         env: {
           UNSTRUCTURED_API_URL: "http://parser",
-          UNSTRUCTURED_REQUEST_TIMEOUT_MS: "1800001",
+          UNSTRUCTURED_REQUEST_TIMEOUT_MS: "3600000",
         },
       }),
-    ).toThrow("UNSTRUCTURED_REQUEST_TIMEOUT_MS must be between 1 and 1800000");
+    ).not.toThrow();
+    expect(() =>
+      createApiDocumentParser({
+        env: {
+          UNSTRUCTURED_API_URL: "http://parser",
+          UNSTRUCTURED_REQUEST_TIMEOUT_MS: "3600001",
+        },
+      }),
+    ).toThrow("UNSTRUCTURED_REQUEST_TIMEOUT_MS must be between 1 and 3600000");
   });
 });
