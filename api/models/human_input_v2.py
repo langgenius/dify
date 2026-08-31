@@ -75,6 +75,7 @@ from core.human_input_v2.im_message_inbox import IM_INBOX_PROVIDER_METADATA_MAX_
 from graphon.file.enums import FileTransferMethod, FileType
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
+from repositories.human_input_v2.im_channel_repository import IMChannelStatus
 
 from .base import DefaultFieldsDCMixin, TypeBase
 from .types import EnumText, FrozenPydanticModelColumn, LongText, StringUUID
@@ -719,6 +720,92 @@ class HumanInputEmailProvider(DefaultFieldsDCMixin, TypeBase):
     )
 
 
+class HumanInputIMChannel(DefaultFieldsDCMixin, TypeBase):
+    """One current IM Channel in a repository-generated owner slot.
+
+    ``owner_key`` deliberately replaces a polymorphic database foreign key.
+    Its unique constraint serializes concurrent first creation for both
+    workspace and deployment owners without Redis or a separate lock row.
+    """
+
+    __tablename__ = "human_input_im_channels"
+    __table_args__ = (
+        sa.UniqueConstraint(
+            "owner_key",
+            name="human_input_im_channels_owner_key_uq",
+        ),
+        sa.UniqueConstraint(
+            "webhook_id",
+            name="human_input_im_channels_webhook_id_uq",
+        ),
+        sa.CheckConstraint(
+            "config_version > 0",
+            name=sa.schema.conv("human_input_im_channels_config_version_positive_ck"),
+        ),
+        {
+            "comment": (
+                "Current owner-scoped Human Input IM Channel configuration. "
+                "Directory, Binding, Sync, and inbox records remain separately owned."
+            )
+        },
+    )
+
+    owner_key: Mapped[str] = mapped_column(
+        sa.String(50),
+        nullable=False,
+        comment="Canonical owner slot: workspace:<tenant_id> or deployment.",
+    )
+    provider: Mapped[_IMProvider] = mapped_column(
+        EnumText(_IMProvider),
+        nullable=False,
+        comment="Configured IM provider discriminator.",
+    )
+    provider_tenant_id: Mapped[str] = mapped_column(
+        sa.String(255),
+        nullable=False,
+        comment="Confirmed provider-side organization, tenant, or workspace identifier.",
+    )
+    encrypted_credentials: Mapped[IMEncryptedCredentials] = mapped_column(
+        FrozenPydanticModelColumn(IMEncryptedCredentials),
+        nullable=False,
+        comment="Versioned opaque encrypted IM Channel credential envelope.",
+    )
+    app_identifier: Mapped[str] = mapped_column(
+        sa.String(255),
+        nullable=False,
+        comment="Safe provider application identifier used by credential-free projections.",
+    )
+    webhook_id: Mapped[str] = mapped_column(
+        sa.String(32),
+        nullable=False,
+        comment="Server-generated globally unique route ID used to derive webhook URLs.",
+    )
+    status: Mapped[IMChannelStatus] = mapped_column(
+        EnumText(IMChannelStatus),
+        nullable=False,
+        default=IMChannelStatus.CONNECTED,
+        comment="Stored credential-safe Channel status snapshot.",
+    )
+    config_version: Mapped[int] = mapped_column(
+        sa.Integer,
+        nullable=False,
+        default=1,
+        comment="Monotonic numeric version paired with the Channel ID for CAS.",
+    )
+    configured_by_account_id: Mapped[str | None] = mapped_column(
+        StringUUID,
+        nullable=True,
+        default=None,
+        comment="Latest configuring Dify Account; null for deployment-owned writes.",
+    )
+    status_reason: Mapped[str | None] = mapped_column(
+        LongText,
+        nullable=True,
+        default=None,
+        comment="Operator-safe status explanation without provider payload or credentials.",
+    )
+
+
 class HumanInputIMIdentity(DefaultFieldsDCMixin, TypeBase):
     """Durable provider identity discovered by manual directory synchronization.
 
@@ -877,6 +964,8 @@ class HumanInputIMBinding(DefaultFieldsDCMixin, TypeBase):
         lazy="raise",
         init=False,
     )
+
+
 class HumanInputIMSyncRun(DefaultFieldsDCMixin, TypeBase):
     """One manually triggered organization IM directory synchronization.
 
@@ -2002,6 +2091,7 @@ __all__ = [
     "HumanInputEmailProvider",
     "HumanInputExternalContactProfile",
     "HumanInputIMBinding",
+    "HumanInputIMChannel",
     "HumanInputIMIdentity",
     "HumanInputIMSyncResult",
     "HumanInputIMSyncRun",
