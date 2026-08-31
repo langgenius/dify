@@ -15,10 +15,6 @@ import { highlightCode } from './shiki-highlight'
 
 const Flowchart = dynamic(() => import('@/app/components/base/mermaid'), { ssr: false })
 
-const shikiLanguageAliasMap: Record<string, BundledLanguage> = {
-  dotenv: 'bash',
-}
-
 const capitalizationLanguageNameMap: Record<string, string> = {
   sql: 'SQL',
   javascript: 'JavaScript',
@@ -82,7 +78,7 @@ const ShikiCodeBlock = memo(
 
       void highlightCode({
         code,
-        language: shikiLanguageAliasMap[language] ?? (language as BundledLanguage),
+        language: language as BundledLanguage,
         theme,
       })
         .then((result) => {

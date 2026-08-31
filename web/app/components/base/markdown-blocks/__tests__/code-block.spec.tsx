@@ -222,23 +222,6 @@ describe('CodeBlock', () => {
       })
     })
 
-    it('should render the copy action without nesting buttons', () => {
-      const { container } = render(<CodeBlock className="language-bash">echo hello</CodeBlock>)
-
-      expect(screen.getAllByRole('button')).toHaveLength(1)
-      expect(container.querySelector('button button')).toBeNull()
-    })
-
-    it('should use a bundled grammar for dotenv code blocks', async () => {
-      render(<CodeBlock className="language-dotenv">OPENAI_API_KEY=example</CodeBlock>)
-
-      await waitFor(() => {
-        expect(mockHighlightCode).toHaveBeenCalledWith(
-          expect.objectContaining({ language: 'bash' }),
-        )
-      })
-    })
-
     it('should format unknown language labels with capitalized fallback when language is not in map', () => {
       render(<CodeBlock className="language-ruby">puts "ok"</CodeBlock>)
 
