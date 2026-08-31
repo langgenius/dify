@@ -151,6 +151,32 @@ describe('RunPanel', () => {
     })
   })
 
+  it('opens a fix session for the failed run from the result tab', async () => {
+    const handleFixRun = vi.fn()
+    mockFetchRunDetail.mockResolvedValue(
+      createRunDetail({
+        id: 'failed-run-1',
+        status: 'failed',
+        error: 'Workflow failed',
+      }),
+    )
+
+    renderWorkflowComponent(
+      <RunPanel
+        runDetailUrl="/console/api/runs/failed-run-1"
+        tracingListUrl="/console/api/runs/failed-run-1/tracing"
+        onFixRun={handleFixRun}
+      />,
+    )
+
+    const fixButton = await screen.findByRole('button', {
+      name: /difyBuilder\.fixWithAppBuilder$/,
+    })
+    fireEvent.click(fixButton)
+
+    expect(handleFixRun).toHaveBeenCalledWith('failed-run-1')
+  })
+
   it('switches between detail, tracing, and result tabs with real child panels', async () => {
     const user = userEvent.setup()
     renderWorkflowComponent(

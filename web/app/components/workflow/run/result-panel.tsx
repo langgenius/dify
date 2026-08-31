@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type { ExternalTraceSource } from './external-trace-row'
 import type { AgentLogItemWithChildren, NodeTracing } from '@/types/workflow'
 import { useTranslation } from 'react-i18next'
+import DifyBuilderEntry from '@/app/components/workflow/dify-builder-entry'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -10,7 +11,7 @@ import { AgentLogTrigger } from '@/app/components/workflow/run/agent-log/agent-l
 import { IterationLogTrigger } from '@/app/components/workflow/run/iteration-log'
 import { LoopLogTrigger } from '@/app/components/workflow/run/loop-log'
 import { RetryLogTrigger } from '@/app/components/workflow/run/retry-log'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { hasRetryNode } from '@/app/components/workflow/utils'
 import LargeDataAlert from '../variable-inspect/large-data-alert'
 import { ExternalTraceRow } from './external-trace-row'
@@ -43,6 +44,8 @@ export type ResultPanelProps = {
   workflowRunId?: string
   externalTrace?: ExternalTraceSource
   onOpenTracingTab?: () => void
+  onFixRun?: (runId: string) => void
+  fixWithBuilderDisabled?: boolean
   handleShowIterationResultList?: (detail: NodeTracing[][], iterDurationMap: any) => void
   handleShowLoopResultList?: (detail: NodeTracing[][], loopDurationMap: any) => void
   onShowRetryDetail?: (detail: NodeTracing[]) => void
@@ -72,6 +75,8 @@ const ResultPanel: FC<ResultPanelProps> = ({
   workflowRunId,
   externalTrace,
   onOpenTracingTab,
+  onFixRun,
+  fixWithBuilderDisabled,
   handleShowIterationResultList,
   handleShowLoopResultList,
   onShowRetryDetail,
@@ -98,6 +103,16 @@ const ResultPanel: FC<ResultPanelProps> = ({
           onOpenTracingTab={onOpenTracingTab}
         />
       </div>
+      {status === WorkflowRunningStatus.Failed && workflowRunId && onFixRun && (
+        <div className="px-4 py-2">
+          <DifyBuilderEntry
+            label={t(($) => $['difyBuilder.fixWithAppBuilder'], { ns: 'workflow' })}
+            description={t(($) => $['difyBuilder.runFixScopeDescription'], { ns: 'workflow' })}
+            disabled={fixWithBuilderDisabled}
+            onClick={() => onFixRun(workflowRunId)}
+          />
+        </div>
+      )}
       <div className="px-4">
         {isIterationNode && handleShowIterationResultList && (
           <IterationLogTrigger

@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import DifyBuilderEntry from '@/app/components/workflow/dify-builder-entry'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { fetchRunDetail, fetchTracingList } from '@/service/log'
@@ -22,7 +23,10 @@ type RunProps = {
   getResultCallback?: (result: WorkflowRunDetailResponse) => void
   runDetailUrl: string
   tracingListUrl: string
+  onFixRun?: (runId: string) => void
+  fixWithBuilderDisabled?: boolean
 }
+type RunTab = NonNullable<RunProps['activeTab']>
 
 type RunTab = NonNullable<RunProps['activeTab']>
 type RequestLifetime = {
@@ -40,6 +44,8 @@ const RunPanel: FC<RunProps> = ({
   getResultCallback,
   runDetailUrl,
   tracingListUrl,
+  onFixRun,
+  fixWithBuilderDisabled,
 }) => {
   const [currentTab, setCurrentTab] = useState<RunTab>(activeTab)
   const isListening = useStore((s) => s.isListening)
@@ -59,6 +65,8 @@ const RunPanel: FC<RunProps> = ({
       currentTab={currentTab}
       onTabChange={setCurrentTab}
       isListening={isListening}
+      onFixRun={onFixRun}
+      fixWithBuilderDisabled={fixWithBuilderDisabled}
     />
   )
 }
@@ -78,6 +86,8 @@ function RunSession({
   currentTab,
   onTabChange,
   isListening,
+  onFixRun,
+  fixWithBuilderDisabled,
 }: RunSessionProps) {
   const { t } = useTranslation(['runLog'])
   const [loading, setLoading] = useState(true)
@@ -221,7 +231,21 @@ function RunSession({
         )}
         <TabsPanel value="RESULT">
           {!loading && runDetail && (
-            <OutputPanel outputs={runDetail.outputs} error={runDetail.error} height={height} />
+            <>
+              <OutputPanel outputs={runDetail.outputs} error={runDetail.error} height={height} />
+              {runDetail.status === WorkflowRunningStatus.Failed && runDetail.id && onFixRun && (
+                <div className="px-6 pb-4">
+                  <DifyBuilderEntry
+                    label={t(($) => $['difyBuilder.fixWithAppBuilder'], { ns: 'workflow' })}
+                    description={t(($) => $['difyBuilder.runFixScopeDescription'], {
+                      ns: 'workflow',
+                    })}
+                    disabled={fixWithBuilderDisabled}
+                    onClick={() => onFixRun(runDetail.id)}
+                  />
+                </div>
+              )}
+            </>
           )}
         </TabsPanel>
         <TabsPanel value="DETAIL">
@@ -246,6 +270,8 @@ function RunSession({
                 appId ? { appId, kind: 'workflow', workflowRunId: runDetail.id } : undefined
               }
               onOpenTracingTab={() => switchTab('TRACING')}
+              onFixRun={onFixRun}
+              fixWithBuilderDisabled={fixWithBuilderDisabled}
             />
           )}
           {!loading && !runDetail && isListening && (

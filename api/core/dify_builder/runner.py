@@ -118,6 +118,19 @@ class Runner:
             turn = Turn(actor=turn.actor)  # action consumed
             # fall through to the advance loop below
 
+        if action_kind == "message":
+            # Free-text chat is transcript context, not an implicit approval or
+            # state-machine action. Persist the user's bubble and leave the
+            # current gate unchanged; explicit buttons remain the only way to
+            # approve, publish, revert, or otherwise advance a waiting state.
+            text = turn.action.payload.get("text") if turn.action is not None else None
+            items: list[ConversationItem] = []
+            if isinstance(text, str) and text:
+                items.append(ConversationItem(seq=fc.next_seq, kind="user", payload={"text": text}))
+                fc.next_seq += 1
+            s.version = self._env.repo.compare_and_advance(s.id, s.version, s.current_state, fc, items)
+            return s
+
         first = True
         while True:
             if is_waiting(s.current_state) and first and turn.action is None:

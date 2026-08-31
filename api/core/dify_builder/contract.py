@@ -13,7 +13,7 @@ that value.
 
 from dataclasses import asdict, dataclass, field
 from enum import StrEnum
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from core.dify_builder.models import ConversationItem
 
@@ -219,6 +219,8 @@ class SessionModel:
 
     provider: str
     name: str
+    mode: str = ""
+    completion_params: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
