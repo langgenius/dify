@@ -394,6 +394,7 @@ _LEGACY_WORKSPACE_NORMAL_KEYS: list[str] = [
     "plugin.install",
     "credential.use",
     "app_library.access",
+    "agent.manage",
 ]
 
 _LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS: list[str] = [
@@ -401,6 +402,7 @@ _LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS: list[str] = [
     "plugin.install",
     "dataset.create_and_management",
     "dataset.external.connect",
+    "agent.manage",
 ]
 
 _LEGACY_APP_OWNER_KEYS: list[str] = [
