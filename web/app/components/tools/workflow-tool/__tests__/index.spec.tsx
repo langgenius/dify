@@ -182,7 +182,14 @@ describe('WorkflowToolDrawer', () => {
       />,
     )
 
-    expect(screen.getByTestId('output-type-conflict-warning')).toBeInTheDocument()
+    const warning = screen.getByTestId('output-type-conflict-warning')
+    expect(warning).toBeInTheDocument()
+
+    await user.hover(warning)
+
+    expect(
+      await screen.findByText('tools.createTool.toolOutput.typeConflictTip'),
+    ).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
