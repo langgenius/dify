@@ -8,16 +8,14 @@ import { getAnalyticsConsent } from '@/app/components/base/analytics-consent/con
 import { getIsAmplitudeInitialized } from './init'
 import {
   ATTRIBUTION_KEYS,
-  clearVolatileRegistrationIntent,
+  clearRegistrationFlushRetry,
   getRegistrationDeliveryGeneration,
   getRegistrationSessionStorage,
-  getVolatileRegistrationIntent,
   invalidateRegistrationDeliveryState,
   REGISTRATION_METHODS,
   REGISTRATION_SUCCESS_STORAGE_KEY,
   removeStoredRegistrationMarker,
-  replaceVolatileRegistrationIntent,
-  VOLATILE_INTENT_TTL_MS,
+  scheduleRegistrationFlushRetry,
 } from './registration-session-state'
 import { trackEvent } from './utils'
 
@@ -110,6 +108,7 @@ const storeRegistrationIntent = (intent: RegistrationIntent) => {
 
   try {
     storage.setItem(REGISTRATION_SUCCESS_STORAGE_KEY, JSON.stringify(pending))
+    clearRegistrationFlushRetry()
     notifyRegistrationMarkerStored()
     return true
   } catch {
@@ -130,36 +129,13 @@ export const rememberRegistrationSuccess = ({
     return false
   }
 
-  const intent = createRegistrationIntent(method, utmInfo)
-  if (consent === 'unknown') {
-    if (method === 'oauth') return false
-    replaceVolatileRegistrationIntent(intent)
-    return true
-  }
-
-  return storeRegistrationIntent(intent)
+  // Persist even while consent is unknown. Flush waits for grant + Amplitude init
+  // + user identity, so a later full-page redirect still has the marker.
+  return storeRegistrationIntent(createRegistrationIntent(method, utmInfo))
 }
 
 export const coordinateRegistrationConsent = (consent: AnalyticsConsent) => {
-  if (consent === 'denied' || consent === 'disabled') {
-    invalidateRegistrationDeliveryState()
-    return
-  }
-  const volatileIntent = getVolatileRegistrationIntent()
-  if (consent !== 'granted' || !volatileIntent) return
-
-  const intent = volatileIntent
-  const now = Date.now()
-  const age = now - intent.occurredAt
-  if (
-    age >= VOLATILE_INTENT_TTL_MS ||
-    intent.occurredAt > now + REGISTRATION_FUTURE_CLOCK_SKEW_ALLOWANCE_MS
-  ) {
-    clearVolatileRegistrationIntent()
-    return
-  }
-
-  if (storeRegistrationIntent(intent)) clearVolatileRegistrationIntent()
+  if (consent === 'denied' || consent === 'disabled') invalidateRegistrationDeliveryState()
 }
 
 export const subscribeRegistrationSuccess = (listener: () => void) => {
@@ -278,14 +254,20 @@ const runRegistrationFlush = async (generation: number) => {
       return
     }
     if (currentRaw !== raw) continue
-    if (!acknowledged) return
+    if (!acknowledged) {
+      scheduleRegistrationFlushRetry(() => {
+        void flushRegistrationSuccess()
+      })
+      return
+    }
 
+    clearRegistrationFlushRetry()
     removeStoredRegistrationMarker(storage)
     return
   }
 }
 
-export const flushRegistrationSuccess = () => {
+export function flushRegistrationSuccess() {
   const generation = getRegistrationDeliveryGeneration()
   if (activeFlush?.generation === generation) return activeFlush.promise
 

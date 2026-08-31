@@ -67,20 +67,12 @@ describe('OAuthRegistrationAnalytics', () => {
     setSearchParams()
   })
 
-  it('keeps the OAuth marker and UTM cookie while consent is unknown, then queues and cleans on grant', async () => {
+  it('queues the Amplitude marker while consent is unknown and cleans the URL after persist', async () => {
     mockConsent.value = 'unknown'
     Cookies.set('utm_info', JSON.stringify({ utm_source: 'linkedin', slug: 'agent-launch' }))
     setSearchParams('oauth_new_user=true&source=signin')
 
-    const { rerender } = render(<OAuthRegistrationAnalytics />)
-
-    expect(mockRememberRegistrationSuccess).not.toHaveBeenCalled()
-    expect(mockSendGAEvent).toHaveBeenCalledTimes(1)
-    expect(window.location.search).toBe('?oauth_new_user=true&source=signin')
-    expect(Cookies.get('utm_info')).toBeTruthy()
-
-    mockConsent.value = 'granted'
-    rerender(<OAuthRegistrationAnalytics />)
+    render(<OAuthRegistrationAnalytics />)
 
     await waitFor(() => {
       expect(mockRememberRegistrationSuccess).toHaveBeenCalledWith({
@@ -105,21 +97,21 @@ describe('OAuthRegistrationAnalytics', () => {
     expect(Cookies.get('utm_info')).toBeTruthy()
   })
 
-  it('keeps the OAuth marker while consent is unknown, then cleans without Amplitude on denial', async () => {
+  it('keeps the OAuth marker while consent is unknown, then cleans without a second Amplitude queue on denial', async () => {
     mockConsent.value = 'unknown'
     Cookies.set('utm_info', JSON.stringify({ utm_source: 'blog' }))
     setSearchParams('oauth_new_user=true')
 
     const { rerender } = render(<OAuthRegistrationAnalytics />)
 
+    await waitFor(() => expect(mockRememberRegistrationSuccess).toHaveBeenCalledTimes(1))
     expect(mockSendGAEvent).toHaveBeenCalledTimes(1)
-    expect(window.location.search).toBe('?oauth_new_user=true')
 
     mockConsent.value = 'denied'
     rerender(<OAuthRegistrationAnalytics />)
 
     await waitFor(() => expect(window.location.search).toBe(''))
-    expect(mockRememberRegistrationSuccess).not.toHaveBeenCalled()
+    expect(mockRememberRegistrationSuccess).toHaveBeenCalledTimes(1)
     expect(mockSendGAEvent).toHaveBeenCalledTimes(1)
     expect(Cookies.get('utm_info')).toBeUndefined()
   })
@@ -172,7 +164,7 @@ describe('OAuthRegistrationAnalytics', () => {
     expect(Cookies.get('utm_info')).toBeUndefined()
   })
 
-  it('cleans a false OAuth marker immediately without tracking', async () => {
+  it('cleans a false OAuth marker immediately without tracking or clearing utm_info', async () => {
     mockConsent.value = 'unknown'
     Cookies.set('utm_info', JSON.stringify({ utm_source: 'blog' }))
     setSearchParams('oauth_new_user=false')
@@ -182,7 +174,7 @@ describe('OAuthRegistrationAnalytics', () => {
     await waitFor(() => expect(window.location.search).toBe(''))
     expect(mockRememberRegistrationSuccess).not.toHaveBeenCalled()
     expect(mockSendGAEvent).not.toHaveBeenCalled()
-    expect(Cookies.get('utm_info')).toBeUndefined()
+    expect(Cookies.get('utm_info')).toBe(JSON.stringify({ utm_source: 'blog' }))
   })
 
   it('tracks GA and Amplitude once across StrictMode effects and rerenders', async () => {
@@ -204,17 +196,16 @@ describe('OAuthRegistrationAnalytics', () => {
     expect(mockSendGAEvent).toHaveBeenCalledTimes(1)
   })
 
-  it('tracks GA once across an unknown-consent remount that simulates reload', () => {
+  it('tracks GA once across an unknown-consent remount that simulates reload', async () => {
     mockConsent.value = 'unknown'
     setSearchParams('oauth_new_user=true')
 
     const firstRender = render(<OAuthRegistrationAnalytics />)
+    await waitFor(() => expect(mockRememberRegistrationSuccess).toHaveBeenCalledTimes(1))
     firstRender.unmount()
     render(<OAuthRegistrationAnalytics />)
 
     expect(mockSendGAEvent).toHaveBeenCalledTimes(1)
-    expect(mockRememberRegistrationSuccess).not.toHaveBeenCalled()
-    expect(window.location.search).toBe('?oauth_new_user=true')
   })
 
   it('treats analytics-disabled consent as terminal and cleans without Amplitude', async () => {

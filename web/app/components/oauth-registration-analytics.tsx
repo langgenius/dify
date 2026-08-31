@@ -48,7 +48,6 @@ export function OAuthRegistrationAnalytics() {
       if (!cleanedRef.current) {
         cleanedRef.current = true
         clearOAuthRegistrationGAGuard()
-        Cookies.remove('utm_info')
         removeOAuthNewUserParam()
       }
       return
@@ -82,9 +81,10 @@ export function OAuthRegistrationAnalytics() {
       }
     }
 
-    if (analyticsConsent === 'unknown') return
-
-    if (analyticsConsent === 'granted' && !amplitudeHandledRef.current) {
+    if (
+      (analyticsConsent === 'unknown' || analyticsConsent === 'granted') &&
+      !amplitudeHandledRef.current
+    ) {
       const persisted = rememberRegistrationSuccess({ method: 'oauth', utmInfo })
       if (!persisted) return
       amplitudeHandledRef.current = true
@@ -92,7 +92,6 @@ export function OAuthRegistrationAnalytics() {
 
     if (!cleanedRef.current) {
       cleanedRef.current = true
-      clearOAuthRegistrationGAGuard()
       Cookies.remove('utm_info')
       removeOAuthNewUserParam()
     }

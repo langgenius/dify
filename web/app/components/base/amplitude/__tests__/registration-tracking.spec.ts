@@ -94,82 +94,46 @@ describe('registration tracking', () => {
       expect(persisted).toBe(true)
     })
 
-    it('keeps one non-oauth intent only in memory while consent is unknown and promotes it on grant', () => {
-      vi.setSystemTime(new Date('2026-08-26T09:00:00.000Z'))
+    it('persists the latest email marker while consent is unknown so a later grant can flush it', async () => {
       mockConsent.value = 'unknown'
-
       rememberRegistrationSuccess({ method: 'email', utmInfo: { utm_source: 'first' } })
       rememberRegistrationSuccess({ method: 'email', utmInfo: { utm_source: 'latest' } })
-
-      expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
-
-      mockConsent.value = 'granted'
-      coordinateRegistrationConsent('granted')
 
       expect(getStoredMarker()).toMatchObject({
         version: 2,
         method: 'email',
         attribution: { utm_source: 'latest' },
       })
+
+      await flushRegistrationSuccess()
+      expect(mockTrackEvent).not.toHaveBeenCalled()
+
+      mockConsent.value = 'granted'
+      await flushRegistrationSuccess()
+
+      expect(mockTrackEvent).toHaveBeenCalledTimes(1)
+      expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
     })
 
-    it('discards an unknown-consent intent on denial or after thirty minutes', () => {
-      vi.setSystemTime(new Date('2026-08-26T09:00:00.000Z'))
+    it('discards an unknown-consent marker on denial before a later grant can flush it', async () => {
       mockConsent.value = 'unknown'
       rememberRegistrationSuccess({ method: 'email' })
 
       coordinateRegistrationConsent('denied')
       mockConsent.value = 'granted'
-      coordinateRegistrationConsent('granted')
-      expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
+      await flushRegistrationSuccess()
 
-      mockConsent.value = 'unknown'
-      rememberRegistrationSuccess({ method: 'email' })
-      vi.setSystemTime(new Date('2026-08-26T09:30:00.001Z'))
-      mockConsent.value = 'granted'
-      coordinateRegistrationConsent('granted')
+      expect(mockTrackEvent).not.toHaveBeenCalled()
       expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
     })
 
-    it('expires an unknown-consent intent when its thirty-minute timer elapses', () => {
-      vi.useFakeTimers()
-      vi.setSystemTime(new Date('2026-08-26T09:00:00.000Z'))
-      mockConsent.value = 'unknown'
-      rememberRegistrationSuccess({ method: 'email' })
-
-      vi.advanceTimersByTime(30 * 60 * 1000)
-      mockConsent.value = 'granted'
-      coordinateRegistrationConsent('granted')
-
-      expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
-    })
-
-    it('cancels the old expiration timer when a volatile intent is replaced', () => {
-      vi.useFakeTimers()
-      vi.setSystemTime(new Date('2026-08-26T09:00:00.000Z'))
-      mockConsent.value = 'unknown'
-      rememberRegistrationSuccess({ method: 'email', utmInfo: { utm_source: 'first' } })
-      vi.advanceTimersByTime(20 * 60 * 1000)
-
-      rememberRegistrationSuccess({ method: 'email', utmInfo: { utm_source: 'replacement' } })
-      vi.advanceTimersByTime(10 * 60 * 1000)
-      mockConsent.value = 'granted'
-      coordinateRegistrationConsent('granted')
-
-      expect(getStoredMarker()).toMatchObject({
-        method: 'email',
-        attribution: { utm_source: 'replacement' },
-      })
-    })
-
-    it('discards a volatile intent and GA guard at an account boundary', async () => {
+    it('discards a pending marker and GA guard at an account boundary', async () => {
       mockConsent.value = 'unknown'
       rememberRegistrationSuccess({ method: 'email' })
       window.sessionStorage.setItem('oauth_registration_ga_sent', 'true')
 
       discardRegistrationSessionState()
       mockConsent.value = 'granted'
-      coordinateRegistrationConsent('granted')
       await flushRegistrationSuccess()
 
       expect(mockTrackEvent).not.toHaveBeenCalled()
@@ -188,14 +152,16 @@ describe('registration tracking', () => {
       },
     )
 
-    it('does not put an oauth intent in memory before consent', () => {
+    it('persists an oauth marker while consent is unknown so a reload can still flush it', async () => {
       mockConsent.value = 'unknown'
       rememberRegistrationSuccess({ method: 'oauth' })
 
-      mockConsent.value = 'granted'
-      coordinateRegistrationConsent('granted')
+      expect(getStoredMarker()).toMatchObject({ method: 'oauth' })
 
-      expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
+      mockConsent.value = 'granted'
+      await flushRegistrationSuccess()
+
+      expect(mockTrackEvent).toHaveBeenCalledTimes(1)
     })
 
     it('notifies consumers only after a marker is stored', () => {
@@ -226,57 +192,6 @@ describe('registration tracking', () => {
       unsubscribe()
     })
 
-    it('retains a volatile intent until promotion is persisted successfully', () => {
-      mockConsent.value = 'unknown'
-      rememberRegistrationSuccess({ method: 'email', utmInfo: { utm_source: 'blog' } })
-      mockConsent.value = 'granted'
-      const originalWindow = window
-      vi.stubGlobal('window', {
-        sessionStorage: {
-          getItem: vi.fn(() => null),
-          setItem: () => {
-            throw new Error('quota exceeded')
-          },
-          removeItem: vi.fn(),
-        },
-      })
-
-      coordinateRegistrationConsent('granted')
-
-      expect(originalWindow.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
-
-      vi.stubGlobal('window', originalWindow)
-      coordinateRegistrationConsent('granted')
-
-      expect(getStoredMarker()).toMatchObject({
-        method: 'email',
-        attribution: { utm_source: 'blog' },
-      })
-    })
-
-    it('promotes a volatile intent just inside the five-minute clock-skew allowance', () => {
-      mockConsent.value = 'unknown'
-      vi.setSystemTime(new Date('2026-08-26T09:04:59.999Z'))
-      rememberRegistrationSuccess({ method: 'email' })
-
-      mockConsent.value = 'granted'
-      vi.setSystemTime(new Date('2026-08-26T09:00:00.000Z'))
-      coordinateRegistrationConsent('granted')
-
-      expect(getStoredMarker()).toMatchObject({ method: 'email' })
-    })
-
-    it('discards a volatile intent just outside the five-minute clock-skew allowance', () => {
-      mockConsent.value = 'unknown'
-      vi.setSystemTime(new Date('2026-08-26T09:05:00.001Z'))
-      rememberRegistrationSuccess({ method: 'email' })
-
-      mockConsent.value = 'granted'
-      vi.setSystemTime(new Date('2026-08-26T09:00:00.000Z'))
-      coordinateRegistrationConsent('granted')
-
-      expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
-    })
   })
 
   describe('flushRegistrationSuccess', () => {
@@ -398,6 +313,28 @@ describe('registration tracking', () => {
         expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
       },
     )
+
+    it('retries an acknowledgement-failed marker after the backoff delay', async () => {
+      vi.useFakeTimers()
+      rememberRegistrationSuccess({ method: 'email' })
+      const marker = getStoredMarker()
+      mockTrackEvent
+        .mockReturnValueOnce({ promise: Promise.reject(new Error('network failed')) })
+        .mockImplementation(successResult)
+
+      await flushRegistrationSuccess()
+      expect(getStoredMarker()).toEqual(marker)
+      expect(mockTrackEvent).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(1000)
+
+      expect(mockTrackEvent).toHaveBeenCalledTimes(2)
+      expect(mockTrackEvent.mock.calls[1]?.[2]).toEqual({
+        insert_id: marker.registrationId,
+        time: marker.occurredAt,
+      })
+      expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
+    })
 
     it('does not retry an acknowledgement-failed marker after an account boundary', async () => {
       rememberRegistrationSuccess({ method: 'email' })

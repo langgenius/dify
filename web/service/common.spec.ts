@@ -7,7 +7,7 @@ import {
   OAUTH_REGISTRATION_GA_SENT_KEY,
   REGISTRATION_SUCCESS_STORAGE_KEY,
 } from '@/app/components/base/amplitude/registration-session-state'
-import { sendEMailLoginCode } from './common'
+import { emailLoginWithCode, sendEMailLoginCode } from './common'
 import { useLogout } from './use-common'
 
 const mocks = vi.hoisted(() => ({
@@ -45,6 +45,34 @@ describe('sendEMailLoginCode', () => {
       body: {
         email: 'user@example.com',
         language: 'en-US',
+      },
+    })
+  })
+})
+
+describe('emailLoginWithCode', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('includes the verification-specific Turnstile token when provided', async () => {
+    await emailLoginWithCode({
+      code: 'encrypted-code',
+      email: 'user@example.com',
+      language: 'en-US',
+      timezone: 'Asia/Singapore',
+      token: 'email-login-token',
+      turnstile_token: 'verify-turnstile-token',
+    })
+
+    expect(mocks.post).toHaveBeenCalledWith('/email-code-login/validity', {
+      body: {
+        code: 'encrypted-code',
+        email: 'user@example.com',
+        language: 'en-US',
+        timezone: 'Asia/Singapore',
+        token: 'email-login-token',
+        turnstile_token: 'verify-turnstile-token',
       },
     })
   })

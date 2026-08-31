@@ -1,5 +1,6 @@
 export const REGISTRATION_SUCCESS_STORAGE_KEY = 'pending_registration_success_event'
 export const OAUTH_REGISTRATION_GA_SENT_KEY = 'oauth_registration_ga_sent'
+export const FLUSH_RETRY_DELAYS_MS = [1000, 4000, 16000] as const
 
 export const REGISTRATION_METHODS = ['email', 'oauth'] as const
 
@@ -22,11 +23,9 @@ export type RegistrationIntent = {
   attribution: RegistrationAttribution
 }
 
-export const VOLATILE_INTENT_TTL_MS = 30 * 60 * 1000
-
-let volatileIntent: RegistrationIntent | null = null
-let volatileIntentExpirationTimer: ReturnType<typeof setTimeout> | null = null
 let registrationDeliveryGeneration = 0
+let flushRetryTimer: ReturnType<typeof setTimeout> | null = null
+let flushRetryAttempt = 0
 
 export const getRegistrationSessionStorage = (): Storage | null => {
   try {
@@ -63,30 +62,34 @@ export const clearOAuthRegistrationGAGuard = () => {
   } catch {}
 }
 
-export const clearVolatileRegistrationIntent = () => {
-  if (volatileIntentExpirationTimer !== null) {
-    clearTimeout(volatileIntentExpirationTimer)
-    volatileIntentExpirationTimer = null
-  }
-  volatileIntent = null
-}
-
-export const replaceVolatileRegistrationIntent = (intent: RegistrationIntent) => {
-  clearVolatileRegistrationIntent()
-  volatileIntent = intent
-  volatileIntentExpirationTimer = setTimeout(() => {
-    volatileIntent = null
-    volatileIntentExpirationTimer = null
-  }, VOLATILE_INTENT_TTL_MS)
-}
-
-export const getVolatileRegistrationIntent = () => volatileIntent
-
 export const getRegistrationDeliveryGeneration = () => registrationDeliveryGeneration
+
+export const clearRegistrationFlushRetry = () => {
+  if (flushRetryTimer !== null) {
+    clearTimeout(flushRetryTimer)
+    flushRetryTimer = null
+  }
+  flushRetryAttempt = 0
+}
+
+export const scheduleRegistrationFlushRetry = (runFlush: () => void) => {
+  if (flushRetryAttempt >= FLUSH_RETRY_DELAYS_MS.length) return
+
+  const delay = FLUSH_RETRY_DELAYS_MS[flushRetryAttempt]
+  flushRetryAttempt += 1
+  const generation = registrationDeliveryGeneration
+  if (flushRetryTimer !== null) clearTimeout(flushRetryTimer)
+
+  flushRetryTimer = setTimeout(() => {
+    flushRetryTimer = null
+    if (generation !== registrationDeliveryGeneration) return
+    runFlush()
+  }, delay)
+}
 
 export const invalidateRegistrationDeliveryState = () => {
   registrationDeliveryGeneration += 1
-  clearVolatileRegistrationIntent()
+  clearRegistrationFlushRetry()
   removeStoredRegistrationMarker()
 }
 
