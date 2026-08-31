@@ -14,6 +14,7 @@ from services.account_adapters import (
     BillingWorkspaceMembershipCache,
     CeleryAccountDeletionVerificationNotifier,
     DeploymentWorkspaceInvitePolicy,
+    RBACWorkspaceMemberAccessSync,
     RedisChangeEmailSecurityGateway,
     RedisInvitationTokenStore,
     TokenManagerAccountDeletionVerificationGateway,
@@ -23,6 +24,7 @@ from services.account_errors import AccountDeletionRateLimitError
 from services.entities.account_activation_entities import InvitationLookup, InvitationToken
 from services.entities.account_entities import (
     AccountChangeEmailNewEmailToken,
+    AccountEducationActivation,
     AccountEducationAutocomplete,
     AccountEducationStatus,
 )
@@ -107,6 +109,24 @@ def test_workspace_policy_delegates_to_existing_policy_owner() -> None:
     ensure_allowed.assert_called_once_with("workspace-1")
 
 
+def test_rbac_member_access_sync_skips_gateway_when_disabled() -> None:
+    with patch(
+        "tasks.initialize_created_app_rbac_access_task.sync_joined_workspace_member_rbac_access_task.delay"
+    ) as delay:
+        RBACWorkspaceMemberAccessSync(enabled=False).sync("workspace-1", "account-1")
+
+    delay.assert_not_called()
+
+
+def test_rbac_member_access_sync_enqueues_joined_member_sync_when_enabled() -> None:
+    with patch(
+        "tasks.initialize_created_app_rbac_access_task.sync_joined_workspace_member_rbac_access_task.delay"
+    ) as delay:
+        RBACWorkspaceMemberAccessSync(enabled=True).sync("workspace-1", "account-1")
+
+    delay.assert_called_once_with("workspace-1", "account-1", operator_account_id=None)
+
+
 def test_education_gateway_normalizes_billing_status_timestamp() -> None:
     gateway = BillingAccountEducationGateway()
 
@@ -138,22 +158,20 @@ def test_education_gateway_activates_with_primitive_account_context() -> None:
     ) as activate:
         result = gateway.activate(
             account_id="account-1",
-            email="student@example.edu",
             tenant_id="workspace-1",
             token="education-token",
             institution="Dify University",
             role="Student",
         )
 
-    assert result == {"message": "success"}
-    assert activate.call_args.kwargs == {
-        "account_id": "account-1",
-        "email": "student@example.edu",
-        "tenant_id": "workspace-1",
-        "token": "education-token",
-        "institution": "Dify University",
-        "role": "Student",
-    }
+    assert result == AccountEducationActivation(message="success")
+    activate.assert_called_once_with(
+        account_id="account-1",
+        tenant_id="workspace-1",
+        token="education-token",
+        institution="Dify University",
+        role="Student",
+    )
 
 
 def test_education_gateway_normalizes_autocomplete_defaults() -> None:

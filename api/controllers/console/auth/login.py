@@ -23,6 +23,7 @@ from controllers.console.auth.error import (
     EmailPasswordLoginLimitError,
     InvalidEmailError,
     InvalidTokenError,
+    NormalizedEmailAlreadyInUseError,
     PasswordResetRateLimitExceededError,
     TurnstileServiceUnavailableError,
     TurnstileVerificationFailedError,
@@ -285,6 +286,8 @@ def _raise_request_error(error: account_errors.AccountApplicationError) -> Never
         raise NotAllowedCreateWorkspace() from error
     if isinstance(error, account_errors.LoginSeatLimitError):
         raise SeatsLimitExceeded() from error
+    if isinstance(error, account_errors.AccountNormalizedEmailAlreadyInUseError):
+        raise NormalizedEmailAlreadyInUseError() from error
     if isinstance(error, account_errors.EmailCodeSendIPLimitedError):
         raise EmailSendIpLimitError() from error
     if isinstance(error, account_errors.EmailCodeSendRateLimitError):

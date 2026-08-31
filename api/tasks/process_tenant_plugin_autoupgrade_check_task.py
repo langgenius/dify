@@ -6,7 +6,8 @@ import typing
 import click
 from celery import shared_task
 
-from core.plugin.entities.marketplace import MarketplacePluginSnapshot
+from core.helper.marketplace import batch_fetch_plugin_manifests, get_plugin_pkg_url
+from core.plugin.entities.marketplace import MarketplacePluginDeclaration, MarketplacePluginSnapshot
 from core.plugin.entities.plugin import PluginInstallation, PluginInstallationSource
 from core.plugin.impl.plugin import PluginInstaller
 from core.plugin.plugin_service import PluginService
@@ -54,25 +55,86 @@ def _get_cached_manifest(plugin_id: str) -> typing.Union[MarketplacePluginSnapsh
         return False
 
 
+def _set_cached_manifest(plugin_id: str, snapshot: MarketplacePluginSnapshot | None) -> None:
+    """
+    Cache a plugin snapshot in Redis, or record that the marketplace has no such plugin.
+
+    Caching misses as well as hits keeps the fallback cheap: a plugin that the marketplace
+    does not know about is looked up once per TTL instead of once per check cycle.
+    """
+    try:
+        key = _get_redis_cache_key(plugin_id)
+        if snapshot is None:
+            redis_client.setex(key, CACHE_REDIS_TTL, json.dumps(None))
+        else:
+            redis_client.setex(key, CACHE_REDIS_TTL, snapshot.model_dump_json())
+    except Exception:
+        # If Redis fails, continue without caching
+        logger.exception("Failed to set cached manifest for plugin %s", plugin_id)
+
+
+def _snapshot_from_declaration(declaration: MarketplacePluginDeclaration) -> MarketplacePluginSnapshot:
+    """Adapt a batch-API declaration to the snapshot shape used by the upgrade check."""
+    return MarketplacePluginSnapshot(
+        org=declaration.org,
+        name=declaration.name,
+        latest_version=declaration.latest_version,
+        latest_package_identifier=declaration.latest_package_identifier,
+        latest_package_url=get_plugin_pkg_url(declaration.latest_package_identifier),
+    )
+
+
 def marketplace_batch_fetch_plugin_manifests(
     plugin_ids_plain_list: list[str],
 ) -> list[MarketplacePluginSnapshot]:
     """
-    Fetch plugin manifests from Redis cache only.
-    This function assumes fetch_global_plugin_manifest() has been called
-    to pre-populate the cache with all marketplace plugins.
+    Fetch plugin manifests, preferring the pre-populated Redis cache.
+
+    fetch_global_plugin_manifest() normally warms the cache with the whole marketplace.
+    When that snapshot is unavailable or incomplete, fall back to the per-plugin batch API
+    so upgrades still happen instead of being silently skipped.
     """
     result: list[MarketplacePluginSnapshot] = []
+    uncached_plugin_ids: list[str] = []
 
     # Check Redis cache for each plugin
     for plugin_id in plugin_ids_plain_list:
         cached_result = _get_cached_manifest(plugin_id)
-        if not isinstance(cached_result, MarketplacePluginSnapshot):
-            # cached_result is False (not in cache) or None (cached as not found)
-            logger.warning("plugin %s not found in cache, skipping", plugin_id)
+        if isinstance(cached_result, MarketplacePluginSnapshot):
+            result.append(cached_result)
+        elif cached_result is None:
+            # Cached as not found in the marketplace; nothing to upgrade to.
             continue
+        else:
+            uncached_plugin_ids.append(plugin_id)
 
-        result.append(cached_result)
+    if not uncached_plugin_ids:
+        return result
+
+    logger.info(
+        "%d plugin manifests missing from the global snapshot, fetching them from the marketplace",
+        len(uncached_plugin_ids),
+    )
+
+    try:
+        declarations = batch_fetch_plugin_manifests(uncached_plugin_ids)
+    except Exception:
+        logger.exception(
+            "failed to fetch plugin manifests from marketplace, skipping %d plugins", len(uncached_plugin_ids)
+        )
+        return result
+
+    fetched_plugin_ids = set()
+    for declaration in declarations:
+        snapshot = _snapshot_from_declaration(declaration)
+        fetched_plugin_ids.add(declaration.plugin_id)
+        _set_cached_manifest(declaration.plugin_id, snapshot)
+        result.append(snapshot)
+
+    # Remember which plugins the marketplace does not serve, so we stop asking every cycle.
+    for plugin_id in uncached_plugin_ids:
+        if plugin_id not in fetched_plugin_ids:
+            _set_cached_manifest(plugin_id, None)
 
     return result
 

@@ -265,8 +265,33 @@ def test_provisioning_gateway_persists_account_and_workspace_atomically(
         account = session.get(Account, account_id)
         membership = session.scalar(select(TenantAccountJoin).where(TenantAccountJoin.account_id == account_id))
         assert account is not None
+        assert account.normalized_email == "user@example.com"
         assert account.timezone == "UTC"
         assert membership is not None
+
+
+def test_provisioning_gateway_rejects_equivalent_normalized_email(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    sqlite_session.add(
+        Account(
+            name="Existing User",
+            email="u.ser+existing@gmail.com",
+            normalized_email="user@gmail.com",
+        )
+    )
+    sqlite_session.commit()
+    gateway = adapters.SQLAlchemyConsoleAuthProvisioningGateway(session_factory=sqlite_session_factory)
+
+    with pytest.raises(account_errors.AccountNormalizedEmailAlreadyInUseError):
+        gateway.create_with_owner_workspace(
+            email="user@googlemail.com",
+            name="New User",
+            interface_language="en-US",
+            timezone="UTC",
+            ip_address="127.0.0.1",
+        )
 
 
 def test_email_code_gateway_sends_and_maps_shared_challenge_status(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -14,6 +14,10 @@ class CloudPlan(StrEnum):
     PROFESSIONAL = auto()
     TEAM = auto()
 
+    @property
+    def is_paid(self) -> bool:
+        return self in (CloudPlan.PROFESSIONAL, CloudPlan.TEAM)
+
 
 class DeploymentEdition(StrEnum):
     """Enum representing the deployment edition of the platform."""

@@ -4,7 +4,7 @@ import secrets
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from hashlib import sha256
-from typing import Any, override
+from typing import override
 
 from pydantic import TypeAdapter, ValidationError
 from redis import RedisError
@@ -17,6 +17,7 @@ from services.account_activation_service import (
     AccountActivationEligibility,
     InvitationTokenStore,
     WorkspaceInvitePolicy,
+    WorkspaceMemberAccessSync,
     WorkspaceMembershipCache,
 )
 from services.account_change_email_ports import (
@@ -47,6 +48,7 @@ from services.entities.account_entities import (
     AccountChangeEmailPhase,
     AccountChangeEmailTokenData,
     AccountDeletionChallenge,
+    AccountEducationActivation,
     AccountEducationAutocomplete,
     AccountEducationStatus,
     AccountEducationVerification,
@@ -139,10 +141,28 @@ class BillingWorkspaceMembershipCache(WorkspaceMembershipCache):
             BillingService.clean_billing_info_cache(workspace_id)
 
 
+class RBACWorkspaceMemberAccessSync(WorkspaceMemberAccessSync):
+    def __init__(self, *, enabled: bool) -> None:
+        self._enabled = enabled
+
+    @override
+    def sync(self, workspace_id: str, account_id: str) -> None:
+        if not self._enabled:
+            return
+
+        from tasks.initialize_created_app_rbac_access_task import sync_joined_workspace_member_rbac_access_task
+
+        sync_joined_workspace_member_rbac_access_task.delay(
+            str(workspace_id),
+            str(account_id),
+            operator_account_id=None,
+        )
+
+
 class BillingAccountEducationGateway(AccountEducationGateway):
     @override
-    def verify(self, *, account_id: str, email: str) -> AccountEducationVerification:
-        result = BillingService.EducationIdentity.verify(account_id, email) or {}
+    def verify(self, *, account_id: str) -> AccountEducationVerification:
+        result = BillingService.EducationIdentity.verify(account_id=account_id) or {}
         return AccountEducationVerification(token=result.get("token"))
 
     @override
@@ -150,24 +170,23 @@ class BillingAccountEducationGateway(AccountEducationGateway):
         self,
         *,
         account_id: str,
-        email: str,
         tenant_id: str,
         token: str,
         institution: str,
         role: str,
-    ) -> dict[str, Any] | None:
-        return BillingService.EducationIdentity.activate(
+    ) -> AccountEducationActivation:
+        result = BillingService.EducationIdentity.activate(
             account_id=account_id,
-            email=email,
             tenant_id=tenant_id,
             token=token,
             institution=institution,
             role=role,
         )
+        return AccountEducationActivation(message=result["message"])
 
     @override
     def status(self, account_id: str) -> AccountEducationStatus:
-        result: dict[str, Any] = BillingService.EducationIdentity.status(account_id) or {}
+        result = BillingService.EducationIdentity.status(account_id) or {}
         expire_at = result.get("expire_at")
         return AccountEducationStatus(
             result=result.get("result"),
@@ -178,7 +197,7 @@ class BillingAccountEducationGateway(AccountEducationGateway):
 
     @override
     def autocomplete(self, *, keywords: str, page: int, limit: int) -> AccountEducationAutocomplete:
-        result: dict[str, Any] = BillingService.EducationIdentity.autocomplete(keywords, page, limit) or {}
+        result = BillingService.EducationIdentity.autocomplete(keywords, page, limit) or {}
         return AccountEducationAutocomplete(
             data=tuple(result.get("data") or ()),
             curr_page=result.get("curr_page"),

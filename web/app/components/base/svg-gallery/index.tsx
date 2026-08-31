@@ -1,9 +1,11 @@
 import { SVG } from '@svgdotjs/svg.js'
 import DOMPurify from 'dompurify'
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 
 const SVGRenderer = ({ content }: { content: string }) => {
+  const { t } = useTranslation('common')
   const svgRef = useRef<HTMLDivElement>(null)
   const [imagePreview, setImagePreview] = useState('')
   const [windowSize, setWindowSize] = useState({
@@ -56,10 +58,12 @@ const SVGRenderer = ({ content }: { content: string }) => {
     } catch {
       /* v8 ignore next 2 -- if unmounted while handling parser/render errors, ref becomes null; guard avoids writing to a detached node. @preserve */
       if (!svgRef.current) return
-      svgRef.current.innerHTML =
-        '<span style="padding: 1rem;">Error rendering SVG. Wait for the image content to complete.</span>'
+      const generatingMessage = document.createElement('span')
+      generatingMessage.style.padding = '1rem'
+      generatingMessage.textContent = t(($) => $['svgRenderer.generatingImage'])
+      svgRef.current.replaceChildren(generatingMessage)
     }
-  }, [content, windowSize])
+  }, [content, t, windowSize])
 
   return (
     <>

@@ -68,7 +68,6 @@
   "overview.appInfo.preUseReminder": "続行する前に Web アプリを有効にしてください。",
   "overview.appInfo.preview": "プレビュー",
   "overview.appInfo.qrcode.download": "QR コードをダウンロード",
-  "overview.appInfo.qrcode.scan": "アプリケーションの共有をスキャン",
   "overview.appInfo.qrcode.title": "共有用 QR コード",
   "overview.appInfo.regenerate": "再生成",
   "overview.appInfo.regenerateNotice": "公開 URL を再生成しますか？現在の URL は直ちに使用できなくなります。",

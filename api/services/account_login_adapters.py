@@ -33,6 +33,7 @@ from models.account import (
 from models.enums import ProviderQuotaType
 from services import account_errors
 from services.account_activation_service import AccountActivationRepository, InvitationTokenStore
+from services.account_email import normalize_email
 from services.account_login_service import (
     AccountProvisioningGateway,
     AccountRefreshPreparationGateway,
@@ -338,15 +339,22 @@ class SQLAlchemyConsoleAuthProvisioningGateway(AccountProvisioningGateway, Works
         timezone: str,
         ip_address: str,
     ) -> str:
+        normalized_email = normalize_email(email)
         account = Account(
             name=name,
             email=email,
+            normalized_email=normalized_email,
             interface_language=interface_language,
             interface_theme="light",
             timezone=timezone,
             last_login_ip=ip_address,
         )
         with self._session_factory.begin() as session:
+            normalized_email_in_use = session.scalar(
+                select(Account.id).where(Account.normalized_email == normalized_email).limit(1)
+            )
+            if normalized_email_in_use is not None:
+                raise account_errors.AccountNormalizedEmailAlreadyInUseError
             session.add(account)
             tenant = self._add_owner_workspace(session, account)
             self._bind_owner_rbac_role(tenant, account.id, session)

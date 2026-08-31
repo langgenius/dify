@@ -151,7 +151,7 @@ function PopupItem({
                     <>
                       <span
                         aria-hidden="true"
-                        className="i-custom-vender-line-financeandecommerce-credits-coin size-3"
+                        className="i-custom-vender-line-financeAndECommerce-credits-coin size-3"
                       />
                       <span className="ml-1 truncate">
                         {t(($) => $['modelProvider.selector.aiCredits'], { ns: 'common' })}

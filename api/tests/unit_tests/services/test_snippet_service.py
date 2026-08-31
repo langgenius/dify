@@ -940,15 +940,14 @@ def test_delete_draft_variable_files_removes_storage_objects(
 
 
 def test_delete_archived_workflow_run_files_removes_prefixed_objects(monkeypatch: pytest.MonkeyPatch) -> None:
-    from configs import dify_config
+    from tests.unit_tests.config_override import apply_config_overrides
 
     snippet = _snippet()
     archive_storage = SimpleNamespace(
         list_objects=Mock(return_value=["tenant-1/app_id=snippet-1/run.json"]),
         delete_object=Mock(),
     )
-    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
-    monkeypatch.setattr(dify_config, "ARCHIVE_STORAGE_ENABLED", True)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, ARCHIVE_STORAGE_ENABLED=True)
     monkeypatch.setattr("libs.archive_storage.get_archive_storage", Mock(return_value=archive_storage))
 
     SnippetService._delete_archived_workflow_run_files(snippet=snippet)

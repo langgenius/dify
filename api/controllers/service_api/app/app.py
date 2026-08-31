@@ -1,7 +1,7 @@
-from typing import Any
+from typing import Annotated
 
 from flask_restx import Resource
-from pydantic import Field
+from pydantic import Field, WithJsonSchema
 
 from controllers.common.fields import Parameters
 from controllers.common.schema import register_response_schema_models
@@ -23,8 +23,16 @@ class AppInfoResponse(ResponseModel):
     author_name: str | None
 
 
+URLString = Annotated[str, WithJsonSchema({"format": "url", "type": "string"})]
+
+
+class ToolIcon(ResponseModel):
+    background: str
+    content: str
+
+
 class AppMetaResponse(ResponseModel):
-    tool_icons: dict[str, Any] = Field(default_factory=dict)
+    tool_icons: dict[str, URLString | ToolIcon] = Field(default_factory=dict)
 
 
 register_response_schema_models(service_api_ns, Parameters, AppMetaResponse, AppInfoResponse)

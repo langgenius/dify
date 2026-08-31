@@ -1450,7 +1450,7 @@ class TestTenantService:
 
     def test_update_member_role_to_owner(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
-        Test updating member role to owner (should change current owner to admin).
+        Test updating member role to owner (should change current owner to normal).
         """
         fake = Faker()
         tenant_name = fake.company()
@@ -1502,7 +1502,7 @@ class TestTenantService:
             .filter_by(tenant_id=tenant.id, account_id=member_account.id)
             .first()
         )
-        assert owner_join.role == "admin"
+        assert owner_join.role == "normal"
         assert member_join.role == "owner"
 
     def test_update_member_role_already_assigned(

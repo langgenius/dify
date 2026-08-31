@@ -5,7 +5,7 @@ from typing import Literal, NamedTuple, Protocol
 
 from machinery.context import RequestContext
 
-type TagKind = Literal["knowledge", "app", "snippet"]
+type TagKind = Literal["knowledge", "app", "snippet", "skill"]
 
 
 class TagSummary(NamedTuple):
@@ -62,7 +62,7 @@ class TagNameConflictError(TagApplicationError):
 
 class TagBindingTargetNotFoundError(TagApplicationError):
     def __init__(self, target_type: TagKind) -> None:
-        target_name = {"knowledge": "Dataset", "app": "App", "snippet": "Snippet"}[target_type]
+        target_name = {"knowledge": "Dataset", "app": "App", "snippet": "Snippet", "skill": "Skill"}[target_type]
         super().__init__(f"{target_name} not found")
 
 
