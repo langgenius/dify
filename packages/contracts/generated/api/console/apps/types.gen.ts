@@ -2571,31 +2571,13 @@ export type AgentSecretRefConfig = {
 }
 
 export type AgentEnvVariableConfig = {
-  default?:
-    | string
-    | number
-    | number
-    | boolean
-    | Array<string>
-    | Array<number>
-    | Array<number>
-    | Array<boolean>
-    | null
+  default?: JsonValue2
   env_name?: string | null
   key?: string | null
   name?: string | null
   required?: boolean
   type?: string | null
-  value?:
-    | string
-    | number
-    | number
-    | boolean
-    | Array<string>
-    | Array<number>
-    | Array<number>
-    | Array<boolean>
-    | null
+  value?: JsonValue2
   variable?: string | null
   [key: string]: unknown
 }
@@ -2661,16 +2643,7 @@ export type AgentSoulDifyToolConfig = {
   provider_id?: string | null
   provider_type: ToolProviderType
   runtime_parameters?: {
-    [key: string]:
-      | string
-      | number
-      | number
-      | boolean
-      | Array<string>
-      | Array<number>
-      | Array<number>
-      | Array<boolean>
-      | null
+    [key: string]: JsonValue2
   }
   tool_name?: string | null
 }

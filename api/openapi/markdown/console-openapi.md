@@ -14110,13 +14110,13 @@ Stable Agent Soul reference to one normalized skill archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| default | string<br>integer<br>number<br>boolean<br>[ string ]<br>[ integer ]<br>[ number ]<br>[ boolean ] |  | No |
+| default | [JsonValue](#jsonvalue) |  | No |
 | env_name | string |  | No |
 | key | string |  | No |
 | name | string |  | No |
 | required | boolean |  | No |
 | type | string |  | No |
-| value | string<br>integer<br>number<br>boolean<br>[ string ]<br>[ integer ]<br>[ number ]<br>[ boolean ] |  | No |
+| value | [JsonValue](#jsonvalue) |  | No |
 | variable | string |  | No |
 
 #### AgentFeatureToggleConfig

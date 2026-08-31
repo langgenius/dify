@@ -406,9 +406,7 @@ class WorkflowAgentDifyToolsBuilder:
             credentials=self._normalize_credentials(runtime.credentials, tool_name=exposed_name),
             runtime_parameters=runtime_parameters,
             parameters=parameters,
-            parameters_json_schema=self._plugin_parameters_json_schema(
-                tool_runtime, parameters, runtime_parameters
-            ),
+            parameters_json_schema=self._plugin_parameters_json_schema(tool_runtime, parameters, runtime_parameters),
         )
 
     def _to_core_backend_tool_config(
