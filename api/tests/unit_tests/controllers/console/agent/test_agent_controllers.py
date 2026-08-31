@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import datetime
 from inspect import getsource, unwrap
 from types import SimpleNamespace
@@ -308,9 +309,15 @@ def account_id() -> str:
 
 
 def test_agent_app_list_and_create_use_agent_route(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, sqlite_session: Session
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    account_id: str,
+    sqlite_session: Session,
+    config_overrides: Callable[..., None],
 ) -> None:
     captured: dict[str, object] = {}
+    replace_whitelist = MagicMock()
+    initialize_access = MagicMock()
 
     class FakeAppService:
         def get_app(self, app_obj: object, *, session: object) -> object:
@@ -396,7 +403,9 @@ def test_agent_app_list_and_create_use_agent_route(
         lambda _self, **kwargs: {"agent-list": "debug-conversation-list"},
     )
     monkeypatch.setattr(
-        roster_controller.AgentRosterService, "count_agent_app_debug_conversation_messages", lambda _self, **kwargs: 0
+        roster_controller.AgentRosterService,
+        "count_agent_app_debug_conversation_messages",
+        lambda _self, **kwargs: 0,
     )
 
     def get_or_create_debug_conversation(_self: object, **kwargs: object) -> str:
@@ -413,6 +422,13 @@ def test_agent_app_list_and_create_use_agent_route(
         "get_system_features",
         lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
     )
+    config_overrides(RBAC_ENABLED=True)
+    monkeypatch.setattr(
+        roster_controller.enterprise_rbac_service.RBACService.AppAccess,
+        "replace_whitelist",
+        replace_whitelist,
+    )
+    monkeypatch.setattr(roster_controller.initialize_created_app_rbac_access_task, "delay", initialize_access)
     with app.test_request_context(
         "/console/api/agent?page=1&limit=10&mode=workflow&sort_by=recently_created"
         "&is_created_by_me=true&publication_status=published"
@@ -453,12 +469,22 @@ def test_agent_app_list_and_create_use_agent_route(
     assert count_params.agent_is_published is True
     with app.test_request_context(
         "/console/api/agent",
-        json={"name": "Iris", "description": "Agent app", "role": "Coordinator", "icon_type": "emoji", "icon": "robot"},
+        json={
+            "name": "Iris",
+            "description": "Agent app",
+            "role": "Coordinator",
+            "icon_type": "emoji",
+            "icon": "robot",
+        },
     ):
         created, status = unwrap(AgentAppListApi.post)(
             AgentAppListApi(),
             AgentAppCreatePayload(
-                name="Iris", description="Agent app", role="Coordinator", icon_type="emoji", icon="robot"
+                name="Iris",
+                description="Agent app",
+                role="Coordinator",
+                icon_type="emoji",
+                icon="robot",
             ),
             sqlite_session,
             "tenant-1",
@@ -481,6 +507,81 @@ def test_agent_app_list_and_create_use_agent_route(
         "account_id": account_id,
         "commit": False,
     }
+    replace_whitelist.assert_called_once()
+    assert replace_whitelist.call_args.args[:3] == ("tenant-1", account_id, "app-created")
+    replace_payload = replace_whitelist.call_args.args[3]
+    assert replace_payload.automatic_include_workspace_members is True
+    initialize_access.assert_called_once_with("tenant-1", account_id, app_id="app-created")
+
+
+def test_agent_app_create_skips_rbac_access_initialization_when_rbac_is_disabled(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    account_id: str,
+    sqlite_session: Session,
+    config_overrides: Callable[..., None],
+) -> None:
+    replace_whitelist = MagicMock()
+    initialize_access = MagicMock()
+
+    class FakeAppService:
+        def get_app(self, app_obj: object, *, session: object) -> object:
+            return app_obj
+
+        def create_app(self, tenant_id: str, params, current_user: object, *, session: object) -> object:
+            return _app_detail_obj(id="app-created", bound_agent_id="agent-created")
+
+    monkeypatch.setattr(roster_controller, "AppService", FakeAppService)
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "get_app_backing_agent",
+        lambda _self, **kwargs: Agent(
+            id="agent-created",
+            app_id="app-created",
+            backing_app_id=None,
+            role="Created role",
+            active_config_snapshot_id=None,
+        ),
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "get_or_create_build_conversation",
+        lambda _self, **kwargs: "debug-conversation-created",
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService, "count_agent_app_debug_conversation_messages", lambda _self, **kwargs: 0
+    )
+    monkeypatch.setattr(
+        roster_controller.FeatureService,
+        "get_system_features",
+        lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+    )
+    config_overrides(RBAC_ENABLED=False)
+    monkeypatch.setattr(
+        roster_controller.enterprise_rbac_service.RBACService.AppAccess,
+        "replace_whitelist",
+        replace_whitelist,
+    )
+    monkeypatch.setattr(roster_controller.initialize_created_app_rbac_access_task, "delay", initialize_access)
+
+    with app.test_request_context(
+        "/console/api/agent",
+        json={"name": "Iris", "description": "Agent app", "role": "Coordinator", "icon_type": "emoji", "icon": "robot"},
+    ):
+        created, status = unwrap(AgentAppListApi.post)(
+            AgentAppListApi(),
+            AgentAppCreatePayload(
+                name="Iris", description="Agent app", role="Coordinator", icon_type="emoji", icon="robot"
+            ),
+            sqlite_session,
+            "tenant-1",
+            _account(account_id=account_id),
+        )
+
+    assert status == 201
+    assert created["id"] == "agent-created"
+    replace_whitelist.assert_not_called()
+    initialize_access.assert_not_called()
 
 
 def test_agent_app_create_payload_allows_optional_role() -> None:
