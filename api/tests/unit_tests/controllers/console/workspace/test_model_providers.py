@@ -1,10 +1,10 @@
+from collections.abc import Callable
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
 from flask import Flask, g, request
-from flask_restx import Resource
 from pydantic_core import ValidationError
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, UnprocessableEntity
@@ -655,28 +655,31 @@ class TestModelValidateDecorator:
     EMPTY_KWARGS: dict[str, object] = {}
 
     @pytest.mark.parametrize(
-        ("api_cls", "verb", "url", "body", "kwargs"),
+        ("verb", "url", "body", "call"),
         [
-            (ModelProviderListApi, "GET", "/?model_type=not-a-model-type", None, EMPTY_KWARGS),
-            (ModelProviderCredentialApi, "GET", "/?credential_id=not-a-uuid", None, {"provider": "openai"}),
-            (ModelProviderCredentialApi, "POST", "/", EMPTY_BODY, {"provider": "openai"}),
-            (ModelProviderCredentialApi, "PUT", "/", EMPTY_BODY, {"provider": "openai"}),
-            (ModelProviderCredentialApi, "DELETE", "/", EMPTY_BODY, {"provider": "openai"}),
-            (ModelProviderCredentialSwitchApi, "POST", "/", EMPTY_BODY, {"provider": "openai"}),
-            (ModelProviderValidateApi, "POST", "/", EMPTY_BODY, {"provider": "openai"}),
-            (PreferredProviderTypeUpdateApi, "POST", "/", EMPTY_BODY, {"provider": "openai"}),
+            ("GET", "/?model_type=not-a-model-type", None, lambda: ModelProviderListApi().get()),
+            (
+                "GET",
+                "/?credential_id=not-a-uuid",
+                None,
+                lambda: ModelProviderCredentialApi().get(provider="openai"),
+            ),
+            ("POST", "/", EMPTY_BODY, lambda: ModelProviderCredentialApi().post(provider="openai")),
+            ("PUT", "/", EMPTY_BODY, lambda: ModelProviderCredentialApi().put(provider="openai")),
+            ("DELETE", "/", EMPTY_BODY, lambda: ModelProviderCredentialApi().delete(provider="openai")),
+            ("POST", "/", EMPTY_BODY, lambda: ModelProviderCredentialSwitchApi().post(provider="openai")),
+            ("POST", "/", EMPTY_BODY, lambda: ModelProviderValidateApi().post(provider="openai")),
+            ("POST", "/", EMPTY_BODY, lambda: PreferredProviderTypeUpdateApi().post(provider="openai")),
         ],
     )
     def test_invalid_input_is_rejected_before_the_handler_runs(
         self,
         app: Flask,
-        api_cls: type[Resource],
         verb: str,
         url: str,
         body: dict[str, object] | None,
-        kwargs: dict[str, object],
+        call: Callable[[], object],
     ) -> None:
-        api = api_cls()
         account = make_account()
         account.role = TenantAccountRole.OWNER
 
@@ -693,7 +696,7 @@ class TestModelValidateDecorator:
         ):
             g._login_user = account
             with pytest.raises(UnprocessableEntity) as exc_info:
-                getattr(api, verb.lower())(**kwargs)
+                call()
 
         assert exc_info.value.code == 422
         service.assert_not_called()
