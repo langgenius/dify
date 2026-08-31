@@ -32,7 +32,7 @@ const REGISTRATION_EVENT_NAMES = [
   'user_registration_success_with_utm',
 ] as const
 
-export type RegistrationEventName = (typeof REGISTRATION_EVENT_NAMES)[number]
+type RegistrationEventName = (typeof REGISTRATION_EVENT_NAMES)[number]
 
 type PendingRegistrationSuccessEvent = RegistrationIntent & {
   version: typeof REGISTRATION_MARKER_VERSION

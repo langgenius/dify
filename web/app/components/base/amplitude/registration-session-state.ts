@@ -1,6 +1,6 @@
 export const REGISTRATION_SUCCESS_STORAGE_KEY = 'pending_registration_success_event'
 export const OAUTH_REGISTRATION_GA_SENT_KEY = 'oauth_registration_ga_sent'
-export const FLUSH_RETRY_DELAYS_MS = [1000, 4000, 16000] as const
+const FLUSH_RETRY_DELAYS_MS = [1000, 4000, 16000] as const
 
 export const REGISTRATION_METHODS = ['email', 'oauth'] as const
 
