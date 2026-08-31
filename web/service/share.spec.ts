@@ -16,7 +16,7 @@ vi.mock('./base', () => ({
 }))
 
 vi.mock('./webapp-auth', () => ({
-  getOrCreateWebAppUserId: vi.fn(() => 'webapp-user-1'),
+  getOrCreateWebAppSessionId: vi.fn(() => 'webapp-session-1'),
   getWebAppAccessToken: vi.fn(() => ''),
 }))
 
@@ -40,7 +40,7 @@ describe('fetchAccessToken', () => {
     const secondRequest = fetchAccessToken({ appCode: 'environment-app' })
 
     expect(getMock).toHaveBeenCalledTimes(1)
-    expect(getMock).toHaveBeenCalledWith('/passport?user_id=webapp-user-1', expect.anything())
+    expect(getMock).toHaveBeenCalledWith('/passport?user_id=webapp-session-1', expect.anything())
 
     resolveRequest({ access_token: 'passport' })
     await expect(Promise.all([firstRequest, secondRequest])).resolves.toEqual([

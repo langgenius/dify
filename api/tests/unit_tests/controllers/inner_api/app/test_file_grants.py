@@ -283,8 +283,10 @@ def test_mint_caps_a_run_grant_at_deadline_plus_grace(app: Flask) -> None:
 
     expires_at = response["expires_at"]
     assert isinstance(expires_at, int)
-    assert run_deadline + RUN_GRANT_EXPIRY_GRACE_SECONDS <= expires_at <= (
-        run_deadline + RUN_GRANT_EXPIRY_GRACE_SECONDS + 1
+    assert (
+        run_deadline + RUN_GRANT_EXPIRY_GRACE_SECONDS
+        <= expires_at
+        <= (run_deadline + RUN_GRANT_EXPIRY_GRACE_SECONDS + 1)
     )
 
 

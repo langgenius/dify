@@ -9,7 +9,7 @@ vi.mock('./base', () => ({
 const {
   beginWebAppAuthorizationRecovery,
   completeWebAppAuthorizationRecovery,
-  getOrCreateWebAppUserId,
+  getOrCreateWebAppSessionId,
   getWebAppPassport,
   setWebAppPassport,
   webAppLoginStatus,
@@ -46,12 +46,12 @@ describe('webAppLoginStatus', () => {
     const firstEnvironment = { kind: 'environment' as const, code: 'environment-1' }
     const secondEnvironment = { kind: 'environment' as const, code: 'environment-2' }
 
-    const first = getOrCreateWebAppUserId(firstEnvironment)
+    const first = getOrCreateWebAppSessionId(firstEnvironment)
 
     expect(first).toMatch(/^[0-9a-f-]{36}$/i)
-    expect(getOrCreateWebAppUserId(firstEnvironment)).toBe(first)
-    expect(getOrCreateWebAppUserId(secondEnvironment)).not.toBe(first)
-    expect(localStorage.getItem('visitor-environment:environment-1')).toBe(first)
+    expect(getOrCreateWebAppSessionId(firstEnvironment)).toBe(first)
+    expect(getOrCreateWebAppSessionId(secondEnvironment)).not.toBe(first)
+    expect(localStorage.getItem('session_id-environment:environment-1')).toBe(first)
   })
 
   it('allows one authorization recovery until an environment request succeeds', () => {
