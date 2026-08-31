@@ -24,7 +24,11 @@ import { GRID_CLASS } from '../list/collection-constants'
 import TemplateCard from './template-card'
 import TemplateCategoryNavigation from './template-category-navigation'
 import TemplateCollectionList from './template-collection-list'
-import { filterTemplatesForLocale, parseListParam } from './template-language'
+import {
+  filterTemplatesForLocale,
+  parseListParam,
+  resolveTemplateSearchLanguages,
+} from './template-language'
 import { buildTemplatesHref, PAGE_LINK_CLASS } from './template-links'
 import TemplatePagination from './template-pagination'
 
@@ -96,6 +100,7 @@ export async function EmbeddedTemplatesMarketplace({
 }: EmbeddedTemplatesMarketplaceProps) {
   const normalizedQuery = query.trim()
   const selectedLanguages = parseListParam(languages)
+  const searchLanguages = resolveTemplateSearchLanguages(selectedLanguages, locale)
   const showCollections =
     category === 'all' && !normalizedQuery && view !== 'search' && selectedLanguages.length === 0
   const [
@@ -122,7 +127,7 @@ export async function EmbeddedTemplatesMarketplace({
           query: normalizedQuery,
           sortBy,
           sortOrder,
-          ...(selectedLanguages.length ? { languages: selectedLanguages } : {}),
+          languages: searchLanguages,
         }),
     fetchPluginBanners(locale, 'templates').catch(() => []),
   ])
@@ -154,12 +159,9 @@ export async function EmbeddedTemplatesMarketplace({
     )
   }
 
-  const templates =
-    selectedLanguages.length === 0
-      ? filterTemplatesForLocale(searchResult?.templates ?? [], locale)
-      : (searchResult?.templates ?? [])
-  // The locale filter runs once here; the collection list receives templates
-  // that are already scoped to the request locale.
+  const templates = searchResult?.templates ?? []
+  // Collection previews have no language query, so they still need a locale
+  // pass. Search results are already paginated with `searchLanguages`.
   const visibleTemplatesByCollection = Object.fromEntries(
     (collectionsResult?.collections ?? []).map((collection) => [
       collection.name,

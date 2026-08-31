@@ -15,6 +15,23 @@ export function parseListParam(value?: string | string[]) {
 
 const getLanguagePrefix = (locale: string) => locale.toLowerCase().split(/[-_]/)[0] ?? ''
 
+function getSearchLanguagesForLocale(locale: string) {
+  const requestedLanguage = getLanguagePrefix(locale)
+  if (!requestedLanguage) return ['en']
+  if (requestedLanguage === 'zh') return ['zh-Hans']
+
+  const knownOption = LANGUAGE_OPTIONS.find(
+    (option) => option.value !== 'other' && getLanguagePrefix(option.value) === requestedLanguage,
+  )
+  if (knownOption) return [knownOption.value]
+
+  return [requestedLanguage]
+}
+
+export function resolveTemplateSearchLanguages(selectedLanguages: string[], locale: string) {
+  return selectedLanguages.length > 0 ? selectedLanguages : getSearchLanguagesForLocale(locale)
+}
+
 /**
  * Keeps the templates matching the requested locale's language. Templates
  * without language metadata are treated as language-agnostic and always kept.

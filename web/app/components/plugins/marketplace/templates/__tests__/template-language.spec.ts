@@ -3,6 +3,7 @@ import {
   filterTemplatesForLocale,
   getTemplateCollectionText,
   parseListParam,
+  resolveTemplateSearchLanguages,
 } from '../template-language'
 
 const template = (id: string, preferredLanguages?: string[]) => ({
@@ -95,5 +96,22 @@ describe('parseListParam', () => {
     expect(parseListParam(undefined)).toEqual([])
     expect(parseListParam('en,zh-Hans')).toEqual(['en', 'zh-Hans'])
     expect(parseListParam(['ja', ' other '])).toEqual(['ja', 'other'])
+  })
+})
+
+describe('resolveTemplateSearchLanguages', () => {
+  it('uses the explicit filter when the visitor picked languages', () => {
+    expect(resolveTemplateSearchLanguages(['ja'], 'zh-Hans')).toEqual(['ja'])
+  })
+
+  it('maps UI locales onto catalog language values when the filter is unset', () => {
+    expect(resolveTemplateSearchLanguages([], 'en-US')).toEqual(['en'])
+    expect(resolveTemplateSearchLanguages([], 'zh-Hans')).toEqual(['zh-Hans'])
+    expect(resolveTemplateSearchLanguages([], 'zh_Hans')).toEqual(['zh-Hans'])
+    expect(resolveTemplateSearchLanguages([], 'ja-JP')).toEqual(['ja'])
+  })
+
+  it('keeps unmatched locale prefixes so pagination is not mixed-language', () => {
+    expect(resolveTemplateSearchLanguages([], 'de-DE')).toEqual(['de'])
   })
 })
