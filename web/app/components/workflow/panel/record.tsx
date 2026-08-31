@@ -6,7 +6,12 @@ import Run from '../run'
 import { useStore } from '../store'
 import { formatWorkflowRunIdentifier } from '../utils'
 
-const Record = () => {
+type RecordProps = {
+  fixWithBuilderDisabled?: boolean
+  onFixRun?: (runId: string) => void
+}
+
+const Record = ({ fixWithBuilderDisabled, onFixRun }: RecordProps) => {
   const historyWorkflowData = useStore((s) => s.historyWorkflowData)
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   const getWorkflowRunAndTraceUrl = useHooksStore((s) => s.getWorkflowRunAndTraceUrl)
@@ -32,6 +37,8 @@ const Record = () => {
         runDetailUrl={getWorkflowRunAndTraceUrl(historyWorkflowData?.id).runUrl}
         tracingListUrl={getWorkflowRunAndTraceUrl(historyWorkflowData?.id).traceUrl}
         getResultCallback={handleResultCallback}
+        onFixRun={onFixRun}
+        fixWithBuilderDisabled={fixWithBuilderDisabled}
       />
     </div>
   )

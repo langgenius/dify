@@ -4647,12 +4647,6 @@
   "web/app/components/workflow/run/index.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 1
-    },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 3
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 3
     }
   },
   "web/app/components/workflow/run/iteration-log/index.tsx": {

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { AgentLogItemWithChildren, NodeTracing } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { withSelectorKey } from '@/test/i18n-mock'
-import { BlockEnum, NodeRunningStatus } from '../../types'
+import { BlockEnum, NodeRunningStatus, WorkflowRunningStatus } from '../../types'
 import ResultPanel from '../result-panel'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
@@ -362,5 +362,30 @@ describe('ResultPanel', () => {
     )
 
     expect(screen.getByText('COMMON.OUTPUT')).toBeInTheDocument()
+  })
+
+  it('should offer App Builder only for a failed workflow run', () => {
+    const onFixRun = vi.fn()
+    const { rerender } = render(
+      <ResultPanel
+        status={WorkflowRunningStatus.Failed}
+        workflowRunId="run-failed-1"
+        onFixRun={onFixRun}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'difyBuilder.fixWithAppBuilder' }))
+    expect(onFixRun).toHaveBeenCalledWith('run-failed-1')
+
+    rerender(
+      <ResultPanel
+        status={WorkflowRunningStatus.Succeeded}
+        workflowRunId="run-success-1"
+        onFixRun={onFixRun}
+      />,
+    )
+    expect(
+      screen.queryByRole('button', { name: 'difyBuilder.fixWithAppBuilder' }),
+    ).not.toBeInTheDocument()
   })
 })

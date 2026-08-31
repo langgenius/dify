@@ -14,7 +14,7 @@ export interface CheckpointRef { checkpoint_id: string; label: string; created_a
 export interface RecoveryRef { recovery_class: string; can_continue: boolean; can_restart: boolean; message: string; }
 export interface FormField { key: string; label: string; type: string; options?: string[]; }
 export interface ResourceOption { id: string; label: string; meta: string; kind: string; readiness: string; }
-export interface SessionModel { provider: string; name: string; }
+export interface SessionModel { provider: string; name: string; mode?: string; completion_params?: Record<string, unknown>; }
 export interface ConflictPolicyOption { id: string; label: string; recommended?: boolean; }
 export interface PreflightIssue { node_id: string; label: string; kind: string; }
 export interface TraceStep { id: string; label: string; state: string; tone?: string; canvas_event?: string | null; }

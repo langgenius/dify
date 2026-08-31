@@ -278,6 +278,16 @@ describe('Header layout components', () => {
 
       expect(screen.getAllByRole('button').at(-1)).toBe(appBuilderButton)
     })
+
+    it('should hide the App Builder entry while its session rail is open', () => {
+      renderWorkflowComponent(<HeaderInNormal controls={{ showDifyBuilderButton: true }} />, {
+        initialStoreState: { showDifyBuilderPanel: true },
+      })
+
+      expect(
+        screen.queryByRole('button', { name: 'workflow.difyBuilder.buttonTooltip' }),
+      ).not.toBeInTheDocument()
+    })
   })
 
   describe('HeaderInRestoring', () => {

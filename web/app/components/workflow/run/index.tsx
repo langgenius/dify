@@ -7,6 +7,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
+import DifyBuilderEntry from '@/app/components/workflow/dify-builder-entry'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { fetchRunDetail, fetchTracingList } from '@/service/log'
 import { useStore } from '../store'
@@ -21,7 +22,10 @@ type RunProps = {
   getResultCallback?: (result: WorkflowRunDetailResponse) => void
   runDetailUrl: string
   tracingListUrl: string
+  onFixRun?: (runId: string) => void
+  fixWithBuilderDisabled?: boolean
 }
+type RunTab = NonNullable<RunProps['activeTab']>
 
 const RunPanel: FC<RunProps> = ({
   hideResult,
@@ -29,9 +33,11 @@ const RunPanel: FC<RunProps> = ({
   getResultCallback,
   runDetailUrl,
   tracingListUrl,
+  onFixRun,
+  fixWithBuilderDisabled,
 }) => {
   const { t } = useTranslation()
-  const [currentTab, setCurrentTab] = useState<string>(activeTab)
+  const [currentTab, setCurrentTab] = useState<RunTab>(activeTab)
   const [loading, setLoading] = useState<boolean>(true)
   const [runDetail, setRunDetail] = useState<WorkflowRunDetailResponse>()
   const [list, setList] = useState<NodeTracing[]>([])
@@ -72,7 +78,7 @@ const RunPanel: FC<RunProps> = ({
     setLoading(false)
   }, [getResult, getTracingList])
 
-  const switchTab = async (tab: string) => {
+  const switchTab = async (tab: RunTab) => {
     setCurrentTab(tab)
     if (tab === 'RESULT') {
       if (runDetailUrl) await getResult()
@@ -86,8 +92,8 @@ const RunPanel: FC<RunProps> = ({
 
   useEffect(() => {
     // fetch data
-    if (runDetailUrl && tracingListUrl) getData()
-  }, [runDetailUrl, tracingListUrl])
+    if (runDetailUrl && tracingListUrl) void getData()
+  }, [getData, runDetailUrl, tracingListUrl])
 
   const [height, setHeight] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
@@ -105,37 +111,43 @@ const RunPanel: FC<RunProps> = ({
       {/* tab */}
       <div className="flex shrink-0 items-center border-b-[0.5px] border-divider-subtle px-4">
         {!hideResult && (
-          <div
+          <button
+            type="button"
+            aria-pressed={currentTab === 'RESULT'}
             className={cn(
               'mr-6 cursor-pointer border-b-2 border-transparent py-3 system-sm-semibold-uppercase text-text-tertiary',
               currentTab === 'RESULT' &&
                 'border-util-colors-blue-brand-blue-brand-600! text-text-primary',
             )}
-            onClick={() => switchTab('RESULT')}
+            onClick={() => void switchTab('RESULT')}
           >
             {t(($) => $.result, { ns: 'runLog' })}
-          </div>
+          </button>
         )}
-        <div
+        <button
+          type="button"
+          aria-pressed={currentTab === 'DETAIL'}
           className={cn(
             'mr-6 cursor-pointer border-b-2 border-transparent py-3 system-sm-semibold-uppercase text-text-tertiary',
             currentTab === 'DETAIL' &&
               'border-util-colors-blue-brand-blue-brand-600! text-text-primary',
           )}
-          onClick={() => switchTab('DETAIL')}
+          onClick={() => void switchTab('DETAIL')}
         >
           {t(($) => $.detail, { ns: 'runLog' })}
-        </div>
-        <div
+        </button>
+        <button
+          type="button"
+          aria-pressed={currentTab === 'TRACING'}
           className={cn(
             'mr-6 cursor-pointer border-b-2 border-transparent py-3 system-sm-semibold-uppercase text-text-tertiary',
             currentTab === 'TRACING' &&
               'border-util-colors-blue-brand-blue-brand-600! text-text-primary',
           )}
-          onClick={() => switchTab('TRACING')}
+          onClick={() => void switchTab('TRACING')}
         >
           {t(($) => $.tracing, { ns: 'runLog' })}
-        </div>
+        </button>
       </div>
       {/* panel detail */}
       <div
@@ -148,7 +160,21 @@ const RunPanel: FC<RunProps> = ({
           </div>
         )}
         {!loading && currentTab === 'RESULT' && runDetail && (
-          <OutputPanel outputs={runDetail.outputs} error={runDetail.error} height={height} />
+          <>
+            <OutputPanel outputs={runDetail.outputs} error={runDetail.error} height={height} />
+            {runDetail.status === WorkflowRunningStatus.Failed && runDetail.id && onFixRun && (
+              <div className="px-6 pb-4">
+                <DifyBuilderEntry
+                  label={t(($) => $['difyBuilder.fixWithAppBuilder'], { ns: 'workflow' })}
+                  description={t(($) => $['difyBuilder.runFixScopeDescription'], {
+                    ns: 'workflow',
+                  })}
+                  disabled={fixWithBuilderDisabled}
+                  onClick={() => onFixRun(runDetail.id)}
+                />
+              </div>
+            )}
+          </>
         )}
         {!loading && currentTab === 'DETAIL' && runDetail && (
           <ResultPanel
@@ -167,7 +193,9 @@ const RunPanel: FC<RunProps> = ({
             exceptionCounts={runDetail.exceptions_count}
             isListening={isListening}
             workflowRunId={runDetail.id}
-            onOpenTracingTab={() => switchTab('TRACING')}
+            onOpenTracingTab={() => void switchTab('TRACING')}
+            onFixRun={onFixRun}
+            fixWithBuilderDisabled={fixWithBuilderDisabled}
           />
         )}
         {!loading && currentTab === 'DETAIL' && !runDetail && isListening && (

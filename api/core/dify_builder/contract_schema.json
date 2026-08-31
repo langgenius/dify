@@ -264,6 +264,12 @@
         },
         "name": {
           "type": "string"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "completion_params": {
+          "type": "object"
         }
       },
       "required": [

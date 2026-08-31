@@ -1,6 +1,11 @@
 import type { ChecklistItem } from '../../../hooks/use-checklist'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createStore, Provider } from 'jotai'
+import {
+  difyBuilderChecklistErrorsAtom,
+  difyBuilderRuntimeAtom,
+} from '@/app/components/workflow-app/components/dify-builder/store'
 import { BlockEnum } from '../../../types'
 import WorkflowChecklist from '../index'
 
@@ -25,6 +30,8 @@ let mockChecklistItems: ChecklistItem[] = [
 
 const mockHandleNodeSelect = vi.fn()
 const mockSetOpenInlineAgentPanelNodeId = vi.fn()
+const mockStartChecklistFix = vi.fn(async () => true)
+const mockSyncDraft = vi.fn(async () => undefined)
 
 vi.mock('reactflow', () => ({
   useEdges: () => [],
@@ -84,6 +91,36 @@ vi.mock('../node-group', () => ({
   ),
 }))
 
+const renderChecklist = (props: React.ComponentProps<typeof WorkflowChecklist>) => {
+  const store = createStore()
+  store.set(difyBuilderRuntimeAtom, {
+    appId: 'app-1',
+    canEdit: true,
+    getCanvasSnapshot: () => ({ nodes: [], edgeCount: 0 }),
+    onSyncDraft: mockSyncDraft,
+    session: {
+      refresh: vi.fn(async () => true),
+      reset: vi.fn(),
+      runAction: vi.fn(async () => true),
+      sendMessage: vi.fn(async () => true),
+      startBuild: vi.fn(async () => true),
+      startChecklistFix: mockStartChecklistFix,
+      startEdit: vi.fn(async () => true),
+      startFix: vi.fn(async () => true),
+      updateModel: vi.fn(async () => true),
+    },
+    setShowPanel: vi.fn(),
+  })
+  return {
+    store,
+    ...render(
+      <Provider store={store}>
+        <WorkflowChecklist {...props} />
+      </Provider>,
+    ),
+  }
+}
+
 describe('WorkflowChecklist', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -109,7 +146,7 @@ describe('WorkflowChecklist', () => {
 
   it('should split checklist items into plugin and node groups and delegate clicks to node selection by default', async () => {
     const user = userEvent.setup()
-    render(<WorkflowChecklist disabled={false} />)
+    renderChecklist({ disabled: false })
 
     expect(screen.getByText('2')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
@@ -123,7 +160,7 @@ describe('WorkflowChecklist', () => {
   it('should use the custom item click handler when provided', async () => {
     const user = userEvent.setup()
     const onItemClick = vi.fn()
-    render(<WorkflowChecklist disabled={false} onItemClick={onItemClick} />)
+    renderChecklist({ disabled: false, onItemClick })
 
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
     await user.click(screen.getByTestId('node-group-Broken Node'))
@@ -140,7 +177,7 @@ describe('WorkflowChecklist', () => {
       title: 'Inline Agent',
       openInlineAgentPanel: true,
     }
-    render(<WorkflowChecklist disabled={false} />)
+    renderChecklist({ disabled: false })
 
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
     await user.click(screen.getByTestId('node-group-Inline Agent'))
@@ -153,15 +190,39 @@ describe('WorkflowChecklist', () => {
     const user = userEvent.setup()
     mockChecklistItems = []
 
-    render(<WorkflowChecklist disabled={false} />)
+    renderChecklist({ disabled: false })
 
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
     expect(screen.getByText(/checklistResolved/i)).toBeInTheDocument()
   })
 
   it('should ignore popover open changes when the checklist is disabled', () => {
-    render(<WorkflowChecklist disabled={true} />)
+    renderChecklist({ disabled: true })
 
     expect(screen.getByText('2').closest('button')).toBeDisabled()
+  })
+
+  it('should start a checklist fix from the entry at the bottom of the list', async () => {
+    const user = userEvent.setup()
+    const { store } = renderChecklist({ disabled: false })
+
+    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.fixWithAppBuilder' }))
+
+    expect(mockStartChecklistFix).toHaveBeenCalledWith(
+      'app-1',
+      [
+        expect.objectContaining({ node_id: 'plugin-1', plugin_missing: true }),
+        expect.objectContaining({
+          node_id: 'node-1',
+          messages: ['Needs configuration'],
+        }),
+      ],
+      undefined,
+    )
+    expect(store.get(difyBuilderChecklistErrorsAtom)).toEqual([
+      expect.objectContaining({ node_id: 'plugin-1', plugin_missing: true }),
+      expect.objectContaining({ node_id: 'node-1', messages: ['Needs configuration'] }),
+    ])
   })
 })

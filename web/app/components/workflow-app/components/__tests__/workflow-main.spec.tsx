@@ -26,6 +26,8 @@ const mockCanPersistLocalGraph = vi.hoisted(() => vi.fn())
 const mockIsGraphReloadCurrent = vi.hoisted(() => vi.fn())
 const mockRetryGraphReload = vi.hoisted(() => vi.fn())
 const mockUseCollaboration = vi.hoisted(() => vi.fn())
+const mockSetCanvasReadOnly = vi.hoisted(() => vi.fn())
+const mockSetShowDifyBuilderPanel = vi.hoisted(() => vi.fn())
 
 const hookFns = {
   doSyncWorkflowDraft: vi.fn(),
@@ -113,9 +115,19 @@ vi.mock('@/app/components/base/features/hooks', () => ({
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: <T,>(selector: (state: { appId: string }) => T) =>
+  useStore: <T,>(
+    selector: (state: {
+      appId: string
+      setCanvasReadOnly: typeof mockSetCanvasReadOnly
+      setShowDifyBuilderPanel: typeof mockSetShowDifyBuilderPanel
+      showDifyBuilderPanel: boolean
+    }) => T,
+  ) =>
     selector({
       appId: 'app-1',
+      setCanvasReadOnly: mockSetCanvasReadOnly,
+      setShowDifyBuilderPanel: mockSetShowDifyBuilderPanel,
+      showDifyBuilderPanel: false,
     }),
   useWorkflowStore: () => ({
     getState: () => ({

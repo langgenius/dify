@@ -21,6 +21,7 @@ import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import dynamic from '@/next/dynamic'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { useAvailableNodesMetaData } from '../hooks/use-available-nodes-meta-data'
@@ -33,7 +34,12 @@ import { useWorkflowDraftGraphForCanvas } from '../hooks/use-workflow-draft-grap
 import { useWorkflowRefreshDraft } from '../hooks/use-workflow-refresh-draft'
 import { useWorkflowRunByCanEdit } from '../hooks/use-workflow-run'
 import { useWorkflowStartRunByCanEdit } from '../hooks/use-workflow-start-run'
+import { DifyBuilderProvider } from './dify-builder/provider'
 import WorkflowChildren from './workflow-children'
+
+const DifyBuilderPanel = dynamic(() => import('./dify-builder/panel'), {
+  ssr: false,
+})
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 type WorkflowDataUpdatePayload = Pick<
@@ -54,6 +60,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
   const appId = useStore((s) => s.appId)
+  const showDifyBuilderPanel = useStore((s) => s.showDifyBuilderPanel)
   const appDetail = useAppStore((s) => s.appDetail)
   const containerRef = useRef<HTMLDivElement>(null)
   const [collaborationGraphState, setCollaborationGraphState] = useState({
@@ -521,41 +528,67 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     configsMap,
   ])
 
+  const getDifyBuilderCanvasSnapshot = useCallback(
+    () => ({
+      nodes: reactFlow.getNodes(),
+      edgeCount: reactFlow.getEdges().length,
+    }),
+    [reactFlow],
+  )
+  const handleDifyBuilderSyncDraft = useCallback(async () => {
+    const result = await doSyncWorkflowDraft()
+    if (!result) throw new Error('Workflow draft sync failed.')
+  }, [doSyncWorkflowDraft])
+  const handleDifyBuilderRefreshCanvas = useCallback(async () => {
+    await handleRefreshWorkflowDraft()
+  }, [handleRefreshWorkflowDraft])
+
   return (
-    <div ref={containerRef} className="relative size-full">
-      <WorkflowWithInnerContext
-        nodes={nodes}
-        edges={edges}
-        viewport={viewport}
-        onWorkflowDataUpdate={handleWorkflowDataUpdate}
-        hooksStore={hooksStore as unknown as Partial<HooksStoreShape>}
-        isCollaborationEnabled={isCollaborationEnabled}
-        cursors={filteredCursors}
-        myUserId={myUserId}
-        onlineUsers={onlineUsers}
-      >
-        <WorkflowChildren />
-      </WorkflowWithInnerContext>
-      {isCollaborationEnabled &&
-        (collaborationGraphState.appId !== appId || !collaborationGraphState.isReady) && (
-          <div
-            data-testid="collaboration-graph-loading"
-            className="absolute inset-0 z-50 flex cursor-wait items-center justify-center"
+    <DifyBuilderProvider
+      appId={appId}
+      canEdit={appACLCapabilities.canEdit}
+      getCanvasSnapshot={getDifyBuilderCanvasSnapshot}
+      onSyncDraft={handleDifyBuilderSyncDraft}
+      onRefreshCanvas={handleDifyBuilderRefreshCanvas}
+    >
+      <div className="flex size-full min-w-0 overflow-hidden">
+        <div ref={containerRef} className="relative min-w-0 flex-1 overflow-hidden">
+          <WorkflowWithInnerContext
+            nodes={nodes}
+            edges={edges}
+            viewport={viewport}
+            onWorkflowDataUpdate={handleWorkflowDataUpdate}
+            hooksStore={hooksStore as unknown as Partial<HooksStoreShape>}
+            isCollaborationEnabled={isCollaborationEnabled}
+            cursors={filteredCursors}
+            myUserId={myUserId}
+            onlineUsers={onlineUsers}
           >
-            <div
-              role="status"
-              aria-live="polite"
-              className="flex items-center gap-1.5 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-3 py-2 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]"
-            >
-              <span
-                aria-hidden="true"
-                className="i-ri-loader-4-line size-4 animate-spin text-text-accent motion-reduce:animate-none"
-              />
-              <span>{t(($) => $['common.syncingData'], { ns: 'workflow' })}</span>
-            </div>
-          </div>
-        )}
-    </div>
+            <WorkflowChildren />
+          </WorkflowWithInnerContext>
+          {isCollaborationEnabled &&
+            (collaborationGraphState.appId !== appId || !collaborationGraphState.isReady) && (
+              <div
+                data-testid="collaboration-graph-loading"
+                className="absolute inset-0 z-50 flex cursor-wait items-center justify-center"
+              >
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="flex items-center gap-1.5 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-3 py-2 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="i-ri-loader-4-line size-4 animate-spin text-text-accent motion-reduce:animate-none"
+                  />
+                  <span>{t(($) => $['common.syncingData'], { ns: 'workflow' })}</span>
+                </div>
+              </div>
+            )}
+        </div>
+        {showDifyBuilderPanel && <DifyBuilderPanel />}
+      </div>
+    </DifyBuilderProvider>
   )
 }
 
