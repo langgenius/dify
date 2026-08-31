@@ -194,8 +194,7 @@ class TestRateLimitEnterExit:
             **{
                 "exists.return_value": False,
                 "setex.return_value": True,
-                "hlen.return_value": 2,
-                "hset.return_value": True,
+                "eval.return_value": 1,
             }
         )
 
@@ -203,7 +202,7 @@ class TestRateLimitEnterExit:
         request_id = rate_limit.enter()
 
         assert request_id != RateLimit._UNLIMITED_REQUEST_ID
-        redis_patch.hset.assert_called_once()
+        redis_patch.eval.assert_called_once()
 
     def test_should_generate_request_id_if_not_provided(self, redis_patch):
         """Test auto-generation of request ID."""
@@ -211,8 +210,7 @@ class TestRateLimitEnterExit:
             **{
                 "exists.return_value": False,
                 "setex.return_value": True,
-                "hlen.return_value": 0,
-                "hset.return_value": True,
+                "eval.return_value": 1,
             }
         )
 
@@ -227,8 +225,7 @@ class TestRateLimitEnterExit:
             **{
                 "exists.return_value": False,
                 "setex.return_value": True,
-                "hlen.return_value": 0,
-                "hset.return_value": True,
+                "eval.return_value": 1,
             }
         )
 
@@ -257,7 +254,7 @@ class TestRateLimitEnterExit:
             **{
                 "exists.return_value": False,
                 "setex.return_value": True,
-                "hlen.return_value": 5,  # At limit
+                "eval.return_value": 0,  # At limit: the atomic script refuses admission
             }
         )
 
@@ -275,8 +272,7 @@ class TestRateLimitEnterExit:
             **{
                 "exists.return_value": False,
                 "setex.return_value": True,
-                "hlen.return_value": 4,  # Under limit after exit
-                "hset.return_value": True,
+                "eval.return_value": 1,  # Under limit after exit
                 "hdel.return_value": 1,
             }
         )
@@ -296,7 +292,7 @@ class TestRateLimitEnterExit:
             **{
                 "exists.return_value": False,
                 "setex.return_value": True,
-                "hlen.return_value": 0,
+                "eval.return_value": 1,
             }
         )
 
@@ -484,25 +480,29 @@ class TestRateLimitConcurrency:
         assert len({id(inst) for inst in instances}) == 1  # All same instance
 
     def test_should_handle_concurrent_enter_requests(self, redis_patch):
-        """Test concurrent enter requests handling."""
-        # Setup mock to simulate realistic Redis behavior
-        request_count = 0
+        """Test concurrent enter requests handling.
 
-        def mock_hlen(key):
-            nonlocal request_count
-            return request_count
+        The mocked `eval` reproduces the atomicity the real Lua script gets for free from
+        Redis's single-threaded command execution: the check-and-increment happens under a
+        single lock, so the number of admitted requests can never exceed max_active_requests
+        even when many threads race to call enter() at once.
+        """
+        lock = threading.Lock()
+        hashes: dict[str, dict] = {}
 
-        def mock_hset(key, field, value):
-            nonlocal request_count
-            request_count += 1
-            return True
+        def mock_eval(script, numkeys, key, max_active_requests, field, value):
+            with lock:
+                bucket = hashes.setdefault(key, {})
+                if len(bucket) >= int(max_active_requests):
+                    return 0
+                bucket[field] = value
+                return 1
 
         redis_patch.configure_mock(
             **{
                 "exists.return_value": False,
                 "setex.return_value": True,
-                "hlen.side_effect": mock_hlen,
-                "hset.side_effect": mock_hset,
+                "eval.side_effect": mock_eval,
             }
         )
 
@@ -527,6 +527,8 @@ class TestRateLimitConcurrency:
         # Should have some successful requests and some quota exceeded
         assert len(results) + len(errors) == 5
         assert len(errors) > 0  # Some should be rejected
+        # The core regression check: admitted requests must never exceed the configured cap.
+        assert len(results) == 3
 
     @patch("time.time")
     def test_should_maintain_accurate_count_under_load(self, mock_time, redis_patch):
@@ -539,14 +541,20 @@ class TestRateLimitConcurrency:
 
         rate_limit = RateLimit("load_test_client", 10)
         active_requests = []
+        max_observed_concurrency = 0
+        observed_lock = threading.Lock()
 
         def enter_and_exit():
+            nonlocal max_observed_concurrency
             try:
                 request_id = rate_limit.enter()
-                active_requests.append(request_id)
+                with observed_lock:
+                    active_requests.append(request_id)
+                    max_observed_concurrency = max(max_observed_concurrency, len(active_requests))
                 time.sleep(0.01)  # Simulate some work
                 rate_limit.exit(request_id)
-                active_requests.remove(request_id)
+                with observed_lock:
+                    active_requests.remove(request_id)
             except AppInvokeQuotaExceededError:
                 pass  # Expected under load
 
@@ -559,25 +567,23 @@ class TestRateLimitConcurrency:
 
         # All requests should have been cleaned up
         assert len(active_requests) == 0
+        # The cap must hold at every point in time, not just at the end.
+        assert max_observed_concurrency <= 10
 
     def _create_mock_redis(self):
         """Create a thread-safe mock Redis for concurrency tests."""
         import threading
 
         lock = threading.Lock()
-        data = {}
         hashes = {}
 
-        def mock_hlen(key):
+        def mock_eval(script, numkeys, key, max_active_requests, field, value):
             with lock:
-                return len(hashes.get(key, {}))
-
-        def mock_hset(key, field, value):
-            with lock:
-                if key not in hashes:
-                    hashes[key] = {}
-                hashes[key][field] = str(value).encode("utf-8")
-                return True
+                bucket = hashes.setdefault(key, {})
+                if len(bucket) >= int(max_active_requests):
+                    return 0
+                bucket[field] = str(value).encode("utf-8")
+                return 1
 
         def mock_hdel(key, *fields):
             with lock:
@@ -593,7 +599,6 @@ class TestRateLimitConcurrency:
         return {
             "exists.return_value": False,
             "setex.return_value": True,
-            "hlen.side_effect": mock_hlen,
-            "hset.side_effect": mock_hset,
+            "eval.side_effect": mock_eval,
             "hdel.side_effect": mock_hdel,
         }
