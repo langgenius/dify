@@ -124,18 +124,18 @@
     display: none;
   }
 
+  /* Sit under the search row's padding-bottom so that gap is not stacked
+     on top of the tabs' own padding when this group pins. */
   :global([data-marketplace-standalone]) .catalogNavigationGroup {
     position: sticky;
     z-index: 40;
     display: block;
-    top: calc(
-      var(--home-header-height, 48px) + var(--home-search-height, 36px) +
-        var(--home-search-mobile-padding-bottom, 16px)
-    );
+    top: calc(var(--home-header-height, 48px) + var(--home-search-height, 36px));
     background-color: var(--color-background-default);
   }
 
   :global([data-marketplace-standalone]) .catalogTabsRegion {
+    padding-top: var(--home-search-mobile-padding-bottom, 16px);
     padding-right: 20px;
     padding-left: 20px;
   }

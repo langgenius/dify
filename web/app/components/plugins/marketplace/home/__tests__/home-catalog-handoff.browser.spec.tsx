@@ -216,8 +216,7 @@ describe('Marketplace catalog tab handoff', () => {
     ).toBeCloseTo(
       HOME_HEADER_HEIGHT_PX +
         HOME_SEARCH_HEIGHT_PX +
-        HOME_SEARCH_MOBILE_PADDING_BOTTOM_PX +
-        24 /* .catalogTabsRegion padding-top */,
+        HOME_SEARCH_MOBILE_PADDING_BOTTOM_PX /* .catalogTabsRegion padding-top, tucked under search padding */,
     )
 
     await page.viewport(880, 800)
