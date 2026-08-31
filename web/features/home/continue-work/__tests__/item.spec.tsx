@@ -91,19 +91,23 @@ describe('ContinueWorkItem', () => {
     mockFormatTimeFromNow.mockReturnValue('5 minutes ago')
   })
 
-  it('should render a link to the app configuration page when the app is editable', () => {
-    renderItem(createApp())
+  it.each(['chat', 'agent-chat', 'completion'] as const)(
+    'should keep visible metadata outside the %s app link label when the app is editable',
+    (mode) => {
+      renderItem(createApp({ mode }))
 
-    const link = screen.getByRole('link', { name: /Continue App/ })
+      const link = screen.getByRole('link', { name: /Continue App/ })
 
-    expect(link).toHaveAttribute('href', '/app/app-1/configuration')
-    expect(link).toHaveAccessibleDescription(/Alice.*5 minutes ago/)
-    expect(screen.getByText('Alice')).toBeInTheDocument()
-    expect(
-      screen.getByText('explore.continueWork.editedAt:{"time":"5 minutes ago"}'),
-    ).toBeInTheDocument()
-    expect(mockFormatTimeFromNow).toHaveBeenCalledWith(200000)
-  })
+      expect(link).toHaveAttribute('href', '/app/app-1/configuration')
+      expect(link).toHaveAccessibleDescription(/Alice.*5 minutes ago/)
+      expect(link).not.toContainElement(screen.getByText('Alice'))
+      expect(screen.getByText('Alice')).toBeInTheDocument()
+      expect(
+        screen.getByText('explore.continueWork.editedAt:{"time":"5 minutes ago"}'),
+      ).toBeInTheDocument()
+      expect(mockFormatTimeFromNow).toHaveBeenCalledWith(200000)
+    },
+  )
 
   it('should enable prefetch after pointer intent', async () => {
     const user = userEvent.setup()
@@ -164,10 +168,15 @@ describe('ContinueWorkItem', () => {
     )
   })
 
-  it('should fall back to access point when RBAC is disabled for an access-config-only app', () => {
-    renderItem(createApp({ permission_keys: [AppACLPermission.AccessConfig] }), {
-      rbac_enabled: false,
-    })
+  it('should fall back to access point when RBAC is disabled for an access-config app with access point permission', () => {
+    renderItem(
+      createApp({
+        permission_keys: [AppACLPermission.AccessConfig, AppACLPermission.AccessPoint],
+      }),
+      {
+        rbac_enabled: false,
+      },
+    )
 
     expect(screen.getByRole('link', { name: /Continue App/ })).toHaveAttribute(
       'href',

@@ -650,7 +650,7 @@ function render(
   return renderWithConsoleQuery(ui, { queryClient })
 }
 
-let appPermissionKeys: string[] = [AppACLPermission.Deploy]
+let appPermissionKeys: string[] = [AppACLPermission.AccessPoint, AppACLPermission.Deploy]
 let appDetailAvailable = true
 const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: [] as string[],
@@ -664,10 +664,8 @@ vi.mock('react-i18next', async () => {
     'common.operation.cancel': 'Cancel',
     'deployments.deployTab.confirmUndeploy': 'Undeploy',
     'deployments.studio.undeployConfirmDesc':
-      "The app will stop running in this environment, and all of its access points will become unavailable. The deployed version won't be deleted.",
+      'The app will stop running in this environment, and all of its access points will become unavailable.',
     'deployments.studio.undeployConfirmTitle': 'Undeploy {{versionName}} from {{envName}}',
-    'deployments.deployTab.undeployConfirmWarning':
-      'After confirmation, this environment will enter the undeploying state and actions will be temporarily disabled.',
     'deployments.status.RUNTIME_INSTANCE_STATUS_READY': 'Running',
     'deployments.studio.activity.deploySucceeded': 'Deploy {{target}} succeeded',
     'deployments.studio.activity.meta': '{{name}} · {{time}}',
@@ -746,7 +744,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 describe('AppDeploy', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    appPermissionKeys = [AppACLPermission.Deploy]
+    appPermissionKeys = [AppACLPermission.AccessPoint, AppACLPermission.Deploy]
     appDetailAvailable = true
     mockBuiltInEnvironment.appDetail.enable_api = false
     mockBuiltInEnvironment.appDetail.enable_site = true
@@ -815,6 +813,18 @@ describe('AppDeploy', () => {
         name: 'agentV2.agentDetail.access.serviceApi.title · agentV2.agentDetail.access.status.inService',
       }),
     ).toHaveAttribute('href', '/app/app-1/access-point?environment=canary&accessPoint=serviceApi')
+  })
+
+  it('keeps active access points non-navigable without access point permission', () => {
+    appPermissionKeys = [AppACLPermission.Deploy]
+
+    render(<AppDeploy />)
+
+    const canaryRow = within(screen.getByRole('row', { name: /Canary/ }))
+    const webAppLabel =
+      'agentV2.agentDetail.access.webApp.title · agentV2.agentDetail.access.status.inService'
+    expect(canaryRow.queryByRole('link', { name: webAppLabel })).not.toBeInTheDocument()
+    expect(canaryRow.getByRole('button', { name: webAppLabel })).toBeDisabled()
   })
 
   it('renders the built-in version, access points, and publisher from live app data', () => {
@@ -1770,12 +1780,7 @@ describe('AppDeploy', () => {
     })
     expect(
       within(dialog).getByText(
-        "The app will stop running in this environment, and all of its access points will become unavailable. The deployed version won't be deleted.",
-      ),
-    ).toBeInTheDocument()
-    expect(
-      within(dialog).getByText(
-        'After confirmation, this environment will enter the undeploying state and actions will be temporarily disabled.',
+        'The app will stop running in this environment, and all of its access points will become unavailable.',
       ),
     ).toBeInTheDocument()
     expect(onUndeploy).not.toHaveBeenCalled()

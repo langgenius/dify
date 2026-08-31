@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { changePasswordWithToken } from '@/service/common'
@@ -18,6 +19,14 @@ vi.mock('ahooks', () => ({
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
   useSearchParams: vi.fn(),
+}))
+
+vi.mock('@/next/link', () => ({
+  default: ({ children, replace, ...props }: React.ComponentProps<'a'> & { replace?: boolean }) => (
+    <a {...props} data-replace={replace || undefined}>
+      {children}
+    </a>
+  ),
 }))
 
 vi.mock('@/service/common', () => ({
@@ -58,7 +67,7 @@ const completePasswordChange = async () => {
   fireEvent.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))
 
   await waitFor(() => {
-    expect(screen.getByRole('button', { name: /login\.passwordChanged/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /login\.passwordChanged/ })).toBeInTheDocument()
   })
   expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.passwordChangedTip')
   expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('login.passwordChangedTip')
@@ -81,14 +90,44 @@ describe('Reset Password Set Password Page', () => {
     expect(mockUseDocumentTitle).toHaveBeenCalledWith('login.changePassword')
   })
 
+  it('supports password reveal and native form submission', async () => {
+    const user = userEvent.setup()
+    render(<ChangePasswordForm />)
+
+    const passwordInput = screen.getByLabelText('common.account.newPassword')
+    const confirmPasswordInput = screen.getByLabelText('common.account.confirmPassword')
+
+    expect(passwordInput).toHaveAttribute('autocomplete', 'new-password')
+    expect(confirmPasswordInput).toHaveAttribute('autocomplete', 'new-password')
+
+    await user.type(passwordInput, 'ValidPass123!')
+    await user.click(screen.getAllByRole('button', { name: 'login.showPassword' })[0]!)
+
+    expect(passwordInput).toHaveAttribute('type', 'text')
+    expect(screen.getByRole('button', { name: 'login.hidePassword' })).toBeInTheDocument()
+
+    await user.type(confirmPasswordInput, 'ValidPass123!{Enter}')
+
+    await waitFor(() => {
+      expect(mockChangePasswordWithToken).toHaveBeenCalledWith({
+        url: '/forgot-password/resets',
+        body: {
+          token: 'reset-token',
+          new_password: 'ValidPass123!',
+          password_confirm: 'ValidPass123!',
+        },
+      })
+    })
+  })
+
   describe('Post-reset navigation', () => {
     it('should preserve redirect_url when the user returns to sign in manually', async () => {
       setSearchParams({ token: 'reset-token', redirect_url: redirectUrl })
       await completePasswordChange()
 
-      fireEvent.click(screen.getByRole('button', { name: /login\.passwordChanged/ }))
-
-      expect(mockReplace).toHaveBeenCalledWith(encodedSigninUrl)
+      const link = screen.getByRole('link', { name: /login\.passwordChanged/ })
+      expect(link).toHaveAttribute('href', encodedSigninUrl)
+      expect(link).toHaveAttribute('data-replace', 'true')
     })
 
     it('should preserve redirect_url when the countdown returns to sign in automatically', async () => {
@@ -109,17 +148,19 @@ describe('Reset Password Set Password Page', () => {
       })
       await completePasswordChange()
 
-      fireEvent.click(screen.getByRole('button', { name: /login\.passwordChanged/ }))
-
-      expect(mockReplace).toHaveBeenCalledWith('/activate?token=invite-token')
+      expect(screen.getByRole('link', { name: /login\.passwordChanged/ })).toHaveAttribute(
+        'href',
+        '/activate?token=invite-token',
+      )
     })
 
     it('should return to plain sign in when no redirect target is present', async () => {
       await completePasswordChange()
 
-      fireEvent.click(screen.getByRole('button', { name: /login\.passwordChanged/ }))
-
-      expect(mockReplace).toHaveBeenCalledWith('/signin')
+      expect(screen.getByRole('link', { name: /login\.passwordChanged/ })).toHaveAttribute(
+        'href',
+        '/signin',
+      )
     })
   })
 })

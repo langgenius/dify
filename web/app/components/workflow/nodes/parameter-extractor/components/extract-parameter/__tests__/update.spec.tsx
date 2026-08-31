@@ -45,9 +45,9 @@ describe('parameter-extractor/extract-parameter/update', () => {
       return nextDialogs
     })
     const dialog = dialogs.at(-1)!
-    const nameInput = within(dialog).getByPlaceholderText(
-      'workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder',
-    )
+    const nameInput = within(dialog).getByRole('textbox', {
+      name: 'workflow.nodes.parameterExtractor.addExtractParameterContent.name',
+    })
     const descriptionInput = within(dialog).getByPlaceholderText(
       'workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder',
     )
@@ -98,9 +98,9 @@ describe('parameter-extractor/extract-parameter/update', () => {
     const dialog = dialogs.at(-1)!
 
     fireEvent.change(
-      within(dialog).getByPlaceholderText(
-        'workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder',
-      ),
+      within(dialog).getByRole('textbox', {
+        name: 'workflow.nodes.parameterExtractor.addExtractParameterContent.name',
+      }),
       {
         target: { value: '1bad' },
       },
@@ -109,9 +109,9 @@ describe('parameter-extractor/extract-parameter/update', () => {
     expect(handleSave).not.toHaveBeenCalled()
     expect(mockToast.error).toHaveBeenCalled()
     expect(
-      within(dialog).getByPlaceholderText(
-        'workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder',
-      ),
+      within(dialog).getByRole('textbox', {
+        name: 'workflow.nodes.parameterExtractor.addExtractParameterContent.name',
+      }),
     ).toHaveValue('')
   })
 

@@ -102,6 +102,9 @@ const currentWorkspaceValue: GetWorkspacesCurrentSummaryResponse = {
   role: 'owner',
   credits: 7500,
 }
+const workspaceMenuAccessibleName = new RegExp(
+  `${currentWorkspaceValue.name}.*common\\.mainNav\\.workspace\\.openMenu`,
+)
 
 const mockSetShowPricingModal = vi.fn()
 const mockSetSettingsDestination = vi.fn()
@@ -185,12 +188,26 @@ describe('WorkspaceCard', () => {
     } as unknown as ModalContextState)
   })
 
+  it('includes the visible workspace name in the menu trigger accessible name', () => {
+    renderWorkspaceCard()
+
+    expect(screen.getByRole('button', { name: workspaceMenuAccessibleName })).toBeInTheDocument()
+  })
+
+  it('includes the visible workspace plan in the menu trigger accessible name', () => {
+    renderWorkspaceCard({ systemFeatures: { deployment_edition: 'CLOUD' } })
+
+    expect(
+      screen.getByRole('button', {
+        name: /Solar Studio.*sandbox.*common\.mainNav\.workspace\.openMenu/i,
+      }),
+    ).toBeInTheDocument()
+  })
+
   it('hides cloud-only credits and upgrade actions outside cloud edition', () => {
     renderWorkspaceCard()
 
-    expect(
-      screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: workspaceMenuAccessibleName })).toBeInTheDocument()
     expect(
       screen.queryByRole('link', { name: /common\.mainNav\.workspace\.credits/ }),
     ).not.toBeInTheDocument()
@@ -200,9 +217,12 @@ describe('WorkspaceCard', () => {
   it('links workspace credits to model provider settings in cloud edition', () => {
     renderWorkspaceCard({ systemFeatures: { deployment_edition: 'CLOUD' } })
 
-    expect(
-      screen.getByRole('link', { name: /common\.mainNav\.workspace\.credits/ }),
-    ).toHaveAttribute('href', '/integrations/model-provider')
+    const creditsLink = screen.getByRole('link', {
+      name: '7,500 common.mainNav.workspace.creditsUnit',
+    })
+
+    expect(creditsLink).toHaveAttribute('href', '/integrations/model-provider')
+    expect(creditsLink).toHaveTextContent('7,500 common.mainNav.workspace.creditsUnit')
   })
 
   it('renders unlimited credits from the summary contract', () => {
@@ -229,7 +249,7 @@ describe('WorkspaceCard', () => {
     renderWorkspaceCard()
 
     expect(
-      screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' }),
+      screen.queryByRole('button', { name: workspaceMenuAccessibleName }),
     ).not.toBeInTheDocument()
     expect(screen.queryByText('Evan Workspace')).not.toBeInTheDocument()
   })
@@ -238,13 +258,11 @@ describe('WorkspaceCard', () => {
     const user = userEvent.setup()
     renderWorkspaceCard({ seedWorkspaces: false })
 
-    expect(
-      screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: workspaceMenuAccessibleName })).toBeInTheDocument()
     expect(screen.getByText('Solar Studio')).toBeInTheDocument()
     expect(mockFetchWorkspaces).not.toHaveBeenCalled()
 
-    await user.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+    await user.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
 
     expect(await screen.findByRole('dialog', { name: 'Solar Studio' })).toBeInTheDocument()
     await waitFor(() => expect(mockFetchWorkspaces).toHaveBeenCalledOnce())
@@ -255,7 +273,7 @@ describe('WorkspaceCard', () => {
     const user = userEvent.setup()
     renderWorkspaceCard({ seedWorkspaces: false })
 
-    const trigger = screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' })
+    const trigger = screen.getByRole('button', { name: workspaceMenuAccessibleName })
     await user.hover(trigger)
 
     await waitFor(() => expect(mockFetchWorkspaces).toHaveBeenCalledOnce())
@@ -273,7 +291,7 @@ describe('WorkspaceCard', () => {
 
     await user.tab()
 
-    expect(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' })).toHaveFocus()
+    expect(screen.getByRole('button', { name: workspaceMenuAccessibleName })).toHaveFocus()
     await waitFor(() => expect(mockFetchWorkspaces).toHaveBeenCalledOnce())
     expect(screen.queryByRole('dialog', { name: 'Solar Studio' })).not.toBeInTheDocument()
   })
@@ -283,7 +301,7 @@ describe('WorkspaceCard', () => {
     mockFetchWorkspaces.mockReturnValue(new Promise(() => {}))
     renderWorkspaceCard({ seedWorkspaces: false })
 
-    await user.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+    await user.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
 
     const panel = await screen.findByRole('dialog', { name: 'Solar Studio' })
     expect(within(panel).getByText('common.userProfile.workspace')).toBeInTheDocument()
@@ -346,7 +364,7 @@ describe('WorkspaceCard', () => {
     renderWorkspaceCard()
 
     const workspaceTrigger = screen.getByRole('button', {
-      name: 'common.mainNav.workspace.openMenu',
+      name: workspaceMenuAccessibleName,
     })
     expect(workspaceTrigger).not.toHaveAttribute('data-popup-open')
 
@@ -378,7 +396,7 @@ describe('WorkspaceCard', () => {
   it('filters workspace switcher options from the search action', async () => {
     renderWorkspaceCard()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+    fireEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
     fireEvent.click(await screen.findByRole('button', { name: 'common.operation.search' }))
 
     expect(screen.getByText('common.userProfile.workspace')).toBeInTheDocument()
@@ -430,7 +448,7 @@ describe('WorkspaceCard', () => {
     ]
     renderWorkspaceCard()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+    fireEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
 
     const panel = await screen.findByRole('dialog', { name: 'Solar Studio' })
     const defaultWorkspaceOptions = within(panel)
@@ -473,7 +491,7 @@ describe('WorkspaceCard', () => {
   it('opens account settings from workspace menu actions', async () => {
     renderWorkspaceCard()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+    fireEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
     fireEvent.click(
       await screen.findByRole('button', { name: 'common.mainNav.workspace.settings' }),
     )
@@ -489,7 +507,7 @@ describe('WorkspaceCard', () => {
 
     renderWorkspaceCard()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+    fireEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
     fireEvent.click(
       await screen.findByRole('button', { name: 'common.mainNav.workspace.settings' }),
     )
@@ -501,7 +519,7 @@ describe('WorkspaceCard', () => {
   it('switches workspace from the workspace switcher item', async () => {
     renderWorkspaceCard()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+    fireEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
     fireEvent.click(await screen.findByRole('button', { name: 'Evan Workspace' }))
 
     await waitFor(() =>
@@ -518,7 +536,7 @@ describe('WorkspaceCard', () => {
 
     renderWorkspaceCard()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+    fireEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
 
     const panel = await screen.findByRole('dialog', { name: 'Solar Studio' })
     expect(panel).toBeInTheDocument()
@@ -539,7 +557,7 @@ describe('WorkspaceCard', () => {
 
     renderWorkspaceCard()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+    fireEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
 
     const panel = await screen.findByRole('dialog', { name: 'Solar Studio' })
     expect(
@@ -555,7 +573,7 @@ describe('WorkspaceCard', () => {
 
     renderWorkspaceCard()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+    fireEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
 
     const panel = await screen.findByRole('dialog', { name: 'Solar Studio' })
     expect(

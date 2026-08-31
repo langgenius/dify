@@ -319,3 +319,106 @@ class TestErrorIsolation:
 
         assert any("foo" in s for s in seen)
         assert any("bar" in s for s in seen)
+
+
+def _make_declaration(plugin_id: str, latest_version: str):
+    """Minimal stand-in for a MarketplacePluginDeclaration returned by the batch API."""
+    org, name = plugin_id.split("/", 1)
+    return SimpleNamespace(
+        plugin_id=plugin_id,
+        org=org,
+        name=name,
+        latest_version=latest_version,
+        latest_package_identifier=f"{plugin_id}:{latest_version}@cafe1234",
+    )
+
+
+class TestManifestCacheFallback:
+    """
+    The global snapshot is a best-effort optimisation. When it does not cover a plugin,
+    the check must fall back to the batch API instead of silently skipping the upgrade.
+    """
+
+    def _fetch(self, plugin_ids, *, cached, declarations=None, batch_error=None):
+        from tasks.process_tenant_plugin_autoupgrade_check_task import (
+            marketplace_batch_fetch_plugin_manifests,
+        )
+
+        redis_mock = MagicMock()
+        redis_mock.get.side_effect = lambda key: cached.get(key)
+
+        batch_mock = MagicMock()
+        if batch_error is not None:
+            batch_mock.side_effect = batch_error
+        else:
+            batch_mock.return_value = declarations or []
+
+        with (
+            patch(f"{MODULE}.redis_client", redis_mock),
+            patch(f"{MODULE}.batch_fetch_plugin_manifests", batch_mock),
+        ):
+            result = marketplace_batch_fetch_plugin_manifests(plugin_ids)
+
+        return result, batch_mock, redis_mock
+
+    def test_cache_hits_do_not_touch_the_marketplace(self):
+        """The whole point of the snapshot: a warm cache must not generate any request."""
+        key = "plugin_autoupgrade_check_task:cached_plugin_snapshot:langgenius/foo"
+        cached = {key: _make_manifest("langgenius/foo", "1.1.0").model_dump_json()}
+
+        result, batch_mock, _ = self._fetch(["langgenius/foo"], cached=cached)
+
+        assert [r.latest_version for r in result] == ["1.1.0"]
+        batch_mock.assert_not_called()
+
+    def test_empty_snapshot_falls_back_to_batch_api(self):
+        """Regression: an empty global snapshot used to skip every plugin silently."""
+        result, batch_mock, _ = self._fetch(
+            ["langgenius/foo"],
+            cached={},
+            declarations=[_make_declaration("langgenius/foo", "1.2.0")],
+        )
+
+        batch_mock.assert_called_once_with(["langgenius/foo"])
+        assert [r.plugin_id for r in result] == ["langgenius/foo"]
+        assert [r.latest_version for r in result] == ["1.2.0"]
+
+    def test_fallback_results_are_cached(self):
+        _, _, redis_mock = self._fetch(
+            ["langgenius/foo"],
+            cached={},
+            declarations=[_make_declaration("langgenius/foo", "1.2.0")],
+        )
+
+        cached_keys = [call.args[0] for call in redis_mock.setex.call_args_list]
+        assert "plugin_autoupgrade_check_task:cached_plugin_snapshot:langgenius/foo" in cached_keys
+
+    def test_plugins_unknown_to_the_marketplace_are_negatively_cached(self):
+        """Avoid re-asking about a plugin the marketplace does not serve on every cycle."""
+        _, _, redis_mock = self._fetch(["langgenius/ghost"], cached={}, declarations=[])
+
+        redis_mock.setex.assert_called_once()
+        key, _ttl, value = redis_mock.setex.call_args.args
+        assert key == "plugin_autoupgrade_check_task:cached_plugin_snapshot:langgenius/ghost"
+        assert value == "null"
+
+    def test_negatively_cached_plugins_are_not_refetched(self):
+        key = "plugin_autoupgrade_check_task:cached_plugin_snapshot:langgenius/ghost"
+
+        result, batch_mock, _ = self._fetch(["langgenius/ghost"], cached={key: "null"})
+
+        assert result == []
+        batch_mock.assert_not_called()
+
+    def test_marketplace_failure_keeps_cached_results(self):
+        """A failing batch call must not lose the plugins the snapshot did cover."""
+        key = "plugin_autoupgrade_check_task:cached_plugin_snapshot:langgenius/foo"
+        cached = {key: _make_manifest("langgenius/foo", "1.1.0").model_dump_json()}
+
+        result, _, _ = self._fetch(
+            ["langgenius/foo", "langgenius/bar"],
+            cached=cached,
+            batch_error=RuntimeError("marketplace down"),
+        )
+
+        assert [r.plugin_id for r in result] == ["langgenius/foo"]

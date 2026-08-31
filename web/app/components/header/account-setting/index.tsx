@@ -1,7 +1,6 @@
 'use client'
 import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
 import { cn } from '@langgenius/dify-ui/cn'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -171,18 +170,7 @@ export default function AccountSetting({
   ]
 
   return (
-    <MenuDialog show onClose={onCancelAction}>
-      <div className="fixed top-6 right-6 z-20 flex shrink-0 flex-col items-center">
-        <IconButton
-          variant="tertiary"
-          size="xl"
-          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-          onClick={onCancelAction}
-        >
-          <span aria-hidden className="i-ri-close-line size-5" />
-        </IconButton>
-        <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
-      </div>
+    <MenuDialog title={t(($) => $['settings.settings'], { ns: 'common' })} onClose={onCancelAction}>
       <div className="flex h-screen w-full max-w-full pl-0 sm:pl-58">
         <div className="flex w-11 shrink-0 flex-col pr-6 pl-4 sm:w-56">
           <div className="mt-6 mb-8 flex h-9.5 items-center px-3 title-2xl-semi-bold whitespace-nowrap text-text-primary">

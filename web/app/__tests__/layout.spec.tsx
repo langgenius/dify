@@ -4,16 +4,21 @@ let queryClient: QueryClient
 
 const mocks = vi.hoisted(() => ({
   getSystemFeatures: vi.fn(),
-  requestHeaders: new Headers(),
+  headers: vi.fn(async () => new Headers()),
 }))
 
 vi.mock('@/features/system-features/server', () => ({
   getSystemFeaturesQueryClient: () => queryClient,
-  systemFeaturesServerQueryOptions: () => ({
-    queryKey: ['console', 'system-features'],
-    queryFn: mocks.getSystemFeatures,
-    retry: false,
-  }),
+  prefetchSystemFeatures: async () => {
+    const queryOptions = {
+      queryKey: ['console', 'system-features'],
+      queryFn: mocks.getSystemFeatures,
+      retry: false,
+    }
+    if (!queryClient.getQueryState(queryOptions.queryKey))
+      await queryClient.prefetchQuery(queryOptions)
+    return queryClient.getQueryData(queryOptions.queryKey)
+  },
 }))
 
 vi.mock('@/env', async (importOriginal) => {
@@ -30,12 +35,13 @@ vi.mock('@/i18n-config/server', () => ({
 }))
 
 vi.mock('@/next/headers', () => ({
-  headers: async () => mocks.requestHeaders,
+  headers: mocks.headers,
 }))
 
 describe('Root layout System Features bootstrap', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.headers.mockResolvedValue(new Headers())
     queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   })
 
@@ -64,6 +70,49 @@ describe('Root layout System Features bootstrap', () => {
         enabled: true,
       },
       deployment_edition: 'CLOUD',
+    })
+  })
+
+  it('points the icons at the branding favicon when one is configured', async () => {
+    mocks.getSystemFeatures.mockResolvedValue({
+      branding: {
+        application_title: 'Acme AI',
+        enabled: true,
+        favicon: 'https://cdn.example.com/brand.ico',
+      },
+      deployment_edition: 'CLOUD',
+    })
+    const { generateMetadata } = await import('../layout')
+
+    await expect(generateMetadata()).resolves.toMatchObject({
+      icons: {
+        icon: 'https://cdn.example.com/brand.ico',
+        apple: 'https://cdn.example.com/brand.ico',
+      },
+    })
+  })
+
+  it('falls back to the static favicon without branding', async () => {
+    mocks.getSystemFeatures.mockResolvedValue({
+      branding: { enabled: false },
+      deployment_edition: 'CLOUD',
+    })
+    const { generateMetadata } = await import('../layout')
+
+    await expect(generateMetadata()).resolves.toMatchObject({
+      icons: { icon: '/favicon.ico' },
+    })
+  })
+
+  it('falls back to the static favicon when branding is enabled without one', async () => {
+    mocks.getSystemFeatures.mockResolvedValue({
+      branding: { application_title: 'Acme AI', enabled: true, favicon: '' },
+      deployment_edition: 'CLOUD',
+    })
+    const { generateMetadata } = await import('../layout')
+
+    await expect(generateMetadata()).resolves.toMatchObject({
+      icons: { icon: '/favicon.ico' },
     })
   })
 

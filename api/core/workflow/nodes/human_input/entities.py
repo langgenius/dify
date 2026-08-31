@@ -59,13 +59,24 @@ class StringSource(BaseModel):
 
 
 class StringListSource(BaseModel):
-    type: ValueSourceType
+    type: ValueSourceType = Field(
+        description=(
+            "Origin of the options. `constant` means `value` lists the options literally; `variable` means "
+            "`selector` points to an `array[string]` workflow variable that provides them."
+        )
+    )
 
     # The selector of default variable, used when `type` is `VARIABLE`.
-    selector: Sequence[str] = Field(default_factory=tuple)
+    selector: Sequence[str] = Field(
+        default_factory=tuple,
+        description="Variable reference path when `type` is `variable`.",
+    )
 
     # The value of the default, used when `type` is `CONSTANT`.
-    value: list[str] = Field(default_factory=list)
+    value: list[str] = Field(
+        default_factory=list,
+        description="Literal option list when `type` is `constant`.",
+    )
 
 
 class BaseInputConfig(BaseModel):
@@ -95,7 +106,13 @@ class ParagraphInputConfig(BaseInputConfig):
 
     # NOTE: This class is renamed from FormInput.
     type: Literal[FormInputType.PARAGRAPH] = FormInputType.PARAGRAPH
-    default: StringSource | None = None
+    default: StringSource | None = Field(
+        default=None,
+        description=(
+            "Raw default-value configuration for the paragraph input. Runtime-resolved values are exposed in the "
+            "surrounding `resolved_default_values` mapping."
+        ),
+    )
 
     @override
     def extract_variable_selectors(self) -> Sequence[Sequence[str]]:
@@ -120,7 +137,9 @@ class ParagraphInputConfig(BaseInputConfig):
 
 class SelectInputConfig(BaseInputConfig):
     type: Literal[FormInputType.SELECT] = FormInputType.SELECT
-    option_source: StringListSource
+    option_source: StringListSource = Field(
+        description="Source of options for `select` inputs. Present only when `type` is `select`."
+    )
 
     @override
     def extract_variable_selectors(self) -> Sequence[Sequence[NodeType]]:
@@ -210,7 +229,7 @@ class UserActionConfig(BaseModel):
     # It also serves as the identifiers of output handle.
     #
     # The id must be a valid identifier (satisfy the _IDENTIFIER_PATTERN above.)
-    id: str = Field(max_length=20)
+    id: str = Field(max_length=20, pattern=_IDENTIFIER_PATTERN.pattern)
     title: str = Field(max_length=100)
     button_style: ButtonStyle = ButtonStyle.DEFAULT
 

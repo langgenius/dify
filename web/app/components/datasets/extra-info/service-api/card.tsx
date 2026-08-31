@@ -1,19 +1,19 @@
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { PopoverClose } from '@langgenius/dify-ui/popover'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import CopyFeedback from '@/app/components/base/copy-feedback'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import Link from '@/next/link'
 
 type CardProps = {
   apiBaseUrl: string
-  onOpenSecretKeyModal: () => void
-  canManageSecretKey?: boolean
+  canManageApiKey: boolean
+  onOpenApiKeyModal: () => void
 }
 
-const Card = ({ apiBaseUrl, onOpenSecretKeyModal, canManageSecretKey = false }: CardProps) => {
+export function ServiceApiCard({ apiBaseUrl, canManageApiKey, onOpenApiKeyModal }: CardProps) {
   const { t } = useTranslation()
 
   const apiReferenceUrl = useDatasetApiAccessUrl()
@@ -24,7 +24,10 @@ const Card = ({ apiBaseUrl, onOpenSecretKeyModal, canManageSecretKey = false }: 
         <div className="flex items-center gap-x-3">
           <div className="flex grow items-center gap-x-2">
             <div className="flex size-6 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 shadow-md shadow-shadow-shadow-5">
-              <span className="i-custom-vender-knowledge-api-aggregate size-4 text-text-primary-on-surface" />
+              <span
+                aria-hidden
+                className="i-custom-vender-knowledge-api-aggregate size-4 text-text-primary-on-surface"
+              />
             </div>
             <div className="grow truncate system-sm-semibold text-text-secondary">
               {t(($) => $['serviceApi.card.title'], { ns: 'dataset' })}
@@ -49,7 +52,6 @@ const Card = ({ apiBaseUrl, onOpenSecretKeyModal, canManageSecretKey = false }: 
           </div>
         </div>
       </div>
-      {/* Actions */}
       <div className="flex gap-x-1 border-t-[0.5px] border-divider-subtle p-4">
         <PopoverClose
           render={
@@ -57,27 +59,28 @@ const Card = ({ apiBaseUrl, onOpenSecretKeyModal, canManageSecretKey = false }: 
               variant="ghost"
               size="small"
               className="text-text-tertiary"
-              disabled={!canManageSecretKey}
-              onClick={onOpenSecretKeyModal}
+              disabled={!canManageApiKey}
+              onClick={onOpenApiKeyModal}
             >
-              <span className="i-ri-key-2-line size-3.5 shrink-0" />
+              <span aria-hidden className="i-ri-key-2-line size-3.5 shrink-0" />
               <span className="system-xs-medium">
                 {t(($) => $['serviceApi.card.apiKey'], { ns: 'dataset' })}
               </span>
             </Button>
           }
         />
-        <Link href={apiReferenceUrl} target="_blank" rel="noopener noreferrer">
-          <Button variant="ghost" size="small" className="text-text-tertiary">
-            <span className="i-ri-book-open-line size-3.5 shrink-0" />
-            <span className="system-xs-medium">
-              {t(($) => $['serviceApi.card.apiReference'], { ns: 'dataset' })}
-            </span>
-          </Button>
+        <Link
+          href={apiReferenceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(buttonVariants({ variant: 'ghost', size: 'small' }), 'text-text-tertiary')}
+        >
+          <span aria-hidden className="i-ri-book-open-line size-3.5 shrink-0" />
+          <span className="system-xs-medium">
+            {t(($) => $['serviceApi.card.apiReference'], { ns: 'dataset' })}
+          </span>
         </Link>
       </div>
     </div>
   )
 }
-
-export default React.memo(Card)

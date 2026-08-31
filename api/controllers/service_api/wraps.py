@@ -65,6 +65,12 @@ DATASET_TOKEN_AUTH_RESPONSES = {
     401: "Unauthorized - invalid API token",
     403: "Forbidden - dataset API access or workspace access denied",
 }
+VECTOR_SPACE_UNAVAILABLE_RESPONSE = {
+    503: (
+        "`service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox "
+        "plan only; retry the request later."
+    ),
+}
 
 
 def _document_app_token_contract(view_func: Callable[..., object], fetch_user_arg: FetchUserArg | None) -> None:
@@ -183,6 +189,7 @@ def cloud_edition_billing_resource_check[**P, R](
     api_token_type: str,
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:
     def interceptor(view: Callable[P, R]):
+        @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
             if resource == "vector_space":
@@ -218,6 +225,11 @@ def cloud_edition_billing_resource_check[**P, R](
 
             return view(*args, **kwargs)
 
+        if resource == "vector_space":
+            cast(_RestxDocumentedView, decorated).__apidoc__ = cast(
+                dict[str, object],
+                merge(decorated.__dict__.get("__apidoc__", {}), {"responses": VECTOR_SPACE_UNAVAILABLE_RESPONSE}),
+            )
         return decorated
 
     return interceptor

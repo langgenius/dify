@@ -23,15 +23,14 @@ from .agent import tools as _agent_tools
 from .app import dsl as _app_dsl
 from .knowledge import retrieval as _knowledge_retrieval
 from .plugin import agent_config as _agent_config
-from .plugin import agent_drive as _agent_drive
 from .plugin import plugin as _plugin
+from .plugin import skills as _skills
 from .workspace import workspace as _workspace
 
 api.add_namespace(inner_api_ns)
 
 __all__ = [
     "_agent_config",
-    "_agent_drive",
     "_agent_files",
     "_agent_llm",
     "_agent_tools",
@@ -40,6 +39,7 @@ __all__ = [
     "_mail",
     "_plugin",
     "_runtime_credentials",
+    "_skills",
     "_workspace",
     "api",
     "bp",

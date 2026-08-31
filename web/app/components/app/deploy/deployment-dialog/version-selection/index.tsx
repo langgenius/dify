@@ -1,11 +1,11 @@
 'use client'
-
 import type { ReactNode } from 'react'
 import type { DeploymentVersion } from '../../version'
 import type { DeploymentDialogRequest } from '../types'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { DialogCloseButton, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { DialogClose, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -159,14 +159,13 @@ function VersionList({
             {t(($) => $['studio.accessPoint.noPublishedTitle'])}
           </p>
           {publishHref && (
-            <Button
-              size="medium"
-              render={<Link href={publishHref} />}
-              className="flex items-center gap-1"
+            <Link
+              href={publishHref}
+              className={cn(buttonVariants({ size: 'medium' }), 'flex items-center gap-1')}
             >
               {t(($) => $['studio.accessPoint.goToPublish'])}
               <span aria-hidden className="i-ri-arrow-right-line size-4" />
-            </Button>
+            </Link>
           )}
         </div>
       )}
@@ -210,10 +209,17 @@ export function VersionSelection({
 
   return (
     <>
-      <DialogCloseButton
-        type="button"
-        aria-label={tCommon(($) => $['operation.close'])}
-        className="top-5 right-5 size-8 rounded-lg"
+      <DialogClose
+        render={
+          <IconButton
+            aria-label={tCommon(($) => $['operation.close'])}
+            size="lg"
+            className="absolute top-5 right-5"
+            type="button"
+          >
+            <span aria-hidden className="i-ri-close-line size-4" />
+          </IconButton>
+        }
       />
       <header className="shrink-0 px-6 pt-6 pr-14 pb-3">
         <DialogTitle className="title-2xl-semi-bold text-text-primary">{title}</DialogTitle>

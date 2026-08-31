@@ -1,4 +1,5 @@
 import datetime
+from collections.abc import Callable
 from typing import Any
 
 import pytest
@@ -8,6 +9,14 @@ from repositories.api_workflow_run_repository import WorkflowRunCleanupRef
 from services.billing_service import SubscriptionPlan
 from services.retention.workflow_run import clear_free_plan_expired_workflow_run_logs as cleanup_module
 from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
+
+
+@pytest.fixture(autouse=True)
+def _cleanup_config(config_overrides: Callable[..., None]) -> None:
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+        SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD=0,
+    )
 
 
 def make_ref(run_id: str, tenant_id: str, created_at: datetime.datetime) -> WorkflowRunCleanupRef:
@@ -110,15 +119,9 @@ def create_cleanup(
     monkeypatch: pytest.MonkeyPatch,
     repo: FakeRepo,
     *,
-    grace_period_days: int = 0,
     whitelist: set[str] | None = None,
     **kwargs: Any,
 ) -> WorkflowRunCleanup:
-    monkeypatch.setattr(
-        cleanup_module.dify_config,
-        "SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD",
-        grace_period_days,
-    )
     monkeypatch.setattr(
         cleanup_module.WorkflowRunCleanup,
         "_get_cleanup_whitelist",
@@ -129,8 +132,6 @@ def create_cleanup(
 
 def test_filter_free_tenants_outside_cloud_edition(monkeypatch: pytest.MonkeyPatch) -> None:
     cleanup = create_cleanup(monkeypatch, repo=FakeRepo([]), days=30, batch_size=10)
-
-    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
 
     def fail_bulk(_: list[str]) -> dict[str, SubscriptionPlan]:
         raise RuntimeError("should not call")
@@ -143,10 +144,10 @@ def test_filter_free_tenants_outside_cloud_edition(monkeypatch: pytest.MonkeyPat
     assert free == tenants
 
 
-def test_filter_free_tenants_bulk_mixed(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_filter_free_tenants_bulk_mixed(monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     cleanup = create_cleanup(monkeypatch, repo=FakeRepo([]), days=30, batch_size=10)
 
-    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         cleanup_module.BillingService,
         "get_plan_bulk_with_cache",
@@ -163,10 +164,15 @@ def test_filter_free_tenants_bulk_mixed(monkeypatch: pytest.MonkeyPatch) -> None
     assert free == {"t_free", "t_missing"}
 
 
-def test_filter_free_tenants_respects_grace_period(monkeypatch: pytest.MonkeyPatch) -> None:
-    cleanup = create_cleanup(monkeypatch, repo=FakeRepo([]), days=30, batch_size=10, grace_period_days=45)
+def test_filter_free_tenants_respects_grace_period(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD=45,
+    )
+    cleanup = create_cleanup(monkeypatch, repo=FakeRepo([]), days=30, batch_size=10)
 
-    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     now = datetime.datetime.now(datetime.UTC)
     within_grace_ts = int((now - datetime.timedelta(days=10)).timestamp())
     outside_grace_ts = int((now - datetime.timedelta(days=90)).timestamp())
@@ -184,7 +190,10 @@ def test_filter_free_tenants_respects_grace_period(monkeypatch: pytest.MonkeyPat
     assert free == {"long_sandbox"}
 
 
-def test_filter_free_tenants_skips_cleanup_whitelist(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_filter_free_tenants_skips_cleanup_whitelist(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     cleanup = create_cleanup(
         monkeypatch,
         repo=FakeRepo([]),
@@ -193,7 +202,6 @@ def test_filter_free_tenants_skips_cleanup_whitelist(monkeypatch: pytest.MonkeyP
         whitelist={"tenant_whitelist"},
     )
 
-    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         cleanup_module.BillingService,
         "get_plan_bulk_with_cache",
@@ -211,10 +219,12 @@ def test_filter_free_tenants_skips_cleanup_whitelist(monkeypatch: pytest.MonkeyP
     assert free == {"tenant_regular"}
 
 
-def test_filter_free_tenants_bulk_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_filter_free_tenants_bulk_failure(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     cleanup = create_cleanup(monkeypatch, repo=FakeRepo([]), days=30, batch_size=10)
 
-    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         cleanup_module.BillingService,
         "get_plan_bulk_with_cache",
@@ -226,7 +236,8 @@ def test_filter_free_tenants_bulk_failure(monkeypatch: pytest.MonkeyPatch) -> No
     assert free == set()
 
 
-def test_run_deletes_only_free_tenants(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_run_deletes_only_free_tenants(monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     cutoff = datetime.datetime.now()
     repo = FakeRepo(
         batches=[
@@ -238,7 +249,6 @@ def test_run_deletes_only_free_tenants(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
 
-    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         cleanup_module.BillingService,
         "get_plan_bulk_with_cache",
@@ -256,7 +266,10 @@ def test_run_deletes_only_free_tenants(monkeypatch: pytest.MonkeyPatch) -> None:
     assert repo.cleanup_ref_calls[1]["tenant_ids"] == ["t_free"]
 
 
-def test_run_filters_candidate_tenants_before_target_query(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_run_filters_candidate_tenants_before_target_query(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     cutoff = datetime.datetime.now()
     repo = FakeRepo(
         batches=[
@@ -268,7 +281,6 @@ def test_run_filters_candidate_tenants_before_target_query(monkeypatch: pytest.M
     )
     cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
 
-    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     billing_calls: list[list[str]] = []
 
     def fake_bulk(tenant_ids: list[str]) -> dict[str, SubscriptionPlan]:
@@ -287,12 +299,12 @@ def test_run_filters_candidate_tenants_before_target_query(monkeypatch: pytest.M
     assert repo.deleted == [["run-free"]]
 
 
-def test_run_skips_when_no_free_tenants(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_run_skips_when_no_free_tenants(monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     cutoff = datetime.datetime.now()
     repo = FakeRepo(batches=[[make_ref("run-paid", "t_paid", cutoff)]])
     cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
 
-    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         cleanup_module.BillingService,
         "get_plan_bulk_with_cache",
@@ -305,12 +317,14 @@ def test_run_skips_when_no_free_tenants(monkeypatch: pytest.MonkeyPatch) -> None
     assert len(repo.cleanup_ref_calls) == 2
 
 
-def test_run_paid_only_records_skipped_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_run_paid_only_records_skipped_metrics(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     cutoff = datetime.datetime.now()
     repo = FakeRepo(batches=[[make_ref("run-paid", "t_paid", cutoff)]])
     cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
 
-    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         cleanup_module.BillingService,
         "get_plan_bulk_with_cache",
@@ -342,8 +356,6 @@ def test_run_target_query_is_bounded_by_candidate_high_water(monkeypatch: pytest
     )
     cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=2)
 
-    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
-
     cleanup.run()
 
     assert repo.cleanup_ref_calls[1]["last_seen"] is None
@@ -372,7 +384,6 @@ def test_run_records_metrics_on_success(monkeypatch: pytest.MonkeyPatch) -> None
         },
     )
     cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
-    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
 
     batch_calls: list[dict[str, object]] = []
     completion_calls: list[dict[str, object]] = []
@@ -400,7 +411,6 @@ def test_run_records_failed_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
     cutoff = datetime.datetime.now()
     repo = FailingRepo(batches=[[make_ref("run-free", "t_free", cutoff)]])
     cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
-    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
 
     completion_calls: list[dict[str, object]] = []
     monkeypatch.setattr(cleanup._metrics, "record_completion", lambda **kwargs: completion_calls.append(kwargs))
@@ -427,8 +437,6 @@ def test_run_dry_run_skips_deletions(monkeypatch: pytest.MonkeyPatch, capsys: py
         },
     )
     cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10, dry_run=True)
-
-    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
 
     cleanup.run()
 

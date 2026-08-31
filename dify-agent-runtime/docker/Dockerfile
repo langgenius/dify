@@ -71,9 +71,9 @@ COPY --from=go-builder /bin/shellctl-runner /usr/local/bin/shellctl-runner
 COPY --from=go-builder /bin/dify-agent /usr/local/bin/dify-agent
 
 RUN useradd --create-home --shell /bin/sh dify \
-    && mkdir -p /mnt/drive \
+    && mkdir -p /workspace \
     && chown dify:dify /home \
-    && chown -R dify:dify /home/dify /mnt/drive
+    && chown -R dify:dify /home/dify /workspace
 
 USER dify
 WORKDIR /home/dify

@@ -11,11 +11,12 @@ import { getDatasetMap } from '@/env'
 import { SystemFeaturesBootstrapBoundary } from '@/features/system-features/bootstrap-boundary'
 import {
   getSystemFeaturesQueryClient,
-  systemFeaturesServerQueryOptions,
+  prefetchSystemFeatures,
 } from '@/features/system-features/server'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { headers } from '@/next/headers'
 import { getApplicationTitle } from '@/utils/document-title'
+import { basePath } from '@/utils/var'
 import { CloudAnalytics } from './components/base/analytics-consent/cloud-analytics'
 import { PartnerStackCookieRecorder } from './components/billing/partner-stack/cookie-recorder'
 import { AgentationLoader } from './components/devtools/agentation-loader'
@@ -31,37 +32,31 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 }
 
-const ensureSystemFeatures = async () => {
-  const queryClient = getSystemFeaturesQueryClient()
-  const queryOptions = systemFeaturesServerQueryOptions()
-  const queryState = queryClient.getQueryState(queryOptions.queryKey)
-
-  if (!queryState || queryState.status === 'pending') await queryClient.prefetchQuery(queryOptions)
-
-  return { queryClient, queryOptions }
-}
-
 export async function generateMetadata(): Promise<Metadata> {
-  const { queryClient, queryOptions } = await ensureSystemFeatures()
-  const systemFeatures = queryClient.getQueryData(queryOptions.queryKey)
-  const applicationTitle = getApplicationTitle(systemFeatures?.branding)
+  const systemFeatures = await prefetchSystemFeatures()
+  const branding = systemFeatures?.branding
+  const applicationTitle = getApplicationTitle(branding)
+  const brandedFavicon = branding?.enabled ? branding.favicon : undefined
 
   return {
     title: {
       default: applicationTitle,
       template: `%s - ${applicationTitle}`,
     },
+    icons: brandedFavicon
+      ? { icon: brandedFavicon, apple: brandedFavicon }
+      : { icon: `${basePath}/favicon.ico` },
   }
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const datasetMap = getDatasetMap()
-  const [locale, requestHeaders, { queryClient }] = await Promise.all([
+  const [locale, requestHeaders] = await Promise.all([
     getLocaleOnServer(),
     headers(),
-    ensureSystemFeatures(),
+    prefetchSystemFeatures(),
   ])
-  const dehydratedState = dehydrate(queryClient)
+  const dehydratedState = dehydrate(getSystemFeaturesQueryClient())
   const nonce = IS_PROD ? (requestHeaders.get('x-nonce') ?? undefined) : undefined
   const themeProviderProps: Omit<ThemeProviderProps, 'children'> = {
     attribute: 'data-theme',

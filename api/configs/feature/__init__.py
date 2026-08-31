@@ -12,6 +12,7 @@ from pydantic import (
     PositiveInt,
     computed_field,
     field_validator,
+    model_validator,
 )
 from pydantic_settings import BaseSettings
 
@@ -83,7 +84,7 @@ class AppExecutionConfig(BaseSettings):
 
     APP_MAX_EXECUTION_TIME: PositiveInt = Field(
         description="Maximum allowed execution time for the application in seconds",
-        default=1200,
+        default=3600,
     )
     APP_DEFAULT_ACTIVE_REQUESTS: NonNegativeInt = Field(
         description="Default number of concurrent active requests per app (0 for unlimited)",
@@ -592,6 +593,16 @@ class HttpConfig(BaseSettings):
     def CONSOLE_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_CONSOLE_CORS_ALLOW_ORIGINS.split(",")
 
+    WEBSOCKET_MAX_HTTP_BUFFER_SIZE: PositiveInt = Field(
+        description=(
+            "Maximum Socket.IO / Engine.IO HTTP buffer size in bytes. "
+            "Large workflow collaboration payloads (sync_request graph snapshots) "
+            "exceed the Engine.IO default of 1 MiB and get rejected, which "
+            "disconnects the editor WebSocket. Default is 10 MiB."
+        ),
+        default=10 * 1024 * 1024,
+    )
+
     inner_WEB_API_CORS_ALLOW_ORIGINS: str = Field(
         description="",
         validation_alias=AliasChoices("WEB_API_CORS_ALLOW_ORIGINS"),
@@ -889,7 +900,7 @@ class WorkflowConfig(BaseSettings):
 
     WORKFLOW_MAX_EXECUTION_TIME: PositiveInt = Field(
         description="Maximum execution time in seconds for a single workflow",
-        default=1200,
+        default=3600,
     )
 
     WORKFLOW_CALL_MAX_DEPTH: PositiveInt = Field(
@@ -1290,6 +1301,13 @@ class DataSetConfig(BaseSettings):
     )
 
 
+class SkillConfig(BaseSettings):
+    ENABLE_SKILL: bool = Field(
+        description="Enable or disable Skill feature entry points",
+        default=True,
+    )
+
+
 class WorkspaceConfig(BaseSettings):
     """
     Configuration for workspace management
@@ -1336,15 +1354,36 @@ class NewAgentBetaConfig(BaseSettings):
 
 
 class OpsTraceConfig(BaseSettings):
+    OPS_TRACE_UNIFIED_ENABLED: bool = Field(
+        description="Enable unified ops tracing for providers registered in the unified registry.",
+        default=False,
+    )
+
+    # Include scheduling and export grace after the parent workflow's maximum execution time.
+    # Recommended: max_retries >= ceil((WORKFLOW_MAX_EXECUTION_TIME + grace_seconds) / delay_seconds).
     OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES: PositiveInt = Field(
         description="Maximum retry attempts for transient ops trace provider dispatch failures.",
-        default=60,
+        default=780,
     )
 
     OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS: PositiveInt = Field(
         description="Delay in seconds between transient ops trace provider dispatch retry attempts.",
         default=5,
     )
+
+    OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS: PositiveInt = Field(
+        description="Retention in seconds for unified tracing parent contexts.",
+        default=3900,
+    )
+
+    @model_validator(mode="after")
+    def validate_parent_context_retention(self) -> "OpsTraceConfig":
+        if not self.OPS_TRACE_UNIFIED_ENABLED:
+            return self
+        retry_window = self.OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES * self.OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS
+        if retry_window > self.OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS:
+            raise ValueError("OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS must cover the retry window")
+        return self
 
 
 class CeleryBeatConfig(BaseSettings):
@@ -1549,6 +1588,10 @@ class LoginConfig(BaseSettings):
         description="expiry time in minutes for email code login token",
         default=5,
     )
+    EMAIL_CODE_LOGIN_MAX_ATTEMPTS: PositiveInt = Field(
+        description="maximum number of verification attempts for an email code login challenge",
+        default=5,
+    )
     ALLOW_REGISTER: bool = Field(
         description="whether to enable register",
         default=False,
@@ -1659,6 +1702,7 @@ class FeatureConfig(
     RepositoryConfig,
     SandboxExpiredRecordsCleanConfig,
     SecurityConfig,
+    SkillConfig,
     TenantIsolatedTaskQueueConfig,
     ToolConfig,
     UpdateConfig,

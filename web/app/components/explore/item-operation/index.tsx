@@ -13,6 +13,7 @@ import s from './style.module.css'
 
 type IItemOperationProps = {
   className?: string
+  itemName: string
   isPinned: boolean
   isShowRenameConversation?: boolean
   onRenameConversation?: () => void
@@ -23,6 +24,7 @@ type IItemOperationProps = {
 
 function ItemOperation({
   className,
+  itemName,
   isPinned,
   togglePin,
   isShowRenameConversation,
@@ -36,6 +38,7 @@ function ItemOperation({
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger
+        aria-label={tCommon(($) => $['operation.moreActionsFor'], { name: itemName })}
         className={cn(
           'group/operation flex size-6 items-center justify-center rounded-md border-none p-0 text-text-tertiary transition-colors group-focus-within:bg-components-actionbar-bg! group-hover:bg-components-actionbar-bg! hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-components-actionbar-bg! data-popup-open:shadow-none!',
           className,
@@ -44,13 +47,12 @@ function ItemOperation({
           e.stopPropagation()
         }}
       >
-        <span className="sr-only">{tCommon(($) => $['operation.more'])}</span>
         <span
           aria-hidden
           className="i-ri-more-fill size-4 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 group-focus-visible/operation:opacity-100 group-data-popup-open/operation:opacity-100"
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[120px]">
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-[120px]">
         <DropdownMenuItem
           className={cn(s.actionItem, 'gap-2 px-3')}
           onClick={(e) => {

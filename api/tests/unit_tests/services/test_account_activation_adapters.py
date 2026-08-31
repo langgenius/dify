@@ -4,6 +4,7 @@ from services.account_activation_adapters import (
     BillingAccountActivationEligibility,
     BillingWorkspaceMembershipCache,
     DeploymentWorkspaceInvitePolicy,
+    RBACWorkspaceMemberAccessSync,
     RegisterServiceInvitationTokenStore,
 )
 from services.entities.account_activation_entities import InvitationLookup, InvitationToken
@@ -42,11 +43,22 @@ def test_invitation_token_store_revokes_with_legacy_key_inputs() -> None:
 
 
 def test_billing_eligibility_skips_gateway_when_disabled() -> None:
-    with patch("services.account_activation_adapters.BillingService.is_email_in_freeze") as is_frozen:
-        result = BillingAccountActivationEligibility(enabled=False).is_frozen("invitee@example.com")
+    with patch("services.account_activation_adapters.BillingService.get_email_freeze_type") as get_freeze_type:
+        result = BillingAccountActivationEligibility(enabled=False).get_freeze_type("invitee@example.com")
 
-    assert result is False
-    is_frozen.assert_not_called()
+    assert result is None
+    get_freeze_type.assert_not_called()
+
+
+def test_billing_eligibility_returns_freeze_type_when_enabled() -> None:
+    with patch(
+        "services.account_activation_adapters.BillingService.get_email_freeze_type",
+        return_value="email_domain_suspended",
+    ) as get_freeze_type:
+        result = BillingAccountActivationEligibility(enabled=True).get_freeze_type("invitee@example.com")
+
+    assert result == "email_domain_suspended"
+    get_freeze_type.assert_called_once_with("invitee@example.com")
 
 
 def test_membership_cache_skips_gateway_when_disabled() -> None:
@@ -61,3 +73,21 @@ def test_workspace_policy_delegates_to_existing_policy_owner() -> None:
         DeploymentWorkspaceInvitePolicy().ensure_allowed("workspace-1")
 
     ensure_allowed.assert_called_once_with("workspace-1")
+
+
+def test_rbac_member_access_sync_skips_gateway_when_disabled() -> None:
+    with patch(
+        "tasks.initialize_created_app_rbac_access_task.sync_joined_workspace_member_rbac_access_task.delay"
+    ) as delay:
+        RBACWorkspaceMemberAccessSync(enabled=False).sync("workspace-1", "account-1")
+
+    delay.assert_not_called()
+
+
+def test_rbac_member_access_sync_enqueues_joined_member_sync_when_enabled() -> None:
+    with patch(
+        "tasks.initialize_created_app_rbac_access_task.sync_joined_workspace_member_rbac_access_task.delay"
+    ) as delay:
+        RBACWorkspaceMemberAccessSync(enabled=True).sync("workspace-1", "account-1")
+
+    delay.assert_called_once_with("workspace-1", "account-1", operator_account_id=None)

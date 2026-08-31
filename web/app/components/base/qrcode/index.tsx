@@ -64,10 +64,6 @@ const ShareQRCode = ({ content }: Props) => {
           >
             <QRCode size={160} value={content} className="mb-2" />
             <div className="flex items-center system-xs-regular">
-              <div className="text-text-tertiary">
-                {t(($) => $['overview.appInfo.qrcode.scan'], { ns: 'appOverview' })}
-              </div>
-              <div className="text-text-tertiary">·</div>
               <button
                 type="button"
                 className="cursor-pointer border-none bg-transparent p-0 text-left text-text-accent-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"

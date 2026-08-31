@@ -47,7 +47,7 @@ const TruncatedClassItem: FC<TruncatedClassItemProps> = ({ topic, index, nodeId,
           >
             {content}
           </PopoverTrigger>
-          <PopoverContent popupClassName="max-w-[300px] px-3 py-2 system-xs-regular wrap-break-word text-text-tertiary">
+          <PopoverContent className="max-w-[300px] px-3 py-2 system-xs-regular wrap-break-word text-text-tertiary">
             <ReadonlyInputWithSelectVar value={topic.name} nodeId={nodeId} />
           </PopoverContent>
         </Popover>

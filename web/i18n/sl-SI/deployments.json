@@ -22,7 +22,6 @@
   "deployTab.moreActions": "Več dejanj",
   "deployTab.redeploy": "Ponovno uvedi",
   "deployTab.undeploy": "Razveljavi uvedbo",
-  "deployTab.undeployConfirmWarning": "Po potrditvi bo to okolje prešlo v stanje razveljavljanja uvedbe, dejanja pa bodo začasno onemogočena.",
   "health.ENVIRONMENT_STATUS_FAILED": "Nedosegljivo",
   "list.emptyTitle": "Še ni uvedb",
   "overview.chip.latest": "najnovejša",

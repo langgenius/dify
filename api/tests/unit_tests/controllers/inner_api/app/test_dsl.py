@@ -13,7 +13,7 @@ from uuid import uuid4
 import pytest
 from flask import Flask
 from pydantic import ValidationError
-from sqlalchemy import event, select
+from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
@@ -24,8 +24,8 @@ from controllers.inner_api.app.dsl import (
     InnerAppDSLImportPayload,
     _get_active_account,
 )
-from models import Account, App
-from models.account import AccountStatus
+from models import Account, App, Tenant, TenantAccountJoin
+from models.account import AccountStatus, TenantAccountRole
 from models.model import AppMode, IconType
 from services.app_dsl_service import Import, ImportStatus
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
@@ -46,6 +46,24 @@ def _persist_app(session: Session) -> App:
     session.add(app)
     session.commit()
     return app
+
+
+def _persist_account(session: Session, *, workspace_id: str = "ws-123") -> Account:
+    account = Account(name="DSL Creator", email="user@example.com", status=AccountStatus.ACTIVE)
+    tenant = Tenant(name="DSL Workspace")
+    tenant.id = workspace_id
+    session.add_all([account, tenant])
+    session.flush()
+    session.add(
+        TenantAccountJoin(
+            tenant_id=tenant.id,
+            account_id=account.id,
+            current=True,
+            role=TenantAccountRole.OWNER,
+        )
+    )
+    session.commit()
+    return account
 
 
 class TestInnerAppDSLImportPayload:
@@ -160,9 +178,10 @@ class TestEnterpriseAppDSLImport:
 
     @pytest.mark.usefixtures("_mock_import_deps")
     @patch("controllers.inner_api.app.dsl._get_active_account")
-    def test_import_success_returns_200(self, mock_get_account, api_instance, app: Flask):
-        mock_account = MagicMock()
-        mock_get_account.return_value = mock_account
+    def test_import_success_returns_200(self, mock_get_account, api_instance, app: Flask, sqlite_session: Session):
+        account = _persist_account(sqlite_session)
+        self._transaction_events.clear()
+        mock_get_account.return_value = account
         self._mock_dsl.import_app.return_value = self._make_import_result(ImportStatus.COMPLETED)
 
         unwrapped = inspect.unwrap(api_instance.post)
@@ -177,14 +196,15 @@ class TestEnterpriseAppDSLImport:
         body, status_code = result
         assert status_code == 200
         assert body["status"] == "completed"
-        call_session = mock_account.set_tenant_id_with_session.call_args.kwargs["session"]
-        assert isinstance(call_session, Session)
+        assert account.current_tenant_id == "ws-123"
+        assert self._mock_dsl.import_app.call_args.kwargs["account"] is account
         assert self._transaction_events == ["commit"]
 
     @pytest.mark.usefixtures("_mock_import_deps")
     @patch("controllers.inner_api.app.dsl._get_active_account")
-    def test_import_pending_returns_202(self, mock_get_account, api_instance, app: Flask):
-        mock_get_account.return_value = MagicMock()
+    def test_import_pending_returns_202(self, mock_get_account, api_instance, app: Flask, sqlite_session: Session):
+        mock_get_account.return_value = _persist_account(sqlite_session)
+        self._transaction_events.clear()
         self._mock_dsl.import_app.return_value = self._make_import_result(ImportStatus.PENDING)
 
         unwrapped = inspect.unwrap(api_instance.post)
@@ -199,10 +219,9 @@ class TestEnterpriseAppDSLImport:
 
     @pytest.mark.usefixtures("_mock_import_deps")
     @patch("controllers.inner_api.app.dsl._get_active_account")
-    def test_import_failed_returns_400(self, mock_get_account, api_instance, app: Flask):
-        mock_account = MagicMock()
-        mock_account.set_tenant_id_with_session.side_effect = lambda _tenant_id, *, session: session.execute(select(1))
-        mock_get_account.return_value = mock_account
+    def test_import_failed_returns_400(self, mock_get_account, api_instance, app: Flask, sqlite_session: Session):
+        mock_get_account.return_value = _persist_account(sqlite_session)
+        self._transaction_events.clear()
         self._mock_dsl.import_app.return_value = self._make_import_result(ImportStatus.FAILED)
 
         unwrapped = inspect.unwrap(api_instance.post)

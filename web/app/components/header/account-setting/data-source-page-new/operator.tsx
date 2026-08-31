@@ -55,7 +55,7 @@ const Operator = ({
           </IconButton>
         }
       />
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[200px]">
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-[200px]">
         <DropdownMenuItem
           disabled={!canUseCredential}
           className="h-auto gap-2 py-2"

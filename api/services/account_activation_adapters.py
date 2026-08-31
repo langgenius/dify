@@ -7,6 +7,7 @@ from services.account_activation_service import (
     AccountActivationEligibility,
     InvitationTokenStore,
     WorkspaceInvitePolicy,
+    WorkspaceMemberAccessSync,
     WorkspaceMembershipCache,
 )
 from services.account_service import RegisterService
@@ -54,8 +55,10 @@ class BillingAccountActivationEligibility(AccountActivationEligibility):
         self._enabled = enabled
 
     @override
-    def is_frozen(self, email: str) -> bool:
-        return self._enabled and BillingService.is_email_in_freeze(email)
+    def get_freeze_type(self, email: str) -> str | None:
+        if not self._enabled:
+            return None
+        return BillingService.get_email_freeze_type(email)
 
 
 class BillingWorkspaceMembershipCache(WorkspaceMembershipCache):
@@ -66,3 +69,21 @@ class BillingWorkspaceMembershipCache(WorkspaceMembershipCache):
     def invalidate(self, workspace_id: str) -> None:
         if self._enabled:
             BillingService.clean_billing_info_cache(workspace_id)
+
+
+class RBACWorkspaceMemberAccessSync(WorkspaceMemberAccessSync):
+    def __init__(self, *, enabled: bool) -> None:
+        self._enabled = enabled
+
+    @override
+    def sync(self, workspace_id: str, account_id: str) -> None:
+        if not self._enabled:
+            return
+
+        from tasks.initialize_created_app_rbac_access_task import sync_joined_workspace_member_rbac_access_task
+
+        sync_joined_workspace_member_rbac_access_task.delay(
+            str(workspace_id),
+            str(account_id),
+            operator_account_id=None,
+        )

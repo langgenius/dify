@@ -11,7 +11,9 @@ from core.plugin.entities.plugin_daemon import (
     PluginModelSchemaEntity,
     PluginStringResultResponse,
     PluginTextEmbeddingNumTokensResponse,
+    PluginTTSResultResponse,
     PluginVoicesResponse,
+    TTSAudioChunk,
 )
 from core.plugin.impl.base import BasePluginClient
 from core.plugin.impl.exc import PluginInvokeError, PluginLLMPollingUnsupportedError
@@ -580,14 +582,14 @@ class PluginModelClient(BasePluginClient):
         credentials: dict[str, Any],
         content_text: str,
         voice: str,
-    ) -> Generator[bytes, None, None]:
+    ) -> Generator[TTSAudioChunk, None, None]:
         """
         Invoke tts
         """
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/tts/invoke",
-            type_=PluginStringResultResponse,
+            type_=PluginTTSResultResponse,
             data=jsonable_encoder(
                 self._dispatch_payload(
                     user_id=user_id,
@@ -611,7 +613,7 @@ class PluginModelClient(BasePluginClient):
         try:
             for result in response:
                 hex_str = result.result
-                yield binascii.unhexlify(hex_str)
+                yield TTSAudioChunk(binascii.unhexlify(hex_str), mime_type=result.mime_type)
         except PluginDaemonInnerError as e:
             raise ValueError(e.message + str(e.code))
 

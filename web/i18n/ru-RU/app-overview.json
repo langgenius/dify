@@ -68,7 +68,6 @@
   "overview.appInfo.preUseReminder": "Пожалуйста, включите веб-приложение перед продолжением.",
   "overview.appInfo.preview": "Предварительный просмотр",
   "overview.appInfo.qrcode.download": "Скачать QR-код",
-  "overview.appInfo.qrcode.scan": "Сканировать, чтобы поделиться",
   "overview.appInfo.qrcode.title": "QR-код ссылки",
   "overview.appInfo.regenerate": "Перегенерировать",
   "overview.appInfo.regenerateNotice": "Вы хотите перегенерировать публичный URL? Текущий URL немедленно перестанет работать.",

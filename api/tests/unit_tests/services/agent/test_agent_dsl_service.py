@@ -18,7 +18,7 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
+from models.agent_config_entities import AgentConfigFileRefConfig, AgentConfigSkillRefConfig, AgentSoulConfig
 from services.agent.dsl_entities import (
     AGENT_NODE_JOB_DSL_KEY,
     AGENT_PACKAGE_REF_KEY,
@@ -246,6 +246,7 @@ def test_export_agent_app_uses_draft_or_active_snapshot(use_draft: bool) -> None
     draft = SimpleNamespace(config_snapshot_dict=AgentSoulConfig(config_note="draft").model_dump(mode="json"))
     session = Mock()
     session.scalar.side_effect = [agent, draft if use_draft else None]
+    session.execute.return_value = []
     service = AgentDslService(session)
     require_snapshot = Mock(return_value=_snapshot(soul=AgentSoulConfig(config_note="snapshot")))
     service._require_snapshot = require_snapshot
@@ -271,6 +272,7 @@ def test_export_workflow_packages_deduplicates_shared_agent() -> None:
     ]
     session = Mock()
     session.scalars.return_value.all.return_value = bindings
+    session.execute.return_value = []
     service = AgentDslService(session)
     service._require_agent = Mock(return_value=_agent())
     service._require_snapshot = Mock(return_value=_snapshot())
@@ -465,44 +467,41 @@ def test_import_workflow_packages_rejects_invalid_package_binding(binding: dict,
         )
 
 
-def test_clone_inline_binding_copies_soul_and_drive_rows(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_clone_inline_binding_copies_soul() -> None:
     session = Mock()
     service = AgentDslService(session)
     target_agent = SimpleNamespace(id="target-agent")
     target_snapshot = SimpleNamespace(id="target-snapshot")
     service._create_workflow_only_agent = Mock(return_value=(target_agent, target_snapshot))
-    copy_rows = Mock()
-    monkeypatch.setattr("services.agent.composer_service.AgentComposerService._copy_agent_drive_rows", copy_rows)
     source_agent = _agent()
-    source_snapshot = SimpleNamespace(
-        config_snapshot_dict=AgentSoulConfig(config_note="source").model_dump(mode="json")
+    source_soul = AgentSoulConfig(
+        config_note="source",
+        config_skills=[AgentConfigSkillRefConfig(name="summarizer", file_id="skill-file-1")],
+        config_files=[AgentConfigFileRefConfig(name="brief.pdf", file_kind="upload_file", file_id="config-file-1")],
     )
+    source_snapshot = SimpleNamespace(config_snapshot_dict=source_soul.model_dump(mode="json"))
     workflow = SimpleNamespace(tenant_id="tenant-1", app_id="app-1", id="workflow-1")
-    node_job = WorkflowNodeJobConfig(workflow_prompt="work")
 
     result = service.clone_inline_binding_for_node(
         workflow=workflow,
         node_id="target-node",
         source_agent=source_agent,
         source_snapshot=source_snapshot,
-        node_job=node_job,
         account_id="account-1",
     )
 
     assert result == (target_agent, target_snapshot)
     create_kwargs = service._create_workflow_only_agent.call_args.kwargs
     assert create_kwargs["metadata"].name == source_agent.name
-    assert create_kwargs["soul"].config_note == "source"
+    cloned_soul = create_kwargs["soul"]
+    assert cloned_soul.config_note == "source"
+    assert [(item.name, item.file_kind, item.file_id) for item in cloned_soul.config_skills] == [
+        ("summarizer", "tool_file", "skill-file-1")
+    ]
+    assert [(item.name, item.file_kind, item.file_id) for item in cloned_soul.config_files] == [
+        ("brief.pdf", "upload_file", "config-file-1")
+    ]
     assert create_kwargs["source"] == AgentSource.WORKFLOW
-    copy_rows.assert_called_once_with(
-        tenant_id="tenant-1",
-        source_agent_id="agent-1",
-        target_agent_id="target-agent",
-        account_id="account-1",
-        agent_soul=create_kwargs["soul"],
-        node_job=node_job,
-        session=session,
-    )
 
 
 def test_extract_package_dependencies_covers_model_tools_and_knowledge(monkeypatch: pytest.MonkeyPatch) -> None:

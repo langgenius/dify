@@ -13,6 +13,10 @@ class HomeSnapshotNotFoundError(RuntimeBackendError):
     pass
 
 
+class HomeSnapshotTooLargeError(RuntimeBackendError):
+    pass
+
+
 class BindingCreateError(RuntimeBackendError):
     pass
 
@@ -48,6 +52,7 @@ __all__ = [
     "BindingLostError",
     "HomeSnapshotCreateError",
     "HomeSnapshotNotFoundError",
+    "HomeSnapshotTooLargeError",
     "RuntimeBackendError",
     "SharedWorkspaceUnsupportedError",
     "WorkspacePreservationUnsupportedError",

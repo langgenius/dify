@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
-from dify_agent.client import Client, DifyAgentNotFoundError
+import logging
+from http import HTTPStatus
+
+from dify_agent.client import Client, DifyAgentClientError, DifyAgentHTTPError, DifyAgentNotFoundError
 from dify_agent.protocol import CreateHomeSnapshotFromBindingRequest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from clients.agent_backend.errors import backend_error_detail, backend_reported_failure
 from clients.agent_backend.factory import create_agent_backend_client
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -15,15 +19,20 @@ from libs.uuid_utils import uuidv7
 from models.agent import (
     Agent,
     AgentConfigDraft,
-    AgentConfigSnapshot,
     AgentConfigVersionKind,
     AgentHomeSnapshot,
     AgentStatus,
     AgentWorkingResourceStatus,
     AgentWorkspaceOwnerType,
 )
-from services.agent.errors import AgentBuildSandboxNotFoundError
+from services.agent.errors import (
+    AgentBuildSandboxNotFoundError,
+    AgentHomeSnapshotCreateFailedError,
+    AgentHomeSnapshotTooLargeError,
+)
 from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
+
+logger = logging.getLogger(__name__)
 
 
 class AgentHomeSnapshotUnavailableError(RuntimeError):
@@ -91,6 +100,16 @@ class AgentHomeSnapshotService:
                 )
         except DifyAgentNotFoundError as exc:
             raise AgentBuildSandboxNotFoundError() from exc
+        except DifyAgentHTTPError as exc:
+            if not backend_reported_failure(exc):
+                logger.exception("Unreadable Home Snapshot response for agent %s", build_draft.agent_id)
+                raise AgentHomeSnapshotCreateFailedError() from exc
+            _, message = backend_error_detail(exc)
+            if exc.status_code == HTTPStatus.REQUEST_ENTITY_TOO_LARGE:
+                raise AgentHomeSnapshotTooLargeError(message) from exc
+            raise AgentHomeSnapshotCreateFailedError(message) from exc
+        except DifyAgentClientError as exc:
+            raise AgentHomeSnapshotCreateFailedError(str(exc)) from exc
 
         home_snapshot = AgentHomeSnapshot(
             id=home_snapshot_id,
@@ -108,13 +127,13 @@ class AgentHomeSnapshotService:
             select(AgentHomeSnapshot).where(
                 AgentHomeSnapshot.tenant_id == tenant_id,
                 AgentHomeSnapshot.agent_id == agent_id,
-                AgentHomeSnapshot.status == AgentWorkingResourceStatus.ACTIVE,
             )
         ).all()
         now = naive_utc_now()
         for row in rows:
-            row.status = AgentWorkingResourceStatus.RETIRED
-            row.retired_at = now
+            if row.status == AgentWorkingResourceStatus.ACTIVE:
+                row.status = AgentWorkingResourceStatus.RETIRED
+                row.retired_at = now
         return [row.id for row in rows]
 
     @classmethod
@@ -128,13 +147,6 @@ class AgentHomeSnapshotService:
                 )
             )
             if snapshot is None:
-                return
-            referenced = session.scalar(
-                select(AgentConfigDraft.id).where(AgentConfigDraft.home_snapshot_id == home_snapshot_id).limit(1)
-            ) or session.scalar(
-                select(AgentConfigSnapshot.id).where(AgentConfigSnapshot.home_snapshot_id == home_snapshot_id).limit(1)
-            )
-            if referenced is not None:
                 return
             snapshot_ref = snapshot.snapshot_ref
         cls.delete(snapshot_ref=snapshot_ref)
@@ -163,6 +175,7 @@ class AgentHomeSnapshotService:
         return create_agent_backend_client(
             base_url=base_url,
             api_token=dify_config.AGENT_BACKEND_API_TOKEN,
+            timeout=dify_config.AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS,
         )
 
 

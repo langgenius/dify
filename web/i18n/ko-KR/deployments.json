@@ -22,7 +22,6 @@
   "deployTab.moreActions": "더 많은 작업",
   "deployTab.redeploy": "재배포",
   "deployTab.undeploy": "배포 취소",
-  "deployTab.undeployConfirmWarning": "확인 후 이 환경은 배포 취소 중 상태로 전환되며 작업이 일시적으로 비활성화됩니다.",
   "health.ENVIRONMENT_STATUS_FAILED": "사용 불가",
   "list.emptyTitle": "아직 배포가 없습니다",
   "overview.chip.latest": "최신",
