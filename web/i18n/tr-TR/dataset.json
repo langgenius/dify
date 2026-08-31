@@ -491,6 +491,8 @@
   "newKnowledge.qualityPage.description": "Getirme işlemini yeniden test eden referans soruları, canlı ortamdaki sorunlu durumlar ve değerlendirme çalıştırmaları.",
   "newKnowledge.qualityPage.edit": "Düzenle",
   "newKnowledge.qualityPage.editTitle": "Referans sorusunu düzenle",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_one": "{{count}} etkin referans sorunuzu arka planda yeniden çalıştırır. Taslaklar ve güncelliğini yitirmiş sorular atlanır.",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_other": "{{count}} etkin referans sorunuzu arka planda yeniden çalıştırır. Taslaklar ve güncelliğini yitirmiş sorular atlanır.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "Beklenen her kanıt bölümünü bu değerlendirmede getirilen bölümlerle karşılaştırın.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsLoadError": "Kanıt ayrıntıları yüklenemedi. Tekrar deneyin.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsTitle": "Kanıt eşleşme ayrıntıları",

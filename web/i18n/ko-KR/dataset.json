@@ -491,6 +491,8 @@
   "newKnowledge.qualityPage.description": "검색을 다시 테스트하기 위한 참고 질문, 운영 환경의 문제 사례, 평가 실행을 관리합니다.",
   "newKnowledge.qualityPage.edit": "편집",
   "newKnowledge.qualityPage.editTitle": "참고 질문 수정",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_one": "활성 참고 질문 {{count}}개를 백그라운드에서 다시 실행합니다. 초안 및 오래된 질문은 건너뜁니다.",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_other": "활성 참고 질문 {{count}}개를 백그라운드에서 다시 실행합니다. 초안 및 오래된 질문은 건너뜁니다.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "각 예상 근거 문단과 이번 평가에서 검색된 문단을 비교합니다.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsLoadError": "근거 세부 정보를 불러오지 못했습니다. 다시 시도해 주세요.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsTitle": "근거 적중 세부 정보",

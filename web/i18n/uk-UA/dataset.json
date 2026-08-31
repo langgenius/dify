@@ -491,6 +491,8 @@
   "newKnowledge.qualityPage.description": "Еталонні запитання для повторної перевірки пошуку, проблемні випадки з робочого середовища та запуски оцінювання.",
   "newKnowledge.qualityPage.edit": "Редагувати",
   "newKnowledge.qualityPage.editTitle": "Редагувати еталонне запитання",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_one": "Повторно запускає у фоновому режимі {{count}} активне еталонне запитання. Чернетки та застарілі запитання пропускаються.",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_other": "Повторно запускає у фоновому режимі {{count}} активних еталонних запитань. Чернетки та застарілі запитання пропускаються.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "Порівняйте кожен очікуваний підтверджувальний уривок з уривками, знайденими під час цього оцінювання.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsLoadError": "Не вдалося завантажити відомості про уривки. Спробуйте ще раз.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsTitle": "Відомості про знайдені уривки",

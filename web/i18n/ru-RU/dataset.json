@@ -491,6 +491,8 @@
   "newKnowledge.qualityPage.description": "Эталонные вопросы для повторной проверки поиска, проблемные случаи из рабочей среды и запуски оценки.",
   "newKnowledge.qualityPage.edit": "Править",
   "newKnowledge.qualityPage.editTitle": "Редактировать эталонный вопрос",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_one": "Повторно выполняет в фоновом режиме {{count}} активный эталонный вопрос. Черновики и устаревшие вопросы пропускаются.",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_other": "Повторно выполняет в фоновом режиме {{count}} активных эталонных вопросов. Черновики и устаревшие вопросы пропускаются.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "Сравните каждый ожидаемый подтверждающий фрагмент с фрагментами, найденными при этой оценке.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsLoadError": "Не удалось загрузить сведения о фрагментах. Повторите попытку.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsTitle": "Сведения о найденных фрагментах",

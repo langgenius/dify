@@ -491,6 +491,8 @@
   "newKnowledge.qualityPage.description": "検索を再テストするための参考質問、本番環境の問題ケース、評価実行を管理します。",
   "newKnowledge.qualityPage.edit": "編集",
   "newKnowledge.qualityPage.editTitle": "参考質問を編集",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_one": "有効な参考質問 {{count}} 件をバックグラウンドで再実行します。下書きと古い質問はスキップされます。",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_other": "有効な参考質問 {{count}} 件をバックグラウンドで再実行します。下書きと古い質問はスキップされます。",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "期待される各根拠段落と、この評価で取得された段落を比較します。",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsLoadError": "根拠の詳細を読み込めませんでした。もう一度お試しください。",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsTitle": "根拠のヒット詳細",

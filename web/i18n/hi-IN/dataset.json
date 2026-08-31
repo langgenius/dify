@@ -491,6 +491,8 @@
   "newKnowledge.qualityPage.description": "रिट्रीवल को दोबारा जाँचने के लिए संदर्भ प्रश्न, प्रोडक्शन परिवेश के समस्या वाले मामले और मूल्यांकन रन।",
   "newKnowledge.qualityPage.edit": "संपादित करें",
   "newKnowledge.qualityPage.editTitle": "संदर्भ प्रश्न संपादित करें",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_one": "आपके {{count}} सक्रिय संदर्भ प्रश्न को बैकग्राउंड में फिर से चलाता है। ड्राफ़्ट और पुराने प्रश्न छोड़ दिए जाते हैं।",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_other": "आपके {{count}} सक्रिय संदर्भ प्रश्नों को बैकग्राउंड में फिर से चलाता है। ड्राफ़्ट और पुराने प्रश्न छोड़ दिए जाते हैं।",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "हर अपेक्षित साक्ष्य अंश की तुलना इस मूल्यांकन में मिले अंशों से करें।",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsLoadError": "साक्ष्य विवरण लोड नहीं हो सका। फिर से कोशिश करें।",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsTitle": "साक्ष्य मिलान का विवरण",

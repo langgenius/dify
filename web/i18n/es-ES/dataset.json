@@ -491,6 +491,8 @@
   "newKnowledge.qualityPage.description": "Preguntas de referencia para volver a probar la recuperación, casos problemáticos de producción y ejecuciones de evaluación.",
   "newKnowledge.qualityPage.edit": "Editar",
   "newKnowledge.qualityPage.editTitle": "Editar pregunta de referencia",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_one": "Vuelve a ejecutar tu {{count}} pregunta de referencia activa en segundo plano. Se omiten los borradores y las preguntas obsoletas.",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_other": "Vuelve a ejecutar tus {{count}} preguntas de referencia activas en segundo plano. Se omiten los borradores y las preguntas obsoletas.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "Compara cada fragmento de evidencia esperado con los fragmentos recuperados por esta evaluación.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsLoadError": "No se pudieron cargar los detalles de la evidencia. Inténtalo de nuevo.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsTitle": "Detalles de coincidencia de evidencia",

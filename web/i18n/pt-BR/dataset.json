@@ -491,6 +491,8 @@
   "newKnowledge.qualityPage.description": "Perguntas de referência para testar novamente a recuperação, casos problemáticos de produção e execuções de avaliação.",
   "newKnowledge.qualityPage.edit": "Editar",
   "newKnowledge.qualityPage.editTitle": "Editar pergunta de referência",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_one": "Repete sua {{count}} pergunta de referência ativa em segundo plano. Rascunhos e perguntas desatualizadas são ignorados.",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_other": "Repete suas {{count}} perguntas de referência ativas em segundo plano. Rascunhos e perguntas desatualizadas são ignorados.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "Compare cada trecho de evidência esperado com os trechos recuperados nesta avaliação.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsLoadError": "Não foi possível carregar os detalhes das evidências. Tente novamente.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsTitle": "Detalhes das evidências encontradas",

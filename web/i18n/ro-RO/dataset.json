@@ -491,6 +491,8 @@
   "newKnowledge.qualityPage.description": "Întrebări de referință pentru a retesta regăsirea, cazuri problematice din producție și rulări de evaluare.",
   "newKnowledge.qualityPage.edit": "Editează",
   "newKnowledge.qualityPage.editTitle": "Editați întrebarea de referință",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_one": "Rulează din nou în fundal {{count}} întrebare de referință activă. Ciornele și întrebările învechite sunt omise.",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_other": "Rulează din nou în fundal {{count}} întrebări de referință active. Ciornele și întrebările învechite sunt omise.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "Compară fiecare fragment de dovadă așteptat cu fragmentele găsite de această evaluare.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsLoadError": "Detaliile dovezilor nu au putut fi încărcate. Încearcă din nou.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsTitle": "Detalii despre dovezile găsite",

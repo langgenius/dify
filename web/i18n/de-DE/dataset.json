@@ -491,6 +491,8 @@
   "newKnowledge.qualityPage.description": "Referenzfragen zur erneuten Prüfung des Abrufs, Problemfälle aus dem Produktivbetrieb und Evaluierungsläufe.",
   "newKnowledge.qualityPage.edit": "Bearbeiten",
   "newKnowledge.qualityPage.editTitle": "Referenzfrage bearbeiten",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_one": "Spielt Ihre {{count}} aktive Referenzfrage im Hintergrund erneut ab. Entwürfe und veraltete Fragen werden übersprungen.",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_other": "Spielt Ihre {{count}} aktiven Referenzfragen im Hintergrund erneut ab. Entwürfe und veraltete Fragen werden übersprungen.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "Vergleichen Sie jeden erwarteten Belegabschnitt mit den von dieser Auswertung abgerufenen Abschnitten.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsLoadError": "Die Belegdetails konnten nicht geladen werden. Versuchen Sie es erneut.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsTitle": "Details zu den Belegtreffern",

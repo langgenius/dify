@@ -491,6 +491,8 @@
   "newKnowledge.qualityPage.description": "คำถามอ้างอิงสำหรับทดสอบการค้นคืนอีกครั้ง กรณีปัญหาจากระบบที่ใช้งานจริง และการเรียกใช้การประเมิน",
   "newKnowledge.qualityPage.edit": "แก้ไข",
   "newKnowledge.qualityPage.editTitle": "แก้ไขคำถามอ้างอิง",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_one": "เรียกใช้คำถามอ้างอิงที่ใช้งานอยู่ {{count}} ข้อซ้ำในเบื้องหลัง ระบบจะข้ามฉบับร่างและคำถามที่ล้าสมัย",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_other": "เรียกใช้คำถามอ้างอิงที่ใช้งานอยู่ {{count}} ข้อซ้ำในเบื้องหลัง ระบบจะข้ามฉบับร่างและคำถามที่ล้าสมัย",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "เปรียบเทียบข้อความหลักฐานที่คาดหวังแต่ละรายการกับข้อความที่การประเมินนี้ค้นคืนมา",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsLoadError": "ไม่สามารถโหลดรายละเอียดหลักฐานได้ โปรดลองอีกครั้ง",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsTitle": "รายละเอียดการพบหลักฐาน",

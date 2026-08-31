@@ -491,6 +491,8 @@
   "newKnowledge.qualityPage.description": "Domande di riferimento per verificare nuovamente il recupero, casi problematici di produzione ed esecuzioni di valutazione.",
   "newKnowledge.qualityPage.edit": "Modifica",
   "newKnowledge.qualityPage.editTitle": "Modifica la domanda di riferimento",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_one": "Ripete in background la tua {{count}} domanda di riferimento attiva. Le bozze e le domande obsolete vengono ignorate.",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_other": "Ripete in background le tue {{count}} domande di riferimento attive. Le bozze e le domande obsolete vengono ignorate.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "Confronta ogni passaggio di riscontro previsto con i passaggi recuperati da questa valutazione.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsLoadError": "Impossibile caricare i dettagli dei riscontri. Riprova.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsTitle": "Dettagli dei riscontri trovati",

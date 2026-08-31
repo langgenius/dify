@@ -494,6 +494,8 @@
   "newKnowledge.qualityPage.description": "用於重新測試檢索效果的參考問題、正式環境的問題案例和評測執行記錄。",
   "newKnowledge.qualityPage.edit": "編輯",
   "newKnowledge.qualityPage.editTitle": "編輯參考問題",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_one": "系統會在背景重新執行 {{count}} 個有效參考問題。草稿和已過時的問題會被略過。",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_other": "系統會在背景重新執行 {{count}} 個有效參考問題。草稿和已過時的問題會被略過。",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "逐條比較預期依據段落與本次評測實際檢索到的段落。",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsLoadError": "無法載入依據明細，請重試。",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsTitle": "依據命中明細",

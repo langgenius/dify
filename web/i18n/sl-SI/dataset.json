@@ -491,6 +491,8 @@
   "newKnowledge.qualityPage.description": "Referenčna vprašanja za ponovno preverjanje pridobivanja, problematični primeri iz produkcije in zagoni vrednotenja.",
   "newKnowledge.qualityPage.edit": "Uredi",
   "newKnowledge.qualityPage.editTitle": "Uredi referenčno vprašanje",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_one": "V ozadju znova izvede vaše {{count}} aktivno referenčno vprašanje. Osnutki in zastarela vprašanja so preskočeni.",
+  "newKnowledge.qualityPage.evaluation.dialogDescription_other": "V ozadju znova izvede vaših {{count}} aktivnih referenčnih vprašanj. Osnutki in zastarela vprašanja so preskočeni.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "Primerjajte vsak pričakovani referenčni odlomek z odlomki, ki jih je našlo to vrednotenje.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsLoadError": "Podrobnosti odlomkov ni bilo mogoče naložiti. Poskusite znova.",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsTitle": "Podrobnosti zadetkov odlomkov",
