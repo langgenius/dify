@@ -1,5 +1,5 @@
 from datetime import datetime
-from inspect import getsource, unwrap
+from inspect import getclosurevars, getsource, unwrap
 from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import MagicMock, Mock, call
@@ -15,6 +15,7 @@ from controllers.console.agent import roster as roster_controller
 from controllers.console.agent.composer import (
     AgentComposerApi,
     AgentComposerCandidatesApi,
+    SnippetAgentComposerSaveToRosterApi,
     WorkflowAgentComposerApi,
     WorkflowAgentComposerCandidatesApi,
     WorkflowAgentComposerCopyFromRosterApi,
@@ -74,6 +75,30 @@ from services.entities.agent_entities import (
     WorkflowAgentComposerQuery,
     WorkflowComposerCopyFromRosterPayload,
 )
+
+
+def _rbac_decorators(method: object) -> list[dict[str, object]]:
+    decorators: list[dict[str, object]] = []
+    current = method
+    while hasattr(current, "__wrapped__"):
+        closure = getclosurevars(cast(Any, current)).nonlocals
+        if "resource_type" in closure and "scene" in closure:
+            decorators.append(
+                {
+                    "resource_type": closure["resource_type"],
+                    "scene": closure["scene"],
+                    "resource_required": closure.get("resource_required", True),
+                }
+            )
+        current = cast(Any, current).__wrapped__
+    return decorators
+
+
+def _assert_rbac_decorators(method: object, expected: list[tuple[object, object, bool]]) -> None:
+    assert _rbac_decorators(method) == [
+        {"resource_type": resource_type, "scene": scene, "resource_required": resource_required}
+        for resource_type, scene, resource_required in expected
+    ]
 
 
 def _persist_conversation_message(
@@ -299,6 +324,69 @@ def test_agent_v2_console_routes_are_agent_id_first() -> None:
 def test_agent_app_write_routes_do_not_reuse_app_billing_quota() -> None:
     for route_class in (AgentAppListApi, AgentAppCopyApi):
         assert '@cloud_edition_billing_resource_check("apps")' not in getsource(route_class)
+
+
+def test_agent_roster_routes_use_agent_rbac_scenes() -> None:
+    workspace = roster_controller.RBACResourceScope.WORKSPACE
+    agent = roster_controller.RBACResourceScope.AGENT
+    permission = roster_controller.RBACPermission
+
+    cases = [
+        (AgentAppListApi.get, []),
+        (AgentAppListApi.post, [(workspace, permission.AGENT_CREATE, False)]),
+        (AgentAppApi.get, [(agent, permission.AGENT_PREVIEW, True)]),
+        (AgentAppApi.put, [(agent, permission.AGENT_EDIT, True)]),
+        (AgentAppApi.delete, [(agent, permission.AGENT_DELETE, True)]),
+        (AgentDebugConversationRefreshApi.post, [(agent, permission.AGENT_TEST_AND_RUN, True)]),
+        (AgentPublishApi.post, [(agent, permission.AGENT_RELEASE_AND_VERSION, True)]),
+        (AgentBuildDraftCheckoutApi.post, [(agent, permission.AGENT_EDIT, True)]),
+        (AgentBuildDraftApi.get, [(agent, permission.AGENT_EDIT, True)]),
+        (AgentBuildDraftApi.put, [(agent, permission.AGENT_EDIT, True)]),
+        (AgentBuildDraftApi.delete, [(agent, permission.AGENT_EDIT, True)]),
+        (AgentBuildDraftApplyApi.post, [(agent, permission.AGENT_EDIT, True)]),
+        (AgentAppCopyApi.post, [(workspace, permission.AGENT_CREATE, False)]),
+        (AgentApiAccessApi.get, [(agent, permission.AGENT_ACCESS_POINT_VIEW, True)]),
+        (AgentApiStatusApi.post, [(agent, permission.AGENT_ACCESS_POINT_MANAGE, True)]),
+        (AgentApiKeyListApi.get, [(agent, permission.AGENT_ACCESS_POINT_VIEW, True)]),
+        (AgentApiKeyListApi.post, [(agent, permission.AGENT_ACCESS_POINT_MANAGE, True)]),
+        (AgentApiKeyApi.delete, [(agent, permission.AGENT_ACCESS_POINT_MANAGE, True)]),
+        (AgentLogsApi.get, [(agent, permission.AGENT_LOG_MANAGE, True)]),
+        (AgentLogMessagesApi.get, [(agent, permission.AGENT_LOG_MANAGE, True)]),
+        (AgentLogSourcesApi.get, [(agent, permission.AGENT_LOG_MANAGE, True)]),
+        (AgentStatisticsSummaryApi.get, [(agent, permission.AGENT_MONITOR, True)]),
+        (AgentRosterVersionsApi.get, [(agent, permission.AGENT_RELEASE_AND_VERSION, True)]),
+        (AgentRosterVersionDetailApi.get, [(agent, permission.AGENT_RELEASE_AND_VERSION, True)]),
+        (AgentRosterVersionRestoreApi.post, [(agent, permission.AGENT_RELEASE_AND_VERSION, True)]),
+    ]
+    for method, expected in cases:
+        _assert_rbac_decorators(method, expected)
+
+
+def test_agent_composer_routes_use_agent_rbac_scenes() -> None:
+    workspace = composer_controller.RBACResourceScope.WORKSPACE
+    agent = composer_controller.RBACResourceScope.AGENT
+    app = composer_controller.RBACResourceScope.APP
+    permission = composer_controller.RBACPermission
+
+    cases = [
+        (
+            WorkflowAgentComposerSaveToRosterApi.post,
+            [(app, permission.APP_EDIT, True), (workspace, permission.AGENT_CREATE, False)],
+        ),
+        (
+            SnippetAgentComposerSaveToRosterApi.post,
+            [
+                (workspace, permission.SNIPPETS_CREATE_AND_MODIFY, False),
+                (workspace, permission.AGENT_CREATE, False),
+            ],
+        ),
+        (AgentComposerApi.get, [(agent, permission.AGENT_EDIT, True)]),
+        (AgentComposerApi.put, [(agent, permission.AGENT_EDIT, True)]),
+        (AgentComposerValidateApi.post, [(agent, permission.AGENT_EDIT, True)]),
+        (AgentComposerCandidatesApi.get, [(agent, permission.AGENT_EDIT, True)]),
+    ]
+    for method, expected in cases:
+        _assert_rbac_decorators(method, expected)
 
 
 @pytest.fixture

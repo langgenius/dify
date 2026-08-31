@@ -593,7 +593,9 @@ _LEGACY_DATASET_DATASET_OPERATOR_KEYS: list[str] = [
 _LEGACY_AGENT_OWNER_KEYS: list[str] = [
     "agent.acl.preview",
     "agent.acl.edit",
+    "agent.acl.test_and_run",
     "agent.acl.release_and_version",
+    "agent.acl.access_point_view",
     "agent.acl.access_point_manage",
     "agent.acl.log_manage",
     "agent.acl.monitor",
@@ -605,7 +607,9 @@ _LEGACY_AGENT_OWNER_KEYS: list[str] = [
 _LEGACY_AGENT_ADMIN_KEYS: list[str] = [
     "agent.acl.preview",
     "agent.acl.edit",
+    "agent.acl.test_and_run",
     "agent.acl.release_and_version",
+    "agent.acl.access_point_view",
     "agent.acl.access_point_manage",
     "agent.acl.log_manage",
     "agent.acl.monitor",
@@ -617,8 +621,22 @@ _LEGACY_AGENT_ADMIN_KEYS: list[str] = [
 _LEGACY_AGENT_EDITOR_KEYS: list[str] = [
     "agent.acl.preview",
     "agent.acl.edit",
+    "agent.acl.test_and_run",
     "agent.acl.release_and_version",
+    "agent.acl.access_point_view",
     "agent.acl.access_point_manage",
+    "agent.acl.log_manage",
+    "agent.acl.monitor",
+    "agent.acl.import_export_dsl",
+]
+
+_LEGACY_AGENT_EDITOR_DEFAULT_KEYS: list[str] = [
+    key for key in _LEGACY_AGENT_EDITOR_KEYS if key != "agent.acl.log_manage"
+]
+
+_LEGACY_AGENT_NORMAL_KEYS: list[str] = [
+    "agent.acl.preview",
+    "agent.acl.access_point_view",
 ]
 
 _LEGACY_MY_PERMISSIONS: dict[TenantAccountRole, dict[str, list[str]]] = {
@@ -638,21 +656,31 @@ _LEGACY_MY_PERMISSIONS: dict[TenantAccountRole, dict[str, list[str]]] = {
         "workspace": _LEGACY_WORKSPACE_EDITOR_KEYS,
         "app": _LEGACY_APP_EDITOR_KEYS,
         "dataset": _LEGACY_DATASET_EDITOR_KEYS,
-        "agent": _LEGACY_AGENT_EDITOR_KEYS,
+        "agent": _LEGACY_AGENT_EDITOR_DEFAULT_KEYS,
     },
     TenantAccountRole.NORMAL: {
         "workspace": _LEGACY_WORKSPACE_NORMAL_KEYS,
         "app": _LEGACY_APP_NORMAL_KEYS,
+        "agent": _LEGACY_AGENT_NORMAL_KEYS,
     },
     TenantAccountRole.DATASET_OPERATOR: {
         "workspace": _LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS,
         "dataset": _LEGACY_DATASET_DATASET_OPERATOR_KEYS,
+        "agent": _LEGACY_AGENT_NORMAL_KEYS,
+    },
+}
+
+_LEGACY_MEMBER_ROLE_PERMISSIONS: dict[TenantAccountRole, dict[str, list[str]]] = {
+    **_LEGACY_MY_PERMISSIONS,
+    TenantAccountRole.EDITOR: {
+        **_LEGACY_MY_PERMISSIONS[TenantAccountRole.EDITOR],
+        "agent": _LEGACY_AGENT_EDITOR_KEYS,
     },
 }
 
 
 def _legacy_role_permission_keys(role: TenantAccountRole) -> list[str]:
-    permissions = _LEGACY_MY_PERMISSIONS.get(role, {})
+    permissions = _LEGACY_MEMBER_ROLE_PERMISSIONS.get(role, {})
     return list(
         dict.fromkeys(
             [

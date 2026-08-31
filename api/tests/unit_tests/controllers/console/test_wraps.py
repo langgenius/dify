@@ -628,6 +628,17 @@ class TestRbacPermissionRequired:
 
             assert _extract_resource_id(RBACResourceScope.APP, "tenant-1") == "agent-1"
 
+    def test_extract_resource_id_supports_agent_scope(self):
+        app = Flask(__name__)
+
+        with app.test_request_context("/agent/agent-1"):
+            request.view_args = {"agent_id": "agent-1"}
+            assert _extract_resource_id(RBACResourceScope.AGENT, "tenant-1") == "agent-1"
+
+        with app.test_request_context("/agents/agent-2"):
+            request.view_args = {"resource_id": "agent-2"}
+            assert _extract_resource_id(RBACResourceScope.AGENT, "tenant-1") == "agent-2"
+
     def test_legacy_admin_decorator_noops_when_rbac_enabled(self):
         @is_admin_or_owner_required
         def protected_view():

@@ -5,10 +5,11 @@ class RBACResourceScope(StrEnum):
     """Resource scopes accepted by the ``rbac_permission_required`` decorator.
 
     ``WORKSPACE`` denotes a workspace-level check that carries no concrete
-    resource id; ``APP`` and ``DATASET`` are resource-scoped checks.
+    resource id; ``APP``, ``DATASET`` and ``AGENT`` are resource-scoped checks.
     """
 
     APP = "app"
+    AGENT = "agent"
     DATASET = "dataset"
     WORKSPACE = "workspace"
 
@@ -40,6 +41,19 @@ class RBACPermission(StrEnum):
     APP_LOG_AND_ANNOTATION = "app_log_and_annotation"
     APP_DELETE = "app_delete"
     APP_ACCESS_CONFIG = "app_access_config"
+
+    AGENT_CREATE = "agent_create"
+    AGENT_PREVIEW = "agent_preview"
+    AGENT_EDIT = "agent_edit"
+    AGENT_TEST_AND_RUN = "agent_test_and_run"
+    AGENT_RELEASE_AND_VERSION = "agent_release_and_version"
+    AGENT_ACCESS_POINT_VIEW = "agent_access_point_view"
+    AGENT_ACCESS_POINT_MANAGE = "agent_access_point_manage"
+    AGENT_LOG_MANAGE = "agent_log_manage"
+    AGENT_MONITOR = "agent_monitor"
+    AGENT_ACCESS_CONFIG = "agent_access_config"
+    AGENT_IMPORT_EXPORT_DSL = "agent_import_export_dsl"
+    AGENT_DELETE = "agent_delete"
 
     DATASET_PREVIEW = "dataset_preview"
     DATASET_READONLY = "dataset_readonly"
