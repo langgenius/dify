@@ -1,5 +1,6 @@
 import { screen } from '@testing-library/react'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppDetailSection from '../app-detail-section'
 
@@ -185,7 +186,10 @@ describe('AppDetailSection', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should render access point navigation using its app route', () => {
+    it('should render access point navigation when access point permission is granted', () => {
+      // Arrange
+      mockAppPermissionKeys = [AppACLPermission.AccessPoint]
+
       // Act
       render(<AppDetailSection />)
 
@@ -196,6 +200,19 @@ describe('AppDetailSection', () => {
       )
       expect(
         screen.queryByRole('link', { name: 'common.appMenus.apiAccess' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('should hide access point navigation when access point permission is missing', () => {
+      // Arrange
+      mockAppPermissionKeys = [AppACLPermission.Monitor]
+
+      // Act
+      render(<AppDetailSection />)
+
+      // Assert
+      expect(
+        screen.queryByRole('link', { name: 'common.appMenus.accessPoint' }),
       ).not.toBeInTheDocument()
     })
 
@@ -237,20 +254,37 @@ describe('AppDetailSection', () => {
       expect(screen.queryByRole('link', { name: 'common.appMenus.deploy' })).not.toBeInTheDocument()
     })
 
-    it('should render resource access navigation when app access config permission is granted', () => {
+    it.each([AppModeEnum.CHAT, AppModeEnum.AGENT_CHAT])(
+      'should render resource access navigation for %s apps when app access config permission is granted',
+      (mode) => {
+        // Arrange
+        mockAppMode = mode
+        mockAppPermissionKeys = [AppACLPermission.AccessConfig]
+
+        // Act
+        render(<AppDetailSection />)
+
+        // Assert
+        expect(
+          screen.getByRole('link', { name: 'common.settings.resourceAccess' }),
+        ).toHaveAttribute('href', '/app/app-1/access-config')
+        expect(
+          screen.queryByRole('link', { name: 'common.appMenus.overview' }),
+        ).not.toBeInTheDocument()
+      },
+    )
+
+    it('should hide resource access navigation for Agent apps', () => {
       // Arrange
+      mockAppMode = AppModeEnum.AGENT
       mockAppPermissionKeys = [AppACLPermission.AccessConfig]
 
       // Act
       render(<AppDetailSection />)
 
       // Assert
-      expect(screen.getByRole('link', { name: 'common.settings.resourceAccess' })).toHaveAttribute(
-        'href',
-        '/app/app-1/access-config',
-      )
       expect(
-        screen.queryByRole('link', { name: 'common.appMenus.overview' }),
+        screen.queryByRole('link', { name: 'common.settings.resourceAccess' }),
       ).not.toBeInTheDocument()
     })
 

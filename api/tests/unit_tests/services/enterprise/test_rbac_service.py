@@ -275,6 +275,52 @@ class TestAccessPolicies:
 
 
 class TestResourceAccess:
+    def test_resource_whitelist_configs_batch_get(self, mock_send: MagicMock):
+        mock_send.return_value = {
+            "data": [
+                {
+                    "resource_type": "app",
+                    "resource_id": "app-1",
+                    "scope": "all",
+                    "automatic_include_workspace_members": True,
+                    "account_ids": ["acct-1"],
+                },
+                {
+                    "resource_type": "dataset",
+                    "resource_id": "dataset-1",
+                    "scope": "specific",
+                    "automatic_include_workspace_members": False,
+                    "account_ids": None,
+                },
+            ]
+        }
+
+        out = svc.RBACService.ResourceWhitelistConfigs.batch_get(
+            "tenant-1",
+            "acct-actor",
+            [
+                svc.ResourceWhitelistConfigResource(resource_type=svc.RBACResourceType.APP, resource_id="app-1"),
+                svc.ResourceWhitelistConfigResource(
+                    resource_type=svc.RBACResourceType.DATASET,
+                    resource_id="dataset-1",
+                ),
+            ],
+        )
+
+        call = _call_args(mock_send)
+        assert call.method == "POST"
+        assert call.endpoint == "/rbac/whitelist/configs"
+        assert call.json == {
+            "resources": [
+                {"resource_type": "app", "resource_id": "app-1"},
+                {"resource_type": "dataset", "resource_id": "dataset-1"},
+            ]
+        }
+        assert [item.resource_id for item in out.data] == ["app-1", "dataset-1"]
+        assert out.data[0].automatic_include_workspace_members is True
+        assert out.data[0].rbac_whitelist_scope == "all"
+        assert out.data[1].account_ids == []
+
     def test_app_whitelist_resources(self, mock_send: MagicMock):
         mock_send.return_value = {"unrestricted": True, "resource_ids": ["app-1", "app-2"]}
 
@@ -301,6 +347,7 @@ class TestResourceAccess:
     def test_app_user_access_policies(self, mock_send: MagicMock):
         mock_send.return_value = {
             "scope": "specific",
+            "pagination": {"total_count": 1, "per_page": 10, "current_page": 2, "total_pages": 3},
             "data": [
                 {
                     "account": {"account_id": "acct-1", "account_name": "Alice"},
@@ -323,15 +370,54 @@ class TestResourceAccess:
             ],
         }
 
-        out = svc.RBACService.AppAccess.user_access_policies("tenant-1", "acct-1", "app-1")
+        out = svc.RBACService.AppAccess.user_access_policies(
+            "tenant-1",
+            "acct-1",
+            "app-1",
+            options=svc.ListOption(page_number=2, results_per_page=10, reverse=False),
+        )
 
         call = _call_args(mock_send)
         assert call.method == "GET"
         assert call.endpoint == "/rbac/apps/user-access-policies"
-        assert call.params == {"app_id": "app-1"}
+        assert call.params == {
+            "page_number": 2,
+            "results_per_page": 10,
+            "reverse": "false",
+            "app_id": "app-1",
+        }
         assert out.data[0].account.account_name == "Alice"
         assert out.data[0].roles[0].id == "role-1"
         assert out.data[0].access_policies[0].id == "policy-1"
+        assert out.pagination
+        assert out.pagination.current_page == 2
+        assert "scope" not in out.model_dump(mode="json")
+
+    def test_dataset_user_access_policies_forwards_pagination(self, mock_send: MagicMock):
+        mock_send.return_value = {
+            "scope": "specific",
+            "data": [],
+            "pagination": {"total_count": 0, "per_page": 20, "current_page": 1, "total_pages": 0},
+        }
+
+        out = svc.RBACService.DatasetAccess.user_access_policies(
+            "tenant-1",
+            "acct-1",
+            "dataset-1",
+            options=svc.ListOption(page_number=1, results_per_page=20, reverse=True),
+        )
+
+        call = _call_args(mock_send)
+        assert call.method == "GET"
+        assert call.endpoint == "/rbac/datasets/user-access-policies"
+        assert call.params == {
+            "page_number": 1,
+            "results_per_page": 20,
+            "reverse": "true",
+            "dataset_id": "dataset-1",
+        }
+        assert out.pagination
+        assert out.pagination.per_page == 20
 
     def test_dataset_replace_user_access_policies(self, mock_send: MagicMock):
         mock_send.return_value = {
@@ -350,8 +436,52 @@ class TestResourceAccess:
         assert call.json == {"access_policy_ids": ["policy-1"]}
         assert out.access_policies[0].id == "policy-1"
 
+    def test_app_append_whitelist_members_batch(self, mock_send: MagicMock):
+        mock_send.return_value = None
+
+        svc.RBACService.AppAccess.append_whitelist_members_batch(
+            "tenant-1",
+            "acct-actor",
+            [
+                svc.AppendAppWhitelistMembersBatchItem(
+                    app_id="app-1",
+                    account_ids=["acct-1", "acct-2"],
+                    policy_id="policy-1",
+                )
+            ],
+        )
+
+        call = _call_args(mock_send)
+        assert call.method == "POST"
+        assert call.endpoint == "/rbac/apps/whitelist/members/batch"
+        assert call.json == {
+            "data": [{"app_id": "app-1", "account_ids": ["acct-1", "acct-2"], "policy_id": "policy-1"}]
+        }
+
+    def test_dataset_append_whitelist_members_batch(self, mock_send: MagicMock):
+        mock_send.return_value = None
+
+        svc.RBACService.DatasetAccess.append_whitelist_members_batch(
+            "tenant-1",
+            "acct-actor",
+            [
+                svc.AppendDatasetWhitelistMembersBatchItem(
+                    dataset_id="dataset-1",
+                    account_ids=["acct-1", "acct-2"],
+                    policy_id="policy-1",
+                )
+            ],
+        )
+
+        call = _call_args(mock_send)
+        assert call.method == "POST"
+        assert call.endpoint == "/rbac/datasets/whitelist/members/batch"
+        assert call.json == {
+            "data": [{"dataset_id": "dataset-1", "account_ids": ["acct-1", "acct-2"], "policy_id": "policy-1"}]
+        }
+
     def test_dataset_whitelist(self, mock_send: MagicMock):
-        mock_send.return_value = {"account_ids": ["acct-2"]}
+        mock_send.return_value = {"account_ids": ["acct-2"], "automatic_include_workspace_members": False}
 
         out = svc.RBACService.DatasetAccess.whitelist("tenant-1", "acct-1", "dataset-1")
 
@@ -360,6 +490,51 @@ class TestResourceAccess:
         assert call.endpoint == "/rbac/datasets/whitelist"
         assert call.params == {"dataset_id": "dataset-1"}
         assert out.account_ids == ["acct-2"]
+
+    def test_app_whitelist_config(self, mock_send: MagicMock):
+        mock_send.return_value = {
+            "account_ids": ["acct-1"],
+            "automatic_include_workspace_members": True,
+        }
+
+        out = svc.RBACService.AppAccess.whitelist_config("tenant-1", "acct-1", "app-1")
+
+        call = _call_args(mock_send)
+        assert call.method == "GET"
+        assert call.endpoint == "/rbac/apps/whitelist"
+        assert call.params == {"app_id": "app-1"}
+        assert out.model_dump(mode="json") == {"automatic_include_workspace_members": True}
+
+    def test_dataset_whitelist_config(self, mock_send: MagicMock):
+        mock_send.return_value = {
+            "account_ids": ["acct-1"],
+            "automatic_include_workspace_members": False,
+            "scope": "specific",
+        }
+
+        out = svc.RBACService.DatasetAccess.whitelist_config("tenant-1", "acct-1", "dataset-1")
+
+        call = _call_args(mock_send)
+        assert call.method == "GET"
+        assert call.endpoint == "/rbac/datasets/whitelist"
+        assert call.params == {"dataset_id": "dataset-1"}
+        assert out.model_dump(mode="json") == {"automatic_include_workspace_members": False}
+
+    def test_dataset_legacy_whitelist_config_reads_old_scope_without_public_dump(self, mock_send: MagicMock):
+        mock_send.return_value = {
+            "account_ids": ["acct-1"],
+            "automatic_include_workspace_members": False,
+            "scope": "specific",
+        }
+
+        out = svc.RBACService.DatasetAccess.legacy_whitelist_config("tenant-1", "acct-1", "dataset-1")
+
+        call = _call_args(mock_send)
+        assert call.method == "GET"
+        assert call.endpoint == "/rbac/datasets/whitelist"
+        assert call.params == {"dataset_id": "dataset-1"}
+        assert out.account_ids == ["acct-1"]
+        assert out.rbac_whitelist_scope == "specific"
 
     def test_app_matrix(self, mock_send: MagicMock):
         mock_send.return_value = {"resource_id": "app-1", "items": []}
@@ -822,7 +997,7 @@ class TestMemberRoles:
         }
         assert persisted_joins == {
             "acct-2": svc.TenantAccountRole.OWNER,
-            "acct-owner": svc.TenantAccountRole.ADMIN,
+            "acct-owner": svc.TenantAccountRole.NORMAL,
         }
         assert out.roles[0].id == "owner"
 

@@ -1,7 +1,7 @@
 'use client'
 
-import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
-import type { RosterFilterValue } from './components/roster-filter'
+import type { AgentPublicationCountsResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentRosterListState } from './components/agent-roster-list'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -12,6 +12,7 @@ import {
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useQueryState } from 'nuqs'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -27,14 +28,9 @@ import {
 } from './query-params'
 
 const ROSTER_PAGE_SIZE = 30
-const isAgentPublished = (agent: AgentAppPartial) => agent.active_config_is_published === true
-
-const getFilteredRosterItems = (agents: AgentAppPartial[], filter: RosterFilterValue) => {
-  if (filter === 'published') return agents.filter(isAgentPublished)
-
-  if (filter === 'drafts') return agents.filter((agent) => !isAgentPublished(agent))
-
-  return agents
+const EMPTY_PUBLICATION_COUNTS: AgentPublicationCountsResponse = {
+  drafts: 0,
+  published: 0,
 }
 
 export default function RosterPage() {
@@ -48,12 +44,12 @@ export default function RosterPage() {
   )
   const [sortBy] = useQueryState(rosterQueryParamNames.sortBy, rosterSortByQueryParser)
   const debouncedKeyword = useDebounce(keyword.trim(), { wait: 300 })
-
   const rosterQueryInput = {
     limit: ROSTER_PAGE_SIZE,
     sort_by: sortBy,
     ...(debouncedKeyword ? { name: debouncedKeyword } : {}),
     ...(createdByMe ? { is_created_by_me: true } : {}),
+    ...(rosterFilter !== 'all' ? { publication_status: rosterFilter } : {}),
   }
 
   const {
@@ -61,9 +57,12 @@ export default function RosterPage() {
     isPending,
     isFetching,
     isFetchingNextPage,
+    isFetchNextPageError,
     fetchNextPage,
     hasNextPage,
-    error,
+    isLoadingError,
+    isRefetchError,
+    refetch,
   } = useInfiniteQuery({
     ...consoleQuery.agent.get.infiniteOptions({
       input: (pageParam) => ({
@@ -74,22 +73,46 @@ export default function RosterPage() {
       }),
       getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
       initialPageParam: 1,
-      placeholderData: keepPreviousData,
     }),
+    placeholderData: keepPreviousData,
   })
 
-  const rosterItems: AgentAppPartial[] = rosterPages?.pages.flatMap((page) => page.data) ?? []
-  const publishedAgents = rosterItems.filter(isAgentPublished).length
-  const draftAgents = Math.max(rosterItems.length - publishedAgents, 0)
-  const filteredRosterItems = getFilteredRosterItems(rosterItems, rosterFilter)
+  const rosterItems = rosterPages?.pages.flatMap((page) => page.data) ?? []
+  const publicationCounts = rosterPages?.pages[0]?.publication_counts ?? EMPTY_PUBLICATION_COUNTS
   const pageTitle = t(($) => $['roster.title'])
+  const pageTitleId = useId()
+  const listState: AgentRosterListState = isLoadingError
+    ? { status: 'error', onRetry: () => void refetch() }
+    : isPending
+      ? { status: 'pending' }
+      : {
+          status: 'ready',
+          agents: rosterItems,
+          emptyState:
+            debouncedKeyword || rosterFilter !== 'all' || createdByMe ? 'filtered' : 'roster',
+          footer: isFetchNextPageError
+            ? { status: 'error', onRetry: () => void fetchNextPage() }
+            : isRefetchError
+              ? { status: 'error', onRetry: () => void refetch() }
+              : hasNextPage
+                ? {
+                    status: 'load-more',
+                    isLoading: isFetchingNextPage,
+                    onLoadMore: () => void fetchNextPage(),
+                  }
+                : { status: 'none' },
+          isFetching,
+        }
   useDocumentTitle(pageTitle)
 
   return (
     <div className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body">
       <div className="shrink-0 bg-background-body px-8 pt-4 pb-2">
         <div className="flex h-6 min-w-0 items-center justify-between gap-4">
-          <h1 className="min-w-0 flex-1 truncate text-[18px]/[21.6px] font-semibold text-text-primary">
+          <h1
+            id={pageTitleId}
+            className="min-w-0 flex-1 truncate text-[18px]/[21.6px] font-semibold text-text-primary"
+          >
             {pageTitle}
           </h1>
           <a
@@ -103,25 +126,23 @@ export default function RosterPage() {
           </a>
         </div>
         <div className="mt-3.5">
-          <RosterToolbar draftAgents={draftAgents} publishedAgents={publishedAgents} />
+          <RosterToolbar publicationCounts={publicationCounts} />
         </div>
       </div>
 
       <div className="min-h-0 flex-1">
-        <ScrollArea className="relative h-full min-h-0 min-w-0 overflow-hidden">
-          <ScrollAreaViewport tabIndex={-1} className="overscroll-contain">
-            <ScrollAreaContent className="min-h-full px-8 pt-2 pb-8">
-              <AgentRosterList
-                agents={filteredRosterItems}
-                hasMore={!!hasNextPage}
-                isEmptySearch={!!debouncedKeyword || rosterFilter !== 'all'}
-                isError={!!error}
-                isFetching={isFetching}
-                isFetchingNextPage={isFetchingNextPage}
-                isPending={isPending}
-                label={t(($) => $['roster.listLabel'])}
-                onLoadMore={() => fetchNextPage()}
-              />
+        <ScrollArea className="h-full min-h-0 min-w-0 overflow-hidden">
+          <ScrollAreaViewport
+            role="region"
+            aria-labelledby={pageTitleId}
+            className="overscroll-contain"
+            style={{ overflowX: 'hidden' }}
+          >
+            <ScrollAreaContent
+              className="min-h-full w-full max-w-full px-8 pt-2 pb-8"
+              style={{ minWidth: 0 }}
+            >
+              <AgentRosterList label={t(($) => $['roster.listLabel'])} state={listState} />
             </ScrollAreaContent>
           </ScrollAreaViewport>
           <ScrollAreaScrollbar>

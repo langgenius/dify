@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
-from controllers.console.wraps import edit_permission_required
+from controllers.console.wraps import edit_permission_required, model_validate
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import validate_app_token
 from extensions.ext_redis import redis_client
@@ -106,9 +106,9 @@ class AnnotationReplyActionApi(Resource):
         service_api_ns.models[AnnotationJobStatusResponse.__name__],
     )
     @validate_app_token
-    def post(self, app_model: App, action: Literal["enable", "disable"]):
+    @model_validate(AnnotationReplyActionPayload)
+    def post(self, payload: AnnotationReplyActionPayload, app_model: App, action: Literal["enable", "disable"]):
         """Enable or disable annotation reply feature."""
-        payload = AnnotationReplyActionPayload.model_validate(service_api_ns.payload or {})
         match action:
             case "enable":
                 enable_args: EnableAnnotationArgs = {
@@ -250,9 +250,9 @@ class AnnotationListApi(Resource):
     )
     @validate_app_token
     @with_session
-    def post(self, session: Session, app_model: App):
+    @model_validate(AnnotationCreatePayload)
+    def post(self, payload: AnnotationCreatePayload, session: Session, app_model: App):
         """Create a new annotation."""
-        payload = AnnotationCreatePayload.model_validate(service_api_ns.payload or {})
         insert_args: InsertAnnotationArgs = {"question": payload.question, "answer": payload.answer}
         annotation = AppAnnotationService.insert_app_annotation_directly(insert_args, app_model.id, session)
         return dump_response(Annotation, annotation), HTTPStatus.CREATED
@@ -290,9 +290,9 @@ class AnnotationUpdateDeleteApi(Resource):
     @validate_app_token
     @with_session
     @edit_permission_required
-    def put(self, session: Session, app_model: App, annotation_id: UUID):
+    @model_validate(AnnotationCreatePayload)
+    def put(self, payload: AnnotationCreatePayload, session: Session, app_model: App, annotation_id: UUID):
         """Update an existing annotation."""
-        payload = AnnotationCreatePayload.model_validate(service_api_ns.payload or {})
         update_args: UpdateAnnotationArgs = {"question": payload.question, "answer": payload.answer}
         app_ref = AppRefService.create_app_ref(app_model)
         annotation_ref = AppRefService.create_annotation_ref(app_ref, str(annotation_id))

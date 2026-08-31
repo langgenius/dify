@@ -5,13 +5,14 @@ from __future__ import annotations
 import uuid
 from collections.abc import Iterator
 from inspect import unwrap
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 from pydantic import ValidationError
 from sqlalchemy import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.console import console_ns
@@ -52,6 +53,7 @@ from controllers.console.app import (
     wraps as wraps_module,
 )
 from controllers.console.app.completion import ChatMessagePayload, CompletionMessagePayload
+from controllers.console.app.error import AppNotFoundError
 from controllers.console.app.mcp_server import MCPServerCreatePayload, MCPServerUpdatePayload
 from controllers.console.app.ops_trace import TraceConfigPayload, TraceProviderQuery
 from controllers.console.app.site import AppSiteUpdatePayload
@@ -64,12 +66,18 @@ from controllers.console.app.workflow_draft_variable import (
 )
 from controllers.console.app.workflow_statistic import WorkflowStatisticQuery
 from controllers.console.app.workflow_trigger import Parser, ParserEnable
+from machinery.context import RequestContext
 from models import App, Site
 from models.account import Account, AccountStatus
 from models.engine import db
-from models.enums import CustomizeTokenStrategy
 from models.trigger import WorkflowWebhookTrigger
-from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from services.app_site_service import (
+    AppSiteAppNotFoundError,
+    AppSiteChanges,
+    AppSiteCommandResult,
+    AppSiteNotFoundError,
+)
+from tests.unit_tests.config_override import apply_config_overrides
 
 APP_ID = "11111111-1111-1111-1111-111111111111"
 TENANT_ID = "22222222-2222-2222-2222-222222222222"
@@ -97,6 +105,15 @@ def _make_app(
     app.tenant_id = tenant_id
     app.icon_type = icon_type
     return app
+
+
+def _make_request_context() -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id=USER_ID,
+        active_workspace_id=TENANT_ID,
+    )
 
 
 @pytest.fixture
@@ -234,6 +251,39 @@ class TestCompletionEndpoints:
 
 
 class TestAppEndpoints:
+    def test_publish_to_creators_platform_issues_oauth_code_through_application_service(
+        self,
+        database_app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        api = app_module.AppPublishToCreatorsPlatformApi()
+        method = unwrap(api.post)
+        oauth_server = MagicMock()
+        oauth_server.issue_authorization_code.return_value = MagicMock(code="oauth-code-1")
+        services = MagicMock(oauth_server=oauth_server)
+
+        apply_config_overrides(
+            monkeypatch,
+            CREATORS_PLATFORM_FEATURES_ENABLED=True,
+            CREATORS_PLATFORM_OAUTH_CLIENT_ID="client-1",
+        )
+        monkeypatch.setattr(app_module, "application_services", lambda: services)
+        monkeypatch.setattr(app_module.AppDslService, "export_dsl", MagicMock(return_value="app: demo"))
+
+        with (
+            database_app.test_request_context(),
+            patch("core.helper.creators.upload_dsl", return_value="claim-1"),
+            patch("core.helper.creators.get_redirect_url", return_value="https://creators.example.com") as redirect,
+        ):
+            response = method(api, USER_ID, _make_app())
+
+        assert response == {"redirect_url": "https://creators.example.com"}
+        oauth_server.issue_authorization_code.assert_called_once_with(
+            client_id="client-1",
+            account_id=USER_ID,
+        )
+        redirect.assert_called_once_with("claim-1", oauth_code="oauth-code-1")
+
     def test_app_put_should_preserve_icon_type_when_payload_omits_it(
         self, app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
     ):
@@ -387,27 +437,37 @@ class TestOpsTraceEndpoints:
 
 class TestSiteEndpoints:
     @staticmethod
-    def _add_site(session: Session) -> Site:
-        site = Site(
+    def _command_result(*, code: str = "test-code") -> AppSiteCommandResult:
+        return AppSiteCommandResult(
             app_id=APP_ID,
             title="My Site",
             description="Test site",
             default_language="en-US",
-            customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
-            code="test-code",
+            input_placeholder="Ask me anything",
+            code=code,
+            icon=None,
+            icon_background=None,
+            customize_domain=None,
+            copyright=None,
+            privacy_policy=None,
+            custom_disclaimer="",
+            customize_token_strategy="not_allow",
+            prompt_public=False,
+            show_workflow_steps=True,
+            use_icon_as_answer_icon=False,
         )
-        session.add(site)
-        session.commit()
-        return site
 
-    def test_site_response_structure(self):
+    def test_site_payload_maps_to_application_changes(self):
         payload = AppSiteUpdatePayload(
             title="My Site",
             description="Test site",
             input_placeholder="Ask me anything",
         )
-        assert payload.title == "My Site"
-        assert payload.input_placeholder == "Ask me anything"
+        assert payload.to_changes() == AppSiteChanges(
+            title="My Site",
+            description="Test site",
+            input_placeholder="Ask me anything",
+        )
 
     def test_site_default_language_validation(self):
         payload = AppSiteUpdatePayload(default_language="en-US")
@@ -415,44 +475,74 @@ class TestSiteEndpoints:
 
     def test_app_site_update_post(
         self,
-        database_app: Flask,
     ) -> None:
         api = site_module.AppSite()
         method = unwrap(api.post)
-        site = self._add_site(db.session)
+        services = MagicMock()
+        services.app_sites.update.return_value = self._command_result()
+        context = RequestContext("request-1", None, USER_ID, TENANT_ID)
 
-        with database_app.test_request_context("/", json={"title": "My Site", "input_placeholder": "Ask me anything"}):
+        with patch.object(site_module, "application_services", return_value=services):
             result = method(
                 api,
                 AppSiteUpdatePayload(title="My Site", input_placeholder="Ask me anything"),
-                db.session,
-                _make_account(),
-                app_model=_make_app(),
+                context,
+                app_id=uuid.UUID(APP_ID),
             )
 
-        db.session.refresh(site)
         assert isinstance(result, dict)
         assert result["title"] == "My Site"
         assert result["input_placeholder"] == "Ask me anything"
-        assert site.input_placeholder == "Ask me anything"
+        assert result["access_token"] == "test-code"
+        assert result["code"] == "test-code"
+        services.app_sites.update.assert_called_once_with(
+            context,
+            APP_ID,
+            AppSiteChanges(title="My Site", input_placeholder="Ask me anything"),
+        )
 
     def test_app_site_access_token_reset(
         self,
-        database_app: Flask,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         api = site_module.AppSiteAccessTokenReset()
         method = unwrap(api.post)
-        site = self._add_site(db.session)
-        monkeypatch.setattr(site_module.Site, "generate_code", lambda *_args, **_kwargs: "code")
+        services = MagicMock()
+        services.app_sites.reset_access_token.return_value = self._command_result(code="new-code")
+        context = RequestContext("request-1", None, USER_ID, TENANT_ID)
 
-        with database_app.test_request_context("/"):
-            result = method(api, db.session, _make_account(), app_model=_make_app())
+        with patch.object(site_module, "application_services", return_value=services):
+            result = method(api, context, app_id=uuid.UUID(APP_ID))
 
-        db.session.refresh(site)
         assert isinstance(result, dict)
-        assert result["access_token"] == "code"
-        assert site.code == "code"
+        assert result["access_token"] == "new-code"
+        assert result["code"] == "new-code"
+        services.app_sites.reset_access_token.assert_called_once_with(context, APP_ID)
+
+    def test_app_site_update_maps_missing_app(self) -> None:
+        api = site_module.AppSite()
+        method = unwrap(api.post)
+        services = MagicMock()
+        services.app_sites.update.side_effect = AppSiteAppNotFoundError()
+        context = RequestContext("request-1", None, USER_ID, TENANT_ID)
+
+        with (
+            patch.object(site_module, "application_services", return_value=services),
+            pytest.raises(AppNotFoundError),
+        ):
+            method(api, AppSiteUpdatePayload(), context, app_id=uuid.UUID(APP_ID))
+
+    def test_app_site_reset_maps_missing_site(self) -> None:
+        api = site_module.AppSiteAccessTokenReset()
+        method = unwrap(api.post)
+        services = MagicMock()
+        services.app_sites.reset_access_token.side_effect = AppSiteNotFoundError()
+        context = RequestContext("request-1", None, USER_ID, TENANT_ID)
+
+        with (
+            patch.object(site_module, "application_services", return_value=services),
+            pytest.raises(NotFound),
+        ):
+            method(api, context, app_id=uuid.UUID(APP_ID))
 
 
 class TestWorkflowEndpoints:
@@ -613,64 +703,168 @@ class TestWorkflowStatisticEndpoints:
         assert query.end is None
 
     def test_workflow_daily_runs_statistic(self, database_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        repository = DifyAPISQLAlchemyWorkflowRunRepository(
-            session_maker=sessionmaker(bind=db.engine, expire_on_commit=False)
-        )
-        monkeypatch.setattr(
-            repository,
-            "get_daily_runs_statistics",
-            lambda **_kwargs: [{"date": "2024-01-01"}],
-        )
-        monkeypatch.setattr(
-            workflow_statistic_module.DifyAPIRepositoryFactory,
-            "create_api_workflow_run_repository",
-            lambda *_args, **_kwargs: repository,
-        )
+        service = MagicMock()
+        service.get_daily_runs.return_value = [{"date": "2024-01-01", "runs": 2}]
         monkeypatch.setattr(
             workflow_statistic_module,
-            "parse_time_range",
-            lambda *_args, **_kwargs: (None, None),
+            "application_services",
+            lambda: SimpleNamespace(workflow_statistics=service),
         )
+        self._patch_statistic_time_range(monkeypatch)
 
         api = workflow_statistic_module.WorkflowDailyRunsStatistic()
         method = unwrap(api.get)
+        request_context = _make_request_context()
 
         with database_app.test_request_context("/"):
-            account = _make_account()
-            account.timezone = "UTC"
-            response = method(api, WorkflowStatisticQuery(), account, app_model=_make_app("app-1", tenant_id="t1"))
+            response = method(
+                api,
+                WorkflowStatisticQuery(),
+                request_context,
+                app_model=_make_app("app-1", tenant_id="t1"),
+            )
 
-        assert response.get_json() == {"data": [{"date": "2024-01-01"}]}
+        assert response == {"data": [{"date": "2024-01-01", "runs": 2}]}
+        service.get_daily_runs.assert_called_once_with(
+            request_context,
+            app_id="app-1",
+            start_date=None,
+            end_date=None,
+            timezone="UTC",
+        )
 
     def test_workflow_daily_terminals_statistic(self, database_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        repository = DifyAPISQLAlchemyWorkflowRunRepository(
-            session_maker=sessionmaker(bind=db.engine, expire_on_commit=False)
+        service = MagicMock()
+        service.get_daily_terminals.return_value = [{"date": "2024-01-02", "terminal_count": 3}]
+        monkeypatch.setattr(
+            workflow_statistic_module,
+            "application_services",
+            lambda: SimpleNamespace(workflow_statistics=service),
+        )
+        self._patch_statistic_time_range(monkeypatch)
+
+        api = workflow_statistic_module.WorkflowDailyTerminalsStatistic()
+        method = unwrap(api.get)
+        request_context = _make_request_context()
+
+        with database_app.test_request_context("/"):
+            response = method(
+                api,
+                WorkflowStatisticQuery(),
+                request_context,
+                app_model=_make_app("app-1", tenant_id="t1"),
+            )
+
+        assert response == {"data": [{"date": "2024-01-02", "terminal_count": 3}]}
+        service.get_daily_terminals.assert_called_once_with(
+            request_context,
+            app_id="app-1",
+            start_date=None,
+            end_date=None,
+            timezone="UTC",
+        )
+
+    def test_workflow_daily_token_cost_statistic(
+        self,
+        database_app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        service = MagicMock()
+        service.get_daily_token_costs.return_value = [{"date": "2024-01-03", "token_count": 4}]
+        monkeypatch.setattr(
+            workflow_statistic_module,
+            "application_services",
+            lambda: SimpleNamespace(workflow_statistics=service),
+        )
+        self._patch_statistic_time_range(monkeypatch)
+
+        api = workflow_statistic_module.WorkflowDailyTokenCostStatistic()
+        method = unwrap(api.get)
+        request_context = _make_request_context()
+
+        with database_app.test_request_context("/"):
+            response = method(
+                api,
+                WorkflowStatisticQuery(),
+                request_context,
+                app_model=_make_app("app-1", tenant_id="t1"),
+            )
+
+        assert response == {"data": [{"date": "2024-01-03", "token_count": 4}]}
+        service.get_daily_token_costs.assert_called_once_with(
+            request_context,
+            app_id="app-1",
+            start_date=None,
+            end_date=None,
+            timezone="UTC",
+        )
+
+    def test_workflow_average_app_interaction_statistic(
+        self,
+        database_app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        service = MagicMock()
+        service.get_average_app_interactions.return_value = [{"date": "2024-01-04", "interactions": 2.5}]
+        monkeypatch.setattr(
+            workflow_statistic_module,
+            "application_services",
+            lambda: SimpleNamespace(workflow_statistics=service),
+        )
+        self._patch_statistic_time_range(monkeypatch)
+
+        api = workflow_statistic_module.WorkflowAverageAppInteractionStatistic()
+        method = unwrap(api.get)
+        request_context = _make_request_context()
+
+        with database_app.test_request_context("/"):
+            response = method(
+                api,
+                WorkflowStatisticQuery(),
+                request_context,
+                app_model=_make_app("app-1", tenant_id="t1"),
+            )
+
+        assert response == {"data": [{"date": "2024-01-04", "interactions": 2.5}]}
+        service.get_average_app_interactions.assert_called_once_with(
+            request_context,
+            app_id="app-1",
+            start_date=None,
+            end_date=None,
+            timezone="UTC",
+        )
+
+    def test_workflow_statistic_invalid_time_range(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        account = _make_account()
+        account.timezone = "UTC"
+        monkeypatch.setattr(
+            workflow_statistic_module,
+            "current_account_with_tenant",
+            lambda: SimpleNamespace(account=account),
         )
         monkeypatch.setattr(
-            repository,
-            "get_daily_terminals_statistics",
-            lambda **_kwargs: [{"date": "2024-01-02"}],
+            workflow_statistic_module,
+            "parse_time_range",
+            MagicMock(side_effect=ValueError("invalid range")),
         )
+
+        with pytest.raises(BadRequest, match="invalid range"):
+            workflow_statistic_module._resolve_statistic_time_range(WorkflowStatisticQuery())
+
+    @staticmethod
+    def _patch_statistic_time_range(monkeypatch: pytest.MonkeyPatch) -> None:
+        account = _make_account()
+        account.timezone = "UTC"
         monkeypatch.setattr(
-            workflow_statistic_module.DifyAPIRepositoryFactory,
-            "create_api_workflow_run_repository",
-            lambda *_args, **_kwargs: repository,
+            workflow_statistic_module,
+            "current_account_with_tenant",
+            lambda: SimpleNamespace(account=account),
         )
         monkeypatch.setattr(
             workflow_statistic_module,
             "parse_time_range",
             lambda *_args, **_kwargs: (None, None),
         )
-
-        api = workflow_statistic_module.WorkflowDailyTerminalsStatistic()
-        method = unwrap(api.get)
-
-        with database_app.test_request_context("/"):
-            account = _make_account()
-            account.timezone = "UTC"
-            response = method(api, WorkflowStatisticQuery(), account, app_model=_make_app("app-1", tenant_id="t1"))
-
-        assert response.get_json() == {"data": [{"date": "2024-01-02"}]}
 
 
 class TestWorkflowTriggerEndpoints:

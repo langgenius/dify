@@ -97,6 +97,20 @@ def test_account_repository_updates_password(
     assert persisted.password_salt == "new-salt"
 
 
+def test_account_repository_finds_email_with_lowercase_fallback(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _persist_account(sqlite_session)
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    account = repository.find_by_email("Account@Example.com")
+
+    assert account is not None
+    assert account.id == "account-1"
+    assert account.email == "account@example.com"
+
+
 def test_account_integration_repository_lists_integrations(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
@@ -188,4 +202,5 @@ def test_account_repository_updates_email_and_removes_integrations_atomically(
     persisted = sqlite_session.get(Account, "account-1")
     assert persisted is not None
     assert persisted.email == "new@example.com"
+    assert persisted.normalized_email == "new@example.com"
     assert sqlite_session.get(AccountIntegrate, integration_id) is None

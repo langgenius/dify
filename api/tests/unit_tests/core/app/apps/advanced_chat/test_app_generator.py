@@ -23,6 +23,7 @@ from core.ops.ops_trace_manager import TraceQueueManager
 from libs.datetime_utils import naive_utc_now
 from models.enums import MessageStatus
 from models.model import AppMode
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 class TestAdvancedChatAppGeneratorValidation:
@@ -945,7 +946,7 @@ class TestAdvancedChatAppGeneratorInternals:
                 "core.app.apps.advanced_chat.app_generator.AdvancedChatAppRunner",
                 _make_runner(raised_error),
             )
-            monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.dify_config", SimpleNamespace(DEBUG=True))
+            apply_config_overrides(monkeypatch, DEBUG=True)
             monkeypatch.setattr(
                 "core.app.apps.advanced_chat.app_generator.db",
                 SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None)),

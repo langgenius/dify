@@ -205,6 +205,14 @@ export const zAgentConfigSnapshotRestoreResponse = z.object({
 })
 
 /**
+ * AgentPublicationCountsResponse
+ */
+export const zAgentPublicationCountsResponse = z.object({
+  drafts: z.int().gte(0),
+  published: z.int().gte(0),
+})
+
+/**
  * IconType
  */
 export const zIconType = z.enum(['emoji', 'image', 'link'])
@@ -733,12 +741,12 @@ export const zAgentThought = z.object({
 export const zMessageFile = z.object({
   belongs_to: z.string().nullish(),
   filename: z.string(),
-  id: z.string(),
+  id: z.uuid(),
   mime_type: z.string().nullish(),
   size: z.int().nullish(),
   transfer_method: z.string(),
   type: z.string(),
-  upload_file_id: z.string().nullish(),
+  upload_file_id: z.uuid().nullish(),
   url: z.string().nullish(),
 })
 
@@ -871,6 +879,7 @@ export const zAgentAppPagination = z.object({
   has_more: z.boolean(),
   limit: z.int(),
   page: z.int(),
+  publication_counts: zAgentPublicationCountsResponse,
   total: z.int(),
 })
 
@@ -2042,7 +2051,10 @@ export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
  */
 export const zUserActionConfig = z.object({
   button_style: zButtonStyle.optional().default('default'),
-  id: z.string().max(20),
+  id: z
+    .string()
+    .max(20)
+    .regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
   title: z.string().max(100),
 })
 
@@ -2490,6 +2502,7 @@ export const zAgentAppPaginationWritable = z.object({
   has_more: z.boolean(),
   limit: z.int(),
   page: z.int(),
+  publication_counts: zAgentPublicationCountsResponse,
   total: z.int(),
 })
 
@@ -2582,6 +2595,7 @@ export const zGetAgentQuery = z.object({
     .default('all'),
   name: z.string().optional(),
   page: z.int().gte(1).lte(99999).optional().default(1),
+  publication_status: z.enum(['drafts', 'published']).optional(),
   sort_by: z
     .enum(['earliest_created', 'last_modified', 'recently_created'])
     .optional()

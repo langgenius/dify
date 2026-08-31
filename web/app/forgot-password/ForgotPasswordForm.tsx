@@ -1,6 +1,7 @@
 'use client'
 import type { InitValidateStatusResponse } from '@/models/common'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useStore } from '@tanstack/react-form'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
@@ -9,7 +10,7 @@ import * as z from 'zod'
 import { formContext, useAppForm } from '@/app/components/base/form'
 import { zodSubmitValidator } from '@/app/components/base/form/utils/zod-submit-validator'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { useRouter } from '@/next/navigation'
+import Link from '@/next/link'
 import {
   fetchInitValidateStatus,
   fetchSetupStatus,
@@ -27,7 +28,6 @@ const accountFormSchema = z.object({
 
 const ForgotPasswordForm = () => {
   const { t } = useTranslation()
-  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [isEmailSent, setIsEmailSent] = useState(false)
   const documentTitle = loading
@@ -59,14 +59,10 @@ const ForgotPasswordForm = () => {
   const isSubmitting = useStore(form.store, (state) => state.isSubmitting)
   const emailErrors = useStore(form.store, (state) => state.fieldMeta.email?.errors)
 
-  const handleSendResetPasswordClick = async () => {
+  const handleSendResetPasswordClick = () => {
     if (isSubmitting) return
 
-    if (isEmailSent) {
-      router.push('/signin')
-    } else {
-      form.handleSubmit()
-    }
+    form.handleSubmit()
   }
 
   useEffect(() => {
@@ -134,16 +130,23 @@ const ForgotPasswordForm = () => {
                 </div>
               )}
               <div>
-                <Button
-                  variant="primary"
-                  className="w-full"
-                  disabled={isSubmitting}
-                  onClick={handleSendResetPasswordClick}
-                >
-                  {isEmailSent
-                    ? t(($) => $.backToSignIn, { ns: 'login' })
-                    : t(($) => $.sendResetLink, { ns: 'login' })}
-                </Button>
+                {isEmailSent ? (
+                  <Link
+                    href="/signin"
+                    className={cn(buttonVariants({ variant: 'primary' }), 'w-full')}
+                  >
+                    {t(($) => $.backToSignIn, { ns: 'login' })}
+                  </Link>
+                ) : (
+                  <Button
+                    variant="primary"
+                    className="w-full"
+                    disabled={isSubmitting}
+                    onClick={handleSendResetPasswordClick}
+                  >
+                    {t(($) => $.sendResetLink, { ns: 'login' })}
+                  </Button>
+                )}
               </div>
             </form>
           </formContext.Provider>

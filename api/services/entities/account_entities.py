@@ -116,6 +116,30 @@ class AccountEmailResetResult:
     account: AccountSnapshot | None = None
 
 
+class AccountEmailRegistrationPhase(StrEnum):
+    REGISTER = "register"
+
+
+@dataclass(frozen=True, slots=True)
+class AccountEmailRegistrationToken:
+    email: str
+    code: str
+    phase: AccountEmailRegistrationPhase | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AccountEmailRegistrationVerification:
+    email: str
+    token: str
+
+
+@dataclass(frozen=True, slots=True)
+class AccountSessionTokens:
+    access_token: str
+    refresh_token: str
+    csrf_token: str
+
+
 class AccountChangeEmailPhase(StrEnum):
     OLD_EMAIL = "old_email"
     OLD_EMAIL_VERIFIED = "old_email_verified"
@@ -181,6 +205,11 @@ type AccountChangeEmailTokenData = (
 @dataclass(frozen=True, slots=True)
 class AccountEducationVerification:
     token: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class AccountEducationActivation:
+    message: str
 
 
 @dataclass(frozen=True, slots=True)

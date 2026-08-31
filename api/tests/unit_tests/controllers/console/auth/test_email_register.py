@@ -1,351 +1,303 @@
-"""Unit tests for email register controller endpoints."""
+"""Unit tests for the email-registration Flask adapter."""
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from collections.abc import Callable, Generator
+from contextlib import contextmanager
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
 import pytest
 from flask import Flask
+from pydantic import ValidationError
 
+from controllers.console import bp as console_bp
 from controllers.console.auth.email_register import (
     EmailRegisterCheckApi,
     EmailRegisterResetApi,
+    EmailRegisterResetPayload,
     EmailRegisterSendEmailApi,
 )
-from controllers.console.error import AccountInFreezeError, EmailDomainSuspendedError
+from controllers.console.auth.error import (
+    EmailAlreadyInUseError,
+    EmailCodeError,
+    EmailRegisterLimitError,
+    EmailRegisterRateLimitExceededError,
+    InvalidEmailError,
+    InvalidTokenError,
+    NormalizedEmailAlreadyInUseError,
+    PasswordMismatchError,
+)
+from controllers.console.error import (
+    AccountInFreezeError,
+    EmailDomainSuspendedError,
+    EmailSendIpLimitError,
+    SeatsLimitExceeded,
+)
 from enums import DeploymentEdition
-from models.account import Account
+from services.account_email_registration_service import AccountEmailRegistrationService
+from services.account_errors import (
+    AccountEmailAlreadyInUseError,
+    AccountEmailDomainSuspendedError,
+    AccountEmailFrozenError,
+    AccountNormalizedEmailAlreadyInUseError,
+    EmailRegistrationPasswordMismatchError,
+    EmailRegistrationSeatsLimitError,
+    EmailRegistrationSendIPLimitedError,
+    EmailRegistrationSendRateLimitError,
+    EmailRegistrationVerificationLimitError,
+    InvalidEmailRegistrationAddressError,
+    InvalidEmailRegistrationCodeError,
+    InvalidEmailRegistrationTokenError,
+)
+from services.entities.account_entities import AccountEmailRegistrationVerification, AccountSessionTokens
 from services.entities.feature_entities import SystemFeatureModel
-from services.errors.account import (
-    AccountRegisterError,
-)
-from services.errors.account import (
-    EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
-)
 
 
-class TestEmailRegisterSendEmailApi:
-    @patch("controllers.console.auth.email_register.AccountService.get_account_by_email_with_case_fallback")
-    @patch("controllers.console.auth.email_register.AccountService.send_email_register_email")
-    @patch("controllers.console.auth.email_register.BillingService.get_email_freeze_type")
-    @patch("controllers.console.auth.email_register.AccountService.is_email_send_ip_limit", return_value=False)
-    @patch("controllers.console.auth.email_register.extract_remote_ip", return_value="127.0.0.1")
-    def test_send_email_normalizes_and_falls_back(
-        self,
-        mock_extract_ip,
-        mock_is_email_send_ip_limit,
-        mock_is_freeze,
-        mock_send_mail,
-        mock_get_account,
-        app: Flask,
-    ):
-        mock_send_mail.return_value = "token-123"
-        mock_is_freeze.return_value = False
-        account = Account(name="Invitee", email="invitee@example.com")
-        mock_get_account.return_value = account
+@pytest.fixture(autouse=True)
+def _cloud_edition(config_overrides: Callable[..., None]) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 
-        feature_flags = SystemFeatureModel(
-            deployment_edition=DeploymentEdition.COMMUNITY,
-            enable_email_password_login=True,
-            is_allow_register=True,
-        )
-        with (
-            patch("controllers.console.auth.email_register.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
-        ):
-            with app.test_request_context(
-                "/email-register/send-email",
-                method="POST",
-                json={"email": "Invitee@Example.com", "language": "en-US"},
-            ):
-                response = EmailRegisterSendEmailApi().post()
 
-        assert response == {"result": "success", "data": "token-123"}
-        mock_is_freeze.assert_called_once_with("invitee@example.com")
-        mock_send_mail.assert_called_once_with(email="invitee@example.com", account=account, language="en-US")
-        mock_extract_ip.assert_called_once()
-        mock_is_email_send_ip_limit.assert_called_once_with("127.0.0.1")
-
-    @pytest.mark.parametrize(
-        ("freeze_type", "expected_error"),
-        [
-            ("freeze", AccountInFreezeError),
-            ("email_domain_suspended", EmailDomainSuspendedError),
-        ],
+@contextmanager
+def _request(
+    app: Flask,
+    service: Mock,
+    *,
+    path: str,
+    payload: dict[str, str],
+) -> Generator[None, None, None]:
+    services = SimpleNamespace(accounts=SimpleNamespace(email_registration=service))
+    features = SystemFeatureModel(
+        deployment_edition=DeploymentEdition.CLOUD,
+        enable_email_password_login=True,
+        is_allow_register=True,
     )
-    @patch("controllers.console.auth.email_register.BillingService.get_email_freeze_type")
-    @patch("controllers.console.auth.email_register.AccountService.is_email_send_ip_limit", return_value=False)
-    @patch("controllers.console.auth.email_register.extract_remote_ip", return_value="127.0.0.1")
-    def test_send_email_rejects_frozen_email(
-        self,
-        mock_extract_ip,
-        mock_is_email_send_ip_limit,
-        mock_get_freeze_type,
-        app: Flask,
-        freeze_type,
-        expected_error,
+    with (
+        patch("controllers.console.auth.email_register.application_services", return_value=services),
+        patch("controllers.console.flask_admission.FeatureService.get_system_features", return_value=features),
+        patch("controllers.console.auth.email_register.extract_remote_ip", return_value="127.0.0.1"),
+        app.test_request_context(path, method="POST", json=payload),
     ):
-        mock_get_freeze_type.return_value = freeze_type
-        feature_flags = SystemFeatureModel(
-            deployment_edition=DeploymentEdition.COMMUNITY,
-            enable_email_password_login=True,
-            is_allow_register=True,
-        )
-
-        with (
-            patch("controllers.console.auth.email_register.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
-        ):
-            with app.test_request_context(
-                "/email-register/send-email",
-                method="POST",
-                json={"email": "Invitee@Example.com"},
-            ):
-                with pytest.raises(expected_error):
-                    EmailRegisterSendEmailApi().post()
-
-        mock_get_freeze_type.assert_called_once_with("invitee@example.com")
-        mock_is_email_send_ip_limit.assert_called_once_with("127.0.0.1")
-        mock_extract_ip.assert_called_once()
+        yield
 
 
-class TestEmailRegisterCheckApi:
-    @patch("controllers.console.auth.email_register.AccountService.reset_email_register_error_rate_limit")
-    @patch("controllers.console.auth.email_register.AccountService.generate_email_register_token")
-    @patch("controllers.console.auth.email_register.AccountService.revoke_email_register_token")
-    @patch("controllers.console.auth.email_register.AccountService.add_email_register_error_rate_limit")
-    @patch("controllers.console.auth.email_register.AccountService.get_email_register_data")
-    @patch("controllers.console.auth.email_register.AccountService.is_email_register_error_rate_limit")
-    def test_validity_normalizes_email_before_checks(
-        self,
-        mock_rate_limit_check,
-        mock_get_data,
-        mock_add_rate,
-        mock_revoke,
-        mock_generate_token,
-        mock_reset_rate,
-        app: Flask,
+def _service() -> Mock:
+    return Mock(spec=AccountEmailRegistrationService)
+
+
+def test_normalized_email_conflict_exposes_a_distinct_error_code() -> None:
+    error = NormalizedEmailAlreadyInUseError()
+
+    assert error.code == 400
+    assert error.data is not None
+    assert error.data["code"] == "normalized_email_already_in_use"
+
+
+def test_send_email_delegates_with_remote_ip(app: Flask) -> None:
+    service = _service()
+    service.send_code.return_value = "token-123"
+
+    with _request(
+        app,
+        service,
+        path="/email-register/send-email",
+        payload={"email": "Invitee@Example.com", "language": "zh-Hans"},
     ):
-        mock_rate_limit_check.return_value = False
-        mock_get_data.return_value = {"email": "User@Example.com", "code": "4321"}
-        mock_generate_token.return_value = (None, "new-token")
+        response = EmailRegisterSendEmailApi().post()
 
-        feature_flags = SystemFeatureModel(
-            deployment_edition=DeploymentEdition.COMMUNITY,
-            enable_email_password_login=True,
-            is_allow_register=True,
-        )
-        with (
-            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
-        ):
-            with app.test_request_context(
-                "/email-register/validity",
-                method="POST",
-                json={"email": "User@Example.com", "code": "4321", "token": "token-123"},
-            ):
-                response = EmailRegisterCheckApi().post()
-
-        assert response == {"is_valid": True, "email": "user@example.com", "token": "new-token"}
-        mock_rate_limit_check.assert_called_once_with("user@example.com")
-        mock_generate_token.assert_called_once_with(
-            "user@example.com", code="4321", additional_data={"phase": "register"}
-        )
-        mock_reset_rate.assert_called_once_with("user@example.com")
-        mock_add_rate.assert_not_called()
-        mock_revoke.assert_called_once_with("token-123")
+    assert response == {"result": "success", "data": "token-123"}
+    assert service.send_code.call_args.kwargs == {
+        "remote_ip": "127.0.0.1",
+        "requested_email": "Invitee@Example.com",
+        "requested_language": "zh-Hans",
+    }
 
 
-class TestEmailRegisterResetApi:
-    @pytest.mark.parametrize(
-        ("service_error", "expected_error"),
-        [
-            (EmailDomainSuspendedRegistrationError(), EmailDomainSuspendedError),
-            (AccountRegisterError("frozen"), AccountInFreezeError),
-        ],
+@pytest.mark.parametrize(
+    ("service_error", "http_error"),
+    [
+        pytest.param(EmailRegistrationSendIPLimitedError(), EmailSendIpLimitError, id="ip-limit"),
+        pytest.param(EmailRegistrationSendRateLimitError(1), EmailRegisterRateLimitExceededError, id="send-limit"),
+        pytest.param(AccountEmailFrozenError(), AccountInFreezeError, id="frozen"),
+        pytest.param(AccountEmailDomainSuspendedError(), EmailDomainSuspendedError, id="suspended-domain"),
+    ],
+)
+def test_send_email_translates_application_errors(
+    app: Flask,
+    service_error: Exception,
+    http_error: type[Exception],
+) -> None:
+    service = _service()
+    service.send_code.side_effect = service_error
+
+    with _request(
+        app,
+        service,
+        path="/email-register/send-email",
+        payload={"email": "invitee@example.com"},
+    ):
+        with pytest.raises(http_error):
+            EmailRegisterSendEmailApi().post()
+
+
+def test_verify_email_code_serializes_application_result(app: Flask) -> None:
+    service = _service()
+    service.verify_code.return_value = AccountEmailRegistrationVerification(
+        email="user@example.com",
+        token="verified-token",
     )
-    @patch("controllers.console.auth.email_register.AccountService.create_account_and_tenant")
-    def test_create_new_account_translates_freeze_errors(
-        self,
-        mock_create_account,
-        service_error,
-        expected_error,
+
+    with _request(
+        app,
+        service,
+        path="/email-register/validity",
+        payload={"email": "User@Example.com", "code": "123456", "token": "pending-token"},
     ):
-        mock_create_account.side_effect = service_error
+        response = EmailRegisterCheckApi().post()
 
-        with pytest.raises(expected_error):
-            EmailRegisterResetApi()._create_new_account(
-                email="user@example.com",
-                password="ValidPass123!",
-            )
+    assert response == {"is_valid": True, "email": "user@example.com", "token": "verified-token"}
+    service.verify_code.assert_called_once_with(
+        email="User@Example.com",
+        code="123456",
+        token="pending-token",
+    )
 
-    @patch("controllers.console.auth.email_register.AccountService.reset_login_error_rate_limit")
-    @patch("controllers.console.auth.email_register.AccountService.login")
-    @patch("controllers.console.auth.email_register.EmailRegisterResetApi._create_new_account")
-    @patch("controllers.console.auth.email_register.AccountService.get_account_by_email_with_case_fallback")
-    @patch("controllers.console.auth.email_register.AccountService.revoke_email_register_token")
-    @patch("controllers.console.auth.email_register.AccountService.get_email_register_data")
-    @patch("controllers.console.auth.email_register.extract_remote_ip", return_value="127.0.0.1")
-    def test_reset_creates_account_with_normalized_email(
-        self,
-        mock_extract_ip,
-        mock_get_data,
-        mock_revoke_token,
-        mock_get_account,
-        mock_create_account,
-        mock_login,
-        mock_reset_login_rate,
-        app: Flask,
+
+@pytest.mark.parametrize(
+    ("service_error", "http_error"),
+    [
+        pytest.param(EmailRegistrationVerificationLimitError(), EmailRegisterLimitError, id="attempt-limit"),
+        pytest.param(InvalidEmailRegistrationTokenError(), InvalidTokenError, id="token"),
+        pytest.param(InvalidEmailRegistrationAddressError(), InvalidEmailError, id="email"),
+        pytest.param(InvalidEmailRegistrationCodeError(), EmailCodeError, id="code"),
+    ],
+)
+def test_verify_email_code_translates_application_errors(
+    app: Flask,
+    service_error: Exception,
+    http_error: type[Exception],
+) -> None:
+    service = _service()
+    service.verify_code.side_effect = service_error
+
+    with _request(
+        app,
+        service,
+        path="/email-register/validity",
+        payload={"email": "user@example.com", "code": "wrong", "token": "pending-token"},
     ):
-        mock_get_data.return_value = {"phase": "register", "email": "Invitee@Example.com"}
-        mock_create_account.return_value = Account(name="Invitee", email="invitee@example.com")
-        token_pair = MagicMock()
-        token_pair.model_dump.return_value = {"access_token": "a", "refresh_token": "r"}
-        mock_login.return_value = token_pair
-        mock_get_account.return_value = None
+        with pytest.raises(http_error):
+            EmailRegisterCheckApi().post()
 
-        feature_flags = SystemFeatureModel(
-            deployment_edition=DeploymentEdition.COMMUNITY,
-            enable_email_password_login=True,
-            is_allow_register=True,
-        )
-        with (
-            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
-        ):
-            with app.test_request_context(
-                "/email-register",
-                method="POST",
-                json={"token": "token-123", "new_password": "ValidPass123!", "password_confirm": "ValidPass123!"},
-            ):
-                response = EmailRegisterResetApi().post()
 
-        assert response == {"result": "success", "data": {"access_token": "a", "refresh_token": "r"}}
-        mock_create_account.assert_called_once_with(
-            email="invitee@example.com",
-            password="ValidPass123!",
-            timezone=None,
-            language=None,
-            ip_address="127.0.0.1",
-        )
-        mock_reset_login_rate.assert_called_once_with("invitee@example.com")
-        mock_revoke_token.assert_called_once_with("token-123")
-        mock_extract_ip.assert_called_once()
+def test_register_delegates_and_serializes_tokens(app: Flask) -> None:
+    service = _service()
+    service.register.return_value = AccountSessionTokens(
+        access_token="access",
+        refresh_token="refresh",
+        csrf_token="csrf",
+    )
 
-    @patch("controllers.console.auth.email_register.AccountService.reset_login_error_rate_limit")
-    @patch("controllers.console.auth.email_register.AccountService.login")
-    @patch("controllers.console.auth.email_register.EmailRegisterResetApi._create_new_account")
-    @patch("controllers.console.auth.email_register.AccountService.get_account_by_email_with_case_fallback")
-    @patch("controllers.console.auth.email_register.AccountService.revoke_email_register_token")
-    @patch("controllers.console.auth.email_register.AccountService.get_email_register_data")
-    @patch("controllers.console.auth.email_register.extract_remote_ip", return_value="127.0.0.1")
-    def test_reset_passes_timezone_to_new_account(
-        self,
-        mock_extract_ip,
-        mock_get_data,
-        mock_revoke_token,
-        mock_get_account,
-        mock_create_account,
-        mock_login,
-        mock_reset_login_rate,
-        app: Flask,
+    with _request(
+        app,
+        service,
+        path="/email-register",
+        payload={
+            "token": "verified-token",
+            "new_password": "ValidPass123!",
+            "password_confirm": "ValidPass123!",
+            "language": "zh-Hans",
+            "timezone": "Asia/Shanghai",
+        },
     ):
-        mock_get_data.return_value = {"phase": "register", "email": "Invitee@Example.com"}
-        mock_create_account.return_value = Account(name="Invitee", email="invitee@example.com")
-        token_pair = MagicMock()
-        token_pair.model_dump.return_value = {"access_token": "a", "refresh_token": "r"}
-        mock_login.return_value = token_pair
-        mock_get_account.return_value = None
+        response = EmailRegisterResetApi().post()
 
-        feature_flags = SystemFeatureModel(
-            deployment_edition=DeploymentEdition.COMMUNITY,
-            enable_email_password_login=True,
-            is_allow_register=True,
-        )
-        with (
-            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
-        ):
-            with app.test_request_context(
-                "/email-register",
-                method="POST",
-                json={
-                    "token": "token-123",
-                    "new_password": "ValidPass123!",
-                    "password_confirm": "ValidPass123!",
-                    "timezone": "Asia/Shanghai",
-                },
-            ):
-                response = EmailRegisterResetApi().post()
+    assert response == {
+        "result": "success",
+        "data": {"access_token": "access", "refresh_token": "refresh", "csrf_token": "csrf"},
+    }
+    assert service.register.call_args.kwargs == {
+        "remote_ip": "127.0.0.1",
+        "token": "verified-token",
+        "new_password": "ValidPass123!",
+        "password_confirm": "ValidPass123!",
+        "language": "zh-Hans",
+        "timezone": "Asia/Shanghai",
+    }
 
-        assert response == {"result": "success", "data": {"access_token": "a", "refresh_token": "r"}}
-        mock_create_account.assert_called_once_with(
-            email="invitee@example.com",
-            password="ValidPass123!",
-            timezone="Asia/Shanghai",
-            language=None,
-            ip_address="127.0.0.1",
-        )
-        mock_reset_login_rate.assert_called_once_with("invitee@example.com")
-        mock_revoke_token.assert_called_once_with("token-123")
-        mock_extract_ip.assert_called_once()
 
-    @patch("controllers.console.auth.email_register.AccountService.reset_login_error_rate_limit")
-    @patch("controllers.console.auth.email_register.AccountService.login")
-    @patch("controllers.console.auth.email_register.EmailRegisterResetApi._create_new_account")
-    @patch("controllers.console.auth.email_register.AccountService.get_account_by_email_with_case_fallback")
-    @patch("controllers.console.auth.email_register.AccountService.revoke_email_register_token")
-    @patch("controllers.console.auth.email_register.AccountService.get_email_register_data")
-    @patch("controllers.console.auth.email_register.extract_remote_ip", return_value="127.0.0.1")
-    def test_reset_passes_language_to_new_account(
-        self,
-        mock_extract_ip,
-        mock_get_data,
-        mock_revoke_token,
-        mock_get_account,
-        mock_create_account,
-        mock_login,
-        mock_reset_login_rate,
-        app: Flask,
+@pytest.mark.parametrize(
+    ("service_error", "http_error"),
+    [
+        pytest.param(EmailRegistrationPasswordMismatchError(), PasswordMismatchError, id="password"),
+        pytest.param(InvalidEmailRegistrationTokenError(), InvalidTokenError, id="token"),
+        pytest.param(
+            AccountNormalizedEmailAlreadyInUseError(),
+            NormalizedEmailAlreadyInUseError,
+            id="normalized-email-in-use",
+        ),
+        pytest.param(AccountEmailAlreadyInUseError(), EmailAlreadyInUseError, id="email-in-use"),
+        pytest.param(EmailRegistrationSeatsLimitError(), SeatsLimitExceeded, id="seat-limit"),
+        pytest.param(AccountEmailFrozenError(), AccountInFreezeError, id="frozen"),
+        pytest.param(AccountEmailDomainSuspendedError(), EmailDomainSuspendedError, id="suspended-domain"),
+    ],
+)
+def test_register_translates_application_errors(
+    app: Flask,
+    service_error: Exception,
+    http_error: type[Exception],
+) -> None:
+    service = _service()
+    service.register.side_effect = service_error
+
+    with _request(
+        app,
+        service,
+        path="/email-register",
+        payload={
+            "token": "verified-token",
+            "new_password": "ValidPass123!",
+            "password_confirm": "ValidPass123!",
+        },
     ):
-        mock_get_data.return_value = {"phase": "register", "email": "Invitee@Example.com"}
-        mock_create_account.return_value = Account(name="Invitee", email="invitee@example.com")
-        token_pair = MagicMock()
-        token_pair.model_dump.return_value = {"access_token": "a", "refresh_token": "r"}
-        mock_login.return_value = token_pair
-        mock_get_account.return_value = None
+        with pytest.raises(http_error):
+            EmailRegisterResetApi().post()
 
-        feature_flags = SystemFeatureModel(
-            deployment_edition=DeploymentEdition.COMMUNITY,
-            enable_email_password_login=True,
-            is_allow_register=True,
-        )
-        with (
-            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
-        ):
-            with app.test_request_context(
-                "/email-register",
-                method="POST",
-                json={
-                    "token": "token-123",
-                    "new_password": "ValidPass123!",
-                    "password_confirm": "ValidPass123!",
-                    "language": "zh-Hans",
-                },
-            ):
-                response = EmailRegisterResetApi().post()
 
-        assert response == {"result": "success", "data": {"access_token": "a", "refresh_token": "r"}}
-        mock_create_account.assert_called_once_with(
-            email="invitee@example.com",
-            password="ValidPass123!",
-            timezone=None,
-            language="zh-Hans",
-            ip_address="127.0.0.1",
+def test_reset_payload_rejects_invalid_timezone() -> None:
+    with pytest.raises(ValidationError):
+        EmailRegisterResetPayload.model_validate(
+            {
+                "token": "token-123",
+                "new_password": "ValidPass123!",
+                "password_confirm": "ValidPass123!",
+                "timezone": "",
+            }
         )
-        mock_reset_login_rate.assert_called_once_with("invitee@example.com")
-        mock_revoke_token.assert_called_once_with("token-123")
-        mock_extract_ip.assert_called_once()
+
+
+def test_invalid_password_is_sanitized_by_real_error_handler(caplog: pytest.LogCaptureFixture) -> None:
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.register_blueprint(console_bp)
+    features = SystemFeatureModel(
+        deployment_edition=DeploymentEdition.CLOUD,
+        enable_email_password_login=True,
+        is_allow_register=True,
+    )
+    password_marker = "SecretMarker"
+
+    with patch("controllers.console.flask_admission.FeatureService.get_system_features", return_value=features):
+        response = app.test_client().post(
+            "/console/api/email-register",
+            json={
+                "token": "verified-token",
+                "new_password": password_marker,
+                "password_confirm": password_marker,
+            },
+        )
+
+    assert response.status_code == 422
+    assert password_marker not in response.get_data(as_text=True)
+    assert password_marker not in caplog.text

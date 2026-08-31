@@ -1,5 +1,6 @@
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo } from 'react'
@@ -63,10 +64,12 @@ const Actions = ({
         </>
       )}
       <div className="flex grow items-center justify-end gap-x-2">
-        <Link href={`/datasets/${datasetId}/documents`} replace>
-          <Button variant="ghost" className="px-3 py-2">
-            {t(($) => $['operation.cancel'], { ns: 'common' })}
-          </Button>
+        <Link
+          href={`/datasets/${datasetId}/documents`}
+          replace
+          className={cn(buttonVariants({ variant: 'ghost' }), 'px-3 py-2')}
+        >
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Link>
         <Button disabled={disabled} variant="primary" onClick={handleNextStep}>
           <span>{t(($) => $['stepOne.button'], { ns: 'datasetCreation' })}</span>
