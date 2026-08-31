@@ -47,6 +47,7 @@ from core.errors.error import (
 )
 from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id, omit_trace_session_id_from_payload
 from enums import CloudPlan, DeploymentEdition
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
@@ -63,7 +64,6 @@ from services.app_generate_service import AppGenerateService
 from services.billing_service import BillingService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
-from services.workflow_app_service import WorkflowAppService
 
 logger = logging.getLogger(__name__)
 
@@ -594,20 +594,16 @@ class WorkflowAppLogApi(Resource):
         created_at_before = isoparse(args.created_at__before) if args.created_at__before else None
         created_at_after = isoparse(args.created_at__after) if args.created_at__after else None
 
-        # get paginate workflow app logs
-        workflow_app_service = WorkflowAppService()
-        with sessionmaker(db.engine).begin() as session:
-            workflow_app_log_pagination = workflow_app_service.get_paginate_workflow_app_logs(
-                session=session,
-                app_model=app_model,
-                keyword=args.keyword,
-                status=status,
-                created_at_before=created_at_before,
-                created_at_after=created_at_after,
-                page=args.page,
-                limit=args.limit,
-                created_by_end_user_session_id=args.created_by_end_user_session_id,
-                created_by_account=args.created_by_account,
-            )
-
-            return dump_response(WorkflowAppLogPaginationResponse, workflow_app_log_pagination)
+        result = application_services().workflow_app_logs.list_logs(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            keyword=args.keyword,
+            status=status,
+            created_at_before=created_at_before,
+            created_at_after=created_at_after,
+            page=args.page,
+            limit=args.limit,
+            created_by_end_user_session_id=args.created_by_end_user_session_id,
+            created_by_account=args.created_by_account,
+        )
+        return dump_response(WorkflowAppLogPaginationResponse, result)

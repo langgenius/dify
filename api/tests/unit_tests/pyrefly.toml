@@ -872,7 +872,6 @@ project-excludes = [
   "services/test_webhook_service.py",
   "services/test_webhook_service_additional.py",
   "services/test_website_service.py",
-  "services/test_workflow_app_service_metadata.py",
   "services/test_workflow_collaboration_service.py",
   "services/test_workflow_comment_service.py",
   "services/test_workflow_generator_service.py",

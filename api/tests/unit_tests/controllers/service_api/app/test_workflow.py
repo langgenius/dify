@@ -49,11 +49,12 @@ from models import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
+from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
 from services.app_generate_service import AppGenerateService
 from services.billing_service import BillingService
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
-from services.workflow_app_service import WorkflowAppService
+from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 
 
 def _default_workflow_inputs() -> dict[str, object]:
@@ -152,8 +153,11 @@ def _persist_workflow_log(
     app_id: str,
 ) -> None:
     workflow_run_id = "log-run-1"
+    account = Account(name="Log Account", email="log-account@example.com")
+    account.id = "account-1"
     sqlite_session.add_all(
         [
+            account,
             _make_workflow_run(
                 run_id=workflow_run_id,
                 tenant_id=tenant_id,
@@ -196,12 +200,28 @@ def _expected_workflow_log_pagination_payload() -> dict[str, object]:
                 "details": None,
                 "created_from": "service-api",
                 "created_by_role": "account",
-                "created_by_account": None,
+                "created_by_account": {
+                    "id": "account-1",
+                    "name": "Log Account",
+                    "email": "log-account@example.com",
+                },
                 "created_by_end_user": None,
                 "created_at": int(datetime(2026, 1, 1, 1, 0, 3).timestamp()),
             }
         ],
     }
+
+
+def _stub_workflow_app_logs(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    workflow_app_logs = MagicMock()
+    workflow_app_logs.list_logs.return_value = _expected_workflow_log_pagination_payload()
+    services = SimpleNamespace(workflow_app_logs=workflow_app_logs)
+    monkeypatch.setattr(
+        sys.modules["controllers.service_api.app.workflow"],
+        "application_services",
+        lambda: services,
+    )
+    return workflow_app_logs
 
 
 class TestWorkflowRunPayload:
@@ -343,46 +363,6 @@ class TestWorkflowRunResponse:
             "finished_at": 1767225600,
             "elapsed_time": 0.1,
         }
-
-
-class TestWorkflowAppService:
-    """Test WorkflowAppService interface."""
-
-    def test_service_exists(self):
-        """Test WorkflowAppService class exists."""
-        service = WorkflowAppService()
-        assert service is not None
-
-    def test_get_paginate_workflow_app_logs_method_exists(self):
-        """Test get_paginate_workflow_app_logs method exists."""
-        assert hasattr(WorkflowAppService, "get_paginate_workflow_app_logs")
-        assert callable(WorkflowAppService.get_paginate_workflow_app_logs)
-
-    @pytest.mark.parametrize("sqlite_session", [(WorkflowAppLog,)], indirect=True)
-    def test_get_paginate_workflow_app_logs_returns_pagination(self, sqlite_session: Session):
-        """Test pagination returns committed logs scoped to the requested app."""
-        log = _make_workflow_app_log()
-        sqlite_session.add(log)
-        sqlite_session.commit()
-        service = WorkflowAppService()
-        result = service.get_paginate_workflow_app_logs(
-            session=sqlite_session,
-            app_model=_make_app_model(),
-            keyword=None,
-            status=None,
-            created_at_before=None,
-            created_at_after=None,
-            page=1,
-            limit=20,
-            created_by_end_user_session_id=None,
-            created_by_account=None,
-        )
-
-        assert result["page"] == 1
-        assert result["limit"] == 20
-        assert result["total"] == 1
-        assert result["has_more"] is False
-        assert [item.id for item in result["data"]] == [log.id]
 
 
 class TestWorkflowExecutionStatus:
@@ -784,20 +764,26 @@ class TestWorkflowTaskStopApi:
 
 
 class TestWorkflowAppLogApi:
-    @pytest.mark.parametrize("sqlite_session", [(WorkflowRun, WorkflowAppLog, Account)], indirect=True)
     def test_success(
         self,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
-        sqlite_engine: Engine,
         sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
     ) -> None:
-        _persist_workflow_log(sqlite_session, tenant_id="tenant-1", app_id="a1")
-        _bind_sqlite_database(monkeypatch, sqlite_engine, sqlite_session)
-
         api = WorkflowAppLogApi()
         handler = unwrap(api.get)
         app_model = _make_app_model(app_id="a1")
+        _persist_workflow_log(sqlite_session, tenant_id=app_model.tenant_id, app_id=app_model.id)
+
+        workflow_app_logs = WorkflowAppLogQueryService(
+            logs=WorkflowAppLogQueryRepository(session_factory=sqlite_session_factory),
+        )
+        monkeypatch.setattr(
+            sys.modules["controllers.service_api.app.workflow"],
+            "application_services",
+            lambda: SimpleNamespace(workflow_app_logs=workflow_app_logs),
+        )
 
         with app.test_request_context("/workflows/logs", method="GET"):
             response = handler(api, app_model=app_model)
@@ -931,18 +917,14 @@ class TestWorkflowAppLogApiGet:
     ``get`` is wrapped by ``@validate_app_token``.
     """
 
-    @pytest.mark.parametrize("sqlite_session", [(WorkflowRun, WorkflowAppLog, Account)], indirect=True)
     def test_get_workflow_logs_success(
         self,
         app: Flask,
         workflow_app: App,
         monkeypatch: pytest.MonkeyPatch,
-        sqlite_engine: Engine,
-        sqlite_session: Session,
     ):
         """Test successful workflow log retrieval."""
-        _persist_workflow_log(sqlite_session, tenant_id=workflow_app.tenant_id, app_id=workflow_app.id)
-        _bind_sqlite_database(monkeypatch, sqlite_engine, sqlite_session)
+        _stub_workflow_app_logs(monkeypatch)
 
         from controllers.service_api.app.workflow import WorkflowAppLogApi
 

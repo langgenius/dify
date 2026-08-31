@@ -35,6 +35,7 @@ from repositories.tag_repository import TagRepository
 from repositories.trial_app_query_repository import TrialAppQueryRepository
 from repositories.trial_app_usage_repository import TrialAppUsageRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
+from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
@@ -119,6 +120,7 @@ from services.webapp_access_query_service import (
     WebAppAccessQueryService,
     WebAppAccessUnavailableError,
 )
+from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from services.workspace_member_query_service import WorkspaceMemberQueryService
 from services.workspace_member_role_resolver import DeploymentWorkspaceMemberRoleResolver
@@ -183,6 +185,7 @@ class ApplicationServices:
     workflow_run_archives: WorkflowRunArchiveService
     workspace_queries: WorkspaceQueryService
     workspace_member_queries: WorkspaceMemberQueryService
+    workflow_app_logs: WorkflowAppLogQueryService
     tags: TagApplicationService
     workflow_statistics: WorkflowStatisticQueryService
 
@@ -424,6 +427,9 @@ def build_application_services(
                 session_factory=database_client,
             ),
             roles=DeploymentWorkspaceMemberRoleResolver(),
+        ),
+        workflow_app_logs=WorkflowAppLogQueryService(
+            logs=WorkflowAppLogQueryRepository(session_factory=database_client),
         ),
         tags=TagApplicationService(
             tags=TagRepository(session_factory=database_client),

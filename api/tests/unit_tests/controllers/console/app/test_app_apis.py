@@ -573,21 +573,36 @@ class TestWorkflowAppLogEndpoints:
     def test_workflow_app_log_api_get(self, database_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         api = workflow_app_log_module.WorkflowAppLogApi()
         method = unwrap(api.get)
-
-        def fake_get_paginate(self, *, session: Session, **_kwargs):
-            assert session.get_bind() is db.engine
-            return {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
-
-        monkeypatch.setattr(
-            workflow_app_log_module.WorkflowAppService,
-            "get_paginate_workflow_app_logs",
-            fake_get_paginate,
-        )
+        workflow_app_logs = MagicMock()
+        workflow_app_logs.list_logs.return_value = {
+            "page": 1,
+            "limit": 20,
+            "total": 0,
+            "has_more": False,
+            "data": [],
+        }
+        services = MagicMock(workflow_app_logs=workflow_app_logs)
+        monkeypatch.setattr(workflow_app_log_module, "application_services", lambda: services)
+        context = RequestContext("request-1", None, USER_ID, TENANT_ID)
+        app_model = _make_app("app-1")
 
         with database_app.test_request_context("/?page=1&limit=20"):
-            result = method(api, WorkflowAppLogQuery(page=1, limit=20), app_model=_make_app("app-1"))
+            result = method(api, WorkflowAppLogQuery(page=1, limit=20), context, app_model=app_model)
 
         assert result == {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
+        workflow_app_logs.list_logs.assert_called_once_with(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            keyword=None,
+            status=None,
+            created_at_before=None,
+            created_at_after=None,
+            page=1,
+            limit=20,
+            detail=False,
+            created_by_end_user_session_id=None,
+            created_by_account=None,
+        )
 
 
 class TestWorkflowDraftVariableEndpoints:
