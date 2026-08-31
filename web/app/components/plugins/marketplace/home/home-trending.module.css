@@ -247,9 +247,11 @@
   }
 
   :global([data-marketplace-standalone]) .stackedCopyMeta {
-    gap: 4px;
+    flex: none;
+    gap: 2px;
   }
 
+  :global([data-marketplace-standalone]) .blogTitle,
   :global([data-marketplace-standalone]) .blogSubtitle {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -257,8 +259,10 @@
   }
 
   :global([data-marketplace-standalone]) .updatesDescription {
+    flex-shrink: 0;
     width: 100%;
     min-width: 0;
+    height: 40px;
   }
 
   /* Event/ad mobile: show the 800×721 poster whole (ops banner-meta), not

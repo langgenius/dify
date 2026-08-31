@@ -76,14 +76,15 @@ describe('Marketplace home trending layout', () => {
       'On September 10, 2026, LangGenius K.K. will host its flagship annual conference in Tokyo.'
     const descriptionText =
       'It is a full day dedicated to turning generative AI from isolated pilots into real operations. Registration is open now for the second year of the conference.'
+    const longTitle = 'IF Con Tokyo 2026: Turn “What If” into Production'
     const longBlog: PluginBanner = {
       id: 'blog-long',
       style_type: 'blog',
-      title: 'Dify v1.9 new launch',
+      title: 'IF Con Tokyo 2026',
       sort: 0,
       language: 'en',
       content: {
-        blog_title: 'Dify v1.9 new launch',
+        blog_title: longTitle,
         subtitle: subtitleText,
         description: descriptionText,
         link: 'https://dify.ai/blog',
@@ -96,12 +97,15 @@ describe('Marketplace home trending layout', () => {
       </div>,
     )
 
+    const title = screen.getByRole('heading', { name: longTitle }).element()
     const subtitle = screen.getByText(subtitleText).element()
     const description = screen.getByText(descriptionText).element()
 
+    expect(getComputedStyle(title).whiteSpace).toBe('nowrap')
     expect(getComputedStyle(subtitle).whiteSpace).toBe('nowrap')
     expect(getComputedStyle(subtitle).textOverflow).toBe('ellipsis')
     expect(getComputedStyle(description).webkitLineClamp).toBe('2')
+    expect(description.getBoundingClientRect().height).toBeCloseTo(40, 0)
   })
 
   it('shows the standalone mobile event poster at the 800:721 delivery ratio', async () => {

@@ -354,7 +354,12 @@ function BlogBannerSlide({
             )}
           </div>
           <div className="flex min-h-0 w-full max-w-[800px] flex-1 flex-col items-start gap-3">
-            <h2 className="shrink-0 text-xl leading-6 font-semibold tracking-[-0.4px] text-text-primary">
+            <h2
+              className={cn(
+                'shrink-0 text-xl leading-6 font-semibold tracking-[-0.4px] text-text-primary',
+                isMarketplacePlatform && styles.blogTitle,
+              )}
+            >
               {banner.content.blog_title}
             </h2>
             <div
