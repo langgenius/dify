@@ -446,7 +446,7 @@ def test_binary_remote_rejects_oversize_and_preserves_kfs_validation_status(
     assert calls == 1
 
     with pytest.raises(KnowledgeFSProductRequestRejectedError) as oversized:
-        client.execute_binary(request._replace(body=b"x" * (8 * 1024 * 1024 + 1)))
+        client.execute_binary(request._replace(body=b"x" * (15 * 1024 * 1024 + 1)))
     assert oversized.value.status_code == 413
     assert calls == 1
 

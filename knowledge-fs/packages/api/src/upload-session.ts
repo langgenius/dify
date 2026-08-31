@@ -342,9 +342,9 @@ export function createUploadSessionService({
     throw new Error("Upload session presignTtlSeconds must be between 1 and 900");
   }
   nonNegativeSafeInteger(smallFileFallbackMaxBytes, "smallFileFallbackMaxBytes");
-  if (smallFileFallbackMaxBytes >= multipartThresholdBytes) {
+  if (smallFileFallbackMaxBytes > multipartThresholdBytes) {
     throw new Error(
-      "Upload session smallFileFallbackMaxBytes must be below multipartThresholdBytes",
+      "Upload session smallFileFallbackMaxBytes must not exceed multipartThresholdBytes",
     );
   }
 
@@ -548,7 +548,7 @@ export function createUploadSessionService({
       const input = normalizeCreateInput(rawInput, maxFileBytes);
       const directUpload = objectStorage.directUpload;
       const mode: UploadSessionMode = directUpload
-        ? input.expectedSizeBytes >= multipartThresholdBytes
+        ? input.expectedSizeBytes > multipartThresholdBytes
           ? "multipart"
           : "single"
         : input.expectedSizeBytes <= smallFileFallbackMaxBytes

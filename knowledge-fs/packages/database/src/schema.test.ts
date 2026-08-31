@@ -42,6 +42,7 @@ describe("database schema catalog", () => {
       "resource_mounts",
       "document_assets",
       "parse_artifacts",
+      "parse_artifact_checkpoints",
       "document_multimodal_manifests",
       "artifact_segments",
       "knowledge_space_staged_commits",
@@ -152,6 +153,33 @@ describe("database schema catalog", () => {
       "publication_generation_id",
       "parse_artifact_id",
     ]);
+  });
+
+  it("stores resumable parser payloads separately from canonical parse artifacts", () => {
+    const schema = getDatabaseSchema();
+    const table = findTable(schema, "parse_artifact_checkpoints");
+
+    expect(table.columns.map((column) => column.name)).toEqual([
+      "document_asset_id",
+      "version",
+      "policy_fingerprint",
+      "artifact",
+      "created_at",
+      "updated_at",
+    ]);
+    expect(table.foreignKeys).toContainEqual({
+      columns: ["document_asset_id"],
+      onDelete: "CASCADE",
+      referencedColumns: ["id"],
+      referencedTable: "document_assets",
+    });
+    expect(findIndex(schema, "parse_artifact_checkpoints_asset_version_uq")).toMatchObject({
+      columns: ["document_asset_id", "version"],
+      tableName: "parse_artifact_checkpoints",
+      unique: true,
+    });
+    expect(renderCreateTableSql("postgres", table)).toContain('"artifact" JSONB NOT NULL');
+    expect(renderCreateTableSql("tidb", table)).toContain("`artifact` JSON NOT NULL");
   });
 
   it("models durable bulk task history with exact authorization provenance", () => {

@@ -116,4 +116,106 @@ describe("bounded concurrency", () => {
     });
     await expect(gate.run(async () => "ok")).resolves.toBe("ok");
   });
+
+  it("isolates rejected asynchronous concurrency telemetry", async () => {
+    const gate = createConcurrencyGate(1, {
+      onEvent: vi.fn(async () => {
+        throw new Error("collector unavailable");
+      }),
+    });
+
+    await expect(gate.run(async () => "ok")).resolves.toBe("ok");
+  });
+
+  it("rejects invalid concurrency limits", () => {
+    expect(() => createConcurrencyGate(0)).toThrow("Concurrency gate limit must be at least 1");
+    expect(() => createConcurrencyGate(1.5)).toThrow("Concurrency gate limit must be at least 1");
+  });
+
+  it("does not acquire a slot for an already aborted caller", async () => {
+    const gate = createConcurrencyGate(1);
+    const controller = new AbortController();
+    controller.abort(new Error("compilation cancelled before admission"));
+    let workStarted = false;
+
+    await expect(
+      gate.run(
+        async () => {
+          workStarted = true;
+        },
+        { signal: controller.signal },
+      ),
+    ).rejects.toThrow("compilation cancelled before admission");
+    expect(workStarted).toBe(false);
+    await expect(gate.run(async () => "still available")).resolves.toBe("still available");
+  });
+
+  it("removes abort listeners when a signaled waiter is admitted normally", async () => {
+    let releaseFirst: (() => void) | undefined;
+    let firstStarted: (() => void) | undefined;
+    const blocked = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const started = new Promise<void>((resolve) => {
+      firstStarted = resolve;
+    });
+    const gate = createConcurrencyGate(1);
+    const controller = new AbortController();
+
+    const first = gate.run(async () => {
+      firstStarted?.();
+      await blocked;
+    });
+    await started;
+    const second = gate.run(async () => "admitted", { signal: controller.signal });
+    releaseFirst?.();
+
+    await expect(first).resolves.toBeUndefined();
+    await expect(second).resolves.toBe("admitted");
+  });
+
+  it("removes aborted waiters without starting their work", async () => {
+    let releaseFirst: (() => void) | undefined;
+    let firstStarted: (() => void) | undefined;
+    const blocked = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const started = new Promise<void>((resolve) => {
+      firstStarted = resolve;
+    });
+    const gate = createConcurrencyGate(1);
+    const controller = new AbortController();
+    let abortedWorkStarted = false;
+
+    const first = gate.run(async () => {
+      firstStarted?.();
+      await blocked;
+    });
+    await started;
+    const aborted = gate.run(
+      async () => {
+        abortedWorkStarted = true;
+      },
+      { signal: controller.signal },
+    );
+    controller.abort(new Error("compilation cancelled"));
+
+    await expect(aborted).rejects.toThrow("compilation cancelled");
+    expect(abortedWorkStarted).toBe(false);
+    releaseFirst?.();
+    await expect(first).resolves.toBeUndefined();
+    await expect(gate.run(async () => "after cancellation")).resolves.toBe("after cancellation");
+  });
+
+  it("releases a slot after work fails", async () => {
+    const gate = createConcurrencyGate(1);
+
+    await expect(
+      gate.run(async () => {
+        throw new Error("materialization failed");
+      }),
+    ).rejects.toThrow("materialization failed");
+
+    await expect(gate.run(async () => "next document")).resolves.toBe("next document");
+  });
 });

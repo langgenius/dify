@@ -141,6 +141,8 @@ describe("runApiDatabaseMigrations", () => {
       "insert",
       "schema",
       "insert",
+      "schema",
+      "insert",
     ]);
     expect(migrationSql).toHaveLength(expectedPostgresMigrationIds.length);
     expect(migrationSql[2]).toContain("-- Migration id: 0003_projection_set_publications\n");
@@ -204,6 +206,13 @@ describe("runApiDatabaseMigrations", () => {
     expect(migrationSql[42]).toContain(
       'CREATE TABLE IF NOT EXISTS "knowledge_node_generation_receipts"',
     );
+    expect(migrationSql[43]).toContain(
+      "-- Migration id: 0044_document_semantic_window_checkpoints\n",
+    );
+    expect(migrationSql[44]).toContain("-- Migration id: 0045_quality_replay_match_policy\n");
+    expect(migrationSql[45]).toContain("-- Migration id: 0046_remove_provider_sync_policy\n");
+    expect(migrationSql[46]).toContain("-- Migration id: 0047_parse_artifact_checkpoints\n");
+    expect(migrationSql[46]).toContain('CREATE TABLE IF NOT EXISTS "parse_artifact_checkpoints"');
     expect(closed).toBe(true);
   });
 

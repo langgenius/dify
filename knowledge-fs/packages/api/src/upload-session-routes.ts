@@ -180,6 +180,10 @@ export const uploadSmallFileRoute = createRoute({
     },
     401: UploadSessionErrors[401],
     403: UploadSessionErrors[403],
+    408: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Small-file request body timed out",
+    },
     404: UploadSessionErrors[404],
     409: UploadSessionErrors[409],
     413: UploadSessionErrors[413],

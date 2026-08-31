@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import ast
 import inspect
+from collections.abc import Generator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
@@ -764,7 +766,27 @@ def test_staged_document_claim_passes_only_upload_id_to_the_admission_service(
     assert staged_uploads.claim.call_args.kwargs["payload"].upload_id == "staged-1"
 
 
-def test_workspace_staging_upload_persists_before_space_creation(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("file_size_limit_mb", [15, 50])
+def test_workspace_staging_upload_persists_before_space_creation(
+    monkeypatch: pytest.MonkeyPatch,
+    file_size_limit_mb: int,
+) -> None:
+    admission_events: list[str] = []
+
+    class RecordingAdmission:
+        active = False
+
+        @contextmanager
+        def admit(self, *, reserved_bytes: int) -> Generator[None, None, None]:
+            admission_events.append(f"admit:{reserved_bytes}")
+            self.active = True
+            try:
+                yield
+            finally:
+                self.active = False
+                admission_events.append("release")
+
+    admission = RecordingAdmission()
     staged_uploads = MagicMock()
     staged_uploads.stage.return_value = KnowledgeFSStagedUploadResponse(
         id="staged-1",
@@ -774,13 +796,21 @@ def test_workspace_staging_upload_persists_before_space_creation(monkeypatch: py
         status="uploaded",
         expires_at=datetime(2030, 1, 1, tzinfo=UTC),
     )
+
+    def stage(**_: object) -> KnowledgeFSStagedUploadResponse:
+        assert admission.active
+        admission_events.append("stage")
+        return staged_uploads.stage.return_value
+
+    staged_uploads.stage.side_effect = stage
     account = SimpleNamespace(id="account-1")
     monkeypatch.setattr(console_resources, "current_account_with_tenant", lambda: (account, "tenant-1"))
     monkeypatch.setattr(console_resources, "_staged_uploads", lambda: staged_uploads)
+    monkeypatch.setattr(console_resources, "DEFAULT_KNOWLEDGE_FS_BUFFERED_UPLOAD_ADMISSION", admission)
     monkeypatch.setattr(
         console_resources.FeatureService,
         "get_knowledge_file_size_limit",
-        lambda _tenant_id: 15,
+        lambda _tenant_id: file_size_limit_mb,
     )
     app = Flask(__name__)
 
@@ -794,14 +824,48 @@ def test_workspace_staging_upload_persists_before_space_creation(monkeypatch: py
 
     assert status == 201
     assert response["id"] == "staged-1"
+    assert admission_events == [f"admit:{file_size_limit_mb * 1024 * 1024}", "stage", "release"]
     staged_uploads.stage.assert_called_once_with(
         tenant_id="tenant-1",
         account=account,
         file_name="notes.md",
         content_type="text/markdown",
         body=b"# Notes",
-        file_size_limit_mb=15,
+        file_size_limit_mb=file_size_limit_mb,
     )
+
+
+def test_workspace_staging_zero_byte_plan_limit_returns_request_too_large_before_admission(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FailingAdmission:
+        def admit(self, *, reserved_bytes: int):
+            _ = reserved_bytes
+            raise AssertionError("a disabled upload limit must fail before admission")
+
+    staged_uploads = MagicMock()
+    account = SimpleNamespace(id="account-1")
+    monkeypatch.setattr(console_resources, "current_account_with_tenant", lambda: (account, "tenant-1"))
+    monkeypatch.setattr(console_resources, "_staged_uploads", lambda: staged_uploads)
+    monkeypatch.setattr(console_resources, "DEFAULT_KNOWLEDGE_FS_BUFFERED_UPLOAD_ADMISSION", FailingAdmission())
+    monkeypatch.setattr(
+        console_resources.FeatureService,
+        "get_knowledge_file_size_limit",
+        lambda _tenant_id: 0,
+    )
+    app = Flask(__name__)
+
+    with app.test_request_context(
+        method="POST",
+        data={"file": (BytesIO(b"# Notes"), "notes.md", "text/markdown")},
+        content_type="multipart/form-data",
+    ):
+        post = inspect.unwrap(console_resources.KnowledgeFSStagedUploadsApi.post)
+        with pytest.raises(KnowledgeFSProductRequestRejectedError) as rejected:
+            post(console_resources.KnowledgeFSStagedUploadsApi())
+
+    assert rejected.value.status_code == 413
+    staged_uploads.stage.assert_not_called()
 
 
 def test_logical_document_delete_accepts_initial_row_version(

@@ -5,6 +5,7 @@ import {
   createApiDocumentCompilationRuntime,
   createApiProfileMigrationGatewayOptions,
   createDocumentSemanticEnrichmentGenerationGuard,
+  resolveHeavyMaterializationPreAdmissionMaxConcurrency,
 } from "./document-compilation-runtime-options";
 import { createApiDatabaseRepositories } from "./repository-options";
 
@@ -19,6 +20,33 @@ const config = {
 };
 
 describe("createApiDocumentCompilationRuntime", () => {
+  it("clamps the shared heavy pre-admission width while reserving an ordinary slot", () => {
+    expect(
+      resolveHeavyMaterializationPreAdmissionMaxConcurrency({
+        documentMaterializationMaxConcurrency: 2,
+        heavyMaterializationMaxConcurrency: 8,
+      }),
+    ).toBe(1);
+    expect(
+      resolveHeavyMaterializationPreAdmissionMaxConcurrency({
+        documentMaterializationMaxConcurrency: 4,
+        heavyMaterializationMaxConcurrency: 2,
+      }),
+    ).toBe(2);
+    expect(
+      resolveHeavyMaterializationPreAdmissionMaxConcurrency({
+        documentMaterializationMaxConcurrency: 1,
+        heavyMaterializationMaxConcurrency: 2,
+      }),
+    ).toBe(1);
+    expect(() =>
+      resolveHeavyMaterializationPreAdmissionMaxConcurrency({
+        documentMaterializationMaxConcurrency: 2,
+        heavyMaterializationMaxConcurrency: 0,
+      }),
+    ).toThrow("Heavy materialization max concurrency must be a positive safe integer");
+  });
+
   it("does no capability validation and creates no consumers when runtime is off", () => {
     const assembly = createApiDocumentCompilationRuntime({
       adapter: undefined as never,

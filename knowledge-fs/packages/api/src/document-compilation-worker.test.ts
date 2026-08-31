@@ -1,7 +1,11 @@
 import { createMemoryObjectStorageAdapter } from "@knowledge/adapters";
 import { createNodePlatformAdapter } from "@knowledge/adapters/node";
 import { ParseArtifactSchema, type PlatformAdapter } from "@knowledge/core";
-import type { ParserAdapter, ParserRouteHints } from "@knowledge/parsers";
+import {
+  type ParserAdapter,
+  type ParserRouteHints,
+  classifyUnstructuredWorkload,
+} from "@knowledge/parsers";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -28,6 +32,990 @@ import {
 } from "./index";
 
 describe("createDocumentCompilationWorker lease integration", () => {
+  it.each([
+    {
+      checkpointEligible: false,
+      expectedCheckpointReads: 0,
+      expectedCheckpointWrites: 0,
+      expectedOperations: ["parse", "retention:acquire", "reindex", "retention:release"],
+      label: "native",
+    },
+    {
+      checkpointEligible: true,
+      expectedCheckpointReads: 1,
+      expectedCheckpointWrites: 1,
+      expectedOperations: [
+        "lease:30000",
+        "parse",
+        "lease:30000",
+        "checkpoint",
+        "lease:0",
+        "retention:acquire",
+        "reindex",
+        "retention:release",
+      ],
+      label: "Unstructured",
+    },
+  ])(
+    "persists raw parser output only for the $label route",
+    async ({
+      checkpointEligible,
+      expectedCheckpointReads,
+      expectedCheckpointWrites,
+      expectedOperations,
+    }) => {
+      const adapter = createTestPlatformAdapter();
+      const assets = createInMemoryDocumentAssetRepository({ maxAssets: 1 });
+      const asset = await assets.create({
+        filename: checkpointEligible ? "Expensive.pdf" : "Cheap.md",
+        id: "018f0d60-7a49-7cc2-9c1b-5b36f18f6a11",
+        knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+        mimeType: checkpointEligible ? "application/pdf" : "text/markdown",
+        objectKey: "tenant-1/spaces/space/documents/asset/checkpoint-eligibility",
+        sha256: "f".repeat(64),
+        sizeBytes: 11,
+      });
+      await adapter.objectStorage.putObject({
+        body: new TextEncoder().encode("# document"),
+        contentType: asset.mimeType,
+        key: asset.objectKey,
+        metadata: {},
+      });
+      const jobs = createDocumentCompilationJobStateMachine({
+        generateId: () => "document-compilation-job-checkpoint-eligibility-1",
+        jobs: adapter.jobs,
+        repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 1 }),
+      });
+      const job = await jobs.start({
+        documentAssetId: asset.id,
+        knowledgeSpaceId: asset.knowledgeSpaceId,
+        tenantId: "tenant-1",
+        version: asset.version,
+      });
+      const artifacts = createInMemoryParseArtifactRepository({ maxArtifacts: 1 });
+      const baseParser = parser();
+      let checkpointReads = 0;
+      let checkpointWrites = 0;
+      const operations: string[] = [];
+      const worker = createDocumentCompilationWorker({
+        assets,
+        failureManagement: "caller",
+        jobs,
+        multimodalManifests: createInMemoryDocumentMultimodalManifestRepository({
+          maxManifests: 1,
+        }),
+        objectStorage: adapter.objectStorage,
+        parser: {
+          ...baseParser,
+          ...(checkpointEligible ? { checkpointEligible: () => true } : {}),
+          kind: checkpointEligible ? "unstructured" : "native-markdown",
+          ...(checkpointEligible ? { leaseMs: () => 30_000 } : {}),
+          parse: async (input) => {
+            operations.push("parse");
+            return baseParser.parse(input);
+          },
+          policyFingerprint: () => "9".repeat(64),
+        },
+        retainedArtifactAdmission: {
+          acquire: async () => {
+            operations.push("retention:acquire");
+            return {
+              estimatedBytes: 1,
+              release: () => {
+                operations.push("retention:release");
+              },
+            };
+          },
+        },
+        reindexer: {
+          canonicalizeArtifact: (artifact) => artifacts.materialize(artifact),
+          checkpointParseArtifact: (input) => {
+            checkpointWrites += 1;
+            operations.push("checkpoint");
+            return artifacts.checkpoint(input);
+          },
+          deleteParseArtifactCheckpoint: (input) => artifacts.deleteCheckpoint(input),
+          getCanonicalArtifact: (input) => artifacts.getByDocumentVersion(input),
+          getParseArtifactCheckpoint: (input) => {
+            checkpointReads += 1;
+            return artifacts.getCheckpoint(input);
+          },
+          reindex: async (input) => {
+            operations.push("reindex");
+            return {
+              artifact: input.parseArtifact,
+              nodesCreated: 0,
+              projectionIds: [],
+              projectionsCreated: 0,
+              status: "rebuilt",
+            };
+          },
+        },
+      });
+
+      await expect(
+        worker.process(
+          {
+            documentAssetId: asset.id,
+            documentCompilationJobId: job.id,
+            knowledgeSpaceId: asset.knowledgeSpaceId,
+            tenantId: "tenant-1",
+            version: asset.version,
+          },
+          {
+            protectLease: async (minLeaseMs) => {
+              operations.push(`lease:${minLeaseMs}`);
+            },
+          },
+        ),
+      ).resolves.toMatchObject({ stage: "published" });
+      expect(checkpointReads).toBe(expectedCheckpointReads);
+      expect(checkpointWrites).toBe(expectedCheckpointWrites);
+      expect(operations).toEqual(expectedOperations);
+    },
+  );
+
+  it("does not checkpoint parser output after the execution loses its protected lease", async () => {
+    const adapter = createTestPlatformAdapter();
+    const assets = createInMemoryDocumentAssetRepository({ maxAssets: 1 });
+    const asset = await assets.create({
+      filename: "Lease-loss.pdf",
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f6a12",
+      knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+      mimeType: "application/pdf",
+      objectKey: "tenant-1/spaces/space/documents/asset/lease-loss",
+      sha256: "e".repeat(64),
+      sizeBytes: 11,
+    });
+    await adapter.objectStorage.putObject({
+      body: new TextEncoder().encode("document"),
+      contentType: asset.mimeType,
+      key: asset.objectKey,
+      metadata: {},
+    });
+    const jobs = createDocumentCompilationJobStateMachine({
+      generateId: () => "document-compilation-job-lease-loss-1",
+      jobs: adapter.jobs,
+      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 1 }),
+    });
+    const job = await jobs.start({
+      documentAssetId: asset.id,
+      knowledgeSpaceId: asset.knowledgeSpaceId,
+      tenantId: "tenant-1",
+      version: asset.version,
+    });
+    const baseParser = parser();
+    const artifacts = createInMemoryParseArtifactRepository({ maxArtifacts: 1 });
+    let checkpointWrites = 0;
+    let protectionCalls = 0;
+    const worker = createDocumentCompilationWorker({
+      assets,
+      failureManagement: "caller",
+      jobs,
+      multimodalManifests: createInMemoryDocumentMultimodalManifestRepository({ maxManifests: 1 }),
+      objectStorage: adapter.objectStorage,
+      parser: {
+        ...baseParser,
+        checkpointEligible: () => true,
+        kind: "unstructured",
+        leaseMs: () => 30_000,
+        policyFingerprint: () => "8".repeat(64),
+      },
+      reindexer: {
+        checkpointParseArtifact: async (input) => {
+          checkpointWrites += 1;
+          return artifacts.checkpoint(input);
+        },
+        getParseArtifactCheckpoint: async () => null,
+        reindex: async (input) => ({
+          artifact: input.parseArtifact,
+          nodesCreated: 0,
+          projectionIds: [],
+          projectionsCreated: 0,
+          status: "rebuilt",
+        }),
+      },
+    });
+
+    await expect(
+      worker.process(
+        {
+          documentAssetId: asset.id,
+          documentCompilationJobId: job.id,
+          knowledgeSpaceId: asset.knowledgeSpaceId,
+          tenantId: "tenant-1",
+          version: asset.version,
+        },
+        {
+          protectLease: async () => {
+            protectionCalls += 1;
+            if (protectionCalls === 2) throw new Error("execution lease lost");
+          },
+        },
+      ),
+    ).rejects.toThrow("execution lease lost");
+    expect(protectionCalls).toBe(2);
+    expect(checkpointWrites).toBe(0);
+  });
+
+  it("releases protection only when a failed provider request has a known outcome", async () => {
+    const adapter = createTestPlatformAdapter();
+    const assets = createInMemoryDocumentAssetRepository({ maxAssets: 1 });
+    const asset = await assets.create({
+      filename: "Provider-failure.pdf",
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f6a13",
+      knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+      mimeType: "application/pdf",
+      objectKey: "tenant-1/spaces/space/documents/asset/provider-failure",
+      sha256: "d".repeat(64),
+      sizeBytes: 11,
+    });
+    await adapter.objectStorage.putObject({
+      body: new TextEncoder().encode("document"),
+      contentType: asset.mimeType,
+      key: asset.objectKey,
+      metadata: {},
+    });
+    const jobs = createDocumentCompilationJobStateMachine({
+      generateId: () => "document-compilation-job-provider-failure-1",
+      jobs: adapter.jobs,
+      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 1 }),
+    });
+    const job = await jobs.start({
+      documentAssetId: asset.id,
+      knowledgeSpaceId: asset.knowledgeSpaceId,
+      tenantId: "tenant-1",
+      version: asset.version,
+    });
+    const protectionCalls: number[] = [];
+    const processWithOutcome = async (requestOutcomeAmbiguous: boolean) => {
+      const worker = createDocumentCompilationWorker({
+        assets,
+        failureManagement: "caller",
+        jobs,
+        multimodalManifests: createInMemoryDocumentMultimodalManifestRepository({
+          maxManifests: 1,
+        }),
+        objectStorage: adapter.objectStorage,
+        parser: {
+          checkpointEligible: () => true,
+          kind: "unstructured",
+          leaseMs: () => 30_000,
+          parse: async () => {
+            throw Object.assign(new Error("provider request failed"), {
+              requestOutcomeAmbiguous,
+            });
+          },
+          policyFingerprint: () => "7".repeat(64),
+        },
+        reindexer: {
+          getParseArtifactCheckpoint: async () => null,
+          reindex: async (input) => ({
+            artifact: input.parseArtifact,
+            nodesCreated: 0,
+            projectionIds: [],
+            projectionsCreated: 0,
+            status: "rebuilt",
+          }),
+        },
+      });
+      return worker.process(
+        {
+          documentAssetId: asset.id,
+          documentCompilationJobId: job.id,
+          knowledgeSpaceId: asset.knowledgeSpaceId,
+          tenantId: "tenant-1",
+          version: asset.version,
+        },
+        {
+          protectLease: async (minLeaseMs) => {
+            protectionCalls.push(minLeaseMs);
+          },
+        },
+      );
+    };
+
+    await expect(processWithOutcome(false)).rejects.toThrow("provider request failed");
+    expect(protectionCalls).toEqual([30_000, 0]);
+    await expect(processWithOutcome(true)).rejects.toThrow("provider request failed");
+    expect(protectionCalls).toEqual([30_000, 0, 30_000]);
+  });
+
+  it("classifies a transient raw checkpoint write failure as retryable", async () => {
+    const adapter = createTestPlatformAdapter();
+    const assets = createInMemoryDocumentAssetRepository({ maxAssets: 1 });
+    const asset = await assets.create({
+      filename: "Retryable-checkpoint.pdf",
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f6a71",
+      knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+      mimeType: "application/pdf",
+      objectKey: "tenant-1/spaces/space/documents/asset/retryable-checkpoint",
+      sha256: "6".repeat(64),
+      sizeBytes: 11,
+    });
+    await adapter.objectStorage.putObject({
+      body: new TextEncoder().encode("document"),
+      contentType: asset.mimeType,
+      key: asset.objectKey,
+      metadata: {},
+    });
+    const jobs = createDocumentCompilationJobStateMachine({
+      generateId: () => "document-compilation-job-retryable-checkpoint-1",
+      jobs: adapter.jobs,
+      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 1 }),
+    });
+    const job = await jobs.start({
+      documentAssetId: asset.id,
+      knowledgeSpaceId: asset.knowledgeSpaceId,
+      tenantId: "tenant-1",
+      version: asset.version,
+    });
+    const baseParser = parser();
+    const protectionCalls: number[] = [];
+    const worker = createDocumentCompilationWorker({
+      assets,
+      failureManagement: "caller",
+      jobs,
+      multimodalManifests: createInMemoryDocumentMultimodalManifestRepository({ maxManifests: 1 }),
+      objectStorage: adapter.objectStorage,
+      parser: {
+        ...baseParser,
+        checkpointEligible: () => true,
+        kind: "unstructured",
+        leaseMs: () => 30_000,
+        policyFingerprint: () => "5".repeat(64),
+      },
+      reindexer: {
+        checkpointParseArtifact: async () => {
+          throw new Error("checkpoint database temporarily unavailable");
+        },
+        getParseArtifactCheckpoint: async () => null,
+        reindex: async (input) => ({
+          artifact: input.parseArtifact,
+          nodesCreated: 0,
+          projectionIds: [],
+          projectionsCreated: 0,
+          status: "rebuilt",
+        }),
+      },
+    });
+
+    await expect(
+      worker.process(
+        {
+          documentAssetId: asset.id,
+          documentCompilationJobId: job.id,
+          knowledgeSpaceId: asset.knowledgeSpaceId,
+          tenantId: "tenant-1",
+          version: asset.version,
+        },
+        {
+          protectLease: async (minLeaseMs) => {
+            protectionCalls.push(minLeaseMs);
+          },
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: "DOCUMENT_COMPILATION_RETRYABLE",
+      retryable: true,
+    });
+    expect(protectionCalls).toEqual([30_000, 30_000, 0]);
+    await expect(jobs.get(job.id)).resolves.toMatchObject({ stage: "queued" });
+  });
+
+  it("classifies a transient raw checkpoint read failure before parsing as retryable", async () => {
+    const adapter = createTestPlatformAdapter();
+    const assets = createInMemoryDocumentAssetRepository({ maxAssets: 1 });
+    const asset = await assets.create({
+      filename: "Checkpoint-read.pdf",
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f6a72",
+      knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+      mimeType: "application/pdf",
+      objectKey: "tenant-1/spaces/space/documents/asset/checkpoint-read",
+      sha256: "5".repeat(64),
+      sizeBytes: 11,
+    });
+    await adapter.objectStorage.putObject({
+      body: new TextEncoder().encode("document"),
+      contentType: asset.mimeType,
+      key: asset.objectKey,
+      metadata: {},
+    });
+    const jobs = createDocumentCompilationJobStateMachine({
+      generateId: () => "document-compilation-job-checkpoint-read-1",
+      jobs: adapter.jobs,
+      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 1 }),
+    });
+    const job = await jobs.start({
+      documentAssetId: asset.id,
+      knowledgeSpaceId: asset.knowledgeSpaceId,
+      tenantId: "tenant-1",
+      version: asset.version,
+    });
+    const baseParser = parser();
+    let parseCalls = 0;
+    const worker = createDocumentCompilationWorker({
+      assets,
+      failureManagement: "caller",
+      jobs,
+      multimodalManifests: createInMemoryDocumentMultimodalManifestRepository({ maxManifests: 1 }),
+      objectStorage: adapter.objectStorage,
+      parser: {
+        ...baseParser,
+        checkpointEligible: () => true,
+        kind: "unstructured",
+        parse: async (input) => {
+          parseCalls += 1;
+          return baseParser.parse(input);
+        },
+        policyFingerprint: () => "4".repeat(64),
+      },
+      reindexer: {
+        getParseArtifactCheckpoint: async () => {
+          throw new Error("checkpoint database temporarily unavailable");
+        },
+        reindex: async (input) => ({
+          artifact: input.parseArtifact,
+          nodesCreated: 0,
+          projectionIds: [],
+          projectionsCreated: 0,
+          status: "rebuilt",
+        }),
+      },
+    });
+
+    await expect(
+      worker.process({
+        documentAssetId: asset.id,
+        documentCompilationJobId: job.id,
+        knowledgeSpaceId: asset.knowledgeSpaceId,
+        tenantId: "tenant-1",
+        version: asset.version,
+      }),
+    ).rejects.toMatchObject({
+      code: "DOCUMENT_COMPILATION_RETRYABLE",
+      retryable: true,
+    });
+    expect(parseCalls).toBe(0);
+    await expect(jobs.get(job.id)).resolves.toMatchObject({ stage: "queued" });
+  });
+
+  it("keeps parsed resume retryable when its raw checkpoint read fails", async () => {
+    const adapter = createTestPlatformAdapter();
+    const assets = createInMemoryDocumentAssetRepository({ maxAssets: 1 });
+    const asset = await assets.create({
+      filename: "Parsed-checkpoint-read.pdf",
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f6a73",
+      knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+      mimeType: "application/pdf",
+      objectKey: "tenant-1/spaces/space/documents/asset/parsed-checkpoint-read",
+      sha256: "4".repeat(64),
+      sizeBytes: 11,
+    });
+    const body = new TextEncoder().encode("document");
+    await adapter.objectStorage.putObject({
+      body,
+      contentType: asset.mimeType,
+      key: asset.objectKey,
+      metadata: {},
+    });
+    const jobs = createDocumentCompilationJobStateMachine({
+      generateId: () => "document-compilation-job-parsed-checkpoint-read-1",
+      jobs: adapter.jobs,
+      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 1 }),
+    });
+    const job = await jobs.start({
+      documentAssetId: asset.id,
+      knowledgeSpaceId: asset.knowledgeSpaceId,
+      tenantId: "tenant-1",
+      version: asset.version,
+    });
+    const artifacts = createInMemoryParseArtifactRepository({ maxArtifacts: 1 });
+    const baseParser = parser();
+    await artifacts.create(
+      await baseParser.parse({
+        body,
+        documentAssetId: asset.id,
+        filename: asset.filename,
+        mimeType: asset.mimeType,
+        version: asset.version,
+      }),
+    );
+    await jobs.advance(job.id, "parsed");
+    let parseCalls = 0;
+    const worker = createDocumentCompilationWorker({
+      assets,
+      failureManagement: "caller",
+      jobs,
+      multimodalManifests: createInMemoryDocumentMultimodalManifestRepository({ maxManifests: 1 }),
+      objectStorage: adapter.objectStorage,
+      parser: {
+        ...baseParser,
+        parse: async (input) => {
+          parseCalls += 1;
+          return baseParser.parse(input);
+        },
+      },
+      reindexer: {
+        getCanonicalArtifact: (input) => artifacts.getByDocumentVersion(input),
+        getParseArtifactCheckpoint: async () => {
+          throw new Error("checkpoint database temporarily unavailable");
+        },
+        reindex: async (input) => ({
+          artifact: input.parseArtifact,
+          nodesCreated: 0,
+          projectionIds: [],
+          projectionsCreated: 0,
+          status: "rebuilt",
+        }),
+      },
+    });
+
+    await expect(
+      worker.process({
+        documentAssetId: asset.id,
+        documentCompilationJobId: job.id,
+        knowledgeSpaceId: asset.knowledgeSpaceId,
+        tenantId: "tenant-1",
+        version: asset.version,
+      }),
+    ).rejects.toMatchObject({
+      code: "DOCUMENT_COMPILATION_RETRYABLE",
+      retryable: true,
+    });
+    expect(parseCalls).toBe(0);
+    await expect(jobs.get(job.id)).resolves.toMatchObject({ stage: "parsed" });
+  });
+
+  it("reuses a raw parse checkpoint across attempts but misses after a parser policy upgrade", async () => {
+    const adapter = createTestPlatformAdapter();
+    const assets = createInMemoryDocumentAssetRepository({ maxAssets: 1 });
+    const asset = await assets.create({
+      filename: "Remote-image.md",
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f6a21",
+      knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+      mimeType: "text/markdown; charset=utf-8",
+      objectKey: "tenant-1/spaces/space/documents/asset/Remote-image.md",
+      sha256: "a".repeat(64),
+      sizeBytes: 12,
+    });
+    await adapter.objectStorage.putObject({
+      body: new TextEncoder().encode("# Remote image"),
+      contentType: asset.mimeType,
+      key: asset.objectKey,
+      metadata: {},
+    });
+    const compilationJobs = createDocumentCompilationJobStateMachine({
+      generateId: () => "document-compilation-job-raw-checkpoint-1",
+      jobs: adapter.jobs,
+      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 1 }),
+    });
+    const compilationJob = await compilationJobs.start({
+      documentAssetId: asset.id,
+      knowledgeSpaceId: asset.knowledgeSpaceId,
+      tenantId: "tenant-1",
+      version: asset.version,
+    });
+    const artifacts = createInMemoryParseArtifactRepository({ maxArtifacts: 1 });
+    let parseCalls = 0;
+    let fetchCalls = 0;
+    let currentParserVersion = "unstructured@checkpoint-test-v1";
+    const checkpointingParser: ParserAdapter = {
+      checkpointEligible: () => true,
+      kind: "unstructured",
+      parse: async (input) => {
+        parseCalls += 1;
+        return ParseArtifactSchema.parse({
+          artifactHash: "c".repeat(64),
+          contentType: "mixed",
+          createdAt: "2026-05-27T10:00:00.000Z",
+          documentAssetId: input.documentAssetId,
+          elements: [
+            {
+              id: "remote-figure",
+              metadata: {
+                assetRef: {
+                  contentType: "image/png",
+                  uri: "https://example.test/figure.png",
+                },
+              },
+              sectionPath: ["Remote"],
+              text: "Remote figure",
+              type: "image",
+            },
+          ],
+          id: "018f0d60-7a49-7cc2-9c1b-5b36f18f6a22",
+          metadata: { parserVersion: currentParserVersion },
+          parser: "unstructured",
+          version: input.version,
+        });
+      },
+      policyFingerprint: () =>
+        currentParserVersion.endsWith("-v1") ? "a".repeat(64) : "b".repeat(64),
+    };
+    const createWorker = (jobs: ReturnType<typeof createDocumentCompilationJobStateMachine>) =>
+      createDocumentCompilationWorker({
+        assets,
+        failureManagement: "caller",
+        jobs,
+        multimodalManifests: createInMemoryDocumentMultimodalManifestRepository({
+          maxManifests: 1,
+        }),
+        multimodalRemoteAssetFetcher: {
+          fetch: async () => {
+            fetchCalls += 1;
+            if (fetchCalls <= 2) throw new Error("remote image temporarily unavailable");
+            return { body: Uint8Array.from([1, 2, 3, 4]), contentType: "image/png" };
+          },
+        },
+        objectStorage: adapter.objectStorage,
+        parser: checkpointingParser,
+        reindexer: {
+          canonicalizeArtifact: (artifact) => artifacts.materialize(artifact),
+          checkpointParseArtifact: (input) => artifacts.checkpoint(input),
+          deleteParseArtifactCheckpoint: (input) => artifacts.deleteCheckpoint(input),
+          getCanonicalArtifact: (input) => artifacts.getByDocumentVersion(input),
+          getParseArtifactCheckpoint: (input) => artifacts.getCheckpoint(input),
+          reindex: async (input) => ({
+            artifact: input.parseArtifact,
+            nodesCreated: 0,
+            projectionIds: [],
+            projectionsCreated: 0,
+            status: "rebuilt",
+          }),
+        },
+      });
+    const worker = createWorker(compilationJobs);
+    const payload = {
+      documentAssetId: asset.id,
+      documentCompilationJobId: compilationJob.id,
+      knowledgeSpaceId: asset.knowledgeSpaceId,
+      tenantId: "tenant-1",
+      version: asset.version,
+    } as const;
+
+    await expect(worker.process(payload)).rejects.toThrow("remote image temporarily unavailable");
+    expect(parseCalls).toBe(1);
+    await expect(compilationJobs.get(compilationJob.id)).resolves.toMatchObject({
+      stage: "queued",
+    });
+    await expect(
+      artifacts.getByDocumentVersion({ documentAssetId: asset.id, version: asset.version }),
+    ).resolves.toBeNull();
+    await expect(
+      artifacts.getCheckpoint({ documentAssetId: asset.id, version: asset.version }),
+    ).resolves.toMatchObject({
+      policyFingerprint: expect.stringMatching(/^[0-9a-f]{64}$/u),
+    });
+
+    const retryJobs = createDocumentCompilationJobStateMachine({
+      generateId: () => "document-compilation-job-raw-checkpoint-2",
+      jobs: adapter.jobs,
+      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 1 }),
+    });
+    const retryJob = await retryJobs.start({
+      documentAssetId: asset.id,
+      knowledgeSpaceId: asset.knowledgeSpaceId,
+      tenantId: "tenant-1",
+      version: asset.version,
+    });
+    const retryPayload = {
+      ...payload,
+      documentCompilationJobId: retryJob.id,
+    };
+    const retryWorker = createWorker(retryJobs);
+    await expect(retryWorker.process(retryPayload)).rejects.toThrow(
+      "remote image temporarily unavailable",
+    );
+    expect(parseCalls).toBe(1);
+    currentParserVersion = "unstructured@checkpoint-test-v2";
+    await expect(retryWorker.process(retryPayload)).resolves.toMatchObject({ stage: "published" });
+    expect(parseCalls).toBe(2);
+    expect(fetchCalls).toBe(3);
+    await expect(
+      artifacts.getByDocumentVersion({ documentAssetId: asset.id, version: asset.version }),
+    ).resolves.toMatchObject({
+      elements: [
+        expect.objectContaining({
+          metadata: expect.objectContaining({
+            assetRef: expect.objectContaining({ objectKey: expect.any(String) }),
+          }),
+        }),
+      ],
+    });
+    await expect(
+      artifacts.getCheckpoint({ documentAssetId: asset.id, version: asset.version }),
+    ).resolves.toBeNull();
+  });
+
+  it("retains the raw parse checkpoint while canonical materialization remains ambiguous", async () => {
+    const adapter = createTestPlatformAdapter();
+    const assets = createInMemoryDocumentAssetRepository({ maxAssets: 1 });
+    const asset = await assets.create({
+      filename: "Ambiguous-canonical.md",
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f6a31",
+      knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+      mimeType: "text/markdown",
+      objectKey: "tenant-1/spaces/space/documents/asset/Ambiguous-canonical.md",
+      sha256: "d".repeat(64),
+      sizeBytes: 21,
+    });
+    await adapter.objectStorage.putObject({
+      body: new TextEncoder().encode("# Ambiguous canonical"),
+      contentType: asset.mimeType,
+      key: asset.objectKey,
+      metadata: {},
+    });
+    const compilationJobs = createDocumentCompilationJobStateMachine({
+      generateId: () => "document-compilation-job-ambiguous-canonical-1",
+      jobs: adapter.jobs,
+      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 1 }),
+    });
+    const compilationJob = await compilationJobs.start({
+      documentAssetId: asset.id,
+      knowledgeSpaceId: asset.knowledgeSpaceId,
+      tenantId: "tenant-1",
+      version: asset.version,
+    });
+    const artifacts = createInMemoryParseArtifactRepository({ maxArtifacts: 1 });
+    const baseParser = parser();
+    let canonicalReads = 0;
+    const worker = createDocumentCompilationWorker({
+      assets,
+      failureManagement: "caller",
+      jobs: compilationJobs,
+      multimodalManifests: createInMemoryDocumentMultimodalManifestRepository({ maxManifests: 1 }),
+      objectStorage: adapter.objectStorage,
+      parser: {
+        ...baseParser,
+        checkpointEligible: () => true,
+        policyFingerprint: () => "c".repeat(64),
+      },
+      reindexer: {
+        canonicalizeArtifact: async () => {
+          throw new Error("canonical commit result unknown");
+        },
+        checkpointParseArtifact: (input) => artifacts.checkpoint(input),
+        deleteParseArtifactCheckpoint: (input) => artifacts.deleteCheckpoint(input),
+        getCanonicalArtifact: async () => {
+          canonicalReads += 1;
+          if (canonicalReads === 1) return null;
+          throw new Error("canonical reconciliation unavailable");
+        },
+        getParseArtifactCheckpoint: (input) => artifacts.getCheckpoint(input),
+        reindex: async (input) => ({
+          artifact: input.parseArtifact,
+          nodesCreated: 0,
+          projectionsCreated: 0,
+          status: "rebuilt",
+        }),
+      },
+    });
+
+    await expect(
+      worker.process({
+        documentAssetId: asset.id,
+        documentCompilationJobId: compilationJob.id,
+        knowledgeSpaceId: asset.knowledgeSpaceId,
+        tenantId: "tenant-1",
+        version: asset.version,
+      }),
+    ).rejects.toThrow("Parse artifact materialization outcome is ambiguous");
+    await expect(
+      artifacts.getCheckpoint({ documentAssetId: asset.id, version: asset.version }),
+    ).resolves.toMatchObject({ policyFingerprint: "c".repeat(64) });
+    await expect(
+      artifacts.getByDocumentVersion({ documentAssetId: asset.id, version: asset.version }),
+    ).resolves.toBeNull();
+  });
+
+  it("keeps a raw parse checkpoint until the parsed stage is durable", async () => {
+    const adapter = createTestPlatformAdapter();
+    const assets = createInMemoryDocumentAssetRepository({ maxAssets: 1 });
+    const asset = await assets.create({
+      filename: "Parsed-stage-retry.md",
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f6a41",
+      knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+      mimeType: "text/markdown",
+      objectKey: "tenant-1/spaces/space/documents/asset/Parsed-stage-retry.md",
+      sha256: "e".repeat(64),
+      sizeBytes: 20,
+    });
+    await adapter.objectStorage.putObject({
+      body: new TextEncoder().encode("# Parsed stage retry"),
+      contentType: asset.mimeType,
+      key: asset.objectKey,
+      metadata: {},
+    });
+    const compilationJobs = createDocumentCompilationJobStateMachine({
+      generateId: () => "document-compilation-job-parsed-stage-retry-1",
+      jobs: adapter.jobs,
+      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 1 }),
+    });
+    const compilationJob = await compilationJobs.start({
+      documentAssetId: asset.id,
+      knowledgeSpaceId: asset.knowledgeSpaceId,
+      tenantId: "tenant-1",
+      version: asset.version,
+    });
+    let failParsedAdvance = true;
+    const flakyJobs: typeof compilationJobs = {
+      ...compilationJobs,
+      advance: async (id, stage) => {
+        if (stage === "parsed" && failParsedAdvance) {
+          failParsedAdvance = false;
+          throw new Error("parsed stage persistence unavailable");
+        }
+        return compilationJobs.advance(id, stage);
+      },
+    };
+    const artifacts = createInMemoryParseArtifactRepository({ maxArtifacts: 1 });
+    const baseParser = parser();
+    let parseCalls = 0;
+    const worker = createDocumentCompilationWorker({
+      assets,
+      failureManagement: "caller",
+      jobs: flakyJobs,
+      multimodalManifests: createInMemoryDocumentMultimodalManifestRepository({ maxManifests: 2 }),
+      objectStorage: adapter.objectStorage,
+      parser: {
+        ...baseParser,
+        checkpointEligible: () => true,
+        parse: async (input) => {
+          parseCalls += 1;
+          return baseParser.parse(input);
+        },
+        policyFingerprint: () => "d".repeat(64),
+      },
+      reindexer: {
+        canonicalizeArtifact: (input) => artifacts.materialize(input),
+        checkpointParseArtifact: (input) => artifacts.checkpoint(input),
+        deleteParseArtifactCheckpoint: (input) => artifacts.deleteCheckpoint(input),
+        getCanonicalArtifact: (input) => artifacts.getByDocumentVersion(input),
+        getParseArtifactCheckpoint: (input) => artifacts.getCheckpoint(input),
+        reindex: async (input) => ({
+          artifact: input.parseArtifact,
+          nodesCreated: 0,
+          projectionsCreated: 0,
+          status: "rebuilt",
+        }),
+      },
+    });
+    const payload = {
+      documentAssetId: asset.id,
+      documentCompilationJobId: compilationJob.id,
+      knowledgeSpaceId: asset.knowledgeSpaceId,
+      tenantId: "tenant-1",
+      version: asset.version,
+    } as const;
+
+    await expect(worker.process(payload)).rejects.toThrow("parsed stage persistence unavailable");
+    expect(parseCalls).toBe(1);
+    await expect(
+      artifacts.getCheckpoint({ documentAssetId: asset.id, version: asset.version }),
+    ).resolves.toMatchObject({ policyFingerprint: "d".repeat(64) });
+
+    await expect(worker.process(payload)).resolves.toMatchObject({ stage: "published" });
+    expect(parseCalls).toBe(1);
+    await expect(
+      artifacts.getCheckpoint({ documentAssetId: asset.id, version: asset.version }),
+    ).resolves.toBeNull();
+  });
+
+  it("retries raw checkpoint cleanup from canonical parsed state without reparsing", async () => {
+    const adapter = createTestPlatformAdapter();
+    const assets = createInMemoryDocumentAssetRepository({ maxAssets: 1 });
+    const asset = await assets.create({
+      filename: "Checkpoint-cleanup-retry.pdf",
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f6a51",
+      knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+      mimeType: "application/pdf",
+      objectKey: "tenant-1/spaces/space/documents/asset/Checkpoint-cleanup-retry.pdf",
+      sha256: "7".repeat(64),
+      sizeBytes: 24,
+    });
+    await adapter.objectStorage.putObject({
+      body: new TextEncoder().encode("expensive provider input"),
+      contentType: asset.mimeType,
+      key: asset.objectKey,
+      metadata: {},
+    });
+    const jobs = createDocumentCompilationJobStateMachine({
+      generateId: () => "document-compilation-job-checkpoint-cleanup-retry-1",
+      jobs: adapter.jobs,
+      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 1 }),
+    });
+    const job = await jobs.start({
+      documentAssetId: asset.id,
+      knowledgeSpaceId: asset.knowledgeSpaceId,
+      tenantId: "tenant-1",
+      version: asset.version,
+    });
+    const artifacts = createInMemoryParseArtifactRepository({ maxArtifacts: 1 });
+    const baseParser = parser();
+    let cleanupAttempts = 0;
+    let parseCalls = 0;
+    const worker = createDocumentCompilationWorker({
+      assets,
+      failureManagement: "caller",
+      jobs,
+      multimodalManifests: createInMemoryDocumentMultimodalManifestRepository({ maxManifests: 2 }),
+      objectStorage: adapter.objectStorage,
+      parser: {
+        ...baseParser,
+        checkpointEligible: () => true,
+        kind: "unstructured",
+        parse: async (input) => {
+          parseCalls += 1;
+          return baseParser.parse(input);
+        },
+        policyFingerprint: () => "8".repeat(64),
+      },
+      reindexer: {
+        canonicalizeArtifact: (input) => artifacts.materialize(input),
+        checkpointParseArtifact: (input) => artifacts.checkpoint(input),
+        deleteParseArtifactCheckpoint: async (input) => {
+          cleanupAttempts += 1;
+          if (cleanupAttempts === 1) throw new Error("checkpoint cleanup unavailable");
+          return artifacts.deleteCheckpoint(input);
+        },
+        getCanonicalArtifact: (input) => artifacts.getByDocumentVersion(input),
+        getParseArtifactCheckpoint: (input) => artifacts.getCheckpoint(input),
+        reindex: async (input) => ({
+          artifact: input.parseArtifact,
+          nodesCreated: 0,
+          projectionIds: [],
+          projectionsCreated: 0,
+          status: "rebuilt",
+        }),
+      },
+    });
+    const payload = {
+      documentAssetId: asset.id,
+      documentCompilationJobId: job.id,
+      knowledgeSpaceId: asset.knowledgeSpaceId,
+      tenantId: "tenant-1",
+      version: asset.version,
+    } as const;
+
+    await expect(worker.process(payload)).rejects.toMatchObject({
+      code: "DOCUMENT_COMPILATION_RETRYABLE",
+      retryable: true,
+    });
+    expect(parseCalls).toBe(1);
+    await expect(jobs.get(job.id)).resolves.toMatchObject({ stage: "parsed" });
+    await expect(
+      artifacts.getCheckpoint({ documentAssetId: asset.id, version: asset.version }),
+    ).resolves.toMatchObject({ policyFingerprint: "8".repeat(64) });
+
+    await expect(worker.process(payload)).resolves.toMatchObject({ stage: "published" });
+    expect(parseCalls).toBe(1);
+    expect(cleanupAttempts).toBe(2);
+    await expect(
+      artifacts.getCheckpoint({ documentAssetId: asset.id, version: asset.version }),
+    ).resolves.toBeNull();
+  });
+
   it("fails closed instead of silently writing a generation payload as legacy", async () => {
     const adapter = createTestPlatformAdapter();
     const assets = createInMemoryDocumentAssetRepository({
@@ -759,6 +1747,8 @@ describe("createDocumentCompilationWorker lease integration", () => {
     let summaryCalls = 0;
     let canonicalArtifactAvailable = false;
     let manifestCheckpoint: "invalid" | "missing" | "valid" = "missing";
+    let retainedArtifactActive = 0;
+    let retainedArtifactAdmissions = 0;
     const receipts: unknown[] = [];
     const resetFailedProjectionFlags: Array<boolean | undefined> = [];
     const checkpointManifests = {
@@ -857,10 +1847,27 @@ describe("createDocumentCompilationWorker lease integration", () => {
           throw new Error("document must not be reparsed");
         },
       },
+      retainedArtifactAdmission: {
+        acquire: async (artifact) => {
+          expect(artifact.id).toBe(canonicalArtifact.id);
+          retainedArtifactAdmissions += 1;
+          retainedArtifactActive += 1;
+          let released = false;
+          return {
+            estimatedBytes: 1,
+            release: () => {
+              if (released) return;
+              released = true;
+              retainedArtifactActive -= 1;
+            },
+          };
+        },
+      },
       reindexer: {
         getCanonicalArtifact: async (input) =>
           canonicalArtifactAvailable ? artifacts.getByDocumentVersion(input) : null,
         reindex: async (input) => {
+          expect(retainedArtifactActive).toBe(1);
           resetFailedProjectionFlags.push(input.resetFailedProjections);
           return {
             artifact: input.parseArtifact,
@@ -883,6 +1890,8 @@ describe("createDocumentCompilationWorker lease integration", () => {
     await expect(worker.process(payload)).resolves.toMatchObject({ stage: "projection_built" });
     expect(parserCalls).toBe(0);
     expect(summaryCalls).toBe(0);
+    expect(retainedArtifactAdmissions).toBe(3);
+    expect(retainedArtifactActive).toBe(0);
     expect(resetFailedProjectionFlags).toEqual([true]);
     expect(receipts).toEqual([
       expect.objectContaining({
@@ -2179,42 +3188,88 @@ describe("createDocumentCompilationWorker lease integration", () => {
     ).resolves.toMatchObject({ objects: [expect.any(Object)] });
   });
 
-  it("limits PDF provider materialization even when the local rasterizer is disabled", async () => {
+  it("releases global admission before a body-classified heavy archive waits or is cancelled", async () => {
     const adapter = createTestPlatformAdapter();
-    const assets = createInMemoryDocumentAssetRepository({ maxAssets: 3 });
+    const assets = createInMemoryDocumentAssetRepository({ maxAssets: 5 });
     const assetIds = [
       "018f0d60-7a49-7cc2-9c1b-5b36f18f7d01",
       "018f0d60-7a49-7cc2-9c1b-5b36f18f7d02",
       "018f0d60-7a49-7cc2-9c1b-5b36f18f7d03",
+      "018f0d60-7a49-7cc2-9c1b-5b36f18f7d04",
+      "018f0d60-7a49-7cc2-9c1b-5b36f18f7d05",
     ] as const;
     const artifactIds = [
       "018f0d60-7a49-7cc2-9c1b-5b36f18f7e01",
       "018f0d60-7a49-7cc2-9c1b-5b36f18f7e02",
       "018f0d60-7a49-7cc2-9c1b-5b36f18f7e03",
+      "018f0d60-7a49-7cc2-9c1b-5b36f18f7e04",
+      "018f0d60-7a49-7cc2-9c1b-5b36f18f7e05",
     ] as const;
-    const createdAssets = [];
+    const documentTypes = [
+      {
+        filename: "Compact-structural-1.xlsx",
+        mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      },
+      {
+        filename: "Compact-structural-2.xlsx",
+        mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      },
+      {
+        filename: "Ordinary.docx",
+        mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      },
+      { filename: "Cancelled.txt", mimeType: "text/plain" },
+      { filename: "Known-heavy.pdf", mimeType: "application/pdf" },
+    ] as const;
+    const structuralWorkbook = zipWithDeclaredEntriesForWorkloadTest(
+      Array.from({ length: 33 }, (_, index) => ({
+        filename: `xl/worksheets/sheet${index + 1}.xml`,
+        uncompressedBytes: 1,
+      })),
+    );
+    const ordinaryDocument = zipWithDeclaredEntriesForWorkloadTest([
+      { filename: "word/document.xml", uncompressedBytes: 1 },
+    ]);
+    const sourceBodies = [
+      structuralWorkbook,
+      structuralWorkbook,
+      ordinaryDocument,
+      new TextEncoder().encode("cancelled"),
+      new TextEncoder().encode("%PDF-1.7"),
+    ] as const;
+    const createdAssets: Awaited<ReturnType<typeof assets.create>>[] = [];
     for (const [index, id] of assetIds.entries()) {
+      const documentType = documentTypes[index];
+      const sourceBody = sourceBodies[index];
+      if (!documentType) throw new Error("Missing test document type");
+      if (!sourceBody) throw new Error("Missing test source body");
       const asset = await assets.create({
-        filename: `Queued-${index + 1}.pdf`,
+        filename: documentType.filename,
         id,
         knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
-        mimeType: "application/pdf",
-        objectKey: `tenant-1/spaces/space/documents/${id}/source.pdf`,
+        mimeType: documentType.mimeType,
+        objectKey: `tenant-1/spaces/space/documents/${id}/source`,
         sha256: String(index + 1).repeat(64),
-        sizeBytes: 8,
+        sizeBytes: sourceBody.byteLength,
       });
       createdAssets.push(asset);
       await adapter.objectStorage.putObject({
-        body: new TextEncoder().encode("%PDF-1.7"),
+        body: sourceBody,
         contentType: asset.mimeType,
         key: asset.objectKey,
         metadata: {},
       });
     }
     const compilationJobs = createDocumentCompilationJobStateMachine({
-      generateId: sequenceIds(["pdf-provider-job-1", "pdf-provider-job-2", "pdf-provider-job-3"]),
+      generateId: sequenceIds([
+        "materialization-job-1",
+        "materialization-job-2",
+        "materialization-job-3",
+        "materialization-job-4",
+        "materialization-job-5",
+      ]),
       jobs: adapter.jobs,
-      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 3 }),
+      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 5 }),
     });
     const jobs: Awaited<ReturnType<typeof compilationJobs.start>>[] = [];
     for (const asset of createdAssets) {
@@ -2229,29 +3284,53 @@ describe("createDocumentCompilationWorker lease integration", () => {
     }
     let activeParses = 0;
     let enteredParses = 0;
+    const enteredAssetIds: string[] = [];
     let maxActiveParses = 0;
     let releaseParses!: () => void;
-    let resolveTwoEntered!: () => void;
+    let resolveFirstHeavyEntered!: () => void;
+    let resolveOrdinaryEntered!: () => void;
     const parseBarrier = new Promise<void>((resolve) => {
       releaseParses = resolve;
     });
-    const twoEntered = new Promise<void>((resolve) => {
-      resolveTwoEntered = resolve;
+    const firstHeavyEntered = new Promise<void>((resolve) => {
+      resolveFirstHeavyEntered = resolve;
     });
-    const multimodalMaterializationGate = createConcurrencyGate(2);
+    const ordinaryEntered = new Promise<void>((resolve) => {
+      resolveOrdinaryEntered = resolve;
+    });
+    const materializationGate = createConcurrencyGate(2);
+    const heavyMaterializationPreAdmission = createConcurrencyGate(1);
     const multimodalManifests = createInMemoryDocumentMultimodalManifestRepository({
-      maxManifests: 3,
+      maxManifests: 5,
     });
+    let resolveSecondHeavyPreflightRead!: () => void;
+    const secondHeavyPreflightRead = new Promise<void>((resolve) => {
+      resolveSecondHeavyPreflightRead = resolve;
+    });
+    const sourceReadCounts = new Map<string, number>();
+    const cancelledObjectKey = createdAssets[3]?.objectKey;
+    let cancelledSourceReads = 0;
+    const compilationObjectStorage: PlatformAdapter["objectStorage"] = {
+      ...adapter.objectStorage,
+      getObject: async (key) => {
+        sourceReadCounts.set(key, (sourceReadCounts.get(key) ?? 0) + 1);
+        if (key === createdAssets[1]?.objectKey) resolveSecondHeavyPreflightRead();
+        if (key === cancelledObjectKey) cancelledSourceReads += 1;
+        return adapter.objectStorage.getObject(key);
+      },
+    };
     const createWorker = () =>
       createDocumentCompilationWorker({
         assets,
         jobs: compilationJobs,
+        heavyMaterializationPreAdmission,
         multimodalImageVariantGenerator: { generate: async () => [] },
         multimodalManifests,
-        multimodalMaterializationGate,
-        objectStorage: adapter.objectStorage,
+        materializationGate,
+        objectStorage: compilationObjectStorage,
         parser: {
           kind: "unstructured",
+          workloadKind: (input) => classifyUnstructuredWorkload(input).kind,
           parse: async (input) => {
             expect(input.parserHints).toMatchObject({
               imagesHandledExternally: false,
@@ -2259,8 +3338,10 @@ describe("createDocumentCompilationWorker lease integration", () => {
             });
             activeParses += 1;
             enteredParses += 1;
+            enteredAssetIds.push(input.documentAssetId);
             maxActiveParses = Math.max(maxActiveParses, activeParses);
-            if (enteredParses === 2) resolveTwoEntered();
+            if (input.documentAssetId === assetIds[0]) resolveFirstHeavyEntered();
+            if (input.documentAssetId === assetIds[2]) resolveOrdinaryEntered();
             await parseBarrier;
             activeParses -= 1;
             const artifactId =
@@ -2290,18 +3371,57 @@ describe("createDocumentCompilationWorker lease integration", () => {
         },
       });
 
-    const processes = createdAssets.map((asset, index) =>
-      createWorker().process({
-        documentAssetId: asset.id,
-        documentCompilationJobId: jobs[index]?.id ?? "missing-job",
-        knowledgeSpaceId: asset.knowledgeSpaceId,
-        tenantId: "tenant-1",
-        version: asset.version,
-      }),
-    );
-    await twoEntered;
+    const processAsset = (index: number, signal?: AbortSignal) => {
+      const asset = createdAssets[index];
+      if (!asset) throw new Error("Missing compilation asset fixture");
+      return createWorker().process(
+        {
+          documentAssetId: asset.id,
+          documentCompilationJobId: jobs[index]?.id ?? "missing-job",
+          knowledgeSpaceId: asset.knowledgeSpaceId,
+          tenantId: "tenant-1",
+          version: asset.version,
+        },
+        signal ? { signal } : undefined,
+      );
+    };
+    const firstHeavyProcess = processAsset(0);
+    await firstHeavyEntered;
+    const secondHeavyController = new AbortController();
+    const secondHeavyProcess = processAsset(1, secondHeavyController.signal);
+    await secondHeavyPreflightRead;
+    const ordinaryProcess = processAsset(2);
+    await ordinaryEntered;
+    secondHeavyController.abort(new Error("body-classified heavy compilation cancelled"));
+    await expect(secondHeavyProcess).rejects.toThrow("body-classified heavy compilation cancelled");
+    expect(sourceReadCounts.get(createdAssets[0]?.objectKey ?? "missing")).toBe(2);
+    expect(sourceReadCounts.get(createdAssets[1]?.objectKey ?? "missing")).toBe(1);
+    expect(sourceReadCounts.get(createdAssets[2]?.objectKey ?? "missing")).toBe(1);
+    const knownHeavyProcess = processAsset(4);
     await Promise.resolve();
+    expect(sourceReadCounts.get(createdAssets[4]?.objectKey ?? "missing")).toBeUndefined();
+    const processes = [firstHeavyProcess, ordinaryProcess, knownHeavyProcess];
+    const cancelledAsset = createdAssets[3];
+    const cancelledJob = jobs[3];
+    if (!cancelledAsset || !cancelledJob) throw new Error("Missing cancelled compilation fixture");
+    const controller = new AbortController();
+    const cancelledProcess = createWorker().process(
+      {
+        documentAssetId: cancelledAsset.id,
+        documentCompilationJobId: cancelledJob.id,
+        knowledgeSpaceId: cancelledAsset.knowledgeSpaceId,
+        tenantId: "tenant-1",
+        version: cancelledAsset.version,
+      },
+      { signal: controller.signal },
+    );
+    expect(enteredAssetIds).toContain(assetIds[2]);
+    expect(enteredAssetIds).toContain(assetIds[0]);
+    expect(enteredAssetIds).not.toContain(assetIds[1]);
+    controller.abort(new Error("queued compilation cancelled"));
+    await expect(cancelledProcess).rejects.toThrow("queued compilation cancelled");
     expect(enteredParses).toBe(2);
+    expect(cancelledSourceReads).toBe(0);
     expect(maxActiveParses).toBe(2);
     releaseParses();
     await expect(Promise.all(processes)).resolves.toEqual([
@@ -2309,6 +3429,137 @@ describe("createDocumentCompilationWorker lease integration", () => {
       expect.objectContaining({ stage: "published" }),
       expect.objectContaining({ stage: "published" }),
     ]);
+    expect(sourceReadCounts.get(createdAssets[4]?.objectKey ?? "missing")).toBe(1);
+    expect(maxActiveParses).toBe(2);
+  });
+
+  it("defaults a directly constructed worker to ordinary progress beside one heavy materialization", async () => {
+    const adapter = createTestPlatformAdapter();
+    const assets = createInMemoryDocumentAssetRepository({ maxAssets: 3 });
+    const assetIds = [
+      "018f0d60-7a49-7cc2-9c1b-5b36f18f7f01",
+      "018f0d60-7a49-7cc2-9c1b-5b36f18f7f02",
+      "018f0d60-7a49-7cc2-9c1b-5b36f18f7f03",
+    ] as const;
+    const artifactIds = [
+      "018f0d60-7a49-7cc2-9c1b-5b36f18f8001",
+      "018f0d60-7a49-7cc2-9c1b-5b36f18f8002",
+      "018f0d60-7a49-7cc2-9c1b-5b36f18f8003",
+    ] as const;
+    const createdAssets = [];
+    for (const [index, id] of assetIds.entries()) {
+      const asset = await assets.create({
+        filename: index < 2 ? `Heavy-${index + 1}.pdf` : "Ordinary.txt",
+        id,
+        knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+        mimeType: index < 2 ? "application/pdf" : "text/plain",
+        objectKey: `tenant-1/spaces/space/documents/${id}/source.txt`,
+        sha256: String(index + 5).repeat(64),
+        sizeBytes: 7,
+      });
+      createdAssets.push(asset);
+      await adapter.objectStorage.putObject({
+        body: new TextEncoder().encode(`small-${index + 1}`),
+        contentType: asset.mimeType,
+        key: asset.objectKey,
+        metadata: {},
+      });
+    }
+    const compilationJobs = createDocumentCompilationJobStateMachine({
+      generateId: sequenceIds([
+        "default-materialization-job-1",
+        "default-materialization-job-2",
+        "default-materialization-job-3",
+      ]),
+      jobs: adapter.jobs,
+      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 3 }),
+    });
+    const jobs: Awaited<ReturnType<typeof compilationJobs.start>>[] = [];
+    for (const asset of createdAssets) {
+      jobs.push(
+        await compilationJobs.start({
+          documentAssetId: asset.id,
+          knowledgeSpaceId: asset.knowledgeSpaceId,
+          tenantId: "tenant-1",
+          version: asset.version,
+        }),
+      );
+    }
+    let activeParses = 0;
+    let enteredParses = 0;
+    const enteredAssetIds: string[] = [];
+    let maxActiveParses = 0;
+    let releaseParses!: () => void;
+    let resolveTwoEntered!: () => void;
+    const parseBarrier = new Promise<void>((resolve) => {
+      releaseParses = resolve;
+    });
+    const twoEntered = new Promise<void>((resolve) => {
+      resolveTwoEntered = resolve;
+    });
+    const worker = createDocumentCompilationWorker({
+      assets,
+      jobs: compilationJobs,
+      multimodalManifests: createInMemoryDocumentMultimodalManifestRepository({
+        maxManifests: 3,
+      }),
+      objectStorage: adapter.objectStorage,
+      parser: {
+        kind: "unstructured",
+        workloadKind: (input) => (input.documentAssetId === assetIds[2] ? "standard" : "heavy"),
+        parse: async (input) => {
+          activeParses += 1;
+          enteredParses += 1;
+          enteredAssetIds.push(input.documentAssetId);
+          maxActiveParses = Math.max(maxActiveParses, activeParses);
+          if (enteredParses === 2) resolveTwoEntered();
+          await parseBarrier;
+          activeParses -= 1;
+          const artifactId =
+            artifactIds[assetIds.indexOf(input.documentAssetId as (typeof assetIds)[number])];
+          if (!artifactId) throw new Error("Missing default materialization artifact id");
+          return ParseArtifactSchema.parse({
+            artifactHash: input.documentAssetId.replaceAll("-", "").padEnd(64, "0").slice(0, 64),
+            contentType: "text",
+            createdAt: "2026-08-18T12:00:00.000Z",
+            documentAssetId: input.documentAssetId,
+            elements: [],
+            id: artifactId,
+            metadata: {},
+            parser: "unstructured",
+            version: input.version,
+          });
+        },
+      },
+      reindexer: {
+        reindex: async (input) => ({
+          artifact: input.parseArtifact,
+          nodesCreated: 0,
+          projectionIds: [],
+          projectionsCreated: 0,
+          status: "rebuilt",
+        }),
+      },
+    });
+
+    const processes = createdAssets.map((asset, index) =>
+      worker.process({
+        documentAssetId: asset.id,
+        documentCompilationJobId: jobs[index]?.id ?? "missing-job",
+        knowledgeSpaceId: asset.knowledgeSpaceId,
+        tenantId: "tenant-1",
+        version: asset.version,
+      }),
+    );
+
+    await twoEntered;
+    await Promise.resolve();
+    expect(enteredParses).toBe(2);
+    expect(enteredAssetIds).toContain(assetIds[0]);
+    expect(enteredAssetIds).toContain(assetIds[2]);
+    expect(enteredAssetIds).not.toContain(assetIds[1]);
+    releaseParses();
+    await expect(Promise.all(processes)).resolves.toHaveLength(3);
     expect(maxActiveParses).toBe(2);
   });
 });
@@ -2399,6 +3650,49 @@ function pdfParser(): ParserAdapter {
         version: input.version,
       }),
   };
+}
+
+function zipWithDeclaredEntriesForWorkloadTest(
+  entries: readonly { readonly filename: string; readonly uncompressedBytes: number }[],
+): Uint8Array {
+  const encodedEntries = entries.map((entry) => ({
+    ...entry,
+    filenameBytes: new TextEncoder().encode(entry.filename),
+  }));
+  const localHeader = new Uint8Array(30);
+  const centralDirectory = new Uint8Array(
+    encodedEntries.reduce((total, entry) => total + 46 + entry.filenameBytes.byteLength, 0),
+  );
+  const endOfCentralDirectory = new Uint8Array(22);
+  new DataView(localHeader.buffer).setUint32(0, 0x04034b50, true);
+  let centralOffset = 0;
+  for (const entry of encodedEntries) {
+    const centralView = new DataView(
+      centralDirectory.buffer,
+      centralDirectory.byteOffset + centralOffset,
+      46 + entry.filenameBytes.byteLength,
+    );
+    centralView.setUint32(0, 0x02014b50, true);
+    centralView.setUint32(20, 1, true);
+    centralView.setUint32(24, entry.uncompressedBytes, true);
+    centralView.setUint16(28, entry.filenameBytes.byteLength, true);
+    centralDirectory.set(entry.filenameBytes, centralOffset + 46);
+    centralOffset += 46 + entry.filenameBytes.byteLength;
+  }
+  const endView = new DataView(endOfCentralDirectory.buffer);
+  endView.setUint32(0, 0x06054b50, true);
+  endView.setUint16(8, entries.length, true);
+  endView.setUint16(10, entries.length, true);
+  endView.setUint32(12, centralDirectory.byteLength, true);
+  endView.setUint32(16, localHeader.byteLength, true);
+
+  const body = new Uint8Array(
+    localHeader.byteLength + centralDirectory.byteLength + endOfCentralDirectory.byteLength,
+  );
+  body.set(localHeader);
+  body.set(centralDirectory, localHeader.byteLength);
+  body.set(endOfCentralDirectory, localHeader.byteLength + centralDirectory.byteLength);
+  return body;
 }
 
 function sequenceIds(ids: readonly string[]): () => string {

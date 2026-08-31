@@ -1,4 +1,4 @@
-import { chmod, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -26,6 +26,7 @@ interface FakePopplerCommand {
   readonly command: string;
   readonly pdfInfoCommand: string;
   readonly readInvocations: () => Promise<readonly string[][]>;
+  readonly readPdfInfoInvocations: () => Promise<readonly string[][]>;
   readonly readWorkDirs: () => Promise<readonly string[]>;
 }
 
@@ -35,6 +36,7 @@ async function createFakePopplerCommand(
   const root = await mkdtemp(join(tmpdir(), "knowledge-fs-fake-poppler-"));
   const command = join(root, "pdftoppm.cjs");
   const invocationLog = join(root, "invocations.ndjson");
+  const pdfInfoInvocationLog = join(root, "pdfinfo-invocations.ndjson");
   const workDirLog = join(root, "workdirs.txt");
   const sharp = (await import("sharp")).default;
   const pagePng = await sharp({
@@ -52,6 +54,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 const args = process.argv.slice(2);
 if (args.includes("-box")) {
+  fs.appendFileSync(${JSON.stringify(pdfInfoInvocationLog)}, JSON.stringify(args) + "\\n");
+  fs.appendFileSync(${JSON.stringify(workDirLog)}, path.dirname(args.at(-1)) + "\\n");
   const pageNumber = args[args.indexOf("-f") + 1];
   process.stdout.write("Page " + pageNumber + " size: 612 x 792 pts\\n");
   process.exit(0);
@@ -91,6 +95,8 @@ if (${JSON.stringify(mode)} === "timeout") {
     pdfInfoCommand: command,
     readInvocations: async () =>
       (await readLines(invocationLog)).map((line) => JSON.parse(line) as string[]),
+    readPdfInfoInvocations: async () =>
+      (await readLines(pdfInfoInvocationLog)).map((line) => JSON.parse(line) as string[]),
     readWorkDirs: async () => readLines(workDirLog),
   };
 }
@@ -842,6 +848,88 @@ describe("rasterizeDocumentPdfMultimodalAssets", () => {
     expect(deleteCount).toBe(1);
   });
 
+  it("materializes one Poppler document while rendering and storing distinct pages incrementally", async () => {
+    const fakePoppler = await createFakePopplerCommand();
+
+    try {
+      const adapter = createNodePlatformAdapter({ env: {} });
+      const filesDuringPersistence: string[][] = [];
+      const rasterizer = createPopplerPdfRasterizer({
+        command: fakePoppler.command,
+        dpi: 144,
+        pdfInfoCommand: fakePoppler.pdfInfoCommand,
+        thumbnailDpi: 48,
+      });
+      const result = await rasterizeDocumentPdfMultimodalAssets({
+        artifact: artifact({
+          elements: [
+            {
+              id: "page-1",
+              metadata: {},
+              pageNumber: 1,
+              sectionPath: [],
+              type: "page-break",
+            },
+            {
+              id: "figure-1",
+              metadata: { boundingBox: { height: 10, width: 10, x: 0, y: 0 } },
+              pageNumber: 1,
+              sectionPath: [],
+              type: "image",
+            },
+            {
+              id: "page-2",
+              metadata: {},
+              pageNumber: 2,
+              sectionPath: [],
+              type: "page-break",
+            },
+          ],
+        }),
+        documentBody,
+        documentMimeType: "application/pdf",
+        knowledgeSpaceId,
+        objectStorage: {
+          ...adapter.objectStorage,
+          putObject: async (input) => {
+            const workDir = (await fakePoppler.readWorkDirs()).at(-1);
+
+            if (!workDir) {
+              throw new Error("Poppler did not report its work directory before persistence");
+            }
+            filesDuringPersistence.push(await readdir(workDir));
+            return adapter.objectStorage.putObject(input);
+          },
+        },
+        rasterizer,
+        tenantId: "tenant-1",
+      });
+
+      expect(result).toMatchObject({ candidateCount: 3, rasterizedCount: 3, unresolvedCount: 0 });
+      expect(
+        (await fakePoppler.readPdfInfoInvocations()).map((args) => args[args.indexOf("-f") + 1]),
+      ).toEqual(["1", "2"]);
+      expect(
+        (await fakePoppler.readInvocations()).map((args) => ({
+          dpi: args[args.indexOf("-r") + 1],
+          pageNumber: args[args.indexOf("-f") + 1],
+        })),
+      ).toEqual([
+        { dpi: "144", pageNumber: "1" },
+        { dpi: "48", pageNumber: "1" },
+        { dpi: "144", pageNumber: "2" },
+        { dpi: "48", pageNumber: "2" },
+      ]);
+      expect(filesDuringPersistence).toHaveLength(6);
+      expect(filesDuringPersistence.every((files) => files.join(",") === "input.pdf")).toBe(true);
+      const workDirs = await fakePoppler.readWorkDirs();
+      expect(new Set(workDirs).size).toBe(1);
+      await expectTemporaryDirectoriesRemoved(workDirs);
+    } finally {
+      await fakePoppler.cleanup();
+    }
+  });
+
   it("preserves storage errors and compensates objects written before a variant failure", async () => {
     const adapter = createNodePlatformAdapter({ env: {} });
     const storageFailure = new Error("object storage unavailable");
@@ -1041,6 +1129,230 @@ describe("createPopplerPdfRasterizer batch rendering", () => {
     release?.();
     await expect(pending).rejects.toMatchObject({ name: "AbortError" });
     expect(settled).toBe(true);
+  });
+
+  it("removes a cancelled materialization from the queue before it acquires a slot", async () => {
+    const rasterizer = createPopplerPdfRasterizer({ maxConcurrency: 1 });
+    let releaseFirst: (() => void) | undefined;
+    let cancelledEntered = false;
+    let cancelledSettled = false;
+    let thirdEntered = false;
+    const first = rasterizer.withMaterializationSlot?.(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseFirst = resolve;
+        }),
+    );
+    await waitForCondition(() => releaseFirst !== undefined);
+    const controller = new AbortController();
+    const cancelled = rasterizer.withMaterializationSlot?.(async () => {
+      cancelledEntered = true;
+    }, controller.signal);
+    void cancelled?.then(
+      () => {
+        cancelledSettled = true;
+      },
+      () => {
+        cancelledSettled = true;
+      },
+    );
+    controller.abort(new DOMException("cancelled while queued", "AbortError"));
+    await waitForCondition(() => cancelledSettled);
+    expect(cancelledEntered).toBe(false);
+    await expect(cancelled).rejects.toMatchObject({ name: "AbortError" });
+
+    const third = rasterizer.withMaterializationSlot?.(async () => {
+      thirdEntered = true;
+    });
+    expect(thirdEntered).toBe(false);
+    releaseFirst?.();
+    await expect(Promise.all([first, third])).resolves.toEqual([undefined, undefined]);
+    expect(thirdEntered).toBe(true);
+  });
+
+  it("allows a document session inside the legacy materialization slot without deadlocking", async () => {
+    const fakePoppler = await createFakePopplerCommand();
+
+    try {
+      const rasterizer = createPopplerPdfRasterizer({
+        command: fakePoppler.command,
+        maxConcurrency: 1,
+        pdfInfoCommand: fakePoppler.pdfInfoCommand,
+      });
+      const withDocumentSession = rasterizer.withDocumentSession;
+      const withMaterializationSlot = rasterizer.withMaterializationSlot;
+      if (!withDocumentSession || !withMaterializationSlot) {
+        throw new Error("Poppler rasterizer did not expose its materialization APIs");
+      }
+
+      const rendered = await withMaterializationSlot(() =>
+        withDocumentSession({ documentBody }, (session) =>
+          session.renderBatch({ requests: [{ elementId: "page-1", pageNumber: 1 }] }),
+        ),
+      );
+
+      expect(rendered[0]?.contentType).toBe("image/png");
+      await expectTemporaryDirectoriesRemoved(await fakePoppler.readWorkDirs());
+    } finally {
+      await fakePoppler.cleanup();
+    }
+  });
+
+  it("caches page sizes across batches in one document session and removes its work directory", async () => {
+    const fakePoppler = await createFakePopplerCommand();
+
+    try {
+      const rasterizer = createPopplerPdfRasterizer({
+        command: fakePoppler.command,
+        dpi: 144,
+        pdfInfoCommand: fakePoppler.pdfInfoCommand,
+        thumbnailDpi: 48,
+      });
+      if (!rasterizer.withDocumentSession) {
+        throw new Error("Poppler rasterizer did not expose a document session");
+      }
+
+      await rasterizer.withDocumentSession({ documentBody }, async (session) => {
+        await session.renderBatch({
+          requests: [{ elementId: "page-2-first", pageNumber: 2 }],
+        });
+        await session.renderBatch({
+          requests: [{ elementId: "page-2-second", pageNumber: 2 }],
+        });
+      });
+
+      expect(
+        (await fakePoppler.readPdfInfoInvocations()).map((args) => args[args.indexOf("-f") + 1]),
+      ).toEqual(["2"]);
+      expect(await fakePoppler.readInvocations()).toHaveLength(4);
+      const workDirs = await fakePoppler.readWorkDirs();
+      expect(new Set(workDirs).size).toBe(1);
+      await expectTemporaryDirectoriesRemoved(workDirs);
+    } finally {
+      await fakePoppler.cleanup();
+    }
+  });
+
+  it("preserves callback failures and cleans the document session", async () => {
+    const fakePoppler = await createFakePopplerCommand();
+
+    try {
+      const rasterizer = createPopplerPdfRasterizer({
+        command: fakePoppler.command,
+        pdfInfoCommand: fakePoppler.pdfInfoCommand,
+      });
+      const callbackFailure = new Error("object persistence failed");
+      if (!rasterizer.withDocumentSession) {
+        throw new Error("Poppler rasterizer did not expose a document session");
+      }
+
+      const promise = rasterizer.withDocumentSession({ documentBody }, async (session) => {
+        await session.renderBatch({
+          requests: [{ elementId: "page-1", pageNumber: 1 }],
+        });
+        throw callbackFailure;
+      });
+
+      await expect(promise).rejects.toBe(callbackFailure);
+      await expectTemporaryDirectoriesRemoved(await fakePoppler.readWorkDirs());
+    } finally {
+      await fakePoppler.cleanup();
+    }
+  });
+
+  it("preserves a callback failure when document session cleanup also fails", async () => {
+    const fakePoppler = await createFakePopplerCommand();
+    let cleanupBlocker: string | undefined;
+    let workDir: string | undefined;
+
+    try {
+      const rasterizer = createPopplerPdfRasterizer({
+        command: fakePoppler.command,
+        pdfInfoCommand: fakePoppler.pdfInfoCommand,
+      });
+      const callbackFailure = new Error("object persistence failed");
+      if (!rasterizer.withDocumentSession) {
+        throw new Error("Poppler rasterizer did not expose a document session");
+      }
+
+      const promise = rasterizer.withDocumentSession({ documentBody }, async (session) => {
+        await session.renderBatch({
+          requests: [{ elementId: "page-1", pageNumber: 1 }],
+        });
+        workDir = (await fakePoppler.readWorkDirs())[0];
+        if (!workDir) {
+          throw new Error("Fake Poppler did not report its work directory");
+        }
+        cleanupBlocker = join(workDir, "cleanup-blocker");
+        await mkdir(cleanupBlocker);
+        await writeFile(join(cleanupBlocker, "asset.png"), "blocked");
+        await chmod(cleanupBlocker, 0);
+        throw callbackFailure;
+      });
+
+      const error = await promise.catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(AggregateError);
+      expect((error as AggregateError).cause).toBe(callbackFailure);
+      expect((error as AggregateError).errors).toEqual([
+        callbackFailure,
+        expect.objectContaining({ code: "EACCES" }),
+      ]);
+    } finally {
+      if (cleanupBlocker) {
+        await chmod(cleanupBlocker, 0o700);
+      }
+      if (workDir) {
+        await rm(workDir, { force: true, recursive: true });
+      }
+      await fakePoppler.cleanup();
+    }
+  });
+
+  it("surfaces an unaccompanied document session cleanup failure directly", async () => {
+    const fakePoppler = await createFakePopplerCommand();
+    let cleanupBlocker: string | undefined;
+    let workDir: string | undefined;
+
+    try {
+      const rasterizer = createPopplerPdfRasterizer({
+        command: fakePoppler.command,
+        pdfInfoCommand: fakePoppler.pdfInfoCommand,
+      });
+      if (!rasterizer.withDocumentSession) {
+        throw new Error("Poppler rasterizer did not expose a document session");
+      }
+
+      const promise = rasterizer.withDocumentSession({ documentBody }, async (session) => {
+        await session.renderBatch({
+          requests: [{ elementId: "page-1", pageNumber: 1 }],
+        });
+        workDir = (await fakePoppler.readWorkDirs())[0];
+        if (!workDir) {
+          throw new Error("Fake Poppler did not report its work directory");
+        }
+        cleanupBlocker = join(workDir, "cleanup-blocker");
+        await mkdir(cleanupBlocker);
+        await writeFile(join(cleanupBlocker, "asset.png"), "blocked");
+        await chmod(cleanupBlocker, 0);
+
+        return "rendered";
+      });
+
+      const error = await promise.catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(Error);
+      expect(error).not.toBeInstanceOf(AggregateError);
+      expect(error).toMatchObject({ code: "EACCES" });
+    } finally {
+      if (cleanupBlocker) {
+        await chmod(cleanupBlocker, 0o700);
+      }
+      if (workDir) {
+        await rm(workDir, { force: true, recursive: true });
+      }
+      await fakePoppler.cleanup();
+    }
   });
 
   it("renders each distinct DPI once for multiple crops on the same page", async () => {
@@ -1436,12 +1748,14 @@ describe("createPopplerPdfRasterizer batch rendering", () => {
         signal: controller.signal,
         tenantId: "tenant-1",
       });
-      setTimeout(() => controller.abort(new DOMException("cancelled", "AbortError")), 100);
+      await waitForCondition(async () => (await fakePoppler.readInvocations()).length > 0);
+      controller.abort(new DOMException("cancelled", "AbortError"));
       const error = await promise.catch((caught: unknown) => caught);
 
       expect(error).toBeInstanceOf(DOMException);
       expect((error as Error).name).toBe("AbortError");
       expect(error).not.toBeInstanceOf(DocumentPdfRenderError);
+      await expectTemporaryDirectoriesRemoved(await fakePoppler.readWorkDirs());
     } finally {
       await fakePoppler.cleanup();
     }
@@ -1472,7 +1786,7 @@ describe("createPopplerPdfRasterizer batch rendering", () => {
         documentBody,
         documentMimeType: "application/pdf",
         knowledgeSpaceId,
-        maxDurationMs: 150,
+        maxDurationMs: 1_000,
         objectStorage: adapter.objectStorage,
         rasterizer,
         tenantId: "tenant-1",
@@ -1480,17 +1794,18 @@ describe("createPopplerPdfRasterizer batch rendering", () => {
       const error = await promise.catch((caught: unknown) => caught);
 
       expect(error).toBeInstanceOf(DocumentPdfRenderError);
-      expect((error as Error).message).toContain("maxDurationMs=150");
+      expect((error as Error).message).toContain("maxDurationMs=1000");
+      await expectTemporaryDirectoriesRemoved(await fakePoppler.readWorkDirs());
     } finally {
       await fakePoppler.cleanup();
     }
   });
 });
 
-async function waitForCondition(condition: () => boolean): Promise<void> {
+async function waitForCondition(condition: () => boolean | Promise<boolean>): Promise<void> {
   for (let attempt = 0; attempt < 100; attempt += 1) {
-    if (condition()) return;
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    if (await condition()) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
   }
   throw new Error("Timed out waiting for rasterizer test condition");
 }

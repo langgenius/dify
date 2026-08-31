@@ -2035,6 +2035,48 @@ const tables = [
     ],
   },
   {
+    name: "parse_artifact_checkpoints",
+    checkConstraints: [
+      {
+        expression: {
+          postgres: '"version" >= 1',
+          tidb: "`version` >= 1",
+        },
+        name: "parse_artifact_checkpoints_version_ck",
+      },
+      {
+        expression: {
+          postgres: "\"policy_fingerprint\" ~ '^[a-f0-9]{64}$'",
+          tidb: "`policy_fingerprint` REGEXP '^[a-f0-9]{64}$'",
+        },
+        name: "parse_artifact_checkpoints_policy_fingerprint_ck",
+      },
+      {
+        expression: {
+          postgres: "jsonb_typeof(\"artifact\") = 'object'",
+          tidb: "JSON_TYPE(`artifact`) = 'OBJECT'",
+        },
+        name: "parse_artifact_checkpoints_artifact_ck",
+      },
+    ],
+    foreignKeys: [
+      {
+        columns: ["document_asset_id"],
+        onDelete: "CASCADE",
+        referencedColumns: ["id"],
+        referencedTable: "document_assets",
+      },
+    ],
+    columns: [
+      idColumn("document_asset_id"),
+      integerColumn("version"),
+      varcharColumn("policy_fingerprint", 64),
+      jsonColumn("artifact"),
+      timestampColumn("created_at"),
+      timestampColumn("updated_at"),
+    ],
+  },
+  {
     name: "document_multimodal_manifests",
     checkConstraints: [
       publicationGenerationCheck(
@@ -6954,6 +6996,13 @@ const indexes = [
     name: "parse_artifacts_hash_idx",
     purpose: "Reuse immutable parse artifacts by content hash",
     tableName: "parse_artifacts",
+  },
+  {
+    columns: ["document_asset_id", "version"],
+    name: "parse_artifact_checkpoints_asset_version_uq",
+    purpose: "Resume parser output without exposing an incomplete canonical artifact",
+    tableName: "parse_artifact_checkpoints",
+    unique: true,
   },
   {
     columns: ["document_asset_id", "version", "publication_generation_id"],

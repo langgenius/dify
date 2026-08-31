@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from collections.abc import Generator
+from contextlib import contextmanager
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -108,6 +110,35 @@ class RecordingBroker:
             knowledge_space_id="space-1",
             knowledge_space_revision=9,
             trace_id="trace-1",
+        )
+
+
+class MutableClock:
+    def __init__(self, current: datetime) -> None:
+        self.current = current
+
+    def __call__(self) -> datetime:
+        return self.current
+
+    def advance(self, *, seconds: int) -> None:
+        self.current += timedelta(seconds=seconds)
+
+
+class ExpiringRecordingBroker:
+    def __init__(self, *, clock: MutableClock) -> None:
+        self._clock = clock
+        self.calls: list[dict[str, object]] = []
+
+    def issue_interactive(self, **kwargs) -> KnowledgeFSIssuedProductCapability:
+        self.calls.append(kwargs)
+        sequence = len(self.calls)
+        return KnowledgeFSIssuedProductCapability(
+            token=f"capability-token-{sequence}",
+            expires_at=self._clock() + timedelta(seconds=60),
+            operation_id=kwargs["operation_id"],
+            knowledge_space_id=f"space-{sequence}",
+            knowledge_space_revision=sequence,
+            trace_id=str(kwargs.get("trace_id") or "trace-1"),
         )
 
 
@@ -649,10 +680,30 @@ def test_facade_propagates_remote_io_failure() -> None:
 
 
 def test_document_upload_authorizes_before_read_and_binds_bounded_multipart_request() -> None:
-    remote = RecordingRemote()
-    broker = RecordingBroker()
-    facade = KnowledgeFSDataFacade(broker=broker, remote=remote)  # type: ignore[arg-type]
     observed: list[str] = []
+
+    class RecordingAdmission:
+        @contextmanager
+        def admit(self, *, reserved_bytes: int) -> Generator[None, None, None]:
+            assert broker.calls
+            observed.append(f"admit:{reserved_bytes}")
+            try:
+                yield
+            finally:
+                observed.append("release")
+
+    class OrderedRemote(RecordingRemote):
+        def execute_multipart(self, request: KnowledgeFSRemoteMultipartRequest):
+            observed.append("remote")
+            return super().execute_multipart(request)
+
+    remote = OrderedRemote()
+    broker = RecordingBroker()
+    facade = KnowledgeFSDataFacade(  # type: ignore[arg-type]
+        broker=broker,
+        remote=remote,
+        buffered_upload_admission=RecordingAdmission(),
+    )
 
     def read_upload(max_bytes: int) -> KnowledgeFSRemoteMultipartFile:
         observed.append(f"read:{max_bytes}")
@@ -671,7 +722,7 @@ def test_document_upload_authorizes_before_read_and_binds_bounded_multipart_requ
     )
 
     assert result.logical_document_id == "document-1"
-    assert observed == ["read:15728640"]
+    assert observed == ["admit:15728640", "read:15728640", "remote", "release"]
     assert broker.calls == [
         {
             "tenant_id": "tenant-1",
@@ -696,6 +747,58 @@ def test_document_upload_authorizes_before_read_and_binds_bounded_multipart_requ
             ),
         )
     ]
+
+
+def test_document_upload_refreshes_capability_after_waiting_for_buffer_admission() -> None:
+    clock = MutableClock(datetime(2030, 1, 1, tzinfo=UTC))
+    broker = ExpiringRecordingBroker(clock=clock)
+    remote = RecordingRemote()
+
+    class DelayedAdmission:
+        @contextmanager
+        def admit(self, *, reserved_bytes: int) -> Generator[None, None, None]:
+            assert reserved_bytes == 15 * 1024 * 1024
+            assert len(broker.calls) == 1
+            clock.advance(seconds=46)
+            yield
+
+    facade = KnowledgeFSDataFacade(  # type: ignore[arg-type]
+        broker=broker,
+        remote=remote,
+        buffered_upload_admission=DelayedAdmission(),
+        clock=clock,
+    )
+
+    facade.create_document(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        body_reader=lambda _max_bytes: KnowledgeFSRemoteMultipartFile(
+            filename="upload.md",
+            content_type="text/markdown",
+            body=b"# Upload",
+        ),
+    )
+
+    assert broker.calls == [
+        {
+            "tenant_id": "tenant-1",
+            "account_id": "account-1",
+            "control_space_id": "control-1",
+            "operation_id": "createDocument",
+        },
+        {
+            "tenant_id": "tenant-1",
+            "account_id": "account-1",
+            "control_space_id": "control-1",
+            "operation_id": "createDocument",
+            "resource_id": None,
+            "trace_id": "trace-1",
+        },
+    ]
+    assert remote.multipart_requests[0].path == "/knowledge-spaces/space-2/documents"
+    assert remote.multipart_requests[0].knowledge_space_id == "space-2"
+    assert remote.multipart_requests[0].capability_token == "capability-token-2"
 
 
 def test_legacy_buffered_query_fails_before_capability_or_remote_io() -> None:
@@ -895,15 +998,34 @@ def test_upload_session_control_plane_uses_only_json_bff_calls_bound_to_the_spac
 
 
 def test_small_file_fallback_authorizes_before_read_and_binds_narrow_binary_request() -> None:
-    remote = RecordingRemote()
-    broker = RecordingBroker()
-    facade = KnowledgeFSDataFacade(broker=broker, remote=remote)  # type: ignore[arg-type]
     observed: list[str] = []
+
+    class RecordingAdmission:
+        @contextmanager
+        def admit(self, *, reserved_bytes: int) -> Generator[None, None, None]:
+            observed.append(f"admit:{reserved_bytes}")
+            try:
+                yield
+            finally:
+                observed.append("release")
+
+    class OrderedRemote(RecordingRemote):
+        def execute_binary(self, request: KnowledgeFSRemoteBinaryRequest):
+            observed.append("remote")
+            return super().execute_binary(request)
+
+    remote = OrderedRemote()
+    broker = RecordingBroker()
+    facade = KnowledgeFSDataFacade(  # type: ignore[arg-type]
+        broker=broker,
+        remote=remote,
+        buffered_upload_admission=RecordingAdmission(),
+    )
 
     def read_body(max_bytes: int) -> bytes:
         assert broker.calls
         assert broker.calls[0]["operation_id"] == "uploadSmallFile"
-        assert max_bytes == 8 * 1024 * 1024
+        assert max_bytes == 15 * 1024 * 1024
         observed.append("read")
         return b"tiny"
 
@@ -916,7 +1038,7 @@ def test_small_file_fallback_authorizes_before_read_and_binds_narrow_binary_requ
     )
 
     assert result.session.status == "completed"
-    assert observed == ["read"]
+    assert observed == ["admit:15728640", "read", "remote", "release"]
     assert broker.calls == [
         {
             "tenant_id": "tenant-1",
@@ -939,6 +1061,52 @@ def test_small_file_fallback_authorizes_before_read_and_binds_narrow_binary_requ
             query=(("knowledgeSpaceId", "space-1"),),
         )
     ]
+
+
+def test_small_file_fallback_refreshes_capability_after_a_slow_body_read() -> None:
+    clock = MutableClock(datetime(2030, 1, 1, tzinfo=UTC))
+    broker = ExpiringRecordingBroker(clock=clock)
+    remote = RecordingRemote()
+    facade = KnowledgeFSDataFacade(  # type: ignore[arg-type]
+        broker=broker,
+        remote=remote,
+        clock=clock,
+    )
+
+    def read_body(max_bytes: int) -> bytes:
+        assert max_bytes == 15 * 1024 * 1024
+        assert len(broker.calls) == 1
+        clock.advance(seconds=46)
+        return b"tiny"
+
+    facade.upload_small_file(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        upload_session_id="session-1",
+        body_reader=read_body,
+    )
+
+    assert broker.calls == [
+        {
+            "tenant_id": "tenant-1",
+            "account_id": "account-1",
+            "control_space_id": "control-1",
+            "operation_id": "uploadSmallFile",
+            "resource_id": "session-1",
+        },
+        {
+            "tenant_id": "tenant-1",
+            "account_id": "account-1",
+            "control_space_id": "control-1",
+            "operation_id": "uploadSmallFile",
+            "resource_id": "session-1",
+            "trace_id": "trace-1",
+        },
+    ]
+    assert remote.binary_requests[0].knowledge_space_id == "space-2"
+    assert remote.binary_requests[0].capability_token == "capability-token-2"
+    assert remote.binary_requests[0].query == (("knowledgeSpaceId", "space-2"),)
 
 
 def test_small_file_fallback_denial_and_size_limit_stop_before_bytes_or_remote_io() -> None:

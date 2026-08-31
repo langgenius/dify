@@ -71,6 +71,11 @@ export interface DocumentCompilationExecutionContext {
     >,
   ): Promise<DocumentCompilationAttempt>;
   heartbeat(): Promise<DocumentCompilationAttempt>;
+  /**
+   * Sets the execution lease duration floor used while a remote parser may still be running.
+   * Passing zero explicitly releases the protection after a fenced durable checkpoint.
+   */
+  protectLease(minLeaseMs: number): Promise<void>;
   rebaseBaseHeadRevision(baseHeadRevision: number): Promise<DocumentCompilationAttempt>;
   /**
    * Runs an attempt-dependent side effect on the same serialized lane as advance/heartbeat.
@@ -351,9 +356,11 @@ export function createDocumentCompilationRuntime({
       classified.retryable && current.executionAttempts < current.maxExecutionAttempts;
 
     if (canRetry) {
-      const retryAt =
+      const retryAt = Math.max(
         timestamp +
-        exponentialDelay(initialRetryDelayMs, maxRetryDelayMs, current.executionAttempts);
+          exponentialDelay(initialRetryDelayMs, maxRetryDelayMs, current.executionAttempts),
+        execution.protectedUntil(),
+      );
       const scheduled = await attempts.scheduleRetry({
         attemptId: current.id,
         ...(classified.refreshBaseHeadRevision && resolveRetryBaseHeadRevision
@@ -535,6 +542,7 @@ interface FencedExecution {
   readonly context: DocumentCompilationExecutionContext;
   current(): DocumentCompilationAttempt;
   finish(): Promise<DocumentCompilationLeaseLostError | undefined>;
+  protectedUntil(): number;
 }
 
 function createFencedExecution({
@@ -549,6 +557,8 @@ function createFencedExecution({
   workerId,
 }: FencedExecutionOptions): FencedExecution {
   let current = initialAttempt;
+  let activeProtectionMs = 0;
+  let activeProtectionUntil = Number.NEGATIVE_INFINITY;
   let leaseFailure: DocumentCompilationLeaseLostError | undefined;
   let mutationTail: Promise<void> = Promise.resolve();
   const abortController = new AbortController();
@@ -575,37 +585,54 @@ function createFencedExecution({
     return result;
   }
 
+  async function renewLeaseWithinFence(allowShrink: boolean): Promise<DocumentCompilationAttempt> {
+    const timestamp = validTimestamp(generateNow(), "now");
+    const requestedLeaseExpiresAt = timestamp + Math.max(leaseMs, activeProtectionMs);
+    const leaseExpiresAt = allowShrink
+      ? requestedLeaseExpiresAt
+      : Math.max(requestedLeaseExpiresAt, parseTimestamp(current.leaseExpiresAt));
+    let updated: DocumentCompilationAttempt | null;
+    try {
+      updated = await attempts.heartbeat({
+        attemptId: current.id,
+        expectedRowVersion: current.rowVersion,
+        leaseExpiresAt: isoTimestamp(leaseExpiresAt),
+        leaseToken,
+        now: isoTimestamp(timestamp),
+        workerId,
+      });
+    } catch (error) {
+      throw loseLease("Document compilation database heartbeat failed", error);
+    }
+    if (!updated) {
+      throw loseLease("Document compilation database heartbeat lost its fence");
+    }
+    current = updated;
+    activeProtectionUntil = activeProtectionMs > 0 ? leaseExpiresAt : Number.NEGATIVE_INFINITY;
+    try {
+      // Broker leases remain short and renewable. The database lease is authoritative for the
+      // long remote-call exclusion window and must not exceed broker adapter bounds.
+      await jobs.heartbeat({
+        jobId: job.id,
+        leaseMs,
+        now: timestamp,
+        workerId,
+      });
+    } catch (error) {
+      throw loseLease("Document compilation queue heartbeat failed", error);
+    }
+    return current;
+  }
+
   async function heartbeat(): Promise<DocumentCompilationAttempt> {
-    return serialize(async () => {
-      const timestamp = validTimestamp(generateNow(), "now");
-      let updated: DocumentCompilationAttempt | null;
-      try {
-        updated = await attempts.heartbeat({
-          attemptId: current.id,
-          expectedRowVersion: current.rowVersion,
-          leaseExpiresAt: isoTimestamp(timestamp + leaseMs),
-          leaseToken,
-          now: isoTimestamp(timestamp),
-          workerId,
-        });
-      } catch (error) {
-        throw loseLease("Document compilation database heartbeat failed", error);
-      }
-      if (!updated) {
-        throw loseLease("Document compilation database heartbeat lost its fence");
-      }
-      current = updated;
-      try {
-        await jobs.heartbeat({
-          jobId: job.id,
-          leaseMs,
-          now: timestamp,
-          workerId,
-        });
-      } catch (error) {
-        throw loseLease("Document compilation queue heartbeat failed", error);
-      }
-      return current;
+    return serialize(() => renewLeaseWithinFence(false));
+  }
+
+  async function protectLease(minLeaseMs: number): Promise<void> {
+    validateNonnegativeInteger(minLeaseMs, "protectLease minLeaseMs");
+    await serialize(async () => {
+      activeProtectionMs = minLeaseMs === 0 ? 0 : Math.max(activeProtectionMs, minLeaseMs);
+      await renewLeaseWithinFence(minLeaseMs === 0);
     });
   }
 
@@ -694,6 +721,7 @@ function createFencedExecution({
     advance,
     bindInitialProfiles,
     heartbeat,
+    protectLease,
     rebaseBaseHeadRevision,
     signal: abortController.signal,
     withLeaseSnapshot,
@@ -711,6 +739,7 @@ function createFencedExecution({
       await mutationTail;
       return leaseFailure;
     },
+    protectedUntil: () => activeProtectionUntil,
   };
 }
 
@@ -769,6 +798,7 @@ function isParserProviderError(
       "provider_rate_limited",
       "provider_request_failed",
       "provider_response_invalid",
+      "provider_timeout",
     ].includes((error as { readonly code: string }).code)
   );
 }
@@ -830,6 +860,12 @@ function errorMessage(error: unknown): string {
 function validatePositiveInteger(value: number, field: string): void {
   if (!Number.isSafeInteger(value) || value < 1) {
     throw new Error(`Document compilation runtime ${field} must be a positive integer`);
+  }
+}
+
+function validateNonnegativeInteger(value: number, field: string): void {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new Error(`Document compilation runtime ${field} must be a non-negative integer`);
   }
 }
 

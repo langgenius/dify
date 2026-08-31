@@ -491,6 +491,7 @@ export function createDocumentCompilationWorkerAttemptProcessor({
         version: execution.attempt.documentVersion,
       },
       {
+        protectLease: execution.protectLease,
         signal: execution.signal,
       },
     );

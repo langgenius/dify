@@ -11,6 +11,7 @@ import type { AnswerTraceRepository } from "./answer-trace-repository";
 import type { ArtifactSegmentRepository } from "./artifact-segment-repository";
 import type { AuthVerifier } from "./auth";
 import type { AutoRetrievalModeResolver } from "./auto-retrieval-mode-resolver";
+import type { BufferedDocumentUploadAdmission } from "./buffered-document-upload-admission";
 import type { BulkOperationRepository } from "./bulk-operation";
 import type { CapabilityGrantProvenanceRepository } from "./capability-grant-provenance";
 import type { DeletionLifecycleFenceGuard } from "./deletion-lifecycle-fence";
@@ -125,6 +126,7 @@ import type { TidbFtsPostingReadinessGate } from "./tidb-fts-posting-backfill";
 import type { TidbFtsPostingBackfillService } from "./tidb-fts-posting-backfill-runtime";
 import type { TraceRecorder } from "./tracing";
 import type { UploadSessionService } from "./upload-session";
+import type { SmallFileFallbackAdmission } from "./upload-session-fallback-admission";
 import type { WebsiteCrawlConnector } from "./website-crawl-connector";
 import type { WorkflowFailedRetrievalTriage } from "./workflow-failed-retrieval";
 
@@ -363,8 +365,18 @@ export interface KnowledgeGatewayOptions {
   traces?: TraceRecorder;
   /** Capability-v2-only direct upload control plane; presigned URLs are never persisted here. */
   uploadSessions?: UploadSessionService;
+  /** Process-shared count and retained-byte admission for buffered compatibility uploads. */
+  uploadSmallFileFallbackAdmission?: SmallFileFallbackAdmission;
+  /** Maximum continuous idle interval while reading an admitted small-file fallback body. */
+  uploadSmallFileFallbackIdleTimeoutMs?: number;
+  /** Maximum total duration while reading an admitted small-file fallback body. */
+  uploadSmallFileFallbackTotalTimeoutMs?: number;
   visualEmbeddingModel?: string;
   visualEmbeddingProvider?: VisualEmbeddingProvider;
   websiteCrawlConnector?: WebsiteCrawlConnector;
   workflowFailedRetrievalTriage?: WorkflowFailedRetrievalTriage;
+  /** Process-shared admission before OpenAPI buffers direct multipart document request bodies. */
+  bufferedDocumentUploadAdmission?: BufferedDocumentUploadAdmission;
+  bufferedDocumentUploadIdleTimeoutMs?: number;
+  bufferedDocumentUploadTotalTimeoutMs?: number;
 }

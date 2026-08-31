@@ -156,7 +156,7 @@ def test_ready_product_operations_exactly_match_capability_method_path_and_actio
     assert KNOWLEDGE_FS_PRODUCT_OPERATIONS["createDocument"].max_request_bytes == 15 * 1024 * 1024
     assert KNOWLEDGE_FS_PRODUCT_OPERATIONS["getQualityReplay"].max_request_bytes == 16 * 1024
     assert KNOWLEDGE_FS_PRODUCT_OPERATIONS["importSourceWorkflow"].max_request_bytes == 4 * 1024 * 1024
-    assert KNOWLEDGE_FS_PRODUCT_OPERATIONS["uploadSmallFile"].max_request_bytes == 8 * 1024 * 1024
+    assert KNOWLEDGE_FS_PRODUCT_OPERATIONS["uploadSmallFile"].max_request_bytes == 15 * 1024 * 1024
 
 
 def test_source_workflow_import_byte_limit_accepts_the_full_schema_bounded_batch() -> None:

@@ -27,8 +27,24 @@ export interface DocumentPdfRasterizer {
   renderBatch?(
     input: RenderDocumentPdfBatchInput,
   ): Promise<readonly (RenderedDocumentPdfImage | null)[]>;
+  /** Reuses one materialized source document while the caller renders and persists bounded pages. */
+  withDocumentSession?<T>(
+    input: DocumentPdfRasterSessionInput,
+    operation: (session: DocumentPdfRasterSession) => Promise<T>,
+  ): Promise<T>;
   /** Holds a bounded slot across source loading, rendering, and object persistence. */
   withMaterializationSlot?<T>(operation: () => Promise<T>, signal?: AbortSignal): Promise<T>;
+}
+
+export interface DocumentPdfRasterSession {
+  renderBatch(input: {
+    readonly requests: readonly RenderDocumentPdfPageRequest[];
+  }): Promise<readonly (RenderedDocumentPdfImage | null)[]>;
+}
+
+export interface DocumentPdfRasterSessionInput {
+  readonly documentBody: Uint8Array;
+  readonly signal?: AbortSignal | undefined;
 }
 
 export interface RenderDocumentPdfPageRequest {
@@ -360,16 +376,23 @@ export async function rasterizeDocumentPdfMultimodalAssets({
   let rasterizedBytes = 0;
   let rasterizedCount = 0;
 
-  try {
+  const materializePages = async (session?: DocumentPdfRasterSession): Promise<boolean> => {
     // A page is the bounded unit of work: render all of its candidates while the shared page bitmap
     // is resident, then persist those results before moving on.
     for (const pageCandidates of candidatesByPage.values()) {
-      const renderedImages = await renderDocumentPdfRequests({
-        documentBody,
-        rasterizer,
-        requests: pageCandidates.map(({ request }) => request),
-        signal: abortScope.signal,
-      });
+      const requests = pageCandidates.map(({ request }) => request);
+      const renderedImages = session
+        ? await renderDocumentPdfSessionRequests({
+            requests,
+            session,
+            signal: abortScope.signal,
+          })
+        : await renderDocumentPdfRequests({
+            documentBody,
+            rasterizer,
+            requests,
+            signal: abortScope.signal,
+          });
       rasterizedBytes += renderedImages.reduce(
         (total, image) =>
           total +
@@ -404,12 +427,7 @@ export async function rasterizeDocumentPdfMultimodalAssets({
           );
         }
 
-        return {
-          artifact,
-          candidateCount,
-          rasterizedCount: 0,
-          unresolvedCount: fallbackUnresolvedCount,
-        };
+        return false;
       }
 
       for (const [
@@ -492,6 +510,26 @@ export async function rasterizeDocumentPdfMultimodalAssets({
           },
         };
       }
+    }
+
+    return true;
+  };
+
+  try {
+    const materialized = rasterizer.withDocumentSession
+      ? await rasterizer.withDocumentSession(
+          { documentBody, signal: abortScope.signal },
+          materializePages,
+        )
+      : await materializePages();
+
+    if (!materialized) {
+      return {
+        artifact,
+        candidateCount,
+        rasterizedCount: 0,
+        unresolvedCount: fallbackUnresolvedCount,
+      };
     }
   } catch (error) {
     if (error instanceof DocumentPdfObjectCleanupError) {
@@ -577,6 +615,42 @@ async function renderDocumentPdfRequests({
           rasterizer.render({ ...request, documentBody, signal }),
           signal,
         ),
+      );
+    }
+
+    return rendered;
+  } catch (error) {
+    if (signal?.aborted) {
+      throw pdfRasterAbortReason(signal);
+    }
+
+    if (error instanceof DocumentPdfRenderError) {
+      throw error;
+    }
+
+    throw new DocumentPdfRenderError("Document PDF rasterizer failed to render candidates", {
+      cause: error,
+    });
+  }
+}
+
+async function renderDocumentPdfSessionRequests({
+  requests,
+  session,
+  signal,
+}: {
+  readonly requests: readonly RenderDocumentPdfPageRequest[];
+  readonly session: DocumentPdfRasterSession;
+  readonly signal?: AbortSignal | undefined;
+}): Promise<readonly (RenderedDocumentPdfImage | null)[]> {
+  try {
+    throwIfPdfRasterAborted(signal);
+    const rendered = await session.renderBatch({ requests });
+    throwIfPdfRasterAborted(signal);
+
+    if (!Array.isArray(rendered) || rendered.length !== requests.length) {
+      throw new DocumentPdfRenderError(
+        `Document PDF rasterizer returned ${Array.isArray(rendered) ? rendered.length : "an invalid"} batch results for ${requests.length} requests`,
       );
     }
 
@@ -773,6 +847,7 @@ export function createPopplerPdfRasterizer({
     throw new Error("Poppler PDF rasterizer timeoutMs must be at least 1");
   }
 
+  const documentSessionGate = createConcurrencyGate(maxConcurrency);
   const materializationGate = createConcurrencyGate(maxConcurrency);
   const renderGate = createConcurrencyGate(maxConcurrency);
   const renderBatch = async ({
@@ -780,37 +855,30 @@ export function createPopplerPdfRasterizer({
     requests,
     signal,
   }: RenderDocumentPdfBatchInput): Promise<readonly (RenderedDocumentPdfImage | null)[]> => {
-    const operation = renderGate.run(async () => {
-      throwIfPdfRasterAborted(signal);
-
-      try {
-        return await renderPopplerPdfBatch({
-          command,
-          documentBody,
-          dpi,
-          maxEncodedCropBytes,
-          maxEncodedImageBytes,
-          maxEncodedPageBytes,
-          maxPageDimension,
-          maxPagePixels,
-          pdfInfoCommand,
-          requests,
+    const operation = renderGate.run(
+      () =>
+        runPopplerPdfRenderOperation({
+          operation: () =>
+            renderPopplerPdfBatch({
+              command,
+              documentBody,
+              dpi,
+              maxEncodedCropBytes,
+              maxEncodedImageBytes,
+              maxEncodedPageBytes,
+              maxPageDimension,
+              maxPagePixels,
+              pdfInfoCommand,
+              requests,
+              signal,
+              thumbnailDpi,
+              thumbnailVariantName,
+              timeoutMs,
+            }),
           signal,
-          thumbnailDpi,
-          thumbnailVariantName,
-          timeoutMs,
-        });
-      } catch (error) {
-        if (signal?.aborted) {
-          throw pdfRasterAbortReason(signal);
-        }
-
-        if (error instanceof DocumentPdfRenderError) {
-          throw error;
-        }
-        throw new DocumentPdfRenderError("Poppler PDF rasterizer failed", { cause: error });
-      }
-    });
+        }),
+      signal ? { signal } : undefined,
+    );
 
     return raceWithPdfRasterAbort(operation, signal);
   };
@@ -822,19 +890,150 @@ export function createPopplerPdfRasterizer({
       return rendered[0] ?? null;
     },
     renderBatch,
+    withDocumentSession: async <T>(
+      { documentBody, signal }: DocumentPdfRasterSessionInput,
+      operation: (session: DocumentPdfRasterSession) => Promise<T>,
+    ) => {
+      throwIfPdfRasterAborted(signal);
+      const pending = documentSessionGate.run(
+        async () => {
+          throwIfPdfRasterAborted(signal);
+          const document = await runPopplerPdfRenderOperation({
+            operation: () => materializePopplerPdfDocument({ documentBody, signal }),
+            signal,
+          });
+          const sessionRenderGate = createConcurrencyGate(1);
+          const activeRenders = new Set<Promise<readonly (RenderedDocumentPdfImage | null)[]>>();
+          let sessionOpen = true;
+          let operationFailed = false;
+          let operationFailure: unknown;
+          let result!: T;
+
+          try {
+            result = await operation({
+              renderBatch: ({ requests }) => {
+                if (!sessionOpen) {
+                  return Promise.reject(
+                    new DocumentPdfRenderError("Poppler PDF rasterizer document session is closed"),
+                  );
+                }
+
+                const render = sessionRenderGate.run(
+                  () =>
+                    renderGate.run(
+                      () =>
+                        runPopplerPdfRenderOperation({
+                          operation: () =>
+                            renderMaterializedPopplerPdfBatch({
+                              command,
+                              document,
+                              dpi,
+                              maxEncodedCropBytes,
+                              maxEncodedImageBytes,
+                              maxEncodedPageBytes,
+                              maxPageDimension,
+                              maxPagePixels,
+                              pdfInfoCommand,
+                              requests,
+                              signal,
+                              thumbnailDpi,
+                              thumbnailVariantName,
+                              timeoutMs,
+                            }),
+                          signal,
+                        }),
+                      signal ? { signal } : undefined,
+                    ),
+                  signal ? { signal } : undefined,
+                );
+                activeRenders.add(render);
+                void render.then(
+                  () => activeRenders.delete(render),
+                  () => activeRenders.delete(render),
+                );
+                return render;
+              },
+            });
+          } catch (error) {
+            operationFailed = true;
+            operationFailure = error;
+          }
+
+          sessionOpen = false;
+          await Promise.allSettled([...activeRenders]);
+          let cleanupFailed = false;
+          let cleanupFailure: unknown;
+          try {
+            await removePopplerPdfDocument(document);
+          } catch (error) {
+            cleanupFailed = true;
+            cleanupFailure = error;
+          }
+
+          if (cleanupFailed) {
+            if (operationFailed) {
+              throw new AggregateError(
+                [operationFailure, cleanupFailure],
+                "Poppler PDF rasterizer document session failed and cleanup was unsuccessful",
+                { cause: operationFailure },
+              );
+            }
+
+            throw cleanupFailure;
+          }
+
+          if (operationFailed) {
+            throw operationFailure;
+          }
+
+          throwIfPdfRasterAborted(signal);
+          return result;
+        },
+        signal ? { signal } : undefined,
+      );
+
+      // Render, persistence, and cleanup must settle before cancellation becomes observable.
+      return pending;
+    },
     withMaterializationSlot: async <T>(operation: () => Promise<T>, signal?: AbortSignal) => {
-      const pending = materializationGate.run(async () => {
-        throwIfPdfRasterAborted(signal);
-        const result = await operation();
-        throwIfPdfRasterAborted(signal);
-        return result;
-      });
+      const pending = materializationGate.run(
+        async () => {
+          throwIfPdfRasterAborted(signal);
+          const result = await operation();
+          throwIfPdfRasterAborted(signal);
+          return result;
+        },
+        signal ? { signal } : undefined,
+      );
 
       // The caller owns compensation. Wait for any uncancellable storage/database work to settle
       // before surfacing cancellation so cleanup cannot race a late PUT or commit.
       return pending;
     },
   };
+}
+
+async function runPopplerPdfRenderOperation<T>({
+  operation,
+  signal,
+}: {
+  readonly operation: () => Promise<T>;
+  readonly signal?: AbortSignal | undefined;
+}): Promise<T> {
+  throwIfPdfRasterAborted(signal);
+
+  try {
+    return await operation();
+  } catch (error) {
+    if (signal?.aborted) {
+      throw pdfRasterAbortReason(signal);
+    }
+
+    if (error instanceof DocumentPdfRenderError) {
+      throw error;
+    }
+    throw new DocumentPdfRenderError("Poppler PDF rasterizer failed", { cause: error });
+  }
 }
 
 interface PopplerRenderedPage {
@@ -849,6 +1048,36 @@ interface PopplerRenderedPage {
 interface PopplerPdfPageSize {
   readonly heightPoints: number;
   readonly widthPoints: number;
+}
+
+interface MaterializedPopplerPdfDocument {
+  readonly inputPath: string;
+  readonly pageSizes: Map<number, Promise<PopplerPdfPageSize>>;
+  readonly workDir: string;
+}
+
+async function materializePopplerPdfDocument({
+  documentBody,
+  signal,
+}: {
+  readonly documentBody: Uint8Array;
+  readonly signal?: AbortSignal | undefined;
+}): Promise<MaterializedPopplerPdfDocument> {
+  const workDir = await mkdtemp(join(tmpdir(), "knowledge-fs-pdf-raster-"));
+  const inputPath = join(workDir, "input.pdf");
+
+  try {
+    await writeFile(inputPath, documentBody, { signal });
+    throwIfPdfRasterAborted(signal);
+    return { inputPath, pageSizes: new Map(), workDir };
+  } catch (error) {
+    await rm(workDir, { force: true, recursive: true });
+    throw error;
+  }
+}
+
+async function removePopplerPdfDocument(document: MaterializedPopplerPdfDocument): Promise<void> {
+  await rm(document.workDir, { force: true, recursive: true });
 }
 
 async function renderPopplerPdfBatch({
@@ -886,155 +1115,205 @@ async function renderPopplerPdfBatch({
     return [];
   }
 
-  const workDir = await mkdtemp(join(tmpdir(), "knowledge-fs-pdf-raster-"));
-  const inputPath = join(workDir, "input.pdf");
+  const document = await materializePopplerPdfDocument({ documentBody, signal });
 
   try {
-    await writeFile(inputPath, documentBody, { signal });
-    throwIfPdfRasterAborted(signal);
-    const rendered: (RenderedDocumentPdfImage | null)[] = Array.from(
-      { length: requests.length },
-      () => null,
-    );
-    const requestsByPage = new Map<
-      number,
-      { readonly index: number; readonly request: RenderDocumentPdfPageRequest }[]
-    >();
-    let aggregateEncodedCropBytes = 0;
+    return await renderMaterializedPopplerPdfBatch({
+      command,
+      document,
+      dpi,
+      maxEncodedCropBytes,
+      maxEncodedImageBytes,
+      maxEncodedPageBytes,
+      maxPageDimension,
+      maxPagePixels,
+      pdfInfoCommand,
+      requests,
+      signal,
+      thumbnailDpi,
+      thumbnailVariantName,
+      timeoutMs,
+    });
+  } finally {
+    await removePopplerPdfDocument(document);
+  }
+}
 
-    for (const [index, request] of requests.entries()) {
-      const pageRequests = requestsByPage.get(request.pageNumber) ?? [];
-      pageRequests.push({ index, request });
-      requestsByPage.set(request.pageNumber, pageRequests);
+async function renderMaterializedPopplerPdfBatch({
+  command,
+  document,
+  dpi,
+  maxEncodedCropBytes,
+  maxEncodedImageBytes,
+  maxEncodedPageBytes,
+  maxPageDimension,
+  maxPagePixels,
+  pdfInfoCommand,
+  requests,
+  signal,
+  thumbnailDpi,
+  thumbnailVariantName,
+  timeoutMs,
+}: {
+  readonly command: string;
+  readonly document: MaterializedPopplerPdfDocument;
+  readonly dpi: number;
+  readonly maxEncodedCropBytes: number;
+  readonly maxEncodedImageBytes: number;
+  readonly maxEncodedPageBytes: number;
+  readonly maxPageDimension: number;
+  readonly maxPagePixels: number;
+  readonly pdfInfoCommand: string;
+  readonly requests: readonly RenderDocumentPdfPageRequest[];
+  readonly signal?: AbortSignal | undefined;
+  readonly thumbnailDpi: number;
+  readonly thumbnailVariantName: string;
+  readonly timeoutMs: number;
+}): Promise<readonly (RenderedDocumentPdfImage | null)[]> {
+  if (requests.length === 0) {
+    return [];
+  }
+
+  const rendered: (RenderedDocumentPdfImage | null)[] = Array.from(
+    { length: requests.length },
+    () => null,
+  );
+  const requestsByPage = new Map<
+    number,
+    { readonly index: number; readonly request: RenderDocumentPdfPageRequest }[]
+  >();
+  let aggregateEncodedCropBytes = 0;
+
+  for (const [index, request] of requests.entries()) {
+    const pageRequests = requestsByPage.get(request.pageNumber) ?? [];
+    pageRequests.push({ index, request });
+    requestsByPage.set(request.pageNumber, pageRequests);
+  }
+
+  for (const [pageNumber, pageRequests] of requestsByPage) {
+    throwIfPdfRasterAborted(signal);
+    const pageSize = await readCachedPopplerPdfPageSize({
+      command: pdfInfoCommand,
+      document,
+      pageNumber,
+      signal,
+      timeoutMs,
+    });
+    const page = await renderPopplerPage({
+      command,
+      dpi,
+      inputPath: document.inputPath,
+      maxEncodedPageBytes,
+      maxPageDimension,
+      maxPagePixels,
+      pageNumber,
+      pageSize,
+      signal,
+      timeoutMs,
+      workDir: document.workDir,
+    });
+
+    if (!page) {
+      continue;
     }
 
-    for (const [pageNumber, pageRequests] of requestsByPage) {
-      throwIfPdfRasterAborted(signal);
-      const pageSize = await readPopplerPdfPageSize({
-        command: pdfInfoCommand,
-        inputPath,
-        pageNumber,
-        signal,
-        timeoutMs,
-      });
-      const page = await renderPopplerPage({
-        command,
+    const thumbnailPage =
+      thumbnailDpi === dpi
+        ? page
+        : await renderPopplerPage({
+            command,
+            dpi: thumbnailDpi,
+            inputPath: document.inputPath,
+            maxEncodedPageBytes,
+            maxPageDimension: proportionalThumbnailMaxDimension({
+              dpi,
+              maxPageDimension,
+              thumbnailDpi,
+            }),
+            maxPagePixels,
+            pageNumber,
+            pageSize,
+            signal,
+            timeoutMs,
+            workDir: document.workDir,
+          });
+
+    for (const { index, request } of pageRequests) {
+      const body = await cropPopplerPage({
+        boundingBox: request.boundingBox,
+        boundingBoxGeometry: request.boundingBoxGeometry,
         dpi,
-        inputPath,
-        maxEncodedPageBytes,
-        maxPageDimension,
+        page,
         maxPagePixels,
-        pageNumber,
-        pageSize,
         signal,
-        timeoutMs,
-        workDir,
       });
 
-      if (!page) {
+      if (!body) {
         continue;
       }
 
-      const thumbnailPage =
-        thumbnailDpi === dpi
-          ? page
-          : await renderPopplerPage({
-              command,
-              dpi: thumbnailDpi,
-              inputPath,
-              maxEncodedPageBytes,
-              maxPageDimension: proportionalThumbnailMaxDimension({
-                dpi,
-                maxPageDimension,
-                thumbnailDpi,
-              }),
-              maxPagePixels,
-              pageNumber,
-              pageSize,
-              signal,
-              timeoutMs,
-              workDir,
-            });
+      const thumbnailBody = thumbnailPage
+        ? await cropPopplerPage({
+            boundingBox: request.boundingBox,
+            boundingBoxGeometry: request.boundingBoxGeometry,
+            dpi: thumbnailDpi,
+            page: thumbnailPage,
+            maxPagePixels,
+            signal,
+          })
+        : null;
 
-      for (const { index, request } of pageRequests) {
-        const body = await cropPopplerPage({
-          boundingBox: request.boundingBox,
-          boundingBoxGeometry: request.boundingBoxGeometry,
-          dpi,
-          page,
-          maxPagePixels,
-          signal,
-        });
+      const encodedBytes = body.byteLength + (thumbnailBody?.byteLength ?? 0);
 
-        if (!body) {
-          continue;
-        }
-
-        const thumbnailBody = thumbnailPage
-          ? await cropPopplerPage({
-              boundingBox: request.boundingBox,
-              boundingBoxGeometry: request.boundingBoxGeometry,
-              dpi: thumbnailDpi,
-              page: thumbnailPage,
-              maxPagePixels,
-              signal,
-            })
-          : null;
-
-        const encodedBytes = body.byteLength + (thumbnailBody?.byteLength ?? 0);
-
-        if (
-          body.byteLength > maxEncodedImageBytes ||
-          (thumbnailBody?.byteLength ?? 0) > maxEncodedImageBytes
-        ) {
-          throw new DocumentPdfRenderError(
-            `Document PDF rasterizer encoded image exceeds maxEncodedImageBytes=${maxEncodedImageBytes}`,
-          );
-        }
-
-        aggregateEncodedCropBytes += encodedBytes;
-
-        if (aggregateEncodedCropBytes > maxEncodedCropBytes) {
-          throw new DocumentPdfRenderError(
-            `Document PDF rasterizer encoded crop output exceeds maxEncodedCropBytes=${maxEncodedCropBytes}`,
-          );
-        }
-
-        rendered[index] = {
-          body,
-          contentType: "image/png",
-          metadata: createPopplerImageMetadata({
-            command,
-            dpi,
-            renderedPage: page,
-            request,
-            thumbnailDpi,
-          }),
-          ...(thumbnailBody
-            ? {
-                variants: {
-                  [thumbnailVariantName]: {
-                    body: thumbnailBody,
-                    contentType: "image/png",
-                    metadata: createPopplerImageMetadata({
-                      command,
-                      dpi: thumbnailDpi,
-                      renderedPage: thumbnailPage ?? page,
-                      request,
-                      variant: thumbnailVariantName,
-                    }),
-                  },
-                },
-              }
-            : {}),
-        };
+      if (
+        body.byteLength > maxEncodedImageBytes ||
+        (thumbnailBody?.byteLength ?? 0) > maxEncodedImageBytes
+      ) {
+        throw new DocumentPdfRenderError(
+          `Document PDF rasterizer encoded image exceeds maxEncodedImageBytes=${maxEncodedImageBytes}`,
+        );
       }
-    }
 
-    return rendered;
-  } finally {
-    await rm(workDir, { force: true, recursive: true });
+      aggregateEncodedCropBytes += encodedBytes;
+
+      if (aggregateEncodedCropBytes > maxEncodedCropBytes) {
+        throw new DocumentPdfRenderError(
+          `Document PDF rasterizer encoded crop output exceeds maxEncodedCropBytes=${maxEncodedCropBytes}`,
+        );
+      }
+
+      rendered[index] = {
+        body,
+        contentType: "image/png",
+        metadata: createPopplerImageMetadata({
+          command,
+          dpi,
+          renderedPage: page,
+          request,
+          thumbnailDpi,
+        }),
+        ...(thumbnailBody
+          ? {
+              variants: {
+                [thumbnailVariantName]: {
+                  body: thumbnailBody,
+                  contentType: "image/png",
+                  metadata: createPopplerImageMetadata({
+                    command,
+                    dpi: thumbnailDpi,
+                    renderedPage: thumbnailPage ?? page,
+                    request,
+                    variant: thumbnailVariantName,
+                  }),
+                },
+              },
+            }
+          : {}),
+      };
+    }
   }
+
+  return rendered;
 }
 
 async function renderPopplerPage({
@@ -1082,38 +1361,80 @@ async function renderPopplerPage({
     return null;
   }
 
-  const outputStat = await stat(outputPath);
+  try {
+    const outputStat = await stat(outputPath);
 
-  if (outputStat.size > maxEncodedPageBytes) {
-    throw new DocumentPdfRenderError(
-      `Poppler PDF rasterizer encoded page exceeds maxEncodedPageBytes=${maxEncodedPageBytes}`,
+    if (outputStat.size > maxEncodedPageBytes) {
+      throw new DocumentPdfRenderError(
+        `Poppler PDF rasterizer encoded page exceeds maxEncodedPageBytes=${maxEncodedPageBytes}`,
+      );
+    }
+
+    const sharp = (await import("sharp")).default;
+    const body = await readFile(outputPath, { signal });
+    throwIfPdfRasterAborted(signal);
+    const { data: pixels, info } = await awaitUncancellablePdfRasterOperation(
+      sharp(outputPath, { limitInputPixels: maxPagePixels })
+        .raw()
+        .toBuffer({ resolveWithObject: true }),
+      signal,
     );
+
+    if (info.width * info.height > maxPagePixels) {
+      throw new DocumentPdfRenderError(
+        `Poppler PDF rasterizer decoded page exceeds maxPagePixels=${maxPagePixels}`,
+      );
+    }
+
+    return {
+      body: new Uint8Array(body),
+      channels: info.channels,
+      height: info.height,
+      pixels: new Uint8Array(pixels),
+      width: info.width,
+      wasDownscaled: scaleTo !== undefined,
+    };
+  } finally {
+    await rm(outputPath, { force: true });
+  }
+}
+
+async function readCachedPopplerPdfPageSize({
+  command,
+  document,
+  pageNumber,
+  signal,
+  timeoutMs,
+}: {
+  readonly command: string;
+  readonly document: MaterializedPopplerPdfDocument;
+  readonly pageNumber: number;
+  readonly signal?: AbortSignal | undefined;
+  readonly timeoutMs: number;
+}): Promise<PopplerPdfPageSize> {
+  const cached = document.pageSizes.get(pageNumber);
+
+  if (cached) {
+    return cached;
   }
 
-  const sharp = (await import("sharp")).default;
-  const body = await readFile(outputPath, { signal });
-  throwIfPdfRasterAborted(signal);
-  const { data: pixels, info } = await awaitUncancellablePdfRasterOperation(
-    sharp(outputPath, { limitInputPixels: maxPagePixels })
-      .raw()
-      .toBuffer({ resolveWithObject: true }),
+  const pending = readPopplerPdfPageSize({
+    command,
+    inputPath: document.inputPath,
+    pageNumber,
     signal,
-  );
+    timeoutMs,
+  });
+  document.pageSizes.set(pageNumber, pending);
 
-  if (info.width * info.height > maxPagePixels) {
-    throw new DocumentPdfRenderError(
-      `Poppler PDF rasterizer decoded page exceeds maxPagePixels=${maxPagePixels}`,
-    );
+  try {
+    return await pending;
+  } catch (error) {
+    if (document.pageSizes.get(pageNumber) === pending) {
+      document.pageSizes.delete(pageNumber);
+    }
+    throw error;
   }
-
-  return {
-    body: new Uint8Array(body),
-    channels: info.channels,
-    height: info.height,
-    pixels: new Uint8Array(pixels),
-    width: info.width,
-    wasDownscaled: scaleTo !== undefined,
-  };
 }
 
 async function readPopplerPdfPageSize({

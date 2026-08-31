@@ -11,6 +11,7 @@ import type { EmbedTextsInput, EmbedTextsResult, EmbeddingProvider } from "@know
 import type { ParserAdapter } from "@knowledge/parsers";
 import { describe, expect, it } from "vitest";
 
+import { bufferedDocumentUploadReservationBytes } from "./buffered-document-upload-middleware";
 import { CandidateVisibilityScanBudgetExceededError } from "./candidate-content-authorization";
 import {
   type RegisterDocumentWriteHandlersOptions,
@@ -1978,6 +1979,7 @@ describe("document write gateway integration", () => {
 
   it("can migrate uploads to durable document compilation jobs without parsing on the request path", async () => {
     const adapter = createNodePlatformAdapter({ env: {} });
+    const bufferedUploadReservations: number[] = [];
     const fences = createInMemoryDeletionLifecycleFenceReader();
     const assets = createInMemoryDocumentAssetRepository({
       maxAssets: 10,
@@ -2005,6 +2007,12 @@ describe("document write gateway integration", () => {
     const app = createKnowledgeGateway({
       adapter,
       auth: createTestAuthVerifier(),
+      bufferedDocumentUploadAdmission: {
+        run: async (work, { reservedBytes }) => {
+          bufferedUploadReservations.push(reservedBytes);
+          return work();
+        },
+      },
       deletionLifecycleFence: createDeletionLifecycleFenceGuard(fences),
       documentAssets: assets,
       documentCompilationJobs: compilationJobs,
@@ -2066,6 +2074,9 @@ describe("document write gateway integration", () => {
         "/knowledge-spaces/018f0d60-7a49-7cc2-9c1b-5b36f18f2c42/documents/018f0d60-7a49-7cc2-9c1b-5b36f18f2d01/processing-tasks/document-compilation-job-1",
     });
     expect(parser.calls).toEqual([]);
+    expect(bufferedUploadReservations).toEqual([
+      bufferedDocumentUploadReservationBytes(15 * 1024 * 1024, 1),
+    ]);
     await expect(
       parseArtifacts.getByDocumentVersion({
         documentAssetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43",
@@ -2239,6 +2250,7 @@ describe("document write gateway integration", () => {
 
   it("accepts bounded bulk document uploads as durable compilation jobs", async () => {
     const adapter = createNodePlatformAdapter({ env: {} });
+    const bufferedUploadReservations: number[] = [];
     const admittedScopes: { knowledgeSpaceId: string; tenantId: string }[] = [];
     const assets = createInMemoryDocumentAssetRepository({
       maxAssets: 10,
@@ -2269,6 +2281,12 @@ describe("document write gateway integration", () => {
     const app = createKnowledgeGateway({
       adapter,
       auth: createTestAuthVerifier(),
+      bufferedDocumentUploadAdmission: {
+        run: async (work, { reservedBytes }) => {
+          bufferedUploadReservations.push(reservedBytes);
+          return work();
+        },
+      },
       deletionObjectWriteAdmission: {
         withSpaceWriteAdmission: async (scope, write) => {
           admittedScopes.push({ ...scope });
@@ -2329,6 +2347,9 @@ describe("document write gateway integration", () => {
       },
     ]);
     expect(accepted.headers.get("x-trace-id")).toBe("trace-bulk-1");
+    expect(bufferedUploadReservations).toEqual([
+      bufferedDocumentUploadReservationBytes(50 * 1024 * 1024, 2),
+    ]);
     await expect(accepted.json()).resolves.toMatchObject({
       accepted: 2,
       bulkJobId: "bulk-upload-1",
@@ -4084,6 +4105,58 @@ describe("document write gateway integration", () => {
     );
   });
 
+  it("rejects a blocked document mutation before buffered admission or multipart consumption", async () => {
+    const app = createKnowledgeGatewayApp();
+    const reservations: number[] = [];
+    app.use("*", async (context, next) => {
+      context.set("subject", writeSubject);
+      context.set("traceId", "blocked-buffered-upload");
+      await next();
+    });
+    registerDocumentWriteHandlers({
+      app,
+      bufferedDocumentUploadAdmission: {
+        run: async <T>(
+          work: () => Promise<T>,
+          { reservedBytes }: { readonly reservedBytes: number },
+        ) => {
+          reservations.push(reservedBytes);
+          return work();
+        },
+      },
+      documentMutationAdmissionGuard: createDirectDocumentMutationAdmissionGuard({
+        acquireDocumentMutationLease: async () => {
+          throw new KnowledgeSpaceDocumentMutationDeletionActiveError();
+        },
+      }),
+      effectiveMaxBulkUploadBytes: 32,
+      maxBulkUploadFiles: 2,
+      maxUploadBytes: 16,
+      now: () => "2026-07-21T12:00:00.000Z",
+      traces: createInMemoryTraceRecorder(),
+    } as unknown as RegisterDocumentWriteHandlersOptions);
+    const form = documentForm("file", "blocked.md");
+    const request = new Request(`http://localhost/knowledge-spaces/${writeSpaceId}/documents`, {
+      body: form,
+      method: "POST",
+    });
+    const body = request.body;
+    let bodyReads = 0;
+    Object.defineProperty(request, "body", {
+      configurable: true,
+      get: () => {
+        bodyReads += 1;
+        return body;
+      },
+    });
+
+    const response = await app.fetch(request);
+
+    expect(response.status).toBe(409);
+    expect(reservations).toEqual([]);
+    expect(bodyReads).toBe(0);
+  });
+
   it("persists capability provenance for a direct bulk reindex", async () => {
     const adapter = createNodePlatformAdapter({ env: {} });
     const assets = createDirectDocumentAssetRepository();
@@ -4725,6 +4798,9 @@ function captureDocumentMutationMiddleware(repository: DirectDocumentMutationAdm
   registerDocumentWriteHandlers({
     app,
     documentMutationAdmissionGuard: repository,
+    effectiveMaxBulkUploadBytes: 50 * 1024 * 1024,
+    maxBulkUploadFiles: 20,
+    maxUploadBytes: 15 * 1024 * 1024,
     now: () => "2026-07-21T12:00:00.000Z",
   } as RegisterDocumentWriteHandlersOptions);
   const middlewareForPath = (path: string): CapturedMutationMiddleware | undefined => {
@@ -4765,7 +4841,10 @@ function captureDocumentWriteRouteHandlers(
     ...overrides,
     adapter: overrides.adapter ?? createNodePlatformAdapter({ env: {} }),
     app,
+    effectiveMaxBulkUploadBytes: overrides.effectiveMaxBulkUploadBytes ?? 50 * 1024 * 1024,
+    maxBulkUploadFiles: overrides.maxBulkUploadFiles ?? 20,
     maxBulkReindexDocuments: overrides.maxBulkReindexDocuments ?? 10,
+    maxUploadBytes: overrides.maxUploadBytes ?? 15 * 1024 * 1024,
     now: overrides.now ?? (() => "2026-07-21T12:00:00.000Z"),
     traces: overrides.traces ?? createInMemoryTraceRecorder(),
   } as RegisterDocumentWriteHandlersOptions);

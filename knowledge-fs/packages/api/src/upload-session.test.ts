@@ -211,6 +211,25 @@ describe("upload session service", () => {
     ]);
   });
 
+  it("keeps a file exactly at the multipart threshold on the single-upload path", async () => {
+    const fixture = uploadFixture();
+
+    const created = await fixture.service.create({
+      checksumSha256Base64: CHECKSUM,
+      contentType: "application/pdf",
+      expectedSizeBytes: 10 * MiB,
+      fileName: "threshold.pdf",
+      grantId: GRANT_ID,
+      idempotencyKey: "upload-intent-threshold",
+      knowledgeSpaceId: SPACE_ID,
+      tenantId: TENANT_ID,
+    });
+
+    expect(created.session).toMatchObject({ mode: "single", status: "ready" });
+    expect(fixture.direct.presignPutObject).toHaveBeenCalledOnce();
+    expect(fixture.direct.createMultipartUpload).not.toHaveBeenCalled();
+  });
+
   it("fails closed and deletes an object when size or checksum does not match", async () => {
     const recordMetric = vi.fn();
     const fixture = uploadFixture({
@@ -562,7 +581,7 @@ describe("upload session service", () => {
     [{ presignTtlSeconds: 0 }, "must be between 1 and 900"],
     [{ presignTtlSeconds: 901 }, "must be between 1 and 900"],
     [{ smallFileFallbackMaxBytes: -1 }, "must be a non-negative safe integer"],
-    [{ smallFileFallbackMaxBytes: 10 * MiB }, "must be below multipartThresholdBytes"],
+    [{ smallFileFallbackMaxBytes: 10 * MiB + 1 }, "must not exceed multipartThresholdBytes"],
   ] satisfies ReadonlyArray<readonly [Partial<CreateUploadSessionServiceOptions>, string]>)(
     "rejects invalid service bounds %#",
     (overrides, message) => {
@@ -571,6 +590,15 @@ describe("upload session service", () => {
       );
     },
   );
+
+  it("allows the bounded fallback to cover the full single-upload threshold", () => {
+    expect(() =>
+      createUploadSessionService({
+        ...uploadServiceOptions(),
+        smallFileFallbackMaxBytes: 10 * MiB,
+      }),
+    ).not.toThrow();
+  });
 
   it("covers repository capacity, fencing, immutability, and cleanup bounds", async () => {
     expect(() => createInMemoryUploadSessionRepository({ maxSessions: 0 })).toThrow(

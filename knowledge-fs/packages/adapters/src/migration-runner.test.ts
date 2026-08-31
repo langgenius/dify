@@ -54,6 +54,7 @@ const semanticGenerationReceiptsMigrationId = "0043_semantic_generation_receipts
 const semanticWindowCheckpointsMigrationId = "0044_document_semantic_window_checkpoints";
 const qualityReplayMatchPolicyMigrationId = "0045_quality_replay_match_policy";
 const removeProviderSyncPolicyMigrationId = "0046_remove_provider_sync_policy";
+const parseArtifactCheckpointsMigrationId = "0047_parse_artifact_checkpoints";
 const migrationsAfterDurableDeletion = [
   versionedSpaceProfilesMigrationId,
   profilePublicationBindingsMigrationId,
@@ -84,6 +85,7 @@ const migrationsAfterDurableDeletion = [
   semanticWindowCheckpointsMigrationId,
   qualityReplayMatchPolicyMigrationId,
   removeProviderSyncPolicyMigrationId,
+  parseArtifactCheckpointsMigrationId,
 ] as const;
 const migrationsAfterTidbBaselineRepair = [
   spaceAccessControlMigrationId,

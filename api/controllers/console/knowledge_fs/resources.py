@@ -54,6 +54,7 @@ from repositories.sqlalchemy_knowledge_fs_capability_issuance_auditor import (
 )
 from services.feature_service import FeatureService
 from services.knowledge_fs.app_binding_management import KnowledgeFSAppBindingManagementError
+from services.knowledge_fs.buffered_upload_admission import DEFAULT_KNOWLEDGE_FS_BUFFERED_UPLOAD_ADMISSION
 from services.knowledge_fs.control_plane_service import (
     KnowledgeFSControlPlaneInvariantError,
 )
@@ -925,15 +926,19 @@ class KnowledgeFSStagedUploadsApi(Resource):
     def post(self):
         account, tenant_id = current_account_with_tenant()
         file_size_limit_mb = FeatureService.get_knowledge_file_size_limit(tenant_id)
-        upload = _read_staged_upload(file_size_limit_mb * 1024 * 1024)
-        result = _staged_uploads().stage(
-            tenant_id=tenant_id,
-            account=account,
-            file_name=upload.filename,
-            content_type=upload.content_type,
-            body=upload.body,
-            file_size_limit_mb=file_size_limit_mb,
-        )
+        max_bytes = file_size_limit_mb * 1024 * 1024
+        if max_bytes < 1:
+            raise KnowledgeFSProductRequestRejectedError(status_code=413)
+        with DEFAULT_KNOWLEDGE_FS_BUFFERED_UPLOAD_ADMISSION.admit(reserved_bytes=max_bytes):
+            upload = _read_staged_upload(max_bytes)
+            result = _staged_uploads().stage(
+                tenant_id=tenant_id,
+                account=account,
+                file_name=upload.filename,
+                content_type=upload.content_type,
+                body=upload.body,
+                file_size_limit_mb=file_size_limit_mb,
+            )
         return dump_response(KnowledgeFSStagedUploadResponse, result), HTTPStatus.CREATED
 
 

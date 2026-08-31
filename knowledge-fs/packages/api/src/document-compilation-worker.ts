@@ -16,7 +16,12 @@ import {
   PublicationGenerationIdSchema,
   TenantIdSchema,
 } from "@knowledge/core";
-import type { ParserAdapter, ParserRouteHints } from "@knowledge/parsers";
+import {
+  type ParseDocumentInput,
+  type ParserAdapter,
+  type ParserRouteHints,
+  classifyKnownHeavyUnstructuredWorkload,
+} from "@knowledge/parsers";
 
 import {
   type ConcurrencyGate,
@@ -70,6 +75,14 @@ import type { KnowledgeFsOperationLeaseCoordinator } from "./knowledge-fs-operat
 import type { KnowledgePathRepository } from "./knowledge-path-repository";
 import type { KnowledgeSpaceEmbeddingResolver } from "./knowledge-space-embedding-resolver";
 import type { PublishedPageIndexBuildRepository } from "./page-index-build-repository";
+import type { ParseArtifactCheckpoint } from "./parse-artifact-repository";
+import {
+  DEFAULT_RETAINED_PARSE_ARTIFACT_MAX_BYTES,
+  DEFAULT_RETAINED_PARSE_ARTIFACT_MAX_CONCURRENCY,
+  type RetainedParseArtifactAdmission,
+  type RetainedParseArtifactLease,
+  createRetainedParseArtifactAdmission,
+} from "./retained-parse-artifact-admission";
 import {
   type RetrievalEvaluationReport,
   cloneRetrievalEvaluationReport,
@@ -107,10 +120,21 @@ export interface DocumentCompilationWorkerOptions {
   readonly jobs: DocumentCompilationJobStateMachine;
   readonly jointSemanticGraph?: JointSemanticGraphMaterializer | undefined;
   readonly knowledgePaths?: KnowledgePathRepository | undefined;
+  /** Process-wide admission for source reads, parsing, media extraction, and artifact writes. */
+  readonly materializationGate?: ConcurrencyGate | undefined;
+  readonly materializationMaxConcurrency?: number | undefined;
+  /**
+   * Process-wide pre-admission for workloads known to be heavy from persisted metadata. Share one
+   * instance across workers so a second heavy document cannot occupy a global materialization slot
+   * while waiting on the parser's heavy lane.
+   */
+  readonly heavyMaterializationPreAdmission?: ConcurrencyGate | undefined;
   readonly multimodalImageVariantGenerator?: DocumentImageVariantGenerator | undefined;
+  /** @deprecated Use materializationGate. Retained for deployment compatibility. */
   readonly multimodalMaterializationGate?: ConcurrencyGate | undefined;
   readonly multimodalLocalAssetAllowlist?: readonly string[] | undefined;
   readonly multimodalMaxExtractedAssets?: number | undefined;
+  /** @deprecated Use materializationMaxConcurrency. Retained for deployment compatibility. */
   readonly multimodalMaxConcurrency?: number | undefined;
   readonly multimodalMaxLocalAssetBytes?: number | undefined;
   readonly multimodalMaxPdfRasterizedAssets?: number | undefined;
@@ -121,6 +145,8 @@ export interface DocumentCompilationWorkerOptions {
   readonly parser: ParserAdapter;
   readonly pdfRasterizer?: DocumentPdfRasterizer | undefined;
   readonly reindexer: IncrementalReindexer;
+  /** Process-wide admission held while downstream stages retain the canonical parse artifact. */
+  readonly retainedArtifactAdmission?: RetainedParseArtifactAdmission | undefined;
   /** Persists optional graph work before the searchable candidate is published. */
   readonly semanticEnrichmentAdmission?: DocumentSemanticEnrichmentAdmission | undefined;
   readonly operationLeases?: KnowledgeFsOperationLeaseCoordinator | undefined;
@@ -156,7 +182,11 @@ export interface DocumentCompilationIndexOverrideResolver {
 export interface DocumentCompilationWorker {
   process(
     payload: JobPayload,
-    options?: { readonly signal?: AbortSignal | undefined },
+    options?: {
+      /** Renews or releases the execution-scoped parser lease floor. */
+      readonly protectLease?: ((minLeaseMs: number) => Promise<void>) | undefined;
+      readonly signal?: AbortSignal | undefined;
+    },
   ): Promise<DocumentCompilationJob>;
 }
 
@@ -244,11 +274,13 @@ export function createDocumentCompilationWorker({
   jobs,
   jointSemanticGraph,
   knowledgePaths,
+  materializationGate,
+  materializationMaxConcurrency,
   multimodalImageVariantGenerator,
   multimodalMaterializationGate,
   multimodalLocalAssetAllowlist,
   multimodalMaxExtractedAssets,
-  multimodalMaxConcurrency = 2,
+  multimodalMaxConcurrency,
   multimodalMaxLocalAssetBytes,
   multimodalMaxPdfRasterizedAssets,
   multimodalRemoteAssetFetcher,
@@ -262,15 +294,31 @@ export function createDocumentCompilationWorker({
   outlines,
   pageIndexBuild,
   parser,
+  heavyMaterializationPreAdmission,
   pdfRasterizer,
   reindexer,
+  retainedArtifactAdmission,
   semanticEnrichmentAdmission,
   semanticPostProcessor,
   smokeEvaluation,
   visualEmbeddingModel,
 }: DocumentCompilationWorkerOptions): DocumentCompilationWorker {
-  const effectiveMultimodalMaterializationGate =
-    multimodalMaterializationGate ?? createConcurrencyGate(multimodalMaxConcurrency);
+  const effectiveMaterializationGate =
+    materializationGate ??
+    multimodalMaterializationGate ??
+    createConcurrencyGate(materializationMaxConcurrency ?? multimodalMaxConcurrency ?? 2);
+  const effectiveHeavyMaterializationPreAdmission =
+    heavyMaterializationPreAdmission ??
+    (parser.workloadKind
+      ? createConcurrencyGate(
+          Math.min(
+            parser.heavyWorkloadMaxConcurrency ?? 1,
+            Math.max(1, (materializationMaxConcurrency ?? multimodalMaxConcurrency ?? 2) - 1),
+          ),
+        )
+      : undefined);
+  const effectiveRetainedArtifactAdmission =
+    retainedArtifactAdmission ?? defaultRetainedParseArtifactAdmission;
   const stagedProjectionPublication =
     reindexer.publishProjections && reindexer.failProjections
       ? {
@@ -295,6 +343,7 @@ export function createDocumentCompilationWorker({
       };
       let cleanupStaleObjectWrites = async (): Promise<void> => undefined;
       let multimodalWritesDurable = false;
+      let retainedArtifactLease: RetainedParseArtifactLease | undefined;
 
       try {
         await assertDocumentAvailable?.({
@@ -359,55 +408,81 @@ export function createDocumentCompilationWorker({
           if (!initialJob) {
             throw new Error("Document compilation job not found");
           }
-          const resumeParsedGeneration =
-            publicationGenerationId !== undefined &&
-            hasReachedCompilationStage(initialJob.stage, "parsed");
+          const resumeParsedArtifact = hasReachedCompilationStage(initialJob.stage, "parsed");
           const resumeOutlineGeneration =
             publicationGenerationId !== undefined &&
             hasReachedCompilationStage(initialJob.stage, "outline_built");
+          let cleanupRawParseCheckpoint: (() => Promise<void>) | undefined;
           let canonicalArtifact: ParseArtifact;
-          if (resumeParsedGeneration) {
-            if (!reindexer.getCanonicalArtifact) {
-              throw new Error(
-                `Document compilation checkpoint=${initialJob.stage} cannot load its parse artifact`,
-              );
-            }
-            const persistedArtifact = await reindexer.getCanonicalArtifact({
-              documentAssetId: activeAsset.id,
-              version: activeAsset.version,
-            });
-            if (!persistedArtifact) {
-              throw new Error(
-                `Document compilation checkpoint=${initialJob.stage} parse artifact is missing`,
-              );
-            }
-            canonicalArtifact = persistedArtifact;
+          if (resumeParsedArtifact) {
+            canonicalArtifact = await effectiveMaterializationGate.run(
+              async () => {
+                if (!reindexer.getCanonicalArtifact) {
+                  throw new Error(
+                    `Document compilation checkpoint=${initialJob.stage} cannot load its parse artifact`,
+                  );
+                }
+                const persistedArtifact = await reindexer.getCanonicalArtifact({
+                  documentAssetId: activeAsset.id,
+                  version: activeAsset.version,
+                });
+                if (!persistedArtifact) {
+                  throw new Error(
+                    `Document compilation checkpoint=${initialJob.stage} parse artifact is missing`,
+                  );
+                }
+                const persistedCheckpoint = await readRawParseCheckpoint({
+                  documentAssetId: activeAsset.id,
+                  reindexer,
+                  version: activeAsset.version,
+                });
+                if (persistedCheckpoint && reindexer.deleteParseArtifactCheckpoint) {
+                  cleanupRawParseCheckpoint = rawParseCheckpointCleanup({
+                    documentAssetId: activeAsset.id,
+                    expectedPolicyFingerprint: persistedCheckpoint.policyFingerprint,
+                    reindexer,
+                    version: activeAsset.version,
+                  });
+                }
+                retainedArtifactLease = await effectiveRetainedArtifactAdmission.acquire(
+                  persistedArtifact,
+                  signal ? { signal } : undefined,
+                );
+                return persistedArtifact;
+              },
+              signal ? { signal } : undefined,
+            );
           } else {
             const requiresImages = Boolean(
               visualEmbeddingModel || multimodalImageVariantGenerator || pdfRasterizer,
             );
-            const materializeSource = async (): Promise<ParseArtifact> => {
+            const externalPdfImages = Boolean(pdfRasterizer) && isPdfDocument(activeAsset.mimeType);
+            const primaryParserHints = documentParserHints({
+              assetMetadata: activeAsset.metadata,
+              imagesHandledExternally: externalPdfImages,
+              requiresImages,
+            });
+            const fallbackParserHints = documentParserHints({
+              assetMetadata: activeAsset.metadata,
+              imagesHandledExternally: false,
+              requiresImages,
+            });
+            const readSourceBody = async (): Promise<Uint8Array> => {
               signal?.throwIfAborted();
               const body = await objectStorage.getObject(activeAsset.objectKey);
 
               if (!body) {
                 throw new Error("Document compilation object not found");
               }
+              signal?.throwIfAborted();
+              return body;
+            };
+            const materializeSource = async (
+              preloadedBody?: Uint8Array,
+            ): Promise<ParseArtifact> => {
+              signal?.throwIfAborted();
+              const body = preloadedBody ?? (await readSourceBody());
 
-              const parseDocument = (imagesHandledExternally: boolean) =>
-                parser.parse({
-                  body,
-                  documentAssetId: activeAsset.id,
-                  filename: activeAsset.filename,
-                  mimeType: activeAsset.mimeType,
-                  parserHints: documentParserHints({
-                    assetMetadata: activeAsset.metadata,
-                    imagesHandledExternally,
-                    requiresImages,
-                  }),
-                  ...(signal ? { signal } : {}),
-                  version: activeAsset.version,
-                });
               const materializationArtifactId = await resolveMaterializationArtifactId({
                 documentAssetId: activeAsset.id,
                 reindexer,
@@ -415,36 +490,158 @@ export function createDocumentCompilationWorker({
               });
               const bindMaterializationIdentity = (artifact: ParseArtifact) =>
                 bindParseArtifactIdentity(artifact, materializationArtifactId);
-              const parsedArtifact = bindMaterializationIdentity(
-                await parseDocument(Boolean(pdfRasterizer) && isPdfDocument(activeAsset.mimeType)),
+              const createParserPolicy = (
+                parserHints: ParserRouteHints,
+                route: ParseCheckpointRoute,
+              ): ParserCheckpointPolicy => {
+                const parserInput: ParseDocumentInput = {
+                  body,
+                  documentAssetId: activeAsset.id,
+                  filename: activeAsset.filename,
+                  mimeType: activeAsset.mimeType,
+                  parserHints,
+                  ...(signal ? { signal } : {}),
+                  version: activeAsset.version,
+                };
+
+                return {
+                  checkpointEligible: resolveParserCheckpointEligibility(parser, parserInput),
+                  input: parserInput,
+                  parserHints,
+                  policyFingerprint: resolveParserPolicyFingerprint(parser, parserInput),
+                  route,
+                };
+              };
+              const primaryParserPolicy = createParserPolicy(primaryParserHints, "primary");
+              const fallbackParserPolicy = createParserPolicy(
+                fallbackParserHints,
+                "provider-fallback",
               );
+              const checkpointPolicies = [
+                primaryParserPolicy,
+                ...(externalPdfImages ? [fallbackParserPolicy] : []),
+              ];
+              const canReuseRawCheckpoint = checkpointPolicies.some(
+                (policy) => policy.checkpointEligible && policy.policyFingerprint,
+              );
+              const persistedCheckpoint = canReuseRawCheckpoint
+                ? await readRawParseCheckpoint({
+                    documentAssetId: activeAsset.id,
+                    reindexer,
+                    version: activeAsset.version,
+                  })
+                : undefined;
+              const matchedCheckpoint = matchParseArtifactCheckpoint({
+                documentAssetId: activeAsset.id,
+                persistedCheckpoint,
+                policies: checkpointPolicies,
+                version: activeAsset.version,
+              });
+              const parseDocument = async (
+                policy: ParserCheckpointPolicy,
+              ): Promise<CheckpointedParserOutput> => {
+                const parserLeaseMs = resolveParserLeaseMs(parser, policy.input);
+                const protectLease = processOptions?.protectLease;
+                const leaseIsProtected = parserLeaseMs !== undefined && protectLease !== undefined;
+                if (leaseIsProtected) {
+                  // Protection starts before parser admission, so time spent waiting on process and
+                  // workload-specific gates is fenced against another replica claiming the same
+                  // attempt.
+                  await protectLease(parserLeaseMs);
+                }
+
+                let parserReturned = false;
+                let ownershipReasserted = false;
+                try {
+                  const parsed = await parser.parse(policy.input);
+                  parserReturned = true;
+                  if (leaseIsProtected) {
+                    // Reassert ownership after the remote response and before persisting it.
+                    await protectLease(parserLeaseMs);
+                    ownershipReasserted = true;
+                  }
+                  const artifact = bindMaterializationIdentity(parsed);
+                  await assertWritable();
+                  let output: CheckpointedParserOutput;
+                  if (
+                    policy.checkpointEligible &&
+                    policy.policyFingerprint &&
+                    reindexer.checkpointParseArtifact
+                  ) {
+                    let materialized: Awaited<
+                      ReturnType<NonNullable<IncrementalReindexer["checkpointParseArtifact"]>>
+                    >;
+                    try {
+                      materialized = await reindexer.checkpointParseArtifact({
+                        artifact,
+                        policyFingerprint: policy.policyFingerprint,
+                      });
+                    } catch (error) {
+                      throw new RawParseCheckpointPersistenceError(error);
+                    }
+                    output = {
+                      ...policy,
+                      artifact: materialized.artifact,
+                      rawCheckpointPolicyFingerprint: policy.policyFingerprint,
+                    };
+                  } else {
+                    output = { ...policy, artifact };
+                  }
+
+                  if (leaseIsProtected) {
+                    // Only a fenced durable checkpoint makes it safe to shorten the long lease.
+                    await protectLease(0);
+                  }
+                  return output;
+                } catch (error) {
+                  if (
+                    leaseIsProtected &&
+                    (ownershipReasserted || (!parserReturned && parserRequestOutcomeIsKnown(error)))
+                  ) {
+                    // Once the parser returned and ownership was reasserted, any later checkpoint
+                    // failure is local and cannot leave a remote ghost request. Explicit provider
+                    // responses are equally safe to release before the durable retry is scheduled.
+                    await protectLease(0);
+                  }
+                  throw error;
+                }
+              };
+              let activeParserOutput =
+                matchedCheckpoint ?? (await parseDocument(primaryParserPolicy));
               await assertWritable();
               let multimodalArtifact: ParseArtifact;
 
               try {
-                const rasterized = await rasterizeDocumentPdfMultimodalAssets({
-                  artifact: parsedArtifact,
-                  documentBody: body,
-                  documentMimeType: activeAsset.mimeType,
-                  knowledgeSpaceId: input.knowledgeSpaceId,
-                  ...(multimodalMaxPdfRasterizedAssets
-                    ? { maxRasterizedAssets: multimodalMaxPdfRasterizedAssets }
-                    : {}),
-                  objectStorage: multimodalObjectStorage,
-                  ...(pdfRasterizer ? { rasterizer: pdfRasterizer } : {}),
-                  ...(signal ? { signal } : {}),
-                  tenantId: input.tenantId,
-                  writeOwnerId: multimodalWriteOwnerId,
-                });
-                const providerFallbackRequired =
-                  Boolean(pdfRasterizer) &&
-                  requiresImages &&
-                  isPdfDocument(activeAsset.mimeType) &&
-                  rasterized.rasterizedCount === 0 &&
-                  rasterized.unresolvedCount > 0;
-                multimodalArtifact = providerFallbackRequired
-                  ? bindMaterializationIdentity(await parseDocument(false))
-                  : rasterized.artifact;
+                if (activeParserOutput.route === "provider-fallback") {
+                  multimodalArtifact = activeParserOutput.artifact;
+                } else {
+                  const rasterized = await rasterizeDocumentPdfMultimodalAssets({
+                    artifact: activeParserOutput.artifact,
+                    documentBody: body,
+                    documentMimeType: activeAsset.mimeType,
+                    knowledgeSpaceId: input.knowledgeSpaceId,
+                    ...(multimodalMaxPdfRasterizedAssets
+                      ? { maxRasterizedAssets: multimodalMaxPdfRasterizedAssets }
+                      : {}),
+                    objectStorage: multimodalObjectStorage,
+                    ...(pdfRasterizer ? { rasterizer: pdfRasterizer } : {}),
+                    ...(signal ? { signal } : {}),
+                    tenantId: input.tenantId,
+                    writeOwnerId: multimodalWriteOwnerId,
+                  });
+                  const providerFallbackRequired =
+                    Boolean(pdfRasterizer) &&
+                    requiresImages &&
+                    isPdfDocument(activeAsset.mimeType) &&
+                    rasterized.rasterizedCount === 0 &&
+                    rasterized.unresolvedCount > 0;
+                  if (providerFallbackRequired) {
+                    activeParserOutput = await parseDocument(fallbackParserPolicy);
+                    multimodalArtifact = activeParserOutput.artifact;
+                  } else {
+                    multimodalArtifact = rasterized.artifact;
+                  }
+                }
               } catch (error) {
                 if (
                   !(error instanceof DocumentPdfRenderError) ||
@@ -454,8 +651,8 @@ export function createDocumentCompilationWorker({
                 ) {
                   throw error;
                 }
-
-                multimodalArtifact = bindMaterializationIdentity(await parseDocument(false));
+                activeParserOutput = await parseDocument(fallbackParserPolicy);
+                multimodalArtifact = activeParserOutput.artifact;
               }
               await assertWritable();
               const { artifact } = await extractDocumentMultimodalAssets({
@@ -483,6 +680,20 @@ export function createDocumentCompilationWorker({
               });
               await assertWritable();
               const finalizedArtifact = finalizeDocumentMultimodalArtifact(artifact);
+              const checkpointPolicyFingerprint =
+                activeParserOutput.rawCheckpointPolicyFingerprint ??
+                persistedCheckpoint?.policyFingerprint;
+              const prepareRawParseCheckpointCleanup = (): void => {
+                if (!checkpointPolicyFingerprint || !reindexer.deleteParseArtifactCheckpoint) {
+                  return;
+                }
+                cleanupRawParseCheckpoint = rawParseCheckpointCleanup({
+                  documentAssetId: activeAsset.id,
+                  expectedPolicyFingerprint: checkpointPolicyFingerprint,
+                  reindexer,
+                  version: activeAsset.version,
+                });
+              };
               if (reindexer.canonicalizeArtifact) {
                 let materialized: Awaited<
                   ReturnType<NonNullable<IncrementalReindexer["canonicalizeArtifact"]>>
@@ -512,6 +723,7 @@ export function createDocumentCompilationWorker({
                   } else {
                     await cleanupStaleObjectWrites();
                   }
+                  prepareRawParseCheckpointCleanup();
                   return reconciled;
                 }
                 if (materialized.disposition === "unchanged") {
@@ -519,15 +731,70 @@ export function createDocumentCompilationWorker({
                 } else {
                   multimodalWritesDurable = true;
                 }
+                prepareRawParseCheckpointCleanup();
                 return materialized.artifact;
               }
               return finalizedArtifact;
             };
-            canonicalArtifact =
-              requiresImages && isPdfDocument(activeAsset.mimeType)
-                ? await effectiveMultimodalMaterializationGate.run(materializeSource)
-                : await materializeSource();
+            const materializeAndRetain = async (preloadedBody?: Uint8Array) => {
+              const artifact = await materializeSource(preloadedBody);
+              // Lock order is always known/body-heavy (when applicable) -> materialization ->
+              // retained artifact. Downstream consumers never reacquire either outer gate, so
+              // waiting here bounds completed artifacts without introducing a cycle.
+              retainedArtifactLease = await effectiveRetainedArtifactAdmission.acquire(
+                artifact,
+                signal ? { signal } : undefined,
+              );
+              return artifact;
+            };
+            const materializeWithGlobalAdmission = () =>
+              effectiveMaterializationGate.run(
+                () => materializeAndRetain(),
+                signal ? { signal } : undefined,
+              );
+            const knownHeavyWorkload = classifyKnownHeavyUnstructuredWorkload({
+              filename: activeAsset.filename,
+              mimeType: activeAsset.mimeType,
+              sizeBytes: activeAsset.sizeBytes,
+            });
+            if (knownHeavyWorkload && effectiveHeavyMaterializationPreAdmission) {
+              canonicalArtifact = await effectiveHeavyMaterializationPreAdmission.run(
+                materializeWithGlobalAdmission,
+                signal ? { signal } : undefined,
+              );
+            } else if (effectiveHeavyMaterializationPreAdmission && parser.workloadKind) {
+              const preflight = await effectiveMaterializationGate.run(
+                async (): Promise<
+                  | { readonly artifact: ParseArtifact; readonly kind: "materialized" }
+                  | { readonly kind: "heavy" }
+                > => {
+                  const body = await readSourceBody();
+                  const workloadKind = parser.workloadKind?.({
+                    body,
+                    documentAssetId: activeAsset.id,
+                    filename: activeAsset.filename,
+                    mimeType: activeAsset.mimeType,
+                    parserHints: primaryParserHints,
+                    ...(signal ? { signal } : {}),
+                    version: activeAsset.version,
+                  });
+                  if (workloadKind === "heavy") return { kind: "heavy" };
+                  return { artifact: await materializeAndRetain(body), kind: "materialized" };
+                },
+                signal ? { signal } : undefined,
+              );
+              canonicalArtifact =
+                preflight.kind === "materialized"
+                  ? preflight.artifact
+                  : await effectiveHeavyMaterializationPreAdmission.run(
+                      materializeWithGlobalAdmission,
+                      signal ? { signal } : undefined,
+                    );
+            } else {
+              canonicalArtifact = await materializeWithGlobalAdmission();
+            }
           }
+          signal?.throwIfAborted();
           const documentIndexOverrides = indexOverrides
             ? await indexOverrides.resolve({
                 compilationAttemptId: input.documentCompilationJobId,
@@ -543,6 +810,11 @@ export function createDocumentCompilationWorker({
           const deferOutlineUntilSemanticNodes = Boolean(
             publicationGenerationId && frozenRetrievalProfile,
           );
+          if (resumeParsedArtifact) {
+            await assertWritable();
+            await cleanupRawParseCheckpoint?.();
+            cleanupRawParseCheckpoint = undefined;
+          }
           if (resumeOutlineGeneration && publicationGenerationId) {
             const [persistedOutline, resumedManifest] = await Promise.all([
               outlines?.getByDocumentVersion({
@@ -581,6 +853,7 @@ export function createDocumentCompilationWorker({
           } else {
             await assertWritable();
             await jobs.advance(input.documentCompilationJobId, "parsed");
+            await cleanupRawParseCheckpoint?.();
             const multimodalManifest = createDocumentMultimodalManifestBuilder().build({
               artifact: canonicalArtifact,
               knowledgeSpaceId: input.knowledgeSpaceId,
@@ -988,10 +1261,17 @@ export function createDocumentCompilationWorker({
             .catch(() => undefined);
         }
         throw effectiveError;
+      } finally {
+        retainedArtifactLease?.release();
       }
     },
   };
 }
+
+const defaultRetainedParseArtifactAdmission = createRetainedParseArtifactAdmission({
+  maxConcurrentArtifacts: DEFAULT_RETAINED_PARSE_ARTIFACT_MAX_CONCURRENCY,
+  maxRetainedBytes: DEFAULT_RETAINED_PARSE_ARTIFACT_MAX_BYTES,
+});
 
 function isPdfDocument(mimeType: string): boolean {
   return mimeType.split(";", 1)[0]?.trim().toLowerCase() === "application/pdf";
@@ -1018,6 +1298,169 @@ function documentParserHints(input: {
     requiresImages: input.requiresImages,
     ...(input.assetMetadata.requiresOcr === true ? { requiresOcr: true } : {}),
     ...(input.assetMetadata.requiresTables === true ? { requiresTables: true } : {}),
+  };
+}
+
+type ParseCheckpointRoute = "primary" | "provider-fallback";
+
+interface ParserCheckpointPolicy {
+  readonly checkpointEligible: boolean;
+  readonly input: ParseDocumentInput;
+  readonly parserHints: ParserRouteHints;
+  readonly policyFingerprint: string | undefined;
+  readonly route: ParseCheckpointRoute;
+}
+
+interface CheckpointedParserOutput extends ParserCheckpointPolicy {
+  readonly artifact: ParseArtifact;
+  readonly rawCheckpointPolicyFingerprint?: string | undefined;
+}
+
+interface MatchedParseArtifactCheckpoint extends CheckpointedParserOutput {
+  readonly policyFingerprint: string;
+}
+
+function matchParseArtifactCheckpoint(input: {
+  readonly documentAssetId: string;
+  readonly persistedCheckpoint?: ParseArtifactCheckpoint | null | undefined;
+  readonly policies: readonly ParserCheckpointPolicy[];
+  readonly version: number;
+}): MatchedParseArtifactCheckpoint | null {
+  const checkpoint = input.persistedCheckpoint;
+  if (
+    !checkpoint ||
+    checkpoint.artifact.documentAssetId !== input.documentAssetId ||
+    checkpoint.artifact.version !== input.version
+  ) {
+    return null;
+  }
+
+  for (const policy of input.policies) {
+    if (policy.checkpointEligible && policy.policyFingerprint === checkpoint.policyFingerprint) {
+      return {
+        ...policy,
+        artifact: checkpoint.artifact,
+        policyFingerprint: checkpoint.policyFingerprint,
+        rawCheckpointPolicyFingerprint: checkpoint.policyFingerprint,
+      };
+    }
+  }
+
+  return null;
+}
+
+function resolveParserLeaseMs(
+  parser: ParserAdapter,
+  input: ParseDocumentInput,
+): number | undefined {
+  const leaseMs = parser.leaseMs?.(input);
+  if (leaseMs === undefined) return undefined;
+  if (!Number.isSafeInteger(leaseMs) || leaseMs < 1) {
+    throw new Error("Parser leaseMs must return a positive integer or undefined");
+  }
+  return leaseMs;
+}
+
+function parserRequestOutcomeIsKnown(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    "requestOutcomeAmbiguous" in error &&
+    (error as { readonly requestOutcomeAmbiguous?: unknown }).requestOutcomeAmbiguous === false
+  );
+}
+
+function resolveParserCheckpointEligibility(
+  parser: ParserAdapter,
+  input: ParseDocumentInput,
+): boolean {
+  try {
+    return parser.checkpointEligible?.(input) === true;
+  } catch {
+    // Eligibility is an optimization contract. A custom adapter that cannot identify an expensive
+    // route must fail safe to the authoritative parser without persisting a second full artifact.
+    return false;
+  }
+}
+
+function resolveParserPolicyFingerprint(
+  parser: ParserAdapter,
+  input: ParseDocumentInput,
+): string | undefined {
+  try {
+    const fingerprint = parser.policyFingerprint?.(input);
+    return fingerprint && /^[0-9a-f]{64}$/u.test(fingerprint) ? fingerprint : undefined;
+  } catch {
+    // Checkpointing is an optimization. A custom adapter with a broken identity function must not
+    // prevent the authoritative parser call from producing a canonical artifact.
+    return undefined;
+  }
+}
+
+class RawParseCheckpointCleanupError extends Error {
+  readonly code = "DOCUMENT_COMPILATION_RETRYABLE";
+  readonly retryable = true;
+
+  constructor(cause: unknown) {
+    super("Raw parse checkpoint cleanup failed", { cause });
+    this.name = "RawParseCheckpointCleanupError";
+  }
+}
+
+class RawParseCheckpointPersistenceError extends Error {
+  readonly code = "DOCUMENT_COMPILATION_RETRYABLE";
+  readonly retryable = true;
+
+  constructor(cause: unknown) {
+    super("Raw parse checkpoint persistence failed", { cause });
+    this.name = "RawParseCheckpointPersistenceError";
+  }
+}
+
+class RawParseCheckpointReadError extends Error {
+  readonly code = "DOCUMENT_COMPILATION_RETRYABLE";
+  readonly retryable = true;
+
+  constructor(cause: unknown) {
+    super("Raw parse checkpoint read failed", { cause });
+    this.name = "RawParseCheckpointReadError";
+  }
+}
+
+async function readRawParseCheckpoint(input: {
+  readonly documentAssetId: string;
+  readonly reindexer: IncrementalReindexer;
+  readonly version: number;
+}): Promise<ParseArtifactCheckpoint | null | undefined> {
+  const getCheckpoint = input.reindexer.getParseArtifactCheckpoint;
+  if (!getCheckpoint) return undefined;
+  try {
+    return await getCheckpoint({
+      documentAssetId: input.documentAssetId,
+      version: input.version,
+    });
+  } catch (error) {
+    throw new RawParseCheckpointReadError(error);
+  }
+}
+
+function rawParseCheckpointCleanup(input: {
+  readonly documentAssetId: string;
+  readonly expectedPolicyFingerprint: string;
+  readonly reindexer: IncrementalReindexer;
+  readonly version: number;
+}): () => Promise<void> {
+  return async () => {
+    const deleteCheckpoint = input.reindexer.deleteParseArtifactCheckpoint;
+    if (!deleteCheckpoint) return;
+    try {
+      await deleteCheckpoint({
+        documentAssetId: input.documentAssetId,
+        expectedPolicyFingerprint: input.expectedPolicyFingerprint,
+        version: input.version,
+      });
+    } catch (error) {
+      throw new RawParseCheckpointCleanupError(error);
+    }
   };
 }
 

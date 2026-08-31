@@ -8,7 +8,10 @@ import {
 } from "@knowledge/parsers";
 import { Agent, type Dispatcher, fetch as undiciFetch } from "undici";
 
-const defaultUnstructuredRequestTimeoutMs = 120_000;
+const defaultUnstructuredRequestTimeoutMs = 600_000;
+const defaultUnstructuredMaxConcurrency = 2;
+const defaultUnstructuredMaxInputBytes = 15 * 1024 * 1024;
+const maxUnstructuredInputBytes = 50 * 1024 * 1024;
 const maxUnstructuredRequestTimeoutMs = 3_600_000;
 
 interface NodeUnstructuredFetchOptions {
@@ -16,6 +19,9 @@ interface NodeUnstructuredFetchOptions {
     options: Readonly<{ bodyTimeout: number; headersTimeout: number }>,
   ) => Dispatcher;
   readonly fetch?: typeof fetch;
+  readonly heavyRequestTimeoutMs?: number;
+  /** @deprecated Compatibility alias for `heavyRequestTimeoutMs`. */
+  readonly pdfRequestTimeoutMs?: number;
   readonly requestTimeoutMs: number;
 }
 
@@ -29,9 +35,14 @@ export interface ApiParserEnv {
   readonly UNSTRUCTURED_API_KEY?: string | undefined;
   readonly UNSTRUCTURED_API_URL?: string | undefined;
   readonly UNSTRUCTURED_DEFAULT_LANGUAGE?: string | undefined;
+  readonly UNSTRUCTURED_HEAVY_MAX_CONCURRENCY?: string | undefined;
+  readonly UNSTRUCTURED_HEAVY_REQUEST_TIMEOUT_MS?: string | undefined;
   readonly UNSTRUCTURED_MAX_CONCURRENCY?: string | undefined;
+  readonly UNSTRUCTURED_MAX_INPUT_BYTES?: string | undefined;
   readonly UNSTRUCTURED_MAX_RESPONSE_BYTES?: string | undefined;
   readonly UNSTRUCTURED_MAX_RETRIES?: string | undefined;
+  readonly UNSTRUCTURED_PDF_MAX_CONCURRENCY?: string | undefined;
+  readonly UNSTRUCTURED_PDF_REQUEST_TIMEOUT_MS?: string | undefined;
   readonly UNSTRUCTURED_PORT?: string | undefined;
   readonly UNSTRUCTURED_RETRY_DELAY_MS?: string | undefined;
   readonly UNSTRUCTURED_REQUEST_TIMEOUT_MS?: string | undefined;
@@ -40,6 +51,45 @@ export interface ApiParserEnv {
 export interface CreateApiDocumentParserOptions {
   readonly env?: ApiParserEnv | undefined;
   readonly fetch?: typeof fetch | undefined;
+}
+
+export interface ApiUnstructuredConcurrencyOptions {
+  readonly heavyMaxConcurrency: number;
+  readonly maxConcurrency: number;
+}
+
+export function createApiUnstructuredConcurrencyOptions(
+  env: ApiParserEnv = process.env,
+): ApiUnstructuredConcurrencyOptions {
+  const maxConcurrency =
+    env.UNSTRUCTURED_MAX_CONCURRENCY === undefined
+      ? defaultUnstructuredMaxConcurrency
+      : parseBoundedPositiveInteger(
+          env.UNSTRUCTURED_MAX_CONCURRENCY,
+          "UNSTRUCTURED_MAX_CONCURRENCY",
+          32,
+        );
+  const heavyConfiguration =
+    env.UNSTRUCTURED_HEAVY_MAX_CONCURRENCY !== undefined
+      ? {
+          name: "UNSTRUCTURED_HEAVY_MAX_CONCURRENCY",
+          value: env.UNSTRUCTURED_HEAVY_MAX_CONCURRENCY,
+        }
+      : env.UNSTRUCTURED_PDF_MAX_CONCURRENCY !== undefined
+        ? {
+            name: "UNSTRUCTURED_PDF_MAX_CONCURRENCY",
+            value: env.UNSTRUCTURED_PDF_MAX_CONCURRENCY,
+          }
+        : undefined;
+  const heavyMaxConcurrency = heavyConfiguration
+    ? parseBoundedPositiveInteger(heavyConfiguration.value, heavyConfiguration.name, 32)
+    : maxConcurrency;
+  if (heavyMaxConcurrency > maxConcurrency) {
+    throw new Error(
+      `${heavyConfiguration?.name ?? "UNSTRUCTURED_HEAVY_MAX_CONCURRENCY"} must not exceed UNSTRUCTURED_MAX_CONCURRENCY`,
+    );
+  }
+  return { heavyMaxConcurrency, maxConcurrency };
 }
 
 export function createApiDocumentParser({
@@ -85,6 +135,26 @@ function createApiUnstructuredParser({
           "UNSTRUCTURED_REQUEST_TIMEOUT_MS",
           maxUnstructuredRequestTimeoutMs,
         );
+  const heavyRequestTimeoutConfiguration =
+    env.UNSTRUCTURED_HEAVY_REQUEST_TIMEOUT_MS !== undefined
+      ? {
+          name: "UNSTRUCTURED_HEAVY_REQUEST_TIMEOUT_MS",
+          value: env.UNSTRUCTURED_HEAVY_REQUEST_TIMEOUT_MS,
+        }
+      : env.UNSTRUCTURED_PDF_REQUEST_TIMEOUT_MS !== undefined
+        ? {
+            name: "UNSTRUCTURED_PDF_REQUEST_TIMEOUT_MS",
+            value: env.UNSTRUCTURED_PDF_REQUEST_TIMEOUT_MS,
+          }
+        : undefined;
+  const heavyRequestTimeoutMs = heavyRequestTimeoutConfiguration
+    ? parseBoundedPositiveInteger(
+        heavyRequestTimeoutConfiguration.value,
+        heavyRequestTimeoutConfiguration.name,
+        maxUnstructuredRequestTimeoutMs,
+      )
+    : requestTimeoutMs;
+  const concurrency = createApiUnstructuredConcurrencyOptions(env);
 
   return createUnstructuredParserClient({
     ...(env.UNSTRUCTURED_DEFAULT_LANGUAGE?.trim()
@@ -95,17 +165,12 @@ function createApiUnstructuredParser({
     fetch:
       fetchImpl ??
       createNodeUnstructuredFetch({
+        heavyRequestTimeoutMs,
         requestTimeoutMs,
       }),
-    ...(env.UNSTRUCTURED_MAX_CONCURRENCY !== undefined
-      ? {
-          maxConcurrency: parseBoundedPositiveInteger(
-            env.UNSTRUCTURED_MAX_CONCURRENCY,
-            "UNSTRUCTURED_MAX_CONCURRENCY",
-            32,
-          ),
-        }
-      : {}),
+    heavyMaxConcurrency: concurrency.heavyMaxConcurrency,
+    heavyRequestTimeoutMs,
+    maxConcurrency: concurrency.maxConcurrency,
     ...(env.UNSTRUCTURED_MAX_RESPONSE_BYTES !== undefined
       ? {
           maxResponseBytes: parsePositiveInteger(
@@ -114,6 +179,14 @@ function createApiUnstructuredParser({
           ),
         }
       : {}),
+    maxInputBytes:
+      env.UNSTRUCTURED_MAX_INPUT_BYTES === undefined
+        ? defaultUnstructuredMaxInputBytes
+        : parseBoundedPositiveInteger(
+            env.UNSTRUCTURED_MAX_INPUT_BYTES,
+            "UNSTRUCTURED_MAX_INPUT_BYTES",
+            maxUnstructuredInputBytes,
+          ),
     ...(env.UNSTRUCTURED_MAX_RETRIES !== undefined
       ? {
           maxRetries: parseNonNegativeInteger(
@@ -137,11 +210,20 @@ function createApiUnstructuredParser({
 export function createNodeUnstructuredFetch({
   createDispatcher = (options) => new Agent(options),
   fetch: fetchImpl = undiciFetch as unknown as typeof fetch,
+  heavyRequestTimeoutMs,
   requestTimeoutMs,
+  pdfRequestTimeoutMs,
 }: NodeUnstructuredFetchOptions): typeof fetch {
+  // Undici's dispatcher limits apply to every request using the Agent. Set the transport ceiling
+  // to the wider configured deadline; the parser client still applies its workload-specific abort
+  // signal so ordinary documents retain their shorter request deadline.
+  const transportTimeoutMs = Math.max(
+    requestTimeoutMs,
+    heavyRequestTimeoutMs ?? pdfRequestTimeoutMs ?? requestTimeoutMs,
+  );
   const dispatcher = createDispatcher({
-    bodyTimeout: requestTimeoutMs,
-    headersTimeout: requestTimeoutMs,
+    bodyTimeout: transportTimeoutMs,
+    headersTimeout: transportTimeoutMs,
   });
 
   return (input, init) => {

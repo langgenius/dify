@@ -1,9 +1,10 @@
-import { createNodePlatformAdapter } from "@knowledge/adapters/node";
+import { createMemoryObjectStorageAdapter } from "@knowledge/adapters";
 import type { IndexProjection, KnowledgeNode } from "@knowledge/core";
 import { KnowledgeNodeSchema } from "@knowledge/core";
 import type { EmbedTextsInput, EmbeddingProvider } from "@knowledge/embeddings";
 import { describe, expect, it } from "vitest";
 
+import { createDocumentModelBudget } from "./document-model-budget";
 import {
   createDenseVectorProjectionBuilder,
   createFtsProjectionBuilder,
@@ -13,10 +14,20 @@ import {
 } from "./index-projection-builders";
 import type { EmbedVisualAssetsInput, EmbedVisualImagesInput } from "./index-projection-builders";
 import type { IndexProjectionRepository } from "./index-projection-repository";
+import type { IngestionModelCallOperationalMetric } from "./ingestion-model-observability";
 
 const KNOWLEDGE_SPACE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c40";
 const DOCUMENT_ASSET_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c41";
 const PARSE_ARTIFACT_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
+
+function createTestPlatformAdapter() {
+  return {
+    objectStorage: createMemoryObjectStorageAdapter({
+      kind: "memory",
+      maxObjectBytes: 128 * 1024 * 1024,
+    }),
+  };
+}
 
 function knowledgeNode(overrides: Partial<KnowledgeNode> = {}): KnowledgeNode {
   return KnowledgeNodeSchema.parse({
@@ -81,6 +92,17 @@ function imageNode(overrides: Partial<KnowledgeNode> = {}): KnowledgeNode {
     text: "Revenue chart",
     ...overrides,
   });
+}
+
+function visualImageAsset(objectKey: string, nodeId: string) {
+  return {
+    assetRef: { objectKey },
+    documentAssetId: DOCUMENT_ASSET_ID,
+    metadata: {},
+    modality: "image",
+    nodeId,
+    sourceText: nodeId,
+  };
 }
 
 describe("index projection builders coverage", () => {
@@ -182,9 +204,15 @@ describe("index projection builders coverage", () => {
   });
 
   it("rejects strict visual providers returning a mismatched vector count", async () => {
-    const { repository } = createRecordingProjectionRepository();
+    const metrics: IngestionModelCallOperationalMetric[] = [];
+    const { created, repository } = createRecordingProjectionRepository();
     const builder = createVisualEmbeddingProjectionBuilder({
       maxBatchSize: 2,
+      metrics: {
+        record: (metric) => {
+          metrics.push(metric);
+        },
+      },
       projections: repository,
       provider: {
         embedAssets: async () => ({
@@ -201,6 +229,39 @@ describe("index projection builders coverage", () => {
     await expect(
       builder.build({ model: "clip", nodes: [imageNode()], projectionVersion: 1 }),
     ).rejects.toThrow("Visual embedding provider returned 2 vectors for 1 assets");
+    expect(created).toEqual([]);
+    expect(metrics).toMatchObject([{ outcome: "failed", stage: "visual-embedding" }]);
+  });
+
+  it("reports failed instead of succeeded when visual projection persistence fails", async () => {
+    const metrics: IngestionModelCallOperationalMetric[] = [];
+    const { repository } = createRecordingProjectionRepository();
+    const builder = createVisualEmbeddingProjectionBuilder({
+      maxBatchSize: 1,
+      metrics: {
+        record: (metric) => {
+          metrics.push(metric);
+        },
+      },
+      projections: {
+        ...repository,
+        createMany: async () => {
+          throw new Error("visual projection persistence failed");
+        },
+      },
+      provider: {
+        embedAssets: async () => ({
+          dense: [[0.1, 0.9]],
+          metadata: { model: "clip@1", provider: "static-vision" },
+          model: "clip@1",
+        }),
+      },
+    });
+
+    await expect(
+      builder.build({ model: "clip", nodes: [imageNode()], projectionVersion: 1 }),
+    ).rejects.toThrow("visual projection persistence failed");
+    expect(metrics).toMatchObject([{ outcome: "failed", stage: "visual-embedding" }]);
   });
 
   it("returns no projections when a partial provider embeds zero assets", async () => {
@@ -270,23 +331,549 @@ describe("index projection builders coverage", () => {
   });
 
   it("validates object-storage visual embedding provider options", () => {
-    const adapter = createNodePlatformAdapter({ env: {} });
+    const adapter = createTestPlatformAdapter();
+    const baseOptions = {
+      objectStorage: adapter.objectStorage,
+      provider: {
+        embedImages: async () => {
+          throw new Error("unused");
+        },
+      },
+    };
 
     expect(() =>
       createObjectStorageVisualEmbeddingProvider({
         maxAssetBytes: 0,
+        ...baseOptions,
+      }),
+    ).toThrow("Object-storage visual embedding maxAssetBytes must be at least 1");
+    expect(() =>
+      createObjectStorageVisualEmbeddingProvider({
+        maxBatchAssetCount: 0,
+        ...baseOptions,
+      }),
+    ).toThrow("Object-storage visual embedding maxBatchAssetCount must be at least 1");
+    expect(() =>
+      createObjectStorageVisualEmbeddingProvider({
+        maxBatchBytes: 0,
+        ...baseOptions,
+      }),
+    ).toThrow("Object-storage visual embedding maxBatchBytes must be at least 1");
+    expect(() =>
+      createObjectStorageVisualEmbeddingProvider({
+        maxAssetBytes: 8,
+        maxBatchBytes: 7,
+        ...baseOptions,
+      }),
+    ).toThrow("Object-storage visual embedding maxBatchBytes must be at least maxAssetBytes=8");
+  });
+
+  it("bounds image-byte requests by asset count and total bytes while preserving result order", async () => {
+    const adapter = createTestPlatformAdapter();
+    const sizes = [3, 3, 5, 2, 4];
+    for (const [index, size] of sizes.entries()) {
+      await adapter.objectStorage.putObject({
+        body: new Uint8Array(size).fill(index + 1),
+        contentType: "image/png",
+        key: `assets/image-${index + 1}.png`,
+        metadata: {},
+      });
+    }
+    const requestNodeIds: string[][] = [];
+    const requestByteCounts: number[] = [];
+    let residentImageBytes = 0;
+    let peakResidentImageBytes = 0;
+    const provider = createObjectStorageVisualEmbeddingProvider({
+      maxAssetBytes: 6,
+      maxBatchAssetCount: 2,
+      maxBatchBytes: 10,
+      objectStorage: {
+        ...adapter.objectStorage,
+        getObjectStream: async (key) => {
+          const stream = await adapter.objectStorage.getObjectStream(key);
+          if (!stream) return null;
+          const reader = stream.getReader();
+          return new ReadableStream<Uint8Array>({
+            cancel: (reason) => reader.cancel(reason),
+            pull: async (controller) => {
+              const chunk = await reader.read();
+              if (chunk.done) {
+                controller.close();
+                return;
+              }
+              residentImageBytes += chunk.value.byteLength;
+              peakResidentImageBytes = Math.max(peakResidentImageBytes, residentImageBytes);
+              controller.enqueue(chunk.value);
+            },
+          });
+        },
+      },
+      provider: {
+        embedImages: async (input) => {
+          requestNodeIds.push(input.images.map((image) => image.nodeId));
+          const requestBytes = input.images.reduce(
+            (total, image) => total + image.body.byteLength,
+            0,
+          );
+          requestByteCounts.push(requestBytes);
+          residentImageBytes -= requestBytes;
+          return {
+            dense: input.images.map((image) => [Number(image.nodeId.slice(5)), 0.5]),
+            metadata: {
+              model: "clip-image@1",
+              provider: "static-image",
+              usage: { totalTokens: input.images.length },
+            },
+            model: "clip-image@1",
+          };
+        },
+        kind: "bytes",
+      },
+    });
+
+    const result = await provider.embedAssets({
+      assets: sizes.map((_, index) => ({
+        assetRef: { objectKey: `assets/image-${index + 1}.png` },
+        documentAssetId: DOCUMENT_ASSET_ID,
+        metadata: {},
+        modality: "image",
+        nodeId: `node-${index + 1}`,
+        sourceText: `image ${index + 1}`,
+      })),
+      model: "clip-image",
+    });
+
+    expect(requestNodeIds).toEqual([["node-1", "node-2"], ["node-3"], ["node-4", "node-5"]]);
+    expect(requestByteCounts).toEqual([6, 5, 6]);
+    expect(requestNodeIds.every((batch) => batch.length <= 2)).toBe(true);
+    expect(requestByteCounts.every((bytes) => bytes <= 10)).toBe(true);
+    expect(peakResidentImageBytes).toBeLessThanOrEqual(10);
+    expect(residentImageBytes).toBe(0);
+    expect(result).toEqual({
+      dense: [
+        [1, 0.5],
+        [2, 0.5],
+        [3, 0.5],
+        [4, 0.5],
+        [5, 0.5],
+      ],
+      embeddedNodeIds: ["node-1", "node-2", "node-3", "node-4", "node-5"],
+      metadata: {
+        model: "clip-image@1",
+        provider: "static-image:bytes:image-bytes",
+        providerCalls: 3,
+        usage: { totalTokens: 5 },
+      },
+      model: "clip-image@1",
+    });
+  });
+
+  it("accounts for visual microbatches in the document model budget and stage metrics", async () => {
+    const adapter = createTestPlatformAdapter();
+    for (const index of [1, 2, 3]) {
+      await adapter.objectStorage.putObject({
+        body: new Uint8Array([index]),
+        contentType: "image/png",
+        key: `assets/budget-${index}.png`,
+        metadata: {},
+      });
+    }
+    const metrics: IngestionModelCallOperationalMetric[] = [];
+    const { repository } = createRecordingProjectionRepository();
+    const builder = createVisualEmbeddingProjectionBuilder({
+      maxBatchSize: 3,
+      metrics: {
+        record: (metric) => {
+          metrics.push(metric);
+        },
+      },
+      projections: repository,
+      provider: createObjectStorageVisualEmbeddingProvider({
+        maxAssetBytes: 1,
+        maxBatchAssetCount: 2,
+        maxBatchBytes: 2,
+        objectStorage: adapter.objectStorage,
+        provider: {
+          embedImages: async (input) => ({
+            dense: input.images.map(() => [0.2, 0.8]),
+            metadata: { model: "clip-image@1", provider: "static-image" },
+            model: "clip-image@1",
+          }),
+        },
+      }),
+    });
+    const budget = createDocumentModelBudget({ maxEstimatedTokens: 1, maxRequests: 2 });
+
+    const projections = await builder.build({
+      model: "clip-image",
+      modelBudget: budget,
+      nodes: [1, 2, 3].map((index) =>
+        imageNode({
+          id: `018f0d60-7a49-7cc2-9c1b-5b36f18f8a2${index}`,
+          metadata: {
+            assetRef: { objectKey: `assets/budget-${index}.png` },
+            elementIds: [`figure-${index}`],
+            elementTypes: ["image"],
+          },
+        }),
+      ),
+      projectionVersion: 1,
+    });
+
+    expect(projections).toHaveLength(3);
+    expect(budget.snapshot()).toMatchObject({
+      requestsReserved: 2,
+      stageRequests: { "visual-embedding": 2 },
+    });
+    expect(metrics).toMatchObject([{ itemCount: 3, providerCalls: 2, stage: "visual-embedding" }]);
+  });
+
+  it("stops before the next visual microbatch when the caller aborts", async () => {
+    const adapter = createTestPlatformAdapter();
+    for (const index of [1, 2]) {
+      await adapter.objectStorage.putObject({
+        body: new Uint8Array([index]),
+        contentType: "image/png",
+        key: `assets/abort-${index}.png`,
+        metadata: {},
+      });
+    }
+    const controller = new AbortController();
+    let providerCalls = 0;
+    const provider = createObjectStorageVisualEmbeddingProvider({
+      maxAssetBytes: 1,
+      maxBatchAssetCount: 1,
+      maxBatchBytes: 1,
+      objectStorage: adapter.objectStorage,
+      provider: {
+        embedImages: async () => {
+          providerCalls += 1;
+          controller.abort();
+          return {
+            dense: [[0.2, 0.8]],
+            metadata: { model: "clip-image@1", provider: "static-image" },
+            model: "clip-image@1",
+          };
+        },
+      },
+    });
+
+    await expect(
+      provider.embedAssets({
+        assets: [1, 2].map((index) => ({
+          assetRef: { objectKey: `assets/abort-${index}.png` },
+          documentAssetId: DOCUMENT_ASSET_ID,
+          metadata: {},
+          modality: "image",
+          nodeId: `node-${index}`,
+          sourceText: `image ${index}`,
+        })),
+        model: "clip-image",
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(providerCalls).toBe(1);
+  });
+
+  it("rejects vector-dimension drift between visual microbatches", async () => {
+    const adapter = createTestPlatformAdapter();
+    for (const index of [1, 2]) {
+      await adapter.objectStorage.putObject({
+        body: new Uint8Array([index]),
+        contentType: "image/png",
+        key: `assets/dimension-${index}.png`,
+        metadata: {},
+      });
+    }
+    let providerCalls = 0;
+    const provider = createObjectStorageVisualEmbeddingProvider({
+      maxAssetBytes: 1,
+      maxBatchAssetCount: 1,
+      maxBatchBytes: 1,
+      objectStorage: adapter.objectStorage,
+      provider: {
+        embedImages: async () => {
+          providerCalls += 1;
+          return {
+            dense: [providerCalls === 1 ? [0.2, 0.8] : [0.1, 0.2, 0.7]],
+            metadata: { model: "clip-image@1", provider: "static-image" },
+            model: "clip-image@1",
+          };
+        },
+      },
+    });
+
+    await expect(
+      provider.embedAssets({
+        assets: [1, 2].map((index) => ({
+          assetRef: { objectKey: `assets/dimension-${index}.png` },
+          documentAssetId: DOCUMENT_ASSET_ID,
+          metadata: {},
+          modality: "image",
+          nodeId: `node-${index}`,
+          sourceText: `image ${index}`,
+        })),
+        model: "clip-image",
+      }),
+    ).rejects.toThrow(
+      "Visual embedding image provider returned dimension=3; expected dimension=2 across batches",
+    );
+  });
+
+  it("rejects model or provider identity drift between visual microbatches", async () => {
+    const adapter = createTestPlatformAdapter();
+    for (const index of [1, 2]) {
+      await adapter.objectStorage.putObject({
+        body: new Uint8Array([index]),
+        contentType: "image/png",
+        key: `assets/identity-${index}.png`,
+        metadata: {},
+      });
+    }
+    let providerCalls = 0;
+    const provider = createObjectStorageVisualEmbeddingProvider({
+      maxAssetBytes: 1,
+      maxBatchAssetCount: 1,
+      maxBatchBytes: 1,
+      objectStorage: adapter.objectStorage,
+      provider: {
+        embedImages: async () => {
+          providerCalls += 1;
+          return {
+            dense: [[0.2, 0.8]],
+            metadata: {
+              model: providerCalls === 1 ? "clip-image@1" : "clip-image@2",
+              provider: "static-image",
+            },
+            model: providerCalls === 1 ? "clip-image@1" : "clip-image@2",
+          };
+        },
+      },
+    });
+
+    await expect(
+      provider.embedAssets({
+        assets: [1, 2].map((index) => ({
+          assetRef: { objectKey: `assets/identity-${index}.png` },
+          documentAssetId: DOCUMENT_ASSET_ID,
+          metadata: {},
+          modality: "image",
+          nodeId: `node-${index}`,
+          sourceText: `image ${index}`,
+        })),
+        model: "clip-image",
+      }),
+    ).rejects.toThrow("Visual embedding image provider returned inconsistent batch identities");
+  });
+
+  it("rejects hidden nested provider calls at the image-byte request boundary", async () => {
+    const adapter = createTestPlatformAdapter();
+    await adapter.objectStorage.putObject({
+      body: new Uint8Array([1]),
+      contentType: "image/png",
+      key: "assets/nested-calls.png",
+      metadata: {},
+    });
+    const provider = createObjectStorageVisualEmbeddingProvider({
+      maxAssetBytes: 1,
+      maxBatchBytes: 1,
+      objectStorage: adapter.objectStorage,
+      provider: {
+        embedImages: async () => ({
+          dense: [[0.2, 0.8]],
+          metadata: {
+            model: "clip-image@1",
+            provider: "static-image",
+            providerCalls: 2,
+          },
+          model: "clip-image@1",
+        }),
+      },
+    });
+
+    await expect(
+      provider.embedAssets({
+        assets: [
+          {
+            assetRef: { objectKey: "assets/nested-calls.png" },
+            documentAssetId: DOCUMENT_ASSET_ID,
+            metadata: {},
+            modality: "image",
+            nodeId: "node-1",
+            sourceText: "image 1",
+          },
+        ],
+        model: "clip-image",
+      }),
+    ).rejects.toThrow(
+      "Visual embedding image provider must issue exactly one physical request per embedImages call",
+    );
+  });
+
+  it("restores original asset order when an image provider returns a partial reordered batch", async () => {
+    const adapter = createTestPlatformAdapter();
+    for (const index of [1, 2, 3]) {
+      await adapter.objectStorage.putObject({
+        body: new Uint8Array([index]),
+        contentType: "image/png",
+        key: `assets/partial-${index}.png`,
+        metadata: {},
+      });
+    }
+    const provider = createObjectStorageVisualEmbeddingProvider({
+      maxAssetBytes: 1,
+      maxBatchAssetCount: 3,
+      maxBatchBytes: 3,
+      objectStorage: adapter.objectStorage,
+      provider: {
+        embedImages: async () => ({
+          dense: [
+            [3, 0.5],
+            [1, 0.5],
+          ],
+          embeddedNodeIds: ["node-3", "node-1"],
+          metadata: { model: "clip-image@1", provider: "static-image" },
+          model: "clip-image@1",
+        }),
+      },
+    });
+
+    await expect(
+      provider.embedAssets({
+        assets: [1, 2, 3].map((index) => ({
+          assetRef: { objectKey: `assets/partial-${index}.png` },
+          documentAssetId: DOCUMENT_ASSET_ID,
+          metadata: {},
+          modality: "image",
+          nodeId: `node-${index}`,
+          sourceText: `image ${index}`,
+        })),
+        model: "clip-image",
+      }),
+    ).resolves.toMatchObject({
+      dense: [
+        [1, 0.5],
+        [3, 0.5],
+      ],
+      embeddedNodeIds: ["node-1", "node-3"],
+    });
+  });
+
+  it("reports attempted visual provider calls and persists nothing after a later batch fails", async () => {
+    const adapter = createTestPlatformAdapter();
+    for (const index of [1, 2]) {
+      await adapter.objectStorage.putObject({
+        body: new Uint8Array([index]),
+        contentType: "image/png",
+        key: `assets/failure-${index}.png`,
+        metadata: {},
+      });
+    }
+    const metrics: IngestionModelCallOperationalMetric[] = [];
+    const { created, repository } = createRecordingProjectionRepository();
+    let providerCalls = 0;
+    const builder = createVisualEmbeddingProjectionBuilder({
+      maxBatchSize: 2,
+      metrics: {
+        record: (metric) => {
+          metrics.push(metric);
+        },
+      },
+      projections: repository,
+      provider: createObjectStorageVisualEmbeddingProvider({
+        maxAssetBytes: 1,
+        maxBatchAssetCount: 1,
+        maxBatchBytes: 1,
         objectStorage: adapter.objectStorage,
         provider: {
           embedImages: async () => {
-            throw new Error("unused");
+            providerCalls += 1;
+            if (providerCalls === 2) throw new Error("second request failed");
+            return {
+              dense: [[0.2, 0.8]],
+              metadata: { model: "clip-image@1", provider: "static-image" },
+              model: "clip-image@1",
+            };
           },
         },
       }),
-    ).toThrow("Object-storage visual embedding maxAssetBytes must be at least 1");
+    });
+
+    await expect(
+      builder.build({
+        model: "clip-image",
+        nodes: [1, 2].map((index) =>
+          imageNode({
+            id: `018f0d60-7a49-7cc2-9c1b-5b36f18f8b2${index}`,
+            metadata: {
+              assetRef: { objectKey: `assets/failure-${index}.png` },
+              elementIds: [`figure-${index}`],
+              elementTypes: ["image"],
+            },
+          }),
+        ),
+        projectionVersion: 1,
+      }),
+    ).rejects.toThrow("second request failed");
+    expect(created).toEqual([]);
+    expect(metrics).toMatchObject([
+      { outcome: "failed", providerCalls: 2, stage: "visual-embedding" },
+    ]);
+  });
+
+  it("rejects per-call providers whose reported calls bypassed the admission hook", async () => {
+    const { created, repository } = createRecordingProjectionRepository();
+    const builder = createVisualEmbeddingProjectionBuilder({
+      maxBatchSize: 1,
+      projections: repository,
+      provider: {
+        embedAssets: async () => ({
+          dense: [[0.2, 0.8]],
+          metadata: {
+            model: "clip-image@1",
+            provider: "static-image",
+            providerCalls: 1,
+          },
+          model: "clip-image@1",
+        }),
+        providerCallAdmission: "per-provider-call",
+      },
+    });
+
+    await expect(
+      builder.build({ model: "clip-image", nodes: [imageNode()], projectionVersion: 1 }),
+    ).rejects.toThrow("Visual embedding provider reported providerCalls=1 after admitting 0 calls");
+    expect(created).toEqual([]);
+  });
+
+  it("rejects hidden calls from providers without per-call budget admission", async () => {
+    const { created, repository } = createRecordingProjectionRepository();
+    const builder = createVisualEmbeddingProjectionBuilder({
+      maxBatchSize: 1,
+      projections: repository,
+      provider: {
+        embedAssets: async () => ({
+          dense: [[0.2, 0.8]],
+          metadata: {
+            model: "clip-image@1",
+            provider: "static-image",
+            providerCalls: 2,
+          },
+          model: "clip-image@1",
+        }),
+      },
+    });
+
+    await expect(
+      builder.build({ model: "clip-image", nodes: [imageNode()], projectionVersion: 1 }),
+    ).rejects.toThrow(
+      "Visual embedding provider without per-call admission must issue exactly one provider call",
+    );
+    expect(created).toEqual([]);
   });
 
   it("returns an empty embedding batch when every asset is unreadable", async () => {
-    const adapter = createNodePlatformAdapter({ env: {} });
+    const adapter = createTestPlatformAdapter();
     await adapter.objectStorage.putObject({
       body: new Uint8Array([1, 2, 3, 4]),
       contentType: "image/png",
@@ -339,20 +926,173 @@ describe("index projection builders coverage", () => {
     await expect(withKind.embedAssets({ assets, model: "clip-image" })).resolves.toEqual({
       dense: [],
       embeddedNodeIds: [],
-      metadata: { model: "clip-image", provider: "bytes:image-bytes" },
+      metadata: { model: "clip-image", provider: "bytes:image-bytes", providerCalls: 0 },
       model: "clip-image",
     });
     await expect(withoutKind.embedAssets({ assets, model: "clip-image" })).resolves.toEqual({
       dense: [],
       embeddedNodeIds: [],
-      metadata: { model: "clip-image", provider: "image-bytes" },
+      metadata: { model: "clip-image", provider: "image-bytes", providerCalls: 0 },
       model: "clip-image",
     });
     expect(embedImagesCalls).toBe(0);
   });
 
+  it("cancels an oversized image stream without issuing HEAD or buffered GET requests", async () => {
+    const adapter = createTestPlatformAdapter();
+    let getObjectCalls = 0;
+    let headObjectCalls = 0;
+    let getObjectStreamCalls = 0;
+    let streamCancelCalls = 0;
+    let embedImagesCalls = 0;
+    const provider = createObjectStorageVisualEmbeddingProvider({
+      maxAssetBytes: 2,
+      objectStorage: {
+        ...adapter.objectStorage,
+        getObject: async () => {
+          getObjectCalls += 1;
+          throw new Error("buffered GET must not be used");
+        },
+        getObjectStream: async () => {
+          getObjectStreamCalls += 1;
+          return new ReadableStream<Uint8Array>({
+            cancel: () => {
+              streamCancelCalls += 1;
+            },
+            start: (controller) => {
+              controller.enqueue(new Uint8Array([1, 2]));
+              controller.enqueue(new Uint8Array([3]));
+            },
+          });
+        },
+        headObject: async () => {
+          headObjectCalls += 1;
+          throw new Error("HEAD must not be used");
+        },
+      },
+      provider: {
+        embedImages: async () => {
+          embedImagesCalls += 1;
+          throw new Error("should not be called");
+        },
+      },
+    });
+
+    await expect(
+      provider.embedAssets({
+        assets: [visualImageAsset("assets/oversized-stream.png", "node-oversized")],
+        model: "clip-image",
+      }),
+    ).resolves.toMatchObject({ dense: [], embeddedNodeIds: [] });
+
+    expect(headObjectCalls).toBe(0);
+    expect(getObjectCalls).toBe(0);
+    expect(getObjectStreamCalls).toBe(1);
+    expect(streamCancelCalls).toBe(1);
+    expect(embedImagesCalls).toBe(0);
+  });
+
+  it("reads valid image streams sequentially without one HEAD round trip per image", async () => {
+    const adapter = createTestPlatformAdapter();
+    const bodies = new Map([
+      ["assets/stream-1.png", new Uint8Array([1])],
+      ["assets/stream-2.png", new Uint8Array([2])],
+    ]);
+    const headKeys: string[] = [];
+    const getKeys: string[] = [];
+    const streamKeys: string[] = [];
+    const provider = createObjectStorageVisualEmbeddingProvider({
+      maxAssetBytes: 2,
+      objectStorage: {
+        ...adapter.objectStorage,
+        getObject: async (key) => {
+          getKeys.push(key);
+          throw new Error("buffered GET must not be used");
+        },
+        getObjectStream: async (key) => {
+          streamKeys.push(key);
+          const body = bodies.get(key);
+          if (!body) return null;
+          return new ReadableStream<Uint8Array>({
+            start: (controller) => {
+              controller.enqueue(body);
+              controller.close();
+            },
+          });
+        },
+        headObject: async (key) => {
+          headKeys.push(key);
+          throw new Error("HEAD must not be used");
+        },
+      },
+      provider: {
+        embedImages: async (input) => ({
+          dense: input.images.map((image) => [image.body[0] ?? 0, 0.5]),
+          metadata: { model: "clip-image@1", provider: "static-image" },
+          model: "clip-image@1",
+        }),
+      },
+    });
+
+    const result = await provider.embedAssets({
+      assets: [
+        visualImageAsset("assets/stream-1.png", "node-stream-1"),
+        visualImageAsset("assets/stream-2.png", "node-stream-2"),
+      ],
+      model: "clip-image",
+    });
+
+    expect(headKeys).toEqual([]);
+    expect(getKeys).toEqual([]);
+    expect(streamKeys).toEqual(["assets/stream-1.png", "assets/stream-2.png"]);
+    expect(result.embeddedNodeIds).toEqual(["node-stream-1", "node-stream-2"]);
+  });
+
+  it("skips missing and failed image streams without falling back to buffered GET", async () => {
+    const adapter = createTestPlatformAdapter();
+    let getObjectCalls = 0;
+    let getObjectStreamCalls = 0;
+    let embedImagesCalls = 0;
+    const provider = createObjectStorageVisualEmbeddingProvider({
+      maxAssetBytes: 2,
+      objectStorage: {
+        ...adapter.objectStorage,
+        getObject: async () => {
+          getObjectCalls += 1;
+          throw new Error("buffered GET must not be used");
+        },
+        getObjectStream: async (key) => {
+          getObjectStreamCalls += 1;
+          if (key.endsWith("missing.png")) return null;
+          return new ReadableStream<Uint8Array>({
+            start: (controller) => controller.error(new Error("stream unavailable")),
+          });
+        },
+      },
+      provider: {
+        embedImages: async () => {
+          embedImagesCalls += 1;
+          throw new Error("should not be called");
+        },
+      },
+    });
+
+    await expect(
+      provider.embedAssets({
+        assets: [
+          visualImageAsset("assets/missing.png", "node-missing"),
+          visualImageAsset("assets/failed.png", "node-failed"),
+        ],
+        model: "clip-image",
+      }),
+    ).resolves.toMatchObject({ dense: [], embeddedNodeIds: [] });
+    expect(getObjectCalls).toBe(0);
+    expect(getObjectStreamCalls).toBe(2);
+    expect(embedImagesCalls).toBe(0);
+  });
+
   it("reads image bytes with variant fallbacks and forwards tenantId", async () => {
-    const adapter = createNodePlatformAdapter({ env: {} });
+    const adapter = createTestPlatformAdapter();
     await adapter.objectStorage.putObject({
       body: new Uint8Array([1, 2]),
       contentType: "application/octet-stream",

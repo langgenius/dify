@@ -61,6 +61,8 @@ export const KNOWLEDGE_FS_INTEGRATION_EXACT_PATHS = Object.freeze([
   "docker/docker-compose.yaml",
   "docker/envs/core-services/api.env.example",
   "docker/envs/core-services/knowledge-fs.env.example",
+  "docker/envs/core-services/knowledge-fs-unstructured-service.defaults",
+  "docker/envs/core-services/knowledge-fs-unstructured.env.example",
   "docker/generate_docker_compose",
 ]);
 

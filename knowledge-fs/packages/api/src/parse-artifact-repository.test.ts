@@ -35,6 +35,110 @@ const artifact = ParseArtifactSchema.parse({
 }) satisfies ParseArtifact;
 
 describe("parse artifact repositories", () => {
+  it("keeps raw parser checkpoints separate from same-version canonical artifacts", async () => {
+    const memory = createInMemoryParseArtifactRepository({ maxArtifacts: 2 });
+    const fake = createFakeParseArtifactExecutor();
+    const database = createDatabaseParseArtifactRepository({
+      database: createSchemaDatabaseAdapter({
+        executor: fake.executor,
+        kind: "postgres",
+        transaction: fake.transaction,
+      }),
+    });
+    const policyFingerprint = "a".repeat(64);
+    const raw = ParseArtifactSchema.parse({
+      ...artifact,
+      elements: Array.from({ length: 256 }, (_, index) => ({
+        id: `raw-element-${index + 1}`,
+        metadata: { sourceIndex: index },
+        sectionPath: ["Large parser response"],
+        text: `Raw parser element ${index + 1} ${"payload ".repeat(32)}`,
+        type: "paragraph" as const,
+      })),
+      metadata: { ...artifact.metadata, parserVersion: "native-markdown@1" },
+    });
+
+    for (const repository of [memory, database]) {
+      await expect(
+        repository.checkpoint({
+          artifact: raw,
+          policyFingerprint,
+        }),
+      ).resolves.toEqual({ artifact: raw, disposition: "created" });
+      await expect(
+        repository.getByDocumentVersion({
+          documentAssetId: raw.documentAssetId,
+          version: raw.version,
+        }),
+      ).resolves.toBeNull();
+      await expect(repository.getById({ id: raw.id })).resolves.toBeNull();
+      await expect(
+        repository.getCheckpoint({
+          documentAssetId: raw.documentAssetId,
+          version: raw.version,
+        }),
+      ).resolves.toEqual({
+        artifact: raw,
+        policyFingerprint,
+      });
+
+      const canonical = ParseArtifactSchema.parse({
+        ...raw,
+        elements: [
+          {
+            ...raw.elements[0],
+            metadata: { assetRef: { objectKey: "objects/final.png" } },
+          },
+        ],
+      });
+      await expect(repository.materialize(canonical)).resolves.toEqual({
+        artifact: canonical,
+        disposition: "created",
+      });
+      await expect(
+        repository.getByDocumentVersion({
+          documentAssetId: canonical.documentAssetId,
+          version: canonical.version,
+        }),
+      ).resolves.toEqual(canonical);
+      await expect(
+        repository.getCheckpoint({
+          documentAssetId: canonical.documentAssetId,
+          version: canonical.version,
+        }),
+      ).resolves.toEqual({
+        artifact: raw,
+        policyFingerprint,
+      });
+      await expect(
+        repository.deleteCheckpoint({
+          documentAssetId: canonical.documentAssetId,
+          expectedPolicyFingerprint: "b".repeat(64),
+          version: canonical.version,
+        }),
+      ).resolves.toBe(0);
+      await expect(
+        repository.deleteCheckpoint({
+          documentAssetId: canonical.documentAssetId,
+          expectedPolicyFingerprint: policyFingerprint,
+          version: canonical.version,
+        }),
+      ).resolves.toBe(1);
+      await expect(
+        repository.getCheckpoint({
+          documentAssetId: canonical.documentAssetId,
+          version: canonical.version,
+        }),
+      ).resolves.toBeNull();
+      await expect(
+        repository.getByDocumentVersion({
+          documentAssetId: canonical.documentAssetId,
+          version: canonical.version,
+        }),
+      ).resolves.toEqual(canonical);
+    }
+  });
+
   it("atomically reports created, unchanged, and replaced materialization", async () => {
     const memory = createInMemoryParseArtifactRepository({ maxArtifacts: 2 });
     const fake = createFakeParseArtifactExecutor();
@@ -293,7 +397,10 @@ describe("parse artifact repositories", () => {
         tableName: "parse_artifacts",
       }),
     );
-    expect(fake.calls.at(-1)).toEqual(
+    const pruneDelete = fake.calls.find(
+      (call) => call.operation === "delete" && call.tableName === "parse_artifacts",
+    );
+    expect(pruneDelete).toEqual(
       expect.objectContaining({
         maxRows: 2,
         operation: "delete",
@@ -301,7 +408,18 @@ describe("parse artifact repositories", () => {
         tableName: "parse_artifacts",
       }),
     );
-    expect(fake.calls.at(-1)?.sql).not.toContain(artifact.documentAssetId);
+    expect(pruneDelete?.sql).not.toContain(artifact.documentAssetId);
+    expect(fake.calls).toContainEqual(
+      expect.objectContaining({
+        operation: "delete",
+        tableName: "parse_artifact_checkpoints",
+      }),
+    );
+    const checkpointPrune = fake.calls.find(
+      (call) => call.operation === "delete" && call.tableName === "parse_artifact_checkpoints",
+    );
+    expect(checkpointPrune?.sql).toContain('FROM "parse_artifacts"');
+    expect(checkpointPrune?.sql).toContain("UNION SELECT");
   });
 
   it("fails closed when a locked lookup resolves duplicate or mismatched artifacts", async () => {
@@ -333,6 +451,89 @@ describe("parse artifact repositories", () => {
         },
       ]).materialize(artifact),
     ).rejects.toThrow("materialization resolved a mismatched persisted row");
+  });
+
+  it("keeps canonical retention independent from newer raw checkpoints in memory and database", async () => {
+    const memory = createInMemoryParseArtifactRepository({ maxArtifacts: 4 });
+    const fake = createFakeParseArtifactExecutor();
+    const database = createDatabaseParseArtifactRepository({
+      database: createSchemaDatabaseAdapter({
+        executor: fake.executor,
+        kind: "postgres",
+        transaction: fake.transaction,
+      }),
+    });
+    const canonicalV1 = ParseArtifactSchema.parse({
+      ...artifact,
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d11",
+      version: 1,
+    });
+    const checkpointV2 = ParseArtifactSchema.parse({
+      ...artifact,
+      artifactHash: "2".repeat(64),
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d12",
+      version: 2,
+    });
+    const canonicalV3 = ParseArtifactSchema.parse({
+      ...artifact,
+      artifactHash: "3".repeat(64),
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d13",
+      version: 3,
+    });
+    const checkpointV4 = ParseArtifactSchema.parse({
+      ...artifact,
+      artifactHash: "4".repeat(64),
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d14",
+      version: 4,
+    });
+
+    for (const repository of [memory, database]) {
+      await repository.materialize(canonicalV1);
+      await repository.checkpoint({
+        artifact: checkpointV2,
+        policyFingerprint: "2".repeat(64),
+      });
+      await repository.materialize(canonicalV3);
+      await repository.checkpoint({
+        artifact: checkpointV4,
+        policyFingerprint: "4".repeat(64),
+      });
+
+      await expect(
+        repository.pruneDocumentVersions({
+          documentAssetId: artifact.documentAssetId,
+          keepVersions: 1,
+          maxArtifacts: 4,
+        }),
+      ).resolves.toBe(1);
+      await expect(
+        repository.getByDocumentVersion({
+          documentAssetId: artifact.documentAssetId,
+          version: canonicalV1.version,
+        }),
+      ).resolves.toBeNull();
+      await expect(
+        repository.getByDocumentVersion({
+          documentAssetId: artifact.documentAssetId,
+          version: canonicalV3.version,
+        }),
+      ).resolves.toMatchObject({ artifactHash: canonicalV3.artifactHash });
+      await expect(
+        repository.getCheckpoint({
+          documentAssetId: artifact.documentAssetId,
+          version: checkpointV2.version,
+        }),
+      ).resolves.toBeNull();
+      await expect(
+        repository.getCheckpoint({
+          documentAssetId: artifact.documentAssetId,
+          version: checkpointV4.version,
+        }),
+      ).resolves.toMatchObject({
+        artifact: { artifactHash: checkpointV4.artifactHash },
+        policyFingerprint: "4".repeat(64),
+      });
+    }
   });
 
   it("guards memory prune overflow and database document deletes", async () => {
@@ -377,7 +578,10 @@ describe("parse artifact repositories", () => {
         maxArtifacts: 3,
       }),
     ).resolves.toBe(0);
-    expect(fake.calls.at(-1)).toEqual(
+    const documentDelete = fake.calls.find(
+      (call) => call.operation === "delete" && call.tableName === "parse_artifacts",
+    );
+    expect(documentDelete).toEqual(
       expect.objectContaining({
         maxRows: 3,
         operation: "delete",
@@ -385,7 +589,35 @@ describe("parse artifact repositories", () => {
         tableName: "parse_artifacts",
       }),
     );
-    expect(fake.calls.at(-1)?.sql).not.toContain(artifact.documentAssetId);
+    expect(documentDelete?.sql).not.toContain(artifact.documentAssetId);
+  });
+
+  it("surfaces raw checkpoint prune failures so retention can retry", async () => {
+    let canonicalPruneCompleted = false;
+    const database = createDatabaseParseArtifactRepository({
+      database: createSchemaDatabaseAdapter({
+        executor: async (input) => {
+          if (input.operation === "delete" && input.tableName === "parse_artifacts") {
+            canonicalPruneCompleted = true;
+            return { rows: [], rowsAffected: 0 };
+          }
+          if (input.operation === "delete" && input.tableName === "parse_artifact_checkpoints") {
+            throw new Error("raw checkpoint prune unavailable");
+          }
+          return { rows: [], rowsAffected: 0 };
+        },
+        kind: "postgres",
+      }),
+    });
+
+    await expect(
+      database.pruneDocumentVersions({
+        documentAssetId: artifact.documentAssetId,
+        keepVersions: 1,
+        maxArtifacts: 3,
+      }),
+    ).rejects.toThrow("raw checkpoint prune unavailable");
+    expect(canonicalPruneCompleted).toBe(true);
   });
 });
 
@@ -394,11 +626,27 @@ function createFakeParseArtifactExecutor({
 }: { readonly failUpdates?: boolean } = {}) {
   const calls: DatabaseExecuteInput[] = [];
   const rows = new Map<string, DatabaseRow>();
+  const checkpointRows = new Map<string, DatabaseRow>();
   const executor = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
     calls.push({
       ...input,
       params: [...input.params],
     });
+
+    if (input.operation === "insert" && input.tableName === "parse_artifact_checkpoints") {
+      const [documentAssetId, version, policyFingerprint, artifact, createdAt, updatedAt] =
+        input.params;
+      const row = {
+        artifact: typeof artifact === "string" ? JSON.parse(artifact) : artifact,
+        created_at: String(createdAt),
+        document_asset_id: String(documentAssetId),
+        policy_fingerprint: String(policyFingerprint),
+        updated_at: String(updatedAt),
+        version: Number(version),
+      } satisfies DatabaseRow;
+      checkpointRows.set(`${row.document_asset_id}:${row.version}`, row);
+      return { rows: [], rowsAffected: 1 };
+    }
 
     if (input.operation === "insert") {
       const [
@@ -442,12 +690,30 @@ function createFakeParseArtifactExecutor({
 
     if (input.operation === "select") {
       const [first, version] = input.params;
+      if (input.tableName === "parse_artifact_checkpoints") {
+        const row = checkpointRows.get(`${String(first)}:${Number(version)}`);
+        return { rows: row ? [{ ...row }] : [], rowsAffected: row ? 1 : 0 };
+      }
       const row =
         input.params.length === 1
           ? Array.from(rows.values()).find((candidate) => candidate.id === String(first))
           : rows.get(`${String(first)}:${Number(version)}`);
 
       return { rows: row ? [{ ...row }] : [], rowsAffected: row ? 1 : 0 };
+    }
+
+    if (input.operation === "update" && input.tableName === "parse_artifact_checkpoints") {
+      const [policyFingerprint, artifact, updatedAt, documentAssetId, version] = input.params;
+      const key = `${String(documentAssetId)}:${Number(version)}`;
+      const row = checkpointRows.get(key);
+      if (!row) return { rows: [], rowsAffected: 0 };
+      checkpointRows.set(key, {
+        ...row,
+        artifact: typeof artifact === "string" ? JSON.parse(artifact) : artifact,
+        policy_fingerprint: String(policyFingerprint),
+        updated_at: String(updatedAt),
+      });
+      return { rows: [], rowsAffected: 1 };
     }
 
     if (input.operation === "update") {
@@ -495,6 +761,55 @@ function createFakeParseArtifactExecutor({
       });
 
       return { rows: [], rowsAffected: 1 };
+    }
+
+    if (input.operation === "delete" && input.tableName === "parse_artifact_checkpoints") {
+      const [documentAssetId, version, policyFingerprint] = input.params;
+      if (input.params.length === 3) {
+        const key = `${String(documentAssetId)}:${Number(version)}`;
+        const row = checkpointRows.get(key);
+        if (!row || row.policy_fingerprint !== String(policyFingerprint)) {
+          return { rows: [], rowsAffected: 0 };
+        }
+        checkpointRows.delete(key);
+        return { rows: [], rowsAffected: 1 };
+      }
+
+      let matchingKeys = [...checkpointRows.entries()]
+        .filter(([, row]) => row.document_asset_id === String(documentAssetId))
+        .map(([key]) => key);
+      if (input.params.length === 2) {
+        const retainedVersions = new Set(
+          [
+            ...new Set([
+              ...[...rows.values()]
+                .filter((row) => row.document_asset_id === String(documentAssetId))
+                .map((row) => Number(row.version)),
+              ...matchingKeys.map((key) => Number(checkpointRows.get(key)?.version)),
+            ]),
+          ]
+            .sort((left, right) => right - left)
+            .slice(0, Number(version)),
+        );
+        matchingKeys = matchingKeys.filter(
+          (key) => !retainedVersions.has(Number(checkpointRows.get(key)?.version)),
+        );
+      }
+      for (const key of matchingKeys) checkpointRows.delete(key);
+      return { rows: [], rowsAffected: matchingKeys.length };
+    }
+
+    if (input.operation === "delete" && input.tableName === "parse_artifacts") {
+      const [documentAssetId, keepVersions] = input.params;
+      const matching = [...rows.entries()]
+        .filter(([, row]) => row.document_asset_id === String(documentAssetId))
+        .sort(([, left], [, right]) => Number(right.version) - Number(left.version));
+      const keysToDelete =
+        input.params.length === 2
+          ? matching.slice(Number(keepVersions)).map(([key]) => key)
+          : matching.map(([key]) => key);
+      for (const key of keysToDelete) rows.delete(key);
+      return { rows: [], rowsAffected: keysToDelete.length };
     }
 
     return { rows: [], rowsAffected: 0 };

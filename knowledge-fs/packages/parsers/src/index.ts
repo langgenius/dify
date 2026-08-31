@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import { createHash } from "node:crypto";
 
 import { parse as parseCsv } from "csv-parse/sync";
 import { XMLParser } from "fast-xml-parser";
@@ -15,7 +16,19 @@ import {
   ParseElementSchema,
 } from "@knowledge/core";
 
+import { createUnstructuredRequestCoordinator } from "./unstructured-request-coordinator";
+import {
+  type UnstructuredWorkloadClassification,
+  classifyUnstructuredWorkload,
+} from "./unstructured-workload-policy";
+
+export {
+  classifyKnownHeavyUnstructuredWorkload,
+  classifyUnstructuredWorkload,
+} from "./unstructured-workload-policy";
+
 export type ParserKind = "native-html" | "native-markdown" | "native-structured" | "unstructured";
+export type ParserWorkloadKind = "heavy" | "rejected" | "standard";
 
 export interface ParseDocumentInput {
   readonly body: Uint8Array;
@@ -40,17 +53,48 @@ export interface ParserRouteHints {
 
 export interface ParserAdapter {
   readonly kind: ParserKind;
+  /** Effective process-local heavy-lane width, when the parser owns such a lane. */
+  readonly heavyWorkloadMaxConcurrency?: number;
   parse(input: ParseDocumentInput): Promise<ParseArtifact>;
+  /**
+   * Classifies already-loaded input for admission without starting parser/provider work. Routers
+   * must forward this to the selected parser so callers can avoid holding a broad slot while a
+   * heavy request waits on its narrow lane.
+   */
+  readonly workloadKind?: (input: ParseDocumentInput) => ParserWorkloadKind;
+  /**
+   * Minimum durable execution lease required before entering this parser's admission queue.
+   * Native parsers omit it; remote parsers derive it from their effective transport deadline.
+   */
+  readonly leaseMs?: (input: ParseDocumentInput) => number | undefined;
+  /**
+   * Whether this request is expensive enough to persist its complete raw response for retry.
+   *
+   * This is deliberately independent from `policyFingerprint`: native parsers still expose a
+   * stable identity for request coordination, but their cheap local output must not be duplicated
+   * into the durable raw-checkpoint table.
+   */
+  readonly checkpointEligible?: (input: ParseDocumentInput) => boolean;
+  /**
+   * Stable parser-policy identity for checkpoints and in-flight request coalescing.
+   *
+   * The fingerprint describes configuration and routing, not caller cancellation or document
+   * bytes. `documentAssetId` + `version` identify the immutable document body separately.
+   */
+  readonly policyFingerprint?: (input: ParseDocumentInput) => string | undefined;
 }
 
 export type ProviderErrorCode =
   | "provider_input"
   | "provider_rate_limited"
   | "provider_request_failed"
-  | "provider_response_invalid";
+  | "provider_response_invalid"
+  | "provider_timeout";
 
 export class ProviderError extends Error {
   readonly code: ProviderErrorCode;
+  /** The provider may still be processing after the local request stopped observing it. */
+  readonly requestOutcomeAmbiguous: boolean;
   readonly retryable: boolean;
   readonly status?: number;
 
@@ -59,11 +103,13 @@ export class ProviderError extends Error {
     {
       cause,
       code,
+      requestOutcomeAmbiguous = false,
       retryable = false,
       status,
     }: {
       readonly cause?: unknown;
       readonly code: ProviderErrorCode;
+      readonly requestOutcomeAmbiguous?: boolean;
       readonly retryable?: boolean;
       readonly status?: number;
     },
@@ -71,6 +117,7 @@ export class ProviderError extends Error {
     super(message, cause === undefined ? undefined : { cause });
     this.name = "ProviderError";
     this.code = code;
+    this.requestOutcomeAmbiguous = requestOutcomeAmbiguous;
     this.retryable = retryable;
     if (status !== undefined) {
       this.status = status;
@@ -107,6 +154,7 @@ export class ProviderRequestError extends ProviderError {
     super(message, {
       ...options,
       code: "provider_request_failed",
+      requestOutcomeAmbiguous: options.status === undefined,
       retryable:
         options.retryable ??
         (options.status !== undefined && isRetryableProviderStatus(options.status)),
@@ -125,6 +173,18 @@ export class ProviderResponseError extends ProviderError {
   }
 }
 
+export class ProviderTimeoutError extends ProviderError {
+  constructor(message: string, options: { readonly cause?: unknown } = {}) {
+    super(message, {
+      ...options,
+      code: "provider_timeout",
+      requestOutcomeAmbiguous: true,
+      retryable: false,
+    });
+    this.name = "ProviderTimeoutError";
+  }
+}
+
 export interface NativeParserOptions {
   readonly generateId?: () => string;
   readonly maxElements?: number;
@@ -139,8 +199,17 @@ export interface UnstructuredParserClientOptions extends NativeParserOptions {
   readonly endpoint: string;
   readonly fetch?: typeof fetch;
   readonly maxResponseBytes?: number;
+  /** Process-wide admission limit shared by every Unstructured request. */
   readonly maxConcurrency?: number;
   readonly maxRetries?: number;
+  /** Nested admission limit for PDFs and structurally/byte-heavy remote documents. */
+  readonly heavyMaxConcurrency?: number;
+  /** Heavy-document transport deadline; ordinary documents retain `requestTimeoutMs`. */
+  readonly heavyRequestTimeoutMs?: number;
+  /** @deprecated Compatibility alias for `heavyMaxConcurrency`. */
+  readonly pdfMaxConcurrency?: number;
+  /** @deprecated Compatibility alias for `heavyRequestTimeoutMs`. */
+  readonly pdfRequestTimeoutMs?: number;
   readonly requestTimeoutMs?: number;
   readonly retryDelayMs?: number;
   readonly sleep?: (ms: number) => Promise<void>;
@@ -192,7 +261,11 @@ const canonicalTextEdgeWhitespace = /^\p{White_Space}+|\p{White_Space}+$/gu;
 const defaultMaxResponseBytes = 32 * 1024 * 1024;
 const defaultMaxConcurrency = 2;
 const defaultMaxRetries = 0;
-const defaultRequestTimeoutMs = 120_000;
+const defaultRequestTimeoutMs = 600_000;
+const maxParserLeaseGraceMs = 300_000;
+// The synchronous provider endpoint may legitimately need more than 30 minutes for a bounded
+// heavy document. Keep the ordinary default at ten minutes, but allow a deployment up to one hour
+// for a classified operation without disabling the deadline.
 const maxRequestTimeoutMs = 3_600_000;
 const defaultMaxRows = 20_000;
 const defaultRetryDelayMs = 100;
@@ -226,9 +299,37 @@ const UnstructuredElementSchema = z.object({
 });
 const UnstructuredResponseSchema = z.array(UnstructuredElementSchema);
 
+function nativeParserPolicyFingerprint(
+  input: ParseDocumentInput,
+  kind: Exclude<ParserKind, "unstructured">,
+  parserVersion: string,
+  options: NativeParserOptions,
+): string {
+  return parserPolicyFingerprintHash(
+    JSON.stringify({
+      filename: input.filename,
+      kind,
+      maxElements: options.maxElements ?? defaultMaxElements,
+      mimeType: normalizedMimeType(input.mimeType),
+      parserVersion,
+    }),
+  );
+}
+
+function parserPolicyFingerprintHash(context: string): string {
+  return createHash("sha256").update(context).digest("hex");
+}
+
 export function createNativeMarkdownParser(options: NativeParserOptions = {}): ParserAdapter {
+  const policyFingerprint = (input: ParseDocumentInput): string => {
+    const parserVersion =
+      options.parserVersion ?? (isMdxInput(input) ? "native-mdx@2" : "native-markdown@2");
+    return nativeParserPolicyFingerprint(input, "native-markdown", parserVersion, options);
+  };
+
   return {
     kind: "native-markdown",
+    policyFingerprint,
     parse: async (input) => {
       const isMdx = isMdxInput(input);
       const parserVersion = options.parserVersion ?? (isMdx ? "native-mdx@2" : "native-markdown@2");
@@ -249,10 +350,13 @@ export function createNativeMarkdownParser(options: NativeParserOptions = {}): P
 }
 
 export function createNativeHtmlParser(options: NativeParserOptions = {}): ParserAdapter {
+  const parserVersion = options.parserVersion ?? "native-html@3";
+
   return {
     kind: "native-html",
+    policyFingerprint: (input) =>
+      nativeParserPolicyFingerprint(input, "native-html", parserVersion, options),
     parse: async (input) => {
-      const parserVersion = options.parserVersion ?? "native-html@3";
       assertInputBounds(input.body, options.maxInputBytes ?? defaultMaxInputBytes);
       const text = decodeUtf8(input.body);
       const document = parseDocument(text, {
@@ -278,10 +382,18 @@ export function createNativeHtmlParser(options: NativeParserOptions = {}): Parse
 export function createNativeStructuredDataParser(
   options: StructuredDataParserOptions = {},
 ): ParserAdapter {
+  const parserVersion = options.parserVersion ?? "native-structured@2";
+
   return {
     kind: "native-structured",
+    policyFingerprint: (input) =>
+      parserPolicyFingerprintHash(
+        JSON.stringify({
+          base: nativeParserPolicyFingerprint(input, "native-structured", parserVersion, options),
+          maxRows: options.maxRows ?? defaultMaxRows,
+        }),
+      ),
     parse: async (input) => {
-      const parserVersion = options.parserVersion ?? "native-structured@2";
       assertInputBounds(input.body, options.maxInputBytes ?? defaultMaxInputBytes);
       const text = decodeUtf8(input.body);
       const format = structuredDataFormat(input);
@@ -308,121 +420,226 @@ export function createUnstructuredParserClient({
   defaultLanguage,
   endpoint,
   fetch: fetchImpl = fetch,
+  heavyMaxConcurrency,
+  heavyRequestTimeoutMs,
   maxConcurrency = defaultMaxConcurrency,
   maxResponseBytes = defaultMaxResponseBytes,
   maxRetries = defaultMaxRetries,
+  pdfMaxConcurrency,
   requestTimeoutMs = defaultRequestTimeoutMs,
+  pdfRequestTimeoutMs,
   retryDelayMs = defaultRetryDelayMs,
   sleep = sleepMs,
   ...options
 }: UnstructuredParserClientOptions): ParserAdapter {
+  if (heavyMaxConcurrency !== undefined) {
+    validateUnstructuredConcurrency(heavyMaxConcurrency, "heavyMaxConcurrency");
+  }
+  if (pdfMaxConcurrency !== undefined) {
+    validateUnstructuredConcurrency(pdfMaxConcurrency, "pdfMaxConcurrency");
+  }
+  if (heavyRequestTimeoutMs !== undefined) {
+    validateUnstructuredRequestTimeout(heavyRequestTimeoutMs, "heavyRequestTimeoutMs");
+  }
+  if (pdfRequestTimeoutMs !== undefined) {
+    validateUnstructuredRequestTimeout(pdfRequestTimeoutMs, "pdfRequestTimeoutMs");
+  }
+  const effectiveHeavyMaxConcurrency = heavyMaxConcurrency ?? pdfMaxConcurrency ?? maxConcurrency;
+  const effectiveHeavyRequestTimeoutMs =
+    heavyRequestTimeoutMs ?? pdfRequestTimeoutMs ?? requestTimeoutMs;
   validateRetryOptions({ maxRetries, retryDelayMs });
-  validateUnstructuredResourceOptions({ maxConcurrency, requestTimeoutMs });
+  validateUnstructuredResourceOptions({
+    heavyMaxConcurrency: effectiveHeavyMaxConcurrency,
+    heavyRequestTimeoutMs: effectiveHeavyRequestTimeoutMs,
+    maxConcurrency,
+    requestTimeoutMs,
+  });
   const requestGate = createAbortAwareConcurrencyGate(maxConcurrency);
+  const heavyRequestGate = createAbortAwareConcurrencyGate(effectiveHeavyMaxConcurrency);
+  const requestCoordinator = createUnstructuredRequestCoordinator();
+  const parserVersion = options.parserVersion ?? "unstructured@10";
+  const maxInputBytes = options.maxInputBytes ?? defaultMaxInputBytes;
+  const workloadCache = new WeakMap<
+    Uint8Array,
+    Readonly<{
+      classification: UnstructuredWorkloadClassification;
+      filename: string;
+      mimeType: string;
+    }>
+  >();
+  const resolveWorkload = (input: ParseDocumentInput): UnstructuredWorkloadClassification => {
+    const filename = input.filename.trim().toLowerCase();
+    const mimeType = normalizedMimeType(input.mimeType);
+    const cached = workloadCache.get(input.body);
+    if (cached?.filename === filename && cached.mimeType === mimeType) {
+      return cached.classification;
+    }
+    const classification = classifyUnstructuredWorkload(input);
+    workloadCache.set(input.body, { classification, filename, mimeType });
+    return classification;
+  };
+  const resolveRequestPolicy = (input: ParseDocumentInput): UnstructuredRequestPolicy => ({
+    partitionStrategy: unstructuredPartitionStrategy(input),
+    providerImageBlockTypes: unstructuredProviderImageBlockTypes(input),
+    providerLanguage: unstructuredLanguage(input.parserHints?.language ?? defaultLanguage),
+  });
+  const policyFingerprint = (input: ParseDocumentInput): string =>
+    unstructuredRequestFingerprint(input, resolveRequestPolicy(input), {
+      maxElements: options.maxElements ?? defaultMaxElements,
+      parserVersion,
+    });
 
   return {
+    checkpointEligible: () => true,
+    heavyWorkloadMaxConcurrency: effectiveHeavyMaxConcurrency,
     kind: "unstructured",
-    parse: async (input) =>
-      requestGate.run(async () => {
-        const deadline = createUnstructuredRequestDeadline(input.signal, requestTimeoutMs);
-        try {
-          const parserVersion = options.parserVersion ?? "unstructured@10";
-          const partitionStrategy = unstructuredPartitionStrategy(input);
-          const providerImageBlockTypes = unstructuredProviderImageBlockTypes(input);
-          const providerLanguage = unstructuredLanguage(
-            input.parserHints?.language ?? defaultLanguage,
-          );
-          assertInputBounds(input.body, options.maxInputBytes ?? defaultMaxInputBytes);
-          const response = await fetchWithRetries({
-            buildRequest: () => {
-              const form = new FormData();
-              const fileBody = input.body.buffer.slice(
-                input.body.byteOffset,
-                input.body.byteOffset + input.body.byteLength,
-              ) as ArrayBuffer;
-              form.set("files", new File([fileBody], input.filename, { type: input.mimeType }));
-              form.set("coordinates", "true");
-              form.set("strategy", partitionStrategy);
-              if (providerLanguage) form.set("languages", providerLanguage);
-              if (providerImageBlockTypes.length > 0) {
-                for (const blockType of providerImageBlockTypes) {
-                  form.append("extract_image_block_types", blockType);
-                }
-                form.set("extract_image_block_to_payload", "true");
-              }
+    workloadKind: (input) => resolveWorkload(input).kind,
+    leaseMs: (input) => {
+      const timeoutMs =
+        resolveWorkload(input).kind === "heavy" ? effectiveHeavyRequestTimeoutMs : requestTimeoutMs;
+      return timeoutMs + Math.min(maxParserLeaseGraceMs, timeoutMs);
+    },
+    policyFingerprint,
+    parse: async (input) => {
+      const { partitionStrategy, providerImageBlockTypes, providerLanguage } =
+        resolveRequestPolicy(input);
+      assertInputBounds(input.body, maxInputBytes);
+      const workload = resolveWorkload(input);
+      if (workload.kind === "rejected") {
+        throw new ProviderInputError(
+          "Unstructured parser rejected invalid or unsafe archive metadata",
+        );
+      }
+      const requestPolicy = {
+        partitionStrategy,
+        providerImageBlockTypes,
+        providerLanguage,
+      } as const;
+      const requestIsHeavy = workload.kind === "heavy";
+      const effectiveRequestTimeoutMs = requestIsHeavy
+        ? effectiveHeavyRequestTimeoutMs
+        : requestTimeoutMs;
 
-              return new Request(unstructuredPartitionEndpoint(endpoint), {
-                body: form,
-                method: "POST",
-                ...(apiKey ? { headers: { authorization: `Bearer ${apiKey}` } } : {}),
+      return await requestCoordinator.run({
+        callerSignal: input.signal,
+        identity: {
+          documentAssetId: input.documentAssetId,
+          parserFingerprint: policyFingerprint(input),
+          version: input.version,
+        },
+        // The coordinator deliberately owns the gate admission. A caller cancellation must not
+        // release the gate while an identical transport is still active, because doing so lets a
+        // durable retry overlap a provider request that survived the client disconnect.
+        request: async ({ markTransportStarted, signal: admissionSignal }) => {
+          const runTransport = async (): Promise<ParseArtifact> => {
+            markTransportStarted();
+            // This deadline belongs to the transport, not to any one caller. The coordinator waits
+            // for it to settle before it reports a caller abort.
+            const deadline = createUnstructuredRequestDeadline(effectiveRequestTimeoutMs);
+            try {
+              const response = await fetchWithRetries({
+                buildRequest: () => {
+                  const form = new FormData();
+                  // Pass the admitted view directly. Slicing its backing buffer first creates an
+                  // avoidable whole-file copy before FormData builds the multipart request.
+                  const fileBody: Uint8Array<ArrayBuffer> =
+                    input.body.buffer instanceof ArrayBuffer
+                      ? new Uint8Array(
+                          input.body.buffer,
+                          input.body.byteOffset,
+                          input.body.byteLength,
+                        )
+                      : new Uint8Array(Uint8Array.from(input.body));
+                  form.set("files", new File([fileBody], input.filename, { type: input.mimeType }));
+                  form.set("coordinates", "true");
+                  form.set("strategy", partitionStrategy);
+                  if (providerLanguage) form.set("languages", providerLanguage);
+                  if (providerImageBlockTypes.length > 0) {
+                    for (const blockType of providerImageBlockTypes) {
+                      form.append("extract_image_block_types", blockType);
+                    }
+                    form.set("extract_image_block_to_payload", "true");
+                  }
+
+                  return new Request(unstructuredPartitionEndpoint(endpoint), {
+                    body: form,
+                    method: "POST",
+                    ...(apiKey ? { headers: { authorization: `Bearer ${apiKey}` } } : {}),
+                    signal: deadline.signal,
+                  });
+                },
+                fetchImpl,
+                maxRetries,
+                retryDelayMs,
+                sleep,
                 signal: deadline.signal,
               });
-            },
-            fetchImpl,
-            maxRetries,
-            retryDelayMs,
-            sleep,
-            signal: deadline.signal,
-          });
 
-          if (!response.ok) {
-            throw providerRequestError("Unstructured parser", response.status);
-          }
+              if (!response.ok) {
+                throw providerRequestError("Unstructured parser", response.status);
+              }
 
-          const responseText = await boundedResponseText(response, maxResponseBytes);
-          let payload: unknown;
+              const responseText = await boundedResponseText(response, maxResponseBytes);
+              let payload: unknown;
 
-          try {
-            payload = JSON.parse(responseText);
-          } catch (error) {
-            throw new ProviderResponseError("Unstructured parser returned an invalid response", {
-              cause: error,
-            });
-          }
+              try {
+                payload = JSON.parse(responseText);
+              } catch (error) {
+                throw new ProviderResponseError(
+                  "Unstructured parser returned an invalid response",
+                  { cause: error },
+                );
+              }
 
-          const parsed = UnstructuredResponseSchema.safeParse(payload);
+              const parsed = UnstructuredResponseSchema.safeParse(payload);
 
-          if (!parsed.success) {
-            throw new ProviderResponseError("Unstructured parser returned an invalid response");
-          }
+              if (!parsed.success) {
+                throw new ProviderResponseError("Unstructured parser returned an invalid response");
+              }
 
-          const providerElements = unstructuredElementsToElements(
-            normalizeUnstructuredLayout(parsed.data),
-          );
-          const elements = appendArchiveMediaFallbackElements(input, providerElements);
+              const providerElements = unstructuredElementsToElements(
+                normalizeUnstructuredLayout(parsed.data),
+              );
+              const elements = appendArchiveMediaFallbackElements(input, providerElements);
 
-          const artifact = await createParseArtifact({
-            artifactHashContext: unstructuredArtifactHashContext(input, {
-              partitionStrategy,
-              providerImageBlockTypes,
-              providerLanguage,
-            }),
-            elements,
-            input,
-            kind: "unstructured",
-            options,
-            parserVersion,
-          });
-          deadline.throwIfExpired();
-          return artifact;
-        } catch (error) {
-          if (deadline.expired()) {
-            throw new ProviderRequestError(
-              `Unstructured parser request timed out after requestTimeoutMs=${requestTimeoutMs}`,
-              // A client-side abort does not prove that the synchronous Unstructured worker
-              // stopped processing. Retrying automatically can overlap the orphaned server-side
-              // job and multiply its CPU and memory pressure.
-              { cause: error, retryable: false },
-            );
-          }
-          if (input.signal?.aborted) {
-            throw abortSignalReason(input.signal);
-          }
-          throw error;
-        } finally {
-          deadline.dispose();
-        }
-      }, input.signal),
+              const artifact = await createParseArtifact({
+                artifactHashContext: unstructuredArtifactHashContext(input, requestPolicy),
+                elements,
+                input,
+                kind: "unstructured",
+                options,
+                parserVersion,
+              });
+              deadline.throwIfExpired();
+              return artifact;
+            } catch (error) {
+              if (deadline.expired()) {
+                // A synchronous Unstructured server can keep processing after the client deadline
+                // closes its socket. Mark this terminal for the durable worker so it cannot launch
+                // another whole-document parse on top of that possible remote ghost request.
+                throw new ProviderTimeoutError(
+                  `Unstructured parser request timed out after requestTimeoutMs=${effectiveRequestTimeoutMs}`,
+                  { cause: error },
+                );
+              }
+              throw error;
+            } finally {
+              deadline.dispose();
+            }
+          };
+
+          // Heavy requests acquire their narrow slot before the shared process slot. A heavy
+          // request waiting on that cap therefore cannot occupy capacity needed by ordinary
+          // documents. Standard requests never acquire the heavy gate, so lock order is acyclic.
+          return requestIsHeavy
+            ? await heavyRequestGate.run(
+                () => requestGate.run(runTransport, admissionSignal),
+                admissionSignal,
+              )
+            : await requestGate.run(runTransport, admissionSignal);
+        },
+      });
+    },
   };
 }
 
@@ -500,13 +717,37 @@ function normalizedMimeType(value: string): string {
   return value.split(";", 1)[0]?.trim().toLowerCase() ?? "";
 }
 
+interface UnstructuredRequestPolicy {
+  readonly partitionStrategy: "auto" | "fast" | "hi_res";
+  readonly providerImageBlockTypes: readonly ("Image" | "Table")[];
+  readonly providerLanguage?: string | undefined;
+}
+
+interface UnstructuredArtifactPolicy {
+  readonly maxElements: number;
+  readonly parserVersion: string;
+}
+
+function unstructuredRequestFingerprint(
+  input: ParseDocumentInput,
+  request: UnstructuredRequestPolicy,
+  artifact: UnstructuredArtifactPolicy,
+): string {
+  return parserPolicyFingerprintHash(
+    JSON.stringify({
+      kind: "unstructured",
+      parser: {
+        artifactHashContext: unstructuredArtifactHashContext(input, request),
+        maxElements: artifact.maxElements,
+        version: artifact.parserVersion,
+      },
+    }),
+  );
+}
+
 function unstructuredArtifactHashContext(
   input: ParseDocumentInput,
-  request: {
-    readonly partitionStrategy: "auto" | "fast" | "hi_res";
-    readonly providerImageBlockTypes: readonly ("Image" | "Table")[];
-    readonly providerLanguage?: string | undefined;
-  },
+  request: UnstructuredRequestPolicy,
 ): string {
   const hints = input.parserHints;
 
@@ -1655,17 +1896,50 @@ export function createParserRouter({
   structured,
   unstructured,
 }: ParserRouterOptions): ParserAdapter {
+  const routeOptions = {
+    html,
+    markdown,
+    ...(maxNativeInputBytes === undefined ? {} : { maxNativeInputBytes }),
+    ...(nativeLanguages === undefined ? {} : { nativeLanguages }),
+    ...(structured === undefined ? {} : { structured }),
+    unstructured,
+  };
+  const resolveRoute = (input: ParseDocumentInput) => selectParser(input, routeOptions);
+
   return {
+    checkpointEligible: (input) => {
+      const route = resolveRoute(input);
+      return route.parser.checkpointEligible?.(input) === true;
+    },
+    ...(unstructured.heavyWorkloadMaxConcurrency === undefined
+      ? {}
+      : { heavyWorkloadMaxConcurrency: unstructured.heavyWorkloadMaxConcurrency }),
     kind: "unstructured",
+    leaseMs: (input) => {
+      const route = resolveRoute(input);
+      return route.parser.leaseMs?.(input);
+    },
+    policyFingerprint: (input) => {
+      const route = resolveRoute(input);
+      const effectiveFingerprint = route.parser.policyFingerprint?.(input);
+
+      return effectiveFingerprint
+        ? parserPolicyFingerprintHash(
+            JSON.stringify({
+              effectiveFingerprint,
+              kind: "router",
+              routeReason: route.reason,
+              routedParser: route.parser.kind,
+            }),
+          )
+        : undefined;
+    },
+    workloadKind: (input) => {
+      const route = resolveRoute(input);
+      return route.parser.workloadKind?.(input) ?? "standard";
+    },
     parse: async (input) => {
-      const route = selectParser(input, {
-        html,
-        markdown,
-        ...(maxNativeInputBytes === undefined ? {} : { maxNativeInputBytes }),
-        ...(nativeLanguages === undefined ? {} : { nativeLanguages }),
-        ...(structured === undefined ? {} : { structured }),
-        unstructured,
-      });
+      const route = resolveRoute(input);
       const artifact = await route.parser.parse(input);
 
       return ParseArtifactSchema.parse({
@@ -3416,16 +3690,7 @@ async function artifactHash(
   const prefix = new TextEncoder().encode(
     context === undefined ? `${parserVersion}\n` : `${parserVersion}\n${context}\n`,
   );
-  const bytes = new Uint8Array(prefix.byteLength + body.byteLength);
-  bytes.set(prefix, 0);
-  bytes.set(body, prefix.byteLength);
-  const buffer = bytes.buffer.slice(
-    bytes.byteOffset,
-    bytes.byteOffset + bytes.byteLength,
-  ) as ArrayBuffer;
-  const digest = await crypto.subtle.digest("SHA-256", buffer);
-
-  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  return createHash("sha256").update(prefix).update(body).digest("hex");
 }
 
 async function boundedResponseText(response: Response, maxResponseBytes: number): Promise<string> {
@@ -3527,14 +3792,14 @@ async function fetchWithRetries({
       if (signal.aborted) {
         throw abortSignalReason(signal);
       }
-      if (attempt >= maxRetries) {
-        throw new ProviderRequestError("Unstructured parser request failed", {
-          cause: error,
-          retryable: true,
-        });
-      }
-      await sleepWithAbort(sleep, retryDelayMs, signal);
-      continue;
+      // A transport exception cannot prove whether the synchronous provider accepted the body.
+      // Retrying it inline could overlap a remote job that survived the broken connection. Keep
+      // the error retryable for the durable runtime, whose protected lease delays any replacement,
+      // but reserve immediate client retries for explicit retryable HTTP responses.
+      throw new ProviderRequestError("Unstructured parser request failed", {
+        cause: error,
+        retryable: true,
+      });
     }
 
     if (!isRetryableProviderStatus(response.status) || attempt >= maxRetries) {
@@ -3590,24 +3855,37 @@ function validateRetryOptions({
 }
 
 function validateUnstructuredResourceOptions({
+  heavyMaxConcurrency,
+  heavyRequestTimeoutMs,
   maxConcurrency,
   requestTimeoutMs,
 }: {
+  readonly heavyMaxConcurrency: number;
+  readonly heavyRequestTimeoutMs: number;
   readonly maxConcurrency: number;
   readonly requestTimeoutMs: number;
 }): void {
-  if (!Number.isSafeInteger(maxConcurrency) || maxConcurrency < 1 || maxConcurrency > 32) {
+  validateUnstructuredConcurrency(maxConcurrency, "maxConcurrency");
+  validateUnstructuredConcurrency(heavyMaxConcurrency, "heavyMaxConcurrency");
+  if (heavyMaxConcurrency > maxConcurrency) {
     throw new ProviderInputError(
-      "Unstructured parser maxConcurrency must be an integer between 1 and 32",
+      "Unstructured parser heavyMaxConcurrency must not exceed maxConcurrency",
     );
   }
-  if (
-    !Number.isSafeInteger(requestTimeoutMs) ||
-    requestTimeoutMs < 1 ||
-    requestTimeoutMs > maxRequestTimeoutMs
-  ) {
+  validateUnstructuredRequestTimeout(requestTimeoutMs, "requestTimeoutMs");
+  validateUnstructuredRequestTimeout(heavyRequestTimeoutMs, "heavyRequestTimeoutMs");
+}
+
+function validateUnstructuredConcurrency(value: number, name: string): void {
+  if (!Number.isSafeInteger(value) || value < 1 || value > 32) {
+    throw new ProviderInputError(`Unstructured parser ${name} must be an integer between 1 and 32`);
+  }
+}
+
+function validateUnstructuredRequestTimeout(value: number, name: string): void {
+  if (!Number.isSafeInteger(value) || value < 1 || value > maxRequestTimeoutMs) {
     throw new ProviderInputError(
-      `Unstructured parser requestTimeoutMs must be an integer between 1 and ${maxRequestTimeoutMs}`,
+      `Unstructured parser ${name} must be an integer between 1 and ${maxRequestTimeoutMs}`,
     );
   }
 }
@@ -3682,6 +3960,9 @@ function createAbortAwareConcurrencyGate(limit: number): AbortAwareConcurrencyGa
     run: async <T>(task: () => Promise<T>, signal?: AbortSignal): Promise<T> => {
       await acquire(signal);
       try {
+        // A queued waiter can be selected immediately before its last caller cancels. Recheck the
+        // admission signal after acquisition so provider work cannot start in that narrow race.
+        signal?.throwIfAborted();
         return await task();
       } finally {
         release();
@@ -3697,18 +3978,10 @@ interface UnstructuredRequestDeadline {
   throwIfExpired(): void;
 }
 
-function createUnstructuredRequestDeadline(
-  externalSignal: AbortSignal | undefined,
-  requestTimeoutMs: number,
-): UnstructuredRequestDeadline {
+function createUnstructuredRequestDeadline(requestTimeoutMs: number): UnstructuredRequestDeadline {
   const controller = new AbortController();
   const timeoutReason = new Error("Unstructured parser request deadline exceeded");
   let expired = false;
-  const onExternalAbort = () => controller.abort(abortSignalReason(externalSignal as AbortSignal));
-  externalSignal?.addEventListener("abort", onExternalAbort, { once: true });
-  if (externalSignal?.aborted) {
-    onExternalAbort();
-  }
   const timer = setTimeout(() => {
     if (!controller.signal.aborted) {
       expired = true;
@@ -3721,7 +3994,6 @@ function createUnstructuredRequestDeadline(
     signal: controller.signal,
     dispose: () => {
       clearTimeout(timer);
-      externalSignal?.removeEventListener("abort", onExternalAbort);
     },
     expired: () => expired,
     throwIfExpired: () => {
@@ -3742,7 +4014,7 @@ function abortSignalReason(signal: AbortSignal): unknown {
 }
 
 function isRetryableProviderStatus(status: number): boolean {
-  return status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
+  return status === 408 || status === 425 || status === 429 || status >= 500;
 }
 
 function providerRequestError(label: string, status: number): ProviderError {

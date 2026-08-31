@@ -41,7 +41,10 @@ import {
   preflightLlmSemanticWindows,
 } from "./llm-semantic-chunker";
 import {
+  type DeleteParseArtifactCheckpointInput,
+  type MaterializeParseArtifactCheckpointInput,
   type MaterializeParseArtifactResult,
+  type ParseArtifactCheckpoint,
   type ParseArtifactLookupInput,
   type ParseArtifactRepository,
   cloneParseArtifact,
@@ -113,12 +116,19 @@ export interface UpdateIncrementalReindexProjectionStatusInput {
 
 export interface IncrementalReindexer {
   canonicalizeArtifact?(artifact: ParseArtifact): Promise<MaterializeParseArtifactResult>;
+  checkpointParseArtifact?(
+    input: MaterializeParseArtifactCheckpointInput,
+  ): Promise<MaterializeParseArtifactResult>;
+  deleteParseArtifactCheckpoint?(input: DeleteParseArtifactCheckpointInput): Promise<number>;
   failProjections?(input: UpdateIncrementalReindexProjectionStatusInput): Promise<number>;
   failGenerationProjections?(input: {
     readonly knowledgeSpaceId: string;
     readonly publicationGenerationId: string;
   }): Promise<number>;
   getCanonicalArtifact?(input: ParseArtifactLookupInput): Promise<ParseArtifact | null>;
+  getParseArtifactCheckpoint?(
+    input: ParseArtifactLookupInput,
+  ): Promise<ParseArtifactCheckpoint | null>;
   publishProjections?(input: UpdateIncrementalReindexProjectionStatusInput): Promise<number>;
   reindex(input: IncrementalReindexInput): Promise<IncrementalReindexResult>;
 }
@@ -205,12 +215,28 @@ export function createIncrementalReindexer({
       );
       return { ...materialized, artifact: cloneParseArtifact(materialized.artifact) };
     },
+    checkpointParseArtifact: async (input: MaterializeParseArtifactCheckpointInput) => {
+      const materialized = await artifacts.checkpoint({
+        ...input,
+        artifact: cloneParseArtifact(ParseArtifactSchema.parse(input.artifact)),
+      });
+      return { ...materialized, artifact: cloneParseArtifact(materialized.artifact) };
+    },
+    deleteParseArtifactCheckpoint: (input: DeleteParseArtifactCheckpointInput) =>
+      artifacts.deleteCheckpoint(input),
     getCanonicalArtifact: async (input: ParseArtifactLookupInput) => {
       const persisted = await artifacts.getByDocumentVersion(input);
 
       if (!persisted) return null;
       const materialized = await artifacts.materialize(cloneParseArtifact(persisted));
       return cloneParseArtifact(materialized.artifact);
+    },
+    getParseArtifactCheckpoint: async (input: ParseArtifactLookupInput) => {
+      const checkpoint = await artifacts.getCheckpoint(input);
+
+      return checkpoint
+        ? { ...checkpoint, artifact: cloneParseArtifact(checkpoint.artifact) }
+        : null;
     },
     ...(canUpdateProjectionStatuses
       ? {

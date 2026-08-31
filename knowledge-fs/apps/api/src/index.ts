@@ -46,6 +46,10 @@ import {
 
 import { createApiProfileReasoningCapability } from "./answer-generation-options";
 import { createApiAuthVerifier } from "./auth-options";
+import {
+  createApiBufferedDocumentUploadAdmission,
+  createApiBufferedDocumentUploadOptions,
+} from "./buffered-document-upload-options";
 import { createApiCapabilityV2Assembly } from "./capability-v2-options";
 import { createApiComputeRuntime } from "./compute-options";
 import {
@@ -117,6 +121,8 @@ import { createApiWebsiteCrawlOptions } from "./website-crawl-options";
 const RETRIEVAL_MAX_TOP_K = 100;
 
 const documentCompilationOptions = createApiDocumentCompilationOptions();
+const bufferedDocumentUploadOptions = createApiBufferedDocumentUploadOptions();
+const bufferedDocumentUploadAdmission = createApiBufferedDocumentUploadAdmission();
 const uploadSessionOptions = createApiUploadSessionOptions();
 const researchTaskDirectStream = createApiResearchTaskDirectStreamAssembly({
   emit: (metric) => process.stdout.write(`${JSON.stringify(metric)}\n`),
@@ -558,6 +564,9 @@ const documentCompilationRuntime = createApiDocumentCompilationRuntime({
         initialProfileActivations: databaseRepositories.knowledgeSpaceUnpublishedProfileActivations,
       }
     : {}),
+  ...(parser.heavyWorkloadMaxConcurrency === undefined
+    ? {}
+    : { heavyMaterializationMaxConcurrency: parser.heavyWorkloadMaxConcurrency }),
   modelCallMetrics: operationalMetrics.ingestionModelCalls,
   modelCapabilityPreflight,
   metrics: operationalMetrics.durableTasks,
@@ -990,6 +999,9 @@ directUploadReady = uploadSessions?.ready === true;
 const app = createKnowledgeGateway({
   adapter,
   autoRetrievalModeResolver,
+  bufferedDocumentUploadAdmission,
+  bufferedDocumentUploadIdleTimeoutMs: bufferedDocumentUploadOptions.idleTimeoutMs,
+  bufferedDocumentUploadTotalTimeoutMs: bufferedDocumentUploadOptions.totalTimeoutMs,
   readinessChecks,
   ...(retrievalExecutionLeases ? { retrievalExecutionLeases } : {}),
   ...(databaseRepositories.qualityControl
@@ -1062,6 +1074,13 @@ const app = createKnowledgeGateway({
     ? { researchTaskDirectStream: researchTaskDirectStream.options }
     : {}),
   ...(uploadSessions?.sessions ? { uploadSessions: uploadSessions.sessions } : {}),
+  ...(uploadSessions?.fallbackAdmission
+    ? {
+        uploadSmallFileFallbackAdmission: uploadSessions.fallbackAdmission,
+        uploadSmallFileFallbackIdleTimeoutMs: bufferedDocumentUploadOptions.idleTimeoutMs,
+        uploadSmallFileFallbackTotalTimeoutMs: bufferedDocumentUploadOptions.totalTimeoutMs,
+      }
+    : {}),
   ...(uploadSessions?.storageQuotas ? { storageQuotas: uploadSessions.storageQuotas } : {}),
   ...repositoryOptions,
   ...(integratedProvisioningReady && databaseRepositories.integratedKnowledgeSpaceProvisioning

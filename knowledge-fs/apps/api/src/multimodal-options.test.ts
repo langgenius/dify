@@ -21,6 +21,7 @@ describe("createApiMultimodalOptions", () => {
     const defaults = createApiMultimodalOptions({});
     expect(defaults.documentPdfRasterizer).toBeUndefined();
     expect(defaults.documentMultimodalImageVariantGenerator).toBeDefined();
+    expect(defaults.documentMaterializationMaxConcurrency).toBe(2);
     expect(defaults.documentMultimodalMaxConcurrency).toBe(2);
     expect(createApiMultimodalOptions({ KNOWLEDGE_PDF_RASTERIZER: "off" })).toMatchObject({
       documentMultimodalImageVariantGenerator: expect.any(Object),
@@ -32,6 +33,7 @@ describe("createApiMultimodalOptions", () => {
 
   it("can disable or configure non-PDF image thumbnails", () => {
     expect(createApiMultimodalOptions({ KNOWLEDGE_IMAGE_THUMBNAILS: "off" })).toEqual({
+      documentMaterializationMaxConcurrency: 2,
       documentMultimodalMaxConcurrency: 2,
     });
     expect(
@@ -71,10 +73,28 @@ describe("createApiMultimodalOptions", () => {
     });
 
     expect(options.documentPdfRasterizer).toBeDefined();
+    expect(options.documentMaterializationMaxConcurrency).toBe(4);
     expect(options.documentMultimodalMaxConcurrency).toBe(4);
     expect(createPopplerPdfRasterizer).toHaveBeenCalledWith(
       expect.objectContaining({ maxConcurrency: 4 }),
     );
+  });
+
+  it("configures cross-format materialization independently while preserving the PDF fallback", () => {
+    const options = createApiMultimodalOptions({
+      KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY: "3",
+      KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY: "4",
+    });
+
+    expect(options.documentMaterializationMaxConcurrency).toBe(3);
+    expect(options.documentMultimodalMaxConcurrency).toBe(4);
+
+    expect(
+      createApiMultimodalOptions({
+        DIFY_ROOT_KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY_OVERRIDE: "5",
+        KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY: "6",
+      }).documentMaterializationMaxConcurrency,
+    ).toBe(5);
   });
 
   it("lets whitelisted root proxies override service-specific PDF values", () => {
@@ -170,5 +190,12 @@ describe("createApiMultimodalOptions", () => {
         DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_OVERRIDE: "poppler",
       }),
     ).toThrow("KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY must be an integer between 1 and 8");
+    for (const value of ["0", "9", "1.5", "many"]) {
+      expect(() =>
+        createApiMultimodalOptions({
+          KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY: value,
+        }),
+      ).toThrow(/KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY must be/u);
+    }
   });
 });

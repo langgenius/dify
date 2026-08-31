@@ -24,6 +24,8 @@ describe("createApiDocumentCompilationOptions", () => {
         KNOWLEDGE_DOCUMENT_COMPILATION_RETRY_MAX_MS: "60000",
         KNOWLEDGE_DOCUMENT_COMPILATION_RUNTIME: "on",
         KNOWLEDGE_DOCUMENT_COMPILATION_TICK_MS: "500",
+        KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_BYTES: "268435456",
+        KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_CONCURRENCY: "6",
       }),
     ).toEqual({
       batchSize: 20,
@@ -32,7 +34,18 @@ describe("createApiDocumentCompilationOptions", () => {
       outboxVisibilityMs: 120_000,
       retryBaseMs: 2_000,
       retryMaxMs: 60_000,
+      retainedArtifactMaxBytes: 268_435_456,
+      retainedArtifactMaxConcurrency: 6,
       tickMs: 500,
+    });
+  });
+
+  it("uses bounded retained-artifact memory defaults", () => {
+    expect(
+      createApiDocumentCompilationOptions({ KNOWLEDGE_DOCUMENT_COMPILATION_RUNTIME: "on" }),
+    ).toMatchObject({
+      retainedArtifactMaxBytes: 128 * 1024 * 1024,
+      retainedArtifactMaxConcurrency: 4,
     });
   });
 
@@ -49,6 +62,22 @@ describe("createApiDocumentCompilationOptions", () => {
         KNOWLEDGE_DOCUMENT_COMPILATION_RUNTIME: "true",
       }),
     ).toThrow("KNOWLEDGE_DOCUMENT_COMPILATION_RETRY_MAX_MS must be an integer of at least 5000");
+    expect(() =>
+      createApiDocumentCompilationOptions({
+        KNOWLEDGE_DOCUMENT_COMPILATION_RUNTIME: "true",
+        KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_CONCURRENCY: "33",
+      }),
+    ).toThrow(
+      "KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_CONCURRENCY must be an integer between 1 and 32",
+    );
+    expect(() =>
+      createApiDocumentCompilationOptions({
+        KNOWLEDGE_DOCUMENT_COMPILATION_RUNTIME: "true",
+        KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_BYTES: "1048575",
+      }),
+    ).toThrow(
+      "KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_BYTES must be an integer between 1048576 and 1073741824",
+    );
   });
 });
 

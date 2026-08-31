@@ -5,6 +5,13 @@ import type { Context, Next } from "hono";
 
 import { uniqueStrings } from "./api-shared-utils";
 import type { ArtifactSegmentRepository } from "./artifact-segment-repository";
+import {
+  type BufferedDocumentUploadAdmission,
+  DEFAULT_BUFFERED_DOCUMENT_UPLOAD_MAX_CONCURRENCY,
+  DEFAULT_BUFFERED_DOCUMENT_UPLOAD_MAX_RESERVED_BYTES,
+  createBufferedDocumentUploadAdmission,
+} from "./buffered-document-upload-admission";
+import { registerBufferedDocumentUploadMiddleware } from "./buffered-document-upload-middleware";
 import type { BulkOperationItem, BulkOperationRepository } from "./bulk-operation";
 import {
   CANDIDATE_VISIBILITY_SCAN_BUDGET_EXCEEDED_MESSAGE,
@@ -131,6 +138,9 @@ export interface RegisterDocumentWriteHandlersOptions {
   readonly artifactSegments: ArtifactSegmentRepository;
   readonly assets: DocumentAssetRepository;
   readonly authorization: KnowledgeSpaceAuthorizationGuard;
+  readonly bufferedDocumentUploadAdmission?: BufferedDocumentUploadAdmission | undefined;
+  readonly bufferedDocumentUploadIdleTimeoutMs?: number | undefined;
+  readonly bufferedDocumentUploadTotalTimeoutMs?: number | undefined;
   readonly bulkOperationRepository: BulkOperationRepository;
   readonly documentCompilationJobs: DocumentCompilationJobStateMachine | undefined;
   readonly deletionFence?: DeletionLifecycleFenceGuard | undefined;
@@ -211,6 +221,9 @@ export function registerDocumentWriteHandlers({
   artifactSegments,
   assets,
   authorization,
+  bufferedDocumentUploadAdmission,
+  bufferedDocumentUploadIdleTimeoutMs,
+  bufferedDocumentUploadTotalTimeoutMs,
   bulkOperationRepository,
   documentCompilationJobs,
   deletionFence,
@@ -257,10 +270,32 @@ export function registerDocumentWriteHandlers({
   traces,
   visualEmbeddingModel,
 }: RegisterDocumentWriteHandlersOptions): void {
+  const effectiveBufferedDocumentUploadAdmission =
+    bufferedDocumentUploadAdmission ??
+    createBufferedDocumentUploadAdmission({
+      maxConcurrency: DEFAULT_BUFFERED_DOCUMENT_UPLOAD_MAX_CONCURRENCY,
+      maxReservedBytes: Math.max(
+        DEFAULT_BUFFERED_DOCUMENT_UPLOAD_MAX_RESERVED_BYTES,
+        3 * (effectiveMaxBulkUploadBytes + 4 * 1024 * 1024),
+      ),
+    });
   registerDocumentMutationLeaseMiddleware({
     app,
     guard: documentMutationAdmissionGuard,
     now,
+  });
+  registerBufferedDocumentUploadMiddleware({
+    admission: effectiveBufferedDocumentUploadAdmission,
+    app,
+    ...(bufferedDocumentUploadIdleTimeoutMs === undefined
+      ? {}
+      : { bodyIdleTimeoutMs: bufferedDocumentUploadIdleTimeoutMs }),
+    ...(bufferedDocumentUploadTotalTimeoutMs === undefined
+      ? {}
+      : { bodyTotalTimeoutMs: bufferedDocumentUploadTotalTimeoutMs }),
+    maxBulkUploadBytes: effectiveMaxBulkUploadBytes,
+    maxBulkUploadFiles,
+    maxUploadBytes,
   });
 
   app.openapi(bulkReindexDocumentsRoute, async (context) => {

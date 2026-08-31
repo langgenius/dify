@@ -53,9 +53,9 @@ or immutable SHA tag. If the image repository is private, authenticate the deplo
 
 ```bash
 cp envs/core-services/knowledge-fs.env.example envs/core-services/knowledge-fs.env
-docker compose config
-docker compose pull knowledge_fs
-docker compose up -d
+docker compose --profile knowledge-fs-unstructured config
+docker compose --profile knowledge-fs-unstructured pull knowledge_fs knowledge_fs_unstructured
+docker compose --profile knowledge-fs-unstructured up -d
 ```
 
 The service env file intentionally contains only operator-owned inputs: the dedicated database,
@@ -65,6 +65,23 @@ objects below an internal namespace in Dify's configured `STORAGE_TYPE`; do not 
 bucket, endpoint, or provider credentials in `knowledge-fs.env`. Feature-specific rollout flags
 and capacity tunables should be added only when deliberately overriding their safe runtime
 defaults.
+
+The optional `knowledge-fs-unstructured` profile starts one isolated parser service named
+`knowledge_fs_unstructured` for every KnowledgeFS remote format. Its tracked
+`knowledge-fs-unstructured-service.defaults` additionally enables bounded page parallelism for
+PDFs; an optional copied `knowledge-fs-unstructured.env` can override those service values. The
+existing `unstructured` profile remains unchanged for Dify's legacy ETL, so KnowledgeFS tuning
+cannot alter its PDF or Office parsing behavior. The copied
+`knowledge-fs.env` pairs every PDF and structurally/byte-heavy remote document with the longer
+deadline and narrower admission gate; ordinary formats retain two concurrent requests and a
+600-second timeout, while heavy work uses one concurrent request and a 2,400-second timeout. The
+remote input cap defaults to 15 MiB so the parser accepts the complete product upload envelope. The
+legacy `UNSTRUCTURED_PDF_*` names remain lower-precedence compatibility aliases. The required
+defaults file deliberately does not end
+in `.env`, so it remains tracked and a clean checkout can validate the profile; files ending in
+`.env.example` are copy-only templates and are never loaded as runtime configuration. The isolated
+service is available to KnowledgeFS at `http://knowledge_fs_unstructured:8000`; it does not publish
+a host port.
 
 The KnowledgeFS API image includes Poppler and enables its `pdftoppm` PDF image rasterizer with
 bounded defaults (144 DPI, 48 DPI thumbnails, a 30-second timeout, at most 500 assets per document,

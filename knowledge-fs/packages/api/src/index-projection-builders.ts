@@ -89,6 +89,8 @@ export interface VisualEmbeddingAssetInput {
 export interface EmbedVisualAssetsInput {
   readonly assets: readonly VisualEmbeddingAssetInput[];
   readonly model: string;
+  /** Called immediately before each physical provider request for admission and accounting. */
+  readonly reserveProviderCall?: ((itemCount: number) => void) | undefined;
   readonly signal?: AbortSignal | undefined;
   readonly tenantId?: string;
 }
@@ -104,12 +106,16 @@ export interface EmbedVisualAssetsResult {
   readonly metadata: {
     readonly model: string;
     readonly provider: string;
+    /** Physical provider requests issued for this logical embedding batch. */
+    readonly providerCalls?: number | undefined;
     readonly usage?: { readonly totalTokens: number } | undefined;
   };
   readonly model: string;
 }
 
 export interface VisualEmbeddingProvider {
+  /** The provider invokes reserveProviderCall once immediately before every physical request. */
+  readonly providerCallAdmission?: "per-provider-call" | undefined;
   embedAssets(input: EmbedVisualAssetsInput): Promise<EmbedVisualAssetsResult>;
 }
 
@@ -163,6 +169,8 @@ export interface TextSurrogateVisualEmbeddingProviderOptions {
 
 export interface ObjectStorageVisualEmbeddingProviderOptions {
   readonly maxAssetBytes?: number | undefined;
+  readonly maxBatchAssetCount?: number | undefined;
+  readonly maxBatchBytes?: number | undefined;
   readonly objectStorage: PlatformAdapter["objectStorage"];
   readonly preferredVariant?: string | undefined;
   readonly provider: ImageBytesVisualEmbeddingProvider;
@@ -693,136 +701,167 @@ export function createVisualEmbeddingProjectionBuilder({
         );
       }
 
-      modelBudget?.reserve({
-        itemCount: candidatesToEmbed.length,
-        stage: "visual-embedding",
-      });
+      const providerOwnsCallAdmission = provider.providerCallAdmission === "per-provider-call";
+      if (!providerOwnsCallAdmission) {
+        modelBudget?.reserve({
+          itemCount: candidatesToEmbed.length,
+          stage: "visual-embedding",
+        });
+      }
       const embeddingStartedAt = Date.now();
+      let attemptedProviderCalls = providerOwnsCallAdmission ? 0 : 1;
+      const recordOutcome = (outcome: "failed" | "succeeded", totalTokens?: number): void => {
+        recordIngestionModelCallMetric(metrics, {
+          cacheHits: reusableByNodeId.size,
+          durationMs: Math.max(0, Date.now() - embeddingStartedAt),
+          itemCount: candidates.length,
+          outcome,
+          providerCalls: attemptedProviderCalls,
+          retries: 0,
+          stage: "visual-embedding",
+          ...(totalTokens === undefined ? {} : { totalTokens }),
+        });
+      };
       let result: EmbedVisualAssetsResult;
       try {
         result = await provider.embedAssets({
           assets: candidatesToEmbed.map((candidate) => candidate.asset),
           model,
+          ...(providerOwnsCallAdmission
+            ? {
+                reserveProviderCall: (itemCount: number) => {
+                  modelBudget?.reserve({ itemCount, stage: "visual-embedding" });
+                  attemptedProviderCalls += 1;
+                },
+              }
+            : {}),
           ...(signal ? { signal } : {}),
           ...(tenantId ? { tenantId } : {}),
         });
+        if (providerOwnsCallAdmission && result.metadata.providerCalls !== attemptedProviderCalls) {
+          throw new Error(
+            `Visual embedding provider reported providerCalls=${String(result.metadata.providerCalls)} after admitting ${attemptedProviderCalls} calls`,
+          );
+        }
+        if (
+          !providerOwnsCallAdmission &&
+          result.metadata.providerCalls !== undefined &&
+          result.metadata.providerCalls !== 1
+        ) {
+          throw new Error(
+            "Visual embedding provider without per-call admission must issue exactly one provider call",
+          );
+        }
       } catch (error) {
-        recordIngestionModelCallMetric(metrics, {
-          cacheHits: reusableByNodeId.size,
-          durationMs: Math.max(0, Date.now() - embeddingStartedAt),
-          itemCount: candidates.length,
-          outcome: "failed",
-          providerCalls: 1,
-          retries: 0,
-          stage: "visual-embedding",
-        });
+        recordOutcome("failed");
         throw error;
       }
-      recordIngestionModelCallMetric(metrics, {
-        cacheHits: reusableByNodeId.size,
-        durationMs: Math.max(0, Date.now() - embeddingStartedAt),
-        itemCount: candidates.length,
-        outcome: "succeeded",
-        providerCalls: 1,
-        retries: 0,
-        stage: "visual-embedding",
-        ...(result.metadata.usage?.totalTokens === undefined
-          ? {}
-          : { totalTokens: result.metadata.usage.totalTokens }),
-      });
-      signal?.throwIfAborted();
 
-      // Partial-resilience mode: the provider embedded only a subset (some assets unreadable/
-      // oversized) and reports which nodeIds got a vector, aligned with `dense`. Build a
-      // nodeId -> vector map and create projections only for the embedded assets. Otherwise keep
-      // the strict index-aligned contract.
-      const vectorByNodeId = result.embeddedNodeIds
-        ? new Map(result.embeddedNodeIds.map((nodeId, index) => [nodeId, result.dense[index]]))
-        : undefined;
+      try {
+        signal?.throwIfAborted();
 
-      if (!vectorByNodeId && result.dense.length !== candidatesToEmbed.length) {
-        throw new Error(
-          `Visual embedding provider returned ${result.dense.length} vectors for ${candidatesToEmbed.length} assets`,
-        );
-      }
-
-      if (result.embeddedNodeIds && result.embeddedNodeIds.length !== result.dense.length) {
-        throw new Error(
-          `Visual embedding provider returned ${result.dense.length} vectors for ${result.embeddedNodeIds.length} embedded node ids`,
-        );
-      }
-
-      const responseDimension =
-        result.dense.length > 0
-          ? validateProjectionVectors({
-              label: "Visual embedding provider",
-              vectors: result.dense,
-            })
+        // Partial-resilience mode: the provider embedded only a subset (some assets unreadable/
+        // oversized) and reports which nodeIds got a vector, aligned with `dense`. Build a
+        // nodeId -> vector map and create projections only for the embedded assets. Otherwise keep
+        // the strict index-aligned contract.
+        const vectorByNodeId = result.embeddedNodeIds
+          ? new Map(result.embeddedNodeIds.map((nodeId, index) => [nodeId, result.dense[index]]))
           : undefined;
 
-      const embeddableCandidates = vectorByNodeId
-        ? candidatesToEmbed.filter((candidate) => vectorByNodeId.has(candidate.asset.nodeId))
-        : candidatesToEmbed;
-
-      if (embeddableCandidates.length === 0) {
-        return [];
-      }
-
-      const visualProjections = embeddableCandidates.map(({ asset, node }, index) => {
-        const denseVector = vectorByNodeId ? vectorByNodeId.get(asset.nodeId) : result.dense[index];
-
-        if (!denseVector) {
-          throw new Error("Visual embedding provider returned an invalid dense vector");
+        if (!vectorByNodeId && result.dense.length !== candidatesToEmbed.length) {
+          throw new Error(
+            `Visual embedding provider returned ${result.dense.length} vectors for ${candidatesToEmbed.length} assets`,
+          );
         }
 
-        return IndexProjectionSchema.parse({
-          id:
-            generateId?.() ??
-            deterministicChildId(
-              node.id,
-              generationScopedProjectionIdSeed(
-                `projection:visual:${projectionVersion}:${result.model}:${result.metadata.provider}`,
-                generationId,
-              ),
-            ),
-          knowledgeSpaceId: node.knowledgeSpaceId,
-          metadata: {
-            artifactHash: node.artifactHash,
-            denseVector: [...denseVector],
-            dimension: responseDimension ?? denseVector.length,
-            documentAssetId: asset.documentAssetId,
-            embeddingProvider: result.metadata.provider,
-            modelVersion: result.model,
-            multimodal: {
-              ...cloneJsonObject(asset.metadata),
-              assetRef: cloneJsonObject(asset.assetRef),
-              projectionRole: "visual-asset",
-              // Image-byte embeddings live in a separate vector space (their own column + retrieval
-              // leg); text-surrogate embeddings share the text embedding space, so they stay in the
-              // text dense leg and must not be routed to visual_vector.
-              vectorSpace: result.metadata.provider.includes(":image-bytes") ? "visual" : "text",
-              visualEmbeddingStatus: "provided",
-            },
-            parseArtifactId: node.parseArtifactId,
-          },
-          model: result.model,
-          nodeId: asset.nodeId,
-          projectionVersion,
-          ...(generationId ? { publicationGenerationId: generationId } : {}),
-          status: projectionStatus,
-          type: "dense-vector",
-        });
-      });
+        if (result.embeddedNodeIds && result.embeddedNodeIds.length !== result.dense.length) {
+          throw new Error(
+            `Visual embedding provider returned ${result.dense.length} vectors for ${result.embeddedNodeIds.length} embedded node ids`,
+          );
+        }
 
-      signal?.throwIfAborted();
-      const created = await projections.createMany(visualProjections);
-      const createdByNodeId = new Map(created.map((projection) => [projection.nodeId, projection]));
-      return candidates.flatMap((candidate) => {
-        const projection =
-          reusableByNodeId.get(candidate.asset.nodeId) ??
-          createdByNodeId.get(candidate.asset.nodeId);
-        return projection ? [cloneIndexProjection(projection)] : [];
-      });
+        const responseDimension =
+          result.dense.length > 0
+            ? validateProjectionVectors({
+                label: "Visual embedding provider",
+                vectors: result.dense,
+              })
+            : undefined;
+
+        const embeddableCandidates = vectorByNodeId
+          ? candidatesToEmbed.filter((candidate) => vectorByNodeId.has(candidate.asset.nodeId))
+          : candidatesToEmbed;
+
+        if (embeddableCandidates.length === 0) {
+          recordOutcome("succeeded", result.metadata.usage?.totalTokens);
+          return [];
+        }
+
+        const visualProjections = embeddableCandidates.map(({ asset, node }, index) => {
+          const denseVector = vectorByNodeId
+            ? vectorByNodeId.get(asset.nodeId)
+            : result.dense[index];
+
+          if (!denseVector) {
+            throw new Error("Visual embedding provider returned an invalid dense vector");
+          }
+
+          return IndexProjectionSchema.parse({
+            id:
+              generateId?.() ??
+              deterministicChildId(
+                node.id,
+                generationScopedProjectionIdSeed(
+                  `projection:visual:${projectionVersion}:${result.model}:${result.metadata.provider}`,
+                  generationId,
+                ),
+              ),
+            knowledgeSpaceId: node.knowledgeSpaceId,
+            metadata: {
+              artifactHash: node.artifactHash,
+              denseVector: [...denseVector],
+              dimension: responseDimension ?? denseVector.length,
+              documentAssetId: asset.documentAssetId,
+              embeddingProvider: result.metadata.provider,
+              modelVersion: result.model,
+              multimodal: {
+                ...cloneJsonObject(asset.metadata),
+                assetRef: cloneJsonObject(asset.assetRef),
+                projectionRole: "visual-asset",
+                // Image-byte embeddings live in a separate vector space (their own column + retrieval
+                // leg); text-surrogate embeddings share the text embedding space, so they stay in the
+                // text dense leg and must not be routed to visual_vector.
+                vectorSpace: result.metadata.provider.includes(":image-bytes") ? "visual" : "text",
+                visualEmbeddingStatus: "provided",
+              },
+              parseArtifactId: node.parseArtifactId,
+            },
+            model: result.model,
+            nodeId: asset.nodeId,
+            projectionVersion,
+            ...(generationId ? { publicationGenerationId: generationId } : {}),
+            status: projectionStatus,
+            type: "dense-vector",
+          });
+        });
+
+        signal?.throwIfAborted();
+        const created = await projections.createMany(visualProjections);
+        const createdByNodeId = new Map(
+          created.map((projection) => [projection.nodeId, projection]),
+        );
+        const built = candidates.flatMap((candidate) => {
+          const projection =
+            reusableByNodeId.get(candidate.asset.nodeId) ??
+            createdByNodeId.get(candidate.asset.nodeId);
+          return projection ? [cloneIndexProjection(projection)] : [];
+        });
+        recordOutcome("succeeded", result.metadata.usage?.totalTokens);
+        return built;
+      } catch (error) {
+        recordOutcome("failed");
+        throw error;
+      }
     },
   };
 }
@@ -907,6 +946,8 @@ export function createTextSurrogateVisualEmbeddingProvider({
 
 export function createObjectStorageVisualEmbeddingProvider({
   maxAssetBytes = 20 * 1024 * 1024,
+  maxBatchAssetCount = 8,
+  maxBatchBytes = 32 * 1024 * 1024,
   objectStorage,
   preferredVariant,
   provider,
@@ -914,62 +955,221 @@ export function createObjectStorageVisualEmbeddingProvider({
   if (!Number.isSafeInteger(maxAssetBytes) || maxAssetBytes < 1) {
     throw new Error("Object-storage visual embedding maxAssetBytes must be at least 1");
   }
+  if (!Number.isSafeInteger(maxBatchAssetCount) || maxBatchAssetCount < 1) {
+    throw new Error("Object-storage visual embedding maxBatchAssetCount must be at least 1");
+  }
+  if (!Number.isSafeInteger(maxBatchBytes) || maxBatchBytes < 1) {
+    throw new Error("Object-storage visual embedding maxBatchBytes must be at least 1");
+  }
+  if (maxBatchBytes < maxAssetBytes) {
+    throw new Error(
+      `Object-storage visual embedding maxBatchBytes must be at least maxAssetBytes=${maxAssetBytes}`,
+    );
+  }
 
   return {
-    embedAssets: async ({ assets, model, signal, tenantId }) => {
+    embedAssets: async ({ assets, model, reserveProviderCall, signal, tenantId }) => {
       // Skip individual unreadable / missing / oversized assets instead of failing the whole batch,
       // so one bad object does not cost a document all of its visual projections.
-      const images: VisualEmbeddingImageInput[] = [];
+      let images: VisualEmbeddingImageInput[] = [];
+      let imageBytes = 0;
+      const dense: (readonly number[])[] = [];
+      const embeddedNodeIds: string[] = [];
+      let responseIdentity:
+        | {
+            readonly metadataModel: string;
+            readonly model: string;
+            readonly provider: string;
+          }
+        | undefined;
+      let providerCalls = 0;
+      let responseDimension: number | undefined;
+      let totalTokens = 0;
+      let usageComplete = true;
+
+      const flush = async (): Promise<void> => {
+        if (images.length === 0) return;
+        signal?.throwIfAborted();
+        reserveProviderCall?.(images.length);
+        const requestImages = images;
+        images = [];
+        imageBytes = 0;
+        const result = await provider.embedImages({
+          images: requestImages,
+          model,
+          ...(signal ? { signal } : {}),
+          ...(tenantId ? { tenantId } : {}),
+        });
+        signal?.throwIfAborted();
+        if (result.metadata.providerCalls !== undefined && result.metadata.providerCalls !== 1) {
+          throw new Error(
+            "Visual embedding image provider must issue exactly one physical request per embedImages call",
+          );
+        }
+        const ordered = orderedVisualEmbeddingBatch(result, requestImages);
+        const batchDimension =
+          ordered.dense.length > 0
+            ? validateProjectionVectors({
+                label: "Visual embedding image provider",
+                vectors: ordered.dense,
+              })
+            : undefined;
+        if (
+          responseDimension !== undefined &&
+          batchDimension !== undefined &&
+          responseDimension !== batchDimension
+        ) {
+          throw new Error(
+            `Visual embedding image provider returned dimension=${batchDimension}; expected dimension=${responseDimension} across batches`,
+          );
+        }
+        responseDimension ??= batchDimension;
+        assertConsistentVisualEmbeddingBatch(responseIdentity, result);
+        responseIdentity ??= {
+          metadataModel: result.metadata.model,
+          model: result.model,
+          provider: result.metadata.provider,
+        };
+        dense.push(...ordered.dense);
+        embeddedNodeIds.push(...ordered.embeddedNodeIds);
+        providerCalls += 1;
+        if (result.metadata.usage?.totalTokens === undefined) {
+          usageComplete = false;
+        } else {
+          totalTokens += result.metadata.usage.totalTokens;
+        }
+      };
+
       for (const asset of assets) {
         signal?.throwIfAborted();
+        // We cannot know the next object's exact byte length without an extra HEAD request. Flush
+        // whenever the remaining raw-byte budget cannot admit the configured per-asset maximum;
+        // the following bounded GET therefore cannot create a currentBatchBytes + maxAssetBytes
+        // resident spike above maxBatchBytes.
+        if (
+          images.length > 0 &&
+          (images.length >= maxBatchAssetCount || maxBatchBytes - imageBytes < maxAssetBytes)
+        ) {
+          await flush();
+        }
+        let image: VisualEmbeddingImageInput;
         try {
-          images.push(
-            await readVisualEmbeddingImage({
-              asset,
-              maxAssetBytes,
-              objectStorage,
-              preferredVariant,
-            }),
-          );
+          image = await readVisualEmbeddingImage({
+            asset,
+            maxAssetBytes,
+            objectStorage,
+            preferredVariant,
+            signal,
+          });
         } catch {
           // intentionally skipped
+          signal?.throwIfAborted();
+          continue;
         }
         signal?.throwIfAborted();
+        images.push(image);
+        imageBytes += image.body.byteLength;
+        if (images.length >= maxBatchAssetCount || imageBytes >= maxBatchBytes) {
+          await flush();
+        }
       }
+      await flush();
 
-      if (images.length === 0) {
+      if (!responseIdentity) {
         return {
           dense: [],
           embeddedNodeIds: [],
           metadata: {
             model,
             provider: provider.kind ? `${provider.kind}:image-bytes` : "image-bytes",
+            providerCalls: 0,
           },
           model,
         };
       }
 
-      const result = await provider.embedImages({
-        images,
-        model,
-        ...(signal ? { signal } : {}),
-        ...(tenantId ? { tenantId } : {}),
-      });
-      signal?.throwIfAborted();
-
       return {
-        dense: result.dense,
-        embeddedNodeIds: images.map((image) => image.nodeId),
+        dense,
+        embeddedNodeIds,
         metadata: {
-          ...result.metadata,
+          model: responseIdentity.metadataModel,
           provider: provider.kind
-            ? `${result.metadata.provider}:${provider.kind}:image-bytes`
-            : `${result.metadata.provider}:image-bytes`,
+            ? `${responseIdentity.provider}:${provider.kind}:image-bytes`
+            : `${responseIdentity.provider}:image-bytes`,
+          providerCalls,
+          ...(usageComplete ? { usage: { totalTokens } } : {}),
         },
-        model: result.model,
+        model: responseIdentity.model,
       };
     },
+    providerCallAdmission: "per-provider-call",
   };
+}
+
+function orderedVisualEmbeddingBatch(
+  result: EmbedVisualAssetsResult,
+  images: readonly VisualEmbeddingImageInput[],
+): { readonly dense: readonly (readonly number[])[]; readonly embeddedNodeIds: readonly string[] } {
+  if (!result.embeddedNodeIds) {
+    if (result.dense.length !== images.length) {
+      throw new Error(
+        `Visual embedding image provider returned ${result.dense.length} vectors for ${images.length} images`,
+      );
+    }
+    return {
+      dense: result.dense,
+      embeddedNodeIds: images.map((image) => image.nodeId),
+    };
+  }
+  if (result.embeddedNodeIds.length !== result.dense.length) {
+    throw new Error(
+      `Visual embedding image provider returned ${result.dense.length} vectors for ${result.embeddedNodeIds.length} embedded node ids`,
+    );
+  }
+
+  const inputNodeIds = new Set(images.map((image) => image.nodeId));
+  const vectorByNodeId = new Map<string, readonly number[]>();
+  for (const [index, nodeId] of result.embeddedNodeIds.entries()) {
+    const vector = result.dense[index];
+    if (!inputNodeIds.has(nodeId) || vectorByNodeId.has(nodeId) || !vector) {
+      throw new Error("Visual embedding image provider returned an invalid embedded node id");
+    }
+    vectorByNodeId.set(nodeId, vector);
+  }
+
+  const orderedNodeIds = images
+    .map((image) => image.nodeId)
+    .filter((nodeId) => vectorByNodeId.has(nodeId));
+  return {
+    dense: orderedNodeIds.map((nodeId) => {
+      const vector = vectorByNodeId.get(nodeId);
+      if (!vector) {
+        throw new Error("Visual embedding image provider returned an invalid dense vector");
+      }
+      return vector;
+    }),
+    embeddedNodeIds: orderedNodeIds,
+  };
+}
+
+function assertConsistentVisualEmbeddingBatch(
+  identity:
+    | {
+        readonly metadataModel: string;
+        readonly model: string;
+        readonly provider: string;
+      }
+    | undefined,
+  result: EmbedVisualAssetsResult,
+): void {
+  if (
+    identity &&
+    (identity.metadataModel !== result.metadata.model ||
+      identity.model !== result.model ||
+      identity.provider !== result.metadata.provider)
+  ) {
+    throw new Error("Visual embedding image provider returned inconsistent batch identities");
+  }
 }
 
 function visualAssetTextSurrogate(asset: VisualEmbeddingAssetInput): string {
@@ -986,11 +1186,13 @@ async function readVisualEmbeddingImage({
   maxAssetBytes,
   objectStorage,
   preferredVariant,
+  signal,
 }: {
   readonly asset: VisualEmbeddingAssetInput;
   readonly maxAssetBytes: number;
   readonly objectStorage: PlatformAdapter["objectStorage"];
   readonly preferredVariant: string | undefined;
+  readonly signal: AbortSignal | undefined;
 }): Promise<VisualEmbeddingImageInput> {
   const selected = selectVisualEmbeddingAssetRef(asset.assetRef, preferredVariant);
 
@@ -998,15 +1200,15 @@ async function readVisualEmbeddingImage({
     throw new Error("Visual embedding asset objectKey is required for image-byte embedding");
   }
 
-  const body = await objectStorage.getObject(selected.objectKey);
+  // Consume the data plane directly with this provider's stricter per-image bound. In particular,
+  // do not call getObject: remote adapters may buffer and concatenate up to their broader service
+  // limit before this provider can inspect body.byteLength.
+  const stream = await objectStorage.getObjectStream(selected.objectKey);
 
-  if (!body) {
+  if (!stream) {
     throw new Error("Visual embedding asset object was not found");
   }
-
-  if (body.byteLength > maxAssetBytes) {
-    throw new Error(`Visual embedding asset exceeds maxAssetBytes=${maxAssetBytes}`);
-  }
+  const body = await readBoundedVisualEmbeddingStream(stream, maxAssetBytes, signal);
 
   return {
     ...asset,
@@ -1014,6 +1216,61 @@ async function readVisualEmbeddingImage({
     ...(selected.contentType ? { contentType: selected.contentType } : {}),
     objectKey: selected.objectKey,
   };
+}
+
+async function readBoundedVisualEmbeddingStream(
+  stream: ReadableStream<Uint8Array>,
+  maxAssetBytes: number,
+  signal: AbortSignal | undefined,
+): Promise<Uint8Array> {
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let closed = false;
+  let totalBytes = 0;
+  const cancel = async (reason?: unknown): Promise<void> => {
+    if (closed) return;
+    closed = true;
+    await reader.cancel(reason).catch(() => undefined);
+  };
+  const onAbort = () => {
+    void cancel(signal?.reason);
+  };
+  signal?.addEventListener("abort", onAbort, { once: true });
+
+  try {
+    signal?.throwIfAborted();
+    while (true) {
+      const { done, value } = await reader.read();
+      signal?.throwIfAborted();
+      if (done) {
+        closed = true;
+        break;
+      }
+      // Detect maxAssetBytes + 1 without retaining the overflowing chunk. Only a body already
+      // proven to fit is assembled below, so an oversized stream is never concatenated in memory.
+      if (value.byteLength > maxAssetBytes - totalBytes) {
+        await cancel(new Error(`Visual embedding asset exceeds maxAssetBytes=${maxAssetBytes}`));
+        throw new Error(`Visual embedding asset exceeds maxAssetBytes=${maxAssetBytes}`);
+      }
+      chunks.push(value);
+      totalBytes += value.byteLength;
+    }
+  } finally {
+    signal?.removeEventListener("abort", onAbort);
+    await cancel();
+    reader.releaseLock();
+  }
+
+  if (chunks.length === 0) return new Uint8Array();
+  if (chunks.length === 1) return chunks[0] as Uint8Array;
+
+  const body = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return body;
 }
 
 function selectVisualEmbeddingAssetRef(

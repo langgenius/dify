@@ -9,6 +9,10 @@ import { parse, parseAllDocuments } from "yaml";
 import { materializeDifyComposeEnv } from "./dify-compose-config.mjs";
 
 const compose = readFileSync(new URL("../infra/local/compose.yaml", import.meta.url), "utf8");
+const localEnvExample = readFileSync(
+  new URL("../infra/local/.env.example", import.meta.url),
+  "utf8",
+);
 const difyComposeFiles = [
   readFileSync(new URL("../../docker/docker-compose-template.yaml", import.meta.url), "utf8"),
   readFileSync(new URL("../../docker/docker-compose.yaml", import.meta.url), "utf8"),
@@ -19,6 +23,17 @@ const difyApiEnv = readFileSync(
 );
 const difyKnowledgeFsEnv = readFileSync(
   new URL("../../docker/envs/core-services/knowledge-fs.env.example", import.meta.url),
+  "utf8",
+);
+const difyKnowledgeFsUnstructuredEnv = readFileSync(
+  new URL("../../docker/envs/core-services/knowledge-fs-unstructured.env.example", import.meta.url),
+  "utf8",
+);
+const difyKnowledgeFsUnstructuredServiceDefaults = readFileSync(
+  new URL(
+    "../../docker/envs/core-services/knowledge-fs-unstructured-service.defaults",
+    import.meta.url,
+  ),
   "utf8",
 );
 const kubernetesBaseline = readFileSync(
@@ -44,6 +59,13 @@ function envVariableNames(source) {
     .map((line) => line.slice(0, line.indexOf("=")));
 }
 
+const unchangedLegacyUnstructuredService = {
+  image: "downloads.unstructured.io/unstructured-io/unstructured-api:latest",
+  profiles: ["unstructured"],
+  restart: "always",
+  volumes: ["./volumes/unstructured:/app/data"],
+};
+
 function materializedDifyKnowledgeFsEnvironment(rootOverrides = {}) {
   const dockerRoot = new URL("../../docker/", import.meta.url);
   const envPath = new URL(".env", dockerRoot).pathname;
@@ -51,6 +73,7 @@ function materializedDifyKnowledgeFsEnvironment(rootOverrides = {}) {
   const removeMaterializedEnv = materializeDifyComposeEnv({ envPath, examplePath });
   const env = { ...process.env };
   for (const name of [
+    "KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY",
     "KNOWLEDGE_PDF_RASTERIZER",
     "KNOWLEDGE_PDF_RASTERIZER_DPI",
     "KNOWLEDGE_PDF_RASTERIZER_MAX_ASSETS",
@@ -152,13 +175,15 @@ test("app compose profile waits for local database and parser readiness before A
 });
 
 test("app compose profile uses local middleware and the required Dify dependency", () => {
+  assert.match(localEnvExample, /^UNSTRUCTURED_API_URL=http:\/\/127\.0\.0\.1:8000$/m);
+  assert.match(localEnvExample, /^UNSTRUCTURED_CONTAINER_API_URL=http:\/\/unstructured:8000$/m);
   assert.match(
     compose,
     /^ {6}DATABASE_URL: postgresql:\/\/\$\{POSTGRES_USER:-knowledge_fs\}:\$\{POSTGRES_PASSWORD:-knowledge_fs\}@postgres:5432\/\$\{POSTGRES_DB:-knowledge_fs\}$/m,
   );
   assert.match(
     compose,
-    /^ {6}UNSTRUCTURED_API_URL: \$\{UNSTRUCTURED_API_URL:-http:\/\/unstructured:8000\}$/m,
+    /^ {6}UNSTRUCTURED_API_URL: \$\{UNSTRUCTURED_CONTAINER_API_URL:-http:\/\/unstructured:8000\}$/m,
   );
   assert.match(
     compose,
@@ -166,8 +191,21 @@ test("app compose profile uses local middleware and the required Dify dependency
   );
   assert.match(
     compose,
-    /^ {6}UNSTRUCTURED_REQUEST_TIMEOUT_MS: \$\{UNSTRUCTURED_REQUEST_TIMEOUT_MS:-120000\}$/m,
+    /^ {6}UNSTRUCTURED_HEAVY_MAX_CONCURRENCY: \$\{UNSTRUCTURED_HEAVY_MAX_CONCURRENCY:-1\}$/m,
   );
+  assert.match(
+    compose,
+    /^ {6}UNSTRUCTURED_MAX_INPUT_BYTES: \$\{UNSTRUCTURED_MAX_INPUT_BYTES:-15728640\}$/m,
+  );
+  assert.match(
+    compose,
+    /^ {6}UNSTRUCTURED_REQUEST_TIMEOUT_MS: \$\{UNSTRUCTURED_REQUEST_TIMEOUT_MS:-600000\}$/m,
+  );
+  assert.match(
+    compose,
+    /^ {6}UNSTRUCTURED_HEAVY_REQUEST_TIMEOUT_MS: \$\{UNSTRUCTURED_HEAVY_REQUEST_TIMEOUT_MS:-2400000\}$/m,
+  );
+  assert.match(compose, /^ {6}UNSTRUCTURED_MAX_RETRIES: \$\{UNSTRUCTURED_MAX_RETRIES:-0\}$/m);
   assert.match(
     compose,
     /^ {6}DURABLE_DELETION_STEP_TIMEOUT_MS: \$\{DURABLE_DELETION_STEP_TIMEOUT_MS:-30000\}$/m,
@@ -185,10 +223,52 @@ test("app compose profile uses local middleware and the required Dify dependency
     compose,
     /^ {6}KNOWLEDGE_RESEARCH_REASONING_TIMEOUT_MS: \$\{KNOWLEDGE_RESEARCH_REASONING_TIMEOUT_MS:-60000\}$/m,
   );
+  assert.match(
+    compose,
+    /^ {6}KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_CONCURRENCY: \$\{KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_CONCURRENCY:-2\}$/m,
+  );
+  assert.match(
+    compose,
+    /^ {6}KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_RESERVED_BYTES: \$\{KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_RESERVED_BYTES:-31457280\}$/m,
+  );
+  assert.match(localEnvExample, /^KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_CONCURRENCY=2$/m);
+  assert.match(
+    localEnvExample,
+    /^KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_RESERVED_BYTES=31457280$/m,
+  );
   assert.doesNotMatch(compose, /^ {6}(?:MINIO|R2|OPENAI|ANTHROPIC|COHERE|GEMINI|VOYAGE)_/m);
 });
 
+test("local parser isolates every bounded heavy document workload", () => {
+  const localUnstructured = serviceBlock(compose, "unstructured");
+  assert.match(
+    localUnstructured,
+    /^ {4}image: downloads\.unstructured\.io\/unstructured-io\/unstructured-api@sha256:0df934a22e4e893cf15e7aeaf35c463ecc75937758a83099aefdc13041619a1d$/m,
+  );
+  assert.match(localUnstructured, /^ {10}cpus: "4\.0"$/m);
+  assert.match(localUnstructured, /^ {10}memory: 6G$/m);
+  assert.match(localEnvExample, /^UNSTRUCTURED_MAX_CONCURRENCY=2$/m);
+  assert.match(localEnvExample, /^UNSTRUCTURED_MAX_INPUT_BYTES=15728640$/m);
+  assert.match(localEnvExample, /^UNSTRUCTURED_REQUEST_TIMEOUT_MS=600000$/m);
+  assert.match(localEnvExample, /^UNSTRUCTURED_HEAVY_MAX_CONCURRENCY=1$/m);
+  assert.match(localEnvExample, /^UNSTRUCTURED_HEAVY_REQUEST_TIMEOUT_MS=2400000$/m);
+});
+
 test("app compose profile enables the bundled PDF rasterizer with bounded defaults", () => {
+  assert.match(
+    compose,
+    /^ {6}KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY: \$\{KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY:-2\}$/m,
+  );
+  assert.match(
+    compose,
+    /^ {6}KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_CONCURRENCY: \$\{KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_CONCURRENCY:-4\}$/m,
+  );
+  assert.match(
+    compose,
+    /^ {6}KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_BYTES: \$\{KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_BYTES:-134217728\}$/m,
+  );
+  assert.match(localEnvExample, /^KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_CONCURRENCY=4$/m);
+  assert.match(localEnvExample, /^KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_BYTES=134217728$/m);
   assert.match(compose, /^ {6}KNOWLEDGE_PDF_RASTERIZER: \$\{KNOWLEDGE_PDF_RASTERIZER:-poppler\}$/m);
   assert.match(
     compose,
@@ -243,10 +323,26 @@ test("Dify compose starts the integrated KnowledgeFS API by default and keeps it
     assert.match(knowledgeFs, /^ {6}- "8787"$/m);
     assert.doesNotMatch(knowledgeFs, /^ {4}ports:$/m);
     assert.match(knowledgeFs, /^ {6}- path: \.\/envs\/core-services\/knowledge-fs\.env$/m);
+    assert.match(knowledgeFs, /^ {8}required: false$/m);
     assert.match(knowledgeFs, /whitelisted proxies/);
     assert.match(
       knowledgeFs,
       /^ {6}KNOWLEDGE_INTEGRATED_MODE_ENABLED: \$\{KNOWLEDGE_INTEGRATED_MODE_ENABLED:-true\}$/m,
+    );
+    assert.match(
+      knowledgeFs,
+      /^ {6}KNOWLEDGE_DIRECT_UPLOAD_ENABLED: \$\{KNOWLEDGE_DIRECT_UPLOAD_ENABLED:-true\}$/m,
+    );
+    assert.doesNotMatch(knowledgeFs, /^ {6}KNOWLEDGE_DIRECT_UPLOAD_MAX_FILE_BYTES:/m);
+    assert.doesNotMatch(knowledgeFs, /^ {6}KNOWLEDGE_DIRECT_UPLOAD_MULTIPART_THRESHOLD_BYTES:/m);
+    assert.doesNotMatch(knowledgeFs, /^ {6}KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_BYTES:/m);
+    assert.doesNotMatch(
+      knowledgeFs,
+      /^ {6}KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_(?:CONCURRENCY|RESERVED_BYTES):/m,
+    );
+    assert.doesNotMatch(
+      knowledgeFs,
+      /^ {6}KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_(?:CONCURRENCY|BYTES):/m,
     );
     assert.match(
       knowledgeFs,
@@ -258,6 +354,11 @@ test("Dify compose starts the integrated KnowledgeFS API by default and keeps it
     assert.match(knowledgeFs, /http:\/\/127\.0\.0\.1:8787\/ready/);
     assert.match(knowledgeFs, /^ {6}- default$/m);
     assert.doesNotMatch(knowledgeFs, /^ {6}KNOWLEDGE_PDF_RASTERIZER:/m);
+    assert.ok(
+      knowledgeFs.includes(
+        "      DIFY_ROOT_KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY_OVERRIDE: ${KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY-}",
+      ),
+    );
     assert.doesNotMatch(
       knowledgeFs,
       /^ {6}KNOWLEDGE_PDF_RASTERIZER_(?:DPI|MAX_ASSETS|MAX_CONCURRENCY|TIMEOUT_MS|THUMBNAIL_DPI):/m,
@@ -285,11 +386,15 @@ test("Dify compose starts the integrated KnowledgeFS API by default and keeps it
   );
 });
 
-test("Dify Compose whitelists root PDF overrides without shadowing service values when unset", () => {
+test("Dify Compose whitelists root materialization and PDF overrides without leaking root values", () => {
   const withoutRootOverrides = materializedDifyKnowledgeFsEnvironment({
     ROOT_ONLY_TEST_SECRET: "must-not-enter-container",
   });
   assert.equal(withoutRootOverrides.DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_OVERRIDE, "");
+  assert.equal(
+    withoutRootOverrides.DIFY_ROOT_KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY_OVERRIDE,
+    "",
+  );
   assert.equal(
     withoutRootOverrides.DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY_OVERRIDE,
     "",
@@ -297,9 +402,14 @@ test("Dify Compose whitelists root PDF overrides without shadowing service value
   assert.equal(withoutRootOverrides.ROOT_ONLY_TEST_SECRET, undefined);
 
   const withRootOverrides = materializedDifyKnowledgeFsEnvironment({
+    KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY: "3",
     KNOWLEDGE_PDF_RASTERIZER: "off",
     KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY: "6",
   });
+  assert.equal(
+    withRootOverrides.DIFY_ROOT_KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY_OVERRIDE,
+    "3",
+  );
   assert.equal(withRootOverrides.DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_OVERRIDE, "off");
   assert.equal(withRootOverrides.DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY_OVERRIDE, "6");
 });
@@ -309,6 +419,9 @@ test("KnowledgeFS deployment env contains only operator-owned runtime inputs", (
     "DATABASE_URL",
     "KNOWLEDGE_DOCUMENT_COMPILATION_RUNTIME",
     "DURABLE_DELETION_STEP_TIMEOUT_MS",
+    "KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY",
+    "KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_CONCURRENCY",
+    "KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_BYTES",
     "KNOWLEDGE_PDF_RASTERIZER",
     "KNOWLEDGE_PDF_RASTERIZER_DPI",
     "KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_DPI",
@@ -322,10 +435,21 @@ test("KnowledgeFS deployment env contains only operator-owned runtime inputs", (
     "KNOWLEDGE_SEMANTIC_EXTRACTION_BATCH_SIZE",
     "KNOWLEDGE_SEMANTIC_EXTRACTION_MAX_CONCURRENCY",
     "KNOWLEDGE_EMBEDDING_REQUEST_CONCURRENCY",
+    "KNOWLEDGE_VISUAL_EMBEDDING_MAX_BATCH_ASSETS",
+    "KNOWLEDGE_VISUAL_EMBEDDING_MAX_BATCH_BYTES",
+    "KNOWLEDGE_VISUAL_EMBEDDING_MAX_CONCURRENCY",
     "KNOWLEDGE_FS_CAPABILITY_V2_ENABLED",
     "KNOWLEDGE_FS_CAPABILITY_V2_PUBLIC_JWKS",
     "KNOWLEDGE_DIRECT_UPLOAD_ENABLED",
+    "KNOWLEDGE_DIRECT_UPLOAD_MAX_FILE_BYTES",
+    "KNOWLEDGE_DIRECT_UPLOAD_MULTIPART_THRESHOLD_BYTES",
     "KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_BYTES",
+    "KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_CONCURRENCY",
+    "KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_RESERVED_BYTES",
+    "KNOWLEDGE_BUFFERED_DOCUMENT_UPLOAD_MAX_CONCURRENCY",
+    "KNOWLEDGE_BUFFERED_DOCUMENT_UPLOAD_MAX_RESERVED_BYTES",
+    "KNOWLEDGE_BUFFERED_DOCUMENT_UPLOAD_IDLE_TIMEOUT_MS",
+    "KNOWLEDGE_BUFFERED_DOCUMENT_UPLOAD_TOTAL_TIMEOUT_MS",
     "KNOWLEDGE_DIRECT_STREAM_ENABLED",
     "KNOWLEDGE_RESEARCH_REASONING_MAX_OUTPUT_TOKENS",
     "KNOWLEDGE_RESEARCH_REASONING_TIMEOUT_MS",
@@ -334,23 +458,114 @@ test("KnowledgeFS deployment env contains only operator-owned runtime inputs", (
     "UNSTRUCTURED_API_URL",
     "UNSTRUCTURED_API_KEY",
     "UNSTRUCTURED_MAX_CONCURRENCY",
+    "UNSTRUCTURED_HEAVY_MAX_CONCURRENCY",
+    "UNSTRUCTURED_MAX_INPUT_BYTES",
     "UNSTRUCTURED_REQUEST_TIMEOUT_MS",
+    "UNSTRUCTURED_HEAVY_REQUEST_TIMEOUT_MS",
     "UNSTRUCTURED_MAX_RESPONSE_BYTES",
+    "UNSTRUCTURED_MAX_RETRIES",
     "DIFY_OBJECT_STORAGE_REQUEST_TIMEOUT_MS",
     "DIFY_REMOTE_IMAGE_REQUEST_TIMEOUT_MS",
   ]);
   assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_DOCUMENT_COMPILATION_RUNTIME=on$/m);
   assert.match(difyKnowledgeFsEnv, /^DURABLE_DELETION_STEP_TIMEOUT_MS=30000$/m);
+  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY=2$/m);
+  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_CONCURRENCY=4$/m);
+  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_BYTES=134217728$/m);
   assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_PDF_RASTERIZER=poppler$/m);
   assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_PDF_RASTERIZER_DPI=144$/m);
   assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_DPI=48$/m);
   assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_PDF_RASTERIZER_TIMEOUT_MS=30000$/m);
   assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_PDF_RASTERIZER_MAX_ASSETS=500$/m);
   assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY=2$/m);
+  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_VISUAL_EMBEDDING_MAX_BATCH_ASSETS=8$/m);
+  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_VISUAL_EMBEDDING_MAX_BATCH_BYTES=33554432$/m);
+  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_VISUAL_EMBEDDING_MAX_CONCURRENCY=2$/m);
+  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_DIRECT_UPLOAD_MAX_FILE_BYTES=15728640$/m);
+  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_DIRECT_UPLOAD_MULTIPART_THRESHOLD_BYTES=15728640$/m);
+  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_BYTES=15728640$/m);
+  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_CONCURRENCY=2$/m);
+  assert.match(
+    difyKnowledgeFsEnv,
+    /^KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_RESERVED_BYTES=31457280$/m,
+  );
+  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_BUFFERED_DOCUMENT_UPLOAD_MAX_CONCURRENCY=2$/m);
+  assert.match(
+    difyKnowledgeFsEnv,
+    /^KNOWLEDGE_BUFFERED_DOCUMENT_UPLOAD_MAX_RESERVED_BYTES=201326592$/m,
+  );
+  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_BUFFERED_DOCUMENT_UPLOAD_IDLE_TIMEOUT_MS=30000$/m);
+  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_BUFFERED_DOCUMENT_UPLOAD_TOTAL_TIMEOUT_MS=600000$/m);
   assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_FS_CAPABILITY_V2_ENABLED=false$/m);
   assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_RESEARCH_REASONING_MAX_OUTPUT_TOKENS=8192$/m);
   assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_RESEARCH_REASONING_TIMEOUT_MS=60000$/m);
+  assert.match(
+    difyKnowledgeFsEnv,
+    /^UNSTRUCTURED_API_URL=http:\/\/knowledge_fs_unstructured:8000$/m,
+  );
+  assert.match(difyKnowledgeFsEnv, /^UNSTRUCTURED_MAX_CONCURRENCY=2$/m);
+  assert.match(difyKnowledgeFsEnv, /^UNSTRUCTURED_HEAVY_MAX_CONCURRENCY=1$/m);
+  assert.match(difyKnowledgeFsEnv, /^UNSTRUCTURED_MAX_INPUT_BYTES=15728640$/m);
+  assert.match(difyKnowledgeFsEnv, /^UNSTRUCTURED_REQUEST_TIMEOUT_MS=600000$/m);
+  assert.match(difyKnowledgeFsEnv, /^UNSTRUCTURED_HEAVY_REQUEST_TIMEOUT_MS=2400000$/m);
+  assert.match(difyKnowledgeFsEnv, /^UNSTRUCTURED_MAX_RETRIES=0$/m);
   assert.doesNotMatch(difyKnowledgeFsEnv, /^MINIO_/m);
+});
+
+test("KnowledgeFS has an isolated page-parallel parser without changing legacy Unstructured", () => {
+  assert.deepEqual(envVariableNames(difyKnowledgeFsUnstructuredEnv), [
+    "UNSTRUCTURED_PARALLEL_MODE_ENABLED",
+    "UNSTRUCTURED_PARALLEL_MODE_URL",
+    "UNSTRUCTURED_PARALLEL_MODE_SPLIT_SIZE",
+    "UNSTRUCTURED_PARALLEL_MODE_THREADS",
+    "UNSTRUCTURED_PARALLEL_RETRY_ATTEMPTS",
+  ]);
+  assert.match(difyKnowledgeFsUnstructuredEnv, /^UNSTRUCTURED_PARALLEL_MODE_ENABLED=true$/m);
+  assert.match(
+    difyKnowledgeFsUnstructuredEnv,
+    /^UNSTRUCTURED_PARALLEL_MODE_URL=http:\/\/127\.0\.0\.1:8000\/general\/v0\/general$/m,
+  );
+  assert.match(difyKnowledgeFsUnstructuredEnv, /^UNSTRUCTURED_PARALLEL_MODE_SPLIT_SIZE=6$/m);
+  assert.match(difyKnowledgeFsUnstructuredEnv, /^UNSTRUCTURED_PARALLEL_MODE_THREADS=3$/m);
+  assert.match(difyKnowledgeFsUnstructuredEnv, /^UNSTRUCTURED_PARALLEL_RETRY_ATTEMPTS=0$/m);
+  assert.deepEqual(
+    envVariableNames(difyKnowledgeFsUnstructuredServiceDefaults),
+    envVariableNames(difyKnowledgeFsUnstructuredEnv),
+  );
+  assert.match(
+    difyKnowledgeFsUnstructuredServiceDefaults,
+    /The non-\.env suffix is intentional so this required file remains tracked/,
+  );
+
+  for (const difyCompose of difyComposeFiles) {
+    const services = parse(difyCompose).services;
+    assert.deepEqual(services.unstructured, unchangedLegacyUnstructuredService);
+
+    const knowledgeFsUnstructured = serviceBlock(difyCompose, "knowledge_fs_unstructured");
+    assert.match(
+      knowledgeFsUnstructured,
+      /^ {4}image: downloads\.unstructured\.io\/unstructured-io\/unstructured-api@sha256:0df934a22e4e893cf15e7aeaf35c463ecc75937758a83099aefdc13041619a1d$/m,
+    );
+    assert.match(knowledgeFsUnstructured, /^ {6}- knowledge-fs-unstructured$/m);
+    assert.match(
+      knowledgeFsUnstructured,
+      /^ {6}- path: \.\/envs\/core-services\/knowledge-fs-unstructured-service\.defaults$/m,
+    );
+    assert.match(
+      knowledgeFsUnstructured,
+      /^ {6}- path: \.\/envs\/core-services\/knowledge-fs-unstructured\.env$/m,
+    );
+    assert.deepEqual(services.knowledge_fs_unstructured.env_file, [
+      {
+        path: "./envs/core-services/knowledge-fs-unstructured-service.defaults",
+        required: true,
+      },
+      { path: "./envs/core-services/knowledge-fs-unstructured.env", required: false },
+    ]);
+    assert.match(knowledgeFsUnstructured, /^ {10}cpus: "?4\.0"?$/m);
+    assert.match(knowledgeFsUnstructured, /^ {10}memory: 6G$/m);
+    assert.doesNotMatch(knowledgeFsUnstructured, /^ {4}ports:$/m);
+  }
 });
 
 test("deployment examples keep Dify KnowledgeFS rollout capabilities disabled", () => {
@@ -364,15 +579,38 @@ test("deployment examples keep Dify KnowledgeFS rollout capabilities disabled", 
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_INTEGRATED_MODE_ENABLED: "false"$/m);
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_LEGACY_AUTHORIZATION_REMOVED: "false"$/m);
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_DIRECT_UPLOAD_ENABLED: "off"$/m);
+  assert.match(
+    kubernetesBaseline,
+    /^ {2}KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_CONCURRENCY: "2"$/m,
+  );
+  assert.match(
+    kubernetesBaseline,
+    /^ {2}KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_RESERVED_BYTES: "31457280"$/m,
+  );
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_DIRECT_STREAM_ENABLED: "off"$/m);
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_RESEARCH_REASONING_MAX_OUTPUT_TOKENS: "8192"$/m);
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_RESEARCH_REASONING_TIMEOUT_MS: "60000"$/m);
+  assert.match(
+    kubernetesBaseline,
+    /^ {2}KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY: "2"$/m,
+  );
+  assert.match(
+    kubernetesBaseline,
+    /^ {2}KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_CONCURRENCY: "4"$/m,
+  );
+  assert.match(
+    kubernetesBaseline,
+    /^ {2}KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_BYTES: "134217728"$/m,
+  );
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_PDF_RASTERIZER: poppler$/m);
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_PDF_RASTERIZER_DPI: "144"$/m);
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_DPI: "48"$/m);
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_PDF_RASTERIZER_TIMEOUT_MS: "30000"$/m);
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_PDF_RASTERIZER_MAX_ASSETS: "500"$/m);
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY: "2"$/m);
+  assert.match(kubernetesBaseline, /^ {2}UNSTRUCTURED_MAX_CONCURRENCY: "2"$/m);
+  assert.match(kubernetesBaseline, /^ {2}UNSTRUCTURED_REQUEST_TIMEOUT_MS: "600000"$/m);
+  assert.match(kubernetesBaseline, /^ {2}UNSTRUCTURED_MAX_RETRIES: "0"$/m);
 });
 
 test("Kubernetes baseline starts at zero replicas with internal-only service and fail-closed probes", () => {

@@ -1,5 +1,5 @@
 export interface ConcurrencyGate {
-  run<T>(fn: () => Promise<T>): Promise<T>;
+  run<T>(fn: () => Promise<T>, options?: { readonly signal?: AbortSignal | undefined }): Promise<T>;
 }
 
 export interface ConcurrencyGateEvent {
@@ -25,7 +25,12 @@ export function createConcurrencyGate(
   }
 
   let active = 0;
-  const waiters: Array<() => void> = [];
+  type Waiter = {
+    readonly resolve: () => void;
+    readonly signal?: AbortSignal | undefined;
+    readonly onAbort?: (() => void) | undefined;
+  };
+  const waiters: Waiter[] = [];
 
   const emit = (event: ConcurrencyGateEvent): void => {
     if (!onEvent) return;
@@ -37,13 +42,31 @@ export function createConcurrencyGate(
     }
   };
 
-  const acquire = async (): Promise<void> => {
+  const acquire = async (signal?: AbortSignal): Promise<void> => {
+    signal?.throwIfAborted();
     const queuedAt = now();
     if (active < limit) {
       active += 1;
     } else {
-      await new Promise<void>((resolve) => {
-        waiters.push(resolve);
+      await new Promise<void>((resolve, reject) => {
+        let waiter: Waiter;
+        const onAbort = () => {
+          const index = waiters.indexOf(waiter);
+          if (index < 0) return;
+          waiters.splice(index, 1);
+          signal?.removeEventListener("abort", onAbort);
+          reject(signal?.reason ?? new DOMException("This operation was aborted", "AbortError"));
+        };
+        waiter = {
+          resolve,
+          ...(signal ? { signal } : {}),
+          ...(signal ? { onAbort } : {}),
+        };
+        waiters.push(waiter);
+        if (signal && waiter.onAbort) {
+          signal.addEventListener("abort", waiter.onAbort, { once: true });
+          if (signal.aborted) waiter.onAbort();
+        }
       });
     }
     emit({
@@ -58,7 +81,10 @@ export function createConcurrencyGate(
   const release = (): void => {
     const next = waiters.shift();
     if (next) {
-      next();
+      if (next.signal && next.onAbort) {
+        next.signal.removeEventListener("abort", next.onAbort);
+      }
+      next.resolve();
     } else {
       active -= 1;
     }
@@ -72,9 +98,13 @@ export function createConcurrencyGate(
   };
 
   return {
-    run: async <T>(fn: () => Promise<T>): Promise<T> => {
-      await acquire();
+    run: async <T>(
+      fn: () => Promise<T>,
+      { signal }: { readonly signal?: AbortSignal | undefined } = {},
+    ): Promise<T> => {
+      await acquire(signal);
       try {
+        signal?.throwIfAborted();
         return await fn();
       } finally {
         release();

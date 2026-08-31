@@ -76,7 +76,13 @@ try {
 }
 
 async function verifyPdfRasterizerRuntime(containerId) {
-  const [{ stderr, stdout }, concurrencyResult] = await Promise.all([
+  const [
+    { stderr, stdout },
+    concurrencyResult,
+    materializationConcurrencyResult,
+    fallbackConcurrencyResult,
+    fallbackReservedBytesResult,
+  ] = await Promise.all([
     execFileAsync(docker, ["exec", containerId, "pdftoppm", "-v"]),
     execFileAsync(docker, [
       "exec",
@@ -84,9 +90,30 @@ async function verifyPdfRasterizerRuntime(containerId) {
       "printenv",
       "KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY",
     ]),
+    execFileAsync(docker, [
+      "exec",
+      containerId,
+      "printenv",
+      "KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY",
+    ]),
+    execFileAsync(docker, [
+      "exec",
+      containerId,
+      "printenv",
+      "KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_CONCURRENCY",
+    ]),
+    execFileAsync(docker, [
+      "exec",
+      containerId,
+      "printenv",
+      "KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_RESERVED_BYTES",
+    ]),
   ]);
   const version = `${stdout}${stderr}`.trim();
   const maxConcurrency = Number(concurrencyResult.stdout.trim());
+  const materializationMaxConcurrency = Number(materializationConcurrencyResult.stdout.trim());
+  const fallbackMaxConcurrency = Number(fallbackConcurrencyResult.stdout.trim());
+  const fallbackMaxReservedBytes = Number(fallbackReservedBytesResult.stdout.trim());
 
   if (!/^pdftoppm version\b/m.test(version)) {
     throw new Error(`Unexpected Poppler PDF rasterizer version output: ${version}`);
@@ -94,8 +121,26 @@ async function verifyPdfRasterizerRuntime(containerId) {
   if (maxConcurrency !== 2) {
     throw new Error(`Unexpected Poppler PDF rasterizer max concurrency: ${maxConcurrency}`);
   }
+  if (materializationMaxConcurrency !== 2) {
+    throw new Error(
+      `Unexpected document materialization max concurrency: ${materializationMaxConcurrency}`,
+    );
+  }
+  if (fallbackMaxConcurrency !== 2) {
+    throw new Error(`Unexpected small fallback max concurrency: ${fallbackMaxConcurrency}`);
+  }
+  if (fallbackMaxReservedBytes !== 31457280) {
+    throw new Error(`Unexpected small fallback byte budget: ${fallbackMaxReservedBytes}`);
+  }
 
-  return { command: "pdftoppm", maxConcurrency, version: version.split("\n")[0] };
+  return {
+    command: "pdftoppm",
+    fallbackMaxConcurrency,
+    fallbackMaxReservedBytes,
+    materializationMaxConcurrency,
+    maxConcurrency,
+    version: version.split("\n")[0],
+  };
 }
 
 async function verifySharpRuntime(containerId) {

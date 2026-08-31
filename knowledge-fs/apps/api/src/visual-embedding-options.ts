@@ -3,6 +3,7 @@ import {
   type EmbedVisualAssetsResult,
   type ImageBytesVisualEmbeddingProvider,
   type KnowledgeGatewayOptions,
+  createConcurrencyGate,
   createObjectStorageVisualEmbeddingProvider,
 } from "@knowledge/api";
 import {
@@ -20,6 +21,9 @@ export interface ApiVisualEmbeddingEnv extends DifyModelRuntimeClientEnv {
   /** @deprecated Dify vector dimensions are inferred from each response. */
   readonly KNOWLEDGE_VISUAL_EMBEDDING_DIMENSION?: string | undefined;
   readonly KNOWLEDGE_VISUAL_EMBEDDING_MAX_ASSET_BYTES?: string | undefined;
+  readonly KNOWLEDGE_VISUAL_EMBEDDING_MAX_BATCH_ASSETS?: string | undefined;
+  readonly KNOWLEDGE_VISUAL_EMBEDDING_MAX_BATCH_BYTES?: string | undefined;
+  readonly KNOWLEDGE_VISUAL_EMBEDDING_MAX_CONCURRENCY?: string | undefined;
   readonly KNOWLEDGE_VISUAL_EMBEDDING_MODEL?: string | undefined;
   readonly KNOWLEDGE_VISUAL_EMBEDDING_PLUGIN_ID?: string | undefined;
   readonly KNOWLEDGE_VISUAL_EMBEDDING_PLUGIN_PROVIDER?: string | undefined;
@@ -81,6 +85,16 @@ export function createApiVisualEmbeddingOptions({
 
   const queryMode = normalizedQueryMode(env.KNOWLEDGE_VISUAL_EMBEDDING_QUERY_MODE);
   const queryModel = trimmed(env.KNOWLEDGE_VISUAL_EMBEDDING_QUERY_MODEL) ?? model;
+  // The API assembly creates this options object once. Keep the gate attached to the returned
+  // provider so every document compilation in this process shares the same full-lifecycle slots.
+  const visualEmbeddingLifecycleGate = createConcurrencyGate(
+    boundedPositiveIntegerEnv(
+      env.KNOWLEDGE_VISUAL_EMBEDDING_MAX_CONCURRENCY,
+      2,
+      8,
+      "KNOWLEDGE_VISUAL_EMBEDDING_MAX_CONCURRENCY",
+    ),
+  );
   const imageBytesProvider = createDifyImageBytesVisualEmbeddingProvider({
     client,
     modelRequestGate,
@@ -92,21 +106,38 @@ export function createApiVisualEmbeddingOptions({
     false,
     "KNOWLEDGE_QUERY_IMAGE_RETRIEVAL_ENABLED",
   );
+  const objectStorageProvider = createObjectStorageVisualEmbeddingProvider({
+    maxAssetBytes: positiveIntegerEnv(
+      env.KNOWLEDGE_VISUAL_EMBEDDING_MAX_ASSET_BYTES,
+      20 * 1024 * 1024,
+      "KNOWLEDGE_VISUAL_EMBEDDING_MAX_ASSET_BYTES",
+    ),
+    maxBatchAssetCount: positiveIntegerEnv(
+      env.KNOWLEDGE_VISUAL_EMBEDDING_MAX_BATCH_ASSETS,
+      8,
+      "KNOWLEDGE_VISUAL_EMBEDDING_MAX_BATCH_ASSETS",
+    ),
+    maxBatchBytes: positiveIntegerEnv(
+      env.KNOWLEDGE_VISUAL_EMBEDDING_MAX_BATCH_BYTES,
+      32 * 1024 * 1024,
+      "KNOWLEDGE_VISUAL_EMBEDDING_MAX_BATCH_BYTES",
+    ),
+    objectStorage,
+    ...(trimmed(env.KNOWLEDGE_VISUAL_EMBEDDING_PREFERRED_VARIANT)
+      ? { preferredVariant: trimmed(env.KNOWLEDGE_VISUAL_EMBEDDING_PREFERRED_VARIANT) }
+      : { preferredVariant: "thumbnail" }),
+    provider: imageBytesProvider,
+  });
 
   return {
     model,
-    provider: createObjectStorageVisualEmbeddingProvider({
-      maxAssetBytes: positiveIntegerEnv(
-        env.KNOWLEDGE_VISUAL_EMBEDDING_MAX_ASSET_BYTES,
-        20 * 1024 * 1024,
-        "KNOWLEDGE_VISUAL_EMBEDDING_MAX_ASSET_BYTES",
-      ),
-      objectStorage,
-      ...(trimmed(env.KNOWLEDGE_VISUAL_EMBEDDING_PREFERRED_VARIANT)
-        ? { preferredVariant: trimmed(env.KNOWLEDGE_VISUAL_EMBEDDING_PREFERRED_VARIANT) }
-        : { preferredVariant: "thumbnail" }),
-      provider: imageBytesProvider,
-    }),
+    provider: {
+      embedAssets: (input) =>
+        visualEmbeddingLifecycleGate.run(() => objectStorageProvider.embedAssets(input), {
+          signal: input.signal,
+        }),
+      providerCallAdmission: objectStorageProvider.providerCallAdmission,
+    },
     ...(queryMode === "off"
       ? {}
       : {
@@ -277,6 +308,23 @@ function positiveIntegerEnv(value: string | undefined, fallback: number, name: s
   const parsed = Number(raw);
   if (!Number.isInteger(parsed) || parsed < 1) {
     throw new Error(`${name} must be a positive integer`);
+  }
+
+  return parsed;
+}
+
+function boundedPositiveIntegerEnv(
+  value: string | undefined,
+  fallback: number,
+  max: number,
+  name: string,
+): number {
+  const raw = trimmed(value);
+  if (!raw) return fallback;
+
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > max) {
+    throw new Error(`${name} must be between 1 and ${max}`);
   }
 
   return parsed;

@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import {
   type CapabilityGrantProvenanceRepository,
   type ConcurrencyGate,
+  DEFAULT_RETAINED_PARSE_ARTIFACT_MAX_BYTES,
+  DEFAULT_RETAINED_PARSE_ARTIFACT_MAX_CONCURRENCY,
   type DeletionLifecycleFenceGuard,
   type DeletionObjectWriteAdmission,
   type DocumentAssetRepository,
@@ -90,6 +92,7 @@ import {
   createRepositoryDocumentCompilationFingerprintMaterialResolver,
   createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder,
   createRepositoryKnowledgeSpaceProfileMigrationEvaluator,
+  createRetainedParseArtifactAdmission,
   createSourceCompilationPublicationExecutor,
   createVisualEmbeddingProjectionBuilder,
 } from "@knowledge/api";
@@ -137,6 +140,7 @@ export interface CreateApiDocumentCompilationRuntimeOptions {
         readonly repository: PageIndexFindabilityRepository;
       }
     | undefined;
+  readonly heavyMaterializationMaxConcurrency?: number | undefined;
   readonly initialProfileActivations?:
     | KnowledgeSpaceUnpublishedProfileActivationRepository
     | undefined;
@@ -167,7 +171,10 @@ export interface CreateApiDocumentCompilationRuntimeOptions {
         | "documentMultimodalMaxPdfRasterizedAssets"
         | "documentMultimodalRemoteAssetFetcher"
         | "documentPdfRasterizer"
-      > & { readonly documentMultimodalMaxConcurrency?: number | undefined })
+      > & {
+        readonly documentMaterializationMaxConcurrency?: number | undefined;
+        readonly documentMultimodalMaxConcurrency?: number | undefined;
+      })
     | undefined;
   readonly repositories: Partial<ApiDocumentCompilationRuntimeRepositories>;
   readonly semantic?:
@@ -192,6 +199,24 @@ export interface CreateApiDocumentCompilationRuntimeOptions {
         readonly provider: Parameters<typeof createVisualEmbeddingProjectionBuilder>[0]["provider"];
       }
     | undefined;
+}
+
+export function resolveHeavyMaterializationPreAdmissionMaxConcurrency(input: {
+  readonly documentMaterializationMaxConcurrency: number;
+  readonly heavyMaterializationMaxConcurrency?: number | undefined;
+}): number {
+  const configuredHeavyMaterializationMaxConcurrency =
+    input.heavyMaterializationMaxConcurrency ?? 1;
+  if (
+    !Number.isSafeInteger(configuredHeavyMaterializationMaxConcurrency) ||
+    configuredHeavyMaterializationMaxConcurrency < 1
+  ) {
+    throw new Error("Heavy materialization max concurrency must be a positive safe integer");
+  }
+  return Math.min(
+    configuredHeavyMaterializationMaxConcurrency,
+    Math.max(1, input.documentMaterializationMaxConcurrency - 1),
+  );
 }
 
 export interface ApiDocumentCompilationRuntimeAssembly {
@@ -258,6 +283,7 @@ export function createApiDocumentCompilationRuntime({
   objectWriteAdmission,
   embeddingResolver,
   findability,
+  heavyMaterializationMaxConcurrency,
   initialProfileActivations,
   modelCapabilityPreflight,
   modelCallMetrics,
@@ -304,9 +330,28 @@ export function createApiDocumentCompilationRuntime({
       "Document compilation runtime requires bounded projection reads and generation lifecycle updates",
     );
   }
-  const multimodalMaterializationGate = createConcurrencyGate(
-    multimodal?.documentMultimodalMaxConcurrency ?? 2,
+  const documentMaterializationMaxConcurrency =
+    multimodal?.documentMaterializationMaxConcurrency ??
+    multimodal?.documentMultimodalMaxConcurrency ??
+    2;
+  const documentMaterializationGate = createConcurrencyGate(documentMaterializationMaxConcurrency);
+  // Mirror the parser's narrow heavy lane outside materialization. Metadata-known work acquires it
+  // before reading; body-classified work releases the global slot before waiting on it. The clamp
+  // reserves one broad slot for ordinary work whenever the materialization width is greater than 1.
+  const heavyMaterializationPreAdmission = createConcurrencyGate(
+    resolveHeavyMaterializationPreAdmissionMaxConcurrency({
+      documentMaterializationMaxConcurrency,
+      ...(heavyMaterializationMaxConcurrency === undefined
+        ? {}
+        : { heavyMaterializationMaxConcurrency }),
+    }),
   );
+  // One admission instance is shared by every per-attempt worker created by this API process.
+  const retainedArtifactAdmission = createRetainedParseArtifactAdmission({
+    maxConcurrentArtifacts:
+      config.retainedArtifactMaxConcurrency ?? DEFAULT_RETAINED_PARSE_ARTIFACT_MAX_CONCURRENCY,
+    maxRetainedBytes: config.retainedArtifactMaxBytes ?? DEFAULT_RETAINED_PARSE_ARTIFACT_MAX_BYTES,
+  });
 
   const compilationJobs = createDurableDocumentCompilationJobStateMachine({
     assertCompilationAdmission: (input) =>
@@ -580,12 +625,12 @@ export function createApiDocumentCompilationRuntime({
         ...(jointSemanticGraph ? { jointSemanticGraph } : {}),
         indexOverrides: documentIndexOverrides,
         knowledgePaths: repositories.paths,
+        materializationGate: documentMaterializationGate,
         ...(multimodal?.documentMultimodalImageVariantGenerator
           ? {
               multimodalImageVariantGenerator: multimodal.documentMultimodalImageVariantGenerator,
             }
           : {}),
-        multimodalMaterializationGate,
         ...(multimodal?.documentMultimodalLocalAssetAllowlist
           ? {
               multimodalLocalAssetAllowlist: multimodal.documentMultimodalLocalAssetAllowlist,
@@ -622,10 +667,12 @@ export function createApiDocumentCompilationRuntime({
         outlines: repositories.outlines,
         pageIndexBuild,
         parser,
+        heavyMaterializationPreAdmission,
         ...(multimodal?.documentPdfRasterizer
           ? { pdfRasterizer: multimodal.documentPdfRasterizer }
           : {}),
         reindexer,
+        retainedArtifactAdmission,
         ...(semanticEnrichment
           ? {
               semanticEnrichmentAdmission: {

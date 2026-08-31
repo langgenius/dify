@@ -24,7 +24,15 @@ pnpm dev:infra
 This starts:
 
 - PostgreSQL with pgvector on port `5432`.
-- Unstructured API on port `8000`.
+- A digest-pinned Unstructured API on port `8000`, capped at four CPUs and 6 GiB.
+
+The local parser enables bounded PDF page parallelism and serves every remote document format.
+KnowledgeFS applies a generic client budget of two concurrent requests and 600 seconds to ordinary
+documents. Every PDF plus structurally or byte-heavy Office, mail, EPUB, ODT, and RTF input uses the
+nested one-request gate and 2,400-second timeout. A source-run API uses
+`UNSTRUCTURED_API_URL=http://127.0.0.1:8000`, while the containerized API uses
+`UNSTRUCTURED_CONTAINER_API_URL=http://unstructured:8000`. This distinction avoids resolving
+`127.0.0.1` inside the API container.
 
 The `vector` extension is enabled automatically on a fresh PostgreSQL volume through
 `infra/local/postgres-init/01-enable-pgvector.sql`.
@@ -92,6 +100,18 @@ production image, including at most two concurrent Poppler page batches. Set
 `KNOWLEDGE_PDF_RASTERIZER=off` in the ignored `infra/local/.env` to disable
 it, or install Poppler on the host before using the source-run API for PDFs.
 
+Remote parsing has a process-wide concurrency ceiling of two and a nested heavy-document ceiling
+of one. Every PDF is heavy; Office, mail, ODT/RTF, and EPUB inputs enter the heavy policy only when
+their bytes or bounded container metadata indicate substantial work. Ordinary requests keep a
+600-second deadline, heavy requests use 2,400 seconds, and the 15 MiB parser input cap matches the
+default product upload limit.
+
+After parsing, canonical artifacts stay live through outline, semantic, graph, and index work. The
+local defaults admit at most four such artifacts with a conservative aggregate retained-heap charge
+of 128 MiB. An artifact that reaches that budget runs alone; queued cancellation does not enter the
+downstream stages. Override `KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_CONCURRENCY` and
+`KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_BYTES` together only after measuring the API container.
+
 This Compose file is not a supported KnowledgeFS deployment topology. Production KnowledgeFS must
 be started by Dify's Compose or Kubernetes deployment so the internal URL, authentication, storage,
 models, datasources, and lifecycle are wired together.
@@ -107,4 +127,5 @@ pnpm compose:apps:test
 
 The middleware Compose contains only PostgreSQL and Unstructured. The app-profile checks also
 assert that no MinIO, cloud-storage credential, provider credential, or direct Plugin Daemon
-configuration reaches the KnowledgeFS API.
+configuration reaches the KnowledgeFS API. Both Compose files pin the same tested multi-platform
+Unstructured image digest and enforce the same four-CPU/6-GiB parser ceiling.

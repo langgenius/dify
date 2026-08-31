@@ -24,6 +24,10 @@ test("isolated API bundle smoke starts the container and checks compute health",
   assert.match(smokeScript, /verifyPdfRasterizerRuntime/);
   assert.match(smokeScript, /pdftoppm/);
   assert.match(smokeScript, /KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY/);
+  assert.match(smokeScript, /KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY/);
+  assert.match(smokeScript, /materializationMaxConcurrency !== 2/);
+  assert.match(smokeScript, /fallbackMaxConcurrency !== 2/);
+  assert.match(smokeScript, /fallbackMaxReservedBytes !== 31457280/);
   assert.match(smokeScript, /maxConcurrency !== 2/);
   assert.match(smokeScript, /verifySharpRuntime/);
   assert.match(smokeScript, /await import\("sharp"\)/);
@@ -52,6 +56,13 @@ test("production API image carries and executes the Poppler PDF rasterizer", () 
   assert.match(apiDockerfile, /KNOWLEDGE_PDF_RASTERIZER_TIMEOUT_MS=30000/);
   assert.match(apiDockerfile, /KNOWLEDGE_PDF_RASTERIZER_MAX_ASSETS=500/);
   assert.match(apiDockerfile, /KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY=2/);
+  assert.match(apiDockerfile, /KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY=2/);
+  assert.match(apiDockerfile, /KNOWLEDGE_BUFFERED_DOCUMENT_UPLOAD_MAX_CONCURRENCY=2/);
+  assert.match(apiDockerfile, /KNOWLEDGE_BUFFERED_DOCUMENT_UPLOAD_MAX_RESERVED_BYTES=201326592/);
+  assert.match(apiDockerfile, /KNOWLEDGE_BUFFERED_DOCUMENT_UPLOAD_IDLE_TIMEOUT_MS=30000/);
+  assert.match(apiDockerfile, /KNOWLEDGE_BUFFERED_DOCUMENT_UPLOAD_TOTAL_TIMEOUT_MS=600000/);
+  assert.match(apiDockerfile, /KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_CONCURRENCY=2/);
+  assert.match(apiDockerfile, /KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_RESERVED_BYTES=31457280/);
   assert.match(apiDockerfile, /command -v pdftoppm/);
   assert.match(apiDockerfile, /pdftoppm -v/);
 });

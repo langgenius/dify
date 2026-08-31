@@ -11,6 +11,10 @@ import {
   UploadSessionIntegrityError,
   UploadSessionNotFoundError,
 } from "./upload-session";
+import {
+  type SmallFileFallbackAdmission,
+  createSmallFileFallbackAdmission,
+} from "./upload-session-fallback-admission";
 import { registerUploadSessionHandlers } from "./upload-session-handlers";
 
 const SESSION_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d01";
@@ -125,6 +129,112 @@ describe("upload session handlers", () => {
     });
   });
 
+  it("holds fallback admission from before body buffering until object storage finishes", async () => {
+    const lifecycle: string[] = [];
+    const fallbackAdmission: SmallFileFallbackAdmission = {
+      run: async (work, options) => {
+        lifecycle.push(`admitted:${options.reservedBytes}`);
+        const result = await work();
+        lifecycle.push("released");
+        return result;
+      },
+    };
+    const fixture = handlerFixture({
+      completeLifecycle: () => lifecycle.push("completed"),
+      fallbackAdmission,
+      grant: capabilityGrant({
+        action: "upload_sessions.write",
+        id: SESSION_ID,
+        parentId: SPACE_ID,
+        type: "upload_session",
+      }),
+      putSmallFileLifecycle: () => lifecycle.push("stored"),
+      session: { ...uploadSession(), expectedSizeBytes: 4, mode: "small_fallback" },
+    });
+
+    const response = await fixture.app.request(
+      `/upload-sessions/${SESSION_ID}/small-file?knowledgeSpaceId=${SPACE_ID}`,
+      {
+        body: "tiny",
+        headers: { "content-type": "application/octet-stream" },
+        method: "POST",
+      },
+    );
+
+    expect(response.status).toBe(200);
+    expect(lifecycle).toEqual(["admitted:4", "stored", "released", "completed"]);
+  });
+
+  it("times out stalled admitted readers, releases both slots, and admits the next fallback", async () => {
+    const fixture = handlerFixture({
+      fallbackAdmission: createSmallFileFallbackAdmission({
+        maxConcurrency: 2,
+        maxReservedBytes: 8,
+      }),
+      fallbackBodyIdleTimeoutMs: 20,
+      fallbackBodyTotalTimeoutMs: 1_000,
+      grant: capabilityGrant({
+        action: "upload_sessions.write",
+        id: SESSION_ID,
+        parentId: SPACE_ID,
+        type: "upload_session",
+      }),
+      session: { ...uploadSession(), expectedSizeBytes: 4, mode: "small_fallback" },
+    });
+    const path = `/upload-sessions/${SESSION_ID}/small-file?knowledgeSpaceId=${SPACE_ID}`;
+    const first = stalledSmallFileRequest(path);
+    const second = stalledSmallFileRequest(path);
+    const firstResponse = fixture.app.fetch(first);
+    const secondResponse = fixture.app.fetch(second);
+    await waitFor(() => first.bodyReads > 0 && second.bodyReads > 0);
+    const thirdResponse = fixture.app.request(path, {
+      body: "tiny",
+      headers: { "content-type": "application/octet-stream" },
+      method: "POST",
+    });
+
+    const [firstResult, secondResult, thirdResult] = await Promise.all([
+      firstResponse,
+      secondResponse,
+      thirdResponse,
+    ]);
+    expect(firstResult.status).toBe(408);
+    expect(secondResult.status).toBe(408);
+    expect(thirdResult.status).toBe(200);
+    await expect(firstResult.json()).resolves.toEqual({
+      error: "Small-file fallback idle timeout",
+    });
+    expect(fixture.service.putSmallFile).toHaveBeenCalledTimes(1);
+    expect(fixture.service.complete).toHaveBeenCalledTimes(1);
+  });
+
+  it("applies a total fallback body deadline independently from the idle timeout", async () => {
+    const fixture = handlerFixture({
+      fallbackBodyIdleTimeoutMs: 20,
+      fallbackBodyTotalTimeoutMs: 20,
+      grant: capabilityGrant({
+        action: "upload_sessions.write",
+        id: SESSION_ID,
+        parentId: SPACE_ID,
+        type: "upload_session",
+      }),
+      session: { ...uploadSession(), expectedSizeBytes: 4, mode: "small_fallback" },
+    });
+
+    const response = await fixture.app.fetch(
+      stalledSmallFileRequest(
+        `/upload-sessions/${SESSION_ID}/small-file?knowledgeSpaceId=${SPACE_ID}`,
+      ),
+    );
+
+    expect(response.status).toBe(408);
+    await expect(response.json()).resolves.toEqual({
+      error: "Small-file fallback total timeout",
+    });
+    expect(fixture.service.putSmallFile).not.toHaveBeenCalled();
+    expect(fixture.service.complete).not.toHaveBeenCalled();
+  });
+
   it("rejects cross-Space fallback grants before reading or writing session bytes", async () => {
     const fixture = handlerFixture({
       grant: capabilityGrant({
@@ -178,6 +288,10 @@ describe("upload session handlers", () => {
 
   it("rejects fallback bytes beyond the exact reservation before storage I/O", async () => {
     const fixture = handlerFixture({
+      fallbackAdmission: createSmallFileFallbackAdmission({
+        maxConcurrency: 1,
+        maxReservedBytes: 4,
+      }),
       grant: capabilityGrant({
         action: "upload_sessions.write",
         id: SESSION_ID,
@@ -199,6 +313,53 @@ describe("upload session handlers", () => {
     expect(response.status).toBe(413);
     expect(fixture.service.putSmallFile).not.toHaveBeenCalled();
     expect(fixture.service.complete).not.toHaveBeenCalled();
+
+    const accepted = await fixture.app.request(
+      `/upload-sessions/${SESSION_ID}/small-file?knowledgeSpaceId=${SPACE_ID}`,
+      {
+        body: "tiny",
+        headers: { "content-type": "application/octet-stream" },
+        method: "POST",
+      },
+    );
+    expect(accepted.status).toBe(200);
+    expect(fixture.service.putSmallFile).toHaveBeenCalledTimes(1);
+    expect(fixture.service.complete).toHaveBeenCalledTimes(1);
+  });
+
+  it("cancels an admitted reader on client abort and releases its fallback slot", async () => {
+    const fixture = handlerFixture({
+      fallbackAdmission: createSmallFileFallbackAdmission({
+        maxConcurrency: 1,
+        maxReservedBytes: 4,
+      }),
+      fallbackBodyIdleTimeoutMs: 1_000,
+      fallbackBodyTotalTimeoutMs: 2_000,
+      grant: capabilityGrant({
+        action: "upload_sessions.write",
+        id: SESSION_ID,
+        parentId: SPACE_ID,
+        type: "upload_session",
+      }),
+      session: { ...uploadSession(), expectedSizeBytes: 4, mode: "small_fallback" },
+    });
+    const path = `/upload-sessions/${SESSION_ID}/small-file?knowledgeSpaceId=${SPACE_ID}`;
+    const controller = new AbortController();
+    const stalled = stalledSmallFileRequest(path, controller.signal);
+    const abortedResponse = fixture.app.fetch(stalled);
+    await waitFor(() => stalled.bodyReads > 0);
+    controller.abort(new Error("client disconnected"));
+
+    const acceptedResponse = fixture.app.request(path, {
+      body: "tiny",
+      headers: { "content-type": "application/octet-stream" },
+      method: "POST",
+    });
+    const [aborted, accepted] = await Promise.all([abortedResponse, acceptedResponse]);
+    expect(aborted.status).toBe(500);
+    expect(accepted.status).toBe(200);
+    expect(fixture.service.putSmallFile).toHaveBeenCalledTimes(1);
+    expect(fixture.service.complete).toHaveBeenCalledTimes(1);
   });
 
   it("completes and aborts only through their separate task-scoped actions", async () => {
@@ -518,11 +679,16 @@ describe("upload session handlers", () => {
 function handlerFixture(
   input: {
     readonly abortError?: Error;
+    readonly completeLifecycle?: (() => void) | undefined;
     readonly completeError?: Error;
     readonly createError?: Error;
     readonly createUpload?: boolean;
+    readonly fallbackAdmission?: SmallFileFallbackAdmission | undefined;
+    readonly fallbackBodyIdleTimeoutMs?: number | undefined;
+    readonly fallbackBodyTotalTimeoutMs?: number | undefined;
     readonly grant?: DifyCapabilityV2SanitizedGrant;
     readonly presignError?: Error;
+    readonly putSmallFileLifecycle?: (() => void) | undefined;
     readonly putSmallFileError?: Error;
     readonly session?: UploadSession | null;
   } = {},
@@ -538,6 +704,7 @@ function handlerFixture(
     cleanupExpired: vi.fn(async () => ({ expired: 0, failed: 0 })),
     complete: vi.fn(async () => {
       if (input.completeError) throw input.completeError;
+      input.completeLifecycle?.();
       return { session: { ...resultSession, status: "completed" as const } };
     }),
     create: vi.fn(async () => {
@@ -568,6 +735,7 @@ function handlerFixture(
     }),
     putSmallFile: vi.fn(async () => {
       if (input.putSmallFileError) throw input.putSmallFileError;
+      input.putSmallFileLifecycle?.();
     }),
   } satisfies UploadSessionService;
   app.use("*", async (context, next) => {
@@ -581,8 +749,49 @@ function handlerFixture(
     if (input.grant) context.set("capabilityV2Grant", input.grant);
     await next();
   });
-  registerUploadSessionHandlers({ app, sessions: service });
+  registerUploadSessionHandlers({
+    app,
+    ...(input.fallbackBodyIdleTimeoutMs === undefined
+      ? {}
+      : { fallbackBodyIdleTimeoutMs: input.fallbackBodyIdleTimeoutMs }),
+    ...(input.fallbackBodyTotalTimeoutMs === undefined
+      ? {}
+      : { fallbackBodyTotalTimeoutMs: input.fallbackBodyTotalTimeoutMs }),
+    ...(input.fallbackAdmission ? { fallbackAdmission: input.fallbackAdmission } : {}),
+    sessions: service,
+  });
   return { app, service };
+}
+
+class ObservedRequest extends Request {
+  bodyReads = 0;
+
+  override get body(): Request["body"] {
+    this.bodyReads += 1;
+    return super.body;
+  }
+}
+
+function stalledSmallFileRequest(path: string, signal?: AbortSignal): ObservedRequest {
+  const stream = new ReadableStream<Uint8Array>({
+    pull: () => new Promise<void>(() => undefined),
+  });
+  return new ObservedRequest(`http://localhost${path}`, {
+    body: stream,
+    // Node requires duplex for streaming request bodies; it is not part of the browser RequestInit.
+    duplex: "half",
+    headers: { "content-type": "application/octet-stream" },
+    method: "POST",
+    ...(signal ? { signal } : {}),
+  } as RequestInit & { readonly duplex: "half" });
+}
+
+async function waitFor(predicate: () => boolean): Promise<void> {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    if (predicate()) return;
+    await new Promise<void>((resolve) => setTimeout(resolve, 1));
+  }
+  throw new Error("Timed out waiting for small-file body consumption");
 }
 
 function capabilityGrant(input: {

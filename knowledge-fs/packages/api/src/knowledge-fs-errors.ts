@@ -157,6 +157,13 @@ export const KNOWLEDGE_FS_ERROR_CATALOG = {
     502,
     "retry",
   ),
+  DOCUMENT_PARSER_TIMEOUT: descriptor(
+    "timeout",
+    "The document parser did not finish within the allowed time. Try again.",
+    "manual",
+    504,
+    "retry",
+  ),
   DOCUMENT_PARSER_UNAVAILABLE: descriptor(
     "dependency",
     "The document parser is temporarily unavailable.",
@@ -800,6 +807,7 @@ function normalizeKnowledgeFsErrorCode(code: string): string {
     PROVIDER_RATE_LIMITED: "DOCUMENT_PARSER_RATE_LIMITED",
     PROVIDER_REQUEST_FAILED: "DOCUMENT_PARSER_UNAVAILABLE",
     PROVIDER_RESPONSE_INVALID: "DOCUMENT_PARSER_RESPONSE_INVALID",
+    PROVIDER_TIMEOUT: "DOCUMENT_PARSER_TIMEOUT",
   };
   return aliases[normalized] ?? (normalized || "KNOWLEDGE_FS_INTERNAL_ERROR");
 }

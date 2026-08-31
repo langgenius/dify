@@ -152,6 +152,8 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0045_quality_replay_match_policy.tidb.sql",
       "packages/database/migrations/0046_remove_provider_sync_policy.postgres.sql",
       "packages/database/migrations/0046_remove_provider_sync_policy.tidb.sql",
+      "packages/database/migrations/0047_parse_artifact_checkpoints.postgres.sql",
+      "packages/database/migrations/0047_parse_artifact_checkpoints.tidb.sql",
     ]);
     const workflowCapturePostgres = artifacts.find(
       (artifact) =>
@@ -904,6 +906,7 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0044_document_semantic_window_checkpoints.postgres.sql",
       "packages/database/migrations/0045_quality_replay_match_policy.postgres.sql",
       "packages/database/migrations/0046_remove_provider_sync_policy.postgres.sql",
+      "packages/database/migrations/0047_parse_artifact_checkpoints.postgres.sql",
     ]);
     expect(
       getPendingMigrationArtifacts({
@@ -954,6 +957,7 @@ describe("migration file rendering", () => {
           "0044_document_semantic_window_checkpoints",
           "0045_quality_replay_match_policy",
           "0046_remove_provider_sync_policy",
+          "0047_parse_artifact_checkpoints",
         ],
         dialect: "postgres",
       }),

@@ -358,6 +358,7 @@ function createHarness(mode: "fast" | "research") {
       return { ...attempt, ...input };
     }),
     heartbeat: vi.fn(),
+    protectLease: vi.fn(async () => undefined),
     rebaseBaseHeadRevision: vi.fn(),
     signal: new AbortController().signal,
     withLeaseSnapshot: vi.fn(async (operation) => operation(attempt)),

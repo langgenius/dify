@@ -509,21 +509,32 @@ describe("document compilation candidate runtime factories", () => {
       coordinator: { composeCandidate: vi.fn() as never },
       createWorker: ({ jobs }) =>
         ({
-          process: vi.fn(async (_payload: unknown, options?: { readonly signal?: AbortSignal }) => {
-            expect(options?.signal).toBe(execution.signal);
-            await expect(jobs.get("another-id")).resolves.toBeNull();
-            await expect(jobs.getMany(["another-id"])).resolves.toEqual([]);
-            await expect(jobs.cancel(attempt().id)).rejects.toThrow("cannot cancel attempts");
-            await expect(jobs.fail(attempt().id, "failed")).rejects.toThrow("cannot fail attempts");
-            await expect(jobs.retry?.(attempt().id)).rejects.toThrow("cannot retry attempts");
-            await expect(jobs.start({} as never)).rejects.toThrow("cannot start attempts");
-            await expect(jobs.advance("another-id", "parsed")).rejects.toThrow(
-              "advance another compilation attempt",
-            );
-            await expect(jobs.advance(attempt().id, "failed")).rejects.toThrow(
-              "cannot advance to failed",
-            );
-          }),
+          process: vi.fn(
+            async (
+              _payload: unknown,
+              options?: {
+                readonly protectLease?: (minLeaseMs: number) => Promise<void>;
+                readonly signal?: AbortSignal;
+              },
+            ) => {
+              expect(options?.protectLease).toBe(execution.protectLease);
+              expect(options?.signal).toBe(execution.signal);
+              await expect(jobs.get("another-id")).resolves.toBeNull();
+              await expect(jobs.getMany(["another-id"])).resolves.toEqual([]);
+              await expect(jobs.cancel(attempt().id)).rejects.toThrow("cannot cancel attempts");
+              await expect(jobs.fail(attempt().id, "failed")).rejects.toThrow(
+                "cannot fail attempts",
+              );
+              await expect(jobs.retry?.(attempt().id)).rejects.toThrow("cannot retry attempts");
+              await expect(jobs.start({} as never)).rejects.toThrow("cannot start attempts");
+              await expect(jobs.advance("another-id", "parsed")).rejects.toThrow(
+                "advance another compilation attempt",
+              );
+              await expect(jobs.advance(attempt().id, "failed")).rejects.toThrow(
+                "cannot advance to failed",
+              );
+            },
+          ),
         }) as never,
       fingerprintMaterial: { resolve: vi.fn() as never },
     });
@@ -706,6 +717,7 @@ function executionContext(): DocumentCompilationExecutionContext {
     },
     bindInitialProfiles: vi.fn(async () => current),
     heartbeat: vi.fn(async () => current),
+    protectLease: vi.fn(async () => undefined),
     rebaseBaseHeadRevision: vi.fn(async (baseHeadRevision) => {
       current = { ...current, baseHeadRevision, rowVersion: current.rowVersion + 1 };
       return current;

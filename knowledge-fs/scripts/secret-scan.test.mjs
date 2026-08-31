@@ -59,6 +59,8 @@ const EXPECTED_NON_SEMANTIC_INTEGRATION_PATHS = [
   "docker/docker-compose.yaml",
   "docker/envs/core-services/api.env.example",
   "docker/envs/core-services/knowledge-fs.env.example",
+  "docker/envs/core-services/knowledge-fs-unstructured-service.defaults",
+  "docker/envs/core-services/knowledge-fs-unstructured.env.example",
   "docker/generate_docker_compose",
 ];
 
@@ -280,6 +282,8 @@ test("integration scan covers the complete KnowledgeFS and Dify integration surf
     "api/migrations/versions/2026_07_21_add_knowledge_fs.py",
     "docker/docker-compose.yaml",
     "docker/envs/core-services/knowledge-fs.env.example",
+    "docker/envs/core-services/knowledge-fs-unstructured-service.defaults",
+    "docker/envs/core-services/knowledge-fs-unstructured.env.example",
   ];
 
   try {

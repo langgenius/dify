@@ -23,25 +23,48 @@ describe("API upload-session options", () => {
         KNOWLEDGE_DIRECT_UPLOAD_CLEANUP_STALE_MS: "120000",
         KNOWLEDGE_DIRECT_UPLOAD_ENABLED: "on",
         KNOWLEDGE_DIRECT_UPLOAD_INCOMPLETE_MULTIPART_DAYS: "3",
-        KNOWLEDGE_DIRECT_UPLOAD_MAX_FILE_BYTES: "1073741824",
+        KNOWLEDGE_DIRECT_UPLOAD_MAX_FILE_BYTES: "52428800",
         KNOWLEDGE_DIRECT_UPLOAD_MULTIPART_PART_BYTES: "8388608",
         KNOWLEDGE_DIRECT_UPLOAD_MULTIPART_THRESHOLD_BYTES: "16777216",
         KNOWLEDGE_DIRECT_UPLOAD_PRESIGN_TTL_SECONDS: "600",
         KNOWLEDGE_DIRECT_UPLOAD_SESSION_TTL_MS: "3600000",
         KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_BYTES: "4194304",
+        KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_CONCURRENCY: "3",
+        KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_RESERVED_BYTES: "12582912",
       }),
     ).toEqual({
       cleanupBatchSize: 25,
       cleanupIntervalMs: 30_000,
       cleanupStaleMs: 120_000,
       incompleteMultipartDays: 3,
-      maxFileBytes: 1_073_741_824,
+      maxFileBytes: 52_428_800,
       multipartPartSizeBytes: 8_388_608,
       multipartThresholdBytes: 16_777_216,
       presignTtlSeconds: 600,
       sessionTtlMs: 3_600_000,
       smallFileFallbackMaxBytes: 4_194_304,
+      smallFileFallbackMaxConcurrency: 3,
+      smallFileFallbackMaxReservedBytes: 12_582_912,
     });
+  });
+
+  it("aligns the default direct-upload envelope with document compilation bounds", () => {
+    expect(createApiUploadSessionOptions({ KNOWLEDGE_DIRECT_UPLOAD_ENABLED: "on" })).toMatchObject({
+      maxFileBytes: 15 * 1024 * 1024,
+      multipartThresholdBytes: 15 * 1024 * 1024,
+      smallFileFallbackMaxBytes: 15 * 1024 * 1024,
+      smallFileFallbackMaxConcurrency: 2,
+      smallFileFallbackMaxReservedBytes: 30 * 1024 * 1024,
+    });
+
+    expect(() =>
+      createApiUploadSessionOptions({
+        KNOWLEDGE_DIRECT_UPLOAD_ENABLED: "on",
+        KNOWLEDGE_DIRECT_UPLOAD_MAX_FILE_BYTES: String(50 * 1024 * 1024 + 1),
+      }),
+    ).toThrow(
+      "KNOWLEDGE_DIRECT_UPLOAD_MAX_FILE_BYTES must be a safe integer between 1 and 52428800",
+    );
   });
 
   it("fails fast on ambiguous rollout and unsafe bounds", () => {
@@ -64,9 +87,33 @@ describe("API upload-session options", () => {
       createApiUploadSessionOptions({
         KNOWLEDGE_DIRECT_UPLOAD_ENABLED: "on",
         KNOWLEDGE_DIRECT_UPLOAD_MULTIPART_THRESHOLD_BYTES: "4194304",
-        KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_BYTES: "4194304",
+        KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_BYTES: "4194305",
       }),
-    ).toThrow("below KNOWLEDGE_DIRECT_UPLOAD_MULTIPART_THRESHOLD_BYTES");
+    ).toThrow("must not exceed KNOWLEDGE_DIRECT_UPLOAD_MULTIPART_THRESHOLD_BYTES");
+    expect(() =>
+      createApiUploadSessionOptions({
+        KNOWLEDGE_DIRECT_UPLOAD_ENABLED: "on",
+        KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_CONCURRENCY: "9",
+      }),
+    ).toThrow(
+      "KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_CONCURRENCY must be a safe integer between 1 and 8",
+    );
+    expect(() =>
+      createApiUploadSessionOptions({
+        KNOWLEDGE_DIRECT_UPLOAD_ENABLED: "on",
+        KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_RESERVED_BYTES: "15728639",
+      }),
+    ).toThrow(
+      "KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_RESERVED_BYTES must be at least KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_BYTES",
+    );
+    expect(() =>
+      createApiUploadSessionOptions({
+        KNOWLEDGE_DIRECT_UPLOAD_ENABLED: "on",
+        KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_RESERVED_BYTES: String(100 * 1024 * 1024 + 1),
+      }),
+    ).toThrow(
+      "KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_RESERVED_BYTES must be a safe integer between 1 and 104857600",
+    );
   });
 });
 
@@ -157,7 +204,11 @@ describe("API upload-session assembly", () => {
       },
     });
 
-    expect(assembly).toMatchObject({ ready: true, sessions: expect.any(Object) });
+    expect(assembly).toMatchObject({
+      fallbackAdmission: expect.any(Object),
+      ready: true,
+      sessions: expect.any(Object),
+    });
     expect(ensureLifecycle).toHaveBeenCalledWith({ daysAfterInitiation: 3 });
     assembly?.start();
     assembly?.stop();
@@ -207,5 +258,7 @@ function requiredConfig() {
     presignTtlSeconds: 600,
     sessionTtlMs: 3_600_000,
     smallFileFallbackMaxBytes: 4_194_304,
+    smallFileFallbackMaxConcurrency: 2,
+    smallFileFallbackMaxReservedBytes: 8_388_608,
   } as const;
 }

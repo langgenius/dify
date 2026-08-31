@@ -698,8 +698,9 @@ services:
       - path: ./envs/core-services/knowledge-fs.env
         required: false
     environment:
-      # Canonical PDF rasterizer values stay in the service env/image. These whitelisted proxies
-      # let an explicitly set docker/.env value override them without injecting the root env.
+      DIFY_ROOT_KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY_OVERRIDE: ${KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY-}
+      # Canonical values stay in the service env/image. These whitelisted proxies let an explicitly
+      # set docker/.env value override them without injecting the complete root environment.
       DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_OVERRIDE: ${KNOWLEDGE_PDF_RASTERIZER-}
       DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_DPI_OVERRIDE: ${KNOWLEDGE_PDF_RASTERIZER_DPI-}
       DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_DPI_OVERRIDE: ${KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_DPI-}
@@ -712,7 +713,6 @@ services:
       # Workspace staging uses KFS upload sessions for quota reservation and durable admission,
       # while the document bytes remain in Dify's unified object storage.
       KNOWLEDGE_DIRECT_UPLOAD_ENABLED: ${KNOWLEDGE_DIRECT_UPLOAD_ENABLED:-true}
-      KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_BYTES: ${KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_BYTES:-33554432}
       NODE_ENV: production
       PORT: 8787
     depends_on:
@@ -1373,6 +1373,26 @@ services:
     restart: always
     volumes:
       - ./volumes/unstructured:/app/data
+
+  # Dedicated KnowledgeFS parser for all remote document formats. Its page-parallel PDF policy
+  # and heavy-workload resource budget cannot change legacy Dify Unstructured ETL traffic.
+  knowledge_fs_unstructured:
+    image: downloads.unstructured.io/unstructured-io/unstructured-api@sha256:0df934a22e4e893cf15e7aeaf35c463ecc75937758a83099aefdc13041619a1d
+    profiles:
+      - knowledge-fs-unstructured
+    restart: always
+    env_file:
+      - path: ./envs/core-services/knowledge-fs-unstructured-service.defaults
+        required: true
+      - path: ./envs/core-services/knowledge-fs-unstructured.env
+        required: false
+    volumes:
+      - ./volumes/knowledge-fs-unstructured:/app/data
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 6G
 
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.

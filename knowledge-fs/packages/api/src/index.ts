@@ -127,6 +127,8 @@ export * from "./document-read-routes";
 export * from "./document-request-schemas";
 export * from "./document-response-schemas";
 export * from "./document-upload-utils";
+export * from "./buffered-document-upload-admission";
+export * from "./buffered-document-upload-middleware";
 export * from "./logical-document-handlers";
 export * from "./logical-document-repository";
 export * from "./logical-document-routes";
@@ -153,6 +155,8 @@ export * from "./durable-deletion-target-processors";
 export * from "./upload-session";
 export * from "./upload-session-completion-publisher";
 export * from "./upload-session-database-repository";
+export * from "./upload-session-fallback-admission";
+export * from "./retained-parse-artifact-admission";
 export * from "./upload-session-handlers";
 export * from "./upload-session-routes";
 export * from "./profile-aware-query-generator";
@@ -846,6 +850,12 @@ export function createKnowledgeGateway({
   tidbFtsPostingReadiness,
   traces = createNoopTraceRecorder(),
   uploadSessions,
+  uploadSmallFileFallbackAdmission,
+  uploadSmallFileFallbackIdleTimeoutMs,
+  uploadSmallFileFallbackTotalTimeoutMs,
+  bufferedDocumentUploadAdmission,
+  bufferedDocumentUploadIdleTimeoutMs,
+  bufferedDocumentUploadTotalTimeoutMs,
   visualEmbeddingModel,
   visualEmbeddingProvider,
   websiteCrawlConnector,
@@ -1624,7 +1634,19 @@ export function createKnowledgeGateway({
     });
   }
   if (uploadSessions) {
-    registerUploadSessionHandlers({ app, sessions: uploadSessions });
+    registerUploadSessionHandlers({
+      app,
+      ...(uploadSmallFileFallbackIdleTimeoutMs === undefined
+        ? {}
+        : { fallbackBodyIdleTimeoutMs: uploadSmallFileFallbackIdleTimeoutMs }),
+      ...(uploadSmallFileFallbackTotalTimeoutMs === undefined
+        ? {}
+        : { fallbackBodyTotalTimeoutMs: uploadSmallFileFallbackTotalTimeoutMs }),
+      ...(uploadSmallFileFallbackAdmission
+        ? { fallbackAdmission: uploadSmallFileFallbackAdmission }
+        : {}),
+      sessions: uploadSessions,
+    });
   }
 
   registerKnowledgeSpaceHandlers({
@@ -2002,6 +2024,13 @@ export function createKnowledgeGateway({
     artifactSegments: segments,
     assets,
     authorization: spaceAuthorization,
+    ...(bufferedDocumentUploadAdmission ? { bufferedDocumentUploadAdmission } : {}),
+    ...(bufferedDocumentUploadIdleTimeoutMs === undefined
+      ? {}
+      : { bufferedDocumentUploadIdleTimeoutMs }),
+    ...(bufferedDocumentUploadTotalTimeoutMs === undefined
+      ? {}
+      : { bufferedDocumentUploadTotalTimeoutMs }),
     bulkOperationRepository,
     documentCompilationJobs,
     ...(deletionLifecycleFence ? { deletionFence: deletionLifecycleFence } : {}),

@@ -1,5 +1,9 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 
+import {
+  DEFAULT_BUFFERED_DOCUMENT_UPLOAD_IDLE_TIMEOUT_MS,
+  DEFAULT_BUFFERED_DOCUMENT_UPLOAD_TOTAL_TIMEOUT_MS,
+} from "./buffered-document-upload-middleware";
 import type { DifyCapabilityV2SanitizedGrant } from "./dify-capability-v2";
 import type { KnowledgeGatewayEnv } from "./gateway-openapi-contracts";
 import { LegacySpacePublicationBootstrapAdmissionError } from "./legacy-space-publication-bootstrap";
@@ -13,6 +17,12 @@ import {
   type UploadSessionService,
 } from "./upload-session";
 import {
+  DEFAULT_SMALL_FILE_FALLBACK_MAX_CONCURRENCY,
+  DEFAULT_SMALL_FILE_FALLBACK_MAX_RESERVED_BYTES,
+  type SmallFileFallbackAdmission,
+  createSmallFileFallbackAdmission,
+} from "./upload-session-fallback-admission";
+import {
   abortUploadSessionRoute,
   completeUploadSessionRoute,
   createUploadSessionRoute,
@@ -22,8 +32,30 @@ import {
 
 export function registerUploadSessionHandlers(input: {
   readonly app: OpenAPIHono<KnowledgeGatewayEnv>;
+  readonly fallbackBodyIdleTimeoutMs?: number | undefined;
+  readonly fallbackBodyTotalTimeoutMs?: number | undefined;
+  readonly fallbackAdmission?: SmallFileFallbackAdmission | undefined;
   readonly sessions: UploadSessionService;
 }): void {
+  const fallbackAdmission =
+    input.fallbackAdmission ??
+    createSmallFileFallbackAdmission({
+      maxConcurrency: DEFAULT_SMALL_FILE_FALLBACK_MAX_CONCURRENCY,
+      maxReservedBytes: DEFAULT_SMALL_FILE_FALLBACK_MAX_RESERVED_BYTES,
+    });
+  const fallbackBodyIdleTimeoutMs = positiveSafeInteger(
+    input.fallbackBodyIdleTimeoutMs ?? DEFAULT_BUFFERED_DOCUMENT_UPLOAD_IDLE_TIMEOUT_MS,
+    "fallbackBodyIdleTimeoutMs",
+  );
+  const fallbackBodyTotalTimeoutMs = positiveSafeInteger(
+    input.fallbackBodyTotalTimeoutMs ?? DEFAULT_BUFFERED_DOCUMENT_UPLOAD_TOTAL_TIMEOUT_MS,
+    "fallbackBodyTotalTimeoutMs",
+  );
+  if (fallbackBodyTotalTimeoutMs < fallbackBodyIdleTimeoutMs) {
+    throw new Error(
+      "Small-file fallback fallbackBodyTotalTimeoutMs must be at least fallbackBodyIdleTimeoutMs",
+    );
+  }
   input.app.openapi(createUploadSessionRoute, async (context) => {
     const params = context.req.valid("param");
     const grant = exactGrant(context.get("capabilityV2Grant"), {
@@ -104,12 +136,23 @@ export function registerUploadSessionHandlers(input: {
       if (session.mode !== "small_fallback") {
         throw new UploadSessionConflictError("Upload session does not allow small-file fallback");
       }
-      const body = await readExactSmallFileBody(context.req.raw, session.expectedSizeBytes);
-      await input.sessions.putSmallFile({
-        body,
-        sessionId: params.id,
-        tenantId: grant.namespaceId,
-      });
+      await fallbackAdmission.run(
+        async () => {
+          const body = await readExactSmallFileBody(context.req.raw, session.expectedSizeBytes, {
+            idleTimeoutMs: fallbackBodyIdleTimeoutMs,
+            totalTimeoutMs: fallbackBodyTotalTimeoutMs,
+          });
+          await input.sessions.putSmallFile({
+            body,
+            sessionId: params.id,
+            tenantId: grant.namespaceId,
+          });
+        },
+        {
+          reservedBytes: session.expectedSizeBytes,
+          signal: context.req.raw.signal,
+        },
+      );
       const result = await input.sessions.complete({
         grantId: grant.grantId,
         sessionId: params.id,
@@ -117,6 +160,9 @@ export function registerUploadSessionHandlers(input: {
       });
       return context.json({ session: publicUploadSession(result.session) }, 200);
     } catch (error) {
+      if (error instanceof SmallFilePayloadTimeoutError) {
+        return context.json({ error: error.message }, 408);
+      }
       return uploadSessionError(context, error);
     }
   });
@@ -267,9 +313,17 @@ class SmallFilePayloadTooLargeError extends Error {
   }
 }
 
+class SmallFilePayloadTimeoutError extends Error {
+  constructor(kind: "idle" | "total") {
+    super(`Small-file fallback ${kind} timeout`);
+    this.name = "SmallFilePayloadTimeoutError";
+  }
+}
+
 async function readExactSmallFileBody(
   request: Request,
   expectedSizeBytes: number,
+  options: { readonly idleTimeoutMs: number; readonly totalTimeoutMs: number },
 ): Promise<Uint8Array> {
   const declaredLength = request.headers.get("content-length");
   if (declaredLength !== null) {
@@ -284,16 +338,70 @@ async function readExactSmallFileBody(
   if (!reader) throw new UploadSessionIntegrityError();
   const body = new Uint8Array(expectedSizeBytes);
   let offset = 0;
-  while (true) {
-    const chunk = await reader.read();
-    if (chunk.done) break;
-    if (chunk.value.byteLength > expectedSizeBytes - offset) {
-      await reader.cancel();
-      throw new SmallFilePayloadTooLargeError();
+  const startedAt = Date.now();
+  try {
+    while (true) {
+      const remainingTotalMs = options.totalTimeoutMs - (Date.now() - startedAt);
+      if (remainingTotalMs <= 0) throw new SmallFilePayloadTimeoutError("total");
+      const chunk = await readSmallFileChunkWithTimeout(
+        reader,
+        options.idleTimeoutMs,
+        remainingTotalMs,
+        request.signal,
+      );
+      if (chunk.done) break;
+      if (chunk.value.byteLength > expectedSizeBytes - offset) {
+        throw new SmallFilePayloadTooLargeError();
+      }
+      body.set(chunk.value, offset);
+      offset += chunk.value.byteLength;
     }
-    body.set(chunk.value, offset);
-    offset += chunk.value.byteLength;
+  } catch (error) {
+    await reader.cancel(error).catch(() => undefined);
+    throw error;
+  } finally {
+    reader.releaseLock();
   }
   if (offset !== expectedSizeBytes) throw new UploadSessionIntegrityError();
   return body;
+}
+
+async function readSmallFileChunkWithTimeout(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  idleTimeoutMs: number,
+  remainingTotalMs: number,
+  signal: AbortSignal,
+): Promise<ReadableStreamReadResult<Uint8Array>> {
+  signal.throwIfAborted();
+  const timeoutMs = Math.min(idleTimeoutMs, remainingTotalMs);
+  const timeoutKind = remainingTotalMs <= idleTimeoutMs ? "total" : "idle";
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let abortListener: (() => void) | undefined;
+  try {
+    return await Promise.race([
+      reader.read(),
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => {
+          reject(new SmallFilePayloadTimeoutError(timeoutKind));
+        }, timeoutMs);
+        timer.unref?.();
+      }),
+      new Promise<never>((_resolve, reject) => {
+        abortListener = () => reject(signal.reason);
+        signal.addEventListener("abort", abortListener, { once: true });
+        // Close the throwIfAborted()/listener-registration handoff race.
+        if (signal.aborted) abortListener();
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+    if (abortListener) signal.removeEventListener("abort", abortListener);
+  }
+}
+
+function positiveSafeInteger(value: number, label: string): number {
+  if (!Number.isSafeInteger(value) || value < 1) {
+    throw new Error(`Small-file fallback ${label} must be a positive safe integer`);
+  }
+  return value;
 }

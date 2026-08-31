@@ -28,6 +28,8 @@ The canonical service definitions are:
 - `docker/docker-compose.yaml`
 - `docker/docker-compose-template.yaml`
 - `docker/envs/core-services/knowledge-fs.env.example`
+- `docker/envs/core-services/knowledge-fs-unstructured.env.example`
+- `docker/envs/core-services/knowledge-fs-unstructured-service.defaults`
 
 The Compose service:
 
@@ -42,6 +44,13 @@ The Compose service:
 `KNOWLEDGE_INTEGRATED_MODE_ENABLED` controls Workspace provisioning/cutover behavior only. Whether
 it is `false` or `true`, model, datasource, and object-storage calls always go through Dify.
 
+To use the bundled isolated parser, copy `knowledge-fs.env.example` to `knowledge-fs.env` and start
+Compose with `--profile knowledge-fs-unstructured`. The example points KnowledgeFS at
+`http://knowledge_fs_unstructured:8000`. An external parser deployment may replace that endpoint
+and tune the heavy-document limits without changing ordinary Office limits. Run
+`pnpm dify:compose:config` from `knowledge-fs/` to validate the generated Dify Compose file together
+with this optional profile from a clean checkout.
+
 ## Operator-owned environment
 
 The tracked KnowledgeFS environment example intentionally contains only settings that belong to
@@ -51,6 +60,9 @@ the service:
 |---|---|
 | `DATABASE_URL` | KnowledgeFS PostgreSQL connection string. |
 | `KNOWLEDGE_DOCUMENT_COMPILATION_RUNTIME` | Durable document worker rollout. |
+| `KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY` | Process-wide limit for the complete source materialization phase across all supported formats (source read, parse, media extraction, thumbnail/object writes, and raw/canonical checkpoints). Defaults to `2`, accepts `1..8`, and falls back to the legacy PDF concurrency value when unset. The heavy pre-admission lane is capped at one less than this width (minimum `1`) so ordinary work retains a slot; increase this setting together with the heavy parser limit when intentionally enabling multiple heavy materializations. |
+| `KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_CONCURRENCY` | Process-wide count limit for canonical parse artifacts retained through outline, semantic, graph, and indexing stages. Defaults to `4` and accepts `1..32`. |
+| `KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_BYTES` | Aggregate conservative JS-heap charge for retained canonical parse artifacts. Defaults to `134217728` (128 MiB), accepts 1 MiB through 1 GiB, and lets one artifact at or above the budget run exclusively rather than deadlocking. |
 | `KNOWLEDGE_PDF_RASTERIZER` | PDF image rasterizer. The production image defaults to `poppler`; set `off` as a kill switch. |
 | `KNOWLEDGE_PDF_RASTERIZER_DPI` | Main PDF image resolution; the bounded deployment default is `144`. |
 | `KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_DPI` | Thumbnail resolution; the bounded deployment default is `48`. |
@@ -61,11 +73,21 @@ the service:
 | `KNOWLEDGE_FS_CAPABILITY_V2_PUBLIC_JWKS` | Public verification key set issued by Dify. |
 | `KNOWLEDGE_QUERY_IMAGE_RETRIEVAL_ENABLED` | Opt in to query-image visual retrieval; requires an enabled visual-embedding provider/index and a query mode other than `off`. |
 | `KNOWLEDGE_QUERY_IMAGE_EXPANSION_TIMEOUT_MS` | Timeout for the single Deep/Research vision expansion call; defaults to 8000 ms. |
+| `KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_CONCURRENCY` | Process-wide active-request limit for the API-buffered upload compatibility path. Defaults to `2` and accepts `1..8`. |
+| `KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_RESERVED_BYTES` | Aggregate source-byte reservation for admitted buffered uploads. Defaults to `31457280` (30 MiB), must be at least the configured per-file fallback limit, and is capped at 100 MiB. |
+| `KNOWLEDGE_BUFFERED_DOCUMENT_UPLOAD_MAX_CONCURRENCY` | Process-wide active-request limit for legacy/capability multipart document routes, acquired before Hono form validation. Defaults to `2` and accepts `1..8`. |
+| `KNOWLEDGE_BUFFERED_DOCUMENT_UPLOAD_MAX_RESERVED_BYTES` | Aggregate conservative retained-buffer charge for direct multipart uploads. Defaults to `201326592` (192 MiB). Each request reserves three times its bounded multipart envelope to cover the stream chunks, Hono body/FormData caches, and the handler `File.arrayBuffer` copy; this is an admission estimate, not an RSS guarantee. |
+| `KNOWLEDGE_BUFFERED_DOCUMENT_UPLOAD_IDLE_TIMEOUT_MS` | Maximum continuous idle interval while reading a direct multipart or small-file fallback body. Defaults to `30000`; expiry cancels the reader, returns 408, and releases admission. |
+| `KNOWLEDGE_BUFFERED_DOCUMENT_UPLOAD_TOTAL_TIMEOUT_MS` | Generous total body-read deadline for a direct multipart or small-file fallback request. Defaults to `600000`, must be at least the idle timeout, and returns 408 on expiry. |
 | `UNSTRUCTURED_API_URL` | Parser endpoint for complex formats. |
 | `UNSTRUCTURED_API_KEY` | Optional parser authentication. |
-| `UNSTRUCTURED_MAX_CONCURRENCY` | Process-wide parser request limit; defaults to `2`. |
-| `UNSTRUCTURED_REQUEST_TIMEOUT_MS` | Total timeout for one parser request and response body; defaults to `120000` and accepts up to `3600000` for long OCR documents. |
+| `UNSTRUCTURED_MAX_CONCURRENCY` | Process-wide limit shared by every remote parser request; defaults to `2`. |
+| `UNSTRUCTURED_HEAVY_MAX_CONCURRENCY` | Nested limit for every PDF and structurally/byte-heavy Office, email, EPUB, ODT, or RTF request. The bundled parser profile uses `1`; it must not exceed `UNSTRUCTURED_MAX_CONCURRENCY`. The materialization pre-admission lane follows this value but is capped at `KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY - 1` (minimum `1`) to preserve ordinary-document progress. `UNSTRUCTURED_PDF_MAX_CONCURRENCY` remains a lower-precedence compatibility alias. |
+| `UNSTRUCTURED_MAX_INPUT_BYTES` | Maximum body admitted by the remote parser client. Defaults to `15728640` (15 MiB), matching the product upload default, and is capped at 50 MiB. Native parsing keeps its separate 10 MiB routing threshold. |
+| `UNSTRUCTURED_REQUEST_TIMEOUT_MS` | Total timeout for an ordinary parser request and response body; defaults to `600000` (10 minutes) and accepts up to `3600000`. |
+| `UNSTRUCTURED_HEAVY_REQUEST_TIMEOUT_MS` | Heavy-document total timeout. The bundled page-parallel profile uses `2400000`, below the `3600000` validation ceiling. `UNSTRUCTURED_PDF_REQUEST_TIMEOUT_MS` remains a lower-precedence compatibility alias. |
 | `UNSTRUCTURED_MAX_RESPONSE_BYTES` | Maximum parser response body; defaults to `33554432` (32 MiB). |
+| `UNSTRUCTURED_MAX_RETRIES` | In-process retry count for explicit retryable HTTP responses. Ambiguous transport failures are never retried inline. The integrated deployment uses `0`; durable compilation owns whole-attempt retries. |
 
 Compose injects `DIFY_INNER_API_URL` and `DIFY_INNER_API_KEY`; do not duplicate them in the
 operator-owned env file. Do not add `MINIO_*`, cloud object-storage credentials, provider API keys,
@@ -74,6 +96,37 @@ operator-owned env file. Do not add `MINIO_*`, cloud object-storage credentials,
 `DIFY_OBJECT_STORAGE_REQUEST_TIMEOUT_MS` bounds each authenticated inner object-storage request,
 including response consumption. It defaults to `60000`; transport failures and
 408/409/425/429/5xx responses remain retryable at the durable compilation layer.
+
+The optional `knowledge-fs-unstructured` Compose profile starts an isolated parser service with six
+pages per child request, three child workers, and zero child retries. It does not modify Dify's
+existing `unstructured` service or legacy ETL traffic. The tracked
+`knowledge-fs-unstructured-service.defaults` file contains only service-side page-parallel values;
+operator-owned `knowledge-fs-unstructured.env` is loaded afterwards and can override it. The
+required file deliberately uses a non-`.env` suffix so it remains tracked in clean checkouts.
+The `.env.example` files remain copy-only templates and are never loaded as runtime configuration.
+Compose pins the isolated multi-architecture image to the digest used by the output-equivalence and
+resource benchmarks; review the same contracts before intentionally changing that digest. Child
+requests are at or below the split size and therefore partition locally instead of recursively
+spawning more requests.
+
+The KnowledgeFS client keeps a process-wide limit of `2` and adds a heavy-workload nested limit of
+`1`. Every PDF remains heavy because compressed PDF object streams make a bounded page-count scan
+unreliable. ZIP-backed remote formats become heavy when their admitted body exceeds 8 MiB or a
+bounded central-directory inspection identifies a large container (for example, many slides,
+sheets, entries, or more than 64 MiB of declared expanded content). Opaque legacy Office, RTF, and
+mail containers use the heavy lane conservatively; remote inputs that remain standard receive the
+600-second deadline. Declared ZIP64,
+multi-disk, excessive-entry, or excessive-expansion containers are rejected before provider work;
+the classifier never inflates entries and does not change parser output. Heavy requests receive the
+2,400-second deadline. The isolated parser is capped at
+four CPUs and 6 GiB in the reference Compose deployment. Those limits bound host impact, but the
+upstream synchronous API has no cancellation or idempotency contract: a timed-out connection can
+leave child work running. Unstructured transport timeouts are therefore terminal for automatic
+durable retries; inspect the parser and retry manually after it is idle.
+Multi-replica deployments need a shared admission layer because each incoming request creates its
+own child thread pool. The Kubernetes baseline does not own an Unstructured deployment and retains
+generic client limits. Operators with a different resource envelope must benchmark representative
+narrative, table, and scanned pages before changing either concurrency limit.
 
 ## PDF image rasterization
 
@@ -95,6 +148,58 @@ Rasterization supplies durable image objects for PDF image elements when the par
 coordinates without image bytes. It does not repair already-published parse artifacts. Re-run the
 document ingestion after deploying the corrected image to repopulate images that were previously
 stored without an asset reference.
+
+## Canonical artifact retention bounds
+
+The compilation claim batch may contain more documents than the source materialization limit. A
+canonical `ParseArtifact` also remains live after parsing while outline generation, semantic
+chunking, embedding, graph extraction, and index projection consume it. A process-wide FIFO
+admission therefore bounds this later lifetime independently by both artifact count and a
+conservative retained-byte estimate.
+
+The estimator walks the existing object graph in place; it does not call `JSON.stringify` or copy
+large strings. It charges strings as UTF-16 plus array/object/property overhead and stops once the
+configured byte ceiling is reached. This is an admission estimate, not an exact V8 heap
+measurement. An artifact charged at the full ceiling waits until it can run alone, so an operator
+may lower the aggregate budget without making a previously accepted large document impossible.
+
+Fresh and resumed compilations use the same gate. The materialization slot is handed off only
+after the retained-artifact lease is acquired, which prevents completed artifacts from accumulating
+in an unbounded memory queue. Downstream work never reacquires materialization, so the fixed lock
+order does not introduce a gate cycle. Cancellation while queued never enters outline/index work,
+and every success or failure releases the lease.
+
+## Visual embedding memory bounds
+
+Image-byte visual embedding is microbatched independently of the 128-node projection batch. The
+default request limits are eight assets and 32 MiB of raw image bytes
+(`KNOWLEDGE_VISUAL_EMBEDDING_MAX_BATCH_ASSETS=8` and
+`KNOWLEDGE_VISUAL_EMBEDDING_MAX_BATCH_BYTES=33554432`). The existing
+`KNOWLEDGE_VISUAL_EMBEDDING_MAX_ASSET_BYTES` remains the per-image limit and must not exceed the
+batch byte limit.
+
+One process-wide visual lifecycle gate is shared by all document compilations in the API process.
+`KNOWLEDGE_VISUAL_EMBEDDING_MAX_CONCURRENCY` defaults to `2` and accepts values from `1` through
+`8`. A queued compilation acquires this gate before it reads any image object and holds the slot
+through every microbatch request. This bounds cross-document raw-image and base64 amplification;
+queue cancellation is honored before object reads begin.
+
+Image bodies use `getObjectStream`; visual embedding does not add one serial `HEAD` round trip per
+image and does not call the adapter's broader buffered `getObject` path. The consumer accepts no
+more than the configured number of source bytes, cancels the stream as soon as the next chunk would
+cross that limit, and creates no contiguous image body larger than the limit. The production Dify
+adapter forwards response chunks through its stream and does not first accumulate and concatenate
+the complete object. For a valid multi-chunk image, the final bounded concatenate can temporarily
+hold the accepted chunks and one equally bounded destination body. Conservative preflush bounds
+that raw assembly peak by `MAX_BATCH_BYTES + MAX_ASSET_BYTES` per active lifecycle (52 MiB with the
+defaults); the lifecycle gate limits simultaneous peaks across documents. Base64/JSON transport
+representations require additional bounded headroom, so `MAX_BATCH_BYTES` is not an RSS limit.
+
+Before the next body read, the adapter also flushes the current batch whenever its remaining byte
+budget cannot hold one maximum-sized image. The provider still creates a transient base64
+representation for Dify model-runtime transport, so the byte limit is a raw-image budget rather
+than a whole-process heap ceiling. Keep the existing global model-request concurrency limit enabled
+when increasing it.
 
 ## Image-query rollout
 
@@ -151,9 +256,14 @@ include:
 `/health` is liveness and component diagnostics; it is not permission to receive production
 traffic. A service with `/health=200` and `/ready=503` must remain out of rotation.
 
-Direct upload remains disabled because the Dify storage bridge deliberately does not expose
-provider-specific presign or multipart primitives. Upload bytes pass through the bounded
-KnowledgeFS API and Dify inner storage API.
+Provider-direct presign and multipart upload remain unavailable because the Dify storage bridge
+deliberately does not expose provider-specific primitives. The upload-session compatibility path
+therefore streams each request into one bounded API buffer and writes it through the Dify inner
+storage API. One process-shared admission gate is acquired before that buffer is allocated and held
+until the object write finishes. It limits both active requests (default `2`) and aggregate retained
+source bytes (default 30 MiB); a queued request that is cancelled never allocates its upload buffer.
+The 15 MiB per-file product limit is unchanged. These limits are per API replica, so operators must
+include replica count when sizing the deployment-wide memory envelope.
 
 ## Release validation
 

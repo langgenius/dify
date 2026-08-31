@@ -6,6 +6,9 @@ import {
 } from "@knowledge/api";
 
 export interface ApiMultimodalEnv {
+  readonly DIFY_ROOT_KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY_OVERRIDE?:
+    | string
+    | undefined;
   readonly DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_DPI_OVERRIDE?: string | undefined;
   readonly DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_MAX_ASSETS_OVERRIDE?: string | undefined;
   readonly DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY_OVERRIDE?: string | undefined;
@@ -15,6 +18,7 @@ export interface ApiMultimodalEnv {
   readonly KNOWLEDGE_IMAGE_THUMBNAILS?: string | undefined;
   readonly KNOWLEDGE_IMAGE_THUMBNAIL_MAX_DIMENSION?: string | undefined;
   readonly KNOWLEDGE_IMAGE_THUMBNAIL_VARIANT?: string | undefined;
+  readonly KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY?: string | undefined;
   readonly KNOWLEDGE_PDF_RASTERIZER?: string | undefined;
   readonly KNOWLEDGE_PDF_RASTERIZER_COMMAND?: string | undefined;
   readonly KNOWLEDGE_PDF_RASTERIZER_DPI?: string | undefined;
@@ -26,6 +30,7 @@ export interface ApiMultimodalEnv {
 }
 
 export interface ApiMultimodalOptions {
+  readonly documentMaterializationMaxConcurrency: number;
   readonly documentMultimodalImageVariantGenerator?: DocumentImageVariantGenerator;
   readonly documentMultimodalMaxConcurrency: number;
   readonly documentMultimodalMaxPdfRasterizedAssets?: number;
@@ -67,6 +72,18 @@ export function createApiMultimodalOptions(
     "KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY",
     8,
   );
+  const configuredMaterializationMaxConcurrency = rootOverride(
+    env.DIFY_ROOT_KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY_OVERRIDE,
+    env.KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY,
+  );
+  const materializationMaxConcurrency =
+    configuredMaterializationMaxConcurrency === undefined
+      ? maxConcurrency
+      : boundedPositiveIntegerEnv(
+          configuredMaterializationMaxConcurrency,
+          "KNOWLEDGE_DOCUMENT_MATERIALIZATION_MAX_CONCURRENCY",
+          8,
+        );
   const maxAssets =
     rasterizerMaxAssets !== undefined
       ? {
@@ -81,6 +98,7 @@ export function createApiMultimodalOptions(
     return {
       ...imageVariantOptions,
       ...maxAssets,
+      documentMaterializationMaxConcurrency: materializationMaxConcurrency,
       documentMultimodalMaxConcurrency: maxConcurrency,
     };
   }
@@ -88,6 +106,7 @@ export function createApiMultimodalOptions(
   return {
     ...imageVariantOptions,
     ...maxAssets,
+    documentMaterializationMaxConcurrency: materializationMaxConcurrency,
     documentMultimodalMaxConcurrency: maxConcurrency,
     documentPdfRasterizer: createPopplerPdfRasterizer({
       ...(command ? { command } : {}),

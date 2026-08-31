@@ -2,17 +2,24 @@ import { randomUUID } from "node:crypto";
 
 import {
   type CapabilityGrantProvenanceRepository,
+  DEFAULT_DOCUMENT_UPLOAD_MAX_BYTES,
+  DEFAULT_SMALL_FILE_FALLBACK_MAX_CONCURRENCY,
+  DEFAULT_SMALL_FILE_FALLBACK_MAX_RESERVED_BYTES,
   type DocumentAssetRepository,
   type DocumentCompilationJobStateMachine,
+  HARD_DOCUMENT_UPLOAD_MAX_BYTES,
+  HARD_SMALL_FILE_FALLBACK_MAX_RESERVED_BYTES,
   type KnowledgeGatewayOptions,
   type KnowledgeSpaceManifestRepository,
   type LogicalDocumentRepository,
+  type SmallFileFallbackAdmission,
   type StorageQuotaRepository,
   type UploadSessionOperationalMetrics,
   type UploadSessionRepository,
   type UploadSessionService,
   createEmbeddingProfileFreezingDocumentAssetRepository,
   createKnowledgeSpaceManifestStorageQuotaRepository,
+  createSmallFileFallbackAdmission,
   createUploadSessionDocumentCompletionPublisher,
   createUploadSessionService,
 } from "@knowledge/api";
@@ -29,6 +36,8 @@ export interface ApiUploadSessionEnv {
   readonly KNOWLEDGE_DIRECT_UPLOAD_PRESIGN_TTL_SECONDS?: string | undefined;
   readonly KNOWLEDGE_DIRECT_UPLOAD_SESSION_TTL_MS?: string | undefined;
   readonly KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_BYTES?: string | undefined;
+  readonly KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_CONCURRENCY?: string | undefined;
+  readonly KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_RESERVED_BYTES?: string | undefined;
   readonly NODE_ENV?: string | undefined;
 }
 
@@ -43,6 +52,8 @@ export interface ApiUploadSessionOptions {
   readonly presignTtlSeconds: number;
   readonly sessionTtlMs: number;
   readonly smallFileFallbackMaxBytes: number;
+  readonly smallFileFallbackMaxConcurrency: number;
+  readonly smallFileFallbackMaxReservedBytes: number;
 }
 
 export interface ApiUploadSessionCleanupTickResult {
@@ -58,6 +69,7 @@ export interface ApiUploadSessionCleanupRuntime {
 }
 
 export interface ApiUploadSessionAssembly {
+  readonly fallbackAdmission?: SmallFileFallbackAdmission | undefined;
   readonly ready: boolean;
   readonly sessions?: UploadSessionService | undefined;
   readonly storageQuotas?: StorageQuotaRepository | undefined;
@@ -82,10 +94,12 @@ export function createApiUploadSessionOptions(
 ): ApiUploadSessionOptions | undefined {
   if (!enabled(env.KNOWLEDGE_DIRECT_UPLOAD_ENABLED)) return undefined;
 
-  const maxFileBytes = positiveInteger(
+  const maxFileBytes = boundedInteger(
     env.KNOWLEDGE_DIRECT_UPLOAD_MAX_FILE_BYTES,
-    100 * 1024 * mebibyte,
+    DEFAULT_DOCUMENT_UPLOAD_MAX_BYTES,
     "KNOWLEDGE_DIRECT_UPLOAD_MAX_FILE_BYTES",
+    1,
+    HARD_DOCUMENT_UPLOAD_MAX_BYTES,
   );
   const multipartPartSizeBytes = boundedInteger(
     env.KNOWLEDGE_DIRECT_UPLOAD_MULTIPART_PART_BYTES,
@@ -96,22 +110,41 @@ export function createApiUploadSessionOptions(
   );
   const multipartThresholdBytes = positiveInteger(
     env.KNOWLEDGE_DIRECT_UPLOAD_MULTIPART_THRESHOLD_BYTES,
-    64 * mebibyte,
+    DEFAULT_DOCUMENT_UPLOAD_MAX_BYTES,
     "KNOWLEDGE_DIRECT_UPLOAD_MULTIPART_THRESHOLD_BYTES",
   );
   const smallFileFallbackMaxBytes = nonnegativeInteger(
     env.KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_BYTES,
-    8 * mebibyte,
+    DEFAULT_DOCUMENT_UPLOAD_MAX_BYTES,
     "KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_BYTES",
+  );
+  const smallFileFallbackMaxConcurrency = boundedInteger(
+    env.KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_CONCURRENCY,
+    DEFAULT_SMALL_FILE_FALLBACK_MAX_CONCURRENCY,
+    "KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_CONCURRENCY",
+    1,
+    8,
+  );
+  const smallFileFallbackMaxReservedBytes = boundedInteger(
+    env.KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_RESERVED_BYTES,
+    DEFAULT_SMALL_FILE_FALLBACK_MAX_RESERVED_BYTES,
+    "KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_RESERVED_BYTES",
+    1,
+    HARD_SMALL_FILE_FALLBACK_MAX_RESERVED_BYTES,
   );
   if (multipartThresholdBytes > maxFileBytes) {
     throw new Error(
       "KNOWLEDGE_DIRECT_UPLOAD_MULTIPART_THRESHOLD_BYTES must not exceed KNOWLEDGE_DIRECT_UPLOAD_MAX_FILE_BYTES",
     );
   }
-  if (smallFileFallbackMaxBytes >= multipartThresholdBytes) {
+  if (smallFileFallbackMaxBytes > multipartThresholdBytes) {
     throw new Error(
-      "KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_BYTES must be below KNOWLEDGE_DIRECT_UPLOAD_MULTIPART_THRESHOLD_BYTES",
+      "KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_BYTES must not exceed KNOWLEDGE_DIRECT_UPLOAD_MULTIPART_THRESHOLD_BYTES",
+    );
+  }
+  if (smallFileFallbackMaxReservedBytes < smallFileFallbackMaxBytes) {
+    throw new Error(
+      "KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_RESERVED_BYTES must be at least KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_BYTES",
     );
   }
   if (Math.ceil(maxFileBytes / multipartPartSizeBytes) > 10_000) {
@@ -161,6 +194,8 @@ export function createApiUploadSessionOptions(
       "KNOWLEDGE_DIRECT_UPLOAD_SESSION_TTL_MS",
     ),
     smallFileFallbackMaxBytes,
+    smallFileFallbackMaxConcurrency,
+    smallFileFallbackMaxReservedBytes,
   };
 }
 
@@ -229,6 +264,10 @@ export async function createApiUploadSessionAssembly(input: {
     sessionTtlMs: input.config.sessionTtlMs,
     smallFileFallbackMaxBytes: input.config.smallFileFallbackMaxBytes,
   });
+  const fallbackAdmission = createSmallFileFallbackAdmission({
+    maxConcurrency: input.config.smallFileFallbackMaxConcurrency,
+    maxReservedBytes: input.config.smallFileFallbackMaxReservedBytes,
+  });
   const cleanup = createApiUploadSessionCleanupRuntime({
     cleanupBatchSize: input.config.cleanupBatchSize,
     cleanupIntervalMs: input.config.cleanupIntervalMs,
@@ -237,6 +276,7 @@ export async function createApiUploadSessionAssembly(input: {
     sessions,
   });
   return {
+    fallbackAdmission,
     ready: true,
     sessions,
     storageQuotas,

@@ -40,6 +40,8 @@ function runDifyComposeConfig() {
         examplePath,
         "-f",
         composePath,
+        "--profile",
+        "knowledge-fs-unstructured",
         "config",
         "--quiet",
       ],

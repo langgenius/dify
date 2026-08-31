@@ -140,6 +140,7 @@ describe("createDocumentCompilationRuntime", () => {
     ["provider_rate_limited", true, "DOCUMENT_PARSER_RATE_LIMITED"],
     ["provider_request_failed", true, "DOCUMENT_PARSER_UNAVAILABLE"],
     ["provider_response_invalid", false, "DOCUMENT_PARSER_RESPONSE_INVALID"],
+    ["provider_timeout", false, "DOCUMENT_PARSER_TIMEOUT"],
   ] as const)("maps %s to the parser-specific durable failure", (code, retryable, expectedCode) => {
     const error = Object.assign(new Error(code), { code, retryable });
 
@@ -428,6 +429,39 @@ describe("createDocumentCompilationRuntime", () => {
     await expect(queue.status("job-1")).resolves.toMatchObject({ status: "completed" });
   });
 
+  it("terminalizes an ambiguous parser timeout without scheduling another long parse", async () => {
+    const currentTime = startedAt;
+    const attempts = createInMemoryDocumentCompilationAttemptRepository();
+    const queue = createQueue(() => currentTime);
+    await startAttempt(attempts, { maxExecutionAttempts: 5 });
+    await dispatchPendingAttempts(attempts, queue, currentTime);
+    let processingCalls = 0;
+    const runtime = createRuntime({
+      attempts,
+      now: () => currentTime,
+      processor: async (context) => {
+        processingCalls += 1;
+        await context.protectLease(40_000);
+        throw Object.assign(new Error("Unstructured parser timed out"), {
+          code: "provider_timeout",
+          requestOutcomeAmbiguous: true,
+          retryable: false,
+        });
+      },
+      queue,
+    });
+
+    await expect(runtime.tick()).resolves.toMatchObject({ failed: 1, retryScheduled: 0 });
+    expect(processingCalls).toBe(1);
+    const failed = await attempts.get(attemptId);
+    expect(failed).toMatchObject({
+      lastErrorCode: "DOCUMENT_PARSER_TIMEOUT",
+      runState: "failed",
+    });
+    expect(failed).not.toHaveProperty("leaseExpiresAt");
+    expect(failed).not.toHaveProperty("retryAt");
+  });
+
   it("treats unknown failures as terminal, truncates diagnostics, and only acks redelivery", async () => {
     const currentTime = startedAt;
     const attempts = createInMemoryDocumentCompilationAttemptRepository();
@@ -646,6 +680,82 @@ describe("createDocumentCompilationRuntime", () => {
     });
 
     await expect(runtime.tick()).resolves.toMatchObject({ succeeded: 1 });
+  });
+
+  it("keeps a long parser lease in the database while broker heartbeats stay bounded", async () => {
+    let currentTime = startedAt;
+    const repository = createInMemoryDocumentCompilationAttemptRepository();
+    const queue = createQueue(() => currentTime);
+    await startAttempt(repository);
+    await dispatchPendingAttempts(repository, queue, currentTime);
+    const queueHeartbeatLeaseMs: number[] = [];
+    const observedQueue: JobQueueAdapter = {
+      ...queue,
+      heartbeat: async (input) => {
+        queueHeartbeatLeaseMs.push(input.leaseMs);
+        return queue.heartbeat(input);
+      },
+    };
+    const runtime = createRuntime({
+      attempts: repository,
+      now: () => currentTime,
+      processor: async (context) => {
+        await context.protectLease(40_000);
+        expect(context.attempt.leaseExpiresAt).toBe(new Date(startedAt + 40_000).toISOString());
+
+        const secondReplicaClaim = await repository.claim({
+          attemptId,
+          expectedRowVersion: context.attempt.rowVersion,
+          leaseExpiresAt: new Date(startedAt + 21_000).toISOString(),
+          leaseToken: secondLeaseToken,
+          now: new Date(startedAt + 11_000).toISOString(),
+          queueJobId: "job-1",
+          workerId: "runtime-2",
+        });
+        expect(secondReplicaClaim).toBeNull();
+
+        currentTime += 5_000;
+        await context.heartbeat();
+        expect(context.attempt.leaseExpiresAt).toBe(new Date(startedAt + 45_000).toISOString());
+
+        await context.protectLease(0);
+        expect(context.attempt.leaseExpiresAt).toBe(new Date(startedAt + 15_000).toISOString());
+        await advanceToSmokeEvaluation(context);
+      },
+      queue: observedQueue,
+    });
+
+    await expect(runtime.tick()).resolves.toMatchObject({ succeeded: 1 });
+    expect(queueHeartbeatLeaseMs).toEqual([10_000, 10_000, 10_000]);
+  });
+
+  it("does not schedule an ambiguous parser retry before its protected lease expires", async () => {
+    const currentTime = startedAt;
+    const repository = createInMemoryDocumentCompilationAttemptRepository();
+    const queue = createQueue(() => currentTime);
+    await startAttempt(repository);
+    await dispatchPendingAttempts(repository, queue, currentTime);
+    const runtime = createRuntime({
+      attempts: repository,
+      classifyError: () => ({
+        code: "REMOTE_AMBIGUOUS",
+        message: "remote request outcome is unknown",
+        retryable: true,
+      }),
+      initialRetryDelayMs: 1_000,
+      now: () => currentTime,
+      processor: async (context) => {
+        await context.protectLease(40_000);
+        throw new Error("connection reset after upload");
+      },
+      queue,
+    });
+
+    await expect(runtime.tick()).resolves.toMatchObject({ retryScheduled: 1 });
+    await expect(repository.get(attemptId)).resolves.toMatchObject({
+      retryAt: new Date(startedAt + 40_000).toISOString(),
+      runState: "retry_wait",
+    });
   });
 
   it("stops fenced mutations and defers the broker delivery when a database heartbeat loses", async () => {

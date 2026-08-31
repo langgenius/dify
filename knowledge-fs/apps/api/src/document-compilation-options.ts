@@ -7,6 +7,8 @@ export interface ApiDocumentCompilationEnv {
   readonly KNOWLEDGE_DOCUMENT_COMPILATION_RETRY_MAX_MS?: string;
   readonly KNOWLEDGE_DOCUMENT_COMPILATION_RUNTIME?: string;
   readonly KNOWLEDGE_DOCUMENT_COMPILATION_TICK_MS?: string;
+  readonly KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_BYTES?: string;
+  readonly KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_CONCURRENCY?: string;
 }
 
 export interface ApiDocumentCompilationOptions {
@@ -16,6 +18,8 @@ export interface ApiDocumentCompilationOptions {
   readonly outboxVisibilityMs: number;
   readonly retryBaseMs: number;
   readonly retryMaxMs: number;
+  readonly retainedArtifactMaxBytes?: number;
+  readonly retainedArtifactMaxConcurrency?: number;
   readonly tickMs: number;
 }
 
@@ -100,6 +104,20 @@ export function createApiDocumentCompilationOptions(
     ),
     retryBaseMs,
     retryMaxMs,
+    retainedArtifactMaxBytes: boundedIntegerRangeEnv(
+      env.KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_BYTES,
+      128 * 1024 * 1024,
+      "KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_BYTES",
+      1024 * 1024,
+      1024 * 1024 * 1024,
+    ),
+    retainedArtifactMaxConcurrency: boundedIntegerRangeEnv(
+      env.KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_CONCURRENCY,
+      4,
+      "KNOWLEDGE_DOCUMENT_RETAINED_ARTIFACT_MAX_CONCURRENCY",
+      1,
+      32,
+    ),
     tickMs: boundedIntegerEnv(
       env.KNOWLEDGE_DOCUMENT_COMPILATION_TICK_MS,
       1_000,
@@ -107,6 +125,22 @@ export function createApiDocumentCompilationOptions(
       100,
     ),
   };
+}
+
+function boundedIntegerRangeEnv(
+  value: string | undefined,
+  fallback: number,
+  name: string,
+  min: number,
+  max: number,
+): number {
+  const raw = value?.trim();
+  if (!raw) return fallback;
+  const parsed = Number(raw);
+  if (!Number.isSafeInteger(parsed) || parsed < min || parsed > max) {
+    throw new Error(`${name} must be an integer between ${min} and ${max}`);
+  }
+  return parsed;
 }
 
 function parseEnabled(value: string | undefined): boolean {

@@ -44,6 +44,18 @@ describe("KnowledgeFS public errors", () => {
     expect(knowledgeFsFailureAllowsManualRetry(failure)).toBe(true);
   });
 
+  it("maps parser deadlines to a manual timeout instead of an automatic retry", () => {
+    const failure = knowledgeFsFailureForCode("provider_timeout");
+
+    expect(failure).toMatchObject({
+      action: "retry",
+      category: "timeout",
+      code: "DOCUMENT_PARSER_TIMEOUT",
+      retryPolicy: "manual",
+    });
+    expect(knowledgeFsFailureAllowsManualRetry(failure)).toBe(true);
+  });
+
   it("uses safe family fallbacks and bounds public parameters", () => {
     expect(knowledgeFsFailureForCode("SOURCE_DOCUMENT_COMPILATION_FAILED")).toMatchObject({
       action: "retry",

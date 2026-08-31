@@ -1252,7 +1252,7 @@ KNOWLEDGE_FS_PRODUCT_OPERATIONS: Final[MappingProxyType[str, KnowledgeFSProductO
             "/upload-sessions/{id}/small-file",
             "binary",
             resource_resolver="upload_session",
-            max_request_bytes=8 * 1024 * 1024,
+            max_request_bytes=15 * 1024 * 1024,
             max_response_bytes=128 * 1024,
             stream_kind="json",
         ),
