@@ -406,7 +406,9 @@ class WorkflowAgentDifyToolsBuilder:
             credentials=self._normalize_credentials(runtime.credentials, tool_name=exposed_name),
             runtime_parameters=runtime_parameters,
             parameters=parameters,
-            parameters_json_schema=self._plugin_parameters_json_schema(tool_runtime, parameters),
+            parameters_json_schema=self._plugin_parameters_json_schema(
+                tool_runtime, parameters, runtime_parameters
+            ),
         )
 
     def _to_core_backend_tool_config(
@@ -416,6 +418,7 @@ class WorkflowAgentDifyToolsBuilder:
         exposed_name: str,
     ) -> DifyCoreToolConfig:
         parameters = self._prepared_parameters(tool_runtime)
+        runtime_parameters = self._runtime_parameters(tool_runtime, parameters)
         return DifyCoreToolConfig(
             provider_type=_CORE_TOOL_PROVIDER_TYPES[tool_config.provider_type],
             provider_id=self._provider_id(tool_config),
@@ -423,9 +426,12 @@ class WorkflowAgentDifyToolsBuilder:
             credential_id=tool_config.credential_ref.id if tool_config.credential_ref else None,
             name=exposed_name,
             description=self._description(tool_config, tool_runtime),
-            runtime_parameters=self._runtime_parameters(tool_runtime, parameters),
+            runtime_parameters=runtime_parameters,
             parameters=parameters,
-            parameters_json_schema=tool_runtime.get_llm_parameters_json_schema(),
+            parameters_json_schema=self._omit_pinned_llm_parameters(
+                tool_runtime.get_llm_parameters_json_schema(),
+                runtime_parameters,
+            ),
         )
 
     @staticmethod
@@ -452,9 +458,25 @@ class WorkflowAgentDifyToolsBuilder:
         return description
 
     @staticmethod
+    def _omit_pinned_llm_parameters(
+        schema: dict[str, Any],
+        runtime_parameters: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        properties = schema.get("properties")
+        required = schema.get("required")
+        if not isinstance(properties, dict):
+            return schema
+        for name in runtime_parameters:
+            properties.pop(name, None)
+            if isinstance(required, list) and name in required:
+                required.remove(name)
+        return schema
+
+    @staticmethod
     def _plugin_parameters_json_schema(
         tool_runtime: Tool,
         parameters: list[DifyPluginToolParameter],
+        runtime_parameters: Mapping[str, Any],
     ) -> dict[str, Any]:
         schema = tool_runtime.get_llm_parameters_json_schema()
         properties = schema.setdefault("properties", {})
@@ -467,6 +489,8 @@ class WorkflowAgentDifyToolsBuilder:
 
         for parameter in parameters:
             if parameter.form is not DifyPluginToolParameterForm.LLM:
+                continue
+            if parameter.name in runtime_parameters:
                 continue
             if parameter.type is DifyPluginToolParameterType.FILE:
                 properties[parameter.name] = _plugin_file_input_schema(parameter.llm_description or "")
@@ -484,7 +508,7 @@ class WorkflowAgentDifyToolsBuilder:
 
             if parameter.required and parameter.name not in required:
                 required.append(parameter.name)
-        return schema
+        return WorkflowAgentDifyToolsBuilder._omit_pinned_llm_parameters(schema, runtime_parameters)
 
     @staticmethod
     def _runtime_parameters(

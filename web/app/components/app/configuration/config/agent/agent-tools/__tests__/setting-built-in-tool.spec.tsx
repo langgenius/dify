@@ -180,7 +180,8 @@ describe('SettingBuiltInTool', () => {
     })
 
     await userEvent.click(screen.getByText('tools.setBuiltInTools.parameters'))
-    expect(screen.getByText('Info Param')).toBeInTheDocument()
+    expect(screen.getByTestId('mock-form')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeInTheDocument()
     await userEvent.click(screen.getByText('tools.setBuiltInTools.setting'))
     expect(screen.getByTestId('mock-form')).toBeInTheDocument()
   })
@@ -228,6 +229,18 @@ describe('SettingBuiltInTool', () => {
     await userEvent.click(screen.getByRole('button', { name: 'update-form' }))
     await userEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ settingParam: 'updated' }))
+  })
+
+  it('should save llm parameter overrides from the parameters tab', async () => {
+    const { onSave } = renderComponent({ setting: { settingParam: 'value' } })
+    await waitFor(() => expect(screen.getByTestId('mock-form')).toBeInTheDocument())
+    await userEvent.click(screen.getByText('tools.setBuiltInTools.parameters'))
+    nextFormValue = { infoParam: 'orders' }
+    await userEvent.click(screen.getByRole('button', { name: 'update-form' }))
+    await userEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ settingParam: 'value', infoParam: 'orders' }),
+    )
   })
 
   it('should keep save disabled until required field provided', async () => {
