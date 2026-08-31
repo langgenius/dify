@@ -142,7 +142,7 @@ function EvaluationReport({
     },
   ]
   return (
-    <section className="min-w-0 pt-3">
+    <section className="min-w-0">
       <button
         type="button"
         className="flex items-center gap-1 rounded-md system-sm-medium text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
