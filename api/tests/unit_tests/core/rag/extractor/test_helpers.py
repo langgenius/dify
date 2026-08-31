@@ -1,3 +1,4 @@
+import os
 import tempfile
 from types import SimpleNamespace
 
@@ -9,11 +10,14 @@ from core.rag.extractor.helpers import detect_file_encodings
 
 class TestHelpers:
     def test_detect_file_encodings(self) -> None:
-        with tempfile.NamedTemporaryFile(mode="w+t", suffix=".txt") as temp:
+        with tempfile.NamedTemporaryFile(mode="w+t", suffix=".txt", delete=False) as temp:
             temp.write("Shared data")
             temp.flush()
             temp_path = temp.name
+        try:
             encodings = detect_file_encodings(temp_path)
+        finally:
+            os.unlink(temp_path)
 
         assert len(encodings) == 1
         assert encodings[0].encoding in {"utf_8", "ascii"}
