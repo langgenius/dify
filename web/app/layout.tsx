@@ -32,23 +32,6 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 }
 
-const resizeObserverErrorFilterScript = `
-(() => {
-  const ignoredMessages = new Set([
-    'ResizeObserver loop completed with undelivered notifications.',
-    'ResizeObserver loop limit exceeded',
-  ]);
-  const ignore = (event) => {
-    const message = event?.message || event?.reason?.message;
-    if (!ignoredMessages.has(message)) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-  };
-  window.addEventListener('error', ignore, true);
-  window.addEventListener('unhandledrejection', ignore, true);
-})();
-`
-
 export async function generateMetadata(): Promise<Metadata> {
   const systemFeatures = await prefetchSystemFeatures()
   const branding = systemFeatures?.branding
@@ -86,23 +69,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={locale ?? 'en'} className="h-full" suppressHydrationWarning>
       <head>
-        <link rel="manifest" href="/manifest.json" />
-        <script
-          nonce={nonce}
-          // oxlint-disable-next-line eslint-react/dom-no-dangerously-set-innerhtml -- Static early listener must run before the dev error overlay registers.
-          dangerouslySetInnerHTML={{ __html: resizeObserverErrorFilterScript }}
-        />
-        <meta name="theme-color" content="#1C64F2" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Dify" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/icon-192x192.png" />
-        <link rel="icon" type="image/png" sizes="16x16" href="/icon-192x192.png" />
-        <meta name="msapplication-TileColor" content="#1C64F2" />
-        <meta name="msapplication-config" content="/browserconfig.xml" />
-
         <ReactScanLoader />
       </head>
       <body className="h-full bg-background-body" {...datasetMap}>
