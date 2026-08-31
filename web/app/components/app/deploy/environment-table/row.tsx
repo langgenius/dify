@@ -13,6 +13,7 @@ import { EnvironmentRowActions } from './row-actions'
 export const EnvironmentRow = memo(
   ({
     appId,
+    canAccessPoint = false,
     latestVersion,
     row,
     onChangeVersion,
@@ -21,6 +22,7 @@ export const EnvironmentRow = memo(
     onUndeploy,
   }: {
     appId: string
+    canAccessPoint?: boolean
     latestVersion?: DeploymentVersion
     row: EnvironmentDeployment
     onChangeVersion: (deployment: EnvironmentDeployment) => void
@@ -65,7 +67,11 @@ export const EnvironmentRow = memo(
                 key={accessPoint}
                 accessPoint={accessPoint}
                 active={isAccessPointActive(accessPoint)}
-                href={getAccessPointHref(appId, row.environment.id, accessPoint)}
+                href={
+                  canAccessPoint
+                    ? getAccessPointHref(appId, row.environment.id, accessPoint)
+                    : undefined
+                }
               />
             ))}
           </div>
