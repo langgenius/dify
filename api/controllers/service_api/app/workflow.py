@@ -28,6 +28,7 @@ from controllers.service_api.app.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
+    TriggerWorkflowServiceModeUnavailableError,
     WorkflowVersionExecutionNotAllowedError,
 )
 from controllers.service_api.schema import (
@@ -61,7 +62,14 @@ from models.model import App, AppMode, EndUser
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
 from services.billing_service import BillingService
-from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
+from services.errors.app import (
+    IsDraftWorkflowError,
+    WorkflowIdFormatError,
+    WorkflowNotFoundError,
+)
+from services.errors.app import (
+    TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
+)
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_service import WorkflowAppService
 
@@ -300,6 +308,10 @@ class WorkflowRunApi(Resource):
                 "- `completion_request_error` : Workflow execution request failed.\n"
                 "- `invalid_param` : Invalid parameter value."
             ),
+            403: (
+                "`trigger_workflow_service_mode_unavailable` : Trigger-entry workflows cannot be invoked through "
+                "Web App, Service API, OpenAPI, or MCP."
+            ),
             429: (
                 "- `too_many_requests` : Too many concurrent requests for this app.\n"
                 "- `rate_limit_error` : The upstream model provider rate limit was exceeded."
@@ -360,6 +372,8 @@ class WorkflowRunApi(Resource):
 
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except TriggerWorkflowServiceModeUnavailableServiceError:
+            raise TriggerWorkflowServiceModeUnavailableError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -406,8 +420,10 @@ class WorkflowRunByIdApi(Resource):
                 "- `invalid_param` : Required parameter missing or invalid."
             ),
             403: (
-                "`workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the "
-                "current plan. Upgrade to a paid plan."
+                "- `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the "
+                "current plan. Upgrade to a paid plan.\n"
+                "- `trigger_workflow_service_mode_unavailable` : The selected workflow version uses a trigger entry "
+                "and cannot be invoked through Web App, Service API, OpenAPI, or MCP."
             ),
             404: "`not_found` : Workflow not found.",
             429: (
@@ -487,6 +503,8 @@ class WorkflowRunByIdApi(Resource):
 
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except TriggerWorkflowServiceModeUnavailableServiceError:
+            raise TriggerWorkflowServiceModeUnavailableError()
         except WorkflowNotFoundError as ex:
             raise NotFound(str(ex))
         except IsDraftWorkflowError as ex:
