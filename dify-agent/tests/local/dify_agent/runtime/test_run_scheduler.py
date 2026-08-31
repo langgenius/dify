@@ -28,6 +28,7 @@ from dify_agent.protocol.schemas import (
 from dify_agent.runtime.cancellation import RunCancellationIntent
 from dify_agent.runtime.event_sink import (
     NonTerminalRunEvent,
+    RunEventStreamSealedError,
     RunFinalizationResult,
     TerminalRunEvent,
     emit_run_failed,
@@ -121,6 +122,9 @@ class FakeStore:
         return record
 
     async def append_event(self, event: NonTerminalRunEvent) -> str:
+        current_status = self.statuses[event.run_id]
+        if current_status != "running":
+            raise RunEventStreamSealedError(run_id=event.run_id, status=current_status)
         event_id = str(len(self.events[event.run_id]) + 1)
         self.events[event.run_id].append(event.model_copy(update={"id": event_id}))
         return event_id
