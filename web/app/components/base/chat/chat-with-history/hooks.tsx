@@ -246,8 +246,10 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   useEffect(() => {
     if (!(appChatListError instanceof EnvironmentConversationNotFoundError)) return
 
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- A missing Environment conversation resets the active conversation.
     setNewConversationId('')
     handleConversationIdInfoChange('')
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- A missing Environment conversation must clear the rendered chat.
     setClearChatList(true)
   }, [appChatListError, handleConversationIdInfoChange])
   const appPrevChatTree = useMemo(
