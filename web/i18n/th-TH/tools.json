@@ -93,6 +93,7 @@
   "createTool.toolOutput.description": "คำอธิบาย",
   "createTool.toolOutput.reserved": "สงวน",
   "createTool.toolOutput.reservedParameterDuplicateTip": "text, json และ files เป็นตัวแปรที่สงวนไว้ ไม่สามารถใช้ชื่อตัวแปรเหล่านี้ในโครงสร้างผลลัพธ์ได้",
+  "createTool.toolOutput.typeConflictTip": "เอาต์พุตนี้ถูกประกาศด้วยชนิดที่แตกต่างกันในหลายโหนด End ชนิดข้อมูลขณะทำงานขึ้นอยู่กับสาขาที่ถูกดำเนินการ",
   "createTool.toolOutput.title": "เอาต์พุตของเครื่องมือ",
   "createTool.urlError": "โปรดป้อน URL ที่ถูกต้อง",
   "createTool.viewSchemaSpec": "ดูข้อมูลจําเพาะของ OpenAPI-Swagger",

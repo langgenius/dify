@@ -93,6 +93,7 @@
   "createTool.toolOutput.description": "Descripción",
   "createTool.toolOutput.reserved": "Reservado",
   "createTool.toolOutput.reservedParameterDuplicateTip": "text, json y files son variables reservadas. Las variables con estos nombres no pueden aparecer en el esquema de salida.",
+  "createTool.toolOutput.typeConflictTip": "Esta salida se declara con tipos diferentes en varios nodos End. El tipo en tiempo de ejecución depende de la rama ejecutada.",
   "createTool.toolOutput.title": "Salida de la herramienta",
   "createTool.urlError": "Por favor, ingresa una URL válida",
   "createTool.viewSchemaSpec": "Ver la Especificación OpenAPI-Swagger",

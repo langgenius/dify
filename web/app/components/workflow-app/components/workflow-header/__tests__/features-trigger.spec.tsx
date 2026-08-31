@@ -149,6 +149,7 @@ vi.mock('@/app/components/app/app-publisher', () => ({
         data-start-node-limit-exceeded={String(Boolean(props.startNodeLimitExceeded))}
         data-has-trigger-node={String(Boolean(props.hasTriggerNode))}
         data-inputs={JSON.stringify(inputs)}
+        data-outputs={JSON.stringify(props.outputs ?? [])}
       >
         <button
           type="button"
@@ -387,6 +388,30 @@ describe('FeaturesTrigger', () => {
 
   // Verifies derived props passed into AppPublisher (variables, limits, and triggers).
   describe('Computed Props', () => {
+    it('should pass outputs from every end node to AppPublisher', () => {
+      const aaa = {
+        variable: 'aaa',
+        value_type: 'string',
+        value_selector: ['source-1', 'value'],
+      }
+      const bbb = {
+        variable: 'bbb',
+        value_type: 'number',
+        value_selector: ['source-2', 'value'],
+      }
+      mockUseNodes.mockReturnValue([
+        { id: 'end-1', data: { type: BlockEnum.End, outputs: [aaa] } },
+        { id: 'end-2', data: { type: BlockEnum.End, outputs: [bbb] } },
+      ])
+
+      renderWithToast(<FeaturesTrigger />)
+
+      const outputs = JSON.parse(
+        screen.getByTestId('app-publisher').getAttribute('data-outputs') ?? '[]',
+      )
+      expect(outputs).toEqual([aaa, bbb])
+    })
+
     it('should append image input when file image upload is enabled', () => {
       // Arrange
       mockUseFeatures.mockImplementation((selector: (state: Record<string, unknown>) => unknown) =>

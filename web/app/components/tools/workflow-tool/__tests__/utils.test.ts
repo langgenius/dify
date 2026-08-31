@@ -13,7 +13,36 @@ describe('buildWorkflowOutputParameters', () => {
 
     const result = buildWorkflowOutputParameters(params, null)
 
-    expect(result).toBe(params)
+    expect(result).toEqual(params)
+  })
+
+  it('merges duplicate output names when their types match', () => {
+    const params: WorkflowToolProviderOutputParameter[] = [
+      { name: 'result', description: 'First branch', type: VarType.string },
+      { name: 'result', description: 'Second branch', type: VarType.string },
+    ]
+
+    const result = buildWorkflowOutputParameters(params, null)
+
+    expect(result).toEqual([{ name: 'result', description: 'Second branch', type: VarType.string }])
+  })
+
+  it('marks duplicate output names with different types and keeps the last type', () => {
+    const params: WorkflowToolProviderOutputParameter[] = [
+      { name: 'result', description: 'First branch', type: VarType.string },
+      { name: 'result', description: 'Second branch', type: VarType.number },
+    ]
+
+    const result = buildWorkflowOutputParameters(params, null)
+
+    expect(result).toEqual([
+      {
+        name: 'result',
+        description: 'Second branch',
+        type: VarType.number,
+        typeConflict: true,
+      },
+    ])
   })
 
   it('fills missing output description and type from schema when array input exists', () => {

@@ -12,6 +12,26 @@ const normalizeVarType = (type?: string): VarType | undefined => {
   return validVarTypes.has(type) ? (type as VarType) : undefined
 }
 
+const mergeOutputParameters = (
+  outputParameters: WorkflowToolProviderOutputParameter[],
+): WorkflowToolProviderOutputParameter[] => {
+  const mergedParameters = new Map<string, WorkflowToolProviderOutputParameter>()
+
+  for (const item of outputParameters) {
+    const previous = mergedParameters.get(item.name)
+    const typeConflict = Boolean(
+      item.typeConflict || previous?.typeConflict || (previous && previous.type !== item.type),
+    )
+
+    mergedParameters.set(item.name, {
+      ...item,
+      ...(typeConflict ? { typeConflict: true } : {}),
+    })
+  }
+
+  return [...mergedParameters.values()]
+}
+
 export const buildWorkflowOutputParameters = (
   outputParameters: WorkflowToolProviderOutputParameter[] | null | undefined,
   outputSchema?: WorkflowToolProviderOutputSchema | null,
@@ -19,16 +39,18 @@ export const buildWorkflowOutputParameters = (
   const schemaProperties = outputSchema?.properties
 
   if (Array.isArray(outputParameters) && outputParameters.length > 0) {
-    if (!schemaProperties) return outputParameters
+    if (!schemaProperties) return mergeOutputParameters(outputParameters)
 
-    return outputParameters.map((item) => {
-      const schema = schemaProperties[item.name]
-      return {
-        ...item,
-        description: item.description || schema?.description || '',
-        type: normalizeVarType(item.type || schema?.type),
-      }
-    })
+    return mergeOutputParameters(
+      outputParameters.map((item) => {
+        const schema = schemaProperties[item.name]
+        return {
+          ...item,
+          description: item.description || schema?.description || '',
+          type: normalizeVarType(item.type || schema?.type),
+        }
+      }),
+    )
   }
 
   if (!schemaProperties) return []

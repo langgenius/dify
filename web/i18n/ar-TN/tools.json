@@ -93,6 +93,7 @@
   "createTool.toolOutput.description": "الوصف",
   "createTool.toolOutput.reserved": "محجوز",
   "createTool.toolOutput.reservedParameterDuplicateTip": "text و json و files هي متغيرات محجوزة. لا يمكن أن تظهر المتغيرات بهذه الأسماء في مخطط الإخراج.",
+  "createTool.toolOutput.typeConflictTip": "تم تعريف هذا الإخراج بأنواع مختلفة في عدة عقد End. يعتمد نوع وقت التشغيل على الفرع الذي تم تنفيذه.",
   "createTool.toolOutput.title": "إخراج الأداة",
   "createTool.urlError": "يرجى إدخال عنوان URL صالح",
   "createTool.viewSchemaSpec": "عرض مواصفات OpenAPI-Swagger",

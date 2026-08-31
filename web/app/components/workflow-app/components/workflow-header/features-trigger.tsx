@@ -73,7 +73,6 @@ const FeaturesTrigger = () => {
   }, [nodes])
   const hasWorkflowNodes = nodes.length > 0
   const startNode = nodes.find((node) => node.data.type === BlockEnum.Start)
-  const endNode = nodes.find((node) => node.data.type === BlockEnum.End)
   const startVariables = (startNode as Node<StartNodeType>)?.data?.variables
   const edges = useEdges<CommonEdgeType>()
 
@@ -94,7 +93,13 @@ const FeaturesTrigger = () => {
 
     return data
   }, [fileSettings?.image?.enabled, startVariables])
-  const endVariables = useMemo(() => (endNode as Node<EndNodeType>)?.data?.outputs || [], [endNode])
+  const endVariables = useMemo(
+    () =>
+      nodes.flatMap((node) =>
+        node.data.type === BlockEnum.End ? (node as Node<EndNodeType>).data.outputs || [] : [],
+      ),
+    [nodes],
+  )
 
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()

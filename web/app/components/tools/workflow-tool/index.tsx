@@ -429,6 +429,25 @@ export function WorkflowToolDrawer({
                                   </TooltipContent>
                                 </Tooltip>
                               ) : null}
+                              {item.typeConflict ? (
+                                <Tooltip>
+                                  <TooltipTrigger
+                                    render={
+                                      <span
+                                        data-testid="output-type-conflict-warning"
+                                        className="i-ri-error-warning-line size-3 text-text-warning-secondary"
+                                      />
+                                    }
+                                  />
+                                  <TooltipContent>
+                                    <div className="w-45">
+                                      {t(($) => $['createTool.toolOutput.typeConflictTip'], {
+                                        ns: 'tools',
+                                      })}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              ) : null}
                             </div>
                             <div className="text-text-tertiary">{item.type}</div>
                           </div>

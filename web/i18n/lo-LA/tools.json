@@ -93,6 +93,7 @@
   "createTool.toolOutput.description": "ຄຳອະທິບາຍ",
   "createTool.toolOutput.reserved": "ສະຫງວນໄວ້",
   "createTool.toolOutput.reservedParameterDuplicateTip": "text, json, ແລະ files ແມ່ນຕົວປ່ຽນທີ່ຖືກສະຫງວນໄວ້. ຕົວປ່ຽນທີ່ມີຊື່ເຫຼົ່ານີ້ບໍ່ສາມາດປາກົດໃນໂຄງສ້າງຜົນອອກ (output schema) ໄດ້.",
+  "createTool.toolOutput.typeConflictTip": "ຜົນອອກນີ້ຖືກປະກາດດ້ວຍປະເພດທີ່ແຕກຕ່າງກັນໃນຫຼາຍໂຫນດ End. ປະເພດໃນເວລາເຮັດວຽກຂຶ້ນກັບສາຂາທີ່ຖືກດຳເນີນການ.",
   "createTool.toolOutput.title": "ຜົນອອກຂອງເຄື່ອງມື (Tool Output)",
   "createTool.urlError": "ກະລຸນາປ້ອນ URL ທີ່ຖືກຕ້ອງ",
   "createTool.viewSchemaSpec": "ເບິ່ງຂໍ້ກຳນົດ OpenAPI-Swagger",

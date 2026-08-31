@@ -93,6 +93,7 @@
   "createTool.toolOutput.description": "描述",
   "createTool.toolOutput.reserved": "预留",
   "createTool.toolOutput.reservedParameterDuplicateTip": "text、json、files 是预留变量，这些名称的变量不能出现在 output_schema 中。",
+  "createTool.toolOutput.typeConflictTip": "该输出在多个结束节点中声明了不同类型。运行时类型取决于实际执行的分支。",
   "createTool.toolOutput.title": "工具出参",
   "createTool.urlError": "请输入有效的 URL",
   "createTool.viewSchemaSpec": "查看 OpenAPI-Swagger 规范",

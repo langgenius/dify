@@ -93,6 +93,7 @@
   "createTool.toolOutput.description": "Описание",
   "createTool.toolOutput.reserved": "Зарезервировано",
   "createTool.toolOutput.reservedParameterDuplicateTip": "text, json и files — зарезервированные переменные. Переменные с этими именами не могут появляться в схеме вывода.",
+  "createTool.toolOutput.typeConflictTip": "Этот вывод объявлен с разными типами в нескольких конечных узлах. Тип во время выполнения зависит от выполненной ветви.",
   "createTool.toolOutput.title": "Вывод инструмента",
   "createTool.urlError": "Пожалуйста, введите действительный URL",
   "createTool.viewSchemaSpec": "Посмотреть спецификацию OpenAPI-Swagger",

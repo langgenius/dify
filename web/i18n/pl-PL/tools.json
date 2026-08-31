@@ -93,6 +93,7 @@
   "createTool.toolOutput.description": "Opis",
   "createTool.toolOutput.reserved": "Zarezerwowane",
   "createTool.toolOutput.reservedParameterDuplicateTip": "text, json i pliki są zastrzeżonymi zmiennymi. Zmienne o tych nazwach nie mogą pojawiać się w schemacie wyjściowym.",
+  "createTool.toolOutput.typeConflictTip": "To wyjście jest deklarowane z różnymi typami w wielu węzłach End. Typ w czasie wykonywania zależy od wykonanej gałęzi.",
   "createTool.toolOutput.title": "Wynik narzędzia",
   "createTool.urlError": "Proszę podać prawidłowy URL",
   "createTool.viewSchemaSpec": "Zobacz specyfikację OpenAPI-Swagger",

@@ -165,4 +165,27 @@ describe('WorkflowToolDrawer', () => {
 
     expect(screen.getAllByTestId('reserved-output-warning').length).toBeGreaterThan(0)
   })
+
+  it('should show output type conflict warnings without blocking save', async () => {
+    const user = userEvent.setup()
+    const onCreate = vi.fn()
+    const outputParameters: WorkflowToolDrawerPayload['outputParameters'] = [
+      { name: 'result', description: 'Conflicting output', typeConflict: true },
+    ]
+
+    render(
+      <WorkflowToolDrawer
+        isAdd
+        payload={createPayload({ outputParameters })}
+        onHide={vi.fn()}
+        onCreate={onCreate}
+      />,
+    )
+
+    expect(screen.getByTestId('output-type-conflict-warning')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    expect(onCreate).toHaveBeenCalledOnce()
+  })
 })

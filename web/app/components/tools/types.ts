@@ -216,6 +216,7 @@ export type WorkflowToolProviderOutputParameter = {
   name: string
   description: string
   type?: VarType
+  typeConflict?: boolean
   reserved?: boolean
 }
 
