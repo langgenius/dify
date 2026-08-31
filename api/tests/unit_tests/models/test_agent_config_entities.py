@@ -28,6 +28,35 @@ def test_agent_soul_model_settings_preserves_plugin_declared_parameters() -> Non
     assert dumped["thinking_budget"] == 4096
 
 
+def test_agent_soul_dify_tool_runtime_parameters_accept_model_selector() -> None:
+    from models.agent_config_entities import AgentSoulDifyToolConfig
+
+    config = AgentSoulDifyToolConfig.model_validate(
+        {
+            "provider_id": "hjlarry/database/database",
+            "provider_type": "plugin",
+            "tool_name": "text2sql",
+            "credential_type": "api-key",
+            "credential_ref": {"id": "credential-db", "type": "provider"},
+            "runtime_parameters": {
+                "tables": "orders",
+                "model": {
+                    "provider": "openai",
+                    "model": "gpt-4.1",
+                    "model_type": "llm",
+                },
+            },
+        }
+    )
+
+    assert config.runtime_parameters["tables"] == "orders"
+    assert config.runtime_parameters["model"] == {
+        "provider": "openai",
+        "model": "gpt-4.1",
+        "model_type": "llm",
+    }
+
+
 def test_file_default_value_accepts_canonical_reference_mapping() -> None:
     reference = build_file_reference(record_id="tool-file-1")
 
