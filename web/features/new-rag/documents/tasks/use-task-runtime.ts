@@ -4,26 +4,24 @@ import type { BackgroundTask, DocumentProcessingTask } from '../models'
 import type { AuxiliaryTaskReadGuard } from './auxiliary-read-guard'
 import type { ProcessingTaskEvent } from './events'
 import type { AuxiliaryTaskReadDenial } from './recovery'
-import type { TaskRuntimeObserverContract } from './runtime-observers'
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useReducer,
-  useRef,
-  useState,
-} from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { useAtomValue, useSetAtom } from 'jotai'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { taskIsActive, taskVersionIsAfter } from '../model'
-import { backgroundTaskListFromApi, documentTaskListFromApi } from '../models'
 import { documentTasksInfiniteOptions } from '../queries'
 import { responseStatus } from '../request-error'
+import {
+  backgroundTasksAtom,
+  baseTasksAtom,
+  taskPermissionDeniedAtom,
+  tasksQueryAtom,
+} from '../state/queries'
+import { taskProgressStoreAtom, taskRuntimeStateAtom } from '../state/scoped'
 import { useQueryDataUpdateCount } from '../use-query-data-update-count'
-import { createTaskProgressStore } from './progress-store'
 import { findBackgroundTask, findBackgroundTasks, taskSnapshotErrorIsTransient } from './recovery'
-import { createTaskRuntimeState, transitionTaskRuntimeState } from './runtime-state'
-import { effectiveDocumentTasks, mergeTaskOverride } from './snapshot'
+import { transitionTaskRuntimeState } from './runtime-state'
+import { mergeTaskOverride } from './snapshot'
+import { activeTasksAtom, effectiveTasksAtom } from './state'
 
 const MAX_TASK_EVENT_STREAMS = 6
 const FAILED_TASK_POLL_REQUEST_TIMEOUT = 3000
@@ -42,7 +40,7 @@ type UseTaskRuntimeOptions = {
   tasksOpen: boolean
 }
 
-export function useTaskRuntime({
+export function useTaskRuntimeController({
   auxiliaryTaskReadGuard,
   denyAuxiliaryTaskRead,
   documentPermissionDenied,
@@ -57,15 +55,9 @@ export function useTaskRuntime({
     () => documentTasksInfiniteOptions(knowledgeSpaceId, { enabled: !documentPermissionDenied }),
     [documentPermissionDenied, knowledgeSpaceId],
   )
-  const tasksQuery = useInfiniteQuery(tasksQueryOptions)
-  const baseTasks = useMemo(
-    () => tasksQuery.data?.pages.flatMap((page) => documentTaskListFromApi(page).items) ?? [],
-    [tasksQuery.data],
-  )
-  const backgroundTasks = useMemo<BackgroundTask[]>(
-    () => tasksQuery.data?.pages.flatMap((page) => backgroundTaskListFromApi(page).items) ?? [],
-    [tasksQuery.data],
-  )
+  const tasksQuery = useAtomValue(tasksQueryAtom)
+  const baseTasks = useAtomValue(baseTasksAtom)
+  const backgroundTasks: BackgroundTask[] = useAtomValue(backgroundTasksAtom)
   const taskDataUpdateCount = useQueryDataUpdateCount(queryClient, tasksQueryOptions.queryKey)
   const listSnapshot = useMemo(
     () => ({
@@ -75,16 +67,13 @@ export function useTaskRuntime({
     }),
     [taskDataUpdateCount, tasksQuery.data, tasksQuery.dataUpdatedAt],
   )
-  const taskPermissionDenied = responseStatus(tasksQuery.error) === 403
+  const taskPermissionDenied = useAtomValue(taskPermissionDeniedAtom)
   const permissionDenied = externalPermissionDenied || taskPermissionDenied
   const refetchTasks = tasksQuery.refetch
 
-  const runtimeStateRef = useRef(createTaskRuntimeState())
-  const [runtimeState, dispatchRuntimeEvent] = useReducer(
-    (state, event: Parameters<typeof transitionTaskRuntimeState>[1]) =>
-      transitionTaskRuntimeState(state, event).state,
-    runtimeStateRef.current,
-  )
+  const runtimeState = useAtomValue(taskRuntimeStateAtom)
+  const setRuntimeState = useSetAtom(taskRuntimeStateAtom)
+  const runtimeStateRef = useRef(runtimeState)
   useLayoutEffect(() => {
     runtimeStateRef.current = runtimeState
   }, [runtimeState])
@@ -92,15 +81,13 @@ export function useTaskRuntime({
     (event: Parameters<typeof transitionTaskRuntimeState>[1]) => {
       const transition = transitionTaskRuntimeState(runtimeStateRef.current, event)
       runtimeStateRef.current = transition.state
-      dispatchRuntimeEvent(event)
+      setRuntimeState(transition.state)
       return transition
     },
-    [],
+    [setRuntimeState],
   )
 
-  const taskProgressStoreRef = useRef<ReturnType<typeof createTaskProgressStore> | null>(null)
-  if (!taskProgressStoreRef.current) taskProgressStoreRef.current = createTaskProgressStore()
-  const taskProgressStore = taskProgressStoreRef.current
+  const taskProgressStore = useAtomValue(taskProgressStoreAtom)
   const taskListSnapshotRef = useRef<typeof listSnapshot | null>(null)
   useLayoutEffect(() => {
     if (
@@ -133,27 +120,9 @@ export function useTaskRuntime({
     states: Map<string, string>
   }>({ knowledgeSpaceId, states: new Map() })
 
-  const tasks = useMemo(
-    () =>
-      effectiveDocumentTasks({
-        baseTasks,
-        streamActiveOverrideVersions: runtimeState.streamActiveOverrideVersions,
-        taskOverrides: runtimeState.overrides,
-        terminalTaskPins: runtimeState.terminalPins,
-      }),
-    [
-      baseTasks,
-      runtimeState.overrides,
-      runtimeState.streamActiveOverrideVersions,
-      runtimeState.terminalPins,
-    ],
-  )
+  const tasks = useAtomValue(effectiveTasksAtom)
+  const activeTasks = useAtomValue(activeTasksAtom)
   const effectiveTaskById = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks])
-  const drawerTasks = useMemo(
-    () => backgroundTasks.map((task) => effectiveTaskById.get(task.id) ?? task),
-    [backgroundTasks, effectiveTaskById],
-  )
-  const activeTasks = useMemo(() => tasks.filter(taskIsActive), [tasks])
   useEffect(() => {
     for (const task of tasks) {
       if (!taskIsActive(task)) applyRuntimeEvent({ taskId: task.id, type: 'task-inactive' })
@@ -718,9 +687,9 @@ export function useTaskRuntime({
     [cancelTerminalReconciliation, knowledgeSpaceId],
   )
 
-  const observers: TaskRuntimeObserverContract = {
+  const observers = {
     eventCursors: runtimeState.eventCursors,
-    generation: (taskId) => runtimeState.observerGenerations[taskId] ?? 0,
+    generation: (taskId: string) => runtimeState.observerGenerations[taskId] ?? 0,
     onEvent: handleTaskEvent,
     onEventCursorChange: handleTaskEventCursor,
     onPermissionDenied: handleTaskStreamPermissionDenied,
@@ -730,14 +699,7 @@ export function useTaskRuntime({
 
   return {
     acceptTaskSnapshot,
-    activeTasks,
-    baseTasks,
-    drawerTasks,
     observers,
     resetFailedPollBlocks: () => blockedFailedTaskPollVersionsRef.current.clear(),
-    taskProgressStore,
-    taskPermissionDenied,
-    tasksQuery,
-    tasks,
   }
 }

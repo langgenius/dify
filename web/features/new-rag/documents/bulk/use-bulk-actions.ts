@@ -1,52 +1,62 @@
 'use client'
 
-import type { EnsureKnowledgeModelReady } from '../../use-knowledge-model-setup-guard'
-import type { DocumentBulkSelection } from './selection-state'
+import type { DocumentBulkAction } from '../state/bulk'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useRef, useState } from 'react'
+import { useAtomValue, useSetAtom } from 'jotai'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { downloadBlob } from '@/utils/download'
 import { createRequestId } from '../../request-id'
 import { responseStatus } from '../request-error'
+import {
+  beginDocumentBulkActionAtom,
+  documentBulkPendingActionAtom,
+  finishDocumentBulkActionAtom,
+} from '../state/bulk'
+import { documentsKnowledgeSpaceIdAtom } from '../state/inputs'
+import { selectionResultsUnavailableAtom } from '../state/results'
+import {
+  denyDocumentWriteAtom,
+  documentCanDownloadAtom,
+  documentCanWriteAtom,
+  ensureDocumentModelReadyAtom,
+} from '../state/runtime'
+import {
+  clearDocumentSelectionAtom,
+  downloadableDocumentIdsAtom,
+  replaceDocumentSelectionAtom,
+  selectedDocumentsAtom,
+  selectionAvailabilityDisabledAtom,
+  selectionAvailabilityTargetEnabledAtom,
+  selectionReindexDisabledAtom,
+  validSelectedDocumentIdsAtom,
+} from '../state/selection'
 import { queryKeyMatchesKnowledgeSpace } from '../tasks/recovery'
 
-export type DocumentBulkAction = 'availability' | 'download' | 'reindex' | 'remove'
+function useBulkActionLock(action: DocumentBulkAction) {
+  const pendingAction = useAtomValue(documentBulkPendingActionAtom)
+  const beginAction = useSetAtom(beginDocumentBulkActionAtom)
+  const finishAction = useSetAtom(finishDocumentBulkActionAtom)
 
-export function useDocumentBulkActions({
-  canDownload,
-  canWrite,
-  ensureModelReady,
-  knowledgeSpaceId,
-  onWriteDenied,
-  selection,
-  selectionDisabled,
-}: {
-  canDownload: boolean
-  canWrite: boolean
-  ensureModelReady: EnsureKnowledgeModelReady
-  knowledgeSpaceId: string
-  onWriteDenied: () => void
-  selection: DocumentBulkSelection
-  selectionDisabled: boolean
-}) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  return {
+    begin: () => beginAction(action),
+    busy: Boolean(pendingAction),
+    finish: () => finishAction(action),
+    pending: pendingAction === action,
+  }
+}
+
+function useDocumentInvalidation() {
   const queryClient = useQueryClient()
-  const pendingRef = useRef(false)
-  const [pendingAction, setPendingAction] = useState<DocumentBulkAction>()
-  const { mutateAsync: reindexDocuments } = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions(),
-  )
-
+  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
   const invalidateDocuments = useCallback(() => {
     void queryClient.invalidateQueries({
       predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
       queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
     })
   }, [knowledgeSpaceId, queryClient])
-
   const invalidateDocumentsAndTasks = useCallback(() => {
     void Promise.allSettled([
       queryClient.invalidateQueries({
@@ -60,33 +70,32 @@ export function useDocumentBulkActions({
     ])
   }, [knowledgeSpaceId, queryClient])
 
-  const beginAction = useCallback((action: DocumentBulkAction) => {
-    if (pendingRef.current) return false
-    pendingRef.current = true
-    setPendingAction(action)
-    return true
-  }, [])
+  return { invalidateDocuments, invalidateDocumentsAndTasks, knowledgeSpaceId }
+}
 
-  const finishAction = useCallback(() => {
-    pendingRef.current = false
-    setPendingAction(undefined)
-  }, [])
+export function useBulkReindexAction() {
+  const { t } = useTranslation('dataset')
+  const canWrite = useAtomValue(documentCanWriteAtom)
+  const selectionDisabled = useAtomValue(selectionResultsUnavailableAtom)
+  const selectedDocumentIds = useAtomValue(validSelectedDocumentIdsAtom)
+  const reindexDisabled = useAtomValue(selectionReindexDisabledAtom)
+  const ensureModelReady = useSetAtom(ensureDocumentModelReadyAtom)
+  const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
+  const replaceSelection = useSetAtom(replaceDocumentSelectionAtom)
+  const { begin, busy, finish, pending } = useBulkActionLock('reindex')
+  const { invalidateDocumentsAndTasks, knowledgeSpaceId } = useDocumentInvalidation()
+  const { mutateAsync: reindexDocuments } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions(),
+  )
 
-  const reindex = useCallback(async () => {
-    if (
-      !canWrite ||
-      selectionDisabled ||
-      !selection.selectedDocumentIds.size ||
-      selection.reindexDisabled ||
-      !beginAction('reindex')
-    )
+  const run = useCallback(async () => {
+    if (!canWrite || selectionDisabled || !selectedDocumentIds.size || reindexDisabled || !begin())
       return
     try {
       if ((await ensureModelReady({ capability: 'index', intent: 'reindex' })).status !== 'ready')
         return
-      const selectedIds = [...selection.selectedDocumentIds].sort()
       const result = await reindexDocuments({
-        body: { documentIds: selectedIds },
+        body: { documentIds: [...selectedDocumentIds].sort() },
         params: { control_space_id: knowledgeSpaceId },
       })
       const missingIds = result.items
@@ -96,8 +105,8 @@ export function useDocumentBulkActions({
         .filter((item) => item.status === 'disabled')
         .flatMap((item) => (item.document_id ? [item.document_id] : []))
       const queuedCount = result.items.filter((item) => item.status === 'queued').length
-      if (!queuedCount) {
-        selection.replace(disabledIds)
+      replaceSelection(queuedCount ? [...missingIds, ...disabledIds] : disabledIds)
+      if (!queuedCount)
         toast.error(
           disabledIds.length
             ? t(($) => $['newKnowledge.documentsReindexFailed'])
@@ -106,11 +115,7 @@ export function useDocumentBulkActions({
                 queued: 0,
               }),
         )
-        invalidateDocumentsAndTasks()
-        return
-      }
-      selection.replace([...missingIds, ...disabledIds])
-      if (disabledIds.length) toast.warning(t(($) => $['newKnowledge.documentsReindexFailed']))
+      else if (disabledIds.length) toast.warning(t(($) => $['newKnowledge.documentsReindexFailed']))
       else if (missingIds.length)
         toast.warning(
           t(($) => $['newKnowledge.documentsReindexPartial'], {
@@ -124,81 +129,41 @@ export function useDocumentBulkActions({
       if (responseStatus(error) === 403) onWriteDenied()
       else toast.error(t(($) => $['newKnowledge.documentsReindexFailed']))
     } finally {
-      finishAction()
+      finish()
     }
   }, [
-    beginAction,
+    begin,
     canWrite,
     ensureModelReady,
-    finishAction,
+    finish,
     invalidateDocumentsAndTasks,
     knowledgeSpaceId,
     onWriteDenied,
+    reindexDisabled,
     reindexDocuments,
-    selection,
+    replaceSelection,
+    selectedDocumentIds,
     selectionDisabled,
     t,
   ])
 
-  const updateAvailability = useCallback(async () => {
-    if (
-      !canWrite ||
-      selectionDisabled ||
-      !selection.selectedDocumentIds.size ||
-      selection.availabilityDisabled ||
-      !selection.selectedDocuments.length ||
-      !beginAction('availability')
-    )
-      return
-    try {
-      const result = await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.patch(
-        {
-          body: {
-            documents: selection.selectedDocuments.map((document) => ({
-              documentId: document.id,
-              expectedRowVersion: document.rowVersion,
-            })),
-            enabled: selection.availabilityTargetEnabled,
-          },
-          params: { control_space_id: knowledgeSpaceId },
-        },
-      )
-      const failedIds = result.items.flatMap((item) =>
-        item.status === 'conflict' || item.status === 'not_found' ? [item.document_id] : [],
-      )
-      selection.replace(failedIds)
-      if (failedIds.length) toast.warning(t(($) => $['newKnowledge.documentsErrorDescription']))
-      invalidateDocuments()
-    } catch (error) {
-      if (responseStatus(error) === 403) onWriteDenied()
-      else toast.error(t(($) => $['newKnowledge.documentsErrorDescription']))
-    } finally {
-      finishAction()
-    }
-  }, [
-    beginAction,
-    canWrite,
-    finishAction,
-    invalidateDocuments,
-    knowledgeSpaceId,
-    onWriteDenied,
-    selection,
-    selectionDisabled,
-    t,
-  ])
+  return { busy, pending, run }
+}
 
-  const download = useCallback(async () => {
-    if (
-      !canWrite ||
-      !canDownload ||
-      !selection.downloadableDocumentIds.length ||
-      !beginAction('download')
-    )
-      return
+export function useBulkDownloadAction() {
+  const { t } = useTranslation('common')
+  const canDownload = useAtomValue(documentCanDownloadAtom)
+  const canWrite = useAtomValue(documentCanWriteAtom)
+  const downloadableDocumentIds = useAtomValue(downloadableDocumentIdsAtom)
+  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
+  const { begin, busy, finish, pending } = useBulkActionLock('download')
+
+  const run = useCallback(async () => {
+    if (!canWrite || !canDownload || !downloadableDocumentIds.length || !begin()) return
     try {
       const file =
         await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.downloadZip.post({
-          body: { document_ids: selection.downloadableDocumentIds },
+          body: { document_ids: downloadableDocumentIds },
           params: { control_space_id: knowledgeSpaceId },
         })
       downloadBlob({
@@ -209,25 +174,106 @@ export function useDocumentBulkActions({
             : 'knowledge-documents.zip',
       })
     } catch {
-      toast.error(tCommon(($) => $['actionMsg.downloadUnsuccessfully']))
+      toast.error(t(($) => $['actionMsg.downloadUnsuccessfully']))
     } finally {
-      finishAction()
+      finish()
     }
-  }, [beginAction, canDownload, canWrite, finishAction, knowledgeSpaceId, selection, tCommon])
+  }, [begin, canDownload, canWrite, downloadableDocumentIds, finish, knowledgeSpaceId, t])
 
-  const remove = useCallback(async () => {
+  return { busy, pending, run }
+}
+
+export function useBulkAvailabilityAction() {
+  const { t } = useTranslation('dataset')
+  const canWrite = useAtomValue(documentCanWriteAtom)
+  const selectionDisabled = useAtomValue(selectionResultsUnavailableAtom)
+  const selectedDocumentIds = useAtomValue(validSelectedDocumentIdsAtom)
+  const selectedDocuments = useAtomValue(selectedDocumentsAtom)
+  const availabilityDisabled = useAtomValue(selectionAvailabilityDisabledAtom)
+  const availabilityTargetEnabled = useAtomValue(selectionAvailabilityTargetEnabledAtom)
+  const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
+  const replaceSelection = useSetAtom(replaceDocumentSelectionAtom)
+  const { begin, busy, finish, pending } = useBulkActionLock('availability')
+  const { invalidateDocuments, knowledgeSpaceId } = useDocumentInvalidation()
+
+  const run = useCallback(async () => {
     if (
       !canWrite ||
       selectionDisabled ||
-      !selection.selectedDocumentIds.size ||
-      !selection.selectedDocuments.length ||
-      !beginAction('remove')
+      !selectedDocumentIds.size ||
+      availabilityDisabled ||
+      !selectedDocuments.length ||
+      !begin()
+    )
+      return
+    try {
+      const result = await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.patch(
+        {
+          body: {
+            documents: selectedDocuments.map((document) => ({
+              documentId: document.id,
+              expectedRowVersion: document.rowVersion,
+            })),
+            enabled: availabilityTargetEnabled,
+          },
+          params: { control_space_id: knowledgeSpaceId },
+        },
+      )
+      const failedIds = result.items.flatMap((item) =>
+        item.status === 'conflict' || item.status === 'not_found' ? [item.document_id] : [],
+      )
+      replaceSelection(failedIds)
+      if (failedIds.length) toast.warning(t(($) => $['newKnowledge.documentsErrorDescription']))
+      invalidateDocuments()
+    } catch (error) {
+      if (responseStatus(error) === 403) onWriteDenied()
+      else toast.error(t(($) => $['newKnowledge.documentsErrorDescription']))
+    } finally {
+      finish()
+    }
+  }, [
+    availabilityDisabled,
+    availabilityTargetEnabled,
+    begin,
+    canWrite,
+    finish,
+    invalidateDocuments,
+    knowledgeSpaceId,
+    onWriteDenied,
+    replaceSelection,
+    selectedDocumentIds,
+    selectedDocuments,
+    selectionDisabled,
+    t,
+  ])
+
+  return { busy, pending, run }
+}
+
+export function useBulkRemoveAction() {
+  const { t } = useTranslation('dataset')
+  const canWrite = useAtomValue(documentCanWriteAtom)
+  const selectionDisabled = useAtomValue(selectionResultsUnavailableAtom)
+  const selectedDocumentIds = useAtomValue(validSelectedDocumentIdsAtom)
+  const selectedDocuments = useAtomValue(selectedDocumentsAtom)
+  const clearSelection = useSetAtom(clearDocumentSelectionAtom)
+  const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
+  const { begin, busy, finish, pending } = useBulkActionLock('remove')
+  const { invalidateDocumentsAndTasks, knowledgeSpaceId } = useDocumentInvalidation()
+
+  const run = useCallback(async () => {
+    if (
+      !canWrite ||
+      selectionDisabled ||
+      !selectedDocumentIds.size ||
+      !selectedDocuments.length ||
+      !begin()
     )
       return false
     try {
       await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.bulk.delete({
         body: {
-          documents: selection.selectedDocuments.map((document) => ({
+          documents: selectedDocuments.map((document) => ({
             documentId: document.id,
             expectedRevision: document.rowVersion,
           })),
@@ -235,7 +281,7 @@ export function useDocumentBulkActions({
         headers: { 'Idempotency-Key': createRequestId() },
         params: { control_space_id: knowledgeSpaceId },
       })
-      selection.clear()
+      clearSelection()
       invalidateDocumentsAndTasks()
       return true
     } catch (error) {
@@ -243,19 +289,21 @@ export function useDocumentBulkActions({
       else toast.error(t(($) => $['newKnowledge.documentsErrorDescription']))
       return false
     } finally {
-      finishAction()
+      finish()
     }
   }, [
-    beginAction,
+    begin,
     canWrite,
-    finishAction,
+    clearSelection,
+    finish,
     invalidateDocumentsAndTasks,
     knowledgeSpaceId,
     onWriteDenied,
-    selection,
+    selectedDocumentIds,
+    selectedDocuments,
     selectionDisabled,
     t,
   ])
 
-  return { download, pendingAction, reindex, remove, updateAvailability }
+  return { busy, pending, run }
 }

@@ -1,7 +1,5 @@
 'use client'
 
-import type { EnsureKnowledgeModelReady } from '../../use-knowledge-model-setup-guard'
-import type { DocumentBulkSelection } from './selection-state'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -12,137 +10,146 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDocumentBulkActions } from './use-bulk-actions'
+import { documentBulkPendingActionAtom } from '../state/bulk'
+import { reindexUnavailabilityAtom, selectionResultsUnavailableAtom } from '../state/results'
+import { documentCanDownloadAtom, documentCanWriteAtom } from '../state/runtime'
+import {
+  clearDocumentSelectionAtom,
+  downloadableDocumentIdsAtom,
+  selectionAvailabilityActionVisibleAtom,
+  selectionAvailabilityDisabledAtom,
+  selectionAvailabilityTargetEnabledAtom,
+  selectionReindexDisabledAtom,
+  validSelectedDocumentIdsAtom,
+} from '../state/selection'
+import {
+  useBulkAvailabilityAction,
+  useBulkDownloadAction,
+  useBulkReindexAction,
+  useBulkRemoveAction,
+} from './use-bulk-actions'
 
-export function DocumentBulkActionsToolbar({
-  canDownload,
-  canWrite,
-  disabled,
-  disabledReason,
-  ensureModelReady,
-  knowledgeSpaceId,
-  onWriteDenied,
-  selection,
-}: {
-  canDownload: boolean
-  canWrite: boolean
-  disabled: boolean
-  disabledReason?: string
-  ensureModelReady: EnsureKnowledgeModelReady
-  knowledgeSpaceId: string
-  onWriteDenied: () => void
-  selection: DocumentBulkSelection
-}) {
+function BulkReindexAction() {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
-  const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
-  const { download, pendingAction, reindex, remove, updateAvailability } = useDocumentBulkActions({
-    canDownload,
-    canWrite,
-    ensureModelReady,
-    knowledgeSpaceId,
-    onWriteDenied,
-    selection,
-    selectionDisabled: disabled,
-  })
-  const busy = Boolean(pendingAction)
-  const downloadDisabled = !canDownload || !selection.downloadableDocumentIds.length
-
-  const clearSelection = () => {
-    document.getElementById('new-knowledge-documents-title')?.focus()
-    selection.clear()
-  }
+  const disabled = useAtomValue(selectionResultsUnavailableAtom)
+  const reindexDisabled = useAtomValue(selectionReindexDisabledAtom)
+  const unavailableReason = useAtomValue(reindexUnavailabilityAtom)
+  const { busy, pending, run } = useBulkReindexAction()
+  const disabledReason =
+    unavailableReason === 'tasks'
+      ? t(($) => $['newKnowledge.tasksErrorDescription'])
+      : unavailableReason === 'sources'
+        ? t(($) => $['newKnowledge.sourcesErrorDescription'])
+        : unavailableReason === 'documents'
+          ? t(($) => $['newKnowledge.documentsErrorDescription'])
+          : unavailableReason === 'loading'
+            ? tCommon(($) => $.loading)
+            : unavailableReason === 'partial'
+              ? t(($) => $['newKnowledge.partialDocumentResults'])
+              : undefined
 
   return (
     <>
-      <div className="pointer-events-none fixed right-0 bottom-[calc(1.75rem+env(safe-area-inset-bottom,0px))] left-0 z-20 flex justify-center pr-[calc(1rem+env(safe-area-inset-right,0px))] pl-[calc(1rem+env(safe-area-inset-left,0px))] sm:left-(--new-rag-sidebar-width,0px)">
-        <div
-          aria-label={t(($) => $['newKnowledge.bulkDocumentActions'])}
-          className="pointer-events-auto flex max-w-full min-w-0 items-center gap-2 overflow-x-auto rounded-[14px] border border-divider-subtle bg-components-panel-bg py-2.5 pr-2.5 pl-4 shadow-[0_12px_32px_-6px_rgba(15,23,41,0.16),0_2px_6px_rgba(15,23,41,0.06)]"
-          role="group"
+      <Button
+        aria-describedby={disabled ? 'document-reindex-unavailable' : undefined}
+        aria-busy={pending}
+        className="shrink-0"
+        disabled={disabled || reindexDisabled || busy}
+        loading={pending}
+        size="small"
+        onClick={() => void run()}
+      >
+        {t(($) => $['newKnowledge.reindexDocuments'])}
+      </Button>
+      {disabled && disabledReason && (
+        <span
+          id="document-reindex-unavailable"
+          className="max-w-44 shrink-0 system-2xs-regular text-text-tertiary"
+          role="status"
         >
-          <span className="shrink-0 text-[13px] leading-4.5 font-medium text-text-primary">
-            {t(($) => $['newKnowledge.documentsSelected'], {
-              count: selection.selectedDocumentIds.size,
-            })}
-          </span>
-          <span aria-hidden className="h-5 w-px shrink-0 bg-divider-regular" />
-          <Button
-            aria-describedby={disabled ? 'document-reindex-unavailable' : undefined}
-            aria-busy={pendingAction === 'reindex'}
-            className="shrink-0"
-            disabled={disabled || selection.reindexDisabled || busy}
-            loading={pendingAction === 'reindex'}
-            size="small"
-            onClick={() => void reindex()}
-          >
-            {t(($) => $['newKnowledge.reindexDocuments'])}
-          </Button>
-          {disabled && disabledReason && (
-            <span
-              id="document-reindex-unavailable"
-              className="max-w-44 shrink-0 system-2xs-regular text-text-tertiary"
-              role="status"
-            >
-              {t(($) => $['newKnowledge.reindexDocuments'])}
-              {' · '}
-              {disabledReason}
-            </span>
-          )}
-          <Button
-            aria-busy={pendingAction === 'download'}
-            aria-describedby={downloadDisabled ? 'document-download-unavailable' : undefined}
-            className="shrink-0"
-            disabled={downloadDisabled || busy}
-            loading={pendingAction === 'download'}
-            size="small"
-            onClick={() => void download()}
-          >
-            {t(($) => $['newKnowledge.downloadDocuments'])}
-          </Button>
-          {selection.availabilityActionVisible && (
-            <Button
-              className="shrink-0"
-              disabled={disabled || selection.availabilityDisabled || busy}
-              size="small"
-              loading={pendingAction === 'availability'}
-              onClick={() => void updateAvailability()}
-            >
-              {t(($) =>
-                selection.availabilityTargetEnabled ? $.enable : $['newKnowledge.disableSource'],
-              )}
-            </Button>
-          )}
-          <Button
-            className="shrink-0"
-            disabled={disabled || busy}
-            loading={pendingAction === 'remove'}
-            size="small"
-            tone="destructive"
-            variant="secondary"
-            onClick={() => setRemoveDialogOpen(true)}
-          >
-            {tCommon(($) => $['operation.remove'])}
-          </Button>
-          <Button
-            variant="ghost"
-            size="small"
-            aria-label={t(($) => $['newKnowledge.clearDocumentSelection'])}
-            className="size-6.5 shrink-0 px-0"
-            disabled={busy}
-            onClick={clearSelection}
-          >
-            <span aria-hidden className="i-ri-close-line size-3.5" />
-          </Button>
-        </div>
-      </div>
+          {t(($) => $['newKnowledge.reindexDocuments'])}
+          {' · '}
+          {disabledReason}
+        </span>
+      )}
+    </>
+  )
+}
+
+function BulkDownloadAction() {
+  const { t } = useTranslation('dataset')
+  const canDownload = useAtomValue(documentCanDownloadAtom)
+  const downloadableDocumentIds = useAtomValue(downloadableDocumentIdsAtom)
+  const disabled = !canDownload || !downloadableDocumentIds.length
+  const { busy, pending, run } = useBulkDownloadAction()
+
+  return (
+    <>
+      <Button
+        aria-busy={pending}
+        aria-describedby={disabled ? 'document-download-unavailable' : undefined}
+        className="shrink-0"
+        disabled={disabled || busy}
+        loading={pending}
+        size="small"
+        onClick={() => void run()}
+      >
+        {t(($) => $['newKnowledge.downloadDocuments'])}
+      </Button>
       <span id="document-download-unavailable" className="sr-only">
         {t(($) => $['newKnowledge.documentActionsUnavailable'])}
       </span>
+    </>
+  )
+}
 
-      <AlertDialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
+function BulkAvailabilityAction() {
+  const { t } = useTranslation('dataset')
+  const actionVisible = useAtomValue(selectionAvailabilityActionVisibleAtom)
+  const actionDisabled = useAtomValue(selectionAvailabilityDisabledAtom)
+  const targetEnabled = useAtomValue(selectionAvailabilityTargetEnabledAtom)
+  const resultsUnavailable = useAtomValue(selectionResultsUnavailableAtom)
+  const { busy, pending, run } = useBulkAvailabilityAction()
+
+  if (!actionVisible) return null
+
+  return (
+    <Button
+      className="shrink-0"
+      disabled={resultsUnavailable || actionDisabled || busy}
+      size="small"
+      loading={pending}
+      onClick={() => void run()}
+    >
+      {t(($) => (targetEnabled ? $.enable : $['newKnowledge.disableSource']))}
+    </Button>
+  )
+}
+
+function BulkRemoveAction() {
+  const { t: tCommon } = useTranslation('common')
+  const [open, setOpen] = useState(false)
+  const resultsUnavailable = useAtomValue(selectionResultsUnavailableAtom)
+  const { busy, pending, run } = useBulkRemoveAction()
+
+  return (
+    <>
+      <Button
+        className="shrink-0"
+        disabled={resultsUnavailable || busy}
+        loading={pending}
+        size="small"
+        tone="destructive"
+        variant="secondary"
+        onClick={() => setOpen(true)}
+      >
+        {tCommon(($) => $['operation.remove'])}
+      </Button>
+      <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="title-xl-semi-bold text-text-primary">
@@ -153,16 +160,16 @@ export function DocumentBulkActionsToolbar({
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton disabled={pendingAction === 'remove'}>
+            <AlertDialogCancelButton disabled={pending}>
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
-              disabled={pendingAction === 'remove'}
-              loading={pendingAction === 'remove'}
+              disabled={pending}
+              loading={pending}
               tone="destructive"
               onClick={() =>
-                void remove().then((removed) => {
-                  if (removed) setRemoveDialogOpen(false)
+                void run().then((removed) => {
+                  if (removed) setOpen(false)
                 })
               }
             >
@@ -172,5 +179,49 @@ export function DocumentBulkActionsToolbar({
         </AlertDialogContent>
       </AlertDialog>
     </>
+  )
+}
+
+export function DocumentBulkActionsToolbar() {
+  const { t } = useTranslation('dataset')
+  const canWrite = useAtomValue(documentCanWriteAtom)
+  const selectedDocumentIds = useAtomValue(validSelectedDocumentIdsAtom)
+  const clearSelectedDocuments = useSetAtom(clearDocumentSelectionAtom)
+  const busy = Boolean(useAtomValue(documentBulkPendingActionAtom))
+
+  if (!canWrite || !selectedDocumentIds.size) return null
+
+  return (
+    <div className="pointer-events-none fixed right-0 bottom-[calc(1.75rem+env(safe-area-inset-bottom,0px))] left-0 z-20 flex justify-center pr-[calc(1rem+env(safe-area-inset-right,0px))] pl-[calc(1rem+env(safe-area-inset-left,0px))] sm:left-(--new-rag-sidebar-width,0px)">
+      <div
+        aria-label={t(($) => $['newKnowledge.bulkDocumentActions'])}
+        className="pointer-events-auto flex max-w-full min-w-0 items-center gap-2 overflow-x-auto rounded-[14px] border border-divider-subtle bg-components-panel-bg py-2.5 pr-2.5 pl-4 shadow-[0_12px_32px_-6px_rgba(15,23,41,0.16),0_2px_6px_rgba(15,23,41,0.06)]"
+        role="group"
+      >
+        <span className="shrink-0 text-[13px] leading-4.5 font-medium text-text-primary">
+          {t(($) => $['newKnowledge.documentsSelected'], {
+            count: selectedDocumentIds.size,
+          })}
+        </span>
+        <span aria-hidden className="h-5 w-px shrink-0 bg-divider-regular" />
+        <BulkReindexAction />
+        <BulkDownloadAction />
+        <BulkAvailabilityAction />
+        <BulkRemoveAction />
+        <Button
+          variant="ghost"
+          size="small"
+          aria-label={t(($) => $['newKnowledge.clearDocumentSelection'])}
+          className="size-6.5 shrink-0 px-0"
+          disabled={busy}
+          onClick={() => {
+            document.getElementById('new-knowledge-documents-title')?.focus()
+            clearSelectedDocuments()
+          }}
+        >
+          <span aria-hidden className="i-ri-close-line size-3.5" />
+        </Button>
+      </div>
+    </div>
   )
 }

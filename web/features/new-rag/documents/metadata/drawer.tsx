@@ -27,12 +27,18 @@ import {
 import { Input } from '@langgenius/dify-ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useHover } from 'ahooks'
-import { useRef, useState } from 'react'
+import { useAtomValue, useSetAtom } from 'jotai'
+import { useQueryState } from 'nuqs'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { knowledgeFsMetadataFieldsQueryOptions } from '@/service/knowledge-fs/metadata'
+import { documentMetadataParser } from '../query-state'
+import { responseStatus } from '../request-error'
+import { documentsKnowledgeSpaceIdAtom } from '../state/inputs'
+import { denyDocumentWriteAtom, documentCanReadAtom, documentCanWriteAtom } from '../state/runtime'
 import { DocumentMetadataCreateForm } from './create-form'
 import { documentMetadataNameError } from './editor-model'
 
@@ -50,27 +56,83 @@ function Field({ children, label }: { children: ReactNode; label: string }) {
   )
 }
 
-function CreateMetadataPopover({
-  allowedExistingName,
-  disabled,
-  fields,
-  pending,
-  onCreate,
-}: {
-  allowedExistingName?: string
-  disabled: boolean
-  fields: DocumentMetadataField[]
-  pending: boolean
-  onCreate: (name: string, type: DocumentMetadataType) => Promise<boolean>
-}) {
+function useMetadataFields() {
+  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
+  const canRead = useAtomValue(documentCanReadAtom)
+  const [metadataRequest] = useQueryState('metadata', documentMetadataParser)
+  return useQuery({
+    ...knowledgeFsMetadataFieldsQueryOptions(knowledgeSpaceId),
+    enabled: metadataRequest === '1' && canRead,
+  })
+}
+
+function useMetadataFieldMutation() {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
+  const canWrite = useAtomValue(documentCanWriteAtom)
+  const denyWrite = useSetAtom(denyDocumentWriteAtom)
+  const { isPending, mutateAsync } = useMutation({
+    mutationFn: (mutation: () => Promise<unknown>) => mutation(),
+  })
+  const mutate = useCallback(
+    async (mutation: () => Promise<unknown>) => {
+      if (!canWrite || isPending) return false
+      try {
+        await mutateAsync(mutation)
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.metadata.get.key(),
+          }),
+        ])
+        return true
+      } catch (error) {
+        if (responseStatus(error) === 403) denyWrite()
+        else toast.error(t(($) => $['newKnowledge.settings.saveFailed'], { ns: 'dataset' }))
+        return false
+      }
+    },
+    [canWrite, denyWrite, isPending, mutateAsync, queryClient, t],
+  )
+
+  return { canWrite, knowledgeSpaceId, mutate, pending: isPending }
+}
+
+function CreateMetadataPopover() {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const metadataFieldsQuery = useMetadataFields()
+  const fields = metadataFieldsQuery.data ?? []
+  const catalogUnavailable = Boolean(
+    metadataFieldsQuery.isPending || metadataFieldsQuery.isFetching || metadataFieldsQuery.error,
+  )
+  const { canWrite, knowledgeSpaceId, mutate, pending } = useMetadataFieldMutation()
+  const createMetadata = async (name: string, type: DocumentMetadataType) => {
+    const error = documentMetadataNameError(name, fields)
+    if (error) {
+      toast.error(t(($) => $[`metadata.checkName.${error}`], { max: 255, ns: 'dataset' }))
+      return false
+    }
+    return mutate(() =>
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.post({
+        body: { name, type },
+        params: { control_space_id: knowledgeSpaceId },
+      }),
+    )
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         render={
-          <Button variant="primary" className="mt-3" disabled={disabled || pending}>
+          <Button
+            variant="primary"
+            className="mt-3"
+            disabled={!canWrite || pending || catalogUnavailable}
+          >
             <span aria-hidden className="mr-1 i-ri-add-line size-4" />
             {t(($) => $['metadata.datasetMetadata.addMetaData'], { ns: 'dataset' })}
           </Button>
@@ -83,11 +145,10 @@ function CreateMetadataPopover({
         className="w-[320px]"
       >
         <DocumentMetadataCreateForm
-          allowedExistingName={allowedExistingName}
           fields={fields}
           pending={pending}
           onClose={() => setOpen(false)}
-          onCreate={onCreate}
+          onCreate={createMetadata}
         />
       </PopoverContent>
     </Popover>
@@ -95,17 +156,11 @@ function CreateMetadataPopover({
 }
 
 function MetadataItem({
-  busy,
-  canEdit,
   field,
-  onDelete,
-  onRename,
+  fields,
 }: {
-  busy: boolean
-  canEdit: boolean
   field: DocumentMetadataField
-  onDelete: (field: DocumentMetadataField) => Promise<boolean>
-  onRename: (field: DocumentMetadataField, name: string) => Promise<boolean>
+  fields: DocumentMetadataField[]
 }) {
   const { t } = useTranslation()
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -113,6 +168,28 @@ function MetadataItem({
   const [name, setName] = useState(field.name)
   const deleteButtonRef = useRef<HTMLButtonElement>(null)
   const isDeleteHovering = useHover(deleteButtonRef)
+  const { canWrite: canEdit, knowledgeSpaceId, mutate, pending: busy } = useMetadataFieldMutation()
+  const renameMetadata = async (nextName: string) => {
+    const error = documentMetadataNameError(nextName, fields, field.name)
+    if (error) {
+      toast.error(t(($) => $[`metadata.checkName.${error}`], { max: 255, ns: 'dataset' }))
+      return false
+    }
+    if (nextName === field.name) return true
+    return mutate(() =>
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.byFieldId.patch({
+        body: { expectedRowVersion: field.rowVersion, name: nextName },
+        params: { control_space_id: knowledgeSpaceId, field_id: field.id },
+      }),
+    )
+  }
+  const deleteMetadata = () =>
+    mutate(() =>
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.byFieldId.delete({
+        params: { control_space_id: knowledgeSpaceId, field_id: field.id },
+        query: { expectedRowVersion: field.rowVersion },
+      }),
+    )
 
   return (
     <div
@@ -169,7 +246,7 @@ function MetadataItem({
             onSubmit={async (event) => {
               event.preventDefault()
               if (!name.trim() || busy) return
-              if (await onRename(field, name.trim())) setRenameOpen(false)
+              if (await renameMetadata(name.trim())) setRenameOpen(false)
             }}
           >
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
@@ -219,7 +296,7 @@ function MetadataItem({
             <AlertDialogConfirmButton
               disabled={busy}
               onClick={async () => {
-                if (await onDelete(field)) setDeleteOpen(false)
+                if (await deleteMetadata()) setDeleteOpen(false)
               }}
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
@@ -231,90 +308,21 @@ function MetadataItem({
   )
 }
 
-export function DocumentMetadataDrawer({
-  knowledgeSpaceId,
-  onOpenChange,
-  open,
-  readOnly,
-}: {
-  knowledgeSpaceId: string
-  onOpenChange: (open: boolean) => void
-  open: boolean
-  readOnly: boolean
-}) {
+export function DocumentMetadataDrawer() {
   const { t } = useTranslation()
-  const queryClient = useQueryClient()
-  const [pending, setPending] = useState(false)
-  const metadataFieldsQuery = useQuery({
-    ...knowledgeFsMetadataFieldsQueryOptions(knowledgeSpaceId),
-    enabled: open,
-  })
+  const canRead = useAtomValue(documentCanReadAtom)
+  const [metadataRequest, setMetadataRequest] = useQueryState('metadata', documentMetadataParser)
+  const open = metadataRequest === '1' && canRead
+  const metadataFieldsQuery = useMetadataFields()
   const fields = metadataFieldsQuery.data ?? []
 
-  const nameErrorMessage = (error: ReturnType<typeof documentMetadataNameError>) => {
-    if (!error) return undefined
-    return t(($) => $[`metadata.checkName.${error}`], { max: 255, ns: 'dataset' })
-  }
-
-  const mutateField = async (mutation: () => Promise<unknown>) => {
-    if (readOnly || pending) return false
-    setPending(true)
-    try {
-      await mutation()
-      await queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
-      })
-      await queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.metadata.get.key(),
-      })
-      return true
-    } catch {
-      toast.error(t(($) => $['newKnowledge.settings.saveFailed'], { ns: 'dataset' }))
-      return false
-    } finally {
-      setPending(false)
-    }
-  }
-
-  const createMetadata = async (name: string, type: DocumentMetadataType) => {
-    const error = nameErrorMessage(documentMetadataNameError(name, fields))
-    if (error) {
-      toast.error(error)
-      return false
-    }
-    return mutateField(() =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.post({
-        body: { name, type },
-        params: { control_space_id: knowledgeSpaceId },
-      }),
-    )
-  }
-
-  const renameMetadata = async (field: DocumentMetadataField, name: string) => {
-    const error = nameErrorMessage(documentMetadataNameError(name, fields, field.name))
-    if (error) {
-      toast.error(error)
-      return false
-    }
-    if (name === field.name) return true
-    return mutateField(() =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.byFieldId.patch({
-        body: { expectedRowVersion: field.rowVersion, name },
-        params: { control_space_id: knowledgeSpaceId, field_id: field.id },
-      }),
-    )
-  }
-
-  const deleteMetadata = (field: DocumentMetadataField) =>
-    mutateField(() =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.byFieldId.delete({
-        params: { control_space_id: knowledgeSpaceId, field_id: field.id },
-        query: { expectedRowVersion: field.rowVersion },
-      }),
-    )
-
   return (
-    <Drawer open={open} modal swipeDirection="right" onOpenChange={onOpenChange}>
+    <Drawer
+      open={open}
+      modal
+      swipeDirection="right"
+      onOpenChange={(nextOpen) => void setMetadataRequest(nextOpen ? '1' : null)}
+    >
       <DrawerPortal>
         <DrawerBackdrop />
         <DrawerViewport>
@@ -333,17 +341,7 @@ export function DocumentMetadataDrawer({
                 <div className="system-sm-regular text-text-tertiary">
                   {t(($) => $['metadata.datasetMetadata.description'], { ns: 'dataset' })}
                 </div>
-                <CreateMetadataPopover
-                  disabled={
-                    readOnly ||
-                    metadataFieldsQuery.isPending ||
-                    metadataFieldsQuery.isFetching ||
-                    Boolean(metadataFieldsQuery.error)
-                  }
-                  fields={fields}
-                  pending={pending}
-                  onCreate={createMetadata}
-                />
+                <CreateMetadataPopover />
 
                 {metadataFieldsQuery.error && !metadataFieldsQuery.isFetching && (
                   <div className="mt-3 flex items-center justify-between gap-2 rounded-lg bg-background-section-burn px-3 py-2">
@@ -365,14 +363,7 @@ export function DocumentMetadataDrawer({
 
                 <div className="mt-3 space-y-1">
                   {fields.map((field) => (
-                    <MetadataItem
-                      key={field.id}
-                      busy={pending}
-                      canEdit={!readOnly}
-                      field={field}
-                      onDelete={deleteMetadata}
-                      onRename={renameMetadata}
-                    />
+                    <MetadataItem key={field.id} field={field} fields={fields} />
                   ))}
                 </div>
               </div>

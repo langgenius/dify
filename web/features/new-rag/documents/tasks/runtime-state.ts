@@ -345,6 +345,8 @@ export function transitionTaskRuntimeState(
       const streamActiveOverrideVersions = new Map(state.streamActiveOverrideVersions)
       const trustedActiveOverrides = new Map(state.trustedActiveOverrides)
       const trustedOverrideListGenerations = new Map(state.trustedOverrideListGenerations)
+      const overrides = { ...state.overrides }
+      if (streamActiveOverrideVersions.has(event.taskId)) delete overrides[event.taskId]
       eventCursors.delete(event.taskId)
       streamActiveOverrideVersions.delete(event.taskId)
       trustedActiveOverrides.delete(event.taskId)
@@ -353,6 +355,7 @@ export function transitionTaskRuntimeState(
         state: {
           ...state,
           eventCursors,
+          overrides,
           streamActiveOverrideVersions,
           trustedActiveOverrides,
           trustedOverrideListGenerations,

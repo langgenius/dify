@@ -1,8 +1,10 @@
 'use client'
 
 import type { ProcessingTaskEvent } from './events'
+import { useAtomValue } from 'jotai'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { taskVersionIsAfter } from '../model'
+import { documentsKnowledgeSpaceIdAtom } from '../state/inputs'
 import { streamProcessingTaskEvents } from './events'
 
 const TASK_EVENT_RECONNECT_DELAY = 1000
@@ -39,7 +41,6 @@ function responseStatus(error: unknown): number | undefined {
 
 export function TaskEventObserver({
   documentId,
-  knowledgeSpaceId,
   lastEventId,
   onEvent,
   onLastEventIdChange,
@@ -48,7 +49,6 @@ export function TaskEventObserver({
   taskVersion,
 }: {
   documentId: string
-  knowledgeSpaceId: string
   lastEventId?: string
   onEvent: (taskId: string, taskVersion: string, event: ProcessingTaskEvent) => boolean
   onLastEventIdChange: (taskId: string, eventId?: string) => void
@@ -56,6 +56,7 @@ export function TaskEventObserver({
   taskId: string
   taskVersion: string
 }) {
+  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
   const resumeEventIdRef = useRef(lastEventId)
   useLayoutEffect(() => {
     resumeEventIdRef.current = lastEventId

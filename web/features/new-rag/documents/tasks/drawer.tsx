@@ -27,30 +27,17 @@ import {
 } from '../../knowledge-fs-task-error'
 import { taskCanCancel, taskCanRetry, taskIsActive, taskVersionIsAfter } from '../model'
 import { backgroundTaskFromApi } from '../models'
+import {
+  selectTaskDrawerTasks,
+  TASK_DRAWER_LIMIT,
+  taskLifecycle,
+  taskProgress,
+  taskTime,
+} from './drawer-model'
 
 type TaskAction = 'cancel' | 'retry'
 
-const TASK_DRAWER_LIMIT = 100
 const noopSubscribe = () => () => undefined
-
-function taskTime(task: BackgroundTask) {
-  return task.completedAt ?? task.updatedAt
-}
-
-function taskLifecycle(task: BackgroundTask) {
-  return `${task.updatedAt}:${task.state}`
-}
-
-function taskProgress(task: BackgroundTask) {
-  if (!task.progressTotal) return
-  return {
-    completed: Math.min(
-      (task.progressCompleted ?? 0) + (task.progressFailed ?? 0),
-      task.progressTotal,
-    ),
-    total: task.progressTotal,
-  }
-}
 
 function responseStatus(error: unknown): number | undefined {
   if (error instanceof Response) return error.status
@@ -61,33 +48,6 @@ function responseStatus(error: unknown): number | undefined {
     if (data && typeof data === 'object' && 'status' in data)
       return typeof data.status === 'number' ? data.status : undefined
   }
-}
-
-function compareTaskRecency(left: BackgroundTask, right: BackgroundTask) {
-  if (taskVersionIsAfter(left.updatedAt, right.updatedAt)) return -1
-  if (taskVersionIsAfter(right.updatedAt, left.updatedAt)) return 1
-  return right.id.localeCompare(left.id)
-}
-
-function newestTasks(
-  tasks: BackgroundTask[],
-  limit: number,
-  predicate: (task: BackgroundTask) => boolean,
-) {
-  const selected: BackgroundTask[] = []
-  for (const task of tasks) {
-    if (!predicate(task)) continue
-    let low = 0
-    let high = selected.length
-    while (low < high) {
-      const middle = Math.floor((low + high) / 2)
-      if (compareTaskRecency(task, selected[middle]!) < 0) high = middle
-      else low = middle + 1
-    }
-    selected.splice(low, 0, task)
-    if (selected.length > limit) selected.pop()
-  }
-  return selected
 }
 
 export function ProcessingTasksDrawer({
@@ -216,27 +176,7 @@ export function ProcessingTasksDrawer({
   )
   const orderedBaseTasks = useMemo(() => {
     if (!open) return []
-    const reservedLimit = Math.min(TASK_DRAWER_LIMIT / 2, visibleTaskLimit)
-    const retryableTasks = newestTasks(tasks, reservedLimit, taskCanRetry)
-    const activeTasks = newestTasks(tasks, reservedLimit, taskIsActive)
-    const attentionTaskIds = new Set([
-      ...retryableTasks.map((task) => task.id),
-      ...activeTasks.map((task) => task.id),
-    ])
-    const remainingAttentionTasks = newestTasks(
-      tasks,
-      visibleTaskLimit - attentionTaskIds.size,
-      (task) => (taskCanRetry(task) || taskIsActive(task)) && !attentionTaskIds.has(task.id),
-    )
-    for (const task of remainingAttentionTasks) attentionTaskIds.add(task.id)
-    const terminalTasks = newestTasks(
-      tasks,
-      visibleTaskLimit - attentionTaskIds.size,
-      (task) => !attentionTaskIds.has(task.id),
-    )
-    return [...retryableTasks, ...activeTasks, ...remainingAttentionTasks, ...terminalTasks].sort(
-      compareTaskRecency,
-    )
+    return selectTaskDrawerTasks(tasks, visibleTaskLimit)
   }, [open, tasks, visibleTaskLimit])
   const hasMoreTasks =
     open &&

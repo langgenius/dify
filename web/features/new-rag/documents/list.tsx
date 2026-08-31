@@ -1,8 +1,8 @@
 'use client'
 
-import type { EnsureKnowledgeModelReady } from '../use-knowledge-model-setup-guard'
 import type { DocumentDisplayStatus } from './model'
-import type { DocumentProcessingTask, LogicalDocument } from './models'
+import type { LogicalDocument } from './models'
+import type { DocumentFilter } from './query-state'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -21,24 +21,45 @@ import {
   SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { memo, useEffect, useRef, useState } from 'react'
+import { useAtomValue, useSetAtom } from 'jotai'
+import { useQueryState } from 'nuqs'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { SearchInput } from '@/app/components/base/search-input'
+import { knowledgeFsUploadEnabledAtom } from '@/features/system-features/state'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
+import { newKnowledgeDocumentDetailPath } from '../routes'
 import { DocumentActionsDropdown } from './actions-dropdown'
+import { DocumentBulkActionsToolbar } from './bulk/toolbar'
+import { DocumentPermissionRecoveryBulkRegion } from './permission-recovery/recovery-boundary'
 import {
-  documentCanDownload,
-  documentCanReindex,
-  documentCanToggleAvailability,
-  documentShowsAvailabilityAction,
-  sourceName,
-  taskCanRetry,
-} from './model'
-import { useDocumentRowActions } from './row-actions/use-document-row-actions'
-
-export type DocumentFilter = DocumentDisplayStatus | 'all'
+  documentFilterParser,
+  documentMetadataParser,
+  documentSearchParser,
+  documentUploadParser,
+} from './query-state'
+import { documentsKnowledgeSpaceIdAtom } from './state/inputs'
+import { documentsQueryFetchNextPageAtom, sourcesQueryFetchNextPageAtom } from './state/queries'
+import {
+  createDocumentRowSourceFactsAtom,
+  createDocumentRowStatusFactsAtom,
+  documentListPaginationAtom,
+  documentRenderWindowIdentityAtom,
+  documentsToolbarFactsAtom,
+  documentTableContentFactsAtom,
+  taskTriggerFactsAtom,
+} from './state/results'
+import { documentCanWriteAtom } from './state/runtime'
+import { documentTasksOpenAtom } from './state/scoped'
+import {
+  createDocumentRowSelectionFactsAtom,
+  documentTableSelectionFactsAtom,
+  toggleAllFilteredDocumentsAtom,
+  toggleDocumentSelectionAtom,
+} from './state/selection'
+import { documentUploadAvailability, documentUploadingAtom } from './state/upload'
 
 const DOCUMENT_RENDER_BATCH_SIZE = 100
 const PARTIAL_RESULTS_DESCRIPTION_ID = 'partial-document-results'
@@ -112,29 +133,38 @@ function DocumentStatus({
   )
 }
 
-function TaskTrigger({
-  activeTaskCount,
-  attentionTaskBadge,
-  hasTaskError,
-  onOpenTasks,
-  tasksButtonLabel,
-  tasksLiveStatus,
-}: {
-  activeTaskCount: number
-  attentionTaskBadge?: string
-  hasTaskError: boolean
-  onOpenTasks: () => void
-  tasksButtonLabel: string
-  tasksLiveStatus: string
-}) {
+function TaskTrigger() {
   const { t } = useTranslation('dataset')
+  const setTasksOpen = useSetAtom(documentTasksOpenAtom)
+  const { activeTaskCount, attentionTaskCount, hasTaskError, historyIncomplete } =
+    useAtomValue(taskTriggerFactsAtom)
+  const incompleteTaskHistoryHint = historyIncomplete
+    ? ` · ${t(($) => $['newKnowledge.taskHistoryIncomplete'])}`
+    : ''
+  const attentionTaskBadge =
+    attentionTaskCount || historyIncomplete
+      ? `${attentionTaskCount}${historyIncomplete ? '+' : ''}`
+      : undefined
+  const tasksButtonLabel = `${
+    attentionTaskCount || historyIncomplete
+      ? t(($) => $['newKnowledge.tasksWithAttention'], { count: attentionTaskCount })
+      : t(($) => $['newKnowledge.tasks'])
+  }${incompleteTaskHistoryHint}`
+  const tasksLiveStatus = `${
+    hasTaskError
+      ? t(($) => $['newKnowledge.taskAttentionErrorCount'], { count: attentionTaskCount })
+      : attentionTaskCount || historyIncomplete
+        ? t(($) => $['newKnowledge.taskAttentionCount'], { count: attentionTaskCount })
+        : t(($) => $['newKnowledge.taskAttentionClear'])
+  }${incompleteTaskHistoryHint}`
+
   return (
     <>
       <Button
         aria-label={tasksButtonLabel}
         className="gap-1 pl-3"
         data-has-error={hasTaskError}
-        onClick={onOpenTasks}
+        onClick={() => setTasksOpen(true)}
       >
         <span
           aria-hidden
@@ -166,179 +196,145 @@ function TaskTrigger({
   )
 }
 
-const DocumentRow = memo(
-  ({
-    document,
-    documentHref,
-    failureReason,
-    formatTimeFromNow,
-    canDownload,
-    ensureModelReady,
-    knowledgeSpaceId,
-    onDocumentRemoved,
-    onSelectedChange,
-    onTaskUpdated,
-    onWriteDenied,
-    readOnlyReasonId,
-    selected,
-    selectionDisabled,
-    source,
-    sourcePending,
-    status,
-    statusPending,
-    task,
-    tasksPending,
-  }: {
-    canDownload: boolean
-    document: LogicalDocument
-    documentHref: string
-    ensureModelReady: EnsureKnowledgeModelReady
-    failureReason?: string
-    formatTimeFromNow: (time: number) => string
-    knowledgeSpaceId: string
-    onDocumentRemoved: (documentId: string) => void
-    onSelectedChange: (documentId: string) => void
-    onTaskUpdated: (task: DocumentProcessingTask) => void
-    onWriteDenied: () => void
-    readOnlyReasonId?: string
-    selected: boolean
-    selectionDisabled: boolean
-    source?: string
-    sourcePending: boolean
-    status: DocumentDisplayStatus
-    statusPending: boolean
-    task?: DocumentProcessingTask
-    tasksPending: boolean
-  }) => {
-    const { t } = useTranslation('dataset')
-    const { t: tCommon } = useTranslation('common')
-    const titleId = `new-document-${document.id}`
-    const revision = document.activeRevision ?? document.active?.revision
-    const updatedTime = Date.parse(document.updatedAt)
-    const { download, pendingAction, reindex, remove, rename, retry, toggleAvailability } =
-      useDocumentRowActions({
-        canDownload,
-        canWrite: !selectionDisabled,
-        document,
-        ensureModelReady,
-        knowledgeSpaceId,
-        onDocumentRemoved,
-        onTaskUpdated,
-        onWriteDenied,
-        status,
-        task,
-        taskResultsIncomplete: tasksPending,
-      })
+function DocumentSelectionCell({ document }: { document: LogicalDocument }) {
+  const selectionFactsAtom = useMemo(
+    () => createDocumentRowSelectionFactsAtom(document.id),
+    [document.id],
+  )
+  const { canWrite, readOnlyReasonId, resultsIncomplete, selected, selectionDisabled } =
+    useAtomValue(selectionFactsAtom)
+  const onSelectedChange = useSetAtom(toggleDocumentSelectionAtom)
+  const titleId = `new-document-${document.id}`
 
-    return (
-      <tr className="h-12 border-t border-divider-subtle">
-        <td className="w-10 align-middle">
-          <Checkbox
-            className="flex"
-            checked={selected}
-            disabled={selectionDisabled || document.status === 'deleting'}
-            aria-describedby={selectionDisabled ? readOnlyReasonId : undefined}
-            aria-labelledby={titleId}
-            onCheckedChange={() => onSelectedChange(document.id)}
-          />
-        </td>
-        <td className="min-w-0 pr-3 align-middle sm:min-w-72 sm:pr-6">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span
-              aria-hidden
-              className="i-ri-file-text-line size-4.5 shrink-0 text-text-tertiary"
-            />
-            <Link
-              id={titleId}
-              className="truncate rounded text-[13px] leading-4.25 font-medium text-text-primary hover:text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              href={documentHref}
-            >
-              {document.title}
-            </Link>
-            {revision !== undefined && (
-              <span className="flex min-h-4 min-w-4 shrink-0 items-center justify-center rounded-[5px] border border-divider-regular px-1 system-2xs-medium text-text-tertiary">
-                v{revision}
-              </span>
-            )}
-          </div>
-        </td>
-        <td className="hidden w-58.5 pr-6 align-middle system-xs-regular text-text-secondary lg:table-cell">
-          {sourcePending ? (
-            <span className="inline-flex items-center gap-2">
-              <span
-                aria-hidden
-                className="h-3 w-24 animate-pulse rounded bg-background-section motion-reduce:animate-none"
-              />
-              <span className="sr-only">{tCommon(($) => $.loading)}</span>
-            </span>
-          ) : (
-            <span className="block truncate">
-              {source ?? t(($) => $['newKnowledge.manualUpload'])}
-            </span>
-          )}
-        </td>
-        <td className="w-24 pr-2 align-middle sm:w-66 sm:pr-6">
-          {statusPending ? (
-            <span className="inline-flex items-center gap-2">
-              <span
-                aria-hidden
-                className="h-3 w-20 animate-pulse rounded bg-background-section motion-reduce:animate-none"
-              />
-              <span className="sr-only">{tCommon(($) => $.loading)}</span>
-            </span>
-          ) : (
-            <DocumentStatus failureReason={failureReason} status={status} />
-          )}
-        </td>
-        <td className="hidden w-43.5 pr-6 align-middle system-xs-regular text-text-tertiary lg:table-cell">
-          {Number.isNaN(updatedTime) ? document.updatedAt : formatTimeFromNow(updatedTime)}
-        </td>
-        <td className="w-10 align-middle">
-          <DocumentActionsDropdown
-            canDownload={canDownload}
-            canEdit={!selectionDisabled}
-            documentEnabled={document.enabled}
-            documentTitle={document.title}
-            downloadDisabled={tasksPending || !documentCanDownload(document, status)}
-            onDownload={download}
-            onRemove={remove}
-            onRename={rename}
-            onReindex={() => void reindex()}
-            onRetry={retry}
-            onToggleAvailability={toggleAvailability}
-            pendingAction={pendingAction}
-            removeDisabled={document.status === 'deleting'}
-            reindexDisabled={selectionDisabled || !documentCanReindex(status)}
-            retryDisabled={selectionDisabled || !task || !taskCanRetry(task)}
-            showAvailabilityAction={documentShowsAvailabilityAction(status)}
-            showRetry={status === 'failed'}
-            toggleAvailabilityDisabled={
-              selectionDisabled ||
-              document.status === 'deleting' ||
-              !documentCanToggleAvailability(status)
-            }
-            unavailableReasonId={`${titleId}-actions-unavailable`}
-          />
-        </td>
-      </tr>
-    )
-  },
-)
+  return (
+    <td className="w-10 align-middle">
+      <Checkbox
+        className="flex"
+        checked={selected}
+        disabled={selectionDisabled || document.status === 'deleting'}
+        aria-describedby={
+          selectionDisabled
+            ? canWrite
+              ? resultsIncomplete
+                ? PARTIAL_RESULTS_DESCRIPTION_ID
+                : undefined
+              : readOnlyReasonId
+            : undefined
+        }
+        aria-labelledby={titleId}
+        onCheckedChange={() => onSelectedChange(document.id)}
+      />
+    </td>
+  )
+}
 
-export function DocumentsEmpty({
-  canEdit,
-  onAddDocument,
-  onOpenMetadata,
-  readOnlyReasonId,
-  uploading,
-}: {
-  canEdit: boolean
-  onAddDocument: () => void
-  onOpenMetadata: () => void
-  readOnlyReasonId?: string
-  uploading: boolean
-}) {
+function DocumentTitleCell({ document }: { document: LogicalDocument }) {
+  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
+  const documentHref = newKnowledgeDocumentDetailPath(knowledgeSpaceId, document.id)
+  const revision = document.activeRevision ?? document.active?.revision
+
+  return (
+    <td className="min-w-0 pr-3 align-middle sm:min-w-72 sm:pr-6">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <span aria-hidden className="i-ri-file-text-line size-4.5 shrink-0 text-text-tertiary" />
+        <Link
+          id={`new-document-${document.id}`}
+          className="truncate rounded text-[13px] leading-4.25 font-medium text-text-primary hover:text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          href={documentHref}
+        >
+          {document.title}
+        </Link>
+        {revision !== undefined && (
+          <span className="flex min-h-4 min-w-4 shrink-0 items-center justify-center rounded-[5px] border border-divider-regular px-1 system-2xs-medium text-text-tertiary">
+            v{revision}
+          </span>
+        )}
+      </div>
+    </td>
+  )
+}
+
+function DocumentSourceCell({ documentId }: { documentId: string }) {
   const { t } = useTranslation('dataset')
+  const { t: tCommon } = useTranslation('common')
+  const sourceFactsAtom = useMemo(() => createDocumentRowSourceFactsAtom(documentId), [documentId])
+  const { pending, source } = useAtomValue(sourceFactsAtom)
+
+  return (
+    <td className="hidden w-58.5 pr-6 align-middle system-xs-regular text-text-secondary lg:table-cell">
+      {pending ? (
+        <span className="inline-flex items-center gap-2">
+          <span
+            aria-hidden
+            className="h-3 w-24 animate-pulse rounded bg-background-section motion-reduce:animate-none"
+          />
+          <span className="sr-only">{tCommon(($) => $.loading)}</span>
+        </span>
+      ) : (
+        <span className="block truncate">{source ?? t(($) => $['newKnowledge.manualUpload'])}</span>
+      )}
+    </td>
+  )
+}
+
+function DocumentStatusCell({ documentId }: { documentId: string }) {
+  const { t } = useTranslation('dataset')
+  const { t: tCommon } = useTranslation('common')
+  const statusFactsAtom = useMemo(() => createDocumentRowStatusFactsAtom(documentId), [documentId])
+  const { failureMessageKey, status, statusPending } = useAtomValue(statusFactsAtom)
+  const failureReason = failureMessageKey ? t(($) => $[failureMessageKey]) : undefined
+
+  return (
+    <td className="w-24 pr-2 align-middle sm:w-66 sm:pr-6">
+      {statusPending ? (
+        <span className="inline-flex items-center gap-2">
+          <span
+            aria-hidden
+            className="h-3 w-20 animate-pulse rounded bg-background-section motion-reduce:animate-none"
+          />
+          <span className="sr-only">{tCommon(($) => $.loading)}</span>
+        </span>
+      ) : (
+        <DocumentStatus failureReason={failureReason} status={status} />
+      )}
+    </td>
+  )
+}
+
+function DocumentUpdatedCell({ updatedAt }: { updatedAt: string }) {
+  const { formatTimeFromNow } = useFormatTimeFromNow()
+  const updatedTime = Date.parse(updatedAt)
+  return (
+    <td className="hidden w-43.5 pr-6 align-middle system-xs-regular text-text-tertiary lg:table-cell">
+      {Number.isNaN(updatedTime) ? updatedAt : formatTimeFromNow(updatedTime)}
+    </td>
+  )
+}
+
+const DocumentRow = memo(({ document }: { document: LogicalDocument }) => (
+  <tr className="h-12 border-t border-divider-subtle">
+    <DocumentSelectionCell document={document} />
+    <DocumentTitleCell document={document} />
+    <DocumentSourceCell documentId={document.id} />
+    <DocumentStatusCell documentId={document.id} />
+    <DocumentUpdatedCell updatedAt={document.updatedAt} />
+    <td className="w-10 align-middle">
+      <DocumentActionsDropdown document={document} />
+    </td>
+  </tr>
+))
+
+export function DocumentsEmpty() {
+  const { t } = useTranslation('dataset')
+  const [_metadataRequest, setMetadataRequest] = useQueryState('metadata', documentMetadataParser)
+  const [_uploadRequest, setUploadRequest] = useQueryState('upload', documentUploadParser)
+  const canWrite = useAtomValue(documentCanWriteAtom)
+  const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
+  const uploading = useAtomValue(documentUploadingAtom)
+  const { canUpload, restrictionReasonId: uploadRestrictionReasonId } = documentUploadAvailability(
+    canWrite,
+    uploadAvailable,
+  )
 
   return (
     <div className="flex min-h-96 flex-1 flex-col items-center justify-center gap-4 overflow-clip p-6 text-center">
@@ -352,7 +348,7 @@ export function DocumentsEmpty({
         {t(($) => $['newKnowledge.documentsEmptyDescription'])}
       </p>
       <div className="flex items-center gap-2">
-        <Button className="gap-1 pl-3" onClick={onOpenMetadata}>
+        <Button className="gap-1 pl-3" onClick={() => void setMetadataRequest('1')}>
           <span aria-hidden className="i-ri-file-text-line size-4" />
           {t(($) => $['newKnowledge.metadata'])}
         </Button>
@@ -360,16 +356,16 @@ export function DocumentsEmpty({
           className="gap-1 pl-3"
           variant="primary"
           aria-busy={uploading}
-          disabled={!canEdit}
+          disabled={!canUpload}
           loading={uploading}
-          aria-describedby={!canEdit ? readOnlyReasonId : undefined}
-          onClick={onAddDocument}
+          aria-describedby={!canUpload ? uploadRestrictionReasonId : undefined}
+          onClick={() => void setUploadRequest('1')}
         >
           <span aria-hidden className="i-ri-add-line size-4" />
           {t(($) => $['newKnowledge.addDocument'])}
         </Button>
       </div>
-      {canEdit && (
+      {canUpload && (
         <p className="system-xs-regular text-text-quaternary">
           {t(($) => $['newKnowledge.documentsDropHint'])}
         </p>
@@ -378,111 +374,167 @@ export function DocumentsEmpty({
   )
 }
 
-export function DocumentsList({
-  activeTaskCount,
-  allSelected,
-  attentionTaskBadge,
-  canDownload,
-  canEdit,
-  canUpload,
-  completingResults,
-  documents,
-  ensureModelReady,
-  failureReasons,
-  filter,
-  getDocumentHref,
-  hasNextPage,
-  hasSelectableDocuments,
-  hasTaskError,
-  isFetchNextPageError,
-  isFetchingNextDocumentPage,
-  isFetchingNextPage,
-  knowledgeSpaceId,
-  onAddDocument,
-  onDocumentRemoved,
-  onFilterChange,
-  onLoadMore,
-  onOpenMetadata,
-  onOpenTasks,
-  onSearchChange,
-  onSelectAll,
-  onSelectDocument,
-  onTaskUpdated,
-  onWriteDenied,
-  readOnlyReasonId,
-  resultsIncomplete,
-  search,
-  selectionDisabled,
-  selectedDocumentIds,
-  showTasks,
-  someSelected,
-  sourcesPending,
-  sourceNames,
-  statusPending,
-  statuses,
-  tasksByDocument,
-  tasksPending,
-  tasksButtonLabel,
-  tasksLiveStatus,
-  uploadRestrictionReasonId,
-  uploading,
-}: {
-  activeTaskCount: number
-  allSelected: boolean
-  attentionTaskBadge?: string
-  canDownload: boolean
-  canEdit: boolean
-  canUpload: boolean
-  completingResults: boolean
-  documents: LogicalDocument[]
-  ensureModelReady: EnsureKnowledgeModelReady
-  failureReasons: Map<string, string>
-  filter: DocumentFilter
-  getDocumentHref: (documentId: string) => string
-  hasNextPage: boolean
-  hasSelectableDocuments: boolean
-  hasTaskError: boolean
-  isFetchNextPageError: boolean
-  isFetchingNextDocumentPage: boolean
-  isFetchingNextPage: boolean
-  knowledgeSpaceId: string
-  onAddDocument: () => void
-  onDocumentRemoved: (documentId: string) => void
-  onFilterChange: (filter: DocumentFilter) => void
-  onLoadMore: () => void
-  onOpenMetadata: () => void
-  onOpenTasks: () => void
-  onSearchChange: (search: string) => void
-  onSelectAll: () => void
-  onSelectDocument: (documentId: string) => void
-  onTaskUpdated: (task: DocumentProcessingTask) => void
-  onWriteDenied: () => void
-  readOnlyReasonId?: string
-  resultsIncomplete: boolean
-  search: string
-  selectionDisabled: boolean
-  selectedDocumentIds: Set<string>
-  showTasks: boolean
-  someSelected: boolean
-  sourcesPending: boolean
-  sourceNames: Map<string, string>
-  statusPending: boolean
-  statuses: Map<string, DocumentDisplayStatus>
-  tasksByDocument: Map<string, DocumentProcessingTask>
-  tasksPending: boolean
-  tasksButtonLabel: string
-  tasksLiveStatus: string
-  uploadRestrictionReasonId?: string
-  uploading: boolean
-}) {
+function DocumentsToolbar() {
+  const { t } = useTranslation('dataset')
+  const [filter, setFilter] = useQueryState('status', documentFilterParser)
+  const [search, setSearch] = useQueryState('query', documentSearchParser)
+  const [_metadataRequest, setMetadataRequest] = useQueryState('metadata', documentMetadataParser)
+  const [_uploadRequest, setUploadRequest] = useQueryState('upload', documentUploadParser)
+  const { showTasks, statusPending } = useAtomValue(documentsToolbarFactsAtom)
+  const canWrite = useAtomValue(documentCanWriteAtom)
+  const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
+  const uploading = useAtomValue(documentUploadingAtom)
+  const { canUpload, restrictionReasonId: uploadRestrictionReasonId } = documentUploadAvailability(
+    canWrite,
+    uploadAvailable,
+  )
+
+  return (
+    <div className="mt-4.5 flex flex-col gap-2 @min-[768px]/knowledge-content:flex-row @min-[768px]/knowledge-content:items-center">
+      <Select<DocumentFilter>
+        disabled={statusPending}
+        value={filter}
+        onValueChange={(value) => {
+          if (value) void setFilter(value)
+        }}
+      >
+        <SelectLabel className="sr-only">
+          {t(($) => $['newKnowledge.documentFilterLabel'])}
+        </SelectLabel>
+        <SelectTrigger className="@min-[768px]/knowledge-content:w-35">
+          {filter === 'all'
+            ? t(($) => $['newKnowledge.allDocumentStatuses'])
+            : t(($) => $[`newKnowledge.documentStatus.${filter}`])}
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">
+            <SelectItemText>{t(($) => $['newKnowledge.allDocumentStatuses'])}</SelectItemText>
+            <SelectItemIndicator />
+          </SelectItem>
+          {(['ready', 'queued', 'processing', 'failed', 'disabled'] as const).map((status) => (
+            <SelectItem key={status} value={status}>
+              <SelectItemText>
+                {t(($) => $[`newKnowledge.documentStatus.${status}`])}
+              </SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <SearchInput
+        aria-label={t(($) => $['newKnowledge.searchDocuments'])}
+        className="@min-[768px]/knowledge-content:w-60"
+        value={search}
+        onValueChange={(value) => void setSearch(value)}
+        placeholder={t(($) => $['newKnowledge.searchDocuments'])}
+      />
+      <span className="min-w-0 flex-1" />
+      {showTasks && <TaskTrigger />}
+      <Button className="gap-1 pl-3" onClick={() => void setMetadataRequest('1')}>
+        <span aria-hidden className="i-ri-file-text-line size-4" />
+        {t(($) => $['newKnowledge.metadata'])}
+      </Button>
+      <Button
+        className="gap-1 pl-3"
+        variant="primary"
+        aria-busy={uploading}
+        disabled={!canUpload}
+        loading={uploading}
+        aria-describedby={!canUpload ? uploadRestrictionReasonId : undefined}
+        onClick={() => void setUploadRequest('1')}
+      >
+        <span aria-hidden className="i-ri-add-line size-4" />
+        {t(($) => $['newKnowledge.addDocument'])}
+      </Button>
+    </div>
+  )
+}
+
+function DocumentsTableHeader() {
+  const { t } = useTranslation('dataset')
+  const {
+    allSelected,
+    canWrite,
+    hasSelectableDocuments,
+    readOnlyReasonId,
+    resultsIncomplete,
+    selectionDisabled,
+    someSelected,
+  } = useAtomValue(documentTableSelectionFactsAtom)
+  const toggleAllFilteredDocuments = useSetAtom(toggleAllFilteredDocumentsAtom)
+
+  return (
+    <thead className="system-xs-regular text-text-tertiary">
+      <tr>
+        <th className="py-2 font-normal">
+          <Checkbox
+            className="flex"
+            checked={allSelected}
+            indeterminate={someSelected && !allSelected}
+            disabled={selectionDisabled || !hasSelectableDocuments}
+            aria-describedby={
+              !canWrite
+                ? readOnlyReasonId
+                : selectionDisabled && resultsIncomplete
+                  ? PARTIAL_RESULTS_DESCRIPTION_ID
+                  : undefined
+            }
+            aria-label={t(($) => $['newKnowledge.selectAllDocuments'])}
+            onCheckedChange={() => {
+              if (!selectionDisabled) toggleAllFilteredDocuments()
+            }}
+          />
+        </th>
+        <th className="py-2 pr-6 font-normal">{t(($) => $['newKnowledge.documentColumn'])}</th>
+        <th className="hidden w-58.5 py-2 pr-6 font-normal lg:table-cell">
+          {t(($) => $['newKnowledge.sourceColumn'])}
+        </th>
+        <th className="w-24 py-2 pr-2 font-normal sm:w-66 sm:pr-6">
+          {t(($) => $['newKnowledge.statusColumn'])}
+        </th>
+        <th className="hidden w-43.5 py-2 pr-6 font-normal lg:table-cell">
+          {t(($) => $['newKnowledge.updatedColumn'])}
+        </th>
+        <th
+          className="w-10 py-2 font-normal"
+          aria-label={t(($) => $['newKnowledge.actionsColumn'])}
+        />
+      </tr>
+    </thead>
+  )
+}
+
+function DocumentsTable() {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
-  const { formatTimeFromNow } = useFormatTimeFromNow()
-  const [visibleDocumentLimit, setVisibleDocumentLimit] = useState(DOCUMENT_RENDER_BATCH_SIZE)
+  const { documents, resultsIncomplete, sourcesPending, tasksPending } = useAtomValue(
+    documentTableContentFactsAtom,
+  )
+  const renderWindowKey = useAtomValue(documentRenderWindowIdentityAtom)
+  const {
+    completingResults,
+    filterActive,
+    hasNextDocumentPage,
+    hasNextPage,
+    hasRelevantNextSourcePage,
+    isFetchingNextDocumentPage,
+    isFetchingNextPage,
+    isFetchingNextSourcePage,
+    isFetchNextPageError,
+  } = useAtomValue(documentListPaginationAtom)
+  const fetchNextDocumentPage = useAtomValue(documentsQueryFetchNextPageAtom)
+  const fetchNextSourcePage = useAtomValue(sourcesQueryFetchNextPageAtom)
+  const [renderWindow, setRenderWindow] = useState({
+    key: renderWindowKey,
+    limit: DOCUMENT_RENDER_BATCH_SIZE,
+  })
+  if (renderWindow.key !== renderWindowKey)
+    setRenderWindow({ key: renderWindowKey, limit: DOCUMENT_RENDER_BATCH_SIZE })
+  const visibleDocumentLimit =
+    renderWindow.key === renderWindowKey ? renderWindow.limit : DOCUMENT_RENDER_BATCH_SIZE
   const loadMoreButtonRef = useRef<HTMLButtonElement>(null)
   const resultsContainerRef = useRef<HTMLDivElement>(null)
   const restoreLoadMoreFocusRef = useRef(false)
-  const filterActive = filter !== 'all' || Boolean(search.trim())
   const visibleDocuments = documents.slice(0, visibleDocumentLimit)
   const hasHiddenDocuments = visibleDocuments.length < documents.length
 
@@ -496,208 +548,63 @@ export function DocumentsList({
     resultsContainerRef.current?.focus()
   }, [hasHiddenDocuments, hasNextPage, isFetchNextPageError, isFetchingNextPage])
 
+  const loadMoreResults = () => {
+    const requests: Promise<unknown>[] = []
+    if (hasNextDocumentPage && !isFetchingNextDocumentPage) requests.push(fetchNextDocumentPage())
+    if (hasRelevantNextSourcePage && !isFetchingNextSourcePage) requests.push(fetchNextSourcePage())
+    void Promise.allSettled(requests)
+  }
+
   return (
     <>
-      <div className="min-w-0">
-        <div className="mt-4.5 flex flex-col gap-2 @min-[768px]/knowledge-content:flex-row @min-[768px]/knowledge-content:items-center">
-          <Select<DocumentFilter>
-            disabled={statusPending}
-            value={filter}
-            onValueChange={(value) => {
-              if (!value) return
-              setVisibleDocumentLimit(DOCUMENT_RENDER_BATCH_SIZE)
-              onFilterChange(value)
-            }}
+      <div
+        ref={resultsContainerRef}
+        aria-labelledby="new-knowledge-documents-title"
+        aria-busy={completingResults || isFetchingNextPage || sourcesPending || tasksPending}
+        className="mt-3 overflow-x-auto rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+        role="region"
+        tabIndex={-1}
+      >
+        <table className="w-full table-fixed border-collapse text-left lg:table-auto">
+          <DocumentsTableHeader />
+          <tbody>
+            {visibleDocuments.map((document) => (
+              <DocumentRow key={document.id} document={document} />
+            ))}
+          </tbody>
+        </table>
+        {!documents.length && !completingResults && !isFetchNextPageError && !resultsIncomplete && (
+          <p
+            aria-live="polite"
+            className="py-16 text-center body-sm-regular text-text-tertiary"
+            role="status"
           >
-            <SelectLabel className="sr-only">
-              {t(($) => $['newKnowledge.documentFilterLabel'])}
-            </SelectLabel>
-            <SelectTrigger className="@min-[768px]/knowledge-content:w-35">
-              {filter === 'all'
-                ? t(($) => $['newKnowledge.allDocumentStatuses'])
-                : t(($) => $[`newKnowledge.documentStatus.${filter}`])}
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">
-                <SelectItemText>{t(($) => $['newKnowledge.allDocumentStatuses'])}</SelectItemText>
-                <SelectItemIndicator />
-              </SelectItem>
-              {(['ready', 'queued', 'processing', 'failed', 'disabled'] as const).map((status) => (
-                <SelectItem key={status} value={status}>
-                  <SelectItemText>
-                    {t(($) => $[`newKnowledge.documentStatus.${status}`])}
-                  </SelectItemText>
-                  <SelectItemIndicator />
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <SearchInput
-            aria-label={t(($) => $['newKnowledge.searchDocuments'])}
-            className="@min-[768px]/knowledge-content:w-60"
-            value={search}
-            onValueChange={(value) => {
-              setVisibleDocumentLimit(DOCUMENT_RENDER_BATCH_SIZE)
-              onSearchChange(value)
-            }}
-            placeholder={t(($) => $['newKnowledge.searchDocuments'])}
-          />
-          <span className="min-w-0 flex-1" />
-          {showTasks && (
-            <TaskTrigger
-              activeTaskCount={activeTaskCount}
-              attentionTaskBadge={attentionTaskBadge}
-              hasTaskError={hasTaskError}
-              onOpenTasks={onOpenTasks}
-              tasksButtonLabel={tasksButtonLabel}
-              tasksLiveStatus={tasksLiveStatus}
-            />
-          )}
-          <Button className="gap-1 pl-3" onClick={onOpenMetadata}>
-            <span aria-hidden className="i-ri-file-text-line size-4" />
-            {t(($) => $['newKnowledge.metadata'])}
-          </Button>
-          <Button
-            className="gap-1 pl-3"
-            variant="primary"
-            aria-busy={uploading}
-            disabled={!canUpload}
-            loading={uploading}
-            aria-describedby={!canUpload ? uploadRestrictionReasonId : undefined}
-            onClick={onAddDocument}
-          >
-            <span aria-hidden className="i-ri-add-line size-4" />
-            {t(($) => $['newKnowledge.addDocument'])}
-          </Button>
-        </div>
-        <div
-          ref={resultsContainerRef}
-          aria-labelledby="new-knowledge-documents-title"
-          aria-busy={completingResults || isFetchingNextPage || sourcesPending || tasksPending}
-          className="mt-3 overflow-x-auto rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          role="region"
-          tabIndex={-1}
-        >
-          <table className="w-full table-fixed border-collapse text-left lg:table-auto">
-            <thead className="system-xs-regular text-text-tertiary">
-              <tr>
-                <th className="py-2 font-normal">
-                  <Checkbox
-                    className="flex"
-                    checked={allSelected}
-                    indeterminate={someSelected && !allSelected}
-                    disabled={!canEdit || selectionDisabled || !hasSelectableDocuments}
-                    aria-describedby={
-                      !canEdit
-                        ? readOnlyReasonId
-                        : selectionDisabled && resultsIncomplete
-                          ? PARTIAL_RESULTS_DESCRIPTION_ID
-                          : undefined
-                    }
-                    aria-label={t(($) => $['newKnowledge.selectAllDocuments'])}
-                    onCheckedChange={onSelectAll}
-                  />
-                </th>
-                <th className="py-2 pr-6 font-normal">
-                  {t(($) => $['newKnowledge.documentColumn'])}
-                </th>
-                <th className="hidden w-58.5 py-2 pr-6 font-normal lg:table-cell">
-                  {t(($) => $['newKnowledge.sourceColumn'])}
-                </th>
-                <th className="w-24 py-2 pr-2 font-normal sm:w-66 sm:pr-6">
-                  {t(($) => $['newKnowledge.statusColumn'])}
-                </th>
-                <th className="hidden w-43.5 py-2 pr-6 font-normal lg:table-cell">
-                  {t(($) => $['newKnowledge.updatedColumn'])}
-                </th>
-                <th
-                  className="w-10 py-2 font-normal"
-                  aria-label={t(($) => $['newKnowledge.actionsColumn'])}
-                />
-              </tr>
-            </thead>
-            <tbody>
-              {visibleDocuments.map((document) => (
-                <DocumentRow
-                  key={document.id}
-                  canDownload={canDownload}
-                  document={document}
-                  documentHref={getDocumentHref(document.id)}
-                  ensureModelReady={ensureModelReady}
-                  failureReason={failureReasons.get(document.id)}
-                  formatTimeFromNow={formatTimeFromNow}
-                  knowledgeSpaceId={knowledgeSpaceId}
-                  onDocumentRemoved={onDocumentRemoved}
-                  onSelectedChange={onSelectDocument}
-                  onTaskUpdated={onTaskUpdated}
-                  onWriteDenied={onWriteDenied}
-                  readOnlyReasonId={
-                    !canEdit
-                      ? readOnlyReasonId
-                      : selectionDisabled && resultsIncomplete
-                        ? PARTIAL_RESULTS_DESCRIPTION_ID
-                        : undefined
-                  }
-                  selected={selectedDocumentIds.has(document.id)}
-                  selectionDisabled={!canEdit || selectionDisabled}
-                  source={
-                    (document.sourceId && sourceNames.get(document.sourceId)) ??
-                    sourceName(document)
-                  }
-                  sourcePending={Boolean(
-                    sourcesPending && document.sourceId && !sourceNames.has(document.sourceId),
-                  )}
-                  status={statuses.get(document.id) ?? 'queued'}
-                  statusPending={Boolean(
-                    tasksPending ||
-                    (statusPending && document.sourceId && !sourceNames.has(document.sourceId)),
-                  )}
-                  task={tasksByDocument.get(document.id)}
-                  tasksPending={tasksPending}
-                />
-              ))}
-            </tbody>
-          </table>
-          {!documents.length &&
-            !completingResults &&
-            !isFetchNextPageError &&
-            !resultsIncomplete && (
-              <p
-                aria-live="polite"
-                className="py-16 text-center body-sm-regular text-text-tertiary"
-                role="status"
-              >
-                {t(($) => $['newKnowledge.noMatchingDocuments'])}
-              </p>
+            {t(($) => $['newKnowledge.noMatchingDocuments'])}
+          </p>
+        )}
+        {resultsIncomplete && (
+          <p
+            id={PARTIAL_RESULTS_DESCRIPTION_ID}
+            aria-live="polite"
+            className={cn(
+              'text-center body-sm-regular text-text-tertiary',
+              completingResults || isFetchNextPageError
+                ? 'sr-only'
+                : documents.length
+                  ? 'py-4'
+                  : 'py-16',
             )}
-          {resultsIncomplete && (
-            <p
-              id={PARTIAL_RESULTS_DESCRIPTION_ID}
-              aria-live="polite"
-              className={cn(
-                'text-center body-sm-regular text-text-tertiary',
-                completingResults || isFetchNextPageError
-                  ? 'sr-only'
-                  : documents.length
-                    ? 'py-4'
-                    : 'py-16',
-              )}
-              role="status"
-            >
-              {t(($) => $['newKnowledge.partialDocumentResults'])}
-            </p>
-          )}
-          {completingResults && (
-            <div className="flex min-h-32 items-center justify-center">
-              <Loading />
-            </div>
-          )}
-        </div>
+            role="status"
+          >
+            {t(($) => $['newKnowledge.partialDocumentResults'])}
+          </p>
+        )}
+        {completingResults && (
+          <div className="flex min-h-32 items-center justify-center">
+            <Loading />
+          </div>
+        )}
       </div>
-      <p className="flex min-h-4 items-center gap-1.5 system-xs-regular text-text-tertiary">
-        <span aria-hidden className="i-ri-information-2-line size-3.5" />
-        {t(($) => $['newKnowledge.lastReadyRevisionHint'])}
-      </p>
       {hasHiddenDocuments ? (
         <div className="mt-5 flex justify-center">
           <Button
@@ -707,7 +614,10 @@ export function DocumentsList({
             }}
             onClick={() => {
               restoreLoadMoreFocusRef.current = document.activeElement === loadMoreButtonRef.current
-              setVisibleDocumentLimit((current) => current + DOCUMENT_RENDER_BATCH_SIZE)
+              setRenderWindow((current) => ({
+                ...current,
+                limit: current.limit + DOCUMENT_RENDER_BATCH_SIZE,
+              }))
             }}
           >
             {t(($) => $['newKnowledge.loadMore'])}
@@ -728,7 +638,7 @@ export function DocumentsList({
             }}
             onClick={() => {
               restoreLoadMoreFocusRef.current = document.activeElement === loadMoreButtonRef.current
-              onLoadMore()
+              loadMoreResults()
             }}
           >
             {tCommon(($) => $['operation.retry'])}
@@ -745,13 +655,33 @@ export function DocumentsList({
             }}
             onClick={() => {
               restoreLoadMoreFocusRef.current = document.activeElement === loadMoreButtonRef.current
-              onLoadMore()
+              loadMoreResults()
             }}
           >
             {t(($) => $['newKnowledge.loadMore'])}
           </Button>
         </div>
       ) : null}
+    </>
+  )
+}
+
+export function DocumentsList() {
+  const { t } = useTranslation('dataset')
+
+  return (
+    <>
+      <div className="min-w-0">
+        <DocumentsToolbar />
+        <DocumentsTable />
+      </div>
+      <p className="flex min-h-4 items-center gap-1.5 system-xs-regular text-text-tertiary">
+        <span aria-hidden className="i-ri-information-2-line size-3.5" />
+        {t(($) => $['newKnowledge.lastReadyRevisionHint'])}
+      </p>
+      <DocumentPermissionRecoveryBulkRegion>
+        <DocumentBulkActionsToolbar />
+      </DocumentPermissionRecoveryBulkRegion>
     </>
   )
 }

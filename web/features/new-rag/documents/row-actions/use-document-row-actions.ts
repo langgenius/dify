@@ -1,12 +1,12 @@
 'use client'
 
-import type { EnsureKnowledgeModelReady } from '../../use-knowledge-model-setup-guard'
-import type { DocumentAction } from '../actions-dropdown'
 import type { DocumentDisplayStatus } from '../model'
 import type { DocumentProcessingTask, LogicalDocument } from '../models'
+import type { DocumentRowAction } from '../state/row-actions'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useRef, useState } from 'react'
+import { useAtomValue, useSetAtom } from 'jotai'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { downloadBlob } from '@/utils/download'
@@ -20,51 +20,63 @@ import {
 } from '../model'
 import { backgroundTaskFromApi } from '../models'
 import { responseStatus } from '../request-error'
+import { documentsKnowledgeSpaceIdAtom } from '../state/inputs'
+import { selectionResultsUnavailableAtom } from '../state/results'
+import {
+  beginDocumentRowActionAtom,
+  createDocumentRowPendingActionAtom,
+  finishDocumentRowActionAtom,
+} from '../state/row-actions'
+import {
+  acceptDocumentTaskSnapshotAtom,
+  denyDocumentWriteAtom,
+  documentCanDownloadAtom,
+  documentCanWriteAtom,
+  ensureDocumentModelReadyAtom,
+} from '../state/runtime'
+import { removeDocumentFromSelectionAtom } from '../state/selection'
 import { queryKeyMatchesKnowledgeSpace } from '../tasks/recovery'
 
-type UseDocumentRowActionsOptions = {
-  canDownload: boolean
-  canWrite: boolean
-  document: LogicalDocument
-  ensureModelReady: EnsureKnowledgeModelReady
-  knowledgeSpaceId: string
-  onDocumentRemoved: (documentId: string) => void
-  onTaskUpdated: (task: DocumentProcessingTask) => void
-  onWriteDenied: () => void
-  status: DocumentDisplayStatus
-  task?: DocumentProcessingTask
-  taskResultsIncomplete: boolean
+function useDocumentActionLock(documentId: string, action: DocumentRowAction) {
+  const pendingActionAtom = useMemo(
+    () => createDocumentRowPendingActionAtom(documentId),
+    [documentId],
+  )
+  const pendingAction = useAtomValue(pendingActionAtom)
+  const beginAction = useSetAtom(beginDocumentRowActionAtom)
+  const finishAction = useSetAtom(finishDocumentRowActionAtom)
+
+  return {
+    begin: () => beginAction({ action, documentId }),
+    busy: Boolean(pendingAction),
+    finish: () => finishAction({ action, documentId }),
+    pending: pendingAction === action,
+  }
 }
 
-export function useDocumentRowActions({
-  canDownload,
-  canWrite,
-  document,
-  ensureModelReady,
-  knowledgeSpaceId,
-  onDocumentRemoved,
-  onTaskUpdated,
-  onWriteDenied,
-  status,
-  task,
-  taskResultsIncomplete,
-}: UseDocumentRowActionsOptions) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
-  const queryClient = useQueryClient()
-  const pendingRef = useRef(false)
-  const [pendingAction, setPendingAction] = useState<DocumentAction>()
-  const { mutateAsync: reindexDocument } = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions(),
+export function useDocumentRowActionBusy(documentId: string) {
+  const pendingActionAtom = useMemo(
+    () => createDocumentRowPendingActionAtom(documentId),
+    [documentId],
   )
+  return Boolean(useAtomValue(pendingActionAtom))
+}
 
+function useDocumentCanEdit() {
+  const permissionAllowsWrite = useAtomValue(documentCanWriteAtom)
+  const selectionResultsUnavailable = useAtomValue(selectionResultsUnavailableAtom)
+  return permissionAllowsWrite && !selectionResultsUnavailable
+}
+
+function useDocumentInvalidation() {
+  const queryClient = useQueryClient()
+  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
   const invalidateDocuments = useCallback(() => {
     void queryClient.invalidateQueries({
       predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
       queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
     })
   }, [knowledgeSpaceId, queryClient])
-
   const invalidateDocumentsAndTasks = useCallback(() => {
     void Promise.allSettled([
       queryClient.invalidateQueries({
@@ -78,31 +90,33 @@ export function useDocumentRowActions({
     ])
   }, [knowledgeSpaceId, queryClient])
 
-  const beginAction = useCallback((action: DocumentAction) => {
-    if (pendingRef.current) return false
-    pendingRef.current = true
-    setPendingAction(action)
-    return true
-  }, [])
+  return { invalidateDocuments, invalidateDocumentsAndTasks, knowledgeSpaceId }
+}
 
-  const finishAction = useCallback(() => {
-    pendingRef.current = false
-    setPendingAction(undefined)
-  }, [])
+export function useRenameDocumentAction(document: LogicalDocument) {
+  const { t } = useTranslation('dataset')
+  const canEdit = useDocumentCanEdit()
+  const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
+  const { begin, busy, finish, pending } = useDocumentActionLock(document.id, 'rename')
+  const { invalidateDocuments, knowledgeSpaceId } = useDocumentInvalidation()
+  const { mutateAsync: renameDocument } = useMutation({
+    mutationFn: (title: string) =>
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch({
+        body: {
+          expectedRowVersion: document.rowVersion,
+          patch: { displayName: title },
+        },
+        params: { control_space_id: knowledgeSpaceId, document_id: document.id },
+      }),
+  })
 
-  const rename = useCallback(
+  const run = useCallback(
     async (title: string) => {
       const normalizedTitle = title.trim()
-      if (!canWrite || !normalizedTitle || normalizedTitle === documentTitle(document)) return false
-      if (!beginAction('rename')) return false
+      if (!canEdit || !normalizedTitle || normalizedTitle === documentTitle(document) || !begin())
+        return false
       try {
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch({
-          body: {
-            expectedRowVersion: document.rowVersion,
-            patch: { displayName: normalizedTitle },
-          },
-          params: { control_space_id: knowledgeSpaceId, document_id: document.id },
-        })
+        await renameDocument(normalizedTitle)
         invalidateDocuments()
         return true
       } catch (error) {
@@ -110,36 +124,36 @@ export function useDocumentRowActions({
         else toast.error(t(($) => $['newKnowledge.settings.saveFailed']))
         return false
       } finally {
-        finishAction()
+        finish()
       }
     },
-    [
-      beginAction,
-      canWrite,
-      document,
-      finishAction,
-      invalidateDocuments,
-      knowledgeSpaceId,
-      onWriteDenied,
-      t,
-    ],
+    [begin, canEdit, document, finish, invalidateDocuments, onWriteDenied, renameDocument, t],
   )
 
-  const download = useCallback(async () => {
-    if (
-      !canDownload ||
-      taskResultsIncomplete ||
-      !documentCanDownload(document, status) ||
-      !beginAction('download')
-    )
+  return { busy, pending, run }
+}
+
+export function useDownloadDocumentAction(
+  document: LogicalDocument,
+  status: DocumentDisplayStatus,
+  taskResultsIncomplete: boolean,
+) {
+  const { t } = useTranslation('common')
+  const canDownload = useAtomValue(documentCanDownloadAtom)
+  const { begin, busy, finish, pending } = useDocumentActionLock(document.id, 'download')
+  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
+  const { mutateAsync: downloadDocument } = useMutation({
+    mutationFn: () =>
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.download.get({
+        params: { control_space_id: knowledgeSpaceId, document_id: document.id },
+      }),
+  })
+
+  const run = useCallback(async () => {
+    if (!canDownload || taskResultsIncomplete || !documentCanDownload(document, status) || !begin())
       return false
     try {
-      const file =
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.download.get(
-          {
-            params: { control_space_id: knowledgeSpaceId, document_id: document.id },
-          },
-        )
+      const file = await downloadDocument()
       downloadBlob({
         data: file,
         fileName:
@@ -149,33 +163,37 @@ export function useDocumentRowActions({
       })
       return true
     } catch {
-      toast.error(tCommon(($) => $['actionMsg.downloadUnsuccessfully']))
+      toast.error(t(($) => $['actionMsg.downloadUnsuccessfully']))
       return false
     } finally {
-      finishAction()
+      finish()
     }
-  }, [
-    beginAction,
-    canDownload,
-    document,
-    finishAction,
-    knowledgeSpaceId,
-    status,
-    taskResultsIncomplete,
-    tCommon,
-  ])
+  }, [begin, canDownload, document, downloadDocument, finish, status, t, taskResultsIncomplete])
 
-  const toggleAvailability = useCallback(async () => {
-    if (!canWrite || !documentCanToggleAvailability(status) || !beginAction('toggle-availability'))
-      return false
-    try {
-      await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.patch({
-        body: {
-          enabled: !document.enabled,
-          expectedRowVersion: document.rowVersion,
-        },
+  return { busy, pending, run }
+}
+
+export function useToggleDocumentAvailabilityAction(
+  document: LogicalDocument,
+  status: DocumentDisplayStatus,
+) {
+  const { t } = useTranslation('dataset')
+  const canEdit = useDocumentCanEdit()
+  const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
+  const { begin, busy, finish, pending } = useDocumentActionLock(document.id, 'toggle-availability')
+  const { invalidateDocuments, knowledgeSpaceId } = useDocumentInvalidation()
+  const { mutateAsync: toggleDocument } = useMutation({
+    mutationFn: () =>
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.patch({
+        body: { enabled: !document.enabled, expectedRowVersion: document.rowVersion },
         params: { control_space_id: knowledgeSpaceId, document_id: document.id },
-      })
+      }),
+  })
+
+  const run = useCallback(async () => {
+    if (!canEdit || !documentCanToggleAvailability(status) || !begin()) return false
+    try {
+      await toggleDocument()
       invalidateDocuments()
       return true
     } catch (error) {
@@ -186,28 +204,33 @@ export function useDocumentRowActions({
       } else toast.error(t(($) => $['newKnowledge.documentsErrorDescription']))
       return false
     } finally {
-      finishAction()
+      finish()
     }
-  }, [
-    beginAction,
-    canWrite,
-    document,
-    finishAction,
-    invalidateDocuments,
-    knowledgeSpaceId,
-    onWriteDenied,
-    status,
-    t,
-  ])
+  }, [begin, canEdit, finish, invalidateDocuments, onWriteDenied, status, t, toggleDocument])
 
-  const remove = useCallback(async () => {
-    if (!canWrite || !beginAction('remove')) return false
-    try {
-      await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.delete({
+  return { busy, pending, run }
+}
+
+export function useRemoveDocumentAction(document: LogicalDocument) {
+  const { t } = useTranslation('dataset')
+  const canEdit = useDocumentCanEdit()
+  const onDocumentRemoved = useSetAtom(removeDocumentFromSelectionAtom)
+  const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
+  const { begin, busy, finish, pending } = useDocumentActionLock(document.id, 'remove')
+  const { invalidateDocumentsAndTasks, knowledgeSpaceId } = useDocumentInvalidation()
+  const { mutateAsync: removeDocument } = useMutation({
+    mutationFn: () =>
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.delete({
         body: { expectedRevision: document.rowVersion },
         headers: { 'Idempotency-Key': createRequestId() },
         params: { control_space_id: knowledgeSpaceId, document_id: document.id },
-      })
+      }),
+  })
+
+  const run = useCallback(async () => {
+    if (!canEdit || !begin()) return false
+    try {
+      await removeDocument()
       onDocumentRemoved(document.id)
       invalidateDocumentsAndTasks()
       return true
@@ -216,35 +239,52 @@ export function useDocumentRowActions({
       else toast.error(t(($) => $['newKnowledge.documentsErrorDescription']))
       return false
     } finally {
-      finishAction()
+      finish()
     }
   }, [
-    beginAction,
-    canWrite,
+    begin,
+    canEdit,
     document.id,
-    document.rowVersion,
-    finishAction,
+    finish,
     invalidateDocumentsAndTasks,
-    knowledgeSpaceId,
     onDocumentRemoved,
     onWriteDenied,
+    removeDocument,
     t,
   ])
 
-  const retry = useCallback(async () => {
-    if (!canWrite || !task || !taskCanRetry(task) || !beginAction('retry')) return false
-    try {
-      const updated = backgroundTaskFromApi(
+  return { busy, pending, run }
+}
+
+export function useRetryDocumentTaskAction(
+  documentId: string,
+  task: DocumentProcessingTask | undefined,
+) {
+  const { t } = useTranslation('dataset')
+  const canEdit = useDocumentCanEdit()
+  const onTaskUpdated = useSetAtom(acceptDocumentTaskSnapshotAtom)
+  const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
+  const { begin, busy, finish, pending } = useDocumentActionLock(documentId, 'retry')
+  const { invalidateDocumentsAndTasks, knowledgeSpaceId } = useDocumentInvalidation()
+  const { mutateAsync: retryTask } = useMutation({
+    mutationFn: async (currentTask: DocumentProcessingTask) =>
+      backgroundTaskFromApi(
         await consoleClient.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.retry.post(
           {
             params: {
               control_space_id: knowledgeSpaceId,
-              task_id: task.id,
-              task_kind: task.taskKind,
+              task_id: currentTask.id,
+              task_kind: currentTask.taskKind,
             },
           },
         ),
-      )
+      ),
+  })
+
+  const run = useCallback(async () => {
+    if (!canEdit || !task || !taskCanRetry(task) || !begin()) return false
+    try {
+      const updated = await retryTask(task)
       if (updated.documentId && updated.documentRevision)
         onTaskUpdated(updated as DocumentProcessingTask)
       invalidateDocumentsAndTasks()
@@ -254,22 +294,36 @@ export function useDocumentRowActions({
       else toast.error(t(($) => $['newKnowledge.taskActionFailed']))
       return false
     } finally {
-      finishAction()
+      finish()
     }
   }, [
-    beginAction,
-    canWrite,
-    finishAction,
+    begin,
+    canEdit,
+    finish,
     invalidateDocumentsAndTasks,
-    knowledgeSpaceId,
     onTaskUpdated,
     onWriteDenied,
+    retryTask,
     t,
     task,
   ])
 
-  const reindex = useCallback(async () => {
-    if (!canWrite || !documentCanReindex(status) || !beginAction('reindex')) return false
+  return { busy, pending, run }
+}
+
+export function useReindexDocumentAction(document: LogicalDocument, status: DocumentDisplayStatus) {
+  const { t } = useTranslation('dataset')
+  const canEdit = useDocumentCanEdit()
+  const ensureModelReady = useSetAtom(ensureDocumentModelReadyAtom)
+  const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
+  const { begin, busy, finish, pending } = useDocumentActionLock(document.id, 'reindex')
+  const { invalidateDocumentsAndTasks, knowledgeSpaceId } = useDocumentInvalidation()
+  const { mutateAsync: reindexDocument } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions(),
+  )
+
+  const run = useCallback(async () => {
+    if (!canEdit || !documentCanReindex(status) || !begin()) return false
     try {
       if ((await ensureModelReady({ capability: 'index', intent: 'reindex' })).status !== 'ready')
         return false
@@ -279,12 +333,7 @@ export function useDocumentRowActions({
       })
       const item = result.items[0]
       if (!item || item.status === 'not_found')
-        toast.error(
-          t(($) => $['newKnowledge.documentsReindexPartial'], {
-            missing: 1,
-            queued: 0,
-          }),
-        )
+        toast.error(t(($) => $['newKnowledge.documentsReindexPartial'], { missing: 1, queued: 0 }))
       else if (item.status === 'disabled')
         toast.error(t(($) => $['newKnowledge.documentsReindexFailed']))
       else toast.success(t(($) => $['newKnowledge.documentsReindexStarted']))
@@ -295,14 +344,14 @@ export function useDocumentRowActions({
       else toast.error(t(($) => $['newKnowledge.documentsReindexFailed']))
       return false
     } finally {
-      finishAction()
+      finish()
     }
   }, [
-    beginAction,
-    canWrite,
+    begin,
+    canEdit,
     document.id,
     ensureModelReady,
-    finishAction,
+    finish,
     invalidateDocumentsAndTasks,
     knowledgeSpaceId,
     onWriteDenied,
@@ -311,13 +360,5 @@ export function useDocumentRowActions({
     t,
   ])
 
-  return {
-    download,
-    pendingAction,
-    reindex,
-    remove,
-    rename,
-    retry,
-    toggleAvailability,
-  }
+  return { busy, pending, run }
 }

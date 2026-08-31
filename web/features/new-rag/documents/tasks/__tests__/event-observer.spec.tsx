@@ -1,5 +1,7 @@
 import { act, render } from '@testing-library/react'
+import { getDefaultStore } from 'jotai/vanilla'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { documentsKnowledgeSpaceIdAtom } from '../../state/inputs'
 import { TaskEventObserver } from '../event-observer'
 
 const { streamProcessingTaskEvents } = vi.hoisted(() => ({
@@ -13,7 +15,6 @@ vi.mock('../events', async (importOriginal) => ({
 
 const observerProps = {
   documentId: 'document-1',
-  knowledgeSpaceId: 'space-1',
   onLastEventIdChange: vi.fn(),
   onPermissionDenied: vi.fn(),
   taskId: 'task-1',
@@ -24,6 +25,7 @@ describe('TaskEventObserver', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useRealTimers()
+    getDefaultStore().set(documentsKnowledgeSpaceIdAtom, 'space-1')
   })
 
   it('keeps the latest event cursor when the observer effect restarts', async () => {

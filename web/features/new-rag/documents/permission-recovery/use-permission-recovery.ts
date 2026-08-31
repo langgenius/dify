@@ -1,46 +1,43 @@
 'use client'
 
-import type { DocumentPermissionRecoverySurface } from './recovery-boundary'
+import type { DocumentPermissionRecoveryRuntime } from './model'
 import type {
   PermissionRecoveryEvent,
   PermissionRecoveryRuntimeState,
   ReadPermissionDenials,
 } from './runtime-state'
 import { useQueryClient } from '@tanstack/react-query'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
 import { consoleQuery } from '@/service/client'
 import { useKnowledgeSpace } from '../../space/context'
+import { documentsKnowledgeSpaceIdAtom } from '../state/inputs'
+import { documentPermissionQueryFactsAtom } from '../state/recovery'
+import {
+  documentAuxiliaryReadPermissionDeniedAtom,
+  resetDocumentFailedTaskPollBlocksAtom,
+  retryDocumentAuxiliaryTaskReadAtom,
+} from '../state/runtime'
 import { queryKeyMatchesKnowledgeSpace } from '../tasks/recovery'
 import {
   createPermissionRecoveryRuntimeState,
   transitionPermissionRecoveryRuntimeState,
 } from './runtime-state'
 
-type RefetchQuery = (options: { cancelRefetch: false }) => Promise<unknown>
-
-export function useDocumentPermissionRecovery({
-  auxiliaryReadPermissionDenied,
-  documentPermissionDenied,
-  knowledgeSpaceId,
-  onRetryAuxiliaryRead,
-  refetchSources,
-  refetchTasks,
-  resetFailedPollBlocks,
-  sourcePermissionDenied,
-  taskPermissionDenied,
-}: {
-  auxiliaryReadPermissionDenied: boolean
-  documentPermissionDenied: boolean
-  knowledgeSpaceId: string
-  onRetryAuxiliaryRead: () => void
-  refetchSources: RefetchQuery
-  refetchTasks: RefetchQuery
-  resetFailedPollBlocks: () => void
-  sourcePermissionDenied: boolean
-  taskPermissionDenied: boolean
-}) {
+export function useDocumentPermissionRecovery() {
   const queryClient = useQueryClient()
   const { refetch: refetchKnowledgeSpace, space } = useKnowledgeSpace()
+  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
+  const {
+    documentPermissionDenied,
+    refetchSources,
+    refetchTasks,
+    sourcePermissionDenied,
+    taskPermissionDenied,
+  } = useAtomValue(documentPermissionQueryFactsAtom)
+  const auxiliaryReadPermissionDenied = useAtomValue(documentAuxiliaryReadPermissionDeniedAtom)
+  const resetFailedPollBlocks = useSetAtom(resetDocumentFailedTaskPollBlocksAtom)
+  const retryAuxiliaryTaskRead = useSetAtom(retryDocumentAuxiliaryTaskReadAtom)
   const hasWorkspaceWritePermission = space.permission_keys.includes(
     'knowledge_space_document_write',
   )
@@ -135,26 +132,22 @@ export function useDocumentPermissionRecovery({
 
   const retryRead = useCallback(() => {
     applyEvent({ type: 'read-retry-requested' })
-    onRetryAuxiliaryRead()
-  }, [applyEvent, onRetryAuxiliaryRead])
+    retryAuxiliaryTaskRead()
+  }, [applyEvent, retryAuxiliaryTaskRead])
 
   const denialIdentity = `${documentPermissionDenied ? 'documents' : ''}:${auxiliaryReadPermissionDenied ? 'auxiliary' : ''}:${readDenials.tasks ? 'tasks' : ''}:${readDenials.sources ? 'sources' : ''}`
-  const recoverySurface = useMemo<DocumentPermissionRecoverySurface>(
+  const recoverySurface = useMemo<DocumentPermissionRecoveryRuntime>(
     () => ({
-      canRead,
       canRetryRead: auxiliaryReadPermissionDenied && !documentPermissionDenied,
       denialIdentity,
-      readStatus: runtimeState.read.status,
       retryRead,
       writeStatus: runtimeState.write.status,
     }),
     [
       auxiliaryReadPermissionDenied,
-      canRead,
       denialIdentity,
       documentPermissionDenied,
       retryRead,
-      runtimeState.read.status,
       runtimeState.write.status,
     ],
   )
@@ -164,7 +157,6 @@ export function useDocumentPermissionRecovery({
     canWrite: canRead && hasWorkspaceWritePermission && runtimeState.write.status === 'writable',
     denyWrite,
     recoverySurface,
-    retryRead,
     retryWorkspacePermission,
     workspacePermissionRefreshing: runtimeState.write.status === 'refreshing',
   }

@@ -1,10 +1,12 @@
+import type { Getter, WritableAtom } from 'jotai'
 import type { Source } from '../../sources/source-models'
 import type { DocumentMetadataField } from '../metadata/editor-model'
 import type { BackgroundTask, DocumentProcessingTask, LogicalDocument } from '../models'
 import { hashKey } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithNuqs as render } from '@/test/nuqs-testing'
+import { getDefaultStore } from 'jotai'
+import { renderWithNuqs } from '@/test/nuqs-testing'
 import { DocumentsPage } from '../page'
 
 vi.mock('../../components/knowledge-model-readiness-banner', () => ({
@@ -128,6 +130,17 @@ const rawQueryDataCache = vi.hoisted(() => ({
   sources: new WeakMap<object, object>(),
   tasks: new WeakMap<object, object>(),
 }))
+const infiniteQueryAtomMocks = vi.hoisted(
+  () =>
+    ({
+      documents: undefined,
+      sources: undefined,
+      tasks: undefined,
+    }) as Record<
+      'documents' | 'sources' | 'tasks',
+      WritableAtom<unknown, [unknown], void> | undefined
+    >,
+)
 const permissionStateMock = vi.hoisted(() => ({
   datasetAtom: Symbol('datasetDefaultPermissionKeysAtom'),
   datasetKeys: ['dataset.acl.edit'],
@@ -362,6 +375,68 @@ function rawTaskQueryData(data: NonNullable<typeof tasksQuery.data>): {
   }
   rawQueryDataCache.tasks.set(data, mapped)
   return mapped
+}
+
+function infiniteQuerySnapshot(kind: InfiniteOptions['queryKind']) {
+  if (kind === 'documents')
+    return {
+      ...documentsQuery,
+      data: documentsQuery.data ? rawDocumentQueryData(documentsQuery.data) : undefined,
+    }
+  if (kind === 'sources')
+    return {
+      ...sourcesQuery,
+      data: sourcesQuery.data ? rawSourceQueryData(sourcesQuery.data) : undefined,
+    }
+  return {
+    ...tasksQuery,
+    data: tasksQuery.data ? rawTaskQueryData(tasksQuery.data) : undefined,
+  }
+}
+
+vi.mock('jotai-tanstack-query', async (importOriginal) => {
+  const original = await importOriginal<typeof import('jotai-tanstack-query')>()
+  const { atom } = await import('jotai')
+
+  return {
+    ...original,
+    atomWithInfiniteQuery: (getOptions: (get: Getter) => InfiniteOptions) => {
+      const snapshotAtom = atom<unknown>(undefined)
+      return atom(
+        (get) => {
+          const options = getOptions(get)
+          infiniteQueryAtomMocks[options.queryKind] = snapshotAtom
+          return get(snapshotAtom) ?? infiniteQuerySnapshot(options.queryKind)
+        },
+        (_get, set, snapshot: unknown) => set(snapshotAtom, snapshot),
+      )
+    },
+  }
+})
+
+function syncInfiniteQueryAtoms() {
+  const store = getDefaultStore()
+  for (const kind of ['documents', 'sources', 'tasks'] as const) {
+    const queryAtom = infiniteQueryAtomMocks[kind]
+    if (queryAtom) store.set(queryAtom, infiniteQuerySnapshot(kind))
+  }
+}
+
+function render(
+  ui: Parameters<typeof renderWithNuqs>[0],
+  options?: Parameters<typeof renderWithNuqs>[1],
+) {
+  syncInfiniteQueryAtoms()
+  const rendered = renderWithNuqs(ui, options)
+  const rerender = rendered.rerender
+
+  return {
+    ...rendered,
+    rerender(nextUi: Parameters<typeof rerender>[0]) {
+      syncInfiniteQueryAtoms()
+      rerender(nextUi)
+    },
+  }
 }
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -697,6 +772,8 @@ function streamFailedTaskThenWait(taskId: string) {
 }
 
 function notifyTaskQuerySuccess() {
+  const taskQueryAtom = infiniteQueryAtomMocks.tasks
+  if (taskQueryAtom) getDefaultStore().set(taskQueryAtom, infiniteQuerySnapshot('tasks'))
   for (const listener of queryCacheListeners)
     listener({
       action: { type: 'success' },

@@ -102,6 +102,36 @@ describe('document task runtime state', () => {
     expect(retried.observerGenerations['task-1']).toBe(1)
   })
 
+  it('retires a stale active stream override after the list makes the task inactive', () => {
+    const listed = transitionTaskRuntimeState(createTaskRuntimeState(), {
+      tasks: [task()],
+      type: 'list-snapshot',
+    }).state
+    const streamed = transitionTaskRuntimeState(listed, {
+      event: {
+        data: {
+          progressPercent: 60,
+          stage: 'nodes_generated',
+          state: 'running',
+          updatedAt: '2026-07-20T10:01:00Z',
+        },
+        event: 'progress',
+        id: 'event-4',
+      },
+      taskId: 'task-1',
+      taskVersion: '2026-07-20T10:01:00Z',
+      type: 'stream-event',
+    }).state
+
+    const inactive = transitionTaskRuntimeState(streamed, {
+      taskId: 'task-1',
+      type: 'task-inactive',
+    }).state
+
+    expect(inactive.streamActiveOverrideVersions.has('task-1')).toBe(false)
+    expect(inactive.overrides['task-1']).toBeUndefined()
+  })
+
   it('retains only runtime entries present in the next list snapshot', () => {
     const listed = transitionTaskRuntimeState(createTaskRuntimeState(), {
       tasks: [task(), task({ documentId: 'document-2', id: 'task-2' })],

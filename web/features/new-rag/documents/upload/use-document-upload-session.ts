@@ -4,25 +4,31 @@ import type {
   KnowledgeFsUploadPhase,
   KnowledgeFsUploadProgress,
 } from '../../upload/knowledge-fs-upload'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createRequestId } from '../../request-id'
 import {
   discardKnowledgeFsStagedUpload,
   stageKnowledgeFsDocument,
+  uploadKnowledgeFsDocuments,
 } from '../../upload/knowledge-fs-upload'
+import { documentsKnowledgeSpaceIdAtom } from '../state/inputs'
+import { documentUploadingAtom } from '../state/upload'
 import {
   DOCUMENT_STAGING_REQUEST_TIMEOUT,
   DocumentStagingCanceledError,
   DocumentStagingTimeoutError,
 } from './model'
 
-export function useDocumentUploadSession(knowledgeSpaceId: string) {
+export function useDocumentUploadSession() {
+  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
   const uploadPendingRef = useRef(false)
   const uploadRequestIdsRef = useRef(new Map<string, string>())
   const stagedUploadIdsRef = useRef(new Map<File, string>())
   const stagingPromisesRef = useRef(new Map<File, Promise<string>>())
   const stagingControllersRef = useRef(new Map<File, AbortController>())
-  const [uploading, setUploading] = useState(false)
+  const uploading = useAtomValue(documentUploadingAtom)
+  const setUploading = useSetAtom(documentUploadingAtom)
   const [uploadProgress] = useState<KnowledgeFsUploadProgress>(() => new Map())
   const [progress, setProgress] = useState<ReadonlyMap<File, KnowledgeFsUploadPhase>>(
     () => new Map(),
@@ -124,60 +130,55 @@ export function useDocumentUploadSession(knowledgeSpaceId: string) {
 
   useEffect(() => discardStagedUploadObjects, [discardStagedUploadObjects])
 
-  const beginUpload = useCallback(() => {
-    if (uploadPendingRef.current) return false
-    uploadPendingRef.current = true
-    setUploading(true)
-    return true
-  }, [])
-
-  const endUpload = useCallback(() => {
-    uploadPendingRef.current = false
-    setUploading(false)
-    setProgress(new Map())
-  }, [])
-
-  const prepareUploads = useCallback(
-    (files: File[]) =>
-      files.map((file) => {
-        const fingerprint = `${knowledgeSpaceId}:${file.name}:${file.size}:${file.lastModified}`
-        const id = uploadRequestIdsRef.current.get(fingerprint) ?? createRequestId()
-        uploadRequestIdsRef.current.set(fingerprint, id)
-        const uploadId = stagedUploadIdsRef.current.get(file)
-        if (!uploadId) throw new Error('KnowledgeFS file was not staged')
-        return { file, id, uploadId }
-      }),
-    [knowledgeSpaceId],
+  const uploadFiles = useCallback(
+    async (files: File[], prepare: () => Promise<boolean>) => {
+      if (uploadPendingRef.current) return false
+      uploadPendingRef.current = true
+      setUploading(true)
+      try {
+        if (!(await prepare())) return false
+        const uploads = files.map((file) => {
+          const fingerprint = `${knowledgeSpaceId}:${file.name}:${file.size}:${file.lastModified}`
+          const id = uploadRequestIdsRef.current.get(fingerprint) ?? createRequestId()
+          uploadRequestIdsRef.current.set(fingerprint, id)
+          const uploadId = stagedUploadIdsRef.current.get(file)
+          if (!uploadId) throw new Error('KnowledgeFS file was not staged')
+          return { file, id, uploadId }
+        })
+        await uploadKnowledgeFsDocuments(
+          knowledgeSpaceId,
+          uploads,
+          uploadProgress,
+          (file: File, phase: KnowledgeFsUploadPhase) => {
+            setProgress((current) => {
+              const next = new Map(current)
+              next.set(file, phase)
+              return next
+            })
+          },
+        )
+        uploadProgress.clear()
+        uploadRequestIdsRef.current.clear()
+        stagedUploadIdsRef.current.clear()
+        return true
+      } finally {
+        uploadPendingRef.current = false
+        setUploading(false)
+        setProgress(new Map())
+      }
+    },
+    [knowledgeSpaceId, setUploading, uploadProgress],
   )
-
-  const updateProgress = useCallback((file: File, phase: KnowledgeFsUploadPhase) => {
-    setProgress((current) => {
-      const next = new Map(current)
-      next.set(file, phase)
-      return next
-    })
-  }, [])
-
-  const completeUploads = useCallback(() => {
-    uploadProgress.clear()
-    uploadRequestIdsRef.current.clear()
-    stagedUploadIdsRef.current.clear()
-  }, [uploadProgress])
 
   const resetProgress = useCallback(() => setProgress(new Map()), [])
 
   return {
-    beginUpload,
-    completeUploads,
     discardAllStagedFiles,
     discardStagedFile,
-    endUpload,
-    prepareUploads,
     progress,
     resetProgress,
     stageFiles,
-    updateProgress,
+    uploadFiles,
     uploading,
-    uploadProgress,
   }
 }
