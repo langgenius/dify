@@ -614,7 +614,9 @@ describe('PluginItem', () => {
 
       // Assert
       const pluginContainer = container.firstChild as HTMLElement
-      expect(pluginContainer).toHaveClass('border-components-option-card-option-selected-border')
+      expect(pluginContainer).toHaveClass(
+        'after:inset-ring-components-option-card-option-selected-border',
+      )
     })
 
     it('should not highlight unselected plugin', () => {
@@ -628,7 +630,7 @@ describe('PluginItem', () => {
       // Assert
       const pluginContainer = container.firstChild as HTMLElement
       expect(pluginContainer).not.toHaveClass(
-        'border-components-option-card-option-selected-border',
+        'after:inset-ring-components-option-card-option-selected-border',
       )
     })
 
@@ -654,9 +656,18 @@ describe('PluginItem', () => {
 
       // Assert
       expect(screen.getByTestId('plugin-action').parentElement).toHaveClass(
+        'absolute',
+        'top-1/2',
+        'right-0',
+        '-translate-y-1/2',
+        'pointer-events-none',
         'opacity-0',
+        'group-hover/plugin-item:pointer-events-auto',
         'group-hover/plugin-item:opacity-100',
-        'focus-within:opacity-100',
+        'group-focus-within/plugin-item:pointer-events-auto',
+        'group-focus-within/plugin-item:opacity-100',
+        '[@media(hover:none)]:pointer-events-auto',
+        '[@media(hover:none)]:opacity-100',
       )
     })
   })

@@ -28,7 +28,11 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound
 
-from controllers.service_api.app.error import NotWorkflowAppError, WorkflowVersionExecutionNotAllowedError
+from controllers.service_api.app.error import (
+    NotWorkflowAppError,
+    TriggerWorkflowServiceModeUnavailableError,
+    WorkflowVersionExecutionNotAllowedError,
+)
 from controllers.service_api.app.workflow import (
     AppQueueManager,
     GraphEngineManager,
@@ -51,7 +55,13 @@ from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
 from services.app_generate_service import AppGenerateService
 from services.billing_service import BillingService
-from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
+from services.errors.app import (
+    IsDraftWorkflowError,
+    WorkflowNotFoundError,
+)
+from services.errors.app import (
+    TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
+)
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_service import WorkflowAppService
 
@@ -582,6 +592,32 @@ class TestWorkflowRunApi:
             with pytest.raises(InvokeRateLimitHttpError):
                 handler(api, session=sqlite_session, app_model=app_model, end_user=end_user)
 
+    def test_trigger_workflow_returns_stable_unavailable_error(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+    ) -> None:
+        monkeypatch.setattr(
+            AppGenerateService,
+            "generate",
+            Mock(side_effect=TriggerWorkflowServiceModeUnavailableServiceError()),
+        )
+        api = WorkflowRunApi()
+        handler = unwrap(api.post)
+
+        with app.test_request_context("/workflows/run", method="POST", json={"inputs": {}}):
+            with pytest.raises(TriggerWorkflowServiceModeUnavailableError) as exc_info:
+                handler(
+                    api,
+                    session=sqlite_session,
+                    app_model=_make_app_model(),
+                    end_user=_make_end_user(),
+                )
+
+        assert exc_info.value.code == 403
+        assert exc_info.value.error_code == "trigger_workflow_service_mode_unavailable"
+
     def test_sandbox_billing_does_not_gate_default_workflow_run(
         self,
         app: Flask,
@@ -614,6 +650,33 @@ class TestWorkflowRunApi:
 
 
 class TestWorkflowRunByIdApi:
+    def test_trigger_workflow_version_returns_stable_unavailable_error(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+    ) -> None:
+        monkeypatch.setattr(
+            AppGenerateService,
+            "generate",
+            Mock(side_effect=TriggerWorkflowServiceModeUnavailableServiceError()),
+        )
+        api = WorkflowRunByIdApi()
+        handler = unwrap(api.post)
+
+        with app.test_request_context("/workflows/w1/run", method="POST", json={"inputs": {}}):
+            with pytest.raises(TriggerWorkflowServiceModeUnavailableError) as exc_info:
+                handler(
+                    api,
+                    session=sqlite_session,
+                    app_model=_make_app_model(),
+                    end_user=_make_end_user(),
+                    workflow_id=str(uuid.uuid4()),
+                )
+
+        assert exc_info.value.code == 403
+        assert exc_info.value.error_code == "trigger_workflow_service_mode_unavailable"
+
     def test_rejects_sandbox_plan_with_upgrade_error(
         self,
         app: Flask,
