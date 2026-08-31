@@ -3,6 +3,7 @@ import { dirname, resolve } from 'node:path'
 
 const DEFAULT_TRUNCATION_CLASSES = new Set(['text-ellipsis', 'truncate'])
 const cssModuleClassCache = new Map()
+const UNSAFE_TITLE_EXPRESSION = Symbol('unsafe-title-expression')
 const STYLE_WRAPPER_TYPES = new Set([
   'ChainExpression',
   'TSAsExpression',
@@ -418,6 +419,20 @@ function isRenderableTitleExpression(node) {
   ].includes(current.type)
 }
 
+function isSafeToDuplicateTitleExpression(node) {
+  const current = unwrapExpression(node)
+  if (!current) return false
+
+  if (current.type === 'Identifier') return current.name !== 'undefined'
+  if (current.type === 'Literal')
+    return (
+      current.value !== null && !['boolean', 'object', 'undefined'].includes(typeof current.value)
+    )
+  if (current.type === 'TemplateLiteral' && current.expressions.length === 0)
+    return (current.quasis[0]?.value.cooked ?? '').trim() !== ''
+  return false
+}
+
 function getMeaningfulChildren(element) {
   return element.children.filter((child) => {
     if (child.type === 'JSXText') return child.value.trim() !== ''
@@ -504,7 +519,7 @@ function getTitleFixTextFromAttribute(attribute, sourceCode) {
     return `title=${JSON.stringify(attribute.value.value)}`
   }
   if (attribute.value.type !== 'JSXExpressionContainer') return null
-  if (!isRenderableTitleExpression(attribute.value.expression)) return null
+  if (!isSafeToDuplicateTitleExpression(attribute.value.expression)) return UNSAFE_TITLE_EXPRESSION
   return `title={${sourceCode.getText(attribute.value.expression)}}`
 }
 
@@ -517,18 +532,26 @@ function getTitleFixText(openingElement, sourceCode) {
     const value = child.value.trim().replace(/\s+/gu, ' ')
     return value ? `title=${JSON.stringify(value)}` : null
   }
-  if (child?.type === 'JSXExpressionContainer' && isRenderableTitleExpression(child.expression))
-    return `title={${sourceCode.getText(child.expression)}}`
+  let hasUnsafeTitleExpression = false
+  if (child?.type === 'JSXExpressionContainer') {
+    if (isSafeToDuplicateTitleExpression(child.expression))
+      return `title={${sourceCode.getText(child.expression)}}`
+    hasUnsafeTitleExpression = true
+  }
 
   for (const attributeName of ['value', 'placeholder', 'content', 'label', 'name', 'aria-label']) {
     const attributeFixText = getTitleFixTextFromAttribute(
       getAttribute(openingElement, attributeName),
       sourceCode,
     )
+    if (attributeFixText === UNSAFE_TITLE_EXPRESSION) {
+      hasUnsafeTitleExpression = true
+      continue
+    }
     if (attributeFixText) return attributeFixText
   }
 
-  return null
+  return hasUnsafeTitleExpression ? UNSAFE_TITLE_EXPRESSION : null
 }
 
 function hasTitledSingleChild(openingElement) {
@@ -687,6 +710,7 @@ export default {
           if (titleAttribute && !isEmptyTitleAttribute(titleAttribute)) continue
 
           const fixText = getTitleFixText(openingElement, context.sourceCode)
+          if (fixText === UNSAFE_TITLE_EXPRESSION) continue
 
           context.report({
             node: titleAttribute ?? openingElement.name,

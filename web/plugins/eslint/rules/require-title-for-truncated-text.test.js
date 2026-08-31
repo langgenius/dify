@@ -65,8 +65,8 @@ it('accepts Dify UI TooltipTrigger children and render elements', () => {
 it('adds title for static classes, class helpers, constants, and inline styles', () => {
   const result = verifyAndFix(`
     const truncatedClassName = cn('min-w-0', condition && 'md:truncate')
-    export const Example = ({ item, label }) => <>
-      <span className={truncatedClassName}>{item.name}</span>
+    export const Example = ({ itemName, label }) => <>
+      <span className={truncatedClassName}>{itemName}</span>
       <p className={cn('line-clamp-2', condition && 'text-secondary')}>{label}</p>
       <div style={{ textOverflow: 'ellipsis' }}>Description</div>
     </>
@@ -74,7 +74,7 @@ it('adds title for static classes, class helpers, constants, and inline styles',
 
   assert.equal(result.messages.length, 0)
   assert.equal(result.fixed, true)
-  assert.match(result.output, /className=\{truncatedClassName\} title=\{item\.name\}/u)
+  assert.match(result.output, /className=\{truncatedClassName\} title=\{itemName\}/u)
   assert.match(result.output, /className=\{cn\([^)]+\)\} title=\{label\}/u)
   assert.match(result.output, /style=\{\{ textOverflow: 'ellipsis' \}\} title="Description"/u)
 })
@@ -89,18 +89,35 @@ it('replaces an empty title', () => {
   assert.match(result.output, /title=\{name\}/u)
 })
 
-it('fixes calls and custom components when their visible text is explicit', () => {
+it('fixes custom components when their visible text is a safe identifier', () => {
   const result = verifyAndFix(`
-    export const Example = ({ name }) => <>
-      <span className="truncate">{translate(name)}</span>
+    export const Example = ({ name }) => (
       <CustomText className="truncate">{name}</CustomText>
-    </>
+    )
   `)
 
   assert.equal(result.fixed, true)
   assert.equal(result.messages.length, 0)
-  assert.match(result.output, /title=\{translate\(name\)\}/u)
   assert.match(result.output, /title=\{name\}/u)
+})
+
+it('ignores expressions that may execute user code', () => {
+  const code = `
+    export const Example = ({ item }) => {
+      let index = 0
+      return <>
+        <span className="truncate">{item.name}</span>
+        <span className="truncate" title="">{getLabel()}</span>
+        <span className="truncate">{index++}</span>
+        <Markdown className="line-clamp-2" content={getContent()} />
+      </>
+    }
+  `
+  const result = verifyAndFix(code)
+
+  assert.equal(result.fixed, false)
+  assert.equal(result.messages.length, 0)
+  assert.equal(result.output, code)
 })
 
 it('uses a single nested text child or a text-bearing prop', () => {
