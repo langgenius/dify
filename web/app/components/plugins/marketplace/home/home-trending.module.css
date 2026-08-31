@@ -93,7 +93,6 @@
 
 .updatesDescription {
   display: -webkit-box;
-  max-height: 40px;
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -249,6 +248,17 @@
 
   :global([data-marketplace-standalone]) .stackedCopyMeta {
     gap: 4px;
+  }
+
+  :global([data-marketplace-standalone]) .blogSubtitle {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  :global([data-marketplace-standalone]) .updatesDescription {
+    width: 100%;
+    min-width: 0;
   }
 
   /* Event/ad mobile: show the 800×721 poster whole (ops banner-meta), not

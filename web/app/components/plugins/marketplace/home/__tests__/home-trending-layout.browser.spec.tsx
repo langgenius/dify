@@ -70,6 +70,40 @@ describe('Marketplace home trending layout', () => {
     expect(blogSlide.getBoundingClientRect().height).toBe(357)
   })
 
+  it('clamps standalone mobile blog subtitle to one line and description to two', async () => {
+    await page.viewport(600, 900)
+    const subtitleText =
+      'On September 10, 2026, LangGenius K.K. will host its flagship annual conference in Tokyo.'
+    const descriptionText =
+      'It is a full day dedicated to turning generative AI from isolated pilots into real operations. Registration is open now for the second year of the conference.'
+    const longBlog: PluginBanner = {
+      id: 'blog-long',
+      style_type: 'blog',
+      title: 'Dify v1.9 new launch',
+      sort: 0,
+      language: 'en',
+      content: {
+        blog_title: 'Dify v1.9 new launch',
+        subtitle: subtitleText,
+        description: descriptionText,
+        link: 'https://dify.ai/blog',
+        link_target_type: 'blog',
+      },
+    }
+    const screen = await render(
+      <div data-marketplace-standalone className="w-[360px]">
+        <HomeBannerSlide banner={longBlog} isMarketplacePlatform page="plugins" />
+      </div>,
+    )
+
+    const subtitle = screen.getByText(subtitleText).element()
+    const description = screen.getByText(descriptionText).element()
+
+    expect(getComputedStyle(subtitle).whiteSpace).toBe('nowrap')
+    expect(getComputedStyle(subtitle).textOverflow).toBe('ellipsis')
+    expect(getComputedStyle(description).webkitLineClamp).toBe('2')
+  })
+
   it('shows the standalone mobile event poster at the 800:721 delivery ratio', async () => {
     await page.viewport(600, 900)
     const screen = await render(

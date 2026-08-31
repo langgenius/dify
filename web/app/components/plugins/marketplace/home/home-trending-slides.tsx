@@ -364,13 +364,23 @@ function BlogBannerSlide({
               )}
             >
               {banner.content.subtitle && (
-                <p className="shrink-0 text-[15px] leading-[18px] font-normal tracking-[-0.3px] text-text-primary">
+                <p
+                  className={cn(
+                    'w-full min-w-0 shrink-0 text-[15px] leading-[18px] font-normal tracking-[-0.3px] text-text-primary',
+                    isMarketplacePlatform && styles.blogSubtitle,
+                  )}
+                >
                   {banner.content.subtitle}
                 </p>
               )}
               {banner.content.description && (
-                <p className="min-h-0 w-full flex-1 overflow-hidden text-[13px] leading-5 font-normal tracking-[-0.065px] text-text-tertiary">
-                  <span className={styles.updatesDescription}>{banner.content.description}</span>
+                <p
+                  className={cn(
+                    styles.updatesDescription,
+                    'min-h-0 w-full min-w-0 overflow-hidden text-[13px] leading-5 font-normal tracking-[-0.065px] text-text-tertiary',
+                  )}
+                >
+                  {banner.content.description}
                 </p>
               )}
               <span
