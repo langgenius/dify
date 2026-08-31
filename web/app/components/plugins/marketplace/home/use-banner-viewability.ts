@@ -1,8 +1,8 @@
 import type { RefObject } from 'react'
 import { useEffect, useRef } from 'react'
 
-export const BANNER_VIEWABILITY_THRESHOLD = 0.5
-export const BANNER_VIEWABILITY_DWELL_MS = 1000
+const BANNER_VIEWABILITY_THRESHOLD = 0.5
+const BANNER_VIEWABILITY_DWELL_MS = 1000
 
 export function useBannerViewability(
   targetRef: RefObject<Element | null>,

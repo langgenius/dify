@@ -18,6 +18,8 @@ const config: KnipConfig = {
         // Consumed by the dify-marketplace repository, which mounts this
         // repo as a submodule and imports these modules via path aliases.
         'app/components/plugins/marketplace/index.tsx',
+        'app/components/plugins/marketplace/hydration-server.tsx',
+        'app/components/plugins/marketplace/server-budget.ts',
         'app/components/plugins/marketplace/home/marketplace-live-search.tsx',
         'app/components/plugins/marketplace/home/marketplace-search-autocomplete.tsx',
       ],

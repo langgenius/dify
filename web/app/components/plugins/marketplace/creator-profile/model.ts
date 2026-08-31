@@ -6,8 +6,8 @@ import type {
 } from '@dify/contracts/marketplace'
 import type { Plugin } from '@/app/components/plugins/types'
 
-export type CreatorProfileKind = 'individual' | 'organization'
-export type CreatorProfileBadge = 'partner' | 'verified'
+type CreatorProfileKind = 'individual' | 'organization'
+type CreatorProfileBadge = 'partner' | 'verified'
 export type CreatorSocialPlatform = 'website' | 'x' | 'instagram' | 'youtube' | 'figma' | 'github'
 export type CreatorSortField = 'updatedAt' | 'createdAt' | 'popularity'
 export type CreatorSortOrder = 'asc' | 'desc'
@@ -51,7 +51,7 @@ export type CreatorSocialLink = {
   label: string
 }
 
-export type CreatorCreationTarget =
+type CreatorCreationTarget =
   | {
       type: 'plugin'
       org: string
@@ -65,7 +65,7 @@ export type CreatorCreationTarget =
       templateName: string
     }
 
-export type CreatorCreationIcon =
+type CreatorCreationIcon =
   | { type: 'image'; src: string }
   | { type: 'emoji'; value: string; background?: string }
 
@@ -136,7 +136,7 @@ const toTimestamp = (value?: MarketplaceTimestamp | null) => {
   return Number.isNaN(timestamp) ? 0 : timestamp
 }
 
-export const getCreatorLocalizedText = (
+const getCreatorLocalizedText = (
   value: Partial<Record<string, string>> | string | undefined,
   locale: string,
 ) => {
