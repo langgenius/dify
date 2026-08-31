@@ -179,6 +179,40 @@ describe('QualityEvaluationPanel', () => {
     ).toBeEnabled()
   })
 
+  it('shows evaluation creation time as a relative list label', async () => {
+    const now = Date.parse(completedRun.created_at) + 2 * 60 * 60 * 1000
+    const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(now)
+    serviceMock.listReplays.mockResolvedValue({
+      data: [
+        { ...completedRun, created_at: new Date(now).toISOString(), id: 'run-now' },
+        completedRun,
+      ],
+      next_cursor: null,
+    })
+
+    renderPanel()
+
+    expect(await screen.findByText('dataset.newKnowledge.retrievalTest.justNow')).toBeVisible()
+    expect(await screen.findByText('2 hours ago')).toBeVisible()
+    dateNowSpy.mockRestore()
+  })
+
+  it('separates the report date and time with a middle dot', async () => {
+    const user = userEvent.setup()
+    const createdAt = new Date(completedRun.created_at)
+    const expected = `${new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(createdAt)} · ${new Intl.DateTimeFormat(undefined, { timeStyle: 'short' }).format(createdAt)}`
+    serviceMock.listReplays.mockResolvedValue({ data: [completedRun], next_cursor: null })
+
+    renderPanel()
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'dataset.newKnowledge.qualityPage.evaluation.viewReport',
+      }),
+    )
+
+    expect(await screen.findByText(expected)).toBeVisible()
+  })
+
   it('opens evaluation settings in an accessible centered modal', async () => {
     const user = userEvent.setup()
     renderPanel()

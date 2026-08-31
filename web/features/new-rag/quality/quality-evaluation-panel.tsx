@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { consoleQuery } from '@/service/client'
 import { RetrievalModeSegmentedControl } from '../components/retrieval-mode-segmented-control'
+import { formatQualityEvaluationCreatedAt, formatQualityReportCreatedAt } from './quality-model'
 
 type ReplayState = KnowledgeFsQualityReplayResponse['state']
 
@@ -160,10 +161,7 @@ function EvaluationReport({
             <EvaluationState state={run.state} />
           </div>
           <p className="mt-1 system-xs-regular text-text-primary">
-            {new Intl.DateTimeFormat(undefined, {
-              dateStyle: 'medium',
-              timeStyle: 'short',
-            }).format(new Date(run.created_at))}
+            {formatQualityReportCreatedAt(run.created_at)}
           </p>
         </div>
         <Button onClick={onRerun}>{tWorkflow(($) => $['singleRun.reRun'])}</Button>
@@ -527,10 +525,10 @@ export function QualityEvaluationPanel({
                   className="grid h-12 min-w-185 grid-cols-[150px_110px_140px_160px_110px_1fr] items-center gap-3 border-t border-divider-subtle"
                 >
                   <span className="system-xs-regular text-text-secondary">
-                    {new Intl.DateTimeFormat(undefined, {
-                      dateStyle: 'short',
-                      timeStyle: 'short',
-                    }).format(new Date(run.created_at))}
+                    {formatQualityEvaluationCreatedAt(
+                      run.created_at,
+                      t(($) => $['newKnowledge.retrievalTest.justNow']),
+                    )}
                   </span>
                   <EvaluationState state={run.state} />
                   <span className="system-xs-regular text-text-secondary">

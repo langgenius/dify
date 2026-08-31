@@ -36,3 +36,21 @@ export function formatQualityUpdatedAt(value: string) {
   if (elapsedDays < 7) return relativeTime.format(-elapsedDays, 'day')
   return new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' }).format(time)
 }
+
+export function formatQualityEvaluationCreatedAt(value: string, justNow: string) {
+  const elapsedMinutes = Math.max(0, (Date.now() - new Date(value).getTime()) / 60_000)
+  if (elapsedMinutes < 1) return justNow
+  if (elapsedMinutes < 60)
+    return new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' }).format(
+      -Math.floor(elapsedMinutes),
+      'minute',
+    )
+  return formatQualityUpdatedAt(value)
+}
+
+export function formatQualityReportCreatedAt(value: string) {
+  const time = new Date(value)
+  const date = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(time)
+  const formattedTime = new Intl.DateTimeFormat(undefined, { timeStyle: 'short' }).format(time)
+  return `${date} · ${formattedTime}`
+}
