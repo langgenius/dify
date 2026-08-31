@@ -9,6 +9,7 @@ from controllers.common.errors import (
     RemoteFileUploadError,
     UnsupportedFileTypeError,
 )
+from controllers.console.wraps import model_validate
 from core.file import remote_fetcher
 from extensions.ext_database import db
 from fields.file_fields import FileWithSignedUrl, RemoteFileInfo
@@ -86,7 +87,8 @@ class RemoteFileUploadApi(WebApiResource):
     )
     @web_ns.response(201, "Remote file uploaded", web_ns.models[FileWithSignedUrl.__name__])
     @web_ns.expect(web_ns.models[RemoteFileUploadPayload.__name__])
-    def post(self, app_model: App, end_user: EndUser):
+    @model_validate(RemoteFileUploadPayload)
+    def post(self, payload: RemoteFileUploadPayload, app_model: App, end_user: EndUser):
         """Upload a file from a remote URL.
 
         Downloads a file from the provided remote URL and uploads it
@@ -108,7 +110,6 @@ class RemoteFileUploadApi(WebApiResource):
             FileTooLargeError: File exceeds size limit
             UnsupportedFileTypeError: File type not supported
         """
-        payload = RemoteFileUploadPayload.model_validate(web_ns.payload or {})
         url = str(payload.url)
 
         try:

@@ -31,9 +31,12 @@ const ExternalDataToolModal = dynamic(
     ssr: false,
   },
 )
-const Pricing = dynamic(() => import('@/app/components/billing/pricing'), {
-  ssr: false,
-})
+const Pricing = dynamic(
+  () => import('@/app/components/billing/pricing').then((module) => module.Pricing),
+  {
+    ssr: false,
+  },
+)
 const AnnotationFullModal = dynamic(
   () => import('@/app/components/billing/annotation-full/modal'),
   {

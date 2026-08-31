@@ -1,7 +1,8 @@
 import type { FC } from 'react'
 import type { FullDocumentDetail } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import { Button } from '@langgenius/dify-ui/button'
+import { buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightLine, RiLoader2Fill, RiTerminalBoxLine } from '@remixicon/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,7 +11,6 @@ import VectorSpaceAdmissionAlert from '@/app/components/datasets/common/vector-s
 import { useProviderContext } from '@/context/provider-context'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import Link from '@/next/link'
-import { useRouter } from '@/next/navigation'
 import { useProcessRule } from '@/service/knowledge/use-dataset'
 import { useInvalidDocumentList } from '@/service/knowledge/use-document'
 import IndexingProgressItem from './indexing-progress-item'
@@ -50,22 +50,30 @@ const StatusHeader: FC<{ isEmbedding: boolean; isCompleted: boolean }> = ({
 // Action buttons component
 const ActionButtons: FC<{
   apiReferenceUrl: string
-  onNavToDocuments: () => void
-}> = ({ apiReferenceUrl, onNavToDocuments }) => {
+  documentsHref: string
+  onNavigateToDocuments: () => void
+}> = ({ apiReferenceUrl, documentsHref, onNavigateToDocuments }) => {
   const { t } = useTranslation()
 
   return (
     <div className="mt-6 flex items-center gap-x-2 py-2">
-      <Link href={apiReferenceUrl} target="_blank" rel="noopener noreferrer">
-        <Button className="w-fit">
-          <RiTerminalBoxLine className="size-4" />
-          <span>Access the API</span>
-        </Button>
+      <Link
+        href={apiReferenceUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cn(buttonVariants(), 'w-fit')}
+      >
+        <RiTerminalBoxLine className="size-4" />
+        <span>Access the API</span>
       </Link>
-      <Button className="w-fit" variant="primary" onClick={onNavToDocuments}>
+      <Link
+        href={documentsHref}
+        className={cn(buttonVariants({ variant: 'primary' }), 'w-fit')}
+        onClick={onNavigateToDocuments}
+      >
         <span>{t(($) => $['stepThree.navTo'], { ns: 'datasetCreation' })}</span>
         <RiArrowRightLine className="size-4 stroke-current stroke-1" />
-      </Button>
+      </Link>
     </div>
   )
 }
@@ -78,7 +86,6 @@ const EmbeddingProcess: FC<EmbeddingProcessProps> = ({
   retrievalMethod,
 }) => {
   const { enableBilling, plan } = useProviderContext()
-  const router = useRouter()
   const invalidDocumentList = useInvalidDocumentList()
   const apiReferenceUrl = useDatasetApiAccessUrl()
 
@@ -95,10 +102,7 @@ const EmbeddingProcess: FC<EmbeddingProcessProps> = ({
   // Document lookup utilities - memoized for performance
   const documentLookup = useMemo(() => createDocumentLookup(documents), [documents])
 
-  const handleNavToDocuments = () => {
-    invalidDocumentList()
-    router.push(`/datasets/${datasetId}/documents`)
-  }
+  const documentsHref = `/datasets/${datasetId}/documents`
 
   const showUpgradeBanner = enableBilling && plan.type !== 'team'
   const showVectorSpaceUpgrade =
@@ -145,7 +149,11 @@ const EmbeddingProcess: FC<EmbeddingProcessProps> = ({
         />
       </div>
 
-      <ActionButtons apiReferenceUrl={apiReferenceUrl} onNavToDocuments={handleNavToDocuments} />
+      <ActionButtons
+        apiReferenceUrl={apiReferenceUrl}
+        documentsHref={documentsHref}
+        onNavigateToDocuments={invalidDocumentList}
+      />
     </>
   )
 }

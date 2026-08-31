@@ -42,6 +42,7 @@
   "accessRule.summary_one": "{{count}} ensemble d'autorisations",
   "accessRule.summary_other": "{{count}} ensembles d'autorisations",
   "accessRule.updated": "Règle d'accès mise à jour avec succès",
+  "accessRule.workspaceOwner": "Propriétaire de l’espace de travail",
   "common.duplicateAction": "Dupliquer",
   "group.app": "Applications",
   "group.app_acl": "Autorisations d'accès à l'application",

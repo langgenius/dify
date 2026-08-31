@@ -55,6 +55,7 @@ from services.vector_space_admission_service import (
     VECTOR_SPACE_ADMISSION_ERROR_CODE,
     format_vector_space_admission_error,
 )
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def make_serializable_document(**overrides):
@@ -504,7 +505,7 @@ class TestDatasetInitApi:
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch("controllers.console.datasets.datasets_document.dify_config.RBAC_ENABLED", True),
+            config_overrides_context(RBAC_ENABLED=True),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.document_create_args_validate",
                 return_value=None,
@@ -560,7 +561,7 @@ class TestDocumentResource:
         api = DocumentResource()
         session = MagicMock()
         with (
-            patch("controllers.console.datasets.datasets_document.dify_config.RBAC_ENABLED", True),
+            config_overrides_context(RBAC_ENABLED=True),
             patch(
                 "controllers.console.datasets.datasets_document.DatasetService.get_dataset_for_tenant",
                 return_value=dataset,

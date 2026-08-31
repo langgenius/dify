@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import threading
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import datetime
 from types import SimpleNamespace
@@ -956,10 +956,10 @@ def test_get_mcp_provider_controller_missing_raises(monkeypatch: pytest.MonkeyPa
             ToolManager.get_mcp_provider_controller("tenant-1", "mcp-1")
 
 
-def test_generate_tool_icon_urls_for_builtin_and_plugin():
-    with patch("core.tools.tool_manager.dify_config.CONSOLE_API_URL", "https://console.example.com"):
-        builtin_url = ToolManager.generate_builtin_tool_icon_url("time")
-        plugin_url = ToolManager.generate_plugin_tool_icon_url("tenant-1", "icon.svg")
+def test_generate_tool_icon_urls_for_builtin_and_plugin(config_overrides: Callable[..., None]):
+    config_overrides(CONSOLE_API_URL="https://console.example.com")
+    builtin_url = ToolManager.generate_builtin_tool_icon_url("time")
+    plugin_url = ToolManager.generate_plugin_tool_icon_url("tenant-1", "icon.svg")
 
     assert builtin_url.endswith("/tool-provider/builtin/time/icon")
     assert "/plugin/icon" in plugin_url

@@ -9,6 +9,8 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
+from tests.unit_tests.config_override import apply_config_overrides
+
 
 def _walk_values(value):
     yield value
@@ -162,7 +164,7 @@ def test_apply_runtime_defaults_forces_swagger_routes_on(monkeypatch):
     from configs import dify_config
 
     monkeypatch.setenv("SWAGGER_UI_ENABLED", "false")
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", False)
+    apply_config_overrides(monkeypatch, SWAGGER_UI_ENABLED=False)
 
     module.apply_runtime_defaults()
 

@@ -21,6 +21,7 @@ from models.model import App, AppMode
 from services.app_dsl_service import ImportStatus
 from services.entities.dsl_entities import CheckDependenciesResult
 from services.entities.feature_entities import SystemFeatureModel, WebAppAuthModel
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _unwrap(func):
@@ -240,7 +241,7 @@ class TestAppImportApi:
             "current_account_with_tenant",
             lambda: (_make_account(), "tenant-1"),
         )
-        monkeypatch.setattr(app_import_module.dify_config, "RBAC_ENABLED", True)
+        apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
         app_id = _install_persisting_service_result(
             monkeypatch,
             method_name="import_app",
@@ -276,7 +277,7 @@ class TestAppImportApi:
             "current_account_with_tenant",
             lambda: (_make_account(), "tenant-1"),
         )
-        monkeypatch.setattr(app_import_module.dify_config, "RBAC_ENABLED", True)
+        apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
         app_id = _install_persisting_service_result(
             monkeypatch,
             method_name="import_app",
@@ -353,7 +354,7 @@ class TestAppImportConfirmApi:
             )
         )
         monkeypatch.setattr(app_import_module.redis_client, "get", redis_get)
-        monkeypatch.setattr(app_import_module.dify_config, "RBAC_ENABLED", True)
+        apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
         app_id = _install_persisting_service_result(
             monkeypatch,
             method_name="confirm_import",
@@ -397,7 +398,7 @@ class TestAppImportConfirmApi:
                 b'"name":null,"description":null,"icon_type":null,"icon":null,"icon_background":null}'
             ),
         )
-        monkeypatch.setattr(app_import_module.dify_config, "RBAC_ENABLED", True)
+        apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
         app_id = _install_persisting_service_result(
             monkeypatch,
             method_name="confirm_import",

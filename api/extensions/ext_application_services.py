@@ -27,20 +27,24 @@ from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
 from repositories.data_source_oauth_binding_repository import SQLAlchemyDataSourceOAuthBindingRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
+from repositories.factory import DifyAPIRepositoryFactory
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
+from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourStateRepository
 from repositories.tag_repository import TagRepository
 from repositories.trial_app_query_repository import TrialAppQueryRepository
 from repositories.trial_app_usage_repository import TrialAppUsageRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
+from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
 from services.account_activation_adapters import (
     BillingAccountActivationEligibility,
     BillingWorkspaceMembershipCache,
     DeploymentWorkspaceInvitePolicy,
+    RBACWorkspaceMemberAccessSync,
     RegisterServiceInvitationTokenStore,
 )
 from services.account_activation_service import AccountActivationService
@@ -68,6 +72,16 @@ from services.account_deletion_adapters import (
 from services.account_deletion_feedback_service import AccountDeletionFeedbackService
 from services.account_deletion_service import AccountDeletionService
 from services.account_education_service import AccountEducationService
+from services.account_email_registration_adapters import (
+    AccountServiceRegistrationGateway,
+    BillingAccountRegistrationPolicyGateway,
+    CeleryEmailRegistrationNotificationGateway,
+    RateLimiterEmailRegistrationSendLimiter,
+    RedisEmailRegistrationSecurityGateway,
+    SecureEmailRegistrationCodeGenerator,
+    TokenManagerEmailRegistrationTokenGateway,
+)
+from services.account_email_registration_service import AccountEmailRegistrationService
 from services.account_initialization_service import AccountInitializationService
 from services.account_integration_service import AccountIntegrationService
 from services.account_password_hasher import LegacyAccountPasswordHasher
@@ -92,6 +106,8 @@ from services.feature_service import FeatureService
 from services.feature_service_gateway import FeatureServiceGateway
 from services.file_service import FileService
 from services.init_validation_service import InitValidationService
+from services.notification_gateway import BillingNotificationGateway
+from services.notification_service import NotificationService
 from services.notion_data_source_gateway import NotionDataSourceGateway
 from services.oauth_device_adapters import (
     DifyConfigOAuthDeviceSettings,
@@ -114,9 +130,16 @@ from services.recommended_app_catalog_gateway import (
     RemoteRecommendedAppCatalogGateway,
 )
 from services.recommended_app_query_service import RecommendedAppQueryService
+from services.retention.workflow_run.archive_download_adapters import (
+    dispatch_workflow_run_archive_download_task,
+    sign_workflow_run_archive_download_url,
+)
+from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
+from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock, RegisterServiceAccountProvisioner
 from services.setup_service import SetupService
+from services.step_by_step_tour_service import StepByStepTourService
 from services.tag_application_service import TagApplicationService
 from services.trial_app_usage import TrialAppUsageRecorder
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
@@ -124,6 +147,7 @@ from services.webapp_access_query_service import (
     WebAppAccessQueryService,
     WebAppAccessUnavailableError,
 )
+from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from services.workspace_member_query_service import WorkspaceMemberQueryService
 from services.workspace_member_role_resolver import DeploymentWorkspaceMemberRoleResolver
 from services.workspace_plan_gateway import DeploymentWorkspacePlanGateway
@@ -154,6 +178,7 @@ def _is_user_allowed_to_access_webapp(user_id: str, app_id: str) -> bool:
 class AccountServices:
     avatar: AccountAvatarService
     change_email: AccountChangeEmailService
+    email_registration: AccountEmailRegistrationService
     deletion: AccountDeletionService
     deletion_feedback: AccountDeletionFeedbackService
     education: AccountEducationService
@@ -182,12 +207,16 @@ class ApplicationServices:
     oauth_server: OAuthServerService
     oauth_device: OAuthDeviceApplicationService
     init_validation: InitValidationService
+    notifications: NotificationService
+    step_by_step_tour: StepByStepTourService
     partner_tenant_bindings: PartnerTenantBindingService
     recommended_app_queries: RecommendedAppQueryService
     trial_app_usage: TrialAppUsageRecorder
+    workflow_run_archives: WorkflowRunArchiveService
     workspace_queries: WorkspaceQueryService
     workspace_member_queries: WorkspaceMemberQueryService
     tags: TagApplicationService
+    workflow_statistics: WorkflowStatisticQueryService
 
     def resolve_data_source_oauth(self, provider: str) -> DataSourceOAuthService:
         service = self.data_source_oauth.get(provider)
@@ -307,6 +336,29 @@ def build_application_services(
                     billing_enabled=deployment_edition == DeploymentEdition.CLOUD,
                 ),
             ),
+            email_registration=AccountEmailRegistrationService(
+                accounts=accounts,
+                tokens=TokenManagerEmailRegistrationTokenGateway(),
+                codes=SecureEmailRegistrationCodeGenerator(),
+                notifications=CeleryEmailRegistrationNotificationGateway(),
+                send_limits=RateLimiterEmailRegistrationSendLimiter(
+                    rate_limiter=RateLimiter(
+                        prefix="email_register_rate_limit",
+                        max_attempts=1,
+                        time_window=60,
+                        redis_client=redis,
+                    )
+                ),
+                security=RedisEmailRegistrationSecurityGateway(
+                    redis=redis,
+                    verification_failure_limit=5,
+                    verification_lockout_duration=dify_config.EMAIL_REGISTER_LOCKOUT_DURATION,
+                ),
+                account_policy=BillingAccountRegistrationPolicyGateway(
+                    enabled=deployment_edition == DeploymentEdition.CLOUD,
+                ),
+                registration=AccountServiceRegistrationGateway(session_factory=database_client),
+            ),
             deletion=AccountDeletionService(
                 accounts=accounts,
                 memberships=workspace_query_repository,
@@ -362,6 +414,9 @@ def build_application_services(
             ),
             membership_cache=BillingWorkspaceMembershipCache(
                 enabled=deployment_edition == DeploymentEdition.CLOUD,
+            ),
+            member_access_sync=RBACWorkspaceMemberAccessSync(
+                enabled=dify_config.RBAC_ENABLED,
             ),
         ),
         app_definitions=AppDefinitionQueryService(
@@ -432,6 +487,16 @@ def build_application_services(
             validation_required=(deployment_edition != DeploymentEdition.CLOUD and bool(initialization_password)),
             expected_password=initialization_password,
         ),
+        notifications=NotificationService(
+            accounts=accounts,
+            notifications=BillingNotificationGateway(),
+        ),
+        step_by_step_tour=StepByStepTourService(
+            accounts=accounts,
+            states=SQLAlchemyStepByStepTourStateRepository(session_factory=database_client),
+            enabled=dify_config.ENABLE_STEP_BY_STEP_TOUR,
+            rollout_started_at=dify_config.STEP_BY_STEP_TOUR_ROLLOUT_STARTED_AT,
+        ),
         partner_tenant_bindings=PartnerTenantBindingService(
             sync_bindings=BillingService.sync_partner_tenants_bindings,
         ),
@@ -441,6 +506,12 @@ def build_application_services(
             trial_enabled=trial_app_enabled,
         ),
         trial_app_usage=TrialAppUsageRepository(session_factory=database_client),
+        workflow_run_archives=WorkflowRunArchiveService(
+            bundles=WorkflowRunArchiveBundleQueryRepository(session_factory=database_client),
+            tasks=WorkflowRunArchiveDownloadTaskCache(redis=redis),
+            dispatcher=dispatch_workflow_run_archive_download_task,
+            sign_download_url=sign_workflow_run_archive_download_url,
+        ),
         workspace_queries=WorkspaceQueryService(
             workspaces=workspace_query_repository,
             plans=DeploymentWorkspacePlanGateway(),
@@ -453,6 +524,11 @@ def build_application_services(
         ),
         tags=TagApplicationService(
             tags=TagRepository(session_factory=database_client),
+        ),
+        workflow_statistics=WorkflowStatisticQueryService(
+            workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(
+                session_maker=database_client,
+            ),
         ),
     )
 

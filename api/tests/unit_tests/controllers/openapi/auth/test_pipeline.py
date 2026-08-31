@@ -9,6 +9,7 @@ from constants.oauth_bearer import Scope, TokenType
 from controllers.openapi.auth.data import AuthData
 from controllers.openapi.auth.pipeline import AuthPipeline, PipelineRoute, PipelineRouter
 from enums import DeploymentEdition
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def _make_identity(
@@ -74,10 +75,7 @@ def test_guard_edition_gate_returns_404(app):
     router = _make_router()
 
     with app.test_request_context("/test"):
-        with patch(
-            "controllers.openapi.auth.pipeline.dify_config.DEPLOYMENT_EDITION",
-            DeploymentEdition.COMMUNITY,
-        ):
+        with config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY):
 
             @router.guard(scope=Scope.FULL, edition=frozenset({DeploymentEdition.ENTERPRISE}))
             def view(*, auth_data):
@@ -95,10 +93,7 @@ def test_guard_token_type_gate_returns_403(app):
             patch("controllers.openapi.auth.pipeline.extract_bearer", return_value="tok"),
             patch("controllers.openapi.auth.pipeline.get_authenticator") as mock_auth,
             patch("controllers.openapi.auth.pipeline.emit_wrong_surface"),
-            patch(
-                "controllers.openapi.auth.pipeline.dify_config.DEPLOYMENT_EDITION",
-                DeploymentEdition.COMMUNITY,
-            ),
+            config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY),
         ):
             identity = _fake_identity()
             identity.token_type = TokenType.OAUTH_EXTERNAL_SSO
@@ -119,10 +114,7 @@ def test_guard_unregistered_token_type_returns_403(app):
         with (
             patch("controllers.openapi.auth.pipeline.extract_bearer", return_value="tok"),
             patch("controllers.openapi.auth.pipeline.get_authenticator") as mock_auth,
-            patch(
-                "controllers.openapi.auth.pipeline.dify_config.DEPLOYMENT_EDITION",
-                DeploymentEdition.COMMUNITY,
-            ),
+            config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY),
         ):
             identity = _fake_identity()
             identity.token_type = TokenType.OAUTH_EXTERNAL_SSO
@@ -211,10 +203,7 @@ def test_router_rejects_token_type_on_wrong_edition(app):
         with (
             patch("controllers.openapi.auth.pipeline.extract_bearer", return_value="tok"),
             patch("controllers.openapi.auth.pipeline.get_authenticator") as mock_auth,
-            patch(
-                "controllers.openapi.auth.pipeline.dify_config.DEPLOYMENT_EDITION",
-                DeploymentEdition.COMMUNITY,
-            ),
+            config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY),
         ):
             identity = _make_identity(token_type=TokenType.OAUTH_EXTERNAL_SSO)
             mock_auth.return_value.authenticate.return_value = identity

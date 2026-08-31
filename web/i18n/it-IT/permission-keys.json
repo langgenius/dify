@@ -3,6 +3,7 @@
   "api_extension.manage": "Gestisci la configurazione delle estensioni API",
   "app.access_config": "Configura i permessi di accesso all'app",
   "app.acl.access_config": "Visualizza e gestisci i permessi di accesso",
+  "app.acl.access_point_manage": "Visualizza e gestisci i punti di accesso",
   "app.acl.delete": "Elimina app",
   "app.acl.deploy": "Distribuisci app",
   "app.acl.edit": "Modifica le informazioni e orchestra l'app",
