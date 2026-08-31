@@ -41,14 +41,16 @@ def make_trace(*, error: bool = False, publish_parent: bool = True) -> Canonical
     )
 
 
-def make_adapter(**config_kwargs) -> tuple[UnifiedOTelAdapter, MagicMock]:
+def make_adapter(config: OTelTracingConfig | None = None) -> tuple[UnifiedOTelAdapter, MagicMock]:
     from opentelemetry.sdk.trace.export import SpanExportResult
 
-    config = OTelTracingConfig(endpoint="http://collector:4318/v1/traces", **config_kwargs)
-    with patch.object(UnifiedOTelAdapter, "build_exporter", return_value=MagicMock()) as _:
+    if config is None:
+        config = OTelTracingConfig(endpoint="http://collector:4318/v1/traces")
+    exporter = MagicMock()
+    exporter.export.return_value = SpanExportResult.SUCCESS
+    with patch.object(UnifiedOTelAdapter, "build_exporter", return_value=exporter):
         adapter = UnifiedOTelAdapter(config)
-    adapter._exporter.export.return_value = SpanExportResult.SUCCESS
-    return adapter, adapter._exporter
+    return adapter, exporter
 
 
 def test_emit_exports_all_spans_in_order() -> None:
@@ -114,9 +116,12 @@ def test_emit_export_rejection_raises_and_does_not_publish() -> None:
 
 def test_adapter_builds_resource_and_headers_from_config() -> None:
     adapter, _ = make_adapter(
-        headers=json.dumps({"authorization": "Bearer tok"}),
-        service_name="dify-app-a",
-        resource_attributes={"deployment.environment": "prod"},
+        OTelTracingConfig(
+            endpoint="http://collector:4318/v1/traces",
+            headers=json.dumps({"authorization": "Bearer tok"}),
+            service_name="dify-app-a",
+            resource_attributes={"deployment.environment": "prod"},
+        )
     )
 
     with patch("core.ops.unified_trace.otel.OTLPSpanExporter") as exporter_cls:

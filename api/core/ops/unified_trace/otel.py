@@ -2,7 +2,7 @@
 
 import json
 import re
-from typing import Any
+from typing import Any, override
 
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
@@ -81,14 +81,17 @@ class UnifiedOTelAdapter(OTLPUnifiedAdapter):
     def __init__(self, config: OTelTracingConfig) -> None:
         super().__init__(config, endpoint=config.endpoint, scope_key=config.service_name)
 
+    @override
     def build_headers(self, config: OTelTracingConfig) -> dict[str, str]:
         return config.parsed_headers()
 
+    @override
     def build_resource(self, config: OTelTracingConfig) -> Resource:
         attributes = {"service.name": config.service_name}
         attributes.update(config.parsed_resource_attributes())
         return Resource(attributes=attributes)
 
+    @override
     def build_exporter(self, config: OTelTracingConfig) -> OTLPSpanExporter:
         # Pass the endpoint through untouched: users provide the full OTLP/HTTP trace URL
         return OTLPSpanExporter(endpoint=config.endpoint, headers=self.build_headers(config), timeout=30)

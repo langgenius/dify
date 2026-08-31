@@ -1,5 +1,6 @@
 """Phoenix adapter for the provider-neutral unified tracing runtime."""
 
+from typing import override
 from urllib.parse import urlparse
 
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
@@ -17,12 +18,14 @@ class UnifiedPhoenixAdapter(OTLPUnifiedAdapter):
     def __init__(self, config: PhoenixConfig) -> None:
         super().__init__(config, endpoint=config.endpoint, scope_key=config.project or "")
 
+    @override
     def build_headers(self, config: PhoenixConfig) -> dict[str, str]:
         return {
             "api_key": config.api_key or "",
             "authorization": f"Bearer {config.api_key or ''}",
         }
 
+    @override
     def build_resource(self, config: PhoenixConfig) -> Resource:
         return Resource(
             attributes={
@@ -31,6 +34,7 @@ class UnifiedPhoenixAdapter(OTLPUnifiedAdapter):
             }
         )
 
+    @override
     def build_exporter(self, config: PhoenixConfig) -> OTLPSpanExporter:
         parsed = urlparse(config.endpoint)
         endpoint = f"{parsed.scheme}://{parsed.netloc}{parsed.path.rstrip('/')}/v1/traces"
