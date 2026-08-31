@@ -25,8 +25,8 @@ import { responseStatus } from './request-error'
 import { DocumentResultsSurface } from './results/surface'
 import { useAuxiliaryTaskReadGuard } from './tasks/auxiliary-read-guard'
 import { ProcessingTasksDrawer } from './tasks/drawer'
-import { TaskEventObserver } from './tasks/event-observer'
 import { queryKeyMatchesKnowledgeSpace } from './tasks/recovery'
+import { TaskRuntimeObservers } from './tasks/runtime-observers'
 import { useTaskRuntime } from './tasks/use-task-runtime'
 
 export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
@@ -101,14 +101,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     acceptTaskSnapshot: handleTaskUpdated,
     baseTasks,
     drawerTasks,
-    handleTaskEvent,
-    handleTaskEventCursor,
-    handleTaskStreamPermissionDenied,
-    observerGeneration,
-    observerVersion,
+    observers,
     resetFailedPollBlocks,
-    runtimeState: taskRuntimeState,
-    streamedActiveTasks,
     taskPermissionDenied,
     taskProgressStore,
     tasksQuery,
@@ -190,22 +184,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   return (
     <>
-      {streamedActiveTasks.map((task) => {
-        const taskObserverVersion = observerVersion(task)
-        return (
-          <TaskEventObserver
-            key={`${task.id}:${observerGeneration(task.id)}`}
-            documentId={task.documentId}
-            knowledgeSpaceId={knowledgeSpaceId}
-            lastEventId={taskRuntimeState.eventCursors.get(task.id)}
-            onEvent={handleTaskEvent}
-            onLastEventIdChange={handleTaskEventCursor}
-            onPermissionDenied={handleTaskStreamPermissionDenied}
-            taskId={task.id}
-            taskVersion={taskObserverVersion}
-          />
-        )
-      })}
+      <TaskRuntimeObservers knowledgeSpaceId={knowledgeSpaceId} observers={observers} />
       <DocumentResultsSurface
         canDownload={canDownload}
         ensureModelReady={ensureModelReady}

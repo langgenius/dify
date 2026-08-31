@@ -4,6 +4,7 @@ import type { BackgroundTask, DocumentProcessingTask } from '../models'
 import type { AuxiliaryTaskReadGuard } from './auxiliary-read-guard'
 import type { ProcessingTaskEvent } from './events'
 import type { AuxiliaryTaskReadDenial } from './recovery'
+import type { TaskRuntimeObserverContract } from './runtime-observers'
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import {
   useCallback,
@@ -717,19 +718,23 @@ export function useTaskRuntime({
     [cancelTerminalReconciliation, knowledgeSpaceId],
   )
 
+  const observers: TaskRuntimeObserverContract = {
+    eventCursors: runtimeState.eventCursors,
+    generation: (taskId) => runtimeState.observerGenerations[taskId] ?? 0,
+    onEvent: handleTaskEvent,
+    onEventCursorChange: handleTaskEventCursor,
+    onPermissionDenied: handleTaskStreamPermissionDenied,
+    tasks: streamedActiveTasks,
+    version: observerVersion,
+  }
+
   return {
     acceptTaskSnapshot,
     activeTasks,
     baseTasks,
     drawerTasks,
-    handleTaskEvent,
-    handleTaskEventCursor,
-    handleTaskStreamPermissionDenied,
-    observerGeneration: (taskId: string) => runtimeState.observerGenerations[taskId] ?? 0,
-    observerVersion,
+    observers,
     resetFailedPollBlocks: () => blockedFailedTaskPollVersionsRef.current.clear(),
-    runtimeState,
-    streamedActiveTasks,
     taskProgressStore,
     taskPermissionDenied,
     tasksQuery,
