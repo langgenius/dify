@@ -6,11 +6,6 @@ import { responseStatus } from '../request-error'
 export const TASK_PAGE_SIZE = 100
 export const MAX_AUTO_CURSOR_PAGES = 20
 
-export type TerminalTaskPin = {
-  observedAt: string
-  taskListGeneration: number
-}
-
 export type TrustedActiveOverride = {
   taskListGeneration: number
   updatedAt: string
@@ -87,17 +82,5 @@ export function normalizedTaskSnapshot(task: DocumentProcessingTask): DocumentPr
     ...task,
     errorCode: task.errorCode,
     errorMessage: task.errorMessage,
-  }
-}
-
-export function mergeTaskOverride(
-  task: DocumentProcessingTask,
-  override: Partial<DocumentProcessingTask>,
-): DocumentProcessingTask {
-  const stateChanged = override.state !== undefined && override.state !== task.state
-  return {
-    ...task,
-    ...(stateChanged ? { canCancel: undefined, canRetry: undefined } : {}),
-    ...override,
   }
 }
