@@ -871,6 +871,7 @@ export type KnowledgeFsSourceWorkflowResponse = {
     | 'SOURCE_CREDENTIAL_MUTATION_FAILED'
     | 'SOURCE_CREDENTIAL_TEST_FAILED'
     | 'SOURCE_CREDENTIAL_UNAVAILABLE'
+    | 'SOURCE_DOCUMENT_COMPILATION_FAILED'
     | 'SOURCE_DOCUMENT_MATERIALIZATION_FAILED'
     | 'SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED'
     | 'SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID'
@@ -968,7 +969,20 @@ export type KnowledgeFsSourceUpdatePayload = {
   providerParameters?: {
     [key: string]: boolean | number | string
   } | null
+  selection?:
+    | ({
+        kind: 'website_crawl'
+      } & KnowledgeFsSourceEditWebsiteSelectionPayload)
+    | ({
+        kind: 'online_document'
+      } & KnowledgeFsSourceEditOnlineDocumentSelectionPayload)
+    | ({
+        kind: 'online_drive'
+      } & KnowledgeFsSourceEditOnlineDriveSelectionPayload)
+    | null
   status?: 'active' | 'disabled' | 'error' | 'syncing' | null
+  syncAfterUpdate?: boolean | null
+  syncPolicy?: KnowledgeFsSourceEditSyncPolicyPayload | null
   uri?: string | null
 }
 
@@ -976,6 +990,9 @@ export type KnowledgeFsAsyncSourceImportPayload =
   | ({
       kind: 'crawl-preview-selection'
     } & KnowledgeFsAsyncCrawlPreviewImportPayload)
+  | ({
+      kind: 'website-crawl-import'
+    } & KnowledgeFsAsyncWebsiteCrawlImportPayload)
   | ({
       kind: 'online-document-import'
     } & KnowledgeFsAsyncOnlineDocumentImportPayload)
@@ -1081,6 +1098,7 @@ export type KnowledgeFsSourceCredentialTestResponse = {
     | 'SOURCE_CREDENTIAL_MUTATION_FAILED'
     | 'SOURCE_CREDENTIAL_TEST_FAILED'
     | 'SOURCE_CREDENTIAL_UNAVAILABLE'
+    | 'SOURCE_DOCUMENT_COMPILATION_FAILED'
     | 'SOURCE_DOCUMENT_MATERIALIZATION_FAILED'
     | 'SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED'
     | 'SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID'
@@ -1436,6 +1454,7 @@ export type KnowledgeFsPublicFailureResponse = {
     | 'SOURCE_CREDENTIAL_MUTATION_FAILED'
     | 'SOURCE_CREDENTIAL_TEST_FAILED'
     | 'SOURCE_CREDENTIAL_UNAVAILABLE'
+    | 'SOURCE_DOCUMENT_COMPILATION_FAILED'
     | 'SOURCE_DOCUMENT_MATERIALIZATION_FAILED'
     | 'SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED'
     | 'SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID'
@@ -1856,10 +1875,37 @@ export type KnowledgeFsCrawlPreviewPageResponse = {
   title?: string | null
 }
 
+export type KnowledgeFsSourceEditWebsiteSelectionPayload = {
+  kind: 'website_crawl'
+  sourceUrls: Array<string>
+}
+
+export type KnowledgeFsSourceEditOnlineDocumentSelectionPayload = {
+  items: Array<KnowledgeFsOnlineDocumentWorkflowImportItemPayload>
+  kind: 'online_document'
+}
+
+export type KnowledgeFsSourceEditOnlineDriveSelectionPayload = {
+  items: Array<KnowledgeFsOnlineDriveWorkflowImportItemPayload>
+  kind: 'online_drive'
+}
+
+export type KnowledgeFsSourceEditSyncPolicyPayload = {
+  customIntervalSeconds?: number | null
+  enabled: boolean
+  mode: 'custom' | 'interval' | 'manual'
+}
+
 export type KnowledgeFsAsyncCrawlPreviewImportPayload = {
   kind: 'crawl-preview-selection'
   pageIds: Array<string>
   previewWorkflowId: string
+  syncPolicy: KnowledgeFsDeferredSyncPolicyPayload
+}
+
+export type KnowledgeFsAsyncWebsiteCrawlImportPayload = {
+  kind: 'website-crawl-import'
+  sourceUrls: Array<string>
   syncPolicy: KnowledgeFsDeferredSyncPolicyPayload
 }
 
@@ -1944,6 +1990,7 @@ export type KnowledgeFsSourceImportFailureResponse = {
     | 'SOURCE_CREDENTIAL_MUTATION_FAILED'
     | 'SOURCE_CREDENTIAL_TEST_FAILED'
     | 'SOURCE_CREDENTIAL_UNAVAILABLE'
+    | 'SOURCE_DOCUMENT_COMPILATION_FAILED'
     | 'SOURCE_DOCUMENT_MATERIALIZATION_FAILED'
     | 'SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED'
     | 'SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID'

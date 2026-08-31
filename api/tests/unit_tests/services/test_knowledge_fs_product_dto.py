@@ -1289,6 +1289,23 @@ def test_source_workflow_response_exposes_only_validated_terminal_failures() -> 
     assert response.failure.message == "A service required by KnowledgeFS is temporarily unavailable."
     assert "provider-secret" not in response.model_dump_json()
 
+    compilation_failure = KnowledgeFSSourceWorkflowResponse.model_validate(
+        {
+            **payload,
+            "failure": {
+                "category": "dependency",
+                "code": "SOURCE_DOCUMENT_COMPILATION_FAILED",
+                "message": "provider-secret",
+                "retryPolicy": "manual",
+                "stage": "selection-frozen",
+            },
+        }
+    )
+    assert compilation_failure.last_error_code == "SOURCE_DOCUMENT_COMPILATION_FAILED"
+    assert compilation_failure.failure is not None
+    assert compilation_failure.failure.message == "A service required by KnowledgeFS is temporarily unavailable."
+    assert "provider-secret" not in compilation_failure.model_dump_json()
+
 
 def test_source_result_dtos_never_forward_untrusted_success_payload_messages() -> None:
     credential = KnowledgeFSSourceCredentialTestResponse.model_validate(

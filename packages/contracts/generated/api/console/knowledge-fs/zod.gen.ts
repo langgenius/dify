@@ -480,20 +480,6 @@ export const zKnowledgeFsSourceDeletePayload = z.object({
 })
 
 /**
- * KnowledgeFSSourceUpdatePayload
- */
-export const zKnowledgeFsSourceUpdatePayload = z.object({
-  expectedVersion: z.int().gte(1).nullish(),
-  metadata: z.record(z.string(), z.unknown()).nullish(),
-  name: z.string().min(1).max(200).nullish(),
-  providerParameters: z
-    .record(z.string(), z.union([z.boolean(), z.number(), z.string()]))
-    .nullish(),
-  status: z.enum(['active', 'disabled', 'error', 'syncing']).nullish(),
-  uri: z.string().min(1).max(4096).nullish(),
-})
-
-/**
  * KnowledgeFSCrawlImportPayload
  */
 export const zKnowledgeFsCrawlImportPayload = z.object({
@@ -971,6 +957,7 @@ export const zKnowledgeFsPublicFailureResponse = z.object({
     'SOURCE_CREDENTIAL_MUTATION_FAILED',
     'SOURCE_CREDENTIAL_TEST_FAILED',
     'SOURCE_CREDENTIAL_UNAVAILABLE',
+    'SOURCE_DOCUMENT_COMPILATION_FAILED',
     'SOURCE_DOCUMENT_MATERIALIZATION_FAILED',
     'SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED',
     'SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID',
@@ -1073,6 +1060,7 @@ export const zKnowledgeFsSourceWorkflowResponse = z.object({
       'SOURCE_CREDENTIAL_MUTATION_FAILED',
       'SOURCE_CREDENTIAL_TEST_FAILED',
       'SOURCE_CREDENTIAL_UNAVAILABLE',
+      'SOURCE_DOCUMENT_COMPILATION_FAILED',
       'SOURCE_DOCUMENT_MATERIALIZATION_FAILED',
       'SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED',
       'SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID',
@@ -1187,6 +1175,7 @@ export const zKnowledgeFsSourceCredentialTestResponse = z.object({
       'SOURCE_CREDENTIAL_MUTATION_FAILED',
       'SOURCE_CREDENTIAL_TEST_FAILED',
       'SOURCE_CREDENTIAL_UNAVAILABLE',
+      'SOURCE_DOCUMENT_COMPILATION_FAILED',
       'SOURCE_DOCUMENT_MATERIALIZATION_FAILED',
       'SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED',
       'SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID',
@@ -1858,6 +1847,23 @@ export const zKnowledgeFsCrawlPreviewPageListResponse = z.object({
 })
 
 /**
+ * KnowledgeFSSourceEditWebsiteSelectionPayload
+ */
+export const zKnowledgeFsSourceEditWebsiteSelectionPayload = z.object({
+  kind: z.literal('website_crawl'),
+  sourceUrls: z.array(z.string()).min(1).max(200),
+})
+
+/**
+ * KnowledgeFSSourceEditSyncPolicyPayload
+ */
+export const zKnowledgeFsSourceEditSyncPolicyPayload = z.object({
+  customIntervalSeconds: z.int().gte(3600).lte(2592000).nullish(),
+  enabled: z.boolean(),
+  mode: z.enum(['custom', 'interval', 'manual']),
+})
+
+/**
  * KnowledgeFSSourceImportPagePayload
  */
 export const zKnowledgeFsSourceImportPagePayload = z.object({
@@ -1935,6 +1941,7 @@ export const zKnowledgeFsSourceImportFailureResponse = z.object({
     'SOURCE_CREDENTIAL_MUTATION_FAILED',
     'SOURCE_CREDENTIAL_TEST_FAILED',
     'SOURCE_CREDENTIAL_UNAVAILABLE',
+    'SOURCE_DOCUMENT_COMPILATION_FAILED',
     'SOURCE_DOCUMENT_MATERIALIZATION_FAILED',
     'SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED',
     'SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID',
@@ -2211,6 +2218,14 @@ export const zKnowledgeFsInitialOnlineDocumentSourcePayload = z.object({
 })
 
 /**
+ * KnowledgeFSSourceEditOnlineDocumentSelectionPayload
+ */
+export const zKnowledgeFsSourceEditOnlineDocumentSelectionPayload = z.object({
+  items: z.array(zKnowledgeFsOnlineDocumentWorkflowImportItemPayload).min(1).max(200),
+  kind: z.literal('online_document'),
+})
+
+/**
  * KnowledgeFSOnlineDocumentWorkflowImportPayload
  */
 export const zKnowledgeFsOnlineDocumentWorkflowImportPayload = z.object({
@@ -2245,6 +2260,39 @@ export const zKnowledgeFsInitialOnlineDriveSourcePayload = z.object({
   providerDisplayName: z.string().min(1).max(255).nullish(),
   selection: z.array(zKnowledgeFsOnlineDriveWorkflowImportItemPayload).min(1).max(200),
   sync_policy: z.enum(['custom', 'daily', 'manual']).optional().default('daily'),
+})
+
+/**
+ * KnowledgeFSSourceEditOnlineDriveSelectionPayload
+ */
+export const zKnowledgeFsSourceEditOnlineDriveSelectionPayload = z.object({
+  items: z.array(zKnowledgeFsOnlineDriveWorkflowImportItemPayload).min(1).max(200),
+  kind: z.literal('online_drive'),
+})
+
+/**
+ * KnowledgeFSSourceUpdatePayload
+ */
+export const zKnowledgeFsSourceUpdatePayload = z.object({
+  expectedVersion: z.int().gte(1).nullish(),
+  metadata: z.record(z.string(), z.unknown()).nullish(),
+  name: z.string().min(1).max(200).nullish(),
+  providerParameters: z
+    .record(z.string(), z.union([z.boolean(), z.number(), z.string()]))
+    .nullish(),
+  selection: z
+    .discriminatedUnion('kind', [
+      zKnowledgeFsSourceEditWebsiteSelectionPayload.extend({ kind: z.literal('website_crawl') }),
+      zKnowledgeFsSourceEditOnlineDocumentSelectionPayload.extend({
+        kind: z.literal('online_document'),
+      }),
+      zKnowledgeFsSourceEditOnlineDriveSelectionPayload.extend({ kind: z.literal('online_drive') }),
+    ])
+    .nullish(),
+  status: z.enum(['active', 'disabled', 'error', 'syncing']).nullish(),
+  syncAfterUpdate: z.boolean().nullish(),
+  syncPolicy: zKnowledgeFsSourceEditSyncPolicyPayload.nullish(),
+  uri: z.string().min(1).max(4096).nullish(),
 })
 
 /**
@@ -2745,6 +2793,15 @@ export const zKnowledgeFsAsyncCrawlPreviewImportPayload = z.object({
 })
 
 /**
+ * KnowledgeFSAsyncWebsiteCrawlImportPayload
+ */
+export const zKnowledgeFsAsyncWebsiteCrawlImportPayload = z.object({
+  kind: z.literal('website-crawl-import'),
+  sourceUrls: z.array(z.string()).min(1).max(200),
+  syncPolicy: zKnowledgeFsDeferredSyncPolicyPayload,
+})
+
+/**
  * KnowledgeFSAsyncOnlineDocumentImportPayload
  */
 export const zKnowledgeFsAsyncOnlineDocumentImportPayload = z.object({
@@ -2767,6 +2824,7 @@ export const zKnowledgeFsAsyncOnlineDriveImportPayload = z.object({
  */
 export const zKnowledgeFsAsyncSourceImportPayload = z.discriminatedUnion('kind', [
   zKnowledgeFsAsyncCrawlPreviewImportPayload.extend({ kind: z.literal('crawl-preview-selection') }),
+  zKnowledgeFsAsyncWebsiteCrawlImportPayload.extend({ kind: z.literal('website-crawl-import') }),
   zKnowledgeFsAsyncOnlineDocumentImportPayload.extend({
     kind: z.literal('online-document-import'),
   }),

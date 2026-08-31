@@ -45,6 +45,12 @@ describe("KnowledgeFS public errors", () => {
   });
 
   it("uses safe family fallbacks and bounds public parameters", () => {
+    expect(knowledgeFsFailureForCode("SOURCE_DOCUMENT_COMPILATION_FAILED")).toMatchObject({
+      action: "retry",
+      category: "dependency",
+      code: "SOURCE_DOCUMENT_COMPILATION_FAILED",
+      retryPolicy: "manual",
+    });
     expect(
       knowledgeFsFailureForCode("SOURCE_SYNC_CURSOR_LOOP", {
         parameters: {

@@ -407,6 +407,13 @@ export const KNOWLEDGE_FS_ERROR_CATALOG = {
     422,
     "configure_source",
   ),
+  SOURCE_DOCUMENT_COMPILATION_FAILED: descriptor(
+    "dependency",
+    "The source document could not be compiled.",
+    "manual",
+    503,
+    "retry",
+  ),
   SOURCE_DOCUMENT_MATERIALIZATION_FAILED: descriptor(
     "dependency",
     "The source document could not be prepared for import.",
