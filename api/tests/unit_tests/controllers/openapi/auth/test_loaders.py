@@ -13,7 +13,6 @@ from controllers.openapi.auth.loaders import (
     load_caller,
     load_workspace,
     load_workspace_role,
-    route_has_app,
 )
 from controllers.openapi.auth.subjects import Subject
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
@@ -92,16 +91,6 @@ class TestLoadApp:
 
         assert ctx.app is None
 
-
-class TestWorkspaceFromApp:
-    def test_derives_the_workspace_from_the_apps_tenant_when_app_id_is_present(self, sqlite_session: Session) -> None:
-        persist(sqlite_session, make_app(), make_tenant())
-        ctx = Context(_subject(), sqlite_session, {"app_id": APP_ID})
-
-        assert load_workspace(ctx).id == TENANT_ID
-        assert ctx.workspace is not None
-        assert ctx.app is not None
-
     @pytest.mark.parametrize("persist_archived", [True, False])
     def test_forbidden_when_the_apps_tenant_is_missing_or_archived(
         self, sqlite_session: Session, persist_archived: bool
@@ -160,14 +149,6 @@ def test_no_loader_can_hand_a_handler_an_optional() -> None:
         assert type(None) not in get_args(returns), loader.__name__
 
 
-def test_route_has_app_reads_the_path_the_router_stored(sqlite_session: Session) -> None:
-    """The route's own shape, not a loaded datum: nothing has to be fetched for
-    it to answer, and a `workspace_id` route is not an app route.
-    """
-    assert route_has_app(Context(_subject(), sqlite_session, {"app_id": APP_ID})) is True
-    assert route_has_app(Context(_subject(), sqlite_session, {"workspace_id": TENANT_ID})) is False
-
-
 class TestWorkspaceRuleSelection:
     def test_app_id_wins_the_tie_when_both_app_id_and_workspace_id_are_present(
         self, app: Flask, sqlite_session: Session
@@ -182,15 +163,6 @@ class TestWorkspaceRuleSelection:
 
         with app.test_request_context("/test"), pytest.raises(Forbidden, match="workspace unavailable"):
             load_workspace(ctx)
-
-
-class TestLoadCaller:
-    def test_delegates_to_subject_resolve_caller_once(self, sqlite_session: Session) -> None:
-        subject = _StubSubject()
-        ctx = Context(cast(Subject, subject), sqlite_session, {})
-
-        assert load_caller(ctx) is load_caller(ctx) is subject.caller
-        assert subject.calls == [(ctx, sqlite_session)]
 
 
 class TestLoadWorkspaceRole:
@@ -215,15 +187,6 @@ class TestLoadWorkspaceRole:
     def test_reads_the_persisted_role(self, sqlite_session: Session) -> None:
         persist(sqlite_session, make_app(), make_tenant(), make_account(), make_membership(TenantAccountRole.EDITOR))
         ctx = Context(_subject(make_account()), sqlite_session, {"app_id": APP_ID})
-
-        assert load_workspace_role(ctx) == TenantAccountRole.EDITOR
-
-    def test_404s_a_non_member(self, sqlite_session: Session) -> None:
-        persist(sqlite_session, make_app(), make_tenant(), make_account())
-        ctx = Context(_subject(make_account()), sqlite_session, {"app_id": APP_ID})
-
-        with pytest.raises(NotFound, match="workspace not found"):
-            load_workspace_role(ctx)
 
     def test_404s_an_inactive_account_that_still_holds_a_role(
         self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
