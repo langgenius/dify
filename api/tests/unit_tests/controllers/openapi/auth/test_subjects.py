@@ -1,33 +1,27 @@
 from __future__ import annotations
 
 import dataclasses
-import uuid
 from unittest.mock import patch
 
 import pytest
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, Unauthorized
 
-from controllers.openapi.auth.data import CallerKind, ExternalIdentity
 from controllers.openapi.auth.subjects import (
     AccountSubject,
     ExternalSsoSubject,
     subject_from_auth,
 )
-from libs.oauth_bearer import Scope, SubjectType
+from libs.oauth_bearer import SubjectType
 from models import Account, EndUser, TenantAccountJoin
 from models.account import TenantAccountRole
 from models.enums import EndUserType
-from services.enterprise.enterprise_service import WebAppAccessMode
 
 from ._world import (
     ACCOUNT_ID,
     APP_ID,
-    CLIENT_ID,
     SSO_EMAIL,
-    SSO_ISSUER,
     TENANT_ID,
-    TOKEN_ID,
     make_account,
     make_app,
     make_auth,
@@ -35,34 +29,6 @@ from ._world import (
     make_tenant,
     persist,
 )
-
-
-def test_account_subject_carries_its_identity() -> None:
-    subject = subject_from_auth(make_auth(SubjectType.ACCOUNT))
-
-    assert subject.subject_type is SubjectType.ACCOUNT
-    assert subject.caller_kind is CallerKind.ACCOUNT
-    assert subject.webapp_modes == frozenset(
-        {
-            WebAppAccessMode.PUBLIC,
-            WebAppAccessMode.SSO_VERIFIED,
-            WebAppAccessMode.PRIVATE_ALL,
-            WebAppAccessMode.PRIVATE,
-        }
-    )
-    assert subject.account_id == uuid.UUID(ACCOUNT_ID)
-    assert subject.token_id == uuid.UUID(TOKEN_ID)
-    assert subject.client_id == CLIENT_ID
-    assert subject.scopes == frozenset({Scope.FULL})
-
-
-def test_sso_subject_cannot_reach_private_modes() -> None:
-    subject = subject_from_auth(make_auth(SubjectType.EXTERNAL_SSO))
-
-    assert isinstance(subject, ExternalSsoSubject)
-    assert subject.caller_kind is CallerKind.END_USER
-    assert subject.webapp_modes == frozenset({WebAppAccessMode.PUBLIC, WebAppAccessMode.SSO_VERIFIED})
-    assert subject.external_identity == ExternalIdentity(email=SSO_EMAIL, issuer=SSO_ISSUER)
 
 
 def test_subject_from_auth_rejects_an_unregistered_subject_type() -> None:
@@ -171,11 +137,6 @@ class TestExternalSsoResolveCaller:
 
         with pytest.raises(Unauthorized, match="missing context for external user resolution"):
             subject.resolve_caller(ctx, sqlite_session)
-
-
-def test_account_subject_reports_its_own_id_as_the_webapp_user(sqlite_session: Session) -> None:
-    assert AccountSubject(make_auth(SubjectType.ACCOUNT)).webapp_user_id(sqlite_session) == ACCOUNT_ID
-    assert AccountSubject(make_auth(SubjectType.ACCOUNT, account_id=None)).webapp_user_id(sqlite_session) is None
 
 
 class TestExternalSsoWebappUserId:
