@@ -59,11 +59,6 @@
       "count": 3
     }
   },
-  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/field.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/provider-panel.tsx": {
     "eslint-react/static-components": {
       "count": 2
@@ -536,14 +531,6 @@
   "web/app/components/app/workflow-log/list.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 2
-    }
-  },
-  "web/app/components/apps/import-from-marketplace-template-modal.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/base/agent-log-modal/detail.tsx": {
@@ -1071,11 +1058,6 @@
   "web/app/components/base/icons/src/public/avatar/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
-    }
-  },
-  "web/app/components/base/icons/src/public/billing/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 4
     }
   },
   "web/app/components/base/icons/src/public/common/index.ts": {
@@ -1770,29 +1752,6 @@
   "web/app/components/billing/plan/assets/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
-    }
-  },
-  "web/app/components/billing/pricing/assets/index.tsx": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 12
-    }
-  },
-  "web/app/components/billing/pricing/plan-switcher/plan-range-switcher.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
-    "react/only-export-components": {
-      "count": 1
-    }
-  },
-  "web/app/components/billing/pricing/plans/self-hosted-plan-item/button.tsx": {
-    "eslint-react/static-components": {
-      "count": 2
-    }
-  },
-  "web/app/components/billing/pricing/types.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
     }
   },
   "web/app/components/datasets/chunk.tsx": {

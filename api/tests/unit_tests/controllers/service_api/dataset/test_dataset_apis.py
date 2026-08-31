@@ -10,7 +10,7 @@ from inspect import unwrap
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
+from flask import Flask, request
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -462,7 +462,7 @@ class TestDatasetApiPatch:
         dataset: Dataset,
         controller_session: Session,
     ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetApi
+        from controllers.service_api.dataset.dataset import DatasetApi, DatasetUpdatePayload
 
         dataset.name = "Updated Dataset"
         mock_dataset_svc.get_dataset.return_value = dataset
@@ -481,8 +481,12 @@ class TestDatasetApiPatch:
             json=payload,
         ):
             api = DatasetApi()
+            # `patch` is wrapped in @model_validate, so the unwrapped view expects
+            # the validated model where the decorator would have injected it.
+            validated_payload = DatasetUpdatePayload.model_validate(request.get_json() or {})
             response, status = unwrap(api.patch)(
                 api,
+                validated_payload,
                 controller_session,
                 _=dataset.tenant_id,
                 dataset_id=dataset.id,

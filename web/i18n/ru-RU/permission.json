@@ -42,6 +42,7 @@
   "accessRule.summary_one": "{{count}} набор прав",
   "accessRule.summary_other": "{{count}} наборов прав",
   "accessRule.updated": "Правило доступа успешно обновлено",
+  "accessRule.workspaceOwner": "Владелец рабочего пространства",
   "common.duplicateAction": "Дублировать",
   "group.app": "Приложения",
   "group.app_acl": "Права доступа к приложению",

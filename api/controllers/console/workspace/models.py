@@ -226,6 +226,8 @@ class DefaultModelApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(ParserPostDefault)
@@ -273,6 +275,8 @@ class ModelProviderModelApi(Resource):
     @console_ns.response(200, "Model updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(ParserPostModels)
@@ -320,6 +324,8 @@ class ModelProviderModelApi(Resource):
     @console_ns.response(204, "Model deleted successfully")
     @setup_required
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(ParserDeleteModels)

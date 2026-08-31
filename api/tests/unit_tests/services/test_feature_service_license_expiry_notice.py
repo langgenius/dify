@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import pytest
 
 from enums import DeploymentEdition
@@ -15,14 +17,12 @@ def test_license_model_defaults_license_expiry_notice_disabled() -> None:
 
 @pytest.mark.parametrize("enabled", [True, False])
 def test_get_license_non_enterprise_ignores_expiry_notice_config(
-    monkeypatch: pytest.MonkeyPatch, enabled: bool
+    config_overrides: Callable[..., None], enabled: bool
 ) -> None:
     """Non-enterprise deployments have no license, so the env toggle never turns the notice on."""
-    monkeypatch.setattr(feature_service_module.dify_config, "ENABLE_LICENSE_EXPIRY_NOTICE", enabled)
-    monkeypatch.setattr(
-        feature_service_module.dify_config,
-        "DEPLOYMENT_EDITION",
-        DeploymentEdition.COMMUNITY,
+    config_overrides(
+        ENABLE_LICENSE_EXPIRY_NOTICE=enabled,
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
     )
 
     result = FeatureService.get_license()
@@ -32,14 +32,12 @@ def test_get_license_non_enterprise_ignores_expiry_notice_config(
 
 @pytest.mark.parametrize("enabled", [True, False])
 def test_get_license_enterprise_reads_license_expiry_notice_enabled(
-    monkeypatch: pytest.MonkeyPatch, enabled: bool
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], enabled: bool
 ) -> None:
     """The enterprise-sourced license carries the env-resolved notice flag alongside its real status."""
-    monkeypatch.setattr(feature_service_module.dify_config, "ENABLE_LICENSE_EXPIRY_NOTICE", enabled)
-    monkeypatch.setattr(
-        feature_service_module.dify_config,
-        "DEPLOYMENT_EDITION",
-        DeploymentEdition.ENTERPRISE,
+    config_overrides(
+        ENABLE_LICENSE_EXPIRY_NOTICE=enabled,
+        DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE,
     )
     monkeypatch.setattr(
         feature_service_module.EnterpriseService,

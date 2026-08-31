@@ -42,6 +42,7 @@
   "accessRule.summary_one": "{{count}} अनुमति सेट",
   "accessRule.summary_other": "{{count}} अनुमति सेट",
   "accessRule.updated": "एक्सेस नियम सफलतापूर्वक अपडेट किया गया",
+  "accessRule.workspaceOwner": "वर्कस्पेस का मालिक",
   "common.duplicateAction": "डुप्लिकेट करें",
   "group.app": "अनुप्रयोग",
   "group.app_acl": "ऐप एक्सेस अनुमतियाँ",

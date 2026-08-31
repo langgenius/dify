@@ -1,5 +1,6 @@
 import { QueryClient } from '@tanstack/react-query'
 import { render } from '@testing-library/react'
+import { REGISTRATION_SUCCESS_STORAGE_KEY } from '@/app/components/base/amplitude/registration-session-state'
 
 let queryClient: QueryClient
 
@@ -55,9 +56,13 @@ vi.mock('../cloud-analytics-layout-boundary', () => ({
   ),
 }))
 
-async function renderCloudAnalytics() {
+async function getCloudAnalyticsResult() {
   const { CloudAnalytics } = await import('../cloud-analytics')
-  return render(await CloudAnalytics())
+  return CloudAnalytics()
+}
+
+async function renderCloudAnalytics() {
+  return render(await getCloudAnalyticsResult())
 }
 
 describe('CloudAnalytics', () => {
@@ -68,6 +73,7 @@ describe('CloudAnalytics', () => {
     configState.isProd = true
     configState.webPrefix = 'https://cloud.dify.ai'
     queryClient = new QueryClient()
+    window.sessionStorage.clear()
     queryClient.setQueryData(systemFeaturesQueryKey, { deployment_edition: 'CLOUD' })
     mockHeadersGet.mockImplementation((name: string) => {
       const values: Record<string, string> = {
@@ -94,9 +100,13 @@ describe('CloudAnalytics', () => {
       return values[name] ?? null
     })
 
-    const { queryByTestId } = await renderCloudAnalytics()
+    const result = await getCloudAnalyticsResult()
+    const { queryByTestId } = render(result)
 
     expect(queryByTestId('cloud-analytics-layout-boundary')).toBeNull()
+    expect(result).not.toBeNull()
+    const { getAnalyticsConsent } = await import('../consent-store')
+    expect(getAnalyticsConsent()).toBe('disabled')
   })
 
   it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
@@ -109,11 +119,16 @@ describe('CloudAnalytics', () => {
     },
   )
 
-  it('does not render when System Features are unavailable', async () => {
+  it('suspends analytics without deleting pending registration state when System Features are unavailable', async () => {
     queryClient.removeQueries({ queryKey: systemFeaturesQueryKey })
+    window.sessionStorage.setItem(REGISTRATION_SUCCESS_STORAGE_KEY, 'pending-marker')
 
-    const { queryByTestId } = await renderCloudAnalytics()
+    const result = await getCloudAnalyticsResult()
+    const { queryByTestId } = render(result)
 
     expect(queryByTestId('cloud-analytics-layout-boundary')).toBeNull()
+    const { getAnalyticsConsent } = await import('../consent-store')
+    expect(getAnalyticsConsent()).toBe('unknown')
+    expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBe('pending-marker')
   })
 })

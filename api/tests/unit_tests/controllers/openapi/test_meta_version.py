@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from enums import DeploymentEdition
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def test_version_endpoint_returns_200_without_auth(openapi_app):
@@ -35,9 +36,7 @@ def test_version_endpoint_ignores_bearer_header(openapi_app):
 
 
 def test_version_endpoint_reflects_edition_config(openapi_app, monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
-
-    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 
     client = openapi_app.test_client()
     response = client.get("/openapi/v1/_version")
@@ -47,9 +46,7 @@ def test_version_endpoint_reflects_edition_config(openapi_app, monkeypatch: pyte
 
 
 def test_version_endpoint_reflects_enterprise_edition(openapi_app, monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
-
-    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
 
     client = openapi_app.test_client()
     response = client.get("/openapi/v1/_version")

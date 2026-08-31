@@ -17,6 +17,7 @@ Run package scripts from `cli/`:
 - Source CLI: `pnpm dev <command> [args...]`
 - Tests: `pnpm test`
 - Build: `pnpm build`
+- Build a local binary: `pnpm build:bin:local` (pins `DIFYCTL_CHANNEL=dev` so it does not self-report the release channel)
 - Regenerate and verify the registry: `pnpm tree:gen` and `pnpm tree:check`
 
 Run the scoped static check from the repository root with `vp check cli`.

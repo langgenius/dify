@@ -388,11 +388,12 @@ describe('SnippetList', () => {
     expect(searchInput).toHaveFocus()
   })
 
-  it('updates the creator query state as a multi creator filter', () => {
+  it('updates the creator query state as a multi creator filter', async () => {
+    const user = userEvent.setup()
     renderList()
 
-    fireEvent.click(screen.getByRole('button', { name: 'app.studio.filters.creators' }))
-    fireEvent.click(screen.getByRole('button', { name: /Bob/ }))
+    await user.click(screen.getByRole('combobox', { name: 'app.studio.filters.creators' }))
+    await user.click(screen.getByRole('option', { name: /Bob/ }))
 
     expect(mockSetCreatorIDs).toHaveBeenCalledWith(['creator-2'])
   })

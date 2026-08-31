@@ -506,7 +506,10 @@ class TestDatasourceNodeRunApiPost:
 
     The source asserts ``isinstance(current_user, Account)`` and delegates to
     ``RagPipelineService`` and ``PipelineGenerator``, so we patch those plus
-    ``current_user`` and ``service_api_ns``.
+    ``current_user``.  ``post`` is wrapped in ``@model_validate``, which parses
+    the JSON request body live, so payloads are supplied via
+    ``test_request_context(json=...)`` and validation runs before the dataset
+    ownership guard.
     """
 
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.helper")
@@ -516,10 +519,8 @@ class TestDatasourceNodeRunApiPost:
         new_callable=lambda: Account(name="Test Account", email="test@example.com"),
     )
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
     def test_post_success(
         self,
-        mock_ns,
         mock_svc_cls,
         current_account,
         mock_gen,
@@ -534,12 +535,6 @@ class TestDatasourceNodeRunApiPost:
 
         _persist_dataset(sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id)
 
-        mock_ns.payload = {
-            "inputs": {"url": "https://example.com"},
-            "datasource_type": "online_document",
-            "is_published": True,
-        }
-
         pipeline = _persist_pipeline(sqlite_session, tenant_id=tenant_id)
         mock_svc_instance = Mock()
         mock_svc_instance.get_pipeline.return_value = pipeline
@@ -549,7 +544,15 @@ class TestDatasourceNodeRunApiPost:
         mock_gen.convert_to_event_stream.return_value = iter(["stream_event"])
         mock_helper.compact_generate_response.return_value = {"result": "ok"}
 
-        with app.test_request_context("/datasets/test/pipeline/datasource/nodes/node_abc/run", method="POST"):
+        with app.test_request_context(
+            "/datasets/test/pipeline/datasource/nodes/node_abc/run",
+            method="POST",
+            json={
+                "inputs": {"url": "https://example.com"},
+                "datasource_type": "online_document",
+                "is_published": True,
+            },
+        ):
             api = DatasourceNodeRunApi()
             response = api.post(tenant_id=tenant_id, dataset_id=dataset_id, node_id=node_id)
 
@@ -561,7 +564,13 @@ class TestDatasourceNodeRunApiPost:
     def test_post_not_found(self, app: Flask, sqlite_session: Session):
         """Test NotFound when dataset check fails."""
 
-        with app.test_request_context("/datasets/test/pipeline/datasource/nodes/n1/run", method="POST"):
+        # `@model_validate` parses the body before the ownership guard, so a
+        # valid payload is required to reach the NotFound branch.
+        with app.test_request_context(
+            "/datasets/test/pipeline/datasource/nodes/n1/run",
+            method="POST",
+            json={"inputs": {}, "datasource_type": "online_document", "is_published": True},
+        ):
             api = DatasourceNodeRunApi()
             with pytest.raises(NotFound):
                 api.post(tenant_id=str(uuid.uuid4()), dataset_id=str(uuid.uuid4()), node_id="n1")
@@ -570,19 +579,17 @@ class TestDatasourceNodeRunApiPost:
         "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
         new="not_account",
     )
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
-    def test_post_fails_when_current_user_not_account(self, mock_ns, app: Flask, sqlite_session: Session):
+    def test_post_fails_when_current_user_not_account(self, app: Flask, sqlite_session: Session):
         """Test AssertionError when current_user is not an Account instance."""
         tenant_id = str(uuid.uuid4())
         dataset_id = str(uuid.uuid4())
         _persist_dataset(sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id)
-        mock_ns.payload = {
-            "inputs": {},
-            "datasource_type": "local_file",
-            "is_published": True,
-        }
 
-        with app.test_request_context("/datasets/test/pipeline/datasource/nodes/n1/run", method="POST"):
+        with app.test_request_context(
+            "/datasets/test/pipeline/datasource/nodes/n1/run",
+            method="POST",
+            json={"inputs": {}, "datasource_type": "local_file", "is_published": True},
+        ):
             api = DatasourceNodeRunApi()
             with pytest.raises(AssertionError):
                 api.post(tenant_id=tenant_id, dataset_id=dataset_id, node_id="n1")

@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from unittest.mock import Mock
 
 import pytest
@@ -13,25 +14,21 @@ def test_get_system_features_excludes_trial_models():
     assert "trial_models" not in result
 
 
-def test_get_trial_models_returns_providers_with_paid_or_trial_enabled(monkeypatch: pytest.MonkeyPatch):
+def test_get_trial_models_returns_providers_with_paid_or_trial_enabled(
+    config_overrides: Callable[..., None],
+):
+    values: dict[str, bool] = {}
     for provider in HostedTrialProvider:
-        monkeypatch.setattr(
-            feature_service_module.dify_config,
-            f"HOSTED_{provider.config_key}_PAID_ENABLED",
-            False,
-            raising=False,
-        )
-        monkeypatch.setattr(
-            feature_service_module.dify_config,
-            f"HOSTED_{provider.config_key}_TRIAL_ENABLED",
-            False,
-            raising=False,
-        )
+        values[f"HOSTED_{provider.config_key}_PAID_ENABLED"] = False
+        values[f"HOSTED_{provider.config_key}_TRIAL_ENABLED"] = False
 
-    monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_OPENAI_PAID_ENABLED", True, raising=False)
-    monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_OPENAI_TRIAL_ENABLED", True, raising=False)
-    monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_XAI_PAID_ENABLED", True, raising=False)
-    monkeypatch.setattr(feature_service_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    values.update(
+        HOSTED_OPENAI_PAID_ENABLED=True,
+        HOSTED_OPENAI_TRIAL_ENABLED=True,
+        HOSTED_XAI_PAID_ENABLED=True,
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+    )
+    config_overrides(**values)
 
     result = FeatureService.get_trial_models("tenant_1")
 
@@ -50,26 +47,20 @@ def test_get_trial_models_returns_providers_with_paid_or_trial_enabled(monkeypat
 )
 def test_get_trial_models_filters_providers_by_workspace_plan(
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
     plan: CloudPlan,
     expected: list[str],
 ) -> None:
+    values: dict[str, object] = {}
     for provider in HostedTrialProvider:
-        monkeypatch.setattr(
-            feature_service_module.dify_config,
-            f"HOSTED_{provider.config_key}_PAID_ENABLED",
-            False,
-            raising=False,
-        )
-        monkeypatch.setattr(
-            feature_service_module.dify_config,
-            f"HOSTED_{provider.config_key}_TRIAL_ENABLED",
-            False,
-            raising=False,
-        )
-
-    monkeypatch.setattr(feature_service_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
-    monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_OPENAI_TRIAL_ENABLED", True, raising=False)
-    monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_XAI_PAID_ENABLED", True, raising=False)
+        values[f"HOSTED_{provider.config_key}_PAID_ENABLED"] = False
+        values[f"HOSTED_{provider.config_key}_TRIAL_ENABLED"] = False
+    values.update(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        HOSTED_OPENAI_TRIAL_ENABLED=True,
+        HOSTED_XAI_PAID_ENABLED=True,
+    )
+    config_overrides(**values)
     get_workspace_plan = Mock(return_value=plan)
     monkeypatch.setattr(feature_service_module.FeatureService, "get_workspace_plan", get_workspace_plan)
 

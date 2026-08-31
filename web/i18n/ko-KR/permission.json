@@ -42,6 +42,7 @@
   "accessRule.summary_one": "{{count}}개 권한 집합",
   "accessRule.summary_other": "{{count}}개 권한 집합",
   "accessRule.updated": "접근 규칙이 성공적으로 업데이트되었습니다",
+  "accessRule.workspaceOwner": "워크스페이스 소유자",
   "common.duplicateAction": "복제",
   "group.app": "애플리케이션",
   "group.app_acl": "앱 접근 권한",
