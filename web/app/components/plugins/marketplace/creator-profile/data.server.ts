@@ -19,6 +19,23 @@ import {
 import 'server-only'
 
 const PAGE_SIZE = 40
+const MAX_PAGES = 5
+
+const fetchAllPublisherPages = async <T>(
+  fetchPage: (page: number) => Promise<{ items: T[]; total?: number }>,
+) => {
+  const first = await fetchPage(1)
+  const items = [...first.items]
+  const total = first.total ?? items.length
+
+  for (let page = 2; page <= MAX_PAGES && items.length < total; page++) {
+    const next = await fetchPage(page)
+    if (next.items.length === 0) break
+    items.push(...next.items)
+  }
+
+  return items
+}
 
 const mapOrganizationToCreator = (
   organization: MarketplaceOrganization,
@@ -62,11 +79,16 @@ const getPublisherPlugins = async (
   sortOrder: CreatorSortOrder,
 ) => {
   const { plugins } = toPublisherSortQuery(sortField, sortOrder)
-  const response = await marketplaceClient.publisherPlugins({
-    params: { uniqueHandle },
-    query: { page: 1, page_size: PAGE_SIZE, ...plugins },
+  return fetchAllPublisherPages(async (page) => {
+    const response = await marketplaceClient.publisherPlugins({
+      params: { uniqueHandle },
+      query: { page, page_size: PAGE_SIZE, ...plugins },
+    })
+    return {
+      items: response.data?.plugins ?? [],
+      total: response.data?.total,
+    }
   })
-  return response.data?.plugins ?? []
 }
 
 const getPublisherTemplates = async (
@@ -75,11 +97,16 @@ const getPublisherTemplates = async (
   sortOrder: CreatorSortOrder,
 ) => {
   const { templates } = toPublisherSortQuery(sortField, sortOrder)
-  const response = await marketplaceClient.publisherTemplates({
-    params: { uniqueHandle },
-    query: { page: 1, page_size: PAGE_SIZE, ...templates },
+  return fetchAllPublisherPages(async (page) => {
+    const response = await marketplaceClient.publisherTemplates({
+      params: { uniqueHandle },
+      query: { page, page_size: PAGE_SIZE, ...templates },
+    })
+    return {
+      items: response.data?.templates ?? [],
+      total: response.data?.total,
+    }
   })
-  return response.data?.templates ?? []
 }
 
 const getTemplateIcon = (template: MarketplaceTemplate) =>

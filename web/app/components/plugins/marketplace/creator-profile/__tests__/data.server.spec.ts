@@ -164,6 +164,37 @@ describe('loadCreatorProfile', () => {
     expect(loaded?.viewModel.creations.map(({ kind }) => kind)).toEqual(['template', 'plugin'])
   })
 
+  it('fetches remaining publisher pages until the reported total is loaded', async () => {
+    const extraPlugin = {
+      ...plugin,
+      name: 'extra',
+      plugin_id: 'dify/extra',
+    } as MarketplacePlugin
+    mocks.publisherPlugins
+      .mockResolvedValueOnce({
+        data: { plugins: [plugin], total: 2 },
+      })
+      .mockResolvedValueOnce({
+        data: { plugins: [extraPlugin], total: 2 },
+      })
+
+    const loaded = await loadCreatorProfile({
+      uniqueHandle: 'paged-creator',
+      locale: 'en-US',
+    })
+
+    expect(mocks.publisherPlugins).toHaveBeenNthCalledWith(1, {
+      params: { uniqueHandle: 'paged-creator' },
+      query: { page: 1, page_size: 40, sort_by: 'version_updated_at', sort_order: 'DESC' },
+    })
+    expect(mocks.publisherPlugins).toHaveBeenNthCalledWith(2, {
+      params: { uniqueHandle: 'paged-creator' },
+      query: { page: 2, page_size: 40, sort_by: 'version_updated_at', sort_order: 'DESC' },
+    })
+    expect(loaded?.pluginsByCreationId['plugin:dify/search']).toBeDefined()
+    expect(loaded?.pluginsByCreationId['plugin:dify/extra']).toBeDefined()
+  })
+
   it('keeps successful creations when one publisher request fails', async () => {
     mocks.publisherPlugins.mockRejectedValue(new Error('plugin request failed'))
 
