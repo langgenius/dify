@@ -304,7 +304,8 @@ class WorkflowRunApi(Resource):
                 "- `invalid_param` : Invalid parameter value."
             ),
             403: (
-                "`trigger_workflow_service_mode_unavailable` : Trigger-entry workflows cannot be invoked through "
+                "- `forbidden` : Token scope, app, or workspace access denied.\n"
+                "- `trigger_workflow_service_mode_unavailable` : Trigger-entry workflows cannot be invoked through "
                 "Web App, Service API, OpenAPI, or MCP."
             ),
             429: (
@@ -415,6 +416,7 @@ class WorkflowRunByIdApi(Resource):
                 "- `invalid_param` : Required parameter missing or invalid."
             ),
             403: (
+                "- `forbidden` : Token scope, app, or workspace access denied.\n"
                 "- `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the "
                 "current plan. Upgrade to a paid plan.\n"
                 "- `trigger_workflow_service_mode_unavailable` : The selected workflow version uses a trigger entry "
