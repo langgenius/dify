@@ -9,7 +9,6 @@ import type { InputVar, Variable } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useEffect, useMemo, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
 import { createWorkflowToolProvider, saveWorkflowToolProvider } from '@/service/tools'
 import {
   useInvalidateAllWorkflowTools,
@@ -122,8 +121,6 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
     onConfigured,
   } = options
 
-  const { t } = useTranslation()
-
   // Data fetching via React Query
   const { data: detail, isLoading } = useWorkflowToolDetailByAppID(
     workflowAppId,
@@ -185,7 +182,6 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
       invalidateAllWorkflowTools()
       onRefreshData?.()
       invalidateDetail(workflowAppId)
-      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       onConfigured?.()
     } catch (e) {
       toast.error((e as Error).message)

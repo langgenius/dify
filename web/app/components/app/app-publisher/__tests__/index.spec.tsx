@@ -841,6 +841,28 @@ describe('AppPublisher', () => {
     expect(screen.getByRole('dialog', { name: 'Workflow tool drawer' })).toBeInTheDocument()
   })
 
+  it('should show one success toast when automatically publishing a workflow tool', async () => {
+    mockAppDetail = {
+      ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
+    }
+    mockOnPublish.mockImplementation(async () => {
+      mockToastSuccess('common.api.actionSuccess')
+    })
+    mockCreateWorkflowToolProvider.mockResolvedValue({})
+
+    render(<AppPublisher publishedAt={Date.now()} onPublish={mockOnPublish} />)
+
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    fireEvent.click(screen.getByText('publisher-workflow-tool'))
+    fireEvent.click(screen.getByRole('button', { name: 'create-workflow-tool' }))
+
+    await waitFor(() => {
+      expect(mockCreateWorkflowToolProvider).toHaveBeenCalledOnce()
+    })
+    expect(mockToastSuccess).toHaveBeenCalledOnce()
+  })
+
   it('should not create a workflow tool when automatic publishing fails', async () => {
     const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     mockAppDetail = {
