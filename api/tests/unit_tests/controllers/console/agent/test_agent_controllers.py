@@ -76,6 +76,7 @@ from services.entities.agent_entities import (
     WorkflowComposerCopyFromRosterPayload,
 )
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_account
 
 
 def _persist_conversation_message(
@@ -229,12 +230,13 @@ def _app_detail_obj(**overrides) -> App:
 
 
 def _account(*, account_id: str = "account-1", privileged: bool = False, timezone: str | None = None) -> Account:
-    account = Account(name="Agent Controller Tester", email=f"{account_id}@example.com")
-    account.id = account_id
-    account.timezone = timezone
-    if privileged:
-        account.role = TenantAccountRole.OWNER
-    return account
+    return make_account(
+        account_id=account_id,
+        name="Agent Controller Tester",
+        email=f"{account_id}@example.com",
+        timezone=timezone,
+        role=TenantAccountRole.OWNER if privileged else None,
+    )
 
 
 def _candidates_response(variant: str) -> dict:

@@ -29,18 +29,20 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import (
 from extensions.storage.storage_type import StorageType
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from models import Account, EndUser, Tenant
+from models import Account, EndUser
 from models.enums import CreatorUserRole, ExecutionOffLoadType
 from models.model import UploadFile
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
+from tests.unit_tests.model_factories import make_account, make_tenant
 
 
 def _account(*, tenant_id: str = "tenant-1", user_id: str = "user-1") -> Account:
-    user = Account(name="Test Account", email="test@example.com")
-    user.id = user_id
-    user._current_tenant = Tenant(name="Test Tenant")
-    user._current_tenant.id = tenant_id
-    return user
+    return make_account(
+        account_id=user_id,
+        name="Test Account",
+        email="test@example.com",
+        tenant=make_tenant(tenant_id=tenant_id, name="Test Tenant"),
+    )
 
 
 def _end_user(*, tenant_id: str = "tenant-1", user_id: str = "end-user-1") -> EndUser:

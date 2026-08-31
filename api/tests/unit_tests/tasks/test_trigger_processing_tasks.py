@@ -12,6 +12,7 @@ from models.trigger import TriggerSubscription, WorkflowPluginTrigger
 from models.workflow import Workflow
 from services.errors.app import QuotaExceededError
 from tasks.trigger_processing_tasks import dispatch_triggered_workflow
+from tests.unit_tests.model_factories import make_end_user
 
 
 def _workflow(*, app_id: str = "app-123") -> Workflow:
@@ -42,11 +43,11 @@ def _workflow(*, app_id: str = "app-123") -> Workflow:
 
 
 def _end_user() -> EndUser:
-    return EndUser(
-        id="end-user-123",
+    return make_end_user(
+        end_user_id="end-user-123",
         tenant_id="tenant-123",
         app_id="app-123",
-        type=EndUserType.TRIGGER,
+        end_user_type=EndUserType.TRIGGER,
         session_id="trigger-session",
     )
 

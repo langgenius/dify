@@ -4,10 +4,11 @@ from unittest.mock import patch
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
+from tests.unit_tests.model_factories import make_app
 
 
 def _app() -> App:
-    return App(id="app-1", tenant_id="tenant-1", name="Workflow App", mode=AppMode.WORKFLOW)
+    return make_app(name="Workflow App", mode=AppMode.WORKFLOW, icon_type=None)
 
 
 def _workflow() -> Workflow:

@@ -22,7 +22,8 @@ from controllers.console.explore.wraps import (
     trial_feature_enable,
     user_allowed_to_access_app,
 )
-from models import Account, AccountTrialAppRecord, App, AppMode, InstalledApp, TrialApp
+from models import Account, AccountTrialAppRecord, App, InstalledApp, TrialApp
+from tests.unit_tests.model_factories import make_account, make_app
 
 
 def _bind_database(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
@@ -32,22 +33,11 @@ def _bind_database(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> 
 
 
 def _account(*, account_id: str | None = None) -> Account:
-    account = Account(name="Explore user", email="user@example.com")
-    if account_id is not None:
-        account.id = account_id
-    return account
+    return make_account(account_id=account_id, name="Explore user", email="user@example.com")
 
 
 def _app() -> App:
-    app = App(
-        tenant_id=str(uuid4()),
-        name="Explore App",
-        mode=AppMode.CHAT,
-        enable_site=True,
-        enable_api=True,
-    )
-    app.id = str(uuid4())
-    return app
+    return make_app(app_id=str(uuid4()), tenant_id=str(uuid4()), name="Explore App", icon_type=None)
 
 
 def _installed_app(*, app_id: str, tenant_id: str) -> InstalledApp:

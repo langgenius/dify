@@ -14,13 +14,13 @@ from controllers.console.app import workflow_run as workflow_run_module
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from models import Account, App, AppMode
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
-from models.model import IconType
 from models.workflow import (
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowRun,
     WorkflowType,
 )
+from tests.unit_tests.model_factories import make_account, make_app
 
 
 def _serialize_200_response(handler, payload: Any) -> Any:
@@ -35,27 +35,14 @@ def _serialize_200_response(handler, payload: Any) -> Any:
 
 
 def _account(session: Session) -> Account:
-    account = Account(name="Alice", email="alice@example.com")
-    account.id = "account-1"
+    account = make_account(name="Alice", email="alice@example.com")
     session.add(account)
     session.commit()
     return account
 
 
 def _app() -> App:
-    return App(
-        id="app-1",
-        tenant_id="tenant-1",
-        name="Workflow run app",
-        description="",
-        mode=AppMode.WORKFLOW,
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
-        enable_site=True,
-        enable_api=True,
-        max_active_requests=None,
-    )
+    return make_app(name="Workflow run app", mode=AppMode.WORKFLOW)
 
 
 def _workflow_run_summary(session: Session, **overrides: object) -> WorkflowRun:

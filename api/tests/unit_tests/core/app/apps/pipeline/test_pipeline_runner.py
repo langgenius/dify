@@ -26,9 +26,10 @@ from core.app.apps.pipeline.pipeline_runner import PipelineRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from graphon.graph_events import GraphRunFailedEvent
 from models.dataset import Dataset, Document, Pipeline
-from models.enums import DataSourceType, DocumentCreatedFrom, EndUserType
+from models.enums import DataSourceType, DocumentCreatedFrom
 from models.model import EndUser
 from models.workflow import Workflow, WorkflowType
+from tests.unit_tests.model_factories import make_end_user
 
 
 def _pipeline(*, tenant_id: str = "tenant", pipeline_id: str = "pipe") -> Pipeline:
@@ -65,14 +66,7 @@ def _workflow(*, tenant_id: str = "tenant", pipeline_id: str = "pipe", graph: di
 
 
 def _end_user() -> EndUser:
-    return EndUser(
-        id="user",
-        tenant_id="tenant",
-        app_id="pipe",
-        type=EndUserType.BROWSER,
-        name="User",
-        session_id="sess",
-    )
+    return make_end_user(end_user_id="user", tenant_id="tenant", app_id="pipe", name="User", session_id="sess")
 
 
 def _document(*, document_id: str = "doc", dataset_id: str = "ds", tenant_id: str = "tenant") -> Document:

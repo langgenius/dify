@@ -50,6 +50,7 @@ from services.errors.audio import (
     SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
+from tests.unit_tests.model_factories import make_account, make_app
 
 
 def _file_data():
@@ -57,22 +58,11 @@ def _file_data():
 
 
 def _app(*, app_id: str = "a1", tenant_id: str = "tenant-1") -> App:
-    return App(
-        id=app_id,
-        tenant_id=tenant_id,
-        name="Audio app",
-        description="",
-        mode=AppMode.CHAT,
-        enable_site=True,
-        enable_api=True,
-        max_active_requests=0,
-    )
+    return make_app(app_id=app_id, tenant_id=tenant_id, name="Audio app", icon_type=None, max_active_requests=0)
 
 
 def _account(account_id: str = "account-1") -> Account:
-    account = Account(name="Audio account", email=f"{account_id}@example.com")
-    account.id = account_id
-    return account
+    return make_account(account_id=account_id, name="Audio account", email=f"{account_id}@example.com")
 
 
 def test_console_audio_api_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

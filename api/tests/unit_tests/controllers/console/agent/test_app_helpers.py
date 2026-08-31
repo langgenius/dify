@@ -6,10 +6,11 @@ from sqlalchemy.orm import Session
 
 from controllers.console.agent import app_helpers
 from models.model import App, AppMode
+from tests.unit_tests.model_factories import make_app
 
 
 def _app() -> App:
-    return App(id="app-1", tenant_id="tenant-1", name="Agent App", mode=AppMode.AGENT)
+    return make_app(name="Agent App", mode=AppMode.AGENT, icon_type=None)
 
 
 def test_resolve_agent_app_model_reuses_caller_session(

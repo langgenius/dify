@@ -14,6 +14,7 @@ from models import Account, Tenant, TenantAccountJoin
 from models.enums import EndUserType
 from models.model import App, AppMode, AppModelConfig, EndUser
 from models.workflow import Workflow, WorkflowType
+from tests.unit_tests.model_factories import make_app, make_end_user
 
 
 class _Chunk(BaseModel):
@@ -33,16 +34,16 @@ def _app(
     workflow_id: str | None = None,
     app_model_config_id: str | None = None,
 ) -> App:
-    return App(
-        id=app_id,
+    return make_app(
+        app_id=app_id,
         tenant_id=tenant_id,
         name="Plugin app",
-        description="",
         mode=mode,
-        enable_site=False,
-        enable_api=False,
+        icon_type=None,
         workflow_id=workflow_id,
         app_model_config_id=app_model_config_id,
+        enable_site=False,
+        enable_api=False,
     )
 
 
@@ -66,14 +67,12 @@ def _end_user(
     app_id: str = "app-1",
     session_id: str = "browser-session",
 ) -> EndUser:
-    return EndUser(
-        id=user_id,
+    return make_end_user(
+        end_user_id=user_id,
         tenant_id=tenant_id,
         app_id=app_id,
-        type=EndUserType.BROWSER,
         session_id=session_id,
         name="Browser user",
-        is_anonymous=True,
     )
 
 

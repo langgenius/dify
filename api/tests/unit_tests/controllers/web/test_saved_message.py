@@ -14,9 +14,9 @@ from werkzeug.exceptions import NotFound
 from controllers.common.controller_schemas import SavedMessageCreatePayload, SavedMessageListQuery
 from controllers.web.error import NotCompletionAppError
 from controllers.web.saved_message import SavedMessageApi, SavedMessageListApi
-from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
 from services.errors.message import MessageNotExistsError
+from tests.unit_tests.model_factories import make_end_user
 
 
 def _completion_app() -> App:
@@ -28,12 +28,7 @@ def _chat_app() -> App:
 
 
 def _end_user() -> EndUser:
-    return EndUser(
-        id="eu-1",
-        tenant_id="tenant-1",
-        type=EndUserType.BROWSER,
-        session_id="session-1",
-    )
+    return make_end_user(end_user_id="eu-1")
 
 
 # The @model_validate decorator wraps the handler; tests call the undecorated

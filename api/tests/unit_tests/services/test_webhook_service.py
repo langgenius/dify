@@ -19,6 +19,7 @@ from models.workflow import Workflow
 from services.errors.app import QuotaExceededError
 from services.trigger import webhook_service as webhook_service_module
 from services.trigger.webhook_service import WebhookService
+from tests.unit_tests.model_factories import make_app, make_end_user
 
 
 def _webhook_trigger(
@@ -76,14 +77,12 @@ def _workflow(
 
 
 def _app(*, tenant_id: str = "tenant-123", app_id: str = "app-123") -> App:
-    return App(
-        id=app_id,
+    return make_app(
+        app_id=app_id,
         tenant_id=tenant_id,
         name="Webhook App",
-        description="",
         mode=AppMode.WORKFLOW,
-        enable_site=True,
-        enable_api=True,
+        icon_type=None,
         max_active_requests=0,
     )
 
@@ -100,11 +99,11 @@ def _app_trigger(*, status: AppTriggerStatus = AppTriggerStatus.ENABLED) -> AppT
 
 
 def _end_user() -> EndUser:
-    return EndUser(
-        id="end-user-123",
+    return make_end_user(
+        end_user_id="end-user-123",
         tenant_id="tenant-123",
         app_id="app-123",
-        type=EndUserType.TRIGGER,
+        end_user_type=EndUserType.TRIGGER,
         session_id="webhook-session",
     )
 

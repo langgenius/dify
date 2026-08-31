@@ -15,6 +15,7 @@ from models.account import AccountStatus
 from models.enums import EndUserType
 from models.model import EndUser
 from models.tools import ToolFile
+from tests.unit_tests.model_factories import make_end_user
 
 
 def fake_request(args: dict, file=None):
@@ -41,12 +42,7 @@ def _persist_account_memberships(session: Session) -> None:
 
 
 def _end_user(user_id: str = "user-1") -> EndUser:
-    return EndUser(
-        id=user_id,
-        tenant_id="tenant-1",
-        type=EndUserType.SERVICE_API,
-        session_id="session-1",
-    )
+    return make_end_user(end_user_id=user_id, end_user_type=EndUserType.SERVICE_API)
 
 
 class DummyFile:

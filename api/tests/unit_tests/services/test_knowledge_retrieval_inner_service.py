@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 
 from core.workflow.nodes.knowledge_retrieval.retrieval import Source, SourceMetadata
 from models.dataset import Dataset
-from models.enums import AppStatus
 from models.model import App, AppMode
 from services.entities.knowledge_retrieval_inner import InnerKnowledgeRetrieveRequest
 from services.errors.knowledge_retrieval import (
@@ -17,6 +16,7 @@ from services.errors.knowledge_retrieval import (
     InnerKnowledgeRetrieveDatasetTenantMismatchError,
 )
 from services.knowledge_retrieval_inner_service import InnerKnowledgeRetrievalService
+from tests.unit_tests.model_factories import make_app
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 OTHER_TENANT_ID = "22222222-2222-2222-2222-222222222222"
@@ -27,16 +27,13 @@ DATASET_2_ID = "66666666-6666-6666-6666-666666666666"
 
 
 def _app(*, tenant_id: str = TENANT_ID) -> App:
-    return App(
-        id=APP_ID,
+    return make_app(
+        app_id=APP_ID,
         tenant_id=tenant_id,
-        name="Test App",
-        description="",
         mode=AppMode.WORKFLOW,
-        status=AppStatus.NORMAL,
+        icon_type=None,
         enable_site=False,
         enable_api=False,
-        max_active_requests=None,
     )
 
 

@@ -23,6 +23,7 @@ from core.app.entities.queue_entities import (
 )
 from core.moderation.base import ModerationError
 from models.model import App, AppMode, Message, MessageAnnotation
+from tests.unit_tests.model_factories import make_app
 
 
 class _FakeQueueManager:
@@ -46,7 +47,7 @@ def _make_entity(query: str = "hello") -> SimpleNamespace:
 
 
 def _app() -> App:
-    return App(id="app-1", tenant_id="tenant-1", name="Agent App", mode=AppMode.AGENT_CHAT)
+    return make_app(name="Agent App", mode=AppMode.AGENT_CHAT, icon_type=None)
 
 
 def _message() -> Message:

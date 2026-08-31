@@ -7,7 +7,7 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from graphon.nodes import BuiltinNodeTypes
-from models import Account, Tenant
+from models import Account
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow, WorkflowType
 from services.snippet_dsl_service import (
@@ -17,6 +17,7 @@ from services.snippet_dsl_service import (
     SnippetPendingData,
     _check_version_compatibility,
 )
+from tests.unit_tests.model_factories import make_account, make_tenant
 
 SQLITE_MODELS = (CustomizedSnippet,)
 pytestmark = [
@@ -32,12 +33,12 @@ def service(sqlite_session: Session) -> SnippetDslService:
 
 
 def _account(*, account_id: str = "account-1", tenant_id: str = "tenant-1") -> Account:
-    account = Account(name="Snippet author", email=f"{account_id}@example.com")
-    account.id = account_id
-    tenant = Tenant(name="Snippet workspace")
-    tenant.id = tenant_id
-    account._current_tenant = tenant
-    return account
+    return make_account(
+        account_id=account_id,
+        name="Snippet author",
+        email=f"{account_id}@example.com",
+        tenant=make_tenant(tenant_id=tenant_id, name="Snippet workspace"),
+    )
 
 
 def _snippet(

@@ -37,7 +37,7 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
-from models.enums import AppStatus, ConversationFromSource, ConversationStatus
+from models.enums import ConversationFromSource, ConversationStatus
 from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message
 from models.workflow import Workflow, WorkflowType
 from services.agent import composer_service, roster_service
@@ -64,6 +64,7 @@ from services.entities.agent_entities import (
     ComposerSaveStrategy,
     ComposerVariant,
 )
+from tests.unit_tests.model_factories import make_account, make_app
 
 
 def _agent_soul_with_model() -> AgentSoulConfig:
@@ -162,27 +163,20 @@ def _app(
     name: str = "Agent App",
     mode: AppMode = AppMode.AGENT_CHAT,
 ) -> App:
-    return App(
-        id=app_id,
+    return make_app(
+        app_id=app_id,
         tenant_id=tenant_id,
         name=name,
-        description="",
         mode=mode,
-        icon_type=IconType.EMOJI,
         icon="🤖",
         icon_background="#fff",
-        status=AppStatus.NORMAL,
         enable_site=False,
-        enable_api=True,
-        max_active_requests=None,
         created_by="account-1",
     )
 
 
 def _account(*, account_id: str = "account-1") -> Account:
-    account = Account(name="Agent Tester", email=f"{account_id}@example.com")
-    account.id = account_id
-    return account
+    return make_account(account_id=account_id, name="Agent Tester", email=f"{account_id}@example.com")
 
 
 def test_agent_soul_has_model():

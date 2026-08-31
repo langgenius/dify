@@ -19,12 +19,11 @@ from models.account import Account
 from models.model import App, AppMode, IconType
 from services.annotation_service import AppAnnotationService
 from tasks.annotation.batch_import_annotations_task import batch_import_annotations_task
+from tests.unit_tests.model_factories import make_account
 
 
 def _account() -> Account:
-    account = Account(name="Annotation Tester", email="annotation-tester@example.com")
-    account.id = "user_id"
-    return account
+    return make_account(account_id="user_id", name="Annotation Tester", email="annotation-tester@example.com")
 
 
 def _persist_app(session: Session) -> App:

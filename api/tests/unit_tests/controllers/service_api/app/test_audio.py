@@ -34,7 +34,7 @@ from controllers.service_api.app.error import (
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
 from models.enums import EndUserType
-from models.model import App, AppMode, EndUser
+from models.model import App, EndUser
 from services.app_ref_service import AppRef, MessageRef
 from services.audio_service import AudioService
 from services.errors.app_model_config import AppModelConfigBrokenError
@@ -45,6 +45,7 @@ from services.errors.audio import (
     SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
+from tests.unit_tests.model_factories import make_app, make_end_user
 
 
 def _file_data():
@@ -52,24 +53,14 @@ def _file_data():
 
 
 def _app(*, app_id: str = "a1", tenant_id: str = "tenant-1") -> App:
-    return App(
-        id=app_id,
-        tenant_id=tenant_id,
-        name="Audio app",
-        description="",
-        mode=AppMode.CHAT,
-        enable_site=True,
-        enable_api=True,
-        max_active_requests=0,
-    )
+    return make_app(app_id=app_id, tenant_id=tenant_id, name="Audio app", icon_type=None, max_active_requests=0)
 
 
 def _end_user(*, end_user_id: str = "u1", external_user_id: str | None = None) -> EndUser:
-    return EndUser(
-        id=end_user_id,
-        tenant_id="tenant-1",
+    return make_end_user(
+        end_user_id=end_user_id,
         app_id="a1",
-        type=EndUserType.SERVICE_API,
+        end_user_type=EndUserType.SERVICE_API,
         external_user_id=external_user_id,
         name="Audio user",
         session_id=f"session-{end_user_id}",

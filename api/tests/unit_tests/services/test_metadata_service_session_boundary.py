@@ -18,6 +18,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
 )
 from services.errors.metadata import MetadataResourceNotFoundError
 from services.metadata_service import MetadataService
+from tests.unit_tests.model_factories import make_account
 
 DOCUMENT_ID = "11111111-1111-1111-1111-111111111111"
 FOREIGN_DOCUMENT_ID = "22222222-2222-2222-2222-222222222222"
@@ -26,9 +27,7 @@ FOREIGN_METADATA_ID = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
 
 
 def _account() -> Account:
-    account = Account(name="User", email="user@example.com")
-    account.id = "account-1"
-    return account
+    return make_account(name="User", email="user@example.com")
 
 
 def test_create_metadata_flushes_without_committing_caller_session(sqlite_session: Session) -> None:

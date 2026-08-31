@@ -37,13 +37,11 @@ _ENDPOINTS = [
     WorkflowRunArchiveDownloadFileApi.get,
 ]
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_account
 
 
 def _account(role: TenantAccountRole) -> Account:
-    account = Account(name="Test User", email="user@example.com")
-    account.id = "account-1"
-    account.role = role
-    return account
+    return make_account(name="Test User", email="user@example.com", role=role)
 
 
 def _original(method):

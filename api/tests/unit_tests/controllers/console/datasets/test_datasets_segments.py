@@ -37,6 +37,7 @@ from models.enums import PermissionEnum, SegmentStatus, SegmentType
 from models.model import UploadFile
 from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError
 from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingServiceError
+from tests.unit_tests.model_factories import make_account
 
 
 def _segment():
@@ -82,10 +83,9 @@ def _child_chunk():
 
 
 def _account() -> Account:
-    account = Account(name="Dataset Editor", email="dataset-editor@example.com")
-    account.id = "u1"
-    account.role = TenantAccountRole.OWNER
-    return account
+    return make_account(
+        account_id="u1", name="Dataset Editor", email="dataset-editor@example.com", role=TenantAccountRole.OWNER
+    )
 
 
 def _dataset(

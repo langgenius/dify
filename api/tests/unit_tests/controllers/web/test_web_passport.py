@@ -20,9 +20,10 @@ from controllers.web.passport import (
     generate_session_id,
 )
 from models.base import TypeBase
-from models.enums import CustomizeTokenStrategy, EndUserType
+from models.enums import CustomizeTokenStrategy
 from models.model import App, AppMode, EndUser, IconType, Site
 from services.webapp_auth_service import WebAppAuthType
+from tests.unit_tests.model_factories import make_end_user
 
 
 @pytest.fixture
@@ -65,11 +66,10 @@ def _persist_webapp(
 
 
 def _end_user(app_model: App, *, session_id: str) -> EndUser:
-    return EndUser(
-        id=str(uuid.uuid4()),
+    return make_end_user(
+        end_user_id=str(uuid.uuid4()),
         tenant_id=app_model.tenant_id,
         app_id=app_model.id,
-        type=EndUserType.BROWSER,
         name="Web User",
         session_id=session_id,
     )

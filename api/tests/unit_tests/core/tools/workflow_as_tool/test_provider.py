@@ -29,9 +29,10 @@ from extensions.ext_database import db
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models.account import Account
 from models.base import TypeBase
-from models.model import App, AppMode, IconType
+from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowType
+from tests.unit_tests.model_factories import make_account, make_app
 
 
 @pytest.fixture
@@ -64,21 +65,18 @@ def _controller(provider_id: str = "provider-1") -> WorkflowToolProviderControll
 
 
 def _app(*, tenant_id: str | None = None) -> App:
-    return App(
-        id=str(uuid.uuid4()),
+    return make_app(
+        app_id=str(uuid.uuid4()),
         tenant_id=tenant_id or str(uuid.uuid4()),
         name="Workflow App",
         mode=AppMode.WORKFLOW,
-        icon_type=IconType.EMOJI,
         icon="workflow",
-        icon_background="#FFFFFF",
-        enable_site=True,
         enable_api=False,
     )
 
 
 def _account() -> Account:
-    return Account(name="Alice", email="alice@example.com")
+    return make_account(account_id=None, name="Alice", email="alice@example.com")
 
 
 def _workflow(app: App, account: Account | None = None) -> Workflow:

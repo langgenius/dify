@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.rbac import RBACPermission, RBACResourceScope
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
-from models import Account, App, AppMode, Tenant
+from models import Account, App, AppMode
 from models.model import AppModelConfig, AppModelConfigDict, IconType
 from models.workflow import Workflow, WorkflowType
 from services.app_dsl_service import AppDslService, PendingData
@@ -19,6 +19,7 @@ from services.entities.dsl_entities import ImportStatus
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_account, make_app, make_tenant
 
 _OVERWRITE_APP_ID = "11111111-1111-4111-8111-111111111111"
 _TENANT_ID = "22222222-2222-4222-8222-222222222222"
@@ -56,12 +57,12 @@ def _persist_overwrite_target(session: Session, *, maintainer: str = _OTHER_ACCO
 
 
 def _account(*, account_id: str = "account-1", tenant_id: str = "tenant-1") -> Account:
-    account = Account(name="DSL author", email=f"{account_id}@example.com")
-    account.id = account_id
-    tenant = Tenant(name="DSL workspace")
-    tenant.id = tenant_id
-    account._current_tenant = tenant
-    return account
+    return make_account(
+        account_id=account_id,
+        name="DSL author",
+        email=f"{account_id}@example.com",
+        tenant=make_tenant(tenant_id=tenant_id, name="DSL workspace"),
+    )
 
 
 def _app(
@@ -71,20 +72,13 @@ def _app(
     mode: AppMode = AppMode.CHAT,
     app_model_config_id: str | None = None,
 ) -> App:
-    return App(
-        id=app_id,
+    return make_app(
+        app_id=app_id,
         tenant_id=tenant_id,
         app_model_config_id=app_model_config_id,
         name="Existing app",
-        description="",
         mode=mode,
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
-        enable_site=True,
-        enable_api=True,
         max_active_requests=0,
-        use_icon_as_answer_icon=False,
     )
 
 

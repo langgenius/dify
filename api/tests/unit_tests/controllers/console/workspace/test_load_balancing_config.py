@@ -19,6 +19,7 @@ if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
 
 from models.account import Account, TenantAccountRole
+from tests.unit_tests.model_factories import make_account
 
 
 @pytest.fixture
@@ -57,10 +58,7 @@ def load_balancing_module(monkeypatch: pytest.MonkeyPatch):
 
 
 def _account(role: TenantAccountRole) -> Account:
-    account = Account(name="Owner", email="owner@example.com")
-    account.id = "account-1"
-    account.role = role
-    return account
+    return make_account(name="Owner", email="owner@example.com", role=role)
 
 
 def _prepare_context(module, monkeypatch: pytest.MonkeyPatch, role=TenantAccountRole.OWNER):

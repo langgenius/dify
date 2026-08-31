@@ -65,6 +65,7 @@ from services.dataset_ref_service import DatasetRef
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import ProcessRule, RetrievalModel
 from services.errors.file import FileTooLargeError as FileTooLargeServiceError
+from tests.unit_tests.model_factories import make_account
 
 
 def _document_data_source_info() -> dict[str, str]:
@@ -72,9 +73,7 @@ def _document_data_source_info() -> dict[str, str]:
 
 
 def _account() -> Account:
-    account = Account(name="Document API User", email=f"document-api-{uuid.uuid4()}@example.com")
-    account.id = "user-1"
-    return account
+    return make_account(account_id="user-1", name="Document API User", email=f"document-api-{uuid.uuid4()}@example.com")
 
 
 def _upload_file() -> UploadFile:

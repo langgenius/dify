@@ -17,6 +17,7 @@ from libs import oauth_bearer
 from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType, require_workspace_member
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_account
 
 pytestmark = pytest.mark.usefixtures("community_edition")
 
@@ -92,12 +93,12 @@ def _persist_membership(
 
 
 def _account(account_id: uuid.UUID, *, status: AccountStatus = AccountStatus.ACTIVE) -> Account:
-    account = Account(name="Workspace member", email=f"{account_id}@example.com", status=status)
     # SQLite's StringUUID adapter binds UUID objects as compact hex, while
     # PostgreSQL binds their dashed string form. Persist the SQLite-bound form
     # so the production query can keep accepting the AuthContext UUID object.
-    account.id = account_id.hex
-    return account
+    return make_account(
+        account_id=account_id.hex, name="Workspace member", email=f"{account_id}@example.com", status=status
+    )
 
 
 def test_skips_for_enterprise_edition(database: Database, monkeypatch: pytest.MonkeyPatch) -> None:

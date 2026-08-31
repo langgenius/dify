@@ -20,10 +20,10 @@ from controllers.web.human_input_file_upload import (
 )
 from extensions.storage.storage_type import StorageType
 from models import Account
-from models.account import AccountStatus
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from services.human_input_file_upload_service import HumanInputUploadContext
+from tests.unit_tests.model_factories import make_account
 
 
 @pytest.fixture
@@ -34,9 +34,7 @@ def app() -> Flask:
 
 
 def _account() -> Account:
-    account = Account(name="Form Owner", email="owner@example.com", status=AccountStatus.ACTIVE)
-    account.id = "owner-1"
-    return account
+    return make_account(account_id="owner-1", name="Form Owner", email="owner@example.com")
 
 
 def _upload_context() -> HumanInputUploadContext:

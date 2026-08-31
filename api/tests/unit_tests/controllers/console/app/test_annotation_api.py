@@ -13,6 +13,7 @@ from controllers.console.app import annotation as annotation_module
 from models.account import Account
 from models.model import App, AppAnnotationHitHistory, AppMode, IconType, MessageAnnotation
 from services.app_ref_service import AnnotationRef, AppRef
+from tests.unit_tests.model_factories import make_account
 
 
 def _persist_app(session: Session) -> App:
@@ -33,9 +34,7 @@ def _persist_app(session: Session) -> App:
 
 
 def _account() -> Account:
-    account = Account(name="Owner", email="owner@example.com")
-    account.id = "account-1"
-    return account
+    return make_account(name="Owner", email="owner@example.com")
 
 
 def _annotation_model(annotation_id: str = "ann-1") -> MessageAnnotation:

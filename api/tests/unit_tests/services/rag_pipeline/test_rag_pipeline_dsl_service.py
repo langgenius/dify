@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from graphon.enums import BuiltinNodeTypes
-from models import Account, Tenant
+from models import Account
 from models.dataset import (
     Dataset,
     Pipeline,
@@ -39,6 +39,7 @@ from services.rag_pipeline.rag_pipeline_dsl_service import (
     RagPipelineDslService,
     RagPipelinePendingData,
 )
+from tests.unit_tests.model_factories import make_account, make_tenant
 
 
 @pytest.fixture
@@ -47,12 +48,12 @@ def service(sqlite_session: Session) -> RagPipelineDslService:
 
 
 def _account(*, tenant_id: str = "tenant-1", account_id: str = "account-1") -> Account:
-    tenant = Tenant(name="Tenant")
-    tenant.id = tenant_id
-    account = Account(name="Account", email="account@example.com")
-    account.id = account_id
-    account._current_tenant = tenant
-    return account
+    return make_account(
+        account_id=account_id,
+        name="Account",
+        email="account@example.com",
+        tenant=make_tenant(tenant_id=tenant_id, name="Tenant"),
+    )
 
 
 def _pipeline(

@@ -22,24 +22,25 @@ import pytest
 from werkzeug.exceptions import InternalServerError
 
 from enums import CloudPlan
-from models import Account, Tenant
+from models import Account
 from services.billing_service import BillingService, _BillingHTTPStatusError
 from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
 )
+from tests.unit_tests.model_factories import make_account, make_tenant
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
 
 
 def _account(*, account_id: str = ACCOUNT_ID, email: str = "user@example.com", tenant_id: str = TENANT_ID) -> Account:
-    tenant = Tenant(name="Test Tenant")
-    tenant.id = tenant_id
-    account = Account(name="Test User", email=email)
-    account.id = account_id
-    account._current_tenant = tenant
-    return account
+    return make_account(
+        account_id=account_id,
+        name="Test User",
+        email=email,
+        tenant=make_tenant(tenant_id=tenant_id, name="Test Tenant"),
+    )
 
 
 class TestBillingServiceSendRequest:

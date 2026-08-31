@@ -10,22 +10,14 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
 from models.dataset import DatasetCollectionBinding
 from models.enums import CollectionBindingType, ConversationFromSource
-from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, AppMode, Message, MessageAnnotation
+from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
+from tests.unit_tests.model_factories import make_app
 
 TABLES = (AppAnnotationSetting, DatasetCollectionBinding, MessageAnnotation, AppAnnotationHitHistory)
 
 
 def _app() -> App:
-    return App(
-        id="app-1",
-        tenant_id="tenant-1",
-        name="Test App",
-        description="",
-        mode=AppMode.CHAT,
-        enable_site=True,
-        enable_api=True,
-        max_active_requests=0,
-    )
+    return make_app(icon_type=None, max_active_requests=0)
 
 
 def _message() -> Message:

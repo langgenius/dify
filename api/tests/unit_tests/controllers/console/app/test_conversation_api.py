@@ -21,9 +21,10 @@ from models.enums import (
     FeedbackRating,
     WorkflowRunTriggeredFrom,
 )
-from models.model import AppMode, Conversation, IconType
+from models.model import AppMode, Conversation
 from models.workflow import WorkflowRun, WorkflowType
 from services.errors.conversation import ConversationNotExistsError
+from tests.unit_tests.model_factories import make_app
 
 
 def _make_account() -> Account:
@@ -33,19 +34,7 @@ def _make_account() -> Account:
 
 
 def _app(*, mode: AppMode = AppMode.CHAT) -> App:
-    return App(
-        id="app-1",
-        tenant_id="tenant-1",
-        name="Conversation app",
-        description="",
-        mode=mode,
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
-        enable_site=True,
-        enable_api=True,
-        max_active_requests=None,
-    )
+    return make_app(name="Conversation app", mode=mode)
 
 
 def _conversation(*, conversation_id: str = "c1", app_id: str = "app-1") -> Conversation:

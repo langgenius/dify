@@ -1,4 +1,3 @@
-from datetime import datetime
 from unittest.mock import Mock
 
 import pytest
@@ -14,6 +13,7 @@ from services.entities.notification_entities import (
     NotificationResult,
 )
 from services.notification_service import NotificationService
+from tests.unit_tests.model_factories import make_account_snapshot
 
 
 def _context() -> RequestContext:
@@ -40,21 +40,7 @@ class NotificationGatewayStub:
 
 
 def _account(language: str | None = "zh-Hans") -> AccountSnapshot:
-    return AccountSnapshot(
-        id="account-1",
-        name="Account",
-        email="account@example.com",
-        avatar=None,
-        is_password_set=False,
-        interface_language=language,
-        interface_theme="light",
-        timezone="UTC",
-        last_login_at=None,
-        last_login_ip=None,
-        status="active",
-        initialized_at=None,
-        created_at=datetime(2026, 1, 1),
-    )
+    return make_account_snapshot(interface_language=language)
 
 
 def _accounts(account: AccountSnapshot | None) -> Mock:

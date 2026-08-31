@@ -18,7 +18,7 @@ from models.enums import (
     FeedbackRating,
     MessageStatus,
 )
-from models.model import App, AppMode, Conversation, IconType, Message, MessageFeedback
+from models.model import App, AppMode, Conversation, Message, MessageFeedback
 from models.workflow import (
     WorkflowExecutionStatus,
     WorkflowNodeExecutionModel,
@@ -30,20 +30,11 @@ from models.workflow import (
 from services.agent import observability_service as observability_service_module
 from services.agent.observability_service import AgentLogQueryParams, AgentObservabilityService
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_app
 
 
 def _app(*, app_id: str = "app-1", name: str = "Iris", mode: AppMode = AppMode.AGENT_CHAT) -> App:
-    return App(
-        id=app_id,
-        tenant_id="tenant-1",
-        name=name,
-        mode=mode,
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#fff",
-        enable_site=False,
-        enable_api=False,
-    )
+    return make_app(app_id=app_id, name=name, mode=mode, icon_background="#fff", enable_site=False, enable_api=False)
 
 
 def _conversation(*, conversation_id: str = "conversation-1", app_id: str = "app-1") -> Conversation:

@@ -10,6 +10,7 @@ from werkzeug.exceptions import NotFound
 from controllers.console.workspace import snippets as snippets_module
 from models.account import Account, TenantAccountRole
 from services.snippet_dsl_service import ImportStatus, SnippetImportInfo
+from tests.unit_tests.model_factories import make_account
 
 
 @pytest.fixture(autouse=True)
@@ -33,10 +34,12 @@ class _SessionContext:
 
 
 def _account(account_id: str = "account-1") -> Account:
-    account = Account(name="Test User", email=f"{account_id}@example.com")
-    account.id = account_id
-    account.role = TenantAccountRole.EDITOR
-    return account
+    return make_account(
+        account_id=account_id,
+        name="Test User",
+        email=f"{account_id}@example.com",
+        role=TenantAccountRole.EDITOR,
+    )
 
 
 def _snippet(**overrides) -> SimpleNamespace:
