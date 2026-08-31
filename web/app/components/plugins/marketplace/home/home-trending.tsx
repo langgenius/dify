@@ -140,8 +140,19 @@ function HomeTrending({
   useEffect(() => {
     if (loopPhase !== 'resetting') return
 
-    const frame = window.requestAnimationFrame(() => setLoopPhase('idle'))
-    return () => window.cancelAnimationFrame(frame)
+    let settled = false
+    const settle = () => {
+      if (settled) return
+      settled = true
+      setLoopPhase('idle')
+    }
+
+    const frame = window.requestAnimationFrame(settle)
+    const timeout = window.setTimeout(settle, 50)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.clearTimeout(timeout)
+    }
   }, [loopPhase])
 
   useEffect(

@@ -261,7 +261,9 @@ describe('Marketplace home trending layout', () => {
     expect(track.style.transform).toContain('-300%')
     expect(track.querySelector('[data-carousel-loop-clone]')).toBeInTheDocument()
 
-    await new Promise((resolve) => setTimeout(resolve, 450))
+    await expect
+      .poll(() => track.getAttribute('data-carousel-loop-phase'), { timeout: 1000 })
+      .toBe('idle')
 
     expect(screen.getByRole('button', { name: 'First banner' }).element()).toHaveAttribute(
       'aria-current',
