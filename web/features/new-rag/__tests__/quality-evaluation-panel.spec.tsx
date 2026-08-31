@@ -235,7 +235,7 @@ describe('QualityEvaluationPanel', () => {
       '-translate-y-1/2',
     )
     expect(dialog).toHaveAccessibleDescription(
-      'dataset.newKnowledge.qualityPage.evaluation.dialogDescription:{"count":6}',
+      'dataset.newKnowledge.qualityPage.evaluation.dialogDescription_other:{"count":6}',
     )
     expect(
       screen.getByRole('radio', {
@@ -243,6 +243,30 @@ describe('QualityEvaluationPanel', () => {
       }),
     ).toBeChecked()
     expect(screen.getAllByRole('radio')).toHaveLength(3)
+  })
+
+  it('uses singular copy for one active golden question', async () => {
+    const user = userEvent.setup()
+    serviceMock.listGoldenQuestions.mockResolvedValue({
+      data: [{ id: 'golden-1', status: 'active' }],
+      next_cursor: null,
+    })
+    renderPanel()
+
+    await screen.findByText('dataset.newKnowledge.qualityPage.evaluation.emptyTitle')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.qualityPage.evaluation.run',
+      }),
+    )
+
+    expect(
+      screen.getByRole('dialog', {
+        name: 'dataset.newKnowledge.qualityPage.evaluation.dialogTitle',
+      }),
+    ).toHaveAccessibleDescription(
+      'dataset.newKnowledge.qualityPage.evaluation.dialogDescription_one:{"count":1}',
+    )
   })
 
   it('queues every active golden question and opens the persisted evidence report', async () => {

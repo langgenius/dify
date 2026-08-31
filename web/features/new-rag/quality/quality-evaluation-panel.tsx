@@ -583,9 +583,15 @@ export function QualityEvaluationPanel({
                 {t(($) => $['newKnowledge.qualityPage.evaluation.dialogTitle'])}
               </DialogTitle>
               <DialogDescription className="mt-2 pr-8 system-sm-regular text-text-tertiary">
-                {t(($) => $['newKnowledge.qualityPage.evaluation.dialogDescription'], {
-                  count: activeGoldenQuestionCount,
-                })}
+                {t(
+                  ($) =>
+                    $[
+                      activeGoldenQuestionCount === 1
+                        ? 'newKnowledge.qualityPage.evaluation.dialogDescription_one'
+                        : 'newKnowledge.qualityPage.evaluation.dialogDescription_other'
+                    ],
+                  { count: activeGoldenQuestionCount },
+                )}
               </DialogDescription>
               <DialogClose
                 render={
