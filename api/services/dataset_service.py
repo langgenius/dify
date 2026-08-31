@@ -20,6 +20,7 @@ from configs import dify_config
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.helper.name_generator import generate_incremental_name
 from core.model_manager import ModelManager
+from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -4064,6 +4065,12 @@ class SegmentService:
                 logger.exception("create child chunk index failed")
                 session.rollback()
                 raise ChildChunkIndexingError(str(e))
+            # sync keyword table so the new child chunk is searchable by keyword
+            # retrieval. See #40680.
+            try:
+                Keyword(dataset)._keyword_processor.add_child_chunk_keywords(child_chunk, session)  # type: ignore[attr-defined]
+            except Exception:
+                logger.exception("create child chunk keyword table sync failed")
             session.commit()
 
             return child_chunk
@@ -4146,6 +4153,29 @@ class SegmentService:
             logger.exception("update child chunk index failed")
             session.rollback()
             raise ChildChunkIndexingError(str(e))
+
+        # Sync keyword table for the batch: new children get their keywords
+        # added, updated children have old keywords removed and new ones
+        # inserted, deleted children have their entries removed. The keyword
+        # sync is best-effort and runs after the vector/DB write so a failure
+        # here does not roll back the user's edit. See #40680.
+        keyword_processor = Keyword(dataset)._keyword_processor  # type: ignore[attr-defined]
+        for new_child in new_child_chunks:
+            try:
+                keyword_processor.add_child_chunk_keywords(new_child, session)
+            except Exception:
+                logger.exception("add child chunk keyword table sync failed")
+        for updated_child in update_child_chunks:
+            try:
+                keyword_processor.update_child_chunk_keywords(updated_child, session)
+            except Exception:
+                logger.exception("update child chunk keyword table sync failed")
+        for deleted_child in delete_child_chunks:
+            try:
+                keyword_processor.delete_child_chunk_keywords(deleted_child, session)
+            except Exception:
+                logger.exception("delete child chunk keyword table sync failed")
+
         return sorted(new_child_chunks + update_child_chunks, key=lambda x: x.position)
 
     @classmethod
@@ -4173,6 +4203,14 @@ class SegmentService:
             logger.exception("update child chunk index failed")
             session.rollback()
             raise ChildChunkIndexingError(str(e))
+        # Re-extract keywords for the new content. Best-effort — the user's
+        # edit is committed even if keyword sync fails. See #40680.
+        try:
+            Keyword(dataset)._keyword_processor.update_child_chunk_keywords(  # type: ignore[attr-defined]
+                child_chunk, session
+            )
+        except Exception:
+            logger.exception("update child chunk keyword table sync failed")
         return child_chunk
 
     @classmethod
@@ -4185,6 +4223,16 @@ class SegmentService:
             session.rollback()
             raise ChildChunkDeleteIndexError(str(e))
         session.commit()
+        # Remove the deleted child's keywords from the dataset keyword table
+        # so a future keyword search does not return orphaned hits. Best-effort
+        # because the row is already gone — a stale keyword entry is just a
+        # no-op result. See #40680.
+        try:
+            Keyword(dataset)._keyword_processor.delete_child_chunk_keywords(  # type: ignore[attr-defined]
+                child_chunk, session
+            )
+        except Exception:
+            logger.exception("delete child chunk keyword table sync failed")
 
     @classmethod
     def get_child_chunks(

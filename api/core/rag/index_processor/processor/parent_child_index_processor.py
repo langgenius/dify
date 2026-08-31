@@ -344,6 +344,32 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 if all_multimodal_documents and dataset.is_multimodal:
                     vector.create_multimodal(all_multimodal_documents)
 
+            # Sync the keyword table for every child chunk created during
+            # parent-child economy indexing. `add_documents` persists the
+            # ChildChunk rows above; we now read them back and add each one's
+            # keywords so keyword search can find the child content.
+            # See #40680.
+            try:
+                from core.rag.datasource.keyword.keyword_factory import Keyword
+
+                keyword_processor = Keyword(dataset)._keyword_processor  # type: ignore[attr-defined]
+                persisted_children = session.scalars(
+                    select(ChildChunk).where(
+                        ChildChunk.dataset_id == dataset.id,
+                        ChildChunk.document_id == document.id,
+                    )
+                ).all()
+                for child_chunk in persisted_children:
+                    try:
+                        keyword_processor.add_child_chunk_keywords(child_chunk, session)
+                    except Exception:
+                        logger.exception(
+                            "add child chunk keyword table sync failed during index for %s",
+                            child_chunk.id,
+                        )
+            except Exception:
+                logger.exception("keyword table sync setup failed during parent-child index")
+
     @override
     def format_preview(self, chunks: Any) -> ParentChildFormatPreviewDict:
         parent_childs = ParentChildStructureChunk.model_validate(chunks)
