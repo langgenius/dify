@@ -242,25 +242,28 @@ describe('request 401 handling', () => {
     expect(mocks.completeWebAppAuthorizationRecovery).not.toHaveBeenCalled()
   })
 
-  it('should reload an environment webapp after an SSE request becomes unauthorized', async () => {
+  it('should show forbidden when an environment SSE request is denied', async () => {
     const address = { kind: 'environment', code: 'environment-code' } as const
     mocks.resolveWebAppAddress.mockReturnValue(address)
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
       new Response(
         JSON.stringify({
-          code: 'web_app_access_denied',
-          message: 'webapp access denied',
+          code: 401,
+          reason: 'APPDEPLOY_WEB_APP_ACCESS_DENIED',
+          message: 'You do not have permission to access this web app.',
         }),
-        { status: 403, headers: { 'Content-Type': 'application/json' } },
+        { status: 401, headers: { 'Content-Type': 'application/json' } },
       ),
     )
 
     ssePost('/chat-messages', { body: { query: 'hello' } }, { isPublicAPI: true })
 
     await vi.waitFor(() => {
-      expect(mocks.clearWebAppPassport).toHaveBeenCalledWith(address)
-      expect(globalThis.location.reload).toHaveBeenCalledOnce()
+      expect(globalThis.location.href).toContain('/webapp-signin?')
+      expect(globalThis.location.href).toContain('code=403')
     })
+    expect(mocks.clearWebAppPassport).not.toHaveBeenCalled()
+    expect(globalThis.location.reload).not.toHaveBeenCalled()
   })
 
   it('should stop reloading when environment authorization does not recover', async () => {
@@ -305,25 +308,28 @@ describe('request 401 handling', () => {
     expect(mocks.beginWebAppAuthorizationRecovery).not.toHaveBeenCalled()
   })
 
-  it('should recover an environment webapp after a plain request is denied', async () => {
+  it('should show forbidden when an environment request is denied', async () => {
     const address = { kind: 'environment', code: 'environment-code' } as const
     const response = new Response(
       JSON.stringify({
-        code: 'web_app_access_denied',
-        message: 'webapp access denied',
+        code: 401,
+        reason: 'APPDEPLOY_WEB_APP_ACCESS_DENIED',
+        message: 'You do not have permission to access this web app.',
       }),
-      { status: 403, headers: { 'Content-Type': 'application/json' } },
+      { status: 401, headers: { 'Content-Type': 'application/json' } },
     )
     mocks.resolveWebAppAddress.mockReturnValue(address)
     arrangeClientRequest({ response })
 
     await expect(request('/messages', {}, { isPublicAPI: true })).rejects.toBe(response)
 
-    expect(mocks.clearWebAppPassport).toHaveBeenCalledWith(address)
-    expect(globalThis.location.reload).toHaveBeenCalledOnce()
+    expect(globalThis.location.href).toContain('/webapp-signin?')
+    expect(globalThis.location.href).toContain('code=403')
+    expect(mocks.clearWebAppPassport).not.toHaveBeenCalled()
+    expect(globalThis.location.reload).not.toHaveBeenCalled()
   })
 
-  it('should recover an environment webapp after an upload is denied', async () => {
+  it('should show forbidden when an environment upload is denied', async () => {
     const address = { kind: 'environment', code: 'environment-code' } as const
     mocks.resolveWebAppAddress.mockReturnValue(address)
     const xhr = {
@@ -332,10 +338,11 @@ describe('request 401 handling', () => {
       send: vi.fn(function (this: { onreadystatechange?: () => void }) {
         this.onreadystatechange?.()
       }),
-      status: 403,
+      status: 401,
       response: {
-        code: 'web_app_access_denied',
-        message: 'webapp access denied',
+        code: 401,
+        reason: 'APPDEPLOY_WEB_APP_ACCESS_DENIED',
+        message: 'You do not have permission to access this web app.',
       },
       readyState: 4,
       upload: {},
@@ -345,7 +352,9 @@ describe('request 401 handling', () => {
 
     await expect(upload({ xhr, data: new FormData() }, true)).rejects.toBe(xhr)
 
-    expect(mocks.clearWebAppPassport).toHaveBeenCalledWith(address)
-    expect(globalThis.location.reload).toHaveBeenCalledOnce()
+    expect(globalThis.location.href).toContain('/webapp-signin?')
+    expect(globalThis.location.href).toContain('code=403')
+    expect(mocks.clearWebAppPassport).not.toHaveBeenCalled()
+    expect(globalThis.location.reload).not.toHaveBeenCalled()
   })
 })

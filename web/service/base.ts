@@ -65,9 +65,7 @@ const recoverEnvironmentWebAppAuthorization = (
   const address = resolveWebAppAddress()
   if (
     address?.kind !== 'environment' ||
-    (error.reason !== 'APPDEPLOY_UNAUTHORIZED' &&
-      error.code !== 'unauthorized' &&
-      error.code !== 'web_app_access_denied') ||
+    (error.reason !== 'APPDEPLOY_UNAUTHORIZED' && error.code !== 'unauthorized') ||
     (url && isWebAppAuthorizationEndpoint(url))
   )
     return false
@@ -80,6 +78,20 @@ const recoverEnvironmentWebAppAuthorization = (
   clearWebAppPassport(address)
   window.location.reload()
   return true
+}
+
+const handleWebAppAuthorizationError = (
+  error: { code?: string | number; message?: string; reason?: string },
+  url?: string,
+) => {
+  if (
+    error.reason === 'APPDEPLOY_WEB_APP_ACCESS_DENIED' ||
+    error.code === 'web_app_access_denied'
+  ) {
+    requiredWebSSOLogin(error.message, 403)
+    return true
+  }
+  return recoverEnvironmentWebAppAuthorization(error, url)
 }
 
 const isAbortError = (error: unknown) => {
@@ -150,12 +162,7 @@ const handlePublicStreamResponseError = async (
   } catch {}
 
   if (data) {
-    if (recoverEnvironmentWebAppAuthorization(data)) return
-
-    if (data.code === 'web_app_access_denied') {
-      requiredWebSSOLogin(data.message, 403)
-      return
-    }
+    if (handleWebAppAuthorizationError(data)) return
     if (data.code === 'web_sso_auth_required' || data.code === 'unauthorized') {
       requiredWebSSOLogin()
       return
@@ -627,7 +634,7 @@ export const upload = async (
             typeof xhr.response === 'object' &&
             xhr.response !== null
           )
-            recoverEnvironmentWebAppAuthorization(xhr.response)
+            handleWebAppAuthorizationError(xhr.response)
           reject(xhr)
         }
       }
@@ -1085,14 +1092,9 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         return Promise.reject(err)
       }
       if (/\/login/.test(url)) return Promise.reject(errRespData)
-      if (recoverEnvironmentWebAppAuthorization(errRespData, url)) return Promise.reject(err)
+      if (handleWebAppAuthorizationError(errRespData, url)) return Promise.reject(err)
       // special code
       const { code, message } = errRespData
-      // webapp sso
-      if (code === 'web_app_access_denied') {
-        requiredWebSSOLogin(message, 403)
-        return Promise.reject(err)
-      }
       if (code === 'web_sso_auth_required') {
         requiredWebSSOLogin()
         return Promise.reject(err)
