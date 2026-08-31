@@ -10,7 +10,8 @@ from sqlalchemy.orm import Session
 import core.rag.datasource.keyword.jieba.jieba as jieba_module
 from core.rag.datasource.keyword.jieba.jieba import Jieba, dumps_with_sets, set_orjson_default
 from core.rag.models.document import Document
-from models.dataset import Dataset, DatasetKeywordTable, DocumentSegment
+from models.dataset import ChildChunk, Dataset, DatasetKeywordTable, DocumentSegment
+from models.enums import SegmentType
 
 
 class _DummyLock:
@@ -406,3 +407,205 @@ def test_set_orjson_default_and_dumps_with_sets():
     json_payload = dumps_with_sets(payload)
     decoded = json.loads(json_payload)
     assert set(decoded["items"]) == {"a", "b"}
+
+
+# =============================================================================
+# #40680 regressions: child chunk keyword search + keyword table sync helpers.
+# =============================================================================
+
+
+def _child_chunk(
+    *,
+    index_node_id: str = "child-node-1",
+    content: str = "child content",
+    segment_id: str = "segment-1",
+    document_id: str = "doc-1",
+    dataset_id: str = "dataset-1",
+) -> ChildChunk:
+    chunk = ChildChunk(
+        tenant_id="tenant-1",
+        dataset_id=dataset_id,
+        document_id=document_id,
+        segment_id=segment_id,
+        position=1,
+        content=content,
+        word_count=len(content),
+        created_by="user-1",
+        type=SegmentType.AUTOMATIC,
+        index_node_id=index_node_id,
+        index_node_hash=f"hash-{index_node_id}",
+    )
+    chunk.id = f"child-{index_node_id}"
+    return chunk
+
+
+def test_search_queries_child_chunk_table(monkeypatch: pytest.MonkeyPatch, patched_runtime):
+    """Regression for #40680: `Jieba.search` must resolve matching IDs
+    from `ChildChunk` as well as `DocumentSegment` so child chunk keyword
+    hits are not silently dropped. Pre-fix only `DocumentSegment` was
+    queried, which meant a valid keyword table hit on a child chunk's
+    `index_node_id` was never materialized as a retrieval document.
+    """
+    # Persist a ChildChunk row whose `index_node_id` is in the keyword
+    # table. Use flush (not commit) to match the working `test_search`
+    # pattern in this file and avoid the FK-cascade cost of a commit.
+    child = _child_chunk(
+        index_node_id="child-uuid-1",
+        content="child chunk content",
+        segment_id="segment-uuid-1",
+    )
+    patched_runtime.session.add(child)
+    patched_runtime.session.flush()
+
+    # Build a keyword table where the only match points to the child.
+    table = {"kw1": {"child-uuid-1"}}
+    payload = {"__type__": "keyword_table", "__data__": {"index_id": "dataset-1", "summary": None, "table": table}}
+    dkt = _dataset_keyword_table(keyword_table_dict=payload)
+    keyword = Jieba(_dataset(dkt))
+    # Bypass the actual keyword table extraction so the test is
+    # deterministic regardless of the jieba vocabulary shipped with
+    # the test environment.
+    monkeypatch.setattr(keyword, "_retrieve_ids_by_query", MagicMock(return_value=["child-uuid-1"]))
+
+    documents = keyword.search("kw1", session=patched_runtime.session)
+
+    assert len(documents) == 1
+    assert documents[0].page_content == "child chunk content"
+    assert documents[0].metadata["doc_id"] == "child-uuid-1"
+    assert documents[0].metadata["is_child_chunk"] is True
+    assert documents[0].metadata["segment_id"] == "segment-uuid-1"
+    assert documents[0].metadata["document_id"] == "doc-1"
+
+
+def test_search_resolves_mixed_segment_and_child_hits(monkeypatch: pytest.MonkeyPatch, patched_runtime):
+    """Regression for #40680: when the keyword table contains both a
+    segment and a child chunk index_node_id, the search must return
+    both kinds in ranking order. Pre-fix only `DocumentSegment` was
+    queried, so the child hit was silently dropped and the result
+    list was effectively truncated to the segment subset.
+    """
+    child = _child_chunk(index_node_id="child-uuid-1", content="child content")
+    segment = _segment(index_node_id="segment-uuid-1")
+    patched_runtime.session.add(child)
+    patched_runtime.session.add(segment)
+    patched_runtime.session.flush()
+
+    table = {"kw1": {"child-uuid-1", "segment-uuid-1"}}
+    payload = {"__type__": "keyword_table", "__data__": {"index_id": "dataset-1", "summary": None, "table": table}}
+    dkt = _dataset_keyword_table(keyword_table_dict=payload)
+    keyword = Jieba(_dataset(dkt))
+    monkeypatch.setattr(keyword, "_retrieve_ids_by_query", MagicMock(return_value=["child-uuid-1", "segment-uuid-1"]))
+
+    documents = keyword.search("kw1", session=patched_runtime.session)
+
+    assert len(documents) == 2
+    by_id = {doc.metadata["doc_id"]: doc for doc in documents}
+    assert set(by_id) == {"child-uuid-1", "segment-uuid-1"}
+    assert by_id["child-uuid-1"].metadata["is_child_chunk"] is True
+    assert by_id["segment-uuid-1"].metadata["is_child_chunk"] is False
+
+
+def test_search_applies_document_ids_filter_to_child_chunks(monkeypatch: pytest.MonkeyPatch, patched_runtime):
+    """Regression for #40680: the `document_ids_filter` must apply to
+    child chunk results too. Pre-fix the filter only narrowed the
+    `DocumentSegment` query, so a child chunk from a denied document
+    would still appear in the result list.
+    """
+    child_visible = _child_chunk(
+        index_node_id="child-uuid-1",
+        content="visible child",
+        document_id="doc-allowed",
+    )
+    child_hidden = _child_chunk(
+        index_node_id="child-uuid-2",
+        content="hidden child",
+        document_id="doc-denied",
+    )
+    patched_runtime.session.add(child_visible)
+    patched_runtime.session.add(child_hidden)
+    patched_runtime.session.flush()
+
+    table = {"kw1": {"child-uuid-1", "child-uuid-2"}}
+    payload = {"__type__": "keyword_table", "__data__": {"index_id": "dataset-1", "summary": None, "table": table}}
+    dkt = _dataset_keyword_table(keyword_table_dict=payload)
+    keyword = Jieba(_dataset(dkt))
+    monkeypatch.setattr(keyword, "_retrieve_ids_by_query", MagicMock(return_value=["child-uuid-1", "child-uuid-2"]))
+
+    documents = keyword.search("kw1", session=patched_runtime.session, document_ids_filter=["doc-allowed"])
+
+    assert len(documents) == 1
+    assert documents[0].page_content == "visible child"
+
+
+def test_add_child_chunk_keywords_inserts_into_table(monkeypatch: pytest.MonkeyPatch, patched_runtime):
+    """Regression for #40680: a new child chunk's keywords must be added
+    to the dataset keyword table so subsequent searches can find it."""
+    keyword = Jieba(_dataset(_dataset_keyword_table(), keyword_number=5))
+    handler = MagicMock()
+    handler.extract_keywords.return_value = {"alpha", "beta"}
+    monkeypatch.setattr(jieba_module, "JiebaKeywordTableHandler", lambda: handler)
+    monkeypatch.setattr(keyword, "_get_dataset_keyword_table", MagicMock(return_value={}))
+    monkeypatch.setattr(keyword, "_save_dataset_keyword_table", MagicMock())
+    monkeypatch.setattr(keyword, "_add_text_to_keyword_table", MagicMock())
+
+    child = _child_chunk(index_node_id="child-uuid-1", content="hello world")
+    keyword.add_child_chunk_keywords(child, session=patched_runtime.session)
+
+    handler.extract_keywords.assert_called_once_with("hello world", 5)
+    keyword._add_text_to_keyword_table.assert_called_once()
+    call_args = keyword._add_text_to_keyword_table.call_args
+    assert call_args.args[0] == {}
+    assert call_args.args[1] == "child-uuid-1"
+    assert set(call_args.args[2]) == {"alpha", "beta"}
+
+
+def test_delete_child_chunk_keywords_removes_from_table(monkeypatch: pytest.MonkeyPatch, patched_runtime):
+    """Regression for #40680: deleting a child chunk must remove its
+    index_node_id from every keyword set in the keyword table, otherwise
+    future searches would return orphaned hits."""
+    keyword = Jieba(_dataset(_dataset_keyword_table()))
+    keyword_table = {"alpha": {"child-uuid-1", "other-node"}, "beta": {"child-uuid-1"}}
+    monkeypatch.setattr(keyword, "_get_dataset_keyword_table", MagicMock(return_value=keyword_table))
+    monkeypatch.setattr(keyword, "_delete_ids_from_keyword_table", MagicMock())
+    monkeypatch.setattr(keyword, "_save_dataset_keyword_table", MagicMock())
+
+    child = _child_chunk(index_node_id="child-uuid-1")
+    keyword.delete_child_chunk_keywords(child, session=patched_runtime.session)
+
+    # The method delegates to `_delete_ids_from_keyword_table` with the
+    # child chunk's index_node_id.
+    keyword._delete_ids_from_keyword_table.assert_called_once()
+    call_args = keyword._delete_ids_from_keyword_table.call_args
+    assert call_args.args[0] == keyword_table
+    assert call_args.args[1] == ["child-uuid-1"]
+
+
+def test_update_child_chunk_keywords_replaces_in_table(monkeypatch: pytest.MonkeyPatch, patched_runtime):
+    """Regression for #40680: when a child chunk's content is updated, the
+    old keywords for that index_node_id must be removed and the new
+    keywords (extracted from the new content) must be inserted."""
+    keyword = Jieba(_dataset(_dataset_keyword_table(), keyword_number=5))
+    delete_mock = MagicMock()
+    add_mock = MagicMock()
+    monkeypatch.setattr(keyword, "delete_child_chunk_keywords", delete_mock)
+    monkeypatch.setattr(keyword, "add_child_chunk_keywords", add_mock)
+
+    child = _child_chunk(index_node_id="child-uuid-1", content="updated content")
+    keyword.update_child_chunk_keywords(child, session=patched_runtime.session)
+
+    delete_mock.assert_called_once_with(child, patched_runtime.session)
+    add_mock.assert_called_once_with(child, patched_runtime.session)
+
+
+def test_add_child_chunk_keywords_skips_when_index_node_id_missing(monkeypatch: pytest.MonkeyPatch, patched_runtime):
+    """Guard: a child chunk without an index_node_id (e.g. still being
+    inserted) must not crash the keyword sync path."""
+    keyword = Jieba(_dataset(_dataset_keyword_table()))
+    monkeypatch.setattr(keyword, "_get_dataset_keyword_table", MagicMock())
+
+    child = _child_chunk()
+    child.index_node_id = None
+
+    # Should be a no-op, not an exception.
+    keyword.add_child_chunk_keywords(child, session=patched_runtime.session)
+    keyword._get_dataset_keyword_table.assert_not_called()
