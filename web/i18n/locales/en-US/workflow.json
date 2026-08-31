@@ -255,7 +255,7 @@
   "difyBuilder.actionUndo": "Undo",
   "difyBuilder.actionsTitle": "Actions",
   "difyBuilder.appLabel": "App",
-  "difyBuilder.buttonTooltip": "Dify Builder",
+  "difyBuilder.buttonTooltip": "App Builder",
   "difyBuilder.checklistFixAction_one": "Fix {{count}} checklist issue",
   "difyBuilder.checklistFixAction_other": "Fix {{count}} checklist issues",
   "difyBuilder.checklistFixSummary_one": "{{count}} configuration issue can be auto-fixed",
