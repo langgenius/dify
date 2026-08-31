@@ -81,6 +81,7 @@ class RuntimeBackendSettings(BaseSettings):
     openshell_sandbox_image: str = DEFAULT_OPENSHELL_SANDBOX_IMAGE
     openshell_driver_config: str | None = None
     openshell_shared_mount_path: str = DEFAULT_OPENSHELL_SHARED_MOUNT_PATH
+    openshell_egress_allow: str = ""
     openshell_shellctl_auth_token: str = ""
     openshell_shellctl_port: int = Field(default=5004, ge=1, le=65535)
     openshell_ready_timeout_seconds: float = Field(default=300.0, gt=0)
@@ -133,6 +134,7 @@ class RuntimeBackendSettings(BaseSettings):
                         "it must mount the shared Home Snapshot volume into every sandbox"
                     )
                 _ = _parse_openshell_driver_config(self.openshell_driver_config)
+                _ = _parse_openshell_egress_allow(self.openshell_egress_allow)
                 if not self.openshell_shellctl_auth_token.strip():
                     raise ValueError(
                         "openshell_shellctl_auth_token is required for the openshell runtime backend"
@@ -217,6 +219,7 @@ def create_runtime_backend_profile(settings: RuntimeBackendSettings) -> RuntimeB
                 image=settings.openshell_sandbox_image,
                 driver_config=_parse_openshell_driver_config(settings.openshell_driver_config or ""),
                 shared_mount_path=settings.openshell_shared_mount_path,
+                egress_allow=_parse_openshell_egress_allow(settings.openshell_egress_allow),
                 ready_timeout_seconds=settings.openshell_ready_timeout_seconds,
                 exec_timeout_seconds=settings.openshell_exec_timeout_seconds,
             )
@@ -243,6 +246,22 @@ def _validate_http_url(value: str, *, field_name: str) -> None:
 def _validate_absolute_posix_path(value: str, *, field_name: str) -> None:
     if not value.strip() or not posixpath.isabs(value):
         raise ValueError(f"{field_name} must be an absolute POSIX path")
+
+
+def _parse_openshell_egress_allow(value: str) -> tuple[tuple[str, int], ...]:
+    """Parse a comma-separated ``host:port`` list into ``(host, port)`` pairs."""
+    endpoints: list[tuple[str, int]] = []
+    for raw_entry in value.split(","):
+        entry = raw_entry.strip()
+        if not entry:
+            continue
+        host, _, port_text = entry.rpartition(":")
+        if not host or "/" in entry or not port_text.isdigit() or not 1 <= int(port_text) <= 65535:
+            raise ValueError(
+                f"openshell_egress_allow entries must be host:port (no scheme or path), got: {entry!r}"
+            )
+        endpoints.append((host, int(port_text)))
+    return tuple(endpoints)
 
 
 def _parse_openshell_driver_config(value: str) -> dict[str, object]:

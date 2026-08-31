@@ -208,3 +208,44 @@ def test_openshell_backend_wires_shared_deployment_config_into_both_drivers() ->
     assert profile.execution_bindings.shared_mount_path == "/mnt/shared"
     assert profile.execution_bindings.shellctl_auth_token == "token-1"
     assert profile.execution_bindings.shellctl_port == 6006
+    # Egress control defaults to opt-out: no allowlist reaches the gateway.
+    assert control_plane.egress_allow == ()
+
+
+def test_openshell_backend_parses_egress_allow_into_control_plane() -> None:
+    settings = RuntimeBackendSettings(
+        runtime_backend="openshell",
+        openshell_gateway_endpoint="gateway.example:17670",
+        openshell_driver_config=_OPENSHELL_DRIVER_CONFIG,
+        openshell_shellctl_auth_token="token-1",
+        openshell_egress_allow=" agent.example.com:5050, dify.example.com:443 ,",
+    )
+
+    profile = create_runtime_backend_profile(settings)
+
+    assert isinstance(profile.execution_bindings, OpenShellExecutionBindingBackend)
+    control_plane = profile.execution_bindings.control_plane
+    assert isinstance(control_plane, OpenShellSDKControlPlane)
+    assert control_plane.egress_allow == (("agent.example.com", 5050), ("dify.example.com", 443))
+
+
+@pytest.mark.parametrize(
+    "egress_allow",
+    [
+        "agent.example.com",  # no port
+        "http://agent.example.com:5050",  # scheme
+        "agent.example.com:5050/agent-stub",  # path
+        ":5050",  # no host
+        "agent.example.com:0",  # port out of range
+        "agent.example.com:notaport",
+    ],
+)
+def test_openshell_backend_rejects_malformed_egress_allow(egress_allow: str) -> None:
+    with pytest.raises(ValidationError, match="host:port"):
+        _ = RuntimeBackendSettings(
+            runtime_backend="openshell",
+            openshell_gateway_endpoint="gateway.example:17670",
+            openshell_driver_config=_OPENSHELL_DRIVER_CONFIG,
+            openshell_shellctl_auth_token="token-1",
+            openshell_egress_allow=egress_allow,
+        )
