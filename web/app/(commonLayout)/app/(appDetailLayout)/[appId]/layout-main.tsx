@@ -78,6 +78,8 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     appDetail?.id === appId ? appDetail : appDetailRes?.id === appId ? appDetailRes : null
   const pageTitle = appDetailPageTitle(pathname, t)
   const appName = routeAppDetail?.id === appId ? routeAppDetail.name : undefined
+  const shouldBlockAgentResourceAccess =
+    routeAppDetail?.mode === AppModeEnum.AGENT && pathname.endsWith('/access-config')
 
   useDocumentTitle(`${pageTitle} · ${appName || t(($) => $['menus.appDetail'], { ns: 'common' })}`)
 
@@ -146,7 +148,8 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       (isLogsPath && !appACLCapabilities.canAccessLogAndAnnotation) ||
       (isAnnotationsPath && !appACLCapabilities.canAccessLogAndAnnotation) ||
       (isOverviewPath && !appACLCapabilities.canMonitor) ||
-      (isAccessConfigPath && !appACLCapabilities.canAccessConfig) ||
+      (isAccessConfigPath &&
+        (routeAppDetail.mode === AppModeEnum.AGENT || !appACLCapabilities.canAccessConfig)) ||
       (isDeployPath &&
         (routeAppDetail.mode !== AppModeEnum.WORKFLOW || !appACLCapabilities.canDeploy)) ||
       (isAccessPointPath && !appACLCapabilities.canAccessPoint)
@@ -196,27 +199,28 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   ])
 
   const isWorkflowPage = pathname.endsWith('/workflow')
-  const content = !appDetail ? (
-    <div className="flex min-w-0 grow items-center justify-center bg-background-body">
-      <Loading />
-    </div>
-  ) : (
-    <div
-      className={cn(
-        'relative flex h-0 min-h-0 min-w-0 grow overflow-hidden',
-        !isWorkflowPage && 'pt-1 pr-1 pb-1',
-      )}
-    >
+  const content =
+    !appDetail || shouldBlockAgentResourceAccess ? (
+      <div className="flex min-w-0 grow items-center justify-center bg-background-body">
+        <Loading />
+      </div>
+    ) : (
       <div
         className={cn(
-          'min-w-0 grow overflow-hidden bg-components-panel-bg',
-          !isWorkflowPage && 'rounded-lg shadow-xs shadow-shadow-shadow-3',
+          'relative flex h-0 min-h-0 min-w-0 grow overflow-hidden',
+          !isWorkflowPage && 'pt-1 pr-1 pb-1',
         )}
       >
-        {children}
+        <div
+          className={cn(
+            'min-w-0 grow overflow-hidden bg-components-panel-bg',
+            !isWorkflowPage && 'rounded-lg shadow-xs shadow-shadow-shadow-3',
+          )}
+        >
+          {children}
+        </div>
       </div>
-    </div>
-  )
+    )
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background-body">

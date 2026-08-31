@@ -8,6 +8,7 @@ from werkzeug.exceptions import NotFound
 from controllers.common.controller_schemas import MetadataUpdatePayload
 from controllers.common.schema import register_response_schema_models, register_schema_model, register_schema_models
 from controllers.common.session import with_session
+from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_rate_limit_check
 from fields.dataset_fields import (
@@ -81,9 +82,9 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     @with_session
-    def post(self, session: Session, tenant_id, dataset_id: UUID):
+    @model_validate(MetadataArgs)
+    def post(self, metadata_args: MetadataArgs, session: Session, tenant_id, dataset_id: UUID):
         """Create metadata for a dataset."""
-        metadata_args = MetadataArgs.model_validate(service_api_ns.payload or {})
 
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str, session)
@@ -156,9 +157,9 @@ class DatasetMetadataServiceApi(DatasetApiResource):
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     @with_session
-    def patch(self, session: Session, tenant_id, dataset_id: UUID, metadata_id: UUID):
+    @model_validate(MetadataUpdatePayload)
+    def patch(self, payload: MetadataUpdatePayload, session: Session, tenant_id, dataset_id: UUID, metadata_id: UUID):
         """Update metadata name."""
-        payload = MetadataUpdatePayload.model_validate(service_api_ns.payload or {})
 
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)

@@ -310,6 +310,7 @@ def test_agent_app_list_and_create_use_agent_route(
     app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, sqlite_session: Session
 ) -> None:
     captured: dict[str, object] = {}
+    monkeypatch.setattr(roster_controller.dify_config, "RBAC_ENABLED", True)
 
     class FakeAppService:
         def get_app(self, app_obj: object, *, session: object) -> object:
@@ -324,6 +325,11 @@ def test_agent_app_list_and_create_use_agent_route(
                 has_next=False,
                 items=[_app_detail_obj(id="app-list", bound_agent_id="agent-list")],
             )
+
+        def get_agent_publication_counts(self, user_id: str, tenant_id: str, params, session):
+            del session
+            captured["counts"] = {"user_id": user_id, "tenant_id": tenant_id, "params": params}
+            return roster_controller.AgentAppPublicationCounts(published=1, drafts=0)
 
         def create_app(self, tenant_id: str, params, current_user: object, *, session: object) -> object:
             captured["create"] = {"tenant_id": tenant_id, "params": params, "current_user": current_user}
@@ -392,6 +398,25 @@ def test_agent_app_list_and_create_use_agent_route(
     monkeypatch.setattr(
         roster_controller.AgentRosterService, "count_agent_app_debug_conversation_messages", lambda _self, **kwargs: 0
     )
+    monkeypatch.setattr(
+        roster_controller.enterprise_rbac_service.RBACService.AgentPermissions,
+        "batch_get",
+        lambda _tenant_id, _account_id, agent_ids, **_kwargs: {
+            agent_id: [f"permission:{agent_id}"] for agent_id in agent_ids
+        },
+    )
+    replace_agent_whitelist = MagicMock()
+    initialize_agent_rbac_access = MagicMock()
+    monkeypatch.setattr(
+        roster_controller.enterprise_rbac_service.RBACService.AgentAccess,
+        "replace_whitelist",
+        replace_agent_whitelist,
+    )
+    monkeypatch.setattr(
+        roster_controller.initialize_created_app_rbac_access_task,
+        "delay",
+        initialize_agent_rbac_access,
+    )
 
     def get_or_create_debug_conversation(_self: object, **kwargs: object) -> str:
         captured["get_or_create_debug_conversation"] = kwargs
@@ -408,7 +433,8 @@ def test_agent_app_list_and_create_use_agent_route(
         lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
     )
     with app.test_request_context(
-        "/console/api/agent?page=1&limit=10&mode=workflow&sort_by=recently_created&is_created_by_me=true"
+        "/console/api/agent?page=1&limit=10&mode=workflow&sort_by=recently_created"
+        "&is_created_by_me=true&publication_status=published"
     ):
         listed = unwrap(AgentAppListApi.get)(
             AgentAppListApi(), sqlite_session, "tenant-1", _account(account_id=account_id)
@@ -416,10 +442,12 @@ def test_agent_app_list_and_create_use_agent_route(
     assert listed["page"] == 1
     assert listed["limit"] == 10
     assert listed["total"] == 1
+    assert listed["publication_counts"] == {"published": 1, "drafts": 0}
     assert listed["data"][0]["id"] == "agent-list"
     assert listed["data"][0]["app_id"] == "app-list"
     assert listed["data"][0]["debug_conversation_id"] == "debug-conversation-list"
     assert listed["data"][0]["role"] == "List role"
+    assert listed["data"][0]["permission_keys"] == ["permission:agent-list"]
     assert listed["data"][0]["active_config_is_published"] is False
     assert listed["data"][0]["reference_count"] == 2
     assert listed["data"][0]["published_reference_count"] == 1
@@ -438,7 +466,11 @@ def test_agent_app_list_and_create_use_agent_route(
     assert list_params.mode == "agent"
     assert list_params.sort_by == "recently_created"
     assert list_params.is_created_by_me is True
+    assert list_params.agent_is_published is True
     assert list_params.status == "normal"
+    count_call = cast(dict[str, object], captured["counts"])
+    count_params = cast(Any, count_call["params"])
+    assert count_params.agent_is_published is True
     with app.test_request_context(
         "/console/api/agent",
         json={"name": "Iris", "description": "Agent app", "role": "Coordinator", "icon_type": "emoji", "icon": "robot"},
@@ -457,12 +489,17 @@ def test_agent_app_list_and_create_use_agent_route(
     assert created["app_id"] == "app-created"
     assert created["debug_conversation_id"] == "debug-conversation-created"
     assert created["role"] == "Created role"
+    assert created["permission_keys"] == ["permission:agent-created"]
     assert "active_config_is_published" not in created
     assert "bound_agent_id" not in created
     create_call = cast(dict[str, object], captured["create"])
     create_params = cast(Any, create_call["params"])
     assert create_params.mode == "agent"
     assert create_params.agent_role == "Coordinator"
+    replace_agent_whitelist.assert_called_once()
+    assert replace_agent_whitelist.call_args.args[:3] == ("tenant-1", account_id, "agent-created")
+    assert replace_agent_whitelist.call_args.args[3].automatic_include_workspace_members is True
+    initialize_agent_rbac_access.assert_called_once_with("tenant-1", account_id, agent_id="agent-created")
     assert captured["get_or_create_debug_conversation"] == {
         "tenant_id": "tenant-1",
         "agent_id": "agent-created",
@@ -523,6 +560,7 @@ def test_agent_app_create_omits_optional_role_as_empty_string(
 def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
     app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, sqlite_session: Session
 ) -> None:
+    monkeypatch.setattr(roster_controller.dify_config, "RBAC_ENABLED", True)
     agent_id = "00000000-0000-0000-0000-000000000001"
     tenant_id = "00000000-0000-0000-0000-000000000002"
     app_id = "00000000-0000-0000-0000-000000000003"
@@ -562,6 +600,13 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
         "agent_has_workflow_callable_active_snapshot",
         lambda **_kwargs: False,
     )
+    monkeypatch.setattr(
+        roster_controller.enterprise_rbac_service.RBACService.AgentPermissions,
+        "batch_get",
+        lambda _tenant_id, _account_id, agent_ids, **_kwargs: {
+            agent_id: [f"permission:{agent_id}"] for agent_id in agent_ids
+        },
+    )
 
     class FakeAppService:
         def get_app(self, app_obj: object, *, session: object) -> object:
@@ -586,6 +631,7 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
     assert detail["debug_conversation_message_count"] == 2
     assert detail["role"] == "Resolved role"
     assert detail["access_ready"] is False
+    assert detail["permission_keys"] == [f"permission:{agent_id}"]
     assert "active_config_is_published" not in detail
     assert "bound_agent_id" not in detail
     assert captured["get_app"] == {"app": app_model, "session": session}
@@ -631,11 +677,28 @@ def test_agent_app_copy_uses_agent_id_and_returns_agent_detail(
             captured.update(kwargs)
             return copied_app
 
+        def get_app_backing_agent(self, **kwargs: object) -> Agent:
+            captured["get_app_backing_agent"] = kwargs
+            return Agent(id="copied-agent", app_id="copied-app")
+
     monkeypatch.setattr(roster_controller, "_agent_roster_service", lambda *_args: FakeRosterService())
     monkeypatch.setattr(
         roster_controller,
         "_serialize_agent_app_detail",
         lambda _session, app_model, **_kwargs: {"id": "copied-agent", "app_id": app_model.id, "name": app_model.name},
+    )
+    monkeypatch.setattr(roster_controller.dify_config, "RBAC_ENABLED", True)
+    replace_agent_whitelist = MagicMock()
+    initialize_agent_rbac_access = MagicMock()
+    monkeypatch.setattr(
+        roster_controller.enterprise_rbac_service.RBACService.AgentAccess,
+        "replace_whitelist",
+        replace_agent_whitelist,
+    )
+    monkeypatch.setattr(
+        roster_controller.initialize_created_app_rbac_access_task,
+        "delay",
+        initialize_agent_rbac_access,
     )
     with app.test_request_context(
         "/console/api/agent/00000000-0000-0000-0000-000000000001/copy",
@@ -675,7 +738,12 @@ def test_agent_app_copy_uses_agent_id_and_returns_agent_detail(
         "icon_type": "emoji",
         "icon": "sparkles",
         "icon_background": "#fff",
+        "get_app_backing_agent": {"tenant_id": "tenant-1", "app_id": "copied-app"},
     }
+    replace_agent_whitelist.assert_called_once()
+    assert replace_agent_whitelist.call_args.args[:3] == ("tenant-1", account_id, "copied-agent")
+    assert replace_agent_whitelist.call_args.args[3].automatic_include_workspace_members is True
+    initialize_agent_rbac_access.assert_called_once_with("tenant-1", account_id, agent_id="copied-agent")
 
 
 def test_agent_debug_conversation_refresh_resets_build_for_current_user(

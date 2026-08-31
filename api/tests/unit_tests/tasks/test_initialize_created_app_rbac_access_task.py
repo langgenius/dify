@@ -50,6 +50,36 @@ def test_initialize_created_app_rbac_access_task_batches_workspace_members(monke
         assert call.kwargs["payload"].access_policy_ids == [task_module.APP_RBAC_DEFAULT_ACCESS_POLICY_ID]
 
 
+def test_initialize_created_app_rbac_access_task_batches_agent_workspace_members(monkeypatch: pytest.MonkeyPatch):
+    import tasks.initialize_created_app_rbac_access_task as task_module
+    from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
+
+    monkeypatch.setattr(task_module.dify_config, "RBAC_ENABLED", True)
+    monkeypatch.setattr(
+        task_module.TenantService,
+        "iter_member_account_id_batches",
+        lambda tenant_id, batch_size, session: iter([["acct-1", "acct-2"], ["acct-3"]]),
+    )
+    replace_user_access_policies = MagicMock()
+    monkeypatch.setattr(
+        task_module.enterprise_rbac_service.RBACService.AgentAccess,
+        "replace_user_access_policies",
+        replace_user_access_policies,
+    )
+
+    initialize_created_app_rbac_access_task.run("tenant-1", "actor-1", agent_id="agent-1")
+
+    assert replace_user_access_policies.call_count == 2
+    assert replace_user_access_policies.call_args_list[0].kwargs["payload"].account_ids == ["acct-1", "acct-2"]
+    assert replace_user_access_policies.call_args_list[1].kwargs["payload"].account_ids == ["acct-3"]
+    for call in replace_user_access_policies.call_args_list:
+        assert call.kwargs["tenant_id"] == "tenant-1"
+        assert call.kwargs["account_id"] == "actor-1"
+        assert call.kwargs["agent_id"] == "agent-1"
+        assert call.kwargs["target_account_id"] is None
+        assert call.kwargs["payload"].access_policy_ids == [task_module.APP_RBAC_DEFAULT_ACCESS_POLICY_ID]
+
+
 def test_initialize_created_app_rbac_access_task_retries_on_failure(monkeypatch: pytest.MonkeyPatch):
     import tasks.initialize_created_app_rbac_access_task as task_module
     from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
@@ -86,6 +116,7 @@ def test_sync_joined_workspace_member_rbac_access_task_appends_auto_included_res
         rbac.ResourceWhitelistConfigResource(resource_type=rbac.RBACResourceType.APP, resource_id="app-1"),
         rbac.ResourceWhitelistConfigResource(resource_type=rbac.RBACResourceType.DATASET, resource_id="dataset-1"),
         rbac.ResourceWhitelistConfigResource(resource_type=rbac.RBACResourceType.APP, resource_id="app-2"),
+        rbac.ResourceWhitelistConfigResource(resource_type=rbac.RBACResourceType.AGENT, resource_id="agent-1"),
     ]
     configs = rbac.ResourceWhitelistConfigsResponse(
         data=[
@@ -104,17 +135,24 @@ def test_sync_joined_workspace_member_rbac_access_task_appends_auto_included_res
                 resource_id="app-2",
                 automatic_include_workspace_members=False,
             ),
+            rbac.ResourceWhitelistConfigItem(
+                resource_type=rbac.RBACResourceType.AGENT,
+                resource_id="agent-1",
+                automatic_include_workspace_members=True,
+            ),
         ]
     )
     batch_get = MagicMock(return_value=configs)
     app_append = MagicMock()
     dataset_append = MagicMock()
+    agent_append = MagicMock()
 
     monkeypatch.setattr(task_module.dify_config, "RBAC_ENABLED", True)
     monkeypatch.setattr(task_module, "_iter_resource_config_batches", lambda tenant_id, batch_size: iter([resources]))
     monkeypatch.setattr(rbac.RBACService.ResourceWhitelistConfigs, "batch_get", batch_get)
     monkeypatch.setattr(rbac.RBACService.AppAccess, "append_whitelist_members_batch", app_append)
     monkeypatch.setattr(rbac.RBACService.DatasetAccess, "append_whitelist_members_batch", dataset_append)
+    monkeypatch.setattr(rbac.RBACService.AgentAccess, "append_whitelist_members_batch", agent_append)
 
     sync_joined_workspace_member_rbac_access_task.run("tenant-1", "member-1", "actor-1")
 
@@ -140,3 +178,12 @@ def test_sync_joined_workspace_member_rbac_access_task_appends_auto_included_res
     assert dataset_call["data"][0].dataset_id == "dataset-1"
     assert dataset_call["data"][0].account_ids == ["member-1"]
     assert dataset_call["data"][0].policy_id == task_module.APP_RBAC_DEFAULT_ACCESS_POLICY_ID
+
+    agent_append.assert_called_once()
+    agent_call = agent_append.call_args.kwargs
+    assert agent_call["tenant_id"] == "tenant-1"
+    assert agent_call["account_id"] == "actor-1"
+    assert len(agent_call["data"]) == 1
+    assert agent_call["data"][0].agent_id == "agent-1"
+    assert agent_call["data"][0].account_ids == ["member-1"]
+    assert agent_call["data"][0].policy_id == task_module.APP_RBAC_DEFAULT_ACCESS_POLICY_ID

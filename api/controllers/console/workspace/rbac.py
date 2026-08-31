@@ -70,16 +70,19 @@ _LEGACY_ROLE_PERMISSION_KEYS: dict[str, list[str]] = {
         *svc._LEGACY_WORKSPACE_OWNER_KEYS,
         *svc._LEGACY_APP_OWNER_KEYS,
         *svc._LEGACY_DATASET_OWNER_KEYS,
+        *svc._LEGACY_AGENT_OWNER_KEYS,
     ],
     "admin": [
         *svc._LEGACY_WORKSPACE_ADMIN_KEYS,
         *svc._LEGACY_APP_ADMIN_KEYS,
         *svc._LEGACY_DATASET_ADMIN_KEYS,
+        *svc._LEGACY_AGENT_ADMIN_KEYS,
     ],
     "editor": [
         *svc._LEGACY_WORKSPACE_EDITOR_KEYS,
         *svc._LEGACY_APP_EDITOR_KEYS,
         *svc._LEGACY_DATASET_EDITOR_KEYS,
+        *svc._LEGACY_AGENT_EDITOR_KEYS,
     ],
     "normal": [
         *svc._LEGACY_WORKSPACE_NORMAL_KEYS,
@@ -794,6 +797,43 @@ class RBACDatasetUserAccessPoliciesApi(Resource):
         )
         _move_resource_maintainer_first(result.data, svc.dataset_maintainer_id(tenant_id, str(dataset_id)))
         _hydrate_resource_user_account_names(result.data)
+        return _dump(result)
+
+
+# ---------------------------------------------------------------------------
+# Per-agent access (Agent Access Config).
+# ---------------------------------------------------------------------------
+
+
+@console_ns.route("/workspaces/current/rbac/agents/<uuid:agent_id>/whitelist_config")
+class RBACAgentWhitelistConfigApi(Resource):
+    @login_required
+    @console_ns.response(200, "Success", console_ns.models[svc.ResourceWhitelistConfig.__name__])
+    def get(self, agent_id):
+        tenant_id, account_id = _current_ids()
+        return _dump(svc.RBACService.AgentAccess.whitelist_config(tenant_id, account_id, str(agent_id)))
+
+
+@console_ns.route("/workspaces/current/rbac/agents/<uuid:agent_id>/whitelist")
+class RBACAgentWhitelistApi(Resource):
+    @login_required
+    @console_ns.response(200, "Success", console_ns.models[svc.ResourceWhitelist.__name__])
+    def get(self, agent_id):
+        tenant_id, account_id = _current_ids()
+        return _dump(svc.RBACService.AgentAccess.whitelist(tenant_id, account_id, str(agent_id)))
+
+    @login_required
+    @console_ns.expect(console_ns.models[_ResourceAccessScopeRequest.__name__])
+    @console_ns.response(200, "Success", console_ns.models[svc.ResourceWhitelist.__name__])
+    def put(self, agent_id):
+        tenant_id, account_id = _current_ids()
+        request = _payload(_ResourceAccessScopeRequest)
+        result = svc.RBACService.AgentAccess.replace_whitelist(
+            tenant_id,
+            account_id,
+            str(agent_id),
+            svc.ReplaceMemberBindings(automatic_include_workspace_members=request.automatic_include_workspace_members),
+        )
         return _dump(result)
 
 

@@ -1441,6 +1441,57 @@ describe('MainNav', () => {
     )
   })
 
+  it('announces no installed web app results only after the search settles', async () => {
+    const user = userEvent.setup()
+    let resolveSearch: (() => void) | undefined
+    const searchPending = new Promise<void>((resolve) => {
+      resolveSearch = resolve
+    })
+    mockInstalledApps = [createInstalledApp()]
+    mockInstalledAppsRequest.mockImplementation(async ({ query }: { query: { name?: string } }) => {
+      if (!query.name) {
+        return {
+          installed_apps: mockInstalledApps,
+          has_more: false,
+          next_cursor: null,
+        }
+      }
+
+      await searchPending
+      return {
+        installed_apps: [],
+        has_more: false,
+        next_cursor: null,
+      }
+    })
+
+    renderMainNav()
+
+    const webAppsRegion = await screen.findByRole('region', {
+      name: 'explore.sidebar.webApps',
+    })
+    await user.click(screen.getByRole('button', { name: 'common.operation.search' }))
+    const resultStatus = within(webAppsRegion).getByRole('status')
+    expect(resultStatus).toBeEmptyDOMElement()
+
+    await user.type(screen.getByPlaceholderText('common.mainNav.webApps.searchPlaceholder'), 'z')
+
+    await waitFor(() => {
+      expect(webAppsRegion).toHaveAttribute('aria-busy', 'true')
+    })
+    expect(resultStatus).toBeEmptyDOMElement()
+
+    act(() => {
+      resolveSearch?.()
+    })
+
+    await waitFor(() => {
+      expect(webAppsRegion).toHaveAttribute('aria-busy', 'false')
+      expect(resultStatus).toHaveTextContent('common.mainNav.webApps.noResults')
+    })
+    expect(within(webAppsRegion).getByRole('status')).toBe(resultStatus)
+  })
+
   it('hides the installed web apps section while installed apps are loading', () => {
     mockInstalledAppsPending = true
 

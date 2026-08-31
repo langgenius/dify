@@ -60,6 +60,7 @@ class TestConvertToWorkflowApi:
             current_user.id = "u1"
             response = method(
                 api,
+                workflow_module.ConvertToWorkflowPayload.model_validate({}),
                 current_tenant_id="tenant-1",
                 current_user=current_user,
                 app_model=_app("app-1"),

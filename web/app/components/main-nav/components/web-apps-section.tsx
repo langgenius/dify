@@ -44,9 +44,9 @@ import { hasPermission } from '@/utils/permission'
 
 const emptyInstalledApps: InstalledAppResponse[] = []
 
-const appNavItemHeight = 32
-const appNavItemGap = 2
-const appNavSeparatorHeight = 16.5
+const appNavItemHeight = 28
+const appNavItemGap = 1
+const appNavSeparatorHeight = 12
 
 const getPreloadDistance = (scrollContainer: Element) =>
   Math.max(160, Math.min(scrollContainer.clientHeight * 0.25, 320))
@@ -124,10 +124,16 @@ const WebAppsSectionContent = () => {
     getItemKey: getWebAppRowKey,
     getScrollElement: () => scrollRef.current,
     overscan: 6,
-    paddingEnd: 8,
+    paddingEnd: installedAppsQuery.hasNextPage ? 0 : 8,
   })
 
   const canLoadMore = !installedAppsQuery.isFetching && !installedAppsQuery.error
+  const noResultsMessage = t(($) => $['mainNav.webApps.noResults'], { ns: 'common' })
+  const showNoResults =
+    !installedAppsQuery.isError &&
+    !installedAppsQuery.isFetching &&
+    !installedAppsQuery.isPlaceholderData &&
+    installedApps.length === 0
 
   const handleSearchTextChange = (value: string) => {
     scrollRef.current?.scrollTo({ top: 0 })
@@ -186,7 +192,13 @@ const WebAppsSectionContent = () => {
     />
   )
   const renderRow = (row: WebAppListRow) => {
-    if (row.kind === 'separator') return <Divider />
+    if (row.kind === 'separator') {
+      return (
+        <div className="flex h-3 items-center px-1">
+          <Divider className="m-0 h-px bg-divider-subtle" />
+        </div>
+      )
+    }
 
     return renderAppNavItem(row.app)
   }
@@ -243,13 +255,16 @@ const WebAppsSectionContent = () => {
         <ScrollArea className="min-h-0 flex-1 overflow-hidden">
           <ScrollAreaViewport
             ref={scrollRef}
-            aria-busy={installedAppsQuery.isFetchingNextPage}
+            aria-busy={installedAppsQuery.isFetching}
             aria-label={t(($) => $['sidebar.webApps'], { ns: 'explore' })}
             style={{ overflowX: 'hidden' }}
             className="overscroll-contain"
             role="region"
           >
             <ScrollAreaContent style={{ minWidth: 0 }} className="w-full max-w-full px-2">
+              <div className="sr-only" role="status">
+                {showNoResults ? noResultsMessage : ''}
+              </div>
               {installedAppsQuery.isError && !installedAppsQuery.isFetchNextPageError && (
                 <div
                   className="flex flex-col items-start gap-1 px-2 py-2 system-xs-regular text-text-tertiary"
@@ -267,10 +282,8 @@ const WebAppsSectionContent = () => {
                   </Button>
                 </div>
               )}
-              {!installedAppsQuery.isError && installedApps.length === 0 && (
-                <div className="px-2 py-1 system-xs-regular">
-                  {t(($) => $['mainNav.webApps.noResults'], { ns: 'common' })}
-                </div>
+              {showNoResults && (
+                <div className="px-2 py-1 system-xs-regular">{noResultsMessage}</div>
               )}
               {webAppRows.length > 0 && (
                 <div
