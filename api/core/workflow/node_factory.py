@@ -403,6 +403,7 @@ class DifyNodeFactory(NodeFactory):
         self._agent_runtime_support = AgentRuntimeSupport()
         self._agent_message_transformer = AgentMessageTransformer()
 
+    @override
     def with_runtime_state(self, runtime_state: "RuntimeState") -> "DifyNodeFactory":
         return DifyNodeFactory(
             init_params=self.init_params,
