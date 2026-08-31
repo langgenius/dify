@@ -2,7 +2,11 @@ import type { PluginBanner } from '@dify/contracts/marketplace'
 import type { CSSProperties, ReactNode } from 'react'
 import type { MarketplaceBannerPage } from './banners'
 import { cn } from '@langgenius/dify-ui/cn'
-import { HOME_HEADER_HEIGHT_PX, HOME_SEARCH_HEIGHT_PX } from './home-constants'
+import {
+  HOME_HEADER_HEIGHT_PX,
+  HOME_SEARCH_HEIGHT_PX,
+  HOME_SEARCH_MOBILE_PADDING_BOTTOM_PX,
+} from './home-constants'
 import { HomeStickyStateProvider } from './home-sticky-state-provider'
 import styles from './home-sticky.module.css'
 import HomeTrending from './home-trending'
@@ -43,6 +47,7 @@ export function HomeShell({
           {
             '--home-header-height': `${HOME_HEADER_HEIGHT_PX}px`,
             '--home-search-height': `${HOME_SEARCH_HEIGHT_PX}px`,
+            '--home-search-mobile-padding-bottom': `${HOME_SEARCH_MOBILE_PADDING_BOTTOM_PX}px`,
           } as CSSProperties
         }
       >

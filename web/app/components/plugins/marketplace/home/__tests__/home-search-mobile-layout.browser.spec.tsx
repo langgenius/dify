@@ -1,9 +1,11 @@
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { MARKETPLACE_CONTAINER_ID } from '../../constants'
+import { HOME_SEARCH_MOBILE_PADDING_BOTTOM_PX } from '../home-constants'
 import HomeHeader from '../home-header'
 import HomeSearch from '../home-search'
 import { HomeShell } from '../home-shell'
+import styles from '../home-sticky.module.css'
 
 vi.mock('@/public/marketplace/dify-marketplace-logo-dark.svg', () => ({
   default: { src: '/marketplace/dify-marketplace-logo-dark.svg' },
@@ -94,6 +96,29 @@ describe('Marketplace mobile search layout', () => {
     expect(isCenterClickable(searchInput)).toBe(true)
   })
 
+  it('keeps bottom padding under the stuck mobile search', async () => {
+    await page.viewport(390, 844)
+    const screen = await renderMarketplaceHome()
+
+    const scrollContainer = document.getElementById(MARKETPLACE_CONTAINER_ID)!
+    const searchInput = screen
+      .getByRole('textbox', { name: 'Search plugins or templates' })
+      .element()
+
+    scrollContainer.scrollTop = 400
+    scrollContainer.dispatchEvent(new Event('scroll'))
+    await nextFrame()
+
+    const searchRow = document.querySelector(`.${styles.search}`)!
+    const inputRect = searchInput.getBoundingClientRect()
+    const rowRect = searchRow.getBoundingClientRect()
+
+    expect(getComputedStyle(searchRow).paddingBottom).toBe(
+      `${HOME_SEARCH_MOBILE_PADDING_BOTTOM_PX}px`,
+    )
+    expect(rowRect.bottom - inputRect.bottom).toBeCloseTo(HOME_SEARCH_MOBILE_PADDING_BOTTOM_PX, 0)
+  })
+
   it('keeps the desktop search in the header gap while scrolling', async () => {
     await page.viewport(1280, 900)
     const screen = await renderMarketplaceHome()
@@ -111,6 +136,7 @@ describe('Marketplace mobile search layout', () => {
     expect(
       searchInput.getBoundingClientRect().top - header.getBoundingClientRect().top,
     ).toBeCloseTo(6, 0)
+    expect(getComputedStyle(document.querySelector(`.${styles.search}`)!).paddingBottom).toBe('0px')
   })
 
   it('keeps a search-results search below the header when there is no hero to overlap', async () => {

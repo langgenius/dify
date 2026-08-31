@@ -5,7 +5,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from '#i18n'
 import { MARKETPLACE_CONTAINER_ID } from '../constants'
-import { HOME_SEARCH_HEIGHT_PX } from './home-constants'
 import styles from './home-sticky.module.css'
 import MarketplacePluginSearch from './marketplace-plugin-search'
 import { preserveStickySearchScroll } from './preserve-sticky-search-scroll'
@@ -62,7 +61,6 @@ const HomeSearch = ({
         overlapHero && '-mt-9',
         styles.search,
       )}
-      style={{ height: HOME_SEARCH_HEIGHT_PX }}
     >
       <div
         ref={searchRef}

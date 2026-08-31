@@ -48,6 +48,7 @@
   position: sticky;
   z-index: 60;
   top: 6px;
+  height: var(--home-search-height, 36px);
   padding-right: 356px;
   padding-left: 356px;
   overflow-anchor: none;
@@ -104,7 +105,9 @@
     position: sticky;
     z-index: 45;
     top: var(--home-header-height, 48px);
+    height: calc(var(--home-search-height, 36px) + var(--home-search-mobile-padding-bottom, 16px));
     padding-right: 20px;
+    padding-bottom: var(--home-search-mobile-padding-bottom, 16px);
     padding-left: 20px;
     background-color: var(--color-background-default);
   }
@@ -125,7 +128,10 @@
     position: sticky;
     z-index: 40;
     display: block;
-    top: calc(var(--home-header-height, 48px) + var(--home-search-height, 36px));
+    top: calc(
+      var(--home-header-height, 48px) + var(--home-search-height, 36px) +
+        var(--home-search-mobile-padding-bottom, 16px)
+    );
     background-color: var(--color-background-default);
   }
 

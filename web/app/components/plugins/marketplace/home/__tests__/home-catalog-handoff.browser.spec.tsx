@@ -3,6 +3,11 @@ import { render } from 'vitest-browser-react'
 import { MARKETPLACE_CONTAINER_ID } from '../../constants'
 import HomeCatalogNavigation from '../home-catalog-navigation'
 import HomeCatalogTabs from '../home-catalog-tabs'
+import {
+  HOME_HEADER_HEIGHT_PX,
+  HOME_SEARCH_HEIGHT_PX,
+  HOME_SEARCH_MOBILE_PADDING_BOTTOM_PX,
+} from '../home-constants'
 import { HomeStickyCatalogTabs, HomeStickyStateProvider } from '../home-sticky-state-provider'
 import styles from '../home-sticky.module.css'
 
@@ -208,7 +213,12 @@ describe('Marketplace catalog tab handoff', () => {
     expect(headerTabsSlot).toHaveAttribute('inert')
     expect(
       contentTabsSlot.getBoundingClientRect().top - scrollContainer.getBoundingClientRect().top,
-    ).toBeCloseTo(108)
+    ).toBeCloseTo(
+      HOME_HEADER_HEIGHT_PX +
+        HOME_SEARCH_HEIGHT_PX +
+        HOME_SEARCH_MOBILE_PADDING_BOTTOM_PX +
+        24 /* .catalogTabsRegion padding-top */,
+    )
 
     await page.viewport(880, 800)
     await vi.waitFor(() => {
