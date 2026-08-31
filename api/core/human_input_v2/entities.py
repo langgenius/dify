@@ -92,6 +92,16 @@ class IMProvider(StrEnum):
     WE_COM = "we_com"
     LARK = "lark"
 
+    def supports_webhook(self) -> bool:
+        """Return whether the provider has a static inbound Webhook capability."""
+
+        return self in {
+            IMProvider.SLACK,
+            IMProvider.FEISHU,
+            IMProvider.LARK,
+            IMProvider.MS_TEAMS,
+        }
+
 
 class IMBindingScope(StrEnum):
     """Resolution scope of a contact-to-IM-identity binding."""

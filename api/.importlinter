@@ -168,6 +168,22 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:human-input-im-channel-service-boundary]
+name = IM Channel management does not depend on transport or dependent Human Input owners
+type = forbidden
+source_modules =
+    services.human_input_v2.im_channel_service
+forbidden_modules =
+    controllers
+    core.human_input_v2.delivery_runtime
+    core.human_input_v2.im_message_inbox
+    repositories.human_input_v2.contact
+    repositories.human_input_v2.im_integration
+    repositories.human_input_v2.im_message_inbox
+    services.human_input_v2.im_contact_sync
+    services.human_input_v2.im_message_inbox
+allow_indirect_imports = True
+
 
 [importlinter:contract:backend-layers]
 name = Backend modules follow the transport, application, domain, and shared-library layers

@@ -2,8 +2,6 @@
 
 from enum import StrEnum
 
-from core.human_input_v2.im_integration.management import IMProviderConfigurationFailureKind
-
 
 class ProviderFailureKind(StrEnum):
     INVALID_CREDENTIALS = "invalid_credentials"
@@ -46,20 +44,11 @@ class UnexpectedChannelProviderError(ChannelManagementError):
         super().__init__("channel provider operation failed")
 
 
-class IMProviderConfigurationError(RuntimeError):
-    """Expected, credential-free provider validation failure."""
-
-    def __init__(self, kind: IMProviderConfigurationFailureKind) -> None:
-        super().__init__(kind.value)
-        self.kind = kind
-
-
 __all__ = [
     "ChannelAlreadyConfiguredError",
     "ChannelManagementError",
     "ChannelNotFoundError",
     "ChannelProviderError",
-    "IMProviderConfigurationError",
     "ProviderConfigurationUpdatedError",
     "ProviderFailureKind",
     "ReplacementRequiredError",

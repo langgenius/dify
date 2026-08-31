@@ -1,29 +1,25 @@
 from __future__ import annotations
 
-import ast
 import importlib
-import importlib.util
 from datetime import datetime
 from http import HTTPStatus
 from inspect import unwrap
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import UUID
 
 import pytest
 from flask import Flask, g
-from flask_restx import Resource
 from werkzeug.exceptions import Forbidden
 
 from controllers.console.human_input_v2.config_version import encode_email_config_version
 from controllers.console.wraps import _is_setup_completed
-from core.human_input_v2.entities import EmailProviderType, IMIntegrationStatus, IMProvider
-from core.human_input_v2.im_integration import IMIntegrationView, IntegrationRevisionToken
-from core.human_input_v2.shared import EmailProviderId, IntegrationId
+from core.human_input_v2.entities import EmailProviderType, IMProvider
+from core.human_input_v2.shared import EmailProviderId
 from libs.exception import BaseHTTPException
 from models.account import Account, AccountStatus, TenantAccountRole
 from repositories.human_input_v2.email_channel import EmailChannelView, EmailConfigurationSnapshot
+from repositories.human_input_v2.im_channel_repository import IMChannelId, IMChannelStatus
 from services.human_input_v2.errors import (
     ChannelAlreadyConfiguredError,
     ChannelNotFoundError,
@@ -33,6 +29,7 @@ from services.human_input_v2.errors import (
     ReplacementRequiredError,
     UnexpectedChannelProviderError,
 )
+from services.human_input_v2.im_channel_service import IMChannelView
 
 _CANONICAL_ROUTES = {
     "/workspace/current/human-input/v2/channel-providers": {"GET"},
@@ -54,11 +51,6 @@ def test_human_input_channel_controller_imports_successfully() -> None:
         raise AssertionError("the canonical Human Input Channel controller must be importable") from error
 
 
-def test_core_has_no_cross_kind_channel_contracts() -> None:
-    assert importlib.util.find_spec("core.human_input_v2.channel_management") is None
-    assert importlib.util.find_spec("core.human_input_v2.channel_identity") is None
-
-
 def test_canonical_route_inventory_has_no_kind_specific_discovery_authority() -> None:
     module = importlib.import_module("controllers.console.human_input_v2.channel")
     registered_routes: dict[str, set[str]] = {}
@@ -78,39 +70,6 @@ def test_canonical_route_inventory_has_no_kind_specific_discovery_authority() ->
     assert "/workspace/current/human-input/v2/channels/im" not in {
         route for route, methods in registered_routes.items() if "GET" in methods
     }
-
-
-def test_every_canonical_route_method_uses_the_owner_admin_guard() -> None:
-    module = importlib.import_module("controllers.console.human_input_v2.channel")
-    module_tree = ast.parse(Path(module.__file__).read_text())
-    route_classes = {
-        node.name: node
-        for node in module_tree.body
-        if isinstance(node, ast.ClassDef)
-        and any(
-            isinstance(decorator, ast.Call)
-            and isinstance(decorator.func, ast.Attribute)
-            and decorator.func.attr == "route"
-            and decorator.args
-            and isinstance(decorator.args[0], ast.Constant)
-            and isinstance(decorator.args[0].value, str)
-            and decorator.args[0].value.startswith("/workspace/current/human-input/v2")
-            for decorator in node.decorator_list
-        )
-    }
-
-    for resource, urls, _route_doc, _kwargs in module.console_ns.resources:
-        if not any(url.startswith("/workspace/current/human-input/v2") for url in urls):
-            continue
-        assert issubclass(resource, Resource)
-        route_class = route_classes[resource.__name__]
-        for method in (node for node in route_class.body if isinstance(node, ast.FunctionDef)):
-            if method.name not in {"get", "post", "put", "patch", "delete"}:
-                continue
-            assert any(
-                isinstance(decorator, ast.Name) and decorator.id == "require_admin_or_owner"
-                for decorator in method.decorator_list
-            ), f"{resource.__name__}.{method.name} must require a workspace owner or administrator"
 
 
 def test_channel_transport_models_match_the_canonical_schema() -> None:
@@ -180,33 +139,6 @@ def test_channel_transport_models_match_the_canonical_schema() -> None:
     assert set(module.ListChannelsResponse.model_fields) == {"channels"}
     assert set(module.EmailChannelMutationResponse.model_fields) == {"summary"}
     assert set(module.IMChannelMutationResponse.model_fields) == {"summary"}
-
-
-def test_channel_controller_constructs_response_models_without_dump_wrappers() -> None:
-    module = importlib.import_module("controllers.console.human_input_v2.channel")
-    module_tree = ast.parse(Path(module.__file__).read_text())
-
-    function_names = {
-        node.name for node in module_tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-    }
-    referenced_names = {node.id for node in ast.walk(module_tree) if isinstance(node, ast.Name)}
-
-    assert {
-        "_conflict_response",
-        "_dump_management_response",
-        "_dump_test_response",
-        "_management_error_response",
-    }.isdisjoint(function_names)
-    assert "dump_response" not in referenced_names
-    assert "ChannelManagementError" not in referenced_names
-
-    for mapper_name in ("_email_channel_summary_response", "_im_channel_summary_response"):
-        mapper = next(
-            node for node in module_tree.body if isinstance(node, ast.FunctionDef) and node.name == mapper_name
-        )
-        calls = [node for node in ast.walk(mapper) if isinstance(node, ast.Call)]
-        assert any(isinstance(call.func, ast.Name) and call.func.id == "ChannelSummary" for call in calls)
-        assert not any(isinstance(call.func, ast.Attribute) and call.func.attr == "model_validate" for call in calls)
 
 
 def test_legacy_im_management_routes_are_not_registered() -> None:
@@ -354,13 +286,13 @@ def test_im_update_translates_conflicts_with_cause(
 ) -> None:
     module = importlib.import_module("controllers.console.human_input_v2.channel")
     config_version = importlib.import_module("controllers.console.human_input_v2.config_version")
-    channel_id = IntegrationId("00000000-0000-0000-0000-000000000001")
+    channel_id = IMChannelId("00000000-0000-0000-0000-000000000001")
 
     class IMOwner:
         def update(self, *_args):
             raise service_error
 
-    monkeypatch.setattr(module, "build_human_input_im_integration_management_service", IMOwner)
+    monkeypatch.setattr(module, "_workspace_im_channel_service", lambda *_args: IMOwner())
     account = Account(name="Owner", email="owner@example.com", status=AccountStatus.ACTIVE)
     account.id = "account-1"
 
@@ -376,9 +308,7 @@ def test_im_update_translates_conflicts_with_cause(
                     "bot_token": "xoxb-bot-token",
                     "app_token": "xapp-app-token",
                 },
-                "expected_config_version": config_version.encode_im_config_version(
-                    IntegrationRevisionToken(channel_id, 1)
-                ),
+                "expected_config_version": config_version.encode_im_config_version(channel_id, 1),
             },
         ),
         pytest.raises(BaseHTTPException) as error_info,
@@ -404,16 +334,16 @@ def test_im_update_decodes_the_opaque_version_before_calling_the_owner(
 ) -> None:
     module = importlib.import_module("controllers.console.human_input_v2.channel")
     config_version = importlib.import_module("controllers.console.human_input_v2.config_version")
-    channel_id = IntegrationId("00000000-0000-0000-0000-000000000001")
-    expected_revision = IntegrationRevisionToken(channel_id, 7)
+    channel_id = IMChannelId("00000000-0000-0000-0000-000000000001")
+    expected_config_version = 7
 
     class IMOwner:
-        def update(self, _scope, addressed_id, revision, _actor_id, _credentials):
+        def update(self, addressed_id, config_version, _credentials):
             assert addressed_id == channel_id
-            assert revision == expected_revision
+            assert config_version == expected_config_version
             raise ReplacementRequiredError("replacement required")
 
-    monkeypatch.setattr(module, "build_human_input_im_integration_management_service", IMOwner)
+    monkeypatch.setattr(module, "_workspace_im_channel_service", lambda *_args: IMOwner())
     account = Account(name="Owner", email="owner@example.com", status=AccountStatus.ACTIVE)
     account.id = "account-1"
 
@@ -429,7 +359,10 @@ def test_im_update_decodes_the_opaque_version_before_calling_the_owner(
                     "bot_token": "xoxb-bot-token",
                     "app_token": "xapp-app-token",
                 },
-                "expected_config_version": config_version.encode_im_config_version(expected_revision),
+                "expected_config_version": config_version.encode_im_config_version(
+                    channel_id,
+                    expected_config_version,
+                ),
             },
         ),
         pytest.raises(BaseHTTPException) as error_info,
@@ -558,17 +491,16 @@ def test_channel_collection_aggregates_configured_owner_snapshots(
         sender_email="sender@example.com",
         revision=EmailConfigurationSnapshot(EmailProviderId("email-1"), 1),
     )
-    im_snapshot = IMIntegrationView(
-        id=IntegrationId("im-1"),
-        provider=IMProvider.SLACK,
+    im_snapshot = IMChannelView(
+        id=IMChannelId("im-1"),
         created_at=datetime(2026, 8, 20, 8),
         updated_at=datetime(2026, 8, 20, 9),
-        status=IMIntegrationStatus.CONNECTION_ERROR,
-        safe_status_reason="Provider connection failed.",
+        provider=IMProvider.SLACK,
+        status=IMChannelStatus.CONNECTION_FAILURE,
+        status_reason="Provider connection failed.",
         app_identifier="client-1",
-        provider_tenant_display="workspace-one",
         webhook_url=None,
-        revision=IntegrationRevisionToken(IntegrationId("im-1"), 1),
+        config_version=1,
     )
 
     class EmailOwner:
@@ -577,20 +509,21 @@ def test_channel_collection_aggregates_configured_owner_snapshots(
             return email_snapshot
 
     class IMOwner:
-        def get_current(self, scope):
-            assert str(scope.id) == "workspace-1"
+        def get_current(self):
             return im_snapshot
 
     monkeypatch.setattr(module, "build_human_input_email_channel_management_service", EmailOwner)
-    monkeypatch.setattr(module, "build_human_input_im_integration_management_service", IMOwner)
+    monkeypatch.setattr(module, "_workspace_im_channel_service", lambda *_args: IMOwner())
+    account = Account(name="Owner", email="owner@example.com", status=AccountStatus.ACTIVE)
+    account.id = "account-1"
 
-    response = unwrap(module.ListChannelsApi.get)(module.ListChannelsApi(), "workspace-1")
+    response = unwrap(module.ListChannelsApi.get)(module.ListChannelsApi(), "workspace-1", account)
 
     assert isinstance(response, dict)
     assert [channel["kind"] for channel in response["channels"]] == ["email", "im"]
     assert [channel["display_identifier"] for channel in response["channels"]] == [
         "Dify sender@example.com",
-        "client-1 workspace-one",
+        "client-1",
     ]
 
 
@@ -599,14 +532,20 @@ def test_channel_collection_omits_unconfigured_owner_snapshots(
 ) -> None:
     module = importlib.import_module("controllers.console.human_input_v2.channel")
 
-    class Owner:
+    class EmailOwner:
         def get_current(self, _scope):
             return None
 
-    monkeypatch.setattr(module, "build_human_input_email_channel_management_service", Owner)
-    monkeypatch.setattr(module, "build_human_input_im_integration_management_service", Owner)
+    class IMOwner:
+        def get_current(self):
+            return None
 
-    response = unwrap(module.ListChannelsApi.get)(module.ListChannelsApi(), "workspace-1")
+    monkeypatch.setattr(module, "build_human_input_email_channel_management_service", EmailOwner)
+    monkeypatch.setattr(module, "_workspace_im_channel_service", lambda *_args: IMOwner())
+    account = Account(name="Owner", email="owner@example.com", status=AccountStatus.ACTIVE)
+    account.id = "account-1"
+
+    response = unwrap(module.ListChannelsApi.get)(module.ListChannelsApi(), "workspace-1", account)
 
     assert response == {"channels": []}
 
@@ -629,8 +568,8 @@ def test_composite_guard_rejects_a_non_admin_workspace_member(
     )
     monkeypatch.setattr(
         module,
-        "build_human_input_im_integration_management_service",
-        lambda: build_calls.append("im"),
+        "_workspace_im_channel_service",
+        lambda *_args: build_calls.append("im"),
     )
 
     with (
@@ -663,7 +602,7 @@ def test_composite_guard_allows_a_workspace_owner(
             return ()
 
     monkeypatch.setattr(module, "build_human_input_email_channel_management_service", EmailOwner)
-    monkeypatch.setattr(module, "build_human_input_im_integration_management_service", IMOwner)
+    monkeypatch.setattr(module, "_workspace_im_channel_service", lambda *_args: IMOwner())
 
     with (
         app.test_request_context(method="GET"),

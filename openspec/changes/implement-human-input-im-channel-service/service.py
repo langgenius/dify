@@ -17,7 +17,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from yarl import URL
 
 from configs import dify_config
-from core.human_input_v2.entities import IMEventTransportMode, IMProvider
+from configs.deploy import IMEventTransportMode
+from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters.credentials import IMProviderCredentials
 from core.human_input_v2.im_integration.adapters.entities import CredentialTestSuccess
 from core.human_input_v2.shared import AccountId, TenantId

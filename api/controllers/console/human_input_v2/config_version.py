@@ -7,9 +7,9 @@ import json
 from typing import Literal
 
 from core.human_input_v2.entities import HumanInputDeliveryChannel
-from core.human_input_v2.im_integration import IntegrationRevisionToken
-from core.human_input_v2.shared import EmailProviderId, IntegrationId
+from core.human_input_v2.shared import EmailProviderId
 from repositories.human_input_v2.email_channel import EmailConfigurationSnapshot
+from repositories.human_input_v2.im_channel_repository import IMChannelId
 
 _FORMAT_VERSION = 1
 type _ConfigVersionChannel = Literal[
@@ -34,21 +34,20 @@ def decode_email_config_version(
     return EmailConfigurationSnapshot(channel_id, revision)
 
 
-def encode_im_config_version(revision: IntegrationRevisionToken) -> str:
-    return _encode(HumanInputDeliveryChannel.IM, revision.integration_id, revision.config_version)
+def encode_im_config_version(channel_id: IMChannelId, config_version: int) -> str:
+    return _encode(HumanInputDeliveryChannel.IM, channel_id, config_version)
 
 
 def decode_im_config_version(
     value: str,
-    channel_id: IntegrationId,
-) -> IntegrationRevisionToken:
-    config_version = _decode(value, HumanInputDeliveryChannel.IM, channel_id)
-    return IntegrationRevisionToken(channel_id, config_version)
+    channel_id: IMChannelId,
+) -> int:
+    return _decode(value, HumanInputDeliveryChannel.IM, channel_id)
 
 
 def _encode(
     kind: _ConfigVersionChannel,
-    channel_id: EmailProviderId | IntegrationId,
+    channel_id: EmailProviderId | IMChannelId,
     config_version: int,
 ) -> str:
     serialized = json.dumps(
@@ -61,7 +60,7 @@ def _encode(
 def _decode(
     value: str,
     expected_kind: _ConfigVersionChannel,
-    expected_channel_id: EmailProviderId | IntegrationId,
+    expected_channel_id: EmailProviderId | IMChannelId,
 ) -> int:
     try:
         padding = "=" * (-len(value) % 4)

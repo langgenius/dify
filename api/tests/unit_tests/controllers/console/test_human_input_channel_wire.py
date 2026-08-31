@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from typing import Never
 
 import pytest
 from flask import Flask
@@ -11,10 +12,10 @@ from controllers.console import bp as console_bp
 from controllers.console.human_input_v2 import channel as channel_controller
 from controllers.console.human_input_v2.config_version import encode_im_config_version
 from controllers.console.wraps import _is_setup_completed
-from core.human_input_v2.im_integration import IntegrationRevisionToken
-from core.human_input_v2.shared import IntegrationId
+from enums import DeploymentEdition
 from libs.login import AccountWithTenant
 from models.account import Account, AccountStatus, TenantAccountRole
+from repositories.human_input_v2.im_channel_repository import IMChannelId
 from services.human_input_v2.errors import (
     ChannelAlreadyConfiguredError,
     ChannelNotFoundError,
@@ -22,7 +23,6 @@ from services.human_input_v2.errors import (
     ProviderConfigurationUpdatedError,
     ProviderFailureKind,
     ReplacementRequiredError,
-    UnexpectedChannelProviderError,
 )
 
 _CHANNEL_ID = "00000000-0000-0000-0000-000000000001"
@@ -92,7 +92,7 @@ def test_legacy_management_paths_are_route_level_not_found(
     )
     monkeypatch.setattr(
         channel_controller,
-        "build_human_input_im_integration_management_service",
+        "_workspace_im_channel_service",
         lambda: build_calls.append("im"),
     )
 
@@ -116,7 +116,7 @@ def test_legacy_management_paths_are_route_level_not_found(
 def test_im_update_conflicts_have_stable_wire_codes(
     wire_app: Flask,
     monkeypatch: pytest.MonkeyPatch,
-    error: RuntimeError,
+    error: Exception,
     expected_code: str,
 ) -> None:
     class IMOwner:
@@ -125,17 +125,15 @@ def test_im_update_conflicts_have_stable_wire_codes(
 
     monkeypatch.setattr(
         channel_controller,
-        "build_human_input_im_integration_management_service",
-        IMOwner,
+        "_workspace_im_channel_service",
+        lambda *_args: IMOwner(),
     )
 
     response = wire_app.test_client().put(
         f"{_BASE_PATH}/channels/im/{_CHANNEL_ID}",
         json={
             "credentials": _SLACK_CREDENTIALS,
-            "expected_config_version": encode_im_config_version(
-                IntegrationRevisionToken(IntegrationId(_CHANNEL_ID), 1)
-            ),
+            "expected_config_version": encode_im_config_version(IMChannelId(_CHANNEL_ID), 1),
         },
     )
 
@@ -186,8 +184,8 @@ def test_existing_im_create_is_a_generic_conflict_without_a_third_code(
 
     monkeypatch.setattr(
         channel_controller,
-        "build_human_input_im_integration_management_service",
-        IMOwner,
+        "_workspace_im_channel_service",
+        lambda *_args: IMOwner(),
     )
 
     response = wire_app.test_client().post(
@@ -207,14 +205,16 @@ def test_unexpected_candidate_failure_is_a_detail_free_wire_internal_error(
     wire_app: Flask,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    service_error = RuntimeError("provider-adapter-secret-diagnostic")
+
     class IMOwner:
         def test(self, *_args):
-            raise UnexpectedChannelProviderError()
+            raise service_error
 
     monkeypatch.setattr(
         channel_controller,
-        "build_human_input_im_integration_management_service",
-        IMOwner,
+        "_workspace_im_channel_service",
+        lambda *_args: IMOwner(),
     )
 
     response = wire_app.test_client().post(
@@ -226,7 +226,7 @@ def test_unexpected_candidate_failure_is_a_detail_free_wire_internal_error(
     response_body = response.get_json()
     assert response_body["status"] == 500
     assert response_body["message"] == "Internal Server Error"
-    assert "channel provider operation failed" not in response.get_data(as_text=True)
+    assert "provider-adapter-secret-diagnostic" not in response.get_data(as_text=True)
 
 
 @pytest.mark.parametrize(
@@ -244,8 +244,8 @@ def test_candidate_provider_failures_are_credential_free_test_outcomes(
 
     monkeypatch.setattr(
         channel_controller,
-        "build_human_input_im_integration_management_service",
-        IMOwner,
+        "_workspace_im_channel_service",
+        lambda *_args: IMOwner(),
     )
 
     response = wire_app.test_client().post(
@@ -258,3 +258,63 @@ def test_candidate_provider_failures_are_credential_free_test_outcomes(
         "status": failure_kind.value,
         "status_description": f"Safe {failure_kind.value} description.",
     }
+
+
+_CANONICAL_REQUESTS = (
+    ("GET", f"{_BASE_PATH}/channel-providers"),
+    ("GET", f"{_BASE_PATH}/channels"),
+    ("POST", f"{_BASE_PATH}/channels/email"),
+    ("POST", f"{_BASE_PATH}/channels/email/test"),
+    ("GET", f"{_BASE_PATH}/channels/email/{_CHANNEL_ID}"),
+    ("PUT", f"{_BASE_PATH}/channels/email/{_CHANNEL_ID}"),
+    ("DELETE", f"{_BASE_PATH}/channels/email/{_CHANNEL_ID}"),
+    ("POST", f"{_BASE_PATH}/channels/im"),
+    ("POST", f"{_BASE_PATH}/channels/im/test"),
+    ("GET", f"{_BASE_PATH}/channels/im/{_CHANNEL_ID}"),
+    ("PUT", f"{_BASE_PATH}/channels/im/{_CHANNEL_ID}"),
+    ("DELETE", f"{_BASE_PATH}/channels/im/{_CHANNEL_ID}"),
+    ("POST", f"{_BASE_PATH}/channels/im/{_CHANNEL_ID}/replacement"),
+)
+
+
+@pytest.mark.parametrize(("method", "path"), _CANONICAL_REQUESTS)
+def test_enterprise_rejects_every_canonical_path_before_auth_dto_and_service(
+    wire_app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    method: str,
+    path: str,
+) -> None:
+    def unexpected_authentication() -> None:
+        raise AssertionError("authentication must not run before edition admission")
+
+    def unexpected_service(*_args: object) -> Never:
+        raise AssertionError("service composition must not run before edition admission")
+
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
+    monkeypatch.setattr(dify_config, "LOGIN_DISABLED", False)
+    monkeypatch.setattr("libs.login._resolve_current_user", unexpected_authentication)
+    monkeypatch.setattr(
+        channel_controller,
+        "build_human_input_email_channel_management_service",
+        unexpected_service,
+    )
+    monkeypatch.setattr(channel_controller, "_workspace_im_channel_service", unexpected_service)
+
+    response = wire_app.test_client().open(path, method=method, json={"event_transport_mode": "STREAM"})
+
+    assert response.status_code == 501
+
+
+@pytest.mark.parametrize("edition", [DeploymentEdition.COMMUNITY, DeploymentEdition.CLOUD])
+def test_workspace_editions_continue_to_the_existing_authentication_stack(
+    wire_app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    edition: DeploymentEdition,
+) -> None:
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", edition)
+    monkeypatch.setattr(dify_config, "LOGIN_DISABLED", False)
+    monkeypatch.setattr("libs.login._resolve_current_user", lambda: None)
+
+    response = wire_app.test_client().get(f"{_BASE_PATH}/channel-providers")
+
+    assert response.status_code == 401

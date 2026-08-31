@@ -7,6 +7,7 @@ from pydantic import SecretStr, ValidationError
 from yarl import URL
 
 from configs.app_config import DifyConfig
+from configs.deploy import IMEventTransportMode
 from enums import DeploymentEdition
 
 
@@ -51,6 +52,7 @@ def test_im_message_inbox_policy_rejects_nonpositive_retry_backoff() -> None:
 def _clear_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     for name in tuple(os.environ):
         monkeypatch.delenv(name)
+    monkeypatch.setenv("HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE", "WEBHOOK")
 
 
 def _set_basic_config_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -63,6 +65,43 @@ def _set_basic_config_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DB_HOST", "localhost")
     monkeypatch.setenv("DB_PORT", "5432")
     monkeypatch.setenv("DB_DATABASE", "dify")
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("WEBHOOK", IMEventTransportMode.WEBHOOK),
+        ("STREAM", IMEventTransportMode.STREAM),
+    ],
+)
+def test_im_event_transport_mode_loads_both_supported_values(
+    monkeypatch: pytest.MonkeyPatch,
+    value: str,
+    expected: IMEventTransportMode,
+) -> None:
+    _set_basic_config_env(monkeypatch)
+    monkeypatch.setenv("HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE", value)
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE is expected
+    assert {mode.value for mode in IMEventTransportMode} == {"WEBHOOK", "STREAM"}
+
+
+def test_im_event_transport_mode_has_no_implicit_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_basic_config_env(monkeypatch)
+    monkeypatch.delenv("HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE")
+
+    with pytest.raises(ValidationError, match="HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE"):
+        DifyConfig(_env_file=None)
+
+
+def test_im_event_transport_mode_rejects_invalid_values(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_basic_config_env(monkeypatch)
+    monkeypatch.setenv("HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE", "SOCKET")
+
+    with pytest.raises(ValidationError, match="HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE"):
+        DifyConfig(_env_file=None)
 
 
 def test_dify_config_keeps_secret_key_empty_when_missing(
