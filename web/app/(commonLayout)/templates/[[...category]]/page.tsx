@@ -37,7 +37,20 @@ const parsePage = (value?: string) => {
   return Number.isInteger(parsed) && parsed >= 1 ? parsed : 1
 }
 
-export default async function TemplatesPage({ params, searchParams }: TemplatesPageProps) {
+// Keep the route module synchronous so Flight does not double-resolve this
+// segment under the client console shell.
+export default function TemplatesPage(props: TemplatesPageProps) {
+  return (
+    <div
+      id={MARKETPLACE_CONTAINER_ID}
+      className="flex h-full min-h-0 flex-col overflow-y-auto bg-background-default"
+    >
+      <TemplatesPageContent {...props} />
+    </div>
+  )
+}
+
+async function TemplatesPageContent({ params, searchParams }: TemplatesPageProps) {
   const [resolvedParams, resolvedSearchParams, locale] = await Promise.all([
     params,
     searchParams,
@@ -52,20 +65,15 @@ export default async function TemplatesPage({ params, searchParams }: TemplatesP
   const category = isTemplateCategory(requestedCategory) ? requestedCategory : 'all'
 
   return (
-    <div
-      id={MARKETPLACE_CONTAINER_ID}
-      className="flex h-full min-h-0 flex-col overflow-y-auto bg-background-default"
-    >
-      <EmbeddedTemplatesMarketplace
-        category={category}
-        languages={resolvedSearchParams.languages}
-        locale={locale}
-        page={parsePage(resolvedSearchParams.page)}
-        query={resolvedSearchParams.q ?? ''}
-        sortBy={parseSortBy(resolvedSearchParams.sort_by)}
-        sortOrder={parseSortOrder(resolvedSearchParams.sort_order)}
-        view={parseView(resolvedSearchParams.view)}
-      />
-    </div>
+    <EmbeddedTemplatesMarketplace
+      category={category}
+      languages={resolvedSearchParams.languages}
+      locale={locale}
+      page={parsePage(resolvedSearchParams.page)}
+      query={resolvedSearchParams.q ?? ''}
+      sortBy={parseSortBy(resolvedSearchParams.sort_by)}
+      sortOrder={parseSortOrder(resolvedSearchParams.sort_order)}
+      view={parseView(resolvedSearchParams.view)}
+    />
   )
 }

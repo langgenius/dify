@@ -1,7 +1,25 @@
+import type { FunctionComponent, ReactElement } from 'react'
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { render, screen } from '@testing-library/react'
+import { createElement } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { redirect } from '@/next/navigation'
 import TemplatesPage from '../page'
+
+type TemplatesPageProps = Parameters<typeof TemplatesPage>[0]
+
+const resolveTemplatesPage = async (props: TemplatesPageProps) => {
+  const tree = TemplatesPage(props) as ReactElement<{
+    children: ReactElement
+    className: string
+    id: string
+  }>
+  const child = tree.props.children
+  const content = await (child.type as FunctionComponent<typeof child.props>)(child.props)
+  return createElement(tree.type, tree.props, content)
+}
 
 vi.mock('@/app/components/plugins/marketplace/templates', () => ({
   EmbeddedTemplatesMarketplace: ({
@@ -42,8 +60,18 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 describe('embedded templates route', () => {
+  it('does not stream async server children that Flight would double-resolve', () => {
+    const source = readFileSync(
+      resolve(dirname(fileURLToPath(import.meta.url)), '../page.tsx'),
+      'utf8',
+    )
+
+    expect(source).not.toMatch(/export default async function TemplatesPage/)
+    expect(TemplatesPage.constructor.name).not.toBe('AsyncFunction')
+  })
+
   it('renders the templates catalog at /templates', async () => {
-    const page = await TemplatesPage({
+    const page = await resolveTemplatesPage({
       params: Promise.resolve({}),
       searchParams: Promise.resolve({ q: 'agent' }),
     })
@@ -58,7 +86,7 @@ describe('embedded templates route', () => {
   })
 
   it('passes a supported path category to the templates catalog', async () => {
-    const page = await TemplatesPage({
+    const page = await resolveTemplatesPage({
       params: Promise.resolve({ category: ['marketing'] }),
       searchParams: Promise.resolve({}),
     })
@@ -69,7 +97,7 @@ describe('embedded templates route', () => {
   })
 
   it('validates page, view and sort params at the route boundary', async () => {
-    const page = await TemplatesPage({
+    const page = await resolveTemplatesPage({
       params: Promise.resolve({}),
       searchParams: Promise.resolve({
         page: '3',
@@ -90,7 +118,7 @@ describe('embedded templates route', () => {
   })
 
   it('falls back to defaults for unsupported page, view and sort params', async () => {
-    const page = await TemplatesPage({
+    const page = await resolveTemplatesPage({
       params: Promise.resolve({}),
       searchParams: Promise.resolve({
         page: '-2',
@@ -112,7 +140,7 @@ describe('embedded templates route', () => {
 
   it('opens template recommendations in the existing Dify import flow', async () => {
     await expect(
-      TemplatesPage({
+      resolveTemplatesPage({
         params: Promise.resolve({}),
         searchParams: Promise.resolve({ tid: 'template/one' }),
       }),
