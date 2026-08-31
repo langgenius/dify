@@ -1,200 +1,149 @@
 ## ADDED Requirements
 
-### Requirement: 每个 IM Integration 必须持有稳定的 Webhook route identity
+### Requirement: Ingress MUST reuse Channel Management routing contracts
 
-每个 `HumanInputIMIntegration` MUST 持有一个全局唯一、URL-safe、不可由 tenant 提供的 `webhook_id`。`webhook_id` MUST 是 encrypted credential envelope 之外的 server-generated routing metadata。它 MUST NOT 被封入 `EncryptedCredentials`，MUST NOT 代替 Provider signature、token、JWT 或 payload decryption verification。
+Webhook ingress MUST reuse existing `WebhookId`、typed `dify_config.HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE`、`IMProvider.supports_webhook()` and Human Input callback URL path。It MUST NOT redefine Channel ID、Webhook ID lifecycle、Provider capability、mode configuration or management URL projection。Concrete `adapter.create_webhook_handler()` remains the credential-bound authority after ingress recovers credentials。
 
-#### Scenario: 首次创建 Integration
-- **WHEN** 系统创建新的 IM Integration
-- **THEN** 系统 MUST 使用 cryptographically secure randomness 生成新的 `webhook_id`
-- **AND** persistence MUST 拒绝重复值
-- **AND** credential codec MUST NOT把该值写入 encrypted credential payload
+#### Scenario: Deployment selects STREAM
+- **WHEN** shared deployment configuration is `STREAM`
+- **THEN** callback ingress MUST return the unknown-route `404` without querying Channel persistence、recovering credentials or calling a Provider handler
 
-#### Scenario: 同一 Provider tenant 轮换 credential
-- **WHEN** credential rotation 保留当前 `integration_id`
-- **THEN** 系统 MUST 同时保留当前 `webhook_id`
-- **AND** rotation MUST NOT接受 replacement `webhook_id` input
+#### Scenario: Provider has no Webhook capability
+- **WHEN** current Channel Provider returns `False` from `IMProvider.supports_webhook()`
+- **THEN** ingress MUST return the same `404` without recovering credentials
 
-#### Scenario: Integration 被替换
-- **WHEN** provider 或 provider tenant replacement 创建新的 Integration
-- **THEN** replacement MUST 获得新的 `webhook_id`
-- **AND** replacement commit 后旧 `webhook_id` MUST 不再解析到 current Integration
+### Requirement: Public controller MUST perform only bounded HTTP adaptation
 
-#### Scenario: Integration 删除后重建
-- **WHEN** 一个 Integration 被删除并为相同 owner 创建另一个 Integration
-- **THEN** 新 Integration MUST NOT复用已删除 Integration 的 `webhook_id`
+The system MUST expose `POST /callbacks/human-input/v2/im/<webhook_id>` through a dedicated blueprint without Console session。Controller MUST capture trusted UTC receive time before body read or I/O，read exact body bytes through a configured bound，construct adapters-package `WebhookRequest` and map Service `WebhookResponse` to Flask response。Controller MUST NOT parse Provider JSON、select Provider or owner、recover credentials or process business events。
 
-### Requirement: Webhook URL 必须从 deployment origin 派生
+#### Scenario: Valid callback reaches controller
+- **WHEN** callback path、method and body size are valid
+- **THEN** controller MUST pass uppercase method、`tuple(request.headers.items())`、exact body bytes and entry receive time to `IMWebhookIngressService`
 
-系统 MUST 使用 `TRIGGER_URL`、固定 callback path 和 `webhook_id` 生成 Provider callback URL。Integration aggregate、credential envelope 和 ORM model MUST NOT持久化完整 callback URL。
+#### Scenario: Callback body exceeds the limit
+- **WHEN** request body exceeds `HUMAN_INPUT_IM_WEBHOOK_MAX_BODY_BYTES`
+- **THEN** controller MUST return `413` before Channel lookup、adapter construction or inbox work
 
-#### Scenario: Callback URL 被生成
-- **WHEN** management 需要展示一个可用 Webhook route
-- **THEN** URL MUST 指向 `/callbacks/human-input/v2/im/<webhook_id>`
-- **AND** URL MUST 使用当前 `TRIGGER_URL`
+#### Scenario: Browser sends preflight
+- **WHEN** client sends CORS preflight to the callback route
+- **THEN** callback blueprint MUST NOT provide application CORS policy or authenticated Web API fallback
 
-#### Scenario: Deployment origin 改变
-- **WHEN** operator 修改 `TRIGGER_URL`
-- **THEN** 后续 URL projection MUST 使用新 origin
-- **AND** 系统 MUST NOT更新 Integration row 或 credential envelope
+#### Scenario: Callback carries Console state
+- **WHEN** callback includes Console session cookie or CSRF header
+- **THEN** controller MUST NOT use that state for authentication、owner selection or authorization
 
-### Requirement: Webhook transport mode 必须属于 deployment configuration
+### Requirement: Reverse lookup MUST return authoritative current Channel routing
 
-`IMEventTransportMode` MUST 只包含 `WEBHOOK` 和 `STREAM`。Server-side `IMEventTransportModeResolver` MUST 从 deployment configuration 返回其中一个值。缺失或非法 deployment configuration MUST 失败，MUST NOT产生隐式 default或第三种 mode。Provider callback request MUST NOT设置或覆盖该 mode。Webhook ingress MUST 只在 effective mode 为 `WEBHOOK` 时执行 route lookup和 handler work。
+`IMWebhookChannelRepository.load_by_webhook_id(webhook_id)` MUST load the current `HumanInputIMChannel` row by globally unique `webhook_id` and return immutable `IMWebhookChannelRoute(channel, scope)`。`channel` MUST be the canonical owner-free `IMChannel`。`scope` MUST be validated `WorkspaceScope` or `DeploymentScope` derived from persisted owner key。Repository MUST NOT return raw owner key、ORM record or configuring actor，and MUST NOT resolve ciphers、recover credentials or perform Provider I/O。
 
-#### Scenario: Deployment 选择 STREAM
-- **WHEN** deployment mode 为 `STREAM`
-- **THEN** callback ingress MUST 不查询 Integration、不恢复 credentials、不调用 Provider handler
-- **AND** callback ingress MUST 返回与 unknown route 相同的 `404`
+#### Scenario: Current Channel route is loaded
+- **WHEN** `webhook_id` identifies a current Channel in `WEBHOOK` mode
+- **THEN** route snapshot MUST contain Channel ID、Provider、Provider tenant、config version、opaque credentials and validated credential scope
 
-#### Scenario: Deployment mode 配置无效
-- **WHEN** deployment configuration 缺失 event transport mode 或提供 `WEBHOOK` / `STREAM` 之外的值
-- **THEN** resolver MUST 返回 configuration error
-- **AND** system MUST NOT把该状态解释为第三种 transport mode
+#### Scenario: Route is absent after replacement or deletion
+- **WHEN** no current Channel row owns `webhook_id`
+- **THEN** repository MUST return not found and Service MUST return `404` without credential or inbox work
 
-### Requirement: IMProvider 必须声明静态 Webhook capability
+#### Scenario: Persisted owner key is invalid
+- **WHEN** a row cannot be mapped to `WorkspaceScope` or `DeploymentScope`
+- **THEN** repository MUST report lookup failure rather than expose raw owner state or treat the route as missing
 
-`IMProvider.supports_webhook()` MUST return whether the current Dify adapter implementation has Provider-level Webhook capability without reading credentials or constructing an adapter。It MUST return `True` for Slack、Feishu、Lark and Microsoft Teams，and `False` for DingTalk and WeCom。The method MUST NOT decide whether one concrete credential set can create a handler。
+#### Scenario: Route lookup fails
+- **WHEN** database query or mapping cannot complete
+- **THEN** Service MUST return payload-free `503` and MUST NOT map the failure to route not found
 
-#### Scenario: Provider capability is queried
-- **WHEN** management projection or ingress asks whether a Provider can support Webhook
-- **THEN** caller MUST use `IMProvider.supports_webhook()`
-- **AND** caller MUST NOT maintain another Provider-level Webhook allowlist
+### Requirement: Service MUST construct one request-scoped Channel handler
 
-#### Scenario: Static-capable Provider has concrete credentials
-- **WHEN** `IMProvider.supports_webhook()` returns `True` and ingress constructs the concrete adapter
-- **THEN** `adapter.create_webhook_handler()` MUST be the authority for whether those credentials permit Webhook
-- **AND** the shared adapter protocol MUST NOT enumerate Provider-specific credential requirements
+`IMWebhookIngressService.handle(webhook_id, request)` MUST perform authoritative Channel lookup for every admitted callback。For a supported Provider，Service MUST select a bound cipher from route scope、call `IMCredentialCodec.load(channel.provider, channel.encrypted_credentials)` exactly once、call `build_im_provider_adapter(credentials)` exactly once and create one handler bound to a Channel-scoped `IMMessageInboxSink`。Service MUST NOT retain adapter、handler or recovered credentials between requests。
 
-### Requirement: Public controller 必须只做有界 HTTP adaptation
+#### Scenario: Workspace Channel receives callback
+- **WHEN** route scope is `WorkspaceScope`
+- **THEN** Service MUST construct `TenantBoundCredentialCipher` from trusted route Tenant ID and configured Key Provider
 
-系统 MUST 在独立、无 Console session 的 blueprint 暴露 `POST /callbacks/human-input/v2/im/<webhook_id>`。Controller MUST 在读取 body 或执行 I/O 前捕获 trusted UTC receive time，MUST 有界读取 exact body bytes，MUST 构造 adapters package 中的 `WebhookRequest`，并 MUST 把 Service 返回的 `WebhookResponse` 映射为 Flask response。Controller MUST NOT解析 Provider JSON、选择 Provider、查询 tenant、恢复 credentials或执行 business processing。
+#### Scenario: Deployment Channel receives callback
+- **WHEN** route scope is `DeploymentScope`
+- **THEN** Service MUST use only explicitly injected deployment-bound cipher
+- **AND** missing deployment cipher MUST return `503`
 
-#### Scenario: 合法 callback 到达 controller
-- **WHEN** callback path、method 和 body size 合法
-- **THEN** controller MUST 把 uppercase method、`tuple(request.headers.items())`、exact body bytes 和进入 controller 时捕获的 receive time 交给 `IMWebhookIngressService`
+#### Scenario: Concurrent callbacks target the same Channel revision
+- **WHEN** multiple requests resolve the same Channel ID and config version
+- **THEN** each request MUST independently construct、invoke and close its own Provider adapter and handler
 
-#### Scenario: Callback body 超过上限
-- **WHEN** request body 超过 `HUMAN_INPUT_IM_WEBHOOK_MAX_BODY_BYTES`
-- **THEN** controller MUST 返回 `413`
-- **AND** controller MUST NOT查询 Integration、构造 Provider adapter 或写入 inbox
+#### Scenario: Concrete credentials do not support Webhook
+- **WHEN** static Provider capability is true but `create_webhook_handler()` returns `None`
+- **THEN** Service MUST return the same `404` surface without invoking a Provider handler
 
-#### Scenario: 浏览器发送 preflight
-- **WHEN** client 对 callback route 发送 CORS preflight
-- **THEN** callback blueprint MUST NOT提供 application CORS policy 或 authenticated Web API fallback
+#### Scenario: Caller forges Provider identity
+- **WHEN** callback header or body claims another Provider or Provider tenant
+- **THEN** Service MUST still construct from route Channel facts
+- **AND** Provider handler or bound sink MUST reject conflicting authenticated identity
 
-#### Scenario: Callback 携带 Console state
-- **WHEN** callback request 携带 Console session cookie 或 CSRF header
-- **THEN** controller MUST NOT把该状态用于 authentication、tenant selection 或 authorization
+### Requirement: Inbox intake MUST bind current Channel identity
 
-### Requirement: Ingress Service 必须从 route identity 解析 authoritative Integration
+Ingress MUST construct `IMMessageInboxSink` with current `IMChannelId`、Provider and Provider tenant。Sink and inbox repository MUST persist Channel ID as local routing metadata without adding it to `AuthenticatedIMEvent`。Provider event deduplication MUST remain independent of Channel ID。
 
-`IMWebhookIngressService.handle(webhook_id, request)` MUST 按全局唯一 `webhook_id` 加载 current domain `IMIntegration`。Service MUST NOT从 request body、header、query 或 path 的其他字段推导 Provider 或 tenant。Repository MUST 返回 Integration 的 opaque credential envelope，但 MUST NOT执行 cipher resolution、credential recovery 或 Provider I/O。
+#### Scenario: Matching event is accepted
+- **WHEN** handler emits an event matching bound Channel Provider and Provider tenant
+- **THEN** sink MUST persist `channel_id` with event facts before returning `ACCEPTED`
 
-#### Scenario: 当前 route 被调用
-- **WHEN** `webhook_id` 对应 current Integration 且 deployment mode 为 `WEBHOOK`
-- **THEN** Service MUST 使用 route lookup 得到的 Provider、provider tenant、owner scope、opaque envelope 和 complete revision
+#### Scenario: Event conflicts with Channel identity
+- **WHEN** authenticated event Provider or Provider tenant differs from the bound Channel
+- **THEN** sink MUST create no record and MUST NOT return `ACCEPTED`
 
-#### Scenario: Route 不存在或已删除
-- **WHEN** `webhook_id` 没有对应 current Integration
-- **THEN** Service MUST 返回 `404`
-- **AND** Service MUST NOT解析 envelope、构造 Provider adapter 或写入 inbox
+#### Scenario: Same Provider event is redelivered after Channel replacement
+- **WHEN** real Provider event ID already exists for the same Provider tenant under an earlier Channel
+- **THEN** deduplication MUST resolve the existing event without adding Channel ID to the deduplication key or overwriting immutable routing facts
 
-#### Scenario: Caller 伪造 Provider identity
-- **WHEN** callback header 或 body 声称属于另一个 Provider 或 tenant
-- **THEN** Service MUST 仍以 route lookup 得到的 Integration 构造 handler
-- **AND** Provider handler 或 bound sink MUST 拒绝不匹配的 authenticated identity
+### Requirement: Provider response and durable acceptance semantics MUST remain unchanged
 
-#### Scenario: Route lookup persistence failure
-- **WHEN** repository 因数据库连接、查询或结果映射失败而无法完成 `webhook_id` lookup
-- **THEN** Service MUST 返回 payload-free `503`
-- **AND** Service MUST NOT把 persistence failure 映射为 route not found
+Service MUST return Provider handler status、headers and body without rewriting challenge、authentication failure、validation failure or ACK。A business event success ACK MUST continue to require `IMMessageInboxSink` durable acceptance or real-ID duplicate resolution。
 
-### Requirement: Service 必须为每个 callback 构造 request-scoped Provider handler
+#### Scenario: Provider challenge succeeds
+- **WHEN** handler validates and processes challenge request
+- **THEN** controller MUST return handler challenge response and inbox MUST add no record
 
-Service MUST 为每个 callback 先执行 authoritative route lookup。When `IMProvider.supports_webhook()` returns `True`，Service MUST 将 current `IMIntegration` 交给 injected Integration-to-adapter dependency，获得 `IMProviderAdapter`，并调用 `create_webhook_handler()` with the bound `IMMessageInboxSink`。A `None` result MUST return the same `404` surface as an unsupported Provider。Service MUST NOT直接解码 ciphertext、调用 cipher、校验 resolved credential union或 dispatch Provider constructors。Service MUST NOT在 HTTP requests 之间复用或持有 adapter、handler或 recovered credentials。
+#### Scenario: Provider authentication fails
+- **WHEN** handler rejects signature、token、JWT or encryption material
+- **THEN** controller MUST return handler non-success response and inbox MUST add no record
 
-#### Scenario: 同一 revision 收到并发 callback
-- **WHEN** 多个 request 并发命中同一个 current Integration revision
-- **THEN** 每个 request MUST 独立构造和调用自己的 handler
-- **AND** 每个 handler MUST 绑定到该 request读取的 Integration、Provider、provider tenant 和 durable sink
+#### Scenario: New business event commits
+- **WHEN** bound sink durably accepts authenticated event
+- **THEN** controller MUST return handler success ACK
 
-#### Scenario: Credential rotation 已提交
-- **WHEN** current Integration 的 envelope 被替换且 `config_version` 已增加
-- **THEN** commit 后开始 lookup 的 request MUST 恢复新 envelope并构造新 handler
+#### Scenario: Inbox persistence fails
+- **WHEN** bound sink cannot durably accept event
+- **THEN** controller MUST return handler retry-compatible response and Service MUST NOT fabricate success
 
-#### Scenario: Integration 已删除
-- **WHEN** delete commit 后 Provider调用旧 `webhook_id`
-- **THEN** route lookup MUST 返回 not-found
-- **AND** Service MUST NOT恢复 credentials或构造 handler
+### Requirement: Failure and observability MUST protect sensitive content
 
-#### Scenario: Adapter root 已关闭
-- **WHEN** Service 从 adapter 创建 Webhook handler 后关闭 root adapter
-- **THEN** request-scoped handler MUST 按既有 `IMWebhookHandler` contract 完成当前 callback
+Malformed or unknown `webhook_id`、`STREAM` mode、unsupported Provider and unavailable credential-bound handler MUST use one `404` surface。Database、scope mapping、cipher、credential recovery、adapter construction and unclassified internal failures MUST return payload-free `503`。After successful lookup，Service MUST emit one `im_webhook_channel_resolved` structured log containing Provider and Channel ID before capability、cipher or credential work。Logs、metrics、traces and exceptions MUST NOT contain request body、headers、Provider response body、credential plaintext、credential ciphertext、tenant ID or complete `webhook_id`。
 
-### Requirement: Provider response 和 durable acceptance 语义必须保持不变
+#### Scenario: Malformed route identity is probed
+- **WHEN** path identity has invalid length or character set
+- **THEN** controller MUST return the same `404` as unknown well-formed route
 
-Service MUST 返回 Provider handler 产生的 status、headers 和 body，MUST NOT把 Provider-specific challenge、authentication failure、validation failure 或 ACK 改写为通用 success。业务事件的成功 ACK MUST 继续以 `IMMessageInboxSink` 已经 durable accept 或解析 real-ID duplicate 为前提。
+#### Scenario: Channel lookup succeeds
+- **WHEN** repository returns `IMWebhookChannelRoute`
+- **THEN** Service MUST immediately log `provider` and `channel_id`
+- **AND** log MUST precede Provider capability、cipher、credential and adapter work
 
-#### Scenario: Provider challenge 成功
-- **WHEN** Provider handler 验证并处理 challenge request
-- **THEN** controller MUST 返回 handler 产生的 challenge response
-- **AND** inbox MUST NOT新增 record
+#### Scenario: Credential envelope cannot be opened
+- **WHEN** codec raises `IMCredentialError`
+- **THEN** Service MUST return `503` and diagnostics MUST contain only safe failure code、Channel ID and Provider
 
-#### Scenario: Provider authentication 失败
-- **WHEN** Provider handler 无法验证 signature、token、JWT 或 encryption material
-- **THEN** controller MUST 返回 handler 产生的 non-success response
-- **AND** inbox MUST NOT新增 record
+#### Scenario: Ingress metric is recorded
+- **WHEN** controller or Service records request outcome
+- **THEN** dimensions MUST contain only low-cardinality Provider、outcome and HTTP status class
 
-#### Scenario: 新业务事件 durable commit 成功
-- **WHEN** handler 产生的 `AuthenticatedIMEvent` 被 bound sink 成功写入 inbox
-- **THEN** controller MUST 返回 handler 的成功 ACK
+### Requirement: Channel configuration commits MUST define in-flight boundaries
 
-#### Scenario: Inbox persistence 失败
-- **WHEN** bound sink 无法 durable accept event
-- **THEN** controller MUST 返回 handler 的 retry-compatible response
-- **AND** Service MUST NOT伪造成功 ACK
+Ingress MUST NOT hold Channel transaction during cipher work、Provider authentication or inbox commit。Request MUST use Channel snapshot captured by reverse lookup。Rotation、replacement or delete commit followed by a new lookup MUST expose new configuration or route absence。Downstream authorization MUST continue to use current Channel and Binding state rather than only ingress snapshot。
 
-### Requirement: Ingress failure 和 observability 必须保护敏感内容
+#### Scenario: Credential rotation overlaps request
+- **WHEN** request resolves Channel before rotation commit
+- **THEN** in-flight request MAY finish with old envelope
+- **AND** lookup started after commit MUST recover new envelope and config version
 
-Malformed或unknown `webhook_id`、`STREAM` mode、`IMProvider.supports_webhook() == False` 和 `create_webhook_handler() is None` MUST 使用相同的 `404` surface。Database query、cipher resolution、credential recovery、adapter construction 或未分类内部失败 MUST 返回 payload-free `503`。Immediately after a successful Integration lookup，Service MUST emit one structured `im_webhook_integration_resolved` log containing the resolved Provider and Integration ID。Logs、metrics、traces 和 exceptions MUST NOT包含 request body、request headers、Provider response body、credential plaintext、credential ciphertext 或完整 `webhook_id`。
-
-#### Scenario: Malformed route identity 被探测
-- **WHEN** request 使用长度或字符集非法的 `webhook_id`
-- **THEN** controller MUST 返回与 unknown well-formed route 相同的 `404`
-
-#### Scenario: Integration lookup 成功
-- **WHEN** repository 返回 current `IMIntegration`
-- **THEN** Service MUST 立即记录一条 `im_webhook_integration_resolved` structured log
-- **AND** log MUST 包含 `provider` 和 `integration_id`
-- **AND** log MUST 发生在 `IMProvider.supports_webhook()`、cipher resolution、credential recovery 和 adapter construction 之前
-- **AND** log MUST NOT包含 tenant ID、完整 `webhook_id`、headers、payload、credential plaintext 或 ciphertext
-
-#### Scenario: Credential envelope 无法恢复
-- **WHEN** Integration-to-adapter dependency raises `IMCredentialError`
-- **THEN** Service MUST 返回 `503`
-- **AND** diagnostic MUST 只记录 safe failure code、Integration ID 和 Provider
-
-#### Scenario: Concrete credentials 不允许 Webhook
-- **WHEN** `IMProvider.supports_webhook()` returns `True` but `create_webhook_handler()` returns `None`
-- **THEN** Service MUST 返回 `404`
-- **AND** Service MUST NOT把 Provider-specific credential fields 泄漏给 caller
-
-#### Scenario: Ingress metric 被记录
-- **WHEN** controller 或 Service 记录 request outcome
-- **THEN** metric dimensions MUST 只包含低基数 Provider、outcome 和 HTTP status class
-- **AND** metric MUST NOT包含 tenant ID、Integration ID、`webhook_id`、header、payload 或 ciphertext
-
-### Requirement: Configuration commit 必须定义 in-flight request 边界
-
-Ingress MUST NOT在 cipher work、Provider authentication 或 inbox commit 期间持有 Integration write transaction。Request MUST 使用 route lookup 时捕获的 complete Integration revision；rotation、replacement 或 delete commit 后开始 lookup 的 request MUST 观察新 revision 或 route absence。下游 authorization MUST 继续依据处理时的 current Integration 和 Binding，而不是只依赖 ingress snapshot。
-
-#### Scenario: Credential rotation 与 request 重叠
-- **WHEN** request 在 rotation commit 前已经解析旧 revision
-- **THEN** 该 in-flight request MAY 使用旧 revision-bound handler 完成
-- **AND** commit 后开始 lookup 的 request MUST 使用新 revision-bound handler
-
-#### Scenario: Replacement 与旧 callback 重叠
-- **WHEN** replacement commit 后 Provider 调用旧 `webhook_id`
-- **THEN** ingress MUST 返回 `404`
-- **AND** ingress MUST NOT把旧 callback 路由到 replacement Integration
+#### Scenario: Replacement overlaps old callback
+- **WHEN** replacement commits and Provider calls old `webhook_id`
+- **THEN** ingress MUST return `404` and MUST NOT route callback to replacement Channel

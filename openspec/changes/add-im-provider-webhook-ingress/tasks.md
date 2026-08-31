@@ -1,52 +1,44 @@
-## 1. Webhook route identity 与 persistence
+## 1. Ingress prerequisites and request bounds
 
-- [ ] 1.1 新增 `WebhookId` value object，完成固定长度、URL-safe 格式校验、cryptographically secure generation 和安全日志表示，并补充 domain unit tests。
-- [ ] 1.2 在 `IMIntegration` aggregate、`HumanInputIMIntegration` ORM、mapper 和 guarded UoW 中加入 `webhook_id`；让 `HumanInputIMIntegrationManagementService` 使用独立 `webhook_id_factory`，确保 create/replacement 生成新值而 credential rotation 不能覆盖原值。
-- [ ] 1.3 直接修改尚未发布的 IM control-plane migration，创建 `VARCHAR(32) NOT NULL` 的 `webhook_id` 和全局 unique constraint，并移除 `callback_url`；覆盖 schema upgrade/downgrade、唯一约束和 ORM strict mapping tests，不实现旧 row backfill 或双读。
-- [ ] 1.4 从 `ConfirmedIMConfiguration`、aggregate、ORM、mapper、guarded UoW 和 management write path 删除 `callback_url`；保留 `IMIntegrationView.webhook_url` 作为 runtime-derived credential-free field。
+- [ ] 1.1 Require completed Channel Management contracts for `IMChannel`、`WebhookId`、transport mode、Provider capability and Human Input callback URL generation；do not duplicate their implementation here.
+- [ ] 1.2 Add `HUMAN_INPUT_IM_WEBHOOK_MAX_BODY_BYTES` configuration、range validation and matching service-specific environment sample.
 
-## 2. Deployment mode 与 management projection
+## 2. Migrate durable inbox routing to Channel identity
 
-- [ ] 2.1 新增只包含 `WEBHOOK` 和 `STREAM` 的 `IMEventTransportMode` 及只读 `IMEventTransportModeResolver`；要求 deployment configuration 必须选择其中一个值，缺失或非法配置直接失败，并保持 mode 不进入 Console DTO 或 Integration persistence。
-- [ ] 2.2 增加 `HUMAN_INPUT_IM_WEBHOOK_MAX_BODY_BYTES` 配置及合法范围校验，并按部署约定把可选示例放入对应的 service-specific environment sample。
-- [ ] 2.3 实现 `generate_im_provider_webhook_url(webhook_id)`，用 `TRIGGER_URL` 和固定 path 动态生成 callback URL，覆盖 origin、path joining 和 escaping tests。
-- [ ] 2.4 在 `IMProvider` 上实现 `supports_webhook() -> bool`，让 IM Integration owner 使用 mode、该方法和 credential-runtime availability 生成 `IMIntegrationView.webhook_url`；现有 Console mapper只负责映射到 `ChannelSummary`。
-- [ ] 2.5 增加 management tests，覆盖 canonical list/detail/mutation summaries、`WEBHOOK`、`STREAM`、缺失/非法 deployment configuration、unsupported Provider、`TRIGGER_URL` 变化、tenant mode override rejection，以及所有 projection 不调用 `IMCredentialCodec.load()` 或构造 adapter。
+- [ ] 2.1 Update `im-message-inbox` contracts、ORM and unpublished migration so local routing uses non-null `channel_id: IMChannelId` instead of `integration_id`，with no compatibility alias、dual read/write or backfill.
+- [ ] 2.2 Update `IMMessageInboxSink`、`IMMessageInboxRepository.insert_or_resolve()`、mappers、`IMInboxDelivery`、worker consumers and safe logs to use Channel ID while preserving Provider/tenant validation and immutable event facts.
+- [ ] 2.3 Preserve deduplication key `(provider, provider_tenant_id, provider_event_id)` without Channel ID；add replacement/redelivery tests proving duplicates keep the first record's immutable Channel routing.
+- [ ] 2.4 Run existing SQLite inbox persistence/sink/worker suites and PostgreSQL concurrency contracts after the routing rename.
 
-## 3. 共享 opaque-credential runtime composition
+## 3. Channel reverse lookup and ingress service
 
-- [ ] 3.1 将现有 `DifyIMIntegrationAdapterFactory` 从 Contact Sync composition 提升到共享 Human Input v2 runtime module，保留 `cipher_resolver` injection，并复用 `IMCredentialCodec` 和 `build_im_provider_adapter()`。
-- [ ] 3.2 修改 Contact Sync 和 Webhook ingress composition 使用共享 factory；保持 `DifyIMProviderConfigurationService` 直接复用已有 `build_im_provider_adapter()`，不得新增第二套 Provider constructor dispatch。
-- [ ] 3.3 为共享 factory 增加 tests，覆盖 workspace tenant-bound cipher、显式 deployment-bounded cipher、tenant-less cipher unavailable、envelope version/decrypt/JSON/Pydantic failure、Provider discriminator mismatch，以及失败时不调用 adapter factory或 Provider I/O。
-- [ ] 3.4 增加 adapter lifecycle tests，验证 Contact Sync 只访问 directory capability、Webhook ingress 只创建 Webhook handler，且关闭 root adapter 不会 invalidate 已创建的 handler。
+- [ ] 3.1 Define immutable `IMWebhookChannelRoute(channel: IMChannel, scope: WorkspaceScope | DeploymentScope)` and `IMWebhookChannelRepository.load_by_webhook_id(WebhookId)` with distinct not-found and safe lookup-failure outcomes；do not expose raw `owner_key` or ORM records.
+- [ ] 3.2 Implement reverse lookup against globally unique `HumanInputIMChannel.webhook_id`，map owner key internally to validated scope and test current route、malformed owner、rotation、replacement、delete and database failure behavior.
+- [ ] 3.3 Implement `IMWebhookIngressService.handle(webhook_id, request)`：reject `STREAM` before lookup，load current Channel route，check Provider capability，select Workspace or injected Deployment cipher，open `IMEncryptedCredentials` exactly once and construct one request-scoped adapter through `build_im_provider_adapter()`.
+- [ ] 3.4 Construct one Channel-bound `IMMessageInboxSink` per admitted callback，call `create_webhook_handler()`、invoke returned handler and close root adapter on every post-construction path；do not retain adapter、handler or credentials across requests.
+- [ ] 3.5 Map malformed/unknown route、`STREAM`、unsupported Provider and unavailable credential-bound handler to one `404`；map lookup、scope、cipher、credential、adapter and unclassified internal failures to payload-free `503`；pass Provider handler responses through unchanged.
+- [ ] 3.6 Add Service tests for Workspace cipher、missing/injected Deployment cipher、envelope version/decrypt/JSON/Pydantic/provider mismatch、adapter construction、handler unavailable、challenge、authentication failure、durable ACK、duplicate、inbox failure and response passthrough.
+- [ ] 3.7 Add configuration-race tests proving post-rotation lookup uses new envelope，post-replacement/delete old route returns `404`，and a pre-commit Channel snapshot may finish without holding Channel transaction during Provider or inbox work.
+- [ ] 3.8 Confirm this change does not modify Contact Sync or introduce an Integration-to-adapter compatibility factory；future Contact Sync migration may reuse Channel composition after it owns `IMChannelId`.
 
-## 4. Route repository 与 ingress service
+## 4. Public HTTP callback boundary
 
-- [ ] 4.1 定义 `IMWebhookIntegrationRepository.load_by_webhook_id()` port 和明确的 not-found/query-failure error contract；返回 current domain `IMIntegration` 及其 opaque envelope，但不执行 credential recovery。
-- [ ] 4.2 实现按全局唯一 `webhook_id` 查询 authoritative Integration 的 repository adapter，并测试删除、replacement、credential revision、opaque envelope mapping 和 database failure 行为。
-- [ ] 4.3 实现 `IMWebhookIngressService.handle(webhook_id, request)`：解析 deployment mode 和 current Integration，为每个 admitted callback 通过共享 factory恢复 credentials并创建 request-scoped handler，将 handler 绑定到 `IMMessageInboxSink`，随后关闭 root adapter且不保留 handler。
-- [ ] 4.4 实现安全失败映射：malformed/unknown route、`STREAM` mode、`IMProvider.supports_webhook() == False` 和 `create_webhook_handler() is None` 返回同形 `404`；query failure、cipher unavailable、`IMCredentialError`、adapter construction 或其他内部失败返回 payload-free `503`。
-- [ ] 4.5 增加 service tests，覆盖每个 admitted callback 独立构造和释放 handler、static unsupported Provider、credential-bound handler unavailable、query/cipher/envelope/factory failure、challenge、authentication failure、durable ACK、duplicate、inbox failure 和 response passthrough。
-- [ ] 4.6 增加 revision race tests，证明 rotation commit 后开始 lookup 的 request恢复新 envelope、replacement/delete 后旧 route 返回 `404`，而 commit 前已读取旧 revision 的 in-flight request 可以完成且不持有 Integration write transaction。
+- [ ] 4.1 Add dedicated `controllers.im_provider_webhook` blueprint and `POST /callbacks/human-input/v2/im/<webhook_id>` without Console session、CSRF、Workspace/Account decorators or application CORS policy.
+- [ ] 4.2 Capture trusted UTC receive time at controller entry，validate route identity，read exact body through bounded reader and return `413` before repository、adapter or inbox calls when oversized.
+- [ ] 4.3 Construct adapters-package `WebhookRequest` from uppercase method、`tuple(request.headers.items())`、exact body bytes and receive time without extra header parsing.
+- [ ] 4.4 Map `WebhookResponse` status、ordered headers and exact body to Flask `Response`，allow Flask to recalculate `Content-Length`，then register blueprint and request-scoped ingress composition.
+- [ ] 4.5 Add Flask request tests for malformed/unknown route `404` parity、exact body、receive-time ordering、oversize `413`、ignored cookies/CSRF、no CORS preflight fallback and byte-preserving challenge/ACK response adaptation.
 
-## 5. Public HTTP callback boundary
+## 5. Framework-neutral request mapping
 
-- [ ] 5.1 新增独立 `controllers.im_provider_webhook` blueprint 和 `POST /callbacks/human-input/v2/im/<webhook_id>` handler，不安装 Console session、CSRF、workspace/tenant decorator 或 application CORS policy。
-- [ ] 5.2 在 controller 入口最早捕获 trusted UTC receive time，先校验 route identity，再使用 bounded reader 获取 exact body bytes，并在 oversize 时于任何 repository、factory 或 inbox 调用前返回 `413`。
-- [ ] 5.3 将 uppercase method、`tuple(request.headers.items())`、exact body bytes 和 receive time 组装为 adapters package 中的 `WebhookRequest`；不得额外解析或转换 header name/value。
-- [ ] 5.4 将 `WebhookResponse` 的 status、ordered headers 和 exact body 映射为 Flask `Response`，允许框架重算 `Content-Length`，并注册 blueprint 及 ingress service application composition。
-- [ ] 5.5 增加真实 Flask request tests，覆盖 malformed/unknown route 的同形 `404`、exact body、receive-time capture ordering、oversize `413`、cookies/CSRF 无效、preflight 无 CORS fallback，以及 challenge/ACK response 的 byte-for-byte adaptation。
+- [ ] 5.1 Update `im-provider-events` contract tests so `WebhookRequest.headers` accepts Flask name/value pairs without framework objects.
+- [ ] 5.2 Add real Flask request tests asserting `WebhookRequest.headers == tuple(request.headers.items())` and preserving exact signature body bytes.
 
-## 6. Flask request mapping contract
+## 6. Observability、verification and rollout
 
-- [ ] 6.1 更新 adapters `entities`/`protocols` 的 framework-neutral contract tests，要求 `WebhookRequest.headers` 接收 Flask controller 提供的 name/value pairs。
-- [ ] 6.2 增加真实 Flask request tests，断言 `WebhookRequest.headers == tuple(request.headers.items())`，并覆盖 signature verification 对 exact body bytes 的依赖。
-
-## 7. Observability、验收与 rollout
-
-- [ ] 7.1 增加低基数 ingress request、route miss、oversize、handler response class、internal unavailable 和 duration metrics；每次 successful Integration lookup 后立即记录 `im_webhook_integration_resolved` structured log，包含 `provider` 和 `integration_id`。
-- [ ] 7.2 增加 observability tests，断言 lookup log 发生在 `IMProvider.supports_webhook()`、cipher、credential 和 adapter work 前，且 logs、metrics、traces 和 exceptions 不包含 request/response payload、headers、credential plaintext、credential ciphertext、tenant ID 或完整 `webhook_id`；metric labels 不得引入高基数 identity。
-- [ ] 7.3 增加 Provider adapter tests，固定 `IMProvider.supports_webhook()` 的静态结果；验证 Feishu/Lark 同时缺少 `verification_token` 与 `encrypt_key` 时 `create_webhook_handler()` 返回 `None`、任一字段存在时返回 handler，并验证 Slack resolved credential schema 必须包含 `signing_secret`；callers不得重复检查这些字段。
-- [ ] 7.4 增加 ingress-to-inbox integration coverage，验证 challenge 不写 inbox、认证失败不写 inbox、成功 ACK 依赖 durable accept、real event ID duplicate 可成功 ACK，以及 broker wakeup failure 不撤销已完成的 durable acceptance。
-- [ ] 7.5 执行相关 backend unit tests、unshipped migration tests、formatting 和 static checks；按 schema/API 一次切换、deployment mode 保持 `STREAM`、确认 management projection 正确、最后选择 `WEBHOOK` 的顺序完成人工验收清单。
-- [ ] 7.6 验证 Workspace Integration 使用 tenant-bound cipher 可以完成 callback；验证未注入 deployment-bounded cipher 时 tenant-less Integration 不暴露可用 URL且 ingress 返回安全 `503`，注入后才允许启用 deployment-owned callback。
+- [ ] 6.1 Add low-cardinality ingress request、route miss、oversize、handler response class、internal unavailable and duration metrics；after each successful Channel lookup，log `im_webhook_channel_resolved` with Provider and Channel ID before capability、cipher or credential work.
+- [ ] 6.2 Add observability tests proving logs、metrics、traces and exceptions contain no payload、headers、tenant ID、credential plaintext/ciphertext or complete `webhook_id`，and metric dimensions contain no high-cardinality identity.
+- [ ] 6.3 Add Provider adapter tests for credential-bound handler availability and verify callers reuse `IMProvider.supports_webhook()` without duplicating Provider allowlists.
+- [ ] 6.4 Add ingress-to-inbox integration coverage for challenge without inbox write、authentication rejection、durable success ACK、real-ID duplicate ACK、persistence failure and post-commit broker wakeup failure.
+- [ ] 6.5 Run focused backend unit tests、inbox persistence tests、controller tests、formatting、lint、type checks and `openspec validate add-im-provider-webhook-ingress --strict`.
+- [ ] 6.6 Keep transport mode `STREAM` for initial deployment verification，then select `WEBHOOK` only after callback route、Workspace cipher and inbox acceptance pass；verify deployment-owned callback returns safe `503` without injected deployment cipher and succeeds only after injection.
