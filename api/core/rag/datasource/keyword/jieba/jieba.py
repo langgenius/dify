@@ -12,7 +12,7 @@ from core.rag.datasource.keyword.keyword_base import BaseKeyword
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
-from models.dataset import Dataset, DatasetKeywordTable, DocumentSegment
+from models.dataset import ChildChunk, Dataset, DatasetKeywordTable, DocumentSegment
 
 
 class PreSegmentData(TypedDict):
@@ -113,31 +113,67 @@ class Jieba(BaseKeyword):
         document_ids_filter = kwargs.get("document_ids_filter")
         sorted_chunk_indices = self._retrieve_ids_by_query(keyword_table or {}, query, k)
 
-        documents = []
+        if not sorted_chunk_indices:
+            return []
 
+        # Resolve from both DocumentSegment (parent segments) and ChildChunk
+        # (parent-child mode). Pre-fix, only DocumentSegment was queried, so
+        # child chunk keyword hits were silently dropped and keyword retrieval
+        # returned no results even when the keyword table had matching entries.
+        # See #40680.
         segment_query_stmt = select(DocumentSegment).where(
             DocumentSegment.dataset_id == self.dataset.id, DocumentSegment.index_node_id.in_(sorted_chunk_indices)
         )
+        child_chunk_query_stmt = select(ChildChunk).where(
+            ChildChunk.dataset_id == self.dataset.id, ChildChunk.index_node_id.in_(sorted_chunk_indices)
+        )
         if document_ids_filter:
             segment_query_stmt = segment_query_stmt.where(DocumentSegment.document_id.in_(document_ids_filter))
+            child_chunk_query_stmt = child_chunk_query_stmt.where(ChildChunk.document_id.in_(document_ids_filter))
 
         segments = session.scalars(segment_query_stmt).all()
-        segment_map = {segment.index_node_id: segment for segment in segments}
-        for chunk_index in sorted_chunk_indices:
-            segment = segment_map.get(chunk_index)
+        child_chunks = session.scalars(child_chunk_query_stmt).all()
 
-            if segment:
-                documents.append(
-                    Document(
-                        page_content=segment.content,
-                        metadata={
-                            "doc_id": chunk_index,
-                            "doc_hash": segment.index_node_hash,
-                            "document_id": segment.document_id,
-                            "dataset_id": segment.dataset_id,
-                        },
-                    )
-                )
+        # Build an index_node_id -> (content, metadata) lookup for both kinds.
+        # The hit ranking is preserved by iterating `sorted_chunk_indices` in order
+        # below; duplicates are skipped.
+        node_lookup: dict[str, tuple[str, dict[str, Any]]] = {}
+        for segment in segments:
+            if segment.index_node_id is None:
+                continue
+            node_lookup[segment.index_node_id] = (
+                segment.content,
+                {
+                    "doc_id": segment.index_node_id,
+                    "doc_hash": segment.index_node_hash,
+                    "document_id": segment.document_id,
+                    "dataset_id": segment.dataset_id,
+                    "segment_id": segment.id,
+                    "is_child_chunk": False,
+                },
+            )
+        for child_chunk in child_chunks:
+            if child_chunk.index_node_id is None:
+                continue
+            node_lookup[child_chunk.index_node_id] = (
+                child_chunk.content,
+                {
+                    "doc_id": child_chunk.index_node_id,
+                    "doc_hash": child_chunk.index_node_hash,
+                    "document_id": child_chunk.document_id,
+                    "dataset_id": child_chunk.dataset_id,
+                    "segment_id": child_chunk.segment_id,
+                    "is_child_chunk": True,
+                },
+            )
+
+        documents: list[Document] = []
+        for chunk_index in sorted_chunk_indices:
+            entry = node_lookup.get(chunk_index)
+            if entry is None:
+                continue
+            page_content, metadata = entry
+            documents.append(Document(page_content=page_content, metadata=metadata))
 
         return documents
 
@@ -288,6 +324,50 @@ class Jieba(BaseKeyword):
         keyword_table = self._get_dataset_keyword_table(session)
         keyword_table = self._add_text_to_keyword_table(keyword_table or {}, node_id, keywords)
         self._save_dataset_keyword_table(keyword_table, session)
+
+    def add_child_chunk_keywords(self, child_chunk: ChildChunk, session: Session) -> None:
+        """Add a child chunk's keywords to the dataset keyword table.
+
+        Called during child chunk creation and during parent-child economy
+        indexing, where the child node IDs were previously missing from the
+        keyword table. See #40680.
+        """
+        if not child_chunk.index_node_id:
+            return
+        lock_name = f"keyword_indexing_lock_{self.dataset.id}"
+        with redis_client.lock(lock_name, timeout=600):
+            keyword_table_handler = JiebaKeywordTableHandler()
+            keyword_number = self.dataset.keyword_number or self._config.max_keywords_per_chunk
+            keywords = list(keyword_table_handler.extract_keywords(child_chunk.content, keyword_number))
+            keyword_table = self._get_dataset_keyword_table(session)
+            keyword_table = self._add_text_to_keyword_table(keyword_table or {}, child_chunk.index_node_id, keywords)
+            self._save_dataset_keyword_table(keyword_table, session)
+
+    def delete_child_chunk_keywords(self, child_chunk: ChildChunk, session: Session) -> None:
+        """Remove a child chunk's keywords from the dataset keyword table.
+
+        Called during child chunk delete and during segment-level cleanup that
+        cascades to child chunks. The child chunk's `index_node_id` is used
+        as the keyword-table key. See #40680.
+        """
+        if not child_chunk.index_node_id:
+            return
+        lock_name = f"keyword_indexing_lock_{self.dataset.id}"
+        with redis_client.lock(lock_name, timeout=600):
+            keyword_table = self._get_dataset_keyword_table(session)
+            if keyword_table is not None:
+                keyword_table = self._delete_ids_from_keyword_table(keyword_table, [child_chunk.index_node_id])
+            self._save_dataset_keyword_table(keyword_table, session)
+
+    def update_child_chunk_keywords(self, child_chunk: ChildChunk, session: Session) -> None:
+        """Re-extract and replace a child chunk's keywords in the keyword table.
+
+        Called when a child chunk's content is edited: the old keywords for
+        the same `index_node_id` are removed and the new keywords (extracted
+        from the new content) are inserted. See #40680.
+        """
+        self.delete_child_chunk_keywords(child_chunk, session)
+        self.add_child_chunk_keywords(child_chunk, session)
 
 
 def set_orjson_default(obj: Any):
