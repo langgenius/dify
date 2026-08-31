@@ -262,7 +262,7 @@ const CollectionSection = ({
           className="mt-2"
           showNavigation
           showPagination
-          autoPlay
+          autoPlay={isPartnersCollection}
           autoPlayInterval={5000}
           deferMountPages={deferMount}
           pauseWhenOffscreen={deferMount}

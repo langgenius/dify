@@ -313,8 +313,8 @@ describe('ListWithCollection', () => {
     expect(screen.getAllByTestId('card-wrapper')).toHaveLength(61)
     expect(document.querySelectorAll('[data-carousel-page]')).toHaveLength(8)
     expect(document.querySelectorAll('[data-carousel-page-mounted="true"]')).toHaveLength(8)
-    // The eager carousel also registers an autoplay visibility observer, so
-    // only count the collection preload observers here.
+    // Partner collections autoplay; this fixture is non-partner, so the only
+    // observers here are the collection preload observers.
     const collectionObservers = intersectionObservers.filter(
       (observer) => observer.options?.rootMargin === '320px 0px',
     )

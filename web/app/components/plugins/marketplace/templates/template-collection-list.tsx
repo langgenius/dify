@@ -161,7 +161,7 @@ export default function TemplateCollectionList({
             ariaLabel={getTemplateCollectionText(collection.label, locale)}
             showNavigation
             showPagination
-            autoPlay
+            autoPlay={isPartnerCollection}
             autoPlayInterval={5000}
             pauseWhenOffscreen
           />
