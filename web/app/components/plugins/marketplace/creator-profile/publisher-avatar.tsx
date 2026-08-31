@@ -13,7 +13,8 @@ type PublisherAvatarProps = {
 }
 
 // Keep in sync with Creator Center `components/ui/avatar.tsx`.
-const DEFAULT_AVATAR_BG = 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.08) 100%), linear-gradient(90deg, #155aef 0%, #155aef 100%)'
+const DEFAULT_AVATAR_BG =
+  'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.08) 100%), linear-gradient(90deg, #155aef 0%, #155aef 100%)'
 
 const DEFAULT_AVATAR_LETTER_STYLE: CSSProperties = {
   color: '#FFFFFF',
@@ -23,10 +24,8 @@ const DEFAULT_AVATAR_LETTER_STYLE: CSSProperties = {
 }
 
 function getFallbackTextClass(size: number) {
-  if (size <= 32)
-    return 'text-xs'
-  if (size <= 50)
-    return 'text-base'
+  if (size <= 32) return 'text-xs'
+  if (size <= 50) return 'text-base'
   return 'text-[40px]'
 }
 

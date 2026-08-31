@@ -7,10 +7,9 @@ type MarketplaceSiteFilter = {
   selected_values: string[]
 }
 
-const isMarketplaceSite = () => (
-  typeof globalThis.document !== 'undefined'
-  && globalThis.document.body?.hasAttribute('data-is-marketplace')
-)
+const isMarketplaceSite = () =>
+  typeof globalThis.document !== 'undefined' &&
+  globalThis.document.body?.hasAttribute('data-is-marketplace')
 
 const marketplaceTracking = () => globalThis.window.__marketplaceTracking__
 
@@ -18,8 +17,7 @@ export const trackMarketplaceSiteEvent = (
   eventName: string,
   properties?: Record<string, unknown>,
 ) => {
-  if (!isMarketplaceSite())
-    return
+  if (!isMarketplaceSite()) return
 
   marketplaceTracking()?.track(eventName, properties)
 }
@@ -28,36 +26,31 @@ export const rememberMarketplaceSiteReferrer = (
   itemId: string,
   section: MarketplaceSiteReferrerSection,
 ) => {
-  if (!isMarketplaceSite())
-    return
+  if (!isMarketplaceSite()) return
 
   marketplaceTracking()?.rememberReferrer(itemId, section)
 }
 
 export const markMarketplaceSiteSearch = (query: string) => {
-  if (!isMarketplaceSite())
-    return
+  if (!isMarketplaceSite()) return
 
   marketplaceTracking()?.markSearch(query)
 }
 
 export const flushMarketplaceSiteSearch = (resultCount: number) => {
-  if (!isMarketplaceSite())
-    return
+  if (!isMarketplaceSite()) return
 
   marketplaceTracking()?.flushSearch(resultCount)
 }
 
 export const markMarketplaceSiteFilter = (filter: MarketplaceSiteFilter) => {
-  if (!isMarketplaceSite())
-    return
+  if (!isMarketplaceSite()) return
 
   marketplaceTracking()?.markFilter(filter)
 }
 
 export const flushMarketplaceSiteFilter = (resultCount: number) => {
-  if (!isMarketplaceSite())
-    return
+  if (!isMarketplaceSite()) return
 
   marketplaceTracking()?.flushFilter(resultCount)
 }

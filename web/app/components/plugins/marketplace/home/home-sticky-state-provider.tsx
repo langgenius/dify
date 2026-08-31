@@ -21,10 +21,7 @@ export function HomeStickyCatalogTabs({ children }: { children: ReactNode }) {
   return (
     <div
       aria-hidden={!isCatalogPinned ? true : undefined}
-      className={cn(
-        styles.headerCatalogSlot,
-        isCatalogPinned && styles.headerCatalogSlotPinned,
-      )}
+      className={cn(styles.headerCatalogSlot, isCatalogPinned && styles.headerCatalogSlotPinned)}
       data-home-catalog-tabs-slot="header"
       inert={!isCatalogPinned ? true : undefined}
     >

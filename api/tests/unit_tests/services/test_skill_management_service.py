@@ -881,8 +881,7 @@ def test_sync_assistant_model_config_updates_draft_without_active_snapshot() -> 
 def test_update_display_name_keeps_name_and_draft_content_unchanged() -> None:
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
     created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload())
-    original = service.get_skill(tenant_id=TENANT, skill_id=created["id"])
-    original_skill_md = next(item for item in original["files"] if item["path"] == "SKILL.md")
+    original_skill_md = next(item for item in service.get_skill(tenant_id=TENANT, skill_id=created["id"])["files"])
 
     updated = service.update_metadata(
         tenant_id=TENANT,
@@ -2698,6 +2697,23 @@ def test_import_skill_package_rejects_archive_larger_than_upload_skill_limit(mon
     assert exc_info.value.code == "archive_too_large"
 
 
+def test_import_skill_package_rejects_zip_bomb_before_reading_members() -> None:
+    package = io.BytesIO()
+    with zipfile.ZipFile(package, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("payload.bin", b"\x00" * (8 * 1024 * 1024))
+
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+
+    with pytest.raises(SkillManagementServiceError) as exc_info:
+        service._draft_payload_from_zip(
+            tenant_id=TENANT,
+            user_id=USER,
+            archive_bytes=package.getvalue(),
+        )
+
+    assert exc_info.value.code == "invalid_skill_package"
+
+
 def test_publish_and_export_include_binary_tool_files() -> None:
     captured: dict[str, bytes] = {}
 
@@ -2905,6 +2921,165 @@ def test_build_assistant_attachment_context_includes_text_and_marks_binary() -> 
     assert "[Binary attachment available as uploaded file metadata only.]" in context
 
 
+def test_build_assistant_attachment_context_includes_extractable_pdf_text() -> None:
+    attachment = SkillAssistAttachmentPayload(
+        tool_file_id="resume-file-1",
+        name="resume.pdf",
+        mime_type="application/pdf",
+        size=166035,
+    )
+
+    with (
+        patch(
+            "services.skill_management_service.SkillManagementService._load_assistant_tool_file_bytes",
+            return_value=b"pdf bytes",
+        ),
+        patch(
+            "services.skill_management_service.SkillManagementService._extract_pdf_text",
+            return_value="Wang Lei\nAlgorithm Engineer",
+        ),
+    ):
+        context = SkillManagementService._build_assistant_attachment_context(
+            tenant_id=TENANT,
+            attachments=[attachment],
+        )
+
+    assert "--- resume.pdf (application/pdf, 166035 bytes) ---" in context
+    assert "Wang Lei\nAlgorithm Engineer" in context
+    assert "Binary attachment available" not in context
+
+
+def _zip_payload(files: dict[str, str]) -> bytes:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        for path, content in files.items():
+            archive.writestr(path, content)
+    return buffer.getvalue()
+
+
+def test_build_assistant_attachment_context_extracts_docx_text() -> None:
+    attachment = SkillAssistAttachmentPayload(
+        tool_file_id="docx-file-1",
+        name="guide.docx",
+        mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        size=123,
+    )
+    payload = _zip_payload(
+        {
+            "word/document.xml": (
+                '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+                "<w:body><w:p><w:r><w:t>Escalate urgent tickets</w:t></w:r></w:p></w:body>"
+                "</w:document>"
+            )
+        }
+    )
+
+    with patch(
+        "services.skill_management_service.SkillManagementService._load_assistant_tool_file_bytes",
+        return_value=payload,
+    ):
+        context = SkillManagementService._build_assistant_attachment_context(
+            tenant_id=TENANT,
+            attachments=[attachment],
+        )
+
+    assert "--- guide.docx" in context
+    assert "Escalate urgent tickets" in context
+    assert "Binary attachment available" not in context
+
+
+def test_build_assistant_attachment_context_extracts_xlsx_text() -> None:
+    attachment = SkillAssistAttachmentPayload(
+        tool_file_id="xlsx-file-1",
+        name="forecast.xlsx",
+        mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        size=456,
+    )
+    payload = _zip_payload(
+        {
+            "xl/sharedStrings.xml": (
+                '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+                "<si><t>Forecast Q1</t></si>"
+                "</sst>"
+            ),
+            "xl/worksheets/sheet1.xml": (
+                '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+                '<sheetData><row><c t="s"><v>0</v></c><c><v>42</v></c></row></sheetData>'
+                "</worksheet>"
+            ),
+        }
+    )
+
+    with patch(
+        "services.skill_management_service.SkillManagementService._load_assistant_tool_file_bytes",
+        return_value=payload,
+    ):
+        context = SkillManagementService._build_assistant_attachment_context(
+            tenant_id=TENANT,
+            attachments=[attachment],
+        )
+
+    assert "--- forecast.xlsx" in context
+    assert "Forecast Q1" in context
+    assert "42" in context
+    assert "Binary attachment available" not in context
+
+
+def test_build_assistant_attachment_context_extracts_pptx_text() -> None:
+    attachment = SkillAssistAttachmentPayload(
+        tool_file_id="pptx-file-1",
+        name="playbook.pptx",
+        mime_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        size=789,
+    )
+    payload = _zip_payload(
+        {
+            "ppt/slides/slide1.xml": (
+                '<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" '
+                'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+                "<p:cSld><p:spTree><p:sp><p:txBody><a:p><a:r><a:t>Quarterly enablement plan</a:t>"
+                "</a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld></p:sld>"
+            )
+        }
+    )
+
+    with patch(
+        "services.skill_management_service.SkillManagementService._load_assistant_tool_file_bytes",
+        return_value=payload,
+    ):
+        context = SkillManagementService._build_assistant_attachment_context(
+            tenant_id=TENANT,
+            attachments=[attachment],
+        )
+
+    assert "--- playbook.pptx" in context
+    assert "Quarterly enablement plan" in context
+    assert "Binary attachment available" not in context
+
+
+def test_build_assistant_attachment_context_extracts_rtf_text() -> None:
+    attachment = SkillAssistAttachmentPayload(
+        tool_file_id="rtf-file-1",
+        name="notes.rtf",
+        mime_type="application/rtf",
+        size=74,
+    )
+
+    with patch(
+        "services.skill_management_service.SkillManagementService._load_assistant_tool_file_bytes",
+        return_value=b"{\\rtf1\\ansi Skill Builder\\par reads RTF notes.}",
+    ):
+        context = SkillManagementService._build_assistant_attachment_context(
+            tenant_id=TENANT,
+            attachments=[attachment],
+        )
+
+    assert "--- notes.rtf" in context
+    assert "Skill Builder" in context
+    assert "reads RTF notes." in context
+    assert "Binary attachment available" not in context
+
+
 def test_build_assistant_image_contents_encodes_images_for_vision_models() -> None:
     attachments = [
         SkillAssistAttachmentPayload(
@@ -2994,6 +3169,62 @@ def test_runtime_agent_skills_use_published_identity_when_draft_metadata_changed
             "mime_type": "application/zip",
         }
     ]
+
+
+def test_agent_skill_binding_changes_require_agent_publish_before_runtime_load() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(name="finance-sop", description="Finance SOP"),
+    )
+    service.replace_draft_tree(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillDraftTreePayload(files=[{"path": "SKILL.md", "content": _skill_md()}]),
+    )
+    service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=SkillPublishPayload())
+    with session_factory.create_session() as session:
+        agent = session.get(Agent, AGENT)
+        assert agent is not None
+        snapshot = AgentConfigSnapshot(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            version=1,
+            config_snapshot=AgentSoulConfig(),
+            created_by=USER,
+        )
+        session.add(snapshot)
+        session.flush()
+        agent.active_config_snapshot_id = snapshot.id
+        agent.active_config_is_published = True
+        session.commit()
+
+    service.replace_agent_bindings(tenant_id=TENANT, user_id=USER, agent_id=AGENT, skill_ids=[created["id"]])
+    with session_factory.create_session() as session:
+        agent = session.get(Agent, AGENT)
+        assert agent is not None
+        assert agent.active_config_is_published is False
+
+    assert service.list_runtime_agent_skills(tenant_id=TENANT, agent_id=AGENT) == []
+
+    with session_factory.create_session() as session:
+        agent = session.get(Agent, AGENT)
+        assert agent is not None
+        agent.active_config_is_published = True
+        snapshot_id = agent.active_config_snapshot_id
+        assert snapshot_id is not None
+        session.commit()
+
+    service.publish_agent_bindings(
+        tenant_id=TENANT,
+        agent_id=AGENT,
+        snapshot_id=snapshot_id,
+        user_id=USER,
+    )
+
+    assert service.list_runtime_agent_skills(tenant_id=TENANT, agent_id=AGENT)[0]["name"] == "finance-sop"
 
 
 def test_runtime_agent_skill_pull_normalizes_archive_identity_to_published_metadata() -> None:

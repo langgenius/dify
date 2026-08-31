@@ -11,9 +11,9 @@ import { useTags } from '@/app/components/plugins/hooks'
 import { useOptionalPluginInstallPermission } from '@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import Link from '@/next/link'
+import { trackMarketplaceSiteCardClick } from '@/utils/marketplace-site-track'
 import MarketplaceDetailDialog from '../detail-dialog'
 import { getPluginDetailLinkInMarketplace } from '../utils'
-import { trackMarketplaceSiteCardClick } from '@/utils/marketplace-site-track'
 
 type CardWrapperProps = {
   plugin: Plugin

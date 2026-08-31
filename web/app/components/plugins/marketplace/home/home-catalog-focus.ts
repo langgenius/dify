@@ -13,8 +13,9 @@ export const getFocusedCatalogTabHref = (slot: HomeCatalogTabSlot) => {
 
 export const focusCatalogTab = (slot: HomeCatalogTabSlot, href: string) => {
   const slotElement = getCatalogTabSlot(slot)
-  const matchingLink = Array.from(slotElement?.querySelectorAll<HTMLAnchorElement>('a[href]') ?? [])
-    .find(link => link.getAttribute('href') === href)
+  const matchingLink = Array.from(
+    slotElement?.querySelectorAll<HTMLAnchorElement>('a[href]') ?? [],
+  ).find((link) => link.getAttribute('href') === href)
 
   matchingLink?.focus({ preventScroll: true })
 }

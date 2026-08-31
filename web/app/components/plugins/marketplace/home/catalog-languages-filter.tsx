@@ -41,8 +41,8 @@ export default function CatalogLanguagesFilter() {
   }, [selectedCount])
 
   const handleLanguagesChange = (next: string[]) => {
-    const addedLanguage = next.find(language => !languages.includes(language))
-    const removedLanguage = languages.find(language => !next.includes(language))
+    const addedLanguage = next.find((language) => !languages.includes(language))
+    const removedLanguage = languages.find((language) => !next.includes(language))
     markMarketplaceSiteFilter({
       filter_type: 'language',
       selection_mode: 'multi',
@@ -126,7 +126,7 @@ export default function CatalogLanguagesFilter() {
         placement="bottom-end"
         sideOffset={4}
         alignOffset={-6}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div className="w-60 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">

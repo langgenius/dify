@@ -7,7 +7,6 @@ import type {
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type {
   DragEvent,
-  FocusEvent,
   MouseEvent,
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
@@ -36,13 +35,14 @@ import {
   ContextMenuContent,
   ContextMenuTrigger,
 } from '@langgenius/dify-ui/context-menu'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { Input } from '@langgenius/dify-ui/input'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -51,12 +51,15 @@ import {
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
 import { toast } from '@langgenius/dify-ui/toast'
-import { matchesKeyboardEvent, useHotkey } from '@tanstack/react-hotkeys'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { formatForDisplay, matchesKeyboardEvent, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
-import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
+import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
+import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import HelpMenu from '@/app/components/main-nav/components/help-menu'
 import Link from '@/next/link'
@@ -76,7 +79,6 @@ import {
   getErrorCode,
   getPathBaseName,
   getPathDirName,
-  getSkillFileIconClass,
   getUploadFileName,
   getUploadPath,
   invalidateSkillDetail,
@@ -143,100 +145,6 @@ function SkillSidebarAccountFooter({ compact = false }: { compact?: boolean }) {
 const clampSkillSidebarWidth = (width: number) =>
   Math.min(skillSidebarMaxWidth, Math.max(skillSidebarMinWidth, width))
 
-function FileSearchDialog({
-  files,
-  onOpenChange,
-  onSelect,
-  open,
-}: {
-  files: SkillFileResponse[]
-  onOpenChange: (open: boolean) => void
-  onSelect: (path: string) => void
-  open: boolean
-}) {
-  const { t } = useTranslation('skill')
-  const [query, setQuery] = useState('')
-  const fileResults = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase()
-    const fileItems = files.filter((file) => !isDirectory(file))
-    if (!normalizedQuery) return fileItems
-
-    return fileItems.filter((file) => {
-      const path = file.path.toLowerCase()
-      return path.includes(normalizedQuery) || getPathBaseName(path).includes(normalizedQuery)
-    })
-  }, [files, query])
-
-  const handleOpenChange = (nextOpen: boolean) => {
-    onOpenChange(nextOpen)
-    if (!nextOpen) setQuery('')
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="top-[24dvh] w-[480px] max-w-[calc(100vw-32px)] translate-y-0 overflow-hidden! rounded-2xl border border-components-panel-border bg-components-panel-bg p-0! shadow-xl">
-        <DialogTitle className="sr-only">
-          {t(($) => $['skillManagement.detail.searchFiles'])}
-        </DialogTitle>
-        <div className="flex h-12 items-center gap-2 border-b border-divider-subtle px-4">
-          <span aria-hidden className="i-ri-search-2-line size-4 shrink-0 text-text-quaternary" />
-          <Input
-            // oxlint-disable-next-line jsx-a11y/no-autofocus -- The file search dialog opens from an explicit search action and should focus the query field.
-            autoFocus
-            value={query}
-            placeholder={t(($) => $['skillManagement.detail.searchFiles'])}
-            aria-label={t(($) => $['skillManagement.detail.searchFiles'])}
-            className="h-10 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
-            onValueChange={setQuery}
-            onKeyDown={(event) => {
-              if (event.key !== 'Enter') return
-              const firstFile = fileResults[0]
-              if (!firstFile) return
-
-              event.preventDefault()
-              onSelect(firstFile.path)
-              handleOpenChange(false)
-            }}
-          />
-        </div>
-        <div className="max-h-[320px] min-h-48 overflow-y-auto p-2">
-          {fileResults.length > 0 ? (
-            <div className="space-y-1">
-              {fileResults.map((file) => (
-                <button
-                  key={file.path}
-                  type="button"
-                  className="flex h-9 w-full cursor-pointer items-center gap-2 rounded-lg px-2 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                  onClick={() => {
-                    onSelect(file.path)
-                    handleOpenChange(false)
-                  }}
-                >
-                  <span
-                    aria-hidden
-                    className={cn('size-4 shrink-0', getSkillFileIconClass(file))}
-                  />
-                  <span className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary">
-                    {file.path}
-                  </span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="flex h-40 items-center justify-center text-center system-sm-regular text-text-tertiary">
-              {t(($) => $['skillManagement.detail.noSearchResults'])}
-            </div>
-          )}
-        </div>
-        <div className="flex h-9 items-center justify-between border-t border-divider-subtle px-4 system-xs-regular text-text-quaternary">
-          <span>{t(($) => $['skillManagement.detail.searchFiles'])}</span>
-          <span>ESC</span>
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 export function FileTree({
   canEdit,
   canDelete,
@@ -263,17 +171,15 @@ export function FileTree({
   skillId: string
 }) {
   const { t } = useTranslation('skill')
+  const { t: tApp } = useTranslation('app')
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
   const sidebarRef = useRef<HTMLElement>(null)
-  const referencesRegionRef = useRef<HTMLDivElement>(null)
   const uploadInputRef = useRef<HTMLInputElement>(null)
   const [inlineAction, setInlineAction] = useState<FileTreeInlineAction>()
   const [draggingPaths, setDraggingPaths] = useState<string[]>([])
   const [dropTarget, setDropTarget] = useState<SkillDropTarget>()
   const [collapsedFolderPaths, setCollapsedFolderPaths] = useState<string[]>([])
-  const [referencesOpen, setReferencesOpen] = useState(false)
-  const [searchDialogOpen, setSearchDialogOpen] = useState(false)
   const [skillRenameEditing, setSkillRenameEditing] = useState(false)
   const [selectedPaths, setSelectedPaths] = useState<string[]>([])
   const [selectionAnchorPath, setSelectionAnchorPath] = useState<string>()
@@ -297,30 +203,17 @@ export function FileTree({
     refetchOnMount: 'always',
   })
   const referenceCount = referencesQuery.data?.data?.length ?? detail?.reference_count ?? 0
+  const referenceCountLabel = t(
+    ($) =>
+      referenceCount === 1
+        ? $['skillManagement.detail.referencedBy_one']
+        : $['skillManagement.detail.referencedBy_other'],
+    { count: referenceCount },
+  )
   const activeUploadXhrRef = useRef<XMLHttpRequest | undefined>(undefined)
   const cancelUploadRef = useRef(false)
   const stopSidebarResizeRef = useRef<() => void>(() => undefined)
   const closeSidebarFloatingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const handleReferencesRegionBlur = useCallback((event: FocusEvent<HTMLDivElement>) => {
-    const nextTarget = event.relatedTarget
-    if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) return
-    setReferencesOpen(false)
-  }, [])
-
-  useEffect(() => {
-    if (!referencesOpen) return
-
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target
-      if (!(target instanceof Node)) return
-      if (referencesRegionRef.current?.contains(target)) return
-      setReferencesOpen(false)
-    }
-
-    document.addEventListener('pointerdown', handlePointerDown, true)
-    return () => document.removeEventListener('pointerdown', handlePointerDown, true)
-  }, [referencesOpen])
 
   useEffect(() => {
     const fetchedReferenceCount = referencesQuery.data?.data?.length
@@ -1219,15 +1112,23 @@ export function FileTree({
         onMouseLeave={closeSidebarFloatingPreview}
       >
         <div className="flex min-h-0 w-14 flex-1 flex-col items-center overflow-hidden rounded-lg bg-components-panel-bg">
-          <button
-            type="button"
-            aria-label={t(($) => $['skillManagement.detail.expandSidebar'])}
-            title={t(($) => $['skillManagement.detail.expandSidebar'])}
-            className="mt-2 flex size-8 cursor-pointer items-center justify-center rounded-[10px] border-0 bg-transparent text-text-tertiary shadow-none outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-            onClick={() => onCollapsedChange(false)}
-          >
-            <SidebarLeftArrowIcon aria-hidden className="size-4" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  aria-label={t(($) => $['skillManagement.detail.expandSidebar'])}
+                  className="mt-2 flex size-8 cursor-pointer items-center justify-center rounded-[10px] border-0 bg-transparent text-text-tertiary shadow-none outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                  onClick={() => onCollapsedChange(false)}
+                >
+                  <SidebarLeftArrowIcon aria-hidden className="size-4" />
+                </button>
+              }
+            />
+            <TooltipContent placement="right">
+              {t(($) => $['skillManagement.detail.expandSidebar'])}
+            </TooltipContent>
+          </Tooltip>
           <div aria-hidden className="my-1 h-px w-7 bg-divider-subtle" />
           <div className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border-[0.5px] border-divider-regular bg-background-default text-text-secondary">
             <span aria-hidden className="i-custom-vender-main-nav-skill size-5" />
@@ -1306,31 +1207,62 @@ export function FileTree({
                 SKILLS
               </Link>
             </div>
-            <button
-              type="button"
-              aria-label={t(($) => $['skillManagement.detail.searchFiles'])}
-              title={t(($) => $['skillManagement.detail.searchFiles'])}
-              className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-[10px] text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-              onClick={() => setSearchDialogOpen(true)}
-            >
-              <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
-            </button>
-            <button
-              type="button"
-              aria-label={t(($) => $['skillManagement.detail.collapseSidebar'])}
-              title={t(($) => $['skillManagement.detail.collapseSidebar'])}
-              className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-[10px] border-0 bg-transparent text-text-tertiary shadow-none outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-              onClick={() => {
-                if (collapsed) {
-                  setSidebarFloating(false)
-                  onCollapsedChange(false)
-                } else {
-                  onCollapsedChange(true)
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <DialogTrigger
+                    handle={gotoAnythingDialogHandle}
+                    render={
+                      <button
+                        type="button"
+                        aria-label={tApp(($) => $['gotoAnything.searchTitle'])}
+                        className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                      >
+                        <span
+                          aria-hidden
+                          className="i-custom-vender-main-nav-quick-search size-4"
+                        />
+                      </button>
+                    }
+                  />
                 }
-              }}
-            >
-              <SidebarLeftArrowIcon aria-hidden className="size-4" />
-            </button>
+              />
+              <TooltipContent
+                placement="bottom"
+                className="flex items-center gap-1 rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]"
+              >
+                <span className="px-0.5">{tApp(($) => $['gotoAnything.quickAction'])}</span>
+                <KbdGroup>
+                  {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
+                    <Kbd key={key}>{formatForDisplay(key)}</Kbd>
+                  ))}
+                </KbdGroup>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <button
+                    type="button"
+                    aria-label={t(($) => $['skillManagement.detail.collapseSidebar'])}
+                    className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-[10px] border-0 bg-transparent text-text-tertiary shadow-none outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                    onClick={() => {
+                      if (collapsed) {
+                        setSidebarFloating(false)
+                        onCollapsedChange(false)
+                      } else {
+                        onCollapsedChange(true)
+                      }
+                    }}
+                  >
+                    <SidebarLeftArrowIcon aria-hidden className="size-4" />
+                  </button>
+                }
+              />
+              <TooltipContent placement="bottom">
+                {t(($) => $['skillManagement.detail.collapseSidebar'])}
+              </TooltipContent>
+            </Tooltip>
           </div>
           <div className="p-3">
             <div className="flex min-h-10 items-start gap-2">
@@ -1382,7 +1314,13 @@ export function FileTree({
           </div>
           <div className="flex h-8 shrink-0 items-center gap-1 px-3">
             <h2 className="min-w-0 flex-1 system-xs-medium-uppercase text-text-tertiary">
-              {t(($) => $['skillManagement.detail.fileCount'], { count: fileCount })}
+              {t(
+                ($) =>
+                  fileCount === 1
+                    ? $['skillManagement.detail.fileCount_one']
+                    : $['skillManagement.detail.fileCount_other'],
+                { count: fileCount },
+              )}
             </h2>
             {!readonly && (
               <DropdownMenu modal={false}>
@@ -1392,10 +1330,7 @@ export function FileTree({
                 >
                   <span aria-hidden className="i-ri-add-line size-4" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  placement="bottom-end"
-                  popupClassName={skillFileMenuPopupClassName}
-                >
+                <DropdownMenuContent placement="bottom-end" className={skillFileMenuPopupClassName}>
                   <RootFileActionMenuItems
                     kind="dropdown"
                     onCreateFile={() =>
@@ -1473,7 +1408,9 @@ export function FileTree({
                               onCancel={() => setInlineAction(undefined)}
                               onSubmit={handleSubmitInlineAction}
                               placeholder={
-                                inlineAction.nodeType === 'file' ? 'File name' : 'Folder name'
+                                inlineAction.nodeType === 'file'
+                                  ? t(($) => $['skillManagement.detail.createFile'])
+                                  : t(($) => $['skillManagement.detail.createFolder'])
                               }
                             />
                           )}
@@ -1537,7 +1474,7 @@ export function FileTree({
                       </ul>
                     )}
                   </ContextMenuTrigger>
-                  <ContextMenuContent popupClassName={skillFileMenuPopupClassName}>
+                  <ContextMenuContent className={skillFileMenuPopupClassName}>
                     <RootFileActionMenuItems
                       kind="context"
                       onCreateFile={() =>
@@ -1612,35 +1549,48 @@ export function FileTree({
               </AlertDialogActions>
             </AlertDialogContent>
           </AlertDialog>
-          <div className="mx-4 border-t border-divider-subtle py-3">
-            <div ref={referencesRegionRef} onBlur={handleReferencesRegionBlur}>
-              <button
-                type="button"
-                className="flex h-7 w-full cursor-pointer items-center gap-2 rounded-md text-left system-xs-regular text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                aria-expanded={referencesOpen}
-                onClick={() => setReferencesOpen((open) => !open)}
-              >
-                <span aria-hidden className="i-ri-apps-2-line size-4 shrink-0" />
-                <span className="min-w-0 flex-1 truncate">
-                  {t(($) => $['skillManagement.detail.referencedBy'], {
-                    count: referenceCount,
-                  })}
-                </span>
-                <span
-                  aria-hidden
-                  className={cn(
-                    'i-ri-arrow-right-s-line size-4 text-text-quaternary transition-transform',
-                    referencesOpen && 'rotate-90',
-                  )}
+          <div className="mx-3 border-t border-divider-subtle pt-2 pb-3">
+            {referenceCount > 0 ? (
+              <Popover>
+                <PopoverTrigger
+                  render={
+                    <button
+                      type="button"
+                      className="-mx-2 flex h-6 w-[calc(100%+16px)] cursor-pointer items-center gap-2 rounded-md px-2.5 text-left system-xs-regular text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
+                    >
+                      <span aria-hidden className="i-ri-apps-2-line size-4 shrink-0" />
+                      <span className="min-w-0 flex-1 truncate">{referenceCountLabel}</span>
+                      <span
+                        aria-hidden
+                        className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-quaternary"
+                      />
+                    </button>
+                  }
                 />
-              </button>
-              {referencesOpen && (
-                <div className="relative z-20 mt-1">
-                  <SkillReferencesPanel skillId={skillId} />
-                </div>
-              )}
-            </div>
-            <div className="flex h-7 items-center gap-2 system-xs-regular text-text-tertiary">
+                <PopoverContent
+                  placement="top-start"
+                  sideOffset={4}
+                  className="w-(--anchor-width) max-w-(--available-width) bg-components-panel-bg-blur p-1 shadow-shadow-shadow-5 backdrop-blur-[5px]"
+                  aria-label={referenceCountLabel}
+                >
+                  <div className="px-1 pt-1.5 pb-1 system-xs-medium text-text-tertiary">
+                    {referenceCountLabel}
+                  </div>
+                  <SkillReferencesPanel
+                    compact
+                    embedded
+                    maxHeight="max-h-[240px]"
+                    skillId={skillId}
+                  />
+                </PopoverContent>
+              </Popover>
+            ) : (
+              <div className="-mx-2 flex h-6 w-[calc(100%+16px)] items-center gap-2 px-2.5 system-xs-regular text-text-tertiary">
+                <span aria-hidden className="i-ri-apps-2-line size-4 shrink-0" />
+                <span className="min-w-0 flex-1 truncate">{referenceCountLabel}</span>
+              </div>
+            )}
+            <div className="-mx-2 flex h-6 w-[calc(100%+16px)] items-center gap-2 px-2.5 system-xs-regular text-text-tertiary">
               <span aria-hidden className="i-ri-account-circle-line size-4 shrink-0" />
               <span className="min-w-0 truncate">
                 {t(($) => $['skillManagement.detail.createdBy'], {
@@ -1652,12 +1602,6 @@ export function FileTree({
           <SkillSidebarAccountFooter />
         </div>
       </aside>
-      <FileSearchDialog
-        files={files}
-        open={searchDialogOpen}
-        onOpenChange={setSearchDialogOpen}
-        onSelect={onSelect}
-      />
     </>
   )
 }

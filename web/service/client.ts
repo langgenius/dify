@@ -124,10 +124,11 @@ const marketplaceLink = new OpenAPILink(marketplaceRouterContract, {
   url: MARKETPLACE_API_PREFIX,
   headers: () => getMarketplaceHeaders(),
   fetch: (request, init) => {
+    const requestInit = init as RequestInit | undefined
     return globalThis.fetch(request, {
-      ...init,
+      ...requestInit,
       cache: 'no-store',
-      signal: withRequestDeadline(init?.signal ?? request.signal),
+      signal: withRequestDeadline(requestInit?.signal ?? request.signal),
     })
   },
   interceptors: [

@@ -91,7 +91,7 @@ export default function CreatorContent({ creations, getCreationAction }: Creator
             <DropdownMenuContent
               placement="bottom-end"
               sideOffset={4}
-              popupClassName="min-w-[176px] p-1"
+              className="min-w-[176px] p-1"
             >
               <DropdownMenuRadioGroup<CreatorSortField>
                 value={sortField}

@@ -56,14 +56,6 @@ def model_context_window_calls(monkeypatch: pytest.MonkeyPatch) -> list[tuple[ob
     return calls
 
 
-@pytest.fixture(autouse=True)
-def _no_runtime_agent_skills(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(
-        "core.app.apps.agent_app.runtime_request_builder.load_runtime_agent_skill_configs",
-        lambda **_kwargs: [],
-    )
-
-
 def _exec_ctx() -> DifyExecutionContextLayerConfig:
     return DifyExecutionContextLayerConfig(
         tenant_id="tenant-1",

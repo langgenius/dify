@@ -20,8 +20,7 @@ export type MarketplaceBannerCardClick = Pick<BannerRecommendCard, 'item_id' | '
 const compact = (properties: Record<string, unknown>) => {
   const next: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(properties)) {
-    if (value !== undefined && value !== '')
-      next[key] = value
+    if (value !== undefined && value !== '') next[key] = value
   }
   return next
 }
@@ -40,19 +39,17 @@ export const buildMarketplaceBannerClickProperties = (
     link: cardClick?.link ?? (banner.style_type === 'recommend' ? undefined : banner.content.link),
   }
 
-  if (clickTarget === 'recommendation') {
+  if (banner.style_type === 'recommend') {
     properties.theme_type = THEME_TYPE_BY_BANNER[banner.content.theme_type]
     properties.item_id = cardClick?.item_id
     properties.item_type = cardClick?.item_type
   }
 
-  if (clickTarget === 'blog')
-    properties.target_type = banner.content.link_target_type
+  if (banner.style_type === 'blog') properties.target_type = banner.content.link_target_type
 
-  if (clickTarget === 'event')
-    properties.activity_id = banner.content.activity_id
+  if (banner.style_type === 'event') properties.activity_id = banner.content.activity_id
 
-  if (clickTarget === 'ad') {
+  if (banner.style_type === 'ad') {
     properties.partner_id = banner.content.partner_id
     properties.campaign_id = banner.content.campaign_id
   }

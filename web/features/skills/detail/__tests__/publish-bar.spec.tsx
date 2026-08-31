@@ -85,4 +85,22 @@ describe('SkillPublishBar', () => {
     await user.click(publishingButton)
     expect(onPublish).not.toHaveBeenCalled()
   })
+
+  it('keeps the complete status available when the visual timestamp needs less space', () => {
+    const longMetaLabel = 'Saved a few seconds ago after a long autosave operation'
+    render(
+      <SkillPublishBar
+        metaLabel={longMetaLabel}
+        state="draft"
+        onOpenVersions={onOpenVersions}
+        onPublish={onPublish}
+      />,
+    )
+
+    expect(screen.getByText('skill.skillManagement.detail.draft')).toBeVisible()
+    expect(screen.getByText(longMetaLabel)).toBeVisible()
+    expect(screen.getByRole('status')).toHaveAccessibleName(
+      `skill.skillManagement.detail.draft. ${longMetaLabel}`,
+    )
+  })
 })

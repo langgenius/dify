@@ -17,7 +17,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -76,9 +77,13 @@ function SkillDetailDeleteDialog({
     (referenceCount > 0 && confirmDeleteInput !== detail.display_name)
   const description =
     referenceCount > 0
-      ? t(($) => $['skillManagement.deleteDialog.referencedDescription'], {
-          count: referenceCount,
-        })
+      ? t(
+          ($) =>
+            referenceCount === 1
+              ? $['skillManagement.deleteDialog.referencedDescription_one']
+              : $['skillManagement.deleteDialog.referencedDescription_other'],
+          { count: referenceCount },
+        )
       : t(($) => $['skillManagement.deleteDialog.description'])
 
   const handleDelete = () => {
@@ -152,24 +157,25 @@ function SkillDetailDeleteDialog({
                   }}
                 />
               </FieldLabel>
-              <div className="relative">
-                <FieldControl
+              <InputGroup>
+                <InputGroupInput
                   type="text"
                   autoComplete="off"
                   spellCheck={false}
                   placeholder={t(($) => $['skillManagement.deleteDialog.confirmInputPlaceholder'])}
                   value={confirmDeleteInput}
                   onValueChange={setConfirmDeleteInput}
-                  className="border-components-input-border-hover bg-components-input-bg-normal pr-20 focus:border-components-input-border-active focus:bg-components-input-bg-active"
                 />
-                <button
-                  type="button"
-                  onClick={() => setConfirmDeleteInput(detail.display_name)}
-                  className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-black/6 px-2.5 py-1 system-xs-medium text-text-secondary hover:bg-black/10"
-                >
-                  {tCommon(($) => $['operation.fill'])}
-                </button>
-              </div>
+                <InputGroupAddon align="inline-end">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDeleteInput(detail.display_name)}
+                    className="rounded-full bg-black/6 px-2.5 py-1 system-xs-medium text-text-secondary hover:bg-black/10"
+                  >
+                    {tCommon(($) => $['operation.fill'])}
+                  </button>
+                </InputGroupAddon>
+              </InputGroup>
             </Field>
           )}
         </div>
@@ -251,7 +257,7 @@ export function SkillDetailSidebarActions({
         >
           <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-40">
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
           {canEdit && (
             <DropdownMenuItem className="gap-2" onClick={onRename}>
               <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />

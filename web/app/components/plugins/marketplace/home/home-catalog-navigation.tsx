@@ -109,7 +109,7 @@ function HomeCatalogNavigation({
       >
         <div className="w-full">
           <div className="flex w-full items-center gap-2">
-            {catalogLeading && (
+            {catalogLeading ? (
               <>
                 <div className={cn('shrink-0', styles.catalogLeading)}>{catalogLeading}</div>
                 <div
@@ -120,11 +120,11 @@ function HomeCatalogNavigation({
                   )}
                 />
               </>
-            )}
+            ) : null}
             <div className="min-w-0 flex-1 scrollbar-none overflow-x-auto">
               {catalogCategories ?? <PluginTypeSwitch className={undefined} variant="home" />}
             </div>
-            {catalogTrailing && <div className="shrink-0">{catalogTrailing}</div>}
+            {catalogTrailing ? <div className="shrink-0">{catalogTrailing}</div> : null}
           </div>
         </div>
       </section>

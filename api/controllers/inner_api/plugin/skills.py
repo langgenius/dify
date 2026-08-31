@@ -11,7 +11,9 @@ import io
 from flask import request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, ValidationError
+from sqlalchemy.orm import Session
 
+from controllers.common.session import with_session
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import plugin_inner_api_only
@@ -35,10 +37,13 @@ class PublishedSkillPullApi(Resource):
     @setup_required
     @plugin_inner_api_only
     @inner_api_ns.doc("published_skill_pull")
-    def get(self, skill_id: str):
+    @with_session(write=False)
+    def get(self, session: Session, skill_id: str):
         try:
             query = _target_query_from_request()
-            result = SkillManagementService().pull_published_archive(tenant_id=query.tenant_id, skill_id=skill_id)
+            result = SkillManagementService(session=session).pull_published_archive(
+                tenant_id=query.tenant_id, skill_id=skill_id
+            )
             return send_file(
                 io.BytesIO(result.payload),
                 mimetype=result.mime_type,

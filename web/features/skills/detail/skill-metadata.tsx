@@ -212,10 +212,7 @@ export function SkillTagsEditor({
             </ComboboxTrigger>
             <ComboboxPortal>
               <ComboboxPositioner placement="bottom-start" sideOffset={4}>
-                <ComboboxPopup
-                  aria-label={t(($) => $['skillManagement.detail.addTag'])}
-                  className="w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
-                >
+                <ComboboxPopup className="w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]">
                   <TagSearchContentView
                     type="skill"
                     inputValue={tagSearch}
@@ -256,6 +253,7 @@ export function SkillTagsEditor({
 
 export function SkillReferencesPanel({
   compact = false,
+  embedded = false,
   enabled = true,
   maxHeight,
   skillId,
@@ -263,6 +261,7 @@ export function SkillReferencesPanel({
   visibleLimit,
 }: {
   compact?: boolean
+  embedded?: boolean
   enabled?: boolean
   maxHeight?: string
   skillId: string
@@ -284,13 +283,18 @@ export function SkillReferencesPanel({
   const references = referencesQuery.data?.data ?? []
 
   if (referencesQuery.isPending) {
-    return <SkillReferencesListSkeleton compact={compact} />
+    return <SkillReferencesListSkeleton compact={compact} embedded={embedded} />
   }
 
   if (references.length === 0) {
     return (
-      <div className="w-max py-2 system-xs-regular text-text-quaternary">
-        {t(($) => $['skillManagement.detail.referencedBy'], { count: 0 })}
+      <div
+        className={cn(
+          'py-2 system-xs-regular text-text-quaternary',
+          embedded ? 'w-full px-1' : 'w-max',
+        )}
+      >
+        {t(($) => $['skillManagement.detail.referencedBy_other'], { count: 0 })}
       </div>
     )
   }
@@ -298,6 +302,7 @@ export function SkillReferencesPanel({
   return (
     <SkillReferencesList
       compact={compact}
+      embedded={embedded}
       maxHeight={maxHeight}
       references={references}
       testId={testId}
@@ -306,11 +311,19 @@ export function SkillReferencesPanel({
   )
 }
 
-export function SkillReferencesListSkeleton({ compact = false }: { compact?: boolean }) {
+export function SkillReferencesListSkeleton({
+  compact = false,
+  embedded = false,
+}: {
+  compact?: boolean
+  embedded?: boolean
+}) {
   return (
     <div
       className={cn(
-        compact ? 'space-y-px rounded-xl border border-divider-subtle p-1' : 'w-52 space-y-1 py-1',
+        compact
+          ? cn('space-y-px', !embedded && 'rounded-xl border border-divider-subtle p-1')
+          : 'w-52 space-y-1 py-1',
       )}
     >
       <SkeletonRectangle className={cn(compact ? 'h-7 rounded-md' : 'h-8 rounded-lg')} />
@@ -322,12 +335,14 @@ export function SkillReferencesListSkeleton({ compact = false }: { compact?: boo
 
 export function SkillReferencesList({
   compact = false,
+  embedded = false,
   maxHeight,
   references,
   testId,
   visibleLimit,
 }: {
   compact?: boolean
+  embedded?: boolean
   maxHeight?: string
   references: SkillReferenceResponse[]
   testId?: string
@@ -346,7 +361,10 @@ export function SkillReferencesList({
       data-scrollable={isScrollable ? true : undefined}
       className={cn(
         compact
-          ? 'flex flex-col gap-px rounded-xl border border-divider-subtle p-[3px]'
+          ? cn(
+              'flex flex-col gap-px',
+              !embedded && 'rounded-xl border border-divider-subtle p-[3px]',
+            )
           : 'w-max max-w-[480px] space-y-0.5 py-1',
         isScrollable && `${maxHeight} overflow-y-auto`,
       )}
@@ -410,9 +428,13 @@ export function SkillPublishConfirmPanel({
           {t(($) => $['skillManagement.detail.publishReferencesTitle'])}
         </h2>
         <p className="mt-0.5 px-1 system-xs-regular text-util-colors-warning-warning-600">
-          {t(($) => $['skillManagement.detail.publishReferencesDescription'], {
-            count: referenceCount,
-          })}
+          {t(
+            ($) =>
+              referenceCount === 1
+                ? $['skillManagement.detail.publishReferencesDescription_one']
+                : $['skillManagement.detail.publishReferencesDescription_other'],
+            { count: referenceCount },
+          )}
         </p>
       </div>
       <div className="px-4 py-2">
@@ -465,7 +487,7 @@ function SkillReferenceItem({
         target="_blank"
         rel="noreferrer"
         className={cn(
-          'flex min-w-0 items-center gap-2 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+          'group/reference flex min-w-0 items-center gap-2 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
           compact
             ? 'h-7 w-full rounded-md py-1 pr-2 pl-1'
             : 'h-8 w-fit max-w-[480px] rounded-lg px-2',
@@ -496,7 +518,7 @@ function SkillReferenceItem({
         <span
           aria-hidden
           className={cn(
-            'i-ri-arrow-right-up-line shrink-0 text-text-quaternary',
+            'i-ri-external-link-line shrink-0 text-text-quaternary group-hover/reference:text-text-secondary group-focus-visible/reference:text-text-secondary',
             compact ? 'size-3' : 'size-4',
           )}
         />
@@ -532,7 +554,7 @@ function SkillReferenceItem({
       <span
         aria-hidden
         className={cn(
-          'i-ri-arrow-right-up-line shrink-0 text-text-quaternary',
+          'i-ri-external-link-line shrink-0 text-text-quaternary group-hover/reference:text-text-secondary group-focus-visible/reference:text-text-secondary',
           compact ? 'size-3' : 'size-4',
         )}
       />
@@ -546,7 +568,7 @@ function SkillReferenceItem({
         target="_blank"
         rel="noreferrer"
         className={cn(
-          'flex min-w-0 items-center gap-2 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+          'group/reference flex min-w-0 items-center gap-2 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
           compact
             ? 'h-7 w-full rounded-md py-1 pr-2 pl-1'
             : 'h-8 w-fit max-w-[480px] rounded-lg px-2',
@@ -560,7 +582,7 @@ function SkillReferenceItem({
   return (
     <div
       className={cn(
-        'flex min-w-0 items-center gap-2 hover:bg-state-base-hover',
+        'group/reference flex min-w-0 items-center gap-2 hover:bg-state-base-hover',
         compact
           ? 'h-7 w-full rounded-md py-1 pr-2 pl-1'
           : 'h-8 w-fit max-w-[480px] rounded-lg px-2',

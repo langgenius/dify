@@ -409,7 +409,7 @@ function VersionRow({
               <IconButton
                 aria-label={tCommon(($) => $['operation.close'])}
                 size="lg"
-                className="absolute top-6 right-6"
+                className="absolute inset-e-6 top-6"
               >
                 <span aria-hidden className="i-ri-close-line size-4" />
               </IconButton>
@@ -447,9 +447,9 @@ function VersionRow({
           </div>
           <div className="flex justify-end p-6 pt-5">
             <div className="flex items-center gap-x-3">
-              <Button disabled={renameMutation.isPending} onClick={() => setRenameOpen(false)}>
+              <DialogClose render={<Button disabled={renameMutation.isPending} />}>
                 {tCommon(($) => $['operation.cancel'])}
-              </Button>
+              </DialogClose>
               <Button variant="primary" loading={renameMutation.isPending} onClick={handleRename}>
                 {t(($) => $['skillManagement.detail.publish'])}
               </Button>

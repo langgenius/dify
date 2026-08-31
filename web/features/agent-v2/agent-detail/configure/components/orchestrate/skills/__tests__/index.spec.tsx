@@ -129,6 +129,11 @@ vi.mock('@/service/client', () => ({
     },
     agent: {
       byAgentId: {
+        composer: {
+          get: {
+            key: vi.fn((_options: unknown): unknown[] => ['agent-composer']),
+          },
+        },
         config: {
           skills: {
             upload: {
@@ -1303,9 +1308,7 @@ describe('AgentSkills', () => {
         },
       })
     })
-    expect(toast.success).toHaveBeenCalledWith(
-      'agentV2.agentDetail.configure.skills.workspaceSelector.removeSuccess',
-    )
+    expect(toast.success).not.toHaveBeenCalled()
   })
 
   it('should open workspace skill details in a new tab from the row menu', async () => {

@@ -34,11 +34,11 @@ export const SkillCardTags = ({
   return (
     <div className="group/tag-area relative w-full min-w-0 overflow-hidden">
       <TagSelector
-        placement="bottom-start"
         type="skill"
         targetId={skillId}
         value={selectedTags}
         canBindOrUnbindTags
+        className="focus-visible:ring-inset"
         onOpenTagManagement={onOpenTagManagement}
         onTagsChange={onTagsChange}
       />

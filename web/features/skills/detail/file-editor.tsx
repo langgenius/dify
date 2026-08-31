@@ -372,6 +372,15 @@ export function FileEditor({
         return true
       } catch (error) {
         const errorPayload = await getAsyncSkillErrorPayload(error)
+        if (getErrorCode(errorPayload ?? error) === 'skill_name_conflict') {
+          toast.error(
+            t(($) => $['skillManagement.errors.nameConflict'], {
+              name: getErrorDetailString(errorPayload ?? error, 'name') ?? '',
+            }),
+          )
+          setSaveStatus('error')
+          return false
+        }
         if (getErrorCode(errorPayload ?? error) === 'skill_conflict') {
           try {
             const currentUpdatedAt = getErrorDetailNumber(
@@ -581,7 +590,7 @@ export function FileEditor({
     if (!canEdit) return
     if (draftContent === lastSavedContentRef.current) return
     if (draftContent === saveConflictContentRef.current) return
-    if (saveStatus === 'saving') return
+    if (saveStatus === 'saving' || saveStatus === 'error') return
 
     const timer = window.setTimeout(() => {
       void saveDraftContent(draftContent)

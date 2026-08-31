@@ -21,10 +21,7 @@ declare global {
     dataLayer?: unknown[]
     __marketplaceTracking__?: {
       track: (eventName: string, properties?: Record<string, unknown>) => void
-      rememberReferrer: (
-        itemId: string,
-        section: 'banner' | 'search' | 'list' | 'direct',
-      ) => void
+      rememberReferrer: (itemId: string, section: 'banner' | 'search' | 'list' | 'direct') => void
       markSearch: (query: string) => void
       flushSearch: (resultCount: number) => void
       markFilter: (filter: {

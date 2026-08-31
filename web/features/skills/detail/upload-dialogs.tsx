@@ -80,7 +80,6 @@ function getCheckMessage(
     return t(($) => $['skillManagement.detail.uploadInvalidExtension'])
   if (code === 'missing_file_extension')
     return t(($) => $['skillManagement.detail.uploadMissingExtension'])
-  if (code === 'file_too_large') return t(($) => $['skillManagement.detail.uploadSizeExceeded'])
   return t(($) => $['skillManagement.detail.uploadInvalidPath'])
 }
 
@@ -176,7 +175,7 @@ export function SkillUploadReviewDialog({
             <IconButton
               aria-label={tCommon(($) => $['operation.close'])}
               size="lg"
-              className="absolute top-5 right-5"
+              className="absolute inset-e-5 top-5"
             >
               <span aria-hidden className="i-ri-close-line size-4" />
             </IconButton>
@@ -212,9 +211,9 @@ export function SkillUploadReviewDialog({
           )}
         </div>
         <footer className="flex h-[76px] items-start justify-end gap-2 px-6 pt-5 pb-6">
-          <Button size="large" onClick={() => onOpenChange(false)}>
+          <DialogClose render={<Button size="large" />}>
             {tCommon(($) => $['operation.cancel'])}
-          </Button>
+          </DialogClose>
           <Button
             size="large"
             variant="primary"
@@ -256,7 +255,7 @@ export function SkillUploadFailuresDialog({
             <IconButton
               aria-label={tCommon(($) => $['operation.close'])}
               size="lg"
-              className="absolute top-5 right-5"
+              className="absolute inset-e-5 top-5"
             >
               <span aria-hidden className="i-ri-close-line size-4" />
             </IconButton>
@@ -302,9 +301,9 @@ export function SkillUploadFailuresDialog({
           ))}
         </div>
         <footer className="flex h-[76px] items-start justify-end gap-2 px-6 pt-5 pb-6">
-          <Button size="large" onClick={onDismiss}>
+          <DialogClose render={<Button size="large" />}>
             {tCommon(($) => $['operation.cancel'])}
-          </Button>
+          </DialogClose>
           <Button
             size="large"
             variant="primary"

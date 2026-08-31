@@ -1,3 +1,4 @@
+from typing import Literal
 from uuid import UUID
 
 from flask_restx import Resource
@@ -53,7 +54,7 @@ class TagBindingRemovePayload(BaseModel):
 
 
 class TagListQueryParam(BaseModel):
-    type: TagType = Field(description="Tag type filter")
+    type: Literal["knowledge", "app", "snippet", "skill"] = Field(description="Tag type filter")
     keyword: str | None = Field(None, description="Search keyword")
 
 

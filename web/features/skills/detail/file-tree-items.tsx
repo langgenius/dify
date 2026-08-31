@@ -284,7 +284,7 @@ function FileActions({
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" popupClassName={skillFileMenuPopupClassName}>
+        <DropdownMenuContent placement="bottom-end" className={skillFileMenuPopupClassName}>
           <FileActionMenuItems
             kind="dropdown"
             node={node}
@@ -405,6 +405,7 @@ export function FileTreeItem({
   selectedPaths: string[]
   selectedPath: string | undefined
 }) {
+  const { t } = useTranslation('skill')
   const contextUploadInputRef = useRef<HTMLInputElement>(null)
   const expandTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const isDragging = draggingPaths.includes(node.path)
@@ -512,7 +513,7 @@ export function FileTreeItem({
       <>
         <ContextMenu>
           <ContextMenuTrigger render={trigger} />
-          <ContextMenuContent popupClassName={skillFileMenuPopupClassName}>
+          <ContextMenuContent className={skillFileMenuPopupClassName}>
             <FileActionMenuItems
               kind="context"
               node={node}
@@ -614,7 +615,11 @@ export function FileTreeItem({
                 nodeType={childCreateAction.nodeType}
                 onCancel={onCancelInlineAction}
                 onSubmit={onSubmitInlineAction}
-                placeholder={childCreateAction.nodeType === 'file' ? 'File name' : 'Folder name'}
+                placeholder={
+                  childCreateAction.nodeType === 'file'
+                    ? t(($) => $['skillManagement.detail.createFile'])
+                    : t(($) => $['skillManagement.detail.createFolder'])
+                }
               />
             )}
             {node.children?.map((child) => (

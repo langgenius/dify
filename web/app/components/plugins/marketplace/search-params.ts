@@ -22,7 +22,7 @@ export const shouldSearchMarketplacePlugins = ({ category, q, tags }: Marketplac
   Boolean(q || tags.length > 0 || !PLUGIN_CATEGORY_WITH_COLLECTIONS.has(category))
 
 export const getMarketplacePluginsSearchParams = (
-  { category, q, tags }: MarketplaceSearchParams,
+  { category, q, tags }: Pick<MarketplaceSearchParams, 'category' | 'q' | 'tags'>,
   sort: PluginsSort = DEFAULT_SORT,
 ): PluginsSearchParams => ({
   query: q,

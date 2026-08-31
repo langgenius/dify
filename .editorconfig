@@ -38,7 +38,6 @@ indent_size = 2
 indent_style = space
 indent_size = 2
 
-# Lint suppression files are machine-generated without a final newline;
-# keep them exempt so autofix.ci output stays stable.
-[*-suppressions.json]
+# Oxlint writes its generated suppression baseline without a final newline.
+[oxlint-suppressions.json]
 insert_final_newline = false

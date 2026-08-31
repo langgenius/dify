@@ -26,8 +26,8 @@ function TagsFilter({ tags, onTagsChange, usedInMarketplace = false }: TagsFilte
   )
   const selectedTagsLength = tags.length
   const handleTagsChange = (nextTags: string[]) => {
-    const addedTag = nextTags.find(tag => !tags.includes(tag))
-    const removedTag = tags.find(tag => !nextTags.includes(tag))
+    const addedTag = nextTags.find((tag) => !tags.includes(tag))
+    const removedTag = tags.find((tag) => !nextTags.includes(tag))
     markMarketplaceSiteFilter({
       filter_type: 'category',
       selection_mode: 'multi',

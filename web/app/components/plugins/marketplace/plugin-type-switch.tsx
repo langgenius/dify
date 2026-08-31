@@ -1,18 +1,12 @@
 'use client'
 import type { ActivePluginType } from './constants'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiBrain2Line,
-  RiDatabase2Line,
-  RiHammerLine,
-  RiPuzzle2Line,
-} from '@remixicon/react'
 import { useSetAtom } from 'jotai'
 import { Fragment } from 'react'
 import { useTranslation } from '#i18n'
 import PluginIcon from '@/app/components/base/icons/src/vender/plugin/Plugin'
-import { searchModeAtom, useActivePluginType } from './atoms'
 import { markMarketplaceSiteFilter } from '@/utils/marketplace-site-track'
+import { searchModeAtom, useActivePluginType } from './atoms'
 import { PLUGIN_CATEGORY_WITH_COLLECTIONS, PLUGIN_TYPE_SEARCH_MAP } from './constants'
 import styles from './plugin-type-switch.module.css'
 
@@ -43,19 +37,19 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
     {
       value: PLUGIN_TYPE_SEARCH_MAP.model,
       text: t(($) => $['category.models'], { ns: 'plugin' }),
-      icon: <RiBrain2Line className={iconClassName} />,
+      icon: <span aria-hidden className={cn('i-ri-brain-2-line', iconClassName)} />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.tool,
       text: t(($) => $['category.tools'], { ns: 'plugin' }),
-      icon: <RiHammerLine className={iconClassName} />,
+      icon: <span aria-hidden className={cn('i-ri-hammer-line', iconClassName)} />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.datasource,
       text: t(($) => $[isHome ? 'categorySingle.datasource' : 'category.datasources'], {
         ns: 'plugin',
       }),
-      icon: <RiDatabase2Line className={iconClassName} />,
+      icon: <span aria-hidden className={cn('i-ri-database-2-line', iconClassName)} />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.agent,
@@ -77,7 +71,7 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
     {
       value: PLUGIN_TYPE_SEARCH_MAP.extension,
       text: t(($) => $['category.extensions'], { ns: 'plugin' }),
-      icon: <RiPuzzle2Line className={iconClassName} />,
+      icon: <span aria-hidden className={cn('i-ri-puzzle-2-line', iconClassName)} />,
     },
   ]
 

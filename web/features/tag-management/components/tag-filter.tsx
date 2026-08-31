@@ -143,7 +143,7 @@ export const TagFilter = ({
             </span>
           )}
         </ComboboxTrigger>
-        {!!value.length && !iconOnly && (
+        {!!value.length && (
           <IconButton
             size="xs"
             aria-label={t(($) => $['operation.clear'], { ns: 'common' })}

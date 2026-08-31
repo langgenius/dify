@@ -4,7 +4,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   markMarketplaceSiteFilter,
   markMarketplaceSiteSearch,
-  rememberMarketplaceSiteReferrer,
   trackMarketplaceSiteCardClick,
   trackMarketplaceSiteEvent,
 } from '../marketplace-site-track'
@@ -37,7 +36,9 @@ describe('marketplace site track bridge', () => {
       flushFilter: vi.fn(),
     }
 
-    trackMarketplaceSiteEvent('marketplace_creator_partner_click', { click_target: 'creator_center' })
+    trackMarketplaceSiteEvent('marketplace_creator_partner_click', {
+      click_target: 'creator_center',
+    })
     trackMarketplaceSiteCardClick({
       itemId: 'org/name',
       itemType: 'plugin',
