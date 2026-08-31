@@ -1,4 +1,4 @@
-import type { SourceConnection } from '../../source-models'
+import type { SourceConnection } from '../source-models'
 
 const managedProviderFieldNames = new Set([
   'credentialId',

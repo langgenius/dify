@@ -1,12 +1,9 @@
 'use client'
 
-import type { DocumentAction } from '../document-actions-dropdown'
-import type { DocumentProcessingTask } from '../document-models'
-import type { DocumentUploadFormHandle } from '../document-upload-form'
-import type {
-  ProcessingTaskEvent,
-  ProcessingTaskProgressEvent,
-} from '../services/processing-task-events'
+import type { DocumentUploadFormHandle } from '../upload/form'
+import type { DocumentAction } from './actions-dropdown'
+import type { DocumentProcessingTask } from './models'
+import type { ProcessingTaskEvent, ProcessingTaskProgressEvent } from './tasks/events'
 import type { AuxiliaryTaskReadDenial, TrustedActiveOverride } from './tasks/recovery'
 import type { TerminalTaskPin } from './tasks/snapshot'
 import type { UploadExclusionReasonKey } from './upload/model'
@@ -28,16 +25,20 @@ import { knowledgeFsUploadEnabledAtom } from '@/features/system-features/state'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { downloadBlob } from '@/utils/download'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
-import { useAuxiliaryTaskReadGuard } from '../auxiliary-task-read-guard'
 import { KnowledgeModelReadinessBanner } from '../components/knowledge-model-readiness-banner'
 import { KnowledgeModelSetupDialog } from '../components/knowledge-model-setup-dialog'
-import {
-  DocumentBulkActions,
-  DocumentDropOverlay,
-  DocumentsEmpty,
-  DocumentsList,
-} from '../document-list'
-import { DocumentMetadataDrawer } from '../document-metadata-drawer'
+import { knowledgeFsTaskFailureMessageKey } from '../knowledge-fs-task-error'
+import { createRequestId } from '../request-id'
+import { newKnowledgeDocumentDetailPath } from '../routes'
+import { sourceFromApi } from '../sources/source-models'
+import { useKnowledgeSpace } from '../space/context'
+import { DocumentUploadForm } from '../upload/form'
+import { uploadKnowledgeFsDocuments } from '../upload/knowledge-fs-upload'
+import { documentUploadIssue } from '../upload/policy'
+import { useKnowledgeFileSizeLimit } from '../upload/use-file-size-limit'
+import { useKnowledgeModelSetupGuard } from '../use-knowledge-model-setup-guard'
+import { DocumentBulkActions, DocumentDropOverlay, DocumentsEmpty, DocumentsList } from './list'
+import { DocumentMetadataDrawer } from './metadata/drawer'
 import {
   ACTIVE_TASK_STATES,
   documentCanDownload,
@@ -52,27 +53,13 @@ import {
   taskIsActive,
   taskNeedsAttention,
   taskVersionIsAfter,
-} from '../document-model'
+} from './model'
 import {
   backgroundTaskFromApi,
   backgroundTaskListFromApi,
   documentTaskListFromApi,
   logicalDocumentListFromApi,
-} from '../document-models'
-import { DocumentUploadForm } from '../document-upload-form'
-import { documentUploadIssue } from '../document-upload-policy'
-import { knowledgeFsTaskFailureMessageKey } from '../knowledge-fs-task-error'
-import { uploadKnowledgeFsDocuments } from '../knowledge-fs-upload'
-import { useKnowledgeSpace } from '../knowledge-space-context'
-import { ProcessingTasksDrawer } from '../processing-tasks-drawer'
-import { createRequestId } from '../request-id'
-import { newKnowledgeDocumentDetailPath } from '../routes'
-import { sourceFromApi } from '../source-models'
-import { TaskEventObserver } from '../task-event-observer'
-import { createTaskProgressStore } from '../task-progress-store'
-import { useKnowledgeFileSizeLimit } from '../use-knowledge-file-size-limit'
-import { useKnowledgeModelSetupGuard } from '../use-knowledge-model-setup-guard'
-import { useQueryDataUpdateCount } from '../use-query-data-update-count'
+} from './models'
 import {
   DOCUMENT_PERMISSION_DENIED,
   recoveryQueryMaskForPermissionDenials,
@@ -91,6 +78,10 @@ import {
   documentUploadParser,
 } from './query-state'
 import { responseStatus } from './request-error'
+import { useAuxiliaryTaskReadGuard } from './tasks/auxiliary-read-guard'
+import { ProcessingTasksDrawer } from './tasks/drawer'
+import { TaskEventObserver } from './tasks/event-observer'
+import { createTaskProgressStore } from './tasks/progress-store'
 import {
   findBackgroundTask,
   findBackgroundTasks,
@@ -102,6 +93,7 @@ import {
 import { effectiveDocumentTasks, mergeTaskOverride } from './tasks/snapshot'
 import { DocumentStagingCanceledError } from './upload/model'
 import { useDocumentUploadSession } from './upload/use-document-upload-session'
+import { useQueryDataUpdateCount } from './use-query-data-update-count'
 
 const KNOWLEDGE_FS_BATCH_DOCUMENT_MAX_DOCUMENTS = 100
 const MAX_TASK_EVENT_STREAMS = 6

@@ -63,6 +63,7 @@ const failureMessageKeyByCode = {
   SOURCE_CREDENTIAL_MUTATION_FAILED: 'newKnowledge.taskFailure.source',
   SOURCE_CREDENTIAL_TEST_FAILED: 'newKnowledge.taskFailure.source',
   SOURCE_CREDENTIAL_UNAVAILABLE: 'newKnowledge.taskFailure.source',
+  SOURCE_DOCUMENT_COMPILATION_FAILED: 'newKnowledge.taskFailure.source',
   SOURCE_DOCUMENT_MATERIALIZATION_FAILED: 'newKnowledge.taskFailure.source',
   SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED: 'newKnowledge.taskFailure.source',
   SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID: 'newKnowledge.taskFailure.source',

@@ -1,4 +1,4 @@
-import type { DocumentUploadIssue } from '../../document-upload-policy'
+import type { DocumentUploadIssue } from '../../upload/policy'
 
 export const DOCUMENT_STAGING_REQUEST_TIMEOUT = 30_000
 

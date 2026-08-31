@@ -1,6 +1,6 @@
-import type { DocumentProcessingTask } from '../../document-models'
+import type { DocumentProcessingTask } from '../models'
 import { consoleClient } from '@/service/client'
-import { documentTaskFromApi } from '../../document-models'
+import { documentTaskFromApi } from '../models'
 import { responseStatus } from '../request-error'
 
 export const TASK_PAGE_SIZE = 100

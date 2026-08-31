@@ -81,6 +81,9 @@ describe('KnowledgeFS task error presentation', () => {
     expect(knowledgeFsTaskFailureMessageKey(failure({ code: 'SOURCE_SYNC_FAILED' }))).toBe(
       'newKnowledge.taskFailure.source',
     )
+    expect(
+      knowledgeFsTaskFailureMessageKey(failure({ code: 'SOURCE_DOCUMENT_COMPILATION_FAILED' })),
+    ).toBe('newKnowledge.taskFailure.source')
     expect(knowledgeFsTaskFailureMessageKey(failure({ code: 'UPLOAD_INTEGRITY_MISMATCH' }))).toBe(
       'newKnowledge.taskFailure.upload',
     )

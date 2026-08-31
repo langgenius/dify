@@ -1,6 +1,6 @@
 'use client'
 
-import type { KnowledgeViewSwitcherProps } from '@/features/new-rag/components/knowledge-view-switcher'
+import type { KnowledgeViewSwitcherProps } from '@/features/new-rag/list/knowledge-view-switcher'
 // Libraries
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
@@ -21,7 +21,7 @@ import {
 } from '@/app/components/step-by-step-tour/target-registry'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
-import { NewKnowledgeList } from '@/features/new-rag/new-knowledge-list'
+import { NewKnowledgeList } from '@/features/new-rag/list/new-knowledge-list'
 import { KnowledgeUpgradeProvider } from '@/features/new-rag/upgrade/knowledge-upgrade-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'

@@ -1,6 +1,6 @@
 'use client'
 
-import type { KnowledgeViewSwitcherProps } from '@/features/new-rag/components/knowledge-view-switcher'
+import type { KnowledgeViewSwitcherProps } from '@/features/new-rag/list/knowledge-view-switcher'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
@@ -17,7 +17,7 @@ import {
   getStepByStepTourDropdownMenuContentProps,
   useStepByStepTourControlledDropdown,
 } from '@/app/components/step-by-step-tour/dropdown-menu'
-import { KnowledgeViewSwitcher } from '@/features/new-rag/components/knowledge-view-switcher'
+import { KnowledgeViewSwitcher } from '@/features/new-rag/list/knowledge-view-switcher'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { ServiceApi } from '../extra-info/service-api'
 

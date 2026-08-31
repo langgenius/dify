@@ -1,5 +1,5 @@
-import { AddSourcePage } from '@/features/new-rag/add-source-page'
 import { singleSearchParam } from '@/features/new-rag/routes'
+import { AddSourcePage } from '@/features/new-rag/sources/create/page'
 
 export default async function Page({
   params,

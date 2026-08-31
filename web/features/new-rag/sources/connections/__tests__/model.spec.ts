@@ -1,4 +1,4 @@
-import type { SourceConnection } from '../../../source-models'
+import type { SourceConnection } from '../../source-models'
 import { findSourceProviderConnection, sourceConnectionMatchesDatasource } from '../model'
 
 const identity = {

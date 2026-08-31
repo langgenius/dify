@@ -1,5 +1,5 @@
-import type { DatasourceParameters } from '../../datasource-parameter-model'
-import { datasourceParameterRecord } from '../../datasource-parameter-model'
+import type { DatasourceParameters } from '../datasource-parameter-model'
+import { datasourceParameterRecord } from '../datasource-parameter-model'
 
 export type NewKnowledgeSourceType = 'onlineDocuments' | 'onlineDrive' | 'websiteCrawl'
 type NewKnowledgeSyncPolicy = 'custom' | 'daily' | 'manual'

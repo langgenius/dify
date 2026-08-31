@@ -1,5 +1,5 @@
-import type { DocumentProcessingTask } from '../../document-models'
-import { taskIsActive, taskVersionIsAfter } from '../../document-model'
+import type { DocumentProcessingTask } from '../models'
+import { taskIsActive, taskVersionIsAfter } from '../model'
 
 export type TerminalTaskPin = {
   observedAt: string

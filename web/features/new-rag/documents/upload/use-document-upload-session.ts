@@ -1,9 +1,15 @@
 'use client'
 
-import type { KnowledgeFsUploadPhase, KnowledgeFsUploadProgress } from '../../knowledge-fs-upload'
+import type {
+  KnowledgeFsUploadPhase,
+  KnowledgeFsUploadProgress,
+} from '../../upload/knowledge-fs-upload'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { discardKnowledgeFsStagedUpload, stageKnowledgeFsDocument } from '../../knowledge-fs-upload'
 import { createRequestId } from '../../request-id'
+import {
+  discardKnowledgeFsStagedUpload,
+  stageKnowledgeFsDocument,
+} from '../../upload/knowledge-fs-upload'
 import {
   DOCUMENT_STAGING_REQUEST_TIMEOUT,
   DocumentStagingCanceledError,
