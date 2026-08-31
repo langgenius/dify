@@ -2,10 +2,10 @@ from inspect import unwrap
 from unittest.mock import patch
 
 import pytest
-from flask import Flask, g
+from flask import Flask, g, request
 from pydantic_core import ValidationError
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import Forbidden, UnprocessableEntity
 
 from configs import dify_config
 from controllers.console.workspace.model_providers import (
@@ -17,6 +17,14 @@ from controllers.console.workspace.model_providers import (
     ModelProviderPaymentCheckoutUrlApi,
     ModelProviderSummaryListApi,
     ModelProviderValidateApi,
+    ParserCredentialCreate,
+    ParserCredentialDelete,
+    ParserCredentialId,
+    ParserCredentialSwitch,
+    ParserCredentialUpdate,
+    ParserCredentialValidate,
+    ParserModelList,
+    ParserPreferredProviderType,
     PreferredProviderTypeUpdateApi,
 )
 from core.entities.provider_entities import CredentialConfiguration
@@ -116,6 +124,15 @@ def expected_provider_payload() -> dict[str, object]:
     }
 
 
+def _payload() -> dict:
+    """Mirror the source the ``@model_validate`` decorator reads for the request in scope.
+
+    The tests build their contexts with ``test_request_context``, which defaults to GET even for
+    handlers mounted on POST, so fall back to the JSON body whenever the query string is empty.
+    """
+    return request.args.to_dict(flat=True) or (request.get_json(silent=True) or {})
+
+
 class TestModelProviderListApi:
     def test_get_success(self, app: Flask):
         api = ModelProviderListApi()
@@ -129,7 +146,7 @@ class TestModelProviderListApi:
                 return_value=[provider],
             ) as get_provider_list,
         ):
-            result = method(api, "tenant1")
+            result = method(api, ParserModelList.model_validate(_payload()), "tenant1")
 
         get_provider_list.assert_called_once_with(tenant_id="tenant1", model_type=ModelType.LLM)
         assert result == {"data": [expected_provider_payload()]}
@@ -145,7 +162,7 @@ class TestModelProviderListApi:
                 return_value=[],
             ) as get_provider_list,
         ):
-            result = method(api, "tenant1")
+            result = method(api, ParserModelList.model_validate(_payload()), "tenant1")
 
         get_provider_list.assert_called_once_with(tenant_id="tenant1", model_type=None)
         assert result == {"data": []}
@@ -297,7 +314,7 @@ class TestModelProviderCredentialApi:
                 },
             ) as get_provider_credential,
         ):
-            result = method(api, "tenant1", provider="openai")
+            result = method(api, ParserCredentialId.model_validate(_payload()), "tenant1", provider="openai")
 
         get_provider_credential.assert_called_once_with(
             tenant_id="tenant1", provider="openai", credential_id=VALID_UUID
@@ -321,7 +338,7 @@ class TestModelProviderCredentialApi:
                 return_value=None,
             ) as get_provider_credential,
         ):
-            result = method(api, "tenant1", provider="openai")
+            result = method(api, ParserCredentialId.model_validate(_payload()), "tenant1", provider="openai")
 
         get_provider_credential.assert_called_once_with(tenant_id="tenant1", provider="openai", credential_id=None)
         assert result == {"credentials": None}
@@ -332,7 +349,7 @@ class TestModelProviderCredentialApi:
 
         with app.test_request_context(f"/?credential_id={INVALID_UUID}"):
             with pytest.raises(ValidationError):
-                method(api, "tenant1", provider="openai")
+                method(api, ParserCredentialId.model_validate(_payload()), "tenant1", provider="openai")
 
     def test_post_create_success(self, app: Flask):
         api = ModelProviderCredentialApi()
@@ -347,7 +364,9 @@ class TestModelProviderCredentialApi:
                 return_value=None,
             ) as create_provider_credential,
         ):
-            result, status = method(api, "tenant1", provider="openai")
+            result, status = method(
+                api, ParserCredentialCreate.model_validate(_payload()), "tenant1", provider="openai"
+            )
 
         create_provider_credential.assert_called_once_with(
             tenant_id="tenant1",
@@ -372,7 +391,7 @@ class TestModelProviderCredentialApi:
             ),
         ):
             with pytest.raises(ValueError):
-                method(api, "tenant1", provider="openai")
+                method(api, ParserCredentialCreate.model_validate(_payload()), "tenant1", provider="openai")
 
     def test_put_update_success(self, app: Flask):
         api = ModelProviderCredentialApi()
@@ -387,7 +406,7 @@ class TestModelProviderCredentialApi:
                 return_value=None,
             ) as update_provider_credential,
         ):
-            result = method(api, "tenant1", provider="openai")
+            result = method(api, ParserCredentialUpdate.model_validate(_payload()), "tenant1", provider="openai")
 
         update_provider_credential.assert_called_once_with(
             tenant_id="tenant1",
@@ -406,7 +425,7 @@ class TestModelProviderCredentialApi:
 
         with app.test_request_context("/", json=payload):
             with pytest.raises(ValidationError):
-                method(api, "tenant1", provider="openai")
+                method(api, ParserCredentialUpdate.model_validate(_payload()), "tenant1", provider="openai")
 
     def test_delete_success(self, app: Flask):
         api = ModelProviderCredentialApi()
@@ -421,7 +440,9 @@ class TestModelProviderCredentialApi:
                 return_value=None,
             ) as remove_provider_credential,
         ):
-            result, status = method(api, "tenant1", provider="openai")
+            result, status = method(
+                api, ParserCredentialDelete.model_validate(_payload()), "tenant1", provider="openai"
+            )
 
         remove_provider_credential.assert_called_once_with(
             tenant_id="tenant1", provider="openai", credential_id=VALID_UUID
@@ -444,7 +465,7 @@ class TestModelProviderCredentialSwitchApi:
                 return_value=None,
             ) as switch_active_provider_credential,
         ):
-            result = method(api, "tenant1", provider="openai")
+            result = method(api, ParserCredentialSwitch.model_validate(_payload()), "tenant1", provider="openai")
 
         switch_active_provider_credential.assert_called_once_with(
             tenant_id="tenant1",
@@ -461,7 +482,7 @@ class TestModelProviderCredentialSwitchApi:
 
         with app.test_request_context("/", json=payload):
             with pytest.raises(ValidationError):
-                method(api, "tenant1", provider="openai")
+                method(api, ParserCredentialSwitch.model_validate(_payload()), "tenant1", provider="openai")
 
 
 class TestModelProviderValidateApi:
@@ -478,7 +499,7 @@ class TestModelProviderValidateApi:
                 return_value=None,
             ) as validate_provider_credentials,
         ):
-            result = method(api, "tenant1", provider="openai")
+            result = method(api, ParserCredentialValidate.model_validate(_payload()), "tenant1", provider="openai")
 
         validate_provider_credentials.assert_called_once_with(
             tenant_id="tenant1", provider="openai", credentials={"a": "b"}
@@ -498,7 +519,7 @@ class TestModelProviderValidateApi:
                 side_effect=CredentialsValidateFailedError("bad"),
             ),
         ):
-            result = method(api, "tenant1", provider="openai")
+            result = method(api, ParserCredentialValidate.model_validate(_payload()), "tenant1", provider="openai")
 
         assert result == {"result": "error", "error": "bad"}
 
@@ -549,7 +570,7 @@ class TestPreferredProviderTypeUpdateApi:
                 return_value=None,
             ) as switch_preferred_provider,
         ):
-            result = method(api, "tenant1", provider="openai")
+            result = method(api, ParserPreferredProviderType.model_validate(_payload()), "tenant1", provider="openai")
 
         switch_preferred_provider.assert_called_once_with(
             tenant_id="tenant1", provider="openai", preferred_provider_type="custom"
@@ -564,7 +585,7 @@ class TestPreferredProviderTypeUpdateApi:
 
         with app.test_request_context("/", json=payload):
             with pytest.raises(ValidationError):
-                method(api, "tenant1", provider="openai")
+                method(api, ParserPreferredProviderType.model_validate(_payload()), "tenant1", provider="openai")
 
 
 class TestModelProviderPaymentCheckoutUrlApi:
@@ -618,3 +639,28 @@ class TestModelProviderPaymentCheckoutUrlApi:
                 api.get(provider="anthropic")
 
         get_model_provider_payment_link.assert_not_called()
+
+
+class TestModelValidateDecorator:
+    def test_invalid_query_is_rejected_before_the_handler_runs(self, app: Flask):
+        """The tests above unwrap the view, so this is what covers the decorator itself."""
+        api = ModelProviderListApi()
+
+        with (
+            app.test_request_context("/?model_type=not-a-model-type"),
+            config_overrides_context(LOGIN_DISABLED=True, RBAC_ENABLED=False),
+            patch("controllers.console.wraps._is_setup_completed", return_value=True),
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(make_account(), "tenant1"),
+            ),
+            patch(
+                "controllers.console.workspace.model_providers.ModelProviderService.get_provider_list",
+            ) as get_provider_list,
+        ):
+            g._login_user = make_account()
+            with pytest.raises(UnprocessableEntity) as exc_info:
+                api.get()
+
+        assert exc_info.value.code == 422
+        get_provider_list.assert_not_called()
