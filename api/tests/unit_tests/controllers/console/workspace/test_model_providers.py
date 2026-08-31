@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 from flask import Flask, g, request
+from flask_restx import Resource
 from pydantic_core import ValidationError
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, UnprocessableEntity
@@ -126,13 +127,17 @@ def expected_provider_payload() -> dict[str, object]:
     }
 
 
-def _payload() -> dict:
+def _payload() -> dict[str, object]:
     """Mirror the source the ``@model_validate`` decorator reads for the request in scope.
 
     The tests build their contexts with ``test_request_context``, which defaults to GET even for
     handlers mounted on POST, so fall back to the JSON body whenever the query string is empty.
     """
-    return request.args.to_dict(flat=True) or (request.get_json(silent=True) or {})
+    args: dict[str, object] = dict(request.args.to_dict(flat=True))
+    if args:
+        return args
+    body = request.get_json(silent=True)
+    return dict(body) if isinstance(body, dict) else {}
 
 
 class TestModelProviderListApi:
@@ -646,22 +651,31 @@ class TestModelProviderPaymentCheckoutUrlApi:
 class TestModelValidateDecorator:
     """The tests above unwrap the view, so this is what covers the decorators themselves."""
 
+    EMPTY_BODY: dict[str, object] = {}
+    EMPTY_KWARGS: dict[str, object] = {}
+
     @pytest.mark.parametrize(
         ("api_cls", "verb", "url", "body", "kwargs"),
         [
-            (ModelProviderListApi, "GET", "/?model_type=not-a-model-type", None, {}),
+            (ModelProviderListApi, "GET", "/?model_type=not-a-model-type", None, EMPTY_KWARGS),
             (ModelProviderCredentialApi, "GET", "/?credential_id=not-a-uuid", None, {"provider": "openai"}),
-            (ModelProviderCredentialApi, "POST", "/", {}, {"provider": "openai"}),
-            (ModelProviderCredentialApi, "PUT", "/", {}, {"provider": "openai"}),
-            (ModelProviderCredentialApi, "DELETE", "/", {}, {"provider": "openai"}),
-            (ModelProviderCredentialSwitchApi, "POST", "/", {}, {"provider": "openai"}),
-            (ModelProviderValidateApi, "POST", "/", {}, {"provider": "openai"}),
-            (PreferredProviderTypeUpdateApi, "POST", "/", {}, {"provider": "openai"}),
+            (ModelProviderCredentialApi, "POST", "/", EMPTY_BODY, {"provider": "openai"}),
+            (ModelProviderCredentialApi, "PUT", "/", EMPTY_BODY, {"provider": "openai"}),
+            (ModelProviderCredentialApi, "DELETE", "/", EMPTY_BODY, {"provider": "openai"}),
+            (ModelProviderCredentialSwitchApi, "POST", "/", EMPTY_BODY, {"provider": "openai"}),
+            (ModelProviderValidateApi, "POST", "/", EMPTY_BODY, {"provider": "openai"}),
+            (PreferredProviderTypeUpdateApi, "POST", "/", EMPTY_BODY, {"provider": "openai"}),
         ],
     )
     def test_invalid_input_is_rejected_before_the_handler_runs(
-        self, app: Flask, api_cls, verb: str, url: str, body, kwargs
-    ):
+        self,
+        app: Flask,
+        api_cls: type[Resource],
+        verb: str,
+        url: str,
+        body: dict[str, object] | None,
+        kwargs: dict[str, object],
+    ) -> None:
         api = api_cls()
         account = make_account()
         account.role = TenantAccountRole.OWNER
