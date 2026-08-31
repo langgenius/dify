@@ -1585,7 +1585,10 @@ class DatasetRetrieval:
         # get all metadata field
         metadata_stmt = select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))
         metadata_fields = session.scalars(metadata_stmt).all()
-        all_metadata_fields = [metadata_field.name for metadata_field in metadata_fields]
+        metadata_field_info = [
+            {"name": metadata_field.name, "type": metadata_field.type} for metadata_field in metadata_fields
+        ]
+        all_metadata_fields = [field["name"] for field in metadata_field_info]
         # get metadata model config
         if metadata_model_config is None:
             raise ValueError("metadata_model_config is required")
@@ -1597,7 +1600,7 @@ class DatasetRetrieval:
         prompt_messages, stop = self._get_prompt_template(
             model_config=model_config,
             mode=metadata_model_config.mode,
-            metadata_fields=all_metadata_fields,
+            metadata_fields=metadata_field_info,
             query=query or "",
         )
 
@@ -1780,7 +1783,11 @@ class DatasetRetrieval:
         )
 
     def _get_prompt_template(
-        self, model_config: ModelConfigWithCredentialsEntity, mode: str, metadata_fields: list[str], query: str
+        self,
+        model_config: ModelConfigWithCredentialsEntity,
+        mode: str,
+        metadata_fields: list[dict[str, Any]],
+        query: str,
     ):
         model_mode = ModelMode(mode)
         input_text = query

@@ -4301,7 +4301,7 @@ class TestDatasetRetrievalAdditionalHelpers:
             assert "stop" not in config.parameters
 
     def test_automatic_metadata_filter_func(self, retrieval: DatasetRetrieval) -> None:
-        metadata_field = SimpleNamespace(name="author")
+        metadata_field = SimpleNamespace(name="author", type="string")
         model_instance = Mock()
         model_instance.invoke_llm.return_value = iter([Mock()])
         model_config = ModelConfigWithCredentialsEntity.model_construct(
