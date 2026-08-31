@@ -253,12 +253,14 @@ def test_emit_maps_recoverable_sdk_errors_to_retryable_failure(adapter, error):
 
 
 @pytest.mark.parametrize("error", [LangSmithAuthError("unauthorized"), LangSmithUserError("invalid")])
-def test_emit_keeps_terminal_sdk_errors(adapter, error):
+def test_emit_wraps_terminal_sdk_errors_without_retry(adapter, error):
     subject, client = adapter
     client.create_run.side_effect = error
 
-    with pytest.raises(type(error)):
+    with pytest.raises(RuntimeError, match="LangSmith run export rejected") as exc_info:
         subject.emit(trace(), None, MagicMock())
+
+    assert exc_info.value.__cause__ is error
 
 
 def test_retry_metadata_is_forwarded_to_langsmith(adapter):
