@@ -134,11 +134,37 @@ function getPropertyName(property) {
   return null
 }
 
+function getVariableByName(scope, name) {
+  let currentScope = scope
+  while (currentScope) {
+    const variable = currentScope.set.get(name)
+    if (variable) return variable
+    currentScope = currentScope.upper
+  }
+  return null
+}
+
+function getVariableInitializer(identifier, sourceCode) {
+  const variable = getVariableByName(sourceCode.getScope(identifier), identifier.name)
+  if (!variable || variable.defs.length !== 1) return null
+
+  const [definition] = variable.defs
+  if (
+    definition.type !== 'Variable' ||
+    definition.node.type !== 'VariableDeclarator' ||
+    definition.node.id.type !== 'Identifier' ||
+    !definition.node.init
+  )
+    return null
+
+  return { initializer: definition.node.init, variable }
+}
+
 function expressionContainsTruncationClass(
   node,
-  variableInitializers,
+  sourceCode,
   cssModuleBindings,
-  seenNames = new Set(),
+  seenVariables = new Set(),
 ) {
   const current = unwrapExpression(node)
   if (!current) return false
@@ -148,16 +174,15 @@ function expressionContainsTruncationClass(
 
   switch (current.type) {
     case 'Identifier': {
-      if (seenNames.has(current.name)) return false
-      const initializer = variableInitializers.get(current.name)
-      if (!initializer) return false
-      const nextSeenNames = new Set(seenNames)
-      nextSeenNames.add(current.name)
+      const resolvedVariable = getVariableInitializer(current, sourceCode)
+      if (!resolvedVariable || seenVariables.has(resolvedVariable.variable)) return false
+      const nextSeenVariables = new Set(seenVariables)
+      nextSeenVariables.add(resolvedVariable.variable)
       return expressionContainsTruncationClass(
-        initializer,
-        variableInitializers,
+        resolvedVariable.initializer,
+        sourceCode,
         cssModuleBindings,
-        nextSeenNames,
+        nextSeenVariables,
       )
     }
     case 'MemberExpression': {
@@ -168,7 +193,8 @@ function expressionContainsTruncationClass(
         : current.property.type === 'Identifier'
           ? current.property.name
           : null
-      return propertyName !== null && cssModuleBindings.get(object.name)?.has(propertyName)
+      const variable = getVariableByName(sourceCode.getScope(object), object.name)
+      return propertyName !== null && cssModuleBindings.get(variable)?.has(propertyName)
     }
     case 'TemplateLiteral':
       return (
@@ -178,41 +204,41 @@ function expressionContainsTruncationClass(
         current.expressions.some((expression) =>
           expressionContainsTruncationClass(
             expression,
-            variableInitializers,
+            sourceCode,
             cssModuleBindings,
-            seenNames,
+            seenVariables,
           ),
         )
       )
     case 'TaggedTemplateExpression':
       return expressionContainsTruncationClass(
         current.quasi,
-        variableInitializers,
+        sourceCode,
         cssModuleBindings,
-        seenNames,
+        seenVariables,
       )
     case 'CallExpression':
     case 'NewExpression':
       return (
         expressionContainsTruncationClass(
           current.callee,
-          variableInitializers,
+          sourceCode,
           cssModuleBindings,
-          seenNames,
+          seenVariables,
         ) ||
         current.arguments.some((argument) =>
           argument.type === 'SpreadElement'
             ? expressionContainsTruncationClass(
                 argument.argument,
-                variableInitializers,
+                sourceCode,
                 cssModuleBindings,
-                seenNames,
+                seenVariables,
               )
             : expressionContainsTruncationClass(
                 argument,
-                variableInitializers,
+                sourceCode,
                 cssModuleBindings,
-                seenNames,
+                seenVariables,
               ),
         )
       )
@@ -220,15 +246,15 @@ function expressionContainsTruncationClass(
       return (
         expressionContainsTruncationClass(
           current.consequent,
-          variableInitializers,
+          sourceCode,
           cssModuleBindings,
-          seenNames,
+          seenVariables,
         ) ||
         expressionContainsTruncationClass(
           current.alternate,
-          variableInitializers,
+          sourceCode,
           cssModuleBindings,
-          seenNames,
+          seenVariables,
         )
       )
     case 'LogicalExpression':
@@ -236,15 +262,15 @@ function expressionContainsTruncationClass(
       return (
         expressionContainsTruncationClass(
           current.left,
-          variableInitializers,
+          sourceCode,
           cssModuleBindings,
-          seenNames,
+          seenVariables,
         ) ||
         expressionContainsTruncationClass(
           current.right,
-          variableInitializers,
+          sourceCode,
           cssModuleBindings,
-          seenNames,
+          seenVariables,
         )
       )
     case 'ArrayExpression':
@@ -254,15 +280,15 @@ function expressionContainsTruncationClass(
           (element.type === 'SpreadElement'
             ? expressionContainsTruncationClass(
                 element.argument,
-                variableInitializers,
+                sourceCode,
                 cssModuleBindings,
-                seenNames,
+                seenVariables,
               )
             : expressionContainsTruncationClass(
                 element,
-                variableInitializers,
+                sourceCode,
                 cssModuleBindings,
-                seenNames,
+                seenVariables,
               )),
       )
     case 'ObjectExpression':
@@ -270,9 +296,9 @@ function expressionContainsTruncationClass(
         if (property.type === 'SpreadElement')
           return expressionContainsTruncationClass(
             property.argument,
-            variableInitializers,
+            sourceCode,
             cssModuleBindings,
-            seenNames,
+            seenVariables,
           )
 
         const propertyName = getPropertyName(property)
@@ -280,20 +306,15 @@ function expressionContainsTruncationClass(
           (propertyName !== null && stringContainsTruncationClass(propertyName)) ||
           expressionContainsTruncationClass(
             property.value,
-            variableInitializers,
+            sourceCode,
             cssModuleBindings,
-            seenNames,
+            seenVariables,
           )
         )
       })
     case 'SequenceExpression':
       return current.expressions.some((expression) =>
-        expressionContainsTruncationClass(
-          expression,
-          variableInitializers,
-          cssModuleBindings,
-          seenNames,
-        ),
+        expressionContainsTruncationClass(expression, sourceCode, cssModuleBindings, seenVariables),
       )
     default:
       return false
@@ -312,30 +333,33 @@ function isActiveLineClampValue(node) {
   return current.type !== 'Identifier' || current.name !== 'undefined'
 }
 
-function expressionContainsTruncationStyle(node, variableInitializers, seenNames = new Set()) {
+function expressionContainsTruncationStyle(node, sourceCode, seenVariables = new Set()) {
   const current = unwrapExpression(node)
   if (!current) return false
 
   if (current.type === 'Identifier') {
-    if (seenNames.has(current.name)) return false
-    const initializer = variableInitializers.get(current.name)
-    if (!initializer) return false
-    const nextSeenNames = new Set(seenNames)
-    nextSeenNames.add(current.name)
-    return expressionContainsTruncationStyle(initializer, variableInitializers, nextSeenNames)
+    const resolvedVariable = getVariableInitializer(current, sourceCode)
+    if (!resolvedVariable || seenVariables.has(resolvedVariable.variable)) return false
+    const nextSeenVariables = new Set(seenVariables)
+    nextSeenVariables.add(resolvedVariable.variable)
+    return expressionContainsTruncationStyle(
+      resolvedVariable.initializer,
+      sourceCode,
+      nextSeenVariables,
+    )
   }
 
   if (current.type === 'ConditionalExpression') {
     return (
-      expressionContainsTruncationStyle(current.consequent, variableInitializers, seenNames) ||
-      expressionContainsTruncationStyle(current.alternate, variableInitializers, seenNames)
+      expressionContainsTruncationStyle(current.consequent, sourceCode, seenVariables) ||
+      expressionContainsTruncationStyle(current.alternate, sourceCode, seenVariables)
     )
   }
 
   if (current.type === 'LogicalExpression') {
     return (
-      expressionContainsTruncationStyle(current.left, variableInitializers, seenNames) ||
-      expressionContainsTruncationStyle(current.right, variableInitializers, seenNames)
+      expressionContainsTruncationStyle(current.left, sourceCode, seenVariables) ||
+      expressionContainsTruncationStyle(current.right, sourceCode, seenVariables)
     )
   }
 
@@ -345,8 +369,8 @@ function expressionContainsTruncationStyle(node, variableInitializers, seenNames
         element &&
         expressionContainsTruncationStyle(
           element.type === 'SpreadElement' ? element.argument : element,
-          variableInitializers,
-          seenNames,
+          sourceCode,
+          seenVariables,
         ),
     )
   }
@@ -355,7 +379,7 @@ function expressionContainsTruncationStyle(node, variableInitializers, seenNames
 
   return current.properties.some((property) => {
     if (property.type === 'SpreadElement')
-      return expressionContainsTruncationStyle(property.argument, variableInitializers, seenNames)
+      return expressionContainsTruncationStyle(property.argument, sourceCode, seenVariables)
 
     const propertyName = getPropertyName(property)
     if (propertyName === 'textOverflow' || propertyName === 'text-overflow')
@@ -370,7 +394,7 @@ function expressionContainsTruncationStyle(node, variableInitializers, seenNames
   })
 }
 
-function hasTruncation(openingElement, variableInitializers, cssModuleBindings) {
+function hasTruncation(openingElement, sourceCode, cssModuleBindings) {
   const classAttribute =
     getAttribute(openingElement, 'className') ?? getAttribute(openingElement, 'class')
   if (classAttribute?.value) {
@@ -384,7 +408,7 @@ function hasTruncation(openingElement, variableInitializers, cssModuleBindings) 
       classAttribute.value.type === 'JSXExpressionContainer' &&
       expressionContainsTruncationClass(
         classAttribute.value.expression,
-        variableInitializers,
+        sourceCode,
         cssModuleBindings,
       )
     )
@@ -394,7 +418,7 @@ function hasTruncation(openingElement, variableInitializers, cssModuleBindings) 
   const styleAttribute = getAttribute(openingElement, 'style')
   return (
     styleAttribute?.value?.type === 'JSXExpressionContainer' &&
-    expressionContainsTruncationStyle(styleAttribute.value.expression, variableInitializers)
+    expressionContainsTruncationStyle(styleAttribute.value.expression, sourceCode)
   )
 }
 
@@ -647,8 +671,6 @@ export default {
     const candidates = []
     const renderIdentifiers = new Set()
     const tooltipTriggerNames = new Set()
-    const variableInitializers = new Map()
-    const ambiguousVariableNames = new Set()
     const cssModuleBindings = new Map()
 
     function recordCssModuleImport(node) {
@@ -663,18 +685,8 @@ export default {
       if (!filename || filename.startsWith('<')) return
       const cssModulePath = resolve(dirname(filename), node.source.value)
       const classNames = getCssModuleClassNames(cssModulePath)
-      if (classNames.size > 0) cssModuleBindings.set(defaultSpecifier.local.name, classNames)
-    }
-
-    function recordVariableInitializer(node) {
-      if (node.id.type !== 'Identifier' || !node.init) return
-      if (variableInitializers.has(node.id.name)) {
-        ambiguousVariableNames.add(node.id.name)
-        variableInitializers.delete(node.id.name)
-        return
-      }
-      if (!ambiguousVariableNames.has(node.id.name))
-        variableInitializers.set(node.id.name, node.init)
+      const variable = context.sourceCode.getDeclaredVariables(defaultSpecifier)[0]
+      if (classNames.size > 0 && variable) cssModuleBindings.set(variable, classNames)
     }
 
     return {
@@ -688,7 +700,6 @@ export default {
             tooltipTriggerNames.add(specifier.local.name)
         }
       },
-      VariableDeclarator: recordVariableInitializer,
       JSXOpeningElement(node) {
         if (isTooltipTriggerOpening(node, tooltipTriggerNames)) {
           const renderAttribute = getAttribute(node, 'render')
@@ -705,7 +716,7 @@ export default {
       },
       'Program:exit': function () {
         for (const openingElement of candidates) {
-          if (!hasTruncation(openingElement, variableInitializers, cssModuleBindings)) continue
+          if (!hasTruncation(openingElement, context.sourceCode, cssModuleBindings)) continue
           if (isInsideTooltipTrigger(openingElement, tooltipTriggerNames)) continue
 
           const owningVariableName = getOwningVariableName(openingElement)

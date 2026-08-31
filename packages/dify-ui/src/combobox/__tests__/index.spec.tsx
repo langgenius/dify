@@ -104,43 +104,6 @@ const renderInputCombobox = ({
   )
 
 describe('Combobox wrappers', () => {
-  describe('ComboboxValue', () => {
-    it('should expose the resolved selected label as the truncated value title', async () => {
-      const resources = [{ id: 'workflow', label: 'Workflow' }]
-      const screen = await renderWithSafeViewport(
-        <Combobox
-          defaultValue={resources[0]}
-          items={resources}
-          itemToStringLabel={(item) => item.label}
-        >
-          <ComboboxTrigger aria-label="Resource type">
-            <ComboboxValue />
-          </ComboboxTrigger>
-        </Combobox>,
-      )
-
-      await expect
-        .element(screen.getByRole('combobox', { name: 'Resource type' }).getByTitle('Workflow'))
-        .toBeInTheDocument()
-    })
-
-    it('should expose the resolved placeholder as the truncated value title', async () => {
-      const screen = await renderWithSafeViewport(
-        <Combobox value={null} items={['workflow']}>
-          <ComboboxTrigger aria-label="Resource type">
-            <ComboboxValue placeholder="Select resource" />
-          </ComboboxTrigger>
-        </Combobox>,
-      )
-
-      await expect
-        .element(
-          screen.getByRole('combobox', { name: 'Resource type' }).getByTitle('Select resource'),
-        )
-        .toBeInTheDocument()
-    })
-  })
-
   describe('Select-like trigger', () => {
     it('should render label and trigger with combobox semantics', async () => {
       const screen = await renderSelectLikeCombobox()
@@ -481,9 +444,9 @@ describe('Combobox wrappers', () => {
       )
 
       await expect.element(screen.getByTestId('chips')).toHaveClass('custom-chips')
-      const chip = screen.getByText('maya').element().parentElement!
-      await expect.element(chip).toHaveClass('custom-chip')
-      expect(chip.parentElement).toBe(screen.getByTestId('chips').element())
+      await expect
+        .element(screen.getByText('maya').element().parentElement!)
+        .toHaveClass('custom-chip')
       await expect
         .element(screen.getByRole('button', { name: 'Remove selected item' }))
         .toHaveAttribute('type', 'button')

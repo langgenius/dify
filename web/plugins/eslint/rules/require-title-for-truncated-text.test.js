@@ -79,6 +79,39 @@ it('adds title for static classes, class helpers, constants, and inline styles',
   assert.match(result.output, /style=\{\{ textOverflow: 'ellipsis' \}\} title="Description"/u)
 })
 
+it('resolves truncation variables from the active lexical scope', () => {
+  const shadowedParameterCode = `
+    const className = 'truncate'
+    const style = { textOverflow: 'ellipsis' }
+    export const Example = ({ className, style, label }) => <>
+      <span className={className}>{label}</span>
+      <span style={style}>{label}</span>
+    </>
+  `
+  const shadowedParameterResult = verifyAndFix(shadowedParameterCode)
+
+  assert.equal(shadowedParameterResult.fixed, false)
+  assert.equal(shadowedParameterResult.messages.length, 0)
+  assert.equal(shadowedParameterResult.output, shadowedParameterCode)
+
+  const nestedBindingResult = verifyAndFix(`
+    const className = 'regular'
+    const style = { color: 'red' }
+    export const Example = ({ label }) => {
+      const className = 'truncate'
+      const style = { textOverflow: 'ellipsis' }
+      return <>
+        <span className={className}>{label}</span>
+        <span style={style}>{label}</span>
+      </>
+    }
+  `)
+
+  assert.equal(nestedBindingResult.fixed, true)
+  assert.equal(nestedBindingResult.messages.length, 0)
+  assert.equal(nestedBindingResult.output.match(/title=\{label\}/gu)?.length, 2)
+})
+
 it('replaces an empty title', () => {
   const result = verifyAndFix(`
     export const Example = ({ name }) => <span className="truncate" title="">{name}</span>
@@ -183,6 +216,9 @@ it('resolves truncation classes imported from CSS modules', () => {
         <span className={styles.unsetClamp}>{name}</span>
         <span className={styles.regular}>{name}</span>
       </>
+      export const Shadowed = ({ styles, name }) => (
+        <span className={styles.singleLine}>{name}</span>
+      )
     `,
     filename,
   )

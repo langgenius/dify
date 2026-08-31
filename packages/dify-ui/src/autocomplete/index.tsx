@@ -14,7 +14,6 @@ import {
   floatingSeparatorClassName,
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
-import { getTextFromNode } from '../utils/get-text-from-node'
 
 type AutocompleteProps<ItemValue> = BaseAutocomplete.Root.Props<ItemValue>
 type AutocompleteChangeEventDetails = BaseAutocomplete.Root.ChangeEventDetails
@@ -320,16 +319,9 @@ function AutocompleteItem<Value = unknown>({ className, ...props }: Autocomplete
 
 type AutocompleteItemTextProps = React.ComponentProps<'span'>
 
-function AutocompleteItemText({ className, children, title, ...props }: AutocompleteItemTextProps) {
-  const resolvedTitle = title ?? getTextFromNode(children)
+function AutocompleteItemText({ className, ...props }: AutocompleteItemTextProps) {
   return (
-    <span
-      className={cn('min-w-0 grow truncate px-1 system-sm-medium', className)}
-      title={resolvedTitle}
-      {...props}
-    >
-      {children}
-    </span>
+    <span className={cn('min-w-0 grow truncate px-1 system-sm-medium', className)} {...props} />
   )
 }
 

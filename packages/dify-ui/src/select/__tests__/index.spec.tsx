@@ -104,39 +104,6 @@ describe('Select wrappers', () => {
   })
 
   describe('SelectTrigger', () => {
-    it('should expose the resolved selected label as the truncated value title', async () => {
-      const screen = await renderWithSafeViewport(
-        <Select open defaultValue="seattle">
-          <SelectTrigger aria-label="city select">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="seattle">
-              <SelectItemText>Seattle</SelectItemText>
-            </SelectItem>
-          </SelectContent>
-        </Select>,
-      )
-
-      await expect
-        .element(screen.getByRole('combobox', { name: 'city select' }).getByTitle('Seattle'))
-        .toBeInTheDocument()
-    })
-
-    it('should expose the resolved placeholder as the truncated value title', async () => {
-      const screen = await renderWithSafeViewport(
-        <Select value={null}>
-          <SelectTrigger aria-label="city select">
-            <SelectValue placeholder="Choose a city" />
-          </SelectTrigger>
-        </Select>,
-      )
-
-      await expect
-        .element(screen.getByRole('combobox', { name: 'city select' }).getByTitle('Choose a city'))
-        .toBeInTheDocument()
-    })
-
     it('should use SelectLabel as the trigger accessible name', async () => {
       const screen = await renderWithSafeViewport(
         <Select defaultValue="seattle">

@@ -14,7 +14,6 @@ import {
   floatingSeparatorClassName,
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
-import { getTextFromNode, hasTitleInNode } from '../utils/get-text-from-node'
 
 type ComboboxProps<Value, Multiple extends boolean | undefined = false> = BaseCombobox.Root.Props<
   Value,
@@ -37,8 +36,6 @@ type ComboboxSelectedValue<Value, Multiple extends boolean | undefined = false> 
   | (Multiple extends true ? Value[] : Value)
   | null
 
-const ComboboxValueInTriggerContext = React.createContext(false)
-
 type ComboboxValueProps<Value = unknown, Multiple extends boolean | undefined = false> = Omit<
   BaseCombobox.Value.Props,
   'children'
@@ -46,58 +43,12 @@ type ComboboxValueProps<Value = unknown, Multiple extends boolean | undefined = 
   children?:
     | React.ReactNode
     | ((selectedValue: ComboboxSelectedValue<Value, Multiple>) => React.ReactNode)
-  title?: string
 }
-
-function ResolvedComboboxValue({
-  children,
-  selectedValue,
-  title,
-}: {
-  children: React.ReactNode
-  selectedValue: unknown
-  title?: string
-}) {
-  const valueRef = React.useRef<HTMLSpanElement>(null)
-  const resolvedTitle = title ?? getTextFromNode(children)
-
-  React.useLayoutEffect(() => {
-    if (resolvedTitle !== undefined || !valueRef.current) return
-    valueRef.current.title = valueRef.current.textContent ?? ''
-  }, [children, resolvedTitle, selectedValue])
-
-  return (
-    <span ref={valueRef} className="block min-w-0 truncate" title={resolvedTitle}>
-      {children}
-    </span>
-  )
-}
-
 function ComboboxValue<Value = unknown, Multiple extends boolean | undefined = false>(
   props: ComboboxValueProps<Value, Multiple>,
 ): React.JSX.Element
-function ComboboxValue({ children, placeholder, title }: ComboboxValueProps): React.JSX.Element {
-  const isInTrigger = React.use(ComboboxValueInTriggerContext)
-
-  if (!isInTrigger)
-    return <BaseCombobox.Value placeholder={placeholder}>{children}</BaseCombobox.Value>
-
-  return (
-    <BaseCombobox.Value>
-      {(selectedValue) => {
-        const resolvedChildren =
-          typeof children === 'function'
-            ? children(selectedValue)
-            : (children ?? <BaseCombobox.Value placeholder={placeholder} />)
-
-        return (
-          <ResolvedComboboxValue selectedValue={selectedValue} title={title}>
-            {resolvedChildren}
-          </ResolvedComboboxValue>
-        )
-      }}
-    </BaseCombobox.Value>
-  )
+function ComboboxValue(props: BaseCombobox.Value.Props): React.JSX.Element {
+  return <BaseCombobox.Value {...props} />
 }
 
 type ComboboxGroupProps<Value = unknown> = Omit<BaseCombobox.Group.Props, 'items'> & {
@@ -171,25 +122,16 @@ function ComboboxTrigger({
   children,
   icon,
   size,
-  title,
   type = 'button',
   ...props
 }: ComboboxTriggerProps) {
-  const resolvedTitle = title ?? getTextFromNode(children)
-  const valueOwnsTruncation = React.isValidElement(children) && children.type === ComboboxValue
-  const childOwnsTitle = valueOwnsTruncation || hasTitleInNode(children)
   return (
     <BaseCombobox.Trigger
       type={type}
       className={cn(comboboxTriggerVariants({ size, className }))}
       {...props}
     >
-      <span
-        className={cn('min-w-0 grow', !valueOwnsTruncation && 'truncate')}
-        title={childOwnsTitle ? undefined : resolvedTitle}
-      >
-        <ComboboxValueInTriggerContext value>{children}</ComboboxValueInTriggerContext>
-      </span>
+      <span className="min-w-0 grow truncate">{children}</span>
       {icon !== false && (
         <BaseCombobox.Icon className="shrink-0 text-text-quaternary transition-colors group-hover/combobox-trigger:text-text-secondary group-data-popup-open/combobox-trigger:text-text-secondary group-data-readonly/combobox-trigger:hidden">
           {icon ?? <span className="i-ri-arrow-down-s-line h-4 w-4" aria-hidden="true" />}
@@ -431,16 +373,9 @@ function ComboboxItem<Value = unknown>({ className, ...props }: ComboboxItemProp
 
 type ComboboxItemTextProps = React.ComponentProps<'span'>
 
-function ComboboxItemText({ className, children, title, ...props }: ComboboxItemTextProps) {
-  const resolvedTitle = title ?? getTextFromNode(children)
+function ComboboxItemText({ className, ...props }: ComboboxItemTextProps) {
   return (
-    <span
-      className={cn('min-w-0 grow truncate px-1 system-sm-medium', className)}
-      title={resolvedTitle}
-      {...props}
-    >
-      {children}
-    </span>
+    <span className={cn('min-w-0 grow truncate px-1 system-sm-medium', className)} {...props} />
   )
 }
 
