@@ -1,5 +1,6 @@
 import type { ChecklistItem } from '../../hooks/use-checklist'
 import type { CommonEdgeType } from '../../types'
+import type { ChecklistErrorPayload } from '@/app/components/dify-builder/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
@@ -9,10 +10,18 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
-import { memo, useMemo, useState } from 'react'
+import { useAtomValue, useSetAtom } from 'jotai'
+import { memo, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
+import {
+  difyBuilderAvailableAtom,
+  difyBuilderCanStartFixAtom,
+  difyBuilderRegisterChecklistErrorsAtom,
+  difyBuilderStartChecklistFixAtom,
+} from '@/app/components/workflow-app/components/dify-builder/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
+import DifyBuilderEntry from '../../dify-builder-entry'
 import { useHooksStore } from '../../hooks-store/store'
 import { useChecklist } from '../../hooks/use-checklist'
 import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
@@ -26,6 +35,15 @@ type WorkflowChecklistProps = {
   onItemClick?: (item: ChecklistItem) => void
 }
 
+const toChecklistErrorPayload = (item: ChecklistItem): ChecklistErrorPayload => ({
+  node_id: item.id,
+  node_type: String(item.type),
+  title: item.title,
+  messages: item.errorMessages,
+  unconnected: !!item.unConnected,
+  plugin_missing: !!item.isPluginMissing,
+})
+
 const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowChecklistProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -36,6 +54,10 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
   const { handleNodeSelect } = useNodesInteractions()
   const setOpenInlineAgentPanelNodeId = useStore((state) => state.setOpenInlineAgentPanelNodeId)
   const checklistLabel = t(($) => $['panel.checklist'], { ns: 'workflow' })
+  const difyBuilderAvailable = useAtomValue(difyBuilderAvailableAtom)
+  const canStartFix = useAtomValue(difyBuilderCanStartFixAtom)
+  const registerChecklistErrors = useSetAtom(difyBuilderRegisterChecklistErrorsAtom)
+  const startChecklistFix = useSetAtom(difyBuilderStartChecklistFixAtom)
 
   const { pluginItems, nodeItems } = useMemo(() => {
     const plugins: ChecklistItem[] = []
@@ -46,6 +68,21 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
     }
     return { pluginItems: plugins, nodeItems: regular }
   }, [needWarningNodes])
+  const checklistErrors = useMemo(
+    () => needWarningNodes.map(toChecklistErrorPayload),
+    [needWarningNodes],
+  )
+  const fixableItemCount = useMemo(
+    () =>
+      needWarningNodes.filter(
+        (item) => !item.unConnected && !item.isPluginMissing && item.errorMessages.length > 0,
+      ).length,
+    [needWarningNodes],
+  )
+
+  useEffect(() => {
+    registerChecklistErrors(checklistErrors)
+  }, [checklistErrors, registerChecklistErrors])
 
   const handleItemClick = (item: ChecklistItem) => {
     if (onItemClick) onItemClick(item)
@@ -124,6 +161,21 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
                   onItemClick={handleItemClick}
                 />
               ))}
+              {difyBuilderAvailable && fixableItemCount > 0 && (
+                <div className="mt-2 border-t border-divider-subtle pt-3">
+                  <DifyBuilderEntry
+                    label={t(($) => $['difyBuilder.fixWithAppBuilder'], { ns: 'workflow' })}
+                    description={t(($) => $['difyBuilder.checklistFixScopeDescription'], {
+                      ns: 'workflow',
+                    })}
+                    disabled={disabled || !canStartFix}
+                    onClick={() => {
+                      setOpen(false)
+                      void startChecklistFix(checklistErrors)
+                    }}
+                  />
+                </div>
+              )}
             </div>
           ) : (
             <div className="mx-4 mb-3 rounded-lg py-4 text-center text-xs text-text-tertiary">

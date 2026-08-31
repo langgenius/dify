@@ -1,4 +1,5 @@
 import type { PanelProps } from '@/app/components/workflow/panel'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { memo, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -7,6 +8,11 @@ import CommentsPanel from '@/app/components/workflow/panel/comments-panel'
 import { useStore } from '@/app/components/workflow/store'
 import dynamic from '@/next/dynamic'
 import { useIsChatMode } from '../hooks/use-is-chat-mode'
+import {
+  difyBuilderAvailableAtom,
+  difyBuilderCanStartFixAtom,
+  difyBuilderStartRunFixAtom,
+} from './dify-builder/store'
 
 const MessageLogModal = dynamic(() => import('@/app/components/base/message-log-modal'), {
   ssr: false,
@@ -70,6 +76,9 @@ const WorkflowPanelOnLeft = () => {
   )
 }
 const WorkflowPanelOnRight = () => {
+  const difyBuilderAvailable = useAtomValue(difyBuilderAvailableAtom)
+  const canStartFix = useAtomValue(difyBuilderCanStartFixAtom)
+  const startRunFix = useSetAtom(difyBuilderStartRunFixAtom)
   const isChatMode = useIsChatMode()
   const historyWorkflowData = useStore((s) => s.historyWorkflowData)
   const showDebugAndPreviewPanel = useStore((s) => s.showDebugAndPreviewPanel)
@@ -79,7 +88,18 @@ const WorkflowPanelOnRight = () => {
 
   return (
     <>
-      {historyWorkflowData && !isChatMode && <Record />}
+      {historyWorkflowData && !isChatMode && (
+        <Record
+          fixWithBuilderDisabled={!canStartFix}
+          onFixRun={
+            difyBuilderAvailable
+              ? (runId: string) => {
+                  void startRunFix(runId)
+                }
+              : undefined
+          }
+        />
+      )}
       {historyWorkflowData && isChatMode && <ChatRecord />}
       {showDebugAndPreviewPanel && isChatMode && <DebugAndPreview />}
       {showDebugAndPreviewPanel && !isChatMode && <WorkflowPreview />}
