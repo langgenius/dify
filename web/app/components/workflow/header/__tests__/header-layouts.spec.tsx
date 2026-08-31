@@ -159,6 +159,25 @@ describe('Header layout components', () => {
         screen.queryByRole('button', { name: 'workflow.globalVar.title' }),
       ).not.toBeInTheDocument()
     })
+
+    it('should place App Builder at the end of the canvas actions', () => {
+      renderWorkflowComponent(
+        <HeaderInNormal
+          components={{
+            middle: <button type="button">middle-action</button>,
+          }}
+          controls={{
+            showDifyBuilderButton: true,
+          }}
+        />,
+      )
+
+      const appBuilderButton = screen.getByRole('button', {
+        name: 'workflow.difyBuilder.buttonTooltip',
+      })
+
+      expect(screen.getAllByRole('button').at(-1)).toBe(appBuilderButton)
+    })
   })
 
   describe('HeaderInRestoring', () => {
