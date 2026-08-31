@@ -488,7 +488,7 @@
   "newKnowledge.qualityPage.deleteEllipsis": "Excluir…",
   "newKnowledge.qualityPage.deletedToast_one": "Pergunta de referência {{count}} excluída.",
   "newKnowledge.qualityPage.deletedToast_other": "Perguntas de referência {{count}} excluídas.",
-  "newKnowledge.qualityPage.description": "Perguntas de referência para testar novamente a recuperação e casos problemáticos relatados no ambiente de produção.",
+  "newKnowledge.qualityPage.description": "Perguntas de referência para testar novamente a recuperação, casos problemáticos de produção e execuções de avaliação.",
   "newKnowledge.qualityPage.edit": "Editar",
   "newKnowledge.qualityPage.editTitle": "Editar pergunta de referência",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "Compare cada trecho de evidência esperado com os trechos recuperados nesta avaliação.",

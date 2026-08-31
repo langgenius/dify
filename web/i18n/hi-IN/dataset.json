@@ -488,7 +488,7 @@
   "newKnowledge.qualityPage.deleteEllipsis": "हटाएं...",
   "newKnowledge.qualityPage.deletedToast_one": "{{count}} संदर्भ प्रश्न हटा दिया गया।",
   "newKnowledge.qualityPage.deletedToast_other": "{{count}} संदर्भ प्रश्न हटा दिए गए।",
-  "newKnowledge.qualityPage.description": "रिट्रीवल को दोबारा जाँचने के लिए संदर्भ प्रश्न और प्रोडक्शन परिवेश से रिपोर्ट किए गए सुधार योग्य मामले।",
+  "newKnowledge.qualityPage.description": "रिट्रीवल को दोबारा जाँचने के लिए संदर्भ प्रश्न, प्रोडक्शन परिवेश के समस्या वाले मामले और मूल्यांकन रन।",
   "newKnowledge.qualityPage.edit": "संपादित करें",
   "newKnowledge.qualityPage.editTitle": "संदर्भ प्रश्न संपादित करें",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "हर अपेक्षित साक्ष्य अंश की तुलना इस मूल्यांकन में मिले अंशों से करें।",

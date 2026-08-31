@@ -488,7 +488,7 @@
   "newKnowledge.qualityPage.deleteEllipsis": "Izbriši …",
   "newKnowledge.qualityPage.deletedToast_one": "Referenčno vprašanje {{count}} izbrisano.",
   "newKnowledge.qualityPage.deletedToast_other": "{{count}} referenčna vprašanja so izbrisana.",
-  "newKnowledge.qualityPage.description": "Referenčna vprašanja za ponovno preverjanje pridobivanja in problematični primeri, prijavljeni v produkcijskem okolju.",
+  "newKnowledge.qualityPage.description": "Referenčna vprašanja za ponovno preverjanje pridobivanja, problematični primeri iz produkcije in zagoni vrednotenja.",
   "newKnowledge.qualityPage.edit": "Uredi",
   "newKnowledge.qualityPage.editTitle": "Uredi referenčno vprašanje",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "Primerjajte vsak pričakovani referenčni odlomek z odlomki, ki jih je našlo to vrednotenje.",

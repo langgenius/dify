@@ -488,7 +488,7 @@
   "newKnowledge.qualityPage.deleteEllipsis": "Удалить…",
   "newKnowledge.qualityPage.deletedToast_one": "Удалён {{count}} эталонный вопрос.",
   "newKnowledge.qualityPage.deletedToast_other": "Удалено эталонных вопросов: {{count}}.",
-  "newKnowledge.qualityPage.description": "Эталонные вопросы для повторной проверки поиска и проблемные случаи из рабочей среды.",
+  "newKnowledge.qualityPage.description": "Эталонные вопросы для повторной проверки поиска, проблемные случаи из рабочей среды и запуски оценки.",
   "newKnowledge.qualityPage.edit": "Править",
   "newKnowledge.qualityPage.editTitle": "Редактировать эталонный вопрос",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "Сравните каждый ожидаемый подтверждающий фрагмент с фрагментами, найденными при этой оценке.",

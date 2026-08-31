@@ -488,7 +488,7 @@
   "newKnowledge.qualityPage.deleteEllipsis": "削除…",
   "newKnowledge.qualityPage.deletedToast_one": "{{count}} 参考質問を削除しました。",
   "newKnowledge.qualityPage.deletedToast_other": "{{count}} 参考質問を削除しました。",
-  "newKnowledge.qualityPage.description": "検索を再テストするための参考質問と、本番環境から報告された問題ケースを管理します。",
+  "newKnowledge.qualityPage.description": "検索を再テストするための参考質問、本番環境の問題ケース、評価実行を管理します。",
   "newKnowledge.qualityPage.edit": "編集",
   "newKnowledge.qualityPage.editTitle": "参考質問を編集",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "期待される各根拠段落と、この評価で取得された段落を比較します。",

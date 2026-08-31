@@ -488,7 +488,7 @@
   "newKnowledge.qualityPage.deleteEllipsis": "Löschen…",
   "newKnowledge.qualityPage.deletedToast_one": "{{count}} Referenzfrage gelöscht.",
   "newKnowledge.qualityPage.deletedToast_other": "{{count}} Referenzfragen gelöscht.",
-  "newKnowledge.qualityPage.description": "Referenzfragen zum erneuten Testen des Abrufs sowie Problemfälle aus dem Produktivbetrieb.",
+  "newKnowledge.qualityPage.description": "Referenzfragen zur erneuten Prüfung des Abrufs, Problemfälle aus dem Produktivbetrieb und Evaluierungsläufe.",
   "newKnowledge.qualityPage.edit": "Bearbeiten",
   "newKnowledge.qualityPage.editTitle": "Referenzfrage bearbeiten",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "Vergleichen Sie jeden erwarteten Belegabschnitt mit den von dieser Auswertung abgerufenen Abschnitten.",

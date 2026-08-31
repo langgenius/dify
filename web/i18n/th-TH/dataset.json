@@ -488,7 +488,7 @@
   "newKnowledge.qualityPage.deleteEllipsis": "ลบ...",
   "newKnowledge.qualityPage.deletedToast_one": "คำถามอ้างอิง {{count}} ถูกลบแล้ว",
   "newKnowledge.qualityPage.deletedToast_other": "คำถามอ้างอิง {{count}} ถูกลบแล้ว",
-  "newKnowledge.qualityPage.description": "คำถามอ้างอิงสำหรับทดสอบการค้นคืนอีกครั้ง และกรณีที่ต้องปรับปรุงซึ่งรายงานจากระบบที่ใช้งานจริง",
+  "newKnowledge.qualityPage.description": "คำถามอ้างอิงสำหรับทดสอบการค้นคืนอีกครั้ง กรณีปัญหาจากระบบที่ใช้งานจริง และการเรียกใช้การประเมิน",
   "newKnowledge.qualityPage.edit": "แก้ไข",
   "newKnowledge.qualityPage.editTitle": "แก้ไขคำถามอ้างอิง",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "เปรียบเทียบข้อความหลักฐานที่คาดหวังแต่ละรายการกับข้อความที่การประเมินนี้ค้นคืนมา",

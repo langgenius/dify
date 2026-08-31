@@ -488,7 +488,7 @@
   "newKnowledge.qualityPage.deleteEllipsis": "حذف…",
   "newKnowledge.qualityPage.deletedToast_one": "سوال مرجع {{count}} حذف شد.",
   "newKnowledge.qualityPage.deletedToast_other": "سوالات مرجع {{count}} حذف شد.",
-  "newKnowledge.qualityPage.description": "پرسش‌های مرجع برای آزمایش دوبارهٔ بازیابی و موارد نیازمند بهبود گزارش‌شده از محیط عملیاتی.",
+  "newKnowledge.qualityPage.description": "پرسش‌های مرجع برای آزمایش دوبارهٔ بازیابی، موارد مسئله‌دار محیط عملیاتی و اجرای ارزیابی‌ها.",
   "newKnowledge.qualityPage.edit": "ویرایش",
   "newKnowledge.qualityPage.editTitle": "ویرایش سوال مرجع",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "هر بخش شاهد مورد انتظار را با بخش‌های بازیابی‌شده در این ارزیابی مقایسه کنید.",

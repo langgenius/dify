@@ -488,7 +488,7 @@
   "newKnowledge.qualityPage.deleteEllipsis": "Șterge...",
   "newKnowledge.qualityPage.deletedToast_one": "Întrebarea de referință {{count}} a fost ștearsă.",
   "newKnowledge.qualityPage.deletedToast_other": "Întrebările de referință {{count}} au fost șterse.",
-  "newKnowledge.qualityPage.description": "Întrebări de referință pentru a retesta regăsirea și cazuri problematice raportate din mediul de producție.",
+  "newKnowledge.qualityPage.description": "Întrebări de referință pentru a retesta regăsirea, cazuri problematice din producție și rulări de evaluare.",
   "newKnowledge.qualityPage.edit": "Editează",
   "newKnowledge.qualityPage.editTitle": "Editați întrebarea de referință",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "Compară fiecare fragment de dovadă așteptat cu fragmentele găsite de această evaluare.",

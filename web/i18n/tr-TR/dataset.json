@@ -488,7 +488,7 @@
   "newKnowledge.qualityPage.deleteEllipsis": "Sil…",
   "newKnowledge.qualityPage.deletedToast_one": "{{count}} referans sorusu silindi.",
   "newKnowledge.qualityPage.deletedToast_other": "{{count}} referans soruları silindi.",
-  "newKnowledge.qualityPage.description": "Getirme işlemini yeniden test eden referans soruları ve canlı ortamdan bildirilen sorunlu durumlar.",
+  "newKnowledge.qualityPage.description": "Getirme işlemini yeniden test eden referans soruları, canlı ortamdaki sorunlu durumlar ve değerlendirme çalıştırmaları.",
   "newKnowledge.qualityPage.edit": "Düzenle",
   "newKnowledge.qualityPage.editTitle": "Referans sorusunu düzenle",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "Beklenen her kanıt bölümünü bu değerlendirmede getirilen bölümlerle karşılaştırın.",

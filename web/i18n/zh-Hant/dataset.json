@@ -491,7 +491,7 @@
   "newKnowledge.qualityPage.deleteEllipsis": "刪除…",
   "newKnowledge.qualityPage.deletedToast_one": "{{count}} 參考問題已刪除。",
   "newKnowledge.qualityPage.deletedToast_other": "已刪除 {{count}} 個參考問題。",
-  "newKnowledge.qualityPage.description": "用於重新測試檢索效果的參考問題，以及正式環境回報的問題案例。",
+  "newKnowledge.qualityPage.description": "用於重新測試檢索效果的參考問題、正式環境的問題案例和評測執行記錄。",
   "newKnowledge.qualityPage.edit": "編輯",
   "newKnowledge.qualityPage.editTitle": "編輯參考問題",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "逐條比較預期依據段落與本次評測實際檢索到的段落。",

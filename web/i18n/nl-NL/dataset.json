@@ -488,7 +488,7 @@
   "newKnowledge.qualityPage.deleteEllipsis": "Verwijderen…",
   "newKnowledge.qualityPage.deletedToast_one": "{{count}} referentievraag verwijderd.",
   "newKnowledge.qualityPage.deletedToast_other": "{{count}} referentievragen verwijderd.",
-  "newKnowledge.qualityPage.description": "Referentievragen om het ophalen opnieuw te testen en probleemgevallen die vanuit de productieomgeving zijn gemeld.",
+  "newKnowledge.qualityPage.description": "Referentievragen om het ophalen opnieuw te testen, probleemgevallen uit productie en evaluatieruns.",
   "newKnowledge.qualityPage.edit": "Bewerken",
   "newKnowledge.qualityPage.editTitle": "Referentievraag bewerken",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "Vergelijk elke verwachte bewijs passage met de passages die door deze evaluatie zijn opgehaald.",

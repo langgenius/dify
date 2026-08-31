@@ -476,7 +476,12 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
     })
 
   return (
-    <main className="relative min-h-full min-w-0 flex-1 px-6 pt-3 pb-20">
+    <main
+      className={cn(
+        'relative min-h-full min-w-0 flex-1 px-8 pb-20',
+        selectedEvaluationRunId ? 'pt-3' : 'pt-8',
+      )}
+    >
       {!selectedEvaluationRunId && (
         <header>
           <h1 className="system-xl-semibold text-text-primary">

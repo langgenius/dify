@@ -488,7 +488,7 @@
   "newKnowledge.qualityPage.deleteEllipsis": "삭제…",
   "newKnowledge.qualityPage.deletedToast_one": "{{count}} 참고 질문이 삭제되었습니다.",
   "newKnowledge.qualityPage.deletedToast_other": "{{count}} 참고 질문이 삭제되었습니다.",
-  "newKnowledge.qualityPage.description": "검색을 다시 테스트하기 위한 참고 질문과 운영 환경에서 보고된 문제 사례를 관리합니다.",
+  "newKnowledge.qualityPage.description": "검색을 다시 테스트하기 위한 참고 질문, 운영 환경의 문제 사례, 평가 실행을 관리합니다.",
   "newKnowledge.qualityPage.edit": "편집",
   "newKnowledge.qualityPage.editTitle": "참고 질문 수정",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "각 예상 근거 문단과 이번 평가에서 검색된 문단을 비교합니다.",

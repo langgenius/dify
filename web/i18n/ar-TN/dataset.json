@@ -488,7 +488,7 @@
   "newKnowledge.qualityPage.deleteEllipsis": "حذف…",
   "newKnowledge.qualityPage.deletedToast_one": "تم حذف السؤال المرجعي {{count}}.",
   "newKnowledge.qualityPage.deletedToast_other": "تم حذف الأسئلة المرجعية {{count}}.",
-  "newKnowledge.qualityPage.description": "أسئلة مرجعية لاختبار الاسترجاع مجددًا، وحالات تحتاج إلى تحسين واردة من بيئة الإنتاج.",
+  "newKnowledge.qualityPage.description": "أسئلة مرجعية لإعادة اختبار الاسترجاع، وحالات إشكالية من بيئة الإنتاج، وعمليات تشغيل التقييم.",
   "newKnowledge.qualityPage.edit": "تحرير",
   "newKnowledge.qualityPage.editTitle": "تعديل السؤال المرجعي",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "قارن كل مقطع دليل متوقع بالمقاطع التي استرجعها هذا التقييم.",

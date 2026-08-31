@@ -488,7 +488,7 @@
   "newKnowledge.qualityPage.deleteEllipsis": "Usuń…",
   "newKnowledge.qualityPage.deletedToast_one": "Usunięto pytanie referencyjne {{count}}.",
   "newKnowledge.qualityPage.deletedToast_other": "Usunięto pytania referencyjne {{count}}.",
-  "newKnowledge.qualityPage.description": "Pytania referencyjne do ponownego testowania wyszukiwania oraz przypadki do poprawy zgłoszone w środowisku produkcyjnym.",
+  "newKnowledge.qualityPage.description": "Pytania referencyjne do ponownego testowania wyszukiwania, przypadki problemowe z produkcji i uruchomienia oceny.",
   "newKnowledge.qualityPage.edit": "Edytuj",
   "newKnowledge.qualityPage.editTitle": "Edytuj pytanie referencyjne",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "Porównaj każdy oczekiwany fragment źródłowy z fragmentami pobranymi w tej ocenie.",

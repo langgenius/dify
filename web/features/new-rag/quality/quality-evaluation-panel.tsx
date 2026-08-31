@@ -27,6 +27,7 @@ import { RetrievalModeSegmentedControl } from '../components/retrieval-mode-segm
 type ReplayState = KnowledgeFsQualityReplayResponse['state']
 
 const pageSize = 20
+const activeQuestionCountLimit = 100
 const activeReplayStates = new Set<ReplayState>(['queued', 'running'])
 
 function evaluationStateClassName(state: ReplayState) {
@@ -430,10 +431,20 @@ export function QualityEvaluationPanel({
         ? 1500
         : false,
   })
+  const goldenQuestionsQuery = useQuery(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.queryOptions({
+      input: {
+        params: { control_space_id: knowledgeSpaceId },
+        query: { limit: activeQuestionCountLimit },
+      },
+    }),
+  )
   const createMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.post.mutationOptions(),
   )
   const runs = listQuery.data?.pages.flatMap((page) => page.data) ?? []
+  const activeGoldenQuestionCount =
+    goldenQuestionsQuery.data?.data.filter((question) => question.status === 'active').length ?? 0
 
   const startEvaluation = async () => {
     try {
@@ -501,7 +512,7 @@ export function QualityEvaluationPanel({
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="mt-2.5 overflow-x-auto pt-3">
               <div className="grid min-w-185 grid-cols-[150px_110px_140px_160px_110px_1fr] gap-3 py-2.5 system-2xs-medium-uppercase text-text-tertiary">
                 <span>{t(($) => $['newKnowledge.qualityPage.evaluation.createdAt'])}</span>
                 <span>{t(($) => $['newKnowledge.qualityPage.statusLabel'])}</span>
@@ -574,7 +585,9 @@ export function QualityEvaluationPanel({
                 {t(($) => $['newKnowledge.qualityPage.evaluation.dialogTitle'])}
               </DialogTitle>
               <DialogDescription className="mt-2 pr-8 system-sm-regular text-text-tertiary">
-                {t(($) => $['newKnowledge.qualityPage.evaluation.dialogDescription'])}
+                {t(($) => $['newKnowledge.qualityPage.evaluation.dialogDescription'], {
+                  count: activeGoldenQuestionCount,
+                })}
               </DialogDescription>
               <DialogClose
                 render={

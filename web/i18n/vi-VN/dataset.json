@@ -488,7 +488,7 @@
   "newKnowledge.qualityPage.deleteEllipsis": "Xóa…",
   "newKnowledge.qualityPage.deletedToast_one": "Đã xóa {{count}} câu hỏi tham chiếu.",
   "newKnowledge.qualityPage.deletedToast_other": "Đã xóa {{count}} câu hỏi tham chiếu.",
-  "newKnowledge.qualityPage.description": "Các câu hỏi tham chiếu được chạy lại qua hệ thống truy xuất; các trường hợp cần cải thiện đến từ báo cáo trong môi trường thực tế.",
+  "newKnowledge.qualityPage.description": "Các câu hỏi tham chiếu để chạy lại trên hệ thống truy xuất, các trường hợp có vấn đề từ môi trường thực tế và các lượt đánh giá.",
   "newKnowledge.qualityPage.edit": "Chỉnh sửa",
   "newKnowledge.qualityPage.editTitle": "Chỉnh sửa câu hỏi tham chiếu",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "So sánh từng đoạn bằng chứng mong đợi với các đoạn được truy xuất trong lần đánh giá này.",

@@ -488,7 +488,7 @@
   "newKnowledge.qualityPage.deleteEllipsis": "Elimina…",
   "newKnowledge.qualityPage.deletedToast_one": "Domanda di riferimento {{count}} eliminata.",
   "newKnowledge.qualityPage.deletedToast_other": "Domande di riferimento {{count}} eliminate.",
-  "newKnowledge.qualityPage.description": "Domande di riferimento per verificare nuovamente il recupero e casi problematici segnalati nell’ambiente di produzione.",
+  "newKnowledge.qualityPage.description": "Domande di riferimento per verificare nuovamente il recupero, casi problematici di produzione ed esecuzioni di valutazione.",
   "newKnowledge.qualityPage.edit": "Modifica",
   "newKnowledge.qualityPage.editTitle": "Modifica la domanda di riferimento",
   "newKnowledge.qualityPage.evaluation.evidenceDetailsDescription": "Confronta ogni passaggio di riscontro previsto con i passaggi recuperati da questa valutazione.",

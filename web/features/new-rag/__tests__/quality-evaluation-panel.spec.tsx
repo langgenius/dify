@@ -8,6 +8,7 @@ import { QualityEvaluationPanel } from '../quality/quality-evaluation-panel'
 const serviceMock = vi.hoisted(() => ({
   createReplay: vi.fn(),
   getReplay: vi.fn(),
+  listGoldenQuestions: vi.fn(),
   listReplays: vi.fn(),
 }))
 
@@ -20,6 +21,14 @@ vi.mock('@/service/client', () => ({
     knowledgeFs: {
       spaces: {
         byControlSpaceId: {
+          goldenQuestions: {
+            get: {
+              queryOptions: ({ input }: { input: unknown }) => ({
+                queryFn: () => serviceMock.listGoldenQuestions(input),
+                queryKey: ['quality', 'golden-questions', input],
+              }),
+            },
+          },
           quality: {
             replayRuns: {
               byRunId: {
@@ -145,6 +154,13 @@ function renderPanel() {
 describe('QualityEvaluationPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    serviceMock.listGoldenQuestions.mockResolvedValue({
+      data: Array.from({ length: 6 }, (_, index) => ({
+        id: `golden-${index + 1}`,
+        status: 'active',
+      })),
+      next_cursor: null,
+    })
     serviceMock.listReplays.mockResolvedValue({ data: [], next_cursor: null })
     serviceMock.createReplay.mockResolvedValue({ ...completedRun, state: 'queued' })
     serviceMock.getReplay.mockResolvedValue(completedRun)
@@ -185,7 +201,7 @@ describe('QualityEvaluationPanel', () => {
       '-translate-y-1/2',
     )
     expect(dialog).toHaveAccessibleDescription(
-      'dataset.newKnowledge.qualityPage.evaluation.dialogDescription',
+      'dataset.newKnowledge.qualityPage.evaluation.dialogDescription:{"count":6}',
     )
     expect(
       screen.getByRole('radio', {
