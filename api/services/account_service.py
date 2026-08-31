@@ -86,7 +86,6 @@ from tasks.mail_owner_transfer_task import (
     send_old_owner_transfer_notify_email_task,
     send_owner_transfer_confirm_task,
 )
-from tasks.mail_register_task import send_email_register_mail_task, send_email_register_mail_task_when_account_exist
 from tasks.mail_reset_password_task import (
     send_reset_password_mail_task,
     send_reset_password_mail_task_when_account_not_exist,
@@ -150,7 +149,6 @@ class AccountService:
     CHANGE_EMAIL_PHASE_NEW = ChangeEmailPhase.NEW_EMAIL
 
     reset_password_rate_limiter = RateLimiter(prefix="reset_password_rate_limit", max_attempts=1, time_window=60 * 1)
-    email_register_rate_limiter = RateLimiter(prefix="email_register_rate_limit", max_attempts=1, time_window=60 * 1)
     change_email_rate_limiter = RateLimiter(prefix="change_email_rate_limit", max_attempts=1, time_window=60 * 1)
     owner_transfer_rate_limiter = RateLimiter(prefix="owner_transfer_rate_limit", max_attempts=1, time_window=60 * 1)
 
@@ -158,7 +156,6 @@ class AccountService:
     FORGOT_PASSWORD_MAX_ERROR_LIMITS = 5
     CHANGE_EMAIL_MAX_ERROR_LIMITS = 5
     OWNER_TRANSFER_MAX_ERROR_LIMITS = 5
-    EMAIL_REGISTER_MAX_ERROR_LIMITS = 5
 
     @staticmethod
     def _resolve_role_id_by_tag(tenant_id: str, account_id: str, tag: str) -> str:
@@ -642,40 +639,6 @@ class AccountService:
         return token
 
     @classmethod
-    def send_email_register_email(
-        cls,
-        account: Account | None = None,
-        email: str | None = None,
-        language: str = "en-US",
-    ):
-        account_email = account.email if account else email
-        if account_email is None:
-            raise ValueError("Email must be provided.")
-
-        if cls.email_register_rate_limiter.is_rate_limited(account_email):
-            from controllers.console.auth.error import EmailRegisterRateLimitExceededError
-
-            raise EmailRegisterRateLimitExceededError(int(cls.email_register_rate_limiter.time_window / 60))
-
-        code, token = cls.generate_email_register_token(account_email)
-
-        if account:
-            send_email_register_mail_task_when_account_exist.delay(
-                language=language,
-                to=account_email,
-                account_name=account.name,
-            )
-
-        else:
-            send_email_register_mail_task.delay(
-                language=language,
-                to=account_email,
-                code=code,
-            )
-        cls.email_register_rate_limiter.increment_rate_limit(account_email)
-        return token
-
-    @classmethod
     def send_change_email_email(
         cls,
         account: Account,
@@ -829,19 +792,6 @@ class AccountService:
         return code, token
 
     @classmethod
-    def generate_email_register_token(
-        cls,
-        email: str,
-        code: str | None = None,
-        additional_data: dict[str, Any] = {},
-    ):
-        if not code:
-            code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
-        additional_data["code"] = code
-        token = TokenManager.generate_token(email=email, token_type="email_register", additional_data=additional_data)
-        return code, token
-
-    @classmethod
     def generate_change_email_token(
         cls,
         token_data: ChangeEmailTokenData,
@@ -879,10 +829,6 @@ class AccountService:
         TokenManager.revoke_token(token, "reset_password")
 
     @classmethod
-    def revoke_email_register_token(cls, token: str):
-        TokenManager.revoke_token(token, "email_register")
-
-    @classmethod
     def revoke_change_email_token(cls, token: str):
         TokenManager.revoke_token(token, "change_email")
 
@@ -893,10 +839,6 @@ class AccountService:
     @classmethod
     def get_reset_password_data(cls, token: str) -> dict[str, Any] | None:
         return TokenManager.get_token_data(token, "reset_password")
-
-    @classmethod
-    def get_email_register_data(cls, token: str) -> dict[str, Any] | None:
-        return TokenManager.get_token_data(token, "email_register")
 
     @classmethod
     def get_change_email_data(cls, token: str) -> ChangeEmailTokenData | None:
@@ -967,16 +909,6 @@ class AccountService:
         redis_client.setex(key, dify_config.FORGOT_PASSWORD_LOCKOUT_DURATION, count)
 
     @staticmethod
-    @redis_fallback(default_return=None)
-    def add_email_register_error_rate_limit(email: str) -> None:
-        key = f"email_register_error_rate_limit:{email}"
-        count = redis_client.get(key)
-        if count is None:
-            count = 0
-        count = int(count) + 1
-        redis_client.setex(key, dify_config.EMAIL_REGISTER_LOCKOUT_DURATION, count)
-
-    @staticmethod
     @redis_fallback(default_return=False)
     def is_forgot_password_error_rate_limit(email: str) -> bool:
         key = f"forgot_password_error_rate_limit:{email}"
@@ -993,24 +925,6 @@ class AccountService:
     @redis_fallback(default_return=None)
     def reset_forgot_password_error_rate_limit(email: str):
         key = f"forgot_password_error_rate_limit:{email}"
-        redis_client.delete(key)
-
-    @staticmethod
-    @redis_fallback(default_return=False)
-    def is_email_register_error_rate_limit(email: str) -> bool:
-        key = f"email_register_error_rate_limit:{email}"
-        count = redis_client.get(key)
-        if count is None:
-            return False
-        count = int(count)
-        if count > AccountService.EMAIL_REGISTER_MAX_ERROR_LIMITS:
-            return True
-        return False
-
-    @staticmethod
-    @redis_fallback(default_return=None)
-    def reset_email_register_error_rate_limit(email: str):
-        key = f"email_register_error_rate_limit:{email}"
         redis_client.delete(key)
 
     @staticmethod
