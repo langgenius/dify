@@ -1,5 +1,9 @@
 import type { QueryClient } from '@tanstack/react-query'
-import type { AppPublisherProps, AppPublisherPublishParams } from '../types'
+import type {
+  AppPublisherProps,
+  AppPublisherPublishOptions,
+  AppPublisherPublishParams,
+} from '../types'
 import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useQueryClient } from '@tanstack/react-query'
@@ -81,8 +85,11 @@ export function usePublishController({
       : publishedAt
   const hasPublishedVersion = Boolean(currentPublishedAt)
 
-  async function publishApp(params?: AppPublisherPublishParams) {
-    await onPublish?.(params)
+  async function publishApp(
+    params?: AppPublisherPublishParams,
+    options?: AppPublisherPublishOptions,
+  ) {
+    await onPublish?.(params, options)
     setPublished(true)
 
     const socket = appId ? webSocketClient.getSocket(appId) : null
@@ -120,6 +127,10 @@ export function usePublishController({
       console.warn('[app-publisher] publish failed', error)
       setPublished(false)
     }
+  }
+
+  async function publishWorkflowTool(params?: AppPublisherPublishParams) {
+    await publishApp(params, { showSuccessToast: false })
   }
 
   async function handleRestore() {
@@ -168,7 +179,7 @@ export function usePublishController({
     isWorkflowApp,
     published,
     publishedWorkflow,
-    publishWorkflowTool: publishApp,
+    publishWorkflowTool,
     resetPublished: () => setPublished(false),
   }
 }

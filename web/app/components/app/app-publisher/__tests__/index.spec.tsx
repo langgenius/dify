@@ -846,8 +846,8 @@ describe('AppPublisher', () => {
       ...mockAppDetail,
       mode: AppModeEnum.WORKFLOW,
     }
-    mockOnPublish.mockImplementation(async () => {
-      mockToastSuccess('common.api.actionSuccess')
+    mockOnPublish.mockImplementation(async (_params, options?: { showSuccessToast?: boolean }) => {
+      if (options?.showSuccessToast !== false) mockToastSuccess('common.api.actionSuccess')
     })
     mockCreateWorkflowToolProvider.mockResolvedValue({})
 
@@ -860,7 +860,31 @@ describe('AppPublisher', () => {
     await waitFor(() => {
       expect(mockCreateWorkflowToolProvider).toHaveBeenCalledOnce()
     })
+    expect(mockOnPublish).toHaveBeenCalledWith(undefined, { showSuccessToast: false })
     expect(mockToastSuccess).toHaveBeenCalledOnce()
+  })
+
+  it('should not show a success toast when workflow tool creation fails after publishing', async () => {
+    mockAppDetail = {
+      ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
+    }
+    mockOnPublish.mockImplementation(async (_params, options?: { showSuccessToast?: boolean }) => {
+      if (options?.showSuccessToast !== false) mockToastSuccess('common.api.actionSuccess')
+    })
+    mockCreateWorkflowToolProvider.mockRejectedValue(new Error('create failed'))
+
+    render(<AppPublisher publishedAt={Date.now()} onPublish={mockOnPublish} />)
+
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    fireEvent.click(screen.getByText('publisher-workflow-tool'))
+    fireEvent.click(screen.getByRole('button', { name: 'create-workflow-tool' }))
+
+    await waitFor(() => {
+      expect(mockToastError).toHaveBeenCalledWith('create failed')
+    })
+    expect(mockOnPublish).toHaveBeenCalledWith(undefined, { showSuccessToast: false })
+    expect(mockToastSuccess).not.toHaveBeenCalled()
   })
 
   it('should not create a workflow tool when automatic publishing fails', async () => {
