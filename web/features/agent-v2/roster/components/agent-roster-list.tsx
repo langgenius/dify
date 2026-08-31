@@ -205,8 +205,6 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
   const nameId = useId()
   const descriptionId = useId()
   const [activeDialog, setActiveDialog] = useState<'delete' | 'duplicate' | 'edit' | null>(null)
-  const [editSessionKey, setEditSessionKey] = useState(0)
-  const [duplicateSessionKey, setDuplicateSessionKey] = useState(0)
   const { exportAppDsl, isExporting } = useExportAppDsl()
   const updatedAt =
     agent.updated_at != null
@@ -220,16 +218,19 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
   const hasPublishedReferences = publishedReferences.length > 0
   const isDraft = agent.active_config_is_published !== true
   const parsedIconType = zAgentIconType.safeParse(agent.icon_type).data
-  const imageUrl = parsedIconType === 'image' || parsedIconType === 'link' ? agent.icon : undefined
+  const imageUrl =
+    parsedIconType === 'image'
+      ? (agent.icon_url ?? agent.icon)
+      : parsedIconType === 'link'
+        ? agent.icon
+        : undefined
   const iconType = parsedIconType === 'link' ? 'image' : parsedIconType
 
   const handleEditOpen = () => {
-    setEditSessionKey((key) => key + 1)
     setActiveDialog('edit')
   }
 
   const handleDuplicateOpen = () => {
-    setDuplicateSessionKey((key) => key + 1)
     setActiveDialog('duplicate')
   }
 
@@ -370,13 +371,11 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
         </div>
       </div>
       <EditAgentDialog
-        key={editSessionKey}
         agent={agent}
         open={activeDialog === 'edit'}
         onOpenChange={handleDialogOpenChange}
       />
       <DuplicateAgentDialog
-        key={duplicateSessionKey}
         agent={agent}
         open={activeDialog === 'duplicate'}
         onOpenChange={handleDialogOpenChange}

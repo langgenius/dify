@@ -5,9 +5,13 @@ import type { DeploymentEdition } from '@dify/contracts/api/console/system-featu
 import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { Fragment, useEffect, useRef } from 'react'
+import { Fragment, useEffect, useRef, useSyncExternalStore } from 'react'
 import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
-import { flushRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
+import {
+  flushRegistrationSuccess,
+  getRegistrationSuccessSnapshot,
+  subscribeRegistrationSuccess,
+} from '@/app/components/base/amplitude/registration-tracking'
 import { useAmplitudeInitialized } from '@/app/components/base/amplitude/use-amplitude-initialized'
 import { useAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
@@ -43,13 +47,18 @@ function buildAmplitudeProperties({
   return properties
 }
 
-function AmplitudeIdentitySync() {
+export function AmplitudeIdentitySync() {
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const lastIdentityRef = useRef<string | undefined>(undefined)
+  const registrationSnapshot = useSyncExternalStore(
+    subscribeRegistrationSuccess,
+    getRegistrationSuccessSnapshot,
+    getRegistrationSuccessSnapshot,
+  )
 
   useEffect(() => {
     if (!userProfile.id) return
@@ -63,13 +72,14 @@ function AmplitudeIdentitySync() {
       properties,
     })
 
-    if (identity === lastIdentityRef.current) return
+    if (identity !== lastIdentityRef.current) {
+      setUserId(userProfile.email)
+      setUserProperties(properties)
+      lastIdentityRef.current = identity
+    }
 
-    setUserId(userProfile.email)
-    setUserProperties(properties)
-    flushRegistrationSuccess()
-    lastIdentityRef.current = identity
-  }, [currentWorkspace, userProfile])
+    void flushRegistrationSuccess()
+  }, [currentWorkspace, registrationSnapshot, userProfile])
 
   return null
 }
