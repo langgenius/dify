@@ -72,15 +72,28 @@ describe("answer-trace handler branch coverage", () => {
     for (const route of ROUTES) await expect(fixture.invoke(route)).rejects.toBe(failure);
   });
 
-  it("rejects a dangling evidenceBundleId and inactive evidence documents", async () => {
+  it("rejects a dangling evidenceBundleId but preserves traces with unavailable evidence", async () => {
     const dangling = traceFixture({ trace: answerTrace({ evidenceBundleId: "dangling" }) });
     for (const route of ROUTES) expect((await dangling.invoke(route)).status).toBe(404);
 
     const inactive = traceFixture({ asset: null, trace: bundledTrace() });
-    for (const route of ROUTES) expect((await inactive.invoke(route)).status).toBe(404);
+    for (const route of ROUTES) expect((await inactive.invoke(route)).status).toBe(200);
+    expect(await inactive.invoke(listQueryEvidenceRoute)).toMatchObject({
+      body: {
+        items: [
+          {
+            metadata: {
+              availability: "unavailable",
+              text: "Evidence deleted or unavailable",
+              unavailableReason: "document-deleted-or-unavailable",
+            },
+          },
+        ],
+      },
+    });
   });
 
-  it("rejects missing or hidden evidence nodes and hidden citation assets", async () => {
+  it("redacts missing or hidden evidence instead of hiding the trace", async () => {
     const cases = [
       { nodes: [] },
       {
@@ -93,7 +106,10 @@ describe("answer-trace handler branch coverage", () => {
     ];
     for (const options of cases) {
       const fixture = traceFixture({ ...options, trace: bundledTrace() });
-      for (const route of ROUTES) expect((await fixture.invoke(route)).status).toBe(404);
+      for (const route of ROUTES) expect((await fixture.invoke(route)).status).toBe(200);
+      expect(await fixture.invoke(listQueryEvidenceRoute)).toMatchObject({
+        body: { items: [{ metadata: { availability: "unavailable" } }] },
+      });
     }
   });
 

@@ -1820,6 +1820,77 @@ describe('RetrievalTestPage', () => {
     ).toBeInTheDocument()
   })
 
+  it('keeps a trace visible when one document is deleted and marks only that evidence unavailable', async () => {
+    apiMock.traces = [
+      {
+        completed: true,
+        created_at: '2026-07-29T00:00:00.000Z',
+        id: 'trace-1',
+        mode: 'fast',
+        profile: {},
+        query: 'Compare all three sources',
+        scores: {},
+        stages: [],
+      },
+    ]
+    apiMock.evidence = {
+      data: [
+        {
+          kind: 'resource',
+          metadata: {
+            availability: 'available',
+            logicalDocumentId: 'document-1',
+            text: 'First available passage.',
+            title: 'First source',
+          },
+          name: 'node-1',
+          path: '/queries/trace-1/evidence/node-1',
+          resourceType: 'node',
+          targetId: 'node-1',
+        },
+        {
+          kind: 'resource',
+          metadata: {
+            availability: 'unavailable',
+            text: 'Evidence deleted or unavailable',
+            unavailableReason: 'document-deleted-or-unavailable',
+          },
+          name: 'node-2',
+          path: '/queries/trace-1/evidence/node-2',
+          resourceType: 'node',
+          targetId: 'node-2',
+        },
+        {
+          kind: 'resource',
+          metadata: {
+            availability: 'available',
+            logicalDocumentId: 'document-3',
+            text: 'Third available passage.',
+            title: 'Third source',
+          },
+          name: 'node-3',
+          path: '/queries/trace-1/evidence/node-3',
+          resourceType: 'node',
+          targetId: 'node-3',
+        },
+      ],
+    }
+    const user = userEvent.setup()
+
+    renderPage()
+    await user.click(screen.getByRole('button', { name: /Compare all three sources/ }))
+
+    expect(screen.getByText('First available passage.')).toBeInTheDocument()
+    expect(screen.getByText('Third available passage.')).toBeInTheDocument()
+    expect(
+      screen.getByText('dataset.newKnowledge.qualityPage.evaluation.evidenceUnavailable'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Evidence deleted or unavailable')).not.toBeInTheDocument()
+    expect(
+      screen.getAllByRole('link', { name: 'dataset.newKnowledge.retrievalTest.open' }),
+    ).toHaveLength(2)
+  })
+
   it('shows the full chunk and opens its source when the revision is unavailable', async () => {
     apiMock.traces = [
       {

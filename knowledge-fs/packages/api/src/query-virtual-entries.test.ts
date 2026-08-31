@@ -95,6 +95,7 @@ describe("query-virtual-entries", () => {
     expect(queryEvidenceEntries(TRACE_ID, bundle)).toMatchObject([
       {
         metadata: {
+          availability: "available",
           documentId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c44",
           documentVersion: 1,
           sectionPath: ["Roadmap"],
@@ -122,6 +123,34 @@ describe("query-virtual-entries", () => {
         targetId: MISSING_EVIDENCE_ID,
       },
     ]);
+  });
+
+  it("exposes a machine-readable tombstone without historical evidence content", () => {
+    const bundle = evidenceBundle();
+    const item = bundle.items[0];
+    if (!item) throw new Error("Expected evidence fixture item");
+    const entries = queryEvidenceEntries(TRACE_ID, {
+      ...bundle,
+      items: [
+        {
+          ...item,
+          metadata: {
+            traceEvidenceAvailability: {
+              reason: "document-deleted-or-unavailable",
+              status: "unavailable",
+            },
+          },
+          text: "Evidence deleted or unavailable",
+        },
+      ],
+    });
+
+    expect(entries[0]?.metadata).toMatchObject({
+      availability: "unavailable",
+      text: "Evidence deleted or unavailable",
+      unavailableReason: "document-deleted-or-unavailable",
+    });
+    expect(JSON.stringify(entries)).not.toContain("KnowledgeFS exposes evidence.");
   });
 
   it("paginates virtual entries with explicit cursor validation", () => {

@@ -87,6 +87,7 @@ function EvidenceOpenAction({
   const { t } = useTranslation('dataset')
   const router = useRouter()
   const [isResolving, setIsResolving] = useState(false)
+  if (evidence.availability === 'unavailable') return null
   const actionClassName =
     'flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-wait disabled:opacity-60'
   const openHref = evidence.documentId
@@ -167,6 +168,7 @@ export function EvidenceCard({
   knowledgeSpaceId: string
 }) {
   const { t } = useTranslation('dataset')
+  const unavailable = evidence.availability === 'unavailable'
 
   return (
     <article
@@ -181,14 +183,27 @@ export function EvidenceCard({
         <div className="flex items-center gap-2">
           <h3 className="flex min-w-0 flex-1 items-center gap-0.5 truncate system-xs-medium text-text-tertiary">
             <span aria-hidden className="i-custom-public-knowledge-selection-mod size-3 shrink-0" />
-            <span className="truncate">{evidence.title || `Chunk ${index + 1}`}</span>
+            <span className="truncate">
+              {unavailable
+                ? `${t(($) => $['newKnowledge.qualityPage.evidence'])} ${index + 1} · ${t(($) => $['cornerLabel.unavailable'])}`
+                : evidence.title || `Chunk ${index + 1}`}
+            </span>
           </h3>
-          {evidence.score !== undefined && <ScorePill score={evidence.score} />}
+          {!unavailable && evidence.score !== undefined && <ScorePill score={evidence.score} />}
         </div>
-        <p className="body-md-regular tracking-[-0.07px] whitespace-pre-wrap text-text-secondary">
-          {evidence.text}
-        </p>
-        {evidence.images.length > 0 && (
+        {unavailable ? (
+          <div className="flex items-start gap-2 rounded-lg bg-state-base-hover px-3 py-2 text-text-tertiary">
+            <span aria-hidden className="mt-0.5 i-ri-error-warning-line size-4 shrink-0" />
+            <p className="body-sm-regular">
+              {t(($) => $['newKnowledge.qualityPage.evaluation.evidenceUnavailable'])}
+            </p>
+          </div>
+        ) : (
+          <p className="body-md-regular tracking-[-0.07px] whitespace-pre-wrap text-text-secondary">
+            {evidence.text}
+          </p>
+        )}
+        {!unavailable && evidence.images.length > 0 && (
           <div className="flex gap-1 overflow-hidden py-1">
             {evidence.images.slice(0, 4).map((image) => (
               <span key={image} className="flex size-8 shrink-0 items-center justify-center p-0.5">
@@ -209,28 +224,30 @@ export function EvidenceCard({
           </div>
         )}
       </div>
-      <footer className="flex h-10 items-center gap-1.5 border-t border-divider-subtle py-2 pr-2 pl-3">
-        <span aria-hidden className="flex size-4 shrink-0 items-center justify-center">
-          <DocumentFileIcon name={evidence.documentName ?? evidence.title} size="sm" />
-        </span>
-        <span className="min-w-0 truncate system-sm-regular text-text-secondary">
-          {evidence.documentName ?? evidence.title}
-        </span>
-        {evidence.revision && (
-          <span className="shrink-0 rounded-xs bg-divider-subtle px-1.25 py-px system-xs-regular text-text-tertiary">
-            {t(($) => $['newKnowledge.retrievalTest.revision'], {
-              revision: evidence.revision,
-            })}
+      {!unavailable && (
+        <footer className="flex h-10 items-center gap-1.5 border-t border-divider-subtle py-2 pr-2 pl-3">
+          <span aria-hidden className="flex size-4 shrink-0 items-center justify-center">
+            <DocumentFileIcon name={evidence.documentName ?? evidence.title} size="sm" />
           </span>
-        )}
-        {evidence.page !== undefined && (
-          <span className="shrink-0 system-xs-regular text-text-tertiary">
-            {t(($) => $['newKnowledge.retrievalTest.page'], { page: evidence.page })}
+          <span className="min-w-0 truncate system-sm-regular text-text-secondary">
+            {evidence.documentName ?? evidence.title}
           </span>
-        )}
-        <span className="min-w-0 flex-1" />
-        <EvidenceOpenAction evidence={evidence} knowledgeSpaceId={knowledgeSpaceId} />
-      </footer>
+          {evidence.revision && (
+            <span className="shrink-0 rounded-xs bg-divider-subtle px-1.25 py-px system-xs-regular text-text-tertiary">
+              {t(($) => $['newKnowledge.retrievalTest.revision'], {
+                revision: evidence.revision,
+              })}
+            </span>
+          )}
+          {evidence.page !== undefined && (
+            <span className="shrink-0 system-xs-regular text-text-tertiary">
+              {t(($) => $['newKnowledge.retrievalTest.page'], { page: evidence.page })}
+            </span>
+          )}
+          <span className="min-w-0 flex-1" />
+          <EvidenceOpenAction evidence={evidence} knowledgeSpaceId={knowledgeSpaceId} />
+        </footer>
+      )}
     </article>
   )
 }

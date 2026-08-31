@@ -2496,6 +2496,42 @@ describe("createKnowledgeGateway", () => {
         startOffset: 0,
         text: "Fallback renewal note.",
       }),
+      KnowledgeNodeSchema.parse({
+        artifactHash: "3".repeat(64),
+        documentAssetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43",
+        endOffset: 53,
+        id: "018f0d60-7a49-7cc2-9c1b-5b36f18f8d02",
+        kind: "chunk",
+        knowledgeSpaceId: space.id,
+        metadata: {},
+        parseArtifactId: "018f0d60-7a49-7cc2-9c1b-5b36f18f8c01",
+        permissionScope: [],
+        sourceLocation: {
+          endOffset: 53,
+          sectionPath: ["Renewal memo"],
+          startOffset: 27,
+        },
+        startOffset: 27,
+        text: "The renewal memo conflicts.",
+      }),
+      KnowledgeNodeSchema.parse({
+        artifactHash: "4".repeat(64),
+        documentAssetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c44",
+        endOffset: 52,
+        id: "018f0d60-7a49-7cc2-9c1b-5b36f18f8e01",
+        kind: "chunk",
+        knowledgeSpaceId: space.id,
+        metadata: {},
+        parseArtifactId: "018f0d60-7a49-7cc2-9c1b-5b36f18f8c02",
+        permissionScope: [],
+        sourceLocation: {
+          endOffset: 52,
+          sectionPath: ["Vendor amendment"],
+          startOffset: 24,
+        },
+        startOffset: 24,
+        text: "The latest vendor amendment.",
+      }),
     ]);
     const app = createKnowledgeGateway({
       adapter: createNodePlatformAdapter({ env: {} }),
@@ -2705,10 +2741,51 @@ describe("createKnowledgeGateway", () => {
       { headers: bearer(readToken) },
     );
 
-    expect(hiddenTrace.status).toBe(404);
-    expect(hiddenEvidence.status).toBe(404);
-    expect(hiddenConflicts.status).toBe(404);
-    expect(hiddenMissing.status).toBe(404);
+    expect(hiddenTrace.status).toBe(200);
+    await expect(hiddenTrace.json()).resolves.toMatchObject({
+      steps: [
+        {
+          metadata: {
+            evidenceBundle: {
+              items: [
+                {
+                  metadata: {
+                    traceEvidenceAvailability: {
+                      reason: "document-deleted-or-unavailable",
+                      status: "unavailable",
+                    },
+                  },
+                  text: "Evidence deleted or unavailable",
+                },
+                { text: "Fallback renewal note." },
+              ],
+            },
+          },
+        },
+      ],
+    });
+    expect(hiddenEvidence.status).toBe(200);
+    await expect(hiddenEvidence.json()).resolves.toMatchObject({
+      items: [
+        {
+          metadata: {
+            availability: "unavailable",
+            text: "Evidence deleted or unavailable",
+            unavailableReason: "document-deleted-or-unavailable",
+          },
+        },
+      ],
+    });
+    expect(hiddenConflicts.status).toBe(200);
+    await expect(hiddenConflicts.json()).resolves.toMatchObject({
+      items: [
+        {
+          metadata: { reason: "The fallback source only partially supports the answer." },
+          targetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f8d03",
+        },
+      ],
+    });
+    expect(hiddenMissing.status).toBe(200);
   });
 
   it("rejects duplicate tenant slugs and unbounded knowledge-space lists", async () => {

@@ -113,6 +113,15 @@ function createFakeDocumentAssetExecutor() {
       };
     }
 
+    if (input.sql.includes(" IN (")) {
+      const [knowledgeSpaceId, ...ids] = input.params;
+      const selected = Array.from(rows.values())
+        .filter((row) => row.knowledge_space_id === knowledgeSpaceId && ids.includes(row.id))
+        .map((row) => ({ ...row }));
+
+      return { rows: selected, rowsAffected: selected.length };
+    }
+
     if (input.sql.includes("ORDER BY")) {
       const [knowledgeSpaceId, cursorOrLimit, maybeLimit] = input.params;
       const cursor = maybeLimit === undefined ? undefined : String(cursorOrLimit);
@@ -219,6 +228,13 @@ describe("DocumentAsset repositories", () => {
       documentCount: 2,
       rawDocumentBytes: 24,
     });
+    if (!repository.getManyByIds) throw new Error("Expected bulk document lookup");
+    await expect(
+      repository.getManyByIds({
+        ids: [second.id, first.id, second.id],
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      }),
+    ).resolves.toEqual([second, expect.objectContaining({ id: first.id })]);
     await expect(
       repository.list({ knowledgeSpaceId: KNOWLEDGE_SPACE_ID, limit: 1 }),
     ).resolves.toEqual({
@@ -398,6 +414,40 @@ describe("DocumentAsset repositories", () => {
       }),
     );
   });
+
+  it.each(["postgres", "tidb"] as const)(
+    "loads referenced assets in one bounded active-only query for %s",
+    async (dialect) => {
+      const fake = createFakeDocumentAssetExecutor();
+      const repository = createDatabaseDocumentAssetRepository({
+        database: createSchemaDatabaseAdapter({ executor: fake.executor, kind: dialect }),
+      });
+      await repository.create(createDocumentAssetInput(DOCUMENT_ASSET_ID_A));
+      await repository.create(createDocumentAssetInput(DOCUMENT_ASSET_ID_B));
+
+      const callsBeforeLookup = fake.calls.length;
+      if (!repository.getManyByIds) throw new Error("Expected bulk document lookup");
+      const assets = await repository.getManyByIds({
+        ids: [DOCUMENT_ASSET_ID_A, DOCUMENT_ASSET_ID_B, DOCUMENT_ASSET_ID_A],
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      });
+
+      expect(assets?.map((asset) => asset.id)).toEqual([DOCUMENT_ASSET_ID_A, DOCUMENT_ASSET_ID_B]);
+      expect(fake.calls).toHaveLength(callsBeforeLookup + 1);
+      expect(fake.calls.at(-1)).toEqual(
+        expect.objectContaining({
+          maxRows: 2,
+          operation: "select",
+          params: [KNOWLEDGE_SPACE_ID, DOCUMENT_ASSET_ID_A, DOCUMENT_ASSET_ID_B],
+          tableName: "document_assets",
+        }),
+      );
+      expect(fake.calls.at(-1)?.sql).toContain(" IN (");
+      expect(fake.calls.at(-1)?.sql).toContain("lifecycle_state");
+      expect(fake.calls.at(-1)?.sql).toContain("deletion_job_id");
+      expect(fake.calls.at(-1)?.sql).toContain("bulk_get_parent_source");
+    },
+  );
 
   it.each(["postgres", "tidb"] as const)(
     "keeps ordinary reads active-only while deletion replay can read a fenced asset for %s",

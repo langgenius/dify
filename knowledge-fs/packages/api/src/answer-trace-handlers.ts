@@ -2,6 +2,7 @@ import type { OpenAPIHono } from "@hono/zod-openapi";
 import type { AnswerTrace } from "@knowledge/core";
 
 import { getTenantScopedAnswerTrace } from "./answer-trace-access";
+import { projectAnswerTraceEvidence } from "./answer-trace-evidence-projection";
 import type { AnswerTraceRepository } from "./answer-trace-repository";
 import {
   getAnswerTraceRoute,
@@ -10,12 +11,7 @@ import {
   listQueryMissingRoute,
 } from "./answer-trace-routes";
 import { isAuthenticatedApiKeyBoundToKnowledgeSpace } from "./auth";
-import {
-  candidatePermissionAllowsAsset,
-  candidatePermissionAllowsNode,
-} from "./candidate-content-authorization";
 import type { DocumentAssetRepository } from "./document-asset-repository";
-import { evidenceBundlesHaveActiveDocuments } from "./evidence-bundle-visibility";
 import type { KnowledgeGatewayEnv } from "./gateway-openapi-contracts";
 import { KnowledgeFsValidationError } from "./knowledge-fs-errors";
 import type { KnowledgeNodeRepository } from "./knowledge-node-repository";
@@ -27,7 +23,6 @@ import {
 } from "./knowledge-space-authorization";
 import type { KnowledgeSpaceRepository } from "./knowledge-space-repository";
 import {
-  evidenceBundleFromAnswerTrace,
   paginateQueryVirtualEntries,
   queryConflictEntries,
   queryEvidenceEntries,
@@ -39,7 +34,7 @@ export interface RegisterAnswerTraceHandlersOptions {
   readonly answerTraceRepository: AnswerTraceRepository;
   readonly app: OpenAPIHono<KnowledgeGatewayEnv>;
   readonly authorization: KnowledgeSpaceAuthorizationGuard;
-  readonly assets: Pick<DocumentAssetRepository, "get">;
+  readonly assets: Pick<DocumentAssetRepository, "get" | "getManyByIds">;
   readonly nodes: Pick<KnowledgeNodeRepository, "getManyByIdsAcrossGenerations">;
   readonly spaces: KnowledgeSpaceRepository;
 }
@@ -87,11 +82,12 @@ export function registerAnswerTraceHandlers({
       return context.json({ error: "Knowledge space access denied" }, 403);
     }
 
-    if (!(await traceEvidenceIsCurrentlyVisible(assets, nodes, trace, candidateGrants))) {
+    const projection = await projectAnswerTraceEvidence({ assets, candidateGrants, nodes, trace });
+    if (!projection) {
       return context.json({ error: "Answer trace not found" }, 404);
     }
 
-    return context.json(toAnswerTraceResponse(trace), 200);
+    return context.json(toAnswerTraceResponse(projection.trace), 200);
   });
 
   app.openapi(listQueryEvidenceRoute, async (context) => {
@@ -126,15 +122,20 @@ export function registerAnswerTraceHandlers({
         return context.json({ error: "Knowledge space access denied" }, 403);
       }
 
-      const bundle = evidenceBundleFromAnswerTrace(trace);
-      if (!(await traceEvidenceIsCurrentlyVisible(assets, nodes, trace, candidateGrants))) {
+      const projection = await projectAnswerTraceEvidence({
+        assets,
+        candidateGrants,
+        nodes,
+        trace,
+      });
+      if (!projection) {
         return context.json({ error: "Answer trace not found" }, 404);
       }
 
       return context.json(
         paginateQueryVirtualEntries({
           cursor: query.cursor,
-          entries: bundle ? queryEvidenceEntries(params.traceId, bundle) : [],
+          entries: projection.bundle ? queryEvidenceEntries(params.traceId, projection.bundle) : [],
           limit: query.limit,
           path: `/queries/${params.traceId}/evidence`,
         }),
@@ -182,15 +183,20 @@ export function registerAnswerTraceHandlers({
         return context.json({ error: "Knowledge space access denied" }, 403);
       }
 
-      const bundle = evidenceBundleFromAnswerTrace(trace);
-      if (!(await traceEvidenceIsCurrentlyVisible(assets, nodes, trace, candidateGrants))) {
+      const projection = await projectAnswerTraceEvidence({
+        assets,
+        candidateGrants,
+        nodes,
+        trace,
+      });
+      if (!projection) {
         return context.json({ error: "Answer trace not found" }, 404);
       }
 
       return context.json(
         paginateQueryVirtualEntries({
           cursor: query.cursor,
-          entries: bundle ? queryConflictEntries(params.traceId, bundle) : [],
+          entries: projection.bundle ? queryConflictEntries(params.traceId, projection.bundle) : [],
           limit: query.limit,
           path: `/queries/${params.traceId}/conflicts`,
         }),
@@ -238,15 +244,20 @@ export function registerAnswerTraceHandlers({
         return context.json({ error: "Knowledge space access denied" }, 403);
       }
 
-      const bundle = evidenceBundleFromAnswerTrace(trace);
-      if (!(await traceEvidenceIsCurrentlyVisible(assets, nodes, trace, candidateGrants))) {
+      const projection = await projectAnswerTraceEvidence({
+        assets,
+        candidateGrants,
+        nodes,
+        trace,
+      });
+      if (!projection) {
         return context.json({ error: "Answer trace not found" }, 404);
       }
 
       return context.json(
         paginateQueryVirtualEntries({
           cursor: query.cursor,
-          entries: bundle ? queryMissingEntries(params.traceId, bundle) : [],
+          entries: projection.bundle ? queryMissingEntries(params.traceId, projection.bundle) : [],
           limit: query.limit,
           path: `/queries/${params.traceId}/missing`,
         }),
@@ -261,57 +272,6 @@ export function registerAnswerTraceHandlers({
       throw error;
     }
   });
-}
-
-async function traceEvidenceIsCurrentlyVisible(
-  assets: Pick<DocumentAssetRepository, "get">,
-  nodes: Pick<KnowledgeNodeRepository, "getManyByIdsAcrossGenerations">,
-  trace: AnswerTrace,
-  candidateGrants: readonly string[],
-): Promise<boolean> {
-  const bundle = evidenceBundleFromAnswerTrace(trace);
-  if (!bundle) return trace.evidenceBundleId === undefined;
-  if (
-    !(await evidenceBundlesHaveActiveDocuments({
-      assets,
-      bundles: [bundle],
-      knowledgeSpaceId: trace.knowledgeSpaceId,
-    }))
-  ) {
-    return false;
-  }
-  const nodeIds = [
-    ...new Set([
-      ...bundle.items.map((item) => item.nodeId),
-      ...bundle.items.flatMap((item) =>
-        item.conflicts.flatMap((conflict) => (conflict.withNodeId ? [conflict.withNodeId] : [])),
-      ),
-      ...bundle.missingEvidence.flatMap((item) =>
-        item.expectedEvidenceId ? [item.expectedEvidenceId] : [],
-      ),
-    ]),
-  ];
-  const foundNodes = await nodes.getManyByIdsAcrossGenerations({
-    ids: nodeIds,
-    knowledgeSpaceId: trace.knowledgeSpaceId,
-  });
-  const foundNodeIds = new Set(foundNodes.map((node) => node.id));
-  if (bundle.items.some((item) => !foundNodeIds.has(item.nodeId))) return false;
-  if (foundNodes.some((node) => !candidatePermissionAllowsNode(node, candidateGrants))) {
-    return false;
-  }
-  const assetIds = [
-    ...new Set([
-      ...foundNodes.map((node) => node.documentAssetId),
-      ...bundle.items.flatMap((item) => item.citations.map((citation) => citation.documentAssetId)),
-    ]),
-  ];
-  const foundAssets = await Promise.all(
-    assetIds.map((id) => assets.get({ id, knowledgeSpaceId: trace.knowledgeSpaceId })),
-  );
-  return foundAssets.every(
-    (asset) => asset !== null && candidatePermissionAllowsAsset(asset, candidateGrants),
-  );
 }
 
 function toAnswerTraceResponse(

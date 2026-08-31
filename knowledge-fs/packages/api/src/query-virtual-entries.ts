@@ -1,5 +1,9 @@
 import { type AnswerTrace, type EvidenceBundle, EvidenceBundleSchema } from "@knowledge/core";
 
+import {
+  TRACE_UNAVAILABLE_EVIDENCE_TEXT,
+  traceEvidenceAvailabilityFromMetadata,
+} from "./answer-trace-evidence-availability";
 import { cloneEvidenceBundle, uniqueStrings } from "./api-shared-utils";
 import type { TrustedCreateGoldenQuestionInput } from "./golden-question-repository";
 import { cloneJsonObject } from "./json-utils";
@@ -92,9 +96,13 @@ export function queryEvidenceEntries(traceId: string, bundle: EvidenceBundle): K
   return bundle.items.map((item) => {
     const primaryCitation = item.citations[0];
     const sectionPath = primaryCitation ? [...primaryCitation.sectionPath] : [];
+    const availability = traceEvidenceAvailabilityFromMetadata(item.metadata);
     return {
       kind: "resource",
       metadata: {
+        ...(availability
+          ? { availability: availability.status, unavailableReason: availability.reason }
+          : { availability: "available" }),
         citationCount: item.citations.length,
         conflictCount: item.conflicts.length,
         ...(primaryCitation
@@ -123,6 +131,9 @@ export function queryConflictEntries(traceId: string, bundle: EvidenceBundle): K
     item.conflicts.map((conflict, index) => ({
       kind: "resource" as const,
       metadata: {
+        ...(conflict.reason === TRACE_UNAVAILABLE_EVIDENCE_TEXT
+          ? { availability: "unavailable", unavailableReason: "evidence-unavailable" }
+          : { availability: "available" }),
         nodeId: item.nodeId,
         reason: conflict.reason,
         severity: conflict.severity,
@@ -136,17 +147,23 @@ export function queryConflictEntries(traceId: string, bundle: EvidenceBundle): K
 }
 
 export function queryMissingEntries(traceId: string, bundle: EvidenceBundle): KnowledgeFsEntry[] {
-  return bundle.missingEvidence.map((missing, index) => ({
-    kind: "resource",
-    metadata: {
-      ...cloneJsonObject(missing.metadata),
-      reason: missing.reason,
-    },
-    name: `missing-${index + 1}`,
-    path: `/queries/${traceId}/missing/${index + 1}`,
-    resourceType: "evidence",
-    targetId: missing.expectedEvidenceId ?? `missing-${index + 1}`,
-  }));
+  return bundle.missingEvidence.map((missing, index) => {
+    const availability = traceEvidenceAvailabilityFromMetadata(missing.metadata);
+    return {
+      kind: "resource",
+      metadata: {
+        ...cloneJsonObject(missing.metadata),
+        ...(availability
+          ? { availability: availability.status, unavailableReason: availability.reason }
+          : { availability: "available" }),
+        reason: missing.reason,
+      },
+      name: `missing-${index + 1}`,
+      path: `/queries/${traceId}/missing/${index + 1}`,
+      resourceType: "evidence",
+      targetId: missing.expectedEvidenceId ?? `missing-${index + 1}`,
+    };
+  });
 }
 
 export function paginateQueryVirtualEntries({
