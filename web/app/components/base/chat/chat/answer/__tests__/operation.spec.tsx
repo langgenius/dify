@@ -725,6 +725,25 @@ describe('Operation', () => {
       })
     })
 
+    it('should keep the feedback dialog and local state unchanged when submission fails', async () => {
+      const user = userEvent.setup()
+      mockContextValue.onFeedback = vi.fn().mockRejectedValue(new Error('submission failed'))
+      renderOperation()
+
+      await user.click(
+        screen.getByRole('button', { name: 'table.header.adminRate: detail.operation.dislike' }),
+      )
+      const textarea = screen.getByRole('textbox', { name: 'feedback.content' })
+      await user.type(textarea, 'Needs work')
+      await user.click(screen.getByRole('button', { name: 'operation.submit' }))
+
+      expect(screen.getByRole('dialog', { name: 'feedback.title' })).toBeInTheDocument()
+      expect(textarea).toHaveValue('Needs work')
+      expect(
+        screen.queryByRole('button', { name: 'table.header.adminRate: operation.remove' }),
+      ).not.toBeInTheDocument()
+    })
+
     it('should open feedback modal on admin dislike click', async () => {
       const user = userEvent.setup()
       renderOperation()
@@ -734,11 +753,52 @@ describe('Operation', () => {
       expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
 
-    it('should show user feedback read-only in admin bar when user has liked', () => {
-      const item = { ...baseItem, feedback: { rating: 'like' as const } }
+    it('should expose user feedback as a non-interactive status in the admin bar', () => {
+      const item = {
+        ...baseItem,
+        feedback: { rating: 'dislike' as const, content: 'Needs work' },
+      }
       renderOperation({ ...baseProps, item })
-      const bar = screen.getByTestId('operation-bar')
-      expect(bar.querySelectorAll('.i-ri-thumb-up-line').length).toBeGreaterThanOrEqual(2)
+
+      expect(
+        screen.getByRole('img', {
+          name: 'table.header.userRate: detail.operation.dislike - Needs work',
+        }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: 'table.header.userRate: detail.operation.dislike',
+        }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('should reflect feedback received from refreshed message props', () => {
+      const { rerender } = renderOperation()
+
+      rerender(
+        <div className="group">
+          <Operation
+            {...baseProps}
+            item={{
+              ...baseItem,
+              feedback: { rating: 'like' },
+              adminFeedback: { rating: 'dislike', content: 'Needs work' },
+            }}
+          />
+        </div>,
+      )
+
+      expect(
+        screen.getByRole('img', {
+          name: 'table.header.userRate: detail.operation.like',
+        }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', {
+          name: 'table.header.adminRate: detail.operation.dislike',
+          pressed: true,
+        }),
+      ).toBeInTheDocument()
     })
 
     it('should show separator in admin bar when user has feedback', () => {
@@ -824,21 +884,6 @@ describe('Operation', () => {
       expect(
         screen.getByTestId('operation-bar').querySelectorAll('.i-ri-thumb-up-line').length,
       ).toBe(0)
-    })
-
-    it('should render action buttons with Default state when feedback rating is undefined', () => {
-      // Setting a malformed feedback object with no rating but triggers the wrapper to see undefined fallbacks
-      const item = {
-        ...baseItem,
-        feedback: {} as unknown as Record<string, unknown>,
-        adminFeedback: {} as unknown as Record<string, unknown>,
-      } as ChatItem
-      renderOperation({ ...baseProps, item })
-      // Since it renders the 'else' block for hasAdminFeedback (which is false due to !)
-      // the like/dislike regular ActionButtons should hit the Default state
-      // Since it renders the 'else' block for hasAdminFeedback (which is false due to !)
-      // the like/dislike regular ActionButtons should hit the Default state
-      expect(screen.getByTestId('operation-bar'))!.toBeInTheDocument()
     })
   })
 

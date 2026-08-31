@@ -7,8 +7,8 @@ import type {
 } from '@/app/components/workflow/block-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -171,7 +171,7 @@ const TriggerPluginItem: FC<Props> = ({
         </BlockSelectorRow>
 
         {!notShowProvider && hasAction && !isFold && (
-          <ScrollAreaRoot className="relative max-h-60 overflow-hidden overscroll-contain">
+          <ScrollArea className="max-h-60 overflow-hidden">
             <ScrollAreaViewport
               aria-label={t(($) => $['tabs.allTriggers'], { ns: 'workflow' })}
               className="max-h-60 overscroll-contain"
@@ -194,7 +194,7 @@ const TriggerPluginItem: FC<Props> = ({
             <ScrollAreaScrollbar>
               <ScrollAreaThumb />
             </ScrollAreaScrollbar>
-          </ScrollAreaRoot>
+          </ScrollArea>
         )}
       </div>
     </div>

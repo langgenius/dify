@@ -1,9 +1,11 @@
 import time
 import uuid
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy import event
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
@@ -248,7 +250,6 @@ class TestKnowledgeIndexNode:
 
     def test_run_preview_mode_success(
         self,
-        mocker: MockerFixture,
         mock_graph_init_params,
         mock_graph_runtime_state,
         mock_index_processor,
@@ -283,14 +284,6 @@ class TestKnowledgeIndexNode:
             total_segments=2,
         )
         mock_index_processor.get_preview_output.return_value = mock_preview
-        session = MagicMock()
-        session_context = MagicMock()
-        session_context.__enter__.return_value = session
-        mocker.patch(
-            "core.workflow.nodes.knowledge_index.knowledge_index_node.session_factory.create_session",
-            return_value=session_context,
-        )
-
         node_id = str(uuid.uuid4())
         config = {
             "id": node_id,
@@ -310,7 +303,7 @@ class TestKnowledgeIndexNode:
         # Assert
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.outputs is not None
-        assert mock_index_processor.get_preview_output.call_args.kwargs["session"] is session
+        assert isinstance(mock_index_processor.get_preview_output.call_args.kwargs["session"], Session)
 
     def test_run_production_mode_success(
         self,
@@ -548,6 +541,7 @@ class TestKnowledgeIndexNode:
         mock_index_processor,
         mock_summary_index_service,
         sample_node_data,
+        sqlite_session: Session,
     ):
         # Arrange
         dataset_id = str(uuid.uuid4())
@@ -572,7 +566,9 @@ class TestKnowledgeIndexNode:
         )
 
         # Act
-        session = MagicMock()
+        session = sqlite_session
+        commits: list[str] = []
+        event.listen(session, "after_commit", lambda _session: commits.append("commit"))
         result = node._invoke_knowledge_index(
             session=session,
             dataset_id=dataset_id,
@@ -587,7 +583,7 @@ class TestKnowledgeIndexNode:
         # Assert
         assert mock_summary_index_service.generate_and_vectorize_summary.called
         assert mock_index_processor.index_and_clean.called
-        session.commit.assert_called_once()
+        assert commits == ["commit"]
         assert result == {"status": "indexed"}
 
     def test_version_method(self):
@@ -637,6 +633,7 @@ class TestInvokeKnowledgeIndex:
         mock_index_processor,
         mock_summary_index_service,
         sample_node_data,
+        sqlite_session: Session,
     ):
         # Arrange
         dataset_id = str(uuid.uuid4())
@@ -662,7 +659,9 @@ class TestInvokeKnowledgeIndex:
         )
 
         # Act
-        session = MagicMock()
+        session = sqlite_session
+        commits: list[str] = []
+        event.listen(session, "after_commit", lambda _session: commits.append("commit"))
         result = node._invoke_knowledge_index(
             session=session,
             dataset_id=dataset_id,
@@ -679,7 +678,13 @@ class TestInvokeKnowledgeIndex:
             dataset_id, document_id, False, summary_setting
         )
         mock_index_processor.index_and_clean.assert_called_once_with(
-            dataset_id, document_id, original_document_id, chunks, batch, summary_setting, session=session
+            dataset_id,
+            document_id,
+            original_document_id,
+            chunks,
+            batch,
+            summary_setting,
+            session=session,
         )
-        session.commit.assert_called_once()
+        assert commits == ["commit"]
         assert result == {"status": "indexed"}

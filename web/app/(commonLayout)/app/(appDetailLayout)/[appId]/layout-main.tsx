@@ -10,12 +10,12 @@ import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
-import { userProfileIdAtom } from '@/context/account-state'
 import {
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
 import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
@@ -32,6 +32,22 @@ type IAppDetailLayoutProps = {
 const isNotFoundError = (error: unknown) =>
   typeof error === 'object' && error !== null && 'status' in error && error.status === 404
 
+const appDetailPageTitle = (pathname: string, t: ReturnType<typeof useTranslation>['t']) => {
+  if (pathname.endsWith('/workflow') || pathname.endsWith('/configuration'))
+    return t(($) => $['appMenus.promptEng'], { ns: 'common' })
+  if (pathname.endsWith('/access-point'))
+    return t(($) => $['appMenus.accessPoint'], { ns: 'common' })
+  if (pathname.endsWith('/deploy')) return t(($) => $['appMenus.deploy'], { ns: 'common' })
+  if (pathname.endsWith('/logs')) return t(($) => $['appMenus.logs'], { ns: 'common' })
+  if (pathname.endsWith('/annotations'))
+    return t(($) => $['appMenus.annotations'], { ns: 'common' })
+  if (pathname.endsWith('/overview')) return t(($) => $['appMenus.overview'], { ns: 'common' })
+  if (pathname.endsWith('/access-config'))
+    return t(($) => $['settings.resourceAccess'], { ns: 'common' })
+
+  return t(($) => $['menus.appDetail'], { ns: 'common' })
+}
+
 const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const {
     children,
@@ -44,7 +60,10 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const { appDetail, setAppDetail } = useStore(
@@ -55,9 +74,34 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   )
   const [isLoadingAppDetail, setIsLoadingAppDetail] = useState(false)
   const [appDetailRes, setAppDetailRes] = useState<App | null>(null)
-  const routeAppDetail = appDetailRes ?? (appDetail?.id === appId ? appDetail : null)
+  const routeAppDetail =
+    appDetail?.id === appId ? appDetail : appDetailRes?.id === appId ? appDetailRes : null
+  const pageTitle = appDetailPageTitle(pathname, t)
+  const appName = routeAppDetail?.id === appId ? routeAppDetail.name : undefined
+  const isAppACLContextReady =
+    !!routeAppDetail &&
+    !!currentWorkspace.id &&
+    !isLoadingCurrentWorkspace &&
+    !isLoadingWorkspacePermissionKeys &&
+    !isLoadingAppDetail
+  const appACLCapabilities = React.useMemo(
+    () =>
+      routeAppDetail && isAppACLContextReady
+        ? getAppACLCapabilities(routeAppDetail.permission_keys, {
+            currentUserId,
+            resourceMaintainer: routeAppDetail.maintainer,
+            workspacePermissionKeys,
+            isRbacEnabled,
+          })
+        : null,
+    [currentUserId, isAppACLContextReady, isRbacEnabled, routeAppDetail, workspacePermissionKeys],
+  )
+  const shouldBlockAgentResourceAccess =
+    routeAppDetail?.mode === AppModeEnum.AGENT && pathname.endsWith('/access-config')
+  const shouldBlockAccessPointAccess =
+    pathname.endsWith('/access-point') && !appACLCapabilities?.canAccessPoint
 
-  useDocumentTitle(appDetail?.name || t(($) => $['menus.appDetail'], { ns: 'common' }))
+  useDocumentTitle(`${pageTitle} · ${appName || t(($) => $['menus.appDetail'], { ns: 'common' })}`)
 
   useEffect(() => {
     let ignore = false
@@ -96,33 +140,26 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   }, [appId, router, setAppDetail])
 
   useEffect(() => {
-    if (
-      !routeAppDetail ||
-      !currentWorkspace.id ||
-      isLoadingCurrentWorkspace ||
-      isLoadingWorkspacePermissionKeys ||
-      isLoadingAppDetail
-    )
-      return
+    if (!routeAppDetail || !isAppACLContextReady || !appACLCapabilities) return
     if (routeAppDetail.id !== appId) return
 
-    const appACLCapabilities = getAppACLCapabilities(routeAppDetail.permission_keys, {
-      currentUserId,
-      resourceMaintainer: routeAppDetail.maintainer,
-      workspacePermissionKeys,
-      isRbacEnabled,
-    })
     const isLayoutPath = pathname.endsWith('configuration') || pathname.endsWith('workflow')
     const isLogsPath = pathname.endsWith('logs')
     const isAnnotationsPath = pathname.endsWith('annotations')
     const isOverviewPath = pathname.endsWith('overview')
     const isAccessConfigPath = pathname.endsWith('access-config')
+    const isDeployPath = pathname.endsWith('deploy')
+    const isAccessPointPath = pathname.endsWith('access-point')
     if (
       (isLayoutPath && !appACLCapabilities.canAccessLayout) ||
       (isLogsPath && !appACLCapabilities.canAccessLogAndAnnotation) ||
       (isAnnotationsPath && !appACLCapabilities.canAccessLogAndAnnotation) ||
       (isOverviewPath && !appACLCapabilities.canMonitor) ||
-      (isAccessConfigPath && !appACLCapabilities.canAccessConfig)
+      (isAccessConfigPath &&
+        (routeAppDetail.mode === AppModeEnum.AGENT || !appACLCapabilities.canAccessConfig)) ||
+      (isDeployPath &&
+        (routeAppDetail.mode !== AppModeEnum.WORKFLOW || !appACLCapabilities.canDeploy)) ||
+      (isAccessPointPath && !appACLCapabilities.canAccessPoint)
     ) {
       router.replace(
         getRedirectionPath(routeAppDetail, {
@@ -152,14 +189,12 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     if (appDetailRes && appDetail?.id !== appDetailRes.id)
       setAppDetail({ ...appDetailRes, enable_sso: false })
   }, [
+    appACLCapabilities,
     appDetail?.id,
     appDetailRes,
     appId,
     currentUserId,
-    currentWorkspace.id,
-    isLoadingAppDetail,
-    isLoadingCurrentWorkspace,
-    isLoadingWorkspacePermissionKeys,
+    isAppACLContextReady,
     isRbacEnabled,
     pathname,
     routeAppDetail,
@@ -169,27 +204,28 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   ])
 
   const isWorkflowPage = pathname.endsWith('/workflow')
-  const content = !appDetail ? (
-    <div className="flex min-w-0 grow items-center justify-center bg-background-body">
-      <Loading />
-    </div>
-  ) : (
-    <div
-      className={cn(
-        'relative flex h-0 min-h-0 min-w-0 grow overflow-hidden',
-        !isWorkflowPage && 'pt-1 pr-1 pb-1',
-      )}
-    >
+  const content =
+    !appDetail || shouldBlockAgentResourceAccess || shouldBlockAccessPointAccess ? (
+      <div className="flex min-w-0 grow items-center justify-center bg-background-body">
+        <Loading />
+      </div>
+    ) : (
       <div
         className={cn(
-          'min-w-0 grow overflow-hidden bg-components-panel-bg',
-          !isWorkflowPage && 'rounded-lg shadow-xs shadow-shadow-shadow-3',
+          'relative flex h-0 min-h-0 min-w-0 grow overflow-hidden',
+          !isWorkflowPage && 'pt-1 pr-1 pb-1',
         )}
       >
-        {children}
+        <div
+          className={cn(
+            'min-w-0 grow overflow-hidden bg-components-panel-bg',
+            !isWorkflowPage && 'rounded-lg shadow-xs shadow-shadow-shadow-3',
+          )}
+        >
+          {children}
+        </div>
       </div>
-    </div>
-  )
+    )
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background-body">

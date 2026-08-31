@@ -1,19 +1,22 @@
 'use client'
-
-import type { TriggerParams } from '@/app/components/base/date-and-time-picker/types'
+import type {
+  TimePickerProps,
+  TriggerParams,
+} from '@/app/components/base/date-and-time-picker/types'
 import type { AutoUpdateConfig } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import type { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { convertTimezoneToOffsetStr } from '@/app/components/base/date-and-time-picker/utils/dayjs'
@@ -27,7 +30,7 @@ import {
   dayjsToTimeOfDay,
   timeOfDayToDayjs,
 } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/utils'
-import { userProfileAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import {
   useMutationPluginAutoUpgradeSettings,
   usePluginAutoUpgradeSettings,
@@ -41,8 +44,10 @@ type Props = {
 
 const UpdateSettingDialog = ({ category, disabled = false }: Props) => {
   const { t } = useTranslation()
-  const userProfile = useAtomValue(userProfileAtom)
-  const timezone = userProfile.timezone || 'UTC'
+  const { data: timezone } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.timezone || 'UTC',
+  })
   const {
     data: autoUpgradeSetting,
     error,
@@ -203,19 +208,26 @@ const UpdateSettingDialog = ({ category, disabled = false }: Props) => {
     setDraftAutoUpgrade(undefined)
     setIsOpen(false)
   }, [autoUpgrade, saveAutoUpgrade])
-  const renderTimePickerTrigger = useCallback(
-    ({ inputElem, onClick, isOpen }: TriggerParams) => {
+  const renderTimePickerTrigger = useCallback<NonNullable<TimePickerProps['renderTrigger']>>(
+    (props, state, { inputElem, onClick }: TriggerParams) => {
       return (
         <button
+          {...props}
           type="button"
-          className="group flex h-8 w-full cursor-pointer items-center gap-1 rounded-lg border-none bg-components-input-bg-normal px-2 py-1 text-left shadow-none hover:bg-state-base-hover-alt focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-          onClick={onClick}
+          className={cn(
+            'group flex h-8 w-full cursor-pointer items-center gap-1 rounded-lg border-none bg-components-input-bg-normal px-2 py-1 text-left shadow-none hover:bg-state-base-hover-alt focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
+            props.className,
+          )}
+          onClick={(event) => {
+            onClick(event)
+            props.onClick?.(event)
+          }}
         >
           <span
             aria-hidden
             className={cn(
               'i-ri-time-line size-4 shrink-0 text-text-tertiary',
-              isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
+              state.open ? 'text-text-secondary' : 'group-hover:text-text-secondary',
             )}
           />
           <span className="min-w-0 flex-1 p-1 system-sm-regular text-components-input-text-filled">
@@ -234,13 +246,9 @@ const UpdateSettingDialog = ({ category, disabled = false }: Props) => {
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger
         render={
-          <Button
-            variant="secondary"
-            className="h-8 gap-0.5 px-3 system-sm-medium"
-            disabled={disabled}
-          >
+          <Button variant="secondary" className="h-8 system-sm-medium" disabled={disabled}>
             <span aria-hidden className="i-custom-vender-system-auto-update-line size-4" />
-            <span className="px-0.5">{t(($) => $['autoUpdate.autoUpdate'], { ns: 'plugin' })}</span>
+            <span>{t(($) => $['autoUpdate.autoUpdate'], { ns: 'plugin' })}</span>
             {selectedStrategyLabel && (
               <span className="flex min-w-4 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
                 {selectedStrategyLabel}
@@ -255,7 +263,17 @@ const UpdateSettingDialog = ({ category, disabled = false }: Props) => {
             <DialogTitle className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
               {t(($) => $['autoUpdate.autoUpdateSettings'], { ns: 'plugin' })}
             </DialogTitle>
-            <DialogCloseButton className="top-5 right-5 size-8 rounded-lg" />
+            <DialogClose
+              render={
+                <IconButton
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                  size="lg"
+                  className="absolute top-5 right-5"
+                >
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
           </div>
           {isSettingsLoading && (
             <div

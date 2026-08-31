@@ -1,7 +1,8 @@
 'use client'
 
 import { Avatar } from '@langgenius/dify-ui/avatar'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiAccountCircleLine,
@@ -17,18 +18,12 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
+import useDocumentTitle from '@/hooks/use-document-title'
+import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { useLogout } from '@/service/use-common'
-
-function buildReturnUrl(pathname: string, search: string) {
-  try {
-    const base = `${globalThis.location.origin}${pathname}${search}`
-    return base
-  } catch {
-    return pathname + search
-  }
-}
+import { buildOAuthCallbackUrl, buildReturnUrl, useSilentAuthorize } from './use-silent-authorize'
 
 export default function OAuthAuthorize() {
   const { t } = useTranslation()
@@ -93,6 +88,17 @@ export default function OAuthAuthorize() {
     consoleQuery.oauth.provider.authorize.post.mutationOptions(),
   )
   const { mutateAsync: logout } = useLogout()
+  const { isAutoAuthorizing } = useSilentAuthorize({
+    authAppInfo,
+    authorize,
+    clientId: client_id,
+    hasOAuthParams,
+    isLoggedIn,
+    isProfileLoading,
+    redirectUri: redirect_uri,
+    searchParams,
+    state,
+  })
   const hasNotifiedRef = useRef(false)
   const localizedAppLabel = authAppInfo?.app_label[language]
   const englishAppLabel = authAppInfo?.app_label.en_US
@@ -100,6 +106,11 @@ export default function OAuthAuthorize() {
     (typeof localizedAppLabel === 'string' && localizedAppLabel) ||
     (typeof englishAppLabel === 'string' && englishAppLabel) ||
     t(($) => $.unknownApp, { ns: 'oauth' })
+  useDocumentTitle(
+    authAppInfo
+      ? `${t(($) => $.connect, { ns: 'oauth' })} ${appLabel}`
+      : t(($) => $.connect, { ns: 'oauth' }),
+  )
 
   const isLoading = isOAuthLoading || isProfileLoading
   const onLoginSwitchClick = async () => {
@@ -116,10 +127,7 @@ export default function OAuthAuthorize() {
     if (!client_id || !redirect_uri) return
     try {
       const { code } = await authorize({ body: { client_id } })
-      const url = new URL(redirect_uri)
-      url.searchParams.set('code', code)
-      if (state) url.searchParams.set('state', state)
-      globalThis.location.href = url.toString()
+      globalThis.location.href = buildOAuthCallbackUrl(redirect_uri, code, state)
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error)
       toast.error(`${t(($) => $['error.authorizeFailed'], { ns: 'oauth' })}: ${message}`)
@@ -139,7 +147,7 @@ export default function OAuthAuthorize() {
     }
   }, [client_id, redirect_uri, isError])
 
-  if (isLoading) {
+  if (isLoading || isAutoAuthorizing) {
     return (
       <div className="bg-background-default-subtle">
         <Loading type="app" />
@@ -215,9 +223,14 @@ export default function OAuthAuthorize() {
 
       <div className="flex flex-col items-center gap-2 pt-4">
         {!isLoggedIn ? (
-          <Button variant="primary" size="large" className="w-full" onClick={onLoginSwitchClick}>
+          <Link
+            href={`/signin?redirect_url=${encodeURIComponent(
+              buildReturnUrl('/account/oauth/authorize', `?${searchParams.toString()}`),
+            )}`}
+            className={cn(buttonVariants({ variant: 'primary', size: 'large' }), 'w-full')}
+          >
             {t(($) => $.login, { ns: 'oauth' })}
-          </Button>
+          </Link>
         ) : (
           <>
             <Button
@@ -230,9 +243,9 @@ export default function OAuthAuthorize() {
             >
               {t(($) => $.continue, { ns: 'oauth' })}
             </Button>
-            <Button size="large" className="w-full" onClick={() => router.push('/apps')}>
+            <Link href="/apps" className={cn(buttonVariants({ size: 'large' }), 'w-full')}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </Button>
+            </Link>
           </>
         )}
       </div>

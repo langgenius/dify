@@ -20,15 +20,17 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 const renderToolbar = ({
+  publicationCounts = { drafts: 2, published: 1 },
   searchParams = '',
 }: {
+  publicationCounts?: { drafts: number; published: number }
   searchParams?: string
 } = {}) => {
   const queryClient = new QueryClient()
 
   const result = renderWithNuqs(
     <QueryClientProvider client={queryClient}>
-      <RosterToolbar draftAgents={2} publishedAgents={1} />
+      <RosterToolbar publicationCounts={publicationCounts} />
     </QueryClientProvider>,
     { searchParams },
   )
@@ -62,10 +64,10 @@ describe('RosterToolbar', () => {
     const user = userEvent.setup()
     const { onUrlUpdate } = renderToolbar()
 
-    const publishedFilter = screen.getByRole('button', {
+    const publishedFilter = screen.getByRole('radio', {
       name: /agentV2\.roster\.filters\.published/,
     })
-    const draftsFilter = screen.getByRole('button', { name: /agentV2\.roster\.filters\.drafts/ })
+    const draftsFilter = screen.getByRole('radio', { name: /agentV2\.roster\.filters\.drafts/ })
 
     expect(publishedFilter).toBeEnabled()
     expect(draftsFilter).toBeEnabled()
@@ -82,15 +84,33 @@ describe('RosterToolbar', () => {
   it('renders stable filter count badges and omits the all count', () => {
     renderToolbar()
 
-    const allFilter = screen.getByRole('button', { name: /agentV2\.roster\.filters\.all/ })
-    const publishedFilter = screen.getByRole('button', {
+    const allFilter = screen.getByRole('radio', { name: /agentV2\.roster\.filters\.all/ })
+    const publishedFilter = screen.getByRole('radio', {
       name: /agentV2\.roster\.filters\.published/,
     })
-    const draftsFilter = screen.getByRole('button', { name: /agentV2\.roster\.filters\.drafts/ })
+    const draftsFilter = screen.getByRole('radio', { name: /agentV2\.roster\.filters\.drafts/ })
 
     expect(allFilter).not.toHaveTextContent('3')
     expect(within(publishedFilter).getByText('1')).toBeInTheDocument()
     expect(within(draftsFilter).getByText('2')).toBeInTheDocument()
+  })
+
+  it('renders zero counts before server data is available', () => {
+    renderToolbar({ publicationCounts: { drafts: 0, published: 0 } })
+
+    expect(
+      screen.getByRole('radio', { name: /agentV2\.roster\.filters\.published/ }),
+    ).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('radio', { name: /agentV2\.roster\.filters\.published/ })).getByText(
+        '0',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('radio', { name: /agentV2\.roster\.filters\.drafts/ })).getByText(
+        '0',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('renders created-by-me filtering and emits checked state', async () => {

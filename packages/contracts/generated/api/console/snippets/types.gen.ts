@@ -71,6 +71,7 @@ export type SnippetWorkflowResponse = {
   updated_at: number
   updated_by?: SimpleAccountResponse | null
   version: string
+  version_number?: number | null
 }
 
 export type SnippetDraftSyncPayload = {
@@ -404,7 +405,6 @@ export type AgentSoulConfig = {
   config_note?: string
   config_skills?: Array<AgentConfigSkillRefConfig>
   env?: AgentSoulEnvConfig
-  files?: AgentSoulFilesConfig
   human?: AgentSoulHumanConfig
   knowledge?: AgentSoulKnowledgeConfig
   memory?: AgentSoulMemoryConfig
@@ -597,11 +597,6 @@ export type AgentConfigSkillRefConfig = {
 export type AgentSoulEnvConfig = {
   secret_refs?: Array<AgentSecretRefConfig>
   variables?: Array<AgentEnvVariableConfig>
-}
-
-export type AgentSoulFilesConfig = {
-  files?: Array<AgentFileRefConfig>
-  skills?: Array<AgentSkillRefConfig>
 }
 
 export type AgentSoulHumanConfig = {
@@ -856,35 +851,6 @@ export type AgentEnvVariableConfig = {
   [key: string]: unknown
 }
 
-export type AgentFileRefConfig = {
-  drive_key?: string | null
-  file_id?: string | null
-  id?: string | null
-  name?: string | null
-  reference?: string | null
-  remote_url?: string | null
-  tenant_id?: string | null
-  transfer_method?: string | null
-  type?: string | null
-  upload_file_id?: string | null
-  url?: string | null
-  [key: string]: unknown
-}
-
-export type AgentSkillRefConfig = {
-  description?: string | null
-  file_id?: string | null
-  full_archive_file_id?: string | null
-  full_archive_key?: string | null
-  id?: string | null
-  manifest_files?: Array<string> | null
-  name?: string | null
-  path?: string | null
-  skill_md_file_id?: string | null
-  skill_md_key?: string | null
-  [key: string]: unknown
-}
-
 export type AgentHumanToolConfig = {
   description?: string | null
   enabled?: boolean
@@ -924,6 +890,7 @@ export type AgentSoulModelSettings = {
   stop?: Array<string> | null
   temperature?: number | null
   top_p?: number | null
+  [key: string]: unknown
 }
 
 export type AgentSandboxProviderConfig = {
@@ -957,6 +924,20 @@ export type AgentSoulDifyToolConfig = {
       | null
   }
   tool_name?: string | null
+}
+
+export type AgentFileRefConfig = {
+  file_id?: string | null
+  id?: string | null
+  name?: string | null
+  reference?: string | null
+  remote_url?: string | null
+  tenant_id?: string | null
+  transfer_method?: string | null
+  type?: string | null
+  upload_file_id?: string | null
+  url?: string | null
+  [key: string]: unknown
 }
 
 export type OutputErrorStrategy = 'default_value' | 'fail_branch' | 'stop'
@@ -1130,6 +1111,8 @@ export type AgentKnowledgeMetadataCondition = {
     | '≠'
     | '≤'
     | '≥'
+  id?: string | null
+  metadata_id?: string | null
   name: string
   value?: string | Array<string> | number | null
 }
@@ -1774,6 +1757,28 @@ export type PostSnippetsBySnippetIdWorkflowsPublishResponses = {
 
 export type PostSnippetsBySnippetIdWorkflowsPublishResponse =
   PostSnippetsBySnippetIdWorkflowsPublishResponses[keyof PostSnippetsBySnippetIdWorkflowsPublishResponses]
+
+export type DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdData = {
+  body?: never
+  path: {
+    snippet_id: string
+    workflow_id: string
+  }
+  query?: never
+  url: '/snippets/{snippet_id}/workflows/{workflow_id}'
+}
+
+export type DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdErrors = {
+  400: unknown
+  404: unknown
+}
+
+export type DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdResponses = {
+  204: void
+}
+
+export type DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdResponse =
+  DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdResponses[keyof DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdResponses]
 
 export type PatchSnippetsBySnippetIdWorkflowsByWorkflowIdData = {
   body: WorkflowUpdatePayload

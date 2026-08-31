@@ -4,6 +4,9 @@ from dataclasses import dataclass
 from typing import Literal, Protocol
 
 
+type ShellExecutionMode = Literal["pty", "stdio"]
+
+
 @dataclass(frozen=True, slots=True)
 class ShellCommandResult:
     job_id: str
@@ -63,6 +66,7 @@ class ShellCommandProtocol(Protocol):
         cwd: str | None = None,
         env: dict[str, str] | None = None,
         timeout: float,
+        mode: ShellExecutionMode = "pty",
     ) -> ShellCommandResult: ...
 
     async def wait(
@@ -105,9 +109,3 @@ class ShellCommandProtocol(Protocol):
         force: bool = False,
         grace_seconds: float | None = None,
     ) -> None: ...
-
-
-class ShellFileTransferProtocol(Protocol):
-    async def upload(self, *, content: bytes, remote_path: str, cwd: str | None = None) -> None: ...
-
-    async def download(self, *, remote_path: str, cwd: str | None = None) -> bytes: ...

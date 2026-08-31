@@ -2,12 +2,13 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { userProfileAtom } from '@/context/account-state'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { ownershipTransfer, sendOwnerEmail, verifyOwnerEmail } from '@/service/common'
 import MemberSelector from './member-selector'
 
@@ -28,8 +29,12 @@ const getErrorMessage = (error: unknown) => {
 
 const TransferOwnershipModal = ({ onClose, show }: Props) => {
   const { t } = useTranslation()
+  const verificationCodeInputId = React.useId()
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
-  const userProfile = useAtomValue(userProfileAtom)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
   const [step, setStep] = useState<Step>(STEP.start)
   const [code, setCode] = useState<string>('')
   const [time, setTime] = useState<number>(0)
@@ -170,10 +175,17 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               </div>
             </div>
             <div className="pt-3">
-              <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
+              <label
+                htmlFor={verificationCodeInputId}
+                className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
+              >
                 {t(($) => $['members.transferModal.codeLabel'], { ns: 'common' })}
-              </div>
+              </label>
               <Input
+                id={verificationCodeInputId}
+                name="verification-code"
+                inputMode="numeric"
+                autoComplete="one-time-code"
                 className="w-full!"
                 placeholder={t(($) => $['members.transferModal.codePlaceholder'], { ns: 'common' })}
                 value={code}

@@ -21,6 +21,7 @@ from core.app.apps.agent_app.app_generator import (
     AgentAppGenerator,
     AgentAppGeneratorError,
 )
+from core.app.apps.agent_app.errors import AgentSessionSnapshotIncompatibleError
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent
@@ -274,7 +275,6 @@ class TestGenerateWorker:
         mocker.patch(f"{MODULE}.session_factory.create_session", return_value=resolver_context)
         mocker.patch(f"{MODULE}.db.session.close")
         mocker.patch(f"{MODULE}.DifyRunContext", return_value=mocker.MagicMock())
-        mocker.patch(f"{MODULE}.build_dify_model_access", return_value=(mocker.MagicMock(), None))
         mocker.patch(f"{MODULE}.AgentAppRuntimeRequestBuilder", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.create_agent_backend_run_client", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.AgentBackendRunEventAdapter", return_value=mocker.MagicMock())
@@ -428,6 +428,23 @@ class TestGenerateWorker:
         self._call(generator, mocker, queue_manager)
         assert queue_manager.publish_error.called
 
+    def test_session_configuration_change_is_published_without_unknown_error_log(
+        self,
+        generator: AgentAppGenerator,
+        mocker: MockerFixture,
+    ) -> None:
+        error = AgentSessionSnapshotIncompatibleError()
+        self._wire(generator, mocker, run_side_effect=error)
+        queue_manager = mocker.MagicMock()
+        info_log = mocker.patch(f"{MODULE}.logger.info")
+        exception_log = mocker.patch(f"{MODULE}.logger.exception")
+
+        self._call(generator, mocker, queue_manager)
+
+        queue_manager.publish_error.assert_called_once_with(error, module.PublishFrom.APPLICATION_MANAGER)
+        info_log.assert_called_once()
+        exception_log.assert_not_called()
+
 
 class TestResumeAfterFormSubmission:
     """ENG-638: a resume turn re-sends the paused turn's original query so the
@@ -512,7 +529,7 @@ class TestResumeAfterFormSubmission:
         conversation = mocker.MagicMock(id="conv", invoke_from=InvokeFrom.DEBUGGER)
         mocker.patch(f"{MODULE}.ConversationService.get_conversation", return_value=conversation)
         generator._resolve_resume_draft.return_value = ("debug_build", "draft-build-1")
-        account_user = mocker.MagicMock(spec=Account)
+        account_user = Account(name="Test Account", email="test@example.com")
         account_user.id = "user"
         app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent")
         app_model.app_model_config_id = "config-1"

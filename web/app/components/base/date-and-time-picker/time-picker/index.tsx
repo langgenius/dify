@@ -26,11 +26,9 @@ const TimePicker = ({
   renderTrigger,
   title,
   minuteFilter,
-  popupClassName,
   notClearable = false,
   triggerFullWidth = false,
   showTimezone = false,
-  placement = 'bottom-start',
 }: TimePickerProps) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
@@ -194,39 +192,43 @@ const TimePicker = ({
   )
 
   const displayValue = formatTimeValue(value)
+  const renderInput = (open: boolean) => {
+    const placeholderDate =
+      open && isDayjsObject(selectedTime)
+        ? selectedTime.format(timeFormat)
+        : placeholder || t(($) => $.defaultPlaceholder, { ns: 'time' })
 
-  const placeholderDate =
-    isOpen && isDayjsObject(selectedTime)
-      ? selectedTime.format(timeFormat)
-      : placeholder || t(($) => $.defaultPlaceholder, { ns: 'time' })
-
-  const inputElem = (
-    <input
-      className="flex-1 cursor-pointer appearance-none truncate bg-transparent p-1 system-xs-regular text-components-input-text-filled outline-hidden select-none placeholder:text-components-input-text-placeholder"
-      readOnly
-      value={isOpen ? '' : displayValue}
-      placeholder={placeholderDate}
-    />
-  )
+    return (
+      <input
+        className="flex-1 cursor-pointer appearance-none truncate bg-transparent p-1 system-xs-regular text-components-input-text-filled outline-hidden select-none placeholder:text-components-input-text-placeholder"
+        readOnly
+        value={open ? '' : displayValue}
+        placeholder={placeholderDate}
+      />
+    )
+  }
   return (
     <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         nativeButton={false}
         className={triggerFullWidth ? 'flex! w-full' : undefined}
-        render={
-          renderTrigger ? (
-            renderTrigger({
-              inputElem,
-              onClick: handleClickTrigger,
-              isOpen,
-            })
-          ) : (
+        render={(props, state) => {
+          const inputElem = renderInput(state.open)
+          if (renderTrigger)
+            return renderTrigger(props, state, { inputElem, onClick: handleClickTrigger })
+
+          return (
             <div
+              {...props}
               className={cn(
                 'group flex cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt',
                 triggerFullWidth ? 'w-full min-w-0' : 'w-63',
+                props.className,
               )}
-              onClick={handleClickTrigger}
+              onClick={(event) => {
+                handleClickTrigger(event)
+                props.onClick?.(event)
+              }}
               data-testid="time-picker-trigger"
             >
               {inputElem}
@@ -240,8 +242,8 @@ const TimePicker = ({
               <span
                 className={cn(
                   'i-ri-time-line size-4 shrink-0 text-text-quaternary',
-                  isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
-                  (displayValue || (isOpen && selectedTime)) &&
+                  state.open ? 'text-text-secondary' : 'group-hover:text-text-secondary',
+                  (displayValue || (state.open && selectedTime)) &&
                     !notClearable &&
                     'group-hover:hidden',
                 )}
@@ -250,7 +252,7 @@ const TimePicker = ({
                 type="button"
                 className={cn(
                   'hidden size-4 shrink-0 border-none bg-transparent p-0 text-text-quaternary hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
-                  (displayValue || (isOpen && selectedTime)) &&
+                  (displayValue || (state.open && selectedTime)) &&
                     !notClearable &&
                     'group-hover:inline-block',
                 )}
@@ -261,13 +263,12 @@ const TimePicker = ({
               </button>
             </div>
           )
-        }
+        }}
       />
       <PopoverContent
-        placement={placement}
+        placement="bottom-start"
         sideOffset={0}
-        className={popupClassName}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div className="mt-1 w-63 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5">
           {/* Header */}

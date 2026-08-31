@@ -1,6 +1,6 @@
 import type { Dependency, InstallStatus, Plugin, VersionProps } from '../../../types'
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { InstallStep } from '../../../types'
 import ReadyToInstall from '../ready-to-install'
 

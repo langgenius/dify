@@ -1,11 +1,12 @@
 import json
+from collections.abc import Callable
 from urllib.parse import quote
 
 import pytest
 from pytest_mock import MockerFixture
 
 from core.plugin.endpoint.exc import EndpointSetupFailedError
-from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
+from core.plugin.entities.plugin_daemon import PluginDaemonInnerError, PluginListResponse
 from core.plugin.impl.base import PLUGIN_DAEMON_MAX_PATH_LENGTH, BasePluginClient
 from core.plugin.impl.exc import PluginLLMPollingUnsupportedError, PluginRuntimeError
 from core.trigger.errors import (
@@ -42,9 +43,9 @@ class _StreamContext:
 
 
 class TestBasePluginClientImpl:
-    def test_inject_trace_headers(self, mocker: MockerFixture):
+    def test_inject_trace_headers(self, mocker: MockerFixture, config_overrides: Callable[..., None]):
         client = BasePluginClient()
-        mocker.patch("core.plugin.impl.base.dify_config.ENABLE_OTEL", True)
+        config_overrides(ENABLE_OTEL=True)
         trace_header = "00-abc-xyz-01"
         mocker.patch("core.helper.trace_id_helper.generate_traceparent_header", return_value=trace_header)
 
@@ -120,6 +121,26 @@ class TestBasePluginClientImpl:
 
         assert result is True
         assert transformed == {"code": 0, "message": "", "data": True}
+
+    def test_request_with_plugin_daemon_response_accepts_legacy_plugin_list_data_array(self, mocker: MockerFixture):
+        client = BasePluginClient()
+        mocker.patch.object(client, "_request", return_value=_ResponseStub({"code": 0, "message": "", "data": []}))
+
+        result = client._request_with_plugin_daemon_response("GET", "plugin/tenant/management/list", PluginListResponse)
+
+        assert result.list == []
+        assert result.total == 0
+
+    def test_request_with_plugin_daemon_response_accepts_legacy_plugin_list_top_level_array(
+        self, mocker: MockerFixture
+    ):
+        client = BasePluginClient()
+        mocker.patch.object(client, "_request", return_value=_ResponseStub([]))
+
+        result = client._request_with_plugin_daemon_response("GET", "plugin/tenant/management/list", PluginListResponse)
+
+        assert result.list == []
+        assert result.total == 0
 
     def test_request_with_plugin_daemon_response_stream_malformed_json_error(self, mocker: MockerFixture):
         client = BasePluginClient()

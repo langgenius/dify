@@ -25,6 +25,14 @@
       "types": "./src/button/index.tsx",
       "import": "./src/button/index.tsx"
     },
+    "./icon-button": {
+      "types": "./src/icon-button/index.tsx",
+      "import": "./src/icon-button/index.tsx"
+    },
+    "./toggle": {
+      "types": "./src/toggle/index.tsx",
+      "import": "./src/toggle/index.tsx"
+    },
     "./checkbox": {
       "types": "./src/checkbox/index.tsx",
       "import": "./src/checkbox/index.tsx"
@@ -77,6 +85,10 @@
       "types": "./src/input/index.tsx",
       "import": "./src/input/index.tsx"
     },
+    "./input-group": {
+      "types": "./src/input-group/index.tsx",
+      "import": "./src/input-group/index.tsx"
+    },
     "./kbd": {
       "types": "./src/kbd/index.tsx",
       "import": "./src/kbd/index.tsx"
@@ -97,9 +109,9 @@
       "types": "./src/pagination/index.tsx",
       "import": "./src/pagination/index.tsx"
     },
-    "./radio": {
-      "types": "./src/radio/index.tsx",
-      "import": "./src/radio/index.tsx"
+    "./radio-group": {
+      "types": "./src/radio-group/index.tsx",
+      "import": "./src/radio-group/index.tsx"
     },
     "./popover": {
       "types": "./src/popover/index.tsx",
@@ -181,7 +193,6 @@
     "@types/react-dom": "catalog:",
     "@typescript/native": "catalog:",
     "@vitejs/plugin-react": "catalog:",
-    "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "class-variance-authority": "catalog:",

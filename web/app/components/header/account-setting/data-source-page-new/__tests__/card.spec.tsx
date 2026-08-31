@@ -1,4 +1,5 @@
 import type { DataSourceAuth } from '../types'
+import type { AddOAuthButtonProps } from '@/app/components/plugins/plugin-auth/types'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { usePluginAuthAction } from '@/app/components/plugins/plugin-auth'
@@ -68,11 +69,27 @@ vi.mock('@/app/components/plugins/plugin-auth', () => ({
       Add API Key
     </button>
   ),
-  AddOAuthButton: ({ onUpdate, disabled }: { onUpdate: () => void; disabled?: boolean }) => (
-    <button disabled={disabled} onClick={onUpdate}>
-      Add OAuth
-    </button>
-  ),
+  AddOAuthButton: ({ onUpdate, disabled, renderTrigger }: AddOAuthButtonProps) => {
+    const handleClick = () => onUpdate?.()
+    const trigger = (
+      <button disabled={disabled} onClick={handleClick}>
+        Add OAuth
+      </button>
+    )
+
+    return (
+      <>
+        {renderTrigger
+          ? renderTrigger({
+              disabled,
+              isConfigured: false,
+              onClick: handleClick,
+              trigger,
+            })
+          : trigger}
+      </>
+    )
+  },
 }))
 
 vi.mock('@/hooks/use-i18n', () => ({
@@ -200,15 +217,14 @@ describe('Card Component', () => {
       render(<Card item={mockItem} />)
 
       // Assert
-      // Assert
       expect(screen.getByText('Test Label'))!.toBeInTheDocument()
       expect(screen.queryByText(/Test Author/))!.not.toBeInTheDocument()
       expect(screen.queryByText(/test-name/))!.not.toBeInTheDocument()
       expect(screen.getByText('1.2.0'))!.toBeInTheDocument()
-      expect(screen.getByRole('img', { name: 'Test Label' }))!.toHaveAttribute(
-        'src',
-        'test-icon-url',
-      )
+      const icon = screen.getByRole('img', { name: 'Test Label' })
+      expect(icon).toHaveAttribute('src', 'test-icon-url')
+      expect(icon).toHaveAttribute('loading', 'lazy')
+      expect(icon).toHaveAttribute('decoding', 'async')
       expect(screen.getByText('Credential 1'))!.toBeInTheDocument()
       expect(screen.getByText(/plugin.auth.default/))!.toBeInTheDocument()
 

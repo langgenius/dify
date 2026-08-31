@@ -2,12 +2,14 @@ import type { PermissionKey } from '@/models/access-control'
 
 export const AppACLPermission = {
   Preview: 'app.acl.preview',
+  AccessPoint: 'app.acl.access_point_manage',
   ViewLayout: 'app.acl.view_layout',
   TestAndRun: 'app.acl.test_and_run',
   Edit: 'app.acl.edit',
   ImportExportDSL: 'app.acl.import_export_dsl',
   Delete: 'app.acl.delete',
   ReleaseAndVersion: 'app.acl.release_and_version',
+  Deploy: 'app.acl.deploy',
   Monitor: 'app.acl.monitor',
   TracingConfig: 'app.acl.tracing_config',
   LogAndAnnotation: 'app.acl.log_and_annotation',
@@ -37,6 +39,7 @@ export type ResourceMaintainerPermissionOptions = {
 }
 
 type AppACLCapabilities = {
+  canAccessPoint: boolean
   canViewLayout: boolean
   canTestAndRun: boolean
   canEdit: boolean
@@ -45,6 +48,7 @@ type AppACLCapabilities = {
   canImportExportDSL: boolean
   canDelete: boolean
   canReleaseAndVersion: boolean
+  canDeploy: boolean
   canMonitor: boolean
   canConfigureTracing: boolean
   canAccessLogAndAnnotation: boolean
@@ -133,6 +137,11 @@ export const getAppACLCapabilities = (
   )
 
   return {
+    canAccessPoint: hasResourcePermission(
+      permissionKeys,
+      AppACLPermission.AccessPoint,
+      hasMaintainerPermissions,
+    ),
     canViewLayout,
     canTestAndRun,
     canEdit,
@@ -153,6 +162,7 @@ export const getAppACLCapabilities = (
       AppACLPermission.ReleaseAndVersion,
       hasMaintainerPermissions,
     ),
+    canDeploy: hasPermission(permissionKeys, AppACLPermission.Deploy),
     canMonitor: hasResourcePermission(
       permissionKeys,
       AppACLPermission.Monitor,

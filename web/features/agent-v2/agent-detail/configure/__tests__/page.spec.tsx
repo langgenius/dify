@@ -4,6 +4,7 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ScopeProvider } from 'jotai-scope'
 import { useState } from 'react'
+import { AgentScope } from '@/features/agent-v2/analytics'
 import { renderWithNuqs as render } from '@/test/nuqs-testing'
 import { AgentConfigureComposerScope } from '../components/composer-session'
 import { useAgentConfigureData } from '../hooks'
@@ -687,7 +688,7 @@ describe('AgentConfigurePage', () => {
       )
     })
 
-    it('should expose a single configure workspace region after loading', () => {
+    it('should leave the configure landmark to the orchestrate panel after loading', () => {
       const queryClient = new QueryClient()
       mocks.queryState.composer = {
         data: {},
@@ -705,11 +706,8 @@ describe('AgentConfigurePage', () => {
       )
 
       expect(
-        screen.getAllByRole('region', { name: 'agentV2.agentDetail.sections.configure' }),
-      ).toHaveLength(1)
-      expect(
-        screen.getByRole('region', { name: 'agentV2.agentDetail.sections.configure' }),
-      ).toBeVisible()
+        screen.queryByRole('region', { name: 'agentV2.agentDetail.sections.configure' }),
+      ).not.toBeInTheDocument()
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toBeInTheDocument()
     })
 
@@ -1432,7 +1430,9 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent(
         'draftType:draft',
       )
-      expect(trackEventMock).not.toHaveBeenCalled()
+      expect(trackEventMock).toHaveBeenCalledWith('agent_preview_mode_run', {
+        agent_scope: AgentScope.Global,
+      })
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
         'readonly:no',
       )
@@ -2014,7 +2014,9 @@ describe('AgentConfigurePage', () => {
         expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes')
       })
       expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
-      expect(trackEventMock).toHaveBeenCalledWith('agent_build_mode_run')
+      expect(trackEventMock).toHaveBeenCalledWith('agent_build_mode_run', {
+        agent_scope: AgentScope.Global,
+      })
     })
 
     it('should show the working directory action after the first build reply completes', async () => {
@@ -2961,6 +2963,61 @@ describe('AgentConfigurePage', () => {
           'prompt:applied prompt',
         )
       })
+    })
+
+    it('should stop applying after finalize fails without adding a generic error toast', async () => {
+      const user = userEvent.setup()
+      mocks.finalizeBuildChat.mockRejectedValueOnce(new Error('finalize failed'))
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'old draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      mocks.queryState.buildDraft = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'build prompt',
+            },
+          },
+          draft: {},
+          variant: 'agent_app',
+        },
+        dataUpdatedAt: 1,
+        error: null,
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'apply build draft' }))
+
+      await waitFor(() => expect(mocks.finalizeBuildChat).toHaveBeenCalledTimes(1))
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'build-draft-bar' })).toHaveTextContent(
+          'applying:no',
+        )
+      })
+      expect(mocks.applyBuildDraft).not.toHaveBeenCalled()
+      expect(toastMock.error).not.toHaveBeenCalledWith('common.api.actionFailed')
+      expect(toastMock.success).not.toHaveBeenCalled()
     })
 
     it('should keep the build draft UI while the applied normal draft is still refreshing', async () => {

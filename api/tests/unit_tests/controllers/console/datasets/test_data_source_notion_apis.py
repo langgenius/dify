@@ -15,9 +15,30 @@ from controllers.console.datasets.data_source import (
     DataSourceNotionDocumentSyncApi,
     DataSourceNotionIndexingEstimateApi,
     DataSourceNotionPreviewApi,
+    DataSourceNotionPreviewQuery,
+    NotionEstimatePayload,
 )
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from models import Account
+from models import Account, Dataset, Document
+from models.dataset import DataSourceType, DocumentCreatedFrom
+
+
+def _dataset() -> Dataset:
+    return Dataset(id="ds-1", tenant_id="tenant-1", name="Dataset", created_by="u1")
+
+
+def _document() -> Document:
+    return Document(
+        id="d1",
+        tenant_id="tenant-1",
+        dataset_id="ds-1",
+        position=1,
+        data_source_type=DataSourceType.NOTION_IMPORT,
+        batch="batch-1",
+        name="Notion page",
+        created_from=DocumentCreatedFrom.WEB,
+        created_by="u1",
+    )
 
 
 @pytest.fixture
@@ -45,7 +66,7 @@ class TestDataSourceNotionPreviewApi:
                 return_value=extractor,
             ),
         ):
-            response, status = method(api, "tenant-1", "p1", "page")
+            response, status = method(api, DataSourceNotionPreviewQuery(credential_id="c1"), "tenant-1", "p1", "page")
 
         assert status == 200
 
@@ -80,7 +101,7 @@ class TestDataSourceNotionIndexingEstimateApi:
                 return_value=MagicMock(model_dump=lambda: {"total_pages": 1}),
             ),
         ):
-            response, status = method(api, sqlite_session, "tenant-1")
+            response, status = method(api, NotionEstimatePayload.model_validate(payload), sqlite_session, "tenant-1")
 
         assert status == 200
 
@@ -95,11 +116,11 @@ class TestDataSourceNotionDatasetSyncApi:
             app.test_request_context("/"),
             patch(
                 "controllers.console.datasets.data_source.DatasetService.get_dataset",
-                return_value=MagicMock(),
+                return_value=_dataset(),
             ),
             patch(
                 "controllers.console.datasets.data_source.DocumentService.get_document_by_dataset_id",
-                return_value=[MagicMock(id="d1")],
+                return_value=[_document()],
             ),
             patch(
                 "controllers.console.datasets.data_source.document_indexing_sync_task.delay",
@@ -136,11 +157,11 @@ class TestDataSourceNotionDocumentSyncApi:
             app.test_request_context("/"),
             patch(
                 "controllers.console.datasets.data_source.DatasetService.get_dataset",
-                return_value=MagicMock(),
+                return_value=_dataset(),
             ),
             patch(
                 "controllers.console.datasets.data_source.DocumentService.get_document",
-                return_value=MagicMock(),
+                return_value=_document(),
             ),
             patch(
                 "controllers.console.datasets.data_source.document_indexing_sync_task.delay",
@@ -160,7 +181,7 @@ class TestDataSourceNotionDocumentSyncApi:
             app.test_request_context("/"),
             patch(
                 "controllers.console.datasets.data_source.DatasetService.get_dataset",
-                return_value=MagicMock(),
+                return_value=_dataset(),
             ),
             patch(
                 "controllers.console.datasets.data_source.DocumentService.get_document",

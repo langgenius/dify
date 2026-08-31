@@ -45,13 +45,13 @@ const GetSchema: FC<Props> = ({ onChange }) => {
   return (
     <div className="flex w-56 justify-end gap-1">
       <DropdownMenu open={showImportFromUrl} onOpenChange={setShowImportFromUrl}>
-        <DropdownMenuTrigger render={<Button size="small" className="gap-1" />}>
+        <DropdownMenuTrigger render={<Button size="small" />}>
           <span className="i-ri-add-line size-3" aria-hidden />
           <span className="system-xs-medium text-text-secondary">
             {t(($) => $['createTool.importFromUrl'], { ns: 'tools' })}
           </span>
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-start" sideOffset={2} popupClassName="w-[300px] p-2">
+        <DropdownMenuContent placement="bottom-start" sideOffset={2} className="w-[300px] p-2">
           <div className="relative">
             <Input
               type="text"
@@ -74,13 +74,13 @@ const GetSchema: FC<Props> = ({ onChange }) => {
         </DropdownMenuContent>
       </DropdownMenu>
       <DropdownMenu open={showExamples} onOpenChange={setShowExamples}>
-        <DropdownMenuTrigger render={<Button size="small" className="gap-1" />}>
+        <DropdownMenuTrigger render={<Button size="small" />}>
           <span className="system-xs-medium text-text-secondary">
             {t(($) => $['createTool.examples'], { ns: 'tools' })}
           </span>
           <span className="i-ri-arrow-down-s-line size-3" aria-hidden />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={2} popupClassName="min-w-max">
+        <DropdownMenuContent placement="bottom-end" sideOffset={2} className="min-w-max">
           {examples.map((item) => (
             <DropdownMenuItem
               key={item.key}

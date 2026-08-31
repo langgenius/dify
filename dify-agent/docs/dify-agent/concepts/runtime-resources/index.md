@@ -29,7 +29,7 @@ backend ref to the `dify.runtime` layer:
 flowchart LR
     EC["dify.execution_context<br/>request identity"]
     RT["dify.runtime<br/>opaque backend_binding_ref"]
-    SH["dify.shell<br/>commands, files, and jobs"]
+    SH["dify.shell<br/>commands and jobs"]
 
     EC --> SH
     RT --> SH
@@ -41,8 +41,8 @@ the resulting `RuntimeLease` only while that context is active. The layer does
 not create, retire, or destroy persistent resources, and it stores no backend
 SDK object in an Agenton session snapshot.
 
-The Shell layer consumes `RuntimeLease.commands`, `RuntimeLease.files`, and
-`RuntimeLease.layout`. It tracks only request-local shell job ids and offsets.
+The Shell layer consumes `RuntimeLease.commands` and `RuntimeLease.layout`. It
+tracks only request-local shell job ids and offsets.
 Closing a run clears that job state; it does not retire the Binding.
 
 ## State ownership
@@ -64,6 +64,8 @@ Dify Agent does not connect to the Dify product database and has no persistent
 resource registry. Its private control-plane endpoints create or destroy
 backend resources from requests made by Dify API. Redis run records and event
 streams are observability state, not the Home/Workspace/Binding ledger.
+
+When `DIFY_AGENT_API_TOKEN` is configured, every private control-plane request must carry the matching Dify API `AGENT_BACKEND_API_TOKEN` as a Bearer token.
 
 ## Creation and execution flow
 
@@ -105,7 +107,7 @@ composition contains:
 Each Agent request acquires that ref for the duration of the run and releases it
 afterward. Local release closes the operation's shellctl connection. E2B release
 also pauses the underlying E2B resource with memory preserved. A later request
-or Workspace file operation acquires a new lease for the same Binding ref. If a
+or Binding file operation acquires a new lease for the same Binding ref. If a
 backend confirms the resource is gone, acquisition fails; it does not create an
 empty replacement Workspace.
 
@@ -115,9 +117,13 @@ Retirement is a database transition from `ACTIVE` to `RETIRED`. It prevents new
 product use without performing network I/O inside the caller's transaction.
 Product lifecycle paths commit this transition synchronously. After the
 transaction commits, one Celery task asks Dify Agent to destroy the physical
-resources. A successful collector deletes the corresponding ledger row; a
-failed collector logs the failure and leaves the RETIRED row available for a
-future retry or reconciler.
+resources. A successful collector deletes the corresponding ledger row. If a
+collector raises, the task logs the tenant, resource type, and resource ID and
+continues with the other independent resources in the batch. After all resources
+have been attempted, any failure makes the Celery task fail and prevents Agent
+aggregate deletion. Failed RETIRED rows remain available for a later retry. A
+failure to publish the Celery task is also propagated to the product caller. No
+automatic retry or reconciliation is performed.
 
 The unified `collect_agent_resources` task is registered on normal Celery
 workers and explicitly uses the existing `retention` queue. Standard workers
@@ -126,14 +132,26 @@ is required. At a Workflow terminal event, the graph layer synchronously retires
 and commits the run's Workspaces before enqueueing collection. When a Workflow
 change may orphan Workflow-only Agents, the main product transaction commits
 first; a fresh session then rechecks effective ownership and retires only Agents
-that remain unowned.
+that remain unowned. An effective reference is a binding in a normal App's
+current draft or current published Workflow. This ownership check applies only
+to implicit retirement of Workflow-only Agents. Explicit deletion of a roster
+Agent or Agent App proceeds even while Workflows reference it.
 
 Retiring a final Binding also retires its Workspace. Workspace collection
 destroys the physical Workspace through one Binding and then collects remaining
 materialized Homes. Home Snapshots are retired when their owning Agent is
-retired and are collected only after no draft or config snapshot references
-them. Celery performs physical collection only; it does not decide or perform
-the initial retirement. Dify Agent itself remains stateless.
+retired. `RETIRED` is the sole physical-deletion condition for a Home Snapshot;
+Draft and Config Snapshot references are historical pointers and do not keep it
+alive. After every external resource in a deletion batch succeeds, Dify API
+hard-deletes the archived Agent together with its Drafts, Config Snapshots,
+Config Revisions, debug-conversation mappings, and resource ledgers in one
+database transaction. Workflow Agent bindings belong to
+their Workflows and remain unchanged, so they may hold a dangling Agent ID after
+explicit deletion. Dify Agent itself remains stateless.
+
+A `RETIRED` Workspace without a `RETIRED` Binding cannot identify a backend
+participant through which to destroy the Workspace. That state is a lifecycle
+invariant violation and fails collection instead of being logged as success.
 
 There is currently no age-based TTL, periodic GC, or global orphan reconciler.
 Backend destroy operations are idempotent where supported. Dify API does not
@@ -146,7 +164,7 @@ returning success. For example, E2B kills a Sandbox when its initialization
 fails, and Local removes paths created by an incomplete operation. This
 backend-local cleanup does not cross the database commit boundary.
 
-## Workspace file boundary
+## Binding file boundary
 
 Dify API's public file APIs accept a product locator, not a Binding id or
 backend ref: a Conversation, a debug Build Draft, or a Workflow Node Execution.
@@ -154,28 +172,35 @@ Dify API authorizes that object and resolves its associated active Binding. It
 does not select the latest Binding or fall back to another product context.
 
 The resolved request reaches Dify Agent through its private
-`POST /workspace/files/list`, `POST /workspace/files/read`, and
-`POST /workspace/files/upload` endpoints. Each operation receives a
+`POST /execution-bindings/files/list`, `POST /execution-bindings/files/read`,
+and `POST /execution-bindings/files/download` endpoints. Each operation receives a
 `backend_binding_ref`, acquires a fresh RuntimeLease, performs the file action,
 and releases the lease.
 
-`WorkspaceFileService` forwards the request path unchanged to the current
-RuntimeLease's file capability. The backend interprets that path in its own
-filesystem namespace; the service does not require a Workspace-relative path
-or enforce `workspace_dir` containment. `~` and `~/...` can therefore address
-the lease's Home. Whether an absolute path or a path containing `..` is
-accessible is determined by the backend and its path-isolation policy, such as
-Local shellctl and Landlock isolation. Whole-file capture for Agent Stub upload
-is bounded by
-`DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES`; the environment variable keeps its
-existing name even though the route now operates through a Binding.
+`BindingFileService` resolves relative paths from `workspace_dir`, `~` and
+`~/...` from `home_dir`, and leaves absolute paths in the Binding filesystem
+namespace. It does not enforce Workspace containment or reject `..`; the
+selected backend's isolation policy remains authoritative. List and preview
+run bounded inspection scripts through `RuntimeLease.commands`. Download runs
+`dify-agent file upload --no-download-link` inside the Binding so bytes stream
+directly from the runtime to Dify's existing ToolFile endpoint. Dify Agent
+returns only the canonical ToolFile reference and releases the lease before
+Dify API signs a browser URL.
+
+The default Binding-download deadline chain leaves each caller time to receive
+and normalize the lower layer's result: the sandbox CLI upload is 180 seconds,
+`DIFY_AGENT_BINDING_FILE_DOWNLOAD_COMMAND_TIMEOUT_SECONDS` is 210 seconds,
+Dify API's `AGENT_BACKEND_BINDING_FILE_DOWNLOAD_TIMEOUT_SECONDS` is 240 seconds,
+and `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` is 3600 seconds.
 
 `RuntimeLayout.home_dir` and `RuntimeLayout.workspace_dir` are canonical paths
 inside the backend execution namespace. They are not host paths, product ids,
 or request configuration. Shell commands start in `workspace_dir`, and `HOME`
-is forced to `home_dir`. On Local, sibling materialized Homes may exist in the
-same shellctl namespace, while path isolation restricts the active lease to its
-own Home plus the shared Workspace.
+is forced to `home_dir`. The standard temp variables `TMPDIR`, `TMP`, and `TEMP`
+also point directly to `workspace_dir`, so the Workspace is both the command
+`cwd` and temp space. On Local, sibling materialized Homes may exist in the same
+shellctl namespace, while path isolation restricts the active lease to its own
+Home plus the shared Workspace.
 
 ## Backend support
 
@@ -192,8 +217,12 @@ its Binding and Workspace are one Sandbox. It also rejects binding-only destroy.
 Neither path creates a fallback Workspace or switches backends.
 
 `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` limits continuous active time for an E2B
-resource. Runtime resources pause on timeout. It is not a retention TTL and
-does not delete paused resources or immutable snapshots.
+resource to one hour. The limit covers the complete Agent run held by one
+RuntimeLease rather than an individual tool call. Its 3600-second default is
+intentionally the same as `DIFY_AGENT_RUN_TIMEOUT_SECONDS`, but the two settings
+remain independently configurable. Runtime resources pause on timeout, but this
+resource setting does not own the Agent run terminal state. It is not a retention
+TTL and does not delete paused resources or immutable snapshots.
 
 See the [Shell layer](../../user-manual/shell-layer/index.md) for request
 composition and the [Operations Guide](../../guide/index.md) for Local and E2B

@@ -347,7 +347,11 @@ class Dataset(Base):
     def get_doc_form(self, *, session: Session) -> str | None:
         if self.chunk_structure:
             return self.chunk_structure
-        return session.scalar(select(Document.doc_form).where(Document.dataset_id == self.id).limit(1))
+        return session.scalar(
+            select(Document.doc_form)
+            .where(Document.dataset_id == self.id, Document.tenant_id == self.tenant_id)
+            .limit(1)
+        )
 
     @property
     def retrieval_model_dict(self):
@@ -736,7 +740,11 @@ class Document(Base):
                 select(DatasetMetadata)
                 .join(DatasetMetadataBinding, DatasetMetadataBinding.metadata_id == DatasetMetadata.id)
                 .where(
-                    DatasetMetadataBinding.dataset_id == self.dataset_id, DatasetMetadataBinding.document_id == self.id
+                    DatasetMetadata.tenant_id == self.tenant_id,
+                    DatasetMetadata.dataset_id == self.dataset_id,
+                    DatasetMetadataBinding.tenant_id == self.tenant_id,
+                    DatasetMetadataBinding.dataset_id == self.dataset_id,
+                    DatasetMetadataBinding.document_id == self.id,
                 )
             ).all()
             metadata_list: list[DocMetadataDetailItem] = []
@@ -919,10 +927,10 @@ class DocumentSegment(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    position: Mapped[int]
+    position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     content: Mapped[str] = mapped_column(LongText, nullable=False)
-    word_count: Mapped[int]
-    tokens: Mapped[int]
+    word_count: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False)
 
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # basic fields
@@ -1165,17 +1173,14 @@ class ChildChunk(TypeBase):
     )
     error: Mapped[str | None] = mapped_column(LongText, nullable=True, init=False)
 
-    @property
-    def dataset(self):
-        return db.session.scalar(select(Dataset).where(Dataset.id == self.dataset_id))
+    def dataset(self, session: Session) -> Dataset | None:
+        return session.scalar(select(Dataset).where(Dataset.id == self.dataset_id))
 
-    @property
-    def document(self):
-        return db.session.scalar(select(Document).where(Document.id == self.document_id))
+    def document(self, session: Session) -> Document | None:
+        return session.scalar(select(Document).where(Document.id == self.document_id))
 
-    @property
-    def segment(self):
-        return db.session.scalar(select(DocumentSegment).where(DocumentSegment.id == self.segment_id))
+    def segment(self, session: Session) -> DocumentSegment | None:
+        return session.scalar(select(DocumentSegment).where(DocumentSegment.id == self.segment_id))
 
 
 class AppDatasetJoin(TypeBase):
@@ -1703,9 +1708,8 @@ class PipelineCustomizedTemplate(TypeBase):
         init=False,
     )
 
-    @property
-    def created_user_name(self):
-        account = db.session.scalar(select(Account).where(Account.id == self.created_by))
+    def created_user_name(self, session: Session) -> str:
+        account = session.scalar(select(Account).where(Account.id == self.created_by))
         if account:
             return account.name
         return ""
@@ -1740,7 +1744,9 @@ class Pipeline(TypeBase):
     )
 
     def retrieve_dataset(self, session: Session | scoped_session):
-        return session.scalar(select(Dataset).where(Dataset.pipeline_id == self.id))
+        return session.scalar(
+            select(Dataset).where(Dataset.pipeline_id == self.id, Dataset.tenant_id == self.tenant_id)
+        )
 
 
 class DocumentPipelineExecutionLog(TypeBase):

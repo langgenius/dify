@@ -4,13 +4,7 @@ import pytest
 
 import core.tools.utils.message_transformer as mt
 from core.tools.entities.tool_entities import ToolInvokeMessage
-
-
-class _FakeToolFile:
-    def __init__(self, mimetype: str, name: str | None):
-        self.id = "fake-tool-file-id"
-        self.mimetype = mimetype
-        self.name = name or "fake-tool-file.bin"
+from models.tools import ToolFile
 
 
 class _FakeToolFileManager:
@@ -39,7 +33,17 @@ class _FakeToolFileManager:
             "mimetype": mimetype,
             "filename": filename,
         }
-        return _FakeToolFile(mimetype, filename)
+        tool_file = ToolFile(
+            user_id=user_id,
+            tenant_id=tenant_id,
+            conversation_id=conversation_id,
+            file_key="tools/fake-tool-file-id",
+            mimetype=mimetype,
+            name=filename or "fake-tool-file.bin",
+            size=len(file_binary),
+        )
+        tool_file.id = "fake-tool-file-id"
+        return tool_file
 
 
 @pytest.fixture(autouse=True)

@@ -17,7 +17,7 @@ function RetryResultPanel({ list, onBack }: Props) {
     <div>
       <button
         type="button"
-        className="flex h-8 w-full cursor-pointer items-center bg-components-panel-bg px-4 system-sm-medium text-text-accent-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        className="flex h-8 w-full cursor-pointer items-center bg-components-panel-bg px-4 system-sm-medium text-text-accent-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         onClick={(e) => {
           e.stopPropagation()
           e.nativeEvent.stopImmediatePropagation()

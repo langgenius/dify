@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 from datetime import UTC, datetime
 from typing import cast, override
 
@@ -22,6 +22,10 @@ from dify_agent.client import (
     DifyAgentValidationError,
 )
 from dify_agent.protocol import (
+    BindingFileDownloadRequest,
+    BindingFileDownloadResponse,
+    BindingFileListResponse,
+    BindingFileReadResponse,
     CancelRunRequest,
     CancelRunResponse,
     CreateExecutionBindingRequest,
@@ -30,6 +34,7 @@ from dify_agent.protocol import (
     DestroyExecutionBindingRequest,
     RUN_EVENT_ADAPTER,
     RunCancelledEvent,
+    RunCancelledEventData,
     RunEvent,
     RunEventsResponse,
     RunFailedEvent,
@@ -37,10 +42,6 @@ from dify_agent.protocol import (
     RunStartedEvent,
     RunSucceededEvent,
     RunSucceededEventData,
-    WorkspaceListResponse,
-    WorkspaceReadResponse,
-    WorkspaceUploadRequest,
-    WorkspaceUploadResponse,
 )
 
 
@@ -83,17 +84,23 @@ def _run_status_json(status: str) -> dict[str, object]:
     return {"run_id": "run-1", "status": status, "created_at": now, "updated_at": now, "error": None}
 
 
-def _workspace_upload_request(path: str = "report.txt") -> WorkspaceUploadRequest:
-    return WorkspaceUploadRequest(
+def _binding_file_download_request(path: str = "report.txt") -> BindingFileDownloadRequest:
+    return BindingFileDownloadRequest(
         backend_binding_ref="binding-ref",
         path=path,
         execution_context=DifyExecutionContextLayerConfig(
             tenant_id="tenant-1",
+            user_id="account-1",
             user_from="account",
             agent_mode="agent_app",
             invoke_from="debugger",
         ),
     )
+
+
+def _assert_binding_download_timeout(request: httpx.Request, expected: float = 240.0) -> None:
+    timeout = cast(dict[str, float], request.extensions["timeout"])
+    assert timeout == {"connect": expected, "read": expected, "write": expected, "pool": expected}
 
 
 def _function_tool_result_payload(key: str) -> dict[str, object]:
@@ -125,6 +132,19 @@ class DisconnectingSyncStream(httpx.SyncByteStream):
         raise httpx.ReadError("stream disconnected")
 
 
+class DisconnectingAsyncStream(httpx.AsyncByteStream):
+    chunks: list[bytes]
+
+    def __init__(self, *chunks: str) -> None:
+        self.chunks = [chunk.encode() for chunk in chunks]
+
+    @override
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        for chunk in self.chunks:
+            yield chunk
+        raise httpx.ReadError("stream disconnected")
+
+
 def test_sse_decoder_accepts_function_tool_result_part_alias(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(client_module, "_function_tool_result_payload_key_cache", "part")
     decoder = client_module._SSEDecoder()
@@ -136,7 +156,7 @@ def test_sse_decoder_accepts_function_tool_result_part_alias(monkeypatch: pytest
     assert event is not None
     assert event.type == "pydantic_ai_event"
     assert event.data.event_kind == "function_tool_result"
-    assert event.data.result.tool_name == "shell_run"
+    assert event.data.part.tool_name == "shell_run"
 
 
 def test_function_tool_result_payload_normalization_supports_old_part_schema(
@@ -226,85 +246,177 @@ def test_async_methods_and_wait_run_parse_protocol_dtos() -> None:
     asyncio.run(scenario())
 
 
-def test_sync_workspace_methods_post_dtos_and_parse_responses() -> None:
+def test_cancel_run_and_wait_sync_resumes_after_cursor_and_returns_cancelled_snapshot() -> None:
+    snapshot = CompositorSessionSnapshot(layers=[])
+
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/workspace/files/list":
+        if request.method == "POST":
+            return httpx.Response(202, json={"run_id": "run-1", "status": "cancelled"})
+        if request.url.path == "/runs/run-1":
+            return httpx.Response(
+                200,
+                json={
+                    "run_id": "run-1",
+                    "status": "running",
+                    "created_at": "2026-08-17T00:00:00Z",
+                    "updated_at": "2026-08-17T00:00:00Z",
+                },
+            )
+        assert request.url.params["after"] == "3-0"
+        event = RunCancelledEvent(
+            id="4-0",
+            run_id="run-1",
+            data=RunCancelledEventData(reason="stopped", session_snapshot=snapshot),
+        )
+        return httpx.Response(200, content=_event_frame(event))
+
+    client = Client(
+        base_url="http://testserver",
+        sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    event = client.cancel_run_and_wait_sync(
+        "run-1",
+        CancelRunRequest(reason="stopped"),
+        after="3-0",
+    )
+
+    assert event.data.session_snapshot == snapshot
+
+
+def test_cancel_run_and_wait_sync_replays_when_cursor_already_points_to_cancelled_event() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(202, json={"run_id": "run-1", "status": "cancelled"})
+        if request.url.path == "/runs/run-1":
+            return httpx.Response(
+                200,
+                json={
+                    "run_id": "run-1",
+                    "status": "cancelled",
+                    "created_at": "2026-08-17T00:00:00Z",
+                    "updated_at": "2026-08-17T00:00:01Z",
+                },
+            )
+        assert request.url.params["after"] == "0-0"
+        return httpx.Response(200, content=_event_frame(RunCancelledEvent(id="4-0", run_id="run-1")))
+
+    client = Client(
+        base_url="http://testserver",
+        sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    event = client.cancel_run_and_wait_sync("run-1", after="4-0")
+
+    assert event.id == "4-0"
+
+
+def test_cancel_run_and_wait_async_returns_cancelled_terminal() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(202, json={"run_id": "run-1", "status": "cancelled"})
+        if request.url.path == "/runs/run-1":
+            return httpx.Response(200, json=_run_status_json("running"))
+        assert request.url.params["after"] == "1-0"
+        return httpx.Response(200, content=_event_frame(RunCancelledEvent(id="2-0", run_id="run-1")))
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+        event = await client.cancel_run_and_wait("run-1", after="1-0")
+        assert event.type == "run_cancelled"
+        await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_cancel_run_and_wait_async_replays_when_cursor_already_points_to_cancelled_event() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(202, json={"run_id": "run-1", "status": "cancelled"})
+        if request.url.path == "/runs/run-1":
+            return httpx.Response(200, json=_run_status_json("cancelled"))
+        assert request.url.params["after"] == "0-0"
+        return httpx.Response(200, content=_event_frame(RunCancelledEvent(id="4-0", run_id="run-1")))
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+        event = await client.cancel_run_and_wait("run-1", after="4-0")
+        assert event.id == "4-0"
+        await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_sync_binding_file_methods_post_dtos_and_parse_responses() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/execution-bindings/files/list":
             payload = cast(dict[str, object], json.loads(request.content))
             assert payload["path"] == "."
             assert payload["backend_binding_ref"] == "binding-ref"
             return httpx.Response(200, json={"path": ".", "entries": [], "truncated": False})
-        if request.url.path == "/workspace/files/read":
+        if request.url.path == "/execution-bindings/files/read":
             payload = cast(dict[str, object], json.loads(request.content))
             assert payload["path"] == "note.txt"
             assert payload["max_bytes"] == 128
             return httpx.Response(
                 200, json={"path": "note.txt", "size": 5, "truncated": False, "binary": False, "text": "hello"}
             )
-        if request.url.path == "/workspace/files/upload":
+        if request.url.path == "/execution-bindings/files/download":
+            _assert_binding_download_timeout(request)
             payload = cast(dict[str, object], json.loads(request.content))
             assert payload["path"] == "report.txt"
             return httpx.Response(
                 200,
-                json={
-                    "path": "report.txt",
-                    "file": {
-                        "transfer_method": "tool_file",
-                        "reference": "dify-file-ref:file-1",
-                        "download_url": "https://files.example.com/report.txt",
-                    },
-                },
+                json={"reference": "dify-file-ref:file-1"},
             )
         raise AssertionError(f"unexpected request: {request.method} {request.url}")
 
     client = Client(base_url="http://testserver", sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)))
 
-    listing = client.list_workspace_files_sync("binding-ref", ".")
-    preview = client.read_workspace_file_sync("binding-ref", "note.txt", max_bytes=128)
-    uploaded = client.upload_workspace_file_sync(_workspace_upload_request())
+    listing = client.list_binding_files_sync("binding-ref", ".")
+    preview = client.read_binding_file_sync("binding-ref", "note.txt", max_bytes=128)
+    downloaded = client.download_binding_file_sync(_binding_file_download_request())
 
-    assert isinstance(listing, WorkspaceListResponse)
+    assert isinstance(listing, BindingFileListResponse)
     assert listing.path == "."
-    assert isinstance(preview, WorkspaceReadResponse)
+    assert isinstance(preview, BindingFileReadResponse)
     assert preview.text == "hello"
-    assert isinstance(uploaded, WorkspaceUploadResponse)
-    assert uploaded.file.reference == "dify-file-ref:file-1"
-    assert uploaded.file.download_url == "https://files.example.com/report.txt"
+    assert isinstance(downloaded, BindingFileDownloadResponse)
+    assert downloaded.reference == "dify-file-ref:file-1"
 
 
-def test_async_workspace_methods_post_dtos_and_parse_responses() -> None:
+def test_async_binding_file_methods_post_dtos_and_parse_responses() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/workspace/files/list":
+        if request.url.path == "/execution-bindings/files/list":
             return httpx.Response(200, json={"path": ".", "entries": [], "truncated": False})
-        if request.url.path == "/workspace/files/read":
+        if request.url.path == "/execution-bindings/files/read":
+            payload = cast(dict[str, object], json.loads(request.content))
+            assert payload["max_bytes"] == 262144
             return httpx.Response(
                 200, json={"path": "note.txt", "size": 5, "truncated": False, "binary": False, "text": "hello"}
             )
-        if request.url.path == "/workspace/files/upload":
-            return httpx.Response(
-                200,
-                json={
-                    "path": "report.txt",
-                    "file": {
-                        "transfer_method": "tool_file",
-                        "reference": "dify-file-ref:file-1",
-                        "download_url": "https://files.example.com/report.txt",
-                    },
-                },
-            )
+        if request.url.path == "/execution-bindings/files/download":
+            _assert_binding_download_timeout(request, expected=123.5)
+            return httpx.Response(200, json={"reference": "dify-file-ref:file-1"})
         raise AssertionError(f"unexpected request: {request.method} {request.url}")
 
     async def scenario() -> None:
         http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
-        client = Client(base_url="http://testserver", async_http_client=http_client)
+        client = Client(
+            base_url="http://testserver",
+            binding_file_download_timeout=123.5,
+            async_http_client=http_client,
+        )
 
-        listing = await client.list_workspace_files("binding-ref", ".")
-        preview = await client.read_workspace_file("binding-ref", "note.txt")
-        uploaded = await client.upload_workspace_file(_workspace_upload_request())
+        listing = await client.list_binding_files("binding-ref", ".")
+        preview = await client.read_binding_file("binding-ref", "note.txt")
+        downloaded = await client.download_binding_file(_binding_file_download_request())
 
         assert listing.path == "."
         assert preview.text == "hello"
-        assert uploaded.file.reference == "dify-file-ref:file-1"
-        assert uploaded.file.download_url == "https://files.example.com/report.txt"
+        assert downloaded.reference == "dify-file-ref:file-1"
         await http_client.aclose()
 
     asyncio.run(scenario())
@@ -432,28 +544,22 @@ def test_home_snapshot_client_maps_sync_validation_and_async_http_errors() -> No
     asyncio.run(scenario())
 
 
-def test_sync_upload_workspace_file_rejects_missing_download_url() -> None:
+def test_sync_download_binding_file_rejects_missing_reference() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path != "/workspace/files/upload":
+        if request.url.path != "/execution-bindings/files/download":
             raise AssertionError(f"unexpected request: {request.method} {request.url}")
         return httpx.Response(
             200,
-            json={
-                "path": "report.txt",
-                "file": {
-                    "transfer_method": "tool_file",
-                    "reference": "dify-file-ref:file-1",
-                },
-            },
+            json={},
         )
 
     client = Client(base_url="http://testserver", sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)))
 
     with pytest.raises(DifyAgentValidationError):
-        _ = client.upload_workspace_file_sync(_workspace_upload_request())
+        _ = client.download_binding_file_sync(_binding_file_download_request())
 
 
-def test_sync_workspace_methods_map_invalid_json_to_validation_error() -> None:
+def test_sync_binding_file_methods_map_invalid_json_to_validation_error() -> None:
     responses = iter([httpx.Response(200, text="not-json"), httpx.Response(404, json={"detail": "missing"})])
 
     def handler(_request: httpx.Request) -> httpx.Response:
@@ -462,10 +568,10 @@ def test_sync_workspace_methods_map_invalid_json_to_validation_error() -> None:
     client = Client(base_url="http://testserver", sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)))
 
     with pytest.raises(DifyAgentValidationError):
-        _ = client.list_workspace_files_sync("binding-ref", ".")
+        _ = client.list_binding_files_sync("binding-ref", ".")
 
     with pytest.raises(DifyAgentHTTPError) as http_error:
-        _ = client.read_workspace_file_sync("binding-ref", "missing.txt")
+        _ = client.read_binding_file_sync("binding-ref", "missing.txt")
     assert http_error.value.status_code == 404
 
 
@@ -624,6 +730,44 @@ def test_stream_events_stops_after_cancelled_terminal_event() -> None:
     assert calls == 1
 
 
+def test_stream_events_does_not_reconnect_after_terminal_when_until_terminal_is_false() -> None:
+    calls = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, content=_event_frame(_run_succeeded_event()))
+
+    client = Client(
+        base_url="http://testserver",
+        sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    events = list(client.stream_events_sync("run-1", until_terminal=False, reconnect_delay_seconds=0))
+
+    assert [event.type for event in events] == ["run_succeeded"]
+    assert calls == 1
+
+
+def test_stream_events_does_not_reconnect_after_terminal_transport_error() -> None:
+    calls = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, stream=DisconnectingSyncStream(_event_frame(_run_succeeded_event())))
+
+    client = Client(
+        base_url="http://testserver",
+        sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    events = list(client.stream_events_sync("run-1", until_terminal=False, reconnect_delay_seconds=0))
+
+    assert [event.type for event in events] == ["run_succeeded"]
+    assert calls == 1
+
+
 def test_stream_events_reconnects_from_latest_event_id() -> None:
     seen_after: list[str] = []
 
@@ -773,6 +917,121 @@ def test_async_stream_events_yields_terminal_event() -> None:
         events = [event async for event in client.stream_events("run-1")]
 
         assert [event.type for event in events] == ["run_succeeded"]
+        await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_async_stream_events_enforces_total_timeout_before_connecting() -> None:
+    calls = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, content="")
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+            client = Client(base_url="http://testserver", async_http_client=http_client)
+
+            with pytest.raises(DifyAgentTimeoutError, match="exceeded its timeout"):
+                _ = [event async for event in client.stream_events("run-1", timeout_seconds=0)]
+
+    asyncio.run(scenario())
+
+    assert calls == 0
+
+
+def test_async_stream_events_does_not_reconnect_after_terminal_when_until_terminal_is_false() -> None:
+    calls = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, content=_event_frame(_run_succeeded_event()))
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+
+        events = [event async for event in client.stream_events("run-1", until_terminal=False)]
+
+        assert [event.type for event in events] == ["run_succeeded"]
+        assert calls == 1
+        await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_async_stream_events_does_not_reconnect_after_terminal_transport_error() -> None:
+    calls = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, stream=DisconnectingAsyncStream(_event_frame(_run_succeeded_event())))
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+
+        events = [event async for event in client.stream_events("run-1", until_terminal=False)]
+
+        assert [event.type for event in events] == ["run_succeeded"]
+        assert calls == 1
+        await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_async_stream_events_reconnects_from_latest_event_after_transport_error() -> None:
+    seen_after: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen_after.append(request.url.params["after"])
+        if len(seen_after) == 1:
+            return httpx.Response(
+                200,
+                stream=DisconnectingAsyncStream(_event_frame(RunStartedEvent(id="1-0", run_id="run-1"))),
+            )
+        return httpx.Response(200, content=_event_frame(_run_succeeded_event()))
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+
+        events = [event async for event in client.stream_events("run-1", reconnect_delay_seconds=0)]
+
+        assert seen_after == ["0-0", "1-0"]
+        assert [event.type for event in events] == ["run_started", "run_succeeded"]
+        await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_async_stream_events_reconnects_after_eof_before_terminal() -> None:
+    calls = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, content="")
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+
+        with pytest.raises(DifyAgentStreamError, match="reconnect attempts exhausted"):
+            _ = [
+                event
+                async for event in client.stream_events(
+                    "run-1",
+                    max_reconnects=1,
+                    reconnect_delay_seconds=0,
+                )
+            ]
+
+        assert calls == 2
         await http_client.aclose()
 
     asyncio.run(scenario())

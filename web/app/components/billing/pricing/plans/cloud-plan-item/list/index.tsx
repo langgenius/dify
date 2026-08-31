@@ -1,23 +1,17 @@
-import type { BasicPlan } from '../../../../type'
-import * as React from 'react'
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { ALL_PLANS, NUM_INFINITE } from '../../../../config'
-import { Plan } from '../../../../type'
-import Item from './item'
+import { CloudPlanFeature } from './item'
 
-type ListProps = {
-  plan: BasicPlan
-}
-
-const List = ({ plan }: ListProps) => {
+export function CloudPlanFeatures({ plan }: { plan: CloudPlan }) {
   const { t } = useTranslation()
-  const isFreePlan = plan === Plan.sandbox
+  const isFreePlan = plan === 'sandbox'
   const planInfo = ALL_PLANS[plan]
 
   return (
     <div className="flex flex-col gap-y-2.5 p-6">
-      <Item
+      <CloudPlanFeature
         label={
           isFreePlan
             ? t(($) => $['plansCommon.messageRequest.title'], {
@@ -29,43 +23,43 @@ const List = ({ plan }: ListProps) => {
                 count: planInfo.messageRequest,
               })
         }
-        tooltip={t(($) => $['plansCommon.messageRequest.tooltip'], { ns: 'billing' }) as string}
+        description={t(($) => $['plansCommon.messageRequest.tooltip'], { ns: 'billing' }) as string}
       />
-      <Item
+      <CloudPlanFeature
         label={t(($) => $['plansCommon.teamWorkspace'], {
           ns: 'billing',
           count: planInfo.teamWorkspace,
         })}
       />
-      <Item
+      <CloudPlanFeature
         label={t(($) => $['plansCommon.teamMember'], {
           ns: 'billing',
           count: planInfo.teamMembers,
         })}
       />
-      <Item
+      <CloudPlanFeature
         label={t(($) => $['plansCommon.buildApps'], { ns: 'billing', count: planInfo.buildApps })}
       />
       <Divider bgStyle="gradient" />
-      <Item
+      <CloudPlanFeature
         label={t(($) => $['plansCommon.documents'], { ns: 'billing', count: planInfo.documents })}
-        tooltip={t(($) => $['plansCommon.documentsTooltip'], { ns: 'billing' }) as string}
+        description={t(($) => $['plansCommon.documentsTooltip'], { ns: 'billing' }) as string}
       />
-      <Item
+      <CloudPlanFeature
         label={t(($) => $['plansCommon.vectorSpace'], {
           ns: 'billing',
           size: planInfo.vectorSpace,
         })}
-        tooltip={t(($) => $['plansCommon.vectorSpaceTooltip'], { ns: 'billing' }) as string}
+        description={t(($) => $['plansCommon.vectorSpaceTooltip'], { ns: 'billing' }) as string}
       />
-      <Item
+      <CloudPlanFeature
         label={t(($) => $['plansCommon.documentsRequestQuota'], {
           ns: 'billing',
           count: planInfo.documentsRequestQuota,
         })}
-        tooltip={t(($) => $['plansCommon.documentsRequestQuotaTooltip'], { ns: 'billing' })}
+        description={t(($) => $['plansCommon.documentsRequestQuotaTooltip'], { ns: 'billing' })}
       />
-      <Item
+      <CloudPlanFeature
         label={[
           t(($) => $[`plansCommon.priority.${planInfo.documentProcessingPriority}`], {
             ns: 'billing',
@@ -74,11 +68,11 @@ const List = ({ plan }: ListProps) => {
         ].join('')}
       />
       <Divider bgStyle="gradient" />
-      <Item
+      <CloudPlanFeature
         label={
           planInfo.triggerEvents === NUM_INFINITE
             ? t(($) => $['plansCommon.triggerEvents.unlimited'], { ns: 'billing' })
-            : plan === Plan.sandbox
+            : plan === 'sandbox'
               ? t(($) => $['plansCommon.triggerEvents.sandbox'], {
                   ns: 'billing',
                   count: planInfo.triggerEvents,
@@ -88,34 +82,38 @@ const List = ({ plan }: ListProps) => {
                   count: planInfo.triggerEvents,
                 })
         }
-        tooltip={t(($) => $['plansCommon.triggerEvents.tooltip'], { ns: 'billing' }) as string}
+        description={t(($) => $['plansCommon.triggerEvents.tooltip'], { ns: 'billing' }) as string}
       />
-      <Item
+      <CloudPlanFeature
         label={
-          plan === Plan.sandbox
+          plan === 'sandbox'
             ? t(($) => $['plansCommon.startNodes.limited'], { ns: 'billing', count: 2 })
             : t(($) => $['plansCommon.startNodes.unlimited'], { ns: 'billing' })
         }
       />
-      <Item
+      <CloudPlanFeature
         label={
-          plan === Plan.sandbox
+          plan === 'sandbox'
             ? t(($) => $['plansCommon.workflowExecution.standard'], { ns: 'billing' })
-            : plan === Plan.professional
+            : plan === 'professional'
               ? t(($) => $['plansCommon.workflowExecution.faster'], { ns: 'billing' })
               : t(($) => $['plansCommon.workflowExecution.priority'], { ns: 'billing' })
         }
-        tooltip={t(($) => $['plansCommon.workflowExecution.tooltip'], { ns: 'billing' }) as string}
+        description={
+          t(($) => $['plansCommon.workflowExecution.tooltip'], { ns: 'billing' }) as string
+        }
       />
       <Divider bgStyle="gradient" />
-      <Item
+      <CloudPlanFeature
         label={t(($) => $['plansCommon.annotatedResponse.title'], {
           ns: 'billing',
           count: planInfo.annotatedResponse,
         })}
-        tooltip={t(($) => $['plansCommon.annotatedResponse.tooltip'], { ns: 'billing' }) as string}
+        description={
+          t(($) => $['plansCommon.annotatedResponse.tooltip'], { ns: 'billing' }) as string
+        }
       />
-      <Item
+      <CloudPlanFeature
         label={t(($) => $['plansCommon.logsHistory'], {
           ns: 'billing',
           days:
@@ -124,22 +122,20 @@ const List = ({ plan }: ListProps) => {
               : `${planInfo.logHistory} ${t(($) => $['plansCommon.days'], { ns: 'billing' })}`,
         })}
       />
-      <Item
+      <CloudPlanFeature
         label={
           planInfo.apiRateLimit === NUM_INFINITE
             ? t(($) => $['plansCommon.unlimitedApiRate'], { ns: 'billing' })
             : `${t(($) => $['plansCommon.apiRateLimitUnit'], { ns: 'billing', count: planInfo.apiRateLimit })} ${t(($) => $['plansCommon.apiRateLimit'], { ns: 'billing' })}/${t(($) => $['plansCommon.month'], { ns: 'billing' })}`
         }
-        tooltip={
+        description={
           planInfo.apiRateLimit === NUM_INFINITE
             ? undefined
             : (t(($) => $['plansCommon.apiRateLimitTooltip'], { ns: 'billing' }) as string)
         }
       />
       <Divider bgStyle="gradient" />
-      <Item label={t(($) => $['plansCommon.modelProviders'], { ns: 'billing' })} />
+      <CloudPlanFeature label={t(($) => $['plansCommon.modelProviders'], { ns: 'billing' })} />
     </div>
   )
 }
-
-export default React.memo(List)

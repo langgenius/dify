@@ -3,20 +3,28 @@
 import type { AgentLogSourceResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/client'
 import { AgentDetailSectionSurface } from '../section-surface'
 import { AgentMonitoringChart } from './chart'
@@ -47,7 +55,6 @@ const getDefaultPeriodQuery = () => {
 export function AgentMonitoringPage({ agentId }: AgentMonitoringPageProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
-  const docLink = useDocLink()
   const [period, setPeriod] = useState(() => ({
     name: t(($) => $['agentDetail.monitoring.timeRanges.today']),
     query: getDefaultPeriodQuery(),
@@ -98,17 +105,8 @@ export function AgentMonitoringPage({ agentId }: AgentMonitoringPageProps) {
           <h2 className="system-xl-semibold text-text-primary">
             {t(($) => $['agentDetail.monitoring.title'])}
           </h2>
-          <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-0.5 system-xs-regular text-text-tertiary">
-            <span>{t(($) => $['agentDetail.monitoring.description'])}</span>
-            <a
-              href={docLink('/use-dify/monitor/logs')}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex shrink-0 items-center gap-0.5 rounded-sm text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            >
-              {t(($) => $['agentDetail.monitoring.learnMore'])}
-              <span aria-hidden className="i-ri-external-link-line size-3" />
-            </a>
+          <p className="mt-1 system-xs-regular text-text-tertiary">
+            {t(($) => $['agentDetail.monitoring.description'])}
           </p>
         </div>
 
@@ -129,46 +127,48 @@ export function AgentMonitoringPage({ agentId }: AgentMonitoringPageProps) {
         </div>
       </header>
 
-      <ScrollArea
-        className="min-h-0 flex-1 overflow-hidden"
-        slotClassNames={{
-          content: 'px-6 pt-2 pb-3',
-        }}
-      >
-        {shouldShowInitialSkeleton && <AgentMonitoringSkeletonGrid />}
-        {shouldShowError && (
-          <AgentMonitoringState>
-            <div className="flex items-center justify-center gap-2">
-              <span>{t(($) => $['agentDetail.monitoring.loadFailed'])}</span>
-              <Button
-                variant="secondary"
-                size="small"
-                onClick={() => {
-                  void statisticsQuery.refetch()
-                }}
-              >
-                {tCommon(($) => $['operation.retry'])}
-              </Button>
-            </div>
-          </AgentMonitoringState>
-        )}
-        {!shouldShowInitialSkeleton && !shouldShowError && (
-          <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2">
-            {metrics.map((metric) => (
-              <AgentMonitoringChart
-                key={metric.id}
-                titleKey={metric.titleKey}
-                explanationKey={metric.explanationKey}
-                summaryValue={metric.summaryValue}
-                rows={metric.rows}
-                chartType={metric.chartType}
-                valueKey={metric.valueKey}
-                unitKey={metric.unitKey}
-                yMaxWhenEmpty={metric.yMaxWhenEmpty}
-              />
-            ))}
-          </div>
-        )}
+      <ScrollArea className="min-h-0 flex-1 overflow-hidden">
+        <ScrollAreaViewport>
+          <ScrollAreaContent className="px-6 pt-2 pb-3">
+            {shouldShowInitialSkeleton && <AgentMonitoringSkeletonGrid />}
+            {shouldShowError && (
+              <AgentMonitoringState>
+                <div className="flex items-center justify-center gap-2">
+                  <span>{t(($) => $['agentDetail.monitoring.loadFailed'])}</span>
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    onClick={() => {
+                      void statisticsQuery.refetch()
+                    }}
+                  >
+                    {tCommon(($) => $['operation.retry'])}
+                  </Button>
+                </div>
+              </AgentMonitoringState>
+            )}
+            {!shouldShowInitialSkeleton && !shouldShowError && (
+              <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2">
+                {metrics.map((metric) => (
+                  <AgentMonitoringChart
+                    key={metric.id}
+                    titleKey={metric.titleKey}
+                    explanationKey={metric.explanationKey}
+                    summaryValue={metric.summaryValue}
+                    rows={metric.rows}
+                    chartType={metric.chartType}
+                    valueKey={metric.valueKey}
+                    unitKey={metric.unitKey}
+                    yMaxWhenEmpty={metric.yMaxWhenEmpty}
+                  />
+                ))}
+              </div>
+            )}
+          </ScrollAreaContent>
+        </ScrollAreaViewport>
+        <ScrollAreaScrollbar>
+          <ScrollAreaThumb />
+        </ScrollAreaScrollbar>
       </ScrollArea>
     </AgentDetailSectionSurface>
   )
@@ -231,19 +231,20 @@ function AgentMonitoringSourceFilter({
             className="i-ri-close-circle-fill block size-3.5 text-text-quaternary group-hover/clear:text-text-tertiary"
           />
         </button>
-        <SelectContent
-          placement="bottom-start"
-          sideOffset={4}
-          popupClassName="relative w-61 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-0 text-sm text-text-secondary shadow-lg outline-hidden backdrop-blur-[5px] focus:outline-hidden focus-visible:outline-hidden"
-          listClassName="max-h-72 p-1"
-        >
-          {items.map((item) => (
-            <SelectItem key={item.value} value={item.value}>
-              <SelectItemText title={item.name}>{item.name}</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-          ))}
-        </SelectContent>
+        <SelectPortal>
+          <SelectPositioner placement="bottom-start" sideOffset={4}>
+            <SelectPopup className="relative w-61 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-0 text-sm text-text-secondary shadow-lg outline-hidden backdrop-blur-[5px] focus:outline-hidden focus-visible:outline-hidden">
+              <SelectList className="max-h-72 p-1">
+                {items.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    <SelectItemText title={item.name}>{item.name}</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                ))}
+              </SelectList>
+            </SelectPopup>
+          </SelectPositioner>
+        </SelectPortal>
       </div>
     </Select>
   )

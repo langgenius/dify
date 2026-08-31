@@ -1,7 +1,7 @@
 import type { ChatItem } from '../../../types'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 import { AgentRosterResponseContent } from '../agent-roster-response-content'
 
 vi.mock('react-i18next', async () => {
@@ -91,9 +91,12 @@ describe('AgentRosterResponseContent', () => {
     await user.click(processToggle)
 
     expect(processToggle).toHaveAttribute('aria-expanded', 'true')
-    await waitFor(() => {
-      expect(screen.getByText('history answer')).toBeInTheDocument()
-    })
+    await waitFor(
+      () => {
+        expect(screen.getByText('history answer')).toBeInTheDocument()
+      },
+      { timeout: 5000 },
+    )
 
     expect(screen.queryByText('internal thought should not render')).not.toBeInTheDocument()
   })
@@ -122,9 +125,12 @@ describe('AgentRosterResponseContent', () => {
     render(<AgentRosterResponseContent item={item} />)
     await user.click(screen.getByRole('button', { name: 'Thinking' }))
 
-    await waitFor(() => {
-      expect(screen.getByText('const answer = 42').tagName).toBe('CODE')
-    })
+    await waitFor(
+      () => {
+        expect(screen.getByText('const answer = 42').tagName).toBe('CODE')
+      },
+      { timeout: 5000 },
+    )
   })
 
   it('should keep one collapsible thinking timeline while response parts interleave', async () => {

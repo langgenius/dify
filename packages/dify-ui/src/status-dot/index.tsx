@@ -1,8 +1,8 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type * as React from 'react'
 import { cva } from 'class-variance-authority'
+import * as React from 'react'
 import { cn } from '../cn'
 
 const statusDotVariants = cva('block shrink-0 border border-solid', {
@@ -50,54 +50,41 @@ type StatusDotVariants = VariantProps<typeof statusDotVariants>
 type StatusDotStatus = NonNullable<StatusDotVariants['status']>
 type StatusDotSize = NonNullable<StatusDotVariants['size']>
 
-type StatusDotProps = Omit<React.ComponentProps<'span'>, 'children'> & {
+type DecorativeSpanProps = Omit<
+  React.ComponentProps<'span'>,
+  'children' | 'role' | 'tabIndex' | keyof React.AriaAttributes
+> & {
+  [Key in keyof React.AriaAttributes]?: never
+} & {
+  role?: never
+  tabIndex?: never
+}
+
+type StatusDotProps = DecorativeSpanProps & {
   status?: StatusDotStatus
   size?: StatusDotSize
 }
 
-type StatusDotSkeletonProps = Omit<React.ComponentProps<'span'>, 'children'> & {
+type StatusDotSkeletonProps = DecorativeSpanProps & {
   size?: StatusDotSize
 }
 
-function StatusDot({
-  className,
-  status = 'success',
-  size = 'medium',
-  'aria-hidden': ariaHidden,
-  'aria-label': ariaLabel,
-  'aria-labelledby': ariaLabelledBy,
-  ...props
-}: StatusDotProps) {
-  const hidden = ariaHidden ?? (ariaLabel || ariaLabelledBy ? undefined : true)
-
+function StatusDot({ className, status = 'success', size = 'medium', ...props }: StatusDotProps) {
   return (
     <span
-      className={cn(statusDotVariants({ status, size }), className)}
-      aria-hidden={hidden}
-      aria-label={ariaLabel}
-      aria-labelledby={ariaLabelledBy}
       {...props}
+      className={cn(statusDotVariants({ status, size }), className)}
+      aria-hidden="true"
     />
   )
 }
 
-function StatusDotSkeleton({
-  className,
-  size = 'medium',
-  'aria-hidden': ariaHidden,
-  'aria-label': ariaLabel,
-  'aria-labelledby': ariaLabelledBy,
-  ...props
-}: StatusDotSkeletonProps) {
-  const hidden = ariaHidden ?? (ariaLabel || ariaLabelledBy ? undefined : true)
-
+function StatusDotSkeleton({ className, size = 'medium', ...props }: StatusDotSkeletonProps) {
   return (
     <span
-      className={cn(statusDotSkeletonVariants({ size }), className)}
-      aria-hidden={hidden}
-      aria-label={ariaLabel}
-      aria-labelledby={ariaLabelledBy}
       {...props}
+      className={cn(statusDotSkeletonVariants({ size }), className)}
+      aria-hidden="true"
     />
   )
 }

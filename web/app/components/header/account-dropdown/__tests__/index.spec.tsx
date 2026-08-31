@@ -56,14 +56,15 @@ const userProfile = {
   email: 'current@example.com',
   avatar_url: 'current-avatar.png',
 }
+const accountMenuAccessibleName = `${userProfile.name} common.account.account`
 
 const renderAccountDropdown = () => {
   const queryClient = createAccountProfileQueryClient(userProfile)
 
   return renderWithConsoleQuery(
     <AccountDropdown
-      trigger={({ isOpen, ariaLabel }) => (
-        <button type="button" aria-label={ariaLabel} data-open={isOpen}>
+      trigger={({ ariaLabel }) => (
+        <button type="button" aria-label={ariaLabel}>
           Current account
         </button>
       )}
@@ -79,11 +80,28 @@ describe('AccountDropdown', () => {
     vi.clearAllMocks()
     mockUseRouter.mockReturnValue({ push: mockPush })
     vi.mocked(useProviderContext).mockReturnValue({
-      isEducationAccount: false,
+      enableEducationPlan: false,
     } as ProviderContextState)
     vi.mocked(useLogout).mockReturnValue({
       mutateAsync: mockLogout,
     } as unknown as ReturnType<typeof useLogout>)
+  })
+
+  it('includes the visible account name in the main navigation trigger accessible name', () => {
+    const queryClient = createAccountProfileQueryClient(userProfile)
+
+    renderWithConsoleQuery(<AccountSection />, { queryClient })
+
+    expect(screen.getByRole('button', { name: accountMenuAccessibleName })).toBeInTheDocument()
+  })
+
+  it('keeps the account identity in the compact trigger accessible name', () => {
+    const queryClient = createAccountProfileQueryClient(userProfile)
+
+    renderWithConsoleQuery(<AccountSection compact />, { queryClient })
+
+    expect(screen.getByRole('button', { name: accountMenuAccessibleName })).toBeInTheDocument()
+    expect(screen.queryByText('Current User')).not.toBeInTheDocument()
   })
 
   it('reads the signed-in account from the account profile query', async () => {
@@ -94,7 +112,7 @@ describe('AccountDropdown', () => {
 
     expect(screen.getByText('Current User')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'common.account.account' }))
+    await user.click(screen.getByRole('button', { name: accountMenuAccessibleName }))
 
     expect(await screen.findByText('current@example.com')).toBeInTheDocument()
   })
@@ -120,12 +138,12 @@ describe('AccountDropdown', () => {
     renderAccountDropdown()
 
     const trigger = screen.getByRole('button', { name: 'common.account.account' })
-    expect(trigger).toHaveAttribute('data-open', 'false')
+    expect(trigger).not.toHaveAttribute('data-popup-open')
 
     await user.click(trigger)
 
     expect(await screen.findByText('current@example.com')).toBeInTheDocument()
-    expect(trigger).toHaveAttribute('data-open', 'true')
+    expect(trigger).toHaveAttribute('data-popup-open', '')
     expect(screen.getByText('common.settings.preferences')).toBeInTheDocument()
     expect(screen.getByText('common.account.appearanceLabel')).toBeInTheDocument()
   })

@@ -127,9 +127,33 @@ services:
     networks:
       - ssrf_proxy_network
 
+  # Local sandbox for Dify Agent shell workspaces (shellctl data plane).
+  # Exposes port 5004 on the host so a locally-run agent backend can reach it
+  # at http://localhost:5004 (DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT).
+  local_sandbox:
+    image: langgenius/dify-agent-local-sandbox:1.17.0
+    restart: always
+    env_file:
+      - ./middleware.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      SHELLCTL_AUTH_TOKEN: ${DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN:-${DIFY_AGENT_SHELLCTL_AUTH_TOKEN:-}}
+    ports:
+      - "${EXPOSE_LOCAL_SANDBOX_PORT:-5004}:5004"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5004/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    volumes:
+      - dify_agent_local_sandbox_home:/home/dify
+      - dify_agent_local_sandbox_workspace:/workspace
+
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.6.3-local
+    image: langgenius/dify-plugin-daemon:0.6.10-local
     restart: always
     env_file:
       - ./middleware.env
@@ -193,7 +217,7 @@ services:
 
   # ssrf_proxy server
   # for more information, please refer to
-  # https://docs.dify.ai/learn-more/faq/install-faq#18-why-is-ssrf-proxy-needed%3F
+  # https://docs.dify.ai/en/self-host/deploy/troubleshooting/docker-issues#why-is-ssrf-proxy-needed
   ssrf_proxy:
     image: ubuntu/squid:latest
     restart: always
@@ -259,3 +283,7 @@ networks:
   ssrf_proxy_network:
     driver: bridge
     internal: true
+
+volumes:
+  dify_agent_local_sandbox_home:
+  dify_agent_local_sandbox_workspace:

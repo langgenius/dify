@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from werkzeug.exceptions import Forbidden
 
 import services
+from configs import dify_config
 from controllers.common.schema import JsonResponseWithStatus, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
@@ -10,6 +11,7 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_import import RagPip
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
+    model_validate,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -21,8 +23,10 @@ from libs.login import login_required
 from models import Account
 from models.dataset import DatasetPermissionEnum
 from services.dataset_service import DatasetPermissionService, DatasetService
+from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
+from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 
 class RagPipelineDatasetImportPayload(BaseModel):
@@ -47,8 +51,13 @@ class CreateRagPipelineDatasetApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @with_current_user
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, current_user: Account) -> JsonResponseWithStatus:
-        payload = RagPipelineDatasetImportPayload.model_validate(console_ns.payload or {})
+    @model_validate(RagPipelineDatasetImportPayload)
+    def post(
+        self,
+        req_data: RagPipelineDatasetImportPayload,
+        current_tenant_id: str,
+        current_user: Account,
+    ) -> JsonResponseWithStatus:
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
         if not current_user.is_dataset_editor:
             raise Forbidden()
@@ -62,7 +71,7 @@ class CreateRagPipelineDatasetApi(Resource):
             ),
             permission=DatasetPermissionEnum.ONLY_ME,
             partial_member_list=None,
-            yaml_content=payload.yaml_content,
+            yaml_content=req_data.yaml_content,
         )
         try:
             rag_pipeline_dsl_service = RagPipelineDslService(db.session())
@@ -70,16 +79,26 @@ class CreateRagPipelineDatasetApi(Resource):
                 tenant_id=current_tenant_id,
                 rag_pipeline_dataset_create_entity=rag_pipeline_dataset_create_entity,
             )
+            dataset_id = import_info["dataset_id"]
             if rag_pipeline_dataset_create_entity.permission == "partial_members":
                 DatasetPermissionService.update_partial_member_list(
                     current_tenant_id,
-                    import_info["dataset_id"],
+                    dataset_id,
                     rag_pipeline_dataset_create_entity.partial_member_list,
                     db.session(),
                 )
             db.session.commit()
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
+
+        if dify_config.RBAC_ENABLED and dataset_id is not None:
+            enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
+                current_tenant_id,
+                current_user.id,
+                dataset_id,
+                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+            )
+            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, dataset_id=dataset_id)
 
         return dump_response(RagPipelineImportResponse, import_info), 201
 

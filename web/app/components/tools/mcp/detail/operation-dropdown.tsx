@@ -7,9 +7,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 
 type Props = Readonly<{
   inCard?: boolean
@@ -25,16 +25,16 @@ const OperationDropdown: FC<Props> = ({ inCard, onOpenChange, onEdit, onRemove }
     <DropdownMenu onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
         render={
-          <ActionButton
-            size={inCard ? 'l' : 'm'}
+          <IconButton
+            size={inCard ? 'lg' : 'md'}
             aria-label={t(($) => $['operation.more'], { ns: 'common' })}
             className="data-popup-open:bg-state-base-hover"
-          />
+          >
+            <span aria-hidden className={cn('i-ri-more-fill size-4', inCard && 'size-5')} />
+          </IconButton>
         }
-      >
-        <span aria-hidden className={cn('i-ri-more-fill size-4', inCard && 'size-5')} />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-[160px]">
+      />
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-[160px]">
         <DropdownMenuItem onClick={onEdit}>
           <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
           <div className="ml-2 system-md-regular text-text-secondary">

@@ -1,3 +1,5 @@
+from typing import Literal
+
 from flask import request
 from flask_restx import Resource
 from flask_restx.api import HTTPStatus
@@ -5,10 +7,12 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden
 
 import services
-from core.tools.signature import verify_plugin_file_signature
+from core.db.session_factory import session_factory
+from core.tools.signature import sign_tool_file, verify_plugin_file_signature
 from core.tools.tool_file_manager import ToolFileManager, resolve_extension
 from core.workflow.file_reference import build_file_reference
 from fields.file_fields import FileResponse
+from services.account_service import TenantService
 
 from ..common.errors import (
     FileTooLargeError,
@@ -26,7 +30,9 @@ class PluginUploadQuery(BaseModel):
     sign: str = Field(..., description="HMAC signature")
     tenant_id: str = Field(..., description="Tenant identifier")
     user_id: str | None = Field(default=None, description="User identifier")
+    user_from: Literal["account", "end-user"] | None = Field(default=None, description="User identity type")
     conversation_id: str | None = Field(default=None, description="Conversation identifier")
+    max_size: int | None = Field(default=None, ge=0, description="Signed maximum file size in bytes")
 
 
 register_schema_models(files_ns, PluginUploadQuery)
@@ -77,8 +83,20 @@ class PluginUploadFileApi(Resource):
         nonce = args.nonce
         sign = args.sign
         tenant_id = args.tenant_id
-        user_id = args.user_id
-        user = get_user(tenant_id, user_id)
+        if args.user_from == "account":
+            if args.user_id is None:
+                raise Forbidden("Invalid request.")
+            with session_factory.create_session() as session:
+                is_tenant_member = TenantService.account_belongs_to_tenant(
+                    args.user_id,
+                    tenant_id,
+                    session=session,
+                )
+            if not is_tenant_member:
+                raise Forbidden("Invalid request.")
+            owner_id = args.user_id
+        else:
+            owner_id = get_user(tenant_id, args.user_id).id
 
         filename = file.filename
         mimetype = file.mimetype
@@ -90,26 +108,35 @@ class PluginUploadFileApi(Resource):
             filename=filename,
             mimetype=mimetype,
             tenant_id=tenant_id,
-            user_id=user.id,
+            user_id=owner_id,
             conversation_id=args.conversation_id,
+            user_from=args.user_from,
             timestamp=timestamp,
             nonce=nonce,
             sign=sign,
+            max_size=args.max_size,
         ):
             raise Forbidden("Invalid request.")
 
         try:
+            if args.max_size is None:
+                file_binary = file.stream.read()
+            else:
+                file_binary = file.stream.read(args.max_size + 1)
+                if len(file_binary) > args.max_size:
+                    raise FileTooLargeError("File size exceeds the signed upload limit.")
+
             tool_file = ToolFileManager().create_file_by_raw(
-                user_id=user.id,
+                user_id=owner_id,
                 tenant_id=tenant_id,
-                file_binary=file.stream.read(),
+                file_binary=file_binary,
                 mimetype=mimetype,
                 filename=filename,
                 conversation_id=args.conversation_id,
             )
 
             extension = resolve_extension(filename=tool_file.name, mimetype=tool_file.mimetype)
-            preview_url = ToolFileManager.sign_file(tool_file_id=tool_file.id, extension=extension)
+            preview_url = sign_tool_file(tool_file_id=tool_file.id, extension=extension, for_external=True)
 
             # Create a dictionary with all the necessary attributes
             result = FileResponse(

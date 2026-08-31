@@ -10,6 +10,7 @@ import libs.login as login_module
 from extensions.ext_login import DifyLoginManager
 from libs.login import current_user
 from models.account import Account, Tenant
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @pytest.fixture
@@ -72,7 +73,7 @@ def login_app(mocker: MockerFixture) -> Flask:
 
 @pytest.fixture(autouse=True)
 def reset_login_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(login_module.dify_config, "LOGIN_DISABLED", False)
+    apply_config_overrides(monkeypatch, LOGIN_DISABLED=False)
 
 
 @pytest.fixture
@@ -184,7 +185,7 @@ class TestLoginRequired:
         """Test that bypass conditions skip auth lookup, CSRF, and unauthorized handling."""
 
         resolve_user = resolve_current_user(MockUser("test_user"))
-        monkeypatch.setattr(login_module.dify_config, "LOGIN_DISABLED", login_disabled)
+        apply_config_overrides(monkeypatch, LOGIN_DISABLED=login_disabled)
 
         with login_app.test_request_context(method=method):
             result = protected_view()
@@ -266,10 +267,10 @@ class TestCurrentAccountWithTenant:
         current_user_proxy._get_current_object.return_value = account
         mocker.patch.object(login_module, "current_user", new=current_user_proxy)
 
-        user, tenant_id = login_module.current_account_with_tenant()
+        account_with_tenant = login_module.current_account_with_tenant()
 
-        assert user is account
-        assert tenant_id == "tenant-123"
+        assert account_with_tenant.account is account
+        assert account_with_tenant.tenant_id == "tenant-123"
         current_user_proxy._get_current_object.assert_called_once_with()
 
     def test_raises_when_current_user_is_not_account(self, mocker: MockerFixture):
@@ -334,7 +335,11 @@ class TestResolveTenantIdFallback:
         tenant = Tenant(name="Test Tenant")
         tenant.id = "tenant-123"
         account._current_tenant = tenant
-        mocker.patch.object(login_module, "current_account_with_tenant", return_value=(account, tenant.id))
+        mocker.patch.object(
+            login_module,
+            "current_account_with_tenant",
+            return_value=login_module.AccountWithTenant(account=account, tenant_id=tenant.id),
+        )
 
         tenant_id = login_module.resolve_tenant_id_fallback()
 

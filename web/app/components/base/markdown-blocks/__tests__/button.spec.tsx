@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 // markdown-button.spec.tsx
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChatContextProvider } from '@/app/components/base/chat/chat/context-provider'
 import MarkdownButton from '../button'
 
@@ -52,21 +52,19 @@ describe('MarkdownButton (integration)', () => {
     expect(screen.getByRole('button')).toHaveTextContent('Click me')
   })
 
-  it('opens new tab when link is valid and does not call onSend', async () => {
+  it('renders a native link when the URL is valid', () => {
     isValidUrlSpy.mockReturnValue(true)
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
-    const user = userEvent.setup()
 
     const node = createButtonNode({ dataLink: 'https://example.com' }, 'Go')
 
     renderWithCtx(node)
-    await user.click(screen.getByRole('button'))
+    const link = screen.getByRole('link', { name: 'Go' })
 
     expect(isValidUrlSpy).toHaveBeenCalledWith('https://example.com')
-    expect(openSpy).toHaveBeenCalledWith('https://example.com', '_blank')
+    expect(link).toHaveAttribute('href', 'https://example.com')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
     expect(onSendSpy).not.toHaveBeenCalled()
-
-    openSpy.mockRestore()
   })
 
   it('calls onSend when link is invalid but message exists', async () => {

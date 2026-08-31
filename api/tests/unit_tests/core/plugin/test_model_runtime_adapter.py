@@ -2,11 +2,13 @@
 
 import datetime
 import uuid
+from collections.abc import Callable
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch, sentinel
 
 import pytest
 
+from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
 from core.plugin.impl import model_runtime as model_runtime_module
 from core.plugin.impl.model import PluginModelClient
@@ -93,6 +95,7 @@ def _build_plugin_model_provider(*, tenant_id: str, provider: str = "openai") ->
         tenant_id=tenant_id,
         plugin_unique_identifier=f"langgenius/{provider}/{provider}",
         plugin_id=f"langgenius/{provider}",
+        installation_source=PluginInstallationSource.Marketplace,
         declaration=ProviderEntity(
             provider=provider,
             label=I18nObject(en_US=provider.title()),
@@ -116,6 +119,7 @@ class TestPluginModelRuntime:
                 tenant_id="tenant",
                 plugin_unique_identifier="langgenius/openai/openai",
                 plugin_id="langgenius/openai",
+                installation_source=PluginInstallationSource.Marketplace,
                 declaration=ProviderEntity(
                     provider="openai",
                     label=I18nObject(en_US="OpenAI"),
@@ -145,6 +149,7 @@ class TestPluginModelRuntime:
                 tenant_id="tenant",
                 plugin_unique_identifier="acme/openai/openai",
                 plugin_id="acme/openai",
+                installation_source=PluginInstallationSource.Marketplace,
                 declaration=ProviderEntity(
                     provider="openai",
                     label=I18nObject(en_US="Acme OpenAI"),
@@ -160,6 +165,7 @@ class TestPluginModelRuntime:
                 tenant_id="tenant",
                 plugin_unique_identifier="langgenius/openai/openai",
                 plugin_id="langgenius/openai",
+                installation_source=PluginInstallationSource.Marketplace,
                 declaration=ProviderEntity(
                     provider="openai",
                     label=I18nObject(en_US="OpenAI"),
@@ -187,6 +193,7 @@ class TestPluginModelRuntime:
                 tenant_id="tenant",
                 plugin_unique_identifier="langgenius/gemini/google",
                 plugin_id="langgenius/gemini",
+                installation_source=PluginInstallationSource.Marketplace,
                 declaration=ProviderEntity(
                     provider="google",
                     label=I18nObject(en_US="Google"),
@@ -478,7 +485,9 @@ class TestPluginModelRuntime:
             voice="alloy",
         )
 
-    def test_fetch_model_providers_does_not_keep_bound_runtime_cache(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_fetch_model_providers_does_not_keep_bound_runtime_cache(
+        self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+    ) -> None:
         client = Mock(spec=PluginModelClient)
         client.fetch_model_providers.return_value = []
         from core.plugin import plugin_service as plugin_service_module
@@ -494,7 +503,7 @@ class TestPluginModelRuntime:
                 lock=Mock(return_value=MagicMock()),
             ),
         )
-        monkeypatch.setattr(plugin_service_module.dify_config, "PLUGIN_MODEL_PROVIDERS_CACHE_TTL", 0)
+        config_overrides(PLUGIN_MODEL_PROVIDERS_CACHE_TTL=0)
         runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
 
         runtime.fetch_model_providers()
@@ -503,13 +512,13 @@ class TestPluginModelRuntime:
         assert client.fetch_model_providers.call_count == 2
 
     def test_fetch_model_providers_uses_tenant_ttl_cache_across_runtime_instances(
-        self, monkeypatch: pytest.MonkeyPatch
+        self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
     ) -> None:
+        config_overrides(PLUGIN_MODEL_PROVIDERS_CACHE_TTL=300)
         redis = _FakeRedis()
         from core.plugin import plugin_service as plugin_service_module
 
         monkeypatch.setattr(plugin_service_module, "redis_client", redis)
-        monkeypatch.setattr(plugin_service_module.dify_config, "PLUGIN_MODEL_PROVIDERS_CACHE_TTL", 300)
         first_client = Mock(spec=PluginModelClient)
         first_client.fetch_model_providers.return_value = [_build_plugin_model_provider(tenant_id="tenant")]
         second_client = Mock(spec=PluginModelClient)
@@ -529,12 +538,14 @@ class TestPluginModelRuntime:
         second_client.fetch_model_providers.assert_not_called()
         assert redis.setex_calls[0][1] == 300
 
-    def test_fetch_model_providers_cache_is_tenant_isolated(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_fetch_model_providers_cache_is_tenant_isolated(
+        self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(PLUGIN_MODEL_PROVIDERS_CACHE_TTL=300)
         redis = _FakeRedis()
         from core.plugin import plugin_service as plugin_service_module
 
         monkeypatch.setattr(plugin_service_module, "redis_client", redis)
-        monkeypatch.setattr(plugin_service_module.dify_config, "PLUGIN_MODEL_PROVIDERS_CACHE_TTL", 300)
         first_client = Mock(spec=PluginModelClient)
         first_client.fetch_model_providers.return_value = [_build_plugin_model_provider(tenant_id="tenant-a")]
         second_client = Mock(spec=PluginModelClient)
@@ -752,7 +763,10 @@ def test_invoke_llm_with_structured_output_raises_when_model_schema_is_missing()
         )
 
 
-def test_get_model_schema_deletes_invalid_cache_and_refetches(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_model_schema_deletes_invalid_cache_and_refetches(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(PLUGIN_MODEL_SCHEMA_CACHE_TTL=300)
     client = Mock(spec=PluginModelClient)
     schema = _build_model_schema()
     delete = Mock()
@@ -766,7 +780,6 @@ def test_get_model_schema_deletes_invalid_cache_and_refetches(monkeypatch: pytes
             setex=setex,
         ),
     )
-    monkeypatch.setattr(model_runtime_module.dify_config, "PLUGIN_MODEL_SCHEMA_CACHE_TTL", 300)
     client.get_model_schema.return_value = schema
     runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
 
@@ -791,9 +804,11 @@ def test_get_model_schema_deletes_invalid_cache_and_refetches(monkeypatch: pytes
     setex.assert_called_once()
 
 
-def test_get_llm_num_tokens_returns_zero_when_plugin_counting_is_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_llm_num_tokens_returns_zero_when_plugin_counting_is_disabled(
+    config_overrides: Callable[..., None],
+) -> None:
     client = Mock(spec=PluginModelClient)
-    monkeypatch.setattr(model_runtime_module.dify_config, "PLUGIN_BASED_TOKEN_COUNTING_ENABLED", False)
+    config_overrides(PLUGIN_BASED_TOKEN_COUNTING_ENABLED=False)
     runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
 
     assert (
@@ -821,6 +836,7 @@ def test_get_provider_icon_reads_requested_variant_and_detects_svg_mime(monkeypa
             tenant_id="tenant",
             plugin_unique_identifier="langgenius/openai/openai",
             plugin_id="langgenius/openai",
+            installation_source=PluginInstallationSource.Marketplace,
             declaration=ProviderEntity(
                 provider="openai",
                 label=I18nObject(en_US="OpenAI"),
@@ -857,6 +873,7 @@ def test_get_provider_icon_rejects_unsupported_types_and_missing_variants() -> N
             tenant_id="tenant",
             plugin_unique_identifier="langgenius/openai/openai",
             plugin_id="langgenius/openai",
+            installation_source=PluginInstallationSource.Marketplace,
             declaration=ProviderEntity(
                 provider="openai",
                 label=I18nObject(en_US="OpenAI"),
@@ -989,6 +1006,7 @@ def test_get_provider_schema_supports_short_alias_and_rejects_invalid_provider()
             tenant_id="tenant",
             plugin_unique_identifier="langgenius/openai/openai",
             plugin_id="langgenius/openai",
+            installation_source=PluginInstallationSource.Marketplace,
             declaration=ProviderEntity(
                 provider="openai",
                 label=I18nObject(en_US="OpenAI"),

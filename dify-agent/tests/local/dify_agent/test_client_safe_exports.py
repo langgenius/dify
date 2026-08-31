@@ -54,11 +54,7 @@ def test_client_public_exports_work_with_default_dependencies_only(tmp_path: Pat
             requirement_name(requirement)
             for requirement in pyproject["project"].get("optional-dependencies", {}).get("server", [])
         }
-        grpc_dependency_names = {
-            requirement_name(requirement)
-            for requirement in pyproject["project"].get("optional-dependencies", {}).get("grpc", [])
-        }
-        server_only_dependency_names = (server_dependency_names | grpc_dependency_names) - default_dependency_names
+        server_only_dependency_names = server_dependency_names - default_dependency_names
 
         agenton_layers = importlib.import_module("agenton.layers")
         agenton_compositor = importlib.import_module("agenton.compositor")
@@ -72,7 +68,6 @@ def test_client_public_exports_work_with_default_dependencies_only(tmp_path: Pat
         agent_cli_help_module = importlib.import_module("dify_agent.layers._agent_cli_help")
         agent_stub_shell_env_module = importlib.import_module("dify_agent.agent_stub.shell_env")
         shell_module = importlib.import_module("dify_agent.layers.shell")
-        drive_module = importlib.import_module("dify_agent.layers.drive")
         execution_context_module = importlib.import_module("dify_agent.layers.execution_context")
         plugin_module = importlib.import_module("dify_agent.layers.dify_plugin")
         ask_human_module = importlib.import_module("dify_agent.layers.ask_human")
@@ -94,7 +89,6 @@ def test_client_public_exports_work_with_default_dependencies_only(tmp_path: Pat
         assert "Usage:" in agent_cli_help_module.render_agent_stub_cli_help(("config",))
         assert agent_stub_shell_env_module.build_shell_agent_stub_env is not None
         assert shell_module.DifyShellLayerConfig is not None
-        assert drive_module.DifyDriveLayerConfig is not None
         assert execution_context_module.DifyExecutionContextLayerConfig is not None
         assert plugin_module.DifyPluginLLMLayerConfig is not None
         assert ask_human_module.DifyAskHumanLayerConfig is not None

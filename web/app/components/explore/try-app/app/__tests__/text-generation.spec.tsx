@@ -1,6 +1,6 @@
 import type { AppData } from '@/models/share'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import TextGeneration from '../text-generation'
 
 const mockUpdateAppInfo = vi.fn()

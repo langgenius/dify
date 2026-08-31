@@ -274,7 +274,7 @@ const AgentTools: FC = () => {
                           </button>
                         }
                       />
-                      <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
+                      <PopoverContent className="px-3 py-2 system-xs-regular text-text-tertiary">
                         {t(($) => $.toolRemoved, { ns: 'tools' })}
                       </PopoverContent>
                     </Popover>
@@ -366,7 +366,7 @@ const AgentTools: FC = () => {
                       }}
                     >
                       {t(($) => $.notAuthorized, { ns: 'tools' })}
-                      <StatusDot className="ml-2" status="warning" />
+                      <StatusDot status="warning" />
                     </Button>
                   )}
                 </div>

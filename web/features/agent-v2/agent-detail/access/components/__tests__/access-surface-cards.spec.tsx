@@ -1,8 +1,14 @@
-import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
+import type {
+  AgentApiAccessResponse,
+  AgentAppDetailWithSite,
+} from '@dify/contracts/api/console/agent/types.gen'
+import type { AppDetail } from '@dify/contracts/api/console/apps/types.gen'
 import type React from 'react'
+import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { ServiceApiAccessCard } from '../service-api-access-card'
@@ -44,23 +50,6 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: { id: 'user-1' },
-    currentWorkspace: { id: 'workspace-1' },
-    workspacePermissionKeys: ['app.acl.edit'],
-    langGeniusVersionInfo: {
-      current_env: 'PRODUCTION',
-      current_version: '',
-      latest_version: '',
-      version: '',
-      release_date: '',
-      release_notes: '',
-      can_auto_update: false,
-    },
-  }))
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({
@@ -72,9 +61,7 @@ vi.mock('@/context/workspace-state', async () => {
       current_version: '',
       latest_version: '',
       version: '',
-      release_date: '',
       release_notes: '',
-      can_auto_update: false,
     },
   }))
 })
@@ -89,32 +76,19 @@ vi.mock('@/context/permission-state', async () => {
       current_version: '',
       latest_version: '',
       version: '',
-      release_date: '',
       release_notes: '',
-      can_auto_update: false,
     },
   }))
 })
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => ({
-    userProfile: { id: 'user-1' },
-    currentWorkspace: { id: 'workspace-1' },
-    workspacePermissionKeys: ['app.acl.edit'],
-    langGeniusVersionInfo: {
-      current_env: 'PRODUCTION',
-      current_version: '',
-      latest_version: '',
-      version: '',
-      release_date: '',
-      release_notes: '',
-      can_auto_update: false,
-    },
-  }))
-})
-
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    account: {
+      profile: {
+        get: {
+          queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+        },
+      },
+    },
     systemFeatures: {
       get: {
         queryKey: () => ['system-features'],
@@ -209,6 +183,7 @@ vi.mock('@/service/client', () => ({
 
 function createAgent(overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppDetailWithSite {
   return {
+    access_ready: true,
     enable_api: true,
     enable_site: true,
     icon_url: null,
@@ -232,6 +207,42 @@ function createAgent(overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppD
       access_token: string
       app_base_url: string
     },
+    ...overrides,
+  }
+}
+
+function createAppDetailResponse(overrides: Partial<AppDetail> = {}): AppDetail {
+  return {
+    enable_api: true,
+    enable_site: true,
+    id: 'app-1',
+    mode: 'agent',
+    name: 'Support Agent',
+    ...overrides,
+  }
+}
+
+function createAgentApiAccessResponse(
+  overrides: Partial<AgentApiAccessResponse> = {},
+): AgentApiAccessResponse {
+  const serviceApiBaseUrl = 'https://api.example.test/v1'
+
+  return {
+    access_ready: true,
+    api_key_count: 2,
+    api_rph: 0,
+    api_rpm: 0,
+    chat_endpoint: `${serviceApiBaseUrl}/chat-messages`,
+    conversations_endpoint: `${serviceApiBaseUrl}/conversations`,
+    enabled: true,
+    files_upload_endpoint: `${serviceApiBaseUrl}/files/upload`,
+    info_endpoint: `${serviceApiBaseUrl}/info`,
+    messages_endpoint: `${serviceApiBaseUrl}/messages`,
+    meta_endpoint: `${serviceApiBaseUrl}/meta`,
+    parameters_endpoint: `${serviceApiBaseUrl}/parameters`,
+    service_api_base_url: serviceApiBaseUrl,
+    stop_endpoint: `${serviceApiBaseUrl}/chat-messages/{task_id}/stop`,
+    streaming_only: true,
     ...overrides,
   }
 }
@@ -263,7 +274,19 @@ function createConsoleQueryClient(webAppAuthEnabled = true) {
       enabled: webAppAuthEnabled,
     },
   })
+  seedAccountProfileQuery(queryClient, { id: 'user-1' })
   return queryClient
+}
+
+function createDeferredPromise<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve
+    reject = promiseReject
+  })
+
+  return { promise, reject, resolve }
 }
 
 describe('Agent access surface cards', () => {
@@ -272,13 +295,19 @@ describe('Agent access surface cards', () => {
   })
 
   describe('Web app access', () => {
-    it('should render the backend web app URL and toggle site status through the backing app id', async () => {
+    it('should serialize Web App toggles and cache each confirmed response', async () => {
       const user = userEvent.setup()
-      mocks.siteEnableMutation.mockResolvedValueOnce({ enable_site: false })
+      const firstToggle = createDeferredPromise<AppDetail>()
+      const secondToggle = createDeferredPromise<AppDetail>()
+      mocks.siteEnableMutation
+        .mockReturnValueOnce(firstToggle.promise)
+        .mockReturnValueOnce(secondToggle.promise)
 
-      renderWithQueryClient(
-        <WebAppAccessCard agent={createAgent()} agentId="agent-1" isLoading={false} />,
+      const agent = createAgent()
+      const queryClient = renderWithQueryClient(
+        <WebAppAccessCard agent={agent} agentId="agent-1" isLoading={false} />,
       )
+      queryClient.setQueryData(['agent-detail', 'agent-1'], agent)
 
       expect(screen.getByText('https://chat.example.test/agent/site-token')).toBeInTheDocument()
       expect(
@@ -286,22 +315,115 @@ describe('Agent access surface cards', () => {
       ).toHaveAttribute('href', 'https://chat.example.test/agent/site-token')
       expect(screen.getByText('agentV2.agentDetail.access.webApp.ssoEnabled')).toBeInTheDocument()
 
-      await user.click(
-        screen.getByRole('switch', {
-          name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.webApp.title"}',
+      const accessSwitch = screen.getByRole('switch', {
+        name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.webApp.title"}',
+      })
+      await user.click(accessSwitch)
+
+      expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
+      expect(accessSwitch).toBeEnabled()
+      expect(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.launch' }),
+      ).toBeDisabled()
+      expect(mocks.siteEnableMutation.mock.calls[0]?.[0]).toEqual({
+        params: {
+          app_id: 'app-1',
+        },
+        body: {
+          enable_site: false,
+        },
+      })
+
+      await user.click(accessSwitch)
+
+      expect(accessSwitch).toHaveAttribute('aria-checked', 'true')
+      expect(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.launch' }),
+      ).toBeDisabled()
+      expect(mocks.siteEnableMutation).toHaveBeenCalledTimes(1)
+
+      firstToggle.resolve(
+        createAppDetailResponse({
+          enable_site: false,
+          updated_at: 1781660200,
+          updated_by: 'user-2',
         }),
       )
 
       await waitFor(() => {
-        expect(mocks.siteEnableMutation.mock.calls[0]?.[0]).toEqual({
+        expect(mocks.siteEnableMutation.mock.calls[1]?.[0]).toEqual({
           params: {
             app_id: 'app-1',
           },
           body: {
-            enable_site: false,
+            enable_site: true,
           },
         })
       })
+      expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toMatchObject({
+        enable_site: false,
+        updated_at: 1781660200,
+        updated_by: 'user-2',
+      })
+
+      secondToggle.resolve(
+        createAppDetailResponse({
+          enable_site: true,
+          updated_at: 1781660300,
+          updated_by: 'user-3',
+        }),
+      )
+
+      await waitFor(() => {
+        expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toMatchObject({
+          enable_site: true,
+          updated_at: 1781660300,
+          updated_by: 'user-3',
+        })
+      })
+      expect(
+        await screen.findByRole('link', {
+          name: 'agentV2.agentDetail.access.webApp.actions.launch',
+        }),
+      ).toHaveAttribute('href', 'https://chat.example.test/agent/site-token')
+      expect(toast.success).not.toHaveBeenCalled()
+    })
+
+    it('should keep launch disabled while enabling is pending and roll back after failure', async () => {
+      const user = userEvent.setup()
+      const toggle = createDeferredPromise<AppDetail>()
+      mocks.siteEnableMutation.mockReturnValueOnce(toggle.promise)
+
+      renderWithQueryClient(
+        <WebAppAccessCard
+          agent={createAgent({ enable_site: false })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
+      )
+
+      const accessSwitch = screen.getByRole('switch', {
+        name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.webApp.title"}',
+      })
+      const launchButton = screen.getByRole('button', {
+        name: 'agentV2.agentDetail.access.webApp.actions.launch',
+      })
+      await user.click(accessSwitch)
+
+      expect(accessSwitch).toHaveAttribute('aria-checked', 'true')
+      expect(accessSwitch).toBeEnabled()
+      expect(launchButton).toBeDisabled()
+      expect(
+        screen.queryByRole('link', { name: 'agentV2.agentDetail.access.webApp.actions.launch' }),
+      ).not.toBeInTheDocument()
+
+      toggle.reject(new Error('request failed'))
+
+      await waitFor(() => {
+        expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
+      })
+      expect(launchButton).toBeDisabled()
+      expect(toast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
     })
 
     it('should open the customize dialog with the backing app id and API base URL', async () => {
@@ -321,7 +443,7 @@ describe('Agent access surface cards', () => {
       expect(dialog).toHaveTextContent(/NEXT_PUBLIC_APP_ID=\s*'app-1'/)
       expect(dialog).toHaveTextContent(/NEXT_PUBLIC_API_URL=\s*'https:\/\/api\.example\.test\/v1'/)
       expect(
-        within(dialog).getByRole('button', {
+        within(dialog).getByRole('link', {
           name: /appOverview\.overview\.appInfo\.customize\.way1\.step1Operation/,
         }),
       ).toHaveAttribute('href', 'https://github.com/langgenius/webapp-conversation')
@@ -370,7 +492,7 @@ describe('Agent access surface cards', () => {
         name: 'appOverview.overview.appInfo.embedded.title',
       })
 
-      await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
 
       await waitFor(() => {
         expect(
@@ -524,6 +646,23 @@ describe('Agent access surface cards', () => {
       })
     })
 
+    it('should not show the multi-environment settings notice', async () => {
+      const user = userEvent.setup()
+
+      renderWithQueryClient(
+        <WebAppAccessCard agent={createAgent()} agentId="agent-1" isLoading={false} />,
+      )
+
+      await user.click(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' }),
+      )
+
+      const dialog = await screen.findByRole('dialog', {
+        name: 'appOverview.overview.appInfo.settings.title',
+      })
+      expect(within(dialog).queryByRole('status')).not.toBeInTheDocument()
+    })
+
     it('should keep embedded disabled until the backing app id and web app token are available', () => {
       renderWithQueryClient(
         <WebAppAccessCard
@@ -587,27 +726,97 @@ describe('Agent access surface cards', () => {
         screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.customize' }),
       ).toBeDisabled()
     })
+
+    it('should explain that publishing enables the Web App switch and launch action', async () => {
+      const user = userEvent.setup()
+      renderWithQueryClient(
+        <WebAppAccessCard
+          agent={createAgent({ access_ready: false, enable_site: false })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
+      )
+
+      const accessSwitch = screen.getByRole('switch', {
+        name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.webApp.title"}',
+      })
+      expect(accessSwitch).toHaveAttribute('aria-disabled', 'true')
+
+      await user.tab()
+      expect(accessSwitch).toHaveFocus()
+      expect(await screen.findByRole('tooltip')).toHaveTextContent(
+        'agentV2.agentDetail.access.publishRequired',
+      )
+
+      await user.tab()
+      await waitFor(() => {
+        expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+      })
+
+      await user.hover(
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.access.webApp.actions.launch',
+        }),
+      )
+      expect(await screen.findByRole('tooltip')).toHaveTextContent(
+        'agentV2.agentDetail.access.publishRequired',
+      )
+    })
   })
 
   describe('Service API access', () => {
     it('should render service API data and toggle Agent API status through the generated Agent endpoint', async () => {
       const user = userEvent.setup()
-      mocks.apiAccessQueryFn.mockResolvedValueOnce({
-        api_key_count: 2,
-        enabled: true,
-        service_api_base_url: 'https://api.example.test/v1',
-      })
-      mocks.apiEnableMutation.mockResolvedValueOnce({
-        api_key_count: 2,
-        enabled: false,
-        service_api_base_url: 'https://api.example.test/v1',
-      })
+      const toggle = createDeferredPromise<AgentApiAccessResponse>()
+      mocks.apiAccessQueryFn.mockResolvedValueOnce(createAgentApiAccessResponse())
+      mocks.apiEnableMutation.mockReturnValueOnce(toggle.promise)
 
       renderWithQueryClient(<ServiceApiAccessCard agentId="agent-1" />)
 
       expect(await screen.findByText('https://api.example.test/v1')).toBeInTheDocument()
       expect(screen.getByText('2')).toBeInTheDocument()
 
+      const accessSwitch = screen.getByRole('switch', {
+        name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.serviceApi.title"}',
+      })
+      const apiKeyButton = screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.access\.serviceApi\.actions\.apiKey/,
+      })
+      await user.click(accessSwitch)
+
+      expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
+      expect(accessSwitch).toBeEnabled()
+      expect(apiKeyButton).toBeEnabled()
+      expect(mocks.apiEnableMutation.mock.calls[0]?.[0]).toEqual({
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: {
+          enable_api: false,
+        },
+      })
+
+      toggle.reject(new Error('request failed'))
+
+      await waitFor(() => {
+        expect(accessSwitch).toHaveAttribute('aria-checked', 'true')
+      })
+      expect(toast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+      expect(toast.success).not.toHaveBeenCalled()
+    })
+
+    it('should keep raw API enablement separate from effective API access status', async () => {
+      const user = userEvent.setup()
+      const initialApiAccess = createAgentApiAccessResponse({ enabled: false })
+      const updatedApiAccess = createAgentApiAccessResponse({ access_ready: false, enabled: false })
+      mocks.apiAccessQueryFn.mockResolvedValueOnce(initialApiAccess)
+      mocks.apiEnableMutation.mockResolvedValueOnce(updatedApiAccess)
+
+      const agent = createAgent({ enable_api: false })
+      const queryClient = renderWithQueryClient(<ServiceApiAccessCard agentId="agent-1" />)
+      queryClient.setQueryData(['agent-detail', 'agent-1'], agent)
+
+      await screen.findByText(initialApiAccess.service_api_base_url)
       await user.click(
         screen.getByRole('switch', {
           name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.serviceApi.title"}',
@@ -615,24 +824,17 @@ describe('Agent access surface cards', () => {
       )
 
       await waitFor(() => {
-        expect(mocks.apiEnableMutation.mock.calls[0]?.[0]).toEqual({
-          params: {
-            agent_id: 'agent-1',
-          },
-          body: {
-            enable_api: false,
-          },
+        expect(queryClient.getQueryData(['agent-api-access', 'agent-1'])).toEqual(updatedApiAccess)
+        expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toMatchObject({
+          enable_api: true,
         })
       })
+      expect(toast.success).not.toHaveBeenCalled()
     })
 
     it('should manage API keys with the Agent API key endpoints', async () => {
       const user = userEvent.setup()
-      mocks.apiAccessQueryFn.mockResolvedValue({
-        api_key_count: 1,
-        enabled: true,
-        service_api_base_url: 'https://api.example.test/v1',
-      })
+      mocks.apiAccessQueryFn.mockResolvedValue(createAgentApiAccessResponse({ api_key_count: 1 }))
       mocks.apiKeysQueryFn.mockResolvedValue({
         data: [
           {
@@ -690,6 +892,36 @@ describe('Agent access surface cards', () => {
           },
         })
       })
+    })
+
+    it('should explain that publishing enables the Service API switch', async () => {
+      const user = userEvent.setup()
+      mocks.apiAccessQueryFn.mockResolvedValueOnce(
+        createAgentApiAccessResponse({
+          access_ready: false,
+          api_key_count: 0,
+          enabled: false,
+        }),
+      )
+
+      renderWithQueryClient(<ServiceApiAccessCard agentId="agent-1" />)
+
+      await screen.findByText('https://api.example.test/v1')
+      const accessSwitch = screen.getByRole('switch', {
+        name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.serviceApi.title"}',
+      })
+      expect(accessSwitch).toHaveAttribute('aria-disabled', 'true')
+      expect(
+        screen.getByRole('button', {
+          name: /agentV2\.agentDetail\.access\.serviceApi\.actions\.apiKey/,
+        }),
+      ).toBeDisabled()
+
+      await user.tab()
+      expect(accessSwitch).toHaveFocus()
+      expect(await screen.findByRole('tooltip')).toHaveTextContent(
+        'agentV2.agentDetail.access.publishRequired',
+      )
     })
   })
 

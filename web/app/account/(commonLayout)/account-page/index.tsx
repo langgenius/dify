@@ -1,15 +1,18 @@
 'use client'
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { IItem } from '@/app/components/header/account-setting/collapse'
-import type { App } from '@/types/app'
+import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiGraduationCapFill } from '@remixicon/react'
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Input from '@/app/components/base/input'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import Collapse from '@/app/components/header/account-setting/collapse'
 import { validPassword } from '@/config'
@@ -18,7 +21,6 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/client'
 import { updateUserProfile } from '@/service/common'
-import { normalizeAppPagination } from '@/service/use-apps'
 import DeleteAccount from '../delete-account'
 import AvatarWithEdit from './AvatarWithEdit'
 import EmailChangeModal from './email-change-modal'
@@ -29,9 +31,11 @@ const titleClassName = `
 const descriptionClassName = `
   mt-1 body-xs-regular text-text-tertiary
 `
+type AccountAppItem = AppPartial & IItem
 
 export default function AccountPage() {
   const { t } = useTranslation()
+  const editNameInputId = useId()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: appList } = useQuery(
     consoleQuery.apps.get.queryOptions({
@@ -42,7 +46,6 @@ export default function AccountPage() {
           name: '',
         },
       },
-      select: normalizeAppPagination,
     }),
   )
   const apps = appList?.data || []
@@ -52,7 +55,13 @@ export default function AccountPage() {
   const userProfile = userProfileResp.profile
   const mutateUserProfile = () =>
     queryClient.invalidateQueries({ queryKey: userProfileQueryOptions().queryKey })
-  const { isEducationAccount } = useProviderContext()
+  const { enableEducationPlan } = useProviderContext()
+  const { data: isEducationAccount = false } = useQuery(
+    consoleQuery.account.education.get.queryOptions({
+      enabled: enableEducationPlan,
+      select: ({ is_student }) => is_student ?? false,
+    }),
+  )
   const [editNameModalVisible, setEditNameModalVisible] = useState(false)
   const [editName, setEditName] = useState('')
   const [editing, setEditing] = useState(false)
@@ -134,18 +143,17 @@ export default function AccountPage() {
     }
   }
 
-  const renderAppItem = (item: IItem) => {
-    const { icon, icon_background, icon_type, icon_url } = item as IItem &
-      Pick<App, 'icon' | 'icon_background' | 'icon_type' | 'icon_url'>
+  const renderAppItem = (item: AccountAppItem) => {
+    const appIconType = zIconType.safeParse(item.icon_type).data ?? null
     return (
       <div className="flex px-3 py-1">
         <div className="mr-3">
           <AppIcon
             size="tiny"
-            iconType={icon_type}
-            icon={icon}
-            background={icon_background}
-            imageUrl={icon_url}
+            iconType={appIconType}
+            icon={item.icon ?? undefined}
+            background={item.icon_background}
+            imageUrl={item.icon_url}
           />
         </div>
         <div className="mt-0.75 system-sm-medium text-text-secondary">{item.name}</div>
@@ -172,7 +180,7 @@ export default function AccountPage() {
             {userProfile.name}
             {isEducationAccount && (
               <PremiumBadge size="s" color="blue" className="ml-1 px-2!">
-                <RiGraduationCapFill aria-hidden="true" className="mr-1 size-3" />
+                <span aria-hidden className="mr-1 i-ri-graduation-cap-fill size-3" />
                 <span className="system-2xs-medium">EDU</span>
               </PremiumBadge>
             )}
@@ -186,12 +194,13 @@ export default function AccountPage() {
           <div className="flex-1 rounded-lg bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled">
             <span className="pl-1">{userProfile.name}</span>
           </div>
-          <div
+          <button
+            type="button"
             className="cursor-pointer rounded-lg bg-components-button-tertiary-bg px-3 py-2 system-sm-medium text-components-button-tertiary-text"
             onClick={handleEditName}
           >
             {t(($) => $['operation.edit'], { ns: 'common' })}
-          </div>
+          </button>
         </div>
       </div>
       <div className="mb-8">
@@ -201,12 +210,13 @@ export default function AccountPage() {
             <span className="pl-1">{userProfile.email}</span>
           </div>
           {systemFeatures.enable_change_email && (
-            <div
+            <button
+              type="button"
               className="cursor-pointer rounded-lg bg-components-button-tertiary-bg px-3 py-2 system-sm-medium text-components-button-tertiary-text"
               onClick={() => setShowUpdateEmail(true)}
             >
               {t(($) => $['operation.change'], { ns: 'common' })}
-            </div>
+            </button>
           )}
         </div>
       </div>
@@ -238,7 +248,7 @@ export default function AccountPage() {
         {!!apps.length && (
           <Collapse
             title={`${t(($) => $['account.showAppLength'], { ns: 'common', length: apps.length })}`}
-            items={apps.map((app: App) => ({ ...app, key: app.id, name: app.name }))}
+            items={apps.map((app) => ({ ...app, key: app.id, name: app.name }))}
             renderItem={renderAppItem}
             wrapperClassName="mt-2"
           />
@@ -260,8 +270,15 @@ export default function AccountPage() {
           <div className="mb-6 title-2xl-semi-bold text-text-primary">
             {t(($) => $['account.editName'], { ns: 'common' })}
           </div>
-          <div className={titleClassName}>{t(($) => $['account.name'], { ns: 'common' })}</div>
-          <Input className="mt-2" value={editName} onChange={(e) => setEditName(e.target.value)} />
+          <label htmlFor={editNameInputId} className={`block ${titleClassName}`}>
+            {t(($) => $['account.name'], { ns: 'common' })}
+          </label>
+          <Input
+            id={editNameInputId}
+            className="mt-2"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+          />
           <div className="mt-10 flex justify-end">
             <Button className="mr-2" onClick={() => setEditNameModalVisible(false)}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
@@ -283,64 +300,84 @@ export default function AccountPage() {
               : t(($) => $['account.setPassword'], { ns: 'common' })}
           </div>
           {userProfile.is_password_set && (
-            <>
-              <div className={titleClassName}>
+            <Field name="current-password" className="gap-0">
+              <FieldLabel className="py-0 system-sm-semibold text-text-secondary">
                 {t(($) => $['account.currentPassword'], { ns: 'common' })}
-              </div>
-              <div className="relative mt-2">
-                <Input
+              </FieldLabel>
+              <InputGroup className="mt-2">
+                <InputGroupInput
                   type={showCurrentPassword ? 'text' : 'password'}
                   value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  onValueChange={setCurrentPassword}
+                  autoComplete="current-password"
+                  spellCheck={false}
                 />
-                <div className="absolute inset-y-0 right-0 flex items-center">
-                  <Button
-                    type="button"
-                    variant="ghost"
+                <InputGroupAddon align="inline-end">
+                  <IconButton
+                    size="lg"
+                    aria-label={t(($) => $[showCurrentPassword ? 'hidePassword' : 'showPassword'], {
+                      ns: 'login',
+                    })}
                     onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                   >
-                    {showCurrentPassword ? '👀' : '😝'}
-                  </Button>
-                </div>
-              </div>
-            </>
+                    <span aria-hidden="true">{showCurrentPassword ? '👀' : '😝'}</span>
+                  </IconButton>
+                </InputGroupAddon>
+              </InputGroup>
+            </Field>
           )}
-          <div className="mt-8 system-sm-semibold text-text-secondary">
-            {userProfile.is_password_set
-              ? t(($) => $['account.newPassword'], { ns: 'common' })
-              : t(($) => $['account.password'], { ns: 'common' })}
-          </div>
-          <div className="relative mt-2">
-            <Input
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <div className="absolute inset-y-0 right-0 flex items-center">
-              <Button type="button" variant="ghost" onClick={() => setShowPassword(!showPassword)}>
-                {showPassword ? '👀' : '😝'}
-              </Button>
-            </div>
-          </div>
-          <div className="mt-8 system-sm-semibold text-text-secondary">
-            {t(($) => $['account.confirmPassword'], { ns: 'common' })}
-          </div>
-          <div className="relative mt-2">
-            <Input
-              type={showConfirmPassword ? 'text' : 'password'}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-            />
-            <div className="absolute inset-y-0 right-0 flex items-center">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              >
-                {showConfirmPassword ? '👀' : '😝'}
-              </Button>
-            </div>
-          </div>
+          <Field name="new-password" className="mt-8 gap-0">
+            <FieldLabel className="py-0 system-sm-semibold text-text-secondary">
+              {userProfile.is_password_set
+                ? t(($) => $['account.newPassword'], { ns: 'common' })
+                : t(($) => $['account.password'], { ns: 'common' })}
+            </FieldLabel>
+            <InputGroup className="mt-2">
+              <InputGroupInput
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onValueChange={setPassword}
+                autoComplete="new-password"
+                spellCheck={false}
+              />
+              <InputGroupAddon align="inline-end">
+                <IconButton
+                  size="lg"
+                  aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
+                    ns: 'login',
+                  })}
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  <span aria-hidden="true">{showPassword ? '👀' : '😝'}</span>
+                </IconButton>
+              </InputGroupAddon>
+            </InputGroup>
+          </Field>
+          <Field name="confirm-password" className="mt-8 gap-0">
+            <FieldLabel className="py-0 system-sm-semibold text-text-secondary">
+              {t(($) => $['account.confirmPassword'], { ns: 'common' })}
+            </FieldLabel>
+            <InputGroup className="mt-2">
+              <InputGroupInput
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onValueChange={setConfirmPassword}
+                autoComplete="new-password"
+                spellCheck={false}
+              />
+              <InputGroupAddon align="inline-end">
+                <IconButton
+                  size="lg"
+                  aria-label={t(($) => $[showConfirmPassword ? 'hidePassword' : 'showPassword'], {
+                    ns: 'login',
+                  })}
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  <span aria-hidden="true">{showConfirmPassword ? '👀' : '😝'}</span>
+                </IconButton>
+              </InputGroupAddon>
+            </InputGroup>
+          </Field>
           <div className="mt-10 flex justify-end">
             <Button
               className="mr-2"

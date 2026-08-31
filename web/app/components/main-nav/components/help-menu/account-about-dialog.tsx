@@ -1,9 +1,9 @@
 'use client'
-
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { LangGeniusVersionInfo } from '@/context/app-context-types'
 import { buttonVariants } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
@@ -32,7 +32,17 @@ export default function AccountAboutDialog({
         <DialogTitle className="sr-only">
           {t(($) => $['userProfile.about'], { ns: 'common' })}
         </DialogTitle>
-        <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <div className="flex flex-col items-center gap-4 px-6 py-12">
           <DifyLogo alt="Dify" size="large" className="mx-auto" />
 
@@ -47,7 +57,7 @@ export default function AccountAboutDialog({
                   href="https://github.com/langgenius/dify/blob/main/LICENSE"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-sm outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                  className="rounded-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                 >
                   Open Source License
                 </Link>
@@ -58,7 +68,7 @@ export default function AccountAboutDialog({
                     href="https://dify.ai/privacy"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-sm outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                    className="rounded-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                   >
                     Privacy Policy
                   </Link>
@@ -67,7 +77,7 @@ export default function AccountAboutDialog({
                     href="https://dify.ai/terms"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-sm outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                    className="rounded-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                   >
                     Terms of Service
                   </Link>

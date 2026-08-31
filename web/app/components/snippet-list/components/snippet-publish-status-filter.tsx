@@ -58,7 +58,7 @@ const SnippetPublishStatusFilter = ({ value, onChange }: SnippetPublishStatusFil
         <span className="px-1 text-text-tertiary">{triggerLabel}</span>
         <span aria-hidden className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-start" popupClassName="w-[220px]">
+      <DropdownMenuContent placement="bottom-start" className="w-[220px]">
         <DropdownMenuRadioGroup<SnippetPublishStatus>
           value={value}
           onValueChange={(nextValue) => onChange(nextValue)}

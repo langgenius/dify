@@ -11,10 +11,9 @@ from dify_agent.adapters.shell.shellctl import (
     ShellctlClientFactory,
     ShellctlClientProtocol,
     ShellctlCommands,
-    ShellctlFileTransfer,
     create_default_shellctl_client_factory,
 )
-from dify_agent.runtime_backend.protocols import FileSystem, RuntimeLayout
+from dify_agent.runtime_backend.protocols import RuntimeLayout
 
 _CONTROL_COMMAND_OUTPUT_LIMIT = 256 * 1024
 logger = logging.getLogger(__name__)
@@ -32,7 +31,6 @@ class ShellctlRuntimeLease:
     layout: RuntimeLayout
     client: ShellctlClientProtocol
     commands: ShellCommandProtocol
-    files: FileSystem
     owned_transport: AsyncCloseable | None = None
     _closed: bool = field(default=False, init=False)
 
@@ -77,11 +75,6 @@ def create_shellctl_lease(
             home_dir=layout.home_dir,
             workspace_dir=layout.workspace_dir,
         ),
-        files=ShellctlFileTransfer(
-            client=client,
-            cwd=layout.workspace_dir,
-            home_dir=layout.home_dir,
-        ),
         owned_transport=owned_transport,
     )
 
@@ -119,8 +112,8 @@ async def run_shellctl_control_command(
     *,
     timeout: float = 30.0,
 ) -> CompleteShellCommandResult:
-    """Run one bounded driver control command and always delete its transient job."""
-    result = await commands.run(script, cwd=None, env=None, timeout=timeout)
+    """Run one bounded control command through stdout-only stdio and delete its transient job."""
+    result = await commands.run(script, cwd=None, env=None, timeout=timeout, mode="stdio")
     job_id = result.job_id
     output_parts = [result.output]
     try:

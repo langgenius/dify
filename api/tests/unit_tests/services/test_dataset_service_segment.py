@@ -1,5 +1,7 @@
 """Unit tests for SegmentService behaviors in dataset_service."""
 
+from collections.abc import Callable
+
 from services.dataset_ref_service import DatasetRef, DatasetRefService, DocumentRef, SegmentRef
 
 from .dataset_service_test_helpers import (
@@ -471,13 +473,13 @@ class TestSegmentServiceValidation:
         with pytest.raises(ValueError, match="Content is empty"):
             SegmentService.segment_create_args_validate({"content": "   "}, document)
 
-    def test_segment_create_args_validate_enforces_attachment_limit(self):
+    def test_segment_create_args_validate_enforces_attachment_limit(self, config_overrides: Callable[..., None]):
+        config_overrides(SINGLE_CHUNK_ATTACHMENT_LIMIT=1)
         document = _make_document(doc_form=IndexStructureType.PARAGRAPH_INDEX)
         args = {"content": "hello", "attachment_ids": ["a-1", "a-2"]}
 
-        with patch("services.dataset_service.dify_config.SINGLE_CHUNK_ATTACHMENT_LIMIT", 1):
-            with pytest.raises(ValueError, match="Exceeded maximum attachment limit of 1"):
-                SegmentService.segment_create_args_validate(args, document)
+        with pytest.raises(ValueError, match="Exceeded maximum attachment limit of 1"):
+            SegmentService.segment_create_args_validate(args, document)
 
     def test_segment_create_args_validate_requires_attachment_ids_list(self):
         document = _make_document(doc_form=IndexStructureType.PARAGRAPH_INDEX)
@@ -858,7 +860,7 @@ class TestSegmentServiceMutations:
             # scalars() for child_node_ids
             session.scalars.return_value.all.return_value = ["child-1"]
 
-            SegmentService.delete_segments(["segment-1", "segment-2"], document, dataset, session)
+            SegmentService.delete_segments(["segment-1", "segment-2", "foreign-segment"], document, dataset, session)
 
         assert document.word_count == 0
         session.add.assert_called_once_with(document)
@@ -869,6 +871,13 @@ class TestSegmentServiceMutations:
             ["segment-1", "segment-2"],
             ["child-1"],
         )
+        delete_stmt = session.execute.call_args_list[1].args[0]
+        delete_sql = str(delete_stmt.compile(compile_kwargs={"literal_binds": True}))
+        assert "document_segments.id IN ('segment-1', 'segment-2')" in delete_sql
+        assert "document_segments.dataset_id = 'dataset-1'" in delete_sql
+        assert "document_segments.document_id = 'doc-1'" in delete_sql
+        assert "document_segments.tenant_id = 'tenant-1'" in delete_sql
+        assert "foreign-segment" not in delete_sql
         session.commit.assert_called()
 
     def test_update_segments_status_enables_only_segments_without_indexing_cache(self):

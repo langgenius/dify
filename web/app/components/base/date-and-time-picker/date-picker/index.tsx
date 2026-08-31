@@ -223,42 +223,50 @@ const DatePicker = ({
     : t(($) => $['dateFormats.display'], { ns: 'time' })
   const displayValue = normalizedValue?.format(timeFormat) || ''
   const displayTime = selectedDate?.format('hh:mm A') || '--:-- --'
-  const placeholderDate =
-    isOpen && selectedDate
-      ? selectedDate.format(timeFormat)
-      : placeholder || t(($) => $.defaultPlaceholder, { ns: 'time' })
-
   return (
     <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         nativeButton={false}
         className={triggerWrapClassName}
-        render={
-          renderTrigger ? (
-            renderTrigger({
+        render={(props, state) => {
+          if (renderTrigger) {
+            return renderTrigger(props, state, {
               value: normalizedValue,
               selectedDate,
-              isOpen,
               handleClear,
               handleClickTrigger,
             })
-          ) : (
+          }
+
+          const placeholderDate =
+            state.open && selectedDate
+              ? selectedDate.format(timeFormat)
+              : placeholder || t(($) => $.defaultPlaceholder, { ns: 'time' })
+
+          return (
             <div
-              className="group flex w-63 cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt"
-              onClick={handleClickTrigger}
+              {...props}
+              className={cn(
+                'group flex w-63 cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt',
+                props.className,
+              )}
+              onClick={(event) => {
+                handleClickTrigger(event)
+                props.onClick?.(event)
+              }}
               data-testid="date-picker-trigger"
             >
               <input
                 className="flex-1 cursor-pointer appearance-none truncate bg-transparent p-1 system-xs-regular text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder"
                 readOnly
-                value={isOpen ? '' : displayValue}
+                value={state.open ? '' : displayValue}
                 placeholder={placeholderDate}
               />
               <span
                 className={cn(
                   'i-ri-calendar-line size-4 shrink-0 text-text-quaternary',
-                  isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
-                  (displayValue || (isOpen && selectedDate)) && 'group-hover:hidden',
+                  state.open ? 'text-text-secondary' : 'group-hover:text-text-secondary',
+                  (displayValue || (state.open && selectedDate)) && 'group-hover:hidden',
                 )}
               />
               <button
@@ -266,7 +274,7 @@ const DatePicker = ({
                 aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
                 className={cn(
                   'hidden size-4 shrink-0 border-none bg-transparent p-0 text-text-quaternary hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
-                  (displayValue || (isOpen && selectedDate)) && 'group-hover:inline-block',
+                  (displayValue || (state.open && selectedDate)) && 'group-hover:inline-block',
                 )}
                 onClick={handleClear}
               >
@@ -274,12 +282,12 @@ const DatePicker = ({
               </button>
             </div>
           )
-        }
+        }}
       />
       <PopoverContent
         placement="bottom-end"
         sideOffset={0}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div className="mt-1 w-63 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5">
           {/* Header */}

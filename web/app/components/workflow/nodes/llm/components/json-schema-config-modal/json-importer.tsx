@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
@@ -76,10 +75,7 @@ const JsonImporter: FC<JsonImporterProps> = ({ onSubmit, updateBtnWidth }) => {
       <PopoverTrigger
         ref={importBtnRef}
         onClick={(e) => e.stopPropagation()}
-        className={cn(
-          'flex shrink-0 rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-components-button-ghost-bg-hover',
-          open && 'bg-components-button-ghost-bg-hover',
-        )}
+        className="flex shrink-0 rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-components-button-ghost-bg-hover data-popup-open:bg-components-button-ghost-bg-hover"
       >
         <span className="px-0.5">
           {t(($) => $['nodes.llm.jsonSchema.import'], { ns: 'workflow' })}
@@ -89,7 +85,7 @@ const JsonImporter: FC<JsonImporterProps> = ({ onSubmit, updateBtnWidth }) => {
         placement="bottom-end"
         sideOffset={4}
         alignOffset={16}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div className="flex w-100 flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9">
           {/* Title */}

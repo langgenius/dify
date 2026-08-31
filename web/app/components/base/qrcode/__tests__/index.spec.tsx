@@ -35,6 +35,10 @@ describe('ShareQRCode', () => {
       await user.click(trigger)
 
       expect(screen.getByRole('img')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'appOverview.overview.appInfo.qrcode.download' }),
+      ).toBeInTheDocument()
+      expect(screen.queryByText('appOverview.overview.appInfo.qrcode.scan')).not.toBeInTheDocument()
 
       await user.click(trigger)
       expect(screen.queryByRole('img')).not.toBeInTheDocument()
@@ -73,6 +77,25 @@ describe('ShareQRCode', () => {
       await user.click(panel!)
 
       expect(canvas).toBeInTheDocument()
+    })
+
+    it('lets panel interactions bubble without closing the panel', async () => {
+      const user = userEvent.setup()
+      const onClick = vi.fn()
+      const { container } = render(<ShareQRCode content={content} />)
+      container.addEventListener('click', onClick)
+
+      await user.click(
+        screen.getByRole('button', {
+          name: 'appOverview.overview.appInfo.qrcode.title',
+        }),
+      )
+      onClick.mockClear()
+
+      await user.click(screen.getByRole('img'))
+
+      expect(onClick).toHaveBeenCalledOnce()
+      expect(screen.getByRole('img')).toBeInTheDocument()
     })
 
     it('calls downloadUrl when clicking download', async () => {
@@ -128,22 +151,6 @@ describe('ShareQRCode', () => {
       } finally {
         panel.querySelector = origQuerySelector
       }
-    })
-
-    it('does not close when clicking inside the qrcode ref area', async () => {
-      const user = userEvent.setup()
-      render(<ShareQRCode content={content} />)
-
-      const trigger = screen.getByRole('button', {
-        name: 'appOverview.overview.appInfo.qrcode.title',
-      })
-      await user.click(trigger)
-
-      // Click on the scan text inside the panel — panel should remain open
-      const scanText = screen.getByText('appOverview.overview.appInfo.qrcode.scan')
-      await user.click(scanText)
-
-      expect(screen.getByRole('img')).toBeInTheDocument()
     })
   })
 })

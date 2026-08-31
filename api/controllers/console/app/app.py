@@ -4,7 +4,6 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, Literal
 
-from flask import request
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, ValidationInfo, computed_field, field_validator, model_validator
 from sqlalchemy import select
@@ -33,6 +32,7 @@ from controllers.console.wraps import (
     edit_permission_required,
     enterprise_license_required,
     is_admin_or_owner_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -42,8 +42,8 @@ from controllers.console.wraps import (
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.rbac import RBACResourceWhitelistScope
 from core.trigger.constants import TRIGGER_NODE_TYPES
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.enums import WorkflowExecutionStatus
@@ -642,13 +642,13 @@ class AppListApi(Resource):
         )
 
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
-            str(current_tenant_id),
+            current_tenant_id,
             current_user_id,
             session=session,
         )
         if dify_config.RBAC_ENABLED:
             access_filter = resolve_app_access_filter(
-                str(current_tenant_id),
+                current_tenant_id,
                 current_user_id,
                 session=session,
                 permissions=permissions,
@@ -675,7 +675,7 @@ class AppListApi(Resource):
             pagination_model = pagination_model.model_copy(
                 update={
                     "data": [
-                        item.model_copy(update={"permission_keys": permission_keys_map.get(str(item.id), [])})
+                        item.model_copy(update={"permission_keys": permission_keys_map.get(item.id, [])})
                         for item in pagination_model.data
                     ]
                 }
@@ -697,30 +697,22 @@ class AppListApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @with_session
-    def post(self, session: Session, current_tenant_id: str, current_user: Account):
+    @model_validate(CreateAppPayload)
+    def post(self, req_data: CreateAppPayload, session: Session, current_tenant_id: str, current_user: Account):
         """Create app"""
-        args = CreateAppPayload.model_validate(console_ns.payload)
         params = CreateAppParams(
-            name=args.name,
-            description=args.description,
-            mode=args.mode,
-            icon_type=args.icon_type,
-            icon=args.icon,
-            icon_background=args.icon_background,
+            name=req_data.name,
+            description=req_data.description,
+            mode=req_data.mode,
+            icon_type=req_data.icon_type,
+            icon=req_data.icon,
+            icon_background=req_data.icon_background,
         )
 
         app_service = AppService()
         app = app_service.create_app(current_tenant_id, params, current_user, session=session)
-        if dify_config.RBAC_ENABLED:
-            enterprise_rbac_service.RBACService.AppAccess.replace_whitelist(
-                tenant_id=str(current_tenant_id),
-                account_id=current_user.id,
-                app_id=str(app.id),
-                payload=enterprise_rbac_service.ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
-            )
-            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, app_id=app.id)
         permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
-            str(current_tenant_id),
+            current_tenant_id,
             current_user.id,
             [str(app.id)],
             session=session,
@@ -730,6 +722,17 @@ class AppListApi(Resource):
             from_attributes=True,
             context={"session": session},
         ).model_copy(update={"permission_keys": permission_keys_map.get(str(app.id), [])})
+
+        if dify_config.RBAC_ENABLED:
+            enterprise_rbac_service.RBACService.AppAccess.replace_whitelist(
+                current_tenant_id,
+                current_user.id,
+                str(app.id),
+                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+            )
+
+            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, app_id=app.id)
+
         return app_detail.model_dump(mode="json"), 201
 
 
@@ -879,7 +882,7 @@ class AppApi(Resource):
             app_model.access_mode = app_setting.access_mode
 
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
-            str(current_tenant_id),
+            current_tenant_id,
             current_user.id,
             app_id=str(app_model.id),
             session=session,
@@ -908,20 +911,20 @@ class AppApi(Resource):
     @agent_manage_required_for_agent_app
     @with_session
     @get_app_model(mode=None)
-    def put(self, session: Session, app_model: App):
+    @model_validate(UpdateAppPayload)
+    def put(self, req_data: UpdateAppPayload, session: Session, app_model: App):
         """Update app"""
-        args = UpdateAppPayload.model_validate(console_ns.payload)
 
         app_service = AppService()
 
         args_dict: AppService.ArgsDict = {
-            "name": args.name,
-            "description": args.description or "",
-            "icon_type": args.icon_type,
-            "icon": args.icon or "",
-            "icon_background": args.icon_background or "",
-            "use_icon_as_answer_icon": args.use_icon_as_answer_icon or False,
-            "max_active_requests": args.max_active_requests or 0,
+            "name": req_data.name,
+            "description": req_data.description or "",
+            "icon_type": req_data.icon_type,
+            "icon": req_data.icon or "",
+            "icon_background": req_data.icon_background or "",
+            "use_icon_as_answer_icon": req_data.use_icon_as_answer_icon or False,
+            "max_active_requests": req_data.max_active_requests or 0,
         }
         app_model = app_service.update_app(app_model, args_dict, session=session)
         return AppDetailWithSite.model_validate(
@@ -969,10 +972,10 @@ class AppCopyApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @get_app_model(mode=None)
-    def post(self, current_tenant_id: str, current_user: Account, app_model: App):
+    @model_validate(CopyAppPayload)
+    def post(self, req_data: CopyAppPayload, current_tenant_id: str, current_user: Account, app_model: App):
         """Copy app"""
         # The role of the current user in the ta table must be admin, owner, or editor
-        args = CopyAppPayload.model_validate(console_ns.payload or {})
 
         with Session(db.engine, expire_on_commit=False) as session:
             import_service = AppDslService(session)
@@ -982,11 +985,11 @@ class AppCopyApi(Resource):
                     account=current_user,
                     import_mode=ImportMode.YAML_CONTENT,
                     yaml_content=yaml_content,
-                    name=args.name,
-                    description=args.description,
-                    icon_type=args.icon_type,
-                    icon=args.icon,
-                    icon_background=args.icon_background,
+                    name=req_data.name,
+                    description=req_data.description,
+                    icon_type=req_data.icon_type,
+                    icon=req_data.icon,
+                    icon_background=req_data.icon_background,
                 )
             except NoPermissionError as e:
                 raise Forbidden(str(e))
@@ -1017,7 +1020,7 @@ class AppCopyApi(Resource):
                 raise NotFound("App not found")
 
             permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
-                str(current_tenant_id),
+                current_tenant_id,
                 current_user.id,
                 [str(app.id)],
                 session=session,
@@ -1045,16 +1048,16 @@ class AppExportApi(Resource):
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL)
     @agent_manage_required_for_agent_app
     @get_app_model
-    def get(self, app_model: App):
+    @model_validate(AppExportQuery)
+    def get(self, req_data: AppExportQuery, app_model: App):
         """Export app"""
-        args = AppExportQuery.model_validate(request.args.to_dict(flat=True))
 
         response = AppExportResponse(
             data=AppDslService.export_dsl(
                 app_model=app_model,
                 session=db.session(),
-                include_secret=args.include_secret,
-                workflow_id=args.workflow_id,
+                include_secret=req_data.include_secret,
+                workflow_id=req_data.workflow_id,
             )
         )
         return response.model_dump(mode="json")
@@ -1082,7 +1085,17 @@ class AppPublishToCreatorsPlatformApi(Resource):
         dsl_bytes = dsl_content.encode("utf-8")
 
         claim_code = upload_dsl(dsl_bytes)
-        redirect_url = get_redirect_url(current_user_id, claim_code)
+        # TODO: Move this configuration and OAuth orchestration into the Creators Platform application service
+        # when that domain is refactored. This controller-level integration is a temporary compatibility bridge.
+        oauth_code = None
+        client_id = dify_config.CREATORS_PLATFORM_OAUTH_CLIENT_ID or ""
+        if client_id:
+            authorization = application_services().oauth_server.issue_authorization_code(
+                client_id=client_id,
+                account_id=current_user_id,
+            )
+            oauth_code = authorization.code
+        redirect_url = get_redirect_url(claim_code, oauth_code=oauth_code)
 
         return RedirectUrlResponse(redirect_url=redirect_url).model_dump(mode="json")
 
@@ -1102,11 +1115,11 @@ class AppNameApi(Resource):
     @agent_manage_required_for_agent_app
     @with_session
     @get_app_model(mode=None)
-    def post(self, session: Session, app_model: App):
-        args = AppNamePayload.model_validate(console_ns.payload)
+    @model_validate(AppNamePayload)
+    def post(self, req_data: AppNamePayload, session: Session, app_model: App):
 
         app_service = AppService()
-        app_model = app_service.update_app_name(app_model, args.name, session=session)
+        app_model = app_service.update_app_name(app_model, req_data.name, session=session)
         return AppDetail.model_validate(
             app_model,
             from_attributes=True,
@@ -1130,15 +1143,15 @@ class AppIconApi(Resource):
     @agent_manage_required_for_agent_app
     @with_session
     @get_app_model(mode=None)
-    def post(self, session: Session, app_model: App):
-        args = AppIconPayload.model_validate(console_ns.payload or {})
+    @model_validate(AppIconPayload)
+    def post(self, req_data: AppIconPayload, session: Session, app_model: App):
 
         app_service = AppService()
         app_model = app_service.update_app_icon(
             app_model,
-            args.icon or "",
-            args.icon_background or "",
-            args.icon_type,
+            req_data.icon or "",
+            req_data.icon_background or "",
+            req_data.icon_type,
             session=session,
         )
         return AppDetail.model_validate(
@@ -1164,11 +1177,11 @@ class AppSiteStatus(Resource):
     @agent_manage_required_for_agent_app
     @with_session
     @get_app_model(mode=None)
-    def post(self, session: Session, app_model: App):
-        args = AppSiteStatusPayload.model_validate(console_ns.payload)
+    @model_validate(AppSiteStatusPayload)
+    def post(self, req_data: AppSiteStatusPayload, session: Session, app_model: App):
 
         app_service = AppService()
-        app_model = app_service.update_app_site_status(app_model, args.enable_site, session=session)
+        app_model = app_service.update_app_site_status(app_model, req_data.enable_site, session=session)
         return AppDetail.model_validate(
             app_model,
             from_attributes=True,
@@ -1192,11 +1205,11 @@ class AppApiStatus(Resource):
     @agent_manage_required_for_agent_app
     @with_session
     @get_app_model(mode=None)
-    def post(self, session: Session, app_model: App):
-        args = AppApiStatusPayload.model_validate(console_ns.payload)
+    @model_validate(AppApiStatusPayload)
+    def post(self, req_data: AppApiStatusPayload, session: Session, app_model: App):
 
         app_service = AppService()
-        app_model = app_service.update_app_api_status(app_model, args.enable_api, session=session)
+        app_model = app_service.update_app_api_status(app_model, req_data.enable_api, session=session)
         return AppDetail.model_validate(
             app_model,
             from_attributes=True,
@@ -1242,14 +1255,14 @@ class AppTraceApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TRACING_CONFIG)
     @get_app_model
-    def post(self, app_model: App):
+    @model_validate(AppTracePayload)
+    def post(self, req_data: AppTracePayload, app_model: App):
         # add app trace
-        args = AppTracePayload.model_validate(console_ns.payload)
 
         OpsTraceManager.update_app_tracing_config(
             app_id=app_model.id,
-            enabled=args.enabled,
-            tracing_provider=args.tracing_provider,
+            enabled=req_data.enabled,
+            tracing_provider=req_data.tracing_provider,
         )
 
         return SimpleResultResponse(result="success").model_dump(mode="json")

@@ -73,10 +73,10 @@ const PluginAuthInAgent = ({
             removed && 'text-text-destructive',
           )}
         >
-          <StatusDot className="mr-2" status={color} />
+          <StatusDot status={color} />
           {label}
           {unavailable && t(($) => $['auth.unavailable'], { ns: 'plugin' })}
-          <RiArrowDownSLine className="ml-0.5 size-4" />
+          <RiArrowDownSLine className="size-4" />
         </Button>
       )
     },

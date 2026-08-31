@@ -1,35 +1,38 @@
 'use client'
-
-import type {
-  AgentAppCopyPayload,
-  AgentAppPartial,
-} from '@dify/contracts/api/console/agent/types.gen'
-import type { AgentFormValues, AgentIconSelection } from './agent-form'
+import type { AgentAppCopyPayload } from '@dify/contracts/api/console/agent/types.gen'
+import type { Ref } from 'react'
+import type { AgentFormSource, AgentFormValues, AgentIconSelection } from './agent-form'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import { Textarea } from '@langgenius/dify-ui/textarea'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import { consoleQuery } from '@/service/client'
 import { createAgentIconSelection } from './agent-form'
+import { AgentFormFields } from './agent-form-fields'
 
 type DuplicateAgentDialogProps = {
-  agent: AgentAppPartial
-  formKey: number
+  agent: AgentFormSource
   open: boolean
   onOpenChange: (open: boolean) => void
+}
+
+type DuplicateAgentFormSessionProps = {
+  agent: AgentFormSource
+  nameInputRef: Ref<HTMLInputElement>
+  pending: boolean
+  onCancel: () => void
+  onSubmit: (formValues: AgentFormValues, agentIcon: AgentIconSelection) => void
 }
 
 const getDefaultCopyName = (name: string) => {
@@ -37,17 +40,80 @@ const getDefaultCopyName = (name: string) => {
   return `${name.slice(0, 255 - suffix.length)}${suffix}`
 }
 
-export function DuplicateAgentDialog({
+function DuplicateAgentFormSession({
   agent,
-  formKey,
-  open,
-  onOpenChange,
-}: DuplicateAgentDialogProps) {
+  nameInputRef,
+  pending,
+  onCancel,
+  onSubmit,
+}: DuplicateAgentFormSessionProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
+  const [initialValues] = useState(() => ({
+    fields: {
+      description: agent.description ?? '',
+      name: getDefaultCopyName(agent.name),
+      role: agent.role ?? '',
+    } satisfies AgentFormValues,
+    icon: createAgentIconSelection(agent),
+    sourceName: agent.name,
+  }))
+  const [agentIcon, setAgentIcon] = useState(initialValues.icon)
+  const [iconPickerOpen, setIconPickerOpen] = useState(false)
+
+  return (
+    <>
+      <div className="shrink-0 ps-6 pe-14 pt-6 pb-3">
+        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+          {t(($) => $['roster.duplicateDialog.title'])}
+        </DialogTitle>
+        <DialogDescription className="sr-only">
+          {t(($) => $['roster.duplicateDialog.description'], {
+            name: initialValues.sourceName,
+          })}
+        </DialogDescription>
+      </div>
+      <Form<AgentFormValues>
+        className="flex min-h-0 flex-1 flex-col"
+        onFormSubmit={(formValues) => onSubmit(formValues, agentIcon)}
+      >
+        <AgentFormFields
+          ref={nameInputRef}
+          defaultValues={initialValues.fields}
+          icon={agentIcon}
+          iconAriaLabel={t(($) => $['roster.duplicateForm.changeIcon'], {
+            name: initialValues.sourceName,
+          })}
+          onIconClick={() => setIconPickerOpen(true)}
+        />
+        <div className="flex shrink-0 justify-end gap-2 px-6 pt-5 pb-6">
+          <Button type="button" className="min-w-18" onClick={onCancel} disabled={pending}>
+            {tCommon(($) => $['operation.cancel'])}
+          </Button>
+          <Button type="submit" variant="primary" className="min-w-18" loading={pending}>
+            {tCommon(($) => $['operation.duplicate'])}
+          </Button>
+        </div>
+      </Form>
+      <AppIconPicker
+        open={iconPickerOpen}
+        initialEmoji={
+          agentIcon.type === 'emoji'
+            ? { icon: agentIcon.icon, background: agentIcon.background }
+            : undefined
+        }
+        onOpenChange={setIconPickerOpen}
+        onSelect={setAgentIcon}
+      />
+    </>
+  )
+}
+
+export function DuplicateAgentDialog({ agent, open, onOpenChange }: DuplicateAgentDialogProps) {
+  const { t } = useTranslation('agentV2')
   const queryClient = useQueryClient()
   const latestAgent =
-    queryClient.getQueryData<AgentAppPartial>(
+    queryClient.getQueryData<AgentFormSource>(
       consoleQuery.agent.byAgentId.get.queryKey({
         input: {
           params: {
@@ -56,62 +122,25 @@ export function DuplicateAgentDialog({
         },
       }),
     ) ?? agent
-  const [renderedFormKey, setRenderedFormKey] = useState(formKey)
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState(latestAgent.description ?? '')
-  const [role, setRole] = useState(latestAgent.role ?? '')
-  const [iconPickerOpen, setIconPickerOpen] = useState(false)
-  const [agentIcon, setAgentIcon] = useState<AgentIconSelection>(() =>
-    createAgentIconSelection(latestAgent),
-  )
+  const nameInputRef = useRef<HTMLInputElement>(null)
   const duplicateAgentMutation = useMutation(
     consoleQuery.agent.byAgentId.copy.post.mutationOptions(),
   )
-  const defaultCopyName = getDefaultCopyName(latestAgent.name)
-
-  if (formKey !== renderedFormKey) {
-    setRenderedFormKey(formKey)
-    setName('')
-    setDescription(latestAgent.description ?? '')
-    setRole(latestAgent.role ?? '')
-    setIconPickerOpen(false)
-    setAgentIcon(createAgentIconSelection(latestAgent))
-  }
-
   const handleOpenChange = (nextOpen: boolean) => {
-    if (nextOpen) {
-      const currentAgent =
-        queryClient.getQueryData<AgentAppPartial>(
-          consoleQuery.agent.byAgentId.get.queryKey({
-            input: {
-              params: {
-                agent_id: agent.id,
-              },
-            },
-          }),
-        ) ?? agent
-      setName('')
-      setDescription(currentAgent.description ?? '')
-      setRole(currentAgent.role ?? '')
-      setAgentIcon(createAgentIconSelection(currentAgent))
-    } else {
-      setIconPickerOpen(false)
-    }
+    if (!nextOpen && duplicateAgentMutation.isPending) return
     onOpenChange(nextOpen)
   }
 
-  const handleSubmit = (formValues: AgentFormValues) => {
+  const handleSubmit = (formValues: AgentFormValues, agentIcon: AgentIconSelection) => {
     if (duplicateAgentMutation.isPending) return
 
-    const trimmedName = formValues.name?.trim() ?? ''
-    const trimmedRole = formValues.role?.trim() ?? ''
     const body: AgentAppCopyPayload = {
-      description: formValues.description?.trim() ?? '',
-      role: trimmedRole,
+      name: formValues.name.trim(),
+      description: formValues.description.trim(),
+      role: formValues.role.trim(),
       icon_type: agentIcon.type,
       icon: agentIcon.type === 'image' ? agentIcon.fileId : agentIcon.icon,
       icon_background: agentIcon.type === 'emoji' ? agentIcon.background : undefined,
-      ...(trimmedName ? { name: trimmedName } : {}),
     }
 
     duplicateAgentMutation.mutate(
@@ -124,7 +153,7 @@ export function DuplicateAgentDialog({
       {
         onSuccess: () => {
           toast.success(t(($) => $['roster.duplicateSuccess']))
-          handleOpenChange(false)
+          onOpenChange(false)
         },
       },
     )
@@ -133,123 +162,32 @@ export function DuplicateAgentDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
-        <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-130 flex-col overflow-hidden! p-0!">
-          <DialogCloseButton />
-          <div className="shrink-0 pt-6 pr-14 pb-3 pl-6">
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $['roster.duplicateDialog.title'])}
-            </DialogTitle>
-            <DialogDescription className="sr-only">
-              {t(($) => $['roster.duplicateDialog.description'], { name: latestAgent.name })}
-            </DialogDescription>
-          </div>
-          <Form<AgentFormValues>
-            key={formKey}
-            className="min-h-0 flex-1"
-            onFormSubmit={handleSubmit}
-          >
-            <div className="space-y-5 px-6 py-3">
-              <div className="flex items-end gap-4 pb-2">
-                <button
-                  type="button"
-                  aria-label={t(($) => $['roster.duplicateForm.changeIcon'], {
-                    name: latestAgent.name,
-                  })}
-                  className="shrink-0 rounded-full outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                  onClick={() => setIconPickerOpen(true)}
-                >
-                  <AppIcon
-                    size="xxl"
-                    rounded
-                    className="size-16 cursor-pointer"
-                    iconType={agentIcon.type === 'link' ? 'image' : agentIcon.type}
-                    icon={agentIcon.type === 'emoji' ? agentIcon.icon : undefined}
-                    background={agentIcon.type === 'emoji' ? agentIcon.background : undefined}
-                    imageUrl={agentIcon.type === 'emoji' ? undefined : agentIcon.url}
-                  />
-                </button>
-                <div className="flex min-w-0 flex-1 gap-3 pb-1">
-                  <Field name="name" className="relative min-w-0 flex-1">
-                    <FieldLabel>
-                      {t(($) => $['roster.createForm.nameLabel'])}
-                      <span className="ml-1 system-xs-regular text-text-tertiary">
-                        {tCommon(($) => $['label.optional'])}
-                      </span>
-                    </FieldLabel>
-                    <FieldControl
-                      autoComplete="off"
-                      // oxlint-disable-next-line jsx-a11y/no-autofocus -- The duplicate dialog opens from an explicit command, and naming the copy is the primary editable action.
-                      autoFocus
-                      maxLength={255}
-                      onValueChange={setName}
-                      placeholder={defaultCopyName}
-                      value={name}
-                    />
-                  </Field>
-                  <Field name="role" className="relative min-w-0 flex-1">
-                    <FieldLabel>
-                      {t(($) => $['roster.createForm.roleLabel'])}
-                      <span className="ml-1 system-xs-regular text-text-tertiary">
-                        {tCommon(($) => $['label.optional'])}
-                      </span>
-                    </FieldLabel>
-                    <FieldControl
-                      autoComplete="off"
-                      maxLength={255}
-                      onValueChange={setRole}
-                      placeholder={t(($) => $['roster.createForm.rolePlaceholder'])}
-                      value={role}
-                    />
-                  </Field>
-                </div>
-              </div>
-              <Field name="description">
-                <FieldLabel>
-                  {t(($) => $['roster.createForm.descriptionLabel'])}
-                  <span className="ml-1 system-xs-regular text-text-tertiary">
-                    {tCommon(($) => $['label.optional'])}
-                  </span>
-                </FieldLabel>
-                <Textarea
-                  autoComplete="off"
-                  className="h-20 resize-none"
-                  onValueChange={setDescription}
-                  placeholder={t(($) => $['roster.createForm.descriptionPlaceholder'])}
-                  value={description}
-                />
-              </Field>
-            </div>
-            <div className="flex shrink-0 justify-end gap-2 px-6 pt-5 pb-6">
-              <Button
-                type="button"
-                className="min-w-18"
-                onClick={() => handleOpenChange(false)}
-                disabled={duplicateAgentMutation.isPending}
+        <DialogContent
+          initialFocus={nameInputRef}
+          className="flex max-h-[calc(100dvh-2rem)] w-130 flex-col overflow-hidden! p-0!"
+        >
+          <DialogClose
+            disabled={duplicateAgentMutation.isPending}
+            render={
+              <IconButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                size="lg"
+                className="absolute inset-e-5 top-5"
               >
-                {tCommon(($) => $['operation.cancel'])}
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                className="min-w-18"
-                loading={duplicateAgentMutation.isPending}
-              >
-                {tCommon(($) => $['operation.duplicate'])}
-              </Button>
-            </div>
-          </Form>
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
+          />
+          <DuplicateAgentFormSession
+            key={latestAgent.id}
+            agent={latestAgent}
+            nameInputRef={nameInputRef}
+            pending={duplicateAgentMutation.isPending}
+            onCancel={() => onOpenChange(false)}
+            onSubmit={handleSubmit}
+          />
         </DialogContent>
       </Dialog>
-      <AppIconPicker
-        open={iconPickerOpen}
-        initialEmoji={
-          agentIcon.type === 'emoji'
-            ? { icon: agentIcon.icon, background: agentIcon.background }
-            : undefined
-        }
-        onOpenChange={setIconPickerOpen}
-        onSelect={setAgentIcon}
-      />
     </>
   )
 }

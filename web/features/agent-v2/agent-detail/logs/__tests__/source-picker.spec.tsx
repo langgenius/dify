@@ -38,6 +38,14 @@ const groups: AgentLogSourceGroupResponse[] = [
 ]
 
 describe('AgentLogSourcePicker', () => {
+  const commonProps = {
+    groups,
+    isLoading: false,
+    isError: false,
+    onRetry: vi.fn(),
+    onChange: vi.fn(),
+  }
+
   it('should filter sources across groups and only show empty when no source matches', async () => {
     const user = userEvent.setup()
 
@@ -73,5 +81,77 @@ describe('AgentLogSourcePicker', () => {
 
     expect(screen.queryByRole('option')).not.toBeInTheDocument()
     expect(screen.getByText('agentV2.agentDetail.logs.filters.source.empty')).toBeInTheDocument()
+  })
+
+  it('should keep selected item state and checkbox icon DOM in sync', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <AgentLogSourcePicker {...commonProps} value={[sources.webapp.id]} />,
+    )
+
+    await user.click(
+      screen.getByRole('combobox', {
+        name: 'agentV2.agentDetail.logs.filters.source.label',
+      }),
+    )
+
+    const webappOption = screen.getByRole('option', { name: /Book Translation/ })
+    const workflowOption = screen.getByRole('option', { name: /SVG Logo Design/ })
+    expect(webappOption).toHaveClass('min-h-7', 'grid-cols-[1fr]', 'px-1', 'py-1')
+    expect(webappOption).toHaveAttribute('data-selected')
+    expect(webappOption.querySelector('.i-ri-check-line')).toBeInTheDocument()
+    expect(workflowOption).not.toHaveAttribute('data-selected')
+    expect(workflowOption.querySelector('.i-ri-check-line')).not.toBeInTheDocument()
+
+    rerender(<AgentLogSourcePicker {...commonProps} value={[sources.workflow.id]} />)
+
+    expect(webappOption).not.toHaveAttribute('data-selected')
+    expect(webappOption.querySelector('.i-ri-check-line')).not.toBeInTheDocument()
+    expect(workflowOption).toHaveAttribute('data-selected')
+    expect(workflowOption.querySelector('.i-ri-check-line')).toBeInTheDocument()
+  })
+
+  it('should show one named popup state and keep retry outside the listbox', async () => {
+    const user = userEvent.setup()
+    const onRetry = vi.fn()
+
+    render(
+      <AgentLogSourcePicker
+        value={[]}
+        groups={[]}
+        isLoading={false}
+        isError
+        onRetry={onRetry}
+        onChange={vi.fn()}
+      />,
+    )
+
+    await user.click(
+      screen.getByRole('combobox', {
+        name: 'agentV2.agentDetail.logs.filters.source.label',
+      }),
+    )
+
+    const searchInput = screen.getByRole('combobox', {
+      name: 'agentV2.agentDetail.logs.filters.source.searchLabel',
+    })
+    const retryButton = screen.getByRole('button', { name: 'common.operation.retry' })
+
+    expect(
+      screen.getByRole('dialog', {
+        name: 'agentV2.agentDetail.logs.filters.source.label',
+      }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('agentV2.agentDetail.logs.filters.source.empty'),
+    ).not.toBeInTheDocument()
+    searchInput.focus()
+    expect(searchInput).toHaveFocus()
+
+    await user.tab()
+    expect(retryButton).toHaveFocus()
+    await user.click(retryButton)
+    expect(onRetry).toHaveBeenCalledTimes(1)
   })
 })

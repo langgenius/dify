@@ -13,11 +13,13 @@ const expectedAppACLPermissionKeys = [
   'app.acl.edit',
   'app.acl.import_export_dsl',
   'app.acl.delete',
+  'app.acl.deploy',
   'app.acl.release_and_version',
   'app.acl.monitor',
   'app.acl.tracing_config',
   'app.acl.log_and_annotation',
   'app.acl.access_config',
+  'app.acl.access_point_manage',
 ]
 
 const getPermissionKeyMatcher = (permissionKey: string) =>
@@ -215,7 +217,7 @@ describe('PermissionSetModal', () => {
     })
   })
 
-  // View mode is read-only and uses close-only footer actions.
+  // View mode is read-only and has no confirmation action.
   describe('Read-only Mode', () => {
     it('should disable editing and hide confirm action in view mode', () => {
       renderModal(
@@ -238,7 +240,6 @@ describe('PermissionSetModal', () => {
       expect(
         screen.queryByRole('button', { name: 'common.operation.confirm' }),
       ).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
       expect(
         screen.queryByRole('button', { name: 'permission.permissionList.clearAll' }),
       ).not.toBeInTheDocument()

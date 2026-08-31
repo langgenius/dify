@@ -11,13 +11,12 @@ import {
   RiLoginCircleLine,
 } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { API_PREFIX } from '@/config'
-import { langGeniusVersionInfoAtom } from '@/context/version-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import useTheme from '@/hooks/use-theme'
@@ -48,8 +47,10 @@ const PluginItem: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
-  const currentPluginID = usePluginPageContext((v) => v.currentPluginID)
-  const setCurrentPluginID = usePluginPageContext((v) => v.setCurrentPluginID)
+  const selectedPluginID = usePluginPageContext((v) =>
+    v.selectedItem?.type === 'plugin' ? v.selectedItem.id : undefined,
+  )
+  const setSelectedItem = usePluginPageContext((v) => v.setSelectedItem)
   const { refreshPluginList } = useRefreshPluginList()
 
   const {
@@ -81,15 +82,18 @@ const PluginItem: FC<Props> = ({
     return [PluginSource.github, PluginSource.marketplace].includes(source) ? author : ''
   }, [source, author])
 
-  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
+  const { data: currentVersion } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.meta.currentVersion ?? '',
+  })
 
   const isDifyVersionCompatible = useMemo(() => {
-    if (!langGeniusVersionInfo.current_version) return true
+    if (!currentVersion) return true
     return isEqualOrLaterThanVersion(
-      langGeniusVersionInfo.current_version,
+      currentVersion,
       declarationMeta.minimum_dify_version ?? '0.0.0',
     )
-  }, [declarationMeta.minimum_dify_version, langGeniusVersionInfo.current_version])
+  }, [currentVersion, declarationMeta.minimum_dify_version])
 
   const isDeprecated = useMemo(() => {
     return status === 'deleted' && !!deprecated_reason
@@ -116,19 +120,20 @@ const PluginItem: FC<Props> = ({
   return (
     <div
       className={cn(
-        'group/plugin-item relative overflow-hidden rounded-xl border-[1.5px] border-background-section-burn p-1',
-        currentPluginID === plugin_id && 'border-components-option-card-option-selected-border',
+        'group/plugin-item relative flex min-w-[min(100%,496px)] flex-1 cursor-pointer flex-col overflow-hidden rounded-xl p-0.75',
+        selectedPluginID === plugin_id &&
+          "after:pointer-events-none after:absolute after:inset-0 after:rounded-xl after:inset-ring-[1.5px] after:inset-ring-components-option-card-option-selected-border after:content-['']",
         source === PluginSource.debugging
           ? 'bg-[repeating-linear-gradient(-45deg,rgba(16,24,40,0.04),rgba(16,24,40,0.04)_5px,rgba(0,0,0,0.02)_5px,rgba(0,0,0,0.02)_10px)]'
           : 'bg-background-section-burn',
       )}
       onClick={() => {
-        setCurrentPluginID(plugin.plugin_id)
+        setSelectedItem({ type: 'plugin', id: plugin.plugin_id })
       }}
     >
       <div
         className={cn(
-          'relative rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs',
+          'relative rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-3',
           className,
         )}
       >
@@ -137,8 +142,12 @@ const PluginItem: FC<Props> = ({
           <div className="flex size-10 items-center justify-center overflow-hidden rounded-xl border border-components-panel-border-subtle">
             <img
               className="size-full"
+              decoding="async"
+              height={40}
+              loading="lazy"
               src={iconSrc}
               alt={`plugin-${plugin_unique_identifier}-logo`}
+              width={40}
             />
           </div>
           <div className="ml-3 w-0 grow">
@@ -162,7 +171,7 @@ const PluginItem: FC<Props> = ({
                   >
                     <RiErrorWarningLine color="red" className="size-4 text-text-accent" />
                   </PopoverTrigger>
-                  <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
+                  <PopoverContent className="px-3 py-2 system-xs-regular text-text-tertiary">
                     {t(($) => $.difyVersionNotCompatible, {
                       ns: 'plugin',
                       minimalDifyVersion: declarationMeta.minimum_dify_version,
@@ -180,10 +189,14 @@ const PluginItem: FC<Props> = ({
                 }
               />
             </div>
-            <div className="flex items-center justify-between">
-              <Description text={descriptionText} descriptionLineRows={1}></Description>
+            <div className="relative flex h-4 min-w-0 items-center">
+              <Description
+                className="min-w-0 flex-1 group-focus-within/plugin-item:pr-20 group-hover/plugin-item:pr-20 [@media(hover:none)]:pr-20"
+                text={descriptionText}
+                descriptionLineRows={1}
+              />
               <div
-                className="opacity-0 transition-opacity group-hover/plugin-item:opacity-100 focus-within:opacity-100"
+                className="pointer-events-none absolute top-1/2 right-0 -translate-y-1/2 opacity-0 transition-opacity group-focus-within/plugin-item:pointer-events-auto group-focus-within/plugin-item:opacity-100 group-hover/plugin-item:pointer-events-auto group-hover/plugin-item:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100"
                 onClick={(e) => e.stopPropagation()}
               >
                 <Action
@@ -204,7 +217,7 @@ const PluginItem: FC<Props> = ({
           </div>
         </div>
       </div>
-      <div className="mt-1.5 mb-1 flex h-4 items-center gap-x-2 px-4">
+      <div className="flex h-6.5 items-center gap-x-2 px-3 pt-1.5 pb-1">
         {/* Organization & Name */}
         <div className="flex grow items-center overflow-hidden">
           <OrgInfo

@@ -3,7 +3,6 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import EmbeddingProcess from '../index'
 
-const mockPush = vi.fn()
 const mockInvalidDocumentList = vi.fn()
 let mockEnableBilling = false
 let mockPlanType = 'sandbox'
@@ -16,10 +15,6 @@ let mockPollingState: {
   isEmbedding: false,
   isEmbeddingCompleted: false,
 }
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: mockPush }),
-}))
 
 vi.mock('@/next/link', () => ({
   default: ({
@@ -73,6 +68,22 @@ vi.mock('../upgrade-banner', () => ({
   default: () => <div>upgrade processing priority</div>,
 }))
 
+vi.mock('@/app/components/datasets/common/vector-space-admission-alert', () => ({
+  default: ({
+    showUpgrade,
+    estimatedMb,
+    planLimitMb,
+  }: {
+    showUpgrade: boolean
+    estimatedMb: number
+    planLimitMb: number
+  }) => (
+    <div>{`vector space admission alert ${estimatedMb}MB / ${planLimitMb}MB ${
+      showUpgrade ? 'with upgrade' : 'without upgrade'
+    }`}</div>
+  ),
+}))
+
 describe('EmbeddingProcess', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -101,14 +112,82 @@ describe('EmbeddingProcess', () => {
     expect(screen.getByText('datasetDocuments.embedding.completed')).toBeInTheDocument()
   })
 
-  it('invalidates the document list before navigating to it', async () => {
+  it('shows the vector-space admission alert after processing completes', () => {
+    mockPollingState = {
+      statusList: [
+        {
+          id: 'document-1',
+          indexing_status: 'error',
+          error_code: 'vector_space_estimate_exceeded',
+          estimated_vector_space_mb: 61,
+          vector_space_limit_mb: 50,
+        } as IndexingStatusResponse,
+      ],
+      isEmbedding: false,
+      isEmbeddingCompleted: true,
+    }
+
+    render(<EmbeddingProcess datasetId="dataset-1" batchId="batch-1" />)
+
+    expect(screen.getByText('datasetDocuments.embedding.completed')).toBeInTheDocument()
+    expect(
+      screen.getByText('vector space admission alert 61MB / 50MB without upgrade'),
+    ).toBeInTheDocument()
+  })
+
+  it('does not show the vector-space alert for another indexing error', () => {
+    mockPollingState = {
+      statusList: [
+        {
+          id: 'document-1',
+          indexing_status: 'error',
+          error_code: null,
+          estimated_vector_space_mb: 61,
+          vector_space_limit_mb: 50,
+        } as IndexingStatusResponse,
+      ],
+      isEmbedding: false,
+      isEmbeddingCompleted: true,
+    }
+
+    render(<EmbeddingProcess datasetId="dataset-1" batchId="batch-1" />)
+
+    expect(screen.queryByText(/vector space admission alert/)).not.toBeInTheDocument()
+  })
+
+  it('does not suggest an upgrade to team users', () => {
+    mockEnableBilling = true
+    mockPlanType = 'team'
+    mockPollingState = {
+      statusList: [
+        {
+          id: 'document-1',
+          indexing_status: 'error',
+          error_code: 'vector_space_estimate_exceeded',
+          estimated_vector_space_mb: 61,
+          vector_space_limit_mb: 50,
+        } as IndexingStatusResponse,
+      ],
+      isEmbedding: false,
+      isEmbeddingCompleted: true,
+    }
+
+    render(<EmbeddingProcess datasetId="dataset-1" batchId="batch-1" />)
+
+    expect(
+      screen.getByText('vector space admission alert 61MB / 50MB without upgrade'),
+    ).toBeInTheDocument()
+  })
+
+  it('links to the document list and invalidates its cache on activation', async () => {
     const user = userEvent.setup()
     render(<EmbeddingProcess datasetId="dataset-1" batchId="batch-1" />)
 
-    await user.click(screen.getByRole('button', { name: 'datasetCreation.stepThree.navTo' }))
+    const link = screen.getByRole('link', { name: 'datasetCreation.stepThree.navTo' })
+    expect(link).toHaveAttribute('href', '/datasets/dataset-1/documents')
+    await user.click(link)
 
     expect(mockInvalidDocumentList).toHaveBeenCalledOnce()
-    expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/documents')
   })
 
   it('links to the dataset API reference', () => {

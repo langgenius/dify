@@ -3,25 +3,6 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { MAX_ITERATIONS_NUM } from '@/config'
 import { AgentSetting } from '../index'
 
-vi.mock('@langgenius/dify-ui/slider', () => ({
-  Slider: (props: {
-    className?: string
-    min?: number
-    max?: number
-    value: number
-    onValueChange: (value: number) => void
-  }) => (
-    <input
-      type="range"
-      className={`slider ${props.className ?? ''}`}
-      min={props.min}
-      max={props.max}
-      value={props.value}
-      onChange={(e) => props.onValueChange(Number(e.target.value))}
-    />
-  ),
-}))
-
 const basePayload = {
   enabled: true,
   strategy: 'react',
@@ -129,5 +110,18 @@ describe('AgentSetting', () => {
     })
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ max_iteration: 6 }))
+  })
+
+  it('should save the minimum iteration when the number input is empty', async () => {
+    const { onSave } = renderModal()
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '' } })
+
+    expect(screen.getByRole('slider')).toHaveValue('1')
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    })
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ max_iteration: 1 }))
   })
 })

@@ -1,12 +1,14 @@
 import type { FC } from 'react'
 import type { ArrayType, Type } from '../../../../types'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
@@ -22,10 +24,9 @@ type TypeSelectorProps = {
   items: TypeItem[]
   currentValue: Type | ArrayType
   onSelect: (item: TypeItem) => void
-  popupClassName?: string
 }
 
-const TypeSelector: FC<TypeSelectorProps> = ({ items, currentValue, onSelect, popupClassName }) => {
+const TypeSelector: FC<TypeSelectorProps> = ({ items, currentValue, onSelect }) => {
   const [open, setOpen] = useState(false)
 
   return (
@@ -38,37 +39,33 @@ const TypeSelector: FC<TypeSelectorProps> = ({ items, currentValue, onSelect, po
         if (selected) onSelect(selected)
       }}
     >
-      <SelectTrigger
-        className={cn(
-          'h-auto w-auto rounded-[5px] bg-transparent p-0.5 pl-1 hover:bg-state-base-hover',
-          open && 'bg-state-base-hover',
-        )}
-      >
+      <SelectTrigger className="h-auto w-auto rounded-[5px] bg-transparent p-0.5 pl-1 hover:bg-state-base-hover data-popup-open:bg-state-base-hover">
         <SelectValue className="system-xs-medium text-text-tertiary" />
       </SelectTrigger>
-      <SelectContent
-        sideOffset={4}
-        className={popupClassName}
-        popupClassName="w-40 rounded-xl border-[0.5px] p-1 shadow-lg shadow-shadow-shadow-5"
-        listClassName="p-0"
-      >
-        {items.map((item) => {
-          const isSelected = item.value === currentValue
-          return (
-            <SelectItem<Type | ArrayType>
-              key={item.value}
-              value={item.value}
-              className="gap-x-1 rounded-lg px-2 py-1"
-            >
-              <SelectItemText className="px-1 system-sm-medium text-text-secondary">
-                {item.text}
-              </SelectItemText>
-              {isSelected && <RiCheckLine className="size-4 text-text-accent" />}
-              <SelectItemIndicator className="hidden" />
-            </SelectItem>
-          )
-        })}
-      </SelectContent>
+      <SelectPortal>
+        <SelectPositioner sideOffset={4}>
+          <SelectPopup className="w-40 rounded-xl border-[0.5px] p-1 shadow-lg shadow-shadow-shadow-5">
+            <SelectList className="p-0">
+              {items.map((item) => (
+                <SelectItem<Type | ArrayType>
+                  key={item.value}
+                  value={item.value}
+                  className="gap-x-1 rounded-lg px-2 py-1"
+                  render={(props, state) => (
+                    <div {...props} className={props.className}>
+                      <SelectItemText className="px-1 system-sm-medium text-text-secondary">
+                        {item.text}
+                      </SelectItemText>
+                      {state.selected && <RiCheckLine className="size-4 text-text-accent" />}
+                      <SelectItemIndicator className="hidden" />
+                    </div>
+                  )}
+                />
+              ))}
+            </SelectList>
+          </SelectPopup>
+        </SelectPositioner>
+      </SelectPortal>
     </Select>
   )
 }

@@ -6,12 +6,12 @@ import type { RetrievalConfig } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import { isEqual } from 'es-toolkit/predicate'
 import { useQueryState } from 'nuqs'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/components/app/configuration/toast'
 import Input from '@/app/components/base/input'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
@@ -20,7 +20,7 @@ import PermissionSelector from '@/app/components/datasets/settings/permission-se
 import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import {
   settingsQueryParamName,
   settingsQueryParser,
@@ -305,12 +305,12 @@ const SettingsModal: FC<SettingsModalProps> = ({
             <div className="w-full">
               <div className="h-8 w-full rounded-lg bg-components-input-bg-normal opacity-60">
                 <ModelSelector
-                  readonly
-                  defaultModel={{
+                  disabled
+                  value={{
                     provider: localeCurrentDataset.embedding_model_provider,
                     model: localeCurrentDataset.embedding_model,
                   }}
-                  modelList={embeddingModelList}
+                  models={embeddingModelList}
                 />
               </div>
               <div className="mt-2 w-full text-xs/6 text-text-tertiary">

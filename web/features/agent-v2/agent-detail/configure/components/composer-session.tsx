@@ -12,13 +12,17 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { trackEvent } from '@/app/components/base/amplitude'
 import Loading from '@/app/components/base/loading'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { rebaseAgentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import {
+  AgentScope,
+  trackAgentBuildModeRun,
+  trackAgentPreviewModeRun,
+} from '@/features/agent-v2/analytics'
 import { consoleQuery } from '@/service/client'
 import { useAgentConfigureModelOptions } from '../hooks'
 import {
@@ -94,11 +98,14 @@ export function AgentConfigureComposerScope({
     onModeChange: onRightPanelModeChange,
   })
 
+  useEffect(() => {
+    if (!buildDraft.isPending) initializedComposerAgentIdRef.current = agentId
+  }, [agentId, buildDraft.isPending])
+
   if (buildDraft.isPending && initializedComposerAgentIdRef.current !== agentId) {
     return <AgentConfigurePageLoading label={t(($) => $['agentDetail.sections.configure'])} />
   }
 
-  initializedComposerAgentIdRef.current = agentId
   const composerHydrationState = composerQuery.data === undefined ? 'unavailable' : 'loaded'
   const composerSessionKey = `${agentId}:${activeVersionId ?? selectedVersionId ?? 'draft'}:${composerHydrationState}:${composerRebaseRevision}`
 
@@ -585,10 +592,13 @@ function AgentConfigurePageComposerContent({
                           markBuildChatStarted: true,
                           prepare: buildDraftActions.prepareBuildDraftBeforeRun,
                         })
-                        trackEvent('agent_build_mode_run')
+                        trackAgentBuildModeRun(AgentScope.Global)
                         return preparedBuildDraft
                       }
-                    : saveDraft
+                    : async () => {
+                        await saveDraft()
+                        trackAgentPreviewModeRun(AgentScope.Global)
+                      }
                 }
                 onSendInterrupted={() => {
                   if (rightPanelChatMode === 'build') finishBuildAction(buildCallbackGeneration)

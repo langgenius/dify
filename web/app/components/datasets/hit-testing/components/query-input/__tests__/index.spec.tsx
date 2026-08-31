@@ -2,7 +2,7 @@ import type { FileEntity } from '@/app/components/datasets/common/image-uploader
 import type { Query } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { expectLoadingButton } from '@/test/button'
 import QueryInput from '../index'
 

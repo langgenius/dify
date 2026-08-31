@@ -125,6 +125,8 @@ export type CheckDependenciesResult = {
   leaked_dependencies?: Array<PluginDependency>
 }
 
+export type DeploymentEdition = 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
+
 export type DeviceCodeRequest = {
   client_id: string
   device_label: string
@@ -353,6 +355,7 @@ export type OpenApiErrorCode =
   | 'request_entity_too_large'
   | 'too_many_files'
   | 'too_many_requests'
+  | 'trigger_workflow_service_mode_unavailable'
   | 'unauthorized'
   | 'unknown'
   | 'unsupported_file_type'
@@ -392,7 +395,7 @@ export type RevokeResponse = {
 }
 
 export type ServerVersionResponse = {
-  edition: 'CLOUD' | 'SELF_HOSTED'
+  edition: DeploymentEdition
   version: string
 }
 

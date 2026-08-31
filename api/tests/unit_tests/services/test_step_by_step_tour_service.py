@@ -1,238 +1,213 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from collections.abc import Callable
+from dataclasses import replace
+from datetime import datetime
+from unittest.mock import Mock
 
 import pytest
-from sqlalchemy.exc import IntegrityError
 
-from models.account import Account, AccountStatus
-from models.onboarding import AccountStepByStepTourState
-from services import step_by_step_tour_service as service_module
+from machinery.context import RequestContext
+from services.account_ports import AccountRepository
+from services.entities.account_entities import AccountSnapshot
+from services.entities.onboarding_entities import StepByStepTourPatch, StepByStepTourResult, StepByStepTourState
 from services.step_by_step_tour_service import StepByStepTourService
 
 
-class _ScalarResult:
-    def __init__(self, state: AccountStepByStepTourState | None) -> None:
-        self._state = state
+def _context(*, workspace_id: str | None = "workspace-1") -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id="account-1",
+        active_workspace_id=workspace_id,
+    )
 
-    def scalar_one_or_none(self) -> AccountStepByStepTourState | None:
-        return self._state
 
-
-class _FakeSession:
-    def __init__(self, state: AccountStepByStepTourState | None = None) -> None:
+class StateRepositoryStub:
+    def __init__(self, state: StepByStepTourState | None = None) -> None:
         self.state = state
-        self.added: list[AccountStepByStepTourState] = []
-        self.commit_count = 0
-        self.flush_count = 0
-        self.refresh_count = 0
-        self.rollback_count = 0
+        self.get_account_ids: list[str] = []
+        self.initialize_calls: list[tuple[str, str]] = []
+        self.mutation_account_ids: list[str] = []
 
-    def execute(self, _stmt) -> _ScalarResult:
-        return _ScalarResult(self.state)
+    def get(self, account_id: str) -> StepByStepTourState | None:
+        self.get_account_ids.append(account_id)
+        return self.state
 
-    def add(self, state: AccountStepByStepTourState) -> None:
-        self.state = state
-        self.added.append(state)
+    def initialize(self, account_id: str, first_workspace_id: str) -> StepByStepTourState:
+        self.initialize_calls.append((account_id, first_workspace_id))
+        if self.state is None:
+            self.state = StepByStepTourState(account_id=account_id, first_workspace_id=first_workspace_id)
+        elif self.state.first_workspace_id is None:
+            self.state = replace(self.state, first_workspace_id=first_workspace_id)
+        return self.state
 
-    def flush(self) -> None:
-        self.flush_count += 1
-
-    def commit(self) -> None:
-        self.commit_count += 1
-
-    def refresh(self, state: AccountStepByStepTourState) -> None:
-        self.refresh_count += 1
-        state.updated_at = datetime(2026, 6, 28, tzinfo=UTC)
-
-    def rollback(self) -> None:
-        self.rollback_count += 1
-
-
-class _RaceInsertSession(_FakeSession):
-    def __init__(self, state_after_rollback: AccountStepByStepTourState) -> None:
-        super().__init__(state=None)
-        self.state_after_rollback = state_after_rollback
-
-    def flush(self) -> None:
-        self.flush_count += 1
-        raise IntegrityError("insert", {}, Exception("duplicate"))
-
-    def rollback(self) -> None:
-        super().rollback()
-        self.state = self.state_after_rollback
+    def mutate(
+        self,
+        account_id: str,
+        mutation: Callable[[StepByStepTourState], StepByStepTourState],
+    ) -> StepByStepTourState:
+        self.mutation_account_ids.append(account_id)
+        if self.state is None:
+            self.state = StepByStepTourState(account_id=account_id)
+        self.state = mutation(self.state)
+        return self.state
 
 
-def _account(*, initialized_at: datetime | None = None, created_at: datetime | None = None) -> Account:
-    account = Account(name="User", email="user@example.com", status=AccountStatus.ACTIVE)
-    account.id = "account-1"
-    account.initialized_at = initialized_at
-    account.created_at = created_at or datetime(2026, 6, 28)
-    return account
-
-
-def _state() -> AccountStepByStepTourState:
-    state = AccountStepByStepTourState(account_id="account-1")
-    state.updated_at = datetime(2026, 6, 28, tzinfo=UTC)
-    return state
-
-
-def _set_tour_config(monkeypatch: pytest.MonkeyPatch, *, enabled: bool, rollout_started_at: datetime | None) -> None:
-    monkeypatch.setattr(service_module.dify_config, "ENABLE_STEP_BY_STEP_TOUR", enabled)
-    monkeypatch.setattr(service_module.dify_config, "STEP_BY_STEP_TOUR_ROLLOUT_STARTED_AT", rollout_started_at)
-
-
-def test_get_state_creates_state_and_records_first_workspace_for_eligible_account(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    _set_tour_config(monkeypatch, enabled=True, rollout_started_at=datetime(2026, 6, 1))
-    session = _FakeSession()
-
-    result = StepByStepTourService.get_state(
-        account=_account(initialized_at=datetime(2026, 6, 28)),
-        current_tenant_id="workspace-1",
-        session=session,
+def _account(*, started_at: datetime = datetime(2026, 6, 28)) -> AccountSnapshot:
+    return AccountSnapshot(
+        id="account-1",
+        name="Account",
+        email="account@example.com",
+        avatar=None,
+        is_password_set=False,
+        interface_language="en-US",
+        interface_theme="light",
+        timezone="UTC",
+        last_login_at=None,
+        last_login_ip=None,
+        status="active",
+        initialized_at=started_at,
+        created_at=started_at,
     )
 
-    assert result["first_workspace_id"] == "workspace-1"
-    assert result["completed_task_ids"] == []
-    assert len(session.added) == 1
-    assert session.added[0].account_id == "account-1"
-    assert session.commit_count == 1
-    assert session.refresh_count == 1
+
+def _accounts(account: AccountSnapshot | None) -> Mock:
+    accounts = Mock(spec=AccountRepository)
+    accounts.get.return_value = account
+    return accounts
 
 
-def test_is_eligible_does_not_depend_on_cloud_edition(monkeypatch: pytest.MonkeyPatch) -> None:
-    _set_tour_config(monkeypatch, enabled=True, rollout_started_at=datetime(2026, 6, 1))
-    monkeypatch.setattr(service_module.dify_config, "EDITION", "SELF_HOSTED")
-
-    result = StepByStepTourService.is_eligible(_account(initialized_at=datetime(2026, 6, 28)))
-
-    assert result is True
-
-
-def test_get_state_does_not_create_state_for_ineligible_account_without_existing_state(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    _set_tour_config(monkeypatch, enabled=True, rollout_started_at=datetime(2026, 6, 1))
-    session = _FakeSession()
-
-    result = StepByStepTourService.get_state(
-        account=_account(initialized_at=datetime(2026, 5, 31)),
-        current_tenant_id="workspace-1",
-        session=session,
+def _service(
+    *,
+    states: StateRepositoryStub,
+    account: AccountSnapshot | None = None,
+    enabled: bool = True,
+    rollout_started_at: datetime | None = datetime(2026, 6, 1),
+) -> StepByStepTourService:
+    return StepByStepTourService(
+        accounts=_accounts(account or _account()),
+        states=states,
+        enabled=enabled,
+        rollout_started_at=rollout_started_at,
     )
 
-    assert result == {
-        "first_workspace_id": None,
-        "skipped": False,
-        "completed_task_ids": [],
-        "manually_enabled_workspace_ids": [],
-        "manually_disabled_workspace_ids": [],
-        "updated_at": None,
-    }
-    assert session.added == []
-    assert session.commit_count == 0
+
+def test_get_state_creates_state_and_records_first_workspace_for_eligible_account() -> None:
+    states = StateRepositoryStub()
+
+    result = _service(states=states).get_state(_context())
+
+    assert result.first_workspace_id == "workspace-1"
+    assert states.get_account_ids == []
+    assert states.initialize_calls == [("account-1", "workspace-1")]
+    assert states.mutation_account_ids == []
 
 
-def test_patch_state_persists_even_when_account_is_not_eligible(monkeypatch: pytest.MonkeyPatch) -> None:
-    _set_tour_config(monkeypatch, enabled=False, rollout_started_at=datetime(2026, 6, 1))
-    session = _FakeSession()
+def test_get_state_returns_existing_state_without_rewriting_first_workspace() -> None:
+    state = StepByStepTourState(account_id="account-1", first_workspace_id="workspace-original")
+    states = StateRepositoryStub(state)
 
-    result = StepByStepTourService.patch_state(
-        account=_account(initialized_at=datetime(2026, 6, 28)),
-        current_tenant_id="workspace-2",
-        patch={"action": "enable_current_workspace"},
-        session=session,
+    result = _service(states=states).get_state(_context(workspace_id="workspace-current"))
+
+    assert result.first_workspace_id == "workspace-original"
+    assert states.initialize_calls == [("account-1", "workspace-current")]
+    assert states.mutation_account_ids == []
+
+
+def test_get_state_does_not_create_state_for_ineligible_account() -> None:
+    states = StateRepositoryStub()
+    service = _service(states=states, account=_account(started_at=datetime(2026, 5, 31)))
+
+    result = service.get_state(_context())
+
+    assert result == StepByStepTourResult()
+    assert states.get_account_ids == ["account-1"]
+    assert states.mutation_account_ids == []
+
+
+def test_get_state_does_not_create_state_when_tour_is_disabled() -> None:
+    states = StateRepositoryStub()
+
+    result = _service(states=states, enabled=False).get_state(_context())
+
+    assert result == StepByStepTourResult()
+    assert states.get_account_ids == ["account-1"]
+
+
+def test_patch_state_persists_even_when_tour_is_disabled() -> None:
+    states = StateRepositoryStub()
+    service = _service(states=states, enabled=False)
+
+    result = service.patch_state(_context(workspace_id="workspace-2"), StepByStepTourPatch("enable_current_workspace"))
+
+    assert result.manually_enabled_workspace_ids == ("workspace-2",)
+    assert states.mutation_account_ids == ["account-1"]
+
+
+def test_patch_state_skip_removes_current_workspace_enable() -> None:
+    states = StateRepositoryStub(
+        StepByStepTourState(
+            account_id="account-1",
+            manually_enabled_workspace_ids=("workspace-1", "workspace-2"),
+        )
     )
 
-    assert result["skipped"] is False
-    assert result["manually_enabled_workspace_ids"] == ["workspace-2"]
-    assert result["manually_disabled_workspace_ids"] == []
-    assert len(session.added) == 1
-    assert session.commit_count == 1
+    result = _service(states=states).patch_state(_context(), StepByStepTourPatch("skip"))
+
+    assert result.skipped is True
+    assert result.manually_enabled_workspace_ids == ("workspace-2",)
 
 
-def test_patch_state_skip_action_sets_skipped_and_removes_current_workspace_enable(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    _set_tour_config(monkeypatch, enabled=False, rollout_started_at=datetime(2026, 6, 1))
-    state = _state()
-    state.manually_enabled_workspace_ids = ["workspace-1", "workspace-2"]
-    session = _FakeSession(state=state)
-
-    result = StepByStepTourService.patch_state(
-        account=_account(initialized_at=datetime(2026, 6, 28)),
-        current_tenant_id="workspace-1",
-        patch={"action": "skip"},
-        session=session,
+def test_patch_state_disable_moves_current_workspace_to_disabled() -> None:
+    states = StateRepositoryStub(
+        StepByStepTourState(
+            account_id="account-1",
+            manually_enabled_workspace_ids=("workspace-1", "workspace-2"),
+        )
     )
 
-    assert result["skipped"] is True
-    assert result["manually_enabled_workspace_ids"] == ["workspace-2"]
-    assert result["manually_disabled_workspace_ids"] == []
-    assert session.added == []
-    assert session.commit_count == 1
-
-
-def test_patch_state_disable_action_moves_current_workspace_to_disabled(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    _set_tour_config(monkeypatch, enabled=False, rollout_started_at=datetime(2026, 6, 1))
-    state = _state()
-    state.manually_enabled_workspace_ids = ["workspace-1", "workspace-2"]
-    session = _FakeSession(state=state)
-
-    result = StepByStepTourService.patch_state(
-        account=_account(initialized_at=datetime(2026, 6, 28)),
-        current_tenant_id="workspace-1",
-        patch={"action": "disable_current_workspace"},
-        session=session,
+    result = _service(states=states).patch_state(
+        _context(),
+        StepByStepTourPatch("disable_current_workspace"),
     )
 
-    assert result["manually_enabled_workspace_ids"] == ["workspace-2"]
-    assert result["manually_disabled_workspace_ids"] == ["workspace-1"]
-    assert session.commit_count == 1
+    assert result.manually_enabled_workspace_ids == ("workspace-2",)
+    assert result.manually_disabled_workspace_ids == ("workspace-1",)
 
 
-def test_patch_state_complete_and_uncomplete_task(monkeypatch: pytest.MonkeyPatch) -> None:
-    _set_tour_config(monkeypatch, enabled=False, rollout_started_at=datetime(2026, 6, 1))
-    state = _state()
-    state.completed_task_ids = ["home"]
-    session = _FakeSession(state=state)
+def test_patch_state_complete_and_uncomplete_task() -> None:
+    states = StateRepositoryStub(StepByStepTourState(account_id="account-1", completed_task_ids=("home",)))
+    service = _service(states=states)
 
-    StepByStepTourService.patch_state(
-        account=_account(initialized_at=datetime(2026, 6, 28)),
-        current_tenant_id="workspace-1",
-        patch={"action": "complete_task", "task_id": "studio"},
-        session=session,
-    )
-    result = StepByStepTourService.patch_state(
-        account=_account(initialized_at=datetime(2026, 6, 28)),
-        current_tenant_id="workspace-1",
-        patch={"action": "uncomplete_task", "task_id": "home"},
-        session=session,
-    )
+    service.patch_state(_context(), StepByStepTourPatch("complete_task", "studio"))
+    result = service.patch_state(_context(), StepByStepTourPatch("uncomplete_task", "home"))
 
-    assert result["completed_task_ids"] == ["studio"]
+    assert result.completed_task_ids == ("studio",)
 
 
-def test_patch_state_recovers_when_concurrent_request_created_state(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    _set_tour_config(monkeypatch, enabled=False, rollout_started_at=datetime(2026, 6, 1))
-    existing_state = _state()
-    existing_state.manually_enabled_workspace_ids = ["workspace-1"]
-    session = _RaceInsertSession(state_after_rollback=existing_state)
+def test_rejects_unsupported_task_id() -> None:
+    with pytest.raises(ValueError, match="Unsupported task_id"):
+        StepByStepTourService._require_task_id("unknown")
 
-    result = StepByStepTourService.patch_state(
-        account=_account(initialized_at=datetime(2026, 6, 28)),
-        current_tenant_id="workspace-2",
-        patch={"action": "enable_current_workspace"},
-        session=session,
+
+def test_rejects_missing_workspace_before_using_state_repository() -> None:
+    states = StateRepositoryStub()
+
+    with pytest.raises(RuntimeError, match="did not resolve an active workspace"):
+        _service(states=states).patch_state(_context(workspace_id=None), StepByStepTourPatch("skip"))
+
+    assert states.mutation_account_ids == []
+
+
+def test_get_state_rejects_unknown_admitted_account() -> None:
+    states = StateRepositoryStub()
+    service = StepByStepTourService(
+        accounts=_accounts(None),
+        states=states,
+        enabled=True,
+        rollout_started_at=datetime(2026, 6, 1),
     )
 
-    assert result["manually_enabled_workspace_ids"] == ["workspace-1", "workspace-2"]
-    assert session.flush_count == 1
-    assert session.rollback_count == 1
-    assert session.commit_count == 1
+    with pytest.raises(RuntimeError, match="unknown account"):
+        service.get_state(_context())

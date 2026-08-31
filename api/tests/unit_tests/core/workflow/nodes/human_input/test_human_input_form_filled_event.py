@@ -73,13 +73,15 @@ def _create_human_input_node(
         node_data=node_data,
         file_reference_factory=_TestFileReferenceFactory(),
     )
-    return HumanInputNode(
+    node = HumanInputNode(
         node_id=config["id"],
         data=node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
         hitl_callback=callback,
     )
+    node.bind_execution_id("00000000-0000-4000-8000-000000000001")
+    return node
 
 
 def _build_node(
@@ -262,4 +264,4 @@ def test_human_input_node_emits_timeout_event_before_succeeded():
 
     assert isinstance(events[0], NodeRunStartedEvent)
     assert isinstance(events[1], NodeRunSucceededEvent)
-    assert events[1].node_run_result.edge_source_handle == "__timeout__"
+    assert events[1].node_run_result.edge_source_handle == "__timeout"

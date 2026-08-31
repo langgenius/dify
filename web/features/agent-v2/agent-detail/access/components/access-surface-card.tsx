@@ -6,6 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useClipboard } from 'foxact/use-clipboard'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -23,11 +24,8 @@ export type AccessSurfaceCardProps = {
   badge?: ReactNode
   endpointActions?: ReactNode
   disabled?: boolean
-  busy?: boolean
+  disabledReason?: string
 }
-
-export const accessSurfaceActionClassName =
-  'inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 text-[13px] leading-4 font-medium text-components-button-secondary-text shadow-xs outline-hidden backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
 export function AccessSurfaceCard({
   title,
@@ -42,7 +40,7 @@ export function AccessSurfaceCard({
   badge,
   endpointActions,
   disabled = false,
-  busy = false,
+  disabledReason,
 }: AccessSurfaceCardProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
@@ -54,7 +52,21 @@ export function AccessSurfaceCard({
     },
   })
   const canCopyEndpoint = Boolean(endpoint)
-  const switchDisabled = disabled || busy
+  const hasDisabledReason = disabled && Boolean(disabledReason)
+  const switchControl = (
+    <Switch
+      size="md"
+      checked={enabled}
+      disabled={disabled && !hasDisabledReason}
+      readOnly={hasDisabledReason}
+      aria-disabled={hasDisabledReason || undefined}
+      data-disabled={hasDisabledReason ? '' : undefined}
+      aria-label={t(($) => $['agentDetail.access.toggleSurface'], { name: title })}
+      onCheckedChange={(nextEnabled) => {
+        if (!disabled) onEnabledChange(nextEnabled)
+      }}
+    />
+  )
 
   const handleCopyEndpoint = () => {
     if (!canCopyEndpoint) return
@@ -101,13 +113,14 @@ export function AccessSurfaceCard({
                   ],
               )}
             </span>
-            <Switch
-              size="md"
-              checked={enabled}
-              disabled={switchDisabled}
-              aria-label={t(($) => $['agentDetail.access.toggleSurface'], { name: title })}
-              onCheckedChange={onEnabledChange}
-            />
+            {disabled && disabledReason ? (
+              <Tooltip>
+                <TooltipTrigger render={switchControl} />
+                <TooltipContent role="tooltip">{disabledReason}</TooltipContent>
+              </Tooltip>
+            ) : (
+              switchControl
+            )}
           </div>
         </div>
 

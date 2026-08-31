@@ -94,7 +94,7 @@ function UnauthorizedCredentialStatus({
         className={cn('shrink-0', open && 'bg-components-button-secondary-bg-hover')}
       >
         {t(($) => $.notAuthorized, { ns: 'tools' })}
-        <StatusDot className="ml-2" status="warning" />
+        <StatusDot status="warning" />
       </Button>
     ),
     [t],
@@ -339,7 +339,7 @@ export const AgentProviderToolItem = memo(
                 </span>
                 <span aria-hidden className="i-ri-more-fill size-4" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-44">
+              <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-44">
                 <DropdownMenuItem
                   variant="destructive"
                   className="gap-2"

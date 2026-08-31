@@ -23,9 +23,10 @@ from controllers.console.auth.forgot_password import (
     ForgotPasswordSendEmailApi,
 )
 from controllers.console.error import AccountNotFound, EmailSendIpLimitError
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
 from models.account import Account, Tenant, TenantAccountJoin
-from services.feature_service import SystemFeatureModel
+from services.entities.feature_entities import SystemFeatureModel
+from tests.unit_tests.config_override import apply_config_overrides
 
 SQLITE_MODELS = (Account, Tenant, TenantAccountJoin)
 
@@ -46,7 +47,7 @@ def _bind_database_session(session: Session) -> Generator[scoped_session[Session
 def enable_password_login_wrappers(monkeypatch: pytest.MonkeyPatch) -> None:
     """Keep endpoint decorators deterministic without requiring the configured app database."""
 
-    monkeypatch.setattr("controllers.console.wraps.dify_config.EDITION", "CLOUD")
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         "controllers.console.wraps.FeatureService.get_system_features",
         lambda: SystemFeatureModel(

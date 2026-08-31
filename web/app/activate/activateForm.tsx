@@ -1,5 +1,5 @@
 'use client'
-import { Button } from '@langgenius/dify-ui/button'
+import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,7 +9,6 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { useInvitationCheck } from '@/service/use-common'
 
 const ActivateForm = () => {
-  useDocumentTitle('')
   const router = useRouter()
   const { t } = useTranslation()
   const searchParams = useSearchParams()
@@ -31,6 +30,11 @@ const ActivateForm = () => {
       token: token || undefined,
     },
     true,
+  )
+  useDocumentTitle(
+    checkRes?.is_valid === false
+      ? t(($) => $.invalid, { ns: 'login' })
+      : t(($) => $.setYourAccount, { ns: 'login' }),
   )
 
   useEffect(() => {
@@ -60,9 +64,12 @@ const ActivateForm = () => {
             </h2>
           </div>
           <div className="mx-auto mt-6 w-full">
-            <Button variant="primary" className="w-full text-sm!">
-              <a href="https://dify.ai">{t(($) => $.explore, { ns: 'login' })}</a>
-            </Button>
+            <a
+              href="https://dify.ai"
+              className={cn(buttonVariants({ variant: 'primary' }), 'w-full text-sm!')}
+            >
+              {t(($) => $.explore, { ns: 'login' })}
+            </a>
           </div>
         </div>
       )}

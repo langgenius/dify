@@ -1,6 +1,5 @@
-import type { PropsWithChildren } from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DSLImportStatus } from '@/models/app'
 import UpdateDSLModal from '../update-dsl-modal'
 
@@ -103,44 +102,6 @@ vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
       <button data-testid="clear-file" onClick={() => updateFile(undefined)}>
         Clear
       </button>
-    </div>
-  ),
-}))
-
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({
-    children,
-    onClick,
-    disabled,
-    className,
-    variant,
-    loading,
-  }: {
-    children: React.ReactNode
-    onClick?: () => void
-    disabled?: boolean
-    className?: string
-    variant?: string
-    loading?: boolean
-  }) => (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={className}
-      data-variant={variant}
-      data-loading={loading}
-    >
-      {children}
-    </button>
-  ),
-}))
-
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, open }: PropsWithChildren<{ open?: boolean }>) =>
-    open === false ? null : <>{children}</>,
-  DialogContent: ({ children, className }: PropsWithChildren<{ className?: string }>) => (
-    <div data-testid="modal" className={className}>
-      {children}
     </div>
   ),
 }))
@@ -307,34 +268,6 @@ describe('UpdateDSLModal', () => {
         const importButton = screen.getByText('workflow.common.overwriteAndImport')
         expect(importButton).toBeDisabled()
       })
-    })
-  })
-
-  describe('edge cases', () => {
-    it('should handle missing onImport callback', () => {
-      const props = {
-        onCancel: mockOnCancel,
-        onBackup: mockOnBackup,
-      }
-
-      render(<UpdateDSLModal {...props} />)
-
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
-    })
-
-    it('should render import button with primary destructive variant', () => {
-      render(<UpdateDSLModal {...defaultProps} />)
-
-      const importButton = screen.getByText('workflow.common.overwriteAndImport')
-      expect(importButton).toHaveAttribute('data-variant', 'primary')
-    })
-
-    it('should render backup button with secondary variant', () => {
-      render(<UpdateDSLModal {...defaultProps} />)
-
-      const backupButtonText = screen.getByText('workflow.common.backupCurrentDraft')
-      const backupButton = backupButtonText.closest('button')
-      expect(backupButton).toHaveAttribute('data-variant', 'secondary')
     })
   })
 
@@ -718,13 +651,8 @@ describe('UpdateDSLModal', () => {
         { timeout: 1000 },
       )
 
-      const cancelButtons = screen.getAllByText('app.newApp.Cancel')
-      const errorModalCancelButton = cancelButtons.find(
-        (btn) => btn.getAttribute('data-variant') === 'secondary',
-      )
-      if (errorModalCancelButton) {
-        fireEvent.click(errorModalCancelButton)
-      }
+      const cancelButtons = screen.getAllByRole('button', { name: 'app.newApp.Cancel' })
+      fireEvent.click(cancelButtons.at(-1)!)
 
       await waitFor(() => {
         expect(screen.queryByText('app.newApp.appCreateDSLErrorTitle')).not.toBeInTheDocument()

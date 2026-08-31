@@ -63,6 +63,7 @@ class PlannerNodeDict(TypedDict):
     purpose: str
     parent: NotRequired[str]
     action: NotRequired[Literal["keep", "update", "add"]]
+    tool: NotRequired[dict[str, str]]
 
 
 class PlannerEdgeDict(TypedDict):

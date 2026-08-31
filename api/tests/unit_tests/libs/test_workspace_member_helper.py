@@ -12,9 +12,11 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
+from enums import DeploymentEdition
 from libs import oauth_bearer
 from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType, require_workspace_member
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
+from tests.unit_tests.config_override import apply_config_overrides
 
 pytestmark = pytest.mark.usefixtures("community_edition")
 
@@ -46,7 +48,7 @@ def database(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Iterat
 
 @pytest.fixture
 def community_edition(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(oauth_bearer.dify_config, "ENTERPRISE_ENABLED", False)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 
 
 def _ctx(
@@ -98,8 +100,8 @@ def _account(account_id: uuid.UUID, *, status: AccountStatus = AccountStatus.ACT
     return account
 
 
-def test_skips_when_enterprise_enabled(database: Database, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(oauth_bearer.dify_config, "ENTERPRISE_ENABLED", True)
+def test_skips_for_enterprise_edition(database: Database, monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
     before = len(database.statements)
 
     require_workspace_member(_ctx(), "tenant-1")

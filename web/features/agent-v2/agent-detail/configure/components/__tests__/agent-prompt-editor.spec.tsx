@@ -31,6 +31,16 @@ const mockConfigFiles = vi.hoisted(() => ({
     }>
   }>,
 }))
+const mockWorkspaceSkillBindings = vi.hoisted(() => ({
+  current: [
+    {
+      id: 'library-skill-id',
+      name: 'library-skill',
+      display_name: 'Library Skill',
+      description: 'A Skill imported from the workspace library.',
+    },
+  ],
+}))
 const mockLexical = vi.hoisted(() => ({
   selection: null as null | {
     __range: true
@@ -93,6 +103,33 @@ const mockBuiltInTools = vi.hoisted(() => [
   },
 ])
 
+const wikipediaProvider = {
+  id: 'wikipedia',
+  name: 'Wikipedia',
+  author: 'Dify',
+  description: { en_US: 'Wikipedia tools' },
+  icon: 'wikipedia.svg',
+  icon_dark: 'wikipedia-dark.svg',
+  label: { en_US: 'Wikipedia' },
+  type: 'builtin',
+  team_credentials: {},
+  is_team_authorization: true,
+  allow_delete: false,
+  labels: [],
+  meta: {},
+  tools: [
+    {
+      name: 'wikipedia_search',
+      author: 'Dify',
+      label: { en_US: 'Wikipedia Search' },
+      description: { en_US: 'Search Wikipedia.' },
+      parameters: [],
+      labels: [],
+      output_schema: {},
+    },
+  ],
+}
+
 vi.mock('@/app/components/base/prompt-editor', () => ({
   __esModule: true,
   default: (props: PromptEditorProps) => {
@@ -152,7 +189,7 @@ vi.mock('foxact/use-clipboard', () => ({
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en_US',
-  useDocLink: () => 'https://docs.example.com',
+  useDocLink: () => () => 'https://docs.example.com',
 }))
 
 vi.mock('@/context/workspace-state', async () => {
@@ -161,6 +198,11 @@ vi.mock('@/context/workspace-state', async () => {
     currentWorkspace: { id: 'workspace-123' },
   }))
 })
+
+vi.mock('@/context/provider-context', () => ({
+  useProviderContextSelector: (selector: (state: { enableSkill: boolean }) => unknown) =>
+    selector({ enableSkill: true }),
+}))
 
 vi.mock('@/service/use-tools', () => ({
   useAllBuiltInTools: () => ({ data: mockBuiltInTools }),
@@ -184,6 +226,11 @@ vi.mock('../orchestrate/config-context', () => ({
     ],
   }),
   useAgentConfigFiles: () => ({ files: mockConfigFiles.current }),
+  useAgentWorkspaceSkillBindings: () => ({
+    data: {
+      data: mockWorkspaceSkillBindings.current,
+    },
+  }),
 }))
 
 const duckDuckGoSearchAction = {
@@ -460,6 +507,11 @@ describe('AgentPromptEditor', () => {
       expect(
         screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }),
       ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: /agentDetail\.configure\.knowledgeRetrieval\.label/i,
+        }),
+      ).not.toBeInTheDocument()
     })
 
     it.each(['Review/', 'Use https:/', 'path/to/'])(
@@ -547,6 +599,24 @@ describe('AgentPromptEditor', () => {
       })
     })
 
+    it('should list and insert workspace Library Skills', async () => {
+      const { store, setPromptValue } = renderAgentPromptEditor('Use')
+
+      setPromptValue('Use /')
+      await openSlashMenuFromEditor()
+      fireEvent.click(
+        screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }),
+      )
+      expect(
+        screen
+          .getAllByRole('button', { name: /Library Skill|Playwright/ })
+          .map((button) => button.textContent),
+      ).toEqual(['Library Skill', 'Playwright'])
+      fireEvent.click(screen.getByRole('button', { name: 'Library Skill' }))
+
+      expect(store.get(agentComposerPromptAtom)).toBe('Use [§skill:library-skill:Library Skill§] ')
+    })
+
     it('should support keyboard navigation and selection in the slash menu', async () => {
       const user = userEvent.setup()
       const { store } = renderAgentPromptEditor('Review these tenders /')
@@ -609,6 +679,13 @@ describe('AgentPromptEditor', () => {
         ).toHaveAttribute('data-agent-prompt-menu-active')
       })
 
+      await user.keyboard('{ArrowDown}')
+      await waitFor(() => {
+        expect(textbox).toHaveFocus()
+        expect(screen.getByRole('button', { name: /Library Skill/i })).toHaveAttribute(
+          'data-agent-prompt-menu-active',
+        )
+      })
       await user.keyboard('{ArrowDown}')
       await waitFor(() => {
         expect(textbox).toHaveFocus()
@@ -801,7 +878,11 @@ describe('AgentPromptEditor', () => {
           onInsertToken={onInsertToken}
         />,
       )
-      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.add/i }))
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: /agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
+        }),
+      )
       expect(onInsertToken).toHaveBeenCalledWith('[§skill:skill-1:Skill One§]')
 
       rerender(
@@ -927,6 +1008,60 @@ describe('AgentPromptEditor', () => {
           ],
         }),
       ])
+    })
+
+    it('should show configured providers and actions before other available tools', () => {
+      mockBuiltInTools.unshift(wikipediaProvider)
+      const configuredDuckDuckGoTranslateTool: AgentTool = {
+        ...duckDuckGoProviderTool,
+        actions: [
+          {
+            id: 'duckduckgo-translate',
+            name: 'DuckDuckGo Translate',
+            toolName: 'ddg_translate',
+            description: 'Translate search results.',
+          },
+        ],
+      }
+
+      const view = render(
+        <AgentPromptSlashMenu
+          view="tools"
+          categories={[{ key: 'tools', label: 'Tools', icon: 'i-ri-box-3-line' }]}
+          skills={[]}
+          files={[]}
+          configuredTools={[configuredDuckDuckGoTranslateTool]}
+          onAddProviderTools={vi.fn()}
+          knowledgeRetrievals={[]}
+          onBack={vi.fn()}
+          onOpenCategory={vi.fn()}
+          onInsertToken={vi.fn()}
+        />,
+      )
+
+      try {
+        const providerButtons = screen
+          .getAllByRole('button')
+          .filter(
+            (button) =>
+              button.textContent?.includes('DuckDuckGo') ||
+              button.textContent?.includes('Wikipedia'),
+          )
+
+        expect(providerButtons).toHaveLength(2)
+        expect(providerButtons[0]).toHaveTextContent('DuckDuckGo')
+        expect(providerButtons[1]).toHaveTextContent('Wikipedia')
+
+        fireEvent.click(screen.getByRole('button', { name: 'DuckDuckGo' }))
+        const actionButtons = screen.getAllByRole('button', {
+          name: /DuckDuckGo (Search|Translate)/,
+        })
+        expect(actionButtons[0]).toHaveTextContent('DuckDuckGo Translate')
+        expect(actionButtons[1]).toHaveTextContent('DuckDuckGo Search')
+      } finally {
+        view.unmount()
+        mockBuiltInTools.shift()
+      }
     })
 
     it('should close the slash menu when the trailing slash is deleted', async () => {

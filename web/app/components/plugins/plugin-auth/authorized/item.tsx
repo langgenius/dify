@@ -1,16 +1,16 @@
 import type { Credential } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiInformationLine } from '@remixicon/react'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import Input from '@/app/components/base/input'
-import { userProfileIdAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { CredentialTypeEnum } from '../types'
 
@@ -50,7 +50,10 @@ const Item = ({
   const { canUseCredential, canManageCredential } = useCredentialPermissions()
   const isOAuth = credential.credential_type === CredentialTypeEnum.OAUTH2
   const isPersonal = credential.visibility === 'only_me'
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   // Borrowed-from-teammate: the backend explicitly flagged this row as another member's
   // only_me credential, returned only because the current node still references it.
   // Fallback heuristic (created_by mismatch on a selected row) is kept for backends
@@ -176,7 +179,8 @@ const Item = ({
               <Tooltip>
                 <TooltipTrigger
                   render={
-                    <ActionButton
+                    <IconButton
+                      aria-label={t(($) => $['operation.rename'], { ns: 'common' })}
                       disabled={disabled || !canManageCredential}
                       onClick={(e) => {
                         e.stopPropagation()
@@ -184,8 +188,11 @@ const Item = ({
                         setRenameValue(credential.name)
                       }}
                     >
-                      <span className="i-ri-edit-line size-4 text-text-tertiary" />
-                    </ActionButton>
+                      <span
+                        aria-hidden="true"
+                        className="i-ri-edit-line size-4 text-text-tertiary"
+                      />
+                    </IconButton>
                   }
                 />
                 <TooltipContent>{t(($) => $['operation.rename'], { ns: 'common' })}</TooltipContent>
@@ -199,7 +206,8 @@ const Item = ({
               <Tooltip>
                 <TooltipTrigger
                   render={
-                    <ActionButton
+                    <IconButton
+                      aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
                       disabled={disabled || !canManageCredential}
                       onClick={(e) => {
                         e.stopPropagation()
@@ -210,8 +218,11 @@ const Item = ({
                         })
                       }}
                     >
-                      <span className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
-                    </ActionButton>
+                      <span
+                        aria-hidden="true"
+                        className="i-ri-equalizer-2-line size-4 text-text-tertiary"
+                      />
+                    </IconButton>
                   }
                 />
                 <TooltipContent>{t(($) => $['operation.edit'], { ns: 'common' })}</TooltipContent>
@@ -221,7 +232,8 @@ const Item = ({
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <ActionButton
+                  <IconButton
+                    aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
                     className="hover:bg-transparent"
                     disabled={disabled || !canManageCredential}
                     onClick={(e) => {
@@ -229,8 +241,11 @@ const Item = ({
                       onDelete?.(credential.id)
                     }}
                   >
-                    <span className="i-ri-delete-bin-line size-4 text-text-tertiary hover:text-text-destructive" />
-                  </ActionButton>
+                    <span
+                      aria-hidden="true"
+                      className="i-ri-delete-bin-line size-4 text-text-tertiary hover:text-text-destructive"
+                    />
+                  </IconButton>
                 }
               />
               <TooltipContent>{t(($) => $['operation.delete'], { ns: 'common' })}</TooltipContent>

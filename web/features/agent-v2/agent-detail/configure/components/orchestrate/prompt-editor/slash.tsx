@@ -53,6 +53,7 @@ type AgentPromptSlashMenuProps = {
   onAddFile?: AgentOrchestrateAddAction
   onAddKnowledge?: AgentOrchestrateAddAction
   onAddSkill?: AgentOrchestrateAddAction
+  canAddWorkspaceSkill?: boolean
   knowledgeRetrievals: AgentKnowledgeRetrievalItem[]
   onBack: () => void
   onOpenCategory: (view: Exclude<SlashMenuView, 'main'>) => void
@@ -95,6 +96,7 @@ export function AgentPromptSlashMenu({
   onAddFile,
   onAddKnowledge,
   onAddSkill,
+  canAddWorkspaceSkill = true,
   knowledgeRetrievals,
   onBack,
   onOpenCategory,
@@ -102,9 +104,10 @@ export function AgentPromptSlashMenu({
 }: AgentPromptSlashMenuProps) {
   const { t } = useTranslation('agentV2')
   const title = categories.find((category) => category.key === view)?.label
-  const handleAddFromFooter = () => {
+  const handleAddFromFooter = (skillSource?: 'library' | 'upload') => {
     if (view === 'skills') {
       onAddSkill?.({
+        skillSource,
         onAdded: (item) => {
           if (isPromptReferenceItem(item))
             onInsertToken(createConfigReferenceToken('skill', item.id, item.name))
@@ -212,17 +215,31 @@ export function AgentPromptSlashMenu({
               : undefined
           }
         />
+      ) : view === 'skills' ? (
+        <div className="flex flex-col border-t border-divider-subtle p-1">
+          {canAddWorkspaceSkill && (
+            <AgentPromptSkillAddButton
+              icon="i-custom-vender-agent-v2-building-blocks"
+              label={t(($) => $['agentDetail.configure.skills.addMenu.workspace.label'])}
+              onClick={() => handleAddFromFooter('library')}
+            />
+          )}
+          <AgentPromptSkillAddButton
+            icon="i-ri-upload-cloud-2-line"
+            label={t(($) => $['agentDetail.configure.skills.addMenu.upload.label'])}
+            onClick={() => handleAddFromFooter('upload')}
+          />
+        </div>
       ) : (
         <div className="border-t border-divider-subtle p-1">
           <button
             type="button"
             {...agentPromptSlashMenuItemProps}
             className="flex h-6 w-full items-center gap-1 rounded-md pr-2 pl-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
-            onClick={handleAddFromFooter}
+            onClick={() => handleAddFromFooter()}
           >
             <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-secondary" />
             <span className="system-sm-regular text-text-secondary">
-              {view === 'skills' && t(($) => $['agentDetail.configure.skills.add'])}
               {view === 'files' && t(($) => $['agentDetail.configure.files.add'])}
               {view === 'knowledge' && t(($) => $['agentDetail.configure.knowledgeRetrieval.add'])}
             </span>
@@ -230,6 +247,28 @@ export function AgentPromptSlashMenu({
         </div>
       )}
     </AgentPromptSlashPanel>
+  )
+}
+
+function AgentPromptSkillAddButton({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: string
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      {...agentPromptSlashMenuItemProps}
+      className="flex h-6 w-full items-center gap-1 rounded-md pr-2 pl-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
+      onClick={onClick}
+    >
+      <span aria-hidden className={`${icon} size-4 shrink-0 text-text-secondary`} />
+      <span className="system-sm-regular text-text-secondary">{label}</span>
+    </button>
   )
 }
 
@@ -329,20 +368,23 @@ function AgentPromptToolRows({
   const configuredCliTools = ENABLE_AGENT_CLI_TOOLS
     ? configuredTools.filter((tool) => tool.kind === 'cli')
     : []
-  const availableProviders = useMemo(() => {
-    if (activeTab === 'all') return [...builtInTools, ...workflowTools, ...customTools, ...mcpTools]
-    if (activeTab === ToolType.BuiltIn) return builtInTools
-    if (activeTab === ToolType.Workflow) return workflowTools
-    if (activeTab === ToolType.Custom) return customTools
-    if (activeTab === ToolType.MCP) return mcpTools
-
-    return []
-  }, [activeTab, builtInTools, customTools, mcpTools, workflowTools])
-
   const selectedTools = useMemo(
     () => configuredTools.flatMap(toSelectedToolValue),
     [configuredTools],
   )
+  const availableProviders = useMemo(() => {
+    let providers: ToolWithProvider[] = []
+    if (activeTab === 'all')
+      providers = [...builtInTools, ...workflowTools, ...customTools, ...mcpTools]
+    if (activeTab === ToolType.BuiltIn) providers = builtInTools
+    if (activeTab === ToolType.Workflow) providers = workflowTools
+    if (activeTab === ToolType.Custom) providers = customTools
+    if (activeTab === ToolType.MCP) providers = mcpTools
+
+    return prioritizeItems(providers, (provider) =>
+      provider.tools.some((tool) => isToolSelected(selectedTools, provider, tool)),
+    )
+  }, [activeTab, builtInTools, customTools, mcpTools, selectedTools, workflowTools])
   const tabs = [
     { key: 'all' as const, label: t(($) => $['agentDetail.configure.tools.toolTabs.all']) },
     {
@@ -435,7 +477,9 @@ function AgentPromptToolRows({
                     onToggle={() => toggleProvider(provider.id)}
                   />
                   {expandedProviderIds.has(provider.id) &&
-                    provider.tools.map((tool) => (
+                    prioritizeItems(provider.tools, (tool) =>
+                      isToolSelected(selectedTools, provider, tool),
+                    ).map((tool) => (
                       <AgentPromptProviderToolActionRow
                         key={tool.name}
                         tool={tool}
@@ -451,6 +495,18 @@ function AgentPromptToolRows({
 }
 
 type ToolPromptTab = ToolType | 'cli'
+
+function prioritizeItems<T>(items: T[], isPriority: (item: T) => boolean) {
+  const priorityItems: T[] = []
+  const remainingItems: T[] = []
+
+  items.forEach((item) => {
+    if (isPriority(item)) priorityItems.push(item)
+    else remainingItems.push(item)
+  })
+
+  return [...priorityItems, ...remainingItems]
+}
 
 function getLocalizedText(text: Record<string, string> | undefined | null, language: string) {
   if (!text) return ''

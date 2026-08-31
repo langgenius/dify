@@ -1,5 +1,5 @@
 import { fireEvent, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { Popup } from '../popup'
@@ -10,46 +10,6 @@ const render = (ui: React.ReactElement) => {
   })
   return renderWithConsoleState(ui, { wrapper })
 }
-
-vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
-  AlertDialog: ({
-    children,
-    open,
-    onOpenChange,
-  }: {
-    children: React.ReactNode
-    open?: boolean
-    onOpenChange?: (open: boolean) => void
-  }) =>
-    open ? (
-      <div role="alertdialog">
-        {children}
-        <button data-testid="alert-dialog-close" onClick={() => onOpenChange?.(false)}>
-          Close
-        </button>
-      </div>
-    ) : null,
-  AlertDialogActions: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogCancelButton: ({ children }: { children?: React.ReactNode }) => (
-    <button>{children}</button>
-  ),
-  AlertDialogConfirmButton: ({
-    children,
-    onClick,
-    disabled,
-  }: {
-    children?: React.ReactNode
-    onClick?: () => void
-    disabled?: boolean
-  }) => (
-    <button onClick={onClick} disabled={disabled}>
-      {children}
-    </button>
-  ),
-  AlertDialogContent: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogDescription: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogTitle: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-}))
 
 const mockPublishWorkflow = vi.fn().mockResolvedValue({ created_at: '2024-01-01T00:00:00Z' })
 const mockPublishAsCustomizedPipeline = vi.fn().mockResolvedValue({})
@@ -79,7 +39,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
     promise: toastMocks.promise,
   }),
 }))
-const mockPush = vi.fn()
 const mockHandleCheckBeforePublish = vi.fn().mockResolvedValue(true)
 const mockSetPublishedAt = vi.fn()
 const mockMutateDatasetRes = vi.fn()
@@ -100,13 +59,10 @@ let mockWorkspacePermissionKeys: string[] = []
 const mockUseBoolean = vi.hoisted(() => vi.fn())
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'ds-123' }),
-  useRouter: () => ({ push: mockPush }),
 }))
 
 vi.mock('@/next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
-  ),
+  default: ({ children, ...props }: React.ComponentProps<'a'>) => <a {...props}>{children}</a>,
 }))
 
 vi.mock('ahooks', () => ({
@@ -135,19 +91,6 @@ vi.mock('@/app/components/workflow/store', () => ({
       setPublishedAt: mockSetPublishedAt,
     }),
   }),
-}))
-
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick, disabled, variant, className }: Record<string, unknown>) => (
-    <button
-      onClick={onClick as () => void}
-      disabled={disabled as boolean}
-      data-variant={variant as string}
-      className={className as string}
-    >
-      {children as React.ReactNode}
-    </button>
-  ),
 }))
 
 vi.mock('@/app/components/base/divider', () => ({
@@ -190,16 +133,6 @@ vi.mock('@/context/dataset-detail', () => ({
     }),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: {
-      id: mockCurrentUserId,
-    },
-    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => ({
@@ -338,18 +271,6 @@ describe('Popup', () => {
       expect(container.querySelectorAll('kbd')).toHaveLength(3)
     })
 
-    it('should render "Go to Add Documents" button', () => {
-      render(<Popup />)
-
-      expect(screen.getByText('pipeline.common.goToAddDocuments')).toBeInTheDocument()
-    })
-
-    it('should render "API Reference" button', () => {
-      render(<Popup />)
-
-      expect(screen.getByText('workflow.common.accessAPIReference')).toBeInTheDocument()
-    })
-
     it('should render "Publish As" button', () => {
       const { container } = render(<Popup />)
 
@@ -375,12 +296,21 @@ describe('Popup', () => {
   })
 
   describe('Navigation', () => {
-    it('should navigate to add documents page', () => {
+    it('should link to the add documents page', () => {
       render(<Popup />)
 
-      fireEvent.click(screen.getByText('pipeline.common.goToAddDocuments'))
+      expect(
+        screen.getByRole('link', { name: 'pipeline.common.goToAddDocuments' }),
+      ).toHaveAttribute('href', '/datasets/ds-123/documents/create-from-pipeline')
+    })
 
-      expect(mockPush).toHaveBeenCalledWith('/datasets/ds-123/documents/create-from-pipeline')
+    it('should open the API reference safely in a new tab', () => {
+      render(<Popup />)
+
+      const link = screen.getByRole('link', { name: 'workflow.common.accessAPIReference' })
+      expect(link).toHaveAttribute('href', '/api/datasets/ds-123')
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
     })
   })
 
@@ -459,7 +389,7 @@ describe('Popup', () => {
 
       render(<Popup />)
 
-      fireEvent.click(screen.getByTestId('alert-dialog-close'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
       expect(hideConfirm).toHaveBeenCalledTimes(1)
     })

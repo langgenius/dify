@@ -1,7 +1,6 @@
 import logging
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from typing import cast
 
 import pytest
 from pytest_mock import MockerFixture
@@ -13,7 +12,9 @@ from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipe
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom
 from models.model import UploadFile
 from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration
+from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.rag_pipeline.rag_pipeline_transform_service import RagPipelineTransformService
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _dataset(**overrides: object) -> Dataset:
@@ -44,6 +45,36 @@ def _document(**overrides: object) -> Document:
     }
     values.update(overrides)
     return Document(**values)
+
+
+def _pipeline(*, pipeline_id: str = "p-new", tenant_id: str = "t1") -> Pipeline:
+    pipeline = Pipeline(
+        tenant_id=tenant_id,
+        name="Pipeline",
+        description="",
+        created_by="user-1",
+        updated_by="user-1",
+    )
+    pipeline.id = pipeline_id
+    return pipeline
+
+
+def _upload_file(*, file_id: str = "file-1", tenant_id: str = "tenant-1") -> UploadFile:
+    upload_file = UploadFile(
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key="files/f.txt",
+        name="f.txt",
+        size=10,
+        extension="txt",
+        mime_type="text/plain",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-1",
+        created_at=datetime.now(UTC).replace(tzinfo=None),
+        used=False,
+    )
+    upload_file.id = file_id
+    return upload_file
 
 
 @pytest.mark.parametrize(
@@ -128,20 +159,14 @@ def test_deal_dependencies_installs_missing_marketplace_plugins(mocker: MockerFi
 
 
 @pytest.mark.parametrize("sqlite_session", [(Dataset, Pipeline)], indirect=True)
-def test_transform_to_empty_pipeline_updates_dataset_and_commits(
-    mocker: MockerFixture, sqlite_session: Session
-) -> None:
+def test_transform_to_empty_pipeline_updates_dataset_and_commits(sqlite_session: Session) -> None:
     service = RagPipelineTransformService()
-    mocker.patch(
-        "services.rag_pipeline.rag_pipeline_transform_service.current_user",
-        SimpleNamespace(id="user-1"),
-    )
 
     dataset = _dataset()
     sqlite_session.add(dataset)
     sqlite_session.commit()
 
-    result = service._transform_to_empty_pipeline(dataset, session=sqlite_session)
+    result = service._transform_to_empty_pipeline(dataset, account_id="user-1", session=sqlite_session)
 
     pipeline = sqlite_session.get(Pipeline, result["pipeline_id"])
     assert pipeline is not None
@@ -155,33 +180,54 @@ def test_transform_to_empty_pipeline_updates_dataset_and_commits(
 # --- transform_dataset ---
 
 
-@pytest.mark.parametrize("sqlite_session", [(Dataset,)], indirect=True)
 def test_transform_dataset_returns_early_when_pipeline_exists(sqlite_session: Session) -> None:
     service = RagPipelineTransformService()
     dataset = _dataset(id="d1", pipeline_id="p1", runtime_mode="rag_pipeline")
-    sqlite_session.add(dataset)
-    sqlite_session.commit()
+    pipeline = Pipeline(tenant_id="tenant-1", name="Pipeline", description="")
+    pipeline.id = "p1"
+    sqlite_session.add_all([dataset, pipeline])
 
-    result = service.transform_dataset("d1", sqlite_session)
+    result = service.transform_dataset(dataset, "user-1", sqlite_session)
 
     assert result == {"pipeline_id": "p1", "dataset_id": "d1", "status": "success"}
 
 
-@pytest.mark.parametrize("sqlite_session", [(Dataset,)], indirect=True)
-def test_transform_dataset_raises_for_dataset_not_found(sqlite_session: Session) -> None:
+@pytest.mark.parametrize("pipeline_tenant_id", [None, "tenant-2"])
+def test_transform_dataset_rejects_missing_or_foreign_pipeline_before_side_effects(
+    mocker: MockerFixture,
+    sqlite_session: Session,
+    pipeline_tenant_id: str | None,
+) -> None:
     service = RagPipelineTransformService()
-    with pytest.raises(ValueError, match="Dataset not found"):
-        service.transform_dataset("d1", sqlite_session)
+    dataset = _dataset(id="d1", pipeline_id="p1", runtime_mode="rag_pipeline")
+    sqlite_session.add(dataset)
+    if pipeline_tenant_id is not None:
+        pipeline = Pipeline(tenant_id=pipeline_tenant_id, name="Pipeline", description="")
+        pipeline.id = "p1"
+        sqlite_session.add(pipeline)
+    install_plugins = mocker.patch(
+        "services.rag_pipeline.rag_pipeline_transform_service.PluginService.install_from_marketplace_pkg"
+    )
+    create_pipeline = mocker.patch.object(service, "_create_pipeline")
+    transform_empty = mocker.patch.object(service, "_transform_to_empty_pipeline")
+
+    with pytest.raises(RagPipelineResourceNotFoundError, match="Pipeline not found"):
+        service.transform_dataset(dataset, "user-1", sqlite_session)
+
+    install_plugins.assert_not_called()
+    create_pipeline.assert_not_called()
+    transform_empty.assert_not_called()
 
 
 @pytest.mark.parametrize("sqlite_session", [(Dataset,)], indirect=True)
 def test_transform_dataset_raises_for_external_dataset(sqlite_session: Session) -> None:
     service = RagPipelineTransformService()
-    sqlite_session.add(_dataset(id="d1", provider="external"))
+    dataset = _dataset(id="d1", provider="external")
+    sqlite_session.add(dataset)
     sqlite_session.commit()
 
     with pytest.raises(ValueError, match="External dataset is not supported"):
-        service.transform_dataset("d1", sqlite_session)
+        service.transform_dataset(dataset, "user-1", sqlite_session)
 
 
 @pytest.mark.parametrize("sqlite_session", [(Dataset,)], indirect=True)
@@ -189,13 +235,14 @@ def test_transform_dataset_calls_empty_pipeline_when_no_datasource(
     mocker: MockerFixture, sqlite_session: Session
 ) -> None:
     service = RagPipelineTransformService()
-    sqlite_session.add(_dataset(id="d1", data_source_type=None, indexing_technique=None))
+    dataset = _dataset(id="d1", data_source_type=None, indexing_technique=None)
+    sqlite_session.add(dataset)
     sqlite_session.commit()
 
     empty_result = {"pipeline_id": "p-empty", "dataset_id": "d1", "status": "success"}
     mocker.patch.object(service, "_transform_to_empty_pipeline", return_value=empty_result)
 
-    result = service.transform_dataset("d1", sqlite_session)
+    result = service.transform_dataset(dataset, "user-1", sqlite_session)
 
     assert result == empty_result
 
@@ -205,15 +252,14 @@ def test_transform_dataset_calls_empty_pipeline_when_no_doc_form(
     mocker: MockerFixture, sqlite_session: Session
 ) -> None:
     service = RagPipelineTransformService()
-    sqlite_session.add(
-        _dataset(id="d1", data_source_type="upload_file", indexing_technique="high_quality", chunk_structure=None)
-    )
+    dataset = _dataset(id="d1", data_source_type="upload_file", indexing_technique="high_quality", chunk_structure=None)
+    sqlite_session.add(dataset)
     sqlite_session.commit()
 
     empty_result = {"pipeline_id": "p-empty", "dataset_id": "d1", "status": "success"}
     mocker.patch.object(service, "_transform_to_empty_pipeline", return_value=empty_result)
 
-    result = service.transform_dataset("d1", sqlite_session)
+    result = service.transform_dataset(dataset, "user-1", sqlite_session)
 
     assert result == empty_result
 
@@ -223,14 +269,11 @@ def test_transform_dataset_calls_empty_pipeline_when_no_doc_form(
 
 def test_deal_knowledge_index_high_quality_sets_embedding(mocker: MockerFixture) -> None:
     service = RagPipelineTransformService()
-    dataset = cast(
-        Dataset,
-        SimpleNamespace(
-            embedding_model="text-embedding-ada-002",
-            embedding_model_provider="openai",
-            retrieval_model=None,
-            summary_index_setting=None,
-        ),
+    dataset = _dataset(
+        embedding_model="text-embedding-ada-002",
+        embedding_model_provider="openai",
+        retrieval_model=None,
+        summary_index_setting=None,
     )
     node = {
         "data": {
@@ -354,18 +397,19 @@ def test_transform_dataset_full_flow(mocker: MockerFixture, sqlite_session: Sess
     mocker.patch.object(service, "_deal_dependencies")
     mocker.patch.object(service, "_deal_document_data")
 
-    # Mock current_user to have the same tenant_id as dataset
-    mock_current_user = SimpleNamespace(current_tenant_id="t1")
-    mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.current_user", mock_current_user)
+    pipeline = _pipeline()
+    create_pipeline = mocker.patch.object(service, "_create_pipeline", return_value=pipeline)
 
-    pipeline = SimpleNamespace(id="p-new")
-    mocker.patch.object(service, "_create_pipeline", return_value=pipeline)
-
-    result = service.transform_dataset("d1", sqlite_session)
+    result = service.transform_dataset(dataset, "user-1", sqlite_session)
 
     assert result["pipeline_id"] == "p-new"
     assert dataset.runtime_mode == "rag_pipeline"
     assert dataset.chunk_structure == "text_model"
+    assert create_pipeline.call_args.kwargs == {
+        "tenant_id": "t1",
+        "account_id": "user-1",
+        "session": sqlite_session,
+    }
 
 
 @pytest.mark.parametrize("sqlite_session", [(Dataset,)], indirect=True)
@@ -390,10 +434,10 @@ def test_transform_dataset_raises_for_unsupported_doc_form_after_pipeline_create
     sqlite_session.commit()
     mocker.patch.object(service, "_get_transform_yaml", return_value={"workflow": {"graph": {"nodes": []}}})
     mocker.patch.object(service, "_deal_dependencies")
-    mocker.patch.object(service, "_create_pipeline", return_value=SimpleNamespace(id="p-new"))
+    mocker.patch.object(service, "_create_pipeline", return_value=_pipeline())
 
     with pytest.raises(ValueError, match="Unsupported doc form"):
-        service.transform_dataset("d1", sqlite_session)
+        service.transform_dataset(dataset, "user-1", sqlite_session)
 
 
 @pytest.mark.parametrize("sqlite_session", [(Dataset,)], indirect=True)
@@ -420,7 +464,7 @@ def test_transform_dataset_raises_when_transform_yaml_missing_workflow(
     mocker.patch.object(service, "_deal_dependencies")
 
     with pytest.raises(ValueError, match="Missing workflow data for rag pipeline"):
-        service.transform_dataset("d1", sqlite_session)
+        service.transform_dataset(dataset, "user-1", sqlite_session)
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
@@ -428,7 +472,12 @@ def test_create_pipeline_raises_when_workflow_data_missing(sqlite_session: Sessi
     service = RagPipelineTransformService()
 
     with pytest.raises(ValueError, match="Missing workflow data for rag pipeline"):
-        service._create_pipeline({"rag_pipeline": {"name": "N"}}, session=sqlite_session)
+        service._create_pipeline(
+            {"rag_pipeline": {"name": "N"}},
+            tenant_id="tenant-1",
+            account_id="user-1",
+            session=sqlite_session,
+        )
 
 
 @pytest.mark.parametrize("sqlite_session", [(Document, DocumentPipelineExecutionLog, UploadFile)], indirect=True)
@@ -442,21 +491,7 @@ def test_deal_document_data_upload_file_with_existing_file(sqlite_session: Sessi
         data_source_info='{"upload_file_id":"file-1"}',
         name="Doc",
     )
-    upload_file = UploadFile(
-        tenant_id="tenant-1",
-        storage_type=StorageType.LOCAL,
-        key="files/f.txt",
-        name="f.txt",
-        size=10,
-        extension="txt",
-        mime_type="text/plain",
-        created_by_role=CreatorUserRole.ACCOUNT,
-        created_by="user-1",
-        created_at=datetime.now(UTC).replace(tzinfo=None),
-        used=False,
-    )
-    upload_file.id = "file-1"
-    sqlite_session.add_all([document, upload_file])
+    sqlite_session.add_all([document, _upload_file()])
     sqlite_session.commit()
 
     service._deal_document_data(dataset, sqlite_session)
@@ -469,17 +504,43 @@ def test_deal_document_data_upload_file_with_existing_file(sqlite_session: Sessi
     assert log.document_id == document.id
 
 
+@pytest.mark.parametrize(
+    ("document_tenant_id", "upload_file_tenant_id"),
+    [("tenant-2", "tenant-1"), ("tenant-1", "tenant-2")],
+)
+@pytest.mark.parametrize("sqlite_session", [(Document, DocumentPipelineExecutionLog, UploadFile)], indirect=True)
+def test_deal_document_data_scopes_documents_and_upload_files_to_dataset_tenant(
+    sqlite_session: Session,
+    document_tenant_id: str,
+    upload_file_tenant_id: str,
+) -> None:
+    service = RagPipelineTransformService()
+    dataset = _dataset(id="d1", tenant_id="tenant-1", pipeline_id="p1")
+    document = _document(
+        id="doc-1",
+        tenant_id=document_tenant_id,
+        dataset_id="d1",
+        data_source_type="upload_file",
+        data_source_info='{"upload_file_id":"file-1"}',
+    )
+    sqlite_session.add_all([document, _upload_file(tenant_id=upload_file_tenant_id)])
+    sqlite_session.commit()
+
+    service._deal_document_data(dataset, sqlite_session)
+    sqlite_session.flush()
+
+    assert document.data_source_type == DataSourceType.UPLOAD_FILE
+    assert sqlite_session.scalar(select(DocumentPipelineExecutionLog)) is None
+
+
 def _make_service():
     return RagPipelineTransformService.__new__(RagPipelineTransformService)
 
 
 def test_deal_dependencies_skips_marketplace_when_disabled(
-    mocker: MockerFixture, caplog: pytest.LogCaptureFixture
+    mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    mocker.patch(
-        "services.rag_pipeline.rag_pipeline_transform_service.dify_config.MARKETPLACE_ENABLED",
-        False,
-    )
+    apply_config_overrides(monkeypatch, MARKETPLACE_ENABLED=False)
     installer = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginInstaller").return_value
     installer.list_plugins.return_value = []
     mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginMigration")
@@ -504,11 +565,8 @@ def test_deal_dependencies_skips_marketplace_when_disabled(
     assert any("Marketplace disabled" in rec.message for rec in caplog.records)
 
 
-def test_deal_dependencies_installs_when_enabled(mocker: MockerFixture) -> None:
-    mocker.patch(
-        "services.rag_pipeline.rag_pipeline_transform_service.dify_config.MARKETPLACE_ENABLED",
-        True,
-    )
+def test_deal_dependencies_installs_when_enabled(mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, MARKETPLACE_ENABLED=True)
     installer = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginInstaller").return_value
     installer.list_plugins.return_value = []
     migration = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginMigration").return_value

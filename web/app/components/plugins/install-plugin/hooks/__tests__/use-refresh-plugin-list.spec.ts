@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum } from '../../../types'
 
 // Mock invalidation / refresh functions
@@ -96,6 +96,7 @@ describe('useRefreshPluginList', () => {
 
     result.current.refreshPluginList({ category: PluginCategoryEnum.tool } as never)
 
+    expect(mockInvalidateInstalledPluginList).toHaveBeenCalledWith(PluginCategoryEnum.tool)
     expect(mockInvalidateAllToolProviders).toHaveBeenCalledTimes(1)
     expect(mockInvalidateAllBuiltInTools).toHaveBeenCalledTimes(1)
     expect(mockInvalidateRAGRecommendedPlugins).toHaveBeenCalledWith('tool')
@@ -106,6 +107,7 @@ describe('useRefreshPluginList', () => {
 
     result.current.refreshPluginList({ category: PluginCategoryEnum.model } as never)
 
+    expect(mockInvalidateInstalledPluginList).toHaveBeenCalledWith(PluginCategoryEnum.model)
     expect(mockRefreshModelProviders).toHaveBeenCalledTimes(1)
     expect(mockRefetchLLMModelList).toHaveBeenCalledTimes(1)
     expect(mockRefetchEmbeddingModelList).toHaveBeenCalledTimes(1)
@@ -150,7 +152,7 @@ describe('useRefreshPluginList', () => {
 
     result.current.refreshPluginList(undefined, true)
 
-    expect(mockInvalidateInstalledPluginList).toHaveBeenCalledTimes(1)
+    expect(mockInvalidateInstalledPluginList).toHaveBeenCalledWith()
     expect(mockInvalidateAllToolProviders).toHaveBeenCalledTimes(1)
     expect(mockInvalidateAllBuiltInTools).toHaveBeenCalledTimes(1)
     expect(mockInvalidateRAGRecommendedPlugins).toHaveBeenCalledWith('tool')

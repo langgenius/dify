@@ -1,6 +1,7 @@
 'use client'
 import type { Locale } from '@/i18n-config'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
@@ -21,6 +22,7 @@ import { LICENSE_LINK } from '@/constants/link'
 import { useLocale } from '@/context/i18n'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { i18n, setLocaleOnClient } from '@/i18n-config'
 import { languages } from '@/i18n-config/language'
 import Link from '@/next/link'
@@ -115,6 +117,21 @@ export default function InviteSettingsPage() {
     )
   const requiresAccountSetup =
     checkRes?.data?.requires_setup ?? checkRes?.data?.account_status === 'pending'
+  const setupAccountTitle = t(($) => $.setYourAccount, { ns: 'login' })
+  const workspaceInvitationTitle = checkRes?.data?.workspace_name
+    ? t(($) => $.joinWorkspace, {
+        ns: 'login',
+        workspaceName: checkRes.data.workspace_name,
+      })
+    : setupAccountTitle
+  const documentTitle = !checkRes
+    ? setupAccountTitle
+    : !checkRes.is_valid
+      ? t(($) => $.invalid, { ns: 'login' })
+      : requiresAccountSetup || !checkRes.data?.workspace_name
+        ? setupAccountTitle
+        : workspaceInvitationTitle
+  useDocumentTitle(documentTitle)
 
   useEffect(() => {
     if (!shouldReturnToSignIn) return
@@ -176,14 +193,17 @@ export default function InviteSettingsPage() {
           <div className="mb-3 flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle text-2xl font-bold shadow-lg">
             🤷‍♂️
           </div>
-          <h2 className="title-4xl-semi-bold text-text-primary">
+          <h1 className="title-4xl-semi-bold text-text-primary">
             {t(($) => $.invalid, { ns: 'login' })}
-          </h2>
+          </h1>
         </div>
         <div className="mx-auto mt-6 w-full">
-          <Button variant="primary" className="w-full text-sm!">
-            <a href="https://dify.ai">{t(($) => $.explore, { ns: 'login' })}</a>
-          </Button>
+          <a
+            href="https://dify.ai"
+            className={cn(buttonVariants({ variant: 'primary' }), 'w-full text-sm!')}
+          >
+            {t(($) => $.explore, { ns: 'login' })}
+          </a>
         </div>
       </div>
     )
@@ -195,11 +215,11 @@ export default function InviteSettingsPage() {
         <RiAccountCircleLine className="size-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pt-2 pb-4">
-        <h2 className="title-4xl-semi-bold text-text-primary">
+        <h1 className="title-4xl-semi-bold text-text-primary">
           {requiresAccountSetup
             ? t(($) => $.setYourAccount, { ns: 'login' })
-            : `${t(($) => $.join, { ns: 'login' })}${checkRes?.data?.workspace_name}`}
-        </h2>
+            : workspaceInvitationTitle}
+        </h1>
       </div>
       <form onSubmit={noop}>
         {requiresAccountSetup && (
@@ -284,7 +304,7 @@ export default function InviteSettingsPage() {
             loading={isActivating}
             disabled={isActivating}
           >
-            {`${t(($) => $.join, { ns: 'login' })} ${checkRes?.data?.workspace_name}`}
+            {workspaceInvitationTitle}
           </Button>
         </div>
       </form>

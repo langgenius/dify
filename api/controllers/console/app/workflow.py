@@ -2,15 +2,26 @@ import json
 import logging
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, NotRequired, TypedDict
+from typing import Any, NotRequired, Self, TypedDict
 
 from flask import abort, request
 from flask_restx import Resource, fields
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, RootModel, ValidationError, field_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    RootModel,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
+from configs import dify_config
+from controllers.common.app_access import resolve_app_access_filter
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
 from controllers.common.errors import InvalidArgumentError
 from controllers.common.fields import GeneratedAppResponse, NewAppResponse, SimpleResultResponse
@@ -33,6 +44,7 @@ from controllers.console.wraps import (
     RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -44,6 +56,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
+from core.db.session_factory import session_factory
 from core.helper import encrypter
 from core.helper.trace_id_helper import get_external_trace_id
 from core.plugin.impl.exc import PluginInvokeError
@@ -53,6 +66,10 @@ from core.trigger.debug.event_selectors import (
     TriggerDebugEventPoller,
     create_event_poller,
     select_trigger_debug_events,
+)
+from core.workflow.llm_environment_variable import (
+    LLM_ENVIRONMENT_VARIABLE_VALUE_TYPE,
+    LLMEnvironmentVariable,
 )
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -82,7 +99,6 @@ from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError,
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
-from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
 
@@ -103,14 +119,35 @@ class EnvironmentVariableResponseDict(TypedDict):
     description: NotRequired[str | None]
 
 
+class SyncEnvironmentVariablePatchPayload(BaseModel):
+    environment_variables: list[dict[str, Any]] = Field(default_factory=list)
+    deleted_environment_variable_ids: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_patch(self) -> Self:
+        """Require stable, disjoint IDs so the service can merge the patch deterministically."""
+        upsert_ids = [variable.get("id") for variable in self.environment_variables]
+        if any(not isinstance(variable_id, str) or not variable_id for variable_id in upsert_ids):
+            raise ValueError("patched environment variables require an id")
+        if len(set(upsert_ids)) != len(upsert_ids):
+            raise ValueError("patched environment variable ids must be unique")
+        if any(not variable_id for variable_id in self.deleted_environment_variable_ids):
+            raise ValueError("deleted environment variable ids must not be empty")
+        if len(set(self.deleted_environment_variable_ids)) != len(self.deleted_environment_variable_ids):
+            raise ValueError("deleted environment variable ids must be unique")
+        if set(upsert_ids).intersection(self.deleted_environment_variable_ids):
+            raise ValueError("an environment variable cannot be upserted and deleted in the same patch")
+        return self
+
+
 class SyncDraftWorkflowPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     graph: dict[str, Any]
     features: dict[str, Any]
     hash: str | None = None
     is_collaborative: bool = Field(default=False, alias="_is_collaborative")
-    environment_variables: list[dict[str, Any]] = Field(
-        default_factory=list,
-    )
+    environment_variable_patch: SyncEnvironmentVariablePatchPayload | None = None
     conversation_variables: list[dict[str, Any]] = Field(
         default_factory=list,
     )
@@ -281,6 +318,9 @@ class WorkflowResponse(ResponseModel):
     )
     hash: str = Field(validation_alias=AliasChoices("unique_hash", "hash"))
     version: str
+    # NULL for drafts and for versions published before numbering was introduced; those
+    # render as "Untitled Version" instead of `#N`. Never 0, so clients must test for null.
+    version_number: int | None = None
     marked_name: str
     marked_comment: str
     created_by: SimpleAccount | None = Field(
@@ -313,7 +353,7 @@ class WorkflowResponse(ResponseModel):
         return [_serialize_environment_variable(item) for item in value]
 
 
-class _WorkflowResponseSource:
+class WorkflowResponseSource:
     def __init__(self, workflow: Workflow, *, session: Session) -> None:
         self._workflow = workflow
         self._session = session
@@ -483,6 +523,15 @@ def _parse_file(workflow: Workflow, files: list[dict] | None = None) -> Sequence
 
 def _serialize_environment_variable(value: Any) -> EnvironmentVariableResponseDict | Any:
     match value:
+        case LLMEnvironmentVariable():
+            return {
+                "id": value.id,
+                "name": value.name,
+                "value": value.value,
+                "value_type": LLM_ENVIRONMENT_VARIABLE_VALUE_TYPE,
+                "description": value.description,
+            }
+
         case SecretVariable():
             return {
                 "id": value.id,
@@ -507,6 +556,8 @@ def _serialize_environment_variable(value: Any) -> EnvironmentVariableResponseDi
                 raise TypeError(
                     f"unexpected type for value_type field, value={value_type_str}, type={type(value_type_str)}"
                 )
+            if value_type_str == LLM_ENVIRONMENT_VARIABLE_VALUE_TYPE:
+                return value
             value_type = SegmentType(value_type_str).exposed_type()
             if value_type not in ENVIRONMENT_VARIABLE_SUPPORTED_TYPES:
                 raise ValueError(f"Unsupported environment variable value type: {value_type}")
@@ -539,7 +590,8 @@ class DraftWorkflowApi(Resource):
         """
         # fetch draft workflow by app_model
         workflow_service = WorkflowService()
-        workflow = workflow_service.get_draft_workflow(app_model=app_model, session=db.session())
+        session = db.session()
+        workflow = workflow_service.get_draft_workflow(app_model=app_model, session=session)
 
         if not workflow:
             raise DraftWorkflowNotExist()
@@ -548,9 +600,11 @@ class DraftWorkflowApi(Resource):
 
         # Return workflow with response-only Agent node job projection so the
         # front-end can treat draft graph node data as the editing source.
-        response = WorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
+        response = WorkflowResponse.model_validate(
+            WorkflowResponseSource(workflow, session=session), from_attributes=True
+        ).model_dump(mode="json")
         response["graph"] = WorkflowAgentPublishService.project_draft_bindings_to_graph(
-            session=db.session(),
+            session=session,
             draft_workflow=workflow,
         )
         return response
@@ -590,30 +644,38 @@ class DraftWorkflowApi(Resource):
                 return {"message": "Invalid JSON data"}, 400
         else:
             abort(415)
-        args = args_model.model_dump()
         workflow_service = WorkflowService()
 
         try:
-            environment_variables_list = Workflow.normalize_environment_variable_mappings(
-                args.get("environment_variables") or [],
-            )
-            environment_variables = [
-                variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
-            ]
-            conversation_variables_list = args.get("conversation_variables") or []
+            environment_variable_patch = args_model.environment_variable_patch
+            environment_variable_upserts: list[VariableBase] | None = None
+            deleted_environment_variable_ids: list[str] = []
+            if environment_variable_patch is not None:
+                environment_variable_upsert_mappings = Workflow.normalize_environment_variable_mappings(
+                    environment_variable_patch.environment_variables,
+                )
+                environment_variable_upserts = [
+                    variable_factory.build_environment_variable_from_mapping(obj)
+                    for obj in environment_variable_upsert_mappings
+                ]
+                deleted_environment_variable_ids = environment_variable_patch.deleted_environment_variable_ids
             conversation_variables = [
-                variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
+                variable_factory.build_conversation_variable_from_mapping(obj)
+                for obj in args_model.conversation_variables
             ]
             workflow = workflow_service.sync_draft_workflow(
                 app_model=app_model,
-                graph=args["graph"],
-                features=args["features"],
-                unique_hash=args.get("hash"),
+                graph=args_model.graph,
+                features=args_model.features,
+                unique_hash=args_model.hash,
                 account=current_user,
-                environment_variables=environment_variables,
+                environment_variables=[],
                 conversation_variables=conversation_variables,
                 session=db.session(),
-                graph_only=args["is_collaborative"],
+                environment_variable_upserts=environment_variable_upserts,
+                deleted_environment_variable_ids=deleted_environment_variable_ids,
+                preserve_environment_variables=True,
+                graph_only=args_model.is_collaborative,
             )
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
@@ -647,12 +709,12 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
     @edit_permission_required
     @with_session
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
-    def post(self, session: Session, current_user: Account, app_model: App):
+    @model_validate(AdvancedChatWorkflowRunPayload)
+    def post(self, payload: AdvancedChatWorkflowRunPayload, session: Session, current_user: Account, app_model: App):
         """
         Run draft workflow
         """
-        args_model = AdvancedChatWorkflowRunPayload.model_validate(console_ns.payload or {})
-        args = args_model.model_dump(exclude_none=True)
+        args = payload.model_dump(exclude_none=True)
 
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
@@ -702,11 +764,12 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @with_current_user
     @edit_permission_required
-    def post(self, current_user: Account, app_model: App, node_id: str):
+    @model_validate(IterationNodeRunPayload)
+    def post(self, payload: IterationNodeRunPayload, current_user: Account, app_model: App, node_id: str):
         """
         Run draft workflow iteration node
         """
-        args = IterationNodeRunPayload.model_validate(console_ns.payload or {}).model_dump(exclude_none=True)
+        args = payload.model_dump(exclude_none=True)
 
         try:
             response = AppGenerateService.generate_single_iteration(
@@ -750,11 +813,12 @@ class WorkflowDraftRunIterationNodeApi(Resource):
     @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
-    def post(self, current_user: Account, app_model: App, node_id: str):
+    @model_validate(IterationNodeRunPayload)
+    def post(self, payload: IterationNodeRunPayload, current_user: Account, app_model: App, node_id: str):
         """
         Run draft workflow iteration node
         """
-        args = IterationNodeRunPayload.model_validate(console_ns.payload or {}).model_dump(exclude_none=True)
+        args = payload.model_dump(exclude_none=True)
 
         try:
             response = AppGenerateService.generate_single_iteration(
@@ -794,11 +858,11 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @with_current_user
     @edit_permission_required
-    def post(self, current_user: Account, app_model: App, node_id: str):
+    @model_validate(LoopNodeRunPayload)
+    def post(self, args: LoopNodeRunPayload, current_user: Account, app_model: App, node_id: str):
         """
         Run draft workflow loop node
         """
-        args = LoopNodeRunPayload.model_validate(console_ns.payload or {})
 
         try:
             response = AppGenerateService.generate_single_loop(
@@ -842,11 +906,11 @@ class WorkflowDraftRunLoopNodeApi(Resource):
     @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
-    def post(self, current_user: Account, app_model: App, node_id: str):
+    @model_validate(LoopNodeRunPayload)
+    def post(self, args: LoopNodeRunPayload, current_user: Account, app_model: App, node_id: str):
         """
         Run draft workflow loop node
         """
-        args = LoopNodeRunPayload.model_validate(console_ns.payload or {})
 
         try:
             response = AppGenerateService.generate_single_loop(
@@ -919,11 +983,11 @@ class AdvancedChatDraftHumanInputFormPreviewApi(Resource):
     @with_current_user
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
-    def post(self, current_user: Account, app_model: App, node_id: str):
+    @model_validate(HumanInputFormPreviewPayload)
+    def post(self, args: HumanInputFormPreviewPayload, current_user: Account, app_model: App, node_id: str):
         """
         Preview human input form content and placeholders
         """
-        args = HumanInputFormPreviewPayload.model_validate(console_ns.payload or {})
         inputs = args.inputs
 
         workflow_service = WorkflowService()
@@ -955,11 +1019,11 @@ class AdvancedChatDraftHumanInputFormRunApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @with_current_user
     @edit_permission_required
-    def post(self, current_user: Account, app_model: App, node_id: str):
+    @model_validate(HumanInputFormSubmitPayload)
+    def post(self, args: HumanInputFormSubmitPayload, current_user: Account, app_model: App, node_id: str):
         """
         Submit human input form preview
         """
-        args = HumanInputFormSubmitPayload.model_validate(console_ns.payload or {})
         workflow_service = WorkflowService()
         result = workflow_service.submit_human_input_form_preview(
             app_model=app_model,
@@ -987,11 +1051,11 @@ class WorkflowDraftHumanInputFormPreviewApi(Resource):
     @with_current_user
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
-    def post(self, current_user: Account, app_model: App, node_id: str):
+    @model_validate(HumanInputFormPreviewPayload)
+    def post(self, args: HumanInputFormPreviewPayload, current_user: Account, app_model: App, node_id: str):
         """
         Preview human input form content and placeholders
         """
-        args = HumanInputFormPreviewPayload.model_validate(console_ns.payload or {})
         inputs = args.inputs
 
         workflow_service = WorkflowService()
@@ -1023,12 +1087,12 @@ class WorkflowDraftHumanInputFormRunApi(Resource):
     @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
-    def post(self, current_user: Account, app_model: App, node_id: str):
+    @model_validate(HumanInputFormSubmitPayload)
+    def post(self, args: HumanInputFormSubmitPayload, current_user: Account, app_model: App, node_id: str):
         """
         Submit human input form preview
         """
         workflow_service = WorkflowService()
-        args = HumanInputFormSubmitPayload.model_validate(console_ns.payload or {})
         result = workflow_service.submit_human_input_form_preview(
             app_model=app_model,
             account=current_user,
@@ -1055,12 +1119,12 @@ class WorkflowDraftHumanInputDeliveryTestApi(Resource):
     @with_current_user
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
-    def post(self, current_user: Account, app_model: App, node_id: str):
+    @model_validate(HumanInputDeliveryTestPayload)
+    def post(self, args: HumanInputDeliveryTestPayload, current_user: Account, app_model: App, node_id: str):
         """
         Test human input delivery
         """
         workflow_service = WorkflowService()
-        args = HumanInputDeliveryTestPayload.model_validate(console_ns.payload or {})
         workflow_service.test_human_input_delivery(
             app_model=app_model,
             account=current_user,
@@ -1092,11 +1156,12 @@ class DraftWorkflowRunApi(Resource):
     @edit_permission_required
     @with_session
     @get_app_model(mode=[AppMode.WORKFLOW])
-    def post(self, session: Session, current_user: Account, app_model: App):
+    @model_validate(DraftWorkflowRunPayload)
+    def post(self, payload: DraftWorkflowRunPayload, session: Session, current_user: Account, app_model: App):
         """
         Run draft workflow
         """
-        args = DraftWorkflowRunPayload.model_validate(console_ns.payload or {}).model_dump(exclude_none=True)
+        args = payload.model_dump(exclude_none=True)
 
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
@@ -1165,14 +1230,14 @@ class DraftWorkflowNodeRunApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
-    def post(self, current_user: Account, app_model: App, node_id: str):
+    @model_validate(DraftWorkflowNodeRunPayload)
+    def post(self, payload: DraftWorkflowNodeRunPayload, current_user: Account, app_model: App, node_id: str):
         """
         Run draft workflow node
         """
-        args_model = DraftWorkflowNodeRunPayload.model_validate(console_ns.payload or {})
-        args = args_model.model_dump(exclude_none=True)
+        args = payload.model_dump(exclude_none=True)
 
-        user_inputs = args_model.inputs
+        user_inputs = payload.inputs
         if user_inputs is None:
             raise ValueError("missing inputs")
 
@@ -1221,13 +1286,14 @@ class PublishedWorkflowApi(Resource):
         """
         # fetch published workflow by app_model
         workflow_service = WorkflowService()
-        workflow = workflow_service.get_published_workflow(app_model=app_model, session=db.session())
+        session = db.session()
+        workflow = workflow_service.get_published_workflow(app_model=app_model, session=session)
 
         # return workflow, if not found, return None
         if workflow is None:
             return None
 
-        return dump_response(WorkflowResponse, workflow)
+        return dump_response(WorkflowResponse, WorkflowResponseSource(workflow, session=session))
 
     @console_ns.expect(console_ns.models[PublishWorkflowPayload.__name__])
     @console_ns.response(200, "Workflow published successfully", console_ns.models[WorkflowPublishResponse.__name__])
@@ -1238,16 +1304,15 @@ class PublishedWorkflowApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
-    def post(self, current_user: Account, app_model: App):
+    @model_validate(PublishWorkflowPayload)
+    def post(self, args: PublishWorkflowPayload, current_user: Account, app_model: App):
         """
         Publish workflow
         """
 
-        args = PublishWorkflowPayload.model_validate(console_ns.payload or {})
-
         workflow_service = WorkflowService()
         with sessionmaker(db.engine).begin() as session:
-            workflow, retirement_candidates = workflow_service.publish_workflow(
+            workflow = workflow_service.publish_workflow(
                 session=session,
                 app_model=app_model,
                 account=current_user,
@@ -1264,16 +1329,6 @@ class PublishedWorkflowApi(Resource):
 
             workflow_created_at = TimestampField().format(workflow.created_at)
 
-        binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
-            tenant_id=app_model.tenant_id,
-            agent_ids=retirement_candidates,
-            account_id=current_user.id,
-        )
-        enqueue_agent_resource_collection(
-            tenant_id=app_model.tenant_id,
-            binding_ids=binding_ids,
-            home_snapshot_ids=home_snapshot_ids,
-        )
         return {
             "result": "success",
             "created_at": workflow_created_at,
@@ -1323,11 +1378,11 @@ class DefaultBlockConfigApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App, block_type: str):
+    @model_validate(DefaultBlockConfigQuery)
+    def get(self, args: DefaultBlockConfigQuery, app_model: App, block_type: str):
         """
         Get default block config
         """
-        args = DefaultBlockConfigQuery.model_validate(request.args.to_dict(flat=True))
 
         filters = None
         if args.q:
@@ -1362,14 +1417,14 @@ class ConvertToWorkflowApi(Resource):
     @with_current_tenant_id
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
-    def post(self, current_tenant_id: str, current_user: Account, app_model: App):
+    @model_validate(ConvertToWorkflowPayload)
+    def post(self, payload: ConvertToWorkflowPayload, current_tenant_id: str, current_user: Account, app_model: App):
         """
         Convert basic mode of chatbot app to workflow mode
         Convert expert mode of chatbot app to workflow mode
         Convert Completion App to Workflow App
         """
-        payload = console_ns.payload or {}
-        args = ConvertToWorkflowPayload.model_validate(payload).model_dump(exclude_none=True)
+        args = payload.model_dump(exclude_none=True)
 
         # convert to workflow mode
         workflow_service = WorkflowService()
@@ -1404,9 +1459,8 @@ class WorkflowFeaturesApi(Resource):
     @with_current_user
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
-    def post(self, current_user: Account, app_model: App):
-
-        args = WorkflowFeaturesPayload.model_validate(console_ns.payload or {})
+    @model_validate(WorkflowFeaturesPayload)
+    def post(self, args: WorkflowFeaturesPayload, current_user: Account, app_model: App):
         features = args.features.model_dump(mode="json", exclude_unset=True)
 
         workflow_service = WorkflowService()
@@ -1435,12 +1489,12 @@ class PublishedAllWorkflowApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
-    def get(self, current_user: Account, app_model: App):
+    @model_validate(WorkflowListQuery)
+    def get(self, args: WorkflowListQuery, current_user: Account, app_model: App):
         """
         Get published workflows
         """
 
-        args = WorkflowListQuery.model_validate(request.args.to_dict(flat=True))
         page = args.page
         limit = args.limit
         user_id = args.user_id
@@ -1462,7 +1516,7 @@ class PublishedAllWorkflowApi(Resource):
             )
             return WorkflowPaginationResponse.model_validate(
                 {
-                    "items": [_WorkflowResponseSource(workflow, session=session) for workflow in workflows],
+                    "items": [WorkflowResponseSource(workflow, session=session) for workflow in workflows],
                     "page": page,
                     "limit": limit,
                     "has_more": has_more,
@@ -1525,11 +1579,11 @@ class WorkflowByIdApi(Resource):
     @with_current_user
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
-    def patch(self, current_user: Account, app_model: App, workflow_id: str):
+    @model_validate(WorkflowUpdatePayload)
+    def patch(self, args: WorkflowUpdatePayload, current_user: Account, app_model: App, workflow_id: str):
         """
         Update workflow attributes
         """
-        args = WorkflowUpdatePayload.model_validate(console_ns.payload or {})
 
         # Prepare update data
         update_data = {}
@@ -1556,7 +1610,7 @@ class WorkflowByIdApi(Resource):
             if not workflow:
                 raise NotFound("Workflow not found")
 
-            response = dump_response(WorkflowResponse, _WorkflowResponseSource(workflow, session=session))
+            response = dump_response(WorkflowResponse, WorkflowResponseSource(workflow, session=session))
 
         return response
 
@@ -1564,10 +1618,11 @@ class WorkflowByIdApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @with_current_user
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @console_ns.response(204, "Workflow deleted successfully")
-    def delete(self, app_model: App, workflow_id: str):
+    def delete(self, current_user: Account, app_model: App, workflow_id: str):
         """
         Delete workflow
         """
@@ -1577,7 +1632,7 @@ class WorkflowByIdApi(Resource):
         # Create a session and manage the transaction
         with sessionmaker(db.engine).begin() as session:
             try:
-                workflow_service.delete_workflow(
+                retirement_candidates = workflow_service.delete_workflow(
                     session=session,
                     workflow_ref=workflow_ref,
                 )
@@ -1588,6 +1643,11 @@ class WorkflowByIdApi(Resource):
             except ValueError as e:
                 raise NotFound(str(e))
 
+        WorkflowAgentRetirementService.retire_unowned(
+            tenant_id=app_model.tenant_id,
+            agent_ids=retirement_candidates,
+            account_id=current_user.id,
+        )
         return None, 204
 
 
@@ -1656,11 +1716,11 @@ class DraftWorkflowTriggerRunApi(Resource):
     @edit_permission_required
     @with_session
     @get_app_model(mode=[AppMode.WORKFLOW])
-    def post(self, session: Session, current_user: Account, app_model: App):
+    @model_validate(DraftWorkflowTriggerRunPayload)
+    def post(self, args: DraftWorkflowTriggerRunPayload, session: Session, current_user: Account, app_model: App):
         """
         Poll for trigger events and execute full workflow when event arrives
         """
-        args = DraftWorkflowTriggerRunPayload.model_validate(console_ns.payload or {})
         node_id = args.node_id
         workflow_service = WorkflowService()
         draft_workflow = workflow_service.get_draft_workflow(app_model, session=session)
@@ -1808,12 +1868,12 @@ class DraftWorkflowTriggerRunAllApi(Resource):
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @with_session
     @get_app_model(mode=[AppMode.WORKFLOW])
-    def post(self, session: Session, current_user: Account, app_model: App):
+    @model_validate(DraftWorkflowTriggerRunAllPayload)
+    def post(self, args: DraftWorkflowTriggerRunAllPayload, session: Session, current_user: Account, app_model: App):
         """
         Full workflow debug when the start node is a trigger
         """
 
-        args = DraftWorkflowTriggerRunAllPayload.model_validate(console_ns.payload or {})
         node_ids = args.node_ids
         workflow_service = WorkflowService()
         draft_workflow = workflow_service.get_draft_workflow(app_model, session=session)
@@ -1873,10 +1933,10 @@ class WorkflowOnlineUsersApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @with_current_tenant_id
-    def post(self, current_tenant_id: str):
-        args = WorkflowOnlineUsersPayload.model_validate(console_ns.payload or {})
-
+    @model_validate(WorkflowOnlineUsersPayload)
+    def post(self, args: WorkflowOnlineUsersPayload, current_tenant_id: str, current_user: Account):
         app_ids = args.app_ids
         if len(app_ids) > MAX_WORKFLOW_ONLINE_USERS_REQUEST_IDS:
             raise BadRequest(f"Maximum {MAX_WORKFLOW_ONLINE_USERS_REQUEST_IDS} app_ids are allowed per request.")
@@ -1884,8 +1944,20 @@ class WorkflowOnlineUsersApi(Resource):
         if not app_ids:
             return {"data": []}
 
+        access_filter = None
         workflow_service = WorkflowService()
-        accessible_app_ids = workflow_service.get_accessible_app_ids(app_ids, current_tenant_id, session=db.session())
+        with session_factory.create_session() as session:
+            if dify_config.RBAC_ENABLED:
+                access_filter = resolve_app_access_filter(current_tenant_id, current_user.id, session=session)
+            app_maintainers = workflow_service.get_tenant_app_maintainers(app_ids, current_tenant_id, session=session)
+
+        accessible_app_ids = set(app_maintainers)
+        if access_filter is not None:
+            accessible_app_ids = {
+                app_id
+                for app_id, maintainer in app_maintainers.items()
+                if access_filter.is_app_accessible(app_id, maintainer, current_user.id)
+            }
         ordered_accessible_app_ids = [app_id for app_id in app_ids if app_id in accessible_app_ids]
 
         users_json_by_app_id: dict[str, Any] = {}

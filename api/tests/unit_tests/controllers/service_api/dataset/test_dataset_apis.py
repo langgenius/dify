@@ -1,25 +1,21 @@
 """Unit tests for Service API dataset controller behavior.
 
 Service boundaries stay mocked, while ORM collaborators are concrete model instances
-persisted in one in-memory SQLite session. The controller's ``db.session`` and the
-session passed to unwrapped ``@with_session`` endpoints both use that same session,
-so model properties and service call contracts exercise real SQLAlchemy behavior.
+persisted through the shared SQLite session fixture.
 """
 
 import uuid
 from datetime import UTC, datetime
 from inspect import unwrap
-from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from flask import Flask, request
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
-from extensions.ext_database import db
 from models.account import Account, Tenant, TenantAccountRole
 from models.dataset import AppDatasetJoin, Dataset, DatasetMetadata, Document
 from models.enums import PermissionEnum
@@ -42,15 +38,9 @@ DATASET_MODEL_TABLES = (
 pytestmark = pytest.mark.parametrize("sqlite_session", [DATASET_MODEL_TABLES], indirect=True)
 
 
-@pytest.fixture(autouse=True)
-def controller_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Session:
-    """Route controller and model database access through the test's SQLite session."""
-
-    # Flask-SQLAlchemy exposes a callable registry that also proxies Session methods.
-    # Seed that registry with this fixture's Session so both access styles share one transaction.
-    existing_session_factory = cast(sessionmaker[Session], lambda: sqlite_session)
-    session_registry = scoped_session(existing_session_factory)
-    monkeypatch.setattr(db, "session", session_registry)
+@pytest.fixture
+def controller_session(sqlite_session: Session) -> Session:
+    """Expose the shared SQLite session under the controller-focused fixture name."""
     return sqlite_session
 
 
@@ -472,7 +462,7 @@ class TestDatasetApiPatch:
         dataset: Dataset,
         controller_session: Session,
     ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetApi
+        from controllers.service_api.dataset.dataset import DatasetApi, DatasetUpdatePayload
 
         dataset.name = "Updated Dataset"
         mock_dataset_svc.get_dataset.return_value = dataset
@@ -491,8 +481,12 @@ class TestDatasetApiPatch:
             json=payload,
         ):
             api = DatasetApi()
+            # `patch` is wrapped in @model_validate, so the unwrapped view expects
+            # the validated model where the decorator would have injected it.
+            validated_payload = DatasetUpdatePayload.model_validate(request.get_json() or {})
             response, status = unwrap(api.patch)(
                 api,
+                validated_payload,
                 controller_session,
                 _=dataset.tenant_id,
                 dataset_id=dataset.id,

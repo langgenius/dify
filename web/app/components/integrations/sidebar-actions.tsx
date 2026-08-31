@@ -181,7 +181,7 @@ export function IntegrationSidebarUtilityActions({
           <PopoverContent
             placement="top-start"
             sideOffset={4}
-            popupClassName="border-0 bg-transparent p-0 shadow-none"
+            className="border-0 bg-transparent p-0 shadow-none"
           >
             <PermissionQuickPanel permission={permission} onChange={onPermissionChange} />
           </PopoverContent>

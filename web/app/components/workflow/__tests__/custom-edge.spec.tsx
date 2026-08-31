@@ -1,13 +1,14 @@
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { Position } from 'reactflow'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import CustomEdge from '../custom-edge'
 import { BlockEnum, NodeRunningStatus } from '../types'
+import { renderWorkflowComponent } from './workflow-test-env'
 
 const mockUseAvailableBlocks = vi.hoisted(() => vi.fn())
 const mockUseNodesInteractions = vi.hoisted(() => vi.fn())
-const mockBlockSelector = vi.hoisted(() => vi.fn())
 const mockGradientRender = vi.hoisted(() => vi.fn())
 
 vi.mock('reactflow', () => ({
@@ -39,6 +40,9 @@ vi.mock('reactflow', () => ({
     Right: 'right',
     Left: 'left',
   },
+  useStoreApi: () => ({
+    getState: () => ({ getNodes: () => [] }),
+  }),
 }))
 
 vi.mock('../hooks/use-available-blocks', async (importOriginal) => {
@@ -58,30 +62,6 @@ vi.mock('../hooks/use-nodes-interactions', async (importOriginal) => {
     useNodesInteractions: () => mockUseNodesInteractions(),
   }
 })
-
-vi.mock('@/app/components/workflow/block-selector', () => ({
-  __esModule: true,
-  default: (props: {
-    open: boolean
-    onOpenChange: (open: boolean) => void
-    onSelect: (nodeType: string, pluginDefaultValue?: Record<string, unknown>) => void
-    availableBlocksTypes: string[]
-  }) => {
-    mockBlockSelector(props)
-    return (
-      <button
-        type="button"
-        data-testid="block-selector"
-        onClick={() => {
-          props.onOpenChange(true)
-          props.onSelect('llm', { provider: 'openai' })
-        }}
-      >
-        {props.availableBlocksTypes.join(',')}
-      </button>
-    )
-  },
-}))
 
 vi.mock('@/app/components/workflow/custom-edge-linear-gradient-render', () => ({
   __esModule: true,
@@ -106,8 +86,10 @@ describe('CustomEdge', () => {
     })
   })
 
-  it('should render a gradient edge and insert a node between the source and target', () => {
-    render(
+  it('should render a gradient edge and hide the start tab from its insert-node selector', async () => {
+    const user = userEvent.setup()
+
+    renderWorkflowComponent(
       <CustomEdge
         id="edge-1"
         source="source-node"
@@ -149,31 +131,20 @@ describe('CustomEdge', () => {
     expect(screen.getByTestId('base-edge')).toHaveAttribute('data-stroke', 'url(#edge-1)')
     expect(screen.getByTestId('base-edge')).toHaveAttribute('data-opacity', '0.3')
     expect(screen.getByTestId('base-edge')).toHaveAttribute('data-dasharray', '8 8')
-    expect(screen.getByTestId('block-selector')).toHaveTextContent('llm')
-    expect(screen.getByTestId('block-selector').parentElement).toHaveStyle({
+    const addBlockTrigger = screen.getByRole('button', { name: 'workflow.common.addBlock' })
+    expect(addBlockTrigger.parentElement).toHaveStyle({
       transform: 'translate(-50%, -50%) translate(24px, 48px)',
       opacity: '0.7',
       zIndex: '1001',
     })
 
-    fireEvent.click(screen.getByTestId('block-selector'))
+    await user.click(addBlockTrigger)
 
-    expect(mockHandleNodeAdd).toHaveBeenCalledWith(
-      {
-        nodeType: 'llm',
-        pluginDefaultValue: { provider: 'openai' },
-      },
-      {
-        prevNodeId: 'source-node',
-        prevNodeSourceHandle: 'source',
-        nextNodeId: 'target-node',
-        nextNodeTargetHandle: 'target',
-      },
-    )
+    expect(screen.queryByRole('tab', { name: 'workflow.tabs.start' })).not.toBeInTheDocument()
   })
 
   it('should prefer the running stroke color when the edge is selected', () => {
-    render(
+    renderWorkflowComponent(
       <CustomEdge
         id="edge-selected"
         source="source-node"
@@ -203,7 +174,7 @@ describe('CustomEdge', () => {
   })
 
   it('should use the fail-branch running color while the connected node is hovering', () => {
-    render(
+    renderWorkflowComponent(
       <CustomEdge
         id="edge-hover"
         source="source-node"
@@ -233,7 +204,7 @@ describe('CustomEdge', () => {
   })
 
   it('should fall back to the default edge color when no highlight state is active', () => {
-    render(
+    renderWorkflowComponent(
       <CustomEdge
         id="edge-default"
         source="source-node"
@@ -258,7 +229,9 @@ describe('CustomEdge', () => {
       'data-stroke',
       'var(--color-workflow-link-line-normal)',
     )
-    expect(screen.getByTestId('block-selector').parentElement).toHaveStyle({
+    expect(
+      screen.getByRole('button', { name: 'workflow.common.addBlock' }).parentElement,
+    ).toHaveStyle({
       opacity: '0',
       pointerEvents: 'none',
     })

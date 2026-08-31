@@ -1,29 +1,20 @@
 'use client'
 
-import type * as React from 'react'
 import { ScrollArea as BaseScrollArea } from '@base-ui/react/scroll-area'
 import { cn } from '../cn'
 
-const ScrollAreaRoot = BaseScrollArea.Root
-type ScrollAreaRootProps = BaseScrollArea.Root.Props
+type ScrollAreaProps = Omit<BaseScrollArea.Root.Props, 'className'> & {
+  className?: string
+}
+
+function ScrollArea({ className, ...props }: ScrollAreaProps) {
+  return (
+    <BaseScrollArea.Root {...props} data-dify-scroll-area="" className={cn('isolate', className)} />
+  )
+}
 
 const ScrollAreaContent = BaseScrollArea.Content
 type ScrollAreaContentProps = BaseScrollArea.Content.Props
-
-type ScrollAreaSlotClassNames = {
-  viewport?: string
-  content?: string
-  scrollbar?: string
-}
-type ScrollAreaOrientation = NonNullable<BaseScrollArea.Scrollbar.Props['orientation']>
-
-type ScrollAreaProps = Omit<ScrollAreaRootProps, 'children'> & {
-  children: React.ReactNode
-  orientation?: ScrollAreaOrientation
-  slotClassNames?: ScrollAreaSlotClassNames
-  label?: string
-  labelledBy?: string
-}
 
 const scrollAreaScrollbarClassName = cn(
   'group/scrollbar flex touch-none overflow-clip p-1 opacity-100 transition-opacity select-none motion-reduce:transition-none',
@@ -42,20 +33,17 @@ const scrollAreaThumbClassName = cn(
   'active:bg-state-base-handle-hover',
 )
 
-const scrollAreaViewportClassName = cn(
-  'size-full min-h-0 min-w-0',
-  'focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-state-accent-solid focus-visible:outline-solid',
-)
-
-const scrollAreaCornerClassName = 'bg-transparent'
-
 type ScrollAreaViewportProps = Omit<BaseScrollArea.Viewport.Props, 'className'> & {
   className?: string
 }
 
 function ScrollAreaViewport({ className, ...props }: ScrollAreaViewportProps) {
   return (
-    <BaseScrollArea.Viewport className={cn(scrollAreaViewportClassName, className)} {...props} />
+    <BaseScrollArea.Viewport
+      {...props}
+      data-dify-scroll-area-viewport=""
+      className={cn('isolate size-full rounded-[inherit] outline-none', className)}
+    />
   )
 }
 
@@ -66,9 +54,9 @@ type ScrollAreaScrollbarProps = Omit<BaseScrollArea.Scrollbar.Props, 'className'
 function ScrollAreaScrollbar({ className, ...props }: ScrollAreaScrollbarProps) {
   return (
     <BaseScrollArea.Scrollbar
-      data-dify-scrollbar=""
-      className={cn(scrollAreaScrollbarClassName, className)}
       {...props}
+      data-dify-scroll-area-scrollbar=""
+      className={cn(scrollAreaScrollbarClassName, className)}
     />
   )
 }
@@ -86,40 +74,13 @@ type ScrollAreaCornerProps = Omit<BaseScrollArea.Corner.Props, 'className'> & {
 }
 
 function ScrollAreaCorner({ className, ...props }: ScrollAreaCornerProps) {
-  return <BaseScrollArea.Corner className={cn(scrollAreaCornerClassName, className)} {...props} />
-}
-
-function ScrollArea({
-  children,
-  className,
-  orientation = 'vertical',
-  slotClassNames,
-  label,
-  labelledBy,
-  ...props
-}: ScrollAreaProps) {
-  return (
-    <ScrollAreaRoot className={className} {...props}>
-      <ScrollAreaViewport
-        aria-label={label}
-        aria-labelledby={labelledBy}
-        className={slotClassNames?.viewport}
-        role={label || labelledBy ? 'region' : undefined}
-      >
-        <ScrollAreaContent className={slotClassNames?.content}>{children}</ScrollAreaContent>
-      </ScrollAreaViewport>
-      <ScrollAreaScrollbar orientation={orientation} className={slotClassNames?.scrollbar}>
-        <ScrollAreaThumb />
-      </ScrollAreaScrollbar>
-    </ScrollAreaRoot>
-  )
+  return <BaseScrollArea.Corner className={cn('bg-transparent', className)} {...props} />
 }
 
 export {
   ScrollArea,
   ScrollAreaContent,
   ScrollAreaCorner,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -129,7 +90,6 @@ export type {
   ScrollAreaContentProps,
   ScrollAreaCornerProps,
   ScrollAreaProps,
-  ScrollAreaRootProps,
   ScrollAreaScrollbarProps,
   ScrollAreaThumbProps,
   ScrollAreaViewportProps,

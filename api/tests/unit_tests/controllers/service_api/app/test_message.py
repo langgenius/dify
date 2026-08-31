@@ -21,7 +21,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
-from flask import Flask
+from flask import Flask, request
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
@@ -273,8 +273,8 @@ class TestMessageService:
         mock_pagination.return_value = mock_result
 
         result = MessageService.pagination_by_first_id(
-            app_model=Mock(spec=App),
-            user=Mock(spec=EndUser),
+            app_model=App(),
+            user=EndUser(),
             conversation_id=str(uuid.uuid4()),
             first_id=None,
             limit=20,
@@ -294,8 +294,8 @@ class TestMessageService:
 
         with pytest.raises(services.errors.conversation.ConversationNotExistsError):
             MessageService.pagination_by_first_id(
-                app_model=Mock(spec=App),
-                user=Mock(spec=EndUser),
+                app_model=App(),
+                user=EndUser(),
                 conversation_id="invalid_id",
                 first_id=None,
                 limit=20,
@@ -309,8 +309,8 @@ class TestMessageService:
 
         with pytest.raises(FirstMessageNotExistsError):
             MessageService.pagination_by_first_id(
-                app_model=Mock(spec=App),
-                user=Mock(spec=EndUser),
+                app_model=App(),
+                user=EndUser(),
                 conversation_id=str(uuid.uuid4()),
                 first_id="invalid_first_id",
                 limit=20,
@@ -323,9 +323,9 @@ class TestMessageService:
         mock_create_feedback.return_value = None
 
         MessageService.create_feedback(
-            app_model=Mock(spec=App),
+            app_model=App(),
             message_id=str(uuid.uuid4()),
-            user=Mock(spec=EndUser),
+            user=EndUser(),
             rating=FeedbackRating.LIKE,
             content="Great response!",
             session=orm_session,
@@ -340,9 +340,9 @@ class TestMessageService:
 
         with pytest.raises(MessageNotExistsError):
             MessageService.create_feedback(
-                app_model=Mock(spec=App),
+                app_model=App(),
                 message_id="invalid_message_id",
-                user=Mock(spec=EndUser),
+                user=EndUser(),
                 rating=FeedbackRating.LIKE,
                 content=None,
                 session=orm_session,
@@ -357,9 +357,7 @@ class TestMessageService:
         ]
         mock_get_feedbacks.return_value = mock_feedbacks
 
-        result = MessageService.get_all_messages_feedbacks(
-            app_model=Mock(spec=App), page=1, limit=20, session=orm_session
-        )
+        result = MessageService.get_all_messages_feedbacks(app_model=App(), page=1, limit=20, session=orm_session)
 
         assert len(result) == 2
         assert result[0]["rating"] == "like"
@@ -371,8 +369,8 @@ class TestMessageService:
         mock_get_questions.return_value = mock_questions
 
         result = MessageService.get_suggested_questions_after_answer(
-            app_model=Mock(spec=App),
-            user=Mock(spec=EndUser),
+            app_model=App(),
+            user=EndUser(),
             message_id=str(uuid.uuid4()),
             invoke_from=Mock(),
             session=orm_session,
@@ -388,8 +386,8 @@ class TestMessageService:
 
         with pytest.raises(SuggestedQuestionsAfterAnswerDisabledError):
             MessageService.get_suggested_questions_after_answer(
-                app_model=Mock(spec=App),
-                user=Mock(spec=EndUser),
+                app_model=App(),
+                user=EndUser(),
                 message_id=str(uuid.uuid4()),
                 invoke_from=Mock(),
                 session=orm_session,
@@ -402,8 +400,8 @@ class TestMessageService:
 
         with pytest.raises(MessageNotExistsError):
             MessageService.get_suggested_questions_after_answer(
-                app_model=Mock(spec=App),
-                user=Mock(spec=EndUser),
+                app_model=App(),
+                user=EndUser(),
                 message_id="invalid_message_id",
                 invoke_from=Mock(),
                 session=orm_session,
@@ -478,8 +476,9 @@ class TestMessageFeedbackApi:
             method="POST",
             json={"rating": "like", "content": "ok"},
         ):
+            payload = MessageFeedbackPayload.model_validate(request.get_json() or {})
             with pytest.raises(NotFound):
-                handler(api, app_model=app_model, end_user=end_user, message_id="m1")
+                handler(api, payload, app_model=app_model, end_user=end_user, message_id="m1")
 
 
 class TestAppGetFeedbacksApi:

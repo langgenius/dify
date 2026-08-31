@@ -20,13 +20,17 @@ const ApiAccess = ({ expand, apiEnabled }: ApiAccessProps) => {
     <div className={cn(expand ? 'px-1 py-2' : 'flex justify-center px-3 py-2')}>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
-          render={
-            <button type="button" className="w-full border-none bg-transparent p-0 text-left">
+          render={(props, state) => (
+            <button
+              {...props}
+              type="button"
+              className={cn('w-full border-none bg-transparent p-0 text-left', props.className)}
+            >
               <div
                 className={cn(
                   'relative flex h-8 cursor-pointer items-center gap-2 rounded-lg border border-components-panel-border px-3',
                   !expand && 'w-8 justify-center',
-                  open ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
+                  state.open ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
                 )}
               >
                 <ApiAggregate className="size-4 shrink-0 text-text-secondary" />
@@ -41,13 +45,13 @@ const ApiAccess = ({ expand, apiEnabled }: ApiAccessProps) => {
                 />
               </div>
             </button>
-          }
+          )}
         />
         <PopoverContent
           placement="top-start"
           sideOffset={4}
           alignOffset={-4}
-          popupClassName="border-none bg-transparent shadow-none"
+          className="border-none bg-transparent shadow-none"
         >
           <Card apiEnabled={apiEnabled} />
         </PopoverContent>

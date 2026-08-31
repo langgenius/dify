@@ -1,66 +1,14 @@
 import type { ReactNode } from 'react'
 import type { AppSelectorValue } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import ReasoningConfigForm from '../reasoning-config-form'
-
-vi.mock('@langgenius/dify-ui/select', async () => {
-  const React = await import('react')
-  const SelectContext = React.createContext<{
-    onValueChange?: (value: string) => void
-  }>({})
-
-  return {
-    Select: ({
-      children,
-      onValueChange,
-    }: {
-      children: React.ReactNode
-      onValueChange?: (value: string) => void
-    }) => (
-      <SelectContext value={{ onValueChange }}>
-        <div>{children}</div>
-      </SelectContext>
-    ),
-    SelectTrigger: ({ children }: { children: React.ReactNode }) => (
-      <button type="button">{children}</button>
-    ),
-    SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => {
-      const context = React.use(SelectContext)
-      return (
-        <button
-          key={value}
-          data-testid={`select-${value}`}
-          type="button"
-          onClick={() => context.onValueChange?.(value)}
-        >
-          {children}
-        </button>
-      )
-    },
-    SelectItemText: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-    SelectItemIndicator: () => null,
-  }
-})
-
-vi.mock('@langgenius/dify-ui/switch', () => ({
-  Switch: ({
-    checked,
-    onCheckedChange,
-  }: {
-    checked: boolean
-    onCheckedChange: (checked: boolean) => void
-  }) => (
-    <button data-testid="auto-switch" onClick={() => onCheckedChange(!checked)}>
-      {checked ? 'on' : 'off'}
-    </button>
-  ),
-}))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useLanguage: () => 'en_US',
@@ -211,7 +159,7 @@ describe('ReasoningConfigForm', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('auto-switch'))
+    fireEvent.click(screen.getByRole('switch'))
 
     expect(onChange).toHaveBeenCalledWith({
       field: {
@@ -407,7 +355,8 @@ describe('ReasoningConfigForm', () => {
     })
   })
 
-  it('should update number, boolean, and select fields', () => {
+  it('should update number, boolean, and select fields', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
 
     render(
@@ -469,7 +418,8 @@ describe('ReasoningConfigForm', () => {
 
     fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '7' } })
     fireEvent.click(screen.getByTestId('boolean-input'))
-    fireEvent.click(screen.getByTestId('select-beta'))
+    await user.click(screen.getByRole('combobox'))
+    await user.click(await screen.findByRole('option', { name: 'Beta' }))
 
     expect(onChange).toHaveBeenNthCalledWith(
       1,
