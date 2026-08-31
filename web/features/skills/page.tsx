@@ -21,7 +21,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -33,7 +34,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useQueryState } from 'nuqs'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
@@ -47,6 +48,7 @@ import { consoleQuery } from '@/service/client'
 import { downloadBlob } from '@/utils/download'
 import { fetchSkillArchiveBlob } from './client'
 import { SkillReferencesList, SkillReferencesListSkeleton } from './detail/skill-metadata'
+import { getSkillErrorCode, getSkillErrorDetailString, normalizeSkillError } from './error'
 import { useSkillPermissions } from './permissions'
 import { skillKeywordQueryParser, skillQueryParamNames, skillTagQueryParser } from './query-params'
 import { SkillListTagManagementModal } from './skill-list-tag-management-modal'
@@ -131,7 +133,7 @@ function SkillPlaceholderState({
       aria-labelledby="skill-placeholder-title"
       className="relative col-span-full min-h-[calc(100vh-142px)] overflow-hidden"
     >
-      <div className="pointer-events-none absolute inset-0 grid grid-cols-[repeat(auto-fill,minmax(296px,345px))] grid-rows-4 content-start gap-6">
+      <div className="pointer-events-none absolute inset-0 grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] grid-rows-4 gap-3">
         {placeholderCardIds.map((id) => (
           <div key={id} className="rounded-xl bg-background-default-lighter opacity-75" />
         ))}
@@ -248,9 +250,13 @@ function DeleteSkillDialog({
     (referenceCount > 0 && confirmDeleteInput !== skill.display_name)
   const description =
     referenceCount > 0
-      ? t(($) => $['skillManagement.deleteDialog.referencedDescription'], {
-          count: referenceCount,
-        })
+      ? t(
+          ($) =>
+            referenceCount === 1
+              ? $['skillManagement.deleteDialog.referencedDescription_one']
+              : $['skillManagement.deleteDialog.referencedDescription_other'],
+          { count: referenceCount },
+        )
       : t(($) => $['skillManagement.deleteDialog.description'])
 
   const handleDelete = () => {
@@ -323,24 +329,25 @@ function DeleteSkillDialog({
                   }}
                 />
               </FieldLabel>
-              <div className="relative">
-                <FieldControl
+              <InputGroup>
+                <InputGroupInput
                   type="text"
                   autoComplete="off"
                   spellCheck={false}
                   placeholder={t(($) => $['skillManagement.deleteDialog.confirmInputPlaceholder'])}
                   value={confirmDeleteInput}
                   onValueChange={setConfirmDeleteInput}
-                  className="border-components-input-border-hover bg-components-input-bg-normal pr-20 focus:border-components-input-border-active focus:bg-components-input-bg-active"
                 />
-                <button
-                  type="button"
-                  onClick={() => setConfirmDeleteInput(skill.display_name)}
-                  className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-black/6 px-2.5 py-1 system-xs-medium text-text-secondary hover:bg-black/10"
-                >
-                  {tCommon(($) => $['operation.fill'])}
-                </button>
-              </div>
+                <InputGroupAddon align="inline-end">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDeleteInput(skill.display_name)}
+                    className="rounded-full bg-black/6 px-2.5 py-1 system-xs-medium text-text-secondary hover:bg-black/10"
+                  >
+                    {tCommon(($) => $['operation.fill'])}
+                  </button>
+                </InputGroupAddon>
+              </InputGroup>
             </Field>
           )}
         </div>
@@ -377,6 +384,7 @@ function SkillCard({
   const { t: tCommon } = useTranslation('common')
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
+  const nameId = useId()
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const duplicateMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions(),
@@ -424,16 +432,20 @@ function SkillCard({
   }
 
   return (
-    <article className="group relative col-span-1 h-42 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out hover:shadow-lg">
+    <article
+      aria-labelledby={nameId}
+      className="group relative col-span-1 h-42 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:rounded-xl after:content-[''] hover:shadow-lg has-[>div>a:focus-visible]:after:inset-ring-2 has-[>div>a:focus-visible]:after:inset-ring-state-accent-solid"
+    >
       <div className="flex h-full min-w-0 flex-col">
         <Link
           href={`/skills/${skill.id}`}
+          aria-labelledby={nameId}
           className="block min-w-0 shrink-0 cursor-pointer outline-hidden"
         >
           <div className="flex items-center gap-3 px-4 pt-4 pb-2">
             <SkillIcon />
             <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
-              <h2 className="truncate system-md-semibold text-text-secondary">
+              <h2 id={nameId} className="truncate system-md-semibold text-text-secondary">
                 {skill.display_name}
               </h2>
               {!skill.name.startsWith('untitled-skill-') && (
@@ -442,9 +454,68 @@ function SkillCard({
             </div>
           </div>
           <div className="px-4 py-1 system-xs-regular text-text-tertiary">
-            <div className="line-clamp-2 min-h-8">{skill.description}</div>
+            <div className="line-clamp-2 min-h-8">
+              {skill.description.trim()
+                ? skill.description
+                : t(($) => $['skillManagement.noDescription'])}
+            </div>
           </div>
         </Link>
+        {(canEdit || canDelete || !!skill.latest_published_version_id) && (
+          <div
+            className={cn(
+              'pointer-events-none absolute top-2 right-2 z-20 flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 opacity-0 shadow-lg backdrop-blur-xs transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-data-popup-open:pointer-events-auto has-data-popup-open:opacity-100',
+            )}
+          >
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger
+                aria-label={t(($) => $['skillManagement.moreActions'], {
+                  name: skill.display_name,
+                })}
+                className="flex size-8 cursor-pointer items-center justify-center rounded-lg p-1.5 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <span className="sr-only">
+                  {t(($) => $['skillManagement.moreActions'], { name: skill.display_name })}
+                </span>
+                <span aria-hidden className="i-ri-more-fill size-4.5 text-text-tertiary" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
+                {canEdit && (
+                  <DropdownMenuItem className="gap-2" onClick={handleDuplicate}>
+                    <span
+                      aria-hidden
+                      className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary"
+                    />
+                    <span>{tCommon(($) => $['operation.duplicate'])}</span>
+                  </DropdownMenuItem>
+                )}
+                {skill.latest_published_version_id && (
+                  <DropdownMenuItem className="gap-2" onClick={handleExport}>
+                    <span
+                      aria-hidden
+                      className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary"
+                    />
+                    <span>{tCommon(($) => $['operation.export'])}</span>
+                  </DropdownMenuItem>
+                )}
+                {canDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      variant="destructive"
+                      className="gap-2"
+                      onClick={() => setIsDeleteOpen(true)}
+                    >
+                      <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+                      <span>{tCommon(($) => $['operation.delete'])}</span>
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
         <div className="relative flex h-6 shrink-0 items-start px-3">
           <SkillCardTags
             skillId={skill.id}
@@ -456,9 +527,13 @@ function SkillCard({
         <div className="flex min-w-0 shrink-0 items-center px-4 pt-2 pb-3 system-xs-regular text-text-tertiary">
           <div className="flex min-w-0 flex-1 items-center gap-1">
             <span className="shrink-0">
-              {t(($) => $['skillManagement.referenceCount'], {
-                count: skill.reference_count ?? 0,
-              })}
+              {t(
+                ($) =>
+                  skill.reference_count === 1
+                    ? $['skillManagement.referenceCount_one']
+                    : $['skillManagement.referenceCount_other'],
+                { count: skill.reference_count ?? 0 },
+              )}
             </span>
             <span aria-hidden className="shrink-0 text-text-quaternary">
               ·
@@ -479,60 +554,6 @@ function SkillCard({
           </div>
         </div>
       )}
-      {(canEdit || canDelete || !!skill.latest_published_version_id) && (
-        <div
-          className={cn(
-            'pointer-events-none absolute right-2 z-20 flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 opacity-0 shadow-lg backdrop-blur-xs transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-data-popup-open:pointer-events-auto has-data-popup-open:opacity-100',
-            isDraft ? 'top-7' : 'top-2',
-          )}
-        >
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger
-              aria-label={t(($) => $['skillManagement.moreActions'], { name: skill.display_name })}
-              className="flex size-8 cursor-pointer items-center justify-center rounded-lg p-1.5 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <span className="sr-only">
-                {t(($) => $['skillManagement.moreActions'], { name: skill.display_name })}
-              </span>
-              <span aria-hidden className="i-ri-more-fill size-4.5 text-text-tertiary" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-40">
-              {canEdit && (
-                <DropdownMenuItem className="gap-2" onClick={handleDuplicate}>
-                  <span
-                    aria-hidden
-                    className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary"
-                  />
-                  <span>{tCommon(($) => $['operation.duplicate'])}</span>
-                </DropdownMenuItem>
-              )}
-              {skill.latest_published_version_id && (
-                <DropdownMenuItem className="gap-2" onClick={handleExport}>
-                  <span
-                    aria-hidden
-                    className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary"
-                  />
-                  <span>{tCommon(($) => $['operation.export'])}</span>
-                </DropdownMenuItem>
-              )}
-              {canDelete && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    className="gap-2"
-                    onClick={() => setIsDeleteOpen(true)}
-                  >
-                    <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-                    <span>{tCommon(($) => $['operation.delete'])}</span>
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      )}
       <DeleteSkillDialog skill={skill} open={isDeleteOpen} onOpenChange={setIsDeleteOpen} />
     </article>
   )
@@ -543,7 +564,7 @@ function SkillTagFilter({ onOpenTagManagement }: { onOpenTagManagement: () => vo
     skillQueryParamNames.tag,
     skillTagQueryParser,
   )
-  const { data: tagList = [] } = useQuery(
+  const tagsQuery = useQuery(
     consoleQuery.tags.get.queryOptions({
       input: {
         query: {
@@ -552,13 +573,33 @@ function SkillTagFilter({ onOpenTagManagement }: { onOpenTagManagement: () => vo
       },
     }),
   )
-  const skillTags = tagList.filter((tag) => tag.type === 'skill')
-  const tagIdByName = new Map(skillTags.map((tag) => [tag.name, tag.id]))
-  const tagNameById = new Map(skillTags.map((tag) => [tag.id, tag.name]))
+  const skillTags = useMemo(
+    () => (tagsQuery.data ?? []).filter((tag) => tag.type === 'skill'),
+    [tagsQuery.data],
+  )
+  const tagIdByName = useMemo(
+    () => new Map(skillTags.map((tag) => [tag.name, tag.id])),
+    [skillTags],
+  )
+  const tagNameById = useMemo(
+    () => new Map(skillTags.map((tag) => [tag.id, tag.name])),
+    [skillTags],
+  )
+  const validSelectedTags = useMemo(
+    () => selectedTags.filter((tagName) => tagIdByName.has(tagName)),
+    [selectedTags, tagIdByName],
+  )
   const selectedTagIds = selectedTags.flatMap((tagName) => {
     const tagId = tagIdByName.get(tagName)
     return tagId ? [tagId] : []
   })
+
+  useEffect(() => {
+    if (!tagsQuery.isSuccess || validSelectedTags.length === selectedTags.length) return
+
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- The loaded tag list is authoritative, so remove stale names from the external URL query state.
+    void setSelectedTags(validSelectedTags)
+  }, [selectedTags, setSelectedTags, tagsQuery.isSuccess, validSelectedTags])
 
   return (
     <TagFilter
@@ -722,9 +763,15 @@ export default function SkillsPage() {
   const [keyword] = useQueryState(skillQueryParamNames.keyword, skillKeywordQueryParser)
   const [selectedTags] = useQueryState(skillQueryParamNames.tag, skillTagQueryParser)
   const debouncedKeyword = useDebounce(keyword.trim(), { wait: 300 })
-  const createMutation = useMutation(consoleQuery.workspaces.current.skills.post.mutationOptions())
+  const createMutation = useMutation(
+    consoleQuery.workspaces.current.skills.post.mutationOptions({
+      context: { silent: true },
+    }),
+  )
   const importMutation = useMutation(
-    consoleQuery.workspaces.current.skills.import.post.mutationOptions(),
+    consoleQuery.workspaces.current.skills.import.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const skillsQuery = useInfiniteQuery({
     ...consoleQuery.workspaces.current.skills.get.infiniteOptions({
@@ -759,8 +806,13 @@ export default function SkillsPage() {
           invalidateSkillListQueries(queryClient)
           router.push(`/skills/${skill.id}`)
         },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.createFailed']))
+        onError: async (error) => {
+          const normalizedError = await normalizeSkillError(error)
+          toast.error(
+            getSkillErrorCode(normalizedError) === 'skill_limit_exceeded'
+              ? t(($) => $['skillManagement.errors.workspaceLimit'])
+              : t(($) => $['skillManagement.createFailed']),
+          )
         },
       },
     )
@@ -781,7 +833,25 @@ export default function SkillsPage() {
           invalidateSkillListQueries(queryClient)
           router.push(`/skills/${skill.id}`)
         },
-        onError: () => {
+        onError: async (error) => {
+          const normalizedError = await normalizeSkillError(error)
+          const errorCode = getSkillErrorCode(normalizedError)
+          if (errorCode === 'skill_name_conflict') {
+            toast.error(
+              t(($) => $['skillManagement.errors.nameConflict'], {
+                name: getSkillErrorDetailString(normalizedError, 'name') ?? '',
+              }),
+            )
+            return
+          }
+          if (errorCode === 'skill_limit_exceeded') {
+            toast.error(t(($) => $['skillManagement.errors.workspaceLimit']))
+            return
+          }
+          if (errorCode === 'missing_skill_md') {
+            toast.error(t(($) => $['skillManagement.errors.missingSkillMd']))
+            return
+          }
           toast.error(t(($) => $['skillManagement.importFailed']))
         },
         onSettled: () => {
@@ -833,7 +903,7 @@ export default function SkillsPage() {
       </div>
 
       <div className="min-h-0 flex-1">
-        <ScrollArea className="relative h-full min-h-0 min-w-0 overflow-hidden">
+        <ScrollArea className="h-full min-h-0 min-w-0 overflow-hidden">
           <ScrollAreaViewport
             ref={listViewportRef}
             tabIndex={-1}

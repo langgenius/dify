@@ -1,7 +1,8 @@
 'use client'
 
 import { Avatar } from '@langgenius/dify-ui/avatar'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiAccountCircleLine,
@@ -17,6 +18,7 @@ import Loading from '@/app/components/base/loading'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
 import useDocumentTitle from '@/hooks/use-document-title'
+import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { useLogout } from '@/service/use-common'
@@ -229,9 +231,14 @@ export default function OAuthAuthorize() {
 
       <div className="flex flex-col items-center gap-2 pt-4">
         {!isLoggedIn ? (
-          <Button variant="primary" size="large" className="w-full" onClick={onLoginSwitchClick}>
+          <Link
+            href={`/signin?redirect_url=${encodeURIComponent(
+              buildReturnUrl('/account/oauth/authorize', `?${searchParams.toString()}`),
+            )}`}
+            className={cn(buttonVariants({ variant: 'primary', size: 'large' }), 'w-full')}
+          >
             {t(($) => $.login, { ns: 'oauth' })}
-          </Button>
+          </Link>
         ) : (
           <>
             <Button
@@ -244,9 +251,9 @@ export default function OAuthAuthorize() {
             >
               {t(($) => $.continue, { ns: 'oauth' })}
             </Button>
-            <Button size="large" className="w-full" onClick={() => router.push('/apps')}>
+            <Link href="/apps" className={cn(buttonVariants({ size: 'large' }), 'w-full')}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </Button>
+            </Link>
           </>
         )}
       </div>

@@ -11,6 +11,7 @@ This test suite covers:
 
 import json
 import uuid
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 from typing import Any, cast
@@ -215,6 +216,10 @@ class TestWorkflowAssociatedDataFactory:
 
 @pytest.mark.usefixtures("sqlite_session")
 class TestWorkflowService:
+    @pytest.fixture(autouse=True)
+    def _community_edition(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+
     """
     Comprehensive unit tests for WorkflowService methods.
 
@@ -1272,7 +1277,6 @@ class TestWorkflowService:
 
         with (
             patch("services.workflow_service.app_published_workflow_was_updated"),
-            patch("services.workflow_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
             patch(
                 "services.workflow_service.register_new_agent_beta_workflow_publish_after_commit"
             ) as register_workflow_publish,
@@ -1306,7 +1310,6 @@ class TestWorkflowService:
 
         with (
             patch("services.workflow_service.app_published_workflow_was_updated"),
-            patch("services.workflow_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
             patch(
                 "services.agent.workflow_publish_service.WorkflowAgentPublishService.copy_agent_node_bindings_to_published",
                 return_value=True,
@@ -1346,10 +1349,6 @@ class TestWorkflowService:
 
         with (
             patch("services.workflow_service.app_published_workflow_was_updated"),
-            patch(
-                "services.workflow_service.dify_config.DEPLOYMENT_EDITION",
-                DeploymentEdition.COMMUNITY,
-            ),
         ):
             first = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
             second = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
@@ -1376,10 +1375,6 @@ class TestWorkflowService:
 
         with (
             patch("services.workflow_service.app_published_workflow_was_updated"),
-            patch(
-                "services.workflow_service.dify_config.DEPLOYMENT_EDITION",
-                DeploymentEdition.COMMUNITY,
-            ),
         ):
             published = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
             sqlite_session.flush()
@@ -1415,10 +1410,6 @@ class TestWorkflowService:
 
             with (
                 patch("services.workflow_service.app_published_workflow_was_updated"),
-                patch(
-                    "services.workflow_service.dify_config.DEPLOYMENT_EDITION",
-                    DeploymentEdition.COMMUNITY,
-                ),
             ):
                 workflow = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
             published.append(workflow)
@@ -1485,7 +1476,13 @@ class TestWorkflowService:
         ):
             workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
 
-    def test_publish_workflow_trigger_limit_exceeded(self, workflow_service: WorkflowService, sqlite_session: Session):
+    def test_publish_workflow_trigger_limit_exceeded(
+        self,
+        workflow_service: WorkflowService,
+        sqlite_session: Session,
+        config_overrides: Callable[..., None],
+    ):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         """
         Test publish_workflow raises error when trigger node limit exceeded in SANDBOX plan.
 
@@ -1511,7 +1508,6 @@ class TestWorkflowService:
         sqlite_session.commit()
 
         with (
-            patch("services.workflow_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("services.workflow_service.BillingService") as MockBillingService,
         ):
             MockBillingService.get_info.return_value = {"subscription": {"plan": "sandbox"}}

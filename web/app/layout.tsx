@@ -16,6 +16,7 @@ import {
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { headers } from '@/next/headers'
 import { getApplicationTitle } from '@/utils/document-title'
+import { basePath } from '@/utils/var'
 import { CloudAnalytics } from './components/base/analytics-consent/cloud-analytics'
 import { PartnerStackCookieRecorder } from './components/billing/partner-stack/cookie-recorder'
 import { AgentationLoader } from './components/devtools/agentation-loader'
@@ -50,13 +51,18 @@ const resizeObserverErrorFilterScript = `
 
 export async function generateMetadata(): Promise<Metadata> {
   const systemFeatures = await prefetchSystemFeatures()
-  const applicationTitle = getApplicationTitle(systemFeatures?.branding)
+  const branding = systemFeatures?.branding
+  const applicationTitle = getApplicationTitle(branding)
+  const brandedFavicon = branding?.enabled ? branding.favicon : undefined
 
   return {
     title: {
       default: applicationTitle,
       template: `%s - ${applicationTitle}`,
     },
+    icons: brandedFavicon
+      ? { icon: brandedFavicon, apple: brandedFavicon }
+      : { icon: `${basePath}/favicon.ico` },
   }
 }
 

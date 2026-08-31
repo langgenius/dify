@@ -27,6 +27,7 @@ def test_create_new_account_uses_requested_language(mock_create_account):
         interface_language="zh-Hans",
         timezone="Asia/Shanghai",
         ip_address=None,
+        check_normalized_email=True,
         session=ANY,
     )
 

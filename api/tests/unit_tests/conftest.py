@@ -41,6 +41,7 @@ import core.db.session_factory as session_factory_module
 from extensions import ext_redis
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import TypeBase
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _patch_redis_clients_on_loaded_modules() -> None:
@@ -99,17 +100,9 @@ def reset_redis_mock() -> None:
 
 
 @pytest.fixture(autouse=True)
-def reset_secret_key() -> Iterator[None]:
+def reset_secret_key(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ensure SECRET_KEY-dependent logic sees an empty config value by default."""
-
-    from configs import dify_config
-
-    original = dify_config.SECRET_KEY
-    dify_config.SECRET_KEY = ""
-    try:
-        yield
-    finally:
-        dify_config.SECRET_KEY = original
+    apply_config_overrides(monkeypatch, SECRET_KEY="")
 
 
 @pytest.fixture
@@ -120,14 +113,9 @@ def config_overrides(monkeypatch: pytest.MonkeyPatch) -> Callable[..., None]:
     field names keeps tests scoped without replacing that instance with an
     unconstrained mock. ``monkeypatch`` restores every value after the test.
     """
-    from configs import dify_config
 
     def apply(**values: object) -> None:
-        unknown_fields = values.keys() - type(dify_config).model_fields.keys()
-        if unknown_fields:
-            raise ValueError(f"Unknown DifyConfig fields: {sorted(unknown_fields)}")
-        for name, value in values.items():
-            monkeypatch.setattr(dify_config, name, value)
+        apply_config_overrides(monkeypatch, **values)
 
     return apply
 

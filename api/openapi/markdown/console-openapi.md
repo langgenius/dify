@@ -346,6 +346,7 @@ Check if activation token is valid
 | mode | query | App mode filter | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all |
 | name | query | Filter by app name | No | string |
 | page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
+| publication_status | query | Filter by published or draft Agent configuration status | No | string, <br>**Available values:** "drafts", "published" |
 | sort_by | query | Sort apps by last modified, recently created, or earliest created | No | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified |
 | tag_ids | query | Filter by tag IDs | No | [ string ] |
 
@@ -3359,32 +3360,6 @@ Get workflow application execution logs
 | ---- | ----------- | ------ |
 | 200 | Workflow app logs retrieved successfully | **application/json**: [WorkflowAppLogPaginationResponse](#workflowapplogpaginationresponse)<br> |
 
-### [GET] /apps/{app_id}/workflow-archived-logs
-**Get workflow archived logs**
-
-Get workflow archived execution logs
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| created_at__after | query | Filter logs created after this timestamp | No | dateTime |
-| created_at__before | query | Filter logs created before this timestamp | No | dateTime |
-| created_by_account | query | Filter by account | No | string |
-| created_by_end_user_session_id | query | Filter by end user session ID | No | string |
-| detail | query | Whether to return detailed logs | No | boolean |
-| keyword | query | Search keyword for filtering logs | No | string |
-| limit | query | Number of items per page (1-100) | No | integer, <br>**Default:** 20 |
-| page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
-| status | query | Execution status filter (succeeded, failed, stopped, partial-succeeded) | No | string, <br>**Available values:** "failed", "partial-succeeded", "paused", "running", "scheduled", "stopped", "succeeded" |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Workflow archived logs retrieved successfully | **application/json**: [WorkflowArchivedLogPaginationResponse](#workflowarchivedlogpaginationresponse)<br> |
-
 ### [GET] /apps/{app_id}/workflow-runs
 **Get workflow run list**
 
@@ -3458,22 +3433,6 @@ Stop running workflow task
 | ---- | ----------- | ------ |
 | 200 | Workflow run detail retrieved successfully | **application/json**: [WorkflowRunDetailResponse](#workflowrundetailresponse)<br> |
 | 404 | Workflow run not found |  |
-
-### [GET] /apps/{app_id}/workflow-runs/{run_id}/export
-Generate a download URL for an archived workflow run.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| run_id | path | Workflow run ID | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Export URL generated | **application/json**: [WorkflowRunExportResponse](#workflowrunexportresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow-runs/{run_id}/node-executions
 **Get workflow run node execution list**
@@ -11325,6 +11284,9 @@ Returns permission flags that control workspace features like member invitations
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
+| reverse | query |  | No | boolean |
 | app_id | path |  | Yes | string (uuid) |
 
 #### Responses
@@ -11384,6 +11346,19 @@ Returns permission flags that control workspace features like member invitations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ResourceWhitelist](#resourcewhitelist)<br> |
+
+### [GET] /workspaces/current/rbac/apps/{app_id}/whitelist_config
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResourceWhitelistConfig](#resourcewhitelistconfig)<br> |
 
 ### [DELETE] /workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/member-bindings
 #### Parameters
@@ -11453,6 +11428,9 @@ Returns permission flags that control workspace features like member invitations
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
+| reverse | query |  | No | boolean |
 | dataset_id | path |  | Yes | string (uuid) |
 
 #### Responses
@@ -11512,6 +11490,19 @@ Returns permission flags that control workspace features like member invitations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ResourceWhitelist](#resourcewhitelist)<br> |
+
+### [GET] /workspaces/current/rbac/datasets/{dataset_id}/whitelist_config
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResourceWhitelistConfig](#resourcewhitelistconfig)<br> |
 
 ### [GET] /workspaces/current/rbac/members/{member_id}/rbac-roles
 #### Parameters
@@ -13500,6 +13491,20 @@ default (the config form sends the full desired feature state on save).
 | suggested_questions_after_answer | [AgentSuggestedQuestionsAfterAnswerFeatureConfig](#agentsuggestedquestionsafteranswerfeatureconfig) | Follow-up suggestions config, e.g. {'enabled': true} | No |
 | text_to_speech | [AgentTextToSpeechFeatureConfig](#agenttexttospeechfeatureconfig) | Text-to-speech config | No |
 
+#### AgentAppListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| creator_ids | [ string ] | Filter by creator account IDs | No |
+| is_created_by_me | boolean | Filter by creator | No |
+| limit | integer, <br>**Default:** 20 | Page size (1-100) | No |
+| mode | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all | App mode filter<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
+| name | string | Filter by app name | No |
+| page | integer, <br>**Default:** 1 | Page number (1-99999) | No |
+| publication_status | string | Filter by published or draft Agent configuration status | No |
+| sort_by | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified | Sort apps by last modified, recently created, or earliest created<br>*Enum:* `"earliest_created"`, `"last_modified"`, `"recently_created"` | No |
+| tag_ids | [ string ] | Filter by tag IDs | No |
+
 #### AgentAppPagination
 
 | Name | Type | Description | Required |
@@ -13508,6 +13513,7 @@ default (the config form sends the full desired feature state on save).
 | has_more | boolean |  | Yes |
 | limit | integer |  | Yes |
 | page | integer |  | Yes |
+| publication_counts | [AgentPublicationCountsResponse](#agentpublicationcountsresponse) |  | Yes |
 | total | integer |  | Yes |
 
 #### AgentAppPartial
@@ -14583,6 +14589,13 @@ section may be empty, which is how callers express "no knowledge layer".
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AgentProviderResponse | object |  |  |
+
+#### AgentPublicationCountsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| drafts | integer | Draft Agent Apps in the current list scope, excluding the publication status filter | Yes |
+| published | integer | Published Agent Apps in the current list scope, excluding the publication status filter | Yes |
 
 #### AgentPublishPayload
 
@@ -21105,14 +21118,6 @@ Model class for provider quota configuration.
 | ---- | ---- | ----------- | -------- |
 | QuotaUnit | string |  |  |
 
-#### RBACResourceWhitelistScope
-
-Whitelist scopes accepted by RBAC app and dataset access config APIs.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| RBACResourceWhitelistScope | string | Whitelist scopes accepted by RBAC app and dataset access config APIs. |  |
-
 #### RBACRole
 
 | Name | Type | Description | Required |
@@ -21383,13 +21388,19 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | [ [ResourceUserAccessPolicies](#resourceuseraccesspolicies) ] |  | No |
-| scope | [RBACResourceWhitelistScope](#rbacresourcewhitelistscope) |  | Yes |
+| pagination | [Pagination](#pagination) |  | No |
 
 #### ResourceWhitelist
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | account_ids | [ string ] |  | No |
+
+#### ResourceWhitelistConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| automatic_include_workspace_members | boolean |  | Yes |
 
 #### RestrictModel
 
@@ -23790,27 +23801,6 @@ How a workflow node is bound to an Agent.
 | page | integer, <br>**Default:** 1 | Page number (1-99999) | No |
 | status | [WorkflowExecutionStatus](#workflowexecutionstatus) | Execution status filter (succeeded, failed, stopped, partial-succeeded) | No |
 
-#### WorkflowArchivedLogPaginationResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [WorkflowArchivedLogPartialResponse](#workflowarchivedlogpartialresponse) ] |  | Yes |
-| has_more | boolean |  | Yes |
-| limit | integer |  | Yes |
-| page | integer |  | Yes |
-| total | integer |  | Yes |
-
-#### WorkflowArchivedLogPartialResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | integer |  | No |
-| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
-| created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
-| id | string |  | Yes |
-| trigger_metadata |  |  | No |
-| workflow_run | [WorkflowRunForArchivedLogResponse](#workflowrunforarchivedlogresponse) |  | No |
-
 #### WorkflowAverageAppInteractionStatisticItem
 
 | Name | Type | Description | Required |
@@ -24588,24 +24578,6 @@ Lifecycle state for an asynchronous archive download request.
 | total_tokens | integer |  | No |
 | version | string |  | No |
 
-#### WorkflowRunExportResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| presigned_url | string | Pre-signed URL for download | No |
-| presigned_url_expires_at | string | Pre-signed URL expiration time | No |
-| status | string | Export status: success/failed | Yes |
-
-#### WorkflowRunForArchivedLogResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| elapsed_time | number |  | No |
-| id | string |  | Yes |
-| status | string |  | No |
-| total_tokens | integer |  | No |
-| triggered_from | string |  | No |
-
 #### WorkflowRunForListResponse
 
 | Name | Type | Description | Required |
@@ -24996,7 +24968,16 @@ Workflow tool configuration
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| scope | [RBACResourceWhitelistScope](#rbacresourcewhitelistscope) |  | Yes |
+| automatic_include_workspace_members | boolean |  | Yes |
+
+#### _ResourceUserAccessPoliciesQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| language | string | Localized policy label language | No |
+| limit | integer |  | No |
+| page | integer |  | No |
+| reverse | boolean |  | No |
 
 #### core__tools__entities__common_entities__I18nObject
 

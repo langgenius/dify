@@ -22,11 +22,13 @@ from repositories.account_activation_repository import SQLAlchemyAccountActivati
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_site_command_repository import AppSiteCommandRepository
+from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from services import recommended_app_catalog_gateway
 from services.account_activation_adapters import (
     BillingAccountActivationEligibility,
     BillingWorkspaceMembershipCache,
     DeploymentWorkspaceInvitePolicy,
+    RBACWorkspaceMemberAccessSync,
     RegisterServiceInvitationTokenStore,
 )
 from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
@@ -39,8 +41,12 @@ from services.enterprise.enterprise_service import WebAppSettings
 from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFoundError
 from services.init_validation_service import InvalidInitializationPasswordError
 from services.partner_tenant_binding_service import PartnerTenantBindingService
+from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
+from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
 from services.tag_application_service import TagApplicationService
 from services.webapp_access_query_service import WebAppAccessUnavailableError
+from services.workflow_statistic_query_service import WorkflowStatisticQueryService
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @pytest.mark.parametrize(
@@ -98,12 +104,11 @@ def test_init_app_registers_services_for_the_current_app(
 ) -> None:
     app = Flask(__name__)
     monkeypatch.setattr(ext_application_services, "get_session_maker", lambda: sqlite_session_factory)
-    monkeypatch.setattr(
-        ext_application_services.dify_config,
-        "DEPLOYMENT_EDITION",
-        DeploymentEdition.COMMUNITY,
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+        INIT_PASSWORD="expected",
     )
-    monkeypatch.setattr(ext_application_services.dify_config, "INIT_PASSWORD", "expected")
 
     ext_application_services.init_app(app)
 
@@ -111,6 +116,7 @@ def test_init_app_registers_services_for_the_current_app(
         services = ext_application_services.application_services()
         assert services is app.extensions["application_services"]
         assert services.init_validation.is_validated(session_validated=False) is False
+        assert isinstance(services.workflow_statistics, WorkflowStatisticQueryService)
 
 
 @pytest.mark.parametrize(
@@ -134,6 +140,7 @@ def test_build_application_services_configures_setup_policy(
     )
 
     assert services.setup.get_status().completed is setup_completed
+    assert services.oauth_server is not None
 
 
 def test_build_application_services_wires_builtin_schema_definitions(
@@ -177,6 +184,28 @@ def test_build_application_services_wires_tag_boundary(
     )
 
     assert isinstance(services.tags, TagApplicationService)
+
+
+def test_build_application_services_wires_workflow_run_archives(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    redis = MagicMock(spec=RedisClientWrapper)
+
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=redis,
+    )
+
+    workflow_run_archives = services.workflow_run_archives
+    assert isinstance(workflow_run_archives, WorkflowRunArchiveService)
+    assert isinstance(workflow_run_archives._bundles, WorkflowRunArchiveBundleQueryRepository)
+    assert workflow_run_archives._bundles._session_factory is sqlite_session_factory
+    assert isinstance(workflow_run_archives._tasks, WorkflowRunArchiveDownloadTaskCache)
+    assert workflow_run_archives._tasks._redis is redis
+    assert workflow_run_archives._dispatcher is ext_application_services.dispatch_workflow_run_archive_download_task
+    assert workflow_run_archives._sign_download_url is ext_application_services.sign_workflow_run_archive_download_url
 
 
 def test_build_application_services_wires_app_site_boundary(
@@ -391,6 +420,7 @@ def test_build_application_services_wires_account_activation(
     assert activation._eligibility._enabled is billing_enabled
     assert isinstance(activation._membership_cache, BillingWorkspaceMembershipCache)
     assert activation._membership_cache._enabled is billing_enabled
+    assert isinstance(activation._member_access_sync, RBACWorkspaceMemberAccessSync)
 
 
 def test_build_application_services_wires_data_source_api_key_auth(
@@ -588,7 +618,7 @@ def test_build_application_services_wires_dynamic_recommended_catalog(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(ext_application_services.dify_config, "HOSTED_FETCH_APP_TEMPLATES_MODE", "builtin")
+    apply_config_overrides(monkeypatch, HOSTED_FETCH_APP_TEMPLATES_MODE="builtin")
     services = ext_application_services.build_application_services(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
@@ -613,7 +643,7 @@ def test_build_application_services_wires_dynamic_recommended_catalog(
         )
     assert result.recommended_apps
 
-    monkeypatch.setattr(ext_application_services.dify_config, "HOSTED_FETCH_APP_TEMPLATES_MODE", "invalid")
+    apply_config_overrides(monkeypatch, HOSTED_FETCH_APP_TEMPLATES_MODE="invalid")
     with pytest.raises(ValueError, match="invalid fetch recommended apps mode: invalid"):
         services.recommended_app_queries.list_recommended(
             requested_language="en-US",

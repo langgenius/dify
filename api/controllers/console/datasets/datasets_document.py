@@ -60,7 +60,6 @@ from models.enums import IndexingStatus, ProcessRuleMode, SegmentStatus
 from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetService, DocumentService
 from services.enterprise import rbac_service as enterprise_rbac_service
-from services.enterprise.rbac_service import RBACResourceWhitelistScope, ReplaceMemberBindings
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
 from services.file_service import FileService
 from services.vector_space_admission_service import get_vector_space_admission_error_fields
@@ -693,7 +692,7 @@ class DatasetInitApi(Resource):
                 current_tenant_id,
                 current_user.id,
                 dataset.id,
-                ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
+                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
             )
             initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, dataset_id=dataset.id)
 

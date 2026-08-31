@@ -42,8 +42,8 @@ from controllers.console.wraps import (
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.rbac import RBACResourceWhitelistScope
 from core.trigger.constants import TRIGGER_NODE_TYPES
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.enums import WorkflowExecutionStatus
@@ -642,13 +642,13 @@ class AppListApi(Resource):
         )
 
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
-            str(current_tenant_id),
+            current_tenant_id,
             current_user_id,
             session=session,
         )
         if dify_config.RBAC_ENABLED:
             access_filter = resolve_app_access_filter(
-                str(current_tenant_id),
+                current_tenant_id,
                 current_user_id,
                 session=session,
                 permissions=permissions,
@@ -675,7 +675,7 @@ class AppListApi(Resource):
             pagination_model = pagination_model.model_copy(
                 update={
                     "data": [
-                        item.model_copy(update={"permission_keys": permission_keys_map.get(str(item.id), [])})
+                        item.model_copy(update={"permission_keys": permission_keys_map.get(item.id, [])})
                         for item in pagination_model.data
                     ]
                 }
@@ -711,16 +711,8 @@ class AppListApi(Resource):
 
         app_service = AppService()
         app = app_service.create_app(current_tenant_id, params, current_user, session=session)
-        if dify_config.RBAC_ENABLED:
-            enterprise_rbac_service.RBACService.AppAccess.replace_whitelist(
-                tenant_id=str(current_tenant_id),
-                account_id=current_user.id,
-                app_id=str(app.id),
-                payload=enterprise_rbac_service.ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
-            )
-            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, app_id=app.id)
         permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
-            str(current_tenant_id),
+            current_tenant_id,
             current_user.id,
             [str(app.id)],
             session=session,
@@ -730,6 +722,17 @@ class AppListApi(Resource):
             from_attributes=True,
             context={"session": session},
         ).model_copy(update={"permission_keys": permission_keys_map.get(str(app.id), [])})
+
+        if dify_config.RBAC_ENABLED:
+            enterprise_rbac_service.RBACService.AppAccess.replace_whitelist(
+                current_tenant_id,
+                current_user.id,
+                str(app.id),
+                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+            )
+
+            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, app_id=app.id)
+
         return app_detail.model_dump(mode="json"), 201
 
 
@@ -879,7 +882,7 @@ class AppApi(Resource):
             app_model.access_mode = app_setting.access_mode
 
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
-            str(current_tenant_id),
+            current_tenant_id,
             current_user.id,
             app_id=str(app_model.id),
             session=session,
@@ -1017,7 +1020,7 @@ class AppCopyApi(Resource):
                 raise NotFound("App not found")
 
             permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
-                str(current_tenant_id),
+                current_tenant_id,
                 current_user.id,
                 [str(app.id)],
                 session=session,
@@ -1082,7 +1085,17 @@ class AppPublishToCreatorsPlatformApi(Resource):
         dsl_bytes = dsl_content.encode("utf-8")
 
         claim_code = upload_dsl(dsl_bytes)
-        redirect_url = get_redirect_url(current_user_id, claim_code)
+        # TODO: Move this configuration and OAuth orchestration into the Creators Platform application service
+        # when that domain is refactored. This controller-level integration is a temporary compatibility bridge.
+        oauth_code = None
+        client_id = dify_config.CREATORS_PLATFORM_OAUTH_CLIENT_ID or ""
+        if client_id:
+            authorization = application_services().oauth_server.issue_authorization_code(
+                client_id=client_id,
+                account_id=current_user_id,
+            )
+            oauth_code = authorization.code
+        redirect_url = get_redirect_url(claim_code, oauth_code=oauth_code)
 
         return RedirectUrlResponse(redirect_url=redirect_url).model_dump(mode="json")
 

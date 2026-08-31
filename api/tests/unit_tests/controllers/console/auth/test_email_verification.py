@@ -461,14 +461,17 @@ class TestEmailCodeLoginApi:
         mock_verify_challenge,
         mock_db,
         app: Flask,
+        config_overrides: Callable[..., None],
     ):
+        config_overrides(
+            DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+            TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED=True,
+        )
         mock_verify_challenge.return_value = EmailCodeLoginChallengeResult(
             status=EmailCodeLoginChallengeStatus.INVALID_TOKEN
         )
 
         with (
-            patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.auth.login.dify_config.TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED", True),
             app.test_request_context(
                 "/email-code-login/validity",
                 method="POST",
@@ -502,10 +505,13 @@ class TestEmailCodeLoginApi:
         mock_verify_challenge,
         mock_db,
         app: Flask,
+        config_overrides: Callable[..., None],
     ):
+        config_overrides(
+            DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+            TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED=True,
+        )
         with (
-            patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.auth.login.dify_config.TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED", True),
             app.test_request_context(
                 "/email-code-login/validity",
                 method="POST",
@@ -527,14 +533,17 @@ class TestEmailCodeLoginApi:
         mock_verify_challenge,
         mock_db,
         app: Flask,
+        config_overrides: Callable[..., None],
     ):
+        config_overrides(
+            DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+            TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED=False,
+        )
         mock_verify_challenge.return_value = EmailCodeLoginChallengeResult(
             status=EmailCodeLoginChallengeStatus.INVALID_TOKEN
         )
 
         with (
-            patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.auth.login.dify_config.TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED", False),
             app.test_request_context(
                 "/email-code-login/validity",
                 method="POST",
@@ -676,6 +685,7 @@ class TestEmailCodeLoginApi:
             interface_language="en-US",
             timezone="Asia/Shanghai",
             ip_address="203.0.113.10",
+            check_normalized_email=True,
             session=ANY,
         )
 

@@ -1,11 +1,14 @@
 import { QueryClient } from '@tanstack/react-query'
 import { act, waitFor } from '@testing-library/react'
 import { getDefaultStore } from 'jotai'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import {
   agentComposerDraftAtom,
   agentComposerSavedDraftAtom,
 } from '@/features/agent-v2/agent-composer/store'
+import { AgentScope } from '@/features/agent-v2/analytics'
+import { AppModeEnum } from '@/types/app'
 import { FlowType } from '@/types/common'
 import { renderWorkflowHook } from '../../../__tests__/workflow-test-env'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
@@ -128,6 +131,7 @@ const mockSnippetComposerQueryOptions = vi.hoisted(() =>
     },
   ),
 )
+const trackCreateAppMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
@@ -139,6 +143,10 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useDefaultModel: () => ({
     data: mockDefaultModel.value,
   }),
+}))
+
+vi.mock('@/utils/create-app-tracking', () => ({
+  trackCreateApp: trackCreateAppMock,
 }))
 
 vi.mock('@/service/client', () => ({
@@ -318,6 +326,7 @@ describe('useWorkflowInlineAgentDetail', () => {
 describe('useCreateInlineAgentBinding', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    useAppStore.getState().setAppDetail({ mode: AppModeEnum.WORKFLOW } as never)
     mockDefaultModel.value = {
       model: 'gpt-4o-mini',
       model_type: 'llm',
@@ -405,6 +414,44 @@ describe('useCreateInlineAgentBinding', () => {
         }),
       }),
     )
+    expect(trackCreateAppMock).toHaveBeenCalledWith({
+      source: 'studio_blank',
+      appMode: 'agent-v2',
+      agentScope: AgentScope.InWorkflow,
+    })
+  })
+
+  it('tracks inline agent creation with the chatflow scope', async () => {
+    useAppStore.getState().setAppDetail({ mode: AppModeEnum.ADVANCED_CHAT } as never)
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        mutations: {
+          retry: false,
+        },
+      },
+    })
+    const { result } = renderWorkflowHook(() => useCreateInlineAgentBinding(), {
+      queryClient,
+      hooksStoreProps: {
+        configsMap: {
+          flowId: 'chatflow-1',
+          flowType: FlowType.appFlow,
+          fileSettings: {} as never,
+        },
+      },
+    })
+
+    act(() => {
+      void result.current.createInlineAgentBinding('node-1')
+    })
+
+    await waitFor(() => {
+      expect(trackCreateAppMock).toHaveBeenCalledWith({
+        source: 'studio_blank',
+        appMode: 'agent-v2',
+        agentScope: AgentScope.InChatflow,
+      })
+    })
   })
 
   it('creates inline agent through the snippet composer API', async () => {

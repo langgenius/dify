@@ -18,6 +18,7 @@ export type MainNavRouteConfig = {
 export type MainNavRouteVisibilityOptions = {
   agentV2Enabled: boolean
   canManageAgents: boolean
+  canViewSkills: boolean
   isCurrentWorkspaceDatasetOperator: boolean
   marketplaceEnabled: boolean
   skillEnabled: boolean
@@ -31,7 +32,7 @@ export type DetailSidebarVisibilityOptions = Pick<
 const VISIBLE_TO_ALL: MainNavRouteVisibility = () => true
 const CAN_MANAGE_AGENTS: MainNavRouteVisibility = (options) => options.canManageAgents
 const SKILL_ENABLED_FOR_WORKSPACE: MainNavRouteVisibility = (options) =>
-  options.skillEnabled && !options.isCurrentWorkspaceDatasetOperator
+  options.skillEnabled && options.canViewSkills && !options.isCurrentWorkspaceDatasetOperator
 
 function isPathUnderRoute(pathname: string, route: string) {
   return pathname === route || pathname.startsWith(`${route}/`)
