@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import posixpath
 from typing import ClassVar, Literal, Self
 from urllib.parse import urlparse
@@ -17,6 +18,13 @@ from dify_agent.runtime_backend.e2b import (
 )
 from dify_agent.runtime_backend.enterprise import EnterpriseExecutionBindingBackend, EnterpriseHomeSnapshotBackend
 from dify_agent.runtime_backend.local import LocalExecutionBindingBackend, LocalHomeSnapshotBackend
+from dify_agent.runtime_backend.openshell import (
+    DEFAULT_OPENSHELL_SANDBOX_IMAGE,
+    DEFAULT_OPENSHELL_SHARED_MOUNT_PATH,
+    OpenShellExecutionBindingBackend,
+    OpenShellHomeSnapshotBackend,
+    OpenShellSDKControlPlane,
+)
 from dify_agent.runtime_backend.protocols import RuntimeBackendProfile
 
 DEFAULT_E2B_TEMPLATE = "difys-default-team/dify-agent-local-sandbox"
@@ -28,7 +36,7 @@ DEFAULT_LOCAL_HOME_SNAPSHOT_ROOT = "/home/dify/.snapshots"
 class RuntimeBackendSettings(BaseSettings):
     """Server-private credentials and endpoints for one coherent backend profile."""
 
-    runtime_backend: Literal["local", "enterprise", "e2b"] = "local"
+    runtime_backend: Literal["local", "enterprise", "e2b", "openshell"] = "local"
 
     local_sandbox_endpoint: str | None = Field(
         default=None,
@@ -62,6 +70,22 @@ class RuntimeBackendSettings(BaseSettings):
         le=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
     )
     e2b_shellctl_port: int = Field(default=5004, ge=1, le=65535)
+
+    openshell_gateway_endpoint: str | None = None
+    openshell_workspace: str = "default"
+    openshell_bearer_token: str | None = None
+    openshell_tls_ca_path: str | None = None
+    openshell_tls_client_cert_path: str | None = None
+    openshell_tls_client_key_path: str | None = None
+    openshell_insecure: bool = False
+    openshell_sandbox_image: str = DEFAULT_OPENSHELL_SANDBOX_IMAGE
+    openshell_driver_config: str | None = None
+    openshell_shared_mount_path: str = DEFAULT_OPENSHELL_SHARED_MOUNT_PATH
+    openshell_egress_allow: str = ""
+    openshell_shellctl_auth_token: str = ""
+    openshell_shellctl_port: int = Field(default=5004, ge=1, le=65535)
+    openshell_ready_timeout_seconds: float = Field(default=300.0, gt=0)
+    openshell_exec_timeout_seconds: int = Field(default=120, ge=1)
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_prefix="DIFY_AGENT_",
@@ -101,6 +125,35 @@ class RuntimeBackendSettings(BaseSettings):
                     raise ValueError("e2b_api_key is required for the e2b runtime backend")
                 if not self.e2b_template.strip():
                     raise ValueError("e2b_template must not be blank")
+            case "openshell":
+                if not self.openshell_gateway_endpoint or not self.openshell_gateway_endpoint.strip():
+                    raise ValueError("openshell_gateway_endpoint is required for the openshell runtime backend")
+                if not self.openshell_driver_config or not self.openshell_driver_config.strip():
+                    raise ValueError(
+                        "openshell_driver_config is required for the openshell runtime backend: "
+                        "it must mount the shared Home Snapshot volume into every sandbox"
+                    )
+                _ = _parse_openshell_driver_config(self.openshell_driver_config)
+                _ = _parse_openshell_egress_allow(self.openshell_egress_allow)
+                if not self.openshell_shellctl_auth_token.strip():
+                    raise ValueError(
+                        "openshell_shellctl_auth_token is required for the openshell runtime backend"
+                    )
+                _validate_absolute_posix_path(
+                    self.openshell_shared_mount_path,
+                    field_name="openshell_shared_mount_path",
+                )
+                if not self.openshell_sandbox_image.strip():
+                    raise ValueError("openshell_sandbox_image must not be blank")
+                # Compose injects empty strings for unset variables; treat
+                # blank and None alike so a half-configured mTLS pair fails
+                # here instead of at the first gateway call.
+                cert_path = (self.openshell_tls_client_cert_path or "").strip()
+                key_path = (self.openshell_tls_client_key_path or "").strip()
+                if bool(cert_path) != bool(key_path):
+                    raise ValueError(
+                        "openshell_tls_client_cert_path and openshell_tls_client_key_path must be set together"
+                    )
         return self
 
 
@@ -154,6 +207,34 @@ def create_runtime_backend_profile(settings: RuntimeBackendSettings) -> RuntimeB
                     shellctl_port=settings.e2b_shellctl_port,
                 ),
             )
+        case "openshell":
+            openshell_control_plane = OpenShellSDKControlPlane(
+                endpoint=(settings.openshell_gateway_endpoint or "").strip(),
+                workspace=settings.openshell_workspace,
+                bearer_token=settings.openshell_bearer_token or None,
+                tls_ca_path=settings.openshell_tls_ca_path or None,
+                tls_client_cert_path=settings.openshell_tls_client_cert_path or None,
+                tls_client_key_path=settings.openshell_tls_client_key_path or None,
+                insecure=settings.openshell_insecure,
+                image=settings.openshell_sandbox_image,
+                driver_config=_parse_openshell_driver_config(settings.openshell_driver_config or ""),
+                shared_mount_path=settings.openshell_shared_mount_path,
+                egress_allow=_parse_openshell_egress_allow(settings.openshell_egress_allow),
+                ready_timeout_seconds=settings.openshell_ready_timeout_seconds,
+                exec_timeout_seconds=settings.openshell_exec_timeout_seconds,
+            )
+            return RuntimeBackendProfile(
+                home_snapshots=OpenShellHomeSnapshotBackend(
+                    control_plane=openshell_control_plane,
+                    shared_mount_path=settings.openshell_shared_mount_path,
+                ),
+                execution_bindings=OpenShellExecutionBindingBackend(
+                    control_plane=openshell_control_plane,
+                    shellctl_auth_token=settings.openshell_shellctl_auth_token,
+                    shellctl_port=settings.openshell_shellctl_port,
+                    shared_mount_path=settings.openshell_shared_mount_path,
+                ),
+            )
 
 
 def _validate_http_url(value: str, *, field_name: str) -> None:
@@ -165,6 +246,35 @@ def _validate_http_url(value: str, *, field_name: str) -> None:
 def _validate_absolute_posix_path(value: str, *, field_name: str) -> None:
     if not value.strip() or not posixpath.isabs(value):
         raise ValueError(f"{field_name} must be an absolute POSIX path")
+
+
+def _parse_openshell_egress_allow(value: str) -> tuple[tuple[str, int], ...]:
+    """Parse a comma-separated ``host:port`` list into ``(host, port)`` pairs."""
+    endpoints: list[tuple[str, int]] = []
+    for raw_entry in value.split(","):
+        entry = raw_entry.strip()
+        if not entry:
+            continue
+        host, _, port_text = entry.rpartition(":")
+        if not host or "/" in entry or not port_text.isdigit() or not 1 <= int(port_text) <= 65535:
+            raise ValueError(
+                f"openshell_egress_allow entries must be host:port (no scheme or path), got: {entry!r}"
+            )
+        endpoints.append((host, int(port_text)))
+    return tuple(endpoints)
+
+
+def _parse_openshell_driver_config(value: str) -> dict[str, object]:
+    try:
+        parsed: object = json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise ValueError("openshell_driver_config must be valid JSON") from exc
+    if not isinstance(parsed, dict) or not parsed:
+        raise ValueError(
+            "openshell_driver_config must be a non-empty JSON object that "
+            "must mount the shared Home Snapshot volume"
+        )
+    return {str(key): item for key, item in parsed.items()}
 
 
 __all__ = [

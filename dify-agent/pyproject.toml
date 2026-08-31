@@ -22,9 +22,13 @@ server = [
     "e2b>=2.34.0,<3.0.0",
     "fastapi==0.136.0",
     "graphon==0.5.2",
+    # grpcio is a runtime requirement of the openshell SDK that its wheel
+    # does not declare; keep it pinned here until upstream fixes the metadata.
+    "grpcio>=1.60.0,<2.0.0",
     "jsonschema>=4.23.0,<5.0.0",
     "jwcrypto>=1.5.6,<2",
     "logfire[fastapi,httpx,redis]>=4.37.0,<5.0.0",
+    "openshell>=0.0.106,<0.1.0",
     "pydantic-ai-slim[anthropic,google,openai]>=2.30.0,<3.0.0",
     "pydantic-settings>=2.12.0,<3.0.0",
     "redis>=7.4.0,<8.0.0",

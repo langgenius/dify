@@ -13,6 +13,11 @@ from dify_agent.runtime.runner import DEFAULT_AGENT_RUN_TIMEOUT_SECONDS
 from dify_agent.runtime_backend.e2b import E2B_MAX_ACTIVE_TIMEOUT_SECONDS, E2BExecutionBindingBackend
 from dify_agent.runtime_backend.enterprise import EnterpriseExecutionBindingBackend, EnterpriseHomeSnapshotBackend
 from dify_agent.runtime_backend.local import LocalExecutionBindingBackend, LocalHomeSnapshotBackend
+from dify_agent.runtime_backend.openshell import (
+    OpenShellExecutionBindingBackend,
+    OpenShellHomeSnapshotBackend,
+    OpenShellSDKControlPlane,
+)
 
 
 def _base64url_secret(value: bytes) -> str:
@@ -373,6 +378,49 @@ def test_build_runtime_backend_profile_passes_e2b_active_timeout() -> None:
     assert isinstance(profile.execution_bindings, E2BExecutionBindingBackend)
     assert profile.execution_bindings.active_timeout_seconds == 900
     assert profile.execution_bindings.template == "difys-default-team/dify-agent-local-sandbox"
+
+
+_OPENSHELL_DRIVER_CONFIG = (
+    '{"docker": {"mounts": [{"type": "volume", "source": "dify-agent-shared",'
+    ' "target": "/mnt/dify-agent-shared"}]}}'
+)
+
+
+def test_build_runtime_backend_profile_returns_openshell_drivers_when_selected() -> None:
+    settings = ServerSettings(
+        runtime_backend="openshell",
+        openshell_gateway_endpoint="gateway.example:17670",
+        openshell_driver_config=_OPENSHELL_DRIVER_CONFIG,
+        openshell_shared_mount_path="/mnt/shared",
+        openshell_shellctl_auth_token="token-1",
+        openshell_shellctl_port=6006,
+        openshell_exec_timeout_seconds=90,
+        openshell_egress_allow="agent.example.com:5050",
+    )
+
+    profile = settings.build_runtime_backend_profile()
+
+    assert profile is not None
+    assert isinstance(profile.execution_bindings, OpenShellExecutionBindingBackend)
+    assert isinstance(profile.home_snapshots, OpenShellHomeSnapshotBackend)
+    control_plane = profile.execution_bindings.control_plane
+    assert isinstance(control_plane, OpenShellSDKControlPlane)
+    assert control_plane.endpoint == "gateway.example:17670"
+    assert control_plane.shared_mount_path == "/mnt/shared"
+    assert control_plane.exec_timeout_seconds == 90
+    assert control_plane.egress_allow == (("agent.example.com", 5050),)
+    assert profile.execution_bindings.shellctl_auth_token == "token-1"
+    assert profile.execution_bindings.shellctl_port == 6006
+
+
+def test_build_runtime_backend_profile_rejects_empty_openshell_driver_config() -> None:
+    with pytest.raises(ValidationError, match="must mount the shared Home Snapshot volume"):
+        _ = ServerSettings(
+            runtime_backend="openshell",
+            openshell_gateway_endpoint="gateway.example:17670",
+            openshell_driver_config="{}",
+            openshell_shellctl_auth_token="token-1",
+        ).build_runtime_backend_profile()
 
 
 def test_build_runtime_backend_profile_rejects_missing_enterprise_endpoint(

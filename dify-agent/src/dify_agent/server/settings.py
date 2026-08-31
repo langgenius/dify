@@ -24,6 +24,10 @@ from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec, 
 from dify_agent.runtime.runner import DEFAULT_AGENT_RUN_TIMEOUT_SECONDS
 from dify_agent.runtime_backend import RuntimeBackendProfile
 from dify_agent.runtime_backend.e2b import E2B_MAX_ACTIVE_TIMEOUT_SECONDS
+from dify_agent.runtime_backend.openshell import (
+    DEFAULT_OPENSHELL_SANDBOX_IMAGE,
+    DEFAULT_OPENSHELL_SHARED_MOUNT_PATH,
+)
 from dify_agent.runtime_backend.profile import (
     DEFAULT_LOCAL_HOME_SNAPSHOT_ROOT,
     DEFAULT_LOCAL_MATERIALIZED_HOME_ROOT,
@@ -47,7 +51,7 @@ class ServerSettings(BaseSettings):
     plugin_daemon_api_key: str = ""
     inner_api_url: str = "http://localhost:5001"
     inner_api_key: str | None = None
-    runtime_backend: Literal["local", "enterprise", "e2b"] = "local"
+    runtime_backend: Literal["local", "enterprise", "e2b", "openshell"] = "local"
     local_sandbox_endpoint: str | None = Field(
         default=None,
         validation_alias=AliasChoices("DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT", "DIFY_AGENT_SHELLCTL_ENTRYPOINT"),
@@ -72,6 +76,21 @@ class ServerSettings(BaseSettings):
         le=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
     )
     e2b_shellctl_port: int = Field(default=5004, ge=1, le=65535)
+    openshell_gateway_endpoint: str | None = None
+    openshell_workspace: str = "default"
+    openshell_bearer_token: str | None = None
+    openshell_tls_ca_path: str | None = None
+    openshell_tls_client_cert_path: str | None = None
+    openshell_tls_client_key_path: str | None = None
+    openshell_insecure: bool = False
+    openshell_sandbox_image: str = DEFAULT_OPENSHELL_SANDBOX_IMAGE
+    openshell_driver_config: str | None = None
+    openshell_shared_mount_path: str = DEFAULT_OPENSHELL_SHARED_MOUNT_PATH
+    openshell_egress_allow: str = ""
+    openshell_shellctl_auth_token: str = ""
+    openshell_shellctl_port: int = Field(default=5004, ge=1, le=65535)
+    openshell_ready_timeout_seconds: float = Field(default=300.0, gt=0)
+    openshell_exec_timeout_seconds: int = Field(default=120, ge=1)
     agent_stub_api_base_url: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_API_BASE_URL")
     sandbox_files_base_url: str | None = Field(
         default=None,
@@ -213,6 +232,21 @@ class ServerSettings(BaseSettings):
                 e2b_template=self.e2b_template,
                 e2b_active_timeout_seconds=self.e2b_active_timeout_seconds,
                 e2b_shellctl_port=self.e2b_shellctl_port,
+                openshell_gateway_endpoint=self.openshell_gateway_endpoint,
+                openshell_workspace=self.openshell_workspace,
+                openshell_bearer_token=self.openshell_bearer_token,
+                openshell_tls_ca_path=self.openshell_tls_ca_path,
+                openshell_tls_client_cert_path=self.openshell_tls_client_cert_path,
+                openshell_tls_client_key_path=self.openshell_tls_client_key_path,
+                openshell_insecure=self.openshell_insecure,
+                openshell_sandbox_image=self.openshell_sandbox_image,
+                openshell_driver_config=self.openshell_driver_config,
+                openshell_shared_mount_path=self.openshell_shared_mount_path,
+                openshell_egress_allow=self.openshell_egress_allow,
+                openshell_shellctl_auth_token=self.openshell_shellctl_auth_token,
+                openshell_shellctl_port=self.openshell_shellctl_port,
+                openshell_ready_timeout_seconds=self.openshell_ready_timeout_seconds,
+                openshell_exec_timeout_seconds=self.openshell_exec_timeout_seconds,
             )
         )
 

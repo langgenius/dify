@@ -39,10 +39,10 @@ the opaque Binding ref belongs to `DifyRuntimeLayerConfig`.
 
 ## Runtime requirements
 
-The server constructs one coherent runtime backend profile. Local and E2B
-implement Home Snapshot and Execution Binding operations. Enterprise implements
-default-Home Binding creation, acquisition, and coupled destruction, while
-immutable Home Snapshot operations fail fast; there is no compatibility
+The server constructs one coherent runtime backend profile. Local, E2B, and
+OpenShell implement Home Snapshot and Execution Binding operations. Enterprise
+implements default-Home Binding creation, acquisition, and coupled destruction,
+while immutable Home Snapshot operations fail fast; there is no compatibility
 fallback to the retired Sandbox protocol.
 
 ```python
@@ -272,10 +272,10 @@ only its canonical reference to Dify API.
 
 On Local, multiple Bindings may share a Workspace while each receives a
 separate materialized Home. Those directories may be siblings in one shellctl
-namespace; path isolation restricts a lease to its Home and Workspace. On E2B,
-one physical E2B resource currently represents both Binding and Workspace, so
-shared Workspace attachment is unsupported.
+namespace; path isolation restricts a lease to its Home and Workspace. On E2B
+and OpenShell, one physical sandbox currently represents both Binding and
+Workspace, so shared Workspace attachment is unsupported.
 
 See [Runtime resources](../../concepts/runtime-resources/index.md) for the
 ledger and lifecycle contract. The [Operations Guide](../../guide/index.md)
-covers Local and E2B validation.
+covers Local, E2B, and OpenShell validation.
