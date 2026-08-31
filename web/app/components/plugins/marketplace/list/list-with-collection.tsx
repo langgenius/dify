@@ -146,7 +146,7 @@ const ListWithCollection = ({
                   className="mt-2"
                   showNavigation
                   showPagination
-                  autoPlay
+                  autoPlay={isPartnersCollection}
                   autoPlayInterval={5000}
                 >
                   {pages.map((pageItems) => (
