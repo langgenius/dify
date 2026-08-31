@@ -1,0 +1,22 @@
+identity:
+  name: mrscraper_create_listing_scraper
+  author: ai-mrscraper
+  label: {en_US: Create Listing Scraper}
+description:
+  human: {en_US: Create a reusable Listing AI scraper for repeated or paginated content.}
+  llm: Call this to create a reusable listing scraper. Use Extract Listings when only immediate extraction is wanted.
+parameters:
+  - {name: url, type: string, required: true, label: {en_US: URL}, human_description: {en_US: Absolute HTTP or HTTPS listing URL.}, llm_description: Initial listing URL for the reusable scraper., form: llm}
+  - {name: prompt, type: string, required: false, label: {en_US: Prompt}, human_description: {en_US: Optional instructions for each item.}, llm_description: Natural-language listing extraction instructions., form: llm}
+  - name: output_schema
+    type: object
+    required: false
+    input_schema: {type: object, additionalProperties: true}
+    label: {en_US: Output Schema}
+    human_description: {en_US: Optional JSON object describing each item.}
+    llm_description: JSON object describing desired fields and types for each item.
+    form: llm
+  - {name: max_pages, type: number, required: false, default: 1, min: 1, precision: 0, label: {en_US: Max Pages}, human_description: {en_US: Maximum pagination pages. Defaults to 1.}, llm_description: Maximum pagination pages as an integer of at least 1., form: llm}
+  - {name: proxy_country, type: string, required: false, label: {en_US: Proxy Country}, human_description: {en_US: Optional proxy country code.}, llm_description: Optional proxy country code., form: llm}
+extra:
+  python: {source: tools/mrscraper_create_listing_scraper.py}

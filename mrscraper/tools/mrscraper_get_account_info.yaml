@@ -1,0 +1,13 @@
+identity:
+  name: mrscraper_get_account_info
+  author: ai-mrscraper
+  label:
+    en_US: Get Account Info
+description:
+  human:
+    en_US: Retrieve MrScraper account details, token usage, and token limits.
+  llm: Call this when the user asks about their MrScraper account, usage, or limits.
+parameters: []
+extra:
+  python:
+    source: tools/mrscraper_get_account_info.py

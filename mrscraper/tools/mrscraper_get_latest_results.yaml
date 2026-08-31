@@ -1,0 +1,12 @@
+identity:
+  name: mrscraper_get_latest_results
+  author: ai-mrscraper
+  label: {en_US: Get Latest Results}
+description:
+  human: {en_US: Retrieve the newest N results for one scraper.}
+  llm: Call this when only the latest results are needed. Use Get Results for page-by-page navigation or custom sort direction.
+parameters:
+  - {name: scraper_id, type: string, required: true, label: {en_US: Scraper ID}, human_description: {en_US: Nonblank scraper identifier.}, llm_description: The scraper ID whose newest results should be returned., form: llm}
+  - {name: count, type: number, required: false, default: 10, precision: 0, label: {en_US: Count}, human_description: {en_US: Number of latest results. Defaults to 10.}, llm_description: Number of newest results as an integer., form: llm}
+extra:
+  python: {source: tools/mrscraper_get_latest_results.py}

@@ -1,0 +1,62 @@
+identity:
+  name: mrscraper_crawl_website_urls
+  author: ai-mrscraper
+  label:
+    en_US: Crawl Website URLs
+description:
+  human:
+    en_US: Immediately discover URLs by crawling links from a starting website.
+  llm: Call this for immediate URL discovery. Use Create Website Crawl Scraper when the user wants a reusable scraper configuration.
+parameters:
+  - name: url
+    type: string
+    required: true
+    label: {en_US: URL}
+    human_description: {en_US: Absolute starting HTTP or HTTPS URL to crawl.}
+    llm_description: The absolute starting URL whose links should be discovered.
+    form: llm
+  - name: max_depth
+    type: number
+    required: false
+    default: 2
+    precision: 0
+    label: {en_US: Max Depth}
+    human_description: {en_US: Maximum link depth to crawl. Defaults to 2.}
+    llm_description: Maximum crawl depth as an integer.
+    form: llm
+  - name: max_pages
+    type: number
+    required: false
+    default: 50
+    precision: 0
+    label: {en_US: Max Pages}
+    human_description: {en_US: Maximum pages to evaluate. Defaults to 50.}
+    llm_description: Maximum number of pages to evaluate as an integer.
+    form: llm
+  - name: limit
+    type: number
+    required: false
+    default: 50
+    min: 1
+    precision: 0
+    label: {en_US: Result Limit}
+    human_description: {en_US: Maximum discovered URLs to return. Defaults to 50.}
+    llm_description: Maximum result count as an integer of at least 1.
+    form: llm
+  - name: include_patterns
+    type: string
+    required: false
+    label: {en_US: Include Patterns}
+    human_description: {en_US: Optional pipe-separated regular expressions for URLs to include.}
+    llm_description: Pipe-separated regular expressions for URLs to include.
+    form: llm
+  - name: exclude_patterns
+    type: string
+    required: false
+    label: {en_US: Exclude Patterns}
+    human_description: {en_US: Optional pipe-separated regular expressions for URLs to exclude.}
+    llm_description: Pipe-separated regular expressions for URLs to exclude.
+    form: llm
+extra:
+  python:
+    source: tools/mrscraper_crawl_website_urls.py

@@ -1,0 +1,29 @@
+version: 0.0.1
+type: plugin
+author: ai-mrscraper
+name: mrscraper
+label:
+  en_US: MrScraper
+description:
+  en_US: Native MrScraper tools for discovery, extraction, results, scraper creation, and scraper runs.
+icon: icon.svg
+icon_dark: icon-dark.svg
+resource:
+  memory: 268435456
+  permission: {}
+plugins:
+  tools:
+    - provider/mrscraper.yaml
+meta:
+  version: 0.0.1
+  arch:
+    - amd64
+    - arm64
+  runner:
+    language: python
+    version: "3.12"
+    entrypoint: main
+  minimum_dify_version: 1.17.0
+created_at: 2026-08-26T16:26:53.906236+07:00
+privacy: PRIVACY.md
+verified: false

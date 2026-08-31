@@ -1,0 +1,29 @@
+identity:
+  name: mrscraper_run_existing_scraper_batch
+  author: ai-mrscraper
+  label: {en_US: Run Existing Scraper Batch}
+description:
+  human: {en_US: Run multiple URLs with an existing AI or manual scraper.}
+  llm: Call this for two or more URLs, or any explicitly requested batch execution. Use the matching single-run AI or Manual tool for exactly one URL and per-run options.
+parameters:
+  - name: scraper_type
+    type: select
+    required: true
+    label: {en_US: Scraper Type}
+    human_description: {en_US: Existing AI or manual scraper type.}
+    llm_description: Required scraper type; selects the correct bulk endpoint.
+    form: llm
+    options:
+      - {value: ai, label: {en_US: AI}}
+      - {value: manual, label: {en_US: Manual}}
+  - {name: scraper_id, type: string, required: true, label: {en_US: Scraper ID}, human_description: {en_US: Nonblank existing scraper identifier.}, llm_description: ID of the existing scraper., form: llm}
+  - name: urls
+    type: array
+    required: true
+    input_schema: {type: array, items: {type: string}}
+    label: {en_US: URLs}
+    human_description: {en_US: Nonempty array of absolute HTTP or HTTPS URLs.}
+    llm_description: A nonempty array of absolute URL strings to process in bulk.
+    form: llm
+extra:
+  python: {source: tools/mrscraper_run_existing_scraper_batch.py}

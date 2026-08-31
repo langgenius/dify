@@ -1,0 +1,41 @@
+identity:
+  name: mrscraper_run_existing_scraper_manual
+  author: ai-mrscraper
+  label: {en_US: Run Existing Scraper Manual}
+description:
+  human: {en_US: Run one URL with an existing manual scraper.}
+  llm: Call this for one URL with an existing manual scraper. Use an AI-specific tool for AI scrapers.
+parameters:
+  - {name: scraper_id, type: string, required: true, label: {en_US: Scraper ID}, human_description: {en_US: Existing scraper identifier.}, llm_description: ID of the existing manual scraper., form: llm}
+  - {name: url, type: string, required: true, label: {en_US: URL}, human_description: {en_US: One absolute HTTP or HTTPS URL.}, llm_description: The single URL to process., form: llm}
+  - {name: max_retry, type: number, required: false, default: 3, min: 0, precision: 0, label: {en_US: Max Retry}, human_description: {en_US: Retry attempts. Defaults to 3.}, llm_description: Retry attempts as an integer of at least 0., form: llm}
+  - {name: proxy_country, type: string, required: false, label: {en_US: Proxy Country}, human_description: {en_US: Optional proxy country code.}, llm_description: Optional proxy country code., form: llm}
+  - {name: bypass_proxy, type: boolean, required: false, default: true, label: {en_US: Bypass Proxy}, human_description: {en_US: Bypass the proxy. Defaults to true.}, llm_description: Whether to bypass the proxy., form: llm}
+  - {name: cookie_jar, type: string, required: false, label: {en_US: Cookie Jar}, human_description: {en_US: Optional cookie jar value.}, llm_description: Optional cookie jar value., form: llm}
+  - name: cookies
+    type: string
+    required: false
+    label: {en_US: Cookies}
+    human_description: {en_US: Optional JSON array of browser cookie objects.}
+    llm_description: Optional valid JSON array of browser cookie objects.
+    form: llm
+  - {name: home_page, type: boolean, required: false, default: false, label: {en_US: Home Page}, human_description: {en_US: Visit the home page first. Defaults to false.}, llm_description: Whether to visit the home page first., form: llm}
+  - {name: home_page_timeout, type: number, required: false, default: 10, min: 1, precision: 0, label: {en_US: Home Page Timeout}, human_description: {en_US: Home-page timeout in seconds. Defaults to 10.}, llm_description: Home-page timeout as an integer of at least 1., form: llm}
+  - {name: html, type: boolean, required: false, default: false, label: {en_US: HTML}, human_description: {en_US: Include HTML. Defaults to false.}, llm_description: Whether to include HTML., form: llm}
+  - {name: markdown, type: boolean, required: false, default: false, label: {en_US: Markdown}, human_description: {en_US: Include Markdown. Defaults to false.}, llm_description: Whether to include Markdown., form: llm}
+  - name: paginator
+    type: string
+    required: false
+    label: {en_US: Paginator}
+    human_description: {en_US: Optional paginator configuration as a JSON object.}
+    llm_description: Optional valid JSON object containing paginator configuration.
+    form: llm
+  - {name: proxy, type: string, required: false, label: {en_US: Proxy}, human_description: {en_US: Optional proxy URL or value.}, llm_description: Optional proxy value., form: llm}
+  - {name: record, type: boolean, required: false, default: false, label: {en_US: Record}, human_description: {en_US: Record the browser session. Defaults to false.}, llm_description: Whether to record the browser session., form: llm}
+  - {name: return_cookie, type: boolean, required: false, default: false, label: {en_US: Return Cookie}, human_description: {en_US: Return cookies. Defaults to false.}, llm_description: Whether to return cookies., form: llm}
+  - {name: screenshot, type: boolean, required: false, default: false, label: {en_US: Screenshot}, human_description: {en_US: Capture a screenshot. Defaults to false.}, llm_description: Whether to capture a screenshot., form: llm}
+  - {name: stream, type: boolean, required: false, default: false, label: {en_US: Stream}, human_description: {en_US: Stream results. Defaults to false.}, llm_description: Whether to stream results., form: llm}
+  - {name: timeout, type: number, required: false, default: 600, min: 1, precision: 0, label: {en_US: Timeout}, human_description: {en_US: Timeout in seconds. Defaults to 600.}, llm_description: Timeout in seconds as an integer of at least 1., form: llm}
+  - {name: token_cap, type: number, required: false, default: 0, min: 0, precision: 0, label: {en_US: Token Cap}, human_description: {en_US: Token cap; 0 means no explicit cap. Defaults to 0.}, llm_description: Token cap as an integer of at least 0., form: llm}
+extra:
+  python: {source: tools/mrscraper_run_existing_scraper_manual.py}

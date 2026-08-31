@@ -1,0 +1,29 @@
+[project]
+name = "mrscraper"
+version = "0.0.1"
+description = "Native MrScraper Tool Plugin for Dify"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "dify-plugin==0.10.2",
+    "requests==2.34.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==8.4.2",
+    "pytest-cov==6.2.1",
+    "ruff==0.12.11",
+]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]

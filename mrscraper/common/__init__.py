@@ -1,0 +1,1 @@
+"""Shared MrScraper plugin helpers."""

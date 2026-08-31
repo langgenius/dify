@@ -1,0 +1,57 @@
+identity:
+  name: mrscraper_extract_structured_data
+  author: ai-mrscraper
+  label:
+    en_US: Extract Structured Data
+description:
+  human:
+    en_US: Extract a page with an exact built-in schema prompt for a supported content category.
+  llm: Call this for immediate extraction of a known category such as article, product, hotel, job, property, or restaurant.
+parameters:
+  - name: url
+    type: string
+    required: true
+    label: {en_US: URL}
+    human_description: {en_US: Absolute HTTP or HTTPS page URL.}
+    llm_description: The absolute page URL to extract.
+    form: llm
+  - name: category
+    type: select
+    required: false
+    default: article
+    label: {en_US: Category}
+    human_description: {en_US: Structured-data preset category. Defaults to article.}
+    llm_description: Select the content category matching the target page.
+    form: llm
+    options:
+      - {value: article, label: {en_US: Article}}
+      - {value: forumThread, label: {en_US: Forum Thread}}
+      - {value: hotel, label: {en_US: Hotel}}
+      - {value: jobPosting, label: {en_US: Job Posting}}
+      - {value: post, label: {en_US: Post}}
+      - {value: product, label: {en_US: Product}}
+      - {value: property, label: {en_US: Property}}
+      - {value: restaurant, label: {en_US: Restaurant}}
+      - {value: socialMediaProfile, label: {en_US: Social Media Profile}}
+      - {value: tourAttraction, label: {en_US: Tour or Attraction}}
+  - name: mode
+    type: select
+    required: false
+    default: Super
+    label: {en_US: Mode}
+    human_description: {en_US: Scraping strength. Defaults to Super.}
+    llm_description: Choose Super for stronger scraping or Cheap for weakly protected sites.
+    form: llm
+    options:
+      - {value: Super, label: {en_US: Super}}
+      - {value: Cheap, label: {en_US: Cheap}}
+  - name: proxy_country
+    type: string
+    required: false
+    label: {en_US: Proxy Country}
+    human_description: {en_US: Optional proxy country code.}
+    llm_description: Optional proxy country code such as US, GB, ID, or SG.
+    form: llm
+extra:
+  python:
+    source: tools/mrscraper_extract_structured_data.py

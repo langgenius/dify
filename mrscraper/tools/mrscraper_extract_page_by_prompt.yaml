@@ -1,0 +1,57 @@
+identity:
+  name: mrscraper_extract_page_by_prompt
+  author: ai-mrscraper
+  label:
+    en_US: Extract Page by Prompt
+description:
+  human:
+    en_US: Immediately extract one page using natural-language instructions and an optional JSON shape.
+  llm: Call this for immediate prompt-based extraction from one page. Use Create Prompt Scraper when the user wants a reusable scraper.
+parameters:
+  - name: url
+    type: string
+    required: true
+    label: {en_US: URL}
+    human_description: {en_US: Absolute HTTP or HTTPS page URL.}
+    llm_description: The absolute page URL to extract.
+    form: llm
+  - name: prompt
+    type: string
+    required: false
+    label: {en_US: Prompt}
+    human_description: {en_US: Optional instructions describing the data to extract.}
+    llm_description: Natural-language extraction instructions.
+    form: llm
+  - name: output_schema
+    type: object
+    required: false
+    input_schema:
+      type: object
+      additionalProperties: true
+    label: {en_US: Output Schema}
+    human_description: {en_US: Optional JSON object describing the expected output shape.}
+    llm_description: JSON object describing the desired output fields and types.
+    form: llm
+  - name: mode
+    type: select
+    required: false
+    default: Super
+    label: {en_US: Mode}
+    human_description: {en_US: Scraping strength. Defaults to Super.}
+    llm_description: Choose Super for stronger scraping or Cheap for weakly protected sites.
+    form: llm
+    options:
+      - value: Super
+        label: {en_US: Super}
+      - value: Cheap
+        label: {en_US: Cheap}
+  - name: proxy_country
+    type: string
+    required: false
+    label: {en_US: Proxy Country}
+    human_description: {en_US: Optional proxy country code.}
+    llm_description: Optional proxy country code such as US, GB, ID, or SG.
+    form: llm
+extra:
+  python:
+    source: tools/mrscraper_extract_page_by_prompt.py

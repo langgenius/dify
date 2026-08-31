@@ -1,0 +1,44 @@
+identity:
+  author: ai-mrscraper
+  name: mrscraper
+  label:
+    en_US: MrScraper
+  description:
+    en_US: Create and run MrScraper scrapers, fetch results, search Google, and render pages.
+  icon: icon.svg
+  tags:
+    - search
+    - utilities
+credentials_for_provider:
+  api_token:
+    type: secret-input
+    required: true
+    label:
+      en_US: API Token
+    placeholder:
+      en_US: Enter your MrScraper API token
+    help:
+      en_US: Create or copy an API token from your MrScraper account.
+    url: https://app.mrscraper.com
+tools:
+  - tools/mrscraper_get_account_info.yaml
+  - tools/mrscraper_crawl_website_urls.yaml
+  - tools/mrscraper_search_google_serp.yaml
+  - tools/mrscraper_extract_page_by_prompt.yaml
+  - tools/mrscraper_extract_listings.yaml
+  - tools/mrscraper_extract_structured_data.yaml
+  - tools/mrscraper_fetch_rendered_html.yaml
+  - tools/mrscraper_get_results.yaml
+  - tools/mrscraper_get_latest_results.yaml
+  - tools/mrscraper_get_result_detail.yaml
+  - tools/mrscraper_create_prompt_scraper.yaml
+  - tools/mrscraper_create_listing_scraper.yaml
+  - tools/mrscraper_create_website_crawl_scraper.yaml
+  - tools/mrscraper_run_existing_scraper_ai_general.yaml
+  - tools/mrscraper_run_existing_scraper_ai_listing.yaml
+  - tools/mrscraper_run_existing_scraper_ai_map.yaml
+  - tools/mrscraper_run_existing_scraper_manual.yaml
+  - tools/mrscraper_run_existing_scraper_batch.yaml
+extra:
+  python:
+    source: provider/mrscraper.py

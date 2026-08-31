@@ -1,0 +1,25 @@
+identity:
+  name: mrscraper_run_existing_scraper_ai_listing
+  author: ai-mrscraper
+  label: {en_US: Run Existing Scraper AI - Listing}
+description:
+  human: {en_US: Run one URL with an existing Listing AI scraper.}
+  llm: Call this for one URL with an existing Listing AI scraper. This agent supports pagination settings.
+parameters:
+  - {name: scraper_id, type: string, required: true, label: {en_US: Scraper ID}, human_description: {en_US: Existing scraper identifier.}, llm_description: ID of the existing Listing AI scraper., form: llm}
+  - {name: url, type: string, required: true, label: {en_US: URL}, human_description: {en_US: One absolute HTTP or HTTPS URL.}, llm_description: The single URL to process., form: llm}
+  - {name: max_retry, type: number, required: false, default: 3, min: 0, precision: 0, label: {en_US: Max Retry}, human_description: {en_US: Retry attempts. Defaults to 3.}, llm_description: Retry attempts as an integer of at least 0., form: llm}
+  - {name: proxy_country, type: string, required: false, label: {en_US: Proxy Country}, human_description: {en_US: Optional proxy country code.}, llm_description: Optional proxy country code., form: llm}
+  - {name: max_pages, type: number, required: false, default: 5, min: 1, precision: 0, label: {en_US: Max Pages}, human_description: {en_US: Maximum pages to process. Defaults to 5.}, llm_description: Maximum pages as an integer of at least 1., form: llm}
+  - {name: timeout, type: number, required: false, default: 300, min: 1, precision: 0, label: {en_US: Timeout}, human_description: {en_US: Timeout in seconds. Defaults to 300.}, llm_description: Timeout in seconds as an integer of at least 1., form: llm}
+  - {name: bypass_proxy, type: boolean, required: false, default: false, label: {en_US: Bypass Proxy}, human_description: {en_US: Bypass the proxy. Defaults to false.}, llm_description: Whether to bypass the proxy., form: llm}
+  - {name: html, type: boolean, required: false, default: false, label: {en_US: HTML}, human_description: {en_US: Include HTML. Defaults to false.}, llm_description: Whether to include HTML., form: llm}
+  - {name: markdown, type: boolean, required: false, default: false, label: {en_US: Markdown}, human_description: {en_US: Include Markdown. Defaults to false.}, llm_description: Whether to include Markdown., form: llm}
+  - {name: render_javascript, type: boolean, required: false, default: false, label: {en_US: Render JavaScript}, human_description: {en_US: Render JavaScript. Defaults to false.}, llm_description: Whether to render JavaScript., form: llm}
+  - {name: return_cookies, type: boolean, required: false, default: false, label: {en_US: Return Cookies}, human_description: {en_US: Return cookies. Defaults to false.}, llm_description: Whether to return cookies., form: llm}
+  - {name: screenshot, type: boolean, required: false, default: false, label: {en_US: Screenshot}, human_description: {en_US: Capture a screenshot. Defaults to false.}, llm_description: Whether to capture a screenshot., form: llm}
+  - {name: stream, type: boolean, required: false, default: false, label: {en_US: Stream}, human_description: {en_US: Stream results. Defaults to false.}, llm_description: Whether to stream results., form: llm}
+  - {name: use_home_page, type: boolean, required: false, default: false, label: {en_US: Use Home Page}, human_description: {en_US: Visit the home page first. Defaults to false.}, llm_description: Whether to visit the home page first., form: llm}
+  - {name: wait_for_selector, type: string, required: false, label: {en_US: Wait for Selector}, human_description: {en_US: Optional CSS selector to wait for.}, llm_description: Optional CSS selector to wait for., form: llm}
+extra:
+  python: {source: tools/mrscraper_run_existing_scraper_ai_listing.py}

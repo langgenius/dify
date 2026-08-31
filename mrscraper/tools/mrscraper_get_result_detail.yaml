@@ -1,0 +1,11 @@
+identity:
+  name: mrscraper_get_result_detail
+  author: ai-mrscraper
+  label: {en_US: Get Result Detail}
+description:
+  human: {en_US: Retrieve one complete MrScraper result by result ID.}
+  llm: Call this when a specific result ID is known and its complete detail is required.
+parameters:
+  - {name: result_id, type: string, required: true, label: {en_US: Result ID}, human_description: {en_US: Nonblank result identifier.}, llm_description: The exact result ID to retrieve., form: llm}
+extra:
+  python: {source: tools/mrscraper_get_result_detail.py}

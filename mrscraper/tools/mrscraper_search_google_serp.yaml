@@ -1,0 +1,67 @@
+identity:
+  name: mrscraper_search_google_serp
+  author: ai-mrscraper
+  label:
+    en_US: Search Google SERP
+description:
+  human:
+    en_US: Search Google synchronously and return structured JSON or exact HTML.
+  llm: Call this when the user needs current Google search results. Choose HTML only when the raw result page is needed.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label: {en_US: Search Query}
+    human_description: {en_US: Nonblank Google search terms.}
+    llm_description: The nonblank Google search query.
+    form: llm
+  - name: region
+    type: string
+    required: false
+    default: us
+    label: {en_US: Region}
+    human_description: {en_US: Two-letter result region code. Defaults to us.}
+    llm_description: Two-letter region code such as us or gb.
+    form: llm
+  - name: language
+    type: string
+    required: false
+    default: en
+    label: {en_US: Language}
+    human_description: {en_US: Two-letter result language code. Defaults to en.}
+    llm_description: Two-letter language code such as en or fr.
+    form: llm
+  - name: page
+    type: number
+    required: false
+    default: 1
+    min: 1
+    precision: 0
+    label: {en_US: Page}
+    human_description: {en_US: Search result page number. Defaults to 1.}
+    llm_description: Search result page as an integer of at least 1.
+    form: llm
+  - name: format
+    type: select
+    required: false
+    default: json
+    label: {en_US: Format}
+    human_description: {en_US: Return structured JSON or raw HTML. Defaults to JSON.}
+    llm_description: Choose json for structured results or html for the exact search result page.
+    form: llm
+    options:
+      - value: json
+        label: {en_US: JSON}
+      - value: html
+        label: {en_US: HTML}
+  - name: render_js
+    type: boolean
+    required: false
+    default: false
+    label: {en_US: Render JavaScript}
+    human_description: {en_US: Render JavaScript before collecting results. Defaults to false.}
+    llm_description: Whether JavaScript rendering is required.
+    form: llm
+extra:
+  python:
+    source: tools/mrscraper_search_google_serp.py

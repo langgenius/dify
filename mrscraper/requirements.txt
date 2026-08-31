@@ -1,0 +1,2 @@
+dify-plugin==0.10.2
+requests==2.34.2

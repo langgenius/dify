@@ -1,0 +1,19 @@
+identity:
+  name: mrscraper_run_existing_scraper_ai_map
+  author: ai-mrscraper
+  label: {en_US: Run Existing Scraper AI - Map}
+description:
+  human: {en_US: Run one URL with an existing Map AI scraper.}
+  llm: Call this for one URL with an existing Map AI scraper. This agent supports crawl depth and URL patterns.
+parameters:
+  - {name: scraper_id, type: string, required: true, label: {en_US: Scraper ID}, human_description: {en_US: Existing scraper identifier.}, llm_description: ID of the existing Map AI scraper., form: llm}
+  - {name: url, type: string, required: true, label: {en_US: URL}, human_description: {en_US: One absolute HTTP or HTTPS URL.}, llm_description: The single URL to process., form: llm}
+  - {name: max_retry, type: number, required: false, default: 3, min: 0, precision: 0, label: {en_US: Max Retry}, human_description: {en_US: Retry attempts. Defaults to 3.}, llm_description: Retry attempts as an integer of at least 0., form: llm}
+  - {name: proxy_country, type: string, required: false, label: {en_US: Proxy Country}, human_description: {en_US: Optional proxy country code.}, llm_description: Optional proxy country code., form: llm}
+  - {name: max_depth, type: number, required: false, default: 2, min: 0, precision: 0, label: {en_US: Max Depth}, human_description: {en_US: Maximum crawl depth. Defaults to 2.}, llm_description: Maximum crawl depth as an integer of at least 0., form: llm}
+  - {name: max_pages, type: number, required: false, default: 50, min: 1, precision: 0, label: {en_US: Max Pages}, human_description: {en_US: Maximum pages to process. Defaults to 50.}, llm_description: Maximum pages as an integer of at least 1., form: llm}
+  - {name: limit, type: number, required: false, default: 50, min: 1, precision: 0, label: {en_US: Result Limit}, human_description: {en_US: Maximum results. Defaults to 50.}, llm_description: Maximum results as an integer of at least 1., form: llm}
+  - {name: include_patterns, type: string, required: false, label: {en_US: Include Patterns}, human_description: {en_US: Optional pipe-separated URL include patterns.}, llm_description: Optional pipe-separated URL include patterns., form: llm}
+  - {name: exclude_patterns, type: string, required: false, label: {en_US: Exclude Patterns}, human_description: {en_US: Optional pipe-separated URL exclude patterns.}, llm_description: Optional pipe-separated URL exclude patterns., form: llm}
+extra:
+  python: {source: tools/mrscraper_run_existing_scraper_ai_map.py}

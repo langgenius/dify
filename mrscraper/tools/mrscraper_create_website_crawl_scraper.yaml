@@ -1,0 +1,16 @@
+identity:
+  name: mrscraper_create_website_crawl_scraper
+  author: ai-mrscraper
+  label: {en_US: Create Website Crawl Scraper}
+description:
+  human: {en_US: Create a reusable Map AI scraper for website URL discovery.}
+  llm: Call this to create a reusable website crawl scraper. Use Crawl Website URLs for immediate URL discovery.
+parameters:
+  - {name: url, type: string, required: true, label: {en_US: URL}, human_description: {en_US: Absolute starting HTTP or HTTPS URL.}, llm_description: Initial website URL for the reusable crawl scraper., form: llm}
+  - {name: max_depth, type: number, required: false, default: 2, precision: 0, label: {en_US: Max Depth}, human_description: {en_US: Maximum crawl depth. Defaults to 2.}, llm_description: Maximum crawl depth as an integer., form: llm}
+  - {name: max_pages, type: number, required: false, default: 50, precision: 0, label: {en_US: Max Pages}, human_description: {en_US: Maximum pages to evaluate. Defaults to 50.}, llm_description: Maximum pages as an integer., form: llm}
+  - {name: limit, type: number, required: false, default: 50, min: 1, precision: 0, label: {en_US: Result Limit}, human_description: {en_US: Maximum URLs to return. Defaults to 50.}, llm_description: Result limit as an integer of at least 1., form: llm}
+  - {name: include_patterns, type: string, required: false, label: {en_US: Include Patterns}, human_description: {en_US: Optional pipe-separated include regular expressions.}, llm_description: Pipe-separated URL include patterns., form: llm}
+  - {name: exclude_patterns, type: string, required: false, label: {en_US: Exclude Patterns}, human_description: {en_US: Optional pipe-separated exclude regular expressions.}, llm_description: Pipe-separated URL exclude patterns., form: llm}
+extra:
+  python: {source: tools/mrscraper_create_website_crawl_scraper.py}

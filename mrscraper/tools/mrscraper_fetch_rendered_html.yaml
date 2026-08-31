@@ -1,0 +1,49 @@
+identity:
+  name: mrscraper_fetch_rendered_html
+  author: ai-mrscraper
+  label:
+    en_US: Fetch Rendered HTML
+description:
+  human:
+    en_US: Render a page in a stealth browser and return exact HTML/plain output or upstream JSON.
+  llm: Call this when JavaScript-rendered page content, Markdown, cookies, or a screenshot is needed rather than AI extraction.
+parameters:
+  - {name: url, type: string, required: true, label: {en_US: URL}, human_description: {en_US: Absolute HTTP or HTTPS page URL.}, llm_description: The absolute page URL to render., form: llm}
+  - {name: max_retries, type: number, required: false, default: 3, min: 0, precision: 0, label: {en_US: Max Retries}, human_description: {en_US: Retry attempts. Defaults to 3.}, llm_description: Retry attempts as an integer of at least 0., form: llm}
+  - {name: timeout, type: number, required: false, default: 300, min: 1, precision: 0, label: {en_US: Timeout}, human_description: {en_US: Page timeout in seconds. Defaults to 300.}, llm_description: Page timeout in seconds as an integer of at least 1., form: llm}
+  - {name: geo_code, type: string, required: false, default: us, label: {en_US: Geo Code}, human_description: {en_US: Geolocation code. Defaults to us.}, llm_description: Geolocation code for the rendered request., form: llm}
+  - {name: proxy_country, type: string, required: false, default: us, label: {en_US: Proxy Country}, human_description: {en_US: Proxy country code. Defaults to us.}, llm_description: Proxy country code for the rendered request., form: llm}
+  - {name: html, type: boolean, required: false, default: true, label: {en_US: Return HTML}, human_description: {en_US: Include rendered HTML. Defaults to true.}, llm_description: Whether rendered HTML should be returned., form: llm}
+  - {name: markdown, type: boolean, required: false, default: false, label: {en_US: Return Markdown}, human_description: {en_US: Include Markdown. Defaults to false.}, llm_description: Whether Markdown should be returned., form: llm}
+  - {name: super_mode, type: boolean, required: false, default: false, label: {en_US: Super Mode}, human_description: {en_US: Use stronger real-device scraping. Omitted when false.}, llm_description: Whether stronger Super mode is required., form: llm}
+  - {name: home_page, type: boolean, required: false, default: false, label: {en_US: Visit Home Page}, human_description: {en_US: Visit the home page first. Defaults to false.}, llm_description: Whether to navigate through the site home page first., form: llm}
+  - {name: screenshot, type: boolean, required: false, default: false, label: {en_US: Screenshot}, human_description: {en_US: Capture a screenshot. Defaults to false.}, llm_description: Whether to capture a screenshot., form: llm}
+  - name: screenshot_mode
+    type: select
+    required: false
+    default: full
+    label: {en_US: Screenshot Mode}
+    human_description: {en_US: Full page or top only; used only when screenshot is true.}
+    llm_description: Choose full or top only when screenshot is enabled.
+    form: llm
+    options:
+      - {value: full, label: {en_US: Full}}
+      - {value: top, label: {en_US: Top}}
+  - {name: token_cap, type: number, required: false, min: 1, precision: 0, label: {en_US: Token Cap}, human_description: {en_US: Optional content token cap.}, llm_description: Optional token cap as an integer of at least 1., form: llm}
+  - {name: wait_for_selector, type: string, required: false, label: {en_US: Wait for Selector}, human_description: {en_US: Optional CSS selector to wait for.}, llm_description: Optional CSS selector that must appear before returning., form: llm}
+  - name: wait_until
+    type: select
+    required: false
+    label: {en_US: Wait Until}
+    human_description: {en_US: Optional browser lifecycle condition.}
+    llm_description: Browser lifecycle event to wait for.
+    form: llm
+    options:
+      - {value: domcontentloaded, label: {en_US: DOM Content Loaded}}
+      - {value: load, label: {en_US: Load}}
+      - {value: networkidle, label: {en_US: Network Idle}}
+  - {name: block_resources, type: boolean, required: false, default: false, label: {en_US: Block Resources}, human_description: {en_US: Block images/fonts/styles. Omitted when false.}, llm_description: Whether nonessential resources should be blocked., form: llm}
+  - {name: return_cookie, type: boolean, required: false, default: false, label: {en_US: Return Cookie}, human_description: {en_US: Include browser cookies. Omitted when false.}, llm_description: Whether browser cookies should be returned., form: llm}
+extra:
+  python:
+    source: tools/mrscraper_fetch_rendered_html.py

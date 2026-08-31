@@ -1,0 +1,34 @@
+identity:
+  name: mrscraper_get_results
+  author: ai-mrscraper
+  label: {en_US: Get Results}
+description:
+  human: {en_US: Retrieve a configurable page of results for one scraper.}
+  llm: Call this for paginated results with explicit page, page size, and sort order. Use Get Latest Results for the newest N results.
+parameters:
+  - {name: scraper_id, type: string, required: true, label: {en_US: Scraper ID}, human_description: {en_US: Nonblank scraper identifier.}, llm_description: The scraper ID whose results should be listed., form: llm}
+  - {name: page, type: number, required: false, default: 1, precision: 0, label: {en_US: Page}, human_description: {en_US: Page number. Defaults to 1.}, llm_description: Result page as an integer., form: llm}
+  - {name: page_size, type: number, required: false, default: 10, precision: 0, label: {en_US: Page Size}, human_description: {en_US: Results per page. Defaults to 10.}, llm_description: Results per page as an integer., form: llm}
+  - name: sort_by
+    type: select
+    required: false
+    default: createdAt
+    label: {en_US: Sort By}
+    human_description: {en_US: Sort field. Only createdAt is supported.}
+    llm_description: Sort by creation time.
+    form: llm
+    options:
+      - {value: createdAt, label: {en_US: Created At}}
+  - name: sort_order
+    type: select
+    required: false
+    default: DESC
+    label: {en_US: Sort Order}
+    human_description: {en_US: ASC or DESC. Defaults to DESC.}
+    llm_description: Sort direction, ascending or descending.
+    form: llm
+    options:
+      - {value: ASC, label: {en_US: Ascending}}
+      - {value: DESC, label: {en_US: Descending}}
+extra:
+  python: {source: tools/mrscraper_get_results.py}
