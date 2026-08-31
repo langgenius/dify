@@ -30,6 +30,7 @@ from services.webapp_access_query_service import (
     WebAppAccessReferenceRequiredError,
     WebAppAccessUnavailableError,
 )
+from services.webapp_auth_service import WebAppAuthType
 
 logger = logging.getLogger(__name__)
 
@@ -184,6 +185,8 @@ class AppWebAuthPermission(Resource):
             if not tk:
                 raise Unauthorized("Access token is missing.")
             decoded = PassportService().verify(tk)
+            if decoded.get("auth_type") != WebAppAuthType.INTERNAL:
+                raise WebAppAuthRequiredError()
             user_id = decoded.get("user_id", "visitor")
         except Unauthorized:
             raise WebAppAuthRequiredError() from None
