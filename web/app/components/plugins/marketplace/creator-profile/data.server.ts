@@ -104,7 +104,8 @@ const loadCreatorProfileCached = cache(
       getPublisherTemplates(uniqueHandle, sortField, sortOrder),
     ])
 
-    const creator = creatorResult.status === 'fulfilled' ? creatorResult.value : undefined
+    if (creatorResult.status === 'rejected') throw creatorResult.reason
+    const creator = creatorResult.value
     if (!creator) return null
 
     const plugins: MarketplacePlugin[] =

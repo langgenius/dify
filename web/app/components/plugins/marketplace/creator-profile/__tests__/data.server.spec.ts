@@ -183,6 +183,26 @@ describe('loadCreatorProfile', () => {
     ).resolves.toBeNull()
   })
 
+  it('rethrows when the primary creator request fails', async () => {
+    mocks.creatorDetail.mockRejectedValue(new Error('creator request timed out'))
+
+    await expect(
+      loadCreatorProfile({ uniqueHandle: 'slow-creator', locale: 'en-US' }),
+    ).rejects.toThrow('creator request timed out')
+  })
+
+  it('rethrows when the organization request fails', async () => {
+    mocks.organizationDetail.mockRejectedValue(new Error('organization request timed out'))
+
+    await expect(
+      loadCreatorProfile({
+        uniqueHandle: 'slow-org',
+        publisherType: 'organization',
+        locale: 'en-US',
+      }),
+    ).rejects.toThrow('organization request timed out')
+  })
+
   it('maps organizations to the shared creator profile shape', async () => {
     mocks.organizationDetail.mockResolvedValue({
       data: {
