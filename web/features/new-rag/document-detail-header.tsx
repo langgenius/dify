@@ -35,14 +35,16 @@ export function DocumentDetailHeader({
 
   return (
     <>
-      <Link
-        className="inline-flex w-fit items-center gap-1 system-xs-medium text-text-tertiary hover:text-text-secondary focus-visible:rounded focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-        href={backPath}
-      >
-        <span aria-hidden className="i-ri-arrow-left-line size-4" />
-        {t(($) => $['newKnowledge.documents'])}
-      </Link>
-      <div className="mt-7 flex flex-wrap items-start justify-between gap-3">
+      <div className="flex h-6 items-center">
+        <Link
+          className="inline-flex w-fit items-center gap-1 system-xs-medium text-text-tertiary hover:text-text-secondary focus-visible:rounded focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          href={backPath}
+        >
+          <span aria-hidden className="i-ri-arrow-left-line size-4" />
+          {t(($) => $['newKnowledge.documents'])}
+        </Link>
+      </div>
+      <div className="mt-5 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1
             ref={titleRef}
