@@ -66,6 +66,7 @@ also reads `.env` and `dify-agent/.env` when present.
 | `DIFY_AGENT_OPENSHELL_SANDBOX_IMAGE` | `langgenius/dify-agent-local-sandbox:latest` | Sandbox OCI image containing shellctl; must include `iproute2` for the OpenShell supervisor. |
 | `DIFY_AGENT_OPENSHELL_DRIVER_CONFIG` | empty | JSON `SandboxTemplate.driver_config`; required for OpenShell and must be a non-empty object. Must mount the shared Home Snapshot volume at the shared mount path in every sandbox. |
 | `DIFY_AGENT_OPENSHELL_SHARED_MOUNT_PATH` | `/mnt/dify-agent-shared` | In-sandbox mount path of the shared volume; Home Snapshots live under `home-snapshots/<tenant-digest>/`. |
+| `DIFY_AGENT_OPENSHELL_EGRESS_ALLOW` | empty | Optional comma-separated `host:port` egress allowlist (no scheme or path). Empty sends no network policy (gateway/driver default egress). When set, sandbox egress is enforced to exactly these endpoints — include the Agent Stub and files endpoints. |
 | `DIFY_AGENT_OPENSHELL_SHELLCTL_AUTH_TOKEN` | empty | Required bearer token the exec-bootstrapped shellctl expects on its data plane. Empty is rejected at startup. |
 | `DIFY_AGENT_OPENSHELL_SHELLCTL_PORT` | `5004` | Sandbox-loopback port shellctl listens on; reached through the gateway `ForwardTcp` tunnel. |
 | `DIFY_AGENT_OPENSHELL_READY_TIMEOUT_SECONDS` | `300` | Maximum wait for a sandbox to reach the READY phase. |
@@ -250,23 +251,31 @@ this deployment does not have one yet (`cp docker/.env.example docker/.env`).
 
 Deployment prerequisites:
 
-1. An OpenShell gateway reachable from `agent_backend` at
-   `DIFY_AGENT_OPENSHELL_GATEWAY_ENDPOINT`, with credentials via
-   `DIFY_AGENT_OPENSHELL_BEARER_TOKEN` or the mTLS bundle paths. Prefer
-   `localhost:17670` when the gateway listens on loopback. Sandboxes reconnect
-   to the gateway through `host.openshell.internal`; on macOS local development
-   bind the gateway to `127.0.0.1:17670` so that alias can reach it.
+1. An OpenShell gateway, version 0.0.106 or newer (validated against
+   0.0.106–0.0.110; the bundled SDK is pinned `>=0.0.106,<0.1.0`), reachable
+   from `agent_backend` at `DIFY_AGENT_OPENSHELL_GATEWAY_ENDPOINT`, with
+   credentials via `DIFY_AGENT_OPENSHELL_BEARER_TOKEN` or the mTLS bundle
+   paths. Prefer `localhost:17670` when the gateway listens on loopback.
+   Sandboxes reconnect to the gateway through `host.openshell.internal`; on
+   macOS local development bind the gateway to `127.0.0.1:17670` so that
+   alias can reach it.
 2. Sandboxes must reach `DIFY_AGENT_STUB_API_BASE_URL` and
    `DIFY_AGENT_SANDBOX_FILES_BASE_URL`. When the gateway runs outside this
-   Compose stack, set both to externally reachable URLs and allow them in the
-   OpenShell egress policy; compose-internal hostnames are not resolvable
-   from OpenShell sandboxes. Example allow-list:
+   Compose stack, set both to externally reachable URLs; compose-internal
+   hostnames are not resolvable from OpenShell sandboxes. When the
+   deployment restricts sandbox egress, set
+   `DIFY_AGENT_OPENSHELL_EGRESS_ALLOW` so the sandbox policy carries an
+   enforced allowlist covering at least those two endpoints:
 
    ```text
-   allow https://agent.example.com/agent-stub
-   allow https://dify.example.com/files
-   deny *
+   DIFY_AGENT_OPENSHELL_EGRESS_ALLOW=agent.example.com:443,dify.example.com:443
    ```
+
+   Left empty (the default), the policy carries no network rules and egress
+   follows the gateway/driver default — a stock Docker driver leaves sandbox
+   outbound unrestricted, which agent-run tools (package installs, web
+   access) may rely on. When set, egress is restricted to exactly the listed
+   endpoints, from any in-sandbox binary.
 
 3. A sandbox image that bundles shellctl and `iproute2`
    (`langgenius/dify-agent-local-sandbox` since iproute2 was added).

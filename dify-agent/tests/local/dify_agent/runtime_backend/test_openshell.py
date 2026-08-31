@@ -573,3 +573,61 @@ async def test_openshell_sdk_exec_script_sends_script_via_stdin_not_argv() -> No
     assert calls["command"] == ["/bin/sh", "-s"]
     assert calls["stdin"] == script.encode()
     assert calls["timeout_seconds"] == plane.exec_timeout_seconds
+
+
+@pytest.mark.anyio
+async def test_openshell_sdk_create_sends_enforced_egress_allowlist() -> None:
+    # The fake pins the adapter's own outgoing create-spec shape: opt-in
+    # egress_allow becomes one enforced allowlist rule per endpoint, and an
+    # empty egress_allow sends no network policy at all so sandbox egress
+    # stays on the gateway/driver default. Real gateway enforcement is
+    # covered by the opt-in integration contract.
+    from types import SimpleNamespace
+    from typing import cast
+
+    from dify_agent.runtime_backend.openshell import OpenShellSDKControlPlane
+
+    specs: list[object] = []
+
+    class _FakeSdkClient:
+        def create(
+            self,
+            *,
+            workspace: str,
+            spec: object,
+            name: str,
+            labels: dict[str, str],
+        ) -> SimpleNamespace:
+            specs.append(spec)
+            return SimpleNamespace(id="sb-1")
+
+    def plane_with(egress_allow: tuple[tuple[str, int], ...]) -> OpenShellSDKControlPlane:
+        plane = OpenShellSDKControlPlane(endpoint="localhost:1", insecure=True, egress_allow=egress_allow)
+        plane._client_cache = cast(  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
+            "openshell_module.SandboxClient", cast(object, _FakeSdkClient())
+        )
+        return plane
+
+    allowing = plane_with((("agent.example.com", 5050), ("dify.example.com", 443)))
+    await allowing.create_sandbox(name="dify-a", labels={})
+
+    policies = specs[0].policy.network_policies  # pyright: ignore[reportAttributeAccessIssue]
+    assert len(policies) == 2
+    by_endpoint = {
+        (rule.endpoints[0].host, rule.endpoints[0].port): (key, rule) for key, rule in policies.items()
+    }
+    assert set(by_endpoint) == {("agent.example.com", 5050), ("dify.example.com", 443)}
+    for key, rule in by_endpoint.values():
+        assert rule.name == key
+        endpoint = rule.endpoints[0]
+        assert endpoint.protocol == "rest"
+        assert endpoint.enforcement == "enforce"
+        assert endpoint.rules[0].allow.method == "*"
+        assert endpoint.rules[0].allow.path == "/**"
+        # Endpoints are the allowlist; any in-sandbox binary may connect.
+        assert [binary.path for binary in rule.binaries] == ["/**"]
+
+    default = plane_with(())
+    await default.create_sandbox(name="dify-b", labels={})
+
+    assert not specs[1].policy.network_policies  # pyright: ignore[reportAttributeAccessIssue]

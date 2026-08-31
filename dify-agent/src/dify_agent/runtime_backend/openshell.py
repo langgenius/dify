@@ -21,6 +21,11 @@ restrictive default (``restrictive_default_policy()``) instead of merging with
 it, so it restates the default path set and adds ``/dev/pts``
 (shellctl's tmux allocates PTYs via forkpty) plus the tenant snapshot
 directory — not the whole shared mount.
+
+Network egress control is opt-in: when ``egress_allow`` is configured, the
+policy carries one enforced allowlist rule per ``(host, port)`` endpoint and
+sandbox egress is restricted to exactly those endpoints; when empty, the
+policy carries no network rules and egress follows the gateway/driver default.
 """
 
 from __future__ import annotations
@@ -68,7 +73,7 @@ from dify_agent.runtime_backend.shellctl import (
 
 if TYPE_CHECKING:
     from openshell import SandboxClient
-    from openshell._proto import openshell_pb2
+    from openshell._proto import openshell_pb2, sandbox_pb2
 
 logger = logging.getLogger(__name__)
 
@@ -231,6 +236,9 @@ class OpenShellSDKControlPlane:
     image: str = DEFAULT_OPENSHELL_SANDBOX_IMAGE
     driver_config: dict[str, object] = field(default_factory=dict)
     shared_mount_path: str = DEFAULT_OPENSHELL_SHARED_MOUNT_PATH
+    # Opt-in egress allowlist as (host, port) pairs; empty sends no network
+    # policy, leaving sandbox egress to the gateway/driver default.
+    egress_allow: tuple[tuple[str, int], ...] = ()
     ready_timeout_seconds: float = 300.0
     exec_timeout_seconds: int = 120
     _client_lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
@@ -274,11 +282,38 @@ class OpenShellSDKControlPlane:
                 read_write=[*_POLICY_READ_WRITE, *extra_read_write],
             ),
             landlock=sandbox_pb2.LandlockPolicy(compatibility="best_effort"),
+            network_policies=self._network_policies(),
         )
         return openshell_pb2.SandboxSpec(
             template=openshell_pb2.SandboxTemplate(image=self.image, driver_config=driver_config),
             policy=policy,
         )
+
+    def _network_policies(self) -> dict[str, sandbox_pb2.NetworkPolicyRule]:
+        from openshell._proto import sandbox_pb2
+
+        policies: dict[str, sandbox_pb2.NetworkPolicyRule] = {}
+        for index, (host, port) in enumerate(self.egress_allow):
+            # The map key doubles as the rule name; the index keeps entries
+            # unique even when sanitized endpoints would collide.
+            name = f"allow_{index}_" + re.sub(r"[^0-9A-Za-z]", "_", f"{host}_{port}")
+            policies[name] = sandbox_pb2.NetworkPolicyRule(
+                name=name,
+                endpoints=[
+                    sandbox_pb2.NetworkEndpoint(
+                        host=host,
+                        port=port,
+                        protocol="rest",
+                        enforcement="enforce",
+                        rules=[sandbox_pb2.L7Rule(allow=sandbox_pb2.L7Allow(method="*", path="/**"))],
+                    )
+                ],
+                # OpenShell also gates which in-sandbox binaries may open the
+                # connection; "/**" allows any (the Agent Stub client plus
+                # tools the agent runs) — the endpoint list is the allowlist.
+                binaries=[sandbox_pb2.NetworkBinary(path="/**")],
+            )
+        return policies
 
     async def create_sandbox(
         self,

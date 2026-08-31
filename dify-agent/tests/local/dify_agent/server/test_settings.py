@@ -395,6 +395,7 @@ def test_build_runtime_backend_profile_returns_openshell_drivers_when_selected()
         openshell_shellctl_auth_token="token-1",
         openshell_shellctl_port=6006,
         openshell_exec_timeout_seconds=90,
+        openshell_egress_allow="agent.example.com:5050",
     )
 
     profile = settings.build_runtime_backend_profile()
@@ -407,6 +408,7 @@ def test_build_runtime_backend_profile_returns_openshell_drivers_when_selected()
     assert control_plane.endpoint == "gateway.example:17670"
     assert control_plane.shared_mount_path == "/mnt/shared"
     assert control_plane.exec_timeout_seconds == 90
+    assert control_plane.egress_allow == (("agent.example.com", 5050),)
     assert profile.execution_bindings.shellctl_auth_token == "token-1"
     assert profile.execution_bindings.shellctl_port == 6006
 
