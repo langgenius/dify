@@ -3,9 +3,6 @@
 import type { DocumentUploadFormHandle } from '../upload/form'
 import type { DocumentAction } from './actions-dropdown'
 import type { DocumentProcessingTask } from './models'
-import type { ProcessingTaskEvent, ProcessingTaskProgressEvent } from './tasks/events'
-import type { AuxiliaryTaskReadDenial, TrustedActiveOverride } from './tasks/recovery'
-import type { TerminalTaskPin } from './tasks/snapshot'
 import type { UploadExclusionReasonKey } from './upload/model'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -40,7 +37,6 @@ import { useKnowledgeModelSetupGuard } from '../use-knowledge-model-setup-guard'
 import { DocumentBulkActions, DocumentDropOverlay, DocumentsEmpty, DocumentsList } from './list'
 import { DocumentMetadataDrawer } from './metadata/drawer'
 import {
-  ACTIVE_TASK_STATES,
   documentCanDownload,
   documentCanReindex,
   documentCanToggleAvailability,
@@ -50,27 +46,16 @@ import {
   newestTaskByDocument,
   sourceName,
   taskCanRetry,
-  taskIsActive,
   taskNeedsAttention,
-  taskVersionIsAfter,
 } from './model'
-import {
-  backgroundTaskFromApi,
-  backgroundTaskListFromApi,
-  documentTaskListFromApi,
-  logicalDocumentListFromApi,
-} from './models'
+import { backgroundTaskFromApi, logicalDocumentListFromApi } from './models'
 import {
   DOCUMENT_PERMISSION_DENIED,
   recoveryQueryMaskForPermissionDenials,
   SOURCE_PERMISSION_DENIED,
   TASK_PERMISSION_DENIED,
 } from './permission-recovery'
-import {
-  documentSourcesInfiniteOptions,
-  documentTasksInfiniteOptions,
-  logicalDocumentsInfiniteOptions,
-} from './queries'
+import { documentSourcesInfiniteOptions, logicalDocumentsInfiniteOptions } from './queries'
 import {
   documentFilterParser,
   documentMetadataParser,
@@ -81,26 +66,12 @@ import { responseStatus } from './request-error'
 import { useAuxiliaryTaskReadGuard } from './tasks/auxiliary-read-guard'
 import { ProcessingTasksDrawer } from './tasks/drawer'
 import { TaskEventObserver } from './tasks/event-observer'
-import { createTaskProgressStore } from './tasks/progress-store'
-import {
-  findBackgroundTask,
-  findBackgroundTasks,
-  MAX_AUTO_CURSOR_PAGES,
-  normalizedTaskSnapshot,
-  queryKeyMatchesKnowledgeSpace,
-  taskSnapshotErrorIsTransient,
-} from './tasks/recovery'
-import { effectiveDocumentTasks, mergeTaskOverride } from './tasks/snapshot'
+import { MAX_AUTO_CURSOR_PAGES, queryKeyMatchesKnowledgeSpace } from './tasks/recovery'
+import { useTaskRuntime } from './tasks/use-task-runtime'
 import { DocumentStagingCanceledError } from './upload/model'
 import { useDocumentUploadSession } from './upload/use-document-upload-session'
-import { useQueryDataUpdateCount } from './use-query-data-update-count'
 
 const KNOWLEDGE_FS_BATCH_DOCUMENT_MAX_DOCUMENTS = 100
-const MAX_TASK_EVENT_STREAMS = 6
-const FAILED_TASK_POLL_REQUEST_TIMEOUT = 3000
-const TERMINAL_RECONCILIATION_REQUEST_TIMEOUT = 3000
-const BLOCKED_ACTIVE_TASK_REFRESH_INTERVAL = 5000
-const MAX_BLOCKED_ACTIVE_TASK_REFRESH_INTERVAL = 30000
 
 export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
   const { t } = useTranslation('dataset')
@@ -182,36 +153,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     sources: false,
     tasks: false,
   })
-  const [taskStreamOffset, setTaskStreamOffset] = useState(0)
-  const failedTaskPollOffsetRef = useRef(0)
-  const [taskOverrides, setTaskOverrides] = useState<
-    Record<string, Partial<DocumentProcessingTask>>
-  >({})
-  const [terminalTaskPins, setTerminalTaskPins] = useState<Record<string, TerminalTaskPin>>({})
-  const [taskObserverGenerations, setTaskObserverGenerations] = useState<Record<string, number>>({})
-  const terminalReconciliationGenerationsRef = useRef(new Map<string, number>())
-  const failedTaskPollGenerationsRef = useRef(new Map<string, number>())
-  const blockedFailedTaskPollVersionsRef = useRef(new Map<string, string>())
-  const failedPollAuxiliaryDenialsRef = useRef(new Map<string, AuxiliaryTaskReadDenial>())
-  const terminalConfirmableAuxiliaryDenialsRef = useRef(new Map<string, AuxiliaryTaskReadDenial>())
-  const equalRetryListGenerationsRef = useRef(new Map<string, number>())
-  const terminalReconciliationTimeoutsRef = useRef(new Map<string, number>())
-  const terminalReconciliationControllersRef = useRef(new Map<string, AbortController>())
-  const pendingTerminalProgressRef = useRef(new Map<string, ProcessingTaskProgressEvent>())
-  const taskEventCursorsRef = useRef(new Map<string, string>())
-  const listedBackgroundTaskStatesRef = useRef<{
-    knowledgeSpaceId: string
-    states: Map<string, string>
-  }>({
-    knowledgeSpaceId,
-    states: new Map(),
-  })
-  const streamActiveOverrideVersionsRef = useRef(new Map<string, string>())
-  const trustedActiveOverrideVersionsRef = useRef(new Map<string, TrustedActiveOverride>())
-  const trustedOverrideListGenerationsRef = useRef(new Map<string, number>())
-  const taskProgressStoreRef = useRef<ReturnType<typeof createTaskProgressStore> | null>(null)
-  if (!taskProgressStoreRef.current) taskProgressStoreRef.current = createTaskProgressStore()
-  const taskProgressStore = taskProgressStoreRef.current
   const [bulkActionPending, setBulkActionPending] = useState<
     'availability' | 'download' | 'reindex' | 'remove' | undefined
   >()
@@ -241,23 +182,52 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     documentPermissionDenied,
     refetchDocuments: refetchDocumentsQuery,
   })
-  useEffect(() => {
-    if (!documentPermissionDenied) return
-    failedPollAuxiliaryDenialsRef.current.clear()
-    terminalConfirmableAuxiliaryDenialsRef.current.clear()
-  }, [documentPermissionDenied])
-  const tasksQueryOptions = useMemo(
-    () => documentTasksInfiniteOptions(knowledgeSpaceId, { enabled: !documentPermissionDenied }),
-    [documentPermissionDenied, knowledgeSpaceId],
-  )
-  const tasksQuery = useInfiniteQuery(tasksQueryOptions)
   const sourcesQuery = useInfiniteQuery(
     documentSourcesInfiniteOptions(knowledgeSpaceId, { enabled: !documentPermissionDenied }),
   )
+  const sourcePermissionDenied = responseStatus(sourcesQuery.error) === 403
+  const refreshDocuments = useCallback(() => {
+    void queryClient.invalidateQueries({
+      predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
+      queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
+    })
+  }, [knowledgeSpaceId, queryClient])
+  const notifyTaskFailed = useCallback(
+    () => toast.error(t(($) => $['newKnowledge.taskFailedNotification'])),
+    [t],
+  )
+  const {
+    acceptTaskSnapshot: handleTaskUpdated,
+    activeTasks,
+    baseTasks,
+    drawerTasks,
+    handleTaskEvent,
+    handleTaskEventCursor,
+    handleTaskStreamPermissionDenied,
+    observerGeneration,
+    observerVersion,
+    resetFailedPollBlocks,
+    runtimeState: taskRuntimeState,
+    streamedActiveTasks,
+    taskPermissionDenied,
+    taskProgressStore,
+    tasks,
+    tasksQuery,
+  } = useTaskRuntime({
+    auxiliaryTaskReadGuard,
+    denyAuxiliaryTaskRead,
+    documentPermissionDenied,
+    externalPermissionDenied:
+      documentPermissionDenied || auxiliaryReadPermissionDenied || sourcePermissionDenied,
+    knowledgeSpaceId,
+    onTaskFailed: notifyTaskFailed,
+    onTaskReachedTerminal: refreshDocuments,
+    tasksOpen,
+  })
   const permissionDenialMask =
     (documentPermissionDenied || auxiliaryReadPermissionDenied ? DOCUMENT_PERMISSION_DENIED : 0) |
-    (responseStatus(tasksQuery.error) === 403 ? TASK_PERMISSION_DENIED : 0) |
-    (responseStatus(sourcesQuery.error) === 403 ? SOURCE_PERMISSION_DENIED : 0)
+    (taskPermissionDenied ? TASK_PERMISSION_DENIED : 0) |
+    (sourcePermissionDenied ? SOURCE_PERMISSION_DENIED : 0)
   const permissionDenied = permissionDenialMask !== 0
   const previousPermissionDenialMaskRef = useRef(permissionDenialMask)
   const permissionRecoveryQueryMaskRef = useRef(
@@ -341,14 +311,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       documentsQuery.data?.pages.flatMap((page) => logicalDocumentListFromApi(page).items) ?? [],
     [documentsQuery.data],
   )
-  const baseTasks = useMemo(
-    () => tasksQuery.data?.pages.flatMap((page) => documentTaskListFromApi(page).items) ?? [],
-    [tasksQuery.data],
-  )
-  const backgroundTasks = useMemo(
-    () => tasksQuery.data?.pages.flatMap((page) => backgroundTaskListFromApi(page).items) ?? [],
-    [tasksQuery.data],
-  )
   const documentIds = useMemo(() => new Set(documents.map((document) => document.id)), [documents])
   const unresolvedTaskDocumentIds = useMemo(
     () =>
@@ -357,30 +319,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       ),
     [baseTasks, documentIds],
   )
-  const taskDataUpdateCount = useQueryDataUpdateCount(queryClient, tasksQueryOptions.queryKey)
-  const taskListSnapshotRef = useRef({
-    data: tasksQuery.data,
-    dataUpdateCount: taskDataUpdateCount,
-    dataUpdatedAt: tasksQuery.dataUpdatedAt,
-  })
-  const taskListGenerationRef = useRef(0)
-  const [taskListGeneration, setTaskListGeneration] = useState(0)
-  useLayoutEffect(() => {
-    if (
-      taskListSnapshotRef.current.dataUpdateCount === taskDataUpdateCount &&
-      taskListSnapshotRef.current.dataUpdatedAt === tasksQuery.dataUpdatedAt &&
-      taskListSnapshotRef.current.data === tasksQuery.data
-    )
-      return
-    taskListSnapshotRef.current = {
-      data: tasksQuery.data,
-      dataUpdateCount: taskDataUpdateCount,
-      dataUpdatedAt: tasksQuery.dataUpdatedAt,
-    }
-    taskListGenerationRef.current += 1
-    setTaskListGeneration(taskListGenerationRef.current)
-  }, [taskDataUpdateCount, tasksQuery.data, tasksQuery.dataUpdatedAt])
-  const baseTaskById = useMemo(() => new Map(baseTasks.map((task) => [task.id, task])), [baseTasks])
   const sources = useMemo(
     () =>
       sourcesQuery.data?.pages.flatMap((page) =>
@@ -408,78 +346,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const canAutoFetchSourcePage = Boolean(
     hasRelevantNextSourcePage && (sourcesQuery.data?.pages.length ?? 0) < MAX_AUTO_CURSOR_PAGES,
   )
-  const baseTaskByIdRef = useRef(baseTaskById)
-  useLayoutEffect(() => {
-    baseTaskByIdRef.current = baseTaskById
-  }, [baseTaskById])
-  const tasks = useMemo(
-    () =>
-      effectiveDocumentTasks({
-        baseTasks,
-        streamActiveOverrideVersions: streamActiveOverrideVersionsRef.current,
-        taskOverrides,
-        terminalTaskPins,
-      }),
-    [baseTasks, taskOverrides, terminalTaskPins],
-  )
-  const effectiveTaskById = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks])
-  const drawerTasks = useMemo(
-    () => backgroundTasks.map((task) => effectiveTaskById.get(task.id) ?? task),
-    [backgroundTasks, effectiveTaskById],
-  )
-  useEffect(() => {
-    for (const task of tasks) {
-      if (!taskIsActive(task)) {
-        taskEventCursorsRef.current.delete(task.id)
-        streamActiveOverrideVersionsRef.current.delete(task.id)
-        trustedActiveOverrideVersionsRef.current.delete(task.id)
-        trustedOverrideListGenerationsRef.current.delete(task.id)
-      }
-    }
-  }, [tasks])
-
-  useEffect(() => {
-    const clearedActiveTaskIds: string[] = []
-    for (const task of baseTasks) {
-      const denial = terminalConfirmableAuxiliaryDenialsRef.current.get(task.id)
-      if (!denial || taskListGeneration <= denial.taskListGeneration) continue
-      if (taskIsActive(task)) {
-        if (!taskVersionIsAfter(task.updatedAt, denial.taskVersion)) continue
-        auxiliaryTaskReadGuard.clearTask(task.id)
-        terminalConfirmableAuxiliaryDenialsRef.current.delete(task.id)
-        continue
-      }
-      if (!auxiliaryTaskReadGuard.clearThrough(task.id, task.updatedAt)) continue
-      terminalConfirmableAuxiliaryDenialsRef.current.delete(task.id)
-      const effectiveTask = effectiveTaskById.get(task.id)
-      if (effectiveTask && taskIsActive(effectiveTask)) clearedActiveTaskIds.push(task.id)
-    }
-    if (!clearedActiveTaskIds.length) return
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Clearing a committed terminal guard must remount effective active observers.
-    setTaskObserverGenerations((current) => {
-      const next = { ...current }
-      for (const taskId of clearedActiveTaskIds) next[taskId] = (next[taskId] ?? 0) + 1
-      return next
-    })
-  }, [auxiliaryTaskReadGuard, baseTasks, effectiveTaskById, taskListGeneration])
-  const currentTaskStateRef = useRef(new Map(tasks.map((task) => [task.id, task.state])))
-  const currentTaskVersionRef = useRef(new Map(tasks.map((task) => [task.id, task.updatedAt])))
-  useLayoutEffect(() => {
-    const currentTaskIds = new Set(tasks.map((task) => task.id))
-    for (const task of tasks) {
-      const currentVersion = currentTaskVersionRef.current.get(task.id)
-      if (!currentVersion || !taskVersionIsAfter(currentVersion, task.updatedAt)) {
-        currentTaskStateRef.current.set(task.id, task.state)
-        currentTaskVersionRef.current.set(task.id, task.updatedAt)
-      }
-    }
-    for (const taskId of currentTaskVersionRef.current.keys()) {
-      if (currentTaskIds.has(taskId)) continue
-      currentTaskStateRef.current.delete(taskId)
-      currentTaskVersionRef.current.delete(taskId)
-    }
-  }, [tasks])
-
   const taskByDocument = useMemo(() => newestTaskByDocument(tasks), [tasks])
   const retryableDocumentIds = useMemo(
     () =>
@@ -668,61 +534,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const hasTaskError = attentionTasks.some(
     (task) => task.state === 'failed' || task.state === 'canceled',
   )
-  const activeTasks = useMemo(() => tasks.filter(taskIsActive), [tasks])
-  const orderedActiveTasks = useMemo(
-    () =>
-      [...activeTasks].sort(
-        (left, right) =>
-          left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id),
-      ),
-    [activeTasks],
-  )
-  const taskObserverVersion = (task: DocumentProcessingTask) => {
-    let latestVersion = task.updatedAt
-    for (const candidate of [
-      currentTaskVersionRef.current.get(task.id),
-      taskProgressStore.get(task.id)?.updatedAt,
-    ]) {
-      if (candidate && taskVersionIsAfter(candidate, latestVersion)) latestVersion = candidate
-    }
-    return latestVersion
-  }
-  const streamedActiveTasks = (() => {
-    if (permissionDenied) return []
-    const streamableActiveTasks = orderedActiveTasks.filter(
-      (task) => !auxiliaryTaskReadGuard.isBlocked(task.id, taskObserverVersion(task)),
-    )
-    const streamCount = Math.min(MAX_TASK_EVENT_STREAMS, streamableActiveTasks.length)
-    if (!streamCount) return []
-    const offset = taskStreamOffset % streamableActiveTasks.length
-    return Array.from(
-      { length: streamCount },
-      (_, index) => streamableActiveTasks[(offset + index) % streamableActiveTasks.length]!,
-    )
-  })()
-  const blockedActiveTaskSignature = orderedActiveTasks
-    .map((task) => [task.id, taskObserverVersion(task)] as const)
-    .filter(([taskId, taskVersion]) => auxiliaryTaskReadGuard.isBlocked(taskId, taskVersion))
-    .map(([taskId, taskVersion]) => `${taskId}:${taskVersion}`)
-    .join('|')
-  const orderedFailedTasks = useMemo(
-    () =>
-      tasks
-        .filter((task) => task.state === 'failed')
-        .sort((left, right) => {
-          if (taskVersionIsAfter(left.updatedAt, right.updatedAt)) return -1
-          if (taskVersionIsAfter(right.updatedAt, left.updatedAt)) return 1
-          return right.id.localeCompare(left.id)
-        }),
-    [tasks],
-  )
-  const orderedFailedTasksRef = useRef(orderedFailedTasks)
-  useLayoutEffect(() => {
-    orderedFailedTasksRef.current = orderedFailedTasks
-  }, [orderedFailedTasks])
-  const failedTaskPollSignature = orderedFailedTasks
-    .map((task) => `${task.id}:${task.updatedAt}`)
-    .join('|')
   const incompleteTaskHistoryHint = hasNextTaskPage
     ? ` · ${t(($) => $['newKnowledge.taskHistoryIncomplete'])}`
     : ''
@@ -760,34 +571,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     documentsTitleRef.current?.focus()
   }, [bulkActionsVisible, permissionDenied])
 
-  useEffect(() => {
-    if (permissionDenied || orderedActiveTasks.length <= MAX_TASK_EVENT_STREAMS) return
-    const interval = window.setInterval(
-      () => setTaskStreamOffset((current) => current + MAX_TASK_EVENT_STREAMS),
-      5000,
-    )
-    return () => window.clearInterval(interval)
-  }, [orderedActiveTasks.length, permissionDenied])
-
-  useEffect(() => {
-    if (permissionDenied || !blockedActiveTaskSignature) return
-    let canceled = false
-    let refreshInterval = BLOCKED_ACTIVE_TASK_REFRESH_INTERVAL
-    let timeout: number | undefined
-    const refreshBlockedTasks = async () => {
-      if (canceled) return
-      await refetchTasksQuery({ cancelRefetch: false }).catch(() => undefined)
-      if (canceled) return
-      refreshInterval = Math.min(refreshInterval * 2, MAX_BLOCKED_ACTIVE_TASK_REFRESH_INTERVAL)
-      timeout = window.setTimeout(refreshBlockedTasks, refreshInterval)
-    }
-    timeout = window.setTimeout(refreshBlockedTasks, BLOCKED_ACTIVE_TASK_REFRESH_INTERVAL)
-    return () => {
-      canceled = true
-      if (timeout !== undefined) window.clearTimeout(timeout)
-    }
-  }, [blockedActiveTaskSignature, permissionDenied, refetchTasksQuery])
-
   useLayoutEffect(() => {
     if (!writePermissionRevoked || !writePermissionFocusRecoveryRequestedRef.current) return
     writePermissionFocusRecoveryRequestedRef.current = false
@@ -815,7 +598,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     recoveryQueryMask &= ~permissionDenialMask
     permissionRecoveryQueryMaskRef.current = recoveryQueryMask
     if (previousPermissionDenialMask && !permissionDenied) {
-      blockedFailedTaskPollVersionsRef.current.clear()
+      resetFailedPollBlocks()
       if (recoveryQueryMask & TASK_PERMISSION_DENIED)
         void refetchTasksQuery({ cancelRefetch: false })
       if (recoveryQueryMask & SOURCE_PERMISSION_DENIED)
@@ -835,7 +618,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     }
     if (shouldRestoreFocus) documentPermissionAlertRef.current?.focus()
     bulkActionsHadFocusRef.current = false
-  }, [permissionDenialMask, permissionDenied, refetchSourcesQuery, refetchTasksQuery, tasksOpen])
+  }, [
+    permissionDenialMask,
+    permissionDenied,
+    refetchSourcesQuery,
+    refetchTasksQuery,
+    resetFailedPollBlocks,
+    tasksOpen,
+  ])
 
   useEffect(() => {
     if (
@@ -942,39 +732,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     permissionDenied,
   ])
 
-  const refreshDocuments = useCallback(() => {
-    void queryClient.invalidateQueries({
-      predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
-      queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
-    })
-  }, [knowledgeSpaceId, queryClient])
-
-  useEffect(() => {
-    const previousStates =
-      listedBackgroundTaskStatesRef.current.knowledgeSpaceId === knowledgeSpaceId
-        ? listedBackgroundTaskStatesRef.current.states
-        : new Map<string, string>()
-    const states = new Map<string, string>()
-    let documentTaskReachedTerminal = false
-
-    for (const page of tasksQuery.data?.pages ?? []) {
-      for (const task of page.data) {
-        states.set(task.id, task.state)
-        const previousState = previousStates.get(task.id)
-        if (
-          (previousState === 'queued' || previousState === 'running') &&
-          task.state !== 'queued' &&
-          task.state !== 'running' &&
-          (task.task_kind === 'document' || task.task_kind === 'document_bulk')
-        )
-          documentTaskReachedTerminal = true
-      }
-    }
-
-    listedBackgroundTaskStatesRef.current = { knowledgeSpaceId, states }
-    if (documentTaskReachedTerminal) refreshDocuments()
-  }, [knowledgeSpaceId, refreshDocuments, tasksQuery.data])
-
   const refreshDocumentsAndTasks = useCallback(() => {
     void Promise.allSettled([
       queryClient.invalidateQueries({
@@ -1031,153 +788,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       .finally(() => setWorkspacePermissionKeysFetching(false))
   }, [refetchKnowledgeSpace])
 
-  const reconcileTerminalTask = useCallback(
-    async function reconcileTerminalTaskRequest(
-      taskId: string,
-      terminalVersion: string,
-      reconciliationGeneration: number,
-      retryAttempt = 0,
-    ) {
-      const currentTask = baseTaskByIdRef.current.get(taskId)
-      if (!currentTask || auxiliaryTaskReadGuard.isBlocked(taskId, terminalVersion)) return
-      const pendingRetryTimeout = terminalReconciliationTimeoutsRef.current.get(taskId)
-      if (pendingRetryTimeout !== undefined) window.clearTimeout(pendingRetryTimeout)
-      terminalReconciliationTimeoutsRef.current.delete(taskId)
-      terminalReconciliationControllersRef.current.get(taskId)?.abort()
-      const controller = new AbortController()
-      terminalReconciliationControllersRef.current.set(taskId, controller)
-      const requestTimeout = window.setTimeout(
-        () => controller.abort(),
-        TERMINAL_RECONCILIATION_REQUEST_TIMEOUT,
-      )
-      try {
-        const snapshot = await findBackgroundTask(knowledgeSpaceId, taskId, controller.signal)
-        if (!snapshot) return
-        if (
-          terminalReconciliationControllersRef.current.get(taskId) !== controller ||
-          terminalReconciliationGenerationsRef.current.get(taskId) !== reconciliationGeneration
-        )
-          return
-        terminalReconciliationControllersRef.current.delete(taskId)
-        const currentTaskVersion = currentTaskVersionRef.current.get(taskId)
-        if (currentTaskVersion && taskVersionIsAfter(currentTaskVersion, snapshot.updatedAt)) return
-        if (taskVersionIsAfter(terminalVersion, snapshot.updatedAt)) return
-        auxiliaryTaskReadGuard.clearTask(taskId)
-        failedPollAuxiliaryDenialsRef.current.delete(taskId)
-        terminalConfirmableAuxiliaryDenialsRef.current.delete(taskId)
-        const normalizedSnapshot = normalizedTaskSnapshot(snapshot)
-        if (taskIsActive(snapshot))
-          trustedActiveOverrideVersionsRef.current.set(taskId, {
-            taskListGeneration: taskListGenerationRef.current,
-            updatedAt: snapshot.updatedAt,
-          })
-        else trustedActiveOverrideVersionsRef.current.delete(taskId)
-        taskProgressStore.delete(taskId)
-        currentTaskStateRef.current.set(taskId, snapshot.state)
-        currentTaskVersionRef.current.set(taskId, snapshot.updatedAt)
-        setTaskOverrides((current) => {
-          const currentVersion = current[taskId]?.updatedAt
-          if (currentVersion && taskVersionIsAfter(currentVersion, snapshot.updatedAt))
-            return current
-          return { ...current, [taskId]: normalizedSnapshot }
-        })
-        if (taskIsActive(snapshot)) {
-          blockedFailedTaskPollVersionsRef.current.delete(taskId)
-          taskEventCursorsRef.current.delete(taskId)
-          const pollGeneration = failedTaskPollGenerationsRef.current.get(taskId) ?? 0
-          failedTaskPollGenerationsRef.current.set(taskId, pollGeneration + 1)
-          setTerminalTaskPins((current) => {
-            const pin = current[taskId]
-            if (!pin || taskVersionIsAfter(pin.observedAt, snapshot.updatedAt)) return current
-            const next = { ...current }
-            delete next[taskId]
-            return next
-          })
-          setTaskObserverGenerations((current) => ({
-            ...current,
-            [taskId]: (current[taskId] ?? 0) + 1,
-          }))
-        }
-      } catch (error) {
-        if (terminalReconciliationControllersRef.current.get(taskId) !== controller) return
-        terminalReconciliationControllersRef.current.delete(taskId)
-        if (responseStatus(error) === 403) {
-          const currentTaskVersion = currentTaskVersionRef.current.get(taskId)
-          const deniedVersion =
-            currentTaskVersion && taskVersionIsAfter(currentTaskVersion, terminalVersion)
-              ? currentTaskVersion
-              : terminalVersion
-          terminalConfirmableAuxiliaryDenialsRef.current.set(taskId, {
-            taskListGeneration: taskListGenerationRef.current,
-            taskVersion: deniedVersion,
-          })
-          denyAuxiliaryTaskRead(taskId, deniedVersion)
-          return
-        }
-        if (
-          retryAttempt >= 4 ||
-          !taskSnapshotErrorIsTransient(error) ||
-          terminalReconciliationGenerationsRef.current.get(taskId) !== reconciliationGeneration
-        )
-          return
-        const timeout = window.setTimeout(
-          () => {
-            terminalReconciliationTimeoutsRef.current.delete(taskId)
-            if (
-              terminalReconciliationGenerationsRef.current.get(taskId) === reconciliationGeneration
-            )
-              void reconcileTerminalTaskRequest(
-                taskId,
-                terminalVersion,
-                reconciliationGeneration,
-                retryAttempt + 1,
-              )
-          },
-          Math.min(1000 * 2 ** retryAttempt, 30000),
-        )
-        terminalReconciliationTimeoutsRef.current.set(taskId, timeout)
-      } finally {
-        window.clearTimeout(requestTimeout)
-      }
-    },
-    [auxiliaryTaskReadGuard, denyAuxiliaryTaskRead, knowledgeSpaceId, taskProgressStore],
-  )
-
-  useEffect(() => {
-    if (permissionDenied) return
-    for (const task of baseTasks) {
-      if (taskIsActive(task)) continue
-      const override = taskOverrides[task.id]
-      const trustedOverride = trustedActiveOverrideVersionsRef.current.get(task.id)
-      if (
-        !override?.updatedAt ||
-        !taskIsActive(mergeTaskOverride(task, override)) ||
-        taskVersionIsAfter(override.updatedAt, task.updatedAt) ||
-        trustedOverride?.updatedAt !== override.updatedAt ||
-        taskListGeneration <= trustedOverride.taskListGeneration ||
-        trustedOverrideListGenerationsRef.current.get(task.id) === taskListGeneration
-      )
-        continue
-      trustedOverrideListGenerationsRef.current.set(task.id, taskListGeneration)
-      const reconciliationGeneration =
-        (terminalReconciliationGenerationsRef.current.get(task.id) ?? 0) + 1
-      terminalReconciliationGenerationsRef.current.set(task.id, reconciliationGeneration)
-      void reconcileTerminalTask(task.id, task.updatedAt, reconciliationGeneration)
-    }
-  }, [baseTasks, permissionDenied, reconcileTerminalTask, taskListGeneration, taskOverrides])
-
-  useEffect(
-    () => () => {
-      for (const controller of terminalReconciliationControllersRef.current.values())
-        controller.abort()
-      terminalReconciliationControllersRef.current.clear()
-      for (const timeout of terminalReconciliationTimeoutsRef.current.values())
-        window.clearTimeout(timeout)
-      terminalReconciliationTimeoutsRef.current.clear()
-    },
-    [knowledgeSpaceId],
-  )
-
   useEffect(() => {
     if (!permissionDenied) return
     void queryClient.cancelQueries({
@@ -1188,176 +798,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
       queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
     })
-    for (const [taskId, controller] of terminalReconciliationControllersRef.current) {
-      controller.abort()
-      terminalReconciliationControllersRef.current.delete(taskId)
-      const generation = terminalReconciliationGenerationsRef.current.get(taskId) ?? 0
-      terminalReconciliationGenerationsRef.current.set(taskId, generation + 1)
-    }
-    for (const timeout of terminalReconciliationTimeoutsRef.current.values())
-      window.clearTimeout(timeout)
-    terminalReconciliationTimeoutsRef.current.clear()
-    equalRetryListGenerationsRef.current.clear()
   }, [knowledgeSpaceId, permissionDenied, queryClient])
-
-  useEffect(() => {
-    const taskIds = new Set(baseTasks.map((task) => task.id))
-    const pruneMap = (map: Map<string, unknown>) => {
-      for (const taskId of map.keys()) {
-        if (!taskIds.has(taskId)) map.delete(taskId)
-      }
-    }
-
-    for (const [taskId, controller] of terminalReconciliationControllersRef.current) {
-      if (taskIds.has(taskId)) continue
-      controller.abort()
-      terminalReconciliationControllersRef.current.delete(taskId)
-    }
-    for (const [taskId, timeout] of terminalReconciliationTimeoutsRef.current) {
-      if (taskIds.has(taskId)) continue
-      window.clearTimeout(timeout)
-      terminalReconciliationTimeoutsRef.current.delete(taskId)
-    }
-    pruneMap(terminalReconciliationGenerationsRef.current)
-    pruneMap(failedTaskPollGenerationsRef.current)
-    pruneMap(blockedFailedTaskPollVersionsRef.current)
-    pruneMap(failedPollAuxiliaryDenialsRef.current)
-    pruneMap(terminalConfirmableAuxiliaryDenialsRef.current)
-    auxiliaryTaskReadGuard.retain(taskIds)
-    pruneMap(equalRetryListGenerationsRef.current)
-    pruneMap(pendingTerminalProgressRef.current)
-    pruneMap(taskEventCursorsRef.current)
-    pruneMap(trustedOverrideListGenerationsRef.current)
-    for (const map of [
-      streamActiveOverrideVersionsRef.current,
-      trustedActiveOverrideVersionsRef.current,
-    ]) {
-      for (const taskId of map.keys()) {
-        if (!taskIds.has(taskId)) map.delete(taskId)
-      }
-    }
-    taskProgressStore.retain(taskIds)
-
-    const retainTaskState = <Value,>(current: Record<string, Value>) => {
-      const staleTaskIds = Object.keys(current).filter((taskId) => !taskIds.has(taskId))
-      if (!staleTaskIds.length) return current
-      const next = { ...current }
-      for (const taskId of staleTaskIds) delete next[taskId]
-      return next
-    }
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Prune state for tasks removed by a refreshed cursor result.
-    setTaskOverrides(retainTaskState)
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Prune state for tasks removed by a refreshed cursor result.
-    setTerminalTaskPins(retainTaskState)
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Prune state for tasks removed by a refreshed cursor result.
-    setTaskObserverGenerations(retainTaskState)
-  }, [auxiliaryTaskReadGuard, baseTasks, taskProgressStore])
-
-  useEffect(() => {
-    if (permissionDenied) return
-    const strictRetries = new Map<string, DocumentProcessingTask>()
-    const equalTimestampRetries = new Map<string, TerminalTaskPin>()
-    const confirmedTerminals = new Map<string, DocumentProcessingTask>()
-    for (const task of baseTasks) {
-      const pin = terminalTaskPins[task.id]
-      if (!pin || taskListGeneration <= pin.taskListGeneration) continue
-      if (!taskIsActive(task)) {
-        if (!taskVersionIsAfter(pin.observedAt, task.updatedAt))
-          confirmedTerminals.set(task.id, task)
-        continue
-      }
-      if (taskVersionIsAfter(task.updatedAt, pin.observedAt)) strictRetries.set(task.id, task)
-      else if (!taskVersionIsAfter(pin.observedAt, task.updatedAt))
-        equalTimestampRetries.set(task.id, pin)
-    }
-
-    for (const taskId of confirmedTerminals.keys()) {
-      const generation = terminalReconciliationGenerationsRef.current.get(taskId) ?? 0
-      terminalReconciliationGenerationsRef.current.set(taskId, generation + 1)
-      terminalReconciliationControllersRef.current.get(taskId)?.abort()
-      terminalReconciliationControllersRef.current.delete(taskId)
-      const timeout = terminalReconciliationTimeoutsRef.current.get(taskId)
-      if (timeout !== undefined) window.clearTimeout(timeout)
-      terminalReconciliationTimeoutsRef.current.delete(taskId)
-    }
-    if (confirmedTerminals.size) {
-      // oxlint-disable-next-line eslint-react/set-state-in-effect -- A current terminal list snapshot supersedes the partial SSE terminal payload.
-      setTerminalTaskPins((current) => {
-        const next = { ...current }
-        for (const taskId of confirmedTerminals.keys()) delete next[taskId]
-        return next
-      })
-      // oxlint-disable-next-line eslint-react/set-state-in-effect -- Restore complete server error details from the authoritative terminal list snapshot.
-      setTaskOverrides((current) => {
-        const next = { ...current }
-        for (const [taskId, task] of confirmedTerminals) {
-          const overrideVersion = current[taskId]?.updatedAt
-          if (!overrideVersion || !taskVersionIsAfter(overrideVersion, task.updatedAt))
-            delete next[taskId]
-        }
-        return next
-      })
-    }
-
-    for (const taskId of strictRetries.keys()) {
-      taskProgressStore.delete(taskId)
-      blockedFailedTaskPollVersionsRef.current.delete(taskId)
-      auxiliaryTaskReadGuard.clearTask(taskId)
-      failedPollAuxiliaryDenialsRef.current.delete(taskId)
-      terminalConfirmableAuxiliaryDenialsRef.current.delete(taskId)
-      taskEventCursorsRef.current.delete(taskId)
-      const pollGeneration = failedTaskPollGenerationsRef.current.get(taskId) ?? 0
-      failedTaskPollGenerationsRef.current.set(taskId, pollGeneration + 1)
-      const generation = terminalReconciliationGenerationsRef.current.get(taskId) ?? 0
-      terminalReconciliationGenerationsRef.current.set(taskId, generation + 1)
-      terminalReconciliationControllersRef.current.get(taskId)?.abort()
-      terminalReconciliationControllersRef.current.delete(taskId)
-      const timeout = terminalReconciliationTimeoutsRef.current.get(taskId)
-      if (timeout !== undefined) window.clearTimeout(timeout)
-      terminalReconciliationTimeoutsRef.current.delete(taskId)
-    }
-    if (strictRetries.size) {
-      // oxlint-disable-next-line eslint-react/set-state-in-effect -- A strictly newer active list snapshot proves a retry without another request.
-      setTerminalTaskPins((current) => {
-        const next = { ...current }
-        for (const taskId of strictRetries.keys()) delete next[taskId]
-        return next
-      })
-      // oxlint-disable-next-line eslint-react/set-state-in-effect -- Drop terminal overrides only after a strictly newer active list snapshot.
-      setTaskOverrides((current) => {
-        const next = { ...current }
-        for (const [taskId, task] of strictRetries) {
-          const overrideVersion = current[taskId]?.updatedAt
-          if (!overrideVersion || !taskVersionIsAfter(overrideVersion, task.updatedAt))
-            delete next[taskId]
-        }
-        return next
-      })
-    }
-
-    for (const [taskId, pin] of equalTimestampRetries) {
-      if (equalRetryListGenerationsRef.current.get(taskId) === taskListGeneration) continue
-      equalRetryListGenerationsRef.current.set(taskId, taskListGeneration)
-      auxiliaryTaskReadGuard.clearTask(taskId)
-      failedPollAuxiliaryDenialsRef.current.delete(taskId)
-      terminalConfirmableAuxiliaryDenialsRef.current.delete(taskId)
-      const timeout = terminalReconciliationTimeoutsRef.current.get(taskId)
-      if (timeout !== undefined) window.clearTimeout(timeout)
-      terminalReconciliationTimeoutsRef.current.delete(taskId)
-      const reconciliationGeneration =
-        (terminalReconciliationGenerationsRef.current.get(taskId) ?? 0) + 1
-      terminalReconciliationGenerationsRef.current.set(taskId, reconciliationGeneration)
-      void reconcileTerminalTask(taskId, pin.observedAt, reconciliationGeneration)
-    }
-  }, [
-    auxiliaryTaskReadGuard,
-    baseTasks,
-    permissionDenied,
-    reconcileTerminalTask,
-    taskListGeneration,
-    taskProgressStore,
-    terminalTaskPins,
-  ])
 
   const handleUploadFiles = useCallback(
     async (files: File[]): Promise<boolean> => {
@@ -1870,147 +1311,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     ],
   )
 
-  const handleTaskEvent = useCallback(
-    (taskId: string, taskVersion: string, event: ProcessingTaskEvent) => {
-      const eventVersion = event.event === 'progress' ? event.data.updatedAt : taskVersion
-      const terminalSnapshot = !ACTIVE_TASK_STATES.has(event.data.state)
-      const currentVersion = currentTaskVersionRef.current.get(taskId)
-      if (currentVersion && taskVersionIsAfter(currentVersion, eventVersion)) {
-        if (terminalSnapshot) pendingTerminalProgressRef.current.delete(taskId)
-        return false
-      }
-
-      if (event.event === 'progress' && ACTIVE_TASK_STATES.has(event.data.state)) {
-        if (trustedActiveOverrideVersionsRef.current.get(taskId)?.updatedAt === eventVersion)
-          streamActiveOverrideVersionsRef.current.delete(taskId)
-        else streamActiveOverrideVersionsRef.current.set(taskId, eventVersion)
-      } else streamActiveOverrideVersionsRef.current.delete(taskId)
-
-      if (event.event === 'progress' && terminalSnapshot) {
-        currentTaskVersionRef.current.set(taskId, eventVersion)
-        taskProgressStore.set(taskId, event.data)
-        pendingTerminalProgressRef.current.set(taskId, event)
-        return true
-      }
-
-      const pendingTerminalProgress =
-        event.event === 'terminal' ? pendingTerminalProgressRef.current.get(taskId) : undefined
-      if (event.event === 'terminal') pendingTerminalProgressRef.current.delete(taskId)
-
-      if (event.event === 'progress') taskProgressStore.set(taskId, event.data)
-      else taskProgressStore.delete(taskId)
-
-      const currentTaskState = currentTaskStateRef.current.get(taskId)
-      currentTaskVersionRef.current.set(taskId, eventVersion)
-      if (event.event === 'progress' && currentTaskState === event.data.state) return true
-      currentTaskStateRef.current.set(taskId, event.data.state)
-
-      setTaskOverrides((current) => {
-        const previous = current[taskId]
-        if (
-          event.event === 'progress' &&
-          previous?.updatedAt &&
-          taskVersionIsAfter(previous.updatedAt, event.data.updatedAt)
-        )
-          return current
-        return {
-          ...current,
-          [taskId]:
-            event.event === 'progress'
-              ? {
-                  errorCode: undefined,
-                  errorMessage: undefined,
-                  failure: undefined,
-                  progressPercent: event.data.progressPercent,
-                  stage: event.data.stage,
-                  state: event.data.state,
-                  updatedAt: event.data.updatedAt,
-                }
-              : {
-                  errorCode: event.data.errorCode,
-                  errorMessage: undefined,
-                  failure: event.data.failure,
-                  ...(pendingTerminalProgress
-                    ? {
-                        progressPercent: pendingTerminalProgress.data.progressPercent,
-                        stage: pendingTerminalProgress.data.stage,
-                      }
-                    : {}),
-                  state: event.data.state,
-                  updatedAt: eventVersion,
-                },
-        }
-      })
-      if (event.event === 'terminal') {
-        const pollGeneration = failedTaskPollGenerationsRef.current.get(taskId) ?? 0
-        failedTaskPollGenerationsRef.current.set(taskId, pollGeneration + 1)
-        const timeout = terminalReconciliationTimeoutsRef.current.get(taskId)
-        if (timeout !== undefined) window.clearTimeout(timeout)
-        terminalReconciliationTimeoutsRef.current.delete(taskId)
-        const reconciliationGeneration =
-          (terminalReconciliationGenerationsRef.current.get(taskId) ?? 0) + 1
-        terminalReconciliationGenerationsRef.current.set(taskId, reconciliationGeneration)
-        setTerminalTaskPins((current) => ({
-          ...current,
-          [taskId]: {
-            observedAt: eventVersion,
-            taskListGeneration: taskListGenerationRef.current,
-          },
-        }))
-        if (event.data.state === 'failed')
-          toast.error(t(($) => $['newKnowledge.taskFailedNotification']))
-        refreshDocuments()
-        void reconcileTerminalTask(taskId, eventVersion, reconciliationGeneration)
-      }
-      return true
-    },
-    [reconcileTerminalTask, refreshDocuments, t, taskProgressStore],
-  )
-
-  const handleTaskUpdated = useCallback(
-    (task: DocumentProcessingTask) => {
-      const currentVersion = currentTaskVersionRef.current.get(task.id)
-      if (currentVersion && taskVersionIsAfter(currentVersion, task.updatedAt)) return
-      streamActiveOverrideVersionsRef.current.delete(task.id)
-      auxiliaryTaskReadGuard.clearTask(task.id)
-      failedPollAuxiliaryDenialsRef.current.delete(task.id)
-      terminalConfirmableAuxiliaryDenialsRef.current.delete(task.id)
-      if (taskIsActive(task))
-        trustedActiveOverrideVersionsRef.current.set(task.id, {
-          taskListGeneration: taskListGenerationRef.current,
-          updatedAt: task.updatedAt,
-        })
-      else trustedActiveOverrideVersionsRef.current.delete(task.id)
-      trustedOverrideListGenerationsRef.current.delete(task.id)
-      taskProgressStore.delete(task.id)
-      currentTaskStateRef.current.set(task.id, task.state)
-      currentTaskVersionRef.current.set(task.id, task.updatedAt)
-      // oxlint-disable-next-line eslint-react/set-state-in-effect -- A committed active list lifecycle retires the denied failed snapshot.
-      setTaskOverrides((current) => ({ ...current, [task.id]: normalizedTaskSnapshot(task) }))
-      if (taskIsActive(task)) {
-        blockedFailedTaskPollVersionsRef.current.delete(task.id)
-        taskEventCursorsRef.current.delete(task.id)
-        terminalReconciliationControllersRef.current.get(task.id)?.abort()
-        terminalReconciliationControllersRef.current.delete(task.id)
-        const timeout = terminalReconciliationTimeoutsRef.current.get(task.id)
-        if (timeout !== undefined) window.clearTimeout(timeout)
-        terminalReconciliationTimeoutsRef.current.delete(task.id)
-        const generation = terminalReconciliationGenerationsRef.current.get(task.id) ?? 0
-        terminalReconciliationGenerationsRef.current.set(task.id, generation + 1)
-        const pollGeneration = failedTaskPollGenerationsRef.current.get(task.id) ?? 0
-        failedTaskPollGenerationsRef.current.set(task.id, pollGeneration + 1)
-        pendingTerminalProgressRef.current.delete(task.id)
-        // oxlint-disable-next-line eslint-react/set-state-in-effect -- The authoritative active lifecycle supersedes the terminal pin.
-        setTerminalTaskPins((current) => {
-          const next = { ...current }
-          delete next[task.id]
-          return next
-        })
-      }
-    },
-    [auxiliaryTaskReadGuard, taskProgressStore],
-  )
-
   const handleRetryDocument = useCallback(
     async (documentId: string) => {
       if (!canWrite || documentActionPendingRef.current) return false
@@ -2054,134 +1354,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     ],
   )
 
-  useEffect(() => {
-    if (permissionDenied) return
-    for (const task of baseTasks) {
-      if (!taskIsActive(task)) continue
-      const denial = failedPollAuxiliaryDenialsRef.current.get(task.id)
-      if (!denial || taskListGeneration <= denial.taskListGeneration) continue
-      if (taskVersionIsAfter(denial.taskVersion, task.updatedAt)) continue
-      failedPollAuxiliaryDenialsRef.current.delete(task.id)
-      handleTaskUpdated(task)
-    }
-  }, [baseTasks, handleTaskUpdated, permissionDenied, taskListGeneration])
-
-  useEffect(() => {
-    for (const task of activeTasks) {
-      const hadBlockedPoll = blockedFailedTaskPollVersionsRef.current.delete(task.id)
-      if (!hadBlockedPoll) continue
-      const generation = failedTaskPollGenerationsRef.current.get(task.id) ?? 0
-      failedTaskPollGenerationsRef.current.set(task.id, generation + 1)
-    }
-  }, [activeTasks])
-
-  useEffect(() => {
-    if (permissionDenied || !tasksOpen || !orderedFailedTasksRef.current.length) return
-    let canceled = false
-    let timeout: number | undefined
-    const cancelRequests = new Set<() => void>()
-    const pollNextBatch = async () => {
-      const failedTasks = orderedFailedTasksRef.current
-      const pollableTasks = failedTasks.filter(
-        (task) =>
-          blockedFailedTaskPollVersionsRef.current.get(task.id) !== task.updatedAt &&
-          !auxiliaryTaskReadGuard.isBlocked(task.id, task.updatedAt),
-      )
-      if (pollableTasks.length) {
-        const pollCount = Math.min(MAX_TASK_EVENT_STREAMS, pollableTasks.length)
-        const offset = failedTaskPollOffsetRef.current % pollableTasks.length
-        const tasksToPoll = Array.from(
-          { length: pollCount },
-          (_, index) => pollableTasks[(offset + index) % pollableTasks.length]!,
-        )
-        failedTaskPollOffsetRef.current += MAX_TASK_EVENT_STREAMS
-        const requestGenerations = new Map<string, number>()
-        for (const task of tasksToPoll) {
-          const requestGeneration = (failedTaskPollGenerationsRef.current.get(task.id) ?? 0) + 1
-          failedTaskPollGenerationsRef.current.set(task.id, requestGeneration)
-          requestGenerations.set(task.id, requestGeneration)
-        }
-        const requestController = new AbortController()
-        let requestTimeout: number | undefined
-        let rejectDeadline: ((reason?: unknown) => void) | undefined
-        const cancelRequest = () => {
-          requestController.abort()
-          rejectDeadline?.(new DOMException('Task snapshot request aborted', 'AbortError'))
-        }
-        try {
-          const request = findBackgroundTasks(
-            knowledgeSpaceId,
-            new Set(tasksToPoll.map((task) => task.id)),
-            requestController.signal,
-          )
-          const deadline = new Promise<never>((_resolve, reject) => {
-            rejectDeadline = reject
-            requestTimeout = window.setTimeout(() => {
-              requestController.abort()
-              reject(new DOMException('Task snapshot request timed out', 'TimeoutError'))
-            }, FAILED_TASK_POLL_REQUEST_TIMEOUT)
-          })
-          cancelRequests.add(cancelRequest)
-          const snapshots = await Promise.race([request, deadline])
-          for (const task of tasksToPoll) {
-            const snapshot = snapshots.get(task.id)
-            if (
-              !snapshot ||
-              canceled ||
-              failedTaskPollGenerationsRef.current.get(task.id) !== requestGenerations.get(task.id)
-            )
-              continue
-            const currentVersion = currentTaskVersionRef.current.get(task.id)
-            if (currentVersion && taskVersionIsAfter(currentVersion, snapshot.updatedAt)) continue
-            handleTaskUpdated(snapshot)
-          }
-        } catch (error) {
-          for (const task of tasksToPoll) {
-            if (
-              canceled ||
-              failedTaskPollGenerationsRef.current.get(task.id) !== requestGenerations.get(task.id)
-            )
-              continue
-            if (responseStatus(error) === 403) {
-              const currentTaskVersion = currentTaskVersionRef.current.get(task.id)
-              const deniedVersion =
-                currentTaskVersion && taskVersionIsAfter(currentTaskVersion, task.updatedAt)
-                  ? currentTaskVersion
-                  : task.updatedAt
-              failedPollAuxiliaryDenialsRef.current.set(task.id, {
-                taskListGeneration: taskListGenerationRef.current,
-                taskVersion: deniedVersion,
-              })
-              denyAuxiliaryTaskRead(task.id, deniedVersion)
-              continue
-            }
-            if (!taskSnapshotErrorIsTransient(error))
-              blockedFailedTaskPollVersionsRef.current.set(task.id, task.updatedAt)
-          }
-        } finally {
-          if (requestTimeout !== undefined) window.clearTimeout(requestTimeout)
-          cancelRequests.delete(cancelRequest)
-        }
-      }
-      if (!canceled) timeout = window.setTimeout(() => void pollNextBatch(), 5000)
-    }
-    timeout = window.setTimeout(() => void pollNextBatch(), 5000)
-    return () => {
-      canceled = true
-      for (const cancelRequest of cancelRequests) cancelRequest()
-      cancelRequests.clear()
-      if (timeout !== undefined) window.clearTimeout(timeout)
-    }
-  }, [
-    auxiliaryTaskReadGuard,
-    denyAuxiliaryTaskRead,
-    failedTaskPollSignature,
-    handleTaskUpdated,
-    knowledgeSpaceId,
-    permissionDenied,
-    tasksOpen,
-  ])
-
   const toggleDocument = useCallback(
     (documentId: string) => {
       if (!canWrite || selectionDisabled) return
@@ -2224,37 +1396,21 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     void Promise.allSettled(requests)
   }
 
-  const handleTaskEventCursor = useCallback((taskId: string, eventId?: string) => {
-    if (eventId) taskEventCursorsRef.current.set(taskId, eventId)
-    else taskEventCursorsRef.current.delete(taskId)
-  }, [])
-
-  const handleTaskStreamPermissionDenied = useCallback(
-    (taskId: string, taskVersion: string) => {
-      terminalConfirmableAuxiliaryDenialsRef.current.set(taskId, {
-        taskListGeneration: taskListGenerationRef.current,
-        taskVersion,
-      })
-      denyAuxiliaryTaskRead(taskId, taskVersion)
-    },
-    [denyAuxiliaryTaskRead],
-  )
-
   return (
     <>
       {streamedActiveTasks.map((task) => {
-        const observerVersion = taskObserverVersion(task)
+        const taskObserverVersion = observerVersion(task)
         return (
           <TaskEventObserver
-            key={`${task.id}:${taskObserverGenerations[task.id] ?? 0}`}
+            key={`${task.id}:${observerGeneration(task.id)}`}
             documentId={task.documentId}
             knowledgeSpaceId={knowledgeSpaceId}
-            lastEventId={taskEventCursorsRef.current.get(task.id)}
+            lastEventId={taskRuntimeState.eventCursors.get(task.id)}
             onEvent={handleTaskEvent}
             onLastEventIdChange={handleTaskEventCursor}
             onPermissionDenied={handleTaskStreamPermissionDenied}
             taskId={task.id}
-            taskVersion={observerVersion}
+            taskVersion={taskObserverVersion}
           />
         )
       })}
