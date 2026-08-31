@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 import pytest
 from flask import Flask
+from flask_restx import Resource
 from pydantic import ValidationError
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import UnprocessableEntity
@@ -348,7 +349,9 @@ class TestModelValidateDecorator:
             (EnterpriseWorkspaceMember, "/enterprise/workspace/member"),
         ],
     )
-    def test_invalid_body_is_rejected_before_the_handler_runs(self, app: Flask, api_cls, route: str):
+    def test_invalid_body_is_rejected_before_the_handler_runs(
+        self, app: Flask, api_cls: type[Resource], route: str
+    ) -> None:
         api_instance = api_cls()
 
         with (
