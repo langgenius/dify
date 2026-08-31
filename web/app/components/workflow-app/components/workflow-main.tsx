@@ -31,6 +31,8 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
+import dynamic from '@/next/dynamic'
+import { useStore } from '@/app/components/workflow/store'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { useDSLByCanEdit } from '../hooks/use-DSL'
@@ -40,7 +42,12 @@ import { useWorkflowDraftGraphForCanvas } from '../hooks/use-workflow-draft-grap
 import { useWorkflowRefreshDraft } from '../hooks/use-workflow-refresh-draft'
 import { useWorkflowRunByCanEdit } from '../hooks/use-workflow-run'
 import { useWorkflowStartRunByCanEdit } from '../hooks/use-workflow-start-run'
+import { DifyBuilderProvider } from './dify-builder/provider'
 import WorkflowChildren from './workflow-children'
+
+const DifyBuilderPanel = dynamic(() => import('./dify-builder/panel'), {
+  ssr: false,
+})
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 type WorkflowDataUpdatePayload = Pick<
@@ -64,6 +71,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const { data: appDetail } = useSuspenseQuery(
     consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
   )
+  const showDifyBuilderPanel = useStore((s) => s.showDifyBuilderPanel)
   const containerRef = useRef<HTMLDivElement>(null)
   const [collaborationGraphState, setCollaborationGraphState] = useState({
     appId: null as string | null,
@@ -540,8 +548,31 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     fileSettings,
   ])
 
+  const getDifyBuilderCanvasSnapshot = useCallback(
+    () => ({
+      nodes: reactFlow.getNodes(),
+      edgeCount: reactFlow.getEdges().length,
+    }),
+    [reactFlow],
+  )
+  const handleDifyBuilderSyncDraft = useCallback(async () => {
+    const result = await doSyncWorkflowDraft()
+    if (!result) throw new Error('Workflow draft sync failed.')
+  }, [doSyncWorkflowDraft])
+  const handleDifyBuilderRefreshCanvas = useCallback(async () => {
+    await handleRefreshWorkflowDraft()
+  }, [handleRefreshWorkflowDraft])
+
   return (
-    <div ref={containerRef} className="relative size-full">
+    <DifyBuilderProvider
+      appId={appId}
+      canEdit={appACLCapabilities.canEdit}
+      getCanvasSnapshot={getDifyBuilderCanvasSnapshot}
+      onSyncDraft={handleDifyBuilderSyncDraft}
+      onRefreshCanvas={handleDifyBuilderRefreshCanvas}
+    >
+      <div className="flex size-full min-w-0 overflow-hidden">
+        <div ref={containerRef} className="relative min-w-0 flex-1 overflow-hidden">
       <HooksStoreContextProvider {...(hooksStore as unknown as Partial<HooksStoreShape>)}>
         <HumanInputMigrationProvider canEdit={appACLCapabilities.canEdit}>
           <Workflow
@@ -601,7 +632,10 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
             </div>
           </div>
         )}
-    </div>
+        </div>
+        {showDifyBuilderPanel && <DifyBuilderPanel />}
+      </div>
+    </DifyBuilderProvider>
   )
 }
 

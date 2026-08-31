@@ -44,6 +44,7 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
   const setShowChatVariablePanel = useStore((s) => s.setShowChatVariablePanel)
   const setShowGlobalVariablePanel = useStore((s) => s.setShowGlobalVariablePanel)
   const setShowDifyBuilderPanel = useStore((s) => s.setShowDifyBuilderPanel)
+  const isDifyBuilderPanelOpen = useStore((s) => s.showDifyBuilderPanel)
   const nodes = useNodes<StartNodeType>()
   const selectedNode = nodes.find((node) => node.data.selected)
   const { handleBackupDraft } = useWorkflowRun()
@@ -102,7 +103,7 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
         )}
         {components?.middle}
         {canReleaseAndVersion && <VersionHistoryButton onClick={onStartRestoring} />}
-        {showDifyBuilderButton && (
+        {showDifyBuilderButton && !isDifyBuilderPanelOpen && (
           <>
             <Divider type="vertical" className="mx-0 h-4" />
             <DifyBuilderButton disabled={nodesReadOnly} />

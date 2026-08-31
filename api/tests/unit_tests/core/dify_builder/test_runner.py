@@ -137,6 +137,27 @@ def test_advance_terminal_state_returns_session_unchanged():
     assert out.version == 1
 
 
+def test_message_appends_user_bubble_without_advancing_waiting_state():
+    env, repo = _new_env()
+    s = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
+    repo.create_session(s, DifyBuilderContext(), [])
+
+    def must_not_run(*_args):
+        raise AssertionError("message must not invoke a state handler")
+
+    runner = Runner(env, {PcState.FIX_AWAIT_APPROVAL: must_not_run})
+    turn = Turn(
+        action=Action(kind="message", payload={"text": "Make the change smaller"}, base_version=1),
+        actor=_actor(),
+    )
+    out = runner.advance(s.id, turn)
+
+    assert out.current_state == PcState.FIX_AWAIT_APPROVAL
+    assert out.version == 2
+    items = repo.list_conversation(s.id)
+    assert [(item.kind, item.payload) for item in items] == [("user", {"text": "Make the change smaller"})]
+
+
 def test_advance_passes_full_turn_to_first_step_and_actor_only_turn_to_subsequent_steps():
     """Two working states chained: FIX_DIAGNOSE -> FIX_PROPOSE -> FIX_AWAIT_APPROVAL.
     The first handler sees the real Turn (with Action); the second (auto-advanced)

@@ -6,12 +6,11 @@ import { useStore } from '@/app/components/workflow/store'
 
 const DifyBuilderButton = ({ disabled }: { disabled: boolean }) => {
   const { t } = useTranslation()
-  const showDifyBuilderPanel = useStore((s) => s.showDifyBuilderPanel)
   const setShowDifyBuilderPanel = useStore((s) => s.setShowDifyBuilderPanel)
   const label = t(($) => $['difyBuilder.buttonTooltip'], { ns: 'workflow' })
 
   const handleClick = () => {
-    setShowDifyBuilderPanel(!showDifyBuilderPanel)
+    setShowDifyBuilderPanel(true)
   }
 
   return (
@@ -20,7 +19,6 @@ const DifyBuilderButton = ({ disabled }: { disabled: boolean }) => {
         render={
           <Button
             aria-label={label}
-            aria-pressed={showDifyBuilderPanel}
             className="dify-blue-glass-surface relative h-8 shrink-0 rounded-lg p-2 text-text-accent! data-disabled:text-components-button-ghost-text-disabled!"
             variant="ghost"
             disabled={disabled}
