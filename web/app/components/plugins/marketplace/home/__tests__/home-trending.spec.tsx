@@ -754,6 +754,28 @@ describe('HomeTrending', () => {
     })
   })
 
+  it('does not render banner slides whose CMS link is not http(s) or relative', () => {
+    const unsafeBlog: PluginBanner = {
+      id: 'blog-unsafe',
+      style_type: 'blog',
+      title: 'Unsafe Updates',
+      sort: 0,
+      language: 'en',
+      content: {
+        blog_title: 'Unsafe launch',
+        subtitle: 'Should not be clickable',
+        description: 'Reject javascript hrefs from CMS payloads.',
+        link: 'javascript:alert(1)',
+        link_target_type: 'blog',
+      },
+    }
+
+    render(<HomeTrending banners={[unsafeBlog]} isMarketplacePlatform page="plugins" />)
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Unsafe launch' })).not.toBeInTheDocument()
+  })
+
   it('dual-writes banner impressions to Amplitude and marketplace site tracking', () => {
     vi.useFakeTimers()
     const observers: Array<{ callback: IntersectionObserverCallback }> = []

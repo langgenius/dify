@@ -31,6 +31,7 @@ import {
 } from './event-ad-banner-image'
 import { buildMarketplaceBannerClickProperties } from './home-trending-track'
 import styles from './home-trending.module.css'
+import { sanitizeMarketplaceHref } from './marketplace-href'
 
 const getMarketplaceAssetURL = (path?: string) => {
   if (!path) return ''
@@ -59,7 +60,8 @@ const getLocalCardHref = (card: BannerRecommendCard) => {
 
 const getCardHref = (card: BannerRecommendCard, isMarketplacePlatform: boolean) => {
   if (isMarketplacePlatform) return getLocalCardHref(card)
-  if (card.link) return card.link
+  const deliveryHref = card.link ? sanitizeMarketplaceHref(card.link) : null
+  if (deliveryHref) return deliveryHref
 
   // The embedded console has no local plugin detail route, so a plugin card
   // without a delivery-provided link opens the marketplace site detail page.
@@ -154,6 +156,7 @@ function TrendingCard({
   const iconURL = getMarketplaceAssetURL(card.icon_url)
   const creator = getCardCreator(card)
   const href = getCardHref(card, isMarketplacePlatform)
+  if (!href) return null
   const opensInNewTab = !isMarketplacePlatform && /^https?:\/\//.test(href)
   const isPartner = card.badges?.includes('partner')
   const isVerified = card.badges?.includes('verified')
@@ -310,11 +313,13 @@ function BlogBannerSlide({
   page: MarketplaceBannerPage
 }) {
   const { t } = useTranslation('plugin')
-  const opensInNewTab = /^https?:\/\//.test(banner.content.link)
+  const href = sanitizeMarketplaceHref(banner.content.link)
+  if (!href) return null
+  const opensInNewTab = /^https?:\/\//.test(href)
 
   return (
     <Link
-      href={banner.content.link}
+      href={href}
       target={opensInNewTab ? '_blank' : undefined}
       rel={opensInNewTab ? 'noopener noreferrer' : undefined}
       onClick={() => {
@@ -420,6 +425,8 @@ function ImageBannerSlide({
   isMarketplacePlatform: boolean
   page: MarketplaceBannerPage
 }) {
+  const href = sanitizeMarketplaceHref(banner.content.link)
+  if (!href) return null
   const resolved = resolveEventAdBannerImageSrcs({
     desktop: getMarketplaceAssetURL(banner.content.images.desktop),
     tablet: getMarketplaceAssetURL(banner.content.images.tablet) || undefined,
@@ -428,7 +435,7 @@ function ImageBannerSlide({
 
   return (
     <Link
-      href={banner.content.link}
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
       onClick={() => {
