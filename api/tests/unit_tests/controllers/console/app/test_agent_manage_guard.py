@@ -10,6 +10,7 @@ from core.rbac import RBACPermission, RBACResourceScope
 from models import Account
 from models.agent import Agent, AgentScope, AgentSource, AgentStatus
 from models.model import App, AppMode
+from tests.unit_tests.config_override import config_overrides_context
 
 TENANT_ID = "tenant-1"
 
@@ -58,7 +59,7 @@ def _persist_app(
 def _patch_guard(account: Account, rbac_enabled: bool):
     return (
         patch("controllers.console.app.wraps.current_account_with_tenant", return_value=(account, TENANT_ID)),
-        patch("controllers.console.app.wraps.dify_config.RBAC_ENABLED", rbac_enabled),
+        config_overrides_context(RBAC_ENABLED=rbac_enabled),
     )
 
 

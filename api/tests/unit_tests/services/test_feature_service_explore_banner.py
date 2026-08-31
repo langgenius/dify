@@ -1,7 +1,8 @@
+from collections.abc import Callable
+
 import pytest
 
 from enums import DeploymentEdition
-from services import feature_service as feature_service_module
 from services.feature_service import FeatureService
 
 
@@ -16,12 +17,12 @@ from services.feature_service import FeatureService
 )
 def test_get_system_features_enables_explore_banner_only_for_cloud(
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
     edition: DeploymentEdition,
     configured: bool,
     expected: bool,
 ) -> None:
-    monkeypatch.setattr(feature_service_module.dify_config, "DEPLOYMENT_EDITION", edition)
-    monkeypatch.setattr(feature_service_module.dify_config, "ENABLE_EXPLORE_BANNER", configured)
+    config_overrides(DEPLOYMENT_EDITION=edition, ENABLE_EXPLORE_BANNER=configured)
     monkeypatch.setattr(FeatureService, "_fulfill_params_from_enterprise", lambda *_: None)
 
     result = FeatureService.get_system_features()

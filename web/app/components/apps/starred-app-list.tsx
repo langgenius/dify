@@ -43,7 +43,9 @@ export function StarredAppList({
         id={STARRED_APPS_HEADING_ID}
         label={t(($) => $['studio.starred'], { ns: 'app' })}
       />
-      <div
+      <ul
+        // Safari list semantics: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/list-style#accessibility
+        // oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Dify's preflight removes list markers.
         role="list"
         aria-labelledby={STARRED_APPS_HEADING_ID}
         className={APP_LIST_GRID_CLASS_NAME}
@@ -60,7 +62,7 @@ export function StarredAppList({
             }
           />
         ))}
-      </div>
+      </ul>
     </>
   )
 }

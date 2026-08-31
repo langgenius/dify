@@ -4,6 +4,7 @@ import pytest
 from flask import Flask
 
 from extensions import ext_set_secretkey
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 class InMemoryStorage:
@@ -25,7 +26,7 @@ class InMemoryStorage:
 def test_init_app_uses_configured_secret_key(monkeypatch: pytest.MonkeyPatch) -> None:
     secret_key = "configured-secret-key"
     storage = InMemoryStorage()
-    monkeypatch.setattr("extensions.ext_set_secretkey.dify_config.SECRET_KEY", secret_key)
+    apply_config_overrides(monkeypatch, SECRET_KEY=secret_key)
     monkeypatch.setattr("configs.secret_key.storage", storage)
     app = Flask(__name__)
     app.config["SECRET_KEY"] = secret_key
@@ -41,7 +42,7 @@ def test_init_app_generates_and_persists_secret_key_when_missing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     storage = InMemoryStorage()
-    monkeypatch.setattr("extensions.ext_set_secretkey.dify_config.SECRET_KEY", "")
+    apply_config_overrides(monkeypatch, SECRET_KEY="")
     monkeypatch.setattr("configs.secret_key.storage", storage)
     app = Flask(__name__)
     app.config["SECRET_KEY"] = ""
@@ -61,7 +62,7 @@ def test_init_app_reuses_persisted_secret_key_when_missing(
 ) -> None:
     persisted_key = "persisted-secret-key"
     storage = InMemoryStorage({".dify_secret_key": f"{persisted_key}\n".encode()})
-    monkeypatch.setattr("extensions.ext_set_secretkey.dify_config.SECRET_KEY", "")
+    apply_config_overrides(monkeypatch, SECRET_KEY="")
     monkeypatch.setattr("configs.secret_key.storage", storage)
     app = Flask(__name__)
     app.config["SECRET_KEY"] = ""

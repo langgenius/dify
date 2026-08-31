@@ -3,7 +3,7 @@ import type { StepByStepTourSessionState } from '@/app/components/step-by-step-t
 import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
 import { keepPreviousData } from '@tanstack/react-query'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import * as React from 'react'
@@ -398,12 +398,11 @@ vi.mock('../app-card', () => ({
     stepByStepTourCardHighlightPart?: string
   }) => {
     return React.createElement(
-      'div',
+      'li',
       {
         'data-testid': `app-card-${app.id}`,
         'data-step-by-step-tour-target': stepByStepTourCardTarget,
         'data-step-by-step-tour-highlight-part': stepByStepTourCardHighlightPart,
-        role: 'article',
       },
       app.name,
       React.createElement('button', {
@@ -415,20 +414,27 @@ vi.mock('../app-card', () => ({
     )
   },
   default: ({ app }: { app: { id: string; name: string } }) => {
-    return React.createElement(
-      'div',
-      { 'data-testid': `app-card-${app.id}`, role: 'article' },
-      app.name,
-    )
+    return React.createElement('li', { 'data-testid': `app-card-${app.id}` }, app.name)
   },
 }))
 
-vi.mock('../app-card/action-bar', () => ({
-  AppCardActionBar: ({ app }: { app: { id: string; name: string } }) => {
-    return React.createElement('button', {
-      'aria-label': `Actions for ${app.name}`,
-      type: 'button',
-    })
+vi.mock('../app-card/interactions', () => ({
+  AppCardInteractions: ({
+    app,
+    children,
+  }: {
+    app: { id: string; name: string }
+    children: React.ReactElement
+  }) => {
+    return React.createElement(
+      React.Fragment,
+      null,
+      children,
+      React.createElement('button', {
+        'aria-label': `Actions for ${app.name}`,
+        type: 'button',
+      }),
+    )
   },
 }))
 
@@ -690,14 +696,20 @@ describe('List', () => {
       renderList()
 
       const starredLabel = screen.getByRole('heading', { level: 2, name: 'Starred' })
+      const starredList = screen.getByRole('list', { name: 'Starred' })
       const starredCard = screen.getByRole('link', { name: 'Starred App' })
       const allAppsLabel = screen.getByRole('heading', { level: 2, name: 'All Apps' })
+      const allAppsList = screen.getByRole('list', { name: 'All Apps' })
       const firstAppCard = screen.getByTestId('app-card-app-1')
       const actionBar = screen.getByRole('button', { name: 'Actions for Starred App' })
 
       expect(starredCard).toBeInTheDocument()
       expect(actionBar).toBeInTheDocument()
       expect(screen.getAllByRole('list')).toHaveLength(2)
+      expect(starredList).toContainElement(starredCard)
+      expect(within(starredList).getAllByRole('listitem')).toHaveLength(1)
+      expect(firstAppCard.parentElement).toBe(allAppsList)
+      expect(within(allAppsList).getAllByRole('listitem')).toHaveLength(2)
       expect(
         starredLabel.compareDocumentPosition(starredCard) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy()
@@ -939,7 +951,10 @@ describe('List', () => {
       expect(screen.getByTestId('empty-state'))!.toBeInTheDocument()
       expect(screen.getByRole('status')).toHaveTextContent('app.filterEmpty.noApps')
       expect(screen.getByRole('status')).toHaveClass('sr-only')
-      expect(screen.getByTestId('empty-state').parentElement).toHaveAttribute('aria-busy', 'false')
+      expect(screen.getByTestId('empty-state').closest('[aria-busy]')).toHaveAttribute(
+        'aria-busy',
+        'false',
+      )
       expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
@@ -953,7 +968,10 @@ describe('List', () => {
       renderList('?keywords=missing+app')
 
       expect(screen.getByRole('status')).toBeEmptyDOMElement()
-      expect(screen.getByTestId('empty-state').parentElement).toHaveAttribute('aria-busy', 'true')
+      expect(screen.getByTestId('empty-state').closest('[aria-busy]')).toHaveAttribute(
+        'aria-busy',
+        'true',
+      )
     })
 
     it('should keep the settled empty status during a background refetch', () => {
@@ -963,7 +981,10 @@ describe('List', () => {
       renderList('?keywords=missing+app')
 
       expect(screen.getByRole('status')).toHaveTextContent('app.filterEmpty.noApps')
-      expect(screen.getByTestId('empty-state').parentElement).toHaveAttribute('aria-busy', 'true')
+      expect(screen.getByTestId('empty-state').closest('[aria-busy]')).toHaveAttribute(
+        'aria-busy',
+        'true',
+      )
     })
 
     it('should leave the first empty state as soon as a filter changes', () => {

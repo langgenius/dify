@@ -26,6 +26,7 @@ from controllers.console.app.workflow import (
     DefaultBlockConfigsResponse,
     WorkflowPaginationResponse,
     WorkflowResponse,
+    WorkflowResponseSource,
 )
 from controllers.console.app.wraps import with_session
 from controllers.console.datasets.wraps import get_rag_pipeline, load_rag_pipeline
@@ -202,14 +203,15 @@ class DraftRagPipelineApi(Resource):
         Get draft rag pipeline's workflow
         """
         # fetch draft workflow by app_model
-        rag_pipeline_service = RagPipelineService(db.session())
+        session = db.session()
+        rag_pipeline_service = RagPipelineService(session)
         workflow = rag_pipeline_service.get_draft_workflow(pipeline=pipeline)
 
         if not workflow:
             raise DraftWorkflowNotExist()
 
         # return workflow, if not found, return 404
-        return dump_response(WorkflowResponse, workflow)
+        return dump_response(WorkflowResponse, WorkflowResponseSource(workflow, session=session))
 
     @setup_required
     @login_required
@@ -548,14 +550,15 @@ class PublishedRagPipelineApi(Resource):
         if not pipeline.is_published:
             return None
         # fetch published workflow by pipeline
-        rag_pipeline_service = RagPipelineService(db.session())
+        session = db.session()
+        rag_pipeline_service = RagPipelineService(session)
         workflow = rag_pipeline_service.get_published_workflow(pipeline=pipeline)
 
         # return workflow, if not found, return None
         if workflow is None:
             return None
 
-        return dump_response(WorkflowResponse, workflow)
+        return dump_response(WorkflowResponse, WorkflowResponseSource(workflow, session=session))
 
     @console_ns.response(200, "Success", console_ns.models[RagPipelineWorkflowPublishResponse.__name__])
     @setup_required
@@ -684,7 +687,7 @@ class PublishedAllRagPipelineApi(Resource):
 
             return WorkflowPaginationResponse.model_validate(
                 {
-                    "items": workflows,
+                    "items": [WorkflowResponseSource(workflow, session=session) for workflow in workflows],
                     "page": page,
                     "limit": limit,
                     "has_more": has_more,
@@ -763,7 +766,7 @@ class RagPipelineByIdApi(Resource):
             if not workflow:
                 raise NotFound("Workflow not found")
 
-            return dump_response(WorkflowResponse, workflow)
+            return dump_response(WorkflowResponse, WorkflowResponseSource(workflow, session=session))
 
     @console_ns.response(204, "Workflow deleted successfully")
     @setup_required
