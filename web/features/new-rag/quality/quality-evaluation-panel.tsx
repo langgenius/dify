@@ -142,17 +142,19 @@ function EvaluationReport({
     },
   ]
   return (
-    <section className="min-w-0 pt-1">
-      <button
-        type="button"
-        className="flex items-center gap-1 rounded-md system-sm-medium text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-        onClick={onBack}
-      >
-        <span aria-hidden className="i-ri-arrow-left-line size-4" />
-        {t(($) => $['newKnowledge.qualityPage.evaluationTab'])}
-      </button>
+    <section className="min-w-0">
+      <div className="flex h-6 items-center">
+        <button
+          type="button"
+          className="flex items-center gap-1 rounded-md system-sm-medium text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          onClick={onBack}
+        >
+          <span aria-hidden className="i-ri-arrow-left-line size-4" />
+          {t(($) => $['newKnowledge.qualityPage.evaluationTab'])}
+        </button>
+      </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="system-xl-semibold text-text-primary">
