@@ -18,10 +18,18 @@ describe('AccessPointIcon', () => {
     )
   })
 
-  it('renders active access points as disabled controls when navigation is not allowed', () => {
+  it('keeps active access points visually active when navigation is not allowed', () => {
     render(<AccessPointIcon accessPoint="webApp" active />)
 
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
     expect(screen.getByRole('button')).toBeDisabled()
+    expect(screen.getByRole('button')).not.toHaveClass('opacity-30')
+  })
+
+  it('dims inactive access points', () => {
+    render(<AccessPointIcon accessPoint="webApp" active={false} />)
+
+    expect(screen.getByRole('button')).toBeDisabled()
+    expect(screen.getByRole('button')).toHaveClass('opacity-30')
   })
 })

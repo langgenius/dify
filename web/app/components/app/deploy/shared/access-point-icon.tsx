@@ -43,7 +43,8 @@ export function AccessPointIcon({
   const canNavigate = active && Boolean(href)
   const triggerClassName = cn(
     'flex size-5 shrink-0 items-center justify-center rounded-md border border-divider-regular text-text-secondary shadow-xs outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-    canNavigate ? 'cursor-pointer hover:bg-state-base-hover' : 'cursor-not-allowed opacity-30',
+    active && (canNavigate ? 'cursor-pointer hover:bg-state-base-hover' : 'cursor-default'),
+    !active && 'cursor-not-allowed opacity-30',
   )
   const icon = (
     <span aria-hidden className={cn(ACCESS_POINT_ICON_CLASS_NAMES[accessPoint], 'size-3')} />
