@@ -997,7 +997,7 @@ class TestMemberRoles:
         }
         assert persisted_joins == {
             "acct-2": svc.TenantAccountRole.OWNER,
-            "acct-owner": svc.TenantAccountRole.ADMIN,
+            "acct-owner": svc.TenantAccountRole.NORMAL,
         }
         assert out.roles[0].id == "owner"
 
