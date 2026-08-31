@@ -9,6 +9,7 @@ import { useNodesInteractions } from '../hooks/use-nodes-interactions'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 import { useWorkflowRun } from '../hooks/use-workflow-run'
 import { useStore, useWorkflowStore } from '../store'
+import DifyBuilderButton from './dify-builder-button'
 import EditingTitle from './editing-title'
 import EnvButton from './env-button'
 import GlobalVariableButton from './global-variable-button'
@@ -16,7 +17,6 @@ import OnlineUsers from './online-users'
 import RunAndHistory from './run-and-history'
 import ScrollToSelectedNodeButton from './scroll-to-selected-node-button'
 import { VersionHistoryButton } from './version-history-button'
-import DifyBuilderButton from './dify-builder-button'
 
 export type HeaderInNormalProps = {
   components?: {
@@ -93,7 +93,6 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
         {components?.left}
         <Divider type="vertical" className="mx-auto h-3.5" />
         <RunAndHistory {...runAndHistoryProps} />
-        {showDifyBuilderButton && <DifyBuilderButton disabled={nodesReadOnly} />}
         {showContextButtons && (
           <div className="shrink-0 cursor-pointer rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs backdrop-blur-[10px]">
             {components?.chatVariableTrigger}
@@ -103,6 +102,12 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
         )}
         {components?.middle}
         {canReleaseAndVersion && <VersionHistoryButton onClick={onStartRestoring} />}
+        {showDifyBuilderButton && (
+          <>
+            <Divider type="vertical" className="mx-0 h-4" />
+            <DifyBuilderButton disabled={nodesReadOnly} />
+          </>
+        )}
       </div>
     </div>
   )
