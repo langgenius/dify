@@ -10,6 +10,7 @@ import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { usePathname } from '@/next/navigation'
 import { MainNav } from '.'
+import { MAIN_NAV_LAYOUT_CLASS_NAME } from './responsive-classes'
 import { shouldHideMainNavigation, shouldUseDetailSidebar } from './routes'
 import { MAIN_CONTENT_ID, SkipNav } from './skip-nav'
 
@@ -47,7 +48,7 @@ const MainNavLayout = ({ children, detailSidebar }: MainNavLayoutProps) => {
   })
 
   return (
-    <div className="flex h-0 min-h-0 min-w-0 grow overflow-hidden bg-background-body">
+    <div className={MAIN_NAV_LAYOUT_CLASS_NAME}>
       <SkipNav>{t(($) => $['navigation.skipToMain'])}</SkipNav>
       <AppDetailStoreCleanup />
       {hideMainNavigation ? null : useDetailSidebar ? detailSidebar : <MainNav />}

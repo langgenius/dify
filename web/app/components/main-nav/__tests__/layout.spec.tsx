@@ -83,6 +83,16 @@ describe('MainNavLayout', () => {
     expect(screen.queryByTestId('desktop-header')).not.toBeInTheDocument()
   })
 
+  it('stacks navigation above content on narrow screens', () => {
+    const { container } = render(
+      <MainNavLayout>
+        <div>content</div>
+      </MainNavLayout>,
+    )
+
+    expect(container.firstElementChild).toHaveClass('flex-col', 'sm:flex-row')
+  })
+
   it('renders one main landmark as the skip navigation target', () => {
     render(
       <MainNavLayout>

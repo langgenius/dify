@@ -288,13 +288,18 @@ describe('SnippetList', () => {
     expect(screen.getByTestId('tag-management-modal')).toBeInTheDocument()
   })
 
-  it('lays out snippet cards with auto-fill grid columns', () => {
+  it('lays out snippet cards as one column before enabling auto-fill on wider screens', () => {
     renderList()
 
     const card = screen.getByRole('link', { name: /Sales Snippet/ }).closest('article')
     const grid = card?.parentElement
 
-    expect(grid).toHaveClass('grid', 'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]')
+    expect(grid).toHaveClass(
+      'grid',
+      'grid-cols-1',
+      'sm:grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
+    )
+    expect(screen.getByRole('searchbox').parentElement).toHaveClass('w-full', 'sm:w-50')
   })
 
   it('passes creator, tag, and search filters to the snippets list query', () => {
@@ -427,7 +432,7 @@ describe('SnippetList', () => {
       enabled: false,
     })
     expect(screen.queryByRole('link', { name: /Sales Snippet/ })).not.toBeInTheDocument()
-    expect(screen.getByText('workflow.tabs.noSnippetsFound')).toBeInTheDocument()
+    expect(screen.getByText('workflow.tabs.noSnippetsFound', { selector: 'p' })).toBeInTheDocument()
   })
 
   it('shows the create button for users with snippet create permission even when they are not workspace editors', () => {
@@ -459,7 +464,16 @@ describe('SnippetList', () => {
 
     renderList()
 
-    expect(screen.getByText('workflow.tabs.noSnippetsFound')).toBeInTheDocument()
+    expect(screen.getByText('workflow.tabs.noSnippetsFound', { selector: 'p' })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('workflow.tabs.noSnippetsFound')
+  })
+
+  it('announces the current result count', () => {
+    renderList()
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'common.operation.searchCount:{"count":1,"content":"workflow.tabs.snippets"}',
+    )
   })
 
   it('renders loading and next-page skeleton cards', () => {
@@ -475,6 +489,8 @@ describe('SnippetList', () => {
     const { container } = renderList()
 
     expect(container.querySelectorAll('.animate-pulse')).toHaveLength(9)
+    expect(screen.getByRole('status')).toHaveTextContent('common.loading')
+    expect(screen.getByRole('status').parentElement).toHaveAttribute('aria-busy', 'true')
   })
 
   it('fetches the next page when the scroll anchor intersects', () => {

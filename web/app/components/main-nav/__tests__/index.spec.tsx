@@ -738,6 +738,22 @@ describe('MainNav', () => {
     ])
   })
 
+  it('opens the named mobile navigation drawer', async () => {
+    const user = userEvent.setup()
+    renderMainNav()
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'common.operation.moreActionsFor:{"name":"Dify"}',
+      }),
+    )
+
+    const drawer = await screen.findByRole('dialog', { name: 'Dify' })
+
+    expect(drawer).toBeInTheDocument()
+    expect(within(drawer).getByRole('navigation')).toBeInTheDocument()
+  })
+
   it('hides the roster entry when Agent v2 is disabled', () => {
     mockIsAgentV2Enabled.mockReturnValue(false)
 

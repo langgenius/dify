@@ -22,7 +22,12 @@ import { canAccessSnippets } from '../snippets/utils/permission'
 import SnippetCard from './components/snippet-card'
 import SnippetCreateButton from './components/snippet-create-button'
 import SnippetPublishStatusFilter from './components/snippet-publish-status-filter'
-import { SNIPPET_LIST_SEARCH_DEBOUNCE_MS } from './constants'
+import {
+  SNIPPET_LIST_FILTER_GROUP_CLASS_NAME,
+  SNIPPET_LIST_GRID_CLASS_NAME,
+  SNIPPET_LIST_SEARCH_CLASS_NAME,
+  SNIPPET_LIST_SEARCH_DEBOUNCE_MS,
+} from './constants'
 import { useSnippetsQueryState } from './hooks/use-snippets-query-state'
 
 const TagManagementModal = dynamic(
@@ -150,6 +155,15 @@ const SnippetList = () => {
   const showSkeleton =
     isLoadingCurrentWorkspace ||
     (canQuerySnippetList && (isLoading || (isFetching && pages.length === 0)))
+  const listStatus = showSkeleton
+    ? t(($) => $.loading, { ns: 'common' })
+    : hasAnySnippet
+      ? t(($) => $['operation.searchCount'], {
+          ns: 'common',
+          count: snippets.length,
+          content: t(($) => $['tabs.snippets'], { ns: 'workflow' }),
+        })
+      : t(($) => $['tabs.noSnippetsFound'], { ns: 'workflow' })
 
   return (
     <div
@@ -173,7 +187,7 @@ const SnippetList = () => {
         }
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className={SNIPPET_LIST_FILTER_GROUP_CLASS_NAME}>
             <CreatorsFilter value={creatorIDs} onChange={setCreatorIDs} />
             <SnippetPublishStatusFilter value={publishStatus} onChange={setPublishStatus} />
             <TagFilter
@@ -184,7 +198,7 @@ const SnippetList = () => {
             />
             <SearchInput
               name="snippet-query"
-              className="w-50"
+              className={SNIPPET_LIST_SEARCH_CLASS_NAME}
               value={keywords}
               onValueChange={setKeywords}
               placeholder={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
@@ -195,11 +209,12 @@ const SnippetList = () => {
         </div>
       </StudioListHeader>
       <div
-        className={cn(
-          'relative grid grow grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-4 px-8 pt-2',
-          !hasAnySnippet && 'overflow-hidden',
-        )}
+        aria-busy={showSkeleton || isFetchingNextPage}
+        className={cn(SNIPPET_LIST_GRID_CLASS_NAME, !hasAnySnippet && 'overflow-hidden')}
       >
+        <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+          {listStatus}
+        </div>
         {showSkeleton ? (
           <SnippetCardSkeleton count={6} />
         ) : hasAnySnippet ? (
