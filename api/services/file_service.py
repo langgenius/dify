@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import os
+import posixpath
 import uuid
 from collections.abc import Generator, Sequence  # Changed Iterator to Generator
 from contextlib import contextmanager, suppress
@@ -345,8 +346,9 @@ class FileService:
         We keep this conservative: the upload flow already rejects `/` and `\\`, but older rows (or imported data)
         could still contain unsafe names.
         """
-        # Drop any directory components and prevent empty names.
-        base = os.path.basename(name).strip() or "file"
+        # Drop any directory components and prevent empty names. ZIP names are always POSIX-style, so split on
+        # `/` explicitly rather than through `os.path`, whose separators differ on Windows hosts.
+        base = posixpath.basename(name).strip() or "file"
 
         # ZIP uses forward slashes as separators; remove any residual separator characters.
         return base.replace("/", "_").replace("\\", "_")
