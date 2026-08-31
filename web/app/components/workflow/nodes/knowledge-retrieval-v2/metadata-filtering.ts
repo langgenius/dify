@@ -1,9 +1,9 @@
-import type { DocumentMetadataField } from '@/features/new-rag/document-metadata-model'
 import type { MetadataInDoc } from '@/models/datasets'
+import type { KnowledgeFsMetadataField } from '@/service/knowledge-fs/metadata'
 import { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 
 const metadataVariableType = (
-  type: DocumentMetadataField['type'],
+  type: KnowledgeFsMetadataField['type'],
 ): MetadataFilteringVariableType => {
   if (type === 'number') return MetadataFilteringVariableType.number
   if (type === 'time') return MetadataFilteringVariableType.time
@@ -11,7 +11,7 @@ const metadataVariableType = (
 }
 
 export const intersectKnowledgeFsMetadataFields = (
-  fieldGroups: readonly (readonly DocumentMetadataField[])[],
+  fieldGroups: readonly (readonly KnowledgeFsMetadataField[])[],
 ): MetadataInDoc[] => {
   const [firstGroup, ...remainingGroups] = fieldGroups
   if (!firstGroup) return []

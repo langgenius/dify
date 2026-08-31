@@ -1,9 +1,9 @@
 'use client'
 
 import type { DatasourceProviderAuthListResponse } from '@dify/contracts/api/console/auth/types.gen'
-import type { NewKnowledgeSourceDraft, NewKnowledgeSourceType } from './routes'
 import type { SourceConnection as Connection, SourceProvider as Provider } from './source-models'
 import type { InstalledSourceProviderOption, SourceProviderOption } from './source-provider-options'
+import type { NewKnowledgeSourceDraft, NewKnowledgeSourceType } from './sources/create/source-draft'
 import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
@@ -34,12 +34,7 @@ import {
   websiteDatasourceParameterSchemas,
 } from './datasource-parameter-model'
 import { useKnowledgeSpacePermission } from './knowledge-space-context'
-import {
-  createNewKnowledgeSourceDraft,
-  newKnowledgeDetailPath,
-  newKnowledgeSourceDraftStorageKey,
-  parseNewKnowledgeSourceDraft,
-} from './routes'
+import { newKnowledgeDetailPath } from './routes'
 import {
   sourceConnectionFromApi,
   sourceConnectionListFromApi,
@@ -56,6 +51,18 @@ import {
   SourceSyncPolicyField,
   SourceTypeSelector,
 } from './source-setup-fields'
+import {
+  findSourceProviderConnection,
+  isManagedSourceProviderFieldName,
+  sourceConnectionMatchesDatasource,
+  sourceConnectionStatusRank,
+  sourceProviderUsesManagedConfiguration,
+} from './sources/connections/model'
+import {
+  createNewKnowledgeSourceDraft,
+  newKnowledgeSourceDraftStorageKey,
+  parseNewKnowledgeSourceDraft,
+} from './sources/create/source-draft'
 import { WebsiteCrawlPreview } from './website-crawl-preview'
 
 type ProviderField = Provider['configuration'][number]
@@ -64,20 +71,6 @@ type SourceType = NewKnowledgeSourceType
 
 const CONNECTION_PAGE_SIZE = 200
 const WEBSITE_SOURCE_PROVIDER_ID = 'plugin-daemon-website'
-const MANAGED_PROVIDER_FIELD_NAMES = new Set([
-  'credentialId',
-  'datasource',
-  'pluginId',
-  'provider',
-  'providerKind',
-])
-const CONNECTION_STATUS_PRIORITY: Record<Connection['status'], number> = {
-  active: 0,
-  provisioning: 1,
-  error: 2,
-  expired: 3,
-  revoked: 4,
-}
 function humanizeFieldName(name: string) {
   return name
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
@@ -140,48 +133,12 @@ function websiteDatasourceConfiguration(
   }
 }
 
-function connectionMatchesDatasource(
-  connection: Connection,
-  datasourceProvider: WebsiteDatasourceProvider | undefined,
-  credentialId?: string,
-) {
-  if (!datasourceProvider) return false
-  const configuration = connection.configuration
-  return (
-    configuration.pluginId === datasourceProvider.plugin.plugin_id &&
-    configuration.provider === datasourceProvider.plugin.provider &&
-    configuration.datasource === datasourceProvider.datasource.identity.name &&
-    (!credentialId || configuration.credentialId === credentialId)
-  )
-}
-
-function findProviderConnection(
-  connections: Connection[],
-  providerId: string | undefined,
-  datasourceProvider: WebsiteDatasourceProvider | undefined,
-  credentialId?: string,
-) {
-  if (!providerId || !datasourceProvider) return undefined
-  return [
-    ...connections.filter(
-      (connection) =>
-        connection.providerId === providerId &&
-        connection.status !== 'revoked' &&
-        connectionMatchesDatasource(connection, datasourceProvider, credentialId),
-    ),
-  ].sort(
-    (left, right) =>
-      CONNECTION_STATUS_PRIORITY[left.status] - CONNECTION_STATUS_PRIORITY[right.status] ||
-      right.updatedAt.localeCompare(left.updatedAt),
-  )[0]
-}
-
 function findConnectionById(connections: Connection[], connectionId: string) {
   return [...connections.filter((connection) => connection.id === connectionId)].sort(
     (left, right) =>
       right.version - left.version ||
       right.updatedAt.localeCompare(left.updatedAt) ||
-      CONNECTION_STATUS_PRIORITY[left.status] - CONNECTION_STATUS_PRIORITY[right.status],
+      sourceConnectionStatusRank(left.status) - sourceConnectionStatusRank(right.status),
   )[0]
 }
 
@@ -191,8 +148,7 @@ function normalizeSourceType(value: string | null): SourceType {
 }
 
 function isDifyManagedProvider(provider: Provider) {
-  const fieldNames = new Set(provider.configuration.map((field) => field.name))
-  return [...MANAGED_PROVIDER_FIELD_NAMES].every((field) => fieldNames.has(field))
+  return sourceProviderUsesManagedConfiguration(provider.configuration)
 }
 
 function getSupportedAuthKinds(provider: Provider, credentialId?: string) {
@@ -202,7 +158,7 @@ function getSupportedAuthKinds(provider: Provider, credentialId?: string) {
       : []
 
   const fields = provider.configuration.filter(
-    (field) => !MANAGED_PROVIDER_FIELD_NAMES.has(field.name),
+    (field) => !isManagedSourceProviderFieldName(field.name),
   )
   const supported: ConnectionAuthKind[] = []
   if (provider.authKinds.includes('api-key') && fields.some((field) => field.secret))
@@ -326,7 +282,7 @@ function ConnectionForm({
   const [error, setError] = useState(false)
   const [pending, setPending] = useState(false)
   const configurableFields = provider.configuration.filter(
-    (field) => !MANAGED_PROVIDER_FIELD_NAMES.has(field.name),
+    (field) => !isManagedSourceProviderFieldName(field.name),
   )
   const visibleFields = configurableFields.filter(
     (field) => authKind === 'api-key' || (!field.secret && field.format === 'uri'),
@@ -363,7 +319,7 @@ function ConnectionForm({
       }
       const fixedConfiguration = Object.fromEntries(
         provider.configuration
-          .filter((field) => MANAGED_PROVIDER_FIELD_NAMES.has(field.name))
+          .filter((field) => isManagedSourceProviderFieldName(field.name))
           .flatMap((field) => {
             const value = fixedValues[field.name]
             return value === undefined ? [] : ([[field.name, value]] as const)
@@ -930,13 +886,22 @@ function AddSourcePageContent({
   const datasourceProviders = datasourceAuthQuery.data?.result ?? []
   const datasourceCredential = findDatasourceCredential(datasourceProviders, datasourceProvider)
   const difyManagedProvider = provider ? isDifyManagedProvider(provider) : false
+  const datasourceIdentity = useMemo(
+    () =>
+      datasourceProvider
+        ? websiteDatasourceConfiguration(
+            datasourceProvider,
+            difyManagedProvider ? datasourceCredential?.id : undefined,
+          )
+        : undefined,
+    [datasourceCredential?.id, datasourceProvider, difyManagedProvider],
+  )
   const remoteConnections =
     connectionsQuery.data?.pages.flatMap((page) => sourceConnectionListFromApi(page).items) ?? []
-  const remoteConnection = findProviderConnection(
+  const remoteConnection = findSourceProviderConnection(
     remoteConnections,
     provider?.id,
-    datasourceProvider,
-    difyManagedProvider ? datasourceCredential?.id : undefined,
+    datasourceIdentity,
   )
   const [connectionOverride, setConnectionOverride] = useState<Connection>()
   const matchingRemoteConnection = connectionOverride
@@ -947,11 +912,7 @@ function AddSourcePageContent({
     if (
       !localConnection ||
       localConnection.providerId !== provider?.id ||
-      !connectionMatchesDatasource(
-        localConnection,
-        datasourceProvider,
-        difyManagedProvider ? datasourceCredential?.id : undefined,
-      )
+      !sourceConnectionMatchesDatasource(localConnection, datasourceIdentity)
     )
       return remoteConnection
     if (!matchingRemoteConnection) return localConnection
@@ -963,17 +924,15 @@ function AddSourcePageContent({
         return matchingRemoteConnection
       if (matchingRemoteConnection.updatedAt < localConnection.updatedAt) return localConnection
       if (
-        CONNECTION_STATUS_PRIORITY[matchingRemoteConnection.status] <
-        CONNECTION_STATUS_PRIORITY[localConnection.status]
+        sourceConnectionStatusRank(matchingRemoteConnection.status) <
+        sourceConnectionStatusRank(localConnection.status)
       )
         return matchingRemoteConnection
     }
     return localConnection
   }, [
     connectionOverride,
-    datasourceCredential?.id,
-    datasourceProvider,
-    difyManagedProvider,
+    datasourceIdentity,
     matchingRemoteConnection,
     provider?.id,
     remoteConnection,
@@ -1057,22 +1016,10 @@ function AddSourcePageContent({
       ? refreshedCurrentConnection
         ? findConnectionById([connection, refreshedCurrentConnection], connection.id)
         : undefined
-      : findProviderConnection(
-          refreshedConnections,
-          provider?.id,
-          datasourceProvider,
-          difyManagedProvider ? datasourceCredential?.id : undefined,
-        )
+      : findSourceProviderConnection(refreshedConnections, provider?.id, datasourceIdentity)
     if (updatedConnection) setConnectionOverride(updatedConnection)
     return updatedConnection
-  }, [
-    connection,
-    datasourceCredential?.id,
-    datasourceProvider,
-    difyManagedProvider,
-    provider?.id,
-    refetchConnections,
-  ])
+  }, [connection, datasourceIdentity, provider?.id, refetchConnections])
 
   const loadingConnections =
     connectionsQuery.isPending ||

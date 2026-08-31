@@ -8,7 +8,8 @@ import type { CreateKnowledgeExitReason } from './components/create-knowledge-ex
 import type { KnowledgeVisibility } from './create-knowledge-workflow'
 import type { QueuedUpload } from './create-upload-queue'
 import type { KnowledgeFsUploadPhase, KnowledgeFsUploadProgress } from './knowledge-fs-upload'
-import type { NewKnowledgeSourceDraft, NewKnowledgeStartMode } from './routes'
+import type { NewKnowledgeStartMode } from './routes'
+import type { NewKnowledgeSourceDraft } from './sources/create/source-draft'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -62,12 +63,12 @@ import {
 } from './knowledge-fs-upload'
 import { createRequestId } from './request-id'
 import {
-  createNewKnowledgeSourceDraft,
   newKnowledgeDetailPath,
   newKnowledgeDocumentsPath,
   newKnowledgeListPath,
   newKnowledgeSettingsPath,
 } from './routes'
+import { createNewKnowledgeSourceDraft } from './sources/create/source-draft'
 import { useKnowledgeFileSizeLimit } from './use-knowledge-file-size-limit'
 
 type InitialSource = NonNullable<KnowledgeFsSpaceCreatePayload['initial_source']>

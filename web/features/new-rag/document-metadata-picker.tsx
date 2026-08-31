@@ -1,7 +1,7 @@
 'use client'
 
 import type { ComboboxChangeEventDetails } from '@langgenius/dify-ui/combobox'
-import type { DocumentMetadataField, DocumentMetadataType } from './document-metadata-model'
+import type { DocumentMetadataField, DocumentMetadataType } from './documents/metadata/editor-model'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {

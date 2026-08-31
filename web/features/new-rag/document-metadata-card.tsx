@@ -1,8 +1,8 @@
 'use client'
 
 import type { ChangeEvent } from 'react'
-import type { DocumentMetadataType } from './document-metadata-model'
 import type { LogicalDocument } from './document-models'
+import type { DocumentMetadataType } from './documents/metadata/editor-model'
 import { Button } from '@langgenius/dify-ui/button'
 import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -11,15 +11,15 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
+import { knowledgeFsMetadataFieldsQueryOptions } from '@/service/knowledge-fs/metadata'
+import { DocumentMetadataPicker } from './document-metadata-picker'
+import { logicalDocumentFromApi } from './document-models'
 import {
   documentMetadataDefaultValue,
-  documentMetadataFieldsQueryOptions,
   documentMetadataNameError,
   documentMetadataType,
   editableDocumentMetadataEntries,
-} from './document-metadata-model'
-import { DocumentMetadataPicker } from './document-metadata-picker'
-import { logicalDocumentFromApi } from './document-models'
+} from './documents/metadata/editor-model'
 import { newKnowledgeDocumentsPath } from './routes'
 
 type MetadataDraft = {
@@ -120,7 +120,7 @@ export function DocumentMetadataCard({
     [document.userMetadata],
   )
   const metadataFieldsQuery = useQuery({
-    ...documentMetadataFieldsQueryOptions(controlSpaceId),
+    ...knowledgeFsMetadataFieldsQueryOptions(controlSpaceId),
     enabled: editing,
   })
   const fields = useMemo(() => metadataFieldsQuery.data ?? [], [metadataFieldsQuery.data])

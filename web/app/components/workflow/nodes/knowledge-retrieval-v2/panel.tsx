@@ -10,8 +10,8 @@ import Split from '@/app/components/workflow/nodes/_base/components/split'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import MetadataFilter from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import { documentMetadataFieldsQueryOptions } from '@/features/new-rag/document-metadata-model'
 import { consoleQuery } from '@/service/client'
+import { knowledgeFsMetadataFieldsQueryOptions } from '@/service/knowledge-fs/metadata'
 import AddKnowledgeSpace from './components/add-knowledge-space'
 import KnowledgeSpaceList from './components/knowledge-space-list'
 import RecallSettings from './components/recall-settings'
@@ -62,7 +62,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalV2NodeType>> = ({ id, data }) =
   const loadedSummaries = useMemo(() => loadedSpaces.map(toControlSpaceSummary), [loadedSpaces])
   const metadataQueries = useQueries({
     queries: inputs.control_space_ids.map((controlSpaceId) =>
-      documentMetadataFieldsQueryOptions(controlSpaceId),
+      knowledgeFsMetadataFieldsQueryOptions(controlSpaceId),
     ),
   })
   const metadataList = intersectKnowledgeFsMetadataFields(

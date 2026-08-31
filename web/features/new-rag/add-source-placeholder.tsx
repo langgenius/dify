@@ -7,7 +7,7 @@ import type {
   NewKnowledgeOnlineDriveSourceDraft,
   NewKnowledgeSourceDraft,
   NewKnowledgeWebsiteSourceDraft,
-} from './routes'
+} from './sources/create/source-draft'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -26,13 +26,13 @@ import {
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { sourceProviderPresentation } from './source-provider-options'
+import { SourceProviderIcon, SourceSyncPolicyField } from './source-setup-fields'
 import {
   isValidWebsiteSourceDraft,
   NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH,
   NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH,
-} from './routes'
-import { sourceProviderPresentation } from './source-provider-options'
-import { SourceProviderIcon, SourceSyncPolicyField } from './source-setup-fields'
+} from './sources/create/source-draft'
 
 const connectedProviders = {
   onlineDocuments: [

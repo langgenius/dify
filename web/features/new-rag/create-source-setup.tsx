@@ -1,8 +1,8 @@
 'use client'
 
 import type { KnowledgeFsSpaceCreatePayload } from '@dify/contracts/api/console/knowledge-fs/types.gen'
-import type { NewKnowledgeSourceDraft } from './routes'
 import type { CrawlPreviewPage } from './source-models'
+import type { NewKnowledgeSourceDraft } from './sources/create/source-draft'
 import type {
   DataSourceAuth,
   DataSourceCredential,

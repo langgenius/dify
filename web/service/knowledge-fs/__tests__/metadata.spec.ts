@@ -1,4 +1,4 @@
-import { documentMetadataFieldsQueryOptions } from '../document-metadata-model'
+import { knowledgeFsMetadataFieldsQueryOptions } from '../metadata'
 
 const metadataGet = vi.hoisted(() => vi.fn())
 const metadataQueryOptions = vi.hoisted(() => vi.fn(() => ({ queryKey: ['metadata'] })))
@@ -24,7 +24,7 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-describe('documentMetadataFieldsQueryOptions', () => {
+describe('knowledgeFsMetadataFieldsQueryOptions', () => {
   it('collects every cursor page before exposing metadata fields', async () => {
     metadataGet
       .mockResolvedValueOnce({
@@ -56,7 +56,7 @@ describe('documentMetadataFieldsQueryOptions', () => {
         next_cursor: null,
       })
 
-    const options = documentMetadataFieldsQueryOptions('space-1')
+    const options = knowledgeFsMetadataFieldsQueryOptions('space-1')
     const response = await options.queryFn()
     const fields = options.select(response)
 

@@ -5,13 +5,13 @@ import type {
   KnowledgeFsSourcePageResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { DatasourceParameters, DatasourceParameterSchema } from './datasource-parameter-model'
+import type { Source, SourceConnection, SourceProvider } from './source-models'
+import type { SourceProviderOption } from './source-provider-options'
 import type {
   NewKnowledgeOnlineDocumentsSourceDraft,
   NewKnowledgeOnlineDriveSourceDraft,
   NewKnowledgeSourceDraft,
-} from './routes'
-import type { Source, SourceConnection, SourceProvider } from './source-models'
-import type { SourceProviderOption } from './source-provider-options'
+} from './sources/create/source-draft'
 import type {
   DataSourceAuth,
   DataSourceCredential,
@@ -37,7 +37,6 @@ import {
   withDatasourceParameterDefaults,
 } from './datasource-parameter-model'
 import { createRequestId } from './request-id'
-import { NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH } from './routes'
 import {
   sourceConnectionFromApi,
   sourceConnectionListFromApi,
@@ -59,6 +58,12 @@ import {
   SourceProviderSelector,
   SourceSyncPolicyField,
 } from './source-setup-fields'
+import {
+  findSourceProviderConnection,
+  sourceConnectionMatchesDatasource,
+  sourceProviderUsesManagedConfiguration,
+} from './sources/connections/model'
+import { NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH } from './sources/create/source-draft'
 
 type ConnectedSourceDraft =
   | NewKnowledgeOnlineDocumentsSourceDraft
@@ -95,20 +100,6 @@ const CONNECTION_PAGE_SIZE = 200
 const RESOURCE_PAGE_SIZE = 200
 const MAX_SELECTION = 200
 const MAX_SOURCE_CURSOR_PAGES = 100
-const MANAGED_PROVIDER_FIELD_NAMES = new Set([
-  'credentialId',
-  'datasource',
-  'pluginId',
-  'provider',
-  'providerKind',
-])
-const CONNECTION_STATUS_PRIORITY: Record<SourceConnection['status'], number> = {
-  active: 0,
-  provisioning: 1,
-  error: 2,
-  expired: 3,
-  revoked: 4,
-}
 
 function usesDriveTransport(draft: ConnectedSourceDraft) {
   return draft.sourceType === 'onlineDrive' || draft.provider === 'Google Docs'
@@ -136,8 +127,7 @@ function providerForDraft(
       )
     }) ??
     capableProviders.find((provider) => {
-      const fieldNames = new Set(provider.configuration.map((field) => field.name))
-      return [...MANAGED_PROVIDER_FIELD_NAMES].every((field) => fieldNames.has(field))
+      return sourceProviderUsesManagedConfiguration(provider.configuration)
     })
   )
 }
@@ -184,43 +174,6 @@ function preferredCredential(provider?: DataSourceAuth) {
     provider?.credentials_list.find((credential) => credential.is_default) ??
     provider?.credentials_list[0]
   )
-}
-
-function connectionMatchesDatasource(
-  connection: SourceConnection,
-  datasourceProvider: ReturnType<typeof datasourceProviderForOption>,
-  credential: DataSourceCredential,
-) {
-  if (!datasourceProvider) return false
-  const configuration = connection.configuration
-  return (
-    configuration.pluginId === datasourceProvider.plugin.plugin_id &&
-    configuration.provider === datasourceProvider.plugin.provider &&
-    configuration.datasource === datasourceProvider.datasource.identity.name &&
-    configuration.credentialId === credential.id
-  )
-}
-
-function findProviderConnection(
-  connections: SourceConnection[],
-  providerId: string | undefined,
-  datasourceProvider: ReturnType<typeof datasourceProviderForOption>,
-  credential: DataSourceCredential | undefined,
-) {
-  if (!providerId || !datasourceProvider || !credential) return undefined
-  return connections
-    .filter(
-      (connection) =>
-        connection.providerId === providerId &&
-        connection.status !== 'revoked' &&
-        connectionMatchesDatasource(connection, datasourceProvider, credential),
-    )
-    .sort(
-      (left, right) =>
-        CONNECTION_STATUS_PRIORITY[left.status] - CONNECTION_STATUS_PRIORITY[right.status] ||
-        right.version - left.version ||
-        right.updatedAt.localeCompare(left.updatedAt),
-    )[0]
 }
 
 function providerIntegrationPath(option?: SourceProviderOption) {
@@ -1615,13 +1568,24 @@ export function ConnectedSourceSetup({
     datasourceProvider,
   )
   const credential = preferredCredential(datasourceAuth)
+  const datasourceIdentity = useMemo(
+    () =>
+      datasourceProvider && credential
+        ? {
+            credentialId: credential.id,
+            datasource: datasourceProvider.datasource.identity.name,
+            pluginId: datasourceProvider.plugin.plugin_id,
+            provider: datasourceProvider.plugin.provider,
+          }
+        : undefined,
+    [credential, datasourceProvider],
+  )
   const connections =
     connectionsQuery.data?.pages.flatMap((page) => sourceConnectionListFromApi(page).items) ?? []
-  const remoteConnection = findProviderConnection(
+  const remoteConnection = findSourceProviderConnection(
     connections,
     provider?.id,
-    datasourceProvider,
-    credential,
+    datasourceIdentity,
   )
   const [connectionOverride, setConnectionOverride] = useState<SourceConnection>()
   const [provisioningConnection, setProvisioningConnection] = useState(false)
@@ -1629,9 +1593,8 @@ export function ConnectedSourceSetup({
   const provisioningAttemptsRef = useRef(new Set<string>())
   const connection =
     connectionOverride &&
-    credential &&
     connectionOverride.providerId === provider?.id &&
-    connectionMatchesDatasource(connectionOverride, datasourceProvider, credential)
+    sourceConnectionMatchesDatasource(connectionOverride, datasourceIdentity)
       ? connectionOverride
       : remoteConnection
   const queryError =
@@ -1716,11 +1679,10 @@ export function ConnectedSourceSetup({
         const refreshed = await refetchConnections()
         const refreshedConnections =
           refreshed.data?.pages.flatMap((page) => sourceConnectionListFromApi(page).items) ?? []
-        const reconciled = findProviderConnection(
+        const reconciled = findSourceProviderConnection(
           refreshedConnections,
           provider.id,
-          datasourceProvider,
-          credential,
+          datasourceIdentity,
         )
         if (reconciled && ['active', 'provisioning'].includes(reconciled.status))
           rememberConnection(reconciled)
@@ -1731,6 +1693,7 @@ export function ConnectedSourceSetup({
     },
     [
       credential,
+      datasourceIdentity,
       datasourceProvider,
       driveTransport,
       draft.provider,

@@ -9,7 +9,7 @@ import type {
 import type {
   NewKnowledgeOnlineDocumentsSourceDraft,
   NewKnowledgeOnlineDriveSourceDraft,
-} from '../routes'
+} from '../sources/create/source-draft'
 import type {
   DataSourceAuth,
   DataSourceCredential,

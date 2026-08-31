@@ -2,13 +2,13 @@
 
 import type { KnowledgeFsSpaceCreatePayload } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { DatasourceParameters, DatasourceParameterSchema } from './datasource-parameter-model'
+import type { SourceEditValues } from './source-list-model'
+import type { CrawlPreviewPage, Source, SourceSyncPolicy } from './source-models'
 import type {
   NewKnowledgeOnlineDocumentsSourceDraft,
   NewKnowledgeOnlineDriveSourceDraft,
   NewKnowledgeSourceDraft,
-} from './routes'
-import type { SourceEditValues } from './source-list-model'
-import type { CrawlPreviewPage, Source, SourceSyncPolicy } from './source-models'
+} from './sources/create/source-draft'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
@@ -28,7 +28,6 @@ import {
   websiteDatasourceParameterSchemas,
   withDatasourceParameterDefaults,
 } from './datasource-parameter-model'
-import { NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH, normalizeWebsiteSourceUrl } from './routes'
 import {
   metadataString,
   sourceCustomIntervalHours,
@@ -41,6 +40,10 @@ import {
   discoverSourceProviderOptions,
   normalizeSourceProviderName,
 } from './source-provider-options'
+import {
+  NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH,
+  normalizeWebsiteSourceUrl,
+} from './sources/create/source-draft'
 import { SyncPolicyField } from './sync-policy-field'
 
 const MIN_CUSTOM_INTERVAL_HOURS = 1

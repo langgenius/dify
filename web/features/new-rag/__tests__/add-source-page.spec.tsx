@@ -1,13 +1,13 @@
 import type { DatasourceProviderAuthListResponse } from '@dify/contracts/api/console/auth/types.gen'
-import type { NewKnowledgeSourceDraft } from '../routes'
 import type { SourceConnection, SourceProvider } from '../source-models'
+import type { NewKnowledgeSourceDraft } from '../sources/create/source-draft'
 import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { StrictMode } from 'react'
 import { render } from '@/test/console/render'
 import { AddSourcePage } from '../add-source-page'
-import { newKnowledgeSourceDraftStorageKey } from '../routes'
+import { newKnowledgeSourceDraftStorageKey } from '../sources/create/source-draft'
 
 type GetKnowledgeSpacesByIdSourceConnectionsResponse = {
   items: SourceConnection[]

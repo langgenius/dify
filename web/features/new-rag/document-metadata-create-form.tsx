@@ -1,13 +1,13 @@
 'use client'
 
 import type { FormEvent } from 'react'
-import type { DocumentMetadataField, DocumentMetadataType } from './document-metadata-model'
+import type { DocumentMetadataField, DocumentMetadataType } from './documents/metadata/editor-model'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { documentMetadataNameError } from './document-metadata-model'
+import { documentMetadataNameError } from './documents/metadata/editor-model'
 
 const metadataTypes: readonly DocumentMetadataType[] = ['string', 'number', 'time']
 

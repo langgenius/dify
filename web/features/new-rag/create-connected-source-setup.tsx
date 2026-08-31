@@ -5,12 +5,12 @@ import type {
   KnowledgeFsInitialSourcePreviewFileResponse,
   KnowledgeFsSpaceCreatePayload,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { InstalledSourceProviderOption } from './source-provider-options'
 import type {
   NewKnowledgeOnlineDocumentsSourceDraft,
   NewKnowledgeOnlineDriveSourceDraft,
   NewKnowledgeSourceDraft,
-} from './routes'
-import type { InstalledSourceProviderOption } from './source-provider-options'
+} from './sources/create/source-draft'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { useCallback, useEffect, useMemo, useState } from 'react'

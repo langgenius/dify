@@ -2,9 +2,9 @@
 
 import type { ReactNode } from 'react'
 import type { DatasourceParameters } from './datasource-parameter-model'
-import type { NewKnowledgeWebsiteSourceDraft } from './routes'
 import type { CrawlPreviewPage as PreviewPage, Source, SourceWorkflowRun } from './source-models'
 import type { InstalledSourceProviderOption } from './source-provider-options'
+import type { NewKnowledgeWebsiteSourceDraft } from './sources/create/source-draft'
 import type { SyncPolicyValue } from './sync-policy-field'
 import {
   AlertDialog,
@@ -37,12 +37,12 @@ import {
   withDatasourceParameterDefaults,
 } from './datasource-parameter-model'
 import { createRequestId } from './request-id'
+import { newKnowledgeDetailPath } from './routes'
+import { crawlPreviewPageListFromApi, sourceFromApi, sourceWorkflowFromApi } from './source-models'
 import {
   NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH,
-  newKnowledgeDetailPath,
   normalizeWebsiteSourceUrl,
-} from './routes'
-import { crawlPreviewPageListFromApi, sourceFromApi, sourceWorkflowFromApi } from './source-models'
+} from './sources/create/source-draft'
 
 type ConnectionReference = {
   id: string

@@ -1,20 +1,25 @@
 'use client'
 
-import type { DocumentAction } from './document-actions-dropdown'
-import type { DocumentProcessingTask } from './document-models'
-import type { DocumentUploadFormHandle } from './document-upload-form'
-import type { DocumentUploadIssue } from './document-upload-policy'
-import type { KnowledgeFsUploadPhase, KnowledgeFsUploadProgress } from './knowledge-fs-upload'
+import type { DocumentAction } from '../document-actions-dropdown'
+import type { DocumentProcessingTask } from '../document-models'
+import type { DocumentUploadFormHandle } from '../document-upload-form'
+import type { KnowledgeFsUploadPhase, KnowledgeFsUploadProgress } from '../knowledge-fs-upload'
 import type {
   ProcessingTaskEvent,
   ProcessingTaskProgressEvent,
-} from './services/processing-task-events'
+} from '../services/processing-task-events'
+import type {
+  AuxiliaryTaskReadDenial,
+  TerminalTaskPin,
+  TrustedActiveOverride,
+} from './tasks/recovery'
+import type { UploadExclusionReasonKey } from './upload/model'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { debounce, parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
+import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -27,16 +32,16 @@ import { knowledgeFsUploadEnabledAtom } from '@/features/system-features/state'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { downloadBlob } from '@/utils/download'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
-import { useAuxiliaryTaskReadGuard } from './auxiliary-task-read-guard'
-import { KnowledgeModelReadinessBanner } from './components/knowledge-model-readiness-banner'
-import { KnowledgeModelSetupDialog } from './components/knowledge-model-setup-dialog'
+import { useAuxiliaryTaskReadGuard } from '../auxiliary-task-read-guard'
+import { KnowledgeModelReadinessBanner } from '../components/knowledge-model-readiness-banner'
+import { KnowledgeModelSetupDialog } from '../components/knowledge-model-setup-dialog'
 import {
   DocumentBulkActions,
   DocumentDropOverlay,
   DocumentsEmpty,
   DocumentsList,
-} from './document-list'
-import { DocumentMetadataDrawer } from './document-metadata-drawer'
+} from '../document-list'
+import { DocumentMetadataDrawer } from '../document-metadata-drawer'
 import {
   ACTIVE_TASK_STATES,
   documentCanDownload,
@@ -51,205 +56,70 @@ import {
   taskIsActive,
   taskNeedsAttention,
   taskVersionIsAfter,
-} from './document-model'
+} from '../document-model'
 import {
   backgroundTaskFromApi,
   backgroundTaskListFromApi,
-  documentTaskFromApi,
   documentTaskListFromApi,
   logicalDocumentListFromApi,
-} from './document-models'
-import { DocumentUploadForm } from './document-upload-form'
-import { documentUploadIssue } from './document-upload-policy'
-import { knowledgeFsTaskFailureMessageKey } from './knowledge-fs-task-error'
+} from '../document-models'
+import { DocumentUploadForm } from '../document-upload-form'
+import { documentUploadIssue } from '../document-upload-policy'
+import { knowledgeFsTaskFailureMessageKey } from '../knowledge-fs-task-error'
 import {
   discardKnowledgeFsStagedUpload,
   stageKnowledgeFsDocument,
   uploadKnowledgeFsDocuments,
-} from './knowledge-fs-upload'
-import { useKnowledgeSpace } from './knowledge-space-context'
-import { ProcessingTasksDrawer } from './processing-tasks-drawer'
-import { createRequestId } from './request-id'
-import { newKnowledgeDocumentDetailPath } from './routes'
-import { sourceFromApi } from './source-models'
-import { TaskEventObserver } from './task-event-observer'
-import { createTaskProgressStore } from './task-progress-store'
-import { useKnowledgeFileSizeLimit } from './use-knowledge-file-size-limit'
-import { useKnowledgeModelSetupGuard } from './use-knowledge-model-setup-guard'
-import { useQueryDataUpdateCount } from './use-query-data-update-count'
+} from '../knowledge-fs-upload'
+import { useKnowledgeSpace } from '../knowledge-space-context'
+import { ProcessingTasksDrawer } from '../processing-tasks-drawer'
+import { createRequestId } from '../request-id'
+import { newKnowledgeDocumentDetailPath } from '../routes'
+import { sourceFromApi } from '../source-models'
+import { TaskEventObserver } from '../task-event-observer'
+import { createTaskProgressStore } from '../task-progress-store'
+import { useKnowledgeFileSizeLimit } from '../use-knowledge-file-size-limit'
+import { useKnowledgeModelSetupGuard } from '../use-knowledge-model-setup-guard'
+import { useQueryDataUpdateCount } from '../use-query-data-update-count'
+import {
+  DOCUMENT_PERMISSION_DENIED,
+  recoveryQueryMaskForPermissionDenials,
+  SOURCE_PERMISSION_DENIED,
+  TASK_PERMISSION_DENIED,
+} from './permission-recovery'
+import {
+  documentSourcesInfiniteOptions,
+  documentTasksInfiniteOptions,
+  logicalDocumentsInfiniteOptions,
+} from './queries'
+import {
+  documentFilterParser,
+  documentMetadataParser,
+  documentSearchParser,
+  documentUploadParser,
+} from './query-state'
+import { responseStatus } from './request-error'
+import {
+  findBackgroundTask,
+  findBackgroundTasks,
+  MAX_AUTO_CURSOR_PAGES,
+  mergeTaskOverride,
+  normalizedTaskSnapshot,
+  queryKeyMatchesKnowledgeSpace,
+  taskSnapshotErrorIsTransient,
+} from './tasks/recovery'
+import {
+  DOCUMENT_STAGING_REQUEST_TIMEOUT,
+  DocumentStagingCanceledError,
+  DocumentStagingTimeoutError,
+} from './upload/model'
 
-const TASK_PAGE_SIZE = 100
 const KNOWLEDGE_FS_BATCH_DOCUMENT_MAX_DOCUMENTS = 100
 const MAX_TASK_EVENT_STREAMS = 6
-const MAX_AUTO_CURSOR_PAGES = 20
 const FAILED_TASK_POLL_REQUEST_TIMEOUT = 3000
 const TERMINAL_RECONCILIATION_REQUEST_TIMEOUT = 3000
-const DOCUMENT_STAGING_REQUEST_TIMEOUT = 30_000
 const BLOCKED_ACTIVE_TASK_REFRESH_INTERVAL = 5000
 const MAX_BLOCKED_ACTIVE_TASK_REFRESH_INTERVAL = 30000
-const documentFilterParser = parseAsStringLiteral([
-  'all',
-  'ready',
-  'queued',
-  'processing',
-  'failed',
-  'disabled',
-] as const)
-  .withDefault('all')
-  .withOptions({ history: 'push' })
-const documentSearchParser = parseAsString.withDefault('').withOptions({
-  limitUrlUpdates: debounce(300),
-})
-const documentUploadParser = parseAsStringLiteral(['1'] as const).withOptions({
-  history: 'replace',
-})
-const documentMetadataParser = parseAsStringLiteral(['1'] as const).withOptions({
-  history: 'replace',
-})
-
-class DocumentStagingCanceledError extends Error {
-  constructor() {
-    super('Document staging was canceled')
-    this.name = 'DocumentStagingCanceledError'
-  }
-}
-
-class DocumentStagingTimeoutError extends Error {
-  constructor() {
-    super('Document staging timed out')
-    this.name = 'DocumentStagingTimeoutError'
-  }
-}
-
-const uploadExclusionReasonKey = {
-  batch_byte_limit_exceeded: 'batchLimit',
-  document_not_found: 'target',
-  file_count_limit_exceeded: 'countLimit',
-  file_too_large: 'fileSize',
-  invalid_file: 'fileType',
-  invalid_target: 'target',
-  processing_failed: 'processing',
-  quota_exceeded: 'quota',
-  revision_conflict: 'target',
-  unsupported_mime_type: 'fileType',
-} as const
-
-async function findBackgroundTask(knowledgeSpaceId: string, taskId: string, signal?: AbortSignal) {
-  return (await findBackgroundTasks(knowledgeSpaceId, new Set([taskId]), signal)).get(taskId)
-}
-
-async function findBackgroundTasks(
-  knowledgeSpaceId: string,
-  taskIds: ReadonlySet<string>,
-  signal?: AbortSignal,
-) {
-  const remainingTaskIds = new Set(taskIds)
-  const tasks = new Map<string, DocumentProcessingTask>()
-  if (!remainingTaskIds.size) return tasks
-  let cursor: string | undefined
-  for (let page = 0; page < MAX_AUTO_CURSOR_PAGES; page += 1) {
-    const response = await consoleClient.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get(
-      {
-        params: { control_space_id: knowledgeSpaceId },
-        query: { ...(cursor ? { cursor } : {}), limit: TASK_PAGE_SIZE },
-      },
-      { signal },
-    )
-    for (const candidate of response.data) {
-      if (!remainingTaskIds.has(candidate.id)) continue
-      const task = documentTaskFromApi(candidate)
-      if (!task) continue
-      tasks.set(task.id, task)
-      remainingTaskIds.delete(task.id)
-    }
-    if (!remainingTaskIds.size) return tasks
-    cursor = response.next_cursor ?? undefined
-    if (!cursor) return tasks
-  }
-  return tasks
-}
-
-type UploadExclusionReasonKey =
-  | DocumentUploadIssue
-  | (typeof uploadExclusionReasonKey)[keyof typeof uploadExclusionReasonKey]
-
-type TerminalTaskPin = {
-  observedAt: string
-  taskListGeneration: number
-}
-
-type TrustedActiveOverride = {
-  taskListGeneration: number
-  updatedAt: string
-}
-
-type AuxiliaryTaskReadDenial = {
-  taskListGeneration: number
-  taskVersion: string
-}
-
-const DOCUMENT_PERMISSION_DENIED = 1
-const TASK_PERMISSION_DENIED = 2
-const SOURCE_PERMISSION_DENIED = 4
-
-function recoveryQueryMaskForPermissionDenials(permissionDenialMask: number) {
-  let recoveryQueryMask = 0
-  if (permissionDenialMask & DOCUMENT_PERMISSION_DENIED)
-    recoveryQueryMask |= TASK_PERMISSION_DENIED | SOURCE_PERMISSION_DENIED
-  if (permissionDenialMask & TASK_PERMISSION_DENIED) recoveryQueryMask |= SOURCE_PERMISSION_DENIED
-  if (permissionDenialMask & SOURCE_PERMISSION_DENIED) recoveryQueryMask |= TASK_PERMISSION_DENIED
-  return recoveryQueryMask & ~permissionDenialMask
-}
-
-function responseStatus(error: unknown): number | undefined {
-  if (error instanceof Response) return error.status
-  if (error && typeof error === 'object' && 'status' in error)
-    return typeof error.status === 'number' ? error.status : undefined
-  if (error && typeof error === 'object' && 'data' in error) {
-    const data = error.data
-    if (data && typeof data === 'object' && 'status' in data)
-      return typeof data.status === 'number' ? data.status : undefined
-  }
-}
-
-function taskSnapshotErrorIsTransient(error: unknown) {
-  const status = responseStatus(error)
-  return status === undefined || status === 408 || status === 429 || status >= 500
-}
-
-function queryKeyMatchesKnowledgeSpace(queryKey: readonly unknown[], knowledgeSpaceId: string) {
-  const state = queryKey[1]
-  if (!state || typeof state !== 'object' || !('input' in state)) return false
-  const input = state.input
-  if (!input || typeof input !== 'object' || !('params' in input)) return false
-  const params = input.params
-  return Boolean(
-    params &&
-    typeof params === 'object' &&
-    'control_space_id' in params &&
-    params.control_space_id === knowledgeSpaceId,
-  )
-}
-
-function normalizedTaskSnapshot(task: DocumentProcessingTask): DocumentProcessingTask {
-  return {
-    ...task,
-    errorCode: task.errorCode,
-    errorMessage: task.errorMessage,
-  }
-}
-
-function mergeTaskOverride(
-  task: DocumentProcessingTask,
-  override: Partial<DocumentProcessingTask>,
-): DocumentProcessingTask {
-  const stateChanged = override.state !== undefined && override.state !== task.state
-  return {
-    ...task,
-    ...(stateChanged ? { canCancel: undefined, canRetry: undefined } : {}),
-    ...override,
-  }
-}
 
 export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
   const { t } = useTranslation('dataset')
@@ -375,18 +245,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     setModelSetupDialogOpen,
   } = useKnowledgeModelSetupGuard(knowledgeSpaceId)
 
-  const documentsQuery = useInfiniteQuery(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.infiniteOptions({
-      input: (pageParam) => ({
-        params: { control_space_id: knowledgeSpaceId },
-        query: {
-          ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
-        },
-      }),
-      getNextPageParam: (lastPage) => lastPage.next_cursor,
-      initialPageParam: null as string | null,
-    }),
-  )
+  const documentsQuery = useInfiniteQuery(logicalDocumentsInfiniteOptions(knowledgeSpaceId))
   const documentPermissionDenied = responseStatus(documentsQuery.error) === 403
   const refetchDocumentsQuery = documentsQuery.refetch
   const {
@@ -404,34 +263,12 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     terminalConfirmableAuxiliaryDenialsRef.current.clear()
   }, [documentPermissionDenied])
   const tasksQueryOptions = useMemo(
-    () =>
-      consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.infiniteOptions({
-        enabled: !documentPermissionDenied,
-        input: (pageParam) => ({
-          params: { control_space_id: knowledgeSpaceId },
-          query: {
-            limit: TASK_PAGE_SIZE,
-            ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
-          },
-        }),
-        getNextPageParam: (lastPage) => lastPage.next_cursor,
-        initialPageParam: null as string | null,
-      }),
+    () => documentTasksInfiniteOptions(knowledgeSpaceId, { enabled: !documentPermissionDenied }),
     [documentPermissionDenied, knowledgeSpaceId],
   )
   const tasksQuery = useInfiniteQuery(tasksQueryOptions)
   const sourcesQuery = useInfiniteQuery(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.infiniteOptions({
-      enabled: !documentPermissionDenied,
-      input: (pageParam) => ({
-        params: { control_space_id: knowledgeSpaceId },
-        query: {
-          ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
-        },
-      }),
-      getNextPageParam: (lastPage) => lastPage.next_cursor,
-      initialPageParam: null as string | null,
-    }),
+    documentSourcesInfiniteOptions(knowledgeSpaceId, { enabled: !documentPermissionDenied }),
   )
   const permissionDenialMask =
     (documentPermissionDenied || auxiliaryReadPermissionDenied ? DOCUMENT_PERMISSION_DENIED : 0) |

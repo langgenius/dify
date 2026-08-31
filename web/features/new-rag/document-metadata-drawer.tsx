@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { DocumentMetadataField, DocumentMetadataType } from './document-metadata-model'
+import type { DocumentMetadataField, DocumentMetadataType } from './documents/metadata/editor-model'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -32,11 +32,9 @@ import { useHover } from 'ahooks'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleClient, consoleQuery } from '@/service/client'
+import { knowledgeFsMetadataFieldsQueryOptions } from '@/service/knowledge-fs/metadata'
 import { DocumentMetadataCreateForm } from './document-metadata-create-form'
-import {
-  documentMetadataFieldsQueryOptions,
-  documentMetadataNameError,
-} from './document-metadata-model'
+import { documentMetadataNameError } from './documents/metadata/editor-model'
 
 const metadataTypeIconClass: Record<DocumentMetadataType, string> = {
   number: 'i-ri-hashtag',
@@ -248,7 +246,7 @@ export function DocumentMetadataDrawer({
   const queryClient = useQueryClient()
   const [pending, setPending] = useState(false)
   const metadataFieldsQuery = useQuery({
-    ...documentMetadataFieldsQueryOptions(knowledgeSpaceId),
+    ...knowledgeFsMetadataFieldsQueryOptions(knowledgeSpaceId),
     enabled: open,
   })
   const fields = metadataFieldsQuery.data ?? []

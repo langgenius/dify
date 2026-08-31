@@ -2,7 +2,6 @@ import type {
   KnowledgeFsDocumentMultimodalManifestResponse,
   KnowledgeFsDocumentOutlineResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
-import type { DocumentMetadataField } from '../document-metadata-model'
 import type {
   BackgroundTask,
   DocumentProcessingTask,
@@ -10,6 +9,7 @@ import type {
   LogicalDocument,
   LogicalDocumentRevision,
 } from '../document-models'
+import type { DocumentMetadataField } from '../documents/metadata/editor-model'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'

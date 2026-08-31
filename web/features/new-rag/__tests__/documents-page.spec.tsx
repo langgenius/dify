@@ -1,11 +1,11 @@
-import type { DocumentMetadataField } from '../document-metadata-model'
 import type { BackgroundTask, DocumentProcessingTask, LogicalDocument } from '../document-models'
+import type { DocumentMetadataField } from '../documents/metadata/editor-model'
 import type { Source } from '../source-models'
 import { hashKey } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithNuqs as render } from '@/test/nuqs-testing'
-import { DocumentsPage } from '../documents-page'
+import { DocumentsPage } from '../documents/page'
 import { TaskEventObserver } from '../task-event-observer'
 
 vi.mock('../components/knowledge-model-readiness-banner', () => ({
