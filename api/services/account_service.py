@@ -93,7 +93,6 @@ from tasks.mail_owner_transfer_task import (
     send_old_owner_transfer_notify_email_task,
     send_owner_transfer_confirm_task,
 )
-from tasks.mail_register_task import send_email_register_mail_task, send_email_register_mail_task_when_account_exist
 from tasks.mail_reset_password_task import (
     send_reset_password_mail_task,
     send_reset_password_mail_task_when_account_not_exist,
@@ -157,7 +156,6 @@ class AccountService:
     CHANGE_EMAIL_PHASE_NEW = ChangeEmailPhase.NEW_EMAIL
 
     reset_password_rate_limiter = RateLimiter(prefix="reset_password_rate_limit", max_attempts=1, time_window=60 * 1)
-    email_register_rate_limiter = RateLimiter(prefix="email_register_rate_limit", max_attempts=1, time_window=60 * 1)
     email_code_login_rate_limiter = RateLimiter(
         prefix="email_code_login_rate_limit", max_attempts=3, time_window=300 * 1
     )
@@ -168,7 +166,16 @@ class AccountService:
     FORGOT_PASSWORD_MAX_ERROR_LIMITS = 5
     CHANGE_EMAIL_MAX_ERROR_LIMITS = 5
     OWNER_TRANSFER_MAX_ERROR_LIMITS = 5
-    EMAIL_REGISTER_MAX_ERROR_LIMITS = 5
+
+    @staticmethod
+    def _resolve_role_id_by_tag(tenant_id: str, account_id: str, tag: str) -> str:
+        options = ListOption(page_number=1, results_per_page=100)
+        roles = RBACService.Roles.list(tenant_id, account_id, options=options).data
+        for rbac_role in roles:
+            if rbac_role.is_builtin and rbac_role.category == "global_system_default" and rbac_role.role_tag == tag:
+                return str(rbac_role.id)
+
+        raise ValueError(f"Builtin RBAC role not found for tag {tag!r} in tenant {tenant_id}")
 
     @staticmethod
     def _resolve_legacy_role_id(tenant_id: str, account_id: str, role: TenantAccountRole) -> str:
@@ -177,9 +184,6 @@ class AccountService:
         Looks up the builtin RBAC role whose tag matches the legacy role name
         (e.g. ``TenantAccountRole.ADMIN`` → builtin role with tag ``"admin"``).
         """
-        options = ListOption(page_number=1, results_per_page=100)
-        roles = RBACService.Roles.list(tenant_id, account_id, options=options).data
-
         expected_tag = {
             TenantAccountRole.OWNER: "owner",
             TenantAccountRole.ADMIN: "admin",
@@ -187,15 +191,7 @@ class AccountService:
             TenantAccountRole.NORMAL: "normal",
             TenantAccountRole.DATASET_OPERATOR: "dataset_operator",
         }[role]
-        for rbac_role in roles:
-            if (
-                rbac_role.is_builtin
-                and rbac_role.category == "global_system_default"
-                and rbac_role.role_tag == expected_tag
-            ):
-                return str(rbac_role.id)
-
-        raise ValueError(f"Builtin RBAC role not found for {role.value} in tenant {tenant_id}")
+        return AccountService._resolve_role_id_by_tag(tenant_id, account_id, expected_tag)
 
     @staticmethod
     def get_workspace_permission_keys(tenant_id: str, account_id: str, *, session: Session) -> set[str]:
@@ -681,40 +677,6 @@ class AccountService:
         return token
 
     @classmethod
-    def send_email_register_email(
-        cls,
-        account: Account | None = None,
-        email: str | None = None,
-        language: str = "en-US",
-    ):
-        account_email = account.email if account else email
-        if account_email is None:
-            raise ValueError("Email must be provided.")
-
-        if cls.email_register_rate_limiter.is_rate_limited(account_email):
-            from controllers.console.auth.error import EmailRegisterRateLimitExceededError
-
-            raise EmailRegisterRateLimitExceededError(int(cls.email_register_rate_limiter.time_window / 60))
-
-        code, token = cls.generate_email_register_token(account_email)
-
-        if account:
-            send_email_register_mail_task_when_account_exist.delay(
-                language=language,
-                to=account_email,
-                account_name=account.name,
-            )
-
-        else:
-            send_email_register_mail_task.delay(
-                language=language,
-                to=account_email,
-                code=code,
-            )
-        cls.email_register_rate_limiter.increment_rate_limit(account_email)
-        return token
-
-    @classmethod
     def send_change_email_email(
         cls,
         account: Account,
@@ -868,19 +830,6 @@ class AccountService:
         return code, token
 
     @classmethod
-    def generate_email_register_token(
-        cls,
-        email: str,
-        code: str | None = None,
-        additional_data: dict[str, Any] = {},
-    ):
-        if not code:
-            code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
-        additional_data["code"] = code
-        token = TokenManager.generate_token(email=email, token_type="email_register", additional_data=additional_data)
-        return code, token
-
-    @classmethod
     def generate_change_email_token(
         cls,
         token_data: ChangeEmailTokenData,
@@ -918,10 +867,6 @@ class AccountService:
         TokenManager.revoke_token(token, "reset_password")
 
     @classmethod
-    def revoke_email_register_token(cls, token: str):
-        TokenManager.revoke_token(token, "email_register")
-
-    @classmethod
     def revoke_change_email_token(cls, token: str):
         TokenManager.revoke_token(token, "change_email")
 
@@ -932,10 +877,6 @@ class AccountService:
     @classmethod
     def get_reset_password_data(cls, token: str) -> dict[str, Any] | None:
         return TokenManager.get_token_data(token, "reset_password")
-
-    @classmethod
-    def get_email_register_data(cls, token: str) -> dict[str, Any] | None:
-        return TokenManager.get_token_data(token, "email_register")
 
     @classmethod
     def get_change_email_data(cls, token: str) -> ChangeEmailTokenData | None:
@@ -1068,16 +1009,6 @@ class AccountService:
         redis_client.setex(key, dify_config.FORGOT_PASSWORD_LOCKOUT_DURATION, count)
 
     @staticmethod
-    @redis_fallback(default_return=None)
-    def add_email_register_error_rate_limit(email: str) -> None:
-        key = f"email_register_error_rate_limit:{email}"
-        count = redis_client.get(key)
-        if count is None:
-            count = 0
-        count = int(count) + 1
-        redis_client.setex(key, dify_config.EMAIL_REGISTER_LOCKOUT_DURATION, count)
-
-    @staticmethod
     @redis_fallback(default_return=False)
     def is_forgot_password_error_rate_limit(email: str) -> bool:
         key = f"forgot_password_error_rate_limit:{email}"
@@ -1094,24 +1025,6 @@ class AccountService:
     @redis_fallback(default_return=None)
     def reset_forgot_password_error_rate_limit(email: str):
         key = f"forgot_password_error_rate_limit:{email}"
-        redis_client.delete(key)
-
-    @staticmethod
-    @redis_fallback(default_return=False)
-    def is_email_register_error_rate_limit(email: str) -> bool:
-        key = f"email_register_error_rate_limit:{email}"
-        count = redis_client.get(key)
-        if count is None:
-            return False
-        count = int(count)
-        if count > AccountService.EMAIL_REGISTER_MAX_ERROR_LIMITS:
-            return True
-        return False
-
-    @staticmethod
-    @redis_fallback(default_return=None)
-    def reset_email_register_error_rate_limit(email: str):
-        key = f"email_register_error_rate_limit:{email}"
         redis_client.delete(key)
 
     @staticmethod
@@ -1605,9 +1518,7 @@ class TenantService:
         return updated_accounts
 
     @staticmethod
-    def iter_member_account_id_batches(
-        tenant_id: str, batch_size: int, *, session: Session
-    ) -> Iterator[list[str]]:
+    def iter_member_account_id_batches(tenant_id: str, batch_size: int, *, session: Session) -> Iterator[list[str]]:
         """Yield workspace member account ids in bounded, ordered batches."""
         offset = 0
         while True:
@@ -1859,28 +1770,39 @@ class TenantService:
             raise RoleAlreadyAssignedError("The provided role is already assigned to the member.")
 
         if new_role == "owner":
-            # Find the current owner and change their role to 'admin'
+            if dify_config.RBAC_ENABLED:
+                old_owner_id = AccountService.get_rbac_workspace_owner_account_id(
+                    str(tenant.id), operator.id, session=session
+                )
+                owner_role_id = AccountService._resolve_legacy_role_id(
+                    tenant_id=str(tenant.id),
+                    account_id=operator.id,
+                    role=TenantAccountRole.OWNER,
+                )
+                no_access_role_id = AccountService._resolve_role_id_by_tag(
+                    tenant_id=str(tenant.id),
+                    account_id=operator.id,
+                    tag="no_access",
+                )
+                current_roles = RBACService.MemberRoles.get(
+                    str(tenant.id), operator.id, old_owner_id, session=session
+                ).roles
+                remaining_role_ids = [str(r.id) for r in current_roles if str(r.id) != owner_role_id]
+                RBACService.MemberRoles.replace(
+                    tenant_id=str(tenant.id),
+                    account_id=operator.id,
+                    member_account_id=old_owner_id,
+                    role_ids=remaining_role_ids or [no_access_role_id],
+                    session=session,
+                )
+
             current_owner_join = session.scalar(
                 select(TenantAccountJoin)
                 .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.role == "owner")
                 .limit(1)
             )
-            if not dify_config.RBAC_ENABLED:
-                if current_owner_join:
-                    current_owner_join.role = TenantAccountRole.ADMIN
-            elif current_owner_join:
-                admin_role_id = AccountService._resolve_legacy_role_id(
-                    tenant_id=str(tenant.id),
-                    account_id=operator.id,
-                    role=TenantAccountRole.ADMIN,
-                )
-                RBACService.MemberRoles.replace(
-                    tenant_id=str(tenant.id),
-                    account_id=operator.id,
-                    member_account_id=str(current_owner_join.account_id),
-                    role_ids=[admin_role_id],
-                    session=session,
-                )
+            if current_owner_join:
+                current_owner_join.role = TenantAccountRole.NORMAL
 
         # Update the role of the target member
         if dify_config.RBAC_ENABLED:
@@ -1896,6 +1818,8 @@ class TenantService:
                 role_ids=[resolved_role_id],
                 session=session,
             )
+            if new_tenant_role == TenantAccountRole.OWNER:
+                target_member_join.role = new_tenant_role
         else:
             target_member_join.role = new_tenant_role
         session.commit()

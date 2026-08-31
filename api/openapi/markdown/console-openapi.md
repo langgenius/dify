@@ -146,9 +146,9 @@ Deprecated. Use PATCH /account/profile instead.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [EducationActivateResponse](#educationactivateresponse)<br> |
 
 ### [GET] /account/education/autocomplete
 #### Parameters
@@ -9529,9 +9529,9 @@ Returns the site configuration for the application including theme, icons, and t
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /trial-models
-**Get hosted trial model provider configuration for model-provider pages**
+**Get hosted credit provider configuration for the current workspace**
 
-Get hosted trial model provider configuration
+Get hosted credit model provider configuration for the current workspace
 
 #### Responses
 
@@ -13501,7 +13501,7 @@ default (the config form sends the full desired feature state on save).
 | mode | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all | App mode filter<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
 | name | string | Filter by app name | No |
 | page | integer, <br>**Default:** 1 | Page number (1-99999) | No |
-| publication_status | string | Filter by published or draft Agent configuration status | No |
+| publication_status | string, <br>**Available values:** "drafts", "published" | Filter by published or draft Agent configuration status | No |
 | sort_by | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified | Sort apps by last modified, recently created, or earliest created<br>*Enum:* `"earliest_created"`, `"last_modified"`, `"recently_created"` | No |
 | tag_ids | [ string ] | Filter by tag IDs | No |
 
@@ -15744,7 +15744,7 @@ AppMCPServer Status Enum
 | copyright | string |  | No |
 | custom_disclaimer | string |  | No |
 | customize_domain | string |  | No |
-| customize_token_strategy | string |  | No |
+| customize_token_strategy | string, <br>**Available values:** "allow", "must", "not_allow" |  | No |
 | default_language | string |  | No |
 | description | string |  | No |
 | icon | string |  | No |
@@ -16202,7 +16202,7 @@ TEAM: Team collaboration paid plan
 | files | [ object ] |  | No |
 | inputs | object |  | Yes |
 | query | string |  | No |
-| response_mode | string |  | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" |  | No |
 | retriever_from | string, <br>**Default:** explore_app |  | No |
 
 #### CompletionMessagePayload
@@ -16223,7 +16223,7 @@ TEAM: Team collaboration paid plan
 | files | [ object ] |  | No |
 | inputs | object |  | Yes |
 | query | string |  | No |
-| response_mode | string |  | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" |  | No |
 | retriever_from | string, <br>**Default:** explore_app |  | No |
 
 #### ComplianceDownloadQuery
@@ -17706,6 +17706,12 @@ Portable DSL reference that could not be restored in the target workspace.
 | role | string |  | Yes |
 | token | string |  | Yes |
 
+#### EducationActivateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| message | string |  | Yes |
+
 #### EducationAutocompleteQuery
 
 | Name | Type | Description | Required |
@@ -18257,9 +18263,9 @@ Flask blueprint initialization.
 | ---- | ---- | ----------- | -------- |
 | end_date | string | End date (YYYY-MM-DD) | No |
 | format | string, <br>**Available values:** "csv", "json", <br>**Default:** csv | Export format<br>*Enum:* `"csv"`, `"json"` | No |
-| from_source | string | Filter by feedback source | No |
+| from_source | string, <br>**Available values:** "admin", "user" | Filter by feedback source | No |
 | has_comment | boolean | Only include feedback with comments | No |
-| rating | string | Filter by rating | No |
+| rating | string, <br>**Available values:** "dislike", "like" | Filter by rating | No |
 | start_date | string | Start date (YYYY-MM-DD) | No |
 
 #### FeedbackStat
@@ -18657,7 +18663,7 @@ Icon information model.
 | ---- | ---- | ----------- | -------- |
 | icon | string |  | No |
 | icon_background | string |  | No |
-| icon_type | string |  | No |
+| icon_type | string, <br>**Available values:** "emoji", "image" |  | No |
 | icon_url | string |  | No |
 
 #### IconType
@@ -19239,7 +19245,7 @@ Enum class for large language model mode.
 | ---- | ---- | ----------- | -------- |
 | content | string | Optional text feedback providing additional detail. | No |
 | message_id | string | Message ID | Yes |
-| rating | string | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
+| rating | string, <br>**Available values:** "dislike", "like" | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
 
 #### MessageFile
 
@@ -19300,7 +19306,7 @@ Metadata Filtering Condition.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | conditions | [ [Condition](#condition) ] | List of metadata conditions to evaluate. | No |
-| logical_operator | string | How to combine multiple conditions. | No |
+| logical_operator | string, <br>**Available values:** "and", "or" | How to combine multiple conditions. | No |
 
 #### MetadataOperationData
 
@@ -19433,7 +19439,7 @@ Enum class for model property key.
 | is_exhausted | boolean |  | Yes |
 | is_unlimited | boolean |  | Yes |
 | next_credit_reset_date | integer |  | Yes |
-| pool_type | string |  | Yes |
+| pool_type | string, <br>**Available values:** "paid", "trial" |  | Yes |
 | quota_limit | integer | Credit limit for the effective pool; -1 means unlimited. | Yes |
 | quota_used | integer |  | Yes |
 | remaining_credits | integer | Remaining credits; -1 means unlimited. | Yes |
@@ -21428,7 +21434,7 @@ Model class for provider quota configuration.
 | ---- | ---- | ----------- | -------- |
 | metadata_filtering_conditions | [MetadataFilteringCondition](#metadatafilteringcondition) | Restrict retrieval to chunks whose document metadata matches the given conditions. Conditions are evaluated server-side against document metadata fields. | No |
 | reranking_enable | boolean | Whether reranking is enabled. | Yes |
-| reranking_mode | string | Reranking mode. Required when `reranking_enable` is `true`. | No |
+| reranking_mode | string, <br>**Available values:** "reranking_model", "weighted_score" | Reranking mode. Required when `reranking_enable` is `true`. | No |
 | reranking_model | [RerankingModel](#rerankingmodel) | Reranking model configuration. | No |
 | score_threshold | number | Minimum similarity score for results. Only effective when score threshold filtering is enabled. | No |
 | score_threshold_enabled | boolean | Whether score threshold filtering is enabled. | Yes |
@@ -21482,7 +21488,7 @@ Model class for provider quota configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| parent_mode | string | Parent-child segmentation mode. | No |
+| parent_mode | string, <br>**Available values:** "full-doc", "paragraph" | Parent-child segmentation mode. | No |
 | pre_processing_rules | [ [PreProcessingRule](#preprocessingrule) ] | Pre-processing rules to apply before segmentation. | No |
 | segmentation | [Segmentation](#segmentation) | Parent chunk segmentation settings. | No |
 | subchunk_segmentation | [Segmentation](#segmentation) | Child chunk segmentation settings. | No |
@@ -22079,19 +22085,6 @@ How a draft file's content is stored.
 | page | integer, <br>**Default:** 1 |  | No |
 | total | integer |  | No |
 
-#### SkillManifest
-
-Validated metadata extracted from a Skill package.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | Yes |
-| entry_path | string |  | Yes |
-| files | [ string ] |  | Yes |
-| hash | string |  | Yes |
-| name | string |  | Yes |
-| size | integer |  | Yes |
-
 #### SkillMetadataPayload
 
 | Name | Type | Description | Required |
@@ -22178,14 +22171,6 @@ Validated metadata extracted from a Skill package.
 | ---- | ---- | ----------- | -------- |
 | count | integer |  | Yes |
 | tag | string |  | Yes |
-
-#### SkillToolInferenceResult
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| cli_tools | [ [CliToolSuggestion](#clitoolsuggestion) ] |  | No |
-| inferable | boolean |  | Yes |
-| reason | string |  | No |
 
 #### SkillVersionDeleteResponse
 
@@ -22492,7 +22477,7 @@ Query parameters for listing snippet published workflows.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | action | string, <br>**Available values:** "complete_task", "disable_current_workspace", "enable_current_workspace", "skip", "uncomplete_task" | State update action<br>*Enum:* `"complete_task"`, `"disable_current_workspace"`, `"enable_current_workspace"`, `"skip"`, `"uncomplete_task"` | Yes |
-| task_id | string | Task ID for task actions | No |
+| task_id | string, <br>**Available values:** "home", "integration", "knowledge", "studio" | Task ID for task actions | No |
 
 #### StepByStepTourStateResponse
 
@@ -22958,7 +22943,7 @@ Tool label
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| visibility | string | Visibility for the OAuth credential. Defaults to 'only_me'. | No |
+| visibility | string, <br>**Available values:** "all_team_members", "only_me" | Visibility for the OAuth credential. Defaults to 'only_me'. | No |
 
 #### ToolOAuthCustomClientPayload
 
@@ -23090,7 +23075,7 @@ removes TOOLS_SELECTOR from PluginParameterType
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| type | string |  | No |
+| type | string, <br>**Available values:** "api", "builtin", "mcp", "model", "workflow" |  | No |
 
 #### ToolProviderListResponse
 
@@ -23708,7 +23693,7 @@ in form definition, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | keyword_setting | [WeightKeywordSetting](#weightkeywordsetting) | Keyword search weight settings. | No |
 | vector_setting | [WeightVectorSetting](#weightvectorsetting) | Semantic search weight settings. | No |
-| weight_type | string | Strategy for balancing semantic and keyword search weights. | No |
+| weight_type | string, <br>**Available values:** "customized", "keyword_first", "semantic_first" | Strategy for balancing semantic and keyword search weights. | No |
 
 #### WeightVectorSetting
 
@@ -24214,7 +24199,7 @@ can reuse its existing handler.
 | description | string |  | No |
 | event | string |  | No |
 | icon | string |  | No |
-| mode | string | *Enum:* `"advanced-chat"`, `"workflow"` | Yes |
+| mode | string, <br>**Available values:** "advanced-chat", "workflow" | *Enum:* `"advanced-chat"`, `"workflow"` | Yes |
 | nodes | [ [WorkflowPlanNodeResponse](#workflowplannoderesponse) ] |  | Yes |
 | start_inputs | [ [WorkflowPlanStartInputResponse](#workflowplanstartinputresponse) ] |  | No |
 | title | string |  | No |
@@ -24229,7 +24214,7 @@ can reuse its existing handler.
 | graph | [WorkflowGraph](#workflowgraph) |  | Yes |
 | icon | string |  | No |
 | message | string |  | No |
-| mode | string |  | No |
+| mode | string, <br>**Available values:** "advanced-chat", "workflow" |  | No |
 
 #### WorkflowGenerateResultEventResponse
 
@@ -24242,7 +24227,7 @@ can reuse its existing handler.
 | graph | [WorkflowGraph](#workflowgraph) |  | Yes |
 | icon | string |  | No |
 | message | string |  | No |
-| mode | string |  | No |
+| mode | string, <br>**Available values:** "advanced-chat", "workflow" |  | No |
 
 #### WorkflowGenerateStreamEventResponse
 
@@ -24542,9 +24527,9 @@ Lifecycle state for an asynchronous archive download request.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| status | string | Workflow run status filter | No |
+| status | string, <br>**Available values:** "failed", "partial-succeeded", "running", "stopped", "succeeded" | Workflow run status filter | No |
 | time_range | string | Filter by time range (optional): e.g., 7d (7 days), 4h (4 hours), 30m (30 minutes), 30s (30 seconds). Filters by created_at field. | No |
-| triggered_from | string | Filter by trigger source: debugging or app-run. Default: debugging | No |
+| triggered_from | string, <br>**Available values:** "app-run", "debugging" | Filter by trigger source: debugging or app-run. Default: debugging | No |
 
 #### WorkflowRunCountResponse
 
@@ -24616,8 +24601,8 @@ Lifecycle state for an asynchronous archive download request.
 | ---- | ---- | ----------- | -------- |
 | last_id | string | Last run ID for pagination | No |
 | limit | integer, <br>**Default:** 20 | Number of items per page (1-100) | No |
-| status | string | Workflow run status filter | No |
-| triggered_from | string | Filter by trigger source: debugging or app-run. Default: debugging | No |
+| status | string, <br>**Available values:** "failed", "partial-succeeded", "running", "stopped", "succeeded" | Workflow run status filter | No |
+| triggered_from | string, <br>**Available values:** "app-run", "debugging" | Filter by trigger source: debugging or app-run. Default: debugging | No |
 
 #### WorkflowRunNodeExecutionListResponse
 
@@ -24915,7 +24900,7 @@ Workflow tool configuration
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| language | string | Localized policy label language | No |
+| language | string, <br>**Available values:** "en", "ja", "zh" | Localized policy label language | No |
 
 #### _AccessPolicyList
 
@@ -24974,7 +24959,7 @@ Workflow tool configuration
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| language | string | Localized policy label language | No |
+| language | string, <br>**Available values:** "en", "ja", "zh" | Localized policy label language | No |
 | limit | integer |  | No |
 | page | integer |  | No |
 | reverse | boolean |  | No |

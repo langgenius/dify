@@ -72,14 +72,6 @@ def model_context_window_calls(monkeypatch: pytest.MonkeyPatch) -> list[tuple[ob
     return calls
 
 
-@pytest.fixture(autouse=True)
-def _no_runtime_agent_skills(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.load_runtime_agent_skill_configs",
-        lambda **_kwargs: [],
-    )
-
-
 def test_agent_soul_round_trip_preserves_existing_app_feature_fields():
     config = AgentSoulConfig.model_validate(
         {

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import io
-from inspect import unwrap
+from collections.abc import Callable
+from inspect import signature
+from inspect import unwrap as inspect_unwrap
+from typing import cast
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -29,8 +32,21 @@ from controllers.console.workspace.skills import (
     WorkspaceSkillVersionsApi,
 )
 from controllers.inner_api.plugin.skills import PublishedSkillPullApi
-from models.account import Account
+from machinery.context import RequestContext
 from services.skill_management_service import SkillAssistAttachmentPayload, SkillManagementServiceError
+
+
+def unwrap[ReturnT](func: Callable[..., ReturnT]) -> Callable[..., ReturnT]:
+    """Keep direct controller tests compatible with the session-injected methods."""
+    unwrapped = cast(Callable[..., ReturnT], inspect_unwrap(func))
+    parameters = list(signature(unwrapped).parameters.values())
+    if len(parameters) > 1 and parameters[1].name == "session":
+
+        def invoke(*args: object, **kwargs: object) -> ReturnT:
+            return unwrapped(args[0], MagicMock(), *args[1:], **kwargs)
+
+        return invoke
+    return unwrapped
 
 
 @pytest.fixture
@@ -41,10 +57,13 @@ def app() -> Flask:
 
 
 @pytest.fixture
-def current_user() -> Account:
-    user = Account(name="Test User", email="test@example.com")
-    user.id = "user-1"
-    return user
+def request_context() -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id=None,
+        account_id="user-1",
+        active_workspace_id="tenant-1",
+    )
 
 
 def _skill_detail() -> dict[str, object]:
@@ -81,7 +100,7 @@ def _skill_detail() -> dict[str, object]:
     }
 
 
-def test_create_skill_validates_payload_and_returns_detail(app: Flask, current_user: Account) -> None:
+def test_create_skill_validates_payload_and_returns_detail(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillsApi()
     method = unwrap(api.post)
     service = MagicMock()
@@ -92,7 +111,7 @@ def test_create_skill_validates_payload_and_returns_detail(app: Flask, current_u
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={}),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, "tenant-1", current_user)
+        payload, status = method(api, request_context)
 
     assert status == 201
     assert payload["id"] == "skill-1"
@@ -105,7 +124,7 @@ def test_create_skill_validates_payload_and_returns_detail(app: Flask, current_u
 @pytest.mark.parametrize("side_effect", [ValueError("bad payload"), SkillManagementServiceError("skill_error", "bad")])
 def test_create_skill_maps_validation_and_service_errors(
     app: Flask,
-    current_user: Account,
+    request_context: RequestContext,
     side_effect: Exception,
 ) -> None:
     api = WorkspaceSkillsApi()
@@ -118,13 +137,13 @@ def test_create_skill_maps_validation_and_service_errors(
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={"name": "finance-sop"}),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, "tenant-1", current_user)
+        payload, status = method(api, request_context)
 
     assert status == 400
     assert payload["code"] in {"invalid_request", "skill_error"}
 
 
-def test_create_skill_rejects_extra_payload(app: Flask, current_user: Account) -> None:
+def test_create_skill_rejects_extra_payload(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillsApi()
     method = unwrap(api.post)
 
@@ -132,13 +151,15 @@ def test_create_skill_rejects_extra_payload(app: Flask, current_user: Account) -
         app.test_request_context("/", method="POST"),
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={"unknown": "field"}),
     ):
-        payload, status = method(api, "tenant-1", current_user)
+        payload, status = method(api, request_context)
 
     assert status == 400
     assert payload["code"] == "invalid_request"
 
 
-def test_list_skills_uses_default_pagination_when_query_omits_page_and_limit(app: Flask) -> None:
+def test_list_skills_uses_default_pagination_when_query_omits_page_and_limit(
+    app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillsApi()
     method = unwrap(api.get)
     service = MagicMock()
@@ -155,7 +176,7 @@ def test_list_skills_uses_default_pagination_when_query_omits_page_and_limit(app
         app.test_request_context("/?keyword=finance&tag=ops&tag=", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, "tenant-1")
+        payload = method(api, request_context)
 
     assert payload == {
         "data": [],
@@ -173,7 +194,7 @@ def test_list_skills_uses_default_pagination_when_query_omits_page_and_limit(app
     )
 
 
-def test_list_skills_passes_explicit_pagination(app: Flask) -> None:
+def test_list_skills_passes_explicit_pagination(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillsApi()
     method = unwrap(api.get)
     service = MagicMock()
@@ -184,14 +205,14 @@ def test_list_skills_passes_explicit_pagination(app: Flask) -> None:
         app.test_request_context("/?limit=10&page=2", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, "tenant-1")
+        payload = method(api, request_context)
 
     assert payload["limit"] == 10
     assert payload["page"] == 2
     service.list_skills.assert_called_once_with(tenant_id="tenant-1", keyword=None, page=2, limit=10, tags=[])
 
 
-def test_upload_skill_file_returns_tool_file_metadata(app: Flask, current_user: Account) -> None:
+def test_upload_skill_file_returns_tool_file_metadata(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillFileUploadApi()
     method = unwrap(api.post)
     service = MagicMock()
@@ -212,7 +233,7 @@ def test_upload_skill_file_returns_tool_file_metadata(app: Flask, current_user: 
         ),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, "tenant-1", current_user)
+        payload, status = method(api, request_context)
 
     assert status == 201
     assert payload["id"] == "tool-file-1"
@@ -225,18 +246,18 @@ def test_upload_skill_file_returns_tool_file_metadata(app: Flask, current_user: 
     )
 
 
-def test_upload_skill_file_requires_file(app: Flask, current_user: Account) -> None:
+def test_upload_skill_file_requires_file(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillFileUploadApi()
     method = unwrap(api.post)
 
     with app.test_request_context("/", method="POST", data={}, content_type="multipart/form-data"):
-        payload, status = method(api, "tenant-1", current_user)
+        payload, status = method(api, request_context)
 
     assert status == 400
     assert payload == {"code": "no_file_uploaded", "message": "no file uploaded"}
 
 
-def test_upload_skill_file_requires_filename(app: Flask, current_user: Account) -> None:
+def test_upload_skill_file_requires_filename(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillFileUploadApi()
     method = unwrap(api.post)
 
@@ -246,13 +267,13 @@ def test_upload_skill_file_requires_filename(app: Flask, current_user: Account) 
         data={"file": (io.BytesIO(b"payload"), "")},
         content_type="multipart/form-data",
     ):
-        payload, status = method(api, "tenant-1", current_user)
+        payload, status = method(api, request_context)
 
     assert status == 400
     assert payload == {"code": "filename_missing", "message": "filename is required"}
 
 
-def test_import_skill_uploads_zip(app: Flask, current_user: Account) -> None:
+def test_import_skill_uploads_zip(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillImportApi()
     method = unwrap(api.post)
     service = MagicMock()
@@ -267,7 +288,7 @@ def test_import_skill_uploads_zip(app: Flask, current_user: Account) -> None:
         ),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, "tenant-1", current_user)
+        payload, status = method(api, request_context)
 
     assert status == 201
     assert payload["id"] == "skill-1"
@@ -278,18 +299,18 @@ def test_import_skill_uploads_zip(app: Flask, current_user: Account) -> None:
     assert call["payload"].filename == "skill.zip"
 
 
-def test_import_skill_requires_file(app: Flask, current_user: Account) -> None:
+def test_import_skill_requires_file(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillImportApi()
     method = unwrap(api.post)
 
     with app.test_request_context("/", method="POST", data={}, content_type="multipart/form-data"):
-        payload, status = method(api, "tenant-1", current_user)
+        payload, status = method(api, request_context)
 
     assert status == 400
     assert payload == {"code": "invalid_request", "message": "file is required"}
 
 
-def test_import_skill_maps_service_error(app: Flask, current_user: Account) -> None:
+def test_import_skill_maps_service_error(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillImportApi()
     method = unwrap(api.post)
     service = MagicMock()
@@ -304,13 +325,13 @@ def test_import_skill_maps_service_error(app: Flask, current_user: Account) -> N
         ),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, "tenant-1", current_user)
+        payload, status = method(api, request_context)
 
     assert status == 400
     assert payload == {"code": "invalid_skill_archive", "message": "invalid archive"}
 
 
-def test_get_skill_detail_returns_files(app: Flask) -> None:
+def test_get_skill_detail_returns_files(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillApi()
     method = unwrap(api.get)
     service = MagicMock()
@@ -320,14 +341,14 @@ def test_get_skill_detail_returns_files(app: Flask) -> None:
         app.test_request_context("/", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, "tenant-1", "skill-1")
+        payload = method(api, request_context, "skill-1")
 
     assert payload["id"] == "skill-1"
     assert payload["files"][0]["path"] == "SKILL.md"
     service.get_skill.assert_called_once_with(tenant_id="tenant-1", skill_id="skill-1")
 
 
-def test_get_skill_detail_maps_service_error(app: Flask) -> None:
+def test_get_skill_detail_maps_service_error(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillApi()
     method = unwrap(api.get)
     service = MagicMock()
@@ -337,13 +358,13 @@ def test_get_skill_detail_maps_service_error(app: Flask) -> None:
         app.test_request_context("/", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, "tenant-1", "skill-1")
+        payload, status = method(api, request_context, "skill-1")
 
     assert status == 404
     assert payload == {"code": "skill_not_found", "message": "skill not found"}
 
 
-def test_update_skill_metadata_validates_payload(app: Flask, current_user: Account) -> None:
+def test_update_skill_metadata_validates_payload(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillApi()
     method = unwrap(api.patch)
     service = MagicMock()
@@ -359,7 +380,7 @@ def test_update_skill_metadata_validates_payload(app: Flask, current_user: Accou
         ),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, "tenant-1", current_user, "skill-1")
+        payload = method(api, request_context, "skill-1")
 
     assert payload["display_name"] == "Finance SOP"
     call = service.update_metadata.call_args.kwargs
@@ -375,7 +396,7 @@ def test_update_skill_metadata_validates_payload(app: Flask, current_user: Accou
 )
 def test_update_skill_metadata_maps_service_errors(
     app: Flask,
-    current_user: Account,
+    request_context: RequestContext,
     side_effect: Exception,
 ) -> None:
     api = WorkspaceSkillApi()
@@ -388,13 +409,13 @@ def test_update_skill_metadata_maps_service_errors(
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={"display_name": "Finance"}),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, "tenant-1", current_user, "skill-1")
+        payload, status = method(api, request_context, "skill-1")
 
     assert status in {400, 409}
     assert payload["code"] in {"invalid_request", "skill_conflict"}
 
 
-def test_delete_skill_passes_confirmation_name(app: Flask) -> None:
+def test_delete_skill_passes_confirmation_name(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillApi()
     method = unwrap(api.delete)
     service = MagicMock()
@@ -410,7 +431,7 @@ def test_delete_skill_passes_confirmation_name(app: Flask) -> None:
         ),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, "tenant-1", "skill-1")
+        payload = method(api, request_context, "skill-1")
 
     assert payload == {"id": "skill-1", "deleted": True}
     service.delete_skill.assert_called_once_with(
@@ -420,7 +441,7 @@ def test_delete_skill_passes_confirmation_name(app: Flask) -> None:
     )
 
 
-def test_delete_skill_maps_service_error(app: Flask) -> None:
+def test_delete_skill_maps_service_error(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillApi()
     method = unwrap(api.delete)
     service = MagicMock()
@@ -435,13 +456,13 @@ def test_delete_skill_maps_service_error(app: Flask) -> None:
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={}),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, "tenant-1", "skill-1")
+        payload, status = method(api, request_context, "skill-1")
 
     assert status == 409
     assert payload == {"code": "skill_referenced", "message": "skill is referenced"}
 
 
-def test_duplicate_skill_returns_new_detail(app: Flask, current_user: Account) -> None:
+def test_duplicate_skill_returns_new_detail(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillDuplicateApi()
     method = unwrap(api.post)
     service = MagicMock()
@@ -451,14 +472,14 @@ def test_duplicate_skill_returns_new_detail(app: Flask, current_user: Account) -
         app.test_request_context("/", method="POST"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, "tenant-1", current_user, "skill-1")
+        payload, status = method(api, request_context, "skill-1")
 
     assert status == 201
     assert payload["id"] == "skill-1"
     service.duplicate_skill.assert_called_once_with(tenant_id="tenant-1", user_id="user-1", skill_id="skill-1")
 
 
-def test_duplicate_skill_maps_service_error(app: Flask, current_user: Account) -> None:
+def test_duplicate_skill_maps_service_error(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillDuplicateApi()
     method = unwrap(api.post)
     service = MagicMock()
@@ -472,13 +493,13 @@ def test_duplicate_skill_maps_service_error(app: Flask, current_user: Account) -
         app.test_request_context("/", method="POST"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, "tenant-1", current_user, "skill-1")
+        payload, status = method(api, request_context, "skill-1")
 
     assert status == 404
     assert payload == {"code": "skill_not_found", "message": "skill not found"}
 
 
-def test_export_skill_returns_archive_response(app: Flask) -> None:
+def test_export_skill_returns_archive_response(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillExportApi()
     method = unwrap(api.get)
     service = MagicMock()
@@ -492,7 +513,7 @@ def test_export_skill_returns_archive_response(app: Flask) -> None:
         app.test_request_context("/", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        response = method(api, "tenant-1", "skill-1")
+        response = method(api, request_context, "skill-1")
 
     assert response.status_code == 200
     assert response.mimetype == "application/zip"
@@ -502,7 +523,7 @@ def test_export_skill_returns_archive_response(app: Flask) -> None:
     service.pull_published_archive.assert_called_once_with(tenant_id="tenant-1", skill_id="skill-1")
 
 
-def test_export_skill_maps_service_error(app: Flask) -> None:
+def test_export_skill_maps_service_error(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillExportApi()
     method = unwrap(api.get)
     service = MagicMock()
@@ -516,7 +537,7 @@ def test_export_skill_maps_service_error(app: Flask) -> None:
         app.test_request_context("/", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, "tenant-1", "skill-1")
+        payload, status = method(api, request_context, "skill-1")
 
     assert status == 409
     assert payload == {"code": "skill_not_published", "message": "skill not published"}
@@ -556,7 +577,7 @@ def test_inner_api_pull_maps_missing_tenant_to_invalid_request(app: Flask) -> No
     assert payload["code"] == "invalid_request"
 
 
-def test_get_agent_skill_bindings_returns_card_data(app: Flask) -> None:
+def test_get_agent_skill_bindings_returns_card_data(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceAgentSkillBindingsApi()
     method = unwrap(api.get)
     service = MagicMock()
@@ -585,7 +606,7 @@ def test_get_agent_skill_bindings_returns_card_data(app: Flask) -> None:
         app.test_request_context("/", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, "tenant-1", "agent-1")
+        payload = method(api, request_context, "agent-1")
 
     assert payload["skill_ids"] == ["skill-1"]
     assert payload["data"][0]["display_name"] == "Finance SOP"
@@ -593,7 +614,9 @@ def test_get_agent_skill_bindings_returns_card_data(app: Flask) -> None:
     service.list_agent_bindings.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1")
 
 
-def test_patch_skill_file_operation_validates_payload_and_returns_detail(app: Flask, current_user: Account) -> None:
+def test_patch_skill_file_operation_validates_payload_and_returns_detail(
+    app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillFilesApi()
     method = unwrap(api.patch)
     service = MagicMock()
@@ -609,7 +632,7 @@ def test_patch_skill_file_operation_validates_payload_and_returns_detail(app: Fl
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=request_payload),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, "tenant-1", current_user, "skill-1")
+        payload = method(api, request_context, "skill-1")
 
     assert payload["id"] == "skill-1"
     service.apply_draft_file_operation.assert_called_once()
@@ -620,7 +643,7 @@ def test_patch_skill_file_operation_validates_payload_and_returns_detail(app: Fl
     assert call["payload"].operation == "upsert_text"
 
 
-def test_patch_skill_file_operation_returns_error_details(app: Flask, current_user: Account) -> None:
+def test_patch_skill_file_operation_returns_error_details(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillFilesApi()
     method = unwrap(api.patch)
     service = MagicMock()
@@ -640,7 +663,7 @@ def test_patch_skill_file_operation_returns_error_details(app: Flask, current_us
         ),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, "tenant-1", current_user, "skill-1")
+        payload, status = method(api, request_context, "skill-1")
 
     assert status == 400
     assert payload == {
@@ -650,7 +673,7 @@ def test_patch_skill_file_operation_returns_error_details(app: Flask, current_us
     }
 
 
-def test_check_skill_files_validates_payload_and_returns_results(app: Flask) -> None:
+def test_check_skill_files_validates_payload_and_returns_results(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillFilesCheckApi()
     method = unwrap(api.post)
     service = MagicMock()
@@ -677,7 +700,7 @@ def test_check_skill_files_validates_payload_and_returns_results(app: Flask) -> 
         ),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, "tenant-1", "skill-1")
+        payload = method(api, request_context, "skill-1")
 
     assert payload["data"]["policy.md"]["path"] == "references/policy.md"
     assert payload["data"]["policy.md"]["errors"] == []
@@ -688,7 +711,9 @@ def test_check_skill_files_validates_payload_and_returns_results(app: Flask) -> 
     assert call["payload"].files[0].filename == "policy.md"
 
 
-def test_replace_skill_draft_tree_validates_payload_and_returns_detail(app: Flask, current_user: Account) -> None:
+def test_replace_skill_draft_tree_validates_payload_and_returns_detail(
+    app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceSkillFilesApi()
     method = unwrap(api.put)
     service = MagicMock()
@@ -704,7 +729,7 @@ def test_replace_skill_draft_tree_validates_payload_and_returns_detail(app: Flas
         ),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, "tenant-1", current_user, "skill-1")
+        payload = method(api, request_context, "skill-1")
 
     assert payload["id"] == "skill-1"
     call = service.replace_draft_tree.call_args.kwargs
@@ -714,7 +739,7 @@ def test_replace_skill_draft_tree_validates_payload_and_returns_detail(app: Flas
     assert call["payload"].files[0].path == "SKILL.md"
 
 
-def test_preview_skill_file_validates_query(app: Flask) -> None:
+def test_preview_skill_file_validates_query(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillFilePreviewApi()
     method = unwrap(api.get)
     service = MagicMock()
@@ -730,7 +755,7 @@ def test_preview_skill_file_validates_query(app: Flask) -> None:
         app.test_request_context("/?path=SKILL.md&version_id=version-1", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, "tenant-1", "skill-1")
+        payload = method(api, request_context, "skill-1")
 
     assert payload["content"] == "# Body"
     service.preview_file.assert_called_once_with(
@@ -741,7 +766,7 @@ def test_preview_skill_file_validates_query(app: Flask) -> None:
     )
 
 
-def test_pull_skill_file_content_returns_download(app: Flask) -> None:
+def test_pull_skill_file_content_returns_download(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillFileContentApi()
     method = unwrap(api.get)
     service = MagicMock()
@@ -755,7 +780,7 @@ def test_pull_skill_file_content_returns_download(app: Flask) -> None:
         app.test_request_context("/?path=SKILL.md&download=1", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        response = method(api, "tenant-1", "skill-1")
+        response = method(api, request_context, "skill-1")
 
     assert response.status_code == 200
     assert response.mimetype == "text/markdown"
@@ -770,7 +795,7 @@ def test_pull_skill_file_content_returns_download(app: Flask) -> None:
     )
 
 
-def test_list_skill_tags_returns_filter_options(app: Flask) -> None:
+def test_list_skill_tags_returns_filter_options(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillTagsApi()
     method = unwrap(api.get)
     service = MagicMock()
@@ -780,13 +805,13 @@ def test_list_skill_tags_returns_filter_options(app: Flask) -> None:
         app.test_request_context("/", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, "tenant-1")
+        payload = method(api, request_context)
 
     assert payload == {"data": [{"tag": "finance", "count": 2}]}
     service.list_tags.assert_called_once_with(tenant_id="tenant-1")
 
 
-def test_publish_skill_validates_payload(app: Flask, current_user: Account) -> None:
+def test_publish_skill_validates_payload(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillPublishApi()
     method = unwrap(api.post)
     service = MagicMock()
@@ -809,7 +834,7 @@ def test_publish_skill_validates_payload(app: Flask, current_user: Account) -> N
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={"publish_note": "Initial"}),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, "tenant-1", current_user, "skill-1")
+        payload = method(api, request_context, "skill-1")
 
     assert payload["id"] == "version-1"
     call = service.publish_skill.call_args.kwargs
@@ -819,7 +844,7 @@ def test_publish_skill_validates_payload(app: Flask, current_user: Account) -> N
     assert call["payload"].publish_note == "Initial"
 
 
-def test_restore_skill_version_validates_payload(app: Flask, current_user: Account) -> None:
+def test_restore_skill_version_validates_payload(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillRestoreApi()
     method = unwrap(api.post)
     service = MagicMock()
@@ -853,7 +878,7 @@ def test_restore_skill_version_validates_payload(app: Flask, current_user: Accou
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={"version_id": "version-1"}),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, "tenant-1", current_user, "skill-1")
+        payload = method(api, request_context, "skill-1")
 
     assert payload["latest_published_version_id"] == "version-1"
     call = service.restore_version.call_args.kwargs
@@ -863,7 +888,7 @@ def test_restore_skill_version_validates_payload(app: Flask, current_user: Accou
     assert call["payload"].version_id == "version-1"
 
 
-def test_list_skill_references_returns_reference_data(app: Flask) -> None:
+def test_list_skill_references_returns_reference_data(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillReferencesApi()
     method = unwrap(api.get)
     service = MagicMock()
@@ -882,13 +907,13 @@ def test_list_skill_references_returns_reference_data(app: Flask) -> None:
         app.test_request_context("/", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, "tenant-1", "skill-1")
+        payload = method(api, request_context, "skill-1")
 
     assert payload["data"][0]["agent_id"] == "agent-1"
     service.list_skill_references.assert_called_once_with(tenant_id="tenant-1", skill_id="skill-1")
 
 
-def test_list_skill_versions_returns_version_page(app: Flask) -> None:
+def test_list_skill_versions_returns_version_page(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillVersionsApi()
     method = unwrap(api.get)
     service = MagicMock()
@@ -914,13 +939,13 @@ def test_list_skill_versions_returns_version_page(app: Flask) -> None:
         app.test_request_context("/", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, "tenant-1", "skill-1")
+        payload = method(api, request_context, "skill-1")
 
     assert payload["data"][0]["id"] == "version-1"
     service.list_versions.assert_called_once_with(tenant_id="tenant-1", skill_id="skill-1")
 
 
-def test_get_skill_version_returns_version_detail(app: Flask) -> None:
+def test_get_skill_version_returns_version_detail(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillVersionApi()
     method = unwrap(api.get)
     service = MagicMock()
@@ -956,7 +981,7 @@ def test_get_skill_version_returns_version_detail(app: Flask) -> None:
         app.test_request_context("/", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, "tenant-1", "skill-1", "version-1")
+        payload = method(api, request_context, "skill-1", "version-1")
 
     assert payload["files"][0]["content"] == "# Version"
     service.get_version.assert_called_once_with(
@@ -966,7 +991,7 @@ def test_get_skill_version_returns_version_detail(app: Flask) -> None:
     )
 
 
-def test_patch_skill_version_renames_version(app: Flask) -> None:
+def test_patch_skill_version_renames_version(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillVersionApi()
     method = unwrap(api.patch)
     service = MagicMock()
@@ -994,14 +1019,14 @@ def test_patch_skill_version_renames_version(app: Flask) -> None:
         ),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, "tenant-1", "skill-1", "version-1")
+        payload = method(api, request_context, "skill-1", "version-1")
 
     assert payload["version_name"] == "Approval threshold"
     service.update_version.assert_called_once()
     assert service.update_version.call_args.kwargs["payload"].version_name == "Approval threshold"
 
 
-def test_delete_skill_version_returns_new_latest(app: Flask, current_user: Account) -> None:
+def test_delete_skill_version_returns_new_latest(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillVersionApi()
     method = unwrap(api.delete)
     service = MagicMock()
@@ -1015,7 +1040,7 @@ def test_delete_skill_version_returns_new_latest(app: Flask, current_user: Accou
         app.test_request_context("/", method="DELETE"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, "tenant-1", current_user, "skill-1", "version-2")
+        payload = method(api, request_context, "skill-1", "version-2")
 
     assert payload == {"id": "version-2", "deleted": True, "latest_published_version_id": "version-1"}
     service.delete_version.assert_called_once_with(
@@ -1026,7 +1051,7 @@ def test_delete_skill_version_returns_new_latest(app: Flask, current_user: Accou
     )
 
 
-def test_skill_assistant_runs_agent_app_stream(app: Flask, current_user: Account) -> None:
+def test_skill_assistant_runs_agent_app_stream(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillAssistMessageApi()
     method = unwrap(api.post)
     service = MagicMock()
@@ -1058,7 +1083,7 @@ def test_skill_assistant_runs_agent_app_stream(app: Flask, current_user: Account
             return_value=compact_response,
         ) as compact_generate_response,
     ):
-        response = method(api, "tenant-1", current_user, "skill-1")
+        response = method(api, request_context, "skill-1")
 
     assert response is compact_response
     service.create_assistant_action_stream.assert_called_once_with(
@@ -1084,7 +1109,7 @@ def test_skill_assistant_runs_agent_app_stream(app: Flask, current_user: Account
 @pytest.mark.parametrize("payload", [{}, {"message": "x", "unknown": True}])
 def test_skill_assistant_rejects_invalid_payload(
     app: Flask,
-    current_user: Account,
+    request_context: RequestContext,
     payload: dict[str, object],
 ) -> None:
     api = WorkspaceSkillAssistMessageApi()
@@ -1094,13 +1119,13 @@ def test_skill_assistant_rejects_invalid_payload(
         app.test_request_context("/", method="POST"),
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
     ):
-        response_body, status = method(api, "tenant-1", current_user, "skill-1")
+        response_body, status = method(api, request_context, "skill-1")
 
     assert status == 400
     assert response_body["code"] == "invalid_request"
 
 
-def test_skill_assistant_maps_service_error(app: Flask, current_user: Account) -> None:
+def test_skill_assistant_maps_service_error(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillAssistMessageApi()
     method = unwrap(api.post)
     service = MagicMock()
@@ -1114,7 +1139,7 @@ def test_skill_assistant_maps_service_error(app: Flask, current_user: Account) -
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={"message": "help"}),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, "tenant-1", current_user, "skill-1")
+        payload, status = method(api, request_context, "skill-1")
 
     assert status == 400
     assert payload == {"code": "model_provider_not_configured", "message": "model provider not configured"}
@@ -1129,7 +1154,7 @@ def test_skill_assistant_maps_service_error(app: Flask, current_user: Account) -
 )
 def test_skill_file_write_methods_map_conflicts(
     app: Flask,
-    current_user: Account,
+    request_context: RequestContext,
     method_name: str,
     payload: dict[str, object],
 ) -> None:
@@ -1152,13 +1177,13 @@ def test_skill_file_write_methods_map_conflicts(
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        response_body, status = method(api, "tenant-1", current_user, "skill-1")
+        response_body, status = method(api, request_context, "skill-1")
 
     assert status == 409
     assert response_body["code"] == "skill_conflict"
 
 
-def test_replace_skill_draft_tree_maps_value_error(app: Flask, current_user: Account) -> None:
+def test_replace_skill_draft_tree_maps_value_error(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillFilesApi()
     method = unwrap(api.put)
     service = MagicMock()
@@ -1169,25 +1194,27 @@ def test_replace_skill_draft_tree_maps_value_error(app: Flask, current_user: Acc
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={"files": []}),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, "tenant-1", current_user, "skill-1")
+        payload, status = method(api, request_context, "skill-1")
 
     assert status == 400
     assert payload == {"code": "invalid_request", "message": "bad path"}
 
 
 @pytest.mark.parametrize("query_string", ["", "?path=../secret.md"])
-def test_preview_skill_file_rejects_invalid_query(app: Flask, query_string: str) -> None:
+def test_preview_skill_file_rejects_invalid_query(
+    app: Flask, request_context: RequestContext, query_string: str
+) -> None:
     api = WorkspaceSkillFilePreviewApi()
     method = unwrap(api.get)
 
     with app.test_request_context(f"/{query_string}", method="GET"):
-        payload, status = method(api, "tenant-1", "skill-1")
+        payload, status = method(api, request_context, "skill-1")
 
     assert status == 400
     assert payload["code"] == "invalid_request"
 
 
-def test_preview_skill_file_maps_service_error(app: Flask) -> None:
+def test_preview_skill_file_maps_service_error(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillFilePreviewApi()
     method = unwrap(api.get)
     service = MagicMock()
@@ -1197,25 +1224,27 @@ def test_preview_skill_file_maps_service_error(app: Flask) -> None:
         app.test_request_context("/?path=SKILL.md", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, "tenant-1", "skill-1")
+        payload, status = method(api, request_context, "skill-1")
 
     assert status == 404
     assert payload == {"code": "file_not_found", "message": "file not found"}
 
 
 @pytest.mark.parametrize("query_string", ["", "?path=../secret.md"])
-def test_pull_skill_file_content_rejects_invalid_query(app: Flask, query_string: str) -> None:
+def test_pull_skill_file_content_rejects_invalid_query(
+    app: Flask, request_context: RequestContext, query_string: str
+) -> None:
     api = WorkspaceSkillFileContentApi()
     method = unwrap(api.get)
 
     with app.test_request_context(f"/{query_string}", method="GET"):
-        payload, status = method(api, "tenant-1", "skill-1")
+        payload, status = method(api, request_context, "skill-1")
 
     assert status == 400
     assert payload["code"] == "invalid_request"
 
 
-def test_pull_skill_file_content_maps_service_error(app: Flask) -> None:
+def test_pull_skill_file_content_maps_service_error(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillFileContentApi()
     method = unwrap(api.get)
     service = MagicMock()
@@ -1225,13 +1254,13 @@ def test_pull_skill_file_content_maps_service_error(app: Flask) -> None:
         app.test_request_context("/?path=SKILL.md", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, "tenant-1", "skill-1")
+        payload, status = method(api, request_context, "skill-1")
 
     assert status == 404
     assert payload == {"code": "file_not_found", "message": "file not found"}
 
 
-def test_publish_skill_rejects_invalid_payload(app: Flask, current_user: Account) -> None:
+def test_publish_skill_rejects_invalid_payload(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillPublishApi()
     method = unwrap(api.post)
 
@@ -1239,13 +1268,13 @@ def test_publish_skill_rejects_invalid_payload(app: Flask, current_user: Account
         app.test_request_context("/", method="POST"),
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={"publish_note": "x" * 1025}),
     ):
-        payload, status = method(api, "tenant-1", current_user, "skill-1")
+        payload, status = method(api, request_context, "skill-1")
 
     assert status == 400
     assert payload["code"] == "invalid_request"
 
 
-def test_publish_skill_maps_service_error(app: Flask, current_user: Account) -> None:
+def test_publish_skill_maps_service_error(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillPublishApi()
     method = unwrap(api.post)
     service = MagicMock()
@@ -1256,13 +1285,13 @@ def test_publish_skill_maps_service_error(app: Flask, current_user: Account) -> 
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={}),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, "tenant-1", current_user, "skill-1")
+        payload, status = method(api, request_context, "skill-1")
 
     assert status == 400
     assert payload == {"code": "missing_skill_name", "message": "name required"}
 
 
-def test_restore_skill_version_rejects_invalid_payload(app: Flask, current_user: Account) -> None:
+def test_restore_skill_version_rejects_invalid_payload(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillRestoreApi()
     method = unwrap(api.post)
 
@@ -1270,13 +1299,13 @@ def test_restore_skill_version_rejects_invalid_payload(app: Flask, current_user:
         app.test_request_context("/", method="POST"),
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={}),
     ):
-        payload, status = method(api, "tenant-1", current_user, "skill-1")
+        payload, status = method(api, request_context, "skill-1")
 
     assert status == 400
     assert payload["code"] == "invalid_request"
 
 
-def test_restore_skill_version_maps_service_error(app: Flask, current_user: Account) -> None:
+def test_restore_skill_version_maps_service_error(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillRestoreApi()
     method = unwrap(api.post)
     service = MagicMock()
@@ -1291,13 +1320,13 @@ def test_restore_skill_version_maps_service_error(app: Flask, current_user: Acco
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={"version_id": "version-1"}),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, "tenant-1", current_user, "skill-1")
+        payload, status = method(api, request_context, "skill-1")
 
     assert status == 404
     assert payload == {"code": "version_not_found", "message": "version not found"}
 
 
-def test_agent_skill_bindings_replaces_bound_skills(app: Flask, current_user: Account) -> None:
+def test_agent_skill_bindings_replaces_bound_skills(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceAgentSkillBindingsApi()
     method = unwrap(api.put)
     service = MagicMock()
@@ -1309,7 +1338,7 @@ def test_agent_skill_bindings_replaces_bound_skills(app: Flask, current_user: Ac
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={"skill_ids": ["skill-1"]}),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, "tenant-1", current_user, "agent-1")
+        payload = method(api, request_context, "agent-1")
 
     assert payload["skill_ids"] == ["skill-1"]
     service.replace_agent_bindings.assert_called_once_with(
@@ -1320,7 +1349,7 @@ def test_agent_skill_bindings_replaces_bound_skills(app: Flask, current_user: Ac
     )
 
 
-def test_agent_skill_bindings_rejects_invalid_payload(app: Flask, current_user: Account) -> None:
+def test_agent_skill_bindings_rejects_invalid_payload(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceAgentSkillBindingsApi()
     method = unwrap(api.put)
 
@@ -1328,7 +1357,7 @@ def test_agent_skill_bindings_rejects_invalid_payload(app: Flask, current_user: 
         app.test_request_context("/", method="PUT"),
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={"skill_ids": "skill-1"}),
     ):
-        payload, status = method(api, "tenant-1", current_user, "agent-1")
+        payload, status = method(api, request_context, "agent-1")
 
     assert status == 400
     assert payload["code"] == "invalid_request"
