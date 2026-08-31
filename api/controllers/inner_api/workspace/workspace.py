@@ -56,7 +56,6 @@ class EnterpriseWorkspace(Resource):
     )
     @model_validate(WorkspaceCreatePayload)
     def post(self, args: WorkspaceCreatePayload):
-
         account = db.session.scalar(select(Account).where(Account.email == args.owner_email).limit(1))
         if account is None:
             return {"message": "owner account not found."}, 404
@@ -99,7 +98,6 @@ class EnterpriseWorkspaceNoOwnerEmail(Resource):
     )
     @model_validate(WorkspaceOwnerlessPayload)
     def post(self, args: WorkspaceOwnerlessPayload):
-
         tenant = TenantService.create_tenant(args.name, is_from_dashboard=True, session=db.session())
 
         tenant_was_created.send(tenant)
@@ -138,7 +136,6 @@ class EnterpriseWorkspaceMember(Resource):
     )
     @model_validate(WorkspaceMemberPayload)
     def post(self, args: WorkspaceMemberPayload):
-
         try:
             role = TenantAccountRole(args.role)
         except ValueError:

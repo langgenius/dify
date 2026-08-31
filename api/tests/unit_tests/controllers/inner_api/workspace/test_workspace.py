@@ -338,14 +338,22 @@ class TestEnterpriseWorkspaceMember:
 
 
 class TestModelValidateDecorator:
-    """The handler tests unwrap the view, so this is what covers the decorator itself."""
+    """The handler tests unwrap the view, so this is what covers the decorators themselves."""
 
-    def test_invalid_body_is_rejected_before_the_handler_runs(self, app: Flask):
-        api_instance = EnterpriseWorkspace()
+    @pytest.mark.parametrize(
+        ("api_cls", "route"),
+        [
+            (EnterpriseWorkspace, "/enterprise/workspace"),
+            (EnterpriseWorkspaceNoOwnerEmail, "/enterprise/workspace/ownerless"),
+            (EnterpriseWorkspaceMember, "/enterprise/workspace/member"),
+        ],
+    )
+    def test_invalid_body_is_rejected_before_the_handler_runs(self, app: Flask, api_cls, route: str):
+        api_instance = api_cls()
 
         with (
             config_overrides_context(INNER_API=True, INNER_API_KEY="inner-key"),
-            app.test_request_context(json={}, headers={"X-Inner-Api-Key": "inner-key"}),
+            app.test_request_context(route, method="POST", json={}, headers={"X-Inner-Api-Key": "inner-key"}),
             patch("controllers.console.wraps._is_setup_completed", return_value=True),
             patch("controllers.inner_api.workspace.workspace.TenantService") as tenant_service,
         ):
@@ -353,4 +361,4 @@ class TestModelValidateDecorator:
                 api_instance.post()
 
         assert exc_info.value.code == 422
-        tenant_service.create_owner_tenant.assert_not_called()
+        tenant_service.assert_not_called()
