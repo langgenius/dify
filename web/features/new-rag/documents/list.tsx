@@ -1,6 +1,5 @@
 'use client'
 
-import type { FocusEventHandler } from 'react'
 import type { DocumentAction } from './actions-dropdown'
 import type { DocumentDisplayStatus } from './model'
 import type { LogicalDocument } from './models'
@@ -771,10 +770,8 @@ export function DocumentBulkActions({
   downloadDisabled,
   disabled,
   disabledReason,
-  onBlurCapture,
   onClear,
   onDownload,
-  onFocusCapture,
   onRemove,
   onReindex,
   onUpdateAvailability,
@@ -788,10 +785,8 @@ export function DocumentBulkActions({
   disabled: boolean
   disabledReason?: string
   downloadDisabled: boolean
-  onBlurCapture: FocusEventHandler<HTMLDivElement>
   onClear: () => void
   onDownload: () => void
-  onFocusCapture: FocusEventHandler<HTMLDivElement>
   onRemove: () => Promise<boolean>
   onReindex: () => void
   onUpdateAvailability: () => void
@@ -811,8 +806,6 @@ export function DocumentBulkActions({
           aria-label={t(($) => $['newKnowledge.bulkDocumentActions'])}
           className="pointer-events-auto flex max-w-full min-w-0 items-center gap-2 overflow-x-auto rounded-[14px] border border-divider-subtle bg-components-panel-bg py-2.5 pr-2.5 pl-4 shadow-[0_12px_32px_-6px_rgba(15,23,41,0.16),0_2px_6px_rgba(15,23,41,0.06)]"
           role="group"
-          onBlurCapture={onBlurCapture}
-          onFocusCapture={onFocusCapture}
         >
           <span className="shrink-0 text-[13px] leading-4.5 font-medium text-text-primary">
             {t(($) => $['newKnowledge.documentsSelected'], { count: selectedCount })}

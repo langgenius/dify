@@ -10,7 +10,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import {
@@ -28,7 +28,6 @@ import { knowledgeFsTaskFailureMessageKey } from '../knowledge-fs-task-error'
 import { createRequestId } from '../request-id'
 import { newKnowledgeDocumentDetailPath } from '../routes'
 import { sourceFromApi } from '../sources/source-models'
-import { useKnowledgeSpace } from '../space/context'
 import { DocumentUploadForm } from '../upload/form'
 import { uploadKnowledgeFsDocuments } from '../upload/knowledge-fs-upload'
 import { documentUploadIssue } from '../upload/policy'
@@ -50,11 +49,11 @@ import {
 } from './model'
 import { backgroundTaskFromApi, logicalDocumentListFromApi } from './models'
 import {
-  DOCUMENT_PERMISSION_DENIED,
-  recoveryQueryMaskForPermissionDenials,
-  SOURCE_PERMISSION_DENIED,
-  TASK_PERMISSION_DENIED,
-} from './permission-recovery'
+  DocumentPermissionRecoveryBoundary,
+  DocumentPermissionRecoveryBulkRegion,
+  DocumentReadPermissionRecovery,
+} from './permission-recovery/recovery-boundary'
+import { useDocumentPermissionRecovery } from './permission-recovery/use-permission-recovery'
 import { documentSourcesInfiniteOptions, logicalDocumentsInfiniteOptions } from './queries'
 import {
   documentFilterParser,
@@ -92,26 +91,18 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     uploadProgress,
   } = useDocumentUploadSession(knowledgeSpaceId)
   const queryClient = useQueryClient()
-  const { refetch: refetchKnowledgeSpace, space } = useKnowledgeSpace()
   const datasetDefaultPermissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
   const workspacePermissionKeysLoading = useAtomValue(workspacePermissionKeysLoadingAtom)
   const workspacePermissionKeysError = useAtomValue(workspacePermissionKeysErrorAtom)
   const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
-  const canEdit = space.permission_keys.includes('knowledge_space_document_write')
   const hasDocumentDownloadPermission = hasPermission(
     datasetDefaultPermissionKeys,
     DatasetACLPermission.DocumentDownload,
   )
-  const permissionPending = false
-  const permissionQueryError = false
-  const hasWorkspaceWritePermission = canEdit
   const canDownload =
     hasDocumentDownloadPermission &&
     !workspacePermissionKeysLoading &&
     !workspacePermissionKeysError
-  const documentPermissionAlertRef = useRef<HTMLDivElement>(null)
-  const writePermissionFocusRecoveryRequestedRef = useRef(false)
-  const writePermissionFocusOriginRef = useRef<HTMLElement | null>(null)
   const reindexPendingRef = useRef(false)
   const documentActionPendingRef = useRef(false)
   const bulkActionPendingRef = useRef(false)
@@ -132,23 +123,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const [isFileDragActive, setIsFileDragActive] = useState(false)
   const fileDragDepthRef = useRef(0)
   const [tasksOpen, setTasksOpen] = useState(false)
-  const [writePermissionRevoked, setWritePermissionRevoked] = useState(false)
-  const [workspacePermissionKeysFetching, setWorkspacePermissionKeysFetching] = useState(false)
-  const [writePermissionRecoveryGeneration, setWritePermissionRecoveryGeneration] = useState<
-    number | undefined
-  >()
-  const previousCanEditRef = useRef(canEdit)
-  useEffect(() => {
-    const permissionRestored = !previousCanEditRef.current && canEdit
-    previousCanEditRef.current = canEdit
-    if (!writePermissionRevoked || !permissionRestored) return
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- An authoritative permission transition retires the local mutation lock.
-    setWritePermissionRevoked(false)
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- The recovery generation belongs to the retired mutation lock.
-    setWritePermissionRecoveryGeneration(undefined)
-  }, [canEdit, writePermissionRevoked])
-  const writePermissionDenialGenerationRef = useRef(0)
-  const writePermissionRecoveryFetchSeenRef = useRef(false)
   const [blockingDependencyRetries, setBlockingDependencyRetries] = useState({
     sources: false,
     tasks: false,
@@ -224,22 +198,30 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     onTaskReachedTerminal: refreshDocuments,
     tasksOpen,
   })
-  const permissionDenialMask =
-    (documentPermissionDenied || auxiliaryReadPermissionDenied ? DOCUMENT_PERMISSION_DENIED : 0) |
-    (taskPermissionDenied ? TASK_PERMISSION_DENIED : 0) |
-    (sourcePermissionDenied ? SOURCE_PERMISSION_DENIED : 0)
-  const permissionDenied = permissionDenialMask !== 0
-  const previousPermissionDenialMaskRef = useRef(permissionDenialMask)
-  const permissionRecoveryQueryMaskRef = useRef(
-    recoveryQueryMaskForPermissionDenials(permissionDenialMask),
-  )
-  const canWrite = hasWorkspaceWritePermission && !permissionDenied && !writePermissionRevoked
+  const refetchTasksQuery = tasksQuery.refetch
+  const refetchSourcesQuery = sourcesQuery.refetch
+  const {
+    canRead,
+    canWrite,
+    denyWrite: handleWritePermissionDenied,
+    recoverySurface,
+    retryWorkspacePermission,
+    workspacePermissionRefreshing,
+  } = useDocumentPermissionRecovery({
+    auxiliaryReadPermissionDenied,
+    documentPermissionDenied,
+    knowledgeSpaceId,
+    onRetryAuxiliaryRead: retryAuxiliaryTaskRead,
+    refetchSources: refetchSourcesQuery,
+    refetchTasks: refetchTasksQuery,
+    resetFailedPollBlocks,
+    sourcePermissionDenied,
+    taskPermissionDenied,
+  })
   const canUpload = canWrite && uploadAvailable
   const uploadFormOpen = canUpload && uploadRequest === '1'
   const openUploadForm = useCallback(
     (files: File[] = []) => {
-      writePermissionFocusRecoveryRequestedRef.current = true
-      writePermissionFocusOriginRef.current = document.activeElement as HTMLElement | null
       fileDragDepthRef.current = 0
       setIsFileDragActive(false)
       resetUploadProgress()
@@ -258,30 +240,18 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     closeUploadForm()
   }, [closeUploadForm, discardAllStagedFiles])
   useEffect(() => {
-    if (uploadRequest !== '1' || permissionPending || canUpload) return
+    if (uploadRequest !== '1' || canUpload) return
     discardAllStagedFiles()
     // oxlint-disable-next-line eslint-react/set-state-in-effect -- Consume the route-owned one-shot signal after authorization resolves.
     void setUploadRequest(null)
-  }, [canUpload, discardAllStagedFiles, permissionPending, setUploadRequest, uploadRequest])
-  const documentWriteRestrictionReasonId = permissionPending
-    ? 'documents-permission-pending'
-    : permissionQueryError
-      ? 'documents-permission-error'
-      : !canEdit || writePermissionRevoked
-        ? 'documents-readonly-reason'
-        : undefined
+  }, [canUpload, discardAllStagedFiles, setUploadRequest, uploadRequest])
+  const documentWriteRestrictionReasonId = canWrite ? undefined : 'documents-readonly-reason'
   const documentUploadRestrictionReasonId = !uploadAvailable
     ? 'documents-upload-unavailable'
     : documentWriteRestrictionReasonId
-  const documentsRecoveryDescription = auxiliaryReadPermissionDenied
-    ? t(($) => $['newKnowledge.documentsPermissionDescription'])
-    : t(($) => $['newKnowledge.documentsErrorDescription'])
   const documentsSectionRef = useRef<HTMLElement>(null)
   const documentsTitleRef = useRef<HTMLHeadingElement>(null)
-  const documentSurfaceHadFocusRef = useRef(false)
-  const bulkActionsHadFocusRef = useRef(false)
   const mainRetryFocusRequestedRef = useRef(false)
-  const permissionRetryButtonRef = useRef<HTMLButtonElement>(null)
   const documentsRetryButtonRef = useRef<HTMLButtonElement>(null)
   const dependencyRetryButtonRef = useRef<HTMLButtonElement>(null)
   const {
@@ -294,14 +264,12 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     fetchNextPage: fetchNextTaskPage,
     hasNextPage: hasNextTaskPage,
     isFetchingNextPage: isFetchingNextTaskPage,
-    refetch: refetchTasksQuery,
   } = tasksQuery
   const {
     fetchNextPage: fetchNextSourcePage,
     hasNextPage: hasNextSourcePage,
     isFetchNextPageError: isFetchNextSourcePageError,
     isFetchingNextPage: isFetchingNextSourcePage,
-    refetch: refetchSourcesQuery,
   } = sourcesQuery
   const canAutoFetchDocumentPage = Boolean(
     hasNextDocumentPage && (documentsQuery.data?.pages.length ?? 0) < MAX_AUTO_CURSOR_PAGES,
@@ -493,13 +461,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     (sourceQueryBlockingError && sourcesQuery.isFetching),
   )
   const mainRecoveryVisible = Boolean(
-    permissionQueryError ||
-    documentsQuery.error ||
-    dependencyQueryBlockingError ||
-    dependencyQueryWarning,
+    documentsQuery.error || dependencyQueryBlockingError || dependencyQueryWarning,
   )
   const mainRecoveryIdentity = [
-    permissionQueryError ? 'permission' : '',
     documentsQuery.error ? 'documents' : '',
     taskQueryBlockingError ? 'tasks-blocking' : '',
     sourceQueryBlockingError ? 'sources-blocking' : '',
@@ -560,127 +524,17 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     validSelectedDocumentIds.has(document.id),
   )
   const bulkActionsVisible = canWrite && validSelectedDocumentIds.size > 0
-  const previousBulkActionsVisibleRef = useRef(bulkActionsVisible)
-
-  useLayoutEffect(() => {
-    const wasVisible = previousBulkActionsVisibleRef.current
-    previousBulkActionsVisibleRef.current = bulkActionsVisible
-    if (!wasVisible || bulkActionsVisible || !bulkActionsHadFocusRef.current) return
-    if (permissionDenied) return
-    bulkActionsHadFocusRef.current = false
-    documentsTitleRef.current?.focus()
-  }, [bulkActionsVisible, permissionDenied])
-
-  useLayoutEffect(() => {
-    if (!writePermissionRevoked || !writePermissionFocusRecoveryRequestedRef.current) return
-    writePermissionFocusRecoveryRequestedRef.current = false
-    writePermissionFocusOriginRef.current = null
-    documentsTitleRef.current?.focus()
-  }, [writePermissionRevoked])
-
-  useEffect(() => {
-    const previousPermissionDenialMask = previousPermissionDenialMaskRef.current
-    previousPermissionDenialMaskRef.current = permissionDenialMask
-    const addedPermissionDenials = permissionDenialMask & ~previousPermissionDenialMask
-    let recoveryQueryMask =
-      permissionRecoveryQueryMaskRef.current |
-      recoveryQueryMaskForPermissionDenials(addedPermissionDenials)
-    if (
-      previousPermissionDenialMask & TASK_PERMISSION_DENIED &&
-      !(permissionDenialMask & TASK_PERMISSION_DENIED)
-    )
-      recoveryQueryMask &= ~TASK_PERMISSION_DENIED
-    if (
-      previousPermissionDenialMask & SOURCE_PERMISSION_DENIED &&
-      !(permissionDenialMask & SOURCE_PERMISSION_DENIED)
-    )
-      recoveryQueryMask &= ~SOURCE_PERMISSION_DENIED
-    recoveryQueryMask &= ~permissionDenialMask
-    permissionRecoveryQueryMaskRef.current = recoveryQueryMask
-    if (previousPermissionDenialMask && !permissionDenied) {
-      resetFailedPollBlocks()
-      if (recoveryQueryMask & TASK_PERMISSION_DENIED)
-        void refetchTasksQuery({ cancelRefetch: false })
-      if (recoveryQueryMask & SOURCE_PERMISSION_DENIED)
-        void refetchSourcesQuery({ cancelRefetch: false })
-      permissionRecoveryQueryMaskRef.current = 0
-      if (documentSurfaceHadFocusRef.current || bulkActionsHadFocusRef.current)
-        documentsTitleRef.current?.focus()
-      bulkActionsHadFocusRef.current = false
-      return
-    }
-    if (previousPermissionDenialMask || !permissionDenied) return
-    const shouldRestoreFocus =
-      tasksOpen || documentSurfaceHadFocusRef.current || bulkActionsHadFocusRef.current
-    if (tasksOpen) {
-      // oxlint-disable-next-line eslint-react/set-state-in-effect -- Permission revocation permanently closes the controlled task drawer.
-      setTasksOpen(false)
-    }
-    if (shouldRestoreFocus) documentPermissionAlertRef.current?.focus()
-    bulkActionsHadFocusRef.current = false
-  }, [
-    permissionDenialMask,
-    permissionDenied,
-    refetchSourcesQuery,
-    refetchTasksQuery,
-    resetFailedPollBlocks,
-    tasksOpen,
-  ])
-
-  useEffect(() => {
-    if (
-      !writePermissionRevoked ||
-      writePermissionRecoveryGeneration !== writePermissionDenialGenerationRef.current
-    ) {
-      writePermissionRecoveryFetchSeenRef.current = false
-      return
-    }
-    if (workspacePermissionKeysFetching) {
-      writePermissionRecoveryFetchSeenRef.current = true
-      return
-    }
-    if (
-      !writePermissionRecoveryFetchSeenRef.current ||
-      permissionPending ||
-      permissionQueryError ||
-      !canEdit
-    )
-      return
-    writePermissionRecoveryFetchSeenRef.current = false
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- A post-denial permission request is the authoritative event that retires the local mutation lock.
-    setWritePermissionRevoked(false)
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- The completed recovery generation is retired with its write lock.
-    setWritePermissionRecoveryGeneration(undefined)
-  }, [
-    canEdit,
-    permissionPending,
-    permissionQueryError,
-    workspacePermissionKeysFetching,
-    writePermissionRecoveryGeneration,
-    writePermissionRevoked,
-  ])
 
   useEffect(() => {
     if (!mainRetryFocusRequestedRef.current) return
     if (mainRecoveryVisible) {
-      if (documentPermissionDenied) {
-        mainRetryFocusRequestedRef.current = false
-        documentPermissionAlertRef.current?.focus()
-      } else if (permissionQueryError) permissionRetryButtonRef.current?.focus()
-      else if (documentsQuery.error && !permissionDenied) documentsRetryButtonRef.current?.focus()
+      if (documentsQuery.error && canRead) documentsRetryButtonRef.current?.focus()
       else dependencyRetryButtonRef.current?.focus()
       return
     }
     mainRetryFocusRequestedRef.current = false
     documentsTitleRef.current?.focus()
-  }, [
-    documentsQuery.error,
-    documentPermissionDenied,
-    mainRecoveryIdentity,
-    mainRecoveryVisible,
-    permissionDenied,
-    permissionQueryError,
-  ])
+  }, [canRead, documentsQuery.error, mainRecoveryIdentity, mainRecoveryVisible])
 
   useEffect(() => {
     if (!blockingDependencyRetries.tasks && !blockingDependencyRetries.sources) return
@@ -698,7 +552,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   useEffect(() => {
     if (
-      !permissionDenied &&
+      canRead &&
       (filterActive || (tasksOpen && unresolvedTaskDocumentIds.size > 0)) &&
       canAutoFetchDocumentPage &&
       !isFetchingNextDocumentPage &&
@@ -713,12 +567,12 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     canAutoFetchDocumentPage,
     isFetchNextDocumentPageError,
     isFetchingNextDocumentPage,
-    permissionDenied,
+    canRead,
   ])
 
   useEffect(() => {
     if (
-      !permissionDenied &&
+      canRead &&
       canAutoFetchSourcePage &&
       !isFetchingNextSourcePage &&
       !isFetchNextSourcePageError
@@ -729,7 +583,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     fetchNextSourcePage,
     isFetchNextSourcePageError,
     isFetchingNextSourcePage,
-    permissionDenied,
+    canRead,
   ])
 
   const refreshDocumentsAndTasks = useCallback(() => {
@@ -744,61 +598,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       }),
     ])
   }, [knowledgeSpaceId, queryClient])
-
-  const refreshWorkspacePermissions = useCallback(
-    async (releaseWriteLockOnSuccess: boolean) => {
-      const denialGeneration = writePermissionDenialGenerationRef.current
-      setWorkspacePermissionKeysFetching(true)
-      try {
-        const refreshedSpace = await refetchKnowledgeSpace()
-        if (
-          releaseWriteLockOnSuccess &&
-          writePermissionDenialGenerationRef.current === denialGeneration &&
-          refreshedSpace?.permission_keys.includes('knowledge_space_document_write')
-        ) {
-          writePermissionRecoveryFetchSeenRef.current = false
-          setWritePermissionRevoked(false)
-          setWritePermissionRecoveryGeneration(undefined)
-        }
-      } finally {
-        setWorkspacePermissionKeysFetching(false)
-      }
-    },
-    [refetchKnowledgeSpace],
-  )
-
-  const handleWritePermissionDenied = useCallback(() => {
-    const denialGeneration = writePermissionDenialGenerationRef.current + 1
-    writePermissionDenialGenerationRef.current = denialGeneration
-    writePermissionRecoveryFetchSeenRef.current = false
-    setWritePermissionRecoveryGeneration(undefined)
-    setWritePermissionRevoked(true)
-    setWorkspacePermissionKeysFetching(true)
-    void refetchKnowledgeSpace()
-      .then((refreshedSpace) => {
-        if (writePermissionDenialGenerationRef.current !== denialGeneration) return
-        if (refreshedSpace?.permission_keys.includes('knowledge_space_document_write')) {
-          writePermissionRecoveryFetchSeenRef.current = false
-          setWritePermissionRevoked(false)
-          setWritePermissionRecoveryGeneration(undefined)
-          return
-        }
-        setWritePermissionRecoveryGeneration(denialGeneration)
-      })
-      .finally(() => setWorkspacePermissionKeysFetching(false))
-  }, [refetchKnowledgeSpace])
-
-  useEffect(() => {
-    if (!permissionDenied) return
-    void queryClient.cancelQueries({
-      predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
-      queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.key(),
-    })
-    void queryClient.cancelQueries({
-      predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
-      queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
-    })
-  }, [knowledgeSpaceId, permissionDenied, queryClient])
 
   const handleUploadFiles = useCallback(
     async (files: File[]): Promise<boolean> => {
@@ -842,7 +641,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         endUpload()
         return false
       }
-      let writePermissionDenied = false
       try {
         if ((await ensureModelReady({ capability: 'ingest', intent: 'upload' })).status !== 'ready')
           return false
@@ -880,16 +678,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         return true
       } catch (error) {
         if (responseStatus(error) === 403) {
-          writePermissionDenied = true
           cancelUploadForm()
           handleWritePermissionDenied()
         } else toast.error(t(($) => $['newKnowledge.documentUploadFailed']))
         return false
       } finally {
-        if (!writePermissionDenied) {
-          writePermissionFocusRecoveryRequestedRef.current = false
-          writePermissionFocusOriginRef.current = null
-        }
         endUpload()
       }
     },
@@ -1396,6 +1189,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     void Promise.allSettled(requests)
   }
 
+  const handleReadPermissionDenied = useCallback(() => {
+    setTasksOpen(false)
+    setMetadataOpen(false)
+  }, [setMetadataOpen])
+
   return (
     <>
       {streamedActiveTasks.map((task) => {
@@ -1414,233 +1212,176 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           />
         )
       })}
-      <section
-        ref={documentsSectionRef}
-        className={cn(
-          'relative flex min-h-full w-full flex-col gap-4 px-6 pt-3',
-          bulkActionsVisible ? 'pb-[calc(7rem+env(safe-area-inset-bottom,0px))]' : 'pb-6',
-        )}
-        onDragEnter={(event) => {
-          const types = Array.from(event.dataTransfer.types ?? [])
-          if (types.length && !types.includes('Files')) return
-          event.preventDefault()
-          if (!canUpload || uploading) return
-          fileDragDepthRef.current += 1
-          setIsFileDragActive(true)
-        }}
-        onDragLeave={() => {
-          if (!fileDragDepthRef.current) return
-          fileDragDepthRef.current -= 1
-          if (!fileDragDepthRef.current) setIsFileDragActive(false)
-        }}
-        onDragOver={(event) => {
-          const types = Array.from(event.dataTransfer.types ?? [])
-          if (types.length && !types.includes('Files')) return
-          event.preventDefault()
-          event.dataTransfer.dropEffect = canUpload && !uploading ? 'copy' : 'none'
-        }}
-        onDrop={(event) => {
-          const types = Array.from(event.dataTransfer.types ?? [])
-          if (types.length && !types.includes('Files')) return
-          event.preventDefault()
-          fileDragDepthRef.current = 0
-          setIsFileDragActive(false)
-          if (!canUpload || uploading) return
-          const files = [...event.dataTransfer.files]
-          if (!files.length) return
-          if (uploadFormOpen) uploadFormRef.current?.addFiles(files)
-          else openUploadForm(files)
-        }}
-        onBlurCapture={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-            documentSurfaceHadFocusRef.current = false
-            if (event.relatedTarget) {
-              writePermissionFocusRecoveryRequestedRef.current = false
-              writePermissionFocusOriginRef.current = null
-            }
-          }
-        }}
-        onFocusCapture={(event) => {
-          if (
-            writePermissionFocusRecoveryRequestedRef.current &&
-            event.target !== writePermissionFocusOriginRef.current
-          ) {
-            writePermissionFocusRecoveryRequestedRef.current = false
-            writePermissionFocusOriginRef.current = null
-          }
-          documentSurfaceHadFocusRef.current = true
-        }}
+      <DocumentPermissionRecoveryBoundary
+        bulkActionsVisible={bulkActionsVisible}
+        onReadDenied={handleReadPermissionDenied}
+        readSurfaceOpen={tasksOpen || metadataOpen}
+        recoverySurface={recoverySurface}
       >
-        {!uploadAvailable && (
-          <span id="documents-upload-unavailable" className="sr-only">
-            {t(($) => $['cornerLabel.unavailable'])}
-          </span>
-        )}
-        <header>
-          <h2
-            ref={documentsTitleRef}
-            id="new-knowledge-documents-title"
-            className="title-xl-semi-bold leading-6 text-text-primary"
-            tabIndex={-1}
-          >
-            {t(($) =>
-              uploadFormOpen ? $['newKnowledge.addDocument'] : $['newKnowledge.documents'],
-            )}
-          </h2>
-          <p className="mt-1 system-xs-regular text-text-tertiary">
-            {t(($) =>
-              uploadFormOpen
-                ? $['newKnowledge.uploadFilesDescription']
-                : $['newKnowledge.documentsDescription'],
-            )}
-          </p>
-          {permissionPending && (
-            <p
-              id="documents-permission-pending"
-              className="mt-2 system-xs-regular text-text-tertiary"
-              role="status"
-            >
-              {t(($) => $['newKnowledge.permission'])}
-              {' · '}
-              {tCommon(($) => $.loading)}
-            </p>
+        <section
+          ref={documentsSectionRef}
+          className={cn(
+            'relative flex min-h-full w-full flex-col gap-4 px-6 pt-3',
+            bulkActionsVisible ? 'pb-[calc(7rem+env(safe-area-inset-bottom,0px))]' : 'pb-6',
           )}
-          {!permissionPending && !permissionQueryError && (!canEdit || writePermissionRevoked) && (
-            <p
-              id="documents-readonly-reason"
-              className="mt-2 inline-flex items-center gap-1.5 system-xs-regular text-text-warning"
-              role="status"
-            >
-              <span aria-hidden className="i-ri-lock-line size-3.5" />
-              {t(($) => $['newKnowledge.documentPermissionRestricted'])}
-            </p>
-          )}
-        </header>
-        <KnowledgeModelReadinessBanner capability="index" knowledgeSpaceId={knowledgeSpaceId} />
-        {permissionQueryError && (
-          <div
-            className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-divider-regular bg-background-section px-3 py-2"
-            role="alert"
-          >
-            <span id="documents-permission-error" className="system-xs-regular text-text-tertiary">
-              {t(($) => $['newKnowledge.permissionLoadFailed'])}
+          onDragEnter={(event) => {
+            const types = Array.from(event.dataTransfer.types ?? [])
+            if (types.length && !types.includes('Files')) return
+            event.preventDefault()
+            if (!canUpload || uploading) return
+            fileDragDepthRef.current += 1
+            setIsFileDragActive(true)
+          }}
+          onDragLeave={() => {
+            if (!fileDragDepthRef.current) return
+            fileDragDepthRef.current -= 1
+            if (!fileDragDepthRef.current) setIsFileDragActive(false)
+          }}
+          onDragOver={(event) => {
+            const types = Array.from(event.dataTransfer.types ?? [])
+            if (types.length && !types.includes('Files')) return
+            event.preventDefault()
+            event.dataTransfer.dropEffect = canUpload && !uploading ? 'copy' : 'none'
+          }}
+          onDrop={(event) => {
+            const types = Array.from(event.dataTransfer.types ?? [])
+            if (types.length && !types.includes('Files')) return
+            event.preventDefault()
+            fileDragDepthRef.current = 0
+            setIsFileDragActive(false)
+            if (!canUpload || uploading) return
+            const files = [...event.dataTransfer.files]
+            if (!files.length) return
+            if (uploadFormOpen) uploadFormRef.current?.addFiles(files)
+            else openUploadForm(files)
+          }}
+        >
+          {!uploadAvailable && (
+            <span id="documents-upload-unavailable" className="sr-only">
+              {t(($) => $['cornerLabel.unavailable'])}
             </span>
-            <Button
-              ref={permissionRetryButtonRef}
-              aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.permissionLoadFailed'])}`}
-              aria-busy={workspacePermissionKeysFetching}
-              loading={workspacePermissionKeysFetching}
-              size="small"
-              onBlur={(event) => {
-                if (event.relatedTarget) mainRetryFocusRequestedRef.current = false
-              }}
-              onClick={() => {
-                mainRetryFocusRequestedRef.current = true
-                void refreshWorkspacePermissions(true)
-              }}
+          )}
+          <header>
+            <h2
+              ref={documentsTitleRef}
+              id="new-knowledge-documents-title"
+              className="title-xl-semi-bold leading-6 text-text-primary"
+              tabIndex={-1}
             >
-              {tCommon(($) => $['operation.retry'])}
-            </Button>
-          </div>
-        )}
-        {documentsQuery.error &&
-          documentsQuery.data &&
-          !permissionDenied &&
-          !documentsQuery.isFetchNextPageError && (
+              {t(($) =>
+                uploadFormOpen ? $['newKnowledge.addDocument'] : $['newKnowledge.documents'],
+              )}
+            </h2>
+            <p className="mt-1 system-xs-regular text-text-tertiary">
+              {t(($) =>
+                uploadFormOpen
+                  ? $['newKnowledge.uploadFilesDescription']
+                  : $['newKnowledge.documentsDescription'],
+              )}
+            </p>
+            {canRead && !canWrite && (
+              <p
+                id="documents-readonly-reason"
+                className="mt-2 inline-flex items-center gap-1.5 system-xs-regular text-text-warning"
+                role="status"
+              >
+                <span aria-hidden className="i-ri-lock-line size-3.5" />
+                {t(($) => $['newKnowledge.documentPermissionRestricted'])}
+              </p>
+            )}
+          </header>
+          <KnowledgeModelReadinessBanner capability="index" knowledgeSpaceId={knowledgeSpaceId} />
+          {documentsQuery.error &&
+            documentsQuery.data &&
+            canRead &&
+            !documentsQuery.isFetchNextPageError && (
+              <div
+                className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-divider-regular bg-background-section px-3 py-2"
+                role="alert"
+              >
+                <span className="system-xs-regular text-text-tertiary">
+                  {t(($) =>
+                    responseStatus(documentsQuery.error) === 403
+                      ? $['newKnowledge.documentsPermissionDescription']
+                      : $['newKnowledge.documentsErrorDescription'],
+                  )}
+                </span>
+                {responseStatus(documentsQuery.error) !== 403 && (
+                  <Button
+                    ref={documentsRetryButtonRef}
+                    aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
+                    aria-busy={documentsQuery.isRefetching}
+                    loading={documentsQuery.isRefetching}
+                    size="small"
+                    onBlur={(event) => {
+                      if (event.relatedTarget) mainRetryFocusRequestedRef.current = false
+                    }}
+                    onClick={() => {
+                      mainRetryFocusRequestedRef.current = true
+                      void refetchDocumentsQuery()
+                    }}
+                  >
+                    {tCommon(($) => $['operation.retry'])}
+                  </Button>
+                )}
+              </div>
+            )}
+          {canRead && !dependencyQueryBlockingError && dependencyQueryWarning && (
             <div
               className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-divider-regular bg-background-section px-3 py-2"
               role="alert"
             >
               <span className="system-xs-regular text-text-tertiary">
-                {t(($) =>
-                  responseStatus(documentsQuery.error) === 403
-                    ? $['newKnowledge.documentsPermissionDescription']
-                    : $['newKnowledge.documentsErrorDescription'],
-                )}
+                {sourcesQuery.error || sourcesQuery.isFetchNextPageError
+                  ? t(($) => $['newKnowledge.sourcesErrorDescription'])
+                  : t(($) => $['newKnowledge.tasksErrorDescription'])}
               </span>
-              {responseStatus(documentsQuery.error) !== 403 && (
-                <Button
-                  ref={documentsRetryButtonRef}
-                  aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
-                  aria-busy={documentsQuery.isRefetching}
-                  loading={documentsQuery.isRefetching}
-                  size="small"
-                  onBlur={(event) => {
-                    if (event.relatedTarget) mainRetryFocusRequestedRef.current = false
-                  }}
-                  onClick={() => {
-                    mainRetryFocusRequestedRef.current = true
-                    void refetchDocumentsQuery()
-                  }}
-                >
-                  {tCommon(($) => $['operation.retry'])}
-                </Button>
-              )}
+              <Button
+                ref={dependencyRetryButtonRef}
+                aria-label={`${tCommon(($) => $['operation.retry'])} · ${
+                  sourcesQuery.error || sourcesQuery.isFetchNextPageError
+                    ? t(($) => $['newKnowledge.sourcesErrorDescription'])
+                    : t(($) => $['newKnowledge.tasksErrorDescription'])
+                }`}
+                aria-busy={dependencyRetryFetching}
+                loading={dependencyRetryFetching}
+                size="small"
+                onBlur={(event) => {
+                  if (event.relatedTarget) mainRetryFocusRequestedRef.current = false
+                }}
+                onClick={() => {
+                  mainRetryFocusRequestedRef.current = true
+                  retryDependencyQueries()
+                }}
+              >
+                {tCommon(($) => $['operation.retry'])}
+              </Button>
             </div>
           )}
-        {!permissionDenied && !dependencyQueryBlockingError && dependencyQueryWarning && (
-          <div
-            className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-divider-regular bg-background-section px-3 py-2"
-            role="alert"
-          >
-            <span className="system-xs-regular text-text-tertiary">
-              {sourcesQuery.error || sourcesQuery.isFetchNextPageError
-                ? t(($) => $['newKnowledge.sourcesErrorDescription'])
-                : t(($) => $['newKnowledge.tasksErrorDescription'])}
-            </span>
-            <Button
-              ref={dependencyRetryButtonRef}
-              aria-label={`${tCommon(($) => $['operation.retry'])} · ${
-                sourcesQuery.error || sourcesQuery.isFetchNextPageError
-                  ? t(($) => $['newKnowledge.sourcesErrorDescription'])
-                  : t(($) => $['newKnowledge.tasksErrorDescription'])
-              }`}
-              aria-busy={dependencyRetryFetching}
-              loading={dependencyRetryFetching}
-              size="small"
-              onBlur={(event) => {
-                if (event.relatedTarget) mainRetryFocusRequestedRef.current = false
-              }}
-              onClick={() => {
-                mainRetryFocusRequestedRef.current = true
-                retryDependencyQueries()
-              }}
+          {documentsQuery.isPending && canRead ? (
+            <div className="flex min-h-64 flex-1 items-center justify-center">
+              <Loading />
+            </div>
+          ) : !canRead ? (
+            <DocumentReadPermissionRecovery
+              fetching={documentsQuery.isFetching}
+              recoverySurface={recoverySurface}
+            />
+          ) : documentsQuery.error && !documentsQuery.data ? (
+            <div
+              className="flex min-h-64 flex-1 flex-col items-center justify-center px-6 text-center"
+              role="alert"
             >
-              {tCommon(($) => $['operation.retry'])}
-            </Button>
-          </div>
-        )}
-        {documentsQuery.isPending && !permissionDenied ? (
-          <div className="flex min-h-64 flex-1 items-center justify-center">
-            <Loading />
-          </div>
-        ) : permissionDenied || (documentsQuery.error && !documentsQuery.data) ? (
-          <div
-            ref={documentPermissionAlertRef}
-            className="flex min-h-64 flex-1 flex-col items-center justify-center px-6 text-center"
-            role="alert"
-            tabIndex={permissionDenied ? -1 : undefined}
-          >
-            <span aria-hidden className="i-ri-error-warning-line size-7 text-text-tertiary" />
-            <h2 className="mt-3 title-xl-semi-bold text-text-primary">
-              {t(($) =>
-                permissionDenied
-                  ? $['newKnowledge.documentsPermissionTitle']
-                  : $['newKnowledge.documentsErrorTitle'],
-              )}
-            </h2>
-            <p className="mt-2 max-w-md body-sm-regular text-text-tertiary">
-              {t(($) =>
-                permissionDenied
-                  ? $['newKnowledge.documentsPermissionDescription']
-                  : $['newKnowledge.documentsErrorDescription'],
-              )}
-            </p>
-            {(!permissionDenied ||
-              (auxiliaryReadPermissionDenied && !documentPermissionDenied)) && (
+              <span aria-hidden className="i-ri-error-warning-line size-7 text-text-tertiary" />
+              <h2 className="mt-3 title-xl-semi-bold text-text-primary">
+                {t(($) => $['newKnowledge.documentsErrorTitle'])}
+              </h2>
+              <p className="mt-2 max-w-md body-sm-regular text-text-tertiary">
+                {t(($) => $['newKnowledge.documentsErrorDescription'])}
+              </p>
               <Button
                 ref={documentsRetryButtonRef}
-                aria-label={`${tCommon(($) => $['operation.retry'])} · ${documentsRecoveryDescription}`}
+                aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
                 aria-busy={documentsQuery.isFetching}
                 className="mt-4"
                 loading={documentsQuery.isFetching}
@@ -1649,169 +1390,163 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                 }}
                 onClick={() => {
                   mainRetryFocusRequestedRef.current = true
-                  if (auxiliaryReadPermissionDenied) retryAuxiliaryTaskRead()
-                  else void refetchDocumentsQuery()
+                  void refetchDocumentsQuery()
                 }}
               >
                 {tCommon(($) => $['operation.retry'])}
               </Button>
-            )}
-          </div>
-        ) : dependencyQueryBlockingError ? (
-          <div
-            className="flex min-h-64 flex-1 flex-col items-center justify-center px-6 text-center"
-            role="alert"
-          >
-            <span aria-hidden className="i-ri-error-warning-line size-7 text-text-tertiary" />
-            <p className="mt-3 max-w-md body-sm-regular text-text-tertiary">
-              {taskQueryBlockingError
-                ? t(($) => $['newKnowledge.tasksErrorDescription'])
-                : t(($) => $['newKnowledge.sourcesErrorDescription'])}
-            </p>
-            <Button
-              ref={dependencyRetryButtonRef}
-              aria-label={`${tCommon(($) => $['operation.retry'])} · ${
-                taskQueryBlockingError
-                  ? t(($) => $['newKnowledge.tasksErrorDescription'])
-                  : t(($) => $['newKnowledge.sourcesErrorDescription'])
-              }`}
-              aria-busy={blockingDependencyRetryFetching}
-              className="mt-4"
-              loading={blockingDependencyRetryFetching}
-              onBlur={(event) => {
-                if (event.relatedTarget) mainRetryFocusRequestedRef.current = false
-              }}
-              onClick={() => {
-                mainRetryFocusRequestedRef.current = true
-                retryDependencyQueries()
-              }}
+            </div>
+          ) : dependencyQueryBlockingError ? (
+            <div
+              className="flex min-h-64 flex-1 flex-col items-center justify-center px-6 text-center"
+              role="alert"
             >
-              {tCommon(($) => $['operation.retry'])}
-            </Button>
-          </div>
-        ) : uploadFormOpen ? (
-          <DocumentUploadForm
-            ref={uploadFormRef}
-            fileSizeLimitMb={fileSizeLimitMb}
-            initialFiles={uploadFormInitialFiles}
-            uploadProgress={stagedUploadProgress}
-            uploading={uploading}
-            onCancel={cancelUploadForm}
-            onFilesAdded={async (files) => {
-              try {
-                await stageFiles(files)
-              } catch (error) {
-                if (error instanceof DocumentStagingCanceledError) return
-                toast.error(t(($) => $['newKnowledge.documentUploadFailed']))
-                throw error
+              <span aria-hidden className="i-ri-error-warning-line size-7 text-text-tertiary" />
+              <p className="mt-3 max-w-md body-sm-regular text-text-tertiary">
+                {taskQueryBlockingError
+                  ? t(($) => $['newKnowledge.tasksErrorDescription'])
+                  : t(($) => $['newKnowledge.sourcesErrorDescription'])}
+              </p>
+              <Button
+                ref={dependencyRetryButtonRef}
+                aria-label={`${tCommon(($) => $['operation.retry'])} · ${
+                  taskQueryBlockingError
+                    ? t(($) => $['newKnowledge.tasksErrorDescription'])
+                    : t(($) => $['newKnowledge.sourcesErrorDescription'])
+                }`}
+                aria-busy={blockingDependencyRetryFetching}
+                className="mt-4"
+                loading={blockingDependencyRetryFetching}
+                onBlur={(event) => {
+                  if (event.relatedTarget) mainRetryFocusRequestedRef.current = false
+                }}
+                onClick={() => {
+                  mainRetryFocusRequestedRef.current = true
+                  retryDependencyQueries()
+                }}
+              >
+                {tCommon(($) => $['operation.retry'])}
+              </Button>
+            </div>
+          ) : uploadFormOpen ? (
+            <DocumentUploadForm
+              ref={uploadFormRef}
+              fileSizeLimitMb={fileSizeLimitMb}
+              initialFiles={uploadFormInitialFiles}
+              uploadProgress={stagedUploadProgress}
+              uploading={uploading}
+              onCancel={cancelUploadForm}
+              onFilesAdded={async (files) => {
+                try {
+                  await stageFiles(files)
+                } catch (error) {
+                  if (error instanceof DocumentStagingCanceledError) return
+                  toast.error(t(($) => $['newKnowledge.documentUploadFailed']))
+                  throw error
+                }
+              }}
+              onFileRemoved={discardStagedFile}
+              onSubmit={async (files) => {
+                const uploaded = await handleUploadFiles(files)
+                if (uploaded) closeUploadForm()
+                return uploaded
+              }}
+            />
+          ) : !documents.length ? (
+            <DocumentsEmpty
+              canEdit={canUpload}
+              onAddDocument={() => openUploadForm()}
+              onOpenMetadata={() => setMetadataOpen(true)}
+              readOnlyReasonId={documentUploadRestrictionReasonId}
+              uploading={uploading}
+            />
+          ) : (
+            <DocumentsList
+              activeTaskCount={activeTasks.length}
+              allSelected={allFilteredSelected}
+              attentionTaskBadge={attentionTaskBadge}
+              canDownload={canDownload}
+              canEdit={canWrite}
+              canUpload={canUpload}
+              completingResults={completingFilteredResults}
+              documents={filteredDocuments}
+              failureReasons={documentFailureReasons}
+              filter={filter}
+              getDocumentHref={(documentId) =>
+                newKnowledgeDocumentDetailPath(knowledgeSpaceId, documentId)
               }
-            }}
-            onFileRemoved={discardStagedFile}
-            onSubmit={async (files) => {
-              writePermissionFocusRecoveryRequestedRef.current = true
-              writePermissionFocusOriginRef.current = document.activeElement as HTMLElement | null
-              const uploaded = await handleUploadFiles(files)
-              if (uploaded) closeUploadForm()
-              return uploaded
-            }}
-          />
-        ) : !documents.length ? (
-          <DocumentsEmpty
-            canEdit={canUpload}
-            onAddDocument={() => openUploadForm()}
-            onOpenMetadata={() => setMetadataOpen(true)}
-            readOnlyReasonId={documentUploadRestrictionReasonId}
-            uploading={uploading}
-          />
-        ) : (
-          <DocumentsList
-            activeTaskCount={activeTasks.length}
-            allSelected={allFilteredSelected}
-            attentionTaskBadge={attentionTaskBadge}
-            canDownload={canDownload}
-            canEdit={canWrite}
-            canUpload={canUpload}
-            completingResults={completingFilteredResults}
-            documents={filteredDocuments}
-            failureReasons={documentFailureReasons}
-            filter={filter}
-            getDocumentHref={(documentId) =>
-              newKnowledgeDocumentDetailPath(knowledgeSpaceId, documentId)
-            }
-            hasNextPage={Boolean(hasNextDocumentPage || hasRelevantNextSourcePage)}
-            hasSelectableDocuments={Boolean(selectableFilteredDocuments.length)}
-            hasTaskError={hasTaskError}
-            isFetchNextPageError={documentsQuery.isFetchNextPageError}
-            isFetchingNextDocumentPage={isFetchingNextDocumentPage}
-            isFetchingNextPage={isFetchingNextResultsPage}
-            onAddDocument={() => openUploadForm()}
-            onFilterChange={setFilter}
-            onLoadMore={loadMoreResults}
-            onDownloadDocument={handleDownloadDocument}
-            onOpenMetadata={() => setMetadataOpen(true)}
-            onOpenTasks={() => setTasksOpen(true)}
-            onRemoveDocument={handleRemoveDocument}
-            onRenameDocument={handleRenameDocument}
-            onReindexDocument={(documentId) => void handleReindexDocument(documentId)}
-            onRetryDocument={handleRetryDocument}
-            onSearchChange={setSearch}
-            onSelectAll={toggleAllFiltered}
-            onSelectDocument={toggleDocument}
-            onToggleDocumentAvailability={handleToggleDocumentAvailability}
-            pendingDocumentAction={pendingDocumentAction}
-            readOnlyReasonId={documentWriteRestrictionReasonId}
-            resultsIncomplete={filteredResultsIncomplete}
-            retryableDocumentIds={retryableDocumentIds}
-            search={search}
-            selectionDisabled={selectionDisabled}
-            selectedDocumentIds={validSelectedDocumentIds}
-            showTasks={Boolean(
-              tasks.length ||
-              tasksQuery.error ||
-              tasksQuery.isFetchNextPageError ||
-              hasNextTaskPage,
-            )}
-            someSelected={someFilteredSelected}
-            sourcesPending={sourceResultsIncomplete}
-            sourceNames={sourceNames}
-            statusPending={dependencyResultsIncomplete}
-            statuses={documentStatuses}
-            tasksPending={taskResultsIncomplete}
-            tasksButtonLabel={tasksButtonLabel}
-            tasksLiveStatus={tasksLiveStatus}
-            uploadRestrictionReasonId={documentUploadRestrictionReasonId}
-            uploading={uploading}
-          />
-        )}
-        {isFileDragActive && canUpload && <DocumentDropOverlay fileSizeLimitMb={fileSizeLimitMb} />}
-      </section>
-      {bulkActionsVisible && (
-        <DocumentBulkActions
-          actionPending={bulkActionPending}
-          availabilityDisabled={availabilityDisabled}
-          availabilityTargetEnabled={availabilityTargetEnabled}
-          disabled={selectionDisabled}
-          disabledReason={reindexUnavailableReason}
-          downloadDisabled={!canDownload || !downloadableSelectedDocumentIds.length}
-          onClear={() => setSelectedDocumentIds(new Set())}
-          onDownload={() => void handleDownloadDocuments()}
-          onBlurCapture={(event) => {
-            if (!event.currentTarget.contains(event.relatedTarget as Node | null))
-              bulkActionsHadFocusRef.current = false
-          }}
-          onFocusCapture={() => {
-            bulkActionsHadFocusRef.current = true
-          }}
-          onReindex={() => void handleReindexDocuments()}
-          onRemove={handleRemoveDocuments}
-          onUpdateAvailability={() => void handleUpdateDocumentsAvailability()}
-          reindexDisabled={bulkReindexDisabled}
-          selectedCount={validSelectedDocumentIds.size}
-          showAvailabilityAction={bulkAvailabilityActionVisible}
-        />
-      )}
+              hasNextPage={Boolean(hasNextDocumentPage || hasRelevantNextSourcePage)}
+              hasSelectableDocuments={Boolean(selectableFilteredDocuments.length)}
+              hasTaskError={hasTaskError}
+              isFetchNextPageError={documentsQuery.isFetchNextPageError}
+              isFetchingNextDocumentPage={isFetchingNextDocumentPage}
+              isFetchingNextPage={isFetchingNextResultsPage}
+              onAddDocument={() => openUploadForm()}
+              onFilterChange={setFilter}
+              onLoadMore={loadMoreResults}
+              onDownloadDocument={handleDownloadDocument}
+              onOpenMetadata={() => setMetadataOpen(true)}
+              onOpenTasks={() => setTasksOpen(true)}
+              onRemoveDocument={handleRemoveDocument}
+              onRenameDocument={handleRenameDocument}
+              onReindexDocument={(documentId) => void handleReindexDocument(documentId)}
+              onRetryDocument={handleRetryDocument}
+              onSearchChange={setSearch}
+              onSelectAll={toggleAllFiltered}
+              onSelectDocument={toggleDocument}
+              onToggleDocumentAvailability={handleToggleDocumentAvailability}
+              pendingDocumentAction={pendingDocumentAction}
+              readOnlyReasonId={documentWriteRestrictionReasonId}
+              resultsIncomplete={filteredResultsIncomplete}
+              retryableDocumentIds={retryableDocumentIds}
+              search={search}
+              selectionDisabled={selectionDisabled}
+              selectedDocumentIds={validSelectedDocumentIds}
+              showTasks={Boolean(
+                tasks.length ||
+                tasksQuery.error ||
+                tasksQuery.isFetchNextPageError ||
+                hasNextTaskPage,
+              )}
+              someSelected={someFilteredSelected}
+              sourcesPending={sourceResultsIncomplete}
+              sourceNames={sourceNames}
+              statusPending={dependencyResultsIncomplete}
+              statuses={documentStatuses}
+              tasksPending={taskResultsIncomplete}
+              tasksButtonLabel={tasksButtonLabel}
+              tasksLiveStatus={tasksLiveStatus}
+              uploadRestrictionReasonId={documentUploadRestrictionReasonId}
+              uploading={uploading}
+            />
+          )}
+          {isFileDragActive && canUpload && (
+            <DocumentDropOverlay fileSizeLimitMb={fileSizeLimitMb} />
+          )}
+        </section>
+        <DocumentPermissionRecoveryBulkRegion>
+          {bulkActionsVisible && (
+            <DocumentBulkActions
+              actionPending={bulkActionPending}
+              availabilityDisabled={availabilityDisabled}
+              availabilityTargetEnabled={availabilityTargetEnabled}
+              disabled={selectionDisabled}
+              disabledReason={reindexUnavailableReason}
+              downloadDisabled={!canDownload || !downloadableSelectedDocumentIds.length}
+              onClear={() => setSelectedDocumentIds(new Set())}
+              onDownload={() => void handleDownloadDocuments()}
+              onReindex={() => void handleReindexDocuments()}
+              onRemove={handleRemoveDocuments}
+              onUpdateAvailability={() => void handleUpdateDocumentsAvailability()}
+              reindexDisabled={bulkReindexDisabled}
+              selectedCount={validSelectedDocumentIds.size}
+              showAvailabilityAction={bulkAvailabilityActionVisible}
+            />
+          )}
+        </DocumentPermissionRecoveryBulkRegion>
+      </DocumentPermissionRecoveryBoundary>
       <ProcessingTasksDrawer
-        actionResultsValid={!permissionDenied}
+        actionResultsValid={canRead}
         canEdit={canWrite}
         documentQueryError={Boolean(documentsQuery.error || documentsQuery.isFetchNextPageError)}
         documentQueryFetching={documentsQuery.isFetching}
@@ -1827,7 +1562,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         onLoadMoreTasks={() => void fetchNextTaskPage()}
         onOpenChange={setTasksOpen}
         onRefreshDocumentsAndTasks={refreshDocumentsAndTasks}
-        onRetryPermissionQuery={() => void refreshWorkspacePermissions(true)}
+        onRetryPermissionQuery={() => void retryWorkspacePermission()}
         onRetryDocumentQuery={() => {
           if (documentsQuery.isFetchNextPageError) void documentsQuery.fetchNextPage()
           else void refetchDocumentsQuery()
@@ -1838,14 +1573,12 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         }}
         onTaskUpdated={handleTaskUpdated}
         onWritePermissionDenied={handleWritePermissionDenied}
-        open={tasksOpen && !permissionDenied}
-        permissionQueryError={permissionQueryError}
-        permissionQueryFetching={workspacePermissionKeysFetching}
-        permissionQueryPending={permissionPending}
+        open={tasksOpen && canRead}
+        permissionQueryError={false}
+        permissionQueryFetching={workspacePermissionRefreshing}
+        permissionQueryPending={false}
         readOnlyReason={
-          writePermissionRevoked || (!permissionPending && !permissionQueryError && !canEdit)
-            ? t(($) => $['newKnowledge.documentPermissionRestricted'])
-            : undefined
+          canWrite ? undefined : t(($) => $['newKnowledge.documentPermissionRestricted'])
         }
         sourceNames={sourceNames}
         taskQueryPending={tasksQuery.isPending}
@@ -1857,7 +1590,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       <DocumentMetadataDrawer
         knowledgeSpaceId={knowledgeSpaceId}
         onOpenChange={setMetadataOpen}
-        open={metadataOpen && !permissionDenied}
+        open={metadataOpen && canRead}
         readOnly={!canWrite}
       />
       <KnowledgeModelSetupDialog
