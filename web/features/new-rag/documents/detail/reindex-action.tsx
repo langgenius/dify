@@ -2,8 +2,8 @@
 
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useMutation } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { KnowledgeModelSetupDialog } from '../../components/knowledge-model-setup-dialog'
 import { useKnowledgeModelSetupGuard } from '../../use-knowledge-model-setup-guard'
@@ -37,8 +37,6 @@ export function DocumentReindexAction() {
   const cancelReindex = useSetAtom(cancelDocumentReindexAtom)
   const reindexDocument = useSetAtom(reindexDocumentAtom)
   const refreshWritePermission = useRefreshDocumentWritePermission()
-  const [guardBusy, setGuardBusy] = useState(false)
-  const guardPendingRef = useRef(false)
   const {
     configureModelSetup,
     ensureModelReady,
@@ -46,26 +44,19 @@ export function DocumentReindexAction() {
     modelSetupDialogOpen,
     setModelSetupDialogOpen,
   } = useKnowledgeModelSetupGuard(knowledgeSpaceId)
-
-  const startReindex = async () => {
-    if (guardPendingRef.current) return
-    guardPendingRef.current = true
-    setGuardBusy(true)
-    try {
+  const startReindexMutation = useMutation({
+    mutationFn: async () => {
       const readiness = await ensureModelReady({ capability: 'index', intent: 'reindex' })
-      if (readiness.status === 'ready') {
-        const result = await reindexDocument(refreshWritePermission)
-        if (result === 'started') toast.success(t(($) => $['newKnowledge.documentsReindexStarted']))
-        else if (result === 'document-missing')
-          toast.error(t(($) => $['newKnowledge.documentNotFoundTitle']))
-        else if (result === 'failed')
-          toast.error(t(($) => $['newKnowledge.documentsReindexFailed']))
-      }
-    } finally {
-      guardPendingRef.current = false
-      setGuardBusy(false)
-    }
-  }
+      return readiness.status === 'ready' ? reindexDocument(refreshWritePermission) : undefined
+    },
+    onSuccess: (result) => {
+      if (result === 'started') toast.success(t(($) => $['newKnowledge.documentsReindexStarted']))
+      else if (result === 'document-missing')
+        toast.error(t(($) => $['newKnowledge.documentNotFoundTitle']))
+      else if (result === 'failed') toast.error(t(($) => $['newKnowledge.documentsReindexFailed']))
+    },
+  })
+  const guardBusy = startReindexMutation.isPending
 
   const stopReindex = async () => {
     const result = await cancelReindex(refreshWritePermission)
@@ -80,7 +71,7 @@ export function DocumentReindexAction() {
         className="gap-1 pl-3"
         disabled={inProgress ? !canCancel : disabled || guardBusy}
         loading={inProgress ? cancelBusy : guardBusy || reindexing}
-        onClick={() => void (inProgress ? stopReindex() : startReindex())}
+        onClick={() => void (inProgress ? stopReindex() : startReindexMutation.mutate())}
       >
         {!inProgress && <span aria-hidden className="i-ri-refresh-line size-4" />}
         {t(($) =>
