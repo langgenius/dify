@@ -61,7 +61,6 @@ import {
   sourceConnectionListFromApi,
   sourceProviderListFromApi,
 } from '../source-models'
-import { AddSourceExitDialog } from './components/exit-dialog'
 import { ConnectedSourceWorkflow } from './connected-source-workflow'
 import { WebsiteCrawlPreview } from './website-crawl-preview'
 
@@ -259,7 +258,6 @@ function ConnectionForm({
   datasourceProvider,
   knowledgeSpaceId,
   onConnected,
-  onDraftChange,
   onReconcile,
   provider,
   providerName,
@@ -268,7 +266,6 @@ function ConnectionForm({
   datasourceProvider: WebsiteDatasourceProvider
   knowledgeSpaceId: string
   onConnected: (connection: Connection) => void
-  onDraftChange: (dirty: boolean) => void
   onReconcile: () => Promise<Connection | undefined>
   provider: Provider
   providerName: string
@@ -287,16 +284,6 @@ function ConnectionForm({
   const visibleFields = configurableFields.filter(
     (field) => authKind === 'api-key' || (!field.secret && field.format === 'uri'),
   )
-  const hasDraftChanges =
-    authKind !== (supportedAuthKinds[0] ?? 'api-key') ||
-    Object.values(configuration).some((value) => Boolean(value.trim())) ||
-    Object.values(credentials).some((value) => Boolean(value.trim()))
-
-  useEffect(() => {
-    onDraftChange(hasDraftChanges)
-    return () => onDraftChange(false)
-  }, [hasDraftChanges, onDraftChange])
-
   const changeAuthKind = (nextAuthKind: ConnectionAuthKind) => {
     if (nextAuthKind !== authKind) setCredentials({})
     setAuthKind(nextAuthKind)
@@ -351,7 +338,6 @@ function ConnectionForm({
         }),
       )
       setCredentials({})
-      onDraftChange(false)
       onConnected(createdConnection)
     } catch {
       setCredentials({})
@@ -534,7 +520,6 @@ function UnconfiguredProvider({
   knowledgeSpaceId,
   onConnected,
   onConfigureManagedProvider,
-  onDraftChange,
   onReconcile,
   provider,
   providerOption,
@@ -545,7 +530,6 @@ function UnconfiguredProvider({
   knowledgeSpaceId: string
   onConnected: (connection: Connection) => void
   onConfigureManagedProvider: () => void
-  onDraftChange: (dirty: boolean) => void
   onReconcile: () => Promise<Connection | undefined>
   provider: Provider
   providerOption: InstalledSourceProviderOption
@@ -575,7 +559,6 @@ function UnconfiguredProvider({
         datasourceProvider={datasourceProvider}
         knowledgeSpaceId={knowledgeSpaceId}
         onConnected={onConnected}
-        onDraftChange={onDraftChange}
         onReconcile={onReconcile}
         provider={provider}
         providerName={providerName}
@@ -775,25 +758,8 @@ function AddSourcePageContent({
       ),
   )
   const [sourceDraft, setSourceDraft] = useState<NewKnowledgeSourceDraft>(initialDraftRef.current)
-  const sourceDraftBaselineRef = useRef(
-    JSON.stringify(
-      initialSourceProvider && !initialSourceDraft
-        ? initialDraftRef.current
-        : createNewKnowledgeSourceDraft(initialDraftRef.current.sourceType),
-    ),
-  )
   const [sourceDraftResolved, setSourceDraftResolved] = useState(!sourceDraftKey)
-  const [connectionDraftDirty, setConnectionDraftDirty] = useState(false)
-  const [exitOpen, setExitOpen] = useState(false)
-  const [discarding, setDiscarding] = useState(false)
-  const [discardError, setDiscardError] = useState(false)
   const [websiteSetupLocked, setWebsiteSetupLocked] = useState(false)
-  const [historyGuardReleaseVersion, setHistoryGuardReleaseVersion] = useState(0)
-  const historyGuardArmedRef = useRef(false)
-  const historyGuardReleaseRef = useRef(false)
-  const browserBackExitRef = useRef(false)
-  const pendingNavigationRef = useRef<string | undefined>(undefined)
-  const exitDestinationRef = useRef(newKnowledgeDetailPath(knowledgeSpaceId))
   const sourceDraftsRef = useRef<
     Partial<Record<NewKnowledgeSourceDraft['sourceType'], NewKnowledgeSourceDraft>>
   >({ [sourceDraft.sourceType]: sourceDraft })
@@ -1039,168 +1005,10 @@ function AddSourcePageContent({
     supportsDirectConnection &&
     activeConnection,
   )
-  const websitePreviewReady =
-    sourceDraftResolved &&
-    websiteReady &&
-    !historyGuardArmedRef.current &&
-    !historyGuardReleaseRef.current
-  const hasUnsavedChanges =
-    sourceDraftResolved &&
-    !websiteReady &&
-    (connectionDraftDirty || JSON.stringify(sourceDraft) !== sourceDraftBaselineRef.current)
-  const armHistoryGuard = useCallback(() => {
-    globalThis.history.pushState(globalThis.history.state, '', globalThis.location.href)
-    historyGuardArmedRef.current = true
-  }, [])
-  const replaceAfterHistoryGuard = useCallback(
-    (path: string) => {
-      if (!historyGuardArmedRef.current) {
-        router.replace(path)
-        return
-      }
-      pendingNavigationRef.current = path
-      globalThis.history.back()
-    },
-    [router],
-  )
-  const requestNavigation = useCallback(
-    (path: string) => {
-      if (discarding) return
-      if (hasUnsavedChanges) {
-        exitDestinationRef.current = path
-        browserBackExitRef.current = false
-        setDiscardError(false)
-        setExitOpen(true)
-        return
-      }
-      clearStoredSourceDraft()
-      replaceAfterHistoryGuard(path)
-    },
-    [clearStoredSourceDraft, discarding, hasUnsavedChanges, replaceAfterHistoryGuard],
-  )
-
-  useEffect(() => {
-    if (
-      !hasUnsavedChanges ||
-      historyGuardArmedRef.current ||
-      browserBackExitRef.current ||
-      pendingNavigationRef.current
-    )
-      return
-    armHistoryGuard()
-  }, [armHistoryGuard, hasUnsavedChanges])
-
-  useEffect(() => {
-    const handlePopState = () => {
-      if (!historyGuardArmedRef.current) return
-      historyGuardArmedRef.current = false
-      if (historyGuardReleaseRef.current) {
-        historyGuardReleaseRef.current = false
-        setHistoryGuardReleaseVersion((version) => version + 1)
-        return
-      }
-      const pendingNavigation = pendingNavigationRef.current
-      if (pendingNavigation) {
-        pendingNavigationRef.current = undefined
-        router.replace(pendingNavigation)
-        return
-      }
-      if (!hasUnsavedChanges) {
-        clearStoredSourceDraft()
-        router.replace(detailPath)
-        return
-      }
-      browserBackExitRef.current = true
-      exitDestinationRef.current = detailPath
-      setDiscardError(false)
-      setExitOpen(true)
-    }
-
-    globalThis.addEventListener('popstate', handlePopState)
-    return () => globalThis.removeEventListener('popstate', handlePopState)
-  }, [clearStoredSourceDraft, detailPath, hasUnsavedChanges, router])
-
-  useEffect(() => {
-    if (
-      !websiteReady ||
-      !historyGuardArmedRef.current ||
-      historyGuardReleaseRef.current ||
-      pendingNavigationRef.current
-    )
-      return
-    historyGuardReleaseRef.current = true
-    globalThis.history.back()
-  }, [websiteReady])
-
-  useEffect(() => {
-    if (!hasUnsavedChanges) return
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault()
-      event.returnValue = ''
-    }
-    globalThis.addEventListener('beforeunload', handleBeforeUnload)
-    return () => globalThis.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [hasUnsavedChanges])
-
-  useEffect(() => {
-    if (!hasUnsavedChanges) return
-    const handleDocumentClick = (event: MouseEvent) => {
-      if (
-        event.defaultPrevented ||
-        event.button !== 0 ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.shiftKey ||
-        event.altKey
-      )
-        return
-      const anchor = event
-        .composedPath()
-        .find((target): target is HTMLAnchorElement => target instanceof HTMLAnchorElement)
-      if (
-        !anchor ||
-        anchor.hasAttribute('download') ||
-        (anchor.target && anchor.target !== '_self')
-      )
-        return
-      const destination = new URL(anchor.href, globalThis.location.href)
-      if (destination.origin !== globalThis.location.origin) return
-      const current = new URL(globalThis.location.href)
-      if (destination.pathname === current.pathname && destination.search === current.search) return
-      event.preventDefault()
-      requestNavigation(`${destination.pathname}${destination.search}${destination.hash}`)
-    }
-
-    document.addEventListener('click', handleDocumentClick, true)
-    return () => document.removeEventListener('click', handleDocumentClick, true)
-  }, [hasUnsavedChanges, requestNavigation])
-
-  const requestExit = () => requestNavigation(detailPath)
-  const cancelExit = () => {
-    setExitOpen(false)
-    setDiscardError(false)
-    if (!browserBackExitRef.current) return
-    browserBackExitRef.current = false
-    armHistoryGuard()
-  }
-  const confirmExit = () => {
-    if (discarding) return
-    setDiscarding(true)
-    setDiscardError(false)
-    try {
-      clearStoredSourceDraft()
-      sourceDraftBaselineRef.current = JSON.stringify(sourceDraft)
-      setConnectionDraftDirty(false)
-      setExitOpen(false)
-      browserBackExitRef.current = false
-      const destination = exitDestinationRef.current
-      exitDestinationRef.current = detailPath
-      replaceAfterHistoryGuard(destination)
-    } catch {
-      setDiscardError(true)
-    } finally {
-      setDiscarding(false)
-    }
+  const websitePreviewReady = sourceDraftResolved && websiteReady
+  const requestExit = () => {
+    clearStoredSourceDraft()
+    router.replace(detailPath)
   }
 
   if (
@@ -1308,7 +1116,7 @@ function AddSourcePageContent({
                 </div>
               ) : activeConnection && websitePreviewReady ? (
                 <WebsiteCrawlPreview
-                  key={`${historyGuardReleaseVersion}:${datasourceProvider.key}:${activeConnection.id}`}
+                  key={`${datasourceProvider.key}:${activeConnection.id}`}
                   connection={activeConnection}
                   initialDraft={sourceDraft}
                   knowledgeSpaceId={knowledgeSpaceId}
@@ -1357,7 +1165,6 @@ function AddSourcePageContent({
                       'noopener,noreferrer',
                     )
                   }
-                  onDraftChange={setConnectionDraftDirty}
                   onReconcile={reconcileConnection}
                   provider={provider}
                   providerOption={datasourceProvider}
@@ -1371,14 +1178,11 @@ function AddSourcePageContent({
               knowledgeSpaceId={knowledgeSpaceId}
               onCompleted={() => {
                 clearStoredSourceDraft()
-                sourceDraftBaselineRef.current = JSON.stringify(sourceDraft)
-                setConnectionDraftDirty(false)
-                replaceAfterHistoryGuard(detailPath)
+                router.replace(detailPath)
               }}
               onDraftChange={(draft) => {
                 updateSourceDraft(draft)
               }}
-              onDirtyChange={setConnectionDraftDirty}
               onExit={requestExit}
             />
           )}
@@ -1409,13 +1213,6 @@ function AddSourcePageContent({
           )}
         </div>
       </main>
-      <AddSourceExitDialog
-        discarding={discarding}
-        error={discardError}
-        onCancel={cancelExit}
-        onConfirm={confirmExit}
-        open={exitOpen}
-      />
     </>
   )
 }

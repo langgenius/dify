@@ -1,18 +1,8 @@
 import { atom } from 'jotai'
 
-const basicDraftActiveAtom = atom(false)
-const retrievalDraftActiveAtom = atom(false)
 const pendingSaveOwnersAtom = atom<Set<string>>(new globalThis.Set<string>())
 
-export const knowledgeSettingsScopedAtoms = [
-  basicDraftActiveAtom,
-  retrievalDraftActiveAtom,
-  pendingSaveOwnersAtom,
-] as const
-
-export const knowledgeSettingsHasUnsavedWorkAtom = atom(
-  (get) => get(basicDraftActiveAtom) || get(retrievalDraftActiveAtom),
-)
+export const knowledgeSettingsScopedAtoms = [pendingSaveOwnersAtom] as const
 
 export const knowledgeSettingsHasPendingSaveAtom = atom(
   (get) => get(pendingSaveOwnersAtom).size > 0,
@@ -29,19 +19,3 @@ export const setKnowledgeSettingsSavePendingAtom = atom(
     })
   },
 )
-
-export const startKnowledgeSettingsBasicDraftAtom = atom(null, (_get, set) => {
-  set(basicDraftActiveAtom, true)
-})
-
-export const finishKnowledgeSettingsBasicDraftAtom = atom(null, (_get, set) => {
-  set(basicDraftActiveAtom, false)
-})
-
-export const startKnowledgeSettingsRetrievalDraftAtom = atom(null, (_get, set) => {
-  set(retrievalDraftActiveAtom, true)
-})
-
-export const finishKnowledgeSettingsRetrievalDraftAtom = atom(null, (_get, set) => {
-  set(retrievalDraftActiveAtom, false)
-})

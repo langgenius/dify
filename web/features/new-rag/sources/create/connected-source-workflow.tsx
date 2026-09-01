@@ -513,7 +513,6 @@ function ResourceConfiguration({
   knowledgeSpaceId,
   onCompleted,
   onDraftChange,
-  onDirtyChange,
   onExit,
   parameters,
   provider,
@@ -524,7 +523,6 @@ function ResourceConfiguration({
   knowledgeSpaceId: string
   onCompleted: () => void
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
-  onDirtyChange: (dirty: boolean) => void
   onExit: () => void
   parameters: DatasourceParameters
   provider: SourceProvider
@@ -569,10 +567,6 @@ function ResourceConfiguration({
     },
     [],
   )
-
-  useEffect(() => {
-    onDirtyChange(selected.size > 0)
-  }, [onDirtyChange, selected.size])
 
   useEffect(() => {
     let active = true
@@ -1165,7 +1159,6 @@ function ResourceConfiguration({
     setSubmitError(false)
     const completeSubmission = async () => {
       committedRef.current = true
-      onDirtyChange(false)
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
@@ -1431,7 +1424,6 @@ function AppliedResourceConfiguration({
   knowledgeSpaceId,
   onCompleted,
   onDraftChange,
-  onDirtyChange,
   onExit,
   parameters,
   parametersValid,
@@ -1444,7 +1436,6 @@ function AppliedResourceConfiguration({
   knowledgeSpaceId: string
   onCompleted: () => void
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
-  onDirtyChange: (dirty: boolean) => void
   onExit: () => void
   parameters: DatasourceParameters
   parametersValid: boolean
@@ -1492,7 +1483,6 @@ function AppliedResourceConfiguration({
           knowledgeSpaceId={knowledgeSpaceId}
           onCompleted={onCompleted}
           onDraftChange={onDraftChange}
-          onDirtyChange={onDirtyChange}
           onExit={onExit}
           parameters={appliedParameters}
           provider={provider}
@@ -1508,14 +1498,12 @@ export function ConnectedSourceWorkflow({
   knowledgeSpaceId,
   onCompleted,
   onDraftChange,
-  onDirtyChange,
   onExit,
 }: {
   draft: ConnectedSourceDraft
   knowledgeSpaceId: string
   onCompleted: () => void
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
-  onDirtyChange: (dirty: boolean) => void
   onExit: () => void
 }) {
   const { t } = useTranslation('dataset')
@@ -1822,7 +1810,6 @@ export function ConnectedSourceWorkflow({
           knowledgeSpaceId={knowledgeSpaceId}
           onCompleted={onCompleted}
           onDraftChange={onDraftChange}
-          onDirtyChange={onDirtyChange}
           onExit={onExit}
           parameters={parameters}
           parametersValid={parametersValid}

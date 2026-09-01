@@ -31,11 +31,7 @@ import {
   knowledgeSettingsPermissionsAtom,
   knowledgeSettingsSpaceAtom,
 } from './state/queries'
-import {
-  finishKnowledgeSettingsBasicDraftAtom,
-  setKnowledgeSettingsSavePendingAtom,
-  startKnowledgeSettingsBasicDraftAtom,
-} from './state/workflow'
+import { setKnowledgeSettingsSavePendingAtom } from './state/workflow'
 
 const NAME_ERROR_ID = 'knowledge-name-error'
 const DESCRIPTION_ERROR_ID = 'knowledge-description-error'
@@ -114,8 +110,6 @@ export function BasicInformationSection() {
   const { t: tWorkflow } = useTranslation('workflow')
   const space = useAtomValue(knowledgeSettingsSpaceAtom)
   const permissions = useAtomValue(knowledgeSettingsPermissionsAtom)
-  const startDraft = useSetAtom(startKnowledgeSettingsBasicDraftAtom)
-  const finishDraft = useSetAtom(finishKnowledgeSettingsBasicDraftAtom)
   const setSavePending = useSetAtom(setKnowledgeSettingsSavePendingAtom)
   const invalidateSettings = useSetAtom(invalidateKnowledgeSettingsAtom)
   const membersQuery = useMembers()
@@ -195,12 +189,10 @@ export function BasicInformationSection() {
       draftRef.current = undefined
       draftBaseVersionRef.current = undefined
       setDraft(undefined)
-      finishDraft()
       return
     }
     draftRef.current = next
     draftBaseVersionRef.current ??= serverVersion
-    startDraft()
     setDraft(next)
   }
 
@@ -209,7 +201,6 @@ export function BasicInformationSection() {
     draftBaseVersionRef.current = undefined
     setDraft(undefined)
     setNameTouched(false)
-    finishDraft()
   }
 
   const showSaveError = (error?: unknown) =>
@@ -276,7 +267,6 @@ export function BasicInformationSection() {
       toast.success(tCommon(($) => $['api.actionSuccess']))
       setIsRefreshing(true)
       draftBaseVersionRef.current = undefined
-      finishDraft()
       void invalidateSettings().then(
         () => {
           draftRef.current = undefined

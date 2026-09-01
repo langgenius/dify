@@ -6,15 +6,6 @@ import type { InstalledSourceProviderOption } from '../setup/provider-options'
 import type { NewKnowledgeWebsiteSourceDraft } from '../setup/source-draft'
 import type { SyncPolicyValue } from '../setup/sync-policy-field'
 import type { CrawlPreviewPage as PreviewPage, Source, SourceWorkflowRun } from '../source-models'
-import {
-  AlertDialog,
-  AlertDialogActions,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -31,7 +22,6 @@ import { newKnowledgeDetailPath } from '../../routes'
 import { WebsiteDatasourceParameterForm } from '../setup/datasource-parameter-form'
 import {
   datasourceIncludeSubpages,
-  datasourceParameterDefaults,
   invalidDatasourceParameters,
   missingRequiredDatasourceParameters,
   websiteDatasourceParameterSchemas,
@@ -75,8 +65,6 @@ type PreviewDraft = {
   previewRequestId: string
   source?: Source
 }
-
-type PendingNavigation = { type: 'back' } | { href: string; type: 'push' }
 
 function previewPagesEqual(left: PreviewPage, right: PreviewPage) {
   return (
@@ -459,10 +447,6 @@ export function WebsiteCrawlPreview({
         : websiteDatasourceParameterSchemas(),
     [providerOption],
   )
-  const defaultParameters = useMemo(
-    () => datasourceParameterDefaults(parameterSchemas),
-    [parameterSchemas],
-  )
   const [parameters, setParameters] = useState<DatasourceParameters>(() => {
     const initialParameters = withDatasourceParameterDefaults(
       parameterSchemas,
@@ -485,7 +469,6 @@ export function WebsiteCrawlPreview({
     return initialParameters
   })
   const [sourceName, setSourceName] = useState(initialDraft?.sourceName ?? '')
-  const initialSyncPolicyRef = useRef(initialSyncPolicyValue(initialDraft))
   const syncPolicy = initialSyncPolicyValue(initialDraft)
   const [run, setRun] = useState<SourceWorkflowRun>()
   const [pages, setPages] = useState<PreviewPage[]>([])
@@ -495,7 +478,6 @@ export function WebsiteCrawlPreview({
   const [stopping, setStopping] = useState(false)
   const [pollPaused, setPollPaused] = useState(false)
   const [requestError, setRequestError] = useState<string>()
-  const [cancelConfirmationOpen, setCancelConfirmationOpen] = useState(false)
   const [discarding, setDiscarding] = useState(false)
   const [discardError, setDiscardError] = useState(false)
   const [workflowUncertain, setWorkflowUncertain] = useState(false)
@@ -521,9 +503,6 @@ export function WebsiteCrawlPreview({
   const uncertainWorkflowRef = useRef<(() => Promise<SourceWorkflowRun | undefined>) | undefined>(
     undefined,
   )
-  const pendingNavigationRef = useRef<PendingNavigation | undefined>(undefined)
-  const historyGuardRef = useRef<string | undefined>(undefined)
-  const historyGuardCompletionRef = useRef<(() => void) | undefined>(undefined)
 
   const deletePreviewDraftSource = useCallback(
     async (draft: PreviewDraft) => {
@@ -655,12 +634,6 @@ export function WebsiteCrawlPreview({
   )
   const runId = run?.id
   const locked = starting || stopping || active || uncertainOperation || selectionInteractionLocked
-  const dirty = Boolean(
-    sourceName ||
-    run ||
-    JSON.stringify(parameters) !== JSON.stringify(defaultParameters) ||
-    JSON.stringify(syncPolicy) !== JSON.stringify(initialSyncPolicyRef.current),
-  )
   const host = normalizedURL?.host ?? providerName
   const completedCount = Math.max(run?.progressCompleted ?? 0, pages.length)
   const crawlingStatusText = t(($) => $['newKnowledge.crawlingPages'], {
@@ -702,110 +675,6 @@ export function WebsiteCrawlPreview({
       else if (next.size < MAX_PREVIEW_SELECTION) next.add(pageId)
       return next
     })
-  }, [])
-
-  useEffect(() => {
-    if (!dirty) return
-    const preventUnsavedUnload = (event: BeforeUnloadEvent) => {
-      if (submittedRef.current) return
-      event.preventDefault()
-      event.returnValue = ''
-    }
-    window.addEventListener('beforeunload', preventUnsavedUnload)
-    return () => window.removeEventListener('beforeunload', preventUnsavedUnload)
-  }, [dirty])
-
-  useEffect(() => {
-    if ((!dirty && !historyGuardRef.current) || submittedRef.current) return
-    const guardId = historyGuardRef.current ?? createRequestId()
-    const currentState =
-      window.history.state && typeof window.history.state === 'object' ? window.history.state : {}
-    if (!historyGuardRef.current) {
-      window.history.pushState(
-        { ...currentState, difyUnsavedSourceGuard: guardId },
-        '',
-        location.href,
-      )
-      historyGuardRef.current = guardId
-    }
-
-    const handlePopState = () => {
-      if (submittedRef.current) {
-        historyGuardRef.current = undefined
-        const complete = historyGuardCompletionRef.current
-        historyGuardCompletionRef.current = undefined
-        complete?.()
-        return
-      }
-      if (!dirty) {
-        window.removeEventListener('popstate', handlePopState)
-        historyGuardRef.current = undefined
-        window.history.back()
-        return
-      }
-      window.history.pushState(
-        { ...currentState, difyUnsavedSourceGuard: guardId },
-        '',
-        location.href,
-      )
-      pendingNavigationRef.current = { type: 'back' }
-      setDiscardError(false)
-      setCancelConfirmationOpen(true)
-    }
-    const handleLinkClick = (event: MouseEvent) => {
-      if (
-        event.defaultPrevented ||
-        event.button !== 0 ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.shiftKey ||
-        event.altKey
-      )
-        return
-      const target = event.target
-      if (!(target instanceof Element)) return
-      const anchor = target.closest('a[href]')
-      if (
-        !(anchor instanceof HTMLAnchorElement) ||
-        anchor.target === '_blank' ||
-        anchor.hasAttribute('download')
-      )
-        return
-      const destination = new URL(anchor.href, location.href)
-      if (destination.origin !== location.origin || destination.href === location.href) return
-      event.preventDefault()
-      event.stopPropagation()
-      if (!dirty) {
-        submittedRef.current = true
-        onDraftFinished?.()
-        historyGuardCompletionRef.current = () =>
-          router.push(`${destination.pathname}${destination.search}${destination.hash}`)
-        window.history.back()
-        return
-      }
-      pendingNavigationRef.current = {
-        href: `${destination.pathname}${destination.search}${destination.hash}`,
-        type: 'push',
-      }
-      setDiscardError(false)
-      setCancelConfirmationOpen(true)
-    }
-
-    window.addEventListener('popstate', handlePopState)
-    document.addEventListener('click', handleLinkClick, true)
-    return () => {
-      window.removeEventListener('popstate', handlePopState)
-      document.removeEventListener('click', handleLinkClick, true)
-    }
-  }, [dirty, onDraftFinished, router])
-
-  const leaveHistoryGuard = useCallback((complete: () => void) => {
-    if (!historyGuardRef.current) {
-      complete()
-      return
-    }
-    historyGuardCompletionRef.current = complete
-    window.history.back()
   }, [])
 
   const ensureProvisionalSource = useCallback(
@@ -1253,18 +1122,6 @@ export function WebsiteCrawlPreview({
     (run ? ['timed_out', 'timeout'].includes(normalizedState(run.state)) : false)
   const isProviderError = errorCode?.toUpperCase().includes('PROVIDER')
 
-  const cancel = () => {
-    if (dirty) {
-      pendingNavigationRef.current = undefined
-      setDiscardError(false)
-      setCancelConfirmationOpen(true)
-      return
-    }
-    submittedRef.current = true
-    onDraftFinished?.()
-    leaveHistoryGuard(() => router.push(newKnowledgeDetailPath(knowledgeSpaceId)))
-  }
-
   const discardAndCancel = async () => {
     if (discarding) return
     setDiscarding(true)
@@ -1314,28 +1171,10 @@ export function WebsiteCrawlPreview({
     retryPredecessorRef.current = undefined
     submittedRef.current = true
     onDraftFinished?.()
-    setCancelConfirmationOpen(false)
-    const pendingNavigation = pendingNavigationRef.current
-    pendingNavigationRef.current = undefined
-    leaveHistoryGuard(() => {
-      if (pendingNavigation?.type === 'back') window.history.back()
-      else
-        router.push(
-          pendingNavigation?.type === 'push'
-            ? pendingNavigation.href
-            : newKnowledgeDetailPath(knowledgeSpaceId),
-        )
-    })
+    router.push(newKnowledgeDetailPath(knowledgeSpaceId))
   }
 
-  const handleCancelConfirmationOpenChange = (open: boolean) => {
-    if (discarding) return
-    setCancelConfirmationOpen(open)
-    if (!open) {
-      pendingNavigationRef.current = undefined
-      setDiscardError(false)
-    }
-  }
+  const cancel = () => void discardAndCancel()
 
   return (
     <section aria-label={t(($) => $['newKnowledge.crawlAndPreview'])}>
@@ -1439,7 +1278,7 @@ export function WebsiteCrawlPreview({
         )}
         {showSuccess && run && draftRef.current?.source && configuration && (
           <CrawlSelectionForm
-            busy={starting || stopping}
+            busy={starting || stopping || discarding}
             discardRequested={() => discardRequestedRef.current}
             initialSyncMode={
               initialDraft?.syncPolicy === 'daily' ? 'interval' : initialDraft?.syncPolicy
@@ -1450,14 +1289,10 @@ export function WebsiteCrawlPreview({
             onInteractionLockChange={setSelectionInteractionLocked}
             onRecrawl={handlePrimaryAction}
             onSubmissionUncertainChange={updateSelectionUncertain}
-            onSubmitted={() =>
-              new Promise<void>((resolve) => {
-                pendingNavigationRef.current = undefined
-                submittedRef.current = true
-                onDraftFinished?.()
-                leaveHistoryGuard(resolve)
-              })
-            }
+            onSubmitted={() => {
+              submittedRef.current = true
+              onDraftFinished?.()
+            }}
             onWorkflowPending={trackPendingWorkflow}
             onWorkflowRun={(nextRun) => {
               pendingCancelRunRef.current = nextRun
@@ -1531,7 +1366,7 @@ export function WebsiteCrawlPreview({
       {!showSuccess && syncPolicyField && <div className="mt-4">{syncPolicyField}</div>}
       {!showSuccess && (
         <div className="mt-5 flex justify-end gap-3 border-t border-divider-subtle pt-4.75">
-          <Button type="button" onClick={cancel}>
+          <Button type="button" disabled={discarding} loading={discarding} onClick={cancel}>
             {t(($) => $['newKnowledge.cancelAddSource'])}
           </Button>
           <span id="add-source-selection-requirement" className="sr-only">
@@ -1542,35 +1377,11 @@ export function WebsiteCrawlPreview({
           </Button>
         </div>
       )}
-      <AlertDialog open={cancelConfirmationOpen} onOpenChange={handleCancelConfirmationOpenChange}>
-        <AlertDialogContent>
-          <div className="flex flex-col gap-2 p-6 pb-4">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $['newKnowledge.discardSourceChanges'])}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="system-sm-regular text-text-tertiary">
-              {t(($) => $['newKnowledge.discardSourceChangesDescription'])}
-            </AlertDialogDescription>
-            {discardError && (
-              <p role="alert" className="mt-3 system-sm-regular text-text-destructive">
-                {t(($) => $['newKnowledge.crawlFailedDescription'])}
-              </p>
-            )}
-          </div>
-          <AlertDialogActions>
-            <AlertDialogCancelButton disabled={discarding}>
-              {t(($) => $['newKnowledge.keepEditing'])}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              disabled={discarding}
-              loading={discarding}
-              onClick={() => void discardAndCancel()}
-            >
-              {t(($) => $['newKnowledge.discardSourceChangesConfirm'])}
-            </AlertDialogConfirmButton>
-          </AlertDialogActions>
-        </AlertDialogContent>
-      </AlertDialog>
+      {discardError && requestError !== 'CANCEL_FAILED' && (
+        <p role="alert" className="mt-3 system-sm-regular text-text-destructive">
+          {t(($) => $['newKnowledge.crawlFailedDescription'])}
+        </p>
+      )}
     </section>
   )
 }

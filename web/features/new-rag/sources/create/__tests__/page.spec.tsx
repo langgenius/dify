@@ -901,7 +901,6 @@ describe('AddSourcePage', () => {
 
   it('clears the stored draft when source setup is canceled', async () => {
     const user = userEvent.setup()
-    const historyBack = vi.spyOn(window.history, 'back').mockImplementation(() => undefined)
     const storageKey = newKnowledgeSourceDraftStorageKey('cancel-draft')
     globalThis.sessionStorage.setItem(
       storageKey,
@@ -920,19 +919,10 @@ describe('AddSourcePage', () => {
     await user.click(
       await screen.findByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }),
     )
-    const confirmation = await screen.findByRole('alertdialog', {
-      name: 'dataset.newKnowledge.discardSourceDraftTitle',
-    })
-    expect(globalThis.sessionStorage.getItem(storageKey)).not.toBeNull()
-    await user.click(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.discardDraftConfirm' }),
-    )
 
     expect(globalThis.sessionStorage.getItem(storageKey)).toBeNull()
-    expect(historyBack).toHaveBeenCalledOnce()
-    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
     expect(routerMock.replace).toHaveBeenCalledWith('/datasets/new/space-1/sources')
-    expect(confirmation).not.toBeInTheDocument()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 
   it('creates the exact Firecrawl provider connection without leaking credentials', async () => {
@@ -964,8 +954,6 @@ describe('AddSourcePage', () => {
         params: { control_space_id: 'space-1' },
       }),
     )
-    await screen.findByRole('status', { name: 'appApi.loading' })
-    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
     expect(queryClientMock.invalidateQueries).toHaveBeenCalledWith({
       queryKey: ['source-connections'],
     })
@@ -1089,7 +1077,6 @@ describe('AddSourcePage', () => {
         params: { control_space_id: 'space-1' },
       }),
     )
-    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
     expect(
       await screen.findByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
     ).toBeEnabled()
@@ -1224,9 +1211,8 @@ describe('AddSourcePage', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('releases the parent history guard before the crawl preview owns navigation', async () => {
+  it('shows the crawl preview immediately after the provider connection becomes active', async () => {
     const user = userEvent.setup()
-    const historyBack = vi.spyOn(window.history, 'back').mockImplementation(() => undefined)
     clientMock.createConnection.mockResolvedValue(connection('active'))
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
@@ -1236,14 +1222,9 @@ describe('AddSourcePage', () => {
     await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
     await user.click(screen.getByRole('button', { name: connectFirecrawlButtonName }))
 
-    await waitFor(() => expect(historyBack).toHaveBeenCalledOnce())
-    expect(screen.queryByText(/dataset\.newKnowledge\.providerConnected/)).not.toBeInTheDocument()
-
-    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
     await screen.findByText(/dataset\.newKnowledge\.providerConnected/)
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
 
-    expect(historyBack).toHaveBeenCalledOnce()
     expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources')
   })
 
@@ -1285,9 +1266,6 @@ describe('AddSourcePage', () => {
     view.rerender(
       <AddSourcePage initialSourceDraft={initialSourceDraft} knowledgeSpaceId="space-1" />,
     )
-    await screen.findByRole('status', { name: 'appApi.loading' })
-    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
-
     expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ })).toHaveValue(
       'https://docs.dify.ai',
     )
@@ -1341,7 +1319,6 @@ describe('AddSourcePage', () => {
     await user.click(screen.getByRole('button', { name: connectFirecrawlButtonName }))
 
     await waitFor(() => expect(clientMock.createConnection).toHaveBeenCalledOnce())
-    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
     expect(await screen.findByText(/dataset\.newKnowledge\.providerConnected/)).toBeInTheDocument()
     expect(
       screen.queryByText('dataset.newKnowledge.connectionFailed:{"provider":"Firecrawl"}'),

@@ -1705,76 +1705,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('datasetSettings.form.embeddingModel')
   })
 
-  it('asks before following a link while the form has unsaved changes', async () => {
-    const user = userEvent.setup()
-    renderForm()
-    const destination = document.createElement('a')
-    destination.href = '/datasets/new/space-1/sources'
-    destination.textContent = 'Go to sources'
-    document.body.append(destination)
-
-    const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
-    await user.clear(nameInput)
-    await user.type(nameInput, 'Unsaved camera specs')
-    await user.click(destination)
-
-    const dialog = await screen.findByRole('alertdialog')
-    expect(routerMock.push).not.toHaveBeenCalled()
-    await user.click(
-      within(dialog).getByRole('button', {
-        name: 'dataset.newKnowledge.discardDraftConfirm',
-      }),
-    )
-
-    expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources')
-    destination.remove()
-  })
-
-  it('protects a delayed retrieval save from immediate navigation', async () => {
-    renderForm()
-    const destination = document.createElement('a')
-    destination.href = '/datasets/new/space-1/sources'
-    destination.textContent = 'Go to sources'
-    document.body.append(destination)
-
-    fireEvent.change(
-      screen.getByRole('textbox', {
-        name: 'dataset.newKnowledge.settings.topKLabel',
-      }),
-      { target: { value: '8' } },
-    )
-    fireEvent.click(destination)
-
-    expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
-    expect(routerMock.push).not.toHaveBeenCalled()
-    destination.remove()
-  })
-
-  it('asks before browser back navigation while the form has unsaved changes', async () => {
-    const user = userEvent.setup()
-    const historyBack = vi.spyOn(globalThis.history, 'back').mockImplementation(() => {})
-    try {
-      renderForm()
-      const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
-      await user.clear(nameInput)
-      await user.type(nameInput, 'Unsaved camera specs')
-
-      act(() => globalThis.dispatchEvent(new PopStateEvent('popstate')))
-
-      const dialog = await screen.findByRole('alertdialog')
-      expect(historyBack).not.toHaveBeenCalled()
-      await user.click(
-        within(dialog).getByRole('button', {
-          name: 'dataset.newKnowledge.discardDraftConfirm',
-        }),
-      )
-      expect(historyBack).toHaveBeenCalledOnce()
-    } finally {
-      historyBack.mockRestore()
-    }
-  })
-
-  it('protects unsaved changes from browser unload', async () => {
+  it('does not protect unsaved changes from browser unload', async () => {
     const user = userEvent.setup()
     renderForm()
 
@@ -1784,7 +1715,8 @@ describe('KnowledgeSettingsPage workflows', () => {
     const event = new Event('beforeunload', { cancelable: true })
     globalThis.dispatchEvent(event)
 
-    expect(event.defaultPrevented).toBe(true)
+    expect(event.defaultPrevented).toBe(false)
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 
   it('normalizes split Knowledge FS provider identities for the model selector', () => {

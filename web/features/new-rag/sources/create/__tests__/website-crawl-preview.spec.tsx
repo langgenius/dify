@@ -1,5 +1,5 @@
 import type { Source, SourceWorkflowRun } from '../../source-models'
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import { WebsiteCrawlPreview } from '../website-crawl-preview'
@@ -397,9 +397,6 @@ describe('WebsiteCrawlPreview', () => {
     })
 
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
-    await user.click(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
-    )
 
     await waitFor(() => expect(clientMock.deleteSource).toHaveBeenCalledTimes(2))
     expect(clientMock.deleteSource).toHaveBeenNthCalledWith(1, {
@@ -436,9 +433,6 @@ describe('WebsiteCrawlPreview', () => {
     })
 
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
-    await user.click(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
-    )
 
     await waitFor(() => expect(clientMock.getSource).toHaveBeenCalledOnce())
     expect(clientMock.deleteSource).toHaveBeenCalledOnce()
@@ -579,7 +573,7 @@ describe('WebsiteCrawlPreview', () => {
     expect(clientMock.createSource.mock.calls[0]?.[0].body.metadata.crawlOptions.limit).toBe(50)
   })
 
-  it('confirms dirty cancellation and protects an unfinished draft from page unload', async () => {
+  it('cancels a dirty draft directly without protecting page unload', async () => {
     const user = userEvent.setup()
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
 
@@ -589,23 +583,13 @@ describe('WebsiteCrawlPreview', () => {
     )
     const unload = new Event('beforeunload', { cancelable: true })
     window.dispatchEvent(unload)
-    expect(unload.defaultPrevented).toBe(true)
+    expect(unload.defaultPrevented).toBe(false)
 
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
-    expect(
-      screen.getByRole('alertdialog', { name: 'dataset.newKnowledge.discardSourceChanges' }),
-    ).toBeInTheDocument()
-    expect(routerMock.push).not.toHaveBeenCalled()
-
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.keepEditing' }))
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
-    await user.click(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
-    )
     await waitFor(() =>
       expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
     )
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 
   it('cancels an active preview before discarding its provisional source', async () => {
@@ -617,9 +601,6 @@ describe('WebsiteCrawlPreview', () => {
     await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledOnce())
 
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
-    await user.click(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
-    )
 
     await waitFor(() => expect(clientMock.cancel).toHaveBeenCalledOnce())
     expect(clientMock.cancel).toHaveBeenCalledWith({
@@ -645,12 +626,8 @@ describe('WebsiteCrawlPreview', () => {
     await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledOnce())
 
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
-    await user.click(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
-    )
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.keepEditing' })).toBeDisabled()
     expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
+      screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }),
     ).toHaveAttribute('aria-disabled', 'true')
 
     startRequest.resolve(run('running'))
@@ -672,9 +649,6 @@ describe('WebsiteCrawlPreview', () => {
     await screen.findByRole('alert')
 
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
-    await user.click(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
-    )
 
     await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledTimes(2))
     expect(clientMock.startPreview.mock.calls[0]?.[0].headers).toEqual(
@@ -695,9 +669,6 @@ describe('WebsiteCrawlPreview', () => {
     await waitFor(() => expect(clientMock.createSource).toHaveBeenCalledOnce())
 
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
-    await user.click(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
-    )
     sourceRequest.resolve(source())
 
     await waitFor(() =>
@@ -705,74 +676,6 @@ describe('WebsiteCrawlPreview', () => {
     )
     expect(clientMock.startPreview).not.toHaveBeenCalled()
     expect(clientMock.cancel).not.toHaveBeenCalled()
-  })
-
-  it('cancels a fresh re-crawl that returns after navigation discard was confirmed', async () => {
-    const recrawlRequest = deferred<SourceWorkflowRun>()
-    clientMock.startPreview
-      .mockResolvedValueOnce(run('running'))
-      .mockReturnValueOnce(recrawlRequest.promise)
-    clientMock.cancel
-      .mockResolvedValueOnce(run('canceled'))
-      .mockResolvedValueOnce(run('canceled', { id: 'run-2' }))
-    render(
-      <>
-        <a href="/datasets/new/space-1/documents">Documents navigation</a>
-        <WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />
-      </>,
-    )
-    const user = await fillValidForm()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
-    await screen.findByText('Getting started')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reCrawl' }))
-    await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledTimes(2))
-
-    await user.click(screen.getByRole('link', { name: 'Documents navigation' }))
-    await user.click(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
-    )
-    recrawlRequest.resolve(run('running', { id: 'run-2' }))
-
-    await waitFor(() => expect(clientMock.cancel).toHaveBeenCalledTimes(2))
-    expect(clientMock.retry).not.toHaveBeenCalled()
-    await waitFor(() =>
-      expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/documents'),
-    )
-  })
-
-  it('reconciles a response-lost fresh re-crawl before leaving the preview', async () => {
-    clientMock.startPreview
-      .mockResolvedValueOnce(run('running'))
-      .mockRejectedValueOnce(new Error('response lost'))
-      .mockResolvedValueOnce(run('running', { id: 'run-2' }))
-    clientMock.cancel
-      .mockResolvedValueOnce(run('canceled'))
-      .mockResolvedValueOnce(run('canceled', { id: 'run-2' }))
-    render(
-      <>
-        <a href="/datasets/new/space-1/documents">Documents navigation</a>
-        <WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />
-      </>,
-    )
-    const user = await fillValidForm()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
-    await screen.findByText('Getting started')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reCrawl' }))
-    await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledTimes(2))
-
-    await user.click(screen.getByRole('link', { name: 'Documents navigation' }))
-    await user.click(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
-    )
-
-    await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledTimes(3))
-    await waitFor(() => expect(clientMock.cancel).toHaveBeenCalledTimes(2))
-    expect(clientMock.startPreview.mock.calls[1]?.[0].headers).toEqual(
-      clientMock.startPreview.mock.calls[2]?.[0].headers,
-    )
-    await waitFor(() =>
-      expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/documents'),
-    )
   })
 
   it('keeps the started run available when discard cancellation must be retried', async () => {
@@ -786,17 +689,10 @@ describe('WebsiteCrawlPreview', () => {
     await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledOnce())
 
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
-    await user.click(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
-    )
-    expect(within(screen.getByRole('alertdialog')).getByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.crawlFailedDescription',
-    )
+    expect(screen.getByText('dataset.newKnowledge.crawlFailedDescription')).toBeInTheDocument()
     expect(routerMock.push).not.toHaveBeenCalled()
 
-    await user.click(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
-    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
 
     await waitFor(() => expect(clientMock.cancel).toHaveBeenCalledTimes(2))
     expect(clientMock.cancel.mock.calls[0]?.[0].params.run_id).toBe('run-1')
@@ -806,16 +702,11 @@ describe('WebsiteCrawlPreview', () => {
     )
   })
 
-  it('keeps the preview available when re-crawl cancellation fails', async () => {
+  it('cancels the preview after a re-crawl cancellation is retried', async () => {
     clientMock.cancel
       .mockRejectedValueOnce(Object.assign(new Error('conflict'), { status: 409 }))
       .mockResolvedValueOnce(run('canceled'))
-    render(
-      <>
-        <a href="/datasets/new/space-1/documents">Documents navigation</a>
-        <WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />
-      </>,
-    )
+    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
     await screen.findByText('Getting started')
@@ -824,64 +715,12 @@ describe('WebsiteCrawlPreview', () => {
     expect(clientMock.startPreview).toHaveBeenCalledOnce()
     expect(screen.getByText('Getting started')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('link', { name: 'Documents navigation' }))
-    await user.click(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
-    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
 
     await waitFor(() => expect(clientMock.cancel).toHaveBeenCalledTimes(2))
     await waitFor(() =>
-      expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/documents'),
+      expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
     )
-  })
-
-  it('guards sidebar links and browser history after a crawl preview is ready', async () => {
-    render(
-      <>
-        <a href="/datasets/new/space-1/documents">Documents navigation</a>
-        <WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />
-      </>,
-    )
-    const user = await fillValidForm()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
-    await screen.findByText('Getting started')
-
-    act(() => window.history.back())
-    expect(
-      await screen.findByRole('alertdialog', {
-        name: 'dataset.newKnowledge.discardSourceChanges',
-      }),
-    ).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.keepEditing' }))
-
-    await user.click(screen.getByRole('link', { name: 'Documents navigation' }))
-    expect(
-      screen.getByRole('alertdialog', { name: 'dataset.newKnowledge.discardSourceChanges' }),
-    ).toBeInTheDocument()
-    await user.click(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
-    )
-
-    await waitFor(() =>
-      expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/documents'),
-    )
-  })
-
-  it('guards browser history before a crawl preview starts', async () => {
-    const user = userEvent.setup()
-    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
-    await user.type(
-      screen.getByLabelText(/^dataset\.newKnowledge\.rootUrl/),
-      'https://docs.dify.ai',
-    )
-
-    act(() => window.history.back())
-
-    expect(
-      await screen.findByRole('alertdialog', {
-        name: 'dataset.newKnowledge.discardSourceChanges',
-      }),
-    ).toBeInTheDocument()
   })
 
   it('leaves through clean Cancel after a dirty form is cleared', async () => {
@@ -897,48 +736,6 @@ describe('WebsiteCrawlPreview', () => {
       expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
     )
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-  })
-
-  it('leaves through a same-origin link after a dirty form is cleared', async () => {
-    const user = userEvent.setup()
-    render(
-      <>
-        <a href="/datasets/new/space-1/documents">Documents navigation</a>
-        <WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />
-      </>,
-    )
-    const rootUrl = screen.getByLabelText(/^dataset\.newKnowledge\.rootUrl/)
-    await user.type(rootUrl, 'x')
-    await user.clear(rootUrl)
-
-    await user.click(screen.getByRole('link', { name: 'Documents navigation' }))
-
-    await waitFor(() =>
-      expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/documents'),
-    )
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-  })
-
-  it('clears a canceled sidebar destination before the form cancel action', async () => {
-    render(
-      <>
-        <a href="/datasets/new/space-1/documents">Documents navigation</a>
-        <WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />
-      </>,
-    )
-    const user = await fillValidForm()
-    await user.click(screen.getByRole('link', { name: 'Documents navigation' }))
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.keepEditing' }))
-
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
-    await user.click(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
-    )
-
-    await waitFor(() =>
-      expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
-    )
-    expect(routerMock.push).not.toHaveBeenCalledWith('/datasets/new/space-1/documents')
   })
 
   it('shows pending feedback while a preview-ready crawl is being restarted', async () => {
@@ -1453,13 +1250,8 @@ describe('WebsiteCrawlPreview', () => {
     await screen.findByRole('alert')
 
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
-    await user.click(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.discardSourceChangesConfirm' }),
-    )
 
-    expect(within(screen.getByRole('alertdialog')).getByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.crawlFailedDescription',
-    )
+    expect(screen.getByText('dataset.newKnowledge.crawlFailedDescription')).toBeInTheDocument()
     expect(routerMock.push).not.toHaveBeenCalled()
   })
 

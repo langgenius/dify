@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next'
 import { BasicInformationSection } from './basic-information'
 import { DeleteKnowledgeAction } from './delete-knowledge'
 import { ExternalAccessSection } from './external-access'
-import { KnowledgeSettingsNavigationGuard } from './navigation-guard'
 import { RetrievalSettingsSection } from './retrieval-settings'
 import { knowledgeSettingsSpaceAtom } from './state/queries'
 
@@ -34,7 +33,6 @@ export function KnowledgeSettingsForm() {
         <RetrievalSettingsSection />
         <DeleteKnowledgeAction />
       </div>
-      <KnowledgeSettingsNavigationGuard />
     </>
   )
 }

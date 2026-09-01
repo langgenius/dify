@@ -48,11 +48,7 @@ import {
   knowledgeSettingsSettingsAtom,
   knowledgeSettingsSpaceAtom,
 } from './state/queries'
-import {
-  finishKnowledgeSettingsRetrievalDraftAtom,
-  setKnowledgeSettingsSavePendingAtom,
-  startKnowledgeSettingsRetrievalDraftAtom,
-} from './state/workflow'
+import { setKnowledgeSettingsSavePendingAtom } from './state/workflow'
 
 const REASONING_MODEL_LABEL_ID = 'knowledge-reasoning-model-label'
 const REASONING_MODEL_ERROR_ID = 'knowledge-reasoning-model-error'
@@ -69,8 +65,6 @@ export function RetrievalSettingsSection() {
   const space = useAtomValue(knowledgeSettingsSpaceAtom)
   const settings = useAtomValue(knowledgeSettingsSettingsAtom)
   const invalidateSettings = useSetAtom(invalidateKnowledgeSettingsAtom)
-  const startDraftSession = useSetAtom(startKnowledgeSettingsRetrievalDraftAtom)
-  const finishDraftSession = useSetAtom(finishKnowledgeSettingsRetrievalDraftAtom)
   const setSavePending = useSetAtom(setKnowledgeSettingsSavePendingAtom)
   const { data: reasoningModelList } = useModelList(ModelTypeEnum.textGeneration)
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
@@ -136,7 +130,6 @@ export function RetrievalSettingsSection() {
       retrievalBaselineRef.current = retrievalFingerprint(current)
       if (!draft) settingsRevisionRef.current = settings.revision
       draftSessionActiveRef.current = true
-      startDraftSession()
       setSavePending({ owner: 'retrieval', pending: true })
     }
     const next = { ...current, ...patch }
@@ -250,7 +243,6 @@ export function RetrievalSettingsSection() {
     liveDraftRef.current = latestDraft
     if (latestDraft) setDraft(latestDraft)
     draftSessionActiveRef.current = false
-    finishDraftSession()
     setSavePending({ owner: 'retrieval', pending: false })
   }
 
@@ -284,7 +276,6 @@ export function RetrievalSettingsSection() {
         const latestDraft = liveDraftRef.current
         if (latestDraft) setDraft(latestDraft)
         draftSessionActiveRef.current = false
-        finishDraftSession()
         setSavePending({ owner: 'retrieval', pending: false })
         showSaveSuccess()
       })
@@ -306,7 +297,6 @@ export function RetrievalSettingsSection() {
     }
     // oxlint-disable-next-line react-hooks/exhaustive-deps -- Migration completion is keyed by the observer state; queued saves use the latest ref snapshot.
   }, [
-    finishDraftSession,
     invalidateSettings,
     migrationQuery.data,
     migrationQuery.isError,

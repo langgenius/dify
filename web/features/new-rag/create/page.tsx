@@ -10,7 +10,6 @@ import type {
   KnowledgeFsUploadPhase,
   KnowledgeFsUploadProgress,
 } from '../upload/knowledge-fs-upload'
-import type { CreateKnowledgeExitReason } from './components/exit-dialog'
 import type { QueuedUpload } from './upload-queue'
 import type { KnowledgeVisibility } from './workflow'
 import { Button } from '@langgenius/dify-ui/button'
@@ -38,7 +37,7 @@ import {
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { datasetDefaultPermissionKeysAtom } from '@/context/permission-state'
 import { knowledgeFsUploadEnabledAtom, rbacEnabledAtom } from '@/features/system-features/state'
@@ -62,7 +61,6 @@ import {
 } from '../upload/knowledge-fs-upload'
 import { useKnowledgeFileSizeLimit } from '../upload/use-file-size-limit'
 import { KnowledgeIllustration, StartMode } from './components/dialog-parts'
-import { CreateKnowledgeExitDialog } from './components/exit-dialog'
 import { CreateSourceSetup } from './source-setup'
 import { CreateUploadQueue } from './upload-queue'
 import {
@@ -122,14 +120,9 @@ export function CreateKnowledgePage() {
     () => new Map(),
   )
   const [uploadError, setUploadError] = useState(false)
-  const [exitReason, setExitReason] = useState<CreateKnowledgeExitReason | null>(null)
   const idempotencyKeyRef = useRef<string | undefined>(undefined)
   const uploadsRef = useRef<QueuedUpload[]>([])
   const uploadProgressRef = useRef<KnowledgeFsUploadProgress>(new Map())
-  const historyGuardArmedRef = useRef(false)
-  const browserBackExitRef = useRef(false)
-  const pendingNavigationRef = useRef<string | undefined>(undefined)
-  const navigationFallbackRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const createMutation = useMutation({ mutationFn: createKnowledge })
   const submissionPending = createMutation.isPending || uploading || stagingCount > 0
   const validUploads = uploads.filter(({ issue }) => !issue)
@@ -144,105 +137,10 @@ export function CreateKnowledgePage() {
       !validUploads.length ||
       validUploads.some((upload) => upload.stagingFailed || !upload.stagedUploadId))
   const sourceSubmissionBlocked = startMode === 'source' && !initialSource
-  const sourceDraftChanged =
-    JSON.stringify(sourceDraft) !==
-    JSON.stringify(createNewKnowledgeSourceDraft(sourceDraft.sourceType))
-  const hasUnsavedChanges = Boolean(
-    name ||
-    description ||
-    visibility !== defaultVisibility ||
-    startMode !== initialStartMode ||
-    sourceDraftChanged ||
-    uploads.length ||
-    createdKnowledge,
-  )
-
   const updateInitialSource = useCallback((source?: InitialSource) => {
     initialSourceRef.current = source
     setInitialSource(source)
   }, [])
-
-  const armHistoryGuard = useCallback(() => {
-    globalThis.history.pushState(globalThis.history.state, '', globalThis.location.href)
-    historyGuardArmedRef.current = true
-  }, [])
-
-  const replaceAfterHistoryGuard = useCallback(
-    (path: string) => {
-      if (!historyGuardArmedRef.current) {
-        router.replace(path)
-        return
-      }
-
-      pendingNavigationRef.current = path
-      globalThis.history.back()
-      globalThis.clearTimeout(navigationFallbackRef.current)
-      navigationFallbackRef.current = globalThis.setTimeout(() => {
-        if (pendingNavigationRef.current !== path) return
-        pendingNavigationRef.current = undefined
-        historyGuardArmedRef.current = false
-        router.replace(path)
-      }, 1000)
-    },
-    [router],
-  )
-
-  useEffect(() => {
-    if (
-      !hasUnsavedChanges ||
-      historyGuardArmedRef.current ||
-      browserBackExitRef.current ||
-      pendingNavigationRef.current
-    )
-      return
-
-    armHistoryGuard()
-  }, [armHistoryGuard, hasUnsavedChanges])
-
-  useEffect(() => {
-    const handlePopState = () => {
-      if (!historyGuardArmedRef.current) return
-
-      historyGuardArmedRef.current = false
-      const pendingNavigation = pendingNavigationRef.current
-      if (pendingNavigation) {
-        globalThis.clearTimeout(navigationFallbackRef.current)
-        navigationFallbackRef.current = undefined
-        pendingNavigationRef.current = undefined
-        router.replace(pendingNavigation)
-        return
-      }
-      if (!hasUnsavedChanges) {
-        router.replace(newKnowledgeListPath)
-        return
-      }
-
-      browserBackExitRef.current = true
-      setExitReason(createdKnowledge ? 'partial' : 'discard')
-    }
-
-    globalThis.addEventListener('popstate', handlePopState)
-    return () => globalThis.removeEventListener('popstate', handlePopState)
-  }, [createdKnowledge, hasUnsavedChanges, router])
-
-  useEffect(
-    () => () => {
-      globalThis.clearTimeout(navigationFallbackRef.current)
-    },
-    [],
-  )
-
-  useEffect(() => {
-    if (!hasUnsavedChanges) return
-
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault()
-      event.returnValue = ''
-    }
-
-    globalThis.addEventListener('beforeunload', handleBeforeUnload)
-    return () => globalThis.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [hasUnsavedChanges])
 
   const resetUnsubmittedError = () => {
     if (!submissionLocked) createMutation.reset()
@@ -307,39 +205,15 @@ export function CreateKnowledgePage() {
 
   const requestClose = () => {
     if (submissionPending) return
-    if (createdKnowledge) {
-      setExitReason('partial')
-      return
-    }
-    if (hasUnsavedChanges) {
-      setExitReason('discard')
-      return
-    }
-    replaceAfterHistoryGuard(newKnowledgeListPath)
-  }
-
-  const confirmExit = () => {
-    const confirmedReason = exitReason
-    setExitReason(null)
     for (const upload of uploadsRef.current) {
       if (upload.stagedUploadId)
         void discardKnowledgeFsStagedUpload(upload.stagedUploadId).catch(() => undefined)
     }
-    if (confirmedReason === 'partial' && createdKnowledge) {
-      browserBackExitRef.current = false
-      replaceAfterHistoryGuard(newKnowledgeDetailPath(createdKnowledge.control_space_id))
-      return
-    }
-    browserBackExitRef.current = false
-    replaceAfterHistoryGuard(newKnowledgeListPath)
-  }
-
-  const cancelExit = () => {
-    setExitReason(null)
-    if (!browserBackExitRef.current) return
-
-    browserBackExitRef.current = false
-    armHistoryGuard()
+    router.replace(
+      createdKnowledge
+        ? newKnowledgeDetailPath(createdKnowledge.control_space_id)
+        : newKnowledgeListPath,
+    )
   }
 
   const handleSubmit = async () => {
@@ -401,7 +275,7 @@ export function CreateKnowledgePage() {
         }
       }
 
-      replaceAfterHistoryGuard(
+      router.replace(
         startMode === 'upload'
           ? newKnowledgeDocumentsPath(created.control_space_id)
           : `${newKnowledgeDetailPath(created.control_space_id)}${
@@ -693,18 +567,13 @@ export function CreateKnowledgePage() {
           </aside>
         </DialogPopup>
       </DialogPortal>
-      <CreateKnowledgeExitDialog
-        reason={exitReason}
-        onCancel={cancelExit}
-        onConfirm={confirmExit}
-      />
       <KnowledgeModelSetupDialog
         open={modelSetupDialogOpen}
         onOpenChange={setModelSetupDialogOpen}
         onConfigure={() => {
           setModelSetupDialogOpen(false)
           if (createdKnowledge)
-            replaceAfterHistoryGuard(newKnowledgeSettingsPath(createdKnowledge.control_space_id))
+            router.replace(newKnowledgeSettingsPath(createdKnowledge.control_space_id))
         }}
       />
     </Dialog>

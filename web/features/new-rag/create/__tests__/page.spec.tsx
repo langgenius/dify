@@ -2423,9 +2423,8 @@ describe('CreateKnowledgePage', () => {
     expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
   })
 
-  it('asks before discarding an unsaved draft', async () => {
+  it('closes an unsaved draft without confirmation', async () => {
     const user = userEvent.setup()
-    const historyBack = vi.spyOn(window.history, 'back').mockImplementation(() => undefined)
     renderPage()
     await user.type(
       screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' }),
@@ -2434,24 +2433,11 @@ describe('CreateKnowledgePage', () => {
 
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
-    expect(routerMock.back).not.toHaveBeenCalled()
-    const confirmation = await screen.findByRole('alertdialog', {
-      name: 'dataset.newKnowledge.discardDraftTitle',
-    })
-    expect(confirmation).toHaveTextContent('dataset.newKnowledge.discardDraftDescription')
-    await user.click(
-      within(confirmation).getByRole('button', {
-        name: 'dataset.newKnowledge.discardDraftConfirm',
-      }),
-    )
-    expect(historyBack).toHaveBeenCalledOnce()
-
-    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
-
     expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 
-  it('protects an unsaved draft from browser unload', async () => {
+  it('does not protect an unsaved draft from browser unload', async () => {
     const user = userEvent.setup()
     renderPage()
     await user.type(
@@ -2462,49 +2448,10 @@ describe('CreateKnowledgePage', () => {
 
     act(() => window.dispatchEvent(event))
 
-    expect(event.defaultPrevented).toBe(true)
+    expect(event.defaultPrevented).toBe(false)
   })
 
-  it('asks before leaving an unsaved draft with browser Back', async () => {
-    const user = userEvent.setup()
-    renderPage()
-    await user.type(
-      screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' }),
-      'Draft knowledge',
-    )
-
-    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
-
-    const confirmation = await screen.findByRole('alertdialog', {
-      name: 'dataset.newKnowledge.discardDraftTitle',
-    })
-    await user.click(
-      within(confirmation).getByRole('button', {
-        name: 'dataset.newKnowledge.discardDraftConfirm',
-      }),
-    )
-
-    expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
-  })
-
-  it('does not warn after a draft is cleared before browser Back', async () => {
-    const user = userEvent.setup()
-    renderPage()
-    const nameInput = screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' })
-    await user.type(nameInput, 'Draft knowledge')
-    await user.clear(nameInput)
-
-    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
-
-    expect(
-      screen.queryByRole('alertdialog', {
-        name: 'dataset.newKnowledge.discardDraftTitle',
-      }),
-    ).not.toBeInTheDocument()
-    expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
-  })
-
-  it('warns before leaving a partially created knowledge space', async () => {
+  it('leaves a partially created knowledge space without confirmation', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'upload'
     serviceMock.upload.mockRejectedValueOnce(new Error('upload unavailable'))
@@ -2522,18 +2469,9 @@ describe('CreateKnowledgePage', () => {
 
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
-    expect(routerMock.back).not.toHaveBeenCalled()
-    const confirmation = await screen.findByRole('alertdialog', {
-      name: 'dataset.newKnowledge.leavePartialSetupTitle',
-    })
-    expect(confirmation).toHaveTextContent('dataset.newKnowledge.leavePartialSetupDescription')
-    await user.click(
-      within(confirmation).getByRole('button', {
-        name: 'dataset.newKnowledge.leavePartialSetupConfirm',
-      }),
-    )
     expect(routerMock.replace).toHaveBeenCalledWith(
       '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources',
     )
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 })
