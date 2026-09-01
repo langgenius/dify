@@ -82,6 +82,8 @@ def enforce_agent_manage_or_app_scene(
     scene: RBACPermission,
     path_args: dict[str, object],
 ) -> None:
+    # Must run before the RBAC_ENABLED check below: a hidden workflow-only
+    # backing App has to stay unreachable regardless of RBAC_ENABLED.
     _reject_hidden_agent_backing_app(path_args)
 
     if not dify_config.RBAC_ENABLED:
@@ -126,6 +128,8 @@ def agent_manage_required_for_agent_app[**P, R](
 def agent_manage_required_for_agent_app[**P, R](
     view: Callable[P, R] | None = None, *, scene: RBACPermission | None = None
 ) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
+    # Must sit above get_app_model in the decorator stack — get_app_model
+    # deletes app_id from kwargs, and this decorator needs it.
     def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
         @wraps(view_func)
         def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
