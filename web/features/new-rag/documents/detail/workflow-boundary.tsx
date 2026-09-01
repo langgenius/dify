@@ -26,8 +26,9 @@ import {
 export function DocumentWorkflowBoundary({ children }: { children: ReactNode }) {
   const { space } = useKnowledgeSpace()
   const hasEditPermission = space.permission_keys.includes('knowledge_space_document_write')
-  useHydrateAtoms([[documentHasEditPermissionAtom, hasEditPermission]])
-  const setHasEditPermission = useSetAtom(documentHasEditPermissionAtom)
+  useHydrateAtoms([[documentHasEditPermissionAtom, hasEditPermission]], {
+    dangerouslyForceHydrate: true,
+  })
 
   const initialized = useAtomValue(documentWorkflowInitializedAtom)
   const latestTask = useAtomValue(documentLatestTaskAtom)
@@ -43,10 +44,6 @@ export function DocumentWorkflowBoundary({ children }: { children: ReactNode }) 
   const persistWorkflow = useSetAtom(persistDocumentWorkflowAtom)
   const reconcileTask = useSetAtom(reconcileDocumentTaskAtom)
   const reconcileSubmittedJob = useSetAtom(reconcileSubmittedDocumentJobAtom)
-
-  useEffect(() => {
-    setHasEditPermission(hasEditPermission)
-  }, [hasEditPermission, setHasEditPermission])
 
   useEffect(() => {
     initializeWorkflow()
