@@ -1,6 +1,6 @@
 ---
 name: how-to-write-component
-description: Use when implementing, refactoring, or conducting architecture-oriented reviews of React/TypeScript components involving component ownership, state graphs, props, feature boundaries, data flow, effects, lifecycle/reset behavior, or interaction ownership. Architecture reviews trace the locally owned component tree root-to-leaf and account for every state source and props edge. Do not use for bug, regression, security, or accessibility audits; test-only work; copy-only edits; or styling-only changes.
+description: Use when implementing, refactoring, or conducting architecture-oriented reviews of React/TypeScript components involving component ownership, state graphs, props, feature boundaries, data flow, effects, lifecycle/reset behavior, or interaction ownership. Architecture reviews trace the locally owned component tree root-to-leaf, account for every state source and props edge, and re-cut component boundaries from ownership and lifecycle instead of treating current files as fixed. Do not use for bug, regression, security, or accessibility audits; test-only work; copy-only edits; or styling-only changes.
 ---
 
 # How To Write A Component
@@ -50,9 +50,10 @@ Follow this order so component splitting does not precede ownership decisions:
 1. **Boundary:** identify the route, tab, workflow, or action surface that owns the behavior and state lifetime.
 2. **Data contract:** identify generated API types, URL inputs, Query cache data, and user-input normalization boundaries.
 3. **State graph:** list graph inputs, query/mutation nodes, named derived facts, commands, and any scope/reset needs. Keep unrelated local UI state out.
-4. **Component contracts:** place data, loading, empty, error, and handlers at the lowest real consumer; define only the props that cross true owner boundaries.
-5. **Interaction surfaces:** give forms, menus, dialogs, drawers, and popovers explicit lifecycle owners.
-6. **Finish and verify:** remove copied state, unnecessary Effects/wrappers/memoization/nullable coercion, then verify observable behavior at the narrowest sufficient boundary.
+4. **Re-cut the component tree:** treat current components and files as evidence, not target constraints. For every current local component, decide whether to keep, split, merge, remove, rename, promote to an owner, or demote to presentation based on state lifetime, behavior ownership, interaction lifecycle, and independently changing visual regions.
+5. **Component contracts:** place data, loading, empty, error, and handlers at the lowest real consumer; define only the props that cross true owner boundaries.
+6. **Interaction surfaces:** give forms, menus, dialogs, drawers, and popovers explicit lifecycle owners.
+7. **Finish and verify:** remove copied state, unnecessary Effects/wrappers/memoization/nullable coercion, then verify observable behavior at the narrowest sufficient boundary.
 
 ## Architecture Audit Output
 
@@ -64,8 +65,9 @@ In architecture-audit mode, report:
 4. **Props-edge ledger:** every meaningful parent-child props edge and whether each prop is consumed, forwarded, renamed, recomputed, mirrored, or paired with lifecycle state.
 5. **Current state graph:** primitive inputs -> queries/mutations -> named facts -> commands -> consumers.
 6. **Ownership assessment:** misplaced state, switchboard parents, duplicated owners, mirrored state, prop fan-out, and unclear lifecycle boundaries.
-7. **Target architecture:** proposed owners, component contracts, and target state graph.
-8. **Migration slices:** ordered refactoring steps with observable verification boundaries.
+7. **Component-boundary disposition:** account for every current local component as keep, split, merge, remove, rename, promote to owner, or demote to presentation. Map every current state/workflow owner to a target component, and justify boundary changes by ownership, lifecycle, behavior, or an independently changing visual region.
+8. **Target architecture:** redraw the target rendered component tree independently of the current file layout, then report proposed owners, component contracts, reset boundaries, and the target state graph. Do not count a renamed component, facade wrapper, props bag, or provider around the same switchboard as a boundary redesign.
+9. **Migration slices:** ordered refactoring steps with explicit component moves/splits/merges and observable verification boundaries.
 
 Do not organize an architecture audit by bug severity unless the user also requests a correctness review. Use compact tables where they make full accounting easier to verify:
 
@@ -73,6 +75,12 @@ Do not organize an architecture audit by bug severity unless the user also reque
 | --- | --- | --- | --- | --- | --- | --- |
 
 | Edge | Prop | Treatment | Real consumer | Assessment |
+| --- | --- | --- | --- | --- |
+
+| Current component | Current responsibilities | Target disposition | Target owner(s) | Reason |
+| --- | --- | --- | --- | --- |
+
+| Target component | Owned state/workflow | Children | Public contract | Reset boundary |
 | --- | --- | --- | --- | --- |
 
 ## Patterns To Avoid
