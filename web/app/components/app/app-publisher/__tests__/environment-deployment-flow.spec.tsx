@@ -4,10 +4,10 @@ import type { QueryClient } from '@tanstack/react-query'
 import {
   DeploymentOperationStatus,
   DeploymentOperationType,
-  DeploymentStatus,
   EnvironmentStatus,
   EnvVarValueType,
   OperatorType,
+  RuntimeState,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -140,11 +140,11 @@ const latestVersion = {
 function createDeployment({
   deployed = true,
   latest = false,
-  status = DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+  runtimeState = RuntimeState.RUNTIME_STATE_RUNNING,
 }: {
   deployed?: boolean
   latest?: boolean
-  status?: NonNullable<EnvironmentDeployment['deployment']>['status']
+  runtimeState?: NonNullable<EnvironmentDeployment['deployment']>['runtimeState']
 } = {}): EnvironmentDeployment {
   const currentVersion = latest
     ? {
@@ -173,7 +173,7 @@ function createDeployment({
         id: 'user-1',
         type: OperatorType.OPERATOR_TYPE_ACCOUNT,
       },
-      status,
+      runtimeState,
       versions_behind: latest ? 0 : 1,
     },
     environment: {
@@ -581,13 +581,10 @@ describe('PublisherEnvironmentFlow', () => {
     expect(screen.getByRole('button', { name: 'All versions' })).toBeInTheDocument()
   })
 
-  it.each([
-    DeploymentStatus.DEPLOYMENT_STATUS_STARTING,
-    DeploymentStatus.DEPLOYMENT_STATUS_STOPPING,
-  ])(
-    'disables deployment triggers but keeps environment navigation available while the status is %s',
-    (status) => {
-      renderFlow(createDeployment({ deployed: false, status }))
+  it.each([RuntimeState.RUNTIME_STATE_STARTING, RuntimeState.RUNTIME_STATE_STOPPING])(
+    'disables deployment triggers but keeps environment navigation available while the state is %s',
+    (runtimeState) => {
+      renderFlow(createDeployment({ deployed: false, runtimeState }))
 
       expect(screen.getByRole('button', { name: 'Deploy latest' })).toBeDisabled()
       expect(screen.getByRole('button', { name: 'All versions' })).toBeDisabled()
@@ -604,7 +601,7 @@ describe('PublisherEnvironmentFlow', () => {
 
   it('keeps the deployment target and progress controls when a deploying status refresh fails', () => {
     const deployment = createDeployment({
-      status: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+      runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
     })
     deployment.deployment!.latest_operation = {
       activity_at: 1_785_456_000,
@@ -646,16 +643,16 @@ describe('PublisherEnvironmentFlow', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
-  it.each([
-    DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYED,
-    DeploymentStatus.DEPLOYMENT_STATUS_ERROR,
-  ])('shows the undeployed state when terminal status %s has no current version', (status) => {
-    renderFlow(createDeployment({ deployed: false, status }))
+  it.each([RuntimeState.RUNTIME_STATE_UNDEPLOYED, RuntimeState.RUNTIME_STATE_ERROR])(
+    'shows the undeployed state when terminal state %s has no current version',
+    (runtimeState) => {
+      renderFlow(createDeployment({ deployed: false, runtimeState }))
 
-    expect(screen.getByText('Not deployed yet')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Deploy latest' })).toBeEnabled()
-    expect(screen.getByRole('button', { name: 'All versions' })).toBeEnabled()
-  })
+      expect(screen.getByText('Not deployed yet')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Deploy latest' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'All versions' })).toBeEnabled()
+    },
+  )
 
   it('deploys the latest version directly and goes back to version selection', async () => {
     const user = userEvent.setup()

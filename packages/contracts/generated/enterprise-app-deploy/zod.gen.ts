@@ -22,6 +22,18 @@ export const zApplicationInteractionStatus = z.enum([
   'APPLICATION_INTERACTION_STATUS_FAILED',
   'APPLICATION_INTERACTION_STATUS_PARTIAL_SUCCEEDED',
   'APPLICATION_INTERACTION_STATUS_STOPPED',
+  'APPLICATION_INTERACTION_STATUS_PAUSED',
+])
+
+export const zApplicationInteractionSource = z.enum([
+  'APPLICATION_INTERACTION_SOURCE_UNSPECIFIED',
+  'APPLICATION_INTERACTION_SOURCE_WEB_APP',
+  'APPLICATION_INTERACTION_SOURCE_SERVICE_API',
+  'APPLICATION_INTERACTION_SOURCE_TRIGGER',
+  'APPLICATION_INTERACTION_SOURCE_EXPLORE',
+  'APPLICATION_INTERACTION_SOURCE_DEBUGGER',
+  'APPLICATION_INTERACTION_SOURCE_VALIDATION',
+  'APPLICATION_INTERACTION_SOURCE_OPENAPI',
 ])
 
 export const zEnvironmentMode = z.enum([
@@ -85,23 +97,14 @@ export const zEnvironmentBackend = z.enum([
   'ENVIRONMENT_BACKEND_EXTERNAL',
 ])
 
-export const zEnvironmentDeployedAppStatus = z.enum([
-  'ENVIRONMENT_DEPLOYED_APP_STATUS_UNSPECIFIED',
-  'ENVIRONMENT_DEPLOYED_APP_STATUS_DEPLOYED',
-  'ENVIRONMENT_DEPLOYED_APP_STATUS_DEPLOYING',
-  'ENVIRONMENT_DEPLOYED_APP_STATUS_FAILED',
-  'ENVIRONMENT_DEPLOYED_APP_STATUS_UNDEPLOYED',
-])
-
-export const zDeploymentStatus = z.enum([
-  'DEPLOYMENT_STATUS_UNSPECIFIED',
-  'DEPLOYMENT_STATUS_UNDEPLOYED',
-  'DEPLOYMENT_STATUS_RUNNING',
-  'DEPLOYMENT_STATUS_STARTING',
-  'DEPLOYMENT_STATUS_STOPPING',
-  'DEPLOYMENT_STATUS_SUSPENDED',
-  'DEPLOYMENT_STATUS_ERROR',
-  'DEPLOYMENT_STATUS_UNKNOWN',
+export const zRuntimeState = z.enum([
+  'RUNTIME_STATE_UNSPECIFIED',
+  'RUNTIME_STATE_UNDEPLOYED',
+  'RUNTIME_STATE_RUNNING',
+  'RUNTIME_STATE_STARTING',
+  'RUNTIME_STATE_STOPPING',
+  'RUNTIME_STATE_ERROR',
+  'RUNTIME_STATE_UNKNOWN',
 ])
 
 export const zEnvVarValueSource = z.enum([
@@ -254,6 +257,18 @@ export const zEnvironmentAccess = z.object({
   enable_api: z.boolean(),
 })
 
+/**
+ * EnvironmentActivity reports a numerator and a denominator rather than a rate,
+ * so a caller can tell a healthy environment from one nothing has called.
+ */
+export const zEnvironmentActivity = z.object({
+  environmentId: z.string(),
+  invocationCount: z.string(),
+  failedInvocationCount: z.string(),
+  failedDeploymentCount: z.string(),
+  deployedAppCount: z.string(),
+})
+
 export const zEnvironmentApiKey = z.object({
   id: z.string(),
   type: z.string(),
@@ -365,7 +380,6 @@ export const zError = z.object({
       'APPDEPLOY_APP_LOG_INVALID_TIME_RANGE',
       'APPDEPLOY_APP_LOG_INVALID_CURSOR',
       'APPDEPLOY_APP_LOG_CURSOR_FILTER_MISMATCH',
-      'APPDEPLOY_APP_LOG_ID_INVALID',
       'APPDEPLOY_UNSUPPORTED_NODE_TYPE',
       'APPDEPLOY_UNSUPPORTED_TOOL_PROVIDER_TYPE',
       'APPDEPLOY_TOOL_PROVIDER_TYPE_INVALID',
@@ -377,15 +391,12 @@ export const zError = z.object({
       'APPDEPLOY_INVALID_WORKFLOW_ID',
       'APPDEPLOY_INVALID_DEPLOYMENT_VERSION_ID',
       'APPDEPLOY_DEVELOPER_API_URL_NOT_CONFIGURED',
-      'APPDEPLOY_INVALID_DEPLOYMENT_OPERATION_ID',
-      'APPDEPLOY_APP_LOG_EXPORT_RANGE_TOO_WIDE',
-      'APPDEPLOY_APP_LOG_EXPORT_TOO_MANY_ROWS',
-      'APPDEPLOY_APP_LOG_EXPORT_TOO_LARGE',
       'APPDEPLOY_UNAUTHORIZED',
       'APPDEPLOY_FORBIDDEN',
       'APPDEPLOY_APP_RUNNER_AUTH_REQUIRED',
       'APPDEPLOY_APP_RUNNER_INVALID_JOIN_TOKEN',
       'APPDEPLOY_APP_RUNNER_INVALID_CONTROL_TOKEN',
+      'APPDEPLOY_WEB_APP_ACCESS_DENIED',
       'APPDEPLOY_ENVIRONMENT_NOT_FOUND',
       'APPDEPLOY_DEPLOYMENT_NOT_FOUND',
       'APPDEPLOY_REVISION_NOT_FOUND',
@@ -396,11 +407,9 @@ export const zError = z.object({
       'APPDEPLOY_ACCESS_SUBJECT_NOT_FOUND',
       'APPDEPLOY_API_KEY_NOT_FOUND',
       'APPDEPLOY_SOURCE_VERSION_NOT_FOUND',
-      'APPDEPLOY_APP_LOG_NOT_FOUND',
       'APPDEPLOY_WORKSPACE_NOT_FOUND',
       'APPDEPLOY_APP_RUNNER_NOT_FOUND',
       'APPDEPLOY_WORKFLOW_NOT_FOUND',
-      'APPDEPLOY_DEPLOYMENT_OPERATION_NOT_FOUND',
       'APPDEPLOY_RUN_FILE_NOT_FOUND',
       'APPDEPLOY_APPLICATION_UNAVAILABLE',
       'APPDEPLOY_TARGET_ENVIRONMENT_REMOVED',
@@ -470,6 +479,16 @@ export const zError = z.object({
   phase: z.string().optional(),
   occurredAt: z.iso.datetime().optional(),
   detailCode: z.string().optional(),
+})
+
+export const zGetApplicationInteractionSummaryResponse = z.object({
+  totalCount: z.string(),
+  failedCount: z.string(),
+  lookbackStart: z.iso.datetime(),
+})
+
+export const zGetEnvironmentActivityResponse = z.object({
+  data: z.array(zEnvironmentActivity),
 })
 
 export const zGetEnvironmentCapabilitiesResponse = z.object({
@@ -567,31 +586,6 @@ export const zOperator = z.object({
   type: zOperatorType,
   id: z.string(),
   display_name: z.string(),
-})
-
-export const zApplicationInteraction = z.object({
-  id: z.string(),
-  timestamp: z.iso.datetime(),
-  workflowRunId: z.string(),
-  status: zApplicationInteractionStatus,
-  durationSeconds: z.number(),
-  totalTokens: z.string(),
-  workspace: zNamedRef,
-  environment: zNamedRef,
-  app: zNamedRef,
-  operator: zOperator.optional(),
-  invokeFrom: z.string(),
-  traceId: z.string(),
-  difyTraceId: z.string(),
-  deploymentVersionId: z.string(),
-  error: z.string().optional(),
-  body: z.string().optional(),
-  attributesJson: z.string().optional(),
-  resourceAttributesJson: z.string().optional(),
-})
-
-export const zGetApplicationInteractionResponse = z.object({
-  interaction: zApplicationInteraction,
 })
 
 export const zPrepareAppDeletionRequest = z.object({
@@ -903,6 +897,22 @@ export const zWorkflowVersion = z.object({
   dsl_hash: z.string().optional(),
 })
 
+export const zApplicationInteraction = z.object({
+  id: z.string(),
+  timestamp: z.iso.datetime(),
+  status: zApplicationInteractionStatus,
+  durationSeconds: z.number(),
+  totalTokens: z.string(),
+  workspace: zNamedRef,
+  environment: zNamedRef,
+  app: zNamedRef,
+  operator: zNamedRef.optional(),
+  source: zApplicationInteractionSource,
+  version: zWorkflowVersion.optional(),
+  traceId: z.string().optional(),
+  error: z.string().optional(),
+})
+
 export const zDeploymentOperation = z.object({
   id: z.string(),
   type: zDeploymentOperationType,
@@ -923,13 +933,19 @@ export const zEnvironmentDeployedApp = z.object({
   deploymentId: z.string(),
   workspace: zNamedRef,
   app: zNamedRef,
-  status: zEnvironmentDeployedAppStatus,
+  runtimeState: zRuntimeState,
   currentVersion: zWorkflowVersion.optional(),
   deployedAt: z.iso.datetime().optional(),
   deployedBy: zOperator.optional(),
   latestAttempt: zEnvironmentDeployedAppAttempt.optional(),
   sizing: zRunnerSizing.optional(),
   occupiesPool: z.boolean().optional(),
+  recentInvocationCount: z.string().optional(),
+  versionsBehind: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
 })
 
 export const zEnvironmentDeploymentOperation = z.object({
@@ -942,7 +958,7 @@ export const zEnvironmentDeploymentOperation = z.object({
 })
 
 export const zEnvironmentDeploymentState = z.object({
-  status: zDeploymentStatus,
+  runtimeState: zRuntimeState,
   current_version: zWorkflowVersion.optional(),
   versions_behind: z
     .int()
@@ -960,12 +976,14 @@ export const zEnvironmentDeployment = z.object({
   access: zEnvironmentAccess,
 })
 
-export const zGetDeploymentOperationResponse = z.object({
-  operation: zDeploymentOperation,
-})
-
 export const zGetEnvironmentDeploymentResponse = z.object({
   environment_deployment: zEnvironmentDeployment,
+})
+
+export const zListApplicationInteractionsResponse = z.object({
+  data: z.array(zApplicationInteraction),
+  nextPageToken: z.string().optional(),
+  previousPageToken: z.string().optional(),
 })
 
 export const zListEnvironmentDeploymentsResponse = z.object({
@@ -998,8 +1016,8 @@ export const zPagination = z.object({
     .optional(),
 })
 
-export const zListApplicationInteractionsResponse = z.object({
-  data: z.array(zApplicationInteraction),
+export const zListApplicationInteractionAppsResponse = z.object({
+  data: z.array(zNamedRef),
   pagination: zPagination,
 })
 
@@ -1095,13 +1113,19 @@ export const zEnvironmentDeployedAppWritable = z.object({
   deploymentId: z.string(),
   workspace: zNamedRef,
   app: zNamedRef,
-  status: zEnvironmentDeployedAppStatus,
+  runtimeState: zRuntimeState,
   currentVersion: zWorkflowVersion.optional(),
   deployedAt: z.iso.datetime().optional(),
   deployedBy: zOperator.optional(),
   latestAttempt: zEnvironmentDeployedAppAttempt.optional(),
   sizing: zRunnerSizingWritable.optional(),
   occupiesPool: z.boolean().optional(),
+  recentInvocationCount: z.string().optional(),
+  versionsBehind: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
 })
 
 export const zListEnvironmentDeployedAppsResponseWritable = z.object({

@@ -12,12 +12,12 @@ import type { ComponentProps, ReactElement } from 'react'
 import {
   DeploymentOperationStatus,
   DeploymentOperationType,
-  DeploymentStatus,
   EnvironmentStatus,
   EnvVarValueSource,
   EnvVarValueType,
   OperatorType,
   PluginCategory,
+  RuntimeState,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { toast } from '@langgenius/dify-ui/toast'
 import { act, screen, waitFor, within } from '@testing-library/react'
@@ -31,7 +31,7 @@ import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console
 import { AppACLPermission } from '@/utils/permission'
 import AppDeploy from '..'
 import { EnvironmentTable } from '../environment-table'
-import { DeploymentStatus as DeploymentStatusView } from '../shared/deployment-status'
+import { RuntimeStateIndicator } from '../shared/runtime-state'
 import { AppDeployStateBoundary } from '../state'
 import {
   getEnvironmentDeploymentActions,
@@ -264,7 +264,7 @@ function environmentDeployment({
   id,
   latestOperation,
   name,
-  status,
+  runtimeState,
   versionsBehind,
 }: {
   access?: EnvironmentDeployment['access']
@@ -272,7 +272,7 @@ function environmentDeployment({
   id: string
   latestOperation?: EnvironmentDeploymentOperation
   name: string
-  status: NonNullable<EnvironmentDeployment['deployment']>['status']
+  runtimeState: NonNullable<EnvironmentDeployment['deployment']>['runtimeState']
   versionsBehind?: number
 }): EnvironmentDeployment {
   return {
@@ -282,7 +282,7 @@ function environmentDeployment({
       deployed_at: currentVersion ? ACTIVITY_AT : undefined,
       deployed_by: currentVersion ? OPERATOR : undefined,
       latest_operation: latestOperation,
-      status,
+      runtimeState,
       versions_behind: versionsBehind,
     },
     environment: {
@@ -303,7 +303,7 @@ const APP_ENVIRONMENT_DEPLOYMENTS: EnvironmentDeployment[] = [
       targetVersion: VERSIONS.sprint42,
     }),
     name: 'Staging',
-    status: DeploymentStatus.DEPLOYMENT_STATUS_STARTING,
+    runtimeState: RuntimeState.RUNTIME_STATE_STARTING,
   }),
   environmentDeployment({
     currentVersion: VERSIONS.sprint42,
@@ -313,7 +313,7 @@ const APP_ENVIRONMENT_DEPLOYMENTS: EnvironmentDeployment[] = [
       targetVersion: VERSIONS.sprint42,
     }),
     name: 'Canary',
-    status: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+    runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
     versionsBehind: 0,
   }),
   environmentDeployment({
@@ -324,7 +324,7 @@ const APP_ENVIRONMENT_DEPLOYMENTS: EnvironmentDeployment[] = [
       targetVersion: VERSIONS.version02,
     }),
     name: 'Pre-release',
-    status: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+    runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
     versionsBehind: 1,
   }),
   environmentDeployment({
@@ -335,7 +335,7 @@ const APP_ENVIRONMENT_DEPLOYMENTS: EnvironmentDeployment[] = [
       targetVersion: VERSIONS.hotfix,
     }),
     name: 'Prod',
-    status: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+    runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
     versionsBehind: 1,
   }),
   environmentDeployment({
@@ -348,7 +348,7 @@ const APP_ENVIRONMENT_DEPLOYMENTS: EnvironmentDeployment[] = [
       targetVersion: VERSIONS.sprint42,
     }),
     name: 'EU-Prod',
-    status: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+    runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
     versionsBehind: 2,
   }),
   environmentDeployment({
@@ -360,7 +360,7 @@ const APP_ENVIRONMENT_DEPLOYMENTS: EnvironmentDeployment[] = [
       targetVersion: VERSIONS.qa,
     }),
     name: 'QA',
-    status: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+    runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
     versionsBehind: 0,
   }),
   environmentDeployment({
@@ -372,7 +372,7 @@ const APP_ENVIRONMENT_DEPLOYMENTS: EnvironmentDeployment[] = [
       targetVersion: VERSIONS.qa,
     }),
     name: 'Sandbox',
-    status: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+    runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
     versionsBehind: 0,
   }),
   environmentDeployment({
@@ -384,7 +384,7 @@ const APP_ENVIRONMENT_DEPLOYMENTS: EnvironmentDeployment[] = [
       targetVersion: VERSIONS.sprint42,
     }),
     name: 'Preview',
-    status: DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYED,
+    runtimeState: RuntimeState.RUNTIME_STATE_UNDEPLOYED,
   }),
 ]
 
@@ -423,7 +423,7 @@ const ACTION_MATRIX_CASES: Array<{
       currentVersion: VERSIONS.sprint42,
       id: 'latest',
       name: 'Latest',
-      status: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+      runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
       versionsBehind: 0,
     }),
   },
@@ -439,7 +439,7 @@ const ACTION_MATRIX_CASES: Array<{
       currentVersion: VERSIONS.version02,
       id: 'behind',
       name: 'Behind',
-      status: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+      runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
       versionsBehind: 1,
     }),
   },
@@ -459,7 +459,7 @@ const ACTION_MATRIX_CASES: Array<{
         targetVersion: VERSIONS.sprint42,
       }),
       name: 'Deploying',
-      status: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+      runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
     }),
   },
   {
@@ -478,7 +478,7 @@ const ACTION_MATRIX_CASES: Array<{
         type: DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_UNDEPLOY,
       }),
       name: 'Undeploying',
-      status: DeploymentStatus.DEPLOYMENT_STATUS_STOPPING,
+      runtimeState: RuntimeState.RUNTIME_STATE_STOPPING,
     }),
   },
   {
@@ -495,7 +495,7 @@ const ACTION_MATRIX_CASES: Array<{
         targetVersion: VERSIONS.sprint42,
       }),
       name: 'Failed',
-      status: DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYED,
+      runtimeState: RuntimeState.RUNTIME_STATE_UNDEPLOYED,
     }),
   },
   {
@@ -514,7 +514,7 @@ const ACTION_MATRIX_CASES: Array<{
         targetVersion: VERSIONS.sprint42,
       }),
       name: 'Running failed',
-      status: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+      runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
       versionsBehind: 2,
     }),
   },
@@ -528,7 +528,7 @@ const ACTION_MATRIX_CASES: Array<{
       currentVersion: VERSIONS.qa,
       id: 'invalid',
       name: 'Invalid',
-      status: DeploymentStatus.DEPLOYMENT_STATUS_ERROR,
+      runtimeState: RuntimeState.RUNTIME_STATE_ERROR,
     }),
   },
   {
@@ -537,7 +537,7 @@ const ACTION_MATRIX_CASES: Array<{
     row: environmentDeployment({
       id: 'invalid-without-version',
       name: 'Invalid without version',
-      status: DeploymentStatus.DEPLOYMENT_STATUS_ERROR,
+      runtimeState: RuntimeState.RUNTIME_STATE_ERROR,
     }),
   },
   {
@@ -550,7 +550,7 @@ const ACTION_MATRIX_CASES: Array<{
       currentVersion: VERSIONS.qa,
       id: 'unknown',
       name: 'Unknown',
-      status: DeploymentStatus.DEPLOYMENT_STATUS_UNKNOWN,
+      runtimeState: RuntimeState.RUNTIME_STATE_UNKNOWN,
     }),
   },
 ]
@@ -909,34 +909,33 @@ describe('AppDeploy', () => {
   )
 
   it.each([
-    [DeploymentStatus.DEPLOYMENT_STATUS_UNSPECIFIED, 'Unknown'],
-    [DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYED, 'Not deployed'],
-    [DeploymentStatus.DEPLOYMENT_STATUS_RUNNING, 'Running'],
-    [DeploymentStatus.DEPLOYMENT_STATUS_STARTING, 'Deploying'],
-    [DeploymentStatus.DEPLOYMENT_STATUS_STOPPING, 'Undeploying'],
-    [DeploymentStatus.DEPLOYMENT_STATUS_SUSPENDED, 'Unknown'],
-    [DeploymentStatus.DEPLOYMENT_STATUS_ERROR, 'Invalid'],
-    [DeploymentStatus.DEPLOYMENT_STATUS_UNKNOWN, 'Unknown'],
-  ] as const)('renders contract deployment status %s as %s', (status, label) => {
-    render(<DeploymentStatusView status={status} />)
+    [RuntimeState.RUNTIME_STATE_UNSPECIFIED, 'Unknown'],
+    [RuntimeState.RUNTIME_STATE_UNDEPLOYED, 'Not deployed'],
+    [RuntimeState.RUNTIME_STATE_RUNNING, 'Running'],
+    [RuntimeState.RUNTIME_STATE_STARTING, 'Deploying'],
+    [RuntimeState.RUNTIME_STATE_STOPPING, 'Undeploying'],
+    [RuntimeState.RUNTIME_STATE_ERROR, 'Invalid'],
+    [RuntimeState.RUNTIME_STATE_UNKNOWN, 'Unknown'],
+  ] as const)('renders runtime state %s as %s', (runtimeState, label) => {
+    render(<RuntimeStateIndicator runtimeState={runtimeState} />)
 
     expect(screen.getByText(label)).toBeInTheDocument()
   })
 
-  it.each([
-    DeploymentStatus.DEPLOYMENT_STATUS_STARTING,
-    DeploymentStatus.DEPLOYMENT_STATUS_STOPPING,
-  ])('continues polling transitional status %s without a latest operation', (status) => {
-    expect(
-      shouldPollEnvironmentDeployment(
-        environmentDeployment({
-          id: 'transitioning',
-          name: 'Transitioning',
-          status,
-        }),
-      ),
-    ).toBe(true)
-  })
+  it.each([RuntimeState.RUNTIME_STATE_STARTING, RuntimeState.RUNTIME_STATE_STOPPING])(
+    'continues polling transitional state %s without a latest operation',
+    (runtimeState) => {
+      expect(
+        shouldPollEnvironmentDeployment(
+          environmentDeployment({
+            id: 'transitioning',
+            name: 'Transitioning',
+            runtimeState,
+          }),
+        ),
+      ).toBe(true)
+    },
+  )
 
   it('disables Deploy latest and retries after the latest workflow request fails', async () => {
     const user = userEvent.setup()
@@ -1496,7 +1495,7 @@ describe('AppDeploy', () => {
                   targetVersion: workflowVersion('Release 6', 'workflow-version-6'),
                 }),
                 name: 'Dev',
-                status: DeploymentStatus.DEPLOYMENT_STATUS_STARTING,
+                runtimeState: RuntimeState.RUNTIME_STATE_STARTING,
               }),
             ],
           }),
@@ -1666,7 +1665,7 @@ describe('AppDeploy', () => {
                       type: DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_UNDEPLOY,
                     }),
                     name: 'Canary',
-                    status: DeploymentStatus.DEPLOYMENT_STATUS_STOPPING,
+                    runtimeState: RuntimeState.RUNTIME_STATE_STOPPING,
                   })
                 : deployment,
             ),
@@ -1806,7 +1805,7 @@ describe('AppDeploy', () => {
             type: DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_UNDEPLOY,
           }),
           name: 'Canary',
-          status: DeploymentStatus.DEPLOYMENT_STATUS_STOPPING,
+          runtimeState: RuntimeState.RUNTIME_STATE_STOPPING,
         }),
       ],
     })
