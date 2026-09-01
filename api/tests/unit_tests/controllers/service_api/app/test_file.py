@@ -19,6 +19,7 @@ import pytest
 from flask import Flask
 
 from controllers.common.errors import (
+    BlockedFileExtensionError,
     FilenameNotExistsError,
     FileTooLargeError,
     NoFileUploadedError,
@@ -234,12 +235,10 @@ class TestFileApiPost:
     which preserves ``__wrapped__``.
     """
 
-    @patch("controllers.service_api.app.file.FileService")
-    @patch("controllers.service_api.app.file.db")
+    @patch("controllers.service_api.app.file.application_services")
     def test_upload_file_success(
         self,
-        mock_db,
-        mock_file_svc_cls,
+        mock_application_services,
         app: Flask,
         mock_app_model,
         mock_end_user,
@@ -263,10 +262,11 @@ class TestFileApiPost:
         mock_upload.original_url = None
         mock_upload.reference = None
         mock_upload.user_id = None
-        mock_upload.tenant_id = None
+        mock_upload.tenant_id = mock_app_model.tenant_id
         mock_upload.conversation_id = None
         mock_upload.file_key = None
-        mock_file_svc_cls.return_value.upload_file.return_value = mock_upload
+        file_service = mock_application_services.return_value.files
+        file_service.upload_file.return_value = mock_upload
 
         data = {"file": (BytesIO(b"file content"), "test.pdf", "application/pdf")}
 
@@ -284,7 +284,16 @@ class TestFileApiPost:
             )
 
         assert status == 201
-        mock_file_svc_cls.return_value.upload_file.assert_called_once()
+        assert response["id"] == mock_upload.id
+        assert response["name"] == "test.pdf"
+        assert response["tenant_id"] == mock_app_model.tenant_id
+        file_service.upload_file.assert_called_once_with(
+            filename="test.pdf",
+            content=b"file content",
+            mimetype="application/pdf",
+            user=mock_end_user,
+            tenant_id=mock_app_model.tenant_id,
+        )
 
     def test_upload_no_file(self, app: Flask, mock_app_model, mock_end_user):
         """Test NoFileUploadedError when no file in request."""
@@ -339,12 +348,28 @@ class TestFileApiPost:
             with pytest.raises(UnsupportedFileTypeError):
                 unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)
 
-    @patch("controllers.service_api.app.file.FileService")
-    @patch("controllers.service_api.app.file.db")
+    def test_upload_no_filename(self, app: Flask, mock_app_model, mock_end_user):
+        """Test FilenameNotExistsError when the uploaded file has no filename."""
+        from io import BytesIO
+
+        from controllers.service_api.app.file import FileApi
+
+        data = {"file": (BytesIO(b"content"), "", "application/pdf")}
+
+        with app.test_request_context(
+            "/files/upload",
+            method="POST",
+            content_type="multipart/form-data",
+            data=data,
+        ):
+            api = FileApi()
+            with pytest.raises(FilenameNotExistsError):
+                unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)
+
+    @patch("controllers.service_api.app.file.application_services")
     def test_upload_file_too_large(
         self,
-        mock_db,
-        mock_file_svc_cls,
+        mock_application_services,
         app: Flask,
         mock_app_model,
         mock_end_user,
@@ -355,9 +380,8 @@ class TestFileApiPost:
         import services.errors.file
         from controllers.service_api.app.file import FileApi
 
-        mock_file_svc_cls.return_value.upload_file.side_effect = services.errors.file.FileTooLargeError(
-            "File exceeds 15MB limit"
-        )
+        service_error = services.errors.file.FileTooLargeError("File exceeds 15MB limit")
+        mock_application_services.return_value.files.upload_file.side_effect = service_error
 
         data = {"file": (BytesIO(b"big content"), "big.pdf", "application/pdf")}
 
@@ -368,15 +392,15 @@ class TestFileApiPost:
             data=data,
         ):
             api = FileApi()
-            with pytest.raises(FileTooLargeError):
+            with pytest.raises(FileTooLargeError) as raised:
                 unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)
 
-    @patch("controllers.service_api.app.file.FileService")
-    @patch("controllers.service_api.app.file.db")
+        assert raised.value.__cause__ is service_error
+
+    @patch("controllers.service_api.app.file.application_services")
     def test_upload_unsupported_file_type(
         self,
-        mock_db,
-        mock_file_svc_cls,
+        mock_application_services,
         app: Flask,
         mock_app_model,
         mock_end_user,
@@ -387,7 +411,8 @@ class TestFileApiPost:
         import services.errors.file
         from controllers.service_api.app.file import FileApi
 
-        mock_file_svc_cls.return_value.upload_file.side_effect = services.errors.file.UnsupportedFileTypeError()
+        service_error = services.errors.file.UnsupportedFileTypeError()
+        mock_application_services.return_value.files.upload_file.side_effect = service_error
 
         data = {"file": (BytesIO(b"content"), "test.xyz", "application/octet-stream")}
 
@@ -398,5 +423,45 @@ class TestFileApiPost:
             data=data,
         ):
             api = FileApi()
-            with pytest.raises(UnsupportedFileTypeError):
+            with pytest.raises(UnsupportedFileTypeError) as raised:
                 unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)
+
+        assert raised.value.__cause__ is service_error
+
+    @patch("controllers.service_api.app.file.application_services")
+    def test_upload_blocked_file_extension(
+        self,
+        mock_application_services,
+        app: Flask,
+        mock_app_model,
+        mock_end_user,
+    ):
+        """Test BlockedFileExtensionError from FileService."""
+        from io import BytesIO
+
+        import services.errors.file
+        from controllers.service_api.app.file import FileApi
+
+        service_error = services.errors.file.BlockedFileExtensionError("File extension '.exe' is blocked")
+        mock_application_services.return_value.files.upload_file.side_effect = service_error
+
+        data = {"file": (BytesIO(b"content"), "blocked.exe", "application/octet-stream")}
+
+        with app.test_request_context(
+            "/files/upload",
+            method="POST",
+            content_type="multipart/form-data",
+            data=data,
+        ):
+            api = FileApi()
+            with pytest.raises(BlockedFileExtensionError) as raised:
+                unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)
+
+        assert raised.value.code == 400
+        assert raised.value.error_code == "file_extension_blocked"
+        assert raised.value.data == {
+            "code": "file_extension_blocked",
+            "message": "The file extension is blocked for security reasons.",
+            "status": 400,
+        }
+        assert raised.value.__cause__ is service_error

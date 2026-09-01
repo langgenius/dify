@@ -190,6 +190,7 @@ class ApplicationServices:
     schema_definitions: SchemaDefinitionService
     setup: SetupService
     feature_queries: FeatureQueryService
+    files: FileService
     oauth_server: OAuthServerService
     init_validation: InitValidationService
     notifications: NotificationService
@@ -267,6 +268,7 @@ def build_application_services(
         builtin=builtin_catalog,
     )
     workspace_query_repository = WorkspaceQueryRepository(session_factory=database_client)
+    file_service = FileService(session_factory=database_client)
     return ApplicationServices(
         accounts=AccountServices(
             avatar=AccountAvatarService(
@@ -415,7 +417,7 @@ def build_application_services(
         ),
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=app_definition_repository,
-            file_service=FileService(session_factory=database_client),
+            file_service=file_service,
             workspace_features=feature_gateway.get_workspace_features,
             files_url=dify_config.FILES_URL,
         ),
@@ -434,6 +436,7 @@ def build_application_services(
             features=feature_gateway,
             app_dsl_version=CURRENT_APP_DSL_VERSION,
         ),
+        files=file_service,
         oauth_server=_build_oauth_server_service(database_client=database_client, redis=redis),
         init_validation=InitValidationService(
             state=installation_state,

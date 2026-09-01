@@ -4,23 +4,23 @@ from flask_restx.api import HTTPStatus
 
 import services
 from controllers.common.errors import (
+    BlockedFileExtensionError,
     FilenameNotExistsError,
     FileTooLargeError,
     NoFileUploadedError,
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import JsonResponseWithStatus, register_response_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.schema import multipart_file_params
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
-from extensions.ext_database import db
+from extensions.ext_application_services import application_services
 from fields.file_fields import FileResponse
 from libs.helper import dump_response
 from models import App, EndUser
-from services.file_service import FileService
 
-register_schema_models(service_api_ns, FileResponse)
+register_response_schema_models(service_api_ns, FileResponse)
 
 
 @service_api_ns.route("/files/upload")
@@ -37,7 +37,8 @@ class FileApi(Resource):
             400: (
                 "- `no_file_uploaded` : No file was provided in the request.\n"
                 "- `too_many_files` : Only one file is allowed per request.\n"
-                "- `filename_not_exists_error` : The uploaded file has no filename."
+                "- `filename_not_exists_error` : The uploaded file has no filename.\n"
+                "- `file_extension_blocked` : The file extension is blocked for security reasons."
             ),
             413: "`file_too_large` : File size exceeded.",
             415: "`unsupported_file_type` : File type not allowed.",
@@ -57,7 +58,7 @@ class FileApi(Resource):
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.FORM))  # type: ignore
     @service_api_ns.response(HTTPStatus.CREATED, "File uploaded", service_api_ns.models[FileResponse.__name__])
-    def post(self, app_model: App, end_user: EndUser):
+    def post(self, app_model: App, end_user: EndUser) -> JsonResponseWithStatus:
         """Upload a file for use in conversations.
 
         Accepts a single file upload via multipart/form-data.
@@ -74,18 +75,21 @@ class FileApi(Resource):
             raise UnsupportedFileTypeError()
 
         if not file.filename:
-            raise FilenameNotExistsError
+            raise FilenameNotExistsError()
 
         try:
-            upload_file = FileService(db.engine).upload_file(
+            upload_file = application_services().files.upload_file(
                 filename=file.filename,
                 content=file.stream.read(),
                 mimetype=file.mimetype,
                 user=end_user,
+                tenant_id=app_model.tenant_id,
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:
-            raise FileTooLargeError(file_too_large_error.description)
-        except services.errors.file.UnsupportedFileTypeError:
-            raise UnsupportedFileTypeError()
+            raise FileTooLargeError(file_too_large_error.description) from file_too_large_error
+        except services.errors.file.UnsupportedFileTypeError as unsupported_file_type_error:
+            raise UnsupportedFileTypeError() from unsupported_file_type_error
+        except services.errors.file.BlockedFileExtensionError as blocked_file_extension_error:
+            raise BlockedFileExtensionError() from blocked_file_extension_error
 
         return dump_response(FileResponse, upload_file), 201

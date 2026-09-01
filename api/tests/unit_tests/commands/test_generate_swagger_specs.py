@@ -330,6 +330,9 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
     assert chat_success_content["application/json"]["schema"] == {"$ref": "#/components/schemas/ChatBlockingResponse"}
     assert chat_success_content["text/event-stream"]["schema"] == {"type": "string"}
 
+    upload_bad_request = payload["paths"]["/files/upload"]["post"]["responses"]["400"]["description"]
+    assert "`file_extension_blocked`" in upload_bad_request
+
     schemas = payload["components"]["schemas"]
     expected_property_descriptions = {
         ("AgentThought", "tool_labels"): "Labels for tools used.",

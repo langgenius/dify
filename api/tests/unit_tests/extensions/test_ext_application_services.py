@@ -45,6 +45,7 @@ from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
 from services.enterprise.enterprise_service import WebAppSettings
 from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFoundError
+from services.file_service import FileService
 from services.init_validation_service import InvalidInitializationPasswordError
 from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
@@ -190,6 +191,21 @@ def test_build_application_services_wires_tag_boundary(
     )
 
     assert isinstance(services.tags, TagApplicationService)
+
+
+def test_build_application_services_reuses_file_service(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.files, FileService)
+    assert services.files._session_maker is sqlite_session_factory
+    assert services.web_app_runtime._file_service is services.files
 
 
 def test_build_application_services_wires_workflow_run_archives(
