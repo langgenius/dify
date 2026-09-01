@@ -22,20 +22,13 @@ const FileTypesField = ({ label, labelOptions, className }: FileTypesFieldProps)
 
   const handleSupportFileTypeChange = useCallback(
     (type: SupportUploadFileTypes) => {
-      let newAllowFileTypes = [...field.state.value.allowedFileTypes]
-      if (type === SupportUploadFileTypes.custom) {
-        if (!newAllowFileTypes.includes(SupportUploadFileTypes.custom))
-          newAllowFileTypes = [SupportUploadFileTypes.custom]
-        else newAllowFileTypes = newAllowFileTypes.filter((v) => v !== type)
-      } else {
-        newAllowFileTypes = newAllowFileTypes.filter((v) => v !== SupportUploadFileTypes.custom)
-        if (newAllowFileTypes.includes(type))
-          newAllowFileTypes = newAllowFileTypes.filter((v) => v !== type)
-        else newAllowFileTypes.push(type)
-      }
+      const current = field.state.value.allowedFileTypes
+      const nextAllowFileTypes = current.includes(type)
+        ? current.filter((v) => v !== type)
+        : [...current, type]
       field.handleChange({
         ...field.state.value,
-        allowedFileTypes: newAllowFileTypes,
+        allowedFileTypes: nextAllowFileTypes,
       })
     },
     [field],

@@ -163,7 +163,7 @@ describe('File upload support components', () => {
       await user.click(screen.getByText('appDebug.variableConfig.file.custom.name'))
       expect(onChange).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          allowed_file_types: [SupportUploadFileTypes.custom],
+          allowed_file_types: [SupportUploadFileTypes.document, SupportUploadFileTypes.custom],
         }),
       )
 
@@ -181,6 +181,23 @@ describe('File upload support components', () => {
       expect(onChange).toHaveBeenLastCalledWith(
         expect.objectContaining({
           allowed_file_types: [],
+        }),
+      )
+
+      rerender(
+        <FileUploadSetting
+          payload={createPayload({
+            allowed_file_types: [SupportUploadFileTypes.custom],
+          })}
+          isMultiple={false}
+          onChange={onChange}
+        />,
+      )
+
+      await user.click(screen.getByText('appDebug.variableConfig.file.image.name'))
+      expect(onChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          allowed_file_types: [SupportUploadFileTypes.custom, SupportUploadFileTypes.image],
         }),
       )
     })
