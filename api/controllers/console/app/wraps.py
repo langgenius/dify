@@ -130,6 +130,7 @@ def agent_manage_required_for_agent_app[**P, R](
 ) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
     # Must sit above get_app_model in the decorator stack — get_app_model
     # deletes app_id from kwargs, and this decorator needs it.
+    # TODO: this is a workaround, remove this after ACL for agent app is available
     def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
         @wraps(view_func)
         def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
