@@ -155,7 +155,9 @@ const SnippetList = () => {
   const showSkeleton =
     isLoadingCurrentWorkspace ||
     (canQuerySnippetList && (isLoading || (isFetching && pages.length === 0)))
-  const listStatus = showSkeleton
+  const isListBusy =
+    isLoadingCurrentWorkspace || (canQuerySnippetList && (isFetching || isFetchingNextPage))
+  const listStatus = isListBusy
     ? t(($) => $.loading, { ns: 'common' })
     : hasAnySnippet
       ? t(($) => $['operation.searchCount'], {
@@ -208,13 +210,13 @@ const SnippetList = () => {
           <SnippetCreateButton />
         </div>
       </StudioListHeader>
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {listStatus}
+      </div>
       <div
-        aria-busy={showSkeleton || isFetchingNextPage}
+        aria-busy={isListBusy}
         className={cn(SNIPPET_LIST_GRID_CLASS_NAME, !hasAnySnippet && 'overflow-hidden')}
       >
-        <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-          {listStatus}
-        </div>
         {showSkeleton ? (
           <SnippetCardSkeleton count={6} />
         ) : hasAnySnippet ? (

@@ -31,6 +31,7 @@ import {
   MAIN_NAV_MOBILE_HEADER_CLASS_NAME,
 } from './responsive-classes'
 import { isMainNavRouteVisible, MAIN_NAV_ROUTES } from './routes'
+import { useIsMainNavDesktopViewport } from './use-desktop-viewport'
 
 const WebAppsSection = dynamic(() => import('./components/web-apps-section'), { ssr: false })
 const MobileNavDrawer = dynamic(() => import('./components/mobile-nav-drawer'), { ssr: false })
@@ -58,6 +59,7 @@ export function MainNav({ className }: MainNavProps) {
   const mobileNavTriggerRef = useRef<HTMLButtonElement>(null)
   const [hasActivatedMobileNav, setHasActivatedMobileNav] = useState(false)
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
+  const isDesktopViewport = useIsMainNavDesktopViewport()
   const appTitle =
     systemFeatures.branding.enabled && systemFeatures.branding.application_title
       ? systemFeatures.branding.application_title
@@ -182,7 +184,7 @@ export function MainNav({ className }: MainNavProps) {
 
   return (
     <>
-      {renderNavigationPanel()}
+      {isDesktopViewport && renderNavigationPanel()}
       <header className={MAIN_NAV_MOBILE_HEADER_CLASS_NAME}>
         {renderLogo()}
         <IconButton
@@ -204,7 +206,7 @@ export function MainNav({ className }: MainNavProps) {
           <span aria-hidden className="i-ri-menu-line size-5" />
         </IconButton>
       </header>
-      {hasActivatedMobileNav && (
+      {hasActivatedMobileNav && !isDesktopViewport && (
         <MobileNavDrawer
           finalFocusRef={mobileNavTriggerRef}
           open={isMobileNavOpen}

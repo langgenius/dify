@@ -556,24 +556,40 @@ const defaultMainNavSystemFeatures: MainNavSystemFeatures = {
   enable_step_by_step_tour: true,
 }
 
-const stubMobileViewport = () => {
-  vi.stubGlobal(
-    'matchMedia',
-    vi.fn(
-      (query: string): MediaQueryList =>
-        ({
-          matches: false,
-          media: query,
-          onchange: null,
-          addEventListener: vi.fn(),
-          removeEventListener: vi.fn(),
-          addListener: vi.fn(),
-          removeListener: vi.fn(),
-          dispatchEvent: vi.fn(),
-        }) as MediaQueryList,
-    ),
-  )
+const stubViewport = (initialDesktop: boolean) => {
+  let matches = initialDesktop
+  const listeners = new Set<(event: MediaQueryListEvent) => void>()
+  const mediaQueryList = {
+    get matches() {
+      return matches
+    },
+    media: '(min-width: 40rem)',
+    onchange: null,
+    addEventListener: (_type: 'change', listener: (event: MediaQueryListEvent) => void) => {
+      listeners.add(listener)
+    },
+    removeEventListener: (_type: 'change', listener: (event: MediaQueryListEvent) => void) => {
+      listeners.delete(listener)
+    },
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  } as MediaQueryList
+  const matchMedia = vi.fn((_query: string) => mediaQueryList)
+  vi.stubGlobal('matchMedia', matchMedia)
+
+  return {
+    matchMedia,
+    setDesktop(nextDesktop: boolean) {
+      matches = nextDesktop
+      listeners.forEach((listener) => {
+        listener({ matches } as MediaQueryListEvent)
+      })
+    },
+  }
 }
+
+const stubMobileViewport = () => stubViewport(false)
 
 const renderMainNav = (
   systemFeatures: MainNavSystemFeatures = defaultMainNavSystemFeatures,
@@ -779,6 +795,9 @@ describe('MainNav', () => {
       name: 'common.operation.moreActionsFor:{"name":"Dify"}',
     })
 
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
+    expect(mockInstalledAppsRequest).not.toHaveBeenCalled()
+
     await user.click(trigger)
     expect(trigger).toHaveAttribute('aria-expanded', 'true')
 
@@ -786,6 +805,34 @@ describe('MainNav', () => {
 
     expect(drawer).toBeInTheDocument()
     expect(within(drawer).getByRole('navigation')).toBeInTheDocument()
+    expect(screen.getAllByRole('navigation')).toHaveLength(1)
+  })
+
+  it('mounts one Step-by-step Tour owner when the mobile drawer opens', async () => {
+    stubMobileViewport()
+    localStorage.setItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY, 'collapsed')
+    const user = userEvent.setup()
+    renderMainNav()
+
+    expect(screen.queryByRole('button', { name: 'Open step-by-step tour' })).not.toBeInTheDocument()
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'common.operation.moreActionsFor:{"name":"Dify"}',
+      }),
+    )
+
+    expect(
+      await screen.findByRole('button', { name: 'Open step-by-step tour' }),
+    ).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Open step-by-step tour' })).toHaveLength(1)
+    await waitFor(() => {
+      expect(
+        mockTrackEvent.mock.calls.filter(
+          ([event, properties]) => event === 'step_tour' && properties.action === 'tour_shown',
+        ),
+      ).toHaveLength(1)
+    })
   })
 
   it('restores focus to the mobile navigation trigger when the drawer closes', async () => {
@@ -807,28 +854,7 @@ describe('MainNav', () => {
   })
 
   it('closes the mobile navigation drawer when the viewport enters the desktop breakpoint', async () => {
-    const mediaQueryListeners = new Set<(event: MediaQueryListEvent) => void>()
-    const matchMedia = vi.fn(
-      (query: string): MediaQueryList =>
-        ({
-          matches: false,
-          media: query,
-          onchange: null,
-          addEventListener: (_type: 'change', listener: (event: MediaQueryListEvent) => void) => {
-            mediaQueryListeners.add(listener)
-          },
-          removeEventListener: (
-            _type: 'change',
-            listener: (event: MediaQueryListEvent) => void,
-          ) => {
-            mediaQueryListeners.delete(listener)
-          },
-          addListener: vi.fn(),
-          removeListener: vi.fn(),
-          dispatchEvent: vi.fn(),
-        }) as MediaQueryList,
-    )
-    vi.stubGlobal('matchMedia', matchMedia)
+    const viewport = stubMobileViewport()
     const user = userEvent.setup()
     renderMainNav()
 
@@ -838,16 +864,15 @@ describe('MainNav', () => {
       }),
     )
     expect(await screen.findByRole('dialog', { name: 'Dify' })).toBeInTheDocument()
-    expect(matchMedia).toHaveBeenCalledWith('(min-width: 40rem)')
+    expect(viewport.matchMedia).toHaveBeenCalledWith('(min-width: 40rem)')
 
     act(() => {
-      mediaQueryListeners.forEach((listener) => {
-        listener({ matches: true } as MediaQueryListEvent)
-      })
+      viewport.setDesktop(true)
     })
 
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: 'Dify' })).not.toBeInTheDocument()
+      expect(screen.getAllByRole('navigation')).toHaveLength(1)
     })
   })
 

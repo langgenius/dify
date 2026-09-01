@@ -244,12 +244,17 @@ const renderList = ({
     accountProfile: { id: 'creator-1' },
     systemFeatures: { branding: { enabled: brandingEnabled } },
   })
-
-  return renderWithNuqs(
+  const createList = () => (
     <ConsoleQueryWrapper>
       <SnippetList />
-    </ConsoleQueryWrapper>,
+    </ConsoleQueryWrapper>
   )
+  const rendered = renderWithNuqs(createList())
+
+  return {
+    ...rendered,
+    rerenderList: () => rendered.rerender(createList()),
+  }
 }
 
 describe('SnippetList', () => {
@@ -476,6 +481,57 @@ describe('SnippetList', () => {
     )
   })
 
+  it('announces kept-data refreshes when the result count stays the same', () => {
+    const { rerenderList } = renderList()
+    const status = screen.getByRole('status')
+    const grid = screen.getByRole('link', { name: /Sales Snippet/ }).closest('[aria-busy]')
+
+    expect(status.closest('[aria-busy]')).toBeNull()
+    expect(status).toHaveTextContent(
+      'common.operation.searchCount:{"count":1,"content":"workflow.tabs.snippets"}',
+    )
+
+    mockUseInfiniteSnippetList.mockReturnValue({
+      ...mockSnippetListState,
+      isFetching: true,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+    })
+    rerenderList()
+
+    expect(screen.getByRole('status')).toBe(status)
+    expect(status).toHaveTextContent('common.loading')
+    expect(grid).toHaveAttribute('aria-busy', 'true')
+
+    mockUseInfiniteSnippetList.mockReturnValue({
+      ...mockSnippetListState,
+      data: {
+        pages: [
+          {
+            ...mockSnippetListState.data.pages[0]!,
+            data: [
+              {
+                ...mockSnippetListState.data.pages[0]!.data[0]!,
+                id: 'snippet-2',
+                name: 'Support Snippet',
+              },
+            ],
+          },
+        ],
+      },
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+    })
+    rerenderList()
+
+    expect(screen.getByRole('status')).toBe(status)
+    expect(status).toHaveTextContent(
+      'common.operation.searchCount:{"count":1,"content":"workflow.tabs.snippets"}',
+    )
+    expect(screen.getByRole('link', { name: /Support Snippet/ })).toBeInTheDocument()
+    expect(grid).toHaveAttribute('aria-busy', 'false')
+  })
+
   it('renders loading and next-page skeleton cards', () => {
     mockUseInfiniteSnippetList.mockReturnValue({
       ...mockSnippetListState,
@@ -490,7 +546,8 @@ describe('SnippetList', () => {
 
     expect(container.querySelectorAll('.animate-pulse')).toHaveLength(9)
     expect(screen.getByRole('status')).toHaveTextContent('common.loading')
-    expect(screen.getByRole('status').parentElement).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByRole('status').closest('[aria-busy]')).toBeNull()
+    expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
   })
 
   it('fetches the next page when the scroll anchor intersects', () => {
