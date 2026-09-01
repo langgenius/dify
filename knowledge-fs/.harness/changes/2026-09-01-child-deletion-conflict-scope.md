@@ -27,6 +27,9 @@ deletion retry; it must not make unrelated content unavailable indefinitely.
   made read-invisible do not starve the deletion. PostgreSQL and TiDB use the same space-row lock,
   current locking reads and a monotonic millisecond ordering, rather than application or worker
   clocks. Legacy jobs without the persisted fence fall back conservatively to their creation time.
+- Explicitly typed the PostgreSQL derived lease-clock parameter as `timestamptz`; without the cast,
+  PostgreSQL inferred the parameter as text and rejected the expiry expression with
+  `operator does not exist: text + interval`. The TiDB lexical parameter order is unchanged.
 - Made retrieval heartbeats tolerate an isolated database error while still aborting at the last
   durable expiry. A hung heartbeat cannot keep a query alive or make release wait forever, and the
   local deadline is derived from the database lease duration without assuming synchronized clocks.

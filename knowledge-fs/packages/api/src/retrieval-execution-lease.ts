@@ -139,6 +139,8 @@ export function createDatabaseRetrievalExecutionLeaseRepository({
             : [...identityParams, ttlParameter, leaseBase];
         const leaseClock = "lease_clock";
         const leaseBaseReference = `${leaseClock}.${q(database, "lease_base")}`;
+        const leaseBaseParameter =
+          database.dialect === "postgres" ? `${p(database, 7)}::timestamptz` : p(database, 7);
         const expiry =
           database.dialect === "postgres"
             ? `${leaseBaseReference} + (${p(database, 8)} * INTERVAL '1 millisecond')`
@@ -164,7 +166,7 @@ export function createDatabaseRetrievalExecutionLeaseRepository({
             .map((column) => q(database, column))
             .join(
               ", ",
-            )}) SELECT ${p(database, 1)}, ${p(database, 2)}, ${p(database, 3)}, ${p(database, 4)}, ${p(database, 5)}, ${p(database, 6)}, 'active', 0, ${leaseBaseReference}, ${leaseBaseReference}, ${expiry}, ${leaseBaseReference} FROM (SELECT ${p(database, 7)} AS ${q(database, "lease_base")}) ${leaseClock}${database.dialect === "postgres" ? " RETURNING *" : ""};`,
+            )}) SELECT ${p(database, 1)}, ${p(database, 2)}, ${p(database, 3)}, ${p(database, 4)}, ${p(database, 5)}, ${p(database, 6)}, 'active', 0, ${leaseBaseReference}, ${leaseBaseReference}, ${expiry}, ${leaseBaseReference} FROM (SELECT ${leaseBaseParameter} AS ${q(database, "lease_base")}) ${leaseClock}${database.dialect === "postgres" ? " RETURNING *" : ""};`,
           tableName,
         });
         if (insert.rowsAffected !== 1) {

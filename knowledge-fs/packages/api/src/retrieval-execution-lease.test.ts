@@ -122,6 +122,11 @@ describe.each(["postgres", "tidb"] as const)(
       expect(insert.sql).toContain(
         dialect === "postgres" ? "INTERVAL '1 millisecond'" : "DATE_ADD(",
       );
+      if (dialect === "postgres") {
+        expect(insert.sql).toContain(
+          `SELECT $7::timestamptz AS ${identifier(dialect, "lease_base")}`,
+        );
+      }
       if (dialect === "tidb") {
         expect(insert.sql.match(/\?/gu)).toHaveLength(insert.params.length);
       }
