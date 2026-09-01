@@ -14,6 +14,11 @@ logger = logging.getLogger(__name__)
 
 class UnstructuredEmailExtractor(BaseExtractor):
     """Load eml files.
+
+    Requires the ``unstructured[image]`` extra for emails with embedded images.
+    Without it, ``partition_email`` raises an error when it encounters image
+    attachments that need ``partition_image``.
+
     Args:
         file_path: Path to the file to load.
     """
@@ -33,7 +38,18 @@ class UnstructuredEmailExtractor(BaseExtractor):
         else:
             from unstructured.partition.email import partition_email
 
-            elements = partition_email(filename=self._file_path)
+            try:
+                elements = partition_email(filename=self._file_path)
+            except ImportError as e:
+                if "partition_image" in str(e) or "unstructured[image]" in str(e):
+                    logger.warning(
+                        "Failed to process EML with image attachments due to missing "
+                        "unstructured[image] dependencies; retrying without attachment processing. "
+                        "Install unstructured[image] to enable embedded image extraction."
+                    )
+                    elements = partition_email(filename=self._file_path, process_attachments=False)
+                else:
+                    raise
 
         # noinspection PyBroadException
         with contextlib.suppress(Exception):
