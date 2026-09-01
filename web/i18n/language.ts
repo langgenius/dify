@@ -38,6 +38,7 @@ export const localeMap: Record<Locale | 'en_US' | 'zh_Hans' | 'ja_JP', string> =
   'ko-KR': 'ko',
   'lo-LA': 'lo',
   'ru-RU': 'ru',
+  'sv-SE': 'sv',
   'it-IT': 'it',
   'th-TH': 'th',
   'id-ID': 'id',

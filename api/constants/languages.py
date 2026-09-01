@@ -10,6 +10,7 @@ language_timezone_mapping = {
     "ko-KR": "Asia/Seoul",
     "lo-LA": "Asia/Vientiane",
     "ru-RU": "Europe/Moscow",
+    "sv-SE": "Europe/Stockholm",
     "it-IT": "Europe/Rome",
     "uk-UA": "Europe/Kyiv",
     "vi-VN": "Asia/Ho_Chi_Minh",
