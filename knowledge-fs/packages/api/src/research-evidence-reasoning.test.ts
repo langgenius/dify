@@ -17,6 +17,12 @@ const openAiReasoningModel = {
   provider: "openai",
 };
 
+const openRouterOpenAiReasoningModel = {
+  model: "openai/gpt-5.6-sol",
+  pluginId: "langgenius/openrouter",
+  provider: "openrouter",
+};
+
 describe("Research evidence reasoning", () => {
   it("keeps direct queries deterministic and uses one bounded model plan for complex queries", async () => {
     const generate = vi.fn(async (_input: unknown) => ({
@@ -499,40 +505,43 @@ describe("Research evidence reasoning", () => {
     expect(generate).toHaveBeenCalledOnce();
   });
 
-  it("requests low reasoning effort for OpenAI reasoning models", async () => {
-    const generate = vi.fn(async (_input: unknown) => ({
-      finishReason: "stop",
-      metadata: { model: openAiReasoningModel.model, usage: { completionTokens: 180 } },
-      model: openAiReasoningModel.model,
-      text: JSON.stringify({
-        coverage: 1,
-        coveredDimensions: ["timeline"],
-        missingDimensions: [],
-        sufficient: true,
-        supplementalQuery: null,
-      }),
-    }));
-    const reasoning = createResearchEvidenceReasoning({
-      maxOutputTokens: 8_192,
-      providerFactory: () => ({ generate }),
-      timeoutMs: 1_000,
-    });
+  it.each([openAiReasoningModel, openRouterOpenAiReasoningModel])(
+    "requests low reasoning effort for OpenAI reasoning model $model through $provider",
+    async (selectedReasoningModel) => {
+      const generate = vi.fn(async (_input: unknown) => ({
+        finishReason: "stop",
+        metadata: { model: selectedReasoningModel.model, usage: { completionTokens: 180 } },
+        model: selectedReasoningModel.model,
+        text: JSON.stringify({
+          coverage: 1,
+          coveredDimensions: ["timeline"],
+          missingDimensions: [],
+          sufficient: true,
+          supplementalQuery: null,
+        }),
+      }));
+      const reasoning = createResearchEvidenceReasoning({
+        maxOutputTokens: 8_192,
+        providerFactory: () => ({ generate }),
+        timeoutMs: 1_000,
+      });
 
-    await expect(
-      reasoning.judge({
-        evidence: [researchEvidenceItem()],
-        evidenceDimensions: ["timeline"],
-        query: "Apple，1985 到底发生了什么",
-        reasoningModel: openAiReasoningModel,
-        tenantId: "tenant-1",
-      }),
-    ).resolves.toMatchObject({ sufficient: true });
-    expect(generate).toHaveBeenCalledOnce();
-    expect(generate.mock.calls[0]?.[0]).toMatchObject({
-      maxOutputTokens: 8_192,
-      reasoningEffort: "low",
-    });
-  });
+      await expect(
+        reasoning.judge({
+          evidence: [researchEvidenceItem()],
+          evidenceDimensions: ["timeline"],
+          query: "Apple，1985 到底发生了什么",
+          reasoningModel: selectedReasoningModel,
+          tenantId: "tenant-1",
+        }),
+      ).resolves.toMatchObject({ sufficient: true });
+      expect(generate).toHaveBeenCalledOnce();
+      expect(generate.mock.calls[0]?.[0]).toMatchObject({
+        maxOutputTokens: 8_192,
+        reasoningEffort: "low",
+      });
+    },
+  );
 
   it("reports successful and failed provider calls through the model observer", async () => {
     const before = vi.fn();
