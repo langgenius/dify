@@ -1,7 +1,6 @@
 'use client'
 
-import type { BackgroundTask, DocumentProcessingTask, LogicalDocument } from '../models'
-import type { TaskProgressStore } from './progress-store'
+import type { BackgroundTask } from '../models'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import {
   Drawer,
@@ -14,19 +13,35 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import { useMutation } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation } from '@tanstack/react-query'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
-import { consoleClient } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/client'
 import {
   knowledgeFsTaskFailureMessageKey,
   knowledgeFsTaskRecoveryPath,
 } from '../../knowledge-fs-task-error'
+import { documentDetailKnowledgeSpaceIdAtom } from '../detail/state/inputs'
+import { documentDetailDocumentAtom, refreshDocumentDetailAtom } from '../detail/state/queries'
+import {
+  documentBackgroundTasksAtom,
+  documentCanEditAtom,
+  documentTasksQueryErrorAtom,
+  documentTasksQueryHasNextPageAtom,
+  documentTasksQueryIsFetchingAtom,
+  documentTasksQueryIsFetchingNextPageAtom,
+  documentTasksQueryIsPendingAtom,
+  loadNextDocumentTaskPageAtom,
+  refreshDocumentTasksAtom,
+  retryDocumentTasksAtom,
+  retryDocumentWritePermissionAtom,
+} from '../detail/state/workflow'
 import { taskCanCancel, taskCanRetry, taskIsActive, taskVersionIsAfter } from '../model'
-import { backgroundTaskFromApi } from '../models'
+import { backgroundTaskFromApi, logicalDocumentListFromApi } from '../models'
 import {
   selectTaskDrawerTasks,
   TASK_DRAWER_LIMIT,
@@ -34,6 +49,7 @@ import {
   taskProgress,
   taskTime,
 } from './drawer-model'
+import { createTaskProgressStore } from './progress-store'
 
 type TaskAction = 'cancel' | 'retry'
 
@@ -50,76 +66,70 @@ function responseStatus(error: unknown): number | undefined {
   }
 }
 
-export function ProcessingTasksDrawer({
-  canEdit,
-  actionResultsValid,
-  documentQueryError,
-  documentQueryFetching,
-  documents,
-  documentsPending,
-  hasNextDocumentPage,
-  hasNextTaskPage,
-  hasUnresolvedTaskDocuments,
-  isFetchingNextDocumentPage,
-  isFetchingNextTaskPage,
-  knowledgeSpaceId,
-  onLoadMoreDocuments,
-  onLoadMoreTasks,
+export function DocumentDetailTasksDrawer({
   onOpenChange,
-  onRefreshDocumentsAndTasks,
-  onRetryPermissionQuery,
-  onTaskUpdated,
-  onWritePermissionDenied,
   open,
-  permissionQueryError,
-  permissionQueryFetching,
-  permissionQueryPending,
-  readOnlyReason,
-  taskQueryError,
-  taskQueryFetching,
-  taskQueryPending,
-  tasks,
-  taskProgressStore,
-  sourceNames,
-  onRetryTaskQuery,
-  onRetryDocumentQuery,
 }: {
-  canEdit: boolean
-  actionResultsValid: boolean
-  documentQueryError: boolean
-  documentQueryFetching: boolean
-  documents: LogicalDocument[]
-  documentsPending: boolean
-  hasNextDocumentPage: boolean
-  hasNextTaskPage: boolean
-  hasUnresolvedTaskDocuments: boolean
-  isFetchingNextDocumentPage: boolean
-  isFetchingNextTaskPage: boolean
-  knowledgeSpaceId: string
-  onLoadMoreDocuments: () => void
-  onLoadMoreTasks: () => void
   onOpenChange: (open: boolean) => void
-  onRefreshDocumentsAndTasks: () => void
-  onRetryPermissionQuery: () => void
-  onTaskUpdated: (task: DocumentProcessingTask) => void
-  onWritePermissionDenied: () => void
   open: boolean
-  permissionQueryError: boolean
-  permissionQueryFetching: boolean
-  permissionQueryPending: boolean
-  readOnlyReason?: string
-  taskQueryError: boolean
-  taskQueryFetching: boolean
-  taskQueryPending: boolean
-  tasks: BackgroundTask[]
-  taskProgressStore: TaskProgressStore
-  sourceNames?: Map<string, string>
-  onRetryDocumentQuery: () => void
-  onRetryTaskQuery: () => void
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const { formatTimeFromNow } = useFormatTimeFromNow()
+  const currentDocument = useAtomValue(documentDetailDocumentAtom)
+  const knowledgeSpaceId = useAtomValue(documentDetailKnowledgeSpaceIdAtom)
+  const canEdit = useAtomValue(documentCanEditAtom)
+  const tasks = useAtomValue(documentBackgroundTasksAtom)
+  const taskQueryError = Boolean(useAtomValue(documentTasksQueryErrorAtom))
+  const hasNextTaskPage = useAtomValue(documentTasksQueryHasNextPageAtom)
+  const taskQueryFetching = useAtomValue(documentTasksQueryIsFetchingAtom)
+  const isFetchingNextTaskPage = useAtomValue(documentTasksQueryIsFetchingNextPageAtom)
+  const taskQueryPending = useAtomValue(documentTasksQueryIsPendingAtom)
+  const loadMoreTasks = useSetAtom(loadNextDocumentTaskPageAtom)
+  const refreshDocument = useSetAtom(refreshDocumentDetailAtom)
+  const refreshTasks = useSetAtom(refreshDocumentTasksAtom)
+  const retryTasks = useSetAtom(retryDocumentTasksAtom)
+  const retryWritePermission = useSetAtom(retryDocumentWritePermissionAtom)
+  const documentsQuery = useInfiniteQuery(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.infiniteOptions({
+      enabled: open,
+      input: (pageParam) => ({
+        params: { control_space_id: knowledgeSpaceId },
+        query: {
+          ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
+        },
+      }),
+      getNextPageParam: (lastPage) => lastPage.next_cursor,
+      initialPageParam: null as string | null,
+    }),
+  )
+  const documents = useMemo(() => {
+    const queryDocuments =
+      documentsQuery.data?.pages.flatMap((page) => logicalDocumentListFromApi(page).items) ?? []
+    if (queryDocuments.some((document) => document.id === currentDocument.id)) return queryDocuments
+    return [currentDocument, ...queryDocuments]
+  }, [currentDocument, documentsQuery.data])
+  const documentIds = useMemo(() => new Set(documents.map((document) => document.id)), [documents])
+  const hasUnresolvedTaskDocuments = tasks.some(
+    (task) => task.documentId && !documentIds.has(task.documentId),
+  )
+  const documentQueryError = Boolean(documentsQuery.error)
+  const documentQueryFetching = documentsQuery.isFetching
+  const documentsPending = Boolean(documentsQuery.isPending || documentsQuery.hasNextPage)
+  const hasNextDocumentPage = Boolean(documentsQuery.hasNextPage)
+  const isFetchingNextDocumentPage = documentsQuery.isFetchingNextPage
+  const readOnlyReason = canEdit
+    ? undefined
+    : t(($) => $['newKnowledge.documentPermissionRestricted'])
+  const taskProgressStoreRef = useRef<ReturnType<typeof createTaskProgressStore> | null>(null)
+  if (!taskProgressStoreRef.current) taskProgressStoreRef.current = createTaskProgressStore()
+  const taskProgressStore = taskProgressStoreRef.current
+  const refreshDocumentsAndTasks = () =>
+    Promise.all([refreshDocument(), documentsQuery.refetch(), refreshTasks()])
+  const retryDocuments = () => {
+    if (documentsQuery.isFetchNextPageError) return documentsQuery.fetchNextPage()
+    return documentsQuery.refetch()
+  }
   const cancelTask = useMutation({
     mutationFn: async (task: BackgroundTask) =>
       backgroundTaskFromApi(
@@ -152,15 +162,12 @@ export function ProcessingTasksDrawer({
   const drawerCloseButtonRef = useRef<HTMLButtonElement>(null)
   const taskQueryRetryButtonRef = useRef<HTMLButtonElement>(null)
   const documentQueryRetryButtonRef = useRef<HTMLButtonElement>(null)
-  const permissionQueryRetryButtonRef = useRef<HTMLButtonElement>(null)
   const focusedTaskActionRef = useRef<HTMLButtonElement | null>(null)
   const loadMoreRequestedRef = useRef(false)
   const queryRetryFocusRequestedRef = useRef(false)
-  const permissionRetryFocusRequestedRef = useRef(false)
   const loadMoreButtonRef = useRef<HTMLButtonElement>(null)
   const openCycleRef = useRef(0)
   const openRef = useRef(open)
-  const actionResultsValidRef = useRef(actionResultsValid)
   const previousOpenRef = useRef(open)
   const [pendingActions, setPendingActions] = useState<Set<string>>(() => new Set())
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({})
@@ -207,7 +214,6 @@ export function ProcessingTasksDrawer({
     new Map<string, { generation: number; lifecycle: string }>(),
   )
   useLayoutEffect(() => {
-    actionResultsValidRef.current = actionResultsValid
     const currentTaskIds = new Set(tasks.map((task) => task.id))
     for (const task of tasks) {
       const lifecycle = taskLifecycle(task)
@@ -221,7 +227,7 @@ export function ProcessingTasksDrawer({
     for (const taskId of taskLifecycleGenerationsRef.current.keys()) {
       if (!currentTaskIds.has(taskId)) taskLifecycleGenerationsRef.current.delete(taskId)
     }
-  }, [actionResultsValid, tasks])
+  }, [tasks])
 
   useEffect(() => {
     openRef.current = open
@@ -274,16 +280,6 @@ export function ProcessingTasksDrawer({
   }, [documentQueryError, hasUnresolvedTaskDocuments, open, taskQueryError])
 
   useEffect(() => {
-    if (!open || !permissionRetryFocusRequestedRef.current) return
-    if (permissionQueryError) {
-      permissionQueryRetryButtonRef.current?.focus()
-      return
-    }
-    permissionRetryFocusRequestedRef.current = false
-    drawerCloseButtonRef.current?.focus()
-  }, [open, permissionQueryError])
-
-  useEffect(() => {
     const focusedAction = focusedTaskActionRef.current
     if (!open || !focusedAction || focusedAction.isConnected) return
     focusedTaskActionRef.current = null
@@ -306,19 +302,16 @@ export function ProcessingTasksDrawer({
       const updated =
         action === 'cancel' ? await cancelTask.mutateAsync(task) : await retryTask.mutateAsync(task)
       if (
-        !actionResultsValidRef.current ||
         taskLifecycleGenerationsRef.current.get(task.id)?.generation !== actionLifecycleGeneration
       )
         return
-      if (updated.documentId && updated.documentRevision)
-        onTaskUpdated(updated as DocumentProcessingTask)
+      if (updated.documentId && updated.documentRevision) void refreshTasks()
       setActionErrors((current) => {
         const next = { ...current }
         delete next[task.id]
         return next
       })
       if (
-        actionResultsValidRef.current &&
         openRef.current &&
         openCycleRef.current === actionOpenCycle &&
         document.activeElement === actionFocusTarget
@@ -326,10 +319,9 @@ export function ProcessingTasksDrawer({
         drawerCloseButtonRef.current?.focus()
     } catch (error) {
       const permissionDenied = responseStatus(error) === 403
-      if (permissionDenied) onWritePermissionDenied()
+      if (permissionDenied) void retryWritePermission()
       if (
         !permissionDenied &&
-        actionResultsValidRef.current &&
         openRef.current &&
         openCycleRef.current === actionOpenCycle &&
         taskLifecycleGenerationsRef.current.get(task.id)?.generation === actionLifecycleGeneration
@@ -342,7 +334,7 @@ export function ProcessingTasksDrawer({
         next.delete(task.id)
         return next
       })
-      if (actionResultsValidRef.current) onRefreshDocumentsAndTasks()
+      void refreshDocumentsAndTasks()
     }
   }
 
@@ -382,39 +374,8 @@ export function ProcessingTasksDrawer({
                     {readOnlyReason}
                   </p>
                 )}
-                {permissionQueryPending && (
-                  <p className="mt-2 system-xs-regular text-text-tertiary" role="status">
-                    {t(($) => $['newKnowledge.permission'])}
-                    {' · '}
-                    {tCommon(($) => $.loading)}
-                  </p>
-                )}
               </header>
               <div className="min-h-0 flex-1 overflow-y-auto pr-[calc(1.5rem+env(safe-area-inset-right,0px))] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] pl-[calc(1.5rem+env(safe-area-inset-left,0px))]">
-                {permissionQueryError && (
-                  <div className="mb-3 rounded-xl border border-divider-regular p-4" role="alert">
-                    <p className="system-xs-regular text-text-destructive">
-                      {t(($) => $['newKnowledge.permissionLoadFailed'])}
-                    </p>
-                    <Button
-                      ref={permissionQueryRetryButtonRef}
-                      aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.permissionLoadFailed'])}`}
-                      aria-busy={permissionQueryFetching}
-                      className="mt-3"
-                      loading={permissionQueryFetching}
-                      size="small"
-                      onBlur={(event) => {
-                        if (event.relatedTarget) permissionRetryFocusRequestedRef.current = false
-                      }}
-                      onClick={() => {
-                        permissionRetryFocusRequestedRef.current = true
-                        onRetryPermissionQuery()
-                      }}
-                    >
-                      {tCommon(($) => $['operation.retry'])}
-                    </Button>
-                  </div>
-                )}
                 {taskQueryError && (
                   <div className="mb-3 rounded-xl border border-divider-regular p-4" role="alert">
                     <p className="system-xs-regular text-text-destructive">
@@ -432,7 +393,7 @@ export function ProcessingTasksDrawer({
                       }}
                       onClick={() => {
                         queryRetryFocusRequestedRef.current = true
-                        onRetryTaskQuery()
+                        void retryTasks()
                       }}
                     >
                       {tCommon(($) => $['operation.retry'])}
@@ -456,7 +417,7 @@ export function ProcessingTasksDrawer({
                       }}
                       onClick={() => {
                         queryRetryFocusRequestedRef.current = true
-                        onRetryDocumentQuery()
+                        void retryDocuments()
                       }}
                     >
                       {tCommon(($) => $['operation.retry'])}
@@ -482,9 +443,6 @@ export function ProcessingTasksDrawer({
                         ($) => $[`newKnowledge.overview.operation.${task.operation}`],
                       )
                       const progress = taskProgress(task)
-                      const sourceTitle = task.sourceId
-                        ? sourceNames?.get(task.sourceId)
-                        : undefined
                       const title =
                         task.operation === 'document_processing' && documentTitle
                           ? `${t(($) => $['newKnowledge.addDocument'])} · ${documentTitle}`
@@ -494,11 +452,9 @@ export function ProcessingTasksDrawer({
                               ? `${t(($) => $['newKnowledge.reindexDocuments'])}${progress ? ` · ${progress.total}` : documentTitle ? ` · ${documentTitle}` : ''}`
                               : task.operation === 'document_delete' && documentTitle
                                 ? `${operationTitle} · ${documentTitle}`
-                                : sourceTitle
-                                  ? `${operationTitle} · ${sourceTitle}`
-                                  : progress
-                                    ? `${operationTitle} · ${progress.total}`
-                                    : operationTitle
+                                : progress
+                                  ? `${operationTitle} · ${progress.total}`
+                                  : operationTitle
                       const timestamp = Date.parse(
                         taskIsActive(task) ? task.createdAt : taskTime(task),
                       )
@@ -656,8 +612,9 @@ export function ProcessingTasksDrawer({
                         loadMoreRequestedRef.current =
                           document.activeElement === loadMoreButtonRef.current
                         if (tasks.length <= orderedBaseTasks.length && hasNextTaskPage)
-                          onLoadMoreTasks()
-                        if (hasUnresolvedTaskDocuments && hasNextDocumentPage) onLoadMoreDocuments()
+                          void loadMoreTasks()
+                        if (hasUnresolvedTaskDocuments && hasNextDocumentPage)
+                          void documentsQuery.fetchNextPage()
                         setVisibleTaskLimit((current) => current + TASK_DRAWER_LIMIT)
                       }}
                     >

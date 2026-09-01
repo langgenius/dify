@@ -1,7 +1,8 @@
 'use client'
 
 import { useAtomValue } from 'jotai'
-import { useRef } from 'react'
+import { useHydrateAtoms } from 'jotai/utils'
+import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { KnowledgeModelReadinessBanner } from '../../components/knowledge-model-readiness-banner'
 import { newKnowledgeDocumentsPath } from '../../routes'
@@ -12,6 +13,7 @@ import { DocumentReindexAction } from './reindex-action'
 import { DocumentRevisionBrowser } from './revision-browser'
 import { documentDetailKnowledgeSpaceIdAtom } from './state/inputs'
 import { documentDetailDocumentAtom } from './state/queries'
+import { documentDetailTitleRuntimeAtom } from './state/runtime'
 import { DOCUMENT_REINDEX_RESTRICTION_ID, documentMissingAtom } from './state/workflow'
 import { DocumentTasksSurface } from './tasks-surface'
 import { DocumentWorkflowController } from './workflow-controller'
@@ -24,6 +26,10 @@ export function DocumentDetailWorkspace() {
   const documentMissing = useAtomValue(documentMissingAtom)
   const hasEditPermission = space.permission_keys.includes('knowledge_space_document_write')
   const titleRef = useRef<HTMLHeadingElement>(null)
+  const titleRuntime = useMemo(() => ({ focusTitle: () => titleRef.current?.focus() }), [])
+  useHydrateAtoms([[documentDetailTitleRuntimeAtom, titleRuntime]], {
+    dangerouslyForceHydrate: true,
+  })
 
   if (documentMissing)
     return (
@@ -55,7 +61,7 @@ export function DocumentDetailWorkspace() {
           {t(($) => $['newKnowledge.documentPermissionRestricted'])}
         </p>
       )}
-      <DocumentTasksSurface titleRef={titleRef} />
+      <DocumentTasksSurface />
       <DocumentRevisionBrowser />
     </section>
   )

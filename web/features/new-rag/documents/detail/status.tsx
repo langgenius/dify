@@ -1,8 +1,8 @@
-import type { RefObject } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { focusDocumentDetailTitleAtom } from './state/runtime'
 import {
   continueDocumentTaskLookupAtom,
   documentLatestTaskAtom,
@@ -16,13 +16,7 @@ import {
   retryDocumentWritePermissionAtom,
 } from './state/workflow'
 
-export function DocumentTaskNotices({
-  titleRef,
-  onViewTasks,
-}: {
-  titleRef: RefObject<HTMLHeadingElement | null>
-  onViewTasks: () => void
-}) {
+export function DocumentTaskNotices({ onViewTasks }: { onViewTasks: () => void }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const isLookingUpTask = useAtomValue(documentTaskIsLookingUpAtom)
@@ -31,6 +25,7 @@ export function DocumentTaskNotices({
   const reindexInProgress = useAtomValue(documentReindexInProgressAtom)
   const tasksError = useAtomValue(documentTasksQueryErrorAtom)
   const continueLookup = useSetAtom(continueDocumentTaskLookupAtom)
+  const focusTitle = useSetAtom(focusDocumentDetailTitleAtom)
   const retryTasks = useSetAtom(retryDocumentTasksAtom)
 
   return (
@@ -96,7 +91,7 @@ export function DocumentTaskNotices({
               <Button
                 onClick={() => {
                   continueLookup()
-                  requestAnimationFrame(() => titleRef.current?.focus())
+                  requestAnimationFrame(focusTitle)
                 }}
               >
                 {t(($) => $['newKnowledge.continueCheckingTaskStatus'])}
@@ -109,16 +104,13 @@ export function DocumentTaskNotices({
   )
 }
 
-export function DocumentPermissionRecoveryNotice({
-  titleRef,
-}: {
-  titleRef: RefObject<HTMLHeadingElement | null>
-}) {
+export function DocumentPermissionRecoveryNotice() {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const permissionRecoveryBusy = useAtomValue(documentPermissionRecoveryBusyAtom)
   const permissionRecoveryNeeded = useAtomValue(documentPermissionRecoveryNeededAtom)
   const retryWritePermission = useSetAtom(retryDocumentWritePermissionAtom)
+  const focusTitle = useSetAtom(focusDocumentDetailTitleAtom)
   const permissionRetryRef = useRef<HTMLButtonElement>(null)
   const permissionRecoveryWasNeededRef = useRef(false)
 
@@ -142,7 +134,7 @@ export function DocumentPermissionRecoveryNotice({
         loading={permissionRecoveryBusy}
         onClick={() =>
           void retryWritePermission().then((recovered) => {
-            if (recovered) titleRef.current?.focus()
+            if (recovered) focusTitle()
             else permissionRetryRef.current?.focus()
           })
         }
