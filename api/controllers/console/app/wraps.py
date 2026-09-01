@@ -22,7 +22,7 @@ from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant
 from models import App, AppMode
-from models.agent import AgentScope
+from models.agent import Agent, AgentScope
 from services.app_service import AppService
 
 __all__ = [
@@ -59,6 +59,22 @@ def _load_previewable_app_model(session: Session, app_id: str) -> App | None:
     return AppService.get_normal_app_by_id(app_id, session)
 
 
+def _agent_app_binding(app_id: str) -> Agent | None:
+    app_model = _load_app_model_from_scoped_session(app_id)
+    if app_model is None:
+        return None
+    return app_model.agent_app_binding_with_session(session=db.session(), include_archived=True)
+
+
+def _reject_hidden_agent_backing_app(path_args: dict[str, object]) -> None:
+    raw_app_id = path_args.get("app_id") or path_args.get("resource_id")
+    if raw_app_id is None:
+        return
+    binding = _agent_app_binding(str(raw_app_id))
+    if binding is not None and binding.scope == AgentScope.WORKFLOW_ONLY:
+        raise AppNotFoundError()
+
+
 def enforce_agent_manage_or_app_scene(
     *,
     tenant_id: str,
@@ -66,16 +82,12 @@ def enforce_agent_manage_or_app_scene(
     scene: RBACPermission,
     path_args: dict[str, object],
 ) -> None:
+    _reject_hidden_agent_backing_app(path_args)
+
     if not dify_config.RBAC_ENABLED:
         return
 
-    app_id = _extract_resource_id(RBACResourceScope.APP, tenant_id, path_args)
-    app_model = _load_app_model_from_scoped_session(app_id)
-    binding = (
-        app_model.agent_app_binding_with_session(session=db.session(), include_archived=True)
-        if app_model is not None
-        else None
-    )
+    binding = _agent_app_binding(_extract_resource_id(RBACResourceScope.APP, tenant_id, path_args))
 
     if binding is not None:
         if binding.scope == AgentScope.WORKFLOW_ONLY:
@@ -119,6 +131,7 @@ def agent_manage_required_for_agent_app[**P, R](
         def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
             if scene is not None:
                 if not dify_config.RBAC_ENABLED:
+                    _reject_hidden_agent_backing_app(kwargs)
                     return view_func(*args, **kwargs)
                 current_user, current_tenant_id = current_account_with_tenant()
                 enforce_agent_manage_or_app_scene(
@@ -131,12 +144,7 @@ def agent_manage_required_for_agent_app[**P, R](
 
             raw_app_id = kwargs.get("app_id") or kwargs.get("resource_id")
             if raw_app_id is not None:
-                app_model = _load_app_model_from_scoped_session(str(raw_app_id))
-                binding = (
-                    app_model.agent_app_binding_with_session(session=db.session(), include_archived=True)
-                    if app_model is not None
-                    else None
-                )
+                binding = _agent_app_binding(str(raw_app_id))
                 if binding is not None:
                     if binding.scope == AgentScope.WORKFLOW_ONLY:
                         raise AppNotFoundError()
