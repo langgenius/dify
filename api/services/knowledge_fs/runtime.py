@@ -81,6 +81,7 @@ def create_knowledge_fs_runtime(session_maker: sessionmaker[Session]) -> Knowled
     remote = HTTPKnowledgeFSProductRemoteClient(
         base_url=base_url,
         timeout_seconds=dify_config.KNOWLEDGE_FS_TIMEOUT_SECONDS,
+        retrieval_test_timeout_seconds=dify_config.KNOWLEDGE_FS_RETRIEVAL_TEST_TIMEOUT_SECONDS,
         max_response_bytes=dify_config.KNOWLEDGE_FS_PRODUCT_MAX_RESPONSE_BYTES,
     )
     issuer = create_configured_knowledge_fs_capability_issuer(

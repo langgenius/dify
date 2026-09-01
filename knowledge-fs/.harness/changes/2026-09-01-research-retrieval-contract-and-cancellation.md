@@ -56,6 +56,11 @@ and the generic final wrapper replaced the Research tie order.
   confirmation before enabling a graph leg. The judge system prompt explicitly treats retrieved
   text as untrusted data. Structured output, no tools, same-tenant retrieval and one bounded
   supplemental query remain the security boundary.
+- Added a Dify control-plane transport deadline dedicated to the `retrieveEvidence` product
+  operation. `KNOWLEDGE_FS_RETRIEVAL_TEST_TIMEOUT_SECONDS` defaults to `75`, must be greater than
+  the KnowledgeFS request-wide 60-second Research budget, and is capped at `120`. Other
+  KnowledgeFS operations retain the general 10-second default instead of inheriting the longer
+  deadline.
 
 ## Compatibility and Operations
 
@@ -64,6 +69,10 @@ default preserves a hard bound. Operators lowering it trade multi-intent depth f
 latency and can inspect `researchRerankCandidateBudget` plus `researchRerankListCandidates` to see
 the effective selection. A durable supplemental list is additional, plan-bounded provider work and
 is reported as another list rather than hidden inside the initial pool.
+
+The Dify API retrieval-test timeout is also optional and defaults to `75` seconds. Keep it above
+the 60-second KnowledgeFS Research wall-clock budget so the server can return its bounded result or
+terminal timeout rather than being canceled by the control-plane transport first.
 
 Database adapters without physical cancellation can finish detached work after the owner has
 already received cancellation; result use, further scheduling and provider work stop immediately.

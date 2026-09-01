@@ -52,9 +52,19 @@ _SSE_RESPONSE_HEADERS = (
 class HTTPKnowledgeFSProductRemoteClient:
     """Build outbound headers from trusted capability input; browser headers never enter this class."""
 
-    def __init__(self, *, base_url: str, timeout_seconds: float, max_response_bytes: int = 4 * 1024 * 1024) -> None:
+    def __init__(
+        self,
+        *,
+        base_url: str,
+        timeout_seconds: float,
+        retrieval_test_timeout_seconds: float | None = None,
+        max_response_bytes: int = 4 * 1024 * 1024,
+    ) -> None:
         self._base_url = base_url
         self._timeout_seconds = timeout_seconds
+        self._retrieval_test_timeout_seconds = (
+            timeout_seconds if retrieval_test_timeout_seconds is None else retrieval_test_timeout_seconds
+        )
         self._max_response_bytes = max_response_bytes
 
     def batch_space_summaries(
@@ -419,7 +429,9 @@ class HTTPKnowledgeFSProductRemoteClient:
         request_kwargs: dict[str, object] = {
             "headers": headers,
             "params": query,
-            "timeout": self._timeout_seconds,
+            "timeout": (
+                self._retrieval_test_timeout_seconds if operation_id == "retrieveEvidence" else self._timeout_seconds
+            ),
             "follow_redirects": False,
         }
         if payload is not None:

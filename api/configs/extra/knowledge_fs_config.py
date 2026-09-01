@@ -56,6 +56,13 @@ class KnowledgeFSConfig(BaseSettings):
     KNOWLEDGE_FS_JWKS_CACHE_MAX_AGE_SECONDS: PositiveInt = Field(default=300, le=86_400)
     KNOWLEDGE_FS_PRODUCT_MAX_RESPONSE_BYTES: PositiveInt = Field(default=4 * 1024 * 1024, le=16 * 1024 * 1024)
     KNOWLEDGE_FS_TIMEOUT_SECONDS: PositiveFloat = Field(default=10.0, le=60.0, allow_inf_nan=False)
+    KNOWLEDGE_FS_RETRIEVAL_TEST_TIMEOUT_SECONDS: float = Field(
+        default=75.0,
+        gt=60.0,
+        le=120.0,
+        allow_inf_nan=False,
+        description="Timeout for interactive retrieval tests, which have a 60-second KnowledgeFS execution budget.",
+    )
 
     @field_validator(
         "KNOWLEDGE_FS_BASE_URL",

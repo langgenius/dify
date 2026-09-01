@@ -37,6 +37,7 @@ _KNOWLEDGE_FS_DOCKER_VARIABLES = (
     "KNOWLEDGE_FS_CAPABILITY_V2_MAX_TTL_SECONDS",
     "KNOWLEDGE_FS_JWKS_CACHE_MAX_AGE_SECONDS",
     "KNOWLEDGE_FS_PRODUCT_MAX_RESPONSE_BYTES",
+    "KNOWLEDGE_FS_RETRIEVAL_TEST_TIMEOUT_SECONDS",
     "KNOWLEDGE_FS_TIMEOUT_SECONDS",
 )
 
@@ -55,6 +56,7 @@ def test_knowledge_fs_config_normalizes_complete_connection() -> None:
     assert "test-only-private-key" not in repr(config)
     assert "test-only-private-key" not in config.model_dump_json()
     assert config.KNOWLEDGE_FS_TIMEOUT_SECONDS == 10.0
+    assert config.KNOWLEDGE_FS_RETRIEVAL_TEST_TIMEOUT_SECONDS == 75.0
 
 
 def test_knowledge_fs_config_treats_blank_connection_as_disabled() -> None:
@@ -175,6 +177,12 @@ def test_knowledge_fs_config_rejects_unsafe_base_url_components(base_url: str) -
 def test_knowledge_fs_config_rejects_unbounded_timeouts(timeout_seconds: float) -> None:
     with pytest.raises(ValidationError):
         KnowledgeFSConfig(KNOWLEDGE_FS_TIMEOUT_SECONDS=timeout_seconds)
+
+
+@pytest.mark.parametrize("timeout_seconds", [60.0, 120.0001, float("inf"), float("nan")])
+def test_knowledge_fs_config_rejects_unsafe_retrieval_test_timeouts(timeout_seconds: float) -> None:
+    with pytest.raises(ValidationError):
+        KnowledgeFSConfig(KNOWLEDGE_FS_RETRIEVAL_TEST_TIMEOUT_SECONDS=timeout_seconds)
 
 
 def test_production_knowledge_fs_transport_requires_https() -> None:

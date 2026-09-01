@@ -37,6 +37,7 @@ def test_runtime_wires_one_shared_authorization_and_remote_graph(monkeypatch: py
     apply_config_overrides(
         monkeypatch,
         KNOWLEDGE_FS_BASE_URL="https://knowledge-fs.test",
+        KNOWLEDGE_FS_RETRIEVAL_TEST_TIMEOUT_SECONDS=75.0,
         KNOWLEDGE_FS_TIMEOUT_SECONDS=12.0,
         KNOWLEDGE_FS_PRODUCT_MAX_RESPONSE_BYTES=4096,
     )
@@ -86,6 +87,7 @@ def test_runtime_wires_one_shared_authorization_and_remote_graph(monkeypatch: py
 
     factories["HTTPKnowledgeFSProductRemoteClient"].assert_called_once_with(
         base_url="https://knowledge-fs.test",
+        retrieval_test_timeout_seconds=75.0,
         timeout_seconds=12.0,
         max_response_bytes=4096,
     )

@@ -60,6 +60,56 @@ def test_remote_client_builds_capability_only_headers(monkeypatch: pytest.Monkey
     assert captured["follow_redirects"] is False
 
 
+def test_remote_client_uses_a_dedicated_research_retrieval_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured_timeouts: list[object] = []
+    response = httpx.Response(
+        200,
+        json={"items": [], "metrics": {"totalMs": 1}, "mode": "research", "traceId": "trace-1"},
+        headers={"Content-Type": "application/json"},
+    )
+
+    def fake_make_request(**kwargs):
+        captured_timeouts.append(kwargs["timeout"])
+        return response
+
+    monkeypatch.setattr(ssrf_proxy, "make_request", fake_make_request)
+    monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda response, **_: response)
+    client = HTTPKnowledgeFSProductRemoteClient(
+        base_url="https://knowledge-fs.test",
+        retrieval_test_timeout_seconds=75,
+        timeout_seconds=3,
+    )
+
+    client.execute_json(
+        KnowledgeFSRemoteJSONRequest(
+            operation_id="retrieveEvidence",
+            method="POST",
+            path="/knowledge-spaces/space-1/retrieval-tests",
+            namespace_id="tenant-1",
+            knowledge_space_id="space-1",
+            capability_token="capability-token",
+            trace_id="trace-1",
+            payload={"mode": "research", "query": "compare options"},
+        )
+    )
+    client.execute_json(
+        KnowledgeFSRemoteJSONRequest(
+            operation_id="listDocuments",
+            method="GET",
+            path="/knowledge-spaces/space-1/documents",
+            namespace_id="tenant-1",
+            knowledge_space_id="space-1",
+            capability_token="capability-token",
+            trace_id="trace-2",
+            payload=None,
+        )
+    )
+
+    assert captured_timeouts == [75, 3]
+
+
 def test_remote_client_allows_quality_replay_evidence_detail_query(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -389,6 +389,8 @@ test("Dify compose starts the integrated KnowledgeFS API by default and keeps it
     difyApiEnv,
     /^KNOWLEDGE_FS_COMMUNITY_DEV_ENABLED=\$\{KNOWLEDGE_FS_COMMUNITY_DEV_ENABLED:-false\}$/m,
   );
+  assert.match(difyApiEnv, /^KNOWLEDGE_FS_TIMEOUT_SECONDS=10$/m);
+  assert.match(difyApiEnv, /^KNOWLEDGE_FS_RETRIEVAL_TEST_TIMEOUT_SECONDS=75$/m);
 });
 
 test("Dify Compose whitelists root materialization and PDF overrides without leaking root values", () => {
