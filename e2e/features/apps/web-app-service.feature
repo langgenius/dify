@@ -16,3 +16,10 @@ Feature: Manage Web App service
     Then the Web App should be in service
     When the anonymous visitor reloads the Web App
     Then the published workflow Web App should be accessible
+
+  Scenario: Published workflow Web App uses the renamed default app title
+    Given I am signed in as the default E2E admin
+    And a new runnable workflow app has been published
+    When I rename the published workflow app
+    And an anonymous visitor opens the Web App
+    Then the published workflow Web App should show the renamed default title

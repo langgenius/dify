@@ -7,6 +7,8 @@ import { syncRunnableWorkflowDraft } from '../../../support/api/workflows'
 import { createE2EResourceName } from '../../../support/naming'
 import { baseURL, defaultLocale } from '../../../test-env'
 
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
 Given('a new runnable workflow app has been published', async function (this: DifyWorld) {
   const client = this.getConsoleClient()
   const app = await createTestApp(client, createE2EResourceName('App', 'WebApp'), 'workflow')
@@ -46,6 +48,26 @@ When('the anonymous visitor reloads the Web App', async function (this: DifyWorl
   await this.sharedAppPage.reload({ timeout: 20_000 })
 })
 
+When('I rename the published workflow app', async function (this: DifyWorld) {
+  const appId = this.createdAppIds.at(-1)
+  if (!appId) throw new Error('No workflow app has been created.')
+
+  const renamedAppName = createE2EResourceName('App', 'RenamedWebApp')
+  await this.getConsoleClient().apps.byAppId.put({
+    body: {
+      name: renamedAppName,
+      description: '',
+      icon_type: 'emoji',
+      icon: '🤖',
+      icon_background: '#FFEAD5',
+      use_icon_as_answer_icon: false,
+      max_active_requests: 0,
+    },
+    params: { app_id: appId },
+  })
+  this.lastCreatedAppName = renamedAppName
+})
+
 When('I disable the Web App', async function (this: DifyWorld) {
   const webAppSwitch = getWebAppSwitch(this)
 
@@ -82,6 +104,16 @@ Then('the published workflow Web App should be accessible', async function (this
     timeout: 15_000,
   })
 })
+
+Then(
+  'the published workflow Web App should show the renamed default title',
+  async function (this: DifyWorld) {
+    if (!this.sharedAppPage) throw new Error('The anonymous visitor has not opened the Web App.')
+    if (!this.lastCreatedAppName) throw new Error('No renamed app name is available.')
+
+    await expect(this.sharedAppPage).toHaveTitle(new RegExp(escapeRegExp(this.lastCreatedAppName)))
+  },
+)
 
 Then('the published workflow Web App should be unavailable', async function (this: DifyWorld) {
   if (!this.sharedAppPage) throw new Error('The anonymous visitor has not opened the Web App.')
