@@ -1,0 +1,21 @@
+{
+  "circularInvocationTip": "Det finns ett cirkulärt anrop av verktyg/noder i det aktuella arbetsflödet.",
+  "detail": "DETALJER",
+  "input": "INDATA",
+  "meta.executor": "Utförare",
+  "meta.startTime": "Starttid",
+  "meta.status": "Status",
+  "meta.steps": "Körningssteg",
+  "meta.time": "Förfluten tid",
+  "meta.title": "METADATA",
+  "meta.tokens": "Totalt antal token",
+  "result": "RESULTAT",
+  "resultEmpty.link": "detaljpanelen",
+  "resultEmpty.tipLeft": "gå till ",
+  "resultEmpty.tipRight": " för att se det.",
+  "resultEmpty.title": "Den här körningen gav endast utdata i JSON-format.",
+  "resultPanel.status": "STATUS",
+  "resultPanel.time": "FÖRFLUTEN TID",
+  "resultPanel.tokens": "TOTALT ANTAL TOKEN",
+  "tracing": "SPÅRNING"
+}

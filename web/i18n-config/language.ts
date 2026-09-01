@@ -47,6 +47,7 @@ export const localeMap: Record<Locale, string> = {
   'ko-KR': 'ko',
   'lo-LA': 'lo',
   'ru-RU': 'ru',
+  'sv-SE': 'sv',
   'it-IT': 'it',
   'th-TH': 'th',
   'id-ID': 'id',
