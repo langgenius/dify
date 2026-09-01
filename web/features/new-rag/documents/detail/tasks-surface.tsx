@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { DocumentDetailTasksDrawer } from '../tasks/drawer'
 import { DocumentPermissionRecoveryNotice, DocumentTaskNotices } from './status'
+import { DocumentDetailTasksDrawer } from './tasks/drawer'
 
 export function DocumentTasksSurface() {
   const [open, setOpen] = useState(false)
