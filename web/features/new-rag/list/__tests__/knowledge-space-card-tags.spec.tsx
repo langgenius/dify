@@ -111,6 +111,15 @@ function createKnowledgeSpace(
       { id: 'tag-2', name: 'Backend', type: 'knowledge' },
     ],
     technical_status: 'available',
+    technical_summary: {
+      description: null,
+      document_count: 0,
+      icon: null,
+      knowledge_space_id: 'knowledge-space-1',
+      name: 'Public docs',
+      revision: 1,
+      slug: 'public-docs',
+    },
     updated_at: '2026-08-13T00:00:00Z',
     visibility: 'only_me',
   }
@@ -147,7 +156,7 @@ describe('KnowledgeSpaceCardTags', () => {
       />,
     )
 
-    const trigger = screen.getByRole('combobox', { name: 'Frontend, Backend' })
+    const trigger = screen.getByRole('combobox', { name: 'Frontend, Backend: Public docs' })
     await user.click(trigger)
     await user.click(await screen.findByRole('option', { name: 'Frontend' }))
     await user.click(screen.getByRole('option', { name: 'Public docs' }))
@@ -175,7 +184,7 @@ describe('KnowledgeSpaceCardTags', () => {
       />,
     )
 
-    const trigger = screen.getByRole('combobox', { name: 'Frontend, Backend' })
+    const trigger = screen.getByRole('combobox', { name: 'Frontend, Backend: Public docs' })
     await user.click(trigger)
     await user.click(await screen.findByRole('option', { name: 'Frontend' }))
     await user.click(screen.getByRole('option', { name: 'Backend' }))
@@ -197,7 +206,7 @@ describe('KnowledgeSpaceCardTags', () => {
       />,
     )
 
-    expect(screen.getByRole('combobox', { name: 'Frontend, Backend' })).toBeDisabled()
+    expect(screen.getByRole('combobox', { name: 'Frontend, Backend: Public docs' })).toBeDisabled()
     expect(putTags).not.toHaveBeenCalled()
   })
 })

@@ -4,11 +4,14 @@ from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from services.knowledge_fs.lifecycle_readiness import KnowledgeFSLifecycleWorkerReadiness
 from tasks.knowledge_fs_lifecycle_tasks import (
     cleanup_knowledge_fs_staged_uploads,
     run_knowledge_fs_lifecycle_worker,
 )
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def test_worker_self_check_returns_before_assembling_remote_when_rollout_is_not_ready() -> None:
@@ -25,7 +28,9 @@ def test_worker_self_check_returns_before_assembling_remote_when_rollout_is_not_
     remote.assert_not_called()
 
 
-def test_ready_worker_dispatches_a_bounded_batch_then_repairs_orphans() -> None:
+def test_ready_worker_dispatches_a_bounded_batch_then_repairs_orphans(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     runner = SimpleNamespace(
         dispatch_one=MagicMock(
             side_effect=(
@@ -43,6 +48,12 @@ def test_ready_worker_dispatches_a_bounded_batch_then_repairs_orphans() -> None:
             )
         )
     )
+    apply_config_overrides(
+        monkeypatch,
+        KNOWLEDGE_FS_LIFECYCLE_BATCH_SIZE=5,
+        KNOWLEDGE_FS_LIFECYCLE_LEASE_SECONDS=30,
+        KNOWLEDGE_FS_ENABLED=True,
+    )
     with (
         patch(
             "tasks.knowledge_fs_lifecycle_tasks.get_configured_knowledge_fs_lifecycle_worker_readiness",
@@ -54,9 +65,6 @@ def test_ready_worker_dispatches_a_bounded_batch_then_repairs_orphans() -> None:
         patch("tasks.knowledge_fs_lifecycle_tasks.KnowledgeFSOrphanReconciler", return_value=reconciler),
         patch("tasks.knowledge_fs_lifecycle_tasks.socket.gethostname", return_value="worker-host"),
         patch("tasks.knowledge_fs_lifecycle_tasks.naive_utc_now", return_value="now-1"),
-        patch("tasks.knowledge_fs_lifecycle_tasks.dify_config.KNOWLEDGE_FS_LIFECYCLE_BATCH_SIZE", 5),
-        patch("tasks.knowledge_fs_lifecycle_tasks.dify_config.KNOWLEDGE_FS_LIFECYCLE_LEASE_SECONDS", 30),
-        patch("tasks.knowledge_fs_lifecycle_tasks.dify_config.KNOWLEDGE_FS_ENABLED", True),
     ):
         result = run_knowledge_fs_lifecycle_worker.run()
 
@@ -85,9 +93,10 @@ def test_staged_upload_cleanup_returns_before_runtime_assembly_when_not_ready() 
     runtime.assert_not_called()
 
 
-def test_staged_upload_cleanup_uses_the_configured_batch_limit() -> None:
+def test_staged_upload_cleanup_uses_the_configured_batch_limit(monkeypatch: pytest.MonkeyPatch) -> None:
     staged_uploads = MagicMock()
     staged_uploads.cleanup_expired.return_value = 4
+    apply_config_overrides(monkeypatch, KNOWLEDGE_FS_LIFECYCLE_BATCH_SIZE=25)
     with (
         patch(
             "tasks.knowledge_fs_lifecycle_tasks.get_configured_knowledge_fs_lifecycle_worker_readiness",
@@ -105,7 +114,6 @@ def test_staged_upload_cleanup_uses_the_configured_batch_limit() -> None:
             "tasks.knowledge_fs_lifecycle_tasks.KnowledgeFSStagedUploadService",
             return_value=staged_uploads,
         ) as service,
-        patch("tasks.knowledge_fs_lifecycle_tasks.dify_config.KNOWLEDGE_FS_LIFECYCLE_BATCH_SIZE", 25),
     ):
         result = cleanup_knowledge_fs_staged_uploads.run()
 

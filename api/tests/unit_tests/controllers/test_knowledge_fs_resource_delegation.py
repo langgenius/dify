@@ -46,6 +46,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSStreamCapabilityPayload,
 )
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
+from tests.unit_tests.config_override import apply_config_overrides
 
 _RAW_RESULT = object()
 
@@ -1329,7 +1330,7 @@ def test_console_stream_capabilities_bind_the_authorized_resource(monkeypatch: p
             KnowledgeFSStreamCapabilityPayload(control_space_id="space-2"),
         ]
     )
-    monkeypatch.setattr(console_resources.dify_config, "CONSOLE_API_URL", "https://dify.example")
+    apply_config_overrides(monkeypatch, CONSOLE_API_URL="https://dify.example")
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(
         console_resources,
@@ -1372,7 +1373,7 @@ def test_service_query_admission_binds_profile_space_and_payload(monkeypatch: py
     broker = SimpleNamespace(issue_service=MagicMock(return_value=issued))
     runtime = SimpleNamespace(broker=broker)
     profile = object()
-    monkeypatch.setattr(service_resources.dify_config, "SERVICE_API_URL", "https://api.dify.example")
+    apply_config_overrides(monkeypatch, SERVICE_API_URL="https://api.dify.example")
     monkeypatch.setattr(service_resources, "_runtime", lambda: runtime)
     monkeypatch.setattr(service_resources, "_profile", lambda *_args, **_kwargs: profile)
     monkeypatch.setattr(service_resources, "_payload", lambda _: KnowledgeFSQueryCreatePayload(query="question"))
@@ -1394,7 +1395,7 @@ def test_console_resource_helpers_validate_feature_payload_headers_and_query_pai
     runtime = object()
     session_maker = object()
     get_runtime = MagicMock(return_value=runtime)
-    monkeypatch.setattr(console_resources.dify_config, "KNOWLEDGE_FS_ENABLED", True)
+    apply_config_overrides(monkeypatch, KNOWLEDGE_FS_ENABLED=True)
     monkeypatch.setattr(console_resources.session_factory, "get_session_maker", lambda: session_maker)
     monkeypatch.setattr(console_resources, "get_knowledge_fs_runtime", get_runtime)
     monkeypatch.setattr(
@@ -1423,7 +1424,7 @@ def test_console_resource_helpers_validate_feature_payload_headers_and_query_pai
         assert console_resources._payload(KnowledgeFSQueryCreatePayload).query == "question"
         assert console_resources._idempotency_key() == "request-key"
 
-    monkeypatch.setattr(console_resources.dify_config, "KNOWLEDGE_FS_ENABLED", False)
+    apply_config_overrides(monkeypatch, KNOWLEDGE_FS_ENABLED=False)
     with pytest.raises(NotFound):
         console_resources._console_services()
 
@@ -1434,7 +1435,7 @@ def test_service_resource_helpers_validate_feature_bearer_headers_and_boolean_qu
     runtime = object()
     session_maker = object()
     get_runtime = MagicMock(return_value=runtime)
-    monkeypatch.setattr(service_resources.dify_config, "KNOWLEDGE_FS_ENABLED", True)
+    apply_config_overrides(monkeypatch, KNOWLEDGE_FS_ENABLED=True)
     monkeypatch.setattr(service_resources.session_factory, "get_session_maker", lambda: session_maker)
     monkeypatch.setattr(service_resources, "get_knowledge_fs_runtime", get_runtime)
     app = Flask(__name__)
@@ -1456,7 +1457,7 @@ def test_service_resource_helpers_validate_feature_bearer_headers_and_boolean_qu
         assert service_resources._payload(KnowledgeFSQueryCreatePayload).query == "question"
         assert service_resources._idempotency_key() == "request-key"
 
-    monkeypatch.setattr(service_resources.dify_config, "KNOWLEDGE_FS_ENABLED", False)
+    apply_config_overrides(monkeypatch, KNOWLEDGE_FS_ENABLED=False)
     with pytest.raises(NotFound):
         service_resources._runtime()
 
@@ -1522,11 +1523,11 @@ def test_jwks_resource_fails_closed_for_disabled_missing_and_misconfigured_issue
     from services.knowledge_fs_capability import KnowledgeFSCapabilityConfigurationError
 
     app = Flask(__name__)
-    monkeypatch.setattr(console_resources.dify_config, "KNOWLEDGE_FS_CAPABILITY_V2_ENABLED", False)
+    apply_config_overrides(monkeypatch, KNOWLEDGE_FS_CAPABILITY_V2_ENABLED=False)
     with app.app_context(), pytest.raises(NotFound):
         console_resources.KnowledgeFSJWKSApi().get()
 
-    monkeypatch.setattr(console_resources.dify_config, "KNOWLEDGE_FS_CAPABILITY_V2_ENABLED", True)
+    apply_config_overrides(monkeypatch, KNOWLEDGE_FS_CAPABILITY_V2_ENABLED=True)
     monkeypatch.setattr(console_resources.session_factory, "get_session_maker", lambda: object())
     monkeypatch.setattr(console_resources, "create_configured_knowledge_fs_capability_issuer", lambda **_: None)
     with app.app_context(), pytest.raises(NotFound):

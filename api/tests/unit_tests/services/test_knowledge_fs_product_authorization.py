@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 from services.enterprise import rbac_service
 from services.knowledge_fs.product_authorization import DifyKnowledgeFSProductRBACPort
 from services.knowledge_fs.product_operations import KnowledgeFSProductPermission
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def test_enterprise_knowledge_fs_permissions_use_one_batch_request() -> None:
@@ -15,7 +16,7 @@ def test_enterprise_knowledge_fs_permissions_use_one_batch_request() -> None:
         ]
     }
     with (
-        patch.object(rbac_service.dify_config, "RBAC_ENABLED", True),
+        config_overrides_context(RBAC_ENABLED=True),
         patch.object(rbac_service, "_inner_call", return_value=response) as inner_call,
     ):
         permissions = rbac_service.RBACService.KnowledgeFSPermissions.batch_get(

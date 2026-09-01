@@ -1419,6 +1419,9 @@ class TestTenantService:
             ),
             patch("services.account_service.RBACService.MemberRoles.get", return_value=outgoing_owner_roles),
             patch("services.account_service.RBACService.MemberRoles.replace") as mock_replace,
+            patch(
+                "services.knowledge_fs.membership_changes.apply_workspace_membership_change"
+            ) as apply_membership_change,
         ):
             TenantService.update_member_role(tenant, candidate, "owner", operator, session=sqlite_session)
 
@@ -1428,6 +1431,11 @@ class TestTenantService:
             member_account_id="real-rbac-owner",
             role_ids=expected_demoted_role_ids,
             session=sqlite_session,
+        )
+        assert apply_membership_change.call_args.kwargs["account_ids"] == (
+            candidate.id,
+            "real-rbac-owner",
+            "stale-db-owner",
         )
         assert self._db_role_of(sqlite_session, tenant, "stale-db-owner") == TenantAccountRole.NORMAL
         assert self._db_role_of(sqlite_session, tenant, candidate.id) == TenantAccountRole.OWNER

@@ -7,10 +7,11 @@ import pytest
 
 from services.knowledge_fs import runtime
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def test_runtime_fails_closed_when_the_remote_endpoint_is_not_configured(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(runtime.dify_config, "KNOWLEDGE_FS_BASE_URL", None)
+    apply_config_overrides(monkeypatch, KNOWLEDGE_FS_BASE_URL=None)
 
     with pytest.raises(KnowledgeFSOperationUnavailableError, match="not configured"):
         runtime.create_knowledge_fs_runtime(MagicMock())
@@ -33,9 +34,12 @@ def test_process_runtime_is_built_once_for_the_application_session_factory(
 
 
 def test_runtime_wires_one_shared_authorization_and_remote_graph(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(runtime.dify_config, "KNOWLEDGE_FS_BASE_URL", "https://knowledge-fs.test")
-    monkeypatch.setattr(runtime.dify_config, "KNOWLEDGE_FS_TIMEOUT_SECONDS", 12.0)
-    monkeypatch.setattr(runtime.dify_config, "KNOWLEDGE_FS_PRODUCT_MAX_RESPONSE_BYTES", 4096)
+    apply_config_overrides(
+        monkeypatch,
+        KNOWLEDGE_FS_BASE_URL="https://knowledge-fs.test",
+        KNOWLEDGE_FS_TIMEOUT_SECONDS=12.0,
+        KNOWLEDGE_FS_PRODUCT_MAX_RESPONSE_BYTES=4096,
+    )
 
     factory_names = (
         "DifyKnowledgeFSProductRBACPort",

@@ -137,8 +137,11 @@ def test_console_cors_exposes_download_filename(
     fresh_blueprints: dict[str, Blueprint],
 ) -> None:
     origin = "http://localhost:3000"
-    monkeypatch.setattr(dify_config, "OPENAPI_ENABLED", False)
-    monkeypatch.setattr(dify_config, "inner_CONSOLE_CORS_ALLOW_ORIGINS", origin)
+    apply_config_overrides(
+        monkeypatch,
+        OPENAPI_ENABLED=False,
+        inner_CONSOLE_CORS_ALLOW_ORIGINS=origin,
+    )
 
     app = _build_app()
     ext_blueprints.init_app(app)

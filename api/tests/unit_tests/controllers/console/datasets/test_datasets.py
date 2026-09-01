@@ -55,6 +55,7 @@ from models.model import ApiToken, App, AppMode, IconType, UploadFile
 from services.dataset_ref_service import DatasetRef
 from services.dataset_service import DatasetPermissionService, DatasetService
 from services.enterprise import rbac_service as enterprise_rbac_service
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @pytest.fixture(autouse=True)
@@ -202,14 +203,14 @@ class TestDatasetList(_UsesSQLiteSession):
         user = make_account()
         return user
 
-    def test_get_success_basic(self, app: Flask):
+    def test_get_success_basic(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = DatasetListApi()
         method = unwrap(api.get)
         current_user = self._mock_user()
         datasets = [make_dataset(icon_info={"icon": "📙", "icon_type": "emoji"})]
+        apply_config_overrides(monkeypatch, KNOWLEDGE_FS_ENABLED=True)
         with app.test_request_context("/datasets"):
             with (
-                patch("controllers.console.datasets.datasets.dify_config.KNOWLEDGE_FS_ENABLED", True),
                 patch.object(DatasetService, "get_datasets", return_value=(datasets, 1)),
                 patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
             ):
@@ -230,7 +231,7 @@ class TestDatasetList(_UsesSQLiteSession):
             "block_reason": None,
         }
 
-    def test_get_attaches_upgrade_summaries_with_one_batch_lookup(self, app: Flask):
+    def test_get_attaches_upgrade_summaries_with_one_batch_lookup(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = DatasetListApi()
         method = unwrap(api.get)
         current_user = self._mock_user()
@@ -250,9 +251,9 @@ class TestDatasetList(_UsesSQLiteSession):
             last_error_message=None,
             completed_at=datetime.datetime(2026, 8, 18, tzinfo=datetime.UTC),
         )
+        apply_config_overrides(monkeypatch, KNOWLEDGE_FS_ENABLED=True)
         with app.test_request_context("/datasets"):
             with (
-                patch("controllers.console.datasets.datasets.dify_config.KNOWLEDGE_FS_ENABLED", True),
                 patch.object(DatasetService, "get_datasets", return_value=(datasets, 2)),
                 patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
                 patch(
@@ -951,7 +952,7 @@ class TestDatasetKnowledgeFSUpgradeApi:
         values.update(overrides)
         return SimpleNamespace(**values)
 
-    def test_list_upgrade_jobs_returns_only_accessible_dataset_jobs(self, app: Flask):
+    def test_list_upgrade_jobs_returns_only_accessible_dataset_jobs(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         allowed_dataset = make_dataset(id="dataset-1", tenant_id="tenant-1")
         denied_dataset = make_dataset(id="dataset-2", tenant_id="tenant-1")
         snapshots = MagicMock()
@@ -966,9 +967,9 @@ class TestDatasetKnowledgeFSUpgradeApi:
             if dataset.id == "dataset-2":
                 raise services.errors.account.NoPermissionError()
 
+        apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
         with (
             app.test_request_context("/datasets/knowledge-fs-upgrade-jobs"),
-            patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", False),
             patch("controllers.console.datasets.datasets.session_factory.get_session_maker", return_value="maker"),
             patch(
                 "controllers.console.datasets.datasets.KnowledgeFSUpgradeSnapshotService",
@@ -994,7 +995,9 @@ class TestDatasetKnowledgeFSUpgradeApi:
         )
         assert get_datasets.call_args.args[:2] == (["dataset-1", "dataset-2"], "tenant-1")
 
-    def test_create_snapshots_and_enqueues_without_remote_work_in_request(self, app: Flask):
+    def test_create_snapshots_and_enqueues_without_remote_work_in_request(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ):
         dataset_id = "123e4567-e89b-12d3-a456-426614174000"
         dataset = make_dataset(id=dataset_id, tenant_id="tenant-1")
         user = make_account()
@@ -1004,13 +1007,12 @@ class TestDatasetKnowledgeFSUpgradeApi:
         session_context.__enter__.return_value = MagicMock()
         api = DatasetKnowledgeFSUpgradeApi()
         method = unwrap(api.post)
+        apply_config_overrides(monkeypatch, KNOWLEDGE_FS_ENABLED=True, RBAC_ENABLED=False)
         with (
             app.test_request_context(
                 f"/datasets/{dataset_id}/knowledge-fs-upgrades",
                 headers={"Idempotency-Key": "upgrade-request-1"},
             ),
-            patch("controllers.console.datasets.datasets.dify_config.KNOWLEDGE_FS_ENABLED", True),
-            patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", False),
             patch("controllers.console.datasets.datasets.session_factory.create_session", return_value=session_context),
             patch("controllers.console.datasets.datasets.session_factory.get_session_maker", return_value="maker"),
             patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
@@ -1033,24 +1035,23 @@ class TestDatasetKnowledgeFSUpgradeApi:
         )
         enqueue.assert_called_once_with(snapshots, tenant_id="tenant-1", job_id="upgrade-job-1")
 
-    def test_create_requires_idempotency_key(self, app: Flask):
+    def test_create_requires_idempotency_key(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         dataset_id = "123e4567-e89b-12d3-a456-426614174000"
         dataset = make_dataset(id=dataset_id, tenant_id="tenant-1")
         session_context = MagicMock()
         session_context.__enter__.return_value = MagicMock()
         api = DatasetKnowledgeFSUpgradeApi()
         method = unwrap(api.post)
+        apply_config_overrides(monkeypatch, KNOWLEDGE_FS_ENABLED=True, RBAC_ENABLED=True)
         with (
             app.test_request_context(f"/datasets/{dataset_id}/knowledge-fs-upgrades"),
-            patch("controllers.console.datasets.datasets.dify_config.KNOWLEDGE_FS_ENABLED", True),
-            patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
             patch("controllers.console.datasets.datasets.session_factory.create_session", return_value=session_context),
             patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
             pytest.raises(BadRequest, match="Idempotency-Key"),
         ):
             method(api, "tenant-1", make_account(), dataset_id)
 
-    def test_discovery_returns_latest_job_and_allowed_action(self, app: Flask):
+    def test_discovery_returns_latest_job_and_allowed_action(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         dataset_id = "123e4567-e89b-12d3-a456-426614174000"
         dataset = make_dataset(id=dataset_id, tenant_id="tenant-1")
         snapshots = MagicMock()
@@ -1064,10 +1065,9 @@ class TestDatasetKnowledgeFSUpgradeApi:
         session_context.__enter__.return_value = MagicMock()
         api = DatasetKnowledgeFSUpgradeApi()
         method = unwrap(api.get)
+        apply_config_overrides(monkeypatch, KNOWLEDGE_FS_ENABLED=True, RBAC_ENABLED=True)
         with (
             app.test_request_context(f"/datasets/{dataset_id}/knowledge-fs-upgrades"),
-            patch("controllers.console.datasets.datasets.dify_config.KNOWLEDGE_FS_ENABLED", True),
-            patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
             patch("controllers.console.datasets.datasets.session_factory.create_session", return_value=session_context),
             patch("controllers.console.datasets.datasets.session_factory.get_session_maker", return_value="maker"),
             patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
@@ -1084,16 +1084,18 @@ class TestDatasetKnowledgeFSUpgradeApi:
         assert response["job"]["last_error_message"] == "source failed"
         snapshots.get_latest.assert_called_once_with(tenant_id="tenant-1", dataset_id=dataset_id)
 
-    def test_status_uses_legacy_dataset_permission_in_community_edition(self, app: Flask):
+    def test_status_uses_legacy_dataset_permission_in_community_edition(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ):
         dataset_id = "123e4567-e89b-12d3-a456-426614174000"
         dataset = make_dataset(id=dataset_id, tenant_id="tenant-1")
         api = DatasetKnowledgeFSUpgradeJobApi()
         method = unwrap(api.get)
         session_context = MagicMock()
         session_context.__enter__.return_value = MagicMock()
+        apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
         with (
             app.test_request_context(f"/datasets/{dataset_id}/knowledge-fs-upgrades/job-1"),
-            patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", False),
             patch("controllers.console.datasets.datasets.session_factory.create_session", return_value=session_context),
             patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
             patch.object(
@@ -1108,7 +1110,9 @@ class TestDatasetKnowledgeFSUpgradeApi:
 
         snapshots.assert_not_called()
 
-    def test_status_relies_on_rbac_decorator_when_enterprise_rbac_is_enabled(self, app: Flask):
+    def test_status_relies_on_rbac_decorator_when_enterprise_rbac_is_enabled(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ):
         dataset_id = "123e4567-e89b-12d3-a456-426614174000"
         dataset = make_dataset(id=dataset_id, tenant_id="tenant-1")
         snapshots = MagicMock()
@@ -1117,9 +1121,9 @@ class TestDatasetKnowledgeFSUpgradeApi:
         session_context.__enter__.return_value = MagicMock()
         api = DatasetKnowledgeFSUpgradeJobApi()
         method = unwrap(api.get)
+        apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
         with (
             app.test_request_context(f"/datasets/{dataset_id}/knowledge-fs-upgrades/job-1"),
-            patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
             patch("controllers.console.datasets.datasets.session_factory.create_session", return_value=session_context),
             patch("controllers.console.datasets.datasets.session_factory.get_session_maker", return_value="maker"),
             patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
@@ -1134,7 +1138,7 @@ class TestDatasetKnowledgeFSUpgradeApi:
         assert response["id"] == "upgrade-job-1"
         legacy_permission.assert_not_called()
 
-    def test_retry_rejects_a_job_from_another_dataset(self, app: Flask):
+    def test_retry_rejects_a_job_from_another_dataset(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         dataset_id = "123e4567-e89b-12d3-a456-426614174000"
         dataset = make_dataset(id=dataset_id, tenant_id="tenant-1")
         snapshots = MagicMock()
@@ -1143,9 +1147,9 @@ class TestDatasetKnowledgeFSUpgradeApi:
         session_context.__enter__.return_value = MagicMock()
         api = DatasetKnowledgeFSUpgradeJobApi()
         method = unwrap(api.post)
+        apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
         with (
             app.test_request_context(f"/datasets/{dataset_id}/knowledge-fs-upgrades/job-1"),
-            patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", False),
             patch("controllers.console.datasets.datasets.session_factory.create_session", return_value=session_context),
             patch("controllers.console.datasets.datasets.session_factory.get_session_maker", return_value="maker"),
             patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),

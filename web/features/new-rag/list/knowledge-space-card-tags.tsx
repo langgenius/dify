@@ -50,6 +50,7 @@ export function KnowledgeSpaceCardTags({
     <TagSelector
       type="knowledge"
       targetId={knowledgeSpace.control_space_id}
+      contextLabel={knowledgeSpace.technical_summary?.name ?? knowledgeSpace.control_space_id}
       value={tags}
       canBindOrUnbindTags={canEdit}
       requiresTargetEditPermission

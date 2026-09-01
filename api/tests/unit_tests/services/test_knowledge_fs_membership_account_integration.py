@@ -21,6 +21,7 @@ from models.knowledge_fs import (
     KnowledgeFSLifecycleOutbox,
 )
 from services.account_service import TenantService
+from tests.unit_tests.config_override import config_overrides_context
 
 _TABLES = (
     Account,
@@ -59,7 +60,7 @@ def test_update_workspace_role_revokes_late_durable_grants_in_same_commit(sqlite
     sqlite_session.add_all([space, revision, _audit(tenant, space, member.id, "2")])
     sqlite_session.commit()
 
-    with patch("services.account_service.dify_config.RBAC_ENABLED", False):
+    with config_overrides_context(RBAC_ENABLED=False):
         TenantService.update_member_role(tenant, member, "normal", owner, session=sqlite_session)
 
     command = sqlite_session.scalar(select(KnowledgeFSLifecycleOutbox))
@@ -84,7 +85,7 @@ def test_remove_member_reassigns_owned_control_space_before_deleting_membership(
     sqlite_session.commit()
 
     with (
-        patch("services.account_service.dify_config.RBAC_ENABLED", False),
+        config_overrides_context(RBAC_ENABLED=False),
         patch(
             "services.enterprise.account_deletion_sync.sync_workspace_member_removal",
             return_value=True,

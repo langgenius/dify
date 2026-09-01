@@ -4,11 +4,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from configs import dify_config
 from core.db.session_factory import session_factory
 from repositories import sqlalchemy_knowledge_fs_capability_issuance_auditor
 from services import knowledge_fs_capability
 from services.knowledge_fs import lifecycle_remote_http, remote_registry
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def test_configured_lifecycle_remote_assembles_capability_v2_http_client(
@@ -20,8 +20,11 @@ def test_configured_lifecycle_remote_assembles_capability_v2_http_client(
     client = MagicMock(name="lifecycle-http-client")
     captured: dict[str, object] = {}
 
-    monkeypatch.setattr(dify_config, "KNOWLEDGE_FS_BASE_URL", "https://knowledge-fs.test")
-    monkeypatch.setattr(dify_config, "KNOWLEDGE_FS_TIMEOUT_SECONDS", 4.5)
+    apply_config_overrides(
+        monkeypatch,
+        KNOWLEDGE_FS_BASE_URL="https://knowledge-fs.test",
+        KNOWLEDGE_FS_TIMEOUT_SECONDS=4.5,
+    )
     monkeypatch.setattr(session_factory, "get_session_maker", lambda: maker)
     monkeypatch.setattr(
         sqlalchemy_knowledge_fs_capability_issuance_auditor,
@@ -51,11 +54,11 @@ def test_configured_lifecycle_remote_assembles_capability_v2_http_client(
 def test_lifecycle_remote_assembly_fails_closed_without_endpoint_or_capability_issuer(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(dify_config, "KNOWLEDGE_FS_BASE_URL", None)
+    apply_config_overrides(monkeypatch, KNOWLEDGE_FS_BASE_URL=None)
     with pytest.raises(RuntimeError, match="BASE_URL"):
         remote_registry.create_configured_knowledge_fs_lifecycle_remote()
 
-    monkeypatch.setattr(dify_config, "KNOWLEDGE_FS_BASE_URL", "https://knowledge-fs.test")
+    apply_config_overrides(monkeypatch, KNOWLEDGE_FS_BASE_URL="https://knowledge-fs.test")
     monkeypatch.setattr(
         knowledge_fs_capability,
         "create_configured_knowledge_fs_capability_issuer",

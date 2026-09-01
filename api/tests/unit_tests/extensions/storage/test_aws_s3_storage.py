@@ -1,5 +1,6 @@
 """Unit tests for the common AWS S3 storage adapter."""
 
+from collections.abc import Callable
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -8,14 +9,11 @@ from extensions.storage.aws_s3_storage import AwsS3Storage
 
 
 @pytest.fixture
-def s3_storage() -> tuple[AwsS3Storage, MagicMock]:
+def s3_storage(config_overrides: Callable[..., None]) -> tuple[AwsS3Storage, MagicMock]:
     client = MagicMock()
     client.head_bucket.return_value = {}
-    with (
-        patch("extensions.storage.aws_s3_storage.boto3.client", return_value=client),
-        patch("extensions.storage.aws_s3_storage.dify_config.S3_USE_AWS_MANAGED_IAM", False),
-        patch("extensions.storage.aws_s3_storage.dify_config.S3_BUCKET_NAME", "dify-files"),
-    ):
+    config_overrides(S3_USE_AWS_MANAGED_IAM=False, S3_BUCKET_NAME="dify-files")
+    with patch("extensions.storage.aws_s3_storage.boto3.client", return_value=client):
         storage = AwsS3Storage()
     return storage, client
 

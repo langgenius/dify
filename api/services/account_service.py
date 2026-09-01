@@ -1829,6 +1829,8 @@ class TenantService:
                     role_ids=remaining_role_ids or [no_access_role_id],
                     session=session,
                 )
+                if old_owner_id != str(member.id):
+                    affected_account_ids.append(old_owner_id)
 
             current_owner_join = session.scalar(
                 select(TenantAccountJoin)

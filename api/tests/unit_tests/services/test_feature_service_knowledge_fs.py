@@ -3,7 +3,6 @@ from collections.abc import Callable
 import pytest
 
 from enums import DeploymentEdition
-from services import feature_service as feature_service_module
 from services.entities.feature_entities import SystemFeatureModel
 from services.feature_service import FeatureService
 
@@ -59,20 +58,15 @@ def test_get_system_features_reads_knowledge_fs_availability(
 )
 def test_get_system_features_controls_knowledge_fs_by_edition_or_development_flag(
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
     edition: DeploymentEdition,
     community_dev_enabled: bool,
     expected: bool,
 ) -> None:
-    monkeypatch.setattr(
-        feature_service_module.dify_config,
-        "DEPLOYMENT_EDITION",
-        edition,
-    )
-    monkeypatch.setattr(feature_service_module.dify_config, "KNOWLEDGE_FS_ENABLED", True)
-    monkeypatch.setattr(
-        feature_service_module.dify_config,
-        "KNOWLEDGE_FS_COMMUNITY_DEV_ENABLED",
-        community_dev_enabled,
+    config_overrides(
+        DEPLOYMENT_EDITION=edition,
+        KNOWLEDGE_FS_ENABLED=True,
+        KNOWLEDGE_FS_COMMUNITY_DEV_ENABLED=community_dev_enabled,
     )
     monkeypatch.setattr(FeatureService, "_fulfill_params_from_enterprise", lambda _: None)
 

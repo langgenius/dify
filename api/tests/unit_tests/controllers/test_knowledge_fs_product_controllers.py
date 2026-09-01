@@ -46,6 +46,7 @@ from services.knowledge_fs.service_api_authorization import (
     KnowledgeFSServiceApiAuthorizationError,
     KnowledgeFSServiceApiProfile,
 )
+from tests.unit_tests.config_override import apply_config_overrides
 
 _API_ROOT = Path(__file__).resolve().parents[3]
 
@@ -177,7 +178,7 @@ def test_document_download_routes_deny_callers_without_dataset_download_permissi
     path_args: dict[str, str],
 ) -> None:
     permission_gate = MagicMock(side_effect=Forbidden())
-    monkeypatch.setattr(common_wraps.dify_config, "RBAC_ENABLED", True)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr(
         common_wraps,
         "current_account_with_tenant",
@@ -218,7 +219,7 @@ def test_single_document_download_allows_dataset_download_permission_and_keeps_t
     facade = SimpleNamespace(prepare_logical_document_download=MagicMock(return_value=descriptor))
     download_service = SimpleNamespace(load_stream=MagicMock(return_value=iter((b"body",))))
     permission_gate = MagicMock()
-    monkeypatch.setattr(common_wraps.dify_config, "RBAC_ENABLED", True)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr(
         common_wraps,
         "current_account_with_tenant",
@@ -266,7 +267,7 @@ def test_single_document_download_preserves_resource_not_found_after_permission_
     )
     permission_gate = MagicMock()
     download_service_factory = MagicMock()
-    monkeypatch.setattr(common_wraps.dify_config, "RBAC_ENABLED", True)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr(
         common_wraps,
         "current_account_with_tenant",
@@ -312,7 +313,7 @@ def test_single_document_download_maps_storage_unavailable_after_permission_allo
         load_stream=MagicMock(side_effect=KnowledgeFSDownloadUnavailableError("storage unavailable"))
     )
     permission_gate = MagicMock()
-    monkeypatch.setattr(common_wraps.dify_config, "RBAC_ENABLED", True)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr(
         common_wraps,
         "current_account_with_tenant",
@@ -352,7 +353,7 @@ def test_batch_document_download_maps_storage_unavailable_after_permission_allow
     zip_context.__enter__.side_effect = KnowledgeFSDownloadUnavailableError("storage unavailable")
     download_service = SimpleNamespace(build_zip_tempfile=MagicMock(return_value=zip_context))
     permission_gate = MagicMock()
-    monkeypatch.setattr(common_wraps.dify_config, "RBAC_ENABLED", True)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr(
         common_wraps,
         "current_account_with_tenant",
@@ -503,7 +504,7 @@ def test_document_multimodal_manifest_console_bff_exposes_only_authorized_asset_
     facade = SimpleNamespace(get_document_multimodal_manifest=MagicMock(return_value=manifest))
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=facade))
-    monkeypatch.setattr(console_resources.dify_config, "CONSOLE_API_URL", "")
+    apply_config_overrides(monkeypatch, CONSOLE_API_URL="")
     app = Flask(__name__)
 
     with app.test_request_context():
@@ -1102,8 +1103,11 @@ def test_jwks_http_resource_returns_only_public_keys(monkeypatch: pytest.MonkeyP
         ]
     }
     issuer = SimpleNamespace(public_jwks=lambda: public_jwks)
-    monkeypatch.setattr(console_resources.dify_config, "KNOWLEDGE_FS_CAPABILITY_V2_ENABLED", True)
-    monkeypatch.setattr(console_resources.dify_config, "KNOWLEDGE_FS_JWKS_CACHE_MAX_AGE_SECONDS", 123)
+    apply_config_overrides(
+        monkeypatch,
+        KNOWLEDGE_FS_CAPABILITY_V2_ENABLED=True,
+        KNOWLEDGE_FS_JWKS_CACHE_MAX_AGE_SECONDS=123,
+    )
     monkeypatch.setattr(console_resources.session_factory, "get_session_maker", lambda: object())
     monkeypatch.setattr(console_resources, "create_configured_knowledge_fs_capability_issuer", lambda **_: issuer)
     app = Flask(__name__)
@@ -1202,7 +1206,7 @@ def test_product_modules_do_not_import_dify_dataset_or_document_services() -> No
 def test_research_task_stream_url_binds_task_and_parent_space_without_token(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(console_resources.dify_config, "CONSOLE_API_URL", "https://dify.test")
+    apply_config_overrides(monkeypatch, CONSOLE_API_URL="https://dify.test")
     url = console_resources._research_task_events_url(
         task_id="task/one",
         knowledge_space_id="space one",
@@ -1227,7 +1231,7 @@ def test_query_stream_capability_issues_exact_space_grant_without_token_in_url(
                 expires_at=datetime(2030, 1, 1, tzinfo=UTC),
             )
 
-    monkeypatch.setattr(console_resources.dify_config, "CONSOLE_API_URL", "https://dify.test")
+    apply_config_overrides(monkeypatch, CONSOLE_API_URL="https://dify.test")
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(
         console_resources,
@@ -1270,7 +1274,7 @@ def test_query_admission_binds_validated_mode_to_resolved_kfs_space(monkeypatch:
                 knowledge_space_id="space-1",
             )
 
-    monkeypatch.setattr(console_resources.dify_config, "CONSOLE_API_URL", "https://dify.test")
+    apply_config_overrides(monkeypatch, CONSOLE_API_URL="https://dify.test")
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(
         console_resources,
@@ -1435,7 +1439,7 @@ def test_task_stream_capability_uses_broker(
             )
 
     runtime = SimpleNamespace(broker=Broker())
-    monkeypatch.setattr(console_resources.dify_config, "CONSOLE_API_URL", "https://dify.test")
+    apply_config_overrides(monkeypatch, CONSOLE_API_URL="https://dify.test")
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(console_resources, "_console_services", lambda: runtime)
     app = Flask(__name__)
@@ -1480,7 +1484,7 @@ def test_service_query_admission_uses_broker(monkeypatch: pytest.MonkeyPatch) ->
         "validate_and_get_api_token",
         MagicMock(return_value=SimpleNamespace(id="token-1", tenant_id="tenant-1")),
     )
-    monkeypatch.setattr(service_resources.dify_config, "SERVICE_API_URL", "https://api.dify.test")
+    apply_config_overrides(monkeypatch, SERVICE_API_URL="https://api.dify.test")
     monkeypatch.setattr(service_resources, "_runtime", lambda: runtime)
     app = Flask(__name__)
 
