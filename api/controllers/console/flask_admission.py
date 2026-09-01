@@ -68,6 +68,8 @@ def console_account_admission[T, **P, R](
         raise AdmissionConfigurationError("RBAC resource scope and permission must be configured together")
     if agent_manage_fallback and rbac_resource_scope != RBACResourceScope.APP:
         raise AdmissionConfigurationError("agent_manage_fallback requires rbac_resource_scope=RBACResourceScope.APP")
+    if agent_manage_fallback and not rbac_resource_required:
+        raise AdmissionConfigurationError("agent_manage_fallback requires rbac_resource_required=True")
 
     def decorator(
         view: Callable[Concatenate[T, RequestContext, P], R],
