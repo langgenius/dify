@@ -1,28 +1,39 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { useAtomValue } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { KnowledgeModelSetupDialog } from '../../components/knowledge-model-setup-dialog'
 import { useKnowledgeModelSetupGuard } from '../../use-knowledge-model-setup-guard'
 import { documentDetailKnowledgeSpaceIdAtom } from './state/inputs'
-import { useDocumentReindexWorkflow } from './workflow-context'
+import {
+  cancelDocumentReindexAtom,
+  documentCanCancelReindexAtom,
+  documentReindexBusyAtom,
+  documentReindexCancelBusyAtom,
+  documentReindexDisabledAtom,
+  documentReindexDisabledReasonIdAtom,
+  documentReindexFailedAtom,
+  documentReindexInProgressAtom,
+  documentSubmissionPendingAtom,
+  reindexDocumentAtom,
+} from './state/workflow'
 
 export function DocumentReindexAction() {
   const { t } = useTranslation('dataset')
   const knowledgeSpaceId = useAtomValue(documentDetailKnowledgeSpaceIdAtom)
-  const {
-    canCancel,
-    cancelBusy,
-    disabled,
-    disabledReasonId,
-    failed,
-    inProgress,
-    onCancel,
-    onReindex,
-    reindexing,
-  } = useDocumentReindexWorkflow()
+  const canCancel = useAtomValue(documentCanCancelReindexAtom)
+  const cancelBusy = useAtomValue(documentReindexCancelBusyAtom)
+  const disabled = useAtomValue(documentReindexDisabledAtom)
+  const disabledReasonId = useAtomValue(documentReindexDisabledReasonIdAtom)
+  const failed = useAtomValue(documentReindexFailedAtom)
+  const inProgress = useAtomValue(documentReindexInProgressAtom)
+  const reindexBusy = useAtomValue(documentReindexBusyAtom)
+  const submissionPending = useAtomValue(documentSubmissionPendingAtom)
+  const reindexing = reindexBusy || submissionPending
+  const cancelReindex = useSetAtom(cancelDocumentReindexAtom)
+  const reindexDocument = useSetAtom(reindexDocumentAtom)
   const [guardBusy, setGuardBusy] = useState(false)
   const guardPendingRef = useRef(false)
   const {
@@ -39,7 +50,7 @@ export function DocumentReindexAction() {
     setGuardBusy(true)
     try {
       const readiness = await ensureModelReady({ capability: 'index', intent: 'reindex' })
-      if (readiness.status === 'ready') await onReindex()
+      if (readiness.status === 'ready') await reindexDocument()
     } finally {
       guardPendingRef.current = false
       setGuardBusy(false)
@@ -54,7 +65,7 @@ export function DocumentReindexAction() {
         className="gap-1 pl-3"
         disabled={inProgress ? !canCancel : disabled || guardBusy}
         loading={inProgress ? cancelBusy : guardBusy || reindexing}
-        onClick={() => void (inProgress ? onCancel() : startReindex())}
+        onClick={() => void (inProgress ? cancelReindex() : startReindex())}
       >
         {!inProgress && <span aria-hidden className="i-ri-refresh-line size-4" />}
         {t(($) =>

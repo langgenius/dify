@@ -340,10 +340,12 @@ vi.mock('jotai-tanstack-query', async (importOriginal) => {
   const original = await importOriginal<typeof import('jotai-tanstack-query')>()
   const { atom } = await vi.importActual<typeof import('jotai')>('jotai')
   const versionAtom = atom(0)
+  const testQueryClientAtom = atom(queryClient)
   queryAtomTestState.versionAtom = versionAtom
 
   return {
     ...original,
+    queryClientAtom: testQueryClientAtom,
     atomWithInfiniteQuery: (
       getOptions: (get: <Value>(target: import('jotai').Atom<Value>) => Value) => {
         queryKind?: string
@@ -378,7 +380,28 @@ vi.mock('jotai-tanstack-query', async (importOriginal) => {
                 }
               : undefined,
           }
+        if (options.queryKind === 'tasks')
+          return {
+            ...tasksQuery,
+            data: tasksQuery.data
+              ? {
+                  pages: tasksQuery.data.pages.map((page) => ({
+                    data: page.items.map(taskApiResponse),
+                    next_cursor: page.nextCursor ?? null,
+                  })),
+                }
+              : undefined,
+          }
         throw new Error(`Unexpected infinite query atom: ${options.queryKind ?? 'unknown'}`)
+      }),
+    atomWithMutation: (
+      getOptions: (get: <Value>(target: import('jotai').Atom<Value>) => Value) => {
+        mutationKind?: string
+      },
+    ) =>
+      atom((get) => {
+        const options = getOptions(get)
+        return options.mutationKind === 'cancel' ? cancelMutation : reindexMutation
       }),
     atomWithQuery: (
       getOptions: (get: <Value>(target: import('jotai').Atom<Value>) => Value) => {
@@ -391,6 +414,7 @@ vi.mock('jotai-tanstack-query', async (importOriginal) => {
         if (options.queryKind === 'document') return { ...documentQuery }
         if (options.queryKind === 'outline') return { ...outlineQuery }
         if (options.queryKind === 'multimodal') return { ...multimodalQuery }
+        if (options.queryKind === 'submitted-job') return { ...submittedJobQuery }
         throw new Error(`Unexpected query atom: ${options.queryKind ?? 'unknown'}`)
       }),
   }

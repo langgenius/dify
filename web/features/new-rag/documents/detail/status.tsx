@@ -1,8 +1,20 @@
 import type { RefObject } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDocumentTaskWorkflow, useDocumentWriteAccess } from './workflow-context'
+import {
+  continueDocumentTaskLookupAtom,
+  documentLatestTaskAtom,
+  documentPermissionRecoveryBusyAtom,
+  documentPermissionRecoveryNeededAtom,
+  documentReindexInProgressAtom,
+  documentTaskIsLookingUpAtom,
+  documentTaskLookupExhaustedAtom,
+  documentTasksQueryErrorAtom,
+  retryDocumentTasksAtom,
+  retryDocumentWritePermissionAtom,
+} from './state/workflow'
 
 export function DocumentTaskNotices({
   titleRef,
@@ -13,15 +25,13 @@ export function DocumentTaskNotices({
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
-  const {
-    continueLookup,
-    isLookingUp: isLookingUpTask,
-    latestTask,
-    lookupExhausted,
-    refetch,
-    reindexInProgress,
-    tasksError,
-  } = useDocumentTaskWorkflow()
+  const isLookingUpTask = useAtomValue(documentTaskIsLookingUpAtom)
+  const latestTask = useAtomValue(documentLatestTaskAtom)
+  const lookupExhausted = useAtomValue(documentTaskLookupExhaustedAtom)
+  const reindexInProgress = useAtomValue(documentReindexInProgressAtom)
+  const tasksError = useAtomValue(documentTasksQueryErrorAtom)
+  const continueLookup = useSetAtom(continueDocumentTaskLookupAtom)
+  const retryTasks = useSetAtom(retryDocumentTasksAtom)
 
   return (
     <>
@@ -63,7 +73,7 @@ export function DocumentTaskNotices({
           role="alert"
         >
           <span>{t(($) => $['newKnowledge.tasksErrorDescription'])}</span>
-          <Button onClick={() => void refetch()}>{tCommon(($) => $['operation.retry'])}</Button>
+          <Button onClick={() => void retryTasks()}>{tCommon(($) => $['operation.retry'])}</Button>
         </div>
       )}
 
@@ -106,8 +116,9 @@ export function DocumentPermissionRecoveryNotice({
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
-  const { permissionRecoveryBusy, permissionRecoveryNeeded, retryWritePermission } =
-    useDocumentWriteAccess()
+  const permissionRecoveryBusy = useAtomValue(documentPermissionRecoveryBusyAtom)
+  const permissionRecoveryNeeded = useAtomValue(documentPermissionRecoveryNeededAtom)
+  const retryWritePermission = useSetAtom(retryDocumentWritePermissionAtom)
   const permissionRetryRef = useRef<HTMLButtonElement>(null)
   const permissionRecoveryWasNeededRef = useRef(false)
 

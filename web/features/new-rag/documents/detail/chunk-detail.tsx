@@ -26,7 +26,7 @@ import {
 import { documentDetailKnowledgeSpaceIdAtom } from './state/inputs'
 import { documentDetailDocumentAtom } from './state/queries'
 import { documentDetailRevisionAtom } from './state/revisions'
-import { useDocumentWriteAccess } from './workflow-context'
+import { documentCanEditAtom } from './state/workflow'
 
 const SELECTED_CHUNK_TOP_OFFSET = 8
 const SELECTED_CHUNK_ALIGNMENT_FRAMES = 12
@@ -276,7 +276,7 @@ export function DocumentReadingPane() {
 export function DocumentFactsSidebar() {
   const { i18n, t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
-  const { canEdit } = useDocumentWriteAccess()
+  const canEdit = useAtomValue(documentCanEditAtom)
   const chunksComplete = useAtomValue(documentDetailChunksCompleteAtom)
   const controlSpaceId = useAtomValue(documentDetailKnowledgeSpaceIdAtom)
   const document = useAtomValue(documentDetailDocumentAtom)

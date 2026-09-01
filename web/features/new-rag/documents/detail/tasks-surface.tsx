@@ -11,8 +11,21 @@ import { ProcessingTasksDrawer } from '../tasks/drawer'
 import { createTaskProgressStore } from '../tasks/progress-store'
 import { documentDetailKnowledgeSpaceIdAtom } from './state/inputs'
 import { documentDetailDocumentAtom, refreshDocumentDetailAtom } from './state/queries'
+import {
+  documentBackgroundTasksAtom,
+  documentCanEditAtom,
+  documentPermissionRecoveryBusyAtom,
+  documentTasksQueryErrorAtom,
+  documentTasksQueryHasNextPageAtom,
+  documentTasksQueryIsFetchingAtom,
+  documentTasksQueryIsFetchingNextPageAtom,
+  documentTasksQueryIsPendingAtom,
+  loadNextDocumentTaskPageAtom,
+  refreshDocumentTasksAtom,
+  retryDocumentTasksAtom,
+  retryDocumentWritePermissionAtom,
+} from './state/workflow'
 import { DocumentPermissionRecoveryNotice, DocumentTaskNotices } from './status'
-import { useDocumentTaskWorkflow, useDocumentWriteAccess } from './workflow-context'
 
 export function DocumentTasksSurface({
   titleRef,
@@ -23,18 +36,18 @@ export function DocumentTasksSurface({
   const currentDocument = useAtomValue(documentDetailDocumentAtom)
   const knowledgeSpaceId = useAtomValue(documentDetailKnowledgeSpaceIdAtom)
   const refreshDocument = useSetAtom(refreshDocumentDetailAtom)
-  const {
-    fetchNextPage,
-    hasNextPage,
-    isFetchNextPageError,
-    isFetching,
-    isFetchingNextPage,
-    isPending,
-    refetch,
-    tasks,
-    tasksError,
-  } = useDocumentTaskWorkflow()
-  const { canEdit, permissionRecoveryBusy, retryWritePermission } = useDocumentWriteAccess()
+  const tasks = useAtomValue(documentBackgroundTasksAtom)
+  const tasksError = useAtomValue(documentTasksQueryErrorAtom)
+  const hasNextPage = useAtomValue(documentTasksQueryHasNextPageAtom)
+  const isFetching = useAtomValue(documentTasksQueryIsFetchingAtom)
+  const isFetchingNextPage = useAtomValue(documentTasksQueryIsFetchingNextPageAtom)
+  const isPending = useAtomValue(documentTasksQueryIsPendingAtom)
+  const canEdit = useAtomValue(documentCanEditAtom)
+  const permissionRecoveryBusy = useAtomValue(documentPermissionRecoveryBusyAtom)
+  const fetchNextPage = useSetAtom(loadNextDocumentTaskPageAtom)
+  const refreshTasks = useSetAtom(refreshDocumentTasksAtom)
+  const retryTasks = useSetAtom(retryDocumentTasksAtom)
+  const retryWritePermission = useSetAtom(retryDocumentWritePermissionAtom)
   const [open, setOpen] = useState(false)
   const taskProgressStoreRef = useRef<ReturnType<typeof createTaskProgressStore> | null>(null)
   if (!taskProgressStoreRef.current) taskProgressStoreRef.current = createTaskProgressStore()
@@ -84,7 +97,7 @@ export function DocumentTasksSurface({
         onLoadMoreTasks={() => void fetchNextPage()}
         onOpenChange={setOpen}
         onRefreshDocumentsAndTasks={() => {
-          void Promise.all([refreshDocument(), documentsQuery.refetch(), refetch()])
+          void Promise.all([refreshDocument(), documentsQuery.refetch(), refreshTasks()])
         }}
         onRetryDocumentQuery={() => {
           if (documentsQuery.isFetchNextPageError) void documentsQuery.fetchNextPage()
@@ -92,10 +105,9 @@ export function DocumentTasksSurface({
         }}
         onRetryPermissionQuery={() => void retryWritePermission()}
         onRetryTaskQuery={() => {
-          if (isFetchNextPageError) void fetchNextPage()
-          else void refetch()
+          void retryTasks()
         }}
-        onTaskUpdated={() => void refetch()}
+        onTaskUpdated={() => void refreshTasks()}
         onWritePermissionDenied={() => void retryWritePermission()}
         open={open}
         permissionQueryError={false}
