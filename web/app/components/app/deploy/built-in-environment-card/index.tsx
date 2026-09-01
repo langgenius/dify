@@ -19,7 +19,7 @@ function Divider() {
   return <div className="i-custom-vender-deploy-line-5 h-10 w-3" />
 }
 
-export function BuiltInEnvironmentCard({ canAccessPoint = false }: { canAccessPoint?: boolean }) {
+export function BuiltInEnvironmentCard() {
   const { t } = useTranslation('deployments')
   const { formatTime } = useTimestamp()
   const appDetail = useAppStore((state) => state.appDetail)
@@ -90,9 +90,7 @@ export function BuiltInEnvironmentCard({ canAccessPoint = false }: { canAccessPo
                   key={accessPoint}
                   accessPoint={accessPoint}
                   active={activeAccessPoints[accessPoint]}
-                  href={
-                    canAccessPoint ? getAccessPointHref(appId, 'built-in', accessPoint) : undefined
-                  }
+                  href={getAccessPointHref(appId, 'built-in', accessPoint)}
                 />
               ))}
             </div>

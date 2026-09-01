@@ -6,7 +6,6 @@ import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import { PublisherActionsSection } from '../built-in-publisher/actions-section'
 import { PublisherSummarySection } from '../built-in-publisher/summary-section'
-import { PublisherEnvironmentActionsSection } from '../environment-deployment-flow/actions-section'
 
 vi.mock('../publish-with-multiple-model', () => ({
   default: ({
@@ -315,7 +314,6 @@ describe('app-publisher sections', () => {
           description: 'Workflow description',
         }}
         appURL="https://example.com/app"
-        canAccessPoint
         disabledFunctionButton={false}
         disabledFunctionTooltip="disabled"
         handleOpenRunConfig={handleOpenRunConfig}
@@ -496,7 +494,6 @@ describe('app-publisher sections', () => {
           mode: AppModeEnum.WORKFLOW,
         }}
         appURL="https://example.com/app"
-        canAccessPoint
         disabledFunctionButton={false}
         hasHumanInputNode={false}
         hasTriggerNode
@@ -520,49 +517,11 @@ describe('app-publisher sections', () => {
     )
   })
 
-  it('should hide the built-in Access Point action without permission', () => {
-    render(
-      <PublisherActionsSection
-        appDetail={{ id: 'workflow-app', mode: AppModeEnum.WORKFLOW }}
-        appURL="https://example.com/app"
-        canAccessPoint={false}
-        disabledFunctionButton={false}
-        hasHumanInputNode={false}
-        hasTriggerNode
-        publishedAt={Date.now()}
-        showDeployAction
-        workflowToolAvailable
-        workflowToolIsLoading={false}
-        onConfigureWorkflowTool={vi.fn()}
-      />,
-    )
-
-    expect(screen.queryByText(/(?:^|\.)appMenus\.accessPoint(?=$|:)/)).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /appMenus\.deploy\b/ })).toHaveAttribute(
-      'href',
-      '/app/workflow-app/deploy',
-    )
-  })
-
-  it('should hide the environment Access Point action without permission', () => {
-    render(
-      <PublisherEnvironmentActionsSection
-        appId="workflow-app"
-        canAccessPoint={false}
-        environmentId="staging"
-      />,
-    )
-
-    expect(screen.queryByText(/(?:^|\.)appMenus\.accessPoint(?=$|:)/)).not.toBeInTheDocument()
-    expect(screen.getByText(/(?:^|\.)appMenus\.deploy(?=$|:)/)).toBeInTheDocument()
-  })
-
   it('should expose unavailable quick links as disabled buttons before the first publish', () => {
     render(
       <PublisherActionsSection
         appDetail={{ id: 'workflow-app', mode: AppModeEnum.WORKFLOW }}
         appURL="https://example.com/app"
-        canAccessPoint
         disabledFunctionButton
         hasHumanInputNode={false}
         hasTriggerNode={false}

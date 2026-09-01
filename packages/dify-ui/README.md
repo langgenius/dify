@@ -70,9 +70,9 @@ Upstream behavior remains owned by the [Base UI documentation].
 
 | Guide                     | Scope                                                                          |
 | ------------------------- | ------------------------------------------------------------------------------ |
-| [Forms]                   | Native submit boundaries, fields, labels, grouped controls, and errors.        |
+| [Forms]                   | Native submit boundaries, value ownership, fields, labels, and errors.         |
 | [Selection]               | Typed values and choosing among segmented controls, pickers, and radio groups. |
-| [Overlays]                | Portals, root isolation, layering, trigger composition, and semantics.         |
+| [Overlays]                | Portals, presence lifecycles, layering, trigger composition, and semantics.    |
 | [Styling]                 | Tailwind CSS integration and the Figma radius mapping.                         |
 | [Public API authoring]    | Subpath exports, naming, public types, generics, and private helpers.          |
 | [Testing and development] | Package commands, test ownership, accessibility, and animation setup.          |

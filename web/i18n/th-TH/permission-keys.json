@@ -3,7 +3,6 @@
   "api_extension.manage": "จัดการการกําหนดค่าส่วนขยาย API",
   "app.access_config": "กําหนดค่าสิทธิ์การเข้าถึงแอป",
   "app.acl.access_config": "ดูและจัดการสิทธิ์การเข้าถึง",
-  "app.acl.access_point_manage": "ดูและจัดการจุดเข้าถึง",
   "app.acl.delete": "ลบแอป",
   "app.acl.deploy": "ปรับใช้แอป",
   "app.acl.edit": "แก้ไขข้อมูลแอปและจัดวางแอป",
