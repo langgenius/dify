@@ -20,6 +20,7 @@ vi.mock('#i18n', async () => {
 
 vi.mock('@/context/i18n', () => ({
   defaultDocBaseUrl: 'https://docs.dify.ai',
+  useDocLink: () => (path?: string) => `https://docs.dify.ai/console${path || ''}`,
 }))
 
 vi.mock('@/config', () => ({
@@ -36,6 +37,14 @@ describe('HomeHeader', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.marketplaceUrlPrefix = 'https://marketplace.dify.ai'
+  })
+
+  it('keeps Creator Center and docs in the in-app header without an account action', () => {
+    render(<HomeHeader isMarketplacePlatform={false} />)
+
+    expect(screen.getByRole('link', { name: 'marketplace.home.creatorCenter' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /requestSubmit/ })).toBeInTheDocument()
+    expect(screen.queryByTestId('account-section')).not.toBeInTheDocument()
   })
 
   it('shows Creator Center before the docs dropdown', () => {

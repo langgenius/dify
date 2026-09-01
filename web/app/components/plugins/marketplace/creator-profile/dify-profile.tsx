@@ -5,7 +5,6 @@ import type { MarketplaceSearchSelection } from '../home/marketplace-search-auto
 import type { CreatorCreation, LoadedCreatorProfile } from './model'
 import type { Plugin } from '@/app/components/plugins/types'
 import { useMemo, useState } from 'react'
-import AccountSection from '@/app/components/main-nav/components/account-section'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import { useRouter } from '@/next/navigation'
 import MarketplaceDetailDialog from '../detail-dialog'
@@ -87,17 +86,7 @@ export default function DifyCreatorProfile({ loadedProfile, locale }: DifyCreato
           type: 'select',
           onSelect: () => selectCreation(creation),
         })}
-        header={
-          <CreatorProfileHeader
-            locale={locale}
-            onSuggestionSelect={selectSearchResult}
-            actions={
-              <div className="p-0.5">
-                <AccountSection compact />
-              </div>
-            }
-          />
-        }
+        header={<CreatorProfileHeader locale={locale} onSuggestionSelect={selectSearchResult} />}
       />
 
       {selectedPlugin && (

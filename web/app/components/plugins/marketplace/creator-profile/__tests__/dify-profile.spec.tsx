@@ -114,10 +114,6 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mocks.push }),
 }))
 
-vi.mock('@/app/components/main-nav/components/account-section', () => ({
-  default: () => <div data-testid="account-section" />,
-}))
-
 vi.mock('@/app/components/base/app-icon', () => ({
   default: () => <span aria-hidden />,
 }))
@@ -127,13 +123,7 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () 
 }))
 
 vi.mock('../../detail-dialog', () => ({
-  default: ({
-    isInstalled,
-    plugin,
-  }: {
-    isInstalled: boolean
-    plugin: { name: string }
-  }) => (
+  default: ({ isInstalled, plugin }: { isInstalled: boolean; plugin: { name: string } }) => (
     <div role="dialog" aria-label="plugin-detail">
       <span>{plugin.name}</span>
       <span>{isInstalled ? 'installed' : 'not installed'}</span>

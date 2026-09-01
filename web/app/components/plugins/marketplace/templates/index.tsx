@@ -2,7 +2,6 @@ import type { MarketplaceTemplate } from '@dify/contracts/marketplace'
 import type { TemplateCategory } from './categories'
 import type { Locale } from '@/i18n-config'
 import { cn } from '@langgenius/dify-ui/cn'
-import AccountSection from '@/app/components/main-nav/components/account-section'
 import { getTranslation } from '@/i18n-config/server'
 import { redirect } from '@/next/navigation'
 import {
@@ -207,11 +206,6 @@ export async function EmbeddedTemplatesMarketplace({
       header={
         <HomeHeader
           activeTab="templates"
-          actions={
-            <div className="p-0.5">
-              <AccountSection compact />
-            </div>
-          }
           catalogLabels={{ plugins: pluginsLabel, templates: templatesLabel }}
           isMarketplacePlatform={false}
         />
