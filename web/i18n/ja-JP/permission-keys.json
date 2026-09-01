@@ -3,7 +3,6 @@
   "api_extension.manage": "API拡張設定を管理",
   "app.access_config": "アプリアクセス権限を設定",
   "app.acl.access_config": "アクセス権限の表示と管理",
-  "app.acl.access_point_manage": "アクセスポイントの表示と管理",
   "app.acl.delete": "アプリを削除",
   "app.acl.deploy": "アプリをデプロイ",
   "app.acl.edit": "アプリ情報の編集とアプリのオーケストレーション",
