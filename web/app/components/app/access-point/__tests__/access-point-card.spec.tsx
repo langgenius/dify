@@ -23,6 +23,11 @@ describe('AccessPointCard', () => {
       'data-highlighted',
       'true',
     )
+    expect(screen.getByRole('heading', { name: 'Web App' })).toHaveAttribute('title', 'Web App')
+    expect(screen.getByText('Web application access')).toHaveAttribute(
+      'title',
+      'Web application access',
+    )
   })
 
   it.each<[AccessPointStatus, string, boolean]>([

@@ -186,6 +186,23 @@ vi.mock('@/app/components/app/app-publisher', () => ({
           type="button"
           onClick={() => {
             Promise.resolve(
+              (
+                props.onPublish as
+                  | ((
+                      params?: unknown,
+                      options?: { showSuccessToast?: boolean },
+                    ) => Promise<unknown> | unknown)
+                  | undefined
+              )?.(undefined, { showSuccessToast: false }),
+            ).catch(() => undefined)
+          }}
+        >
+          publisher-publish-silently
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            Promise.resolve(
               props.onPublish?.({
                 url: '/apps/app-1/workflows/publish',
                 title: 'Test title',
@@ -580,6 +597,21 @@ describe('FeaturesTrigger', () => {
             name: 'Updated App',
           }),
         )
+      })
+    })
+
+    it('should not show a success toast when the publisher requests a silent publish', async () => {
+      const user = userEvent.setup()
+      renderWithToast(<FeaturesTrigger />)
+
+      await user.click(screen.getByRole('button', { name: 'publisher-publish-silently' }))
+
+      await waitFor(() => {
+        expect(mockPublishWorkflow).toHaveBeenCalled()
+      })
+      expect(toastMocks.call).not.toHaveBeenCalledWith({
+        type: 'success',
+        message: 'common.api.actionSuccess',
       })
     })
 

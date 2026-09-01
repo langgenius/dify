@@ -86,10 +86,16 @@ export function AccessPointCard({
           icon
         )}
         <span className="min-w-0 flex-1">
-          <Heading id={titleId} className="truncate system-md-semibold text-text-primary">
+          <Heading
+            id={titleId}
+            className="truncate system-md-semibold text-text-primary"
+            title={title}
+          >
             {title}
           </Heading>
-          <span className="block truncate system-xs-regular text-text-tertiary">{description}</span>
+          <span className="block truncate system-xs-regular text-text-tertiary" title={description}>
+            {description}
+          </span>
         </span>
         {showStatus && (
           <>

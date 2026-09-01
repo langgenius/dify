@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   } as Record<string, unknown>,
   workflow: {
     data: null as Record<string, unknown> | null,
+    isError: false,
     isPending: false,
   },
   webCard: vi.fn(),
@@ -23,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   },
   mcpCard: vi.fn(),
   triggerCard: vi.fn(),
+  useAppWorkflow: vi.fn(),
 }))
 
 vi.mock('react-i18next', async () => {
@@ -60,7 +62,10 @@ vi.mock('@/context/i18n', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useAppWorkflow: () => mocks.workflow,
+  useAppWorkflow: (...args: unknown[]) => {
+    mocks.useAppWorkflow(...args)
+    return mocks.workflow
+  },
 }))
 
 vi.mock('@/utils/permission', () => ({
@@ -115,6 +120,7 @@ describe('BuiltInAccessPoints', () => {
     }
     mocks.workflow = {
       data: null,
+      isError: false,
       isPending: false,
     }
     mocks.capabilities = {
@@ -147,6 +153,7 @@ describe('BuiltInAccessPoints', () => {
           nodes: [{ data: { type: 'start' } }],
         },
       },
+      isError: false,
       isPending: false,
     }
 
@@ -194,6 +201,7 @@ describe('BuiltInAccessPoints', () => {
           nodes: [{ data: { type: 'trigger-webhook' } }],
         },
       },
+      isError: false,
       isPending: false,
     }
 
@@ -219,6 +227,7 @@ describe('BuiltInAccessPoints', () => {
   it('keeps all cards visible while the published workflow is loading', () => {
     mocks.workflow = {
       data: null,
+      isError: false,
       isPending: true,
     }
 
@@ -229,5 +238,31 @@ describe('BuiltInAccessPoints', () => {
     expect(mocks.triggerCard).toHaveBeenCalledWith(
       expect.objectContaining({ availability: 'loading' }),
     )
+  })
+
+  it('does not show the unpublished card when loading the published workflow fails', () => {
+    mocks.workflow = {
+      data: null,
+      isError: true,
+      isPending: false,
+    }
+
+    render(<BuiltInAccessPoints appId="app-1" />)
+
+    expect(
+      screen.queryByText('deployments.studio.accessPoint.noPublishedTitle'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('does not retry forbidden published workflow requests', () => {
+    render(<BuiltInAccessPoints appId="app-1" />)
+
+    const options = mocks.useAppWorkflow.mock.calls.at(-1)?.[1] as {
+      retry: (failureCount: number, error: unknown) => boolean
+    }
+
+    expect(options.retry(0, new Response(null, { status: 403 }))).toBe(false)
+    expect(options.retry(0, new Response(null, { status: 500 }))).toBe(true)
+    expect(options.retry(3, new Response(null, { status: 500 }))).toBe(false)
   })
 })

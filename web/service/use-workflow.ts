@@ -8,7 +8,7 @@ import type {
   ListEnvironmentDeploymentsResponse,
   WorkflowVersion,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import type { InfiniteData, QueryClient } from '@tanstack/react-query'
+import type { InfiniteData, QueryClient, UseQueryOptions } from '@tanstack/react-query'
 import type { CommonResponse } from '@/models/common'
 import type { FlowType } from '@/types/common'
 import type {
@@ -31,8 +31,13 @@ import { appWorkflowQueryOptions, appWorkflowVersionsInfiniteQueryKey } from './
 
 const NAME_SPACE = 'workflow'
 
-export const useAppWorkflow = (appID: string) => {
-  return useQuery(appWorkflowQueryOptions(appID))
+type UseAppWorkflowOptions = Pick<UseQueryOptions, 'retry'>
+
+export const useAppWorkflow = (appID: string, options?: UseAppWorkflowOptions) => {
+  return useQuery({
+    ...appWorkflowQueryOptions(appID),
+    ...options,
+  })
 }
 
 const WorkflowRunHistoryKey = [NAME_SPACE, 'runHistory']

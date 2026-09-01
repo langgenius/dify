@@ -76,7 +76,9 @@ export function RuntimeStateIndicator({ runtimeState }: RuntimeStateIndicatorPro
       ) : (
         <StatusDot size="small" status={RUNTIME_STATE_DOT[runtimeState]} />
       )}
-      <span className="truncate">{label}</span>
+      <span className="truncate" title={label}>
+        {label}
+      </span>
     </span>
   )
 }

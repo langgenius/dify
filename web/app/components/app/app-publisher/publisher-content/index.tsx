@@ -131,7 +131,7 @@ export function PublisherContent({
     hasTriggerNode,
     inputs,
     onClosePublisher: closePublisher,
-    onPublish: publish.handlePublish,
+    onPublish: publish.publishWorkflowTool,
     onRefreshData,
     outputs,
     toolPublished,
