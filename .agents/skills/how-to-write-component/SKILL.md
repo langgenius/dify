@@ -46,7 +46,7 @@ Follow this order so component splitting does not precede ownership decisions:
 
 ## Patterns To Avoid
 
-- A giant component or view-model hook that returns a large props-and-handlers bag: move each state, query, fact, and command to its real owner.
+- A giant component, switchboard page, or view-model hook that redistributes a large props-and-handlers bag: move single-branch state down and expose focused feature facts and commands for shared workflows.
 - A second owner created by copying props, URL values, or Query data into local state or atoms: bridge the authoritative owner instead.
 - Components that consume a whole query atom or repeatedly derive the same business conclusion: expose a field selector or named fact.
 - Query or mutation atoms placed in a scope, or an edit-session snapshot overwritten by forced hydration: scope only the primitives whose instances must reset.

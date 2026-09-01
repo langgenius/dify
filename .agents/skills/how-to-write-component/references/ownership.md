@@ -12,15 +12,17 @@ Read this document when adding, moving, splitting, or refactoring React componen
 
 ## Component Ownership
 
-- Put state, data access, loading, empty, error, and handlers in the lowest owner that uses them and whose mounted lifetime matches the required persistence.
-- Keep coordination in a parent only when it needs one consistent snapshot, the value must intentionally survive the local owner's unmount, or the parent coordinates submission, shared selection, batch behavior, navigation, or cross-section loading and errors.
+- Before declaring state, a query, or a workflow hook in a page or parent, identify the direct descendant branches that consume each returned value.
+- If only one branch consumes a value, declare it in the lowest owner in that branch. The parent may pass stable identity or the smallest boundary input, but must not own child state merely to construct props.
+- A parent may own a value when several sibling branches require one live snapshot and the parent genuinely derives or coordinates submission, selection, navigation, lifecycle, loading, or errors. If it only destructures, renames, and forwards fields, it is a switchboard rather than an owner; put the shared workflow in a feature-local state graph or provider so each surface consumes only its named facts and commands.
+- A page or feature root may wire route identity, providers, layout, navigation, and genuine cross-surface coordination. It must not call a child-specific state or query hook merely to assemble that child's props.
+- Keep child contracts at the ownership boundary: stable domain identity, a small immutable snapshot, placement options, or named cross-boundary commands. Do not pass an internal state machine as separate `data`, `pending`, `error`, `retry`, `open`, setter, and callback props when the parent does not use them, and do not hide the same fan-out in a props bag or hook result object.
 - Repeated TanStack Query calls in siblings are acceptable when each sibling independently consumes the data; the cache already deduplicates requests.
 - Treat parent input according to what the child boundary does with it:
   - If the child only renders or performs a light local decision, pass the snapshot as props. It does not become a new state owner.
   - If the child builds queries, dialogs, mutations, derivations, commands, or a reset lifecycle around a stable identity or snapshot, give that boundary a feature-local state file. This does not by itself require a new module or directory.
 - Pass stable domain identity or the smallest sufficient action snapshot across boundaries. Do not copy props into atoms merely to avoid passing them, and do not pass raw server data together with separately derived flags for the same concept.
-- One pass-through prop layer is acceptable. Repeated forwarding means ownership should move closer to the consumer or into feature-scoped shared state.
-- Do not replace prop drilling with one large view-model hook. Move each query, derived value, and handler to the concrete owner that consumes it.
+- One pass-through layer is acceptable for stable identity and placement. It is not permission to relay workflow state and handlers through an unrelated component.
 - Keep source selection, defaults, validation, dirty checks, and payload shaping beside the workflow that owns submission.
 
 ## Boundaries
