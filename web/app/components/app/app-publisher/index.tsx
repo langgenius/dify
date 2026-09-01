@@ -17,13 +17,12 @@ export function AppPublisher(props: AppPublisherProps) {
     select: (data) => data.profile.id,
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const appACLCapabilities = getAppACLCapabilities(appDetail?.permission_keys, {
+  const canDeploy = getAppACLCapabilities(appDetail?.permission_keys, {
     currentUserId,
     resourceMaintainer: appDetail?.maintainer,
     workspacePermissionKeys,
-  })
-  const supportsMultiEnvironment =
-    appDetail?.mode === AppModeEnum.WORKFLOW && appACLCapabilities.canDeploy
+  }).canDeploy
+  const supportsMultiEnvironment = appDetail?.mode === AppModeEnum.WORKFLOW && canDeploy
 
   return (
     <AppPublisherStateBoundary
@@ -32,7 +31,6 @@ export function AppPublisher(props: AppPublisherProps) {
     >
       <PublisherContent
         {...props}
-        canAccessPoint={appACLCapabilities.canAccessPoint}
         open={open}
         supportsMultiEnvironment={supportsMultiEnvironment}
         onOpenStateChange={setOpen}
