@@ -55,6 +55,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
+import { AccessMode } from '@/models/access-control'
 import dynamic from '@/next/dynamic'
 import { useRouter } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
@@ -136,6 +137,7 @@ function AppCardOperationsMenuItems({
   const needsPublishBeforeExplore = requiresPublishedWorkflowInExplore(app) && !app.workflow?.id
   const shouldShowOpenInExploreOption =
     !app.has_draft_trigger &&
+    app.access_mode !== AccessMode.EXTERNAL_MEMBERS &&
     (needsPublishBeforeExplore ||
       !systemFeatures.webapp_auth.enabled ||
       (!isGettingUserCanAccessApp && Boolean(userCanAccessApp?.result)))

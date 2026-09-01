@@ -301,7 +301,6 @@ function renderFlow(
   return render(
     <PublisherEnvironmentFlow
       appId="app-1"
-      canAccessPoint
       deployment={deployment}
       environmentId={deployment.environment.id}
       environmentName={deployment.environment.display_name}
@@ -342,7 +341,6 @@ function renderFlowWithPolling(deployment = createDeployment()) {
         <PublisherPollingObserver />
         <PublisherEnvironmentFlow
           appId="app-1"
-          canAccessPoint
           deployment={deployment}
           environmentId={deployment.environment.id}
           environmentName={deployment.environment.display_name}

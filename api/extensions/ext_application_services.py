@@ -31,6 +31,7 @@ from repositories.factory import DifyAPIRepositoryFactory
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
+from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourStateRepository
 from repositories.tag_repository import TagRepository
 from repositories.trial_app_query_repository import TrialAppQueryRepository
 from repositories.trial_app_usage_repository import TrialAppUsageRepository
@@ -104,6 +105,8 @@ from services.feature_service import FeatureService
 from services.feature_service_gateway import FeatureServiceGateway
 from services.file_service import FileService
 from services.init_validation_service import InitValidationService
+from services.notification_gateway import BillingNotificationGateway
+from services.notification_service import NotificationService
 from services.notion_data_source_gateway import NotionDataSourceGateway
 from services.oauth_server_service import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthServerService
 from services.partner_tenant_binding_service import PartnerTenantBindingService
@@ -122,6 +125,7 @@ from services.retention.workflow_run.archive_log_service import WorkflowRunArchi
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock, RegisterServiceAccountProvisioner
 from services.setup_service import SetupService
+from services.step_by_step_tour_service import StepByStepTourService
 from services.tag_application_service import TagApplicationService
 from services.trial_app_usage import TrialAppUsageRecorder
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
@@ -188,6 +192,8 @@ class ApplicationServices:
     feature_queries: FeatureQueryService
     oauth_server: OAuthServerService
     init_validation: InitValidationService
+    notifications: NotificationService
+    step_by_step_tour: StepByStepTourService
     partner_tenant_bindings: PartnerTenantBindingService
     recommended_app_queries: RecommendedAppQueryService
     trial_app_usage: TrialAppUsageRecorder
@@ -433,6 +439,16 @@ def build_application_services(
             state=installation_state,
             validation_required=(deployment_edition != DeploymentEdition.CLOUD and bool(initialization_password)),
             expected_password=initialization_password,
+        ),
+        notifications=NotificationService(
+            accounts=accounts,
+            notifications=BillingNotificationGateway(),
+        ),
+        step_by_step_tour=StepByStepTourService(
+            accounts=accounts,
+            states=SQLAlchemyStepByStepTourStateRepository(session_factory=database_client),
+            enabled=dify_config.ENABLE_STEP_BY_STEP_TOUR,
+            rollout_started_at=dify_config.STEP_BY_STEP_TOUR_ROLLOUT_STARTED_AT,
         ),
         partner_tenant_bindings=PartnerTenantBindingService(
             sync_bindings=BillingService.sync_partner_tenants_bindings,
