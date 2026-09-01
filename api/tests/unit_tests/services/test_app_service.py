@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import datetime
+from operator import attrgetter
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -239,6 +241,65 @@ def test_app_status_updates_commit_before_signal(update_status: Callable[..., Ap
         update_status(AppService(), app, True, session=sqlite_session)
 
     assert phase_events == ["commit", "signal"]
+
+
+@pytest.mark.parametrize(
+    ("method", "column", "read"),
+    [
+        (AppService.update_app_site_status, "enable_site", attrgetter("enable_site")),
+        (AppService.update_app_api_status, "enable_api", attrgetter("enable_api")),
+    ],
+)
+def test_status_toggle_writes_conditional_update_even_when_read_is_stale(method, column: str, read) -> None:
+    """A stale snapshot must not suppress the toggle (rapid disable→enable race).
+
+    The old in-memory guard (`value == app.<column>`) read the possibly stale
+    object and returned without writing, so an enable issued right after a
+    concurrent disable vanished. The write is now an atomic conditional
+    UPDATE, and the database arbitrates which intent lands.
+    """
+    app = cast(App, SimpleNamespace(mode=AppMode.CHAT, id="app-1", **{column: True}))
+    session = MagicMock()
+    session.execute.return_value = SimpleNamespace(rowcount=1)
+
+    with (
+        patch("services.app_service.current_user", SimpleNamespace(id="account-1")),
+        patch("services.app_service.app_was_updated.send") as send,
+    ):
+        # intent equals the stale read: previously a silent no-op
+        method(AppService(), app, True, session=session)
+
+    session.execute.assert_called_once()
+    stmt = session.execute.call_args.args[0]
+    compiled = str(stmt.compile(compile_kwargs={"literal_binds": True}))
+    assert f"{column} != true" in compiled.lower() or f"{column} != 1" in compiled.lower()
+    send.assert_called_once_with(app)
+    assert read(app) is True
+    session.commit.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    ("method", "column", "read"),
+    [
+        (AppService.update_app_site_status, "enable_site", attrgetter("enable_site")),
+        (AppService.update_app_api_status, "enable_api", attrgetter("enable_api")),
+    ],
+)
+def test_status_toggle_skips_signal_when_row_already_at_target(method, column: str, read) -> None:
+    app = cast(App, SimpleNamespace(mode=AppMode.CHAT, id="app-1", **{column: False}))
+    session = MagicMock()
+    session.execute.return_value = SimpleNamespace(rowcount=0)
+
+    with (
+        patch("services.app_service.current_user", SimpleNamespace(id="account-1")),
+        patch("services.app_service.app_was_updated.send") as send,
+    ):
+        method(AppService(), app, True, session=session)
+
+    send.assert_not_called()
+    # the object still reflects the committed state
+    assert read(app) is True
+    session.commit.assert_called_once()
 
 
 @pytest.mark.parametrize(
