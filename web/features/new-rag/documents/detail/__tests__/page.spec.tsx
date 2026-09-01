@@ -1331,8 +1331,10 @@ describe('DocumentDetailPage', () => {
     )
     expect(revokeObjectUrl).toHaveBeenCalledWith('blob:asset')
     expect(createObjectUrl).toHaveBeenCalledTimes(2)
-    expect(screen.getByText('Screenshot of the source configuration')).toBeInTheDocument()
-    expect(screen.getByText('The image caption follows.')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Screenshot of the source configuration' }),
+    ).toBeInTheDocument()
+    expect(await screen.findByText('The image caption follows.')).toBeInTheDocument()
   })
 
   it('renders spreadsheet images beside their records without duplicate image index chunks', async () => {

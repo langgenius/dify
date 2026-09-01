@@ -223,7 +223,7 @@ export function DocumentReadingPane() {
                       <span aria-hidden className="i-ri-file-copy-line size-4" />
                     </Button>
                     {chunkMultimodalItems.length > 0 && (
-                      <div className="mt-3 space-y-3">
+                      <div className="mt-3 flex flex-wrap gap-1 py-1">
                         {chunkMultimodalItems.map((item) => (
                           <DocumentMultimodalAsset item={item} key={item.id} />
                         ))}
@@ -252,9 +252,11 @@ export function DocumentReadingPane() {
                   <h3 className="system-sm-semibold text-text-primary">
                     {t(($) => $['newKnowledge.documentImages'])}
                   </h3>
-                  {multimodalPlacement.unplaced.map((item) => (
-                    <DocumentMultimodalAsset item={item} key={item.id} />
-                  ))}
+                  <div className="flex flex-wrap gap-1 py-1">
+                    {multimodalPlacement.unplaced.map((item) => (
+                      <DocumentMultimodalAsset item={item} key={item.id} />
+                    ))}
+                  </div>
                 </section>
               )}
             </ScrollAreaContent>

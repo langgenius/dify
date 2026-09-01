@@ -19,9 +19,10 @@ type ImageListProps = {
   size: 'sm' | 'md'
   limit?: number
   className?: string
+  onImageError?: (image: Image) => void
 }
 
-const ImageList = ({ images, size, limit = 9, className }: ImageListProps) => {
+const ImageList = ({ images, size, limit = 9, className, onImageError }: ImageListProps) => {
   const [showMore, setShowMore] = useState(false)
   const [previewIndex, setPreviewIndex] = useState(0)
   const [previewImages, setPreviewImages] = useState<ImageInfo[]>([])
@@ -58,7 +59,13 @@ const ImageList = ({ images, size, limit = 9, className }: ImageListProps) => {
     <>
       <div className={cn('flex flex-wrap gap-1', className)}>
         {limitedImages.map((image) => (
-          <FileThumb key={image.sourceUrl} file={image} size={size} onClick={handleImageClick} />
+          <FileThumb
+            key={image.sourceUrl}
+            file={image}
+            size={size}
+            onClick={handleImageClick}
+            onError={onImageError}
+          />
         ))}
         {images.length > limit && !showMore && (
           <More count={images.length - limitedImages.length} onClick={handleShowMore} />

@@ -4,6 +4,7 @@ import type { KnowledgeFsDocumentMultimodalItemResponse } from '@dify/contracts/
 import { queryOptions, useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import ImageList from '@/app/components/datasets/common/image-list'
 // oxlint-disable-next-line no-restricted-imports
 import { get } from '@/service/base'
 
@@ -67,6 +68,7 @@ export function DocumentMultimodalAsset({
   const rawLabel =
     item.caption?.trim() || item.title?.trim() || item.text_preview?.trim() || item.ocr_text?.trim()
   const label = rawLabel && rawLabel.length > 500 ? `${rawLabel.slice(0, 497)}...` : rawLabel
+  const imageName = label || t(($) => $['newKnowledge.documentImageAlt'])
 
   useEffect(() => {
     if (!resolvedBlob || !resolvedRawSource) return
@@ -85,39 +87,38 @@ export function DocumentMultimodalAsset({
   }
 
   return (
-    <figure
-      className="w-fit max-w-full overflow-hidden rounded-xl border border-divider-subtle bg-background-section"
-      data-testid={`document-multimodal-${item.id}`}
-    >
+    <div data-testid={`document-multimodal-${item.id}`}>
       {source ? (
-        <img
-          alt={label || t(($) => $['newKnowledge.documentImageAlt'])}
-          className="block h-auto max-h-[36rem] max-w-full bg-background-default object-contain"
-          decoding="async"
-          loading="lazy"
-          onError={handleError}
-          src={source}
+        <ImageList
+          images={[
+            {
+              extension: 'image',
+              mimeType: resolvedBlob?.type || 'image/*',
+              name: imageName,
+              size: resolvedBlob?.size ?? 0,
+              sourceUrl: source,
+            },
+          ]}
+          limit={1}
+          onImageError={handleError}
+          size="md"
         />
       ) : firstSource && assetQuery.isPending ? (
         <div
           aria-busy="true"
-          className="flex min-h-32 items-center justify-center bg-background-default text-text-tertiary"
+          className="flex size-8 items-center justify-center text-text-tertiary"
         >
-          <span aria-hidden className="i-ri-loader-4-line size-5 animate-spin" />
+          <span aria-hidden className="i-ri-loader-4-line size-4 animate-spin" />
         </div>
       ) : (
-        <div className="flex min-h-20 w-56 max-w-full flex-col items-center justify-center gap-1 px-3 py-4 text-center text-text-tertiary">
-          <span aria-hidden className="i-ri-image-line size-6" />
-          <span className="system-xs-regular">
-            {t(($) => $['newKnowledge.documentImageUnavailable'])}
-          </span>
+        <div
+          aria-label={`${imageName}: ${t(($) => $['newKnowledge.documentImageUnavailable'])}`}
+          className="flex size-8 items-center justify-center rounded-md border border-divider-subtle bg-background-section text-text-tertiary"
+          role="img"
+        >
+          <span aria-hidden className="i-ri-image-line size-4" />
         </div>
       )}
-      {label && (
-        <figcaption className="border-t border-divider-subtle px-3 py-2 text-[12px] leading-5 wrap-break-word text-text-tertiary">
-          {label}
-        </figcaption>
-      )}
-    </figure>
+    </div>
   )
 }

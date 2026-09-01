@@ -32,9 +32,10 @@ type FileThumbProps = {
   file: FileEntity
   className?: string
   onClick?: (file: FileEntity) => void
+  onError?: (file: FileEntity) => void
 } & VariantProps<typeof FileThumbVariants>
 
-const FileThumb = ({ file, size, className, onClick }: FileThumbProps) => {
+const FileThumb = ({ file, size, className, onClick, onError }: FileThumbProps) => {
   const { name, mimeType, sourceUrl } = file
   const isImage = mimeType.startsWith('image/')
 
@@ -46,6 +47,10 @@ const FileThumb = ({ file, size, className, onClick }: FileThumbProps) => {
     },
     [onClick, file],
   )
+
+  const handleError = useCallback(() => {
+    onError?.(file)
+  }, [file, onError])
 
   return (
     <Tooltip>
@@ -64,7 +69,7 @@ const FileThumb = ({ file, size, className, onClick }: FileThumbProps) => {
             onClick={handleClick}
           >
             {isImage ? (
-              <ImageRender sourceUrl={sourceUrl} name={name} />
+              <ImageRender sourceUrl={sourceUrl} name={name} onError={handleError} />
             ) : (
               <FileTypeIcon type={getFileAppearanceType(name, mimeType)} size="sm" />
             )}
