@@ -243,7 +243,7 @@ def main() -> None:
 
     repo_root = next(p for p in Path(__file__).parents if (p / "web").is_dir() and (p / "api").is_dir())
     schema_path = Path(__file__).with_name("contract_schema.json")
-    ts_path = repo_root / "web" / "app" / "components" / "dify-builder" / "contract" / "types.ts"
+    ts_path = repo_root / "packages" / "contracts" / "generated" / "dify-builder" / "types.ts"
 
     schema_path.write_text(json.dumps(schema, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     ts_path.parent.mkdir(parents=True, exist_ok=True)
