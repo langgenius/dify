@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
+import type { SimpleDocumentDetail } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { DocumentActionType } from '@/models/datasets'
+import { DataSourceType, DocumentActionType } from '@/models/datasets'
 import * as useDocument from '@/service/knowledge/use-document'
 import { useDocumentActions } from '../use-document-actions'
 
@@ -15,6 +16,26 @@ const mockUseDocumentDisable = vi.mocked(useDocument.useDocumentDisable)
 const mockUseDocumentDelete = vi.mocked(useDocument.useDocumentDelete)
 const mockUseDocumentBatchRetryIndex = vi.mocked(useDocument.useDocumentBatchRetryIndex)
 const mockUseDocumentDownloadZip = vi.mocked(useDocument.useDocumentDownloadZip)
+const mockUseBatchSyncDocuments = vi.mocked(useDocument.useBatchSyncDocuments)
+
+type LocalDoc = SimpleDocumentDetail & { percent?: number }
+const createMockDoc = (overrides: Partial<LocalDoc> = {}): LocalDoc =>
+  ({
+    id: 'doc1',
+    name: 'Test.txt',
+    data_source_type: DataSourceType.FILE,
+    data_source_info: {},
+    word_count: 100,
+    hit_count: 0,
+    created_at: 0,
+    position: 1,
+    doc_form: 'text_model',
+    enabled: true,
+    archived: false,
+    display_status: 'available',
+    created_from: 'api',
+    ...overrides,
+  }) as LocalDoc
 
 const createConsoleQueryClient = () =>
   new QueryClient({
@@ -77,6 +98,9 @@ describe('useDocumentActions', () => {
       ...createMockMutation(),
       isPending: false,
     } as unknown as ReturnType<typeof useDocument.useDocumentDownloadZip>)
+    mockUseBatchSyncDocuments.mockReturnValue(
+      createMockMutation() as unknown as ReturnType<typeof useDocument.useBatchSyncDocuments>,
+    )
   })
 
   describe('handleAction', () => {
@@ -91,6 +115,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1'],
             downloadableSelectedIds: [],
+            syncableSelectedDocs: [],
             onUpdate,
             onClearSelection,
           }),
@@ -118,6 +143,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1'],
             downloadableSelectedIds: [],
+            syncableSelectedDocs: [],
             onUpdate,
             onClearSelection,
           }),
@@ -144,6 +170,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1'],
             downloadableSelectedIds: [],
+            syncableSelectedDocs: [],
             onUpdate,
             onClearSelection,
           }),
@@ -172,6 +199,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1', 'doc2'],
             downloadableSelectedIds: [],
+            syncableSelectedDocs: [],
             onUpdate,
             onClearSelection,
           }),
@@ -199,6 +227,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1'],
             downloadableSelectedIds: [],
+            syncableSelectedDocs: [],
             onUpdate,
             onClearSelection,
           }),
@@ -229,6 +258,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1'],
             downloadableSelectedIds: ['doc1'],
+            syncableSelectedDocs: [],
             onUpdate: vi.fn(),
             onClearSelection: vi.fn(),
           }),
@@ -257,6 +287,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1', 'doc2'],
             downloadableSelectedIds: ['doc1'],
+            syncableSelectedDocs: [],
             onUpdate: vi.fn(),
             onClearSelection: vi.fn(),
           }),
@@ -287,6 +318,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: [],
             downloadableSelectedIds: [],
+            syncableSelectedDocs: [],
             onUpdate: vi.fn(),
             onClearSelection: vi.fn(),
           }),
@@ -309,6 +341,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1'],
             downloadableSelectedIds: [],
+            syncableSelectedDocs: [],
             onUpdate,
             onClearSelection,
           }),
@@ -334,6 +367,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1'],
             downloadableSelectedIds: [],
+            syncableSelectedDocs: [],
             onUpdate,
             onClearSelection,
           }),
@@ -363,6 +397,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1'],
             downloadableSelectedIds: ['doc1'],
+            syncableSelectedDocs: [],
             onUpdate: vi.fn(),
             onClearSelection: vi.fn(),
           }),
@@ -391,6 +426,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1'],
             downloadableSelectedIds: ['doc1'],
+            syncableSelectedDocs: [],
             onUpdate: vi.fn(),
             onClearSelection: vi.fn(),
           }),
@@ -406,6 +442,105 @@ describe('useDocumentActions', () => {
     })
   })
 
+  describe('handleBatchSync', () => {
+    it('should sync only the selected documents', async () => {
+      const syncMutateAsync = vi.fn().mockResolvedValue({ result: 'success' })
+      mockUseBatchSyncDocuments.mockReturnValue({
+        mutateAsync: syncMutateAsync,
+      } as unknown as ReturnType<typeof useDocument.useBatchSyncDocuments>)
+
+      const onUpdate = vi.fn()
+      const onClearSelection = vi.fn()
+
+      const { result } = renderHook(
+        () =>
+          useDocumentActions({
+            datasetId: 'ds1',
+            selectedIds: ['doc1', 'doc2', 'doc3'],
+            downloadableSelectedIds: [],
+            syncableSelectedDocs: [
+              createMockDoc({ id: 'doc1', data_source_type: DataSourceType.NOTION }),
+              createMockDoc({ id: 'doc2', data_source_type: DataSourceType.WEB }),
+            ],
+            onUpdate,
+            onClearSelection,
+          }),
+        { wrapper: createWrapper() },
+      )
+
+      await act(async () => {
+        await result.current.handleBatchSync()
+      })
+
+      expect(syncMutateAsync).toHaveBeenCalledWith({
+        datasetId: 'ds1',
+        documentIds: ['doc1', 'doc2'],
+      })
+      expect(onClearSelection).toHaveBeenCalled()
+      await waitFor(() => expect(onUpdate).toHaveBeenCalled())
+    })
+
+    it('should not call the API when nothing syncable is selected', async () => {
+      const syncMutateAsync = vi.fn()
+      mockUseBatchSyncDocuments.mockReturnValue({
+        mutateAsync: syncMutateAsync,
+      } as unknown as ReturnType<typeof useDocument.useBatchSyncDocuments>)
+
+      const onUpdate = vi.fn()
+
+      const { result } = renderHook(
+        () =>
+          useDocumentActions({
+            datasetId: 'ds1',
+            selectedIds: ['doc1'],
+            downloadableSelectedIds: [],
+            syncableSelectedDocs: [],
+            onUpdate,
+            onClearSelection: vi.fn(),
+          }),
+        { wrapper: createWrapper() },
+      )
+
+      await act(async () => {
+        await result.current.handleBatchSync()
+      })
+
+      expect(syncMutateAsync).not.toHaveBeenCalled()
+      expect(onUpdate).not.toHaveBeenCalled()
+    })
+
+    it('should keep the selection when the sync request fails', async () => {
+      mockUseBatchSyncDocuments.mockReturnValue({
+        mutateAsync: vi.fn().mockRejectedValue(new Error('boom')),
+      } as unknown as ReturnType<typeof useDocument.useBatchSyncDocuments>)
+
+      const onUpdate = vi.fn()
+      const onClearSelection = vi.fn()
+
+      const { result } = renderHook(
+        () =>
+          useDocumentActions({
+            datasetId: 'ds1',
+            selectedIds: ['doc1'],
+            downloadableSelectedIds: [],
+            syncableSelectedDocs: [
+              createMockDoc({ id: 'doc1', data_source_type: DataSourceType.NOTION }),
+            ],
+            onUpdate,
+            onClearSelection,
+          }),
+        { wrapper: createWrapper() },
+      )
+
+      await act(async () => {
+        await result.current.handleBatchSync()
+      })
+
+      expect(onClearSelection).not.toHaveBeenCalled()
+      expect(onUpdate).not.toHaveBeenCalled()
+    })
+  })
+
   describe('all action types', () => {
     it('should handle summary action', async () => {
       mockMutateAsync.mockResolvedValue({ result: 'success' })
@@ -417,6 +552,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1'],
             downloadableSelectedIds: [],
+            syncableSelectedDocs: [],
             onUpdate,
             onClearSelection: vi.fn(),
           }),
@@ -443,6 +579,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1'],
             downloadableSelectedIds: [],
+            syncableSelectedDocs: [],
             onUpdate,
             onClearSelection: vi.fn(),
           }),

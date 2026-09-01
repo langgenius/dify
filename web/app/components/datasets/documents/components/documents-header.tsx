@@ -56,6 +56,8 @@ type DocumentsHeaderProps = {
   onBuiltInEnabledChange: (enabled: boolean) => void
 
   // Actions
+  onSyncAll?: () => void
+  isSyncingAll?: boolean
   onAddDocument: () => void
 }
 
@@ -84,6 +86,8 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
   onRenameMetaData,
   onDeleteMetaData,
   onBuiltInEnabledChange,
+  onSyncAll,
+  isSyncingAll = false,
   onAddDocument,
 }) => {
   const { t } = useTranslation()
@@ -200,6 +204,20 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
               onIsBuiltInEnabledChange={onBuiltInEnabledChange}
             />
           )}
+          {embeddingAvailable &&
+            canEditDocument &&
+            (isDataSourceNotion || isDataSourceWeb) &&
+            onSyncAll && (
+              <Button
+                variant="secondary"
+                className="shrink-0"
+                loading={isSyncingAll}
+                onClick={onSyncAll}
+              >
+                <span className="i-ri-loop-left-line size-4" />
+                {t(($) => $['batchAction.syncAll'], { ns: 'dataset' })}
+              </Button>
+            )}
           {embeddingAvailable && canAddDocument && (
             <Button variant="primary" onClick={onAddDocument} className="shrink-0">
               <span className="i-heroicons-plus-solid size-4 stroke-current" />

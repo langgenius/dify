@@ -1,4 +1,5 @@
 import json
+import logging
 from collections.abc import Generator
 from datetime import datetime
 from typing import Any, Literal, cast
@@ -9,7 +10,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, field_serializer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.fields import SimpleResultResponse, TextContentResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
@@ -29,6 +30,7 @@ from libs.login import login_required
 from models import Account, DataSourceOauthBinding, Document
 from services.dataset_service import DatasetService, DocumentService
 from services.datasource_provider_service import DatasourceProviderService
+from services.errors.account import NoPermissionError
 from tasks.document_indexing_sync_task import document_indexing_sync_task
 
 from .. import console_ns
@@ -36,6 +38,7 @@ from ..wraps import (
     RBACPermission,
     RBACResourceScope,
     account_initialization_required,
+    cloud_edition_billing_rate_limit_check,
     is_admin_or_owner_required,
     model_validate,
     rbac_permission_required,
@@ -43,6 +46,8 @@ from ..wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class NotionEstimatePayload(BaseModel):
@@ -432,6 +437,44 @@ class DataSourceNotionDatasetSyncApi(Resource):
         for document in documents:
             document_indexing_sync_task.delay(dataset_id_str, document.id)
         return {"result": "success"}, 200
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/website-sync")
+class DataSourceWebsiteDatasetSyncApi(Resource):
+    """Re-sync every website document in a dataset from its source."""
+
+    @console_ns.doc("sync_dataset_website_documents")
+    @console_ns.doc(description="Re-sync all website documents in a dataset from their source")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @with_current_user
+    # Same permission as WebsiteDocumentSyncApi, the per-document sync this batches.
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @with_session
+    def get(self, session: Session, current_user: Account, dataset_id: UUID) -> tuple[dict[str, str], int]:
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str, session)
+        if dataset is None:
+            raise NotFound("Dataset not found.")
+        # RBAC is a no-op when RBAC_ENABLED is false, so scope the dataset to the caller explicitly.
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user, session)
+        except NoPermissionError as e:
+            raise Forbidden(str(e))
+
+        documents = DocumentService.get_document_by_dataset_id(dataset_id_str, session)
+        for document in documents:
+            if document.data_source_type != "website_crawl" or document.archived:
+                continue
+            try:
+                DocumentService.sync_website_document(dataset, document, session)
+            except ValueError:
+                # Raised when the document is already syncing; skip it instead of failing the batch.
+                logger.warning("Skipped syncing document %s: sync already in progress", document.id)
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/notion/sync")

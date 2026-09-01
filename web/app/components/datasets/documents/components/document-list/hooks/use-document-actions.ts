@@ -1,9 +1,11 @@
 import type { CommonResponse } from '@/models/common'
+import type { SimpleDocumentDetail } from '@/models/datasets'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DocumentActionType } from '@/models/datasets'
 import {
+  useBatchSyncDocuments,
   useDocumentArchive,
   useDocumentBatchRetryIndex,
   useDocumentDelete,
@@ -15,10 +17,13 @@ import {
 import { asyncRunSafe } from '@/utils'
 import { downloadBlob } from '@/utils/download'
 
+type LocalDoc = SimpleDocumentDetail & { percent?: number }
+
 type UseDocumentActionsOptions = {
   datasetId: string
   selectedIds: string[]
   downloadableSelectedIds: string[]
+  syncableSelectedDocs: LocalDoc[]
   onUpdate: () => void
   onClearSelection: () => void
 }
@@ -39,6 +44,7 @@ export const useDocumentActions = ({
   datasetId,
   selectedIds,
   downloadableSelectedIds,
+  syncableSelectedDocs,
   onUpdate,
   onClearSelection,
 }: UseDocumentActionsOptions) => {
@@ -51,6 +57,7 @@ export const useDocumentActions = ({
   const { mutateAsync: deleteDocument } = useDocumentDelete()
   const { mutateAsync: retryIndexDocument } = useDocumentBatchRetryIndex()
   const { mutateAsync: requestDocumentsZip, isPending: isDownloadingZip } = useDocumentDownloadZip()
+  const { mutateAsync: batchSyncDocuments, isPending: isSyncingDocuments } = useBatchSyncDocuments()
 
   type SupportedActionType =
     | typeof DocumentActionType.archive
@@ -120,10 +127,38 @@ export const useDocumentActions = ({
     downloadBlob({ data: blob, fileName: generateDocsZipFileName() })
   }, [datasetId, downloadableSelectedIds, isDownloadingZip, requestDocumentsZip, t])
 
+  const handleBatchSync = useCallback(async () => {
+    if (isSyncingDocuments || syncableSelectedDocs.length === 0) return
+
+    const [e] = await asyncRunSafe<CommonResponse>(
+      batchSyncDocuments({
+        datasetId,
+        documentIds: syncableSelectedDocs.map((doc) => doc.id),
+      }),
+    )
+    if (!e) {
+      onClearSelection()
+      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+      onUpdate()
+    } else {
+      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+    }
+  }, [
+    batchSyncDocuments,
+    isSyncingDocuments,
+    datasetId,
+    syncableSelectedDocs,
+    onClearSelection,
+    onUpdate,
+    t,
+  ])
+
   return {
     handleAction,
     handleBatchReIndex,
     handleBatchDownload,
+    handleBatchSync,
     isDownloadingZip,
+    isSyncingDocuments,
   }
 }

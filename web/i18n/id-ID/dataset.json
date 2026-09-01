@@ -11,6 +11,8 @@
   "batchAction.enable": "Mengaktifkan",
   "batchAction.reIndex": "Indeks ulang",
   "batchAction.selected": "Dipilih",
+  "batchAction.sync": "Sinkronkan",
+  "batchAction.syncAll": "Sinkronkan Semua",
   "chunkingMode.general": "Umum",
   "chunkingMode.graph": "Grafik",
   "chunkingMode.parentChild": "Orang tua-anak",

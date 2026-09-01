@@ -1,9 +1,11 @@
 'use client'
 
 import type { FC } from 'react'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -12,12 +14,15 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DataSourceType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
 import {
+  useBatchSyncNotion,
+  useBatchSyncWebsite,
   useDocumentList,
   useInvalidDocumentDetail,
   useInvalidDocumentList,
 } from '@/service/knowledge/use-document'
 import { useChildSegmentListKey, useSegmentListKey } from '@/service/knowledge/use-segment'
 import { useInvalid } from '@/service/use-base'
+import { asyncRunSafe } from '@/utils'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import useEditDocumentMetadata from '../metadata/hooks/use-edit-dataset-metadata'
 import DocumentsHeader from './components/documents-header'
@@ -35,6 +40,7 @@ const FORCED_POLLING_STATUSES = new Set(['queuing', 'indexing', 'paused'])
 
 const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const router = useRouter()
+  const { t } = useTranslation()
   const { plan } = useProviderContext()
   const isFreePlan = plan.type === 'sandbox'
 
@@ -126,6 +132,41 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     onUpdateDocList: invalidDocumentList,
   })
 
+  const total = documentsRes?.total || 0
+  const documentsList = documentsRes?.data
+
+  const { mutateAsync: batchSyncNotion, isPending: isSyncingNotion } = useBatchSyncNotion()
+  const { mutateAsync: batchSyncWebsite, isPending: isSyncingWebsite } = useBatchSyncWebsite()
+  const isSyncingAll = isSyncingNotion || isSyncingWebsite
+
+  const handleSyncAll = useCallback(async () => {
+    const isNotion = dataset?.data_source_type === DataSourceType.NOTION
+    const isWebsite = dataset?.data_source_type === DataSourceType.WEB
+    // The Sync All button is only rendered for Notion/website knowledge bases.
+    if (!isNotion && !isWebsite) return
+
+    const [e] = await asyncRunSafe(
+      isNotion ? batchSyncNotion({ datasetId }) : batchSyncWebsite({ datasetId }),
+    )
+    if (e) {
+      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      return
+    }
+
+    // The request only queues the sync; the work happens on Celery workers. Refresh once so the
+    // documents flip out of a terminal status, after which the list's own refetch interval
+    // (see useDocumentList above) reports per-document progress until everything settles.
+    invalidDocumentList()
+    toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+  }, [
+    batchSyncNotion,
+    batchSyncWebsite,
+    dataset?.data_source_type,
+    datasetId,
+    invalidDocumentList,
+    t,
+  ])
+
   // Route to document creation page
   const routeToDocCreate = useCallback(() => {
     if (!datasetACLCapabilities.canUse) return
@@ -135,9 +176,6 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     }
     router.push(`/datasets/${datasetId}/documents/create`)
   }, [dataset?.runtime_mode, datasetACLCapabilities.canUse, datasetId, router])
-
-  const total = documentsRes?.total || 0
-  const documentsList = documentsRes?.data
 
   // Render content based on loading and data state
   const renderContent = () => {
@@ -203,6 +241,8 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         onRenameMetaData={handleRename}
         onDeleteMetaData={handleDeleteMetaData}
         onBuiltInEnabledChange={setBuiltInEnabled}
+        onSyncAll={datasetACLCapabilities.canEdit ? handleSyncAll : undefined}
+        isSyncingAll={isSyncingAll}
         onAddDocument={routeToDocCreate}
       />
       <div className="flex h-0 grow flex-col px-6 pt-4">{renderContent()}</div>
