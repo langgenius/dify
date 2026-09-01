@@ -2,6 +2,7 @@ import type {
   AppPublisherPublishOptions,
   AppPublisherPublishParams,
 } from '@/app/components/app/app-publisher/types'
+import type { WorkflowToolOutputVariable } from '@/app/components/tools/types'
 import type { EndNodeType } from '@/app/components/workflow/nodes/end/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { CommonEdgeType, Node } from '@/app/components/workflow/types'
@@ -76,7 +77,6 @@ const FeaturesTrigger = () => {
   }, [nodes])
   const hasWorkflowNodes = nodes.length > 0
   const startNode = nodes.find((node) => node.data.type === BlockEnum.Start)
-  const endNode = nodes.find((node) => node.data.type === BlockEnum.End)
   const startVariables = (startNode as Node<StartNodeType>)?.data?.variables
   const edges = useEdges<CommonEdgeType>()
 
@@ -97,7 +97,22 @@ const FeaturesTrigger = () => {
 
     return data
   }, [fileSettings?.image?.enabled, startVariables])
-  const endVariables = useMemo(() => (endNode as Node<EndNodeType>)?.data?.outputs || [], [endNode])
+  const endVariables = useMemo<WorkflowToolOutputVariable[]>(
+    () =>
+      nodes.flatMap((node) => {
+        if (node.data.type !== BlockEnum.End) return []
+
+        return ((node as Node<EndNodeType>).data.outputs || []).map((output, outputIndex) => ({
+          ...output,
+          source: {
+            nodeId: node.id,
+            nodeTitle: node.data.title,
+            outputIndex,
+          },
+        }))
+      }),
+    [nodes],
+  )
 
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
