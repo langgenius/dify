@@ -1,17 +1,17 @@
-import type { ReactNode, RefObject } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
+
+export const DOCUMENT_DETAIL_TITLE_ID = 'document-detail-title'
 
 export function DocumentDetailHeader({
   action,
   backPath,
   title,
-  titleRef,
 }: {
   action: ReactNode
   backPath: string
   title: string
-  titleRef: RefObject<HTMLHeadingElement | null>
 }) {
   const { t } = useTranslation('dataset')
 
@@ -29,7 +29,7 @@ export function DocumentDetailHeader({
       <div className="mt-5 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1
-            ref={titleRef}
+            id={DOCUMENT_DETAIL_TITLE_ID}
             className="truncate title-2xl-semi-bold text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             tabIndex={-1}
           >

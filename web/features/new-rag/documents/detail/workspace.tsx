@@ -1,7 +1,6 @@
 'use client'
 
-import { useAtomValue, useSetAtom } from 'jotai'
-import { useEffect, useMemo, useRef } from 'react'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { KnowledgeModelReadinessBanner } from '../../components/knowledge-model-readiness-banner'
 import { newKnowledgeDocumentsPath } from '../../routes'
@@ -12,7 +11,6 @@ import { DocumentReindexAction } from './reindex-action'
 import { DocumentRevisionBrowser } from './revision-browser'
 import { documentDetailKnowledgeSpaceIdAtom } from './state/inputs'
 import { documentDetailDocumentAtom } from './state/queries'
-import { documentDetailTitleRuntimeAtom } from './state/runtime'
 import { DOCUMENT_REINDEX_RESTRICTION_ID, documentMissingAtom } from './state/workflow'
 import { DocumentTasksSurface } from './tasks-surface'
 import { DocumentWorkflowController } from './workflow-controller'
@@ -24,13 +22,6 @@ export function DocumentDetailWorkspace() {
   const knowledgeSpaceId = useAtomValue(documentDetailKnowledgeSpaceIdAtom)
   const documentMissing = useAtomValue(documentMissingAtom)
   const hasEditPermission = space.permission_keys.includes('knowledge_space_document_write')
-  const titleRef = useRef<HTMLHeadingElement>(null)
-  const titleRuntime = useMemo(() => ({ focusTitle: () => titleRef.current?.focus() }), [])
-  const setTitleRuntime = useSetAtom(documentDetailTitleRuntimeAtom)
-
-  useEffect(() => {
-    setTitleRuntime(titleRuntime)
-  }, [setTitleRuntime, titleRuntime])
 
   if (documentMissing)
     return (
@@ -52,7 +43,6 @@ export function DocumentDetailWorkspace() {
         action={<DocumentReindexAction key={document.id} />}
         backPath={newKnowledgeDocumentsPath(knowledgeSpaceId)}
         title={document.title}
-        titleRef={titleRef}
       />
       {!hasEditPermission && (
         <p
