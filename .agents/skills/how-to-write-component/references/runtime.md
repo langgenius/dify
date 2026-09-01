@@ -18,6 +18,7 @@ Read this document when a change introduces Effects, navigation side effects, me
 ## Runtime Cost
 
 - Move changing state to the smallest consumer before considering memoization. Stable parent content can be lifted and passed as children.
+- When a broad state owner causes unrelated rendering, move the owner or expose a narrower atom/query selector before adding memoization.
 - Avoid `memo`, `useMemo`, and `useCallback` unless identity or computation has a demonstrated consumer or measurable cost.
 - Start independent remote work together and await it near the branch that consumes it. Avoid introducing request waterfalls.
 - Load heavy optional surfaces on demand when they sit behind a dialog, tab, command, or feature activation.

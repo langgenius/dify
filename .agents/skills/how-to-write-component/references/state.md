@@ -2,10 +2,18 @@
 
 Read this document when a change involves Jotai, form drafts, route identity, shared client state, or local persistence.
 
+## Classify State On Two Axes
+
+First identify the owner or source of truth: one component, a parent boundary, URL/framework APIs, TanStack Query, or the feature workflow. Then identify the graph role independently: primitive input, query/mutation node, derived business fact, or workflow command. Finally mark whether any node needs per-instance isolation or reset; this is a lifecycle requirement, not a node type.
+
+A value should enter a feature state graph when it drives a query or command, feeds a reusable derivation, is consumed by another owner, or bridges an external source for several consumers. Entering the graph does not transfer ownership from URL APIs or Query cache to Jotai.
+
+Keep values out of the graph when they only affect one component's presentation, are read only at form submission, or are one-off render computations without domain meaning.
+
 ## Choose The Owner
 
 - Keep synchronous state local when one component owns it: dialog and menu state, confirmations, field drafts, and local selections usually belong to the component or DOM.
-- Use feature-scoped Jotai when siblings need one source of truth, values drive other atoms, or a scoped workflow must preserve state across hidden or unmounted steps.
+- Use feature-scoped Jotai when siblings need one source of truth, values drive other atoms, a parent input establishes its own state graph, or a scoped workflow must preserve state across hidden or unmounted steps.
 - Keep server and cache state in TanStack Query. Use existing feature stores for complex, high-frequency interaction state such as workflow canvas drag, resize, and runtime panels.
 - Use feature-owned storage only for low-frequency client preferences, dismissed notices, and UI defaults. Live application state does not belong in local storage.
 
@@ -20,17 +28,27 @@ Read this document when a change involves Jotai, form drafts, route identity, sh
 ## Route And URL State
 
 - Treat `useParams`, route arguments, and `nuqs` as the owners of URL identity and updates.
-- Hydrate a primitive atom at the route or surface boundary only when query atoms or shared derived atoms require route identity. Keep URL writes in route and query-state APIs.
+- A single consumer should read the owner hook directly. Hydrate an unscoped primitive atom at the route or surface boundary only when several consumers, query atoms, or shared derived atoms require route identity. Keep URL writes in route and query-state APIs.
+- A route bridge that must follow later URL changes needs explicit re-hydration behavior, commonly `dangerouslyForceHydrate: true` at that controlled boundary. A scoped workflow input is different: initialize it once, key the scope by semantic identity when switching entities should reset it, and do not force later parent refreshes into an in-progress session.
 - Within one route-owned feature, choose one route-identity source. Do not hydrate route identity into atoms while also threading the same ID through multiple component layers.
 - Put shareable filters, tabs, pagination, and search state in the URL. Keep one-shot navigation signals and transient UI state out of persistent subscriptions.
 
-## Jotai And Query
+## Build A Clean Jotai Graph
 
-- A Jotai-backed feature may keep one feature-local state module ordered by dependency: types and constants, primitives, query atoms, query-data derivations, business facts, commands, mutations, submission orchestration, and provider exports.
+- Keep one feature-local state file or folder ordered by dependency: primitives and boundary inputs, query atoms, query-data selectors, business facts, commands, mutation atoms when justified, submission orchestration, then provider exports.
+- Keep graph flow one-way: primitive inputs -> queries -> named facts -> commands. Do not let components maintain a second writable entry for the same fact.
+- Create a derived atom only when its value is reused, consumed by another atom, or deserves a stable business name such as `rows`, `showEmpty`, or `canSubmit`. Leave one-off presentation assembly in the component.
+- Keep internal graph nodes unexported. Export only atoms that a component, provider boundary, or another state module must read or write.
 - Use `atomWithQuery` or `atomWithMutation` for async work driven by atom state. Do not hand-roll loading, error, or in-flight state for atom-orchestrated work.
-- Use field-specific derived atoms for query results. `jotai-tanstack-query` does not provide TanStack Query tracked properties, so reading a whole query atom subscribes to the entire observer result.
+- Use `selectAtom` or another field-specific derived atom for query results. `jotai-tanstack-query` does not provide TanStack Query tracked properties, so reading a whole query atom subscribes to the entire observer result. Read the whole result only when the consumer truly needs observer methods or a coordinated group of fields.
+- Name derived atoms as business facts and write atoms as user or workflow commands. Commands should express actions such as selecting a source or submitting a wizard, not merely rename setter callbacks.
+
+## Scope, Isolation, And Reset
+
 - Leave query and mutation atoms unscoped so they retain the shared QueryClient cache. Scope resettable primitives and hydration tuples; scope a derived atom only when all dependencies should be private to the surface.
-- Use non-null lazy primitives for values always hydrated by a scope provider. Name derived atoms as business facts and write atoms as user or workflow commands.
+- Use `atomWithLazy` or another non-null lazy primitive for required values injected by a scope provider; fail when the boundary forgot to provide them instead of inventing an empty ID.
+- Maintain the scoped primitive list explicitly. Use a semantic `key` when switching identity should create a fresh session; do not use forced hydration for an edit snapshot that must remain stable while an outer query refreshes.
+- Scope exists for per-instance isolation and natural reset, not as a general module boundary. A state file may be warranted even when its atoms remain unscoped.
 - Keep independent dialog lifecycles separate. A scoped open-state atom is acceptable only when composed sibling surfaces would otherwise pass confusing lifecycle props through unrelated owners.
 
 ## Persistence

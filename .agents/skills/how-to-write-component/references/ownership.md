@@ -15,7 +15,10 @@ Read this document when adding, moving, splitting, or refactoring React componen
 - Put state, data access, loading, empty, error, and handlers in the lowest owner that uses them and whose mounted lifetime matches the required persistence.
 - Keep coordination in a parent only when it needs one consistent snapshot, the value must intentionally survive the local owner's unmount, or the parent coordinates submission, shared selection, batch behavior, navigation, or cross-section loading and errors.
 - Repeated TanStack Query calls in siblings are acceptable when each sibling independently consumes the data; the cache already deduplicates requests.
-- Pass stable domain identity across boundaries. Do not pass raw server data together with separately derived flags for the same concept.
+- Treat parent input according to what the child boundary does with it:
+  - If the child only renders or performs a light local decision, pass the snapshot as props. It does not become a new state owner.
+  - If the child builds queries, dialogs, mutations, derivations, commands, or a reset lifecycle around a stable identity or snapshot, give that boundary a feature-local state file. This does not by itself require a new module or directory.
+- Pass stable domain identity or the smallest sufficient action snapshot across boundaries. Do not copy props into atoms merely to avoid passing them, and do not pass raw server data together with separately derived flags for the same concept.
 - One pass-through prop layer is acceptable. Repeated forwarding means ownership should move closer to the consumer or into feature-scoped shared state.
 - Do not replace prop drilling with one large view-model hook. Move each query, derived value, and handler to the concrete owner that consumes it.
 - Keep source selection, defaults, validation, dirty checks, and payload shaping beside the workflow that owns submission.

@@ -16,14 +16,17 @@ Read this document when a component consumes generated contracts, nullable API v
 
 - Use generated options directly with `useQuery(consoleQuery.xxx.queryOptions(...))`, `marketplaceQuery`, or the equivalent generated client.
 - If query input comes from atom state, keep it in `atomWithQuery`; do not unwrap the atom in a component solely to call `useQuery`.
+- Keep owner-local queries in `useQuery` when their pending, error, and data state serve only that component. Promote them to query atoms only when atom input drives them or other graph nodes consume their result.
 - For missing required input, branch the whole generated input with `skipToken`. Add `enabled` only for an independent execution condition; do not put `skipToken` inside a placeholder payload or coerce IDs to empty strings.
 - Return generated `queryOptions()`, `infiniteOptions()`, or `mutationOptions()` directly from TanStack Query atoms. Pass supported options into the generated call instead of spreading into a parallel object.
 - Share the exact options between prefetch and render when they represent the same request. Do not extract option helpers merely to reuse input construction.
+- In Jotai-backed components, consume field-level selectors or named facts rather than the complete query result unless observer methods such as `refetch` or an infinite-scroll field group are part of that owner's contract.
 - Avoid pass-through service hooks that only rename generated options. Keep feature hooks for actual orchestration or shared domain behavior.
 
 ## Mutations And Cache
 
 - Use generated `mutationOptions()` directly for owner-local mutations.
+- Keep a mutation in `useMutation` when pending and error state belong to one dialog or form. Use a mutation atom only when shared workflow orchestration or graph-derived state consumes it; query and mutation atoms remain unscoped.
 - Put shared invalidation, retries, and cache behavior in `createTanstackQueryUtils(...experimental_defaults...)`. Local callbacks may own toast, close, and navigation effects but must not replace shared cache policy.
 - Prefer `mutate(...)`. Use `mutateAsync(...)` only when Promise composition is required, and catch awaited failures.
 - Preserve intentional empty values and current list/detail ownership when updating data. Do not add optimistic updates without a verified owner contract.
