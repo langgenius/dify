@@ -7,7 +7,6 @@ import type { Plugin } from '@/app/components/plugins/types'
 import { useMemo, useState } from 'react'
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
-import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { useRouter } from '@/next/navigation'
 import MarketplaceDetailDialog from '../detail-dialog'
 import TemplateDetailDialog from '../templates/template-detail-dialog'
@@ -36,7 +35,6 @@ const normalizePlugin = (plugin: Plugin): Plugin => ({
 export default function DifyCreatorProfile({ loadedProfile, locale }: DifyCreatorProfileProps) {
   const router = useRouter()
   const [selected, setSelected] = useState<SelectedCreation | null>(null)
-  const [pluginToInstall, setPluginToInstall] = useState<Plugin | null>(null)
   const profilePlugins = Object.values(loadedProfile.pluginsByCreationId)
   const pluginIds = useMemo(
     () =>
@@ -107,10 +105,6 @@ export default function DifyCreatorProfile({ loadedProfile, locale }: DifyCreato
           isInstalled={Boolean(installedInfo?.[selectedPlugin.plugin_id])}
           open
           plugin={selectedPlugin}
-          onInstall={() => {
-            setPluginToInstall(selectedPlugin)
-            closeSelected()
-          }}
           onOpenChange={(open) => {
             if (!open) closeSelected()
           }}
@@ -127,14 +121,6 @@ export default function DifyCreatorProfile({ loadedProfile, locale }: DifyCreato
           onOpenChange={(open) => {
             if (!open) closeSelected()
           }}
-        />
-      )}
-      {pluginToInstall && (
-        <InstallFromMarketplace
-          manifest={pluginToInstall}
-          uniqueIdentifier={pluginToInstall.latest_package_identifier}
-          onClose={() => setPluginToInstall(null)}
-          onSuccess={() => setPluginToInstall(null)}
         />
       )}
     </>

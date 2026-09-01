@@ -92,7 +92,6 @@ const CardWrapperComponent = ({
           isInstalled={isInstalled}
           open={isShowMarketplaceDetail}
           plugin={plugin}
-          onInstall={showInstallFromMarketplace}
           onOpenChange={handleMarketplaceDetailOpenChange}
         />
         {isShowInstallFromMarketplace && (
