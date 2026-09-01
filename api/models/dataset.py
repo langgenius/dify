@@ -974,17 +974,15 @@ class DocumentSegment(TypeBase):
         """Load the owning document with the caller-owned database session."""
         return session.get(Document, self.document_id)
 
-    @property
-    def previous_segment(self):
-        return db.session.scalar(
+    def previous_segment(self, session: Session) -> "DocumentSegment | None":
+        return session.scalar(
             select(DocumentSegment).where(
                 DocumentSegment.document_id == self.document_id, DocumentSegment.position == self.position - 1
             )
         )
 
-    @property
-    def next_segment(self):
-        return db.session.scalar(
+    def next_segment(self, session: Session) -> "DocumentSegment | None":
+        return session.scalar(
             select(DocumentSegment).where(
                 DocumentSegment.document_id == self.document_id, DocumentSegment.position == self.position + 1
             )
@@ -1204,9 +1202,8 @@ class AppDatasetJoin(TypeBase):
         DateTime, nullable=False, server_default=sa.func.current_timestamp(), init=False
     )
 
-    @property
-    def app(self):
-        return db.session.get(App, self.app_id)
+    def app(self, session: Session) -> App | None:
+        return session.get(App, self.app_id)
 
 
 class DatasetQuery(TypeBase):
