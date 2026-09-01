@@ -86,98 +86,62 @@ def test_default_ref_template_value():
     assert DEFAULT_REF_TEMPLATE_OPENAPI_3_0 == "#/components/schemas/{model}"
 
 
-def test_register_schema_model_calls_namespace_schema_model():
-    from controllers.common.schema import register_schema_model
-
-    namespace = MagicMock(spec=Namespace)
-
-    register_schema_model(namespace, UserModel)
-
-    namespace.schema_model.assert_called_once()
-
-    model_name, schema = namespace.schema_model.call_args.args
-
-    assert model_name == "UserModel"
-    assert isinstance(schema, dict)
-    assert "properties" in schema
-
-
-def test_register_schema_model_passes_schema_from_pydantic():
+def test_register_schema_model_registers_pydantic_schema():
     from controllers.common.schema import DEFAULT_REF_TEMPLATE_OPENAPI_3_0, register_schema_model
 
-    namespace = MagicMock(spec=Namespace)
+    namespace = Namespace("test")
 
     register_schema_model(namespace, UserModel)
 
-    schema = namespace.schema_model.call_args.args[1]
-
-    expected_schema = UserModel.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_OPENAPI_3_0)
-
-    assert schema == expected_schema
+    assert set(namespace.models) == {"UserModel"}
+    assert namespace.models["UserModel"].__schema__ == UserModel.model_json_schema(
+        ref_template=DEFAULT_REF_TEMPLATE_OPENAPI_3_0
+    )
 
 
 def test_register_schema_model_promotes_nested_pydantic_definitions():
     from controllers.common.schema import DEFAULT_REF_TEMPLATE_OPENAPI_3_0, register_schema_model
 
-    namespace = MagicMock(spec=Namespace)
+    namespace = Namespace("test")
 
     register_schema_model(namespace, ParentModel)
 
-    called_schemas = {call.args[0]: call.args[1] for call in namespace.schema_model.call_args_list}
     parent_schema = ParentModel.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_OPENAPI_3_0)
 
-    assert set(called_schemas) == {"ParentModel", "ChildModel"}
-    assert "$defs" not in called_schemas["ParentModel"]
-    assert called_schemas["ParentModel"]["properties"]["child"]["$ref"] == "#/components/schemas/ChildModel"
-    assert called_schemas["ChildModel"] == parent_schema["$defs"]["ChildModel"]
+    assert set(namespace.models) == {"ParentModel", "ChildModel"}
+    assert "$defs" not in namespace.models["ParentModel"].__schema__
+    assert (
+        namespace.models["ParentModel"].__schema__["properties"]["child"]["$ref"]
+        == "#/components/schemas/ChildModel"
+    )
+    assert namespace.models["ChildModel"].__schema__ == parent_schema["$defs"]["ChildModel"]
 
 
 def test_register_schema_models_registers_multiple_models():
-    from controllers.common.schema import register_schema_models
+    from controllers.common.schema import DEFAULT_REF_TEMPLATE_OPENAPI_3_0, register_schema_models
 
-    namespace = MagicMock(spec=Namespace)
+    namespace = Namespace("test")
 
     register_schema_models(namespace, UserModel, ProductModel)
 
-    assert namespace.schema_model.call_count == 2
-
-    called_names = [call.args[0] for call in namespace.schema_model.call_args_list]
-    assert called_names == ["UserModel", "ProductModel"]
-
-
-def test_register_schema_models_calls_register_schema_model(monkeypatch: pytest.MonkeyPatch):
-    from controllers.common.schema import register_schema_models
-
-    namespace = MagicMock(spec=Namespace)
-
-    calls = []
-
-    def fake_register(ns, model):
-        calls.append((ns, model))
-
-    monkeypatch.setattr(
-        "controllers.common.schema.register_schema_model",
-        fake_register,
+    assert set(namespace.models) == {"UserModel", "ProductModel"}
+    assert namespace.models["UserModel"].__schema__ == UserModel.model_json_schema(
+        ref_template=DEFAULT_REF_TEMPLATE_OPENAPI_3_0
     )
-
-    register_schema_models(namespace, UserModel, ProductModel)
-
-    assert calls == [
-        (namespace, UserModel),
-        (namespace, ProductModel),
-    ]
+    assert namespace.models["ProductModel"].__schema__ == ProductModel.model_json_schema(
+        ref_template=DEFAULT_REF_TEMPLATE_OPENAPI_3_0
+    )
 
 
 def test_register_response_schema_model_uses_serialized_field_names():
     from controllers.common.schema import register_response_schema_model
 
-    namespace = MagicMock(spec=Namespace)
+    namespace = Namespace("test")
 
     register_response_schema_model(namespace, ResponseAliasModel)
 
-    model_name, schema = namespace.schema_model.call_args.args
-
-    assert model_name == "ResponseAliasModel"
+    assert set(namespace.models) == {"ResponseAliasModel"}
+    schema = namespace.models["ResponseAliasModel"].__schema__
     assert "public_name" in schema["properties"]
     assert "internal_name" not in schema["properties"]
 
@@ -185,12 +149,11 @@ def test_register_response_schema_model_uses_serialized_field_names():
 def test_register_schema_model_preserves_openapi_nullable_unions():
     from controllers.common.schema import register_schema_model
 
-    namespace = MagicMock(spec=Namespace)
+    namespace = Namespace("test")
 
     register_schema_model(namespace, NullableSchemaModel)
 
-    called_schemas = {call.args[0]: call.args[1] for call in namespace.schema_model.call_args_list}
-    properties = called_schemas["NullableSchemaModel"]["properties"]
+    properties = namespace.models["NullableSchemaModel"].__schema__["properties"]
 
     assert properties["name"]["anyOf"] == [{"type": "string"}, {"type": "null"}]
     assert properties["tags"]["anyOf"] == [{"items": {"type": "string"}, "type": "array"}, {"type": "null"}]
@@ -236,45 +199,29 @@ def test_get_or_create_model_does_not_call_model_if_exists(mock_console_ns):
     mock_console_ns.model.assert_not_called()
 
 
-def test_register_enum_models_registers_single_enum():
+def test_register_enum_models_registers_single_enum_schema():
     from controllers.common.schema import register_enum_models
 
-    namespace = MagicMock(spec=Namespace)
+    namespace = Namespace("test")
 
     register_enum_models(namespace, StatusEnum)
 
-    namespace.schema_model.assert_called_once()
-
-    model_name, schema = namespace.schema_model.call_args.args
-
-    assert model_name == "StatusEnum"
-    assert isinstance(schema, dict)
+    assert set(namespace.models) == {"StatusEnum"}
+    schema = namespace.models["StatusEnum"].__schema__
+    assert schema["enum"] == ["active", "inactive"]
+    assert schema["type"] == "string"
 
 
-def test_register_enum_models_registers_multiple_enums():
+def test_register_enum_models_registers_multiple_enum_schemas():
     from controllers.common.schema import register_enum_models
 
-    namespace = MagicMock(spec=Namespace)
+    namespace = Namespace("test")
 
     register_enum_models(namespace, StatusEnum, PriorityEnum)
 
-    assert namespace.schema_model.call_count == 2
-
-    called_names = [call.args[0] for call in namespace.schema_model.call_args_list]
-    assert called_names == ["StatusEnum", "PriorityEnum"]
-
-
-def test_register_enum_models_uses_correct_ref_template():
-    from controllers.common.schema import register_enum_models
-
-    namespace = MagicMock(spec=Namespace)
-
-    register_enum_models(namespace, StatusEnum)
-
-    schema = namespace.schema_model.call_args.args[1]
-
-    # Verify the schema contains enum values
-    assert "enum" in schema or "anyOf" in schema
+    assert set(namespace.models) == {"StatusEnum", "PriorityEnum"}
+    assert namespace.models["StatusEnum"].__schema__["enum"] == ["active", "inactive"]
+    assert namespace.models["PriorityEnum"].__schema__["enum"] == ["high", "low"]
 
 
 def test_query_params_from_model_builds_flask_restx_doc_params():
