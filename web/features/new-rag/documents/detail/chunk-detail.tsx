@@ -13,7 +13,7 @@ import { useAtomValue } from 'jotai'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
-import { DocumentMetadataCard } from '../metadata/card'
+import { DocumentMetadataCard } from './metadata/card'
 import { chunkCharacterCount, placeDocumentMultimodalItems } from './model'
 import { DocumentMultimodalAsset } from './multimodal-asset'
 import {
@@ -23,10 +23,8 @@ import {
   documentDetailMultimodalItemsAtom,
   documentDetailSelectedChunkIdAtom,
 } from './state/content'
-import { documentDetailKnowledgeSpaceIdAtom } from './state/inputs'
 import { documentDetailDocumentAtom } from './state/queries'
 import { documentDetailRevisionAtom } from './state/revisions'
-import { documentCanEditAtom } from './state/workflow'
 
 const SELECTED_CHUNK_TOP_OFFSET = 8
 const SELECTED_CHUNK_ALIGNMENT_FRAMES = 12
@@ -276,9 +274,7 @@ export function DocumentReadingPane() {
 export function DocumentFactsSidebar() {
   const { i18n, t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
-  const canEdit = useAtomValue(documentCanEditAtom)
   const chunksComplete = useAtomValue(documentDetailChunksCompleteAtom)
-  const controlSpaceId = useAtomValue(documentDetailKnowledgeSpaceIdAtom)
   const document = useAtomValue(documentDetailDocumentAtom)
   const indexChunks = useAtomValue(documentDetailModelAtom).indexChunks
   const revision = useAtomValue(documentDetailRevisionAtom)
@@ -304,12 +300,7 @@ export function DocumentFactsSidebar() {
 
   return (
     <aside className="min-w-0 space-y-6 xl:pt-3 xl:pl-6">
-      <DocumentMetadataCard
-        canEdit={canEdit}
-        controlSpaceId={controlSpaceId}
-        document={document}
-        locale={locale}
-      />
+      <DocumentMetadataCard />
       <section>
         <dl className="space-y-3">
           <div className="flex gap-3">

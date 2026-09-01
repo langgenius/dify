@@ -537,8 +537,31 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
           : undefined,
       }
     },
-    useMutation: (options: { mutationKind?: string }) =>
-      options.mutationKind === 'cancel' ? cancelMutation : reindexMutation,
+    useMutation: (options: {
+      mutationFn?: (variables: unknown) => Promise<unknown>
+      mutationKind?: string
+      onError?: (error: unknown, variables: unknown) => void | Promise<void>
+      onSuccess?: (data: unknown, variables: unknown) => void | Promise<void>
+    }) => {
+      if (options.mutationKind === 'cancel') return cancelMutation
+      if (options.mutationKind) return reindexMutation
+
+      const mutateAsync = async (variables: unknown) => {
+        try {
+          const data = await options.mutationFn?.(variables)
+          await options.onSuccess?.(data, variables)
+          return data
+        } catch (error) {
+          await options.onError?.(error, variables)
+          throw error
+        }
+      }
+      return {
+        isPending: false,
+        mutate: (variables: unknown) => void mutateAsync(variables).catch(() => undefined),
+        mutateAsync,
+      }
+    },
     useQuery: (options: { queryKey?: readonly unknown[]; queryKind?: string }) => {
       if (options.queryKey?.includes('metadata-fields')) return metadataFieldsQuery
       if (options.queryKind === 'multimodal') return multimodalQuery

@@ -1,46 +1,44 @@
 'use client'
 
 import type { ChangeEvent } from 'react'
-import type { LogicalDocument } from '../models'
-import type { DocumentMetadataType } from './editor-model'
+import type { DocumentMetadataType } from '../../metadata/editor-model'
 import { Button } from '@langgenius/dify-ui/button'
 import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useAtomValue, useSetAtom } from 'jotai'
+import { ScopeProvider } from 'jotai-scope'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { knowledgeFsMetadataFieldsQueryOptions } from '@/service/knowledge-fs/metadata'
-import { newKnowledgeDocumentsPath } from '../../routes'
-import { logicalDocumentFromApi } from '../models'
+import { newKnowledgeDocumentsPath } from '../../../routes'
 import {
   documentMetadataDefaultValue,
   documentMetadataNameError,
   documentMetadataType,
   editableDocumentMetadataEntries,
-} from './editor-model'
-import { DocumentMetadataPicker } from './picker'
-
-type MetadataDraft = {
-  id: string
-  name: string
-  type: DocumentMetadataType
-  value: string
-}
-
-function metadataValueForInput(value: unknown, type: DocumentMetadataType) {
-  if (type === 'time' && typeof value === 'string') {
-    const date = new Date(value)
-    if (!Number.isNaN(date.getTime())) {
-      const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
-      return localDate.toISOString().slice(0, 16)
-    }
-  }
-  if (typeof value === 'string' || typeof value === 'number') return String(value)
-  if (value === undefined || value === null) return ''
-  return JSON.stringify(value)
-}
+} from '../../metadata/editor-model'
+import { DocumentMetadataPicker } from '../../metadata/picker'
+import { logicalDocumentFromApi } from '../../models'
+import { documentDetailKnowledgeSpaceIdAtom } from '../state/inputs'
+import { documentDetailDocumentAtom } from '../state/queries'
+import { documentCanEditAtom } from '../state/workflow'
+import {
+  cancelMetadataEditingAtom,
+  markMetadataCreateRetryableAtom,
+  metadataDraftsAtom,
+  metadataEditBaselineAtom,
+  metadataEditingAtom,
+  metadataEditorScopedAtoms,
+  metadataRetryableCreateNameAtom,
+  recordCreatedMetadataFieldAtom,
+  removeMetadataDraftAtom,
+  selectMetadataFieldAtom,
+  startMetadataEditingAtom,
+  updateMetadataDraftValueAtom,
+} from './state'
 
 function metadataValueFromInput(value: string, type: DocumentMetadataType) {
   if (!value) return ''
@@ -70,48 +68,26 @@ function metadataDisplayValue(value: unknown, locale: string) {
   return JSON.stringify(value)
 }
 
-function metadataDrafts(
-  document: LogicalDocument,
-  fields: readonly { name: string; type: DocumentMetadataType }[],
-): MetadataDraft[] {
-  const fieldTypes = new Map(fields.map((field) => [field.name, field.type]))
-  return editableDocumentMetadataEntries(document.userMetadata)
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([name, value]) => {
-      const type = fieldTypes.get(name) ?? documentMetadataType(value)
-      return {
-        id: `field-${name}`,
-        name,
-        type,
-        value: metadataValueForInput(value, type),
-      }
-    })
-}
-
-export function DocumentMetadataCard({
-  canEdit,
-  controlSpaceId,
-  document,
-  locale,
-}: {
-  canEdit: boolean
-  controlSpaceId: string
-  document: LogicalDocument
-  locale: string
-}) {
-  const { t } = useTranslation('dataset')
+function DocumentMetadataCardContent() {
+  const { i18n, t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
   const router = useRouter()
-  const [drafts, setDrafts] = useState<MetadataDraft[]>([])
-  const [editing, setEditing] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [creating, setCreating] = useState(false)
-  const [retryableCreateName, setRetryableCreateName] = useState<string>()
-  const [editBaseline, setEditBaseline] = useState(() => ({
-    metadata: document.userMetadata,
-    rowVersion: document.rowVersion,
-  }))
+  const canEdit = useAtomValue(documentCanEditAtom)
+  const controlSpaceId = useAtomValue(documentDetailKnowledgeSpaceIdAtom)
+  const document = useAtomValue(documentDetailDocumentAtom)
+  const drafts = useAtomValue(metadataDraftsAtom)
+  const editing = useAtomValue(metadataEditingAtom)
+  const editBaseline = useAtomValue(metadataEditBaselineAtom)
+  const retryableCreateName = useAtomValue(metadataRetryableCreateNameAtom)
+  const beginEditing = useSetAtom(startMetadataEditingAtom)
+  const cancelEditing = useSetAtom(cancelMetadataEditingAtom)
+  const markCreateRetryable = useSetAtom(markMetadataCreateRetryableAtom)
+  const recordCreatedField = useSetAtom(recordCreatedMetadataFieldAtom)
+  const removeDraft = useSetAtom(removeMetadataDraftAtom)
+  const selectField = useSetAtom(selectMetadataFieldAtom)
+  const updateDraftValue = useSetAtom(updateMetadataDraftValueAtom)
+  const locale = i18n.resolvedLanguage ?? i18n.language
   const entries = useMemo(
     () =>
       editableDocumentMetadataEntries(document.userMetadata).sort(([left], [right]) =>
@@ -164,29 +140,9 @@ export function DocumentMetadataCard({
     ])
   }
 
-  const startEditing = () => {
-    if (!canEdit) return
-    setEditBaseline({ metadata: document.userMetadata, rowVersion: document.rowVersion })
-    setDrafts(metadataDrafts(document, fields))
-    setEditing(true)
-  }
-
-  const cancelEditing = () => {
-    setDrafts([])
-    setEditing(false)
-  }
-
-  const createField = async (rawName: string, type: DocumentMetadataType) => {
-    if (!canEdit || creating) return
-    const name = rawName.trim()
-    const nameError = documentMetadataNameError(name, fields, retryableCreateName)
-    if (nameError) {
-      toast.error(t(($) => $[`metadata.checkName.${nameError}`], { max: 255 }))
-      throw new Error(`metadata name is ${nameError}`)
-    }
-
-    setCreating(true)
-    try {
+  const createFieldMutation = useMutation({
+    mutationFn: async ({ name, type }: { name: string; type: DocumentMetadataType }) => {
+      if (!editBaseline) throw new Error('Missing metadata edit baseline')
       const defaultValue = documentMetadataDefaultValue(type)
       if (retryableCreateName !== name) {
         await consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.post({
@@ -202,37 +158,61 @@ export function DocumentMetadataCard({
             document_id: document.id,
           },
         })
-      const currentDocument = logicalDocumentFromApi(response)
-      setEditBaseline({
-        metadata: currentDocument.userMetadata,
-        rowVersion: currentDocument.rowVersion,
-      })
-      setDrafts((current) => {
-        if (current.some((draft) => draft.name === name)) return current
-        return [
-          ...current,
-          {
-            id: `field-${name}`,
-            name,
-            type,
-            value: metadataValueForInput(defaultValue, type),
-          },
-        ]
-      })
-      setRetryableCreateName(undefined)
+      return { document: logicalDocumentFromApi(response), name, type, value: defaultValue }
+    },
+    onError: (_error, { name }) => {
+      markCreateRetryable(name)
+      toast.error(t(($) => $['newKnowledge.settings.saveFailed']))
+    },
+    onSuccess: async (createdField) => {
+      recordCreatedField(createdField)
       await invalidateMetadataQueries()
       toast.success(tCommon(($) => $['api.actionSuccess']))
-    } catch (error) {
-      setRetryableCreateName(name)
+    },
+  })
+
+  const saveMutation = useMutation({
+    mutationFn: async ({
+      patch,
+      rowVersion,
+    }: {
+      patch: Record<string, unknown>
+      rowVersion: number
+    }) =>
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch({
+        body: { expectedRowVersion: rowVersion, patch },
+        params: {
+          control_space_id: controlSpaceId,
+          document_id: document.id,
+        },
+      }),
+    onError: () => {
       toast.error(t(($) => $['newKnowledge.settings.saveFailed']))
-      throw error
-    } finally {
-      setCreating(false)
-    }
+    },
+    onSuccess: async () => {
+      await invalidateMetadataQueries()
+      cancelEditing()
+      toast.success(tCommon(($) => $['api.actionSuccess']))
+    },
+  })
+
+  const startEditing = () => {
+    if (canEdit) beginEditing({ document, fields })
   }
 
-  const save = async () => {
-    if (!canEdit || saving) return
+  const createField = async (rawName: string, type: DocumentMetadataType) => {
+    if (!canEdit || createFieldMutation.isPending) return
+    const name = rawName.trim()
+    const nameError = documentMetadataNameError(name, fields, retryableCreateName)
+    if (nameError) {
+      toast.error(t(($) => $[`metadata.checkName.${nameError}`], { max: 255 }))
+      throw new Error(`metadata name is ${nameError}`)
+    }
+    await createFieldMutation.mutateAsync({ name, type })
+  }
+
+  const save = () => {
+    if (!canEdit || saveMutation.isPending || !editBaseline) return
     const patch: Record<string, unknown> = {}
     const original = new Map(editableDocumentMetadataEntries(editBaseline.metadata))
     const nextNames = new Set(resolvedDrafts.map((draft) => draft.name))
@@ -249,25 +229,11 @@ export function DocumentMetadataCard({
       cancelEditing()
       return
     }
-
-    setSaving(true)
-    try {
-      await consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch({
-        body: { expectedRowVersion: editBaseline.rowVersion, patch },
-        params: {
-          control_space_id: controlSpaceId,
-          document_id: document.id,
-        },
-      })
-      await invalidateMetadataQueries()
-      cancelEditing()
-      toast.success(tCommon(($) => $['api.actionSuccess']))
-    } catch {
-      toast.error(t(($) => $['newKnowledge.settings.saveFailed']))
-    } finally {
-      setSaving(false)
-    }
+    saveMutation.mutate({ patch, rowVersion: editBaseline.rowVersion })
   }
+
+  const creating = createFieldMutation.isPending
+  const saving = saveMutation.isPending
 
   if (!editing && !entries.length)
     return (
@@ -310,20 +276,7 @@ export function DocumentMetadataCard({
             onCreate={createField}
             onManage={() => router.push(`${newKnowledgeDocumentsPath(controlSpaceId)}?metadata=1`)}
             onRetry={() => void metadataFieldsQuery.refetch()}
-            onSelect={(field) => {
-              setDrafts((current) => {
-                if (current.some((draft) => draft.name === field.name)) return current
-                return [
-                  ...current,
-                  {
-                    id: `field-${field.name}`,
-                    name: field.name,
-                    type: field.type,
-                    value: '',
-                  },
-                ]
-              })
-            }}
+            onSelect={selectField}
           />
           {drafts.length > 0 && <div className="my-3 h-px bg-divider-subtle" />}
         </div>
@@ -351,20 +304,14 @@ export function DocumentMetadataCard({
                       }
                       value={String(item.value)}
                       onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                        setDrafts((current) =>
-                          current.map((draft) =>
-                            draft.id === item.id ? { ...draft, value: event.target.value } : draft,
-                          ),
-                        )
+                        updateDraftValue({ draftId: item.id, value: event.target.value })
                       }
                     />
                     <button
                       type="button"
                       aria-label={`${tCommon(($) => $['operation.remove'])} ${item.name}`}
                       className="shrink-0 cursor-pointer rounded-md border-0 bg-transparent p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-                      onClick={() =>
-                        setDrafts((current) => current.filter((draft) => draft.id !== item.id))
-                      }
+                      onClick={() => removeDraft(item.id)}
                     >
                       <span aria-hidden className="i-ri-delete-bin-line size-4" />
                     </button>
@@ -388,7 +335,7 @@ export function DocumentMetadataCard({
           <Button
             disabled={creating}
             loading={saving}
-            onClick={() => void save()}
+            onClick={save}
             size="small"
             variant="primary"
           >
@@ -397,5 +344,15 @@ export function DocumentMetadataCard({
         </div>
       )}
     </section>
+  )
+}
+
+export function DocumentMetadataCard() {
+  const documentId = useAtomValue(documentDetailDocumentAtom).id
+
+  return (
+    <ScopeProvider key={documentId} atoms={metadataEditorScopedAtoms} name="DocumentMetadata">
+      <DocumentMetadataCardContent />
+    </ScopeProvider>
   )
 }
