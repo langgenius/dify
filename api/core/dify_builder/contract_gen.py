@@ -9,7 +9,7 @@ Regenerate after any change to those sources::
 This writes the two checked-in derived files:
 
 - ``api/core/dify_builder/contract_schema.json``
-- ``web/app/components/dify-builder/contract/types.ts``
+- ``packages/contracts/generated/dify-builder/types.ts``
 
 Both are DERIVED -- never hand-edit them. ``tests/unit_tests/core/
 dify_builder/test_contract.py::test_schema_in_lockstep`` byte-compares a
@@ -238,7 +238,7 @@ def generate() -> tuple[dict[str, Any], str]:
 
 
 def main() -> None:
-    """Write ``contract_schema.json`` + ``web/.../contract/types.ts`` to disk."""
+    """Write ``contract_schema.json`` + ``packages/contracts/generated/dify-builder/types.ts`` to disk."""
     schema, ts_source = generate()
 
     repo_root = next(p for p in Path(__file__).parents if (p / "web").is_dir() and (p / "api").is_dir())

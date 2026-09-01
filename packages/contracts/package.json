@@ -35,7 +35,7 @@
     "gen-api-contract": "pnpm run gen-api-openapi && pnpm run gen-api-contract-from-openapi",
     "gen-enterprise-contract": "openapi-ts -f openapi-ts.enterprise.config.ts && node scripts/snapshot-enterprise-openapi.ts enterprise && node scripts/generate-compatibility-sources.ts",
     "gen-enterprise-app-deploy-contract": "openapi-ts -f openapi-ts.enterprise-app-deploy.config.ts && node scripts/snapshot-enterprise-openapi.ts enterprise-app-deploy && node scripts/generate-compatibility-sources.ts",
-    "gen-dify-builder-contract": "uv run --project ../../api python -m core.dify_builder.contract_gen",
+    "gen-dify-builder-contract": "uv run --directory ../../api python -m core.dify_builder.contract_gen",
 
     "test": "vp test",
     "type-check": "tsrs --noEmit",
