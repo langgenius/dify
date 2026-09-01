@@ -67,6 +67,11 @@ function initialWorkflowState(identity: string): DocumentWorkflowState {
 
 const documentWorkflowStateAtom = atom(initialWorkflowState(''))
 
+export const documentWorkflowScopedAtoms = [
+  documentHasEditPermissionAtom,
+  documentWorkflowStateAtom,
+] as const
+
 function workflowState(get: Getter) {
   const identity = workflowIdentity(get)
   const state = get(documentWorkflowStateAtom)
