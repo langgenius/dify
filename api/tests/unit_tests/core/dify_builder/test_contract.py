@@ -255,7 +255,7 @@ def test_schema_in_lockstep():
     schema, ts = contract_gen.generate()
     root = next(p for p in Path(__file__).parents if (p / "web").is_dir() and (p / "api").is_dir())
     checked_json = (root / "api/core/dify_builder/contract_schema.json").read_text()
-    checked_ts = (root / "web/app/components/dify-builder/contract/types.ts").read_text()
+    checked_ts = (root / "packages/contracts/generated/dify-builder/types.ts").read_text()
     regen_hint = "run: uv run --directory api python -m core.dify_builder.contract_gen"
     assert json.dumps(schema, indent=2, ensure_ascii=False) + "\n" == checked_json, regen_hint
     assert ts == checked_ts, regen_hint
