@@ -27,7 +27,7 @@ function DocumentDetailContent() {
 
   if (documentIsPending)
     return (
-      <div className="flex min-h-80 items-center justify-center">
+      <div className="flex min-h-80 min-w-0 flex-1 items-center justify-center">
         <Loading />
         <span className="sr-only">{tCommon(($) => $.loading)}</span>
       </div>
