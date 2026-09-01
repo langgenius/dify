@@ -93,6 +93,35 @@ def service(repo: SqlDifyBuilderRepository, lock: FakeSessionLock, enqueued: lis
     return DifyBuilderService(repo=repo, session_lock=lock, enqueue_fn=enqueue_fn)
 
 
+@pytest.fixture
+def inmemory_service_factory_raw(repo: SqlDifyBuilderRepository, lock: FakeSessionLock):
+    """Build a ``DifyBuilderService`` (in-memory SQLite repo + fake lock) with
+    caller-supplied ``subscribe_fn``/``enqueue_fn``, for tests that need to
+    observe subscribe/dispatch ordering directly (rather than via the
+    capturing ``enqueued`` list the plain ``service`` fixture uses)."""
+
+    def _factory(subscribe_fn=None, enqueue_fn=None) -> tuple[DifyBuilderService, Actor]:
+        svc = DifyBuilderService(
+            repo=repo,
+            session_lock=lock,
+            enqueue_fn=enqueue_fn or (lambda *_a, **_k: None),
+            subscribe_fn=subscribe_fn,
+        )
+        return svc, _actor()
+
+    return _factory
+
+
+class _StateSub:
+    """Fake subscription: one terminal ``state`` frame, then closes."""
+
+    def receive(self, timeout=None):  # noqa: ARG002
+        return json.dumps({"kind": "state", "version": 2, "session_id": "sid"}).encode()
+
+    def close(self):
+        pass
+
+
 def _actor(account_id: str = ACCOUNT_ID) -> Actor:
     return Actor(account_id=account_id, tenant_id=TENANT_ID)
 
@@ -478,6 +507,49 @@ def test_submit_action_stream_raises_conflict_before_streaming(repo: SqlDifyBuil
         svc.submit_action_stream(s.id, actor, action)
 
     assert subscribed == []  # no subscription opened on a pre-flight error
+
+
+def test_create_fix_session_stream_subscribes_before_dispatch(inmemory_service_factory_raw) -> None:
+    order: list[str] = []
+    svc, actor = inmemory_service_factory_raw(
+        subscribe_fn=lambda _sid: (order.append("subscribe"), _StateSub())[1],
+        enqueue_fn=lambda *_a, **_k: order.append("enqueue"),
+    )
+
+    gen = svc.create_fix_session_stream(
+        app_id=APP_ID, actor=actor, failed_run_id="run-1", checklist_errors=None, model_config=None
+    )
+    frames = list(gen)
+
+    assert order == ["subscribe", "enqueue"]
+    assert frames[0].startswith("event: snapshot")
+
+
+def test_create_build_session_stream_subscribes_before_dispatch(inmemory_service_factory_raw) -> None:
+    order: list[str] = []
+    svc, actor = inmemory_service_factory_raw(
+        subscribe_fn=lambda _sid: (order.append("subscribe"), _StateSub())[1],
+        enqueue_fn=lambda *_a, **_k: order.append("enqueue"),
+    )
+
+    gen = svc.create_build_session_stream(app_id=APP_ID, actor=actor, goal_text="Build a report workflow")
+    frames = list(gen)
+
+    assert order == ["subscribe", "enqueue"]
+    assert frames[0].startswith("event: snapshot")
+
+
+def test_create_edit_session_stream_is_settle_only(inmemory_service_factory_raw) -> None:
+    subscribed: list[str] = []
+    svc, actor = inmemory_service_factory_raw(
+        subscribe_fn=lambda sid: subscribed.append(sid), enqueue_fn=lambda *_a, **_k: None
+    )
+
+    frames = list(svc.create_edit_session_stream(app_id=APP_ID, actor=actor, model_config=None))
+
+    assert frames == [frames[0]]  # snapshot only
+    assert frames[0].startswith("event: snapshot")
+    assert subscribed == []  # edit create dispatches no advance, so no subscription
 
 
 def test_dispatch_releases_lock_when_enqueue_fails(repo: SqlDifyBuilderRepository) -> None:
