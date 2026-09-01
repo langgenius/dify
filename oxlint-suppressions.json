@@ -2626,9 +2626,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/plugins/plugin-auth/hooks/use-get-api.ts": {
