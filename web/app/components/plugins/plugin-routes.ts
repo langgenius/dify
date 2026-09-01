@@ -37,6 +37,13 @@ const getFirstSearchParamValue = (value: string | string[] | undefined) => {
   return value
 }
 
+export const parseMarketplacePluginId = (packageId: string) => {
+  const [org, name, ...extraParts] = packageId.split('/')
+  if (!org || !name || extraParts.length || name.includes(':')) return null
+
+  return { name, org }
+}
+
 const hasInstallSearchParams = (searchParams: LegacyPluginsSearchParams) => {
   return Object.keys(searchParams).some((key) => installSearchParamKeys.has(key))
 }

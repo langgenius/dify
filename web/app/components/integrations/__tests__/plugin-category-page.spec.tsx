@@ -7,6 +7,7 @@ import PluginCategoryPage from '../plugin-category-page'
 const {
   mockContainerRef,
   mockFetchManifestFromMarketPlace,
+  mockFetchPluginInfoFromMarketPlace,
   mockSetInstallState,
   mockUseUploader,
   mockUsePluginInstallation,
@@ -14,6 +15,7 @@ const {
 } = vi.hoisted(() => ({
   mockContainerRef: { current: null },
   mockFetchManifestFromMarketPlace: vi.fn(),
+  mockFetchPluginInfoFromMarketPlace: vi.fn(),
   mockSetInstallState: vi.fn(),
   mockUseUploader: vi.fn((_: unknown) => ({
     dragging: false,
@@ -108,6 +110,8 @@ vi.mock('@/hooks/use-query-params', () => ({
 
 vi.mock('@/service/plugins', () => ({
   fetchManifestFromMarketPlace: (...args: unknown[]) => mockFetchManifestFromMarketPlace(...args),
+  fetchPluginInfoFromMarketPlace: (...args: unknown[]) =>
+    mockFetchPluginInfoFromMarketPlace(...args),
 }))
 
 type UploaderOptions = {
@@ -278,6 +282,49 @@ describe('PluginCategoryPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'close' }))
 
     expect(mockSetInstallState).toHaveBeenCalledWith(null)
+  })
+
+  it('resolves a marketplace package name before opening the installer', async () => {
+    const packageId = 'langgenius/confluence_datasource'
+    const uniqueIdentifier =
+      'langgenius/confluence_datasource:0.2.9@923a18de89d8cdb7f419d0dff60bf08a8b81b65fef6bf606cf0ce4b0ee56a9ca'
+    mockUsePluginInstallation.mockReturnValue([
+      { packageId, bundleInfo: null },
+      mockSetInstallState,
+    ])
+    mockFetchPluginInfoFromMarketPlace.mockResolvedValue({
+      data: {
+        plugin: {
+          latest_package_identifier: uniqueIdentifier,
+        },
+      },
+    })
+    mockFetchManifestFromMarketPlace.mockResolvedValue({
+      data: {
+        plugin: {
+          org: 'langgenius',
+          name: 'confluence_datasource',
+          category: PluginCategoryEnum.datasource,
+        },
+        version: { version: '0.2.9' },
+      },
+    })
+
+    render(<PluginCategoryPage category={PluginCategoryEnum.datasource} />)
+
+    await waitFor(() => {
+      expect(mockFetchPluginInfoFromMarketPlace).toHaveBeenCalledWith({
+        name: 'confluence_datasource',
+        org: 'langgenius',
+      })
+      expect(mockFetchManifestFromMarketPlace).toHaveBeenCalledWith(
+        encodeURIComponent(uniqueIdentifier),
+      )
+      expect(screen.getByTestId('install-from-marketplace')).toHaveAttribute(
+        'data-unique-identifier',
+        uniqueIdentifier,
+      )
+    })
   })
 
   it('ignores dropped files when install permission is unavailable', () => {
