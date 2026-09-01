@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import RecallSettings from '../recall-settings'
 
 const mockModelSelector = vi.hoisted(() => vi.fn())
+const mockTopKItem = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({
@@ -45,11 +46,18 @@ vi.mock('@langgenius/dify-ui/select', () => ({
 }))
 
 vi.mock('@/app/components/base/param-item/top-k-item', () => ({
-  default: (props: { onChange: (key: string, value: number) => void; value: number }) => (
-    <button type="button" onClick={() => props.onChange('top_k', 20)}>
-      top-{props.value}
-    </button>
-  ),
+  default: (props: {
+    max?: number
+    onChange: (key: string, value: number) => void
+    value: number
+  }) => {
+    mockTopKItem(props)
+    return (
+      <button type="button" onClick={() => props.onChange('top_k', 20)}>
+        top-{props.value}
+      </button>
+    )
+  },
 }))
 
 vi.mock('@/app/components/base/param-item/score-threshold-item', () => ({
@@ -86,6 +94,7 @@ describe('RecallSettings', () => {
     )
 
     expect(screen.getByText('common.modelProvider.defaultConfig')).toBeInTheDocument()
+    expect(mockTopKItem).toHaveBeenLastCalledWith(expect.objectContaining({ max: 100 }))
     expect(mockModelSelector).toHaveBeenLastCalledWith(
       expect.objectContaining({
         value: { provider: 'system/provider', model: 'system-rerank' },

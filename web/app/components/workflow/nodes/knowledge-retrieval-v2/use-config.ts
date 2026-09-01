@@ -27,6 +27,7 @@ import {
 import { useNodesReadOnly } from '../../hooks/use-workflow'
 import { VarType } from '../../types'
 import { toggleControlSpaceId } from './config-helpers'
+import { KNOWLEDGE_RETRIEVAL_V2_TOP_N_MAX } from './constants'
 
 const useConfig = (id: string, payload: KnowledgeRetrievalV2NodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -91,7 +92,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalV2NodeType) => {
 
   const handleTopNChange = useCallback(
     (topN: number) => {
-      if (!Number.isInteger(topN) || topN < 1 || topN > 100) return
+      if (!Number.isInteger(topN) || topN < 1 || topN > KNOWLEDGE_RETRIEVAL_V2_TOP_N_MAX) return
       setInputs(
         produce(inputs, (draft) => {
           draft.top_n = topN

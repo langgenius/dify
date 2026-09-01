@@ -20,6 +20,7 @@ import TopKItem from '@/app/components/base/param-item/top-k-item'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { KNOWLEDGE_RETRIEVAL_V2_TOP_N_MAX } from '../constants'
 
 const i18nPrefix = 'nodes.knowledgeRetrievalV2'
 const DEFAULT_SCORE_THRESHOLD = 0.5
@@ -186,6 +187,7 @@ const RecallSettings: FC<Props> = ({
               value={topK}
               enable
               disabled={readonly}
+              max={KNOWLEDGE_RETRIEVAL_V2_TOP_N_MAX}
               onChange={(_, value) => onTopKChange(value)}
             />
             <ScoreThresholdItem

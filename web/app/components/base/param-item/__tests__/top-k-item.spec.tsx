@@ -75,6 +75,12 @@ describe('TopKItem', () => {
       expect(input).toBeInTheDocument()
     })
 
+    it('should allow a feature-specific maximum', () => {
+      render(<TopKItem {...defaultProps} max={100} />)
+
+      expect(getSlider()).toHaveAttribute('max', '100')
+    })
+
     it('should render slider with max >= 5 so no scaling is applied', () => {
       render(<TopKItem {...defaultProps} />)
       const slider = getSlider()

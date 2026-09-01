@@ -85,7 +85,9 @@ const ParamItem: FC<Props> = ({
             max={max}
             step={step}
             value={value}
-            onValueChange={(nextValue) => onChange(id, nextValue ?? min)}
+            onValueChange={(nextValue) => {
+              if (nextValue !== null) onChange(id, nextValue)
+            }}
           >
             <NumberFieldGroup>
               <NumberFieldInput aria-label={name} className="w-18" />
