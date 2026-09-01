@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { SessionView } from '../contract/types'
+import type { SessionView } from '@dify/contracts/dify-builder'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { createStore, Provider } from 'jotai'
 import { useDifyBuilderSession } from '../use-dify-builder-session'

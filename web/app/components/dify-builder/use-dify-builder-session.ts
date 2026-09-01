@@ -1,6 +1,6 @@
 'use client'
 
-import type { SessionModel, SessionView } from './contract/types'
+import type { SessionModel, SessionView } from '@dify/contracts/dify-builder'
 import type { ChecklistErrorPayload, ProgressEntry } from './types'
 import { useAtomValue, useSetAtom, useStore } from 'jotai'
 import Cookies from 'js-cookie'

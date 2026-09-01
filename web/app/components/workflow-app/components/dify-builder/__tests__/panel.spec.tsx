@@ -1,4 +1,4 @@
-import type { SessionView } from '@/app/components/dify-builder/contract/types'
+import type { SessionView } from '@dify/contracts/dify-builder'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
