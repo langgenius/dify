@@ -56,6 +56,8 @@ Repeat the audit against the final code. Do not describe an implementation or re
 - no page, hook, provider, or Context mainly destructures, renames, and redistributes another state machine;
 - components consume focused fields, named facts, or domain commands instead of rebuilding shared business conclusions;
 - query and mutation atoms remain cache-shared, while only resettable workflow primitives or boundary snapshots are scoped;
+- a feature scope that depends on application state still observes parent/global atom updates; a fresh `Provider` is used only when full-store isolation is an explicit requirement;
+- scoped-state verification covers parent-store interoperation, sibling-instance isolation when multiple instances are supported, and semantic-identity reset;
 - every remaining multi-layer prop edge is justified as stable identity, an immutable display snapshot, placement, or a named cross-boundary command;
 - the final rendered tree, state graph, owner map, contracts, and reset boundaries match the implemented code rather than only the initial design.
 

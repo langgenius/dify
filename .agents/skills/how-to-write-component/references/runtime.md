@@ -9,6 +9,8 @@ Read this document when a change introduces Effects, navigation side effects, me
 - Do not use Effects to transform render state, handle user actions, copy query data, reset state from props, or fetch data owned by framework APIs or TanStack Query.
 - Initialize query-backed form sessions after their defaults are available instead of copying data through Effects. Use a stable semantic identity key when the represented identity changes; use the intended surface lifecycle for per-session reset.
 - When external synchronization participates in a feature state graph, prefer a small headless runtime controller that reads and writes focused atoms. Do not hide storage, polling, invalidation, and workflow refs in a giant hook that returns a state-and-handler object for another component or provider to redistribute.
+- React state is not an immediate mutex for async serializers, debounce pipelines, migrations, or latest-wins queues because state updates do not synchronously change an in-flight closure. Keep renderable progress in state, but use owner-local refs for immediate locks, active operation identities, and queued latest snapshots; update those refs before awaiting work or scheduling the corresponding state update.
+- A state value and ref may describe one workflow only when their roles are explicit: state renders the external status, while the ref coordinates events between renders. Retire both at the same success, failure, cancellation, identity-change, and unmount boundaries so neither can resurrect stale work.
 
 ## Navigation
 

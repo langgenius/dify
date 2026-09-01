@@ -21,6 +21,7 @@ Read this document when a change involves application hotkeys, focus, dialogs, m
 ## Secondary Surfaces
 
 - Follow the [overlay contract] for primitive choice and shared mechanics. The nearest consumer `AGENTS.md` owns application-specific composite reuse policy.
+- A controlled composite may emit several callbacks synchronously for one gesture, such as changing a mode and then initializing its selection. Every callback sees the same render snapshot. Compose changes through one owner command or functional state update; when later callbacks or immediate side effects require the latest draft before React rerenders, maintain an interaction-owned ref updated in the handlers and clear it at the same semantic reset boundary as the draft.
 - Separate behavior ownership from placement ownership: the action may own trigger, open state, and menu content while the caller owns slots, offsets, and alignment.
 - Keep menu and dialog surfaces as siblings when a menu command opens a dialog. Mount the dialog outside popup content.
 - Treat an action surface as a state boundary when its input feeds several sibling menus, dialogs, default values, confirmation messages, or mutation parameters. Inject the smallest stable identity or snapshot once; keep the form draft local unless other owners must react to it.

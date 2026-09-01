@@ -53,6 +53,11 @@ Keep values out of the graph when they only affect one component's presentation,
 ## Scope, Isolation, And Reset
 
 - Leave query and mutation atoms unscoped so they retain the shared QueryClient cache. Scope resettable primitives and hydration tuples; scope a derived atom only when all dependencies should be private to the surface.
+- `jotai-scope` recursively scopes the dependencies of an explicitly scoped derived or write atom. Review that transitive dependency closure, not only the provider's atom list: scoping a fact or command that reaches a query atom can also privatize route inputs, `queryClientAtom`, and other cache dependencies. Keep query-facing facts and commands outside that scope, or redesign the command to receive the event snapshot it needs instead of reading the query graph.
+- Do not add a derived fact or write command to the scoped list merely because it reads or writes scoped primitives. When consumed inside the scope, an unlisted fact or command can resolve those selected primitive dependencies from the current scope while retaining access to unscoped parent atoms; listing it instead recursively privatizes its dependency closure.
+- Prefer `ScopeProvider` when an instance must isolate selected workflow atoms while retaining access to atoms in the parent application store. A nested `Provider` or `createStore` boundary cuts interoperability with every parent atom, not only `queryClientAtom`; injecting the current QueryClient repairs cache access but does not restore other global state. Use a fresh store only when full-store isolation is intentional, then inject every required external dependency explicitly.
+- Use parent-store interoperation as the boundary test: if descendants must observe application auth, workspace, permissions, cache, or any other parent atom, a fresh `Provider` is not an instance-scope mechanism. Choose it only when the surface intentionally owns a complete store and must not observe later parent-atom updates.
+- Hydrate an unscoped route or parent-input bridge before entering `ScopeProvider`. In React, call `useHydrateAtoms` in the boundary component that returns the scope, not in a descendant rendered inside it; hooks read the nearest provider available where that component itself renders.
 - Use `atomWithLazy` or another non-null lazy primitive for required values injected by a scope provider; fail when the boundary forgot to provide them instead of inventing an empty ID.
 - Maintain the scoped primitive list explicitly. Use a semantic `key` when switching identity should create a fresh session; do not use forced hydration for an edit snapshot that must remain stable while an outer query refreshes.
 - Scope exists for per-instance isolation and natural reset, not as a general module boundary. A state file may be warranted even when its atoms remain unscoped.
@@ -67,6 +72,8 @@ Before implementation and again after the final slice, draw the actual graph in 
 - components read field selectors or named facts rather than complete query results;
 - write atoms and exported commands describe user or workflow intent;
 - scoped atoms are limited to primitives and snapshots with a documented reset boundary;
+- the scope still observes required parent/global atom updates, including the application's shared QueryClient;
+- two mounted instances do not share scoped workflow state, and a semantic identity change resets that state;
 - no equivalent value remains available through both atoms and descendant props;
 - every exported atom has a real component, boundary, or state-module consumer.
 

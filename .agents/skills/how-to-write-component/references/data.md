@@ -23,6 +23,8 @@ Read this document when a component consumes generated contracts, nullable API v
 - Share the exact options between prefetch and render when they represent the same request. Do not extract option helpers merely to reuse input construction.
 - In Jotai-backed components, consume field-level selectors or named facts rather than the complete query result unless observer methods such as `refetch` or an infinite-scroll field group are part of that owner's contract.
 - Keep observer methods inside the component that owns the query surface or behind a named graph command. A parent must not pass raw `refetch`, query keys, or invalidation details merely because a descendant action needs fresh data.
+- Treat `refetch()` as an explicit execution command: it can run a query whose observer currently has `enabled: false`. Retry and refresh commands must recheck the permission, identity, or availability condition before including conditionally enabled queries.
+- Cache writes and query-observer notifications may reach React through asynchronous batching, including when `atomWithQuery` observes an existing QueryClient. Tests that call `setQueryData`, invalidate, or complete a refetch must await the resulting DOM fact with `findBy*` or `waitFor`; do not assume the observer rerender is synchronous with the cache call.
 - Avoid pass-through service hooks that only rename generated options. Keep feature hooks for actual orchestration or shared domain behavior.
 
 ## Mutations And Cache

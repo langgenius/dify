@@ -43,6 +43,7 @@ After selecting the operating mode, read only the topic references required by t
 
 - Jotai, graph-entry decisions, form drafts, shared client state, route identity, URL state, isolation/reset, or persistence: read [`references/state.md`][state].
 - Generated contracts, nullable API data, Query, mutations, SSR, authentication, or workspace state: read [`references/data.md`][data].
+- A feature graph that combines Jotai isolation with TanStack Query atoms or commands: read both [`references/state.md`][state] and [`references/data.md`][data].
 - Hotkeys, focus, dialogs, menus, popovers, or other secondary surfaces: read [`references/interactions.md`][interactions] and the overlay guide it references when applicable. Also read [`references/state.md`][state] when the surface owns a draft or session state.
 - Effects, navigation, memoization, preloading, or render cost: read [`references/runtime.md`][runtime].
 
