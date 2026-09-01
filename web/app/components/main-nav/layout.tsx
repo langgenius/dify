@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue } from 'jotai'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -48,7 +49,7 @@ const MainNavLayout = ({ children, detailSidebar }: MainNavLayoutProps) => {
   })
 
   return (
-    <div className={MAIN_NAV_LAYOUT_CLASS_NAME}>
+    <div className={cn(MAIN_NAV_LAYOUT_CLASS_NAME, useDetailSidebar && 'flex-row')}>
       <SkipNav>{t(($) => $['navigation.skipToMain'])}</SkipNav>
       <AppDetailStoreCleanup />
       {hideMainNavigation ? null : useDetailSidebar ? detailSidebar : <MainNav />}

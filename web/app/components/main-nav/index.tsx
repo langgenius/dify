@@ -15,7 +15,7 @@ import {
 } from '@langgenius/dify-ui/drawer'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
@@ -38,6 +38,7 @@ import { MainNavSearchButton } from './components/search-button'
 import { WorkspaceCard } from './components/workspace-card'
 import {
   MAIN_NAV_DESKTOP_CLASS_NAME,
+  MAIN_NAV_DESKTOP_MEDIA_QUERY,
   MAIN_NAV_MOBILE_HEADER_CLASS_NAME,
 } from './responsive-classes'
 import { isMainNavRouteVisible, MAIN_NAV_ROUTES } from './routes'
@@ -65,6 +66,20 @@ export function MainNav({ className }: MainNavProps) {
     systemFeatures.branding.enabled && systemFeatures.branding.application_title
       ? systemFeatures.branding.application_title
       : 'Dify'
+
+  useEffect(() => {
+    if (!isMobileNavOpen) return
+
+    const desktopMediaQuery = window.matchMedia(MAIN_NAV_DESKTOP_MEDIA_QUERY)
+    const closeMobileNavAtDesktopBreakpoint = (event: MediaQueryListEvent) => {
+      if (event.matches) setIsMobileNavOpen(false)
+    }
+    desktopMediaQuery.addEventListener('change', closeMobileNavAtDesktopBreakpoint)
+
+    return () => {
+      desktopMediaQuery.removeEventListener('change', closeMobileNavAtDesktopBreakpoint)
+    }
+  }, [isMobileNavOpen])
 
   const navItems = useMemo<MainNavItem[]>(
     () =>

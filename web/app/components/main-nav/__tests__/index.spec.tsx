@@ -688,6 +688,10 @@ describe('MainNav', () => {
     mockSwitchWorkspace.mockReturnValue(new Promise(() => {}))
   })
 
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('renders primary navigation with the planned routes', () => {
     renderMainNav()
 
@@ -752,6 +756,51 @@ describe('MainNav', () => {
 
     expect(drawer).toBeInTheDocument()
     expect(within(drawer).getByRole('navigation')).toBeInTheDocument()
+  })
+
+  it('closes the mobile navigation drawer when the viewport enters the desktop breakpoint', async () => {
+    const mediaQueryListeners = new Set<(event: MediaQueryListEvent) => void>()
+    const matchMedia = vi.fn(
+      (query: string): MediaQueryList =>
+        ({
+          matches: false,
+          media: query,
+          onchange: null,
+          addEventListener: (_type: 'change', listener: (event: MediaQueryListEvent) => void) => {
+            mediaQueryListeners.add(listener)
+          },
+          removeEventListener: (
+            _type: 'change',
+            listener: (event: MediaQueryListEvent) => void,
+          ) => {
+            mediaQueryListeners.delete(listener)
+          },
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        }) as MediaQueryList,
+    )
+    vi.stubGlobal('matchMedia', matchMedia)
+    const user = userEvent.setup()
+    renderMainNav()
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'common.operation.moreActionsFor:{"name":"Dify"}',
+      }),
+    )
+    expect(await screen.findByRole('dialog', { name: 'Dify' })).toBeInTheDocument()
+    expect(matchMedia).toHaveBeenCalledWith('(min-width: 40rem)')
+
+    act(() => {
+      mediaQueryListeners.forEach((listener) => {
+        listener({ matches: true } as MediaQueryListEvent)
+      })
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Dify' })).not.toBeInTheDocument()
+    })
   })
 
   it('hides the roster entry when Agent v2 is disabled', () => {

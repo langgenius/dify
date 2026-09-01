@@ -155,7 +155,7 @@ describe('MainNavLayout', () => {
     (pathname) => {
       ;(usePathname as Mock).mockReturnValue(pathname)
 
-      render(
+      const { container } = render(
         <MainNavLayout detailSidebar={<aside aria-label="Detail sidebar">Detail sidebar</aside>}>
           <div>dataset detail</div>
         </MainNavLayout>,
@@ -169,6 +169,8 @@ describe('MainNavLayout', () => {
       expect(main).toHaveAttribute('id', 'main-content')
       expect(main).toHaveTextContent('dataset detail')
       expect(main).not.toContainElement(detailSidebar)
+      expect(container.firstElementChild).toHaveClass('flex-row')
+      expect(container.firstElementChild).not.toHaveClass('flex-col')
     },
   )
 
