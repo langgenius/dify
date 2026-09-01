@@ -89,6 +89,7 @@ def test_server_settings_defaults_to_bounded_short_lived_run_events(
 ) -> None:
     monkeypatch.delenv("DIFY_AGENT_RUN_RETENTION_SECONDS", raising=False)
     monkeypatch.delenv("DIFY_AGENT_RUN_EVENT_STREAM_MAX_LENGTH", raising=False)
+    monkeypatch.delenv("DIFY_AGENT_STREAM_TEXT_DELTA_COALESCING_ENABLED", raising=False)
     monkeypatch.delenv("DIFY_AGENT_STREAM_TEXT_DELTA_FLUSH_INTERVAL_MS", raising=False)
     monkeypatch.delenv("DIFY_AGENT_STREAM_TEXT_DELTA_MAX_CHARS", raising=False)
     monkeypatch.chdir(tmp_path)
@@ -97,18 +98,21 @@ def test_server_settings_defaults_to_bounded_short_lived_run_events(
 
     assert settings.run_retention_seconds == DEFAULT_RUN_RETENTION_SECONDS == 7200
     assert settings.run_event_stream_max_length == DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH == 5000
+    assert settings.stream_text_delta_coalescing_enabled is True
     assert settings.stream_text_delta_flush_interval_ms == 100
     assert settings.stream_text_delta_max_chars == 4096
 
 
 def test_server_settings_reads_run_event_bounds_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DIFY_AGENT_RUN_EVENT_STREAM_MAX_LENGTH", "1234")
+    monkeypatch.setenv("DIFY_AGENT_STREAM_TEXT_DELTA_COALESCING_ENABLED", "false")
     monkeypatch.setenv("DIFY_AGENT_STREAM_TEXT_DELTA_FLUSH_INTERVAL_MS", "250")
     monkeypatch.setenv("DIFY_AGENT_STREAM_TEXT_DELTA_MAX_CHARS", "2048")
 
     settings = ServerSettings()
 
     assert settings.run_event_stream_max_length == 1234
+    assert settings.stream_text_delta_coalescing_enabled is False
     assert settings.stream_text_delta_flush_interval_ms == 250
     assert settings.stream_text_delta_max_chars == 2048
 
@@ -117,7 +121,7 @@ def test_server_settings_reads_run_event_bounds_from_env(monkeypatch: pytest.Mon
     ("field", "value"),
     [
         ("run_event_stream_max_length", 0),
-        ("stream_text_delta_flush_interval_ms", -1),
+        ("stream_text_delta_flush_interval_ms", 0),
         ("stream_text_delta_max_chars", 0),
     ],
 )

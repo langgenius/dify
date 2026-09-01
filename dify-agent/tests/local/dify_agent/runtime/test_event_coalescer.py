@@ -53,6 +53,24 @@ def test_coalesces_compatible_text_deltas_and_preserves_non_text_order() -> None
     assert isinstance(result[1], PartEndEvent)
 
 
+def test_disabled_coalescing_preserves_each_source_event() -> None:
+    async def scenario() -> list[AgentStreamEvent]:
+        return await _collect(
+            coalesce_agent_stream_events(
+                _events(_delta("hel"), _delta("lo"), _part_end()),
+                enabled=False,
+                flush_interval_seconds=10,
+                max_chars=100,
+            )
+        )
+
+    result = asyncio.run(scenario())
+
+    assert len(result) == 3
+    assert [_delta_content(event) for event in result[:2]] == ["hel", "lo"]
+    assert isinstance(result[2], PartEndEvent)
+
+
 def test_does_not_merge_different_parts_or_provider_details() -> None:
     async def scenario() -> list[AgentStreamEvent]:
         return await _collect(
@@ -194,7 +212,7 @@ def test_flushes_buffer_before_consumer_cancellation() -> None:
 
 @pytest.mark.parametrize(
     ("flush_interval_seconds", "max_chars", "message"),
-    [(-0.1, 100, "non-negative"), (0.1, 0, "positive")],
+    [(-0.1, 100, "positive"), (0, 100, "positive"), (0.1, 0, "positive")],
 )
 def test_rejects_invalid_bounds(flush_interval_seconds: float, max_chars: int, message: str) -> None:
     async def scenario() -> None:

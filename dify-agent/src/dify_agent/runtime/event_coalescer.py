@@ -15,20 +15,26 @@ DEFAULT_TEXT_DELTA_MAX_CHARS = 4096
 async def coalesce_agent_stream_events(
     events: AsyncIterable[AgentStreamEvent],
     *,
+    enabled: bool = True,
     flush_interval_seconds: float = DEFAULT_TEXT_DELTA_FLUSH_INTERVAL_SECONDS,
     max_chars: int = DEFAULT_TEXT_DELTA_MAX_CHARS,
 ) -> AsyncIterator[AgentStreamEvent]:
-    """Merge compatible text deltas without delaying them past the configured interval.
+    """Merge compatible text deltas with a soft debounce interval.
 
     One source event is read ahead while a text delta is buffered. Non-text events
     flush the buffer first, preserving the public Pydantic AI event ordering. The
-    timer starts with the first buffered delta instead of sliding on every token,
-    so a continuously streaming model cannot postpone delivery indefinitely.
+    timer starts with the first buffered delta instead of sliding on every token.
+    Already-ready source events may continue to merge after the interval; the
+    interval triggers a flush once reading the next source event would block.
     """
-    if flush_interval_seconds < 0:
-        raise ValueError("flush_interval_seconds must be non-negative")
+    if flush_interval_seconds <= 0:
+        raise ValueError("flush_interval_seconds must be positive")
     if max_chars <= 0:
         raise ValueError("max_chars must be positive")
+    if not enabled:
+        async for event in events:
+            yield event
+        return
 
     iterator = aiter(events)
     next_event_task: asyncio.Future[AgentStreamEvent] | None = asyncio.ensure_future(anext(iterator))

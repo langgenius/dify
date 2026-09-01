@@ -110,6 +110,7 @@ class RunScheduler:
     store: RunStore
     shutdown_grace_seconds: float
     run_timeout_seconds: float
+    stream_text_delta_coalescing_enabled: bool
     stream_text_delta_flush_interval_seconds: float
     stream_text_delta_max_chars: int
     active_tasks: dict[str, asyncio.Task[None]]
@@ -128,6 +129,7 @@ class RunScheduler:
         dify_api_http_client: httpx.AsyncClient,
         shutdown_grace_seconds: float = 30,
         run_timeout_seconds: float = DEFAULT_AGENT_RUN_TIMEOUT_SECONDS,
+        stream_text_delta_coalescing_enabled: bool = True,
         stream_text_delta_flush_interval_seconds: float = DEFAULT_TEXT_DELTA_FLUSH_INTERVAL_SECONDS,
         stream_text_delta_max_chars: int = DEFAULT_TEXT_DELTA_MAX_CHARS,
         layer_providers: tuple[LayerProviderInput, ...] | None = None,
@@ -136,6 +138,7 @@ class RunScheduler:
         self.store = store
         self.shutdown_grace_seconds = shutdown_grace_seconds
         self.run_timeout_seconds = run_timeout_seconds
+        self.stream_text_delta_coalescing_enabled = stream_text_delta_coalescing_enabled
         self.stream_text_delta_flush_interval_seconds = stream_text_delta_flush_interval_seconds
         self.stream_text_delta_max_chars = stream_text_delta_max_chars
         self.active_tasks = {}
@@ -314,6 +317,7 @@ class RunScheduler:
             layer_providers=self.layer_providers,
             is_cancelled=is_cancelled,
             run_timeout_seconds=self.run_timeout_seconds,
+            stream_text_delta_coalescing_enabled=self.stream_text_delta_coalescing_enabled,
             stream_text_delta_flush_interval_seconds=self.stream_text_delta_flush_interval_seconds,
             stream_text_delta_max_chars=self.stream_text_delta_max_chars,
         )
