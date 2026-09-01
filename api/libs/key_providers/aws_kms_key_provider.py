@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Any, override
 
 import boto3
@@ -8,6 +9,8 @@ from Crypto.Cipher import AES
 
 from configs import dify_config
 from libs.key_providers.base import BaseKeyProvider
+
+logger = logging.getLogger(__name__)
 
 # Marker kept identical to libs/rsa.py so ciphertext produced by either provider is
 # self-describing, even though the two providers never decode each other's payloads.
@@ -24,7 +27,20 @@ _DATA_KEY_SPEC = "AES_256"
 # while acting for another, even though every tenant shares one KMS key. The context is also
 # recorded in CloudTrail and can be matched in IAM policies through the
 # kms:EncryptionContext:dify:tenant_id condition key.
+#
+# This name is part of the on-disk format: changing it makes every existing credential
+# undecryptable, because the context supplied at decrypt time would no longer match the one the
+# data key was wrapped under. The "dify:" prefix keeps it clear of the "aws:" prefix AWS reserves.
 _ENCRYPTION_CONTEXT_KEY = "dify:tenant_id"
+
+# botocore defaults both timeouts to 60s. One Decrypt is issued per encrypted field, and
+# assembling a tenant's provider configuration on a console request issues them in a loop, so the
+# defaults would let a single unreachable KMS endpoint hold a worker for 60s x attempts x fields.
+# KMS is a low-latency service; short timeouts cost nothing when it is healthy and bound the
+# damage when it is not.
+_CONNECT_TIMEOUT_SECONDS = 3
+_READ_TIMEOUT_SECONDS = 5
+_MAX_ATTEMPTS = 3
 
 
 class AwsKmsKeyProvider(BaseKeyProvider):
@@ -42,17 +58,35 @@ class AwsKmsKeyProvider(BaseKeyProvider):
     wrapped key here is a KMS CiphertextBlob produced by GenerateDataKey rather than an
     RSA-wrapped AES key.
 
-    Two deliberate differences from the Azure provider:
+    Why one shared KMS key rather than one key per tenant, as the Azure provider does?
 
-    * One symmetric KMS key serves every tenant, and tenants are separated by the encryption
-      context instead. Per-tenant KMS keys would bill per key and would need kms:CreateKey at
-      runtime, a permission operators are rightly reluctant to grant to an application. The
-      encryption context still binds each blob to its tenant cryptographically.
-    * No key version is recorded. A KMS CiphertextBlob already names the backing key that
-      produced it, and KMS retains superseded backing keys, so automatic key rotation keeps old
-      credentials decryptable with no re-encryption and nothing to pin. (Automatic rotation is
-      only offered for symmetric keys, which is a further reason not to mirror Azure's
-      per-tenant asymmetric keys here.)
+    Against the threat that dominates -- code execution inside Dify itself -- the two are
+    equivalent, and it is worth being blunt about that: a process that can decrypt for any
+    tenant on demand can decrypt for every tenant, and per-tenant keys change nothing, because
+    Dify has to be granted use of all of them anyway. Neither design contains an attacker who
+    is already running as the application. What differs is everything around that:
+
+    * Least privilege. Keys created at runtime have unguessable ARNs, so a per-tenant design
+      cannot name them in a policy: it needs kms:Decrypt on arn:aws:kms:...:key/* -- every key
+      in the account -- plus kms:CreateKey, which AWS only accepts on Resource "*". A single
+      shared key is grantable on one ARN, and the tenant boundary itself becomes expressible in
+      policy through the kms:EncryptionContext:dify:tenant_id condition key, which a per-tenant
+      design has no equivalent of. The wildcard is not academic: it is what would make the
+      substituted-ciphertext attack that decrypt() guards against below actually succeed.
+    * Cost and quota. Per-tenant keys bill monthly per key, count against a per-region key
+      quota, and cannot be reclaimed for 7-30 days after a tenant leaves.
+    * Rotation. AWS offers automatic rotation only for symmetric keys, and it needs no
+      re-encryption, so no key version has to be pinned per ciphertext the way the Azure
+      provider must pin one. A CiphertextBlob already names the backing key that produced it,
+      and KMS retains superseded backing keys, so old credentials keep decrypting.
+
+    What per-tenant keys would buy, and this design deliberately gives up: crypto-shredding,
+    i.e. making one tenant's credentials unrecoverable by destroying one key. The closest
+    equivalent here is a Deny statement conditioned on that tenant's encryption context, which
+    is an access control rather than a cryptographic one.
+
+    See README.md in this package for the threat model in full, a least-privilege key policy,
+    and the rotation/migration runbook.
     """
 
     def __init__(self):
@@ -68,12 +102,46 @@ class AwsKmsKeyProvider(BaseKeyProvider):
             # Credential resolution is left to the default boto3 chain (instance role, environment
             # variables, shared profile), so no long-lived secret has to be handed to Dify just to
             # reach the key that protects every other secret.
-            config=Config(retries={"mode": "standard"}),
+            config=Config(
+                retries={"mode": "standard", "max_attempts": _MAX_ATTEMPTS},
+                connect_timeout=_CONNECT_TIMEOUT_SECONDS,
+                read_timeout=_READ_TIMEOUT_SECONDS,
+            ),
         )
 
     @staticmethod
     def _encryption_context(tenant_id: str) -> dict[str, str]:
+        # This value is the entire tenant boundary: under a shared KMS key it is the only thing
+        # keeping one tenant's credentials away from another's. A caller that passed "" or None
+        # would quietly dissolve that boundary -- and None specifically would surface as
+        # botocore's ParamValidationError, which subclasses BotoCoreError and so would be
+        # translated below into exactly the ValueError that callers suppress, turning a
+        # programming error into credentials that silently stop being readable.
+        #
+        # TypeError rather than ValueError is deliberate: ValueError is this provider's signal
+        # for "that particular credential cannot be decrypted right now", which callers are
+        # entitled to swallow. A missing tenant identity is a broken caller and must not be
+        # swallowed.
+        if not isinstance(tenant_id, str) or not tenant_id:
+            raise TypeError(f"tenant_id must be a non-empty string, got {tenant_id!r}")
         return {_ENCRYPTION_CONTEXT_KEY: tenant_id}
+
+    @staticmethod
+    def _warn_unreadable(tenant_id: str, exc: Exception) -> None:
+        """
+        Record why a credential could not be read.
+
+        Every caller of decrypt_token_with_decoding suppresses ValueError (see
+        core/provider_manager.py), which is the right behaviour for one bad row but means a
+        *systemic* failure -- a revoked policy, a disabled or deleted key, an alias repointed at
+        a different key, KEY_PROVIDER_TYPE switched underneath existing ciphertext -- reaches
+        operators only as credentials that silently went blank, with nothing in the logs to
+        explain it. Worse, the obvious reaction is to re-enter and save the credential, which
+        overwrites ciphertext that was still recoverable.
+
+        Only the tenant id and the underlying error are logged, never ciphertext or plaintext.
+        """
+        logger.warning("Cannot read a credential for tenant %s with the AWS KMS key provider: %s", tenant_id, exc)
 
     @override
     def generate_key_pair(self, tenant_id: str) -> str:
@@ -198,6 +266,7 @@ class AwsKmsKeyProvider(BaseKeyProvider):
                 EncryptionContext=self._encryption_context(tenant_id),
             )
         except (ClientError, BotoCoreError) as exc:
+            self._warn_unreadable(tenant_id, exc)
             raise ValueError(f"Failed to unwrap credential via AWS KMS: {exc}") from exc
 
         cipher_aes = AES.new(response["Plaintext"], AES.MODE_EAX, nonce=nonce)
