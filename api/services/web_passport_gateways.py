@@ -5,6 +5,7 @@ from typing import Any
 
 from werkzeug.exceptions import Unauthorized
 
+from libs.passport import PassportService
 from services.enterprise.enterprise_service import PERMISSION_CHECK_MODES, WebAppAccessMode, WebAppSettings
 from services.web_passport_service import WebAppAuthType, WebPassportUnauthorizedError
 
@@ -34,7 +35,7 @@ class DeploymentWebPassportAuthGateway:
 
 
 class PassportTokenGateway:
-    def __init__(self, *, passport: Any) -> None:
+    def __init__(self, *, passport: PassportService) -> None:
         self._passport = passport
 
     def verify(self, token: str) -> Mapping[str, Any]:
