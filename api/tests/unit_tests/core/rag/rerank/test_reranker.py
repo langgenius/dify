@@ -880,6 +880,82 @@ class TestWeightRerankRunner:
         # Assert: Only documents above threshold are returned
         assert all(doc.metadata["score"] >= 0.5 for doc in result)
 
+    def test_score_threshold_zero_filters_negative_scores_weighted(
+        self,
+        weights_config,
+        sample_documents_with_vectors,
+    ):
+        """Regression for #41488: an enabled threshold of `0.0` must
+        filter out documents with a negative combined weighted score.
+        Pre-fix `if score_threshold and ...` short-circuited on the
+        falsy `0.0` and silently dropped the filter, so negative-score
+        documents were returned despite the user enabling a zero threshold.
+        """
+        runner = WeightRerankRunner(tenant_id="tenant123", weights=weights_config)
+
+        # Stub the two private scorers so the combined score per document
+        # is fully controlled by the test, independent of fixture internals.
+        scores_by_doc = [0.4, -0.1, 0.0]
+
+        def _kw(_self, _query, docs):
+            return list(scores_by_doc[: len(docs)])
+
+        def _cos(_self, _tenant, _query, docs, _setting):
+            return [0.0] * len(docs)
+
+        with patch.object(WeightRerankRunner, "_calculate_keyword_score", _kw), patch.object(
+            WeightRerankRunner, "_calculate_cosine", _cos
+        ):
+            result = runner.run(
+                query="test",
+                documents=sample_documents_with_vectors,
+                score_threshold=0.0,
+            )
+
+        # doc2 has combined score -0.1 and must be filtered out under an
+        # enabled threshold of 0.0. doc1 (0.4) and doc3 (0.0) survive.
+        surviving_ids = [doc.metadata["doc_id"] for doc in result]
+        assert surviving_ids == ["doc1", "doc3"]
+        for doc in result:
+            assert doc.metadata["score"] >= 0.0
+
+    def test_score_threshold_none_disables_filtering_weighted(
+        self,
+        weights_config,
+        sample_documents_with_vectors,
+    ):
+        """Regression for #41488: `None` is the only "disabled" sentinel.
+        When the user has not configured a threshold, `None` is passed
+        through and every document is returned regardless of score.
+        """
+        runner = WeightRerankRunner(tenant_id="tenant123", weights=weights_config)
+
+        # Mixed positive and negative scores — none should be filtered.
+        scores_by_doc = [0.5, -0.5, 0.0]
+
+        def _kw(_self, _query, docs):
+            return list(scores_by_doc[: len(docs)])
+
+        def _cos(_self, _tenant, _query, docs, _setting):
+            return [0.0] * len(docs)
+
+        with patch.object(WeightRerankRunner, "_calculate_keyword_score", _kw), patch.object(
+            WeightRerankRunner, "_calculate_cosine", _cos
+        ):
+            # Explicitly pass score_threshold=None (also the default).
+            result = runner.run(
+                query="test",
+                documents=sample_documents_with_vectors,
+                score_threshold=None,
+            )
+            assert len(result) == len(sample_documents_with_vectors)
+            # And the default-argument path also disables filtering.
+            result_default = runner.run(
+                query="test",
+                documents=sample_documents_with_vectors,
+            )
+            assert len(result_default) == len(sample_documents_with_vectors)
+
     def test_top_k_selection_weighted(
         self,
         weights_config,
