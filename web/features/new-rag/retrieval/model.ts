@@ -5,6 +5,11 @@ import type {
 
 export type RetrievalTestMode = 'deep' | 'fast' | 'research'
 
+export function normalizedRetrievalTestMode(mode?: string): RetrievalTestMode {
+  if (mode === 'deep' || mode === 'research') return mode
+  return 'fast'
+}
+
 export type RetrievalEvidence = {
   availability?: 'available' | 'unavailable'
   chunkId?: string

@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
@@ -21,6 +22,7 @@ import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/client'
 import { newKnowledgeDocumentDetailPath } from '../routes'
+import { retrievalKnowledgeSpaceIdAtom } from './state/inputs'
 
 export type QualityDecision = 'bad-case' | 'golden'
 export type BadCaseReason = 'low-score' | 'retrieval-miss'
@@ -77,15 +79,10 @@ async function resolveLogicalDocumentId({
   return matchingDocumentIds.size === 1 ? [...matchingDocumentIds][0] : undefined
 }
 
-function EvidenceOpenAction({
-  evidence,
-  knowledgeSpaceId,
-}: {
-  evidence: RetrievalEvidence
-  knowledgeSpaceId: string
-}) {
+function EvidenceOpenAction({ evidence }: { evidence: RetrievalEvidence }) {
   const { t } = useTranslation('dataset')
   const router = useRouter()
+  const knowledgeSpaceId = useAtomValue(retrievalKnowledgeSpaceIdAtom)
   const [isResolving, setIsResolving] = useState(false)
   if (evidence.availability === 'unavailable') return null
   const actionClassName =
@@ -159,13 +156,11 @@ export function EvidenceCard({
   citationTargeted,
   evidence,
   index,
-  knowledgeSpaceId,
 }: {
   citationTargetId?: string
   citationTargeted?: boolean
   evidence: RetrievalEvidence
   index: number
-  knowledgeSpaceId: string
 }) {
   const { t } = useTranslation('dataset')
   const unavailable = evidence.availability === 'unavailable'
@@ -245,7 +240,7 @@ export function EvidenceCard({
             </span>
           )}
           <span className="min-w-0 flex-1" />
-          <EvidenceOpenAction evidence={evidence} knowledgeSpaceId={knowledgeSpaceId} />
+          <EvidenceOpenAction evidence={evidence} />
         </footer>
       )}
     </article>

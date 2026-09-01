@@ -167,6 +167,108 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
+vi.mock('jotai-tanstack-query', async (importOriginal) => {
+  const original = await importOriginal<typeof import('jotai-tanstack-query')>()
+  const { atom, getDefaultStore } = await import('jotai')
+  type Options = { queryKey?: string[] }
+  type Getter = (target: never) => unknown
+  const queryRevisionAtom = atom(0)
+  const refreshQueryAtoms = () => {
+    const store = getDefaultStore()
+    store.set(queryRevisionAtom, store.get(queryRevisionAtom) + 1)
+  }
+  const refetchTraces = async (...args: unknown[]) => {
+    const result = await apiMock.refetchTraces(...args)
+    refreshQueryAtoms()
+    return result
+  }
+  const refetchTasks = async (...args: unknown[]) => {
+    const result = await apiMock.refetchTasks(...args)
+    refreshQueryAtoms()
+    return result
+  }
+  const queryResult = (options: Options) => {
+    const resource = options.queryKey?.[0]
+    if (resource === 'trace-detail')
+      return {
+        data: apiMock.traceDetail,
+        isError: false,
+        isPending: false,
+        refetch: vi.fn(),
+      }
+    if (resource === 'research-detail')
+      return {
+        data: apiMock.researchDetail,
+        isError: apiMock.researchDetailError,
+        isPending: apiMock.researchDetailPending,
+        refetch: apiMock.refetchResearchDetail,
+      }
+    return { data: undefined, isError: false, isPending: false, refetch: vi.fn() }
+  }
+  const infiniteQueryResult = (options: Options) => {
+    const resource = options.queryKey?.[0]
+    if (resource === 'traces')
+      return {
+        data: { pageParams: [null], pages: [{ data: apiMock.traces, next_cursor: null }] },
+        fetchNextPage: apiMock.fetchNextTraces,
+        hasNextPage: apiMock.tracesHasNextPage,
+        isError: false,
+        isFetchNextPageError: false,
+        isFetchingNextPage: false,
+        isPending: false,
+        refetch: refetchTraces,
+      }
+    if (resource === 'tasks')
+      return {
+        data: { pageParams: [null], pages: [{ data: apiMock.researchTasks, next_cursor: null }] },
+        fetchNextPage: apiMock.fetchNextTasks,
+        hasNextPage: apiMock.researchHasNextPage,
+        isError: false,
+        isFetchNextPageError: false,
+        isFetchingNextPage: false,
+        isPending: false,
+        refetch: refetchTasks,
+      }
+    if (resource === 'evidence')
+      return {
+        data: {
+          pageParams: [null],
+          pages: [apiMock.evidence ?? { data: [], next_cursor: null, truncated: false }],
+        },
+        fetchNextPage: apiMock.fetchNextEvidence,
+        hasNextPage: apiMock.evidenceHasNextPage,
+        isError: apiMock.evidenceError,
+        isFetchNextPageError: apiMock.evidenceFetchNextPageError,
+        isFetchingNextPage: false,
+        isPending: false,
+        refetch: apiMock.refetchEvidence,
+      }
+    return {
+      data: { pageParams: [null], pages: [{ data: apiMock.partials, next_cursor: null }] },
+      fetchNextPage: apiMock.fetchNextPartials,
+      hasNextPage: apiMock.partialsHasNextPage,
+      isError: apiMock.partialsError,
+      isFetchNextPageError: apiMock.partialsFetchNextPageError,
+      isFetchingNextPage: false,
+      isPending: false,
+      refetch: apiMock.refetchPartials,
+    }
+  }
+  return {
+    ...original,
+    atomWithInfiniteQuery: (getOptions: (get: Getter) => Options) =>
+      atom((get) => {
+        get(queryRevisionAtom)
+        return infiniteQueryResult(getOptions(get as Getter))
+      }),
+    atomWithQuery: (getOptions: (get: Getter) => Options) =>
+      atom((get) => {
+        get(queryRevisionAtom)
+        return queryResult(getOptions(get as Getter))
+      }),
+  }
+})
+
 vi.mock('@/service/client', () => ({
   consoleClient: {
     knowledgeFs: {
@@ -2096,10 +2198,12 @@ describe('RetrievalTestPage', () => {
     )
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.run' }))
 
-    const record = await screen.findByRole('button', {
-      name: /What is the retention window\?/,
-    })
-    expect(record).toHaveAttribute('aria-pressed', 'true')
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /What is the retention window\?/ }),
+      ).toHaveAttribute('aria-pressed', 'true'),
+    )
+    const record = screen.getByRole('button', { name: /What is the retention window\?/ })
     expect(
       within(record).getByText(
         'dataset.newKnowledge.retrievalTest.recordSummary:{"count":4,"duration":"1.3s"}',
