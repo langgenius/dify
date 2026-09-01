@@ -7,7 +7,6 @@ from pydantic import AliasChoices, BaseModel, Field, field_validator
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from configs import dify_config
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -79,11 +78,9 @@ from services.agent.observability_service import (
 )
 from services.agent.roster_service import AgentRosterService
 from services.app_service import AgentAppPublicationCounts, AppListParams, AppService, CreateAppParams
-from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
 from services.system_feature_service import SystemFeatureService
-from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 AgentPublicationStatus = Literal["published", "drafts"]
 
@@ -687,15 +684,6 @@ class AgentAppListApi(Resource):
         )
 
         app = AppService().create_app(current_tenant_id, params, current_user, session=session)
-        if dify_config.RBAC_ENABLED:
-            enterprise_rbac_service.RBACService.AppAccess.replace_whitelist(
-                current_tenant_id,
-                current_user.id,
-                str(app.id),
-                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
-            )
-            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, app_id=app.id)
-
         return _serialize_agent_app_detail(session, app, current_user=current_user), 201
 
 
