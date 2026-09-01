@@ -4,6 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual'
 import { useAtomValue, useSetAtom } from 'jotai'
+import { useQueryState } from 'nuqs'
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -20,7 +21,7 @@ import {
   loadNextDocumentChunkPageAtom,
   retryDocumentChunksAtom,
 } from './state/content'
-import { selectDocumentChunkAtom } from './state/runtime'
+import { documentDetailChunkParser } from './state/location'
 
 const VIRTUALIZATION_THRESHOLD = 80
 const TREE_ROW_SIZE = 30
@@ -77,7 +78,7 @@ export function DocumentChunkTreePanel() {
   const tree = useAtomValue(documentDetailModelAtom).tree
   const fetchNextPage = useSetAtom(loadNextDocumentChunkPageAtom)
   const retryChunks = useSetAtom(retryDocumentChunksAtom)
-  const selectChunk = useSetAtom(selectDocumentChunkAtom)
+  const [_requestedChunkId, setRequestedChunkId] = useQueryState('chunk', documentDetailChunkParser)
   const [expansionOverrides, setExpansionOverrides] = useState<{
     collapsed: Set<string>
     expanded: Set<string>
@@ -156,7 +157,7 @@ export function DocumentChunkTreePanel() {
 
   const selectNode = (node: (typeof visibleNodes)[number]['node']) => {
     setSelectedNodeId(node.id)
-    void selectChunk(node.targetChunkId)
+    void setRequestedChunkId(node.targetChunkId)
   }
 
   const handleTreeKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {

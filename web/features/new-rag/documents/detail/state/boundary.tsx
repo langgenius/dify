@@ -3,24 +3,15 @@
 import type { ReactNode } from 'react'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useHydrateAtoms } from 'jotai/utils'
-import { createParser, parseAsString, useQueryStates } from 'nuqs'
-import { useEffect, useMemo } from 'react'
+import { useQueryStates } from 'nuqs'
+import { useEffect } from 'react'
 import {
   documentDetailDocumentIdAtom,
   documentDetailKnowledgeSpaceIdAtom,
   documentDetailRequestedChunkIdAtom,
   documentDetailRequestedRevisionAtom,
 } from './inputs'
-import { documentDetailLocationRuntimeAtom } from './runtime'
-
-const documentRevisionParser = createParser<number>({
-  parse: (value) => {
-    const revision = Number(value)
-    return Number.isInteger(revision) && revision > 0 ? revision : null
-  },
-  serialize: String,
-}).withOptions({ history: 'push' })
-const documentChunkParser = parseAsString.withOptions({ history: 'replace' })
+import { documentDetailChunkParser, documentDetailRevisionParser } from './location'
 
 export function DocumentDetailStateBoundary({
   children,
@@ -31,18 +22,16 @@ export function DocumentDetailStateBoundary({
   documentId: string
   knowledgeSpaceId: string
 }) {
-  const [documentLocation, setDocumentLocation] = useQueryStates({
-    chunk: documentChunkParser,
-    revision: documentRevisionParser,
+  const [documentLocation] = useQueryStates({
+    chunk: documentDetailChunkParser,
+    revision: documentDetailRevisionParser,
   })
-  const locationRuntime = useMemo(() => ({ setDocumentLocation }), [setDocumentLocation])
 
   useHydrateAtoms([
     [documentDetailDocumentIdAtom, documentId],
     [documentDetailKnowledgeSpaceIdAtom, knowledgeSpaceId],
     [documentDetailRequestedChunkIdAtom, documentLocation.chunk],
     [documentDetailRequestedRevisionAtom, documentLocation.revision],
-    [documentDetailLocationRuntimeAtom, locationRuntime],
   ])
 
   const hydratedDocumentId = useAtomValue(documentDetailDocumentIdAtom)
@@ -51,23 +40,19 @@ export function DocumentDetailStateBoundary({
   const setKnowledgeSpaceId = useSetAtom(documentDetailKnowledgeSpaceIdAtom)
   const setRequestedChunkId = useSetAtom(documentDetailRequestedChunkIdAtom)
   const setRequestedRevision = useSetAtom(documentDetailRequestedRevisionAtom)
-  const setLocationRuntime = useSetAtom(documentDetailLocationRuntimeAtom)
 
   useEffect(() => {
     setDocumentId(documentId)
     setKnowledgeSpaceId(knowledgeSpaceId)
     setRequestedChunkId(documentLocation.chunk)
     setRequestedRevision(documentLocation.revision)
-    setLocationRuntime(locationRuntime)
   }, [
     documentId,
     documentLocation.chunk,
     documentLocation.revision,
     knowledgeSpaceId,
-    locationRuntime,
     setDocumentId,
     setKnowledgeSpaceId,
-    setLocationRuntime,
     setRequestedChunkId,
     setRequestedRevision,
   ])
