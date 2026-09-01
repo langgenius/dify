@@ -903,8 +903,9 @@ class TestWeightRerankRunner:
         def _cos(_self, _tenant, _query, docs, _setting):
             return [0.0] * len(docs)
 
-        with patch.object(WeightRerankRunner, "_calculate_keyword_score", _kw), patch.object(
-            WeightRerankRunner, "_calculate_cosine", _cos
+        with (
+            patch.object(WeightRerankRunner, "_calculate_keyword_score", _kw),
+            patch.object(WeightRerankRunner, "_calculate_cosine", _cos),
         ):
             result = runner.run(
                 query="test",
@@ -939,8 +940,9 @@ class TestWeightRerankRunner:
         def _cos(_self, _tenant, _query, docs, _setting):
             return [0.0] * len(docs)
 
-        with patch.object(WeightRerankRunner, "_calculate_keyword_score", _kw), patch.object(
-            WeightRerankRunner, "_calculate_cosine", _cos
+        with (
+            patch.object(WeightRerankRunner, "_calculate_keyword_score", _kw),
+            patch.object(WeightRerankRunner, "_calculate_cosine", _cos),
         ):
             # Explicitly pass score_threshold=None (also the default).
             result = runner.run(
