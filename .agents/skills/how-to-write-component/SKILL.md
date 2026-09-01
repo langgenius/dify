@@ -44,6 +44,15 @@ Follow this order so component splitting does not precede ownership decisions:
 5. **Interaction surfaces:** give forms, menus, dialogs, drawers, and popovers explicit lifecycle owners.
 6. **Finish and verify:** remove copied state, unnecessary Effects/wrappers/memoization/nullable coercion, then verify observable behavior at the narrowest sufficient boundary.
 
+## Patterns To Avoid
+
+- A giant component or view-model hook that returns a large props-and-handlers bag: move each state, query, fact, and command to its real owner.
+- A second owner created by copying props, URL values, or Query data into local state or atoms: bridge the authoritative owner instead.
+- Components that consume a whole query atom or repeatedly derive the same business conclusion: expose a field selector or named fact.
+- Query or mutation atoms placed in a scope, or an edit-session snapshot overwritten by forced hydration: scope only the primitives whose instances must reset.
+- Effects used to fetch data, copy render state, react to user actions, or reset from props: derive during render, handle the event, or use the owning data API.
+- Wrappers, helpers, memoization, or nullable coercion that only hide unclear ownership: fix the boundary before adding abstraction or optimization.
+
 Read the nearby implementation and tests before changing code. Implement one coherent vertical slice; do not expand into equivalent patterns elsewhere unless the current contract cannot be completed without them. Run the checks documented by the owning package: `web/docs/test.md` or `web/docs/lint.md` for Web, and `packages/dify-ui/docs/testing.md` for Dify UI.
 
 [data]: references/data.md
