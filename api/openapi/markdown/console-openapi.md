@@ -3300,7 +3300,7 @@ Create a new tracing configuration for an application
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Tracing configuration created successfully | **application/json**: [TraceAppConfigResponse](#traceappconfigresponse)<br> |
+| 201 | Tracing configuration created successfully | **application/json**: [TraceAppConfigResponse](#traceappconfigresponse)<br> |
 | 400 | Invalid request parameters or tracing configuration |  |
 | 403 | Insufficient permissions |  |
 | 404 | Application not found |  |

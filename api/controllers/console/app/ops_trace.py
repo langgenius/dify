@@ -144,7 +144,7 @@ class TraceAppConfigApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[TraceConfigPayload.__name__])
     @console_ns.response(
-        200,
+        201,
         "Tracing configuration created successfully",
         console_ns.models[TraceAppConfigResponse.__name__],
     )
@@ -188,7 +188,7 @@ class TraceAppConfigApi(Resource):
         except ValueError as error:
             raise TracingConfigProcessingError() from error
 
-        return dump_response(TraceAppConfigResponse, {"result": "success"}, exclude_none=True)
+        return dump_response(TraceAppConfigResponse, {"result": "success"}, exclude_none=True), 201
 
     @console_ns.doc("update_trace_app_config")
     @console_ns.doc(description="Update an existing tracing configuration for an application")

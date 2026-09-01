@@ -2504,6 +2504,7 @@ export const post36 = oc
     method: 'POST',
     operationId: 'postAppsByAppIdTraceConfig',
     path: '/apps/{app_id}/trace-config',
+    successStatus: 201,
     summary: 'Create a new trace app configuration',
     tags: ['console'],
   })

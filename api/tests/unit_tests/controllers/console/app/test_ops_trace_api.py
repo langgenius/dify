@@ -47,12 +47,21 @@ _MUTATION_METHODS = (
     ops_trace_module.TraceAppConfigApi.patch,
     ops_trace_module.TraceAppConfigApi.delete,
 )
-_SERVICE_METHOD_NAMES = {
-    "get": "get",
-    "post": "create",
-    "patch": "update",
-    "delete": "delete",
+_CONTROLLER_METHODS: dict[str, Callable[..., object]] = {
+    "get": ops_trace_module.TraceAppConfigApi.get,
+    "post": ops_trace_module.TraceAppConfigApi.post,
+    "patch": ops_trace_module.TraceAppConfigApi.patch,
+    "delete": ops_trace_module.TraceAppConfigApi.delete,
 }
+
+
+def _service_method(tracing_configs: MagicMock, method_name: str) -> MagicMock:
+    return {
+        "get": tracing_configs.get,
+        "post": tracing_configs.create,
+        "patch": tracing_configs.update,
+        "delete": tracing_configs.delete,
+    }[method_name]
 
 
 def _account(role: TenantAccountRole) -> Account:
@@ -218,11 +227,18 @@ def test_trace_app_config_get_configured_returns_exact_legacy_body(
     }
 
 
-@pytest.mark.parametrize("method_name", ["post", "patch"])
-def test_trace_app_config_write_returns_exact_legacy_200_body(
+@pytest.mark.parametrize(
+    ("method_name", "expected_result"),
+    [
+        pytest.param("post", ({"result": "success"}, 201), id="create"),
+        pytest.param("patch", {"result": "success"}, id="update"),
+    ],
+)
+def test_trace_app_config_write_returns_expected_response(
     app: Flask,
     tracing_configs: MagicMock,
     method_name: str,
+    expected_result: object,
 ) -> None:
     payload = ops_trace_module.TraceConfigPayload(
         tracing_provider=PROVIDER,
@@ -230,15 +246,15 @@ def test_trace_app_config_write_returns_exact_legacy_200_body(
     )
 
     with app.test_request_context("/", method=method_name.upper()):
-        result = _original(getattr(ops_trace_module.TraceAppConfigApi, method_name))(
+        result = _original(_CONTROLLER_METHODS[method_name])(
             ops_trace_module.TraceAppConfigApi(),
             payload,
             _request_context(),
             UUID(APP_ID),
         )
 
-    assert result == {"result": "success"}
-    getattr(tracing_configs, "create" if method_name == "post" else "update").assert_called_once_with(
+    assert result == expected_result
+    _service_method(tracing_configs, method_name).assert_called_once_with(
         context=_request_context(),
         app_id=APP_ID,
         tracing_provider=PROVIDER,
@@ -272,7 +288,7 @@ def test_trace_app_config_maps_missing_app_to_404(
     tracing_configs: MagicMock,
     method_name: str,
 ) -> None:
-    service_method = getattr(tracing_configs, _SERVICE_METHOD_NAMES[method_name])
+    service_method = _service_method(tracing_configs, method_name)
     service_method.side_effect = AppTracingConfigAppNotFoundError()
     query_or_payload = (
         ops_trace_module.TraceProviderQuery(tracing_provider=PROVIDER)
@@ -282,7 +298,7 @@ def test_trace_app_config_maps_missing_app_to_404(
 
     with app.test_request_context("/"):
         with pytest.raises(AppNotFoundError) as exc_info:
-            _original(getattr(ops_trace_module.TraceAppConfigApi, method_name))(
+            _original(_CONTROLLER_METHODS[method_name])(
                 ops_trace_module.TraceAppConfigApi(),
                 query_or_payload,
                 _request_context(),
@@ -427,7 +443,7 @@ def test_trace_app_config_maps_application_errors_at_the_controller_boundary(
     expected_status: int,
     expected_code: str,
 ) -> None:
-    service_method = getattr(tracing_configs, _SERVICE_METHOD_NAMES[method_name])
+    service_method = _service_method(tracing_configs, method_name)
     service_method.side_effect = service_error
     query_or_payload = (
         ops_trace_module.TraceProviderQuery(tracing_provider=PROVIDER)
@@ -437,7 +453,7 @@ def test_trace_app_config_maps_application_errors_at_the_controller_boundary(
 
     with app.test_request_context("/"):
         with pytest.raises(expected_http_error) as exc_info:
-            _original(getattr(ops_trace_module.TraceAppConfigApi, method_name))(
+            _original(_CONTROLLER_METHODS[method_name])(
                 ops_trace_module.TraceAppConfigApi(),
                 query_or_payload,
                 _request_context(),
@@ -459,7 +475,7 @@ def test_trace_app_config_maps_untyped_value_errors_to_internal_error(
     tracing_configs: MagicMock,
     method_name: str,
 ) -> None:
-    service_method = getattr(tracing_configs, _SERVICE_METHOD_NAMES[method_name])
+    service_method = _service_method(tracing_configs, method_name)
     service_method.side_effect = ValueError("internal detail")
     query_or_payload = (
         ops_trace_module.TraceProviderQuery(tracing_provider=PROVIDER)
@@ -468,7 +484,7 @@ def test_trace_app_config_maps_untyped_value_errors_to_internal_error(
     )
 
     with app.test_request_context("/"), pytest.raises(TracingConfigProcessingError) as exc_info:
-        _original(getattr(ops_trace_module.TraceAppConfigApi, method_name))(
+        _original(_CONTROLLER_METHODS[method_name])(
             ops_trace_module.TraceAppConfigApi(),
             query_or_payload,
             _request_context(),
@@ -491,7 +507,7 @@ def test_trace_app_config_does_not_mask_unexpected_errors(
     tracing_configs: MagicMock,
     method_name: str,
 ) -> None:
-    service_method = getattr(tracing_configs, _SERVICE_METHOD_NAMES[method_name])
+    service_method = _service_method(tracing_configs, method_name)
     unexpected_error = RuntimeError("unexpected")
     service_method.side_effect = unexpected_error
     query_or_payload = (
@@ -501,7 +517,7 @@ def test_trace_app_config_does_not_mask_unexpected_errors(
     )
 
     with app.test_request_context("/"), pytest.raises(RuntimeError) as exc_info:
-        _original(getattr(ops_trace_module.TraceAppConfigApi, method_name))(
+        _original(_CONTROLLER_METHODS[method_name])(
             ops_trace_module.TraceAppConfigApi(),
             query_or_payload,
             _request_context(),

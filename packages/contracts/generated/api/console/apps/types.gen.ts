@@ -5078,7 +5078,7 @@ export type PostAppsByAppIdTraceConfigErrors = {
 }
 
 export type PostAppsByAppIdTraceConfigResponses = {
-  200: TraceAppConfigResponse
+  201: TraceAppConfigResponse
 }
 
 export type PostAppsByAppIdTraceConfigResponse =
