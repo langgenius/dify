@@ -1,9 +1,10 @@
+import type { Getter } from 'jotai'
 import type { Source, SourceSyncPolicy, SourceWorkflowRun } from '../source-models'
 import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import datasetTranslations from '@/i18n/en-US/dataset.json'
-import { renderWithNuqs as render } from '@/test/nuqs-testing'
+import { renderWithNuqs } from '@/test/nuqs-testing'
 import { SourcesPage } from '../page'
 
 vi.mock('../../components/knowledge-model-readiness-banner', () => ({
@@ -115,6 +116,9 @@ const sourcesQuery = vi.hoisted(() => ({
   isPending: false,
   refetch: vi.fn(),
 }))
+const jotaiQueryMocks = vi.hoisted(() => ({
+  bump: undefined as undefined | (() => void),
+}))
 const connectionsQuery = vi.hoisted(() => ({
   data: undefined as
     | {
@@ -205,6 +209,33 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     useQueryClient: () => ({ invalidateQueries: invalidateQueriesMock }),
   }
 })
+vi.mock('jotai-tanstack-query', async (importOriginal) => {
+  const original = await importOriginal<typeof import('jotai-tanstack-query')>()
+  const { atom, getDefaultStore } = await import('jotai/vanilla')
+  const revisionAtom = atom(0)
+  jotaiQueryMocks.bump = () =>
+    getDefaultStore().set(revisionAtom, (revision: number) => revision + 1)
+
+  return {
+    ...original,
+    atomWithInfiniteQuery: (getOptions: (get: Getter) => unknown) =>
+      atom((get) => {
+        get(revisionAtom)
+        getOptions(get)
+        return {
+          ...sourcesQuery,
+          data: sourcesQuery.data
+            ? {
+                pages: sourcesQuery.data.pages.map((page) => ({
+                  data: page.items.map(sourceApiResponse),
+                  next_cursor: page.nextCursor ?? null,
+                })),
+              }
+            : undefined,
+        }
+      }),
+  }
+})
 vi.mock('@/next/navigation', () => ({
   usePathname: () => '/datasets/new/space-1/sources',
   useRouter: () => routerMock,
@@ -279,6 +310,19 @@ vi.mock('@/service/client', () => ({
     },
   },
 }))
+
+function render(...args: Parameters<typeof renderWithNuqs>) {
+  jotaiQueryMocks.bump?.()
+  const rendered = renderWithNuqs(...args)
+  const rerender = rendered.rerender
+  return {
+    ...rendered,
+    rerender: (ui: Parameters<typeof rerender>[0]) => {
+      jotaiQueryMocks.bump?.()
+      rerender(ui)
+    },
+  }
+}
 
 const source = (overrides: Partial<Source>): Source => ({
   createdAt: '2026-07-20T10:00:00Z',

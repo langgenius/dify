@@ -11,6 +11,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -20,42 +21,194 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useQueryClient } from '@tanstack/react-query'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { consoleClient, consoleQuery } from '@/service/client'
+import { useKnowledgeSpacePermission } from '../space/context'
 import { SourceEditDialog } from './source-edit-dialog'
-import { getOpenableSourceUri } from './source-list-model'
+import { createIdempotencyKey, getOpenableSourceUri } from './source-list-model'
+import {
+  initialSourceWorkflowId,
+  sourceAsyncImportWorkflowId,
+  sourceDisplayStatus,
+  sourceFromApi,
+  sourceStatusWithSyncWorkflow,
+  sourceWorkflowFromApi,
+  sourceWorkflowIsActive,
+} from './source-models'
+import {
+  acceptSourceSnapshotAtom,
+  removeSourceFromListAtom,
+  sourcesKnowledgeSpaceIdAtom,
+} from './state'
 
 export function SourceActions({
-  canEdit,
-  canRemove,
-  canSync,
-  canToggle,
-  onEdit,
-  onRemove,
-  onSync,
-  onToggle,
-  pendingAction,
+  ensureModelSetupReady,
   source,
-  syncAction,
 }: {
-  canEdit: boolean
-  canRemove: boolean
-  canSync: boolean
-  canToggle: boolean
-  onEdit: (values: SourceEditValues) => Promise<boolean>
-  onRemove: () => Promise<boolean>
-  onSync: () => Promise<boolean>
-  onToggle: () => Promise<boolean>
-  pendingAction?: SourceAction
+  ensureModelSetupReady: () => Promise<boolean>
   source: Source
-  syncAction: 'retry' | 'sync'
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
+  const queryClient = useQueryClient()
+  const knowledgeSpaceId = useAtomValue(sourcesKnowledgeSpaceIdAtom)
+  const acceptSourceSnapshot = useSetAtom(acceptSourceSnapshotAtom)
+  const removeSourceFromList = useSetAtom(removeSourceFromListAtom)
+  const canManageSources = useKnowledgeSpacePermission('knowledge_space_document_write')
+  const [pendingAction, setPendingAction] = useState<SourceAction>()
   const [menuOpen, setMenuOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
+  const syncWorkflow = source.syncWorkflow
+  const displayStatus = sourceDisplayStatus(source)
+  const initializing = displayStatus === 'initializing'
+  const initialWorkflowId = initialSourceWorkflowId(source)
+  const initialImportRetrying = Boolean(initialWorkflowId) && displayStatus === 'syncing'
+  const canEdit = canManageSources && !initializing && !initialWorkflowId
+  const canRemove = canManageSources && !initializing && !initialImportRetrying
+  const canSync = canManageSources && !initializing && displayStatus !== 'syncing'
+  const canToggle = canManageSources && !initializing && !initialWorkflowId
+  const syncAction = displayStatus === 'error' ? 'retry' : 'sync'
   const sourceUri = getOpenableSourceUri(source.uri)
+
+  const runAction = async <Result,>(
+    action: SourceAction,
+    mutation: () => Promise<Result>,
+    onAccepted?: (result: Result) => void,
+    beforeAction?: () => Promise<boolean>,
+  ) => {
+    if (pendingAction) return false
+    setPendingAction(action)
+    try {
+      if (beforeAction && !(await beforeAction())) return false
+      let result: Result
+      try {
+        result = await mutation()
+      } catch {
+        toast.error(t(($) => $['newKnowledge.sourcesErrorDescription']))
+        try {
+          await queryClient.invalidateQueries({
+            queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
+          })
+        } catch {
+          return false
+        }
+        return false
+      }
+      onAccepted?.(result)
+
+      try {
+        await queryClient.invalidateQueries(
+          {
+            queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
+          },
+          { throwOnError: true },
+        )
+      } catch {
+        // The accepted mutation is already reflected by the feature graph.
+      }
+      return true
+    } finally {
+      setPendingAction(undefined)
+    }
+  }
+
+  const applyAcceptedWorkflow = (workflow: Parameters<typeof sourceWorkflowFromApi>[0]) => {
+    const run = sourceWorkflowFromApi(workflow)
+    acceptSourceSnapshot({
+      ...source,
+      syncWorkflow: run,
+      status: sourceStatusWithSyncWorkflow(source.status, run),
+    })
+  }
+
+  const syncSource = () =>
+    runAction(
+      'sync',
+      () =>
+        consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.sync.post({
+          headers: { 'Idempotency-Key': createIdempotencyKey() },
+          params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+        }),
+      applyAcceptedWorkflow,
+      ensureModelSetupReady,
+    )
+
+  const retrySource = () => {
+    const retryWorkflowId =
+      initialWorkflowId ?? sourceAsyncImportWorkflowId(source) ?? syncWorkflow?.id
+    if (!retryWorkflowId) return syncSource()
+
+    return runAction(
+      'sync',
+      () =>
+        consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.retry.post({
+          params: { control_space_id: knowledgeSpaceId, run_id: retryWorkflowId },
+        }),
+      applyAcceptedWorkflow,
+      ensureModelSetupReady,
+    )
+  }
+
+  const toggleSource = () =>
+    runAction(
+      'toggle',
+      async () =>
+        sourceFromApi(
+          await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch({
+            body: {
+              ...(source.version === undefined ? {} : { expectedVersion: source.version }),
+              status: source.status === 'disabled' ? 'active' : 'disabled',
+            },
+            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+          }),
+        ),
+      (updatedSource) => {
+        const nextSyncWorkflow =
+          updatedSource.syncWorkflow ??
+          (sourceWorkflowIsActive(source.syncWorkflow) ? source.syncWorkflow : undefined)
+        acceptSourceSnapshot({
+          ...updatedSource,
+          lastSyncedAt: updatedSource.lastSyncedAt ?? source.lastSyncedAt,
+          status: sourceStatusWithSyncWorkflow(updatedSource.status, nextSyncWorkflow),
+          syncWorkflow: nextSyncWorkflow,
+          syncPolicy: updatedSource.syncPolicy ?? source.syncPolicy,
+        })
+      },
+    )
+
+  const editSource = (values: SourceEditValues) =>
+    runAction(
+      'edit',
+      async () =>
+        sourceFromApi(
+          await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch({
+            body: values,
+            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+          }),
+          { useResponseStatus: true },
+        ),
+      acceptSourceSnapshot,
+    )
+
+  const removeSource = () =>
+    runAction(
+      'remove',
+      async () => {
+        if (source.version === undefined) throw new Error('Source version is required')
+        return consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.delete({
+          body: { expectedRevision: source.version },
+          headers: { 'Idempotency-Key': createIdempotencyKey() },
+          params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+          query: { documents: 'keep' },
+        })
+      },
+      () => removeSourceFromList(source.id),
+    )
 
   const openEditDialog = () => {
     setMenuOpen(false)
@@ -66,6 +219,18 @@ export function SourceActions({
 
   return (
     <>
+      {canSync && displayStatus === 'error' && (
+        <Button
+          className="@min-[768px]/knowledge-content:hidden @min-[1280px]/knowledge-content:inline-flex"
+          size="small"
+          variant="secondary"
+          loading={pendingAction === 'sync'}
+          disabled={Boolean(pendingAction)}
+          onClick={() => void retrySource()}
+        >
+          {tCommon(($) => $['operation.retry'])}
+        </Button>
+      )}
       <DropdownMenu modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger
           aria-label={t(($) => $['newKnowledge.sourceActions'], { name: source.name })}
@@ -83,7 +248,7 @@ export function SourceActions({
         <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-[200px]">
           {canSync && (
             <DropdownMenuItem
-              onClick={() => void onSync()}
+              onClick={() => void (syncAction === 'retry' ? retrySource() : syncSource())}
               className="mb-px h-7 gap-2 px-2 system-sm-medium"
             >
               <span aria-hidden className="i-ri-refresh-line size-4" />
@@ -119,7 +284,7 @@ export function SourceActions({
           )}
           {canToggle && (
             <DropdownMenuItem
-              onClick={() => void onToggle()}
+              onClick={() => void toggleSource()}
               className="h-7 gap-2 px-2 system-sm-medium"
             >
               <span
@@ -157,7 +322,7 @@ export function SourceActions({
         </DropdownMenuContent>
       </DropdownMenu>
       <SourceEditDialog
-        onEdit={onEdit}
+        onEdit={editSource}
         onOpenChange={setEditDialogOpen}
         open={editDialogOpen}
         pending={pendingAction === 'edit'}
@@ -181,7 +346,7 @@ export function SourceActions({
               tone="destructive"
               loading={pendingAction === 'remove'}
               onClick={() =>
-                void onRemove().then((removed) => {
+                void removeSource().then((removed) => {
                   if (removed) setRemoveDialogOpen(false)
                 })
               }

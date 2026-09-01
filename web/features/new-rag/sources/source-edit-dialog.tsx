@@ -8,7 +8,6 @@ import type {
 import type {
   NewKnowledgeOnlineDocumentsSourceDraft,
   NewKnowledgeOnlineDriveSourceDraft,
-  NewKnowledgeSourceDraft,
 } from './setup/source-draft'
 import type { SourceEditValues } from './source-list-model'
 import type { CrawlPreviewPage, Source, SourceSyncPolicy } from './source-models'
@@ -17,11 +16,11 @@ import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { useDataSourceList } from '@/service/use-pipeline'
-import { ConnectedSourceConfiguration } from './setup/connected-source-configuration'
+import { ConnectedSourceEditForm } from './setup/connected-source-configuration'
 import { CrawlPreviewPageSelection } from './setup/crawl-selection'
 import { WebsiteDatasourceParameterForm } from './setup/datasource-parameter-form'
 import {
@@ -137,29 +136,39 @@ export function SourceEditDialog({
   pending: boolean
   source: Source
 }) {
+  const connectedDraft = connectedDraftFromSource(source)
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {open && (
+      <DialogContent
+        className={
+          connectedDraft
+            ? 'max-h-[calc(100vh-2rem)] w-180! max-w-[calc(100vw-2rem)]! overflow-y-auto'
+            : 'w-160! max-w-[calc(100vw-2rem)]!'
+        }
+      >
         <SourceEditDialogContent
+          connectedDraft={connectedDraft}
           onEdit={onEdit}
           onOpenChange={onOpenChange}
           pending={pending}
           source={source}
         />
-      )}
+      </DialogContent>
     </Dialog>
   )
 }
 
 function SourceEditDialogContent(props: {
+  connectedDraft?: ConnectedSourceDraft
   onEdit: (values: SourceEditValues) => Promise<boolean>
   onOpenChange: (open: boolean) => void
   pending: boolean
   source: Source
 }) {
-  const draft = connectedDraftFromSource(props.source)
-  if (draft) return <ConnectedSourceEditDialogContent {...props} initialDraft={draft} />
-  return <StandardSourceEditDialogContent {...props} />
+  if (props.connectedDraft)
+    return <ConnectedSourceEditDialogContent {...props} initialDraft={props.connectedDraft} />
+  if (props.source.type === 'web') return <WebsiteSourceEditDialogContent {...props} />
+  return <BasicSourceEditDialogContent {...props} />
 }
 
 function ConnectedSourceEditDialogContent({
@@ -177,8 +186,6 @@ function ConnectedSourceEditDialogContent({
 }) {
   const { t: tCommon } = useTranslation('common')
   const { t } = useTranslation('dataset')
-  const [draft, setDraft] = useState(initialDraft)
-  const [submission, setSubmission] = useState<ConnectedInitialSource>()
   const datasourcePluginsQuery = useDataSourceList(true)
   const {
     data: connectionsData,
@@ -204,10 +211,10 @@ function ConnectedSourceEditDialogContent({
     }),
   )
   const providerOptions = useMemo(
-    () => discoverSourceProviderOptions(draft.sourceType, datasourcePluginsQuery.data ?? []),
-    [datasourcePluginsQuery.data, draft.sourceType],
+    () => discoverSourceProviderOptions(initialDraft.sourceType, datasourcePluginsQuery.data ?? []),
+    [datasourcePluginsQuery.data, initialDraft.sourceType],
   )
-  const normalizedProviderName = normalizeSourceProviderName(draft.provider)
+  const normalizedProviderName = normalizeSourceProviderName(initialDraft.provider)
   const providerOption = providerOptions.find(
     (option) => normalizeSourceProviderName(option.label) === normalizedProviderName,
   )
@@ -238,32 +245,19 @@ function ConnectedSourceEditDialogContent({
         : undefined,
     [bindingReady, credentialId, datasource, installedProviderOption, pluginId, provider],
   )
-  const handleDraftChange = useCallback(
-    (nextDraft: NewKnowledgeSourceDraft) => {
-      if (nextDraft.sourceType !== initialDraft.sourceType) return
-      setDraft(nextDraft)
-      setSubmission(undefined)
-    },
-    [initialDraft.sourceType],
-  )
-  const handleInitialSourceChange = useCallback((value?: InitialSource) => {
-    if (value?.kind === 'online_document' || value?.kind === 'online_drive') setSubmission(value)
-    else setSubmission(undefined)
-  }, [])
-
   useEffect(() => {
     if (source.connectionId && !connection && hasNextPage && !isFetchingNextPage)
       void fetchNextPage()
   }, [connection, fetchNextPage, hasNextPage, isFetchingNextPage, source.connectionId])
 
-  const submitEdit = async () => {
-    if (!submission || pending) return
+  const submitEdit = async (submission: ConnectedInitialSource) => {
+    if (pending) return false
     const syncPolicy =
-      draft.syncPolicy === 'manual'
+      submission.sync_policy === 'manual'
         ? ({ enabled: false, mode: 'manual' } as const)
-        : draft.syncPolicy === 'custom'
+        : submission.sync_policy === 'custom'
           ? ({
-              customIntervalSeconds: draft.customIntervalSeconds,
+              customIntervalSeconds: submission.custom_interval_seconds,
               enabled: true,
               mode: 'custom',
             } as const)
@@ -279,6 +273,7 @@ function ConnectedSourceEditDialogContent({
       syncPolicy,
     })
     if (accepted) onOpenChange(false)
+    return accepted
   }
 
   const loading = datasourcePluginsQuery.isPending || connectionsPending
@@ -289,60 +284,148 @@ function ConnectedSourceEditDialogContent({
     (!loading && !bindingReady)
 
   return (
-    <DialogContent className="max-h-[calc(100vh-2rem)] w-180! max-w-[calc(100vw-2rem)]! overflow-y-auto">
-      <form
-        onSubmit={(event) => {
-          event.preventDefault()
-          void submitEdit()
-        }}
-      >
-        <DialogTitle className="title-xl-semi-bold text-text-primary">
-          {tCommon(($) => $['operation.edit'])} {source.name}
-        </DialogTitle>
-        <div className="mt-5">
-          {loading ? (
-            <div role="status" aria-label={tCommon(($) => $.loading)} className="py-16 text-center">
-              <span
-                aria-hidden
-                className="i-ri-loader-4-line inline-block size-5 animate-spin text-text-tertiary"
-              />
-            </div>
-          ) : unavailable || !installedProviderOption || !previewBinding ? (
-            <p role="alert" className="py-8 system-sm-regular text-text-destructive">
-              {datasourcePluginsQuery.isError || connectionsError
-                ? t(($) => $['newKnowledge.providerLoadFailed'])
-                : t(($) => $['newKnowledge.providerUnavailable'])}
-            </p>
-          ) : (
-            <ConnectedSourceConfiguration
-              disabled={pending}
-              draft={draft}
-              previewBinding={previewBinding}
-              providerOption={installedProviderOption}
-              onDraftChange={handleDraftChange}
-              onInitialSourceChange={handleInitialSourceChange}
+    <>
+      <DialogTitle className="title-xl-semi-bold text-text-primary">
+        {tCommon(($) => $['operation.edit'])} {source.name}
+      </DialogTitle>
+      <div className="mt-5">
+        {loading ? (
+          <div role="status" aria-label={tCommon(($) => $.loading)} className="py-16 text-center">
+            <span
+              aria-hidden
+              className="i-ri-loader-4-line inline-block size-5 animate-spin text-text-tertiary"
             />
-          )}
-        </div>
+          </div>
+        ) : unavailable || !installedProviderOption || !previewBinding ? (
+          <p role="alert" className="py-8 system-sm-regular text-text-destructive">
+            {datasourcePluginsQuery.isError || connectionsError
+              ? t(($) => $['newKnowledge.providerLoadFailed'])
+              : t(($) => $['newKnowledge.providerUnavailable'])}
+          </p>
+        ) : (
+          <ConnectedSourceEditForm
+            disabled={pending}
+            initialDraft={initialDraft}
+            previewBinding={previewBinding}
+            providerOption={installedProviderOption}
+            onCancel={() => onOpenChange(false)}
+            onSubmit={submitEdit}
+          />
+        )}
+      </div>
+      {(loading || unavailable) && (
         <div className="mt-6 flex justify-end gap-2">
           <Button disabled={pending} onClick={() => onOpenChange(false)} type="button">
             {tCommon(($) => $['operation.cancel'])}
           </Button>
-          <Button
-            disabled={!submission || unavailable}
-            loading={pending}
-            type="submit"
-            variant="primary"
-          >
-            {tCommon(($) => $['operation.save'])}
-          </Button>
         </div>
-      </form>
-    </DialogContent>
+      )}
+    </>
   )
 }
 
-function StandardSourceEditDialogContent({
+function BasicSourceEditDialogContent({
+  onEdit,
+  onOpenChange,
+  pending,
+  source,
+}: {
+  onEdit: (values: SourceEditValues) => Promise<boolean>
+  onOpenChange: (open: boolean) => void
+  pending: boolean
+  source: Source
+}) {
+  const { t } = useTranslation('dataset')
+  const { t: tCommon } = useTranslation('common')
+  const [initialSource] = useState(source)
+  const [nextName, setNextName] = useState(initialSource.name)
+  const [nextSyncMode, setNextSyncMode] = useState<SourceSyncPolicy['mode']>(() =>
+    sourceSyncMode(initialSource),
+  )
+  const [nextCustomIntervalHours, setNextCustomIntervalHours] = useState<number | ''>(() =>
+    sourceCustomIntervalHours(initialSource),
+  )
+  const customIntervalValid =
+    typeof nextCustomIntervalHours === 'number' &&
+    Number.isInteger(nextCustomIntervalHours) &&
+    nextCustomIntervalHours >= MIN_CUSTOM_INTERVAL_HOURS &&
+    nextCustomIntervalHours <= MAX_CUSTOM_INTERVAL_HOURS
+
+  const submitEdit = async () => {
+    const name = nextName.trim()
+    if (!name || !customIntervalValid || pending) return
+    if (
+      await onEdit({
+        expectedVersion: initialSource.version,
+        name,
+        syncPolicy: syncPolicyConfiguration(nextSyncMode, nextCustomIntervalHours as number),
+      })
+    )
+      onOpenChange(false)
+  }
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        void submitEdit()
+      }}
+    >
+      <DialogTitle className="title-xl-semi-bold text-text-primary">
+        {tCommon(($) => $['operation.edit'])} {initialSource.name}
+      </DialogTitle>
+      <div className="mt-5">
+        <Field name="sourceName" className="gap-1.5">
+          <FieldLabel htmlFor={`source-name-${initialSource.id}`}>
+            {t(($) => $['newKnowledge.sourceName'])}
+          </FieldLabel>
+          <Input
+            id={`source-name-${initialSource.id}`}
+            autoComplete="off"
+            disabled={pending}
+            maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
+            value={nextName}
+            onChange={(event) => setNextName(event.target.value)}
+          />
+        </Field>
+      </div>
+      <div className="mt-4">
+        <SyncPolicyField
+          disabled={pending}
+          label
+          triggerClassName="w-full"
+          value={{
+            customIntervalSeconds:
+              typeof nextCustomIntervalHours === 'number'
+                ? nextCustomIntervalHours * 3600
+                : undefined,
+            mode: nextSyncMode,
+          }}
+          onChange={(value) => {
+            setNextSyncMode(value.mode)
+            if (value.customIntervalSeconds)
+              setNextCustomIntervalHours(value.customIntervalSeconds / 3600)
+          }}
+        />
+      </div>
+      <div className="mt-6 flex justify-end gap-2">
+        <Button disabled={pending} onClick={() => onOpenChange(false)} type="button">
+          {tCommon(($) => $['operation.cancel'])}
+        </Button>
+        <Button
+          disabled={!nextName.trim() || !customIntervalValid}
+          loading={pending}
+          type="submit"
+          variant="primary"
+        >
+          {tCommon(($) => $['operation.save'])}
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+function WebsiteSourceEditDialogContent({
   onEdit,
   onOpenChange,
   pending,
@@ -587,7 +670,7 @@ function StandardSourceEditDialogContent({
   )
 
   return (
-    <DialogContent className="w-160! max-w-[calc(100vw-2rem)]!">
+    <>
       <form
         onSubmit={(event) => {
           event.preventDefault()
@@ -712,6 +795,6 @@ function StandardSourceEditDialogContent({
           </Button>
         </div>
       </form>
-    </DialogContent>
+    </>
   )
 }
