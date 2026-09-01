@@ -587,7 +587,7 @@ export function RetrievalSettingsSection() {
                     if (liveDraftRef.current) void performSave(liveDraftRef.current)
                   }}
                 >
-                  <NumberFieldGroup className="w-18 shrink-0">
+                  <NumberFieldGroup className="w-20 shrink-0">
                     <NumberFieldInput
                       aria-label={tAppDebug(($) => $['datasetConfig.score_threshold'])}
                       autoComplete="off"
