@@ -10,6 +10,9 @@ that is exercised by integration/e2e tests, not here.
 
 from unittest.mock import MagicMock
 
+import pytest
+from flask import Response
+
 import controllers.console.dify_builder as mod
 from controllers.console import wraps as wraps_mod
 from core.dify_builder.errors import BusyError, ConflictError, NotFoundError
@@ -251,6 +254,237 @@ def test_stream_closes_subscription_when_snapshot_is_unavailable(monkeypatch):
 
     assert (body, status) == ({"code": "not_found"}, 404)
     subscription.close.assert_called_once_with()
+
+
+# --- response_mode streaming (Task C1) --------------------------------------
+
+
+def test_is_streaming_true_for_streaming_mode():
+    assert mod._is_streaming({"response_mode": "streaming"}) is True
+
+
+def test_is_streaming_false_when_absent_or_blocking():
+    assert mod._is_streaming({"response_mode": "blocking"}) is False
+    assert mod._is_streaming({}) is False
+
+
+def test_is_streaming_false_for_non_dict_body():
+    assert mod._is_streaming("notadict") is False
+    assert mod._is_streaming(None) is False
+
+
+def test_stream_response_returns_event_stream_on_success():
+    def _frames():
+        yield "event: snapshot\ndata: {}\n\n"
+
+    def make_generator():
+        return _frames()
+
+    response = mod._stream_response(make_generator)
+
+    assert isinstance(response, Response)
+    assert response.mimetype == "text/event-stream"
+    assert response.headers["Cache-Control"] == "no-cache"
+    assert b"event: snapshot" in response.get_data()
+
+
+def test_stream_response_maps_known_error_to_http_tuple():
+    def make_generator():
+        raise ConflictError("stale")
+
+    body, status = mod._stream_response(make_generator)
+
+    assert status == 409
+    assert body == {"code": "conflict"}
+
+
+def test_stream_response_reraises_unmapped_exception():
+    def make_generator():
+        raise RuntimeError("boom")
+
+    with pytest.raises(RuntimeError):
+        mod._stream_response(make_generator)
+
+
+def test_create_streaming_build_scenario_calls_create_build_session_stream(monkeypatch):
+    svc = MagicMock()
+
+    def _frames():
+        yield "event: snapshot\ndata: {}\n\n"
+
+    svc.create_build_session_stream.return_value = _frames()
+    monkeypatch.setattr(mod, "build_service", lambda: svc)
+    actor = _actor()
+
+    response = mod._create(
+        {"scenario": "build", "app_id": "a1", "goal_text": "Build it", "response_mode": "streaming"}, actor
+    )
+
+    assert isinstance(response, Response)
+    assert response.mimetype == "text/event-stream"
+    svc.create_build_session_stream.assert_called_once()
+    svc.create_fix_session_stream.assert_not_called()
+    svc.create_build_session.assert_not_called()
+
+
+def test_create_streaming_edit_scenario_calls_create_edit_session_stream(monkeypatch):
+    svc = MagicMock()
+
+    def _frames():
+        yield "event: snapshot\ndata: {}\n\n"
+
+    svc.create_edit_session_stream.return_value = _frames()
+    monkeypatch.setattr(mod, "build_service", lambda: svc)
+    actor = _actor()
+
+    response = mod._create({"scenario": "edit", "app_id": "a1", "response_mode": "streaming"}, actor)
+
+    assert isinstance(response, Response)
+    assert response.mimetype == "text/event-stream"
+    svc.create_edit_session_stream.assert_called_once()
+    svc.create_fix_session_stream.assert_not_called()
+
+
+def test_create_streaming_defaults_to_fix_scenario(monkeypatch):
+    svc = MagicMock()
+
+    def _frames():
+        yield "event: snapshot\ndata: {}\n\n"
+
+    svc.create_fix_session_stream.return_value = _frames()
+    monkeypatch.setattr(mod, "build_service", lambda: svc)
+    actor = _actor()
+
+    response = mod._create(
+        {"app_id": "a1", "failed_run_id": "TR-1", "checklist_errors": [], "response_mode": "streaming"}, actor
+    )
+
+    assert isinstance(response, Response)
+    assert response.mimetype == "text/event-stream"
+    svc.create_fix_session_stream.assert_called_once()
+    svc.create_build_session_stream.assert_not_called()
+    svc.create_edit_session_stream.assert_not_called()
+
+
+def test_create_streaming_maps_conflict_to_http_tuple(monkeypatch):
+    svc = MagicMock()
+    svc.create_fix_session_stream.side_effect = ConflictError("stale")
+    monkeypatch.setattr(mod, "build_service", lambda: svc)
+    actor = _actor()
+
+    body, status = mod._create({"app_id": "a1", "response_mode": "streaming"}, actor)
+
+    assert status == 409
+    assert body == {"code": "conflict"}
+
+
+def test_create_blocking_path_unchanged_when_response_mode_absent(monkeypatch):
+    svc = MagicMock()
+    svc.create_fix_session.return_value = _session_view()
+    monkeypatch.setattr(mod, "build_service", lambda: svc)
+    actor = _actor()
+
+    body, status = mod._create({"app_id": "a1"}, actor)
+
+    assert status == 201
+    assert body["session_id"] == "s1"
+    svc.create_fix_session_stream.assert_not_called()
+
+
+def test_action_streaming_returns_event_stream(monkeypatch):
+    svc = MagicMock()
+
+    def _frames():
+        yield "event: snapshot\ndata: {}\n\n"
+        yield 'event: state\ndata: {"version": 2}\n\n'
+
+    svc.submit_action_stream.return_value = _frames()
+    monkeypatch.setattr(mod, "build_service", lambda: svc)
+    actor = _actor()
+
+    response = mod._action(
+        "s1", {"action_id": "run_verify", "payload": {}, "base_version": 1, "response_mode": "streaming"}, actor
+    )
+
+    assert isinstance(response, Response)
+    assert response.mimetype == "text/event-stream"
+    data = response.get_data()
+    assert b"event: state" in data
+    called = svc.submit_action_stream.call_args
+    assert called.args[0] == "s1"
+    assert called.args[1] == actor
+    assert called.args[2].kind == "run_verify"
+    svc.submit_action.assert_not_called()
+
+
+def test_action_streaming_maps_conflict_to_http_tuple(monkeypatch):
+    svc = MagicMock()
+    svc.submit_action_stream.side_effect = ConflictError("stale")
+    monkeypatch.setattr(mod, "build_service", lambda: svc)
+    actor = _actor()
+
+    body, status = mod._action(
+        "s1", {"action_id": "run_verify", "payload": {}, "base_version": 1, "response_mode": "streaming"}, actor
+    )
+
+    assert status == 409
+    assert body == {"code": "conflict"}
+
+
+def test_action_blocking_still_returns_json(monkeypatch):
+    svc = MagicMock()
+    svc.submit_action.return_value = _session_view()
+    monkeypatch.setattr(mod, "build_service", lambda: svc)
+    actor = _actor()
+
+    body, status = mod._action("s1", {"kind": "run_verify", "payload": {}, "base_version": 1}, actor)
+
+    assert status == 200
+    assert body["session_id"] == "s1"
+    svc.submit_action_stream.assert_not_called()
+
+
+def test_message_streaming_returns_event_stream(monkeypatch):
+    svc = MagicMock()
+
+    def _frames():
+        yield "event: snapshot\ndata: {}\n\n"
+
+    svc.submit_message_stream.return_value = _frames()
+    monkeypatch.setattr(mod, "build_service", lambda: svc)
+    actor = _actor()
+
+    response = mod._message("s1", {"text": "hi", "base_version": 2, "response_mode": "streaming"}, actor)
+
+    assert isinstance(response, Response)
+    assert response.mimetype == "text/event-stream"
+    svc.submit_message_stream.assert_called_once_with("s1", actor, "hi", 2)
+    svc.submit_message.assert_not_called()
+
+
+def test_message_streaming_maps_conflict_to_http_tuple(monkeypatch):
+    svc = MagicMock()
+    svc.submit_message_stream.side_effect = ConflictError("stale")
+    monkeypatch.setattr(mod, "build_service", lambda: svc)
+    actor = _actor()
+
+    body, status = mod._message("s1", {"text": "hi", "base_version": 2, "response_mode": "streaming"}, actor)
+
+    assert status == 409
+    assert body == {"code": "conflict"}
+
+
+def test_message_blocking_still_returns_json(monkeypatch):
+    svc = MagicMock()
+    svc.submit_message.return_value = _session_view()
+    monkeypatch.setattr(mod, "build_service", lambda: svc)
+    actor = _actor()
+
+    body, status = mod._message("s1", {"text": "hi", "base_version": 2}, actor)
+
+    assert status == 200
+    assert body["session_id"] == "s1"
+    svc.submit_message_stream.assert_not_called()
 
 
 # --- dify_builder_required gate -----------------------------------------
