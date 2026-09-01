@@ -97,8 +97,6 @@ class FilePreviewApi(Resource):
         """
         file_id_str = str(file_id)
 
-        # Parse query parameters
-
         # Validate file ownership and get file objects
         _, upload_file = self._validate_file_ownership(file_id_str, app_model.id)
 
