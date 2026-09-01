@@ -8,6 +8,7 @@ Read this document when a change introduces Effects, navigation side effects, me
 - Use Effects only to synchronize with a named external system such as a browser API, subscription, timer, analytics integration, non-React widget, or imperative DOM API.
 - Do not use Effects to transform render state, handle user actions, copy query data, reset state from props, or fetch data owned by framework APIs or TanStack Query.
 - Initialize query-backed form sessions after their defaults are available instead of copying data through Effects. Use a stable semantic identity key when the represented identity changes; use the intended surface lifecycle for per-session reset.
+- When external synchronization participates in a feature state graph, prefer a small headless runtime controller that reads and writes focused atoms. Do not hide storage, polling, invalidation, and workflow refs in a giant hook that returns a state-and-handler object for another component or provider to redistribute.
 
 ## Navigation
 

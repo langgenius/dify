@@ -17,6 +17,8 @@ For a named component, use it as the audit root. For a refactoring request, use 
 
 The audit is incomplete until every locally owned rendered path, meaningful props edge, and stateful value is represented in the component tree, state inventory, or props-edge ledger; every current local component has a target disposition; and every current state/workflow owner maps to a target component and reset boundary. Correctness bugs may illustrate an ownership defect, but architecture-audit mode does not prioritize or severity-rank bug findings.
 
+For implementation work, repeat this audit against the final code. A target diagram written before implementation is not evidence that ownership changed. Record remaining route identities, query mechanics, refs, snapshots, and commands that cross each boundary; unexplained leftovers mean the refactor is incomplete.
+
 ## Vertical Modules
 
 - Organize code by product workflow, route, or behavior owner. Keep components, hooks, local types, atoms, query helpers, tests, and small utilities beside the code that changes with them.
@@ -29,7 +31,8 @@ The audit is incomplete until every locally owned rendered path, meaningful prop
 
 - Before declaring state, a query, or a workflow hook in a page or parent, identify the direct descendant branches that consume each returned value.
 - If only one branch consumes a value, declare it in the lowest owner in that branch. The parent may pass stable identity or the smallest boundary input, but must not own child state merely to construct props.
-- A parent may own a value when several sibling branches require one live snapshot and the parent genuinely derives or coordinates submission, selection, navigation, lifecycle, loading, or errors. If it only destructures, renames, and forwards fields, it is a switchboard rather than an owner; put the shared workflow in a feature-local state graph or provider so each surface consumes only its named facts and commands.
+- A parent may own a value when several sibling branches require one live snapshot and the parent genuinely derives or coordinates submission, selection, navigation, lifecycle, loading, or errors. If it only destructures, renames, and forwards fields, it is a switchboard rather than an owner; put the shared workflow in a feature-local state graph so each surface consumes only its named facts and commands. Use a provider only when it becomes the authoritative input, scope, or external-dependency owner.
+- A provider is a real boundary only when it establishes authoritative input, scope/isolation, or a stable external dependency. A provider that calls a large hook and repackages its return value into Context remains a switchboard.
 - A page or feature root may wire route identity, providers, layout, navigation, and genuine cross-surface coordination. It must not call a child-specific state or query hook merely to assemble that child's props.
 - Keep child contracts at the ownership boundary: stable domain identity, a small immutable snapshot, placement options, or named cross-boundary commands. Do not pass an internal state machine as separate `data`, `pending`, `error`, `retry`, `open`, setter, and callback props when the parent does not use them, and do not hide the same fan-out in a props bag or hook result object.
 - Repeated TanStack Query calls in siblings are acceptable when each sibling independently consumes the data; the cache already deduplicates requests.
@@ -38,6 +41,8 @@ The audit is incomplete until every locally owned rendered path, meaningful prop
   - If the child builds queries, dialogs, mutations, derivations, commands, or a reset lifecycle around a stable identity or snapshot, give that boundary a feature-local state file. This does not by itself require a new module or directory.
 - Pass stable domain identity or the smallest sufficient action snapshot across boundaries. Do not copy props into atoms merely to avoid passing them, and do not pass raw server data together with separately derived flags for the same concept.
 - One pass-through layer is acceptable for stable identity and placement. It is not permission to relay workflow state and handlers through an unrelated component.
+- Route identity may pass once from a framework route into its feature boundary. If multiple descendants, queries, facts, or commands need it, bridge it into the feature graph and stop passing it as props.
+- A query snapshot may cross once as immutable display input. Query keys, observer methods, retry/loading/error groups, and invalidation mechanics belong to the query surface or feature graph and must not be decomposed into props.
 - Keep source selection, defaults, validation, dirty checks, and payload shaping beside the workflow that owns submission.
 
 ## Boundaries

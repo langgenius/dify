@@ -8,6 +8,8 @@ First identify the owner or source of truth: one component, a parent boundary, U
 
 A value should enter a feature state graph when it drives a query or command, feeds a reusable derivation, is consumed by another owner, or bridges an external source for several consumers. Entering the graph does not transfer ownership from URL APIs or Query cache to Jotai.
 
+Once a value enters the graph, represent it in a feature-local Jotai state file by default. Do not leave graph inputs and async nodes inside a component or large custom hook while exporting only the final result through props or Context; that hides the dependency graph instead of modeling it.
+
 Keep values out of the graph when they only affect one component's presentation, are read only at form submission, or are one-off render computations without domain meaning.
 
 ## Choose The Owner
@@ -16,6 +18,7 @@ Keep values out of the graph when they only affect one component's presentation,
 - Use feature-scoped Jotai when siblings need one source of truth, values drive other atoms, a parent input establishes its own state graph, or a scoped workflow must preserve state across hidden or unmounted steps.
 - Keep server and cache state in TanStack Query. Use existing feature stores for complex, high-frequency interaction state such as workflow canvas drag, resize, and runtime panels.
 - Use feature-owned storage only for low-frequency client preferences, dismissed notices, and UI defaults. Live application state does not belong in local storage.
+- Use Context for an existing authoritative product boundary or stable dependency injection. Do not introduce Context merely to translate a hook result, query observer, or prop fan-out into another large value object.
 
 ## Forms And Sessions
 
@@ -31,6 +34,7 @@ Keep values out of the graph when they only affect one component's presentation,
 - A single consumer should read the owner hook directly. Hydrate an unscoped primitive atom at the route or surface boundary only when several consumers, query atoms, or shared derived atoms require route identity. Keep URL writes in route and query-state APIs.
 - A route bridge that must follow later URL changes needs explicit re-hydration behavior, commonly `dangerouslyForceHydrate: true` at that controlled boundary. A scoped workflow input is different: initialize it once, key the scope by semantic identity when switching entities should reset it, and do not force later parent refreshes into an in-progress session.
 - Within one route-owned feature, choose one route-identity source. Do not hydrate route identity into atoms while also threading the same ID through multiple component layers.
+- A route parameter may cross the route-to-feature entry edge once. After a route bridge exists, queries, facts, commands, and descendant surfaces must read that bridge instead of accepting the same ID as props.
 - Put shareable filters, tabs, pagination, and search state in the URL. Keep one-shot navigation signals and transient UI state out of persistent subscriptions.
 
 ## Build A Clean Jotai Graph
@@ -42,6 +46,8 @@ Keep values out of the graph when they only affect one component's presentation,
 - Use `atomWithQuery` or `atomWithMutation` for async work driven by atom state. Do not hand-roll loading, error, or in-flight state for atom-orchestrated work.
 - Use `selectAtom` or another field-specific derived atom for query results. `jotai-tanstack-query` does not provide TanStack Query tracked properties, so reading a whole query atom subscribes to the entire observer result. Read the whole result only when the consumer truly needs observer methods or a coordinated group of fields.
 - Name derived atoms as business facts and write atoms as user or workflow commands. Commands should express actions such as selecting a source or submitting a wizard, not merely rename setter callbacks.
+- Treat query keys, observer methods, cache invalidation, retries, and refresh composition as graph internals. Export a named command such as `refreshDocument`, not the query key plus a raw `refetch` callback.
+- A headless runtime controller may synchronize atoms with storage, timers, subscriptions, or other external systems. It should read and write focused graph nodes and render no UI; it must not return a large object for a parent to redistribute.
 
 ## Scope, Isolation, And Reset
 
@@ -50,6 +56,18 @@ Keep values out of the graph when they only affect one component's presentation,
 - Maintain the scoped primitive list explicitly. Use a semantic `key` when switching identity should create a fresh session; do not use forced hydration for an edit snapshot that must remain stable while an outer query refreshes.
 - Scope exists for per-instance isolation and natural reset, not as a general module boundary. A state file may be warranted even when its atoms remain unscoped.
 - Keep independent dialog lifecycles separate. A scoped open-state atom is acceptable only when composed sibling surfaces would otherwise pass confusing lifecycle props through unrelated owners.
+
+## Graph Review Checklist
+
+Before implementation and again after the final slice, draw the actual graph in dependency order and verify:
+
+- every route, URL, parent, and persisted input has one bridge;
+- every query driven by graph input is represented in the graph and remains unscoped;
+- components read field selectors or named facts rather than complete query results;
+- write atoms and exported commands describe user or workflow intent;
+- scoped atoms are limited to primitives and snapshots with a documented reset boundary;
+- no equivalent value remains available through both atoms and descendant props;
+- every exported atom has a real component, boundary, or state-module consumer.
 
 ## Persistence
 
