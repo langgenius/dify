@@ -1,6 +1,19 @@
 # Component Ownership And Modules
 
-Read this document when adding, moving, splitting, or refactoring React components or feature modules.
+Read this document when auditing, adding, moving, splitting, or refactoring React components or feature modules.
+
+## Root-To-Leaf Architecture Audit
+
+For a named component, use it as the audit root. For a refactoring request, use the nearest route, page, feature entrypoint, or behavior owner whose state contract is changing.
+
+1. Build the complete locally owned rendered component tree from the root to every leaf. Follow imported feature components, conditional branches, lists, portals, dialogs, drawers, popovers, and secondary surfaces. Stop at third-party primitives, Dify UI primitives, or an explicit stable feature boundary, but record the props passed across the final edge.
+2. At every component, inventory React state and reducers, form and uncontrolled DOM state, URL and route state, context/Jotai/store reads and writes, queries, mutations, refs that hold workflow or lifecycle state, custom-hook results, render-time derived facts, and workflow commands or handlers.
+3. For every value, record its authoritative owner/source, graph role, declaring component, consuming branches, lifetime and reset/isolation requirements, and whether it is local, shared, forwarded, mirrored, or persisted.
+4. Inspect every props edge. Mark each prop as consumed by the child, forwarded unchanged, renamed, recomputed, mirrored into local state, or paired with lifecycle fields such as `data/pending/error/retry` and `open/onOpenChange`.
+5. Evaluate ownership only after the complete paths are mapped. A value consumed by one branch belongs in the lowest owner in that branch. A parent may own a value when several sibling branches require one live snapshot or coordinated lifecycle. A parent that mainly destructures a workflow hook and redistributes fields is a switchboard, not necessarily the workflow owner.
+6. Produce both the current and target architecture before recommending component splits. Group related ownership problems at the highest incorrect owner instead of repeating the same issue for every descendant. Do not replace prop fan-out with a props bag, context, or state graph unless the new boundary becomes the real owner and exposes narrower facts and commands.
+
+The audit is incomplete until every locally owned rendered path, meaningful props edge, and stateful value is represented in the component tree, state inventory, or props-edge ledger. Correctness bugs may illustrate an ownership defect, but architecture-audit mode does not prioritize or severity-rank bug findings.
 
 ## Vertical Modules
 

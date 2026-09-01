@@ -1,8 +1,8 @@
 ## Frontend Workflow
 
 - Read `docs/test.md` only for frontend test work and `docs/lint.md` only when running or changing static checks.
-- Use the repo-local `how-to-write-component` skill when implementation requires component ownership, state, data-flow, effect, or interaction-boundary decisions. Do not load it for test-only, copy-only, or styling-only changes.
-- Use `frontend-code-review` only for explicit frontend review or audit requests, including test reviews. Use `frontend-testing` when writing or changing Vitest or React Testing Library tests.
+- Use the repo-local `how-to-write-component` skill for React component implementation, refactoring, or architecture-oriented evaluation involving ownership, complete root-to-leaf state and props accounting, state graphs, data flow, effects, lifecycle, or interaction boundaries. Do not load it for test-only, copy-only, or styling-only changes.
+- Use `frontend-code-review` only for explicit bug, regression, correctness, security, accessibility, performance, or test-quality reviews. Architecture-oriented evaluation of component ownership, state graphs, props, boundaries, or refactoring design belongs to `how-to-write-component` unless concrete defects are also requested. Use `frontend-testing` when writing or changing Vitest or React Testing Library tests.
 
 ## Package Contracts
 
