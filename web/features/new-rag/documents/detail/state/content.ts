@@ -42,9 +42,7 @@ export const documentChunksQueryErrorAtom = selectAtom(
   documentChunksQueryAtom,
   (query) => query.error,
 )
-export const documentChunksQueryHasDataAtom = atom((get) =>
-  Boolean(get(documentChunksQueryDataAtom)),
-)
+const documentChunksQueryHasDataAtom = atom((get) => Boolean(get(documentChunksQueryDataAtom)))
 export const documentChunksQueryHasNextPageAtom = selectAtom(
   documentChunksQueryAtom,
   (query) => query.hasNextPage,
@@ -125,7 +123,7 @@ export const documentDetailMultimodalItemsAtom = atom((get) => {
   return manifest.items ?? []
 })
 
-export const documentDetailModelAtom = atom((get) => {
+const documentDetailModelAtom = atom((get) => {
   const documentAssetVersion = get(documentDetailAssetAtom)?.documentAssetVersion
   const outline = get(documentOutlineDataAtom)
   return buildDocumentDetailModel(
@@ -135,6 +133,12 @@ export const documentDetailModelAtom = atom((get) => {
   )
 })
 
+export const documentDetailChunkTreeAtom = atom((get) => get(documentDetailModelAtom).tree)
+export const documentDetailContentBlocksAtom = atom(
+  (get) => get(documentDetailModelAtom).contentBlocks,
+)
+export const documentDetailIndexChunksAtom = atom((get) => get(documentDetailModelAtom).indexChunks)
+
 export const documentDetailSelectedChunkKnownAtom = atom((get) => {
   const selectedChunkId = get(documentDetailRequestedChunkIdAtom)
   return selectedChunkId
@@ -142,7 +146,7 @@ export const documentDetailSelectedChunkKnownAtom = atom((get) => {
     : false
 })
 
-export const documentDetailSelectedBlockAtom = atom((get) => {
+const documentDetailSelectedBlockAtom = atom((get) => {
   const selectedChunkId = get(documentDetailRequestedChunkIdAtom)
   const detailModel = get(documentDetailModelAtom)
   const targetedBlock = selectedChunkId

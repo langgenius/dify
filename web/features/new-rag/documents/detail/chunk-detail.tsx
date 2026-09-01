@@ -19,7 +19,8 @@ import { DocumentMultimodalAsset } from './multimodal-asset'
 import {
   documentChunksQueryIsFetchingNextPageAtom,
   documentDetailChunksCompleteAtom,
-  documentDetailModelAtom,
+  documentDetailContentBlocksAtom,
+  documentDetailIndexChunksAtom,
   documentDetailMultimodalItemsAtom,
   documentDetailSelectedChunkIdAtom,
 } from './state/content'
@@ -124,7 +125,7 @@ function DocumentSectionSummary({ children }: { children: React.ReactNode }) {
 export function DocumentReadingPane() {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
-  const contentBlocks = useAtomValue(documentDetailModelAtom).contentBlocks
+  const contentBlocks = useAtomValue(documentDetailContentBlocksAtom)
   const isLoadingMore = useAtomValue(documentChunksQueryIsFetchingNextPageAtom)
   const multimodalItems = useAtomValue(documentDetailMultimodalItemsAtom)
   const selectedChunkId = useAtomValue(documentDetailSelectedChunkIdAtom)
@@ -276,7 +277,7 @@ export function DocumentFactsSidebar() {
   const { t: tCommon } = useTranslation('common')
   const chunksComplete = useAtomValue(documentDetailChunksCompleteAtom)
   const document = useAtomValue(documentDetailDocumentAtom)
-  const indexChunks = useAtomValue(documentDetailModelAtom).indexChunks
+  const indexChunks = useAtomValue(documentDetailIndexChunksAtom)
   const revision = useAtomValue(documentDetailRevisionAtom)
   const locale = i18n.resolvedLanguage ?? i18n.language
   const characterCount = useMemo(

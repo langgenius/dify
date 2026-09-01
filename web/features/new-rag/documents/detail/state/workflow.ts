@@ -168,10 +168,6 @@ export const documentTasksQueryHasNextPageAtom = selectAtom(
   documentTasksQueryAtom,
   (query) => query.hasNextPage,
 )
-export const documentTasksQueryIsFetchNextPageErrorAtom = selectAtom(
-  documentTasksQueryAtom,
-  (query) => query.isFetchNextPageError,
-)
 export const documentTasksQueryIsFetchingAtom = selectAtom(
   documentTasksQueryAtom,
   (query) => query.isFetching,
@@ -219,7 +215,7 @@ export const documentLatestTaskAtom = atom((get) => {
   return task && task.documentRevision >= minimumRevision ? task : undefined
 })
 
-export const documentTaskIsActiveAtom = atom((get) =>
+const documentTaskIsActiveAtom = atom((get) =>
   documentTaskIsActive(get(documentLatestTaskAtom)?.state),
 )
 

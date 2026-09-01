@@ -38,7 +38,7 @@ const documentRevisionsAtom = atom(
     ) ?? [],
 )
 
-export const documentDetailAvailableRevisionsAtom = atom((get) => {
+const documentDetailAvailableRevisionsAtom = atom((get) => {
   const document = get(documentDetailDocumentAtom)
   const byRevision = new Map(
     get(documentRevisionsAtom).map((revision) => [revision.revision, revision]),

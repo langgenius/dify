@@ -16,7 +16,7 @@ import {
   documentChunksQueryIsFetchNextPageErrorAtom,
   documentChunksQueryIsPendingAtom,
   documentDetailChunksAtom,
-  documentDetailModelAtom,
+  documentDetailChunkTreeAtom,
   documentDetailSelectedChunkIdAtom,
   loadNextDocumentChunkPageAtom,
   retryDocumentChunksAtom,
@@ -75,7 +75,7 @@ export function DocumentChunkTreePanel() {
   const isFetchingNextPage = useAtomValue(documentChunksQueryIsFetchingNextPageAtom)
   const isPending = useAtomValue(documentChunksQueryIsPendingAtom)
   const selectedChunkId = useAtomValue(documentDetailSelectedChunkIdAtom)
-  const tree = useAtomValue(documentDetailModelAtom).tree
+  const tree = useAtomValue(documentDetailChunkTreeAtom)
   const fetchNextPage = useSetAtom(loadNextDocumentChunkPageAtom)
   const retryChunks = useSetAtom(retryDocumentChunksAtom)
   const [_requestedChunkId, setRequestedChunkId] = useQueryState('chunk', documentDetailChunkParser)
