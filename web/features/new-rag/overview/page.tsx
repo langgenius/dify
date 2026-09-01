@@ -212,7 +212,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
             </SegmentedControl>
           )}
         </header>
-        {!pageLoading && failedTask && (
+        {empty && failedTask && (
           <FirstSourceTaskFailureBanner
             failedTask={failedTask}
             knowledgeSpaceId={knowledgeSpaceId}

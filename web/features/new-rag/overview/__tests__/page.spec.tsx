@@ -889,6 +889,43 @@ describe('KnowledgeOverviewPage', () => {
     expect(tasksQueryState.refetch).toHaveBeenCalledOnce()
   })
 
+  it('keeps later document failures in Needs attention without showing the onboarding alert', () => {
+    queryData.stats.source_count = 0
+    queryData.stats.documents = 1
+    queryData.tasks[0]!.can_retry = true
+    queryData.tasks[0]!.operation = 'document_upload'
+    queryData.tasks[0]!.state = 'failed'
+    queryData.attention.data = [
+      {
+        action: {
+          kind: 'open-resource',
+          resource_id: 'document-1',
+          resource_type: 'document',
+        },
+        evidence: [{ code: 'DOCUMENT_PROCESSING_FAILED', observed_at: '2026-07-29T08:00:00Z' }],
+        issue_key: 'failed-document:document-1',
+        knowledge_space_id: 'knowledge-1',
+        resource: { id: 'document-1', type: 'document' },
+        revision: 1,
+        rule_id: 'failed-document',
+        severity: 'critical',
+        status: 'active',
+        title: 'Document processing failed',
+        updated_at: '2026-07-29T08:00:00Z',
+      },
+    ]
+
+    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(
+      screen.getByText('dataset.newKnowledge.overview.attention.failedDocument.title'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.overview.viewDocuments' }),
+    ).toBeInTheDocument()
+  })
+
   it('hides write-only onboarding actions for a read-only user', () => {
     queryData.stats.source_count = 0
     queryData.stats.documents = 0
