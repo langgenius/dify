@@ -1,8 +1,8 @@
 // Contracts for the `dify-builder` Build, Edit, and Fix session API. `SessionView` and the
 // rest of the wire DTOs are generated from the backend contract — see
-// `./contract/types` (AUTO-GENERATED, do not hand-edit). This file contains
+// `@dify/contracts/dify-builder` (AUTO-GENERATED, do not hand-edit). This file contains
 // only client-side helpers and values that are not part of that DTO surface.
-import type { SessionView } from './contract/types'
+import type { SessionView } from '@dify/contracts/dify-builder'
 
 export type ProgressEntry = {
   id: number
