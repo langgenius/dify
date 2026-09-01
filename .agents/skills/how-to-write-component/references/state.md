@@ -6,7 +6,7 @@ Read this document when a change involves Jotai, form drafts, route identity, sh
 
 First identify the owner or source of truth: one component, a parent boundary, URL/framework APIs, TanStack Query, or the feature workflow. Then identify the graph role independently: primitive input, query/mutation node, derived business fact, or workflow command. Finally mark whether any node needs per-instance isolation or reset; this is a lifecycle requirement, not a node type.
 
-A value should enter a feature state graph when it drives a query or command, feeds a reusable derivation, is consumed by another owner, or bridges an external source for several consumers. Entering the graph does not transfer ownership from URL APIs or Query cache to Jotai.
+A value does not enter the feature state graph solely because it drives an owner-local query or command. It should enter when it participates in shared workflow state: another owner or graph node consumes it, several consumers need one external-source bridge, it feeds reusable business derivation or coordinated writes, or its persistence/isolation must outlive the current owner. Entering the graph does not transfer ownership from URL APIs or Query cache to Jotai.
 
 Once a value enters the graph, represent it in a feature-local Jotai state file by default. Do not leave graph inputs and async nodes inside a component or large custom hook while exporting only the final result through props or Context; that hides the dependency graph instead of modeling it.
 
