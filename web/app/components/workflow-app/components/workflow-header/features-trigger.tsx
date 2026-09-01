@@ -1,4 +1,7 @@
-import type { AppPublisherPublishParams } from '@/app/components/app/app-publisher/types'
+import type {
+  AppPublisherPublishOptions,
+  AppPublisherPublishParams,
+} from '@/app/components/app/app-publisher/types'
 import type { EndNodeType } from '@/app/components/workflow/nodes/end/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { CommonEdgeType, Node } from '@/app/components/workflow/types'
@@ -150,7 +153,7 @@ const FeaturesTrigger = () => {
 
   const updatePublishedWorkflow = useInvalidateAppWorkflow()
   const onPublish = useCallback(
-    async (params?: AppPublisherPublishParams) => {
+    async (params?: AppPublisherPublishParams, options?: AppPublisherPublishOptions) => {
       const publishParams = params && 'title' in params ? params : undefined
       // First check if there are any items in the checklist
       // if (!validateBeforeRun())
@@ -172,7 +175,9 @@ const FeaturesTrigger = () => {
           releaseNotes: publishParams?.releaseNotes || '',
         })
         if (res) {
-          toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+          if (options?.showSuccessToast !== false) {
+            toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+          }
           updatePublishedWorkflow(appID!)
           updateAppDetail()
           invalidateAppTriggers(appID!)
