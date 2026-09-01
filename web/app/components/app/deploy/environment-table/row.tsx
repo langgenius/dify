@@ -2,9 +2,10 @@ import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deplo
 import type { AccessPoint } from '../utils/access-point'
 import type { DeploymentVersion } from '../utils/version'
 import type { UndeployHandler } from './types'
+import { RuntimeState } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { memo } from 'react'
 import { AccessPointIcon } from '../shared/access-point-icon'
-import { DeploymentStatus } from '../shared/deployment-status'
+import { RuntimeStateIndicator } from '../shared/runtime-state'
 import { VersionLabel } from '../shared/version-label'
 import { ACCESS_POINT_ORDER, getAccessPointHref } from '../utils/access-point'
 import { ActivityCell } from './activity-cell'
@@ -30,6 +31,10 @@ export const EnvironmentRow = memo(
     onRedeploy: (deployment: EnvironmentDeployment) => void
     onUndeploy: UndeployHandler
   }) => {
+    const runtimeState = row.deployment
+      ? row.deployment.runtimeState
+      : RuntimeState.RUNTIME_STATE_UNDEPLOYED
+
     const isAccessPointActive = (accessPoint: AccessPoint) => {
       if (accessPoint === 'webApp') return row.access.enable_site
       if (accessPoint === 'serviceApi') return row.access.enable_api
@@ -55,7 +60,7 @@ export const EnvironmentRow = memo(
           />
         </td>
         <td className="border-b border-divider-subtle px-2">
-          <DeploymentStatus status={row.deployment?.status} />
+          <RuntimeStateIndicator runtimeState={runtimeState} />
         </td>
         <td className="border-b border-divider-subtle pr-2 pl-3">
           <ActivityCell activity={row.deployment?.latest_operation} />

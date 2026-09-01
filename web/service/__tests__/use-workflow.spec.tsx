@@ -13,9 +13,9 @@ import type { ReactNode } from 'react'
 import {
   DeploymentOperationStatus,
   DeploymentOperationType,
-  DeploymentStatus,
   EnvironmentStatus,
   OperatorType,
+  RuntimeState,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
@@ -99,7 +99,7 @@ const createEnvironmentDeployment = ({
           type: DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_DEPLOY,
         }
       : undefined,
-    status: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
+    runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
   },
   environment: {
     description: `${environmentId} environment`,

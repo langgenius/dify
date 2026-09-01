@@ -2,7 +2,7 @@
 
 import type { WorkflowVersion } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { Node } from '@/app/components/workflow/types'
-import { DeploymentStatus as DeploymentStatusEnum } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import { RuntimeState } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { useQuery } from '@tanstack/react-query'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +12,7 @@ import useTimestamp from '@/hooks/use-timestamp'
 import { useMCPServerDetail } from '@/service/use-tools'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { AccessPointIcon } from '../shared/access-point-icon'
-import { DeploymentStatus } from '../shared/deployment-status'
+import { RuntimeStateIndicator } from '../shared/runtime-state'
 import { VersionLabel } from '../shared/version-label'
 import { ACCESS_POINT_ORDER, getAccessPointHref } from '../utils/access-point'
 
@@ -105,7 +105,7 @@ export const BuiltInEnvironmentCard = memo(
         </div>
         {/* Status and updated time */}
         <div className="flex items-center justify-between gap-4 px-4 py-2.5">
-          <DeploymentStatus status={DeploymentStatusEnum.DEPLOYMENT_STATUS_RUNNING} />
+          <RuntimeStateIndicator runtimeState={RuntimeState.RUNTIME_STATE_RUNNING} />
           <p className="truncate system-xs-regular text-text-tertiary">
             {publishedWorkflow
               ? t(($) => $['studio.updatedAtBy'], {

@@ -2,7 +2,7 @@ import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deplo
 import {
   DeploymentOperationStatus,
   DeploymentOperationType,
-  DeploymentStatus,
+  RuntimeState,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 
 type EnvironmentDeploymentActionKind =
@@ -27,10 +27,10 @@ function isDeploymentOperationInProgress(deployment?: EnvironmentDeployment) {
 export function shouldPollEnvironmentDeployment(deployment?: EnvironmentDeployment) {
   if (isDeploymentOperationInProgress(deployment)) return true
 
-  const status = deployment?.deployment?.status
+  const runtimeState = deployment?.deployment?.runtimeState
   return (
-    status === DeploymentStatus.DEPLOYMENT_STATUS_STARTING ||
-    status === DeploymentStatus.DEPLOYMENT_STATUS_STOPPING
+    runtimeState === RuntimeState.RUNTIME_STATE_STARTING ||
+    runtimeState === RuntimeState.RUNTIME_STATE_STOPPING
   )
 }
 
@@ -91,11 +91,11 @@ export function getEnvironmentDeploymentActions(
     )
   }
 
-  if (deployment.status === DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYED) {
+  if (deployment.runtimeState === RuntimeState.RUNTIME_STATE_UNDEPLOYED) {
     return actions(['deployLatest', 'changeVersion'])
   }
 
-  if (deployment.status === DeploymentStatus.DEPLOYMENT_STATUS_RUNNING) {
+  if (deployment.runtimeState === RuntimeState.RUNTIME_STATE_RUNNING) {
     if ((deployment.versions_behind ?? 0) > 0) {
       return actions(['deployLatest', 'changeVersion', 'redeploy', 'undeploy'])
     }
@@ -104,8 +104,8 @@ export function getEnvironmentDeploymentActions(
   }
 
   if (
-    deployment.status === DeploymentStatus.DEPLOYMENT_STATUS_STARTING ||
-    deployment.status === DeploymentStatus.DEPLOYMENT_STATUS_STOPPING
+    deployment.runtimeState === RuntimeState.RUNTIME_STATE_STARTING ||
+    deployment.runtimeState === RuntimeState.RUNTIME_STATE_STOPPING
   ) {
     return actions(
       hasCurrentVersion

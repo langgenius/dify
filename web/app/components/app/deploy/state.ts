@@ -14,7 +14,7 @@ import {
 import { hasDeploymentsRequiringPolling } from './utils/environment-deployment'
 import { toDeploymentVersion } from './utils/version'
 
-const DEPLOYMENT_STATUS_POLLING_INTERVAL = 3000
+const ENVIRONMENT_DEPLOYMENT_POLLING_INTERVAL = 3000
 
 const appDeployAppIdAtom = atom<string | null>(null)
 const defaultWorkflowVersionNameAtom = atom('')
@@ -213,7 +213,7 @@ const appEnvironmentDeploymentsQueryAtom = atomWithQuery((get) => {
       refetchInterval: (query) => {
         const deployments = query.state.data?.environment_deployments ?? []
         return hasDeploymentsRequiringPolling(deployments)
-          ? DEPLOYMENT_STATUS_POLLING_INTERVAL
+          ? ENVIRONMENT_DEPLOYMENT_POLLING_INTERVAL
           : false
       },
     },

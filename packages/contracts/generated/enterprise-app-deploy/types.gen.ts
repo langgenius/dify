@@ -24,10 +24,25 @@ export const ApplicationInteractionStatus = {
   APPLICATION_INTERACTION_STATUS_PARTIAL_SUCCEEDED:
     'APPLICATION_INTERACTION_STATUS_PARTIAL_SUCCEEDED',
   APPLICATION_INTERACTION_STATUS_STOPPED: 'APPLICATION_INTERACTION_STATUS_STOPPED',
+  APPLICATION_INTERACTION_STATUS_PAUSED: 'APPLICATION_INTERACTION_STATUS_PAUSED',
 } as const
 
 export type ApplicationInteractionStatus =
   (typeof ApplicationInteractionStatus)[keyof typeof ApplicationInteractionStatus]
+
+export const ApplicationInteractionSource = {
+  APPLICATION_INTERACTION_SOURCE_UNSPECIFIED: 'APPLICATION_INTERACTION_SOURCE_UNSPECIFIED',
+  APPLICATION_INTERACTION_SOURCE_WEB_APP: 'APPLICATION_INTERACTION_SOURCE_WEB_APP',
+  APPLICATION_INTERACTION_SOURCE_SERVICE_API: 'APPLICATION_INTERACTION_SOURCE_SERVICE_API',
+  APPLICATION_INTERACTION_SOURCE_TRIGGER: 'APPLICATION_INTERACTION_SOURCE_TRIGGER',
+  APPLICATION_INTERACTION_SOURCE_EXPLORE: 'APPLICATION_INTERACTION_SOURCE_EXPLORE',
+  APPLICATION_INTERACTION_SOURCE_DEBUGGER: 'APPLICATION_INTERACTION_SOURCE_DEBUGGER',
+  APPLICATION_INTERACTION_SOURCE_VALIDATION: 'APPLICATION_INTERACTION_SOURCE_VALIDATION',
+  APPLICATION_INTERACTION_SOURCE_OPENAPI: 'APPLICATION_INTERACTION_SOURCE_OPENAPI',
+} as const
+
+export type ApplicationInteractionSource =
+  (typeof ApplicationInteractionSource)[keyof typeof ApplicationInteractionSource]
 
 export const EnvironmentMode = {
   ENVIRONMENT_MODE_UNSPECIFIED: 'ENVIRONMENT_MODE_UNSPECIFIED',
@@ -127,29 +142,17 @@ export const EnvironmentBackend = {
 
 export type EnvironmentBackend = (typeof EnvironmentBackend)[keyof typeof EnvironmentBackend]
 
-export const EnvironmentDeployedAppStatus = {
-  ENVIRONMENT_DEPLOYED_APP_STATUS_UNSPECIFIED: 'ENVIRONMENT_DEPLOYED_APP_STATUS_UNSPECIFIED',
-  ENVIRONMENT_DEPLOYED_APP_STATUS_DEPLOYED: 'ENVIRONMENT_DEPLOYED_APP_STATUS_DEPLOYED',
-  ENVIRONMENT_DEPLOYED_APP_STATUS_DEPLOYING: 'ENVIRONMENT_DEPLOYED_APP_STATUS_DEPLOYING',
-  ENVIRONMENT_DEPLOYED_APP_STATUS_FAILED: 'ENVIRONMENT_DEPLOYED_APP_STATUS_FAILED',
-  ENVIRONMENT_DEPLOYED_APP_STATUS_UNDEPLOYED: 'ENVIRONMENT_DEPLOYED_APP_STATUS_UNDEPLOYED',
+export const RuntimeState = {
+  RUNTIME_STATE_UNSPECIFIED: 'RUNTIME_STATE_UNSPECIFIED',
+  RUNTIME_STATE_UNDEPLOYED: 'RUNTIME_STATE_UNDEPLOYED',
+  RUNTIME_STATE_RUNNING: 'RUNTIME_STATE_RUNNING',
+  RUNTIME_STATE_STARTING: 'RUNTIME_STATE_STARTING',
+  RUNTIME_STATE_STOPPING: 'RUNTIME_STATE_STOPPING',
+  RUNTIME_STATE_ERROR: 'RUNTIME_STATE_ERROR',
+  RUNTIME_STATE_UNKNOWN: 'RUNTIME_STATE_UNKNOWN',
 } as const
 
-export type EnvironmentDeployedAppStatus =
-  (typeof EnvironmentDeployedAppStatus)[keyof typeof EnvironmentDeployedAppStatus]
-
-export const DeploymentStatus = {
-  DEPLOYMENT_STATUS_UNSPECIFIED: 'DEPLOYMENT_STATUS_UNSPECIFIED',
-  DEPLOYMENT_STATUS_UNDEPLOYED: 'DEPLOYMENT_STATUS_UNDEPLOYED',
-  DEPLOYMENT_STATUS_RUNNING: 'DEPLOYMENT_STATUS_RUNNING',
-  DEPLOYMENT_STATUS_STARTING: 'DEPLOYMENT_STATUS_STARTING',
-  DEPLOYMENT_STATUS_STOPPING: 'DEPLOYMENT_STATUS_STOPPING',
-  DEPLOYMENT_STATUS_SUSPENDED: 'DEPLOYMENT_STATUS_SUSPENDED',
-  DEPLOYMENT_STATUS_ERROR: 'DEPLOYMENT_STATUS_ERROR',
-  DEPLOYMENT_STATUS_UNKNOWN: 'DEPLOYMENT_STATUS_UNKNOWN',
-} as const
-
-export type DeploymentStatus = (typeof DeploymentStatus)[keyof typeof DeploymentStatus]
+export type RuntimeState = (typeof RuntimeState)[keyof typeof RuntimeState]
 
 export const EnvVarValueSource = {
   ENV_VAR_VALUE_SOURCE_UNSPECIFIED: 'ENV_VAR_VALUE_SOURCE_UNSPECIFIED',
@@ -200,22 +203,17 @@ export type AppEnvironment = {
 export type ApplicationInteraction = {
   id: string
   timestamp: string
-  workflowRunId: string
   status: ApplicationInteractionStatus
   durationSeconds: number
   totalTokens: string
   workspace: NamedRef
   environment: NamedRef
   app: NamedRef
-  operator?: Operator
-  invokeFrom: string
-  traceId: string
-  difyTraceId: string
-  deploymentVersionId: string
+  operator?: NamedRef
+  source: ApplicationInteractionSource
+  version?: WorkflowVersion
+  traceId?: string
   error?: string
-  body?: string
-  attributesJson?: string
-  resourceAttributesJson?: string
 }
 
 export type BatchGetSourceVersionDeploymentsRequest = {
@@ -381,6 +379,14 @@ export type EnvironmentAccess = {
   enable_api: boolean
 }
 
+export type EnvironmentActivity = {
+  environmentId: string
+  invocationCount: string
+  failedInvocationCount: string
+  failedDeploymentCount: string
+  deployedAppCount: string
+}
+
 export type EnvironmentApiKey = {
   id: string
   type: string
@@ -393,13 +399,15 @@ export type EnvironmentDeployedApp = {
   deploymentId: string
   workspace: NamedRef
   app: NamedRef
-  status: EnvironmentDeployedAppStatus
+  runtimeState: RuntimeState
   currentVersion?: WorkflowVersion
   deployedAt?: string
   deployedBy?: Operator
   latestAttempt?: EnvironmentDeployedAppAttempt
   sizing?: RunnerSizing
   occupiesPool?: boolean
+  recentInvocationCount?: string
+  versionsBehind?: number
 }
 
 export type EnvironmentDeployedAppAttempt = {
@@ -428,7 +436,7 @@ export type EnvironmentDeploymentOperation = {
 }
 
 export type EnvironmentDeploymentState = {
-  status: DeploymentStatus
+  runtimeState: RuntimeState
   current_version?: WorkflowVersion
   versions_behind?: number
   deployed_at?: number
@@ -539,7 +547,6 @@ export type Error = {
     | 'APPDEPLOY_APP_LOG_INVALID_TIME_RANGE'
     | 'APPDEPLOY_APP_LOG_INVALID_CURSOR'
     | 'APPDEPLOY_APP_LOG_CURSOR_FILTER_MISMATCH'
-    | 'APPDEPLOY_APP_LOG_ID_INVALID'
     | 'APPDEPLOY_UNSUPPORTED_NODE_TYPE'
     | 'APPDEPLOY_UNSUPPORTED_TOOL_PROVIDER_TYPE'
     | 'APPDEPLOY_TOOL_PROVIDER_TYPE_INVALID'
@@ -551,15 +558,12 @@ export type Error = {
     | 'APPDEPLOY_INVALID_WORKFLOW_ID'
     | 'APPDEPLOY_INVALID_DEPLOYMENT_VERSION_ID'
     | 'APPDEPLOY_DEVELOPER_API_URL_NOT_CONFIGURED'
-    | 'APPDEPLOY_INVALID_DEPLOYMENT_OPERATION_ID'
-    | 'APPDEPLOY_APP_LOG_EXPORT_RANGE_TOO_WIDE'
-    | 'APPDEPLOY_APP_LOG_EXPORT_TOO_MANY_ROWS'
-    | 'APPDEPLOY_APP_LOG_EXPORT_TOO_LARGE'
     | 'APPDEPLOY_UNAUTHORIZED'
     | 'APPDEPLOY_FORBIDDEN'
     | 'APPDEPLOY_APP_RUNNER_AUTH_REQUIRED'
     | 'APPDEPLOY_APP_RUNNER_INVALID_JOIN_TOKEN'
     | 'APPDEPLOY_APP_RUNNER_INVALID_CONTROL_TOKEN'
+    | 'APPDEPLOY_WEB_APP_ACCESS_DENIED'
     | 'APPDEPLOY_ENVIRONMENT_NOT_FOUND'
     | 'APPDEPLOY_DEPLOYMENT_NOT_FOUND'
     | 'APPDEPLOY_REVISION_NOT_FOUND'
@@ -570,11 +574,9 @@ export type Error = {
     | 'APPDEPLOY_ACCESS_SUBJECT_NOT_FOUND'
     | 'APPDEPLOY_API_KEY_NOT_FOUND'
     | 'APPDEPLOY_SOURCE_VERSION_NOT_FOUND'
-    | 'APPDEPLOY_APP_LOG_NOT_FOUND'
     | 'APPDEPLOY_WORKSPACE_NOT_FOUND'
     | 'APPDEPLOY_APP_RUNNER_NOT_FOUND'
     | 'APPDEPLOY_WORKFLOW_NOT_FOUND'
-    | 'APPDEPLOY_DEPLOYMENT_OPERATION_NOT_FOUND'
     | 'APPDEPLOY_RUN_FILE_NOT_FOUND'
     | 'APPDEPLOY_APPLICATION_UNAVAILABLE'
     | 'APPDEPLOY_TARGET_ENVIRONMENT_REMOVED'
@@ -644,12 +646,14 @@ export type Error = {
   detailCode?: string
 }
 
-export type GetApplicationInteractionResponse = {
-  interaction: ApplicationInteraction
+export type GetApplicationInteractionSummaryResponse = {
+  totalCount: string
+  failedCount: string
+  lookbackStart: string
 }
 
-export type GetDeploymentOperationResponse = {
-  operation: DeploymentOperation
+export type GetEnvironmentActivityResponse = {
+  data: Array<EnvironmentActivity>
 }
 
 export type GetEnvironmentCapabilitiesResponse = {
@@ -695,9 +699,15 @@ export type ListAppEnvironmentsResponse = {
   data: Array<AppEnvironment>
 }
 
+export type ListApplicationInteractionAppsResponse = {
+  data: Array<NamedRef>
+  pagination: Pagination
+}
+
 export type ListApplicationInteractionsResponse = {
   data: Array<ApplicationInteraction>
-  pagination: Pagination
+  nextPageToken?: string
+  previousPageToken?: string
 }
 
 export type ListDeploymentOperationsResponse = {
@@ -1017,13 +1027,15 @@ export type EnvironmentDeployedAppWritable = {
   deploymentId: string
   workspace: NamedRef
   app: NamedRef
-  status: EnvironmentDeployedAppStatus
+  runtimeState: RuntimeState
   currentVersion?: WorkflowVersion
   deployedAt?: string
   deployedBy?: Operator
   latestAttempt?: EnvironmentDeployedAppAttempt
   sizing?: RunnerSizingWritable
   occupiesPool?: boolean
+  recentInvocationCount?: string
+  versionsBehind?: number
 }
 
 export type EnvironmentMcpServerWritable = {
