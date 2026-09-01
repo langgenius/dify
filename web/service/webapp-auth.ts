@@ -43,10 +43,12 @@ export function getOrCreateWebAppSessionId(address: WebAppAddress) {
   if (address.kind !== 'environment') return ''
 
   const key = `session_id-${getWebAppScopeKey(address)}`
+  // oxlint-disable-next-line no-restricted-globals -- Environment passport requests need a stable session ID synchronously.
   const sessionId = localStorage.getItem(key)
   if (sessionId) return sessionId
 
   const created = uuidV4()
+  // oxlint-disable-next-line no-restricted-globals -- Environment passport requests need a stable session ID synchronously.
   localStorage.setItem(key, created)
   return created
 }

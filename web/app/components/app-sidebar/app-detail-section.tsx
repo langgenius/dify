@@ -119,16 +119,12 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
             },
           ]
         : []),
-      ...(appACLCapabilities.canAccessPoint
-        ? [
-            {
-              name: t(($) => $['appMenus.accessPoint'], { ns: 'common' }),
-              href: `/app/${appId}/access-point`,
-              icon: accessPointNavIcon,
-              selectedIcon: accessPointNavIcon,
-            },
-          ]
-        : []),
+      {
+        name: t(($) => $['appMenus.accessPoint'], { ns: 'common' }),
+        href: `/app/${appId}/access-point`,
+        icon: accessPointNavIcon,
+        selectedIcon: accessPointNavIcon,
+      },
       ...(isWorkflowApp && appACLCapabilities.canDeploy
         ? [
             {

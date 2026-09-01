@@ -258,18 +258,19 @@ class TestFileService:
             is False
         )
 
-    def test_file_size_limit(self):
-        with (
-            patch.object(dify_config, "UPLOAD_IMAGE_FILE_SIZE_LIMIT", 10),
-            patch.object(dify_config, "UPLOAD_VIDEO_FILE_SIZE_LIMIT", 20),
-            patch.object(dify_config, "UPLOAD_AUDIO_FILE_SIZE_LIMIT", 30),
-            patch.object(dify_config, "UPLOAD_FILE_SIZE_LIMIT", 5),
-        ):
-            assert FileService.file_size_limit(extension="jpg") == 10 * 1024 * 1024
-            assert FileService.file_size_limit(extension="mp4") == 20 * 1024 * 1024
-            assert FileService.file_size_limit(extension="mp3") == 30 * 1024 * 1024
-            assert FileService.file_size_limit(extension="txt") == 5 * 1024 * 1024
-            assert FileService.file_size_limit(extension="txt", default_file_size_limit=7) == 7 * 1024 * 1024
+    def test_file_size_limit(self, config_overrides: Callable[..., None]):
+        config_overrides(
+            UPLOAD_IMAGE_FILE_SIZE_LIMIT=10,
+            UPLOAD_VIDEO_FILE_SIZE_LIMIT=20,
+            UPLOAD_AUDIO_FILE_SIZE_LIMIT=30,
+            UPLOAD_FILE_SIZE_LIMIT=5,
+        )
+
+        assert FileService.file_size_limit(extension="jpg") == 10 * 1024 * 1024
+        assert FileService.file_size_limit(extension="mp4") == 20 * 1024 * 1024
+        assert FileService.file_size_limit(extension="mp3") == 30 * 1024 * 1024
+        assert FileService.file_size_limit(extension="txt") == 5 * 1024 * 1024
+        assert FileService.file_size_limit(extension="txt", default_file_size_limit=7) == 7 * 1024 * 1024
 
     def test_get_file_base64_success(self, file_service: FileService, db_session: Session):
         self._persist_upload_file(db_session, key="test_key")
