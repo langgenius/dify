@@ -7,6 +7,7 @@ dependency-injected so it stays unit-testable without Celery or the real
 Redis-backed ``session_lock`` module.
 """
 
+import json
 from collections.abc import Iterator
 
 import pytest
@@ -432,6 +433,51 @@ def test_submit_action_update_model_rejects_missing_config(
             _actor(),
             Action(kind="update_model", payload={}, base_version=s.version),
         )
+
+
+def test_submit_action_stream_subscribes_before_dispatch_and_streams(repo: SqlDifyBuilderRepository) -> None:
+    lock = FakeSessionLock()
+    order: list[str] = []
+
+    class _Sub:
+        def receive(self, timeout):  # noqa: ARG002
+            return json.dumps({"kind": "state", "version": 2, "session_id": "sid"}).encode()
+
+        def close(self):
+            pass
+
+    def fake_subscribe(_sid):
+        order.append("subscribe")
+        return _Sub()
+
+    def fake_enqueue(*_a, **_k):
+        order.append("enqueue")
+
+    s = _seed_session_at(repo, PcState.FIX_AWAIT_VERIFY)
+    svc = DifyBuilderService(repo, lock, fake_enqueue, subscribe_fn=fake_subscribe)
+    actor = _actor()
+
+    action = Action(kind="run_verify", base_version=s.version)
+    gen = svc.submit_action_stream(s.id, actor, action)
+    frames = list(gen)
+
+    assert order == ["subscribe", "enqueue"]  # subscribe strictly before dispatch
+    assert frames[0].startswith("event: snapshot")
+    assert any(f.startswith("event: state") for f in frames)
+
+
+def test_submit_action_stream_raises_conflict_before_streaming(repo: SqlDifyBuilderRepository) -> None:
+    lock = FakeSessionLock()
+    subscribed: list[str] = []
+    s = _seed_session_at(repo, PcState.FIX_AWAIT_VERIFY)
+    svc = DifyBuilderService(repo, lock, lambda *_a, **_k: None, subscribe_fn=lambda sid: subscribed.append(sid))
+    actor = _actor()
+
+    action = Action(kind="run_verify", base_version=s.version + 99)  # stale
+    with pytest.raises(ConflictError):
+        svc.submit_action_stream(s.id, actor, action)
+
+    assert subscribed == []  # no subscription opened on a pre-flight error
 
 
 def test_dispatch_releases_lock_when_enqueue_fails(repo: SqlDifyBuilderRepository) -> None:
